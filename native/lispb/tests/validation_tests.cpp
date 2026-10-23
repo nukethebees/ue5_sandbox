@@ -240,29 +240,18 @@ auto normal_module(CompilerTestContext& context,
                    std::optional<std::string_view> source = std::nullopt)
     -> lispb::codegen::ModuleHandle {
     auto& strings{context.storage.strings};
-    return [&] {
-        auto const new_normal_modules{context.storage.declarations.normal_modules.append()};
-        context.storage.declarations.normal_modules
-            .settings[context.storage.declarations.normal_modules.index(new_normal_modules)] = [&] {
-            auto const new_module_settings_store{
-                context.storage.declarations.module_settings_store.append()};
-            context.storage.declarations.module_settings_store
-                .name[context.storage.declarations.module_settings_store.index(
-                    new_module_settings_store)] = strings.intern("mixed");
-            context.storage.declarations.module_settings_store
-                .header[context.storage.declarations.module_settings_store.index(
-                    new_module_settings_store)] = strings.intern("Mixed.h");
-            context.storage.declarations.module_settings_store
-                .source[context.storage.declarations.module_settings_store.index(
-                    new_module_settings_store)] =
-                source ? std::optional{strings.intern(*source)} : std::nullopt;
-            return new_module_settings_store;
-        }();
-        context.storage.declarations.normal_modules
-            .declarations[context.storage.declarations.normal_modules.index(new_normal_modules)] =
-            context.storage.declarations.range<lispb::codegen::DeclarationHandle>(declarations);
-        return new_normal_modules;
-    }();
+    auto& modules{context.storage.declarations.normal_modules};
+    auto& settings{context.storage.declarations.module_settings_store};
+    auto const module{modules.append()};
+    auto const module_row{modules.index(module)};
+    auto const config{settings.append()};
+    auto const settings_row{settings.index(config)};
+    settings.name[settings_row] = strings.intern("mixed");
+    settings.header[settings_row] = strings.intern("Mixed.h");
+    settings.source[settings_row] = source ? std::optional{strings.intern(*source)} : std::nullopt;
+    modules.settings[module_row] = config;
+    modules.declarations[module_row] = context.storage.declarations.range(declarations);
+    return module;
 }
 
 auto plain_soa(CompilerTestContext& context, std::string name = "Data")
@@ -2804,23 +2793,16 @@ TEST(Validation, RejectsInvalidEnumModuleConfiguration) {
     auto& enums{declarations.enums};
     auto& strings{context.storage.strings};
     auto module{valid_enum_module(context)};
-    normal_modules.settings[normal_modules.index(module)] = [&] {
-        auto row_0{
-            module_settings_store.clone(normal_modules.settings[normal_modules.index(module)])};
-        module_settings_store.namespace_name[module_settings_store.index(row_0)] =
-            strings.intern("project");
-        return row_0;
-    }();
+    auto settings_row{
+        module_settings_store.index(normal_modules.settings[normal_modules.index(module)])};
+    module_settings_store.namespace_name[settings_row] = strings.intern("project");
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_enum_module(context);
-    normal_modules.settings[normal_modules.index(module)] = [&] {
-        auto row_0{
-            module_settings_store.clone(normal_modules.settings[normal_modules.index(module)])};
-        module_settings_store.source[module_settings_store.index(row_0)].reset();
-        return row_0;
-    }();
+    settings_row =
+        module_settings_store.index(normal_modules.settings[normal_modules.index(module)]);
+    module_settings_store.source[settings_row].reset();
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
@@ -2830,59 +2812,21 @@ TEST(Validation, RejectsInvalidEnumModuleConfiguration) {
                  std::invalid_argument);
 
     module = valid_enum_module(context);
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{enums.clone(rows_1.front())};
-            auto const row_0_row{enums.index(row_0)};
-            enums.conversions[row_0_row] = [&] {
-                auto const original_items{declarations.items(enums.conversions[row_0_row])};
-                auto rows{std::vector(original_items.begin(), original_items.end())};
-                rows.push_back(EnumConversion::string_view);
-                return declarations.range(rows);
-            }();
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
+    auto enum_row{enums.index(
+        declarations.items(normal_modules.declarations[normal_modules.index(module)]).front())};
+    auto const original_conversions{declarations.items(enums.conversions[enum_row])};
+    auto conversions{std::vector(original_conversions.begin(), original_conversions.end())};
+    conversions.push_back(EnumConversion::string_view);
+    enums.conversions[enum_row] = declarations.range(conversions);
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_enum_module(context);
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{enums.clone(rows_1.front())};
-            enums.reflection[enums.index(row_0)] = EnumReflection::none;
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
-        auto rows_3{std::vector(original_items.begin(), original_items.end())};
-        rows_3.front() = [&] {
-            auto row_2{enums.clone(rows_3.front())};
-            auto const row_2_row{enums.index(row_2)};
-            enums.values[row_2_row] = [&] {
-                auto const original_items{declarations.items(enums.values[row_2_row])};
-                auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                rows_1.front() = [&] {
-                    auto row_0{declarations.enumerators.clone(rows_1.front())};
-                    declarations.enumerators.hidden[declarations.enumerators.index(row_0)] = true;
-                    return row_0;
-                }();
-                return declarations.range(rows_1);
-            }();
-            return row_2;
-        }();
-        return declarations.range(rows_3);
-    }();
+    enum_row = enums.index(
+        declarations.items(normal_modules.declarations[normal_modules.index(module)]).front());
+    enums.reflection[enum_row] = EnumReflection::none;
+    auto const first_value{declarations.items(enums.values[enum_row]).front()};
+    declarations.enumerators.hidden[declarations.enumerators.index(first_value)] = true;
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 }
@@ -4258,92 +4202,62 @@ TEST(Validation, RejectsEmptyModuleOutputs) {
     CompilerTestContext context;
     auto& declarations{context.storage.declarations};
     auto& normal_modules{declarations.normal_modules};
-    auto module{valid_soa_module(context)};
-    normal_modules.settings[normal_modules.index(module)] = [&] {
-        auto row_0{declarations.module_settings_store.clone(
-            normal_modules.settings[normal_modules.index(module)])};
-        declarations.module_settings_store
-            .header[declarations.module_settings_store.index(row_0)] = {};
-        return row_0;
-    }();
+    auto& settings{declarations.module_settings_store};
+    auto const module{valid_soa_module(context)};
+    auto const row{settings.index(normal_modules.settings[normal_modules.index(module)])};
+    settings.header[row] = {};
 
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 }
 
 TEST(Validation, RejectsEmptyOptionalModuleSettings) {
-    CompilerTestContext context;
-    auto& declarations{context.storage.declarations};
-    auto& normal_modules{declarations.normal_modules};
-    auto& module_settings_store{declarations.module_settings_store};
-    auto& strings{context.storage.strings};
-    auto module{valid_soa_module(context)};
-    normal_modules.settings[normal_modules.index(module)] = [&] {
-        auto row_0{
-            module_settings_store.clone(normal_modules.settings[normal_modules.index(module)])};
-        module_settings_store.header_include[module_settings_store.index(row_0)] =
-            strings.intern("");
-        return row_0;
-    }();
+    for (auto const& [name, column] :
+         {std::pair{"header_include", &ModuleSettingsStore::header_include},
+          std::pair{"namespace_name", &ModuleSettingsStore::namespace_name}}) {
+        SCOPED_TRACE(name);
+        CompilerTestContext context;
+        auto& declarations{context.storage.declarations};
+        auto& normal_modules{declarations.normal_modules};
+        auto& settings{declarations.module_settings_store};
+        auto const module{valid_soa_module(context)};
+        auto const row{settings.index(normal_modules.settings[normal_modules.index(module)])};
+        (settings.*column)[row] = context.storage.strings.intern("");
 
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
-
-    module = valid_soa_module(context);
-    normal_modules.settings[normal_modules.index(module)] = [&] {
-        auto row_0{
-            module_settings_store.clone(normal_modules.settings[normal_modules.index(module)])};
-        module_settings_store.namespace_name[module_settings_store.index(row_0)] =
-            strings.intern("");
-        return row_0;
-    }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+        EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
+                     std::invalid_argument);
+    }
 }
 
 TEST(Validation, RejectsDuplicateAndEmptyIncludeOrderPrefixes) {
-    CompilerTestContext context;
-    auto& declarations{context.storage.declarations};
-    auto& normal_modules{declarations.normal_modules};
-    auto& module_settings_store{declarations.module_settings_store};
-    auto& strings{context.storage.strings};
-    auto module{valid_soa_module(context)};
-    normal_modules.settings[normal_modules.index(module)] = [&] {
-        auto row_0{
-            module_settings_store.clone(normal_modules.settings[normal_modules.index(module)])};
-        module_settings_store.include_order[module_settings_store.index(row_0)] =
-            declarations.range<lispb::StringId>(
-                {strings.intern("Project/"), strings.intern("Project/")});
-        return row_0;
-    }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    for (auto const& prefixes : {std::vector<std::string_view>{"Project/", "Project/"},
+                                 std::vector<std::string_view>{""}}) {
+        SCOPED_TRACE(::testing::PrintToString(prefixes));
+        CompilerTestContext context;
+        auto& declarations{context.storage.declarations};
+        auto& normal_modules{declarations.normal_modules};
+        auto& settings{declarations.module_settings_store};
+        auto const module{valid_soa_module(context)};
+        auto const row{settings.index(normal_modules.settings[normal_modules.index(module)])};
+        std::vector<StringId> values;
+        for (auto const prefix : prefixes) {
+            values.push_back(context.storage.strings.intern(prefix));
+        }
+        settings.include_order[row] = declarations.range(values);
 
-    module = valid_soa_module(context);
-    normal_modules.settings[normal_modules.index(module)] = [&] {
-        auto row_0{
-            module_settings_store.clone(normal_modules.settings[normal_modules.index(module)])};
-        module_settings_store.include_order[module_settings_store.index(row_0)] =
-            declarations.range<lispb::StringId>({strings.intern("")});
-        return row_0;
-    }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+        EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
+                     std::invalid_argument);
+    }
 }
 
 TEST(Validation, RejectsMalformedQualifiedNamespaces) {
     CompilerTestContext context;
     auto& declarations{context.storage.declarations};
     auto& normal_modules{declarations.normal_modules};
-    auto module{valid_soa_module(context)};
-    normal_modules.settings[normal_modules.index(module)] = [&] {
-        auto row_0{declarations.module_settings_store.clone(
-            normal_modules.settings[normal_modules.index(module)])};
-        declarations.module_settings_store
-            .namespace_name[declarations.module_settings_store.index(row_0)] =
-            context.storage.strings.intern("project:::invalid");
-        return row_0;
-    }();
+    auto& settings{declarations.module_settings_store};
+    auto const module{valid_soa_module(context)};
+    auto const row{settings.index(normal_modules.settings[normal_modules.index(module)])};
+    settings.namespace_name[row] = context.storage.strings.intern("project:::invalid");
 
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
@@ -4353,24 +4267,13 @@ TEST(Validation, RejectsDuplicateModuleNames) {
     CompilerTestContext context;
     auto& declarations{context.storage.declarations};
     auto& normal_modules{declarations.normal_modules};
-    auto& module_settings_store{declarations.module_settings_store};
+    auto& settings{declarations.module_settings_store};
     auto& strings{context.storage.strings};
-    auto first{valid_soa_module(context)};
-    auto second{valid_soa_module(context)};
-    normal_modules.settings[normal_modules.index(second)] = [&] {
-        auto row_0{
-            module_settings_store.clone(normal_modules.settings[normal_modules.index(second)])};
-        module_settings_store.header[module_settings_store.index(row_0)] =
-            strings.intern("Other.h");
-        return row_0;
-    }();
-    normal_modules.settings[normal_modules.index(second)] = [&] {
-        auto row_0{
-            module_settings_store.clone(normal_modules.settings[normal_modules.index(second)])};
-        module_settings_store.source[module_settings_store.index(row_0)] =
-            strings.intern("Other.cpp");
-        return row_0;
-    }();
+    auto const first{valid_soa_module(context)};
+    auto const second{valid_soa_module(context)};
+    auto const row{settings.index(normal_modules.settings[normal_modules.index(second)])};
+    settings.header[row] = strings.intern("Other.h");
+    settings.source[row] = strings.intern("Other.cpp");
     lispb::codegen::Manifest const manifest{
         manifest_schema_version, make_test_registry(context), declarations, {first, second}};
 
