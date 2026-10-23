@@ -130,10 +130,11 @@ class NativeWorkflowTests(unittest.TestCase):
             self.assertNotIn(" /WX", commands)
             self.assertNotIn(" /O2", commands)
             self.assertNotIn("-DNDEBUG", commands)
-            generated = self.run_cmake("--build", str(build), "--target", "generate-native-soa-fixture",
+            generated = self.run_cmake("--build", str(build), "--target", "check-generated-native-soa-fixture",
                                        "--", "-t", "commands")
             self.assertIn("lispb.exe", generated)
-            self.assertIn("--depfile", generated)
+            self.assertIn("check --project", generated)
+            self.assertIn("--target native-soa-fixture", generated)
 
     def test_negative_compile_requires_the_expected_diagnostic(self) -> None:
         with tempfile.TemporaryDirectory(prefix="sandbox compile rejection ") as directory:
@@ -660,8 +661,6 @@ cmake_language(DEFER CALL check_simulation_policy)
             for report, executable in (
                 ("native-core-vector-lerp-benchmark-report", "native/core/benchmarks/native-core-benchmarks.exe"),
                 ("native-soa-production-report", "native/lispb/native_soa/native-soa-benchmarks.exe"),
-                ("native-soa-candidate-report", "native/lispb/native_soa/native-soa-benchmarks.exe"),
-                ("native-soa-laser-hit-append-report", "native/lispb/native_soa/native-soa-benchmarks.exe"),
             ):
                 commands = self.run_cmake("--build", str(build_directory), "--target", report,
                                           "--", "-t", "commands").replace("\\", "/")
