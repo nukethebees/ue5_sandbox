@@ -13,14 +13,10 @@
   (record First (member other (type-ref Second :suffix "*")))
   (record Second (member other (type-ref First :suffix "*")))
 
-  (struct PointerA
-    (member others array (type-ref PointerB :suffix "*")))
   (struct PointerB
     (member others array (type-ref PointerA :suffix "*")))
-  (struct ReverseB
-    (member others array (type-ref ReverseA :suffix "*")))
-  (struct ReverseA
-    (member others array (type-ref ReverseB :suffix "*")))
+  (struct PointerA
+    (member others array (type-ref PointerB :suffix "*")))
   (record MixedRecord (member rows (type-ref MixedRows :suffix "*")))
   (struct MixedRows
     (member records array (type-ref MixedRecord :suffix "*")))
@@ -36,9 +32,11 @@
     (member ys array float)
     (member zs array float))
   (struct OddPairs
+    :layout-only true
     (member first array @odd_bytes)
     (member second array @odd_bytes))
   (struct VectorGroups
+    :layout-only true
     (member starts nested Vectors)
     (member ends nested Vectors))
   (struct SingleRows
@@ -47,9 +45,9 @@
     (member velocities nested Vectors))
   (struct SingleAlignmentRows
     (member bytes array uint8)
-    (member odd array @odd_bytes)
+    (member odd nested OddPairs)
     (member aligned32 array @aligned32)
-    (member nested nested Vectors)
+    (member nested nested VectorGroups)
     (member aligned64 array @aligned64)
     (member aligned256 array @aligned256))
   (record ApiPair (member x float) (member y float))

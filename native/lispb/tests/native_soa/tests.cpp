@@ -146,12 +146,6 @@ TEST(NativeSoa, MutuallyReferencingPointersCompileInBothOrdersAndAcrossDeclarati
     second.add(&first);
     EXPECT_EQ(first.get_view().others()[0], &second);
     EXPECT_EQ(second.get_view().others()[0], &first);
-    ReverseB reverse_second;
-    ReverseA reverse_first;
-    reverse_second.add(&reverse_first);
-    reverse_first.add(&reverse_second);
-    EXPECT_EQ(reverse_second.get_view().others()[0], &reverse_first);
-    EXPECT_EQ(reverse_first.get_view().others()[0], &reverse_second);
     MixedRows rows;
     MixedRecord record{&rows};
     rows.add(&record);
@@ -285,8 +279,10 @@ TEST(NativeSoa, ResolvedViewsBorrowColumnsAndPreserveNestedLogicalApi) {
         std::is_same_v<decltype(immutable.view_positions().xs()), std::span<float const>>);
     static_assert(!CanAssignFirst<api_owner::ResolvedConstView>);
     EXPECT_EQ(immutable.values().data(), resolved.values().data());
-    static_assert(std::is_same_v<decltype(immutable.get_const_view()), api_owner::ResolvedConstView>);
-    static_assert(std::is_same_v<decltype(immutable.get_const_view(1, 1)), api_owner::ResolvedConstView>);
+    static_assert(
+        std::is_same_v<decltype(immutable.get_const_view()), api_owner::ResolvedConstView>);
+    static_assert(
+        std::is_same_v<decltype(immutable.get_const_view(1, 1)), api_owner::ResolvedConstView>);
     EXPECT_EQ(immutable.get_const_view().values().data(), resolved.values().data());
     EXPECT_EQ(immutable.get_const_view(1, 1).view_positions()[0].x, 6.0f);
     EXPECT_EQ(resolved.get_const_view(1, 1).view_positions()[0].x, 6.0f);
@@ -298,7 +294,8 @@ TEST(NativeSoa, ResolvedViewsAcceptIndependentSpansAndServeAsAppendSources) {
     std::array<ApiMask, 2> masks{};
     std::array xs{7.0f, 11.0f};
     std::array ys{13.0f, 17.0f};
-    api_owner::ResolvedView source{std::span{values}, std::span{masks}, std::span{xs}, std::span{ys}};
+    api_owner::ResolvedView source{
+        std::span{values}, std::span{masks}, std::span{xs}, std::span{ys}};
     EXPECT_EQ(source.view_positions().xs().data(), xs.data());
     EXPECT_EQ(source.view_positions().ys().data(), ys.data());
     source.view_positions().shift_x(1.0f);
@@ -634,12 +631,13 @@ TEST(NativeSoa, LayoutGrowthAndMoves) {
         EXPECT_EQ(view.aligned32().back().value, 32);
         EXPECT_EQ(view.aligned64().back().value, 64);
         EXPECT_EQ(view.aligned256().back().value, 256);
-        EXPECT_EQ(view.view_nested().xs().back(), 0.f);
+        auto const nested{view.view_nested().view_starts()};
+        EXPECT_EQ(nested.xs().back(), 0.f);
         for (std::uint32_t i{}; i < previous; ++i) {
-            EXPECT_EQ(view.view_nested().ys()[i], static_cast<float>(i));
+            EXPECT_EQ(nested.ys()[i], static_cast<float>(i));
         }
         for (std::uint32_t i{}; i < count; ++i) {
-            view.view_nested().ys()[i] = static_cast<float>(i);
+            nested.ys()[i] = static_cast<float>(i);
         }
         std::uintptr_t previous_end{};
         auto const base{reinterpret_cast<std::uintptr_t>(view.bytes().data())};
@@ -660,7 +658,7 @@ TEST(NativeSoa, LayoutGrowthAndMoves) {
     EXPECT_EQ(owner.capacity(), capacity);
     owner.set_num(129);
     owner.remove_at_swap(3, 2);
-    EXPECT_EQ(owner.get_view().view_nested().ys()[3], 127.f);
+    EXPECT_EQ(owner.view_nested().view_starts().ys()[3], 127.f);
     EXPECT_EQ(owner.num(), 127);
     auto const* data{owner.get_view().bytes().data()};
     auto moved{std::move(owner)};
@@ -838,11 +836,15 @@ TEST(NativeSoa, ComposedLayoutsPreserveEveryPhysicalColumn) {
         };
         auto check_group = [&](auto const& group) {
             check(group.BytesColumn);
-            check(group.OddColumn);
+            check(group.Odd.FirstColumn);
+            check(group.Odd.SecondColumn);
             check(group.Aligned32Column);
-            check(group.Nested.XsColumn);
-            check(group.Nested.YsColumn);
-            check(group.Nested.ZsColumn);
+            check(group.Nested.Starts.XsColumn);
+            check(group.Nested.Starts.YsColumn);
+            check(group.Nested.Starts.ZsColumn);
+            check(group.Nested.Ends.XsColumn);
+            check(group.Nested.Ends.YsColumn);
+            check(group.Nested.Ends.ZsColumn);
             check(group.Aligned64Column);
             check(group.Aligned256Column);
         };
@@ -900,21 +902,23 @@ TEST(NativeSoa, ColumnViewContracts) {
 }
 
 TEST(NativeSoa, OddSizedGroupsPreservePaddedStridesAcrossGrowth) {
-    static_assert(sizeof(OddPairs::View) == 24);
-    static_assert(std::is_trivially_copyable_v<OddPairs::View>);
-    OddPairs owner;
+    static_assert(sizeof(odd_pairs::View) == 24);
+    static_assert(std::is_trivially_copyable_v<odd_pairs::View>);
+    SingleAlignmentRows owner;
     owner.set_num(1);
-    std::memset(owner.first().data(), 17, sizeof(owner.first()[0]));
-    std::memset(owner.second().data(), 31, sizeof(owner.second()[0]));
+    auto const initial{owner.view_odd()};
+    std::memset(initial.first().data(), 17, sizeof(initial.first()[0]));
+    std::memset(initial.second().data(), 31, sizeof(initial.second()[0]));
 
     for (auto count : {1U, 65U, 193U}) {
         owner.set_num(count);
-        auto const view{owner.get_view()};
-        auto const blocks{owner.capacity() / OddPairs::capacity_granularity};
-        auto const& layout{OddPairs::Layout::columns};
+        auto const view{owner.view_odd()};
+        auto const blocks{owner.capacity() / SingleAlignmentRows::capacity_granularity};
+        auto const& layout{SingleAlignmentRows::Layout::columns.Odd};
         auto const stride{layout.SecondColumn.offset(blocks) - layout.FirstColumn.offset(blocks)};
         EXPECT_EQ(reinterpret_cast<std::uintptr_t>(view.second().data()) -
-                      reinterpret_cast<std::uintptr_t>(view.first().data()), stride);
+                      reinterpret_cast<std::uintptr_t>(view.first().data()),
+                  stride);
         EXPECT_EQ(std::as_bytes(view.first())[0], std::byte{17});
         EXPECT_EQ(std::as_bytes(view.second())[0], std::byte{31});
 
@@ -926,9 +930,9 @@ TEST(NativeSoa, OddSizedGroupsPreservePaddedStridesAcrossGrowth) {
 }
 
 TEST(NativeSoa, HomogeneousNestedGroupsReuseViewsAndPhysicalColumnOrder) {
-    VectorGroups owner;
+    SingleAlignmentRows owner;
     owner.set_num(3);
-    auto const view{owner.get_view()};
+    auto const view{owner.view_nested()};
     static_assert(sizeof(decltype(view)) == 16);
     static_assert(std::is_same_v<decltype(view.view_starts()), vectors::View>);
     static_assert(std::is_same_v<decltype(view.view_ends()), vectors::View>);

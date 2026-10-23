@@ -27,13 +27,9 @@ struct First;
 
 struct Second;
 
-struct PointerA;
-
 struct PointerB;
 
-struct ReverseB;
-
-struct ReverseA;
+struct PointerA;
 
 struct MixedRecord;
 
@@ -59,249 +55,6 @@ struct First {
 
 struct Second {
     First* other;
-};
-
-namespace pointer_a {
-struct Schema;
-struct View;
-struct ConstView;
-struct ResolvedView;
-struct ResolvedConstView;
-
-/* **************************************** */
-// Layout
-/* **************************************** */
-struct LayoutColumns {
-    template <typename T>
-    using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
-    ColLayout<PointerB*> OthersColumn;
-
-    constexpr explicit LayoutColumns(
-        ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
-        : OthersColumn{previous} {}
-    constexpr auto last_column() const noexcept
-        -> ioj::single_allocation_layout::ColumnLayoutBase const& {
-        return OthersColumn;
-    }
-    LayoutColumns(LayoutColumns const&) = delete;
-    auto operator=(LayoutColumns const&) -> LayoutColumns& = delete;
-};
-struct Layout : ioj::single_allocation_layout::Layout<LayoutColumns> {};
-
-/* **************************************** */
-// Resolved views
-/* **************************************** */
-template <bool Const>
-struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
-    using size_type = std::uint32_t;
-    using view_type = ::ioj::native_soa_fixture::pointer_a::ResolvedView;
-    using const_view_type = ::ioj::native_soa_fixture::pointer_a::ResolvedConstView;
-    using soa_schema = ::ioj::native_soa_fixture::pointer_a::Schema;
-    template <typename T>
-    using Element = std::conditional_t<Const, T const, T>;
-    ResolvedViewImpl() = default;
-    ResolvedViewImpl(Element<PointerB*>* others, size_type count)
-        : others_{others}
-        , count_{count} {
-        ioj::soa_storage_detail::validate_column_pointers(count_, others_);
-    }
-    ResolvedViewImpl(std::span<Element<PointerB*>> others)
-        : ResolvedViewImpl{others.data(),
-                           ioj::soa_storage_detail::checked_row_count(others.size())} {
-        ioj::soa_storage_detail::validate_column_sizes(count_, others);
-    }
-    template <bool Enabled = Const>
-    ResolvedViewImpl(ResolvedViewImpl<false> const& other)
-        requires Enabled
-        : others_{other.others_}
-        , count_{other.count_} {}
-    auto num() const noexcept -> size_type { return count_; }
-    auto resolve(this auto const& self) { return self; }
-    auto slice(this auto const& self, size_type offset, size_type count) {
-        assert(offset <= self.count_ && count <= self.count_ - offset);
-        using Result = std::remove_cvref_t<decltype(self)>;
-        return Result{self.others_ == nullptr ? nullptr : self.others_ + offset, count};
-    }
-    auto others() const { return std::span{others_, count_}; }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        func(std::span{others_, count_});
-    }
-  private:
-    template <bool>
-    friend struct ResolvedViewImpl;
-    Element<PointerB*>* others_{};
-    size_type count_{};
-};
-struct ResolvedConstView : ResolvedViewImpl<true> {
-    using Base = ResolvedViewImpl<true>;
-    using Base::Base;
-};
-struct ResolvedView : ResolvedViewImpl<false> {
-    using Base = ResolvedViewImpl<false>;
-    using Base::Base;
-    void set(size_type index, PointerB* const new_others) const {
-        assert(index < num());
-        this->others()[index] = new_others;
-    }
-};
-
-/* **************************************** */
-// Compact views
-/* **************************************** */
-template <bool Const>
-struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = ::ioj::native_soa_fixture::pointer_a::Schema;
-    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
-    using Base::Base;
-    using Layout = ::ioj::native_soa_fixture::pointer_a::Layout;
-    using view_type = ::ioj::native_soa_fixture::pointer_a::View;
-    using const_view_type = ::ioj::native_soa_fixture::pointer_a::ConstView;
-    template <bool Enabled = Const>
-    ViewImpl(ViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto others() const { return this->column(Layout::columns.OthersColumn); }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        func(others());
-    }
-    auto resolve() const
-        -> std::conditional_t<Const,
-                              ::ioj::native_soa_fixture::pointer_a::ResolvedConstView,
-                              ::ioj::native_soa_fixture::pointer_a::ResolvedView> {
-        return {this->column(Layout::columns.OthersColumn).data(), this->num()};
-    }
-};
-struct ConstView : ViewImpl<true> {
-    using Base = ViewImpl<true>;
-    using Base::Base;
-};
-static_assert(ioj::soa_storage_detail::validate_compact_view<ConstView>());
-struct View : ViewImpl<false> {
-    using Base = ViewImpl<false>;
-    using Base::Base;
-    void set(size_type index, PointerB* const new_others) const {
-        assert(index < num());
-        this->others()[index] = new_others;
-    }
-};
-static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
-
-} // namespace pointer_a
-
-/* **************************************** */
-// Owner
-/* **************************************** */
-// Columns:
-// others: PointerB*
-struct PointerA
-    : protected ioj::native_soa::StorageState
-    , ioj::native_soa::StorageOperations {
-    using soa_schema = ::ioj::native_soa_fixture::pointer_a::Schema;
-    using Operations = ioj::native_soa::StorageOperations;
-    using Layout = ::ioj::native_soa_fixture::pointer_a::Layout;
-    using size_type = Layout::size_type;
-    using byte_size_type = Layout::byte_size_type;
-
-    static constexpr auto capacity_granularity = Layout::capacity_granularity;
-    static constexpr auto allocation_alignment = Layout::allocation_alignment;
-    static constexpr auto capacity_block_bound = Layout::capacity_block_bound;
-    static constexpr auto max_capacity = Layout::max_capacity;
-
-    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return Layout::layout_bytes(blocks);
-    }
-
-    using View = ::ioj::native_soa_fixture::pointer_a::View;
-    using ConstView = ::ioj::native_soa_fixture::pointer_a::ConstView;
-
-    /* **************************************** */
-    // Lifetime
-    /* **************************************** */
-    PointerA() noexcept
-        : PointerA{*std::pmr::get_default_resource()} {}
-    explicit PointerA(std::pmr::memory_resource& resource) noexcept
-        : resource_{&resource} {}
-    auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
-    ~PointerA() { Operations::release_storage(*this); }
-    PointerA(PointerA const&) = delete;
-    auto operator=(PointerA const&) -> PointerA& = delete;
-    PointerA(PointerA&& other) noexcept
-        : resource_{other.resource_} {
-        Operations::take_storage(*this, other);
-    }
-    auto operator=(PointerA&& other) -> PointerA& { return Operations::move_assign(*this, other); }
-  protected:
-    template <typename Byte>
-    struct DataPointers {
-        template <typename T>
-        using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-        Element<PointerB*>* others{};
-        auto operator+(size_type const offset) const noexcept -> DataPointers {
-            if (others == nullptr) {
-                return {};
-            }
-            return {others + offset};
-        }
-    };
-  private:
-    friend Operations;
-    friend ::ioj::soa_storage_detail::StorageRequirements;
-    /* **************************************** */
-    // Column pointers
-    /* **************************************** */
-    template <typename Byte>
-    static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
-        -> DataPointers<Byte> {
-        ioj::native_soa::LayoutCursor cursor{blocks};
-        return {cursor.column_pointer(data, Layout::columns.OthersColumn)};
-    }
-
-    /* **************************************** */
-    // Typed mutations and growth
-    /* **************************************** */
-    void default_construct_columns(size_type const first, size_type const count) {
-        using ioj::native_soa::default_construct_n;
-        auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
-        default_construct_n(columns.others, count);
-    }
-    template <bool Overlapping, typename Byte>
-    static void transfer_columns(DataPointers<std::byte> const& destination,
-                                 DataPointers<Byte> const& source,
-                                 size_type count) {
-        auto transfer = [count](auto* dst, auto const* src) {
-            ioj::native_soa::transfer_n<Overlapping>(dst, src, count);
-        };
-        transfer(destination.others, source.others);
-    }
-    template <typename Columns>
-    static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
-        requires ioj::soa_storage_detail::SoaSourceFor<Columns, PointerA, size_type>
-    {
-        using ioj::native_soa::source_data;
-        return {source_data(source.others())};
-    }
-  public:
-    auto others(this auto& self) { return self.get_view().others(); }
-    void set(size_type index, PointerB* const new_others) {
-        assert(index < num());
-        get_view().others()[index] = new_others;
-    }
-    size_type add(PointerB* const new_others) {
-        auto const index{num()};
-        add_uninitialised(1);
-        set(index, new_others);
-        return index;
-    }
-    void apply_permutation(std::span<size_type> indices) {
-        assert(indices.size() == num_);
-        auto const columns{get_data()};
-        auto const permute{ioj::ColumnPermutation{num_, indices}};
-        permute(columns.others);
-    }
-  private:
-    std::pmr::memory_resource* resource_{};
 };
 
 namespace pointer_b {
@@ -547,7 +300,7 @@ struct PointerB
     std::pmr::memory_resource* resource_{};
 };
 
-namespace reverse_b {
+namespace pointer_a {
 struct Schema;
 struct View;
 struct ConstView;
@@ -560,7 +313,7 @@ struct ResolvedConstView;
 struct LayoutColumns {
     template <typename T>
     using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
-    ColLayout<ReverseA*> OthersColumn;
+    ColLayout<PointerB*> OthersColumn;
 
     constexpr explicit LayoutColumns(
         ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
@@ -580,18 +333,18 @@ struct Layout : ioj::single_allocation_layout::Layout<LayoutColumns> {};
 template <bool Const>
 struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     using size_type = std::uint32_t;
-    using view_type = ::ioj::native_soa_fixture::reverse_b::ResolvedView;
-    using const_view_type = ::ioj::native_soa_fixture::reverse_b::ResolvedConstView;
-    using soa_schema = ::ioj::native_soa_fixture::reverse_b::Schema;
+    using view_type = ::ioj::native_soa_fixture::pointer_a::ResolvedView;
+    using const_view_type = ::ioj::native_soa_fixture::pointer_a::ResolvedConstView;
+    using soa_schema = ::ioj::native_soa_fixture::pointer_a::Schema;
     template <typename T>
     using Element = std::conditional_t<Const, T const, T>;
     ResolvedViewImpl() = default;
-    ResolvedViewImpl(Element<ReverseA*>* others, size_type count)
+    ResolvedViewImpl(Element<PointerB*>* others, size_type count)
         : others_{others}
         , count_{count} {
         ioj::soa_storage_detail::validate_column_pointers(count_, others_);
     }
-    ResolvedViewImpl(std::span<Element<ReverseA*>> others)
+    ResolvedViewImpl(std::span<Element<PointerB*>> others)
         : ResolvedViewImpl{others.data(),
                            ioj::soa_storage_detail::checked_row_count(others.size())} {
         ioj::soa_storage_detail::validate_column_sizes(count_, others);
@@ -616,7 +369,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
   private:
     template <bool>
     friend struct ResolvedViewImpl;
-    Element<ReverseA*>* others_{};
+    Element<PointerB*>* others_{};
     size_type count_{};
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
@@ -626,7 +379,7 @@ struct ResolvedConstView : ResolvedViewImpl<true> {
 struct ResolvedView : ResolvedViewImpl<false> {
     using Base = ResolvedViewImpl<false>;
     using Base::Base;
-    void set(size_type index, ReverseA* const new_others) const {
+    void set(size_type index, PointerB* const new_others) const {
         assert(index < num());
         this->others()[index] = new_others;
     }
@@ -637,12 +390,12 @@ struct ResolvedView : ResolvedViewImpl<false> {
 /* **************************************** */
 template <bool Const>
 struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = ::ioj::native_soa_fixture::reverse_b::Schema;
+    using soa_schema = ::ioj::native_soa_fixture::pointer_a::Schema;
     using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
     using Base::Base;
-    using Layout = ::ioj::native_soa_fixture::reverse_b::Layout;
-    using view_type = ::ioj::native_soa_fixture::reverse_b::View;
-    using const_view_type = ::ioj::native_soa_fixture::reverse_b::ConstView;
+    using Layout = ::ioj::native_soa_fixture::pointer_a::Layout;
+    using view_type = ::ioj::native_soa_fixture::pointer_a::View;
+    using const_view_type = ::ioj::native_soa_fixture::pointer_a::ConstView;
     template <bool Enabled = Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
@@ -654,8 +407,8 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     }
     auto resolve() const
         -> std::conditional_t<Const,
-                              ::ioj::native_soa_fixture::reverse_b::ResolvedConstView,
-                              ::ioj::native_soa_fixture::reverse_b::ResolvedView> {
+                              ::ioj::native_soa_fixture::pointer_a::ResolvedConstView,
+                              ::ioj::native_soa_fixture::pointer_a::ResolvedView> {
         return {this->column(Layout::columns.OthersColumn).data(), this->num()};
     }
 };
@@ -667,26 +420,26 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<ConstView>());
 struct View : ViewImpl<false> {
     using Base = ViewImpl<false>;
     using Base::Base;
-    void set(size_type index, ReverseA* const new_others) const {
+    void set(size_type index, PointerB* const new_others) const {
         assert(index < num());
         this->others()[index] = new_others;
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
 
-} // namespace reverse_b
+} // namespace pointer_a
 
 /* **************************************** */
 // Owner
 /* **************************************** */
 // Columns:
-// others: ReverseA*
-struct ReverseB
+// others: PointerB*
+struct PointerA
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {
-    using soa_schema = ::ioj::native_soa_fixture::reverse_b::Schema;
+    using soa_schema = ::ioj::native_soa_fixture::pointer_a::Schema;
     using Operations = ioj::native_soa::StorageOperations;
-    using Layout = ::ioj::native_soa_fixture::reverse_b::Layout;
+    using Layout = ::ioj::native_soa_fixture::pointer_a::Layout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
 
@@ -699,31 +452,31 @@ struct ReverseB
         return Layout::layout_bytes(blocks);
     }
 
-    using View = ::ioj::native_soa_fixture::reverse_b::View;
-    using ConstView = ::ioj::native_soa_fixture::reverse_b::ConstView;
+    using View = ::ioj::native_soa_fixture::pointer_a::View;
+    using ConstView = ::ioj::native_soa_fixture::pointer_a::ConstView;
 
     /* **************************************** */
     // Lifetime
     /* **************************************** */
-    ReverseB() noexcept
-        : ReverseB{*std::pmr::get_default_resource()} {}
-    explicit ReverseB(std::pmr::memory_resource& resource) noexcept
+    PointerA() noexcept
+        : PointerA{*std::pmr::get_default_resource()} {}
+    explicit PointerA(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
     auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
-    ~ReverseB() { Operations::release_storage(*this); }
-    ReverseB(ReverseB const&) = delete;
-    auto operator=(ReverseB const&) -> ReverseB& = delete;
-    ReverseB(ReverseB&& other) noexcept
+    ~PointerA() { Operations::release_storage(*this); }
+    PointerA(PointerA const&) = delete;
+    auto operator=(PointerA const&) -> PointerA& = delete;
+    PointerA(PointerA&& other) noexcept
         : resource_{other.resource_} {
         Operations::take_storage(*this, other);
     }
-    auto operator=(ReverseB&& other) -> ReverseB& { return Operations::move_assign(*this, other); }
+    auto operator=(PointerA&& other) -> PointerA& { return Operations::move_assign(*this, other); }
   protected:
     template <typename Byte>
     struct DataPointers {
         template <typename T>
         using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-        Element<ReverseA*>* others{};
+        Element<PointerB*>* others{};
         auto operator+(size_type const offset) const noexcept -> DataPointers {
             if (others == nullptr) {
                 return {};
@@ -763,261 +516,18 @@ struct ReverseB
     }
     template <typename Columns>
     static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
-        requires ioj::soa_storage_detail::SoaSourceFor<Columns, ReverseB, size_type>
+        requires ioj::soa_storage_detail::SoaSourceFor<Columns, PointerA, size_type>
     {
         using ioj::native_soa::source_data;
         return {source_data(source.others())};
     }
   public:
     auto others(this auto& self) { return self.get_view().others(); }
-    void set(size_type index, ReverseA* const new_others) {
+    void set(size_type index, PointerB* const new_others) {
         assert(index < num());
         get_view().others()[index] = new_others;
     }
-    size_type add(ReverseA* const new_others) {
-        auto const index{num()};
-        add_uninitialised(1);
-        set(index, new_others);
-        return index;
-    }
-    void apply_permutation(std::span<size_type> indices) {
-        assert(indices.size() == num_);
-        auto const columns{get_data()};
-        auto const permute{ioj::ColumnPermutation{num_, indices}};
-        permute(columns.others);
-    }
-  private:
-    std::pmr::memory_resource* resource_{};
-};
-
-namespace reverse_a {
-struct Schema;
-struct View;
-struct ConstView;
-struct ResolvedView;
-struct ResolvedConstView;
-
-/* **************************************** */
-// Layout
-/* **************************************** */
-struct LayoutColumns {
-    template <typename T>
-    using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
-    ColLayout<ReverseB*> OthersColumn;
-
-    constexpr explicit LayoutColumns(
-        ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
-        : OthersColumn{previous} {}
-    constexpr auto last_column() const noexcept
-        -> ioj::single_allocation_layout::ColumnLayoutBase const& {
-        return OthersColumn;
-    }
-    LayoutColumns(LayoutColumns const&) = delete;
-    auto operator=(LayoutColumns const&) -> LayoutColumns& = delete;
-};
-struct Layout : ioj::single_allocation_layout::Layout<LayoutColumns> {};
-
-/* **************************************** */
-// Resolved views
-/* **************************************** */
-template <bool Const>
-struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
-    using size_type = std::uint32_t;
-    using view_type = ::ioj::native_soa_fixture::reverse_a::ResolvedView;
-    using const_view_type = ::ioj::native_soa_fixture::reverse_a::ResolvedConstView;
-    using soa_schema = ::ioj::native_soa_fixture::reverse_a::Schema;
-    template <typename T>
-    using Element = std::conditional_t<Const, T const, T>;
-    ResolvedViewImpl() = default;
-    ResolvedViewImpl(Element<ReverseB*>* others, size_type count)
-        : others_{others}
-        , count_{count} {
-        ioj::soa_storage_detail::validate_column_pointers(count_, others_);
-    }
-    ResolvedViewImpl(std::span<Element<ReverseB*>> others)
-        : ResolvedViewImpl{others.data(),
-                           ioj::soa_storage_detail::checked_row_count(others.size())} {
-        ioj::soa_storage_detail::validate_column_sizes(count_, others);
-    }
-    template <bool Enabled = Const>
-    ResolvedViewImpl(ResolvedViewImpl<false> const& other)
-        requires Enabled
-        : others_{other.others_}
-        , count_{other.count_} {}
-    auto num() const noexcept -> size_type { return count_; }
-    auto resolve(this auto const& self) { return self; }
-    auto slice(this auto const& self, size_type offset, size_type count) {
-        assert(offset <= self.count_ && count <= self.count_ - offset);
-        using Result = std::remove_cvref_t<decltype(self)>;
-        return Result{self.others_ == nullptr ? nullptr : self.others_ + offset, count};
-    }
-    auto others() const { return std::span{others_, count_}; }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        func(std::span{others_, count_});
-    }
-  private:
-    template <bool>
-    friend struct ResolvedViewImpl;
-    Element<ReverseB*>* others_{};
-    size_type count_{};
-};
-struct ResolvedConstView : ResolvedViewImpl<true> {
-    using Base = ResolvedViewImpl<true>;
-    using Base::Base;
-};
-struct ResolvedView : ResolvedViewImpl<false> {
-    using Base = ResolvedViewImpl<false>;
-    using Base::Base;
-    void set(size_type index, ReverseB* const new_others) const {
-        assert(index < num());
-        this->others()[index] = new_others;
-    }
-};
-
-/* **************************************** */
-// Compact views
-/* **************************************** */
-template <bool Const>
-struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = ::ioj::native_soa_fixture::reverse_a::Schema;
-    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
-    using Base::Base;
-    using Layout = ::ioj::native_soa_fixture::reverse_a::Layout;
-    using view_type = ::ioj::native_soa_fixture::reverse_a::View;
-    using const_view_type = ::ioj::native_soa_fixture::reverse_a::ConstView;
-    template <bool Enabled = Const>
-    ViewImpl(ViewImpl<false> const& other)
-        requires Enabled
-        : Base{other} {}
-    auto others() const { return this->column(Layout::columns.OthersColumn); }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        func(others());
-    }
-    auto resolve() const
-        -> std::conditional_t<Const,
-                              ::ioj::native_soa_fixture::reverse_a::ResolvedConstView,
-                              ::ioj::native_soa_fixture::reverse_a::ResolvedView> {
-        return {this->column(Layout::columns.OthersColumn).data(), this->num()};
-    }
-};
-struct ConstView : ViewImpl<true> {
-    using Base = ViewImpl<true>;
-    using Base::Base;
-};
-static_assert(ioj::soa_storage_detail::validate_compact_view<ConstView>());
-struct View : ViewImpl<false> {
-    using Base = ViewImpl<false>;
-    using Base::Base;
-    void set(size_type index, ReverseB* const new_others) const {
-        assert(index < num());
-        this->others()[index] = new_others;
-    }
-};
-static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
-
-} // namespace reverse_a
-
-/* **************************************** */
-// Owner
-/* **************************************** */
-// Columns:
-// others: ReverseB*
-struct ReverseA
-    : protected ioj::native_soa::StorageState
-    , ioj::native_soa::StorageOperations {
-    using soa_schema = ::ioj::native_soa_fixture::reverse_a::Schema;
-    using Operations = ioj::native_soa::StorageOperations;
-    using Layout = ::ioj::native_soa_fixture::reverse_a::Layout;
-    using size_type = Layout::size_type;
-    using byte_size_type = Layout::byte_size_type;
-
-    static constexpr auto capacity_granularity = Layout::capacity_granularity;
-    static constexpr auto allocation_alignment = Layout::allocation_alignment;
-    static constexpr auto capacity_block_bound = Layout::capacity_block_bound;
-    static constexpr auto max_capacity = Layout::max_capacity;
-
-    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return Layout::layout_bytes(blocks);
-    }
-
-    using View = ::ioj::native_soa_fixture::reverse_a::View;
-    using ConstView = ::ioj::native_soa_fixture::reverse_a::ConstView;
-
-    /* **************************************** */
-    // Lifetime
-    /* **************************************** */
-    ReverseA() noexcept
-        : ReverseA{*std::pmr::get_default_resource()} {}
-    explicit ReverseA(std::pmr::memory_resource& resource) noexcept
-        : resource_{&resource} {}
-    auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
-    ~ReverseA() { Operations::release_storage(*this); }
-    ReverseA(ReverseA const&) = delete;
-    auto operator=(ReverseA const&) -> ReverseA& = delete;
-    ReverseA(ReverseA&& other) noexcept
-        : resource_{other.resource_} {
-        Operations::take_storage(*this, other);
-    }
-    auto operator=(ReverseA&& other) -> ReverseA& { return Operations::move_assign(*this, other); }
-  protected:
-    template <typename Byte>
-    struct DataPointers {
-        template <typename T>
-        using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-        Element<ReverseB*>* others{};
-        auto operator+(size_type const offset) const noexcept -> DataPointers {
-            if (others == nullptr) {
-                return {};
-            }
-            return {others + offset};
-        }
-    };
-  private:
-    friend Operations;
-    friend ::ioj::soa_storage_detail::StorageRequirements;
-    /* **************************************** */
-    // Column pointers
-    /* **************************************** */
-    template <typename Byte>
-    static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
-        -> DataPointers<Byte> {
-        ioj::native_soa::LayoutCursor cursor{blocks};
-        return {cursor.column_pointer(data, Layout::columns.OthersColumn)};
-    }
-
-    /* **************************************** */
-    // Typed mutations and growth
-    /* **************************************** */
-    void default_construct_columns(size_type const first, size_type const count) {
-        using ioj::native_soa::default_construct_n;
-        auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
-        default_construct_n(columns.others, count);
-    }
-    template <bool Overlapping, typename Byte>
-    static void transfer_columns(DataPointers<std::byte> const& destination,
-                                 DataPointers<Byte> const& source,
-                                 size_type count) {
-        auto transfer = [count](auto* dst, auto const* src) {
-            ioj::native_soa::transfer_n<Overlapping>(dst, src, count);
-        };
-        transfer(destination.others, source.others);
-    }
-    template <typename Columns>
-    static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
-        requires ioj::soa_storage_detail::SoaSourceFor<Columns, ReverseA, size_type>
-    {
-        using ioj::native_soa::source_data;
-        return {source_data(source.others())};
-    }
-  public:
-    auto others(this auto& self) { return self.get_view().others(); }
-    void set(size_type index, ReverseB* const new_others) {
-        assert(index < num());
-        get_view().others()[index] = new_others;
-    }
-    size_type add(ReverseB* const new_others) {
+    size_type add(PointerB* const new_others) {
         auto const index{num()};
         add_uninitialised(1);
         set(index, new_others);
@@ -1956,12 +1466,6 @@ struct ViewImpl : ioj::soa_storage_detail::StridedViewBase<OddBytes, Const> {
     using Layout = ::ioj::native_soa_fixture::odd_pairs::Layout;
     using view_type = ::ioj::native_soa_fixture::odd_pairs::View;
     using const_view_type = ::ioj::native_soa_fixture::odd_pairs::ConstView;
-    using State = std::conditional_t<Const,
-                                     ioj::soa_storage_detail::StorageState const,
-                                     ioj::soa_storage_detail::StorageState>;
-    ViewImpl(State* state, std::uint32_t offset, std::uint32_t count)
-        : Base{ioj::soa_storage_detail::make_strided_view<Base>(
-              state, offset, count, Layout::columns.FirstColumn, Layout::columns.SecondColumn)} {}
     template <bool Enabled = Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
@@ -1997,127 +1501,6 @@ struct View : ViewImpl<false> {
 static_assert(std::is_trivially_copyable_v<View>);
 
 } // namespace odd_pairs
-
-/* **************************************** */
-// Owner
-/* **************************************** */
-// Columns:
-// first: OddBytes
-// second: OddBytes
-struct OddPairs
-    : protected ioj::native_soa::StorageState
-    , ioj::native_soa::StorageOperations {
-    using soa_schema = ::ioj::native_soa_fixture::odd_pairs::Schema;
-    using Operations = ioj::native_soa::StorageOperations;
-    using Layout = ::ioj::native_soa_fixture::odd_pairs::Layout;
-    using size_type = Layout::size_type;
-    using byte_size_type = Layout::byte_size_type;
-
-    static constexpr auto capacity_granularity = Layout::capacity_granularity;
-    static constexpr auto allocation_alignment = Layout::allocation_alignment;
-    static constexpr auto capacity_block_bound = Layout::capacity_block_bound;
-    static constexpr auto max_capacity = Layout::max_capacity;
-
-    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return Layout::layout_bytes(blocks);
-    }
-
-    using View = ::ioj::native_soa_fixture::odd_pairs::View;
-    using ConstView = ::ioj::native_soa_fixture::odd_pairs::ConstView;
-
-    /* **************************************** */
-    // Lifetime
-    /* **************************************** */
-    OddPairs() noexcept
-        : OddPairs{*std::pmr::get_default_resource()} {}
-    explicit OddPairs(std::pmr::memory_resource& resource) noexcept
-        : resource_{&resource} {}
-    auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
-    ~OddPairs() { Operations::release_storage(*this); }
-    OddPairs(OddPairs const&) = delete;
-    auto operator=(OddPairs const&) -> OddPairs& = delete;
-    OddPairs(OddPairs&& other) noexcept
-        : resource_{other.resource_} {
-        Operations::take_storage(*this, other);
-    }
-    auto operator=(OddPairs&& other) -> OddPairs& { return Operations::move_assign(*this, other); }
-  protected:
-    template <typename Byte>
-    struct DataPointers {
-        template <typename T>
-        using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-        Element<OddBytes>* first{};
-        Element<OddBytes>* second{};
-        auto operator+(size_type const offset) const noexcept -> DataPointers {
-            if (first == nullptr) {
-                return {};
-            }
-            return {first + offset, second + offset};
-        }
-    };
-  private:
-    friend Operations;
-    friend ::ioj::soa_storage_detail::StorageRequirements;
-    /* **************************************** */
-    // Column pointers
-    /* **************************************** */
-    template <typename Byte>
-    static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
-        -> DataPointers<Byte> {
-        ioj::native_soa::LayoutCursor cursor{blocks};
-        return {cursor.column_pointer(data, Layout::columns.FirstColumn),
-                cursor.column_pointer(data, Layout::columns.SecondColumn)};
-    }
-
-    /* **************************************** */
-    // Typed mutations and growth
-    /* **************************************** */
-    void default_construct_columns(size_type const first, size_type const count) {
-        using ioj::native_soa::default_construct_n;
-        auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
-        default_construct_n(columns.first, count);
-        default_construct_n(columns.second, count);
-    }
-    template <bool Overlapping, typename Byte>
-    static void transfer_columns(DataPointers<std::byte> const& destination,
-                                 DataPointers<Byte> const& source,
-                                 size_type count) {
-        auto transfer = [count](auto* dst, auto const* src) {
-            ioj::native_soa::transfer_n<Overlapping>(dst, src, count);
-        };
-        transfer(destination.first, source.first);
-        transfer(destination.second, source.second);
-    }
-    template <typename Columns>
-    static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
-        requires ioj::soa_storage_detail::SoaSourceFor<Columns, OddPairs, size_type>
-    {
-        using ioj::native_soa::source_data;
-        return {source_data(source.first()), source_data(source.second())};
-    }
-  public:
-    auto first(this auto& self) { return self.get_view().first(); }
-    auto second(this auto& self) { return self.get_view().second(); }
-    void set(size_type index, OddBytes const new_first, OddBytes const new_second) {
-        assert(index < num());
-        get_view().first()[index] = new_first;
-        get_view().second()[index] = new_second;
-    }
-    size_type add(OddBytes const new_first, OddBytes const new_second) {
-        auto const index{num()};
-        add_uninitialised(1);
-        set(index, new_first, new_second);
-        return index;
-    }
-    void apply_permutation(std::span<size_type> indices) {
-        assert(indices.size() == num_);
-        auto const columns{get_data()};
-        auto const permute{ioj::ColumnPermutation{num_, indices}};
-        permute(columns.first, columns.second);
-    }
-  private:
-    std::pmr::memory_resource* resource_{};
-};
 
 namespace vector_groups {
 struct Schema;
@@ -2283,15 +1666,6 @@ struct ViewImpl : ioj::soa_storage_detail::StridedViewBase<float, Const> {
     using Layout = ::ioj::native_soa_fixture::vector_groups::Layout;
     using view_type = ::ioj::native_soa_fixture::vector_groups::View;
     using const_view_type = ::ioj::native_soa_fixture::vector_groups::ConstView;
-    using State = std::conditional_t<Const,
-                                     ioj::soa_storage_detail::StorageState const,
-                                     ioj::soa_storage_detail::StorageState>;
-    ViewImpl(State* state, std::uint32_t offset, std::uint32_t count)
-        : Base{ioj::soa_storage_detail::make_strided_view<Base>(state,
-                                                                offset,
-                                                                count,
-                                                                Layout::columns.Starts.XsColumn,
-                                                                Layout::columns.Starts.YsColumn)} {}
     template <bool Enabled = Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
@@ -2357,187 +1731,6 @@ struct View : ViewImpl<false> {
 static_assert(std::is_trivially_copyable_v<View>);
 
 } // namespace vector_groups
-
-/* **************************************** */
-// Owner
-/* **************************************** */
-// Columns:
-// starts_xs: float
-// starts_ys: float
-// starts_zs: float
-// ends_xs: float
-// ends_ys: float
-// ends_zs: float
-struct VectorGroups
-    : protected ioj::native_soa::StorageState
-    , ioj::native_soa::StorageOperations {
-    using soa_schema = ::ioj::native_soa_fixture::vector_groups::Schema;
-    using Operations = ioj::native_soa::StorageOperations;
-    using Layout = ::ioj::native_soa_fixture::vector_groups::Layout;
-    using size_type = Layout::size_type;
-    using byte_size_type = Layout::byte_size_type;
-
-    static constexpr auto capacity_granularity = Layout::capacity_granularity;
-    static constexpr auto allocation_alignment = Layout::allocation_alignment;
-    static constexpr auto capacity_block_bound = Layout::capacity_block_bound;
-    static constexpr auto max_capacity = Layout::max_capacity;
-
-    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return Layout::layout_bytes(blocks);
-    }
-
-    using View = ::ioj::native_soa_fixture::vector_groups::View;
-    using ConstView = ::ioj::native_soa_fixture::vector_groups::ConstView;
-
-    /* **************************************** */
-    // Lifetime
-    /* **************************************** */
-    VectorGroups() noexcept
-        : VectorGroups{*std::pmr::get_default_resource()} {}
-    explicit VectorGroups(std::pmr::memory_resource& resource) noexcept
-        : resource_{&resource} {}
-    auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
-    ~VectorGroups() { Operations::release_storage(*this); }
-    VectorGroups(VectorGroups const&) = delete;
-    auto operator=(VectorGroups const&) -> VectorGroups& = delete;
-    VectorGroups(VectorGroups&& other) noexcept
-        : resource_{other.resource_} {
-        Operations::take_storage(*this, other);
-    }
-    auto operator=(VectorGroups&& other) -> VectorGroups& {
-        return Operations::move_assign(*this, other);
-    }
-  protected:
-    template <typename Byte>
-    struct DataPointers {
-        template <typename T>
-        using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-        Element<float>* starts_xs{};
-        Element<float>* starts_ys{};
-        Element<float>* starts_zs{};
-        Element<float>* ends_xs{};
-        Element<float>* ends_ys{};
-        Element<float>* ends_zs{};
-        auto operator+(size_type const offset) const noexcept -> DataPointers {
-            if (starts_xs == nullptr) {
-                return {};
-            }
-            return {starts_xs + offset,
-                    starts_ys + offset,
-                    starts_zs + offset,
-                    ends_xs + offset,
-                    ends_ys + offset,
-                    ends_zs + offset};
-        }
-    };
-  private:
-    friend Operations;
-    friend ::ioj::soa_storage_detail::StorageRequirements;
-    /* **************************************** */
-    // Column pointers
-    /* **************************************** */
-    template <typename Byte>
-    static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
-        -> DataPointers<Byte> {
-        ioj::native_soa::LayoutCursor cursor{blocks};
-        return {cursor.column_pointer(data, Layout::columns.Starts.XsColumn),
-                cursor.column_pointer(data, Layout::columns.Starts.YsColumn),
-                cursor.column_pointer(data, Layout::columns.Starts.ZsColumn),
-                cursor.column_pointer(data, Layout::columns.Ends.XsColumn),
-                cursor.column_pointer(data, Layout::columns.Ends.YsColumn),
-                cursor.column_pointer(data, Layout::columns.Ends.ZsColumn)};
-    }
-
-    /* **************************************** */
-    // Typed mutations and growth
-    /* **************************************** */
-    void default_construct_columns(size_type const first, size_type const count) {
-        using ioj::native_soa::default_construct_n;
-        auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
-        default_construct_n(columns.starts_xs, count);
-        default_construct_n(columns.starts_ys, count);
-        default_construct_n(columns.starts_zs, count);
-        default_construct_n(columns.ends_xs, count);
-        default_construct_n(columns.ends_ys, count);
-        default_construct_n(columns.ends_zs, count);
-    }
-    template <bool Overlapping, typename Byte>
-    static void transfer_columns(DataPointers<std::byte> const& destination,
-                                 DataPointers<Byte> const& source,
-                                 size_type count) {
-        auto transfer = [count](auto* dst, auto const* src) {
-            ioj::native_soa::transfer_n<Overlapping>(dst, src, count);
-        };
-        transfer(destination.starts_xs, source.starts_xs);
-        transfer(destination.starts_ys, source.starts_ys);
-        transfer(destination.starts_zs, source.starts_zs);
-        transfer(destination.ends_xs, source.ends_xs);
-        transfer(destination.ends_ys, source.ends_ys);
-        transfer(destination.ends_zs, source.ends_zs);
-    }
-    template <typename Columns>
-    static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
-        requires ioj::soa_storage_detail::SoaSourceFor<Columns, VectorGroups, size_type>
-    {
-        using ioj::native_soa::source_data;
-        auto const& starts_view{source.view_starts()};
-        auto const& ends_view{source.view_ends()};
-        return {source_data(starts_view.xs()),
-                source_data(starts_view.ys()),
-                source_data(starts_view.zs()),
-                source_data(ends_view.xs()),
-                source_data(ends_view.ys()),
-                source_data(ends_view.zs())};
-    }
-  public:
-    auto view_starts(this auto& self) { return self.get_view().view_starts(); }
-    auto view_ends(this auto& self) { return self.get_view().view_ends(); }
-    void set(size_type index,
-             float const new_starts_xs,
-             float const new_starts_ys,
-             float const new_starts_zs,
-             float const new_ends_xs,
-             float const new_ends_ys,
-             float const new_ends_zs) {
-        assert(index < num());
-        get_view().view_starts().xs()[index] = new_starts_xs;
-        get_view().view_starts().ys()[index] = new_starts_ys;
-        get_view().view_starts().zs()[index] = new_starts_zs;
-        get_view().view_ends().xs()[index] = new_ends_xs;
-        get_view().view_ends().ys()[index] = new_ends_ys;
-        get_view().view_ends().zs()[index] = new_ends_zs;
-    }
-    size_type add(float const new_starts_xs,
-                  float const new_starts_ys,
-                  float const new_starts_zs,
-                  float const new_ends_xs,
-                  float const new_ends_ys,
-                  float const new_ends_zs) {
-        auto const index{num()};
-        add_uninitialised(1);
-        set(index,
-            new_starts_xs,
-            new_starts_ys,
-            new_starts_zs,
-            new_ends_xs,
-            new_ends_ys,
-            new_ends_zs);
-        return index;
-    }
-    void apply_permutation(std::span<size_type> indices) {
-        assert(indices.size() == num_);
-        auto const columns{get_data()};
-        auto const permute{ioj::ColumnPermutation{num_, indices}};
-        permute(columns.starts_xs,
-                columns.starts_ys,
-                columns.starts_zs,
-                columns.ends_xs,
-                columns.ends_ys,
-                columns.ends_zs);
-    }
-  private:
-    std::pmr::memory_resource* resource_{};
-};
 
 namespace single_rows {
 struct Schema;
@@ -3024,17 +2217,17 @@ struct LayoutColumns {
     template <typename T>
     using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
     ColLayout<std::uint8_t> BytesColumn;
-    ColLayout<OddBytes> OddColumn;
+    ::ioj::native_soa_fixture::odd_pairs::LayoutColumns Odd;
     ColLayout<Aligned32> Aligned32Column;
-    ::ioj::native_soa_fixture::vectors::LayoutColumns Nested;
+    ::ioj::native_soa_fixture::vector_groups::LayoutColumns Nested;
     ColLayout<Aligned64> Aligned64Column;
     ColLayout<Aligned256> Aligned256Column;
 
     constexpr explicit LayoutColumns(
         ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
         : BytesColumn{previous}
-        , OddColumn{BytesColumn}
-        , Aligned32Column{OddColumn}
+        , Odd{BytesColumn}
+        , Aligned32Column{Odd.last_column()}
         , Nested{Aligned32Column}
         , Aligned64Column{Nested.last_column()}
         , Aligned256Column{Aligned64Column} {}
@@ -3060,62 +2253,97 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     using Element = std::conditional_t<Const, T const, T>;
     ResolvedViewImpl() = default;
     ResolvedViewImpl(Element<std::uint8_t>* bytes,
-                     Element<OddBytes>* odd,
+                     Element<OddBytes>* odd_first,
+                     Element<OddBytes>* odd_second,
                      Element<Aligned32>* aligned32,
-                     Element<float>* nested_xs,
-                     Element<float>* nested_ys,
-                     Element<float>* nested_zs,
+                     Element<float>* nested_starts_xs,
+                     Element<float>* nested_starts_ys,
+                     Element<float>* nested_starts_zs,
+                     Element<float>* nested_ends_xs,
+                     Element<float>* nested_ends_ys,
+                     Element<float>* nested_ends_zs,
                      Element<Aligned64>* aligned64,
                      Element<Aligned256>* aligned256,
                      size_type count)
         : bytes_{bytes}
-        , odd_{odd}
+        , odd_first_{odd_first}
+        , odd_second_{odd_second}
         , aligned32_{aligned32}
-        , nested_xs_{nested_xs}
-        , nested_ys_{nested_ys}
-        , nested_zs_{nested_zs}
+        , nested_starts_xs_{nested_starts_xs}
+        , nested_starts_ys_{nested_starts_ys}
+        , nested_starts_zs_{nested_starts_zs}
+        , nested_ends_xs_{nested_ends_xs}
+        , nested_ends_ys_{nested_ends_ys}
+        , nested_ends_zs_{nested_ends_zs}
         , aligned64_{aligned64}
         , aligned256_{aligned256}
         , count_{count} {
         ioj::soa_storage_detail::validate_column_pointers(count_,
                                                           bytes_,
-                                                          odd_,
+                                                          odd_first_,
+                                                          odd_second_,
                                                           aligned32_,
-                                                          nested_xs_,
-                                                          nested_ys_,
-                                                          nested_zs_,
+                                                          nested_starts_xs_,
+                                                          nested_starts_ys_,
+                                                          nested_starts_zs_,
+                                                          nested_ends_xs_,
+                                                          nested_ends_ys_,
+                                                          nested_ends_zs_,
                                                           aligned64_,
                                                           aligned256_);
     }
     ResolvedViewImpl(std::span<Element<std::uint8_t>> bytes,
-                     std::span<Element<OddBytes>> odd,
+                     std::span<Element<OddBytes>> odd_first,
+                     std::span<Element<OddBytes>> odd_second,
                      std::span<Element<Aligned32>> aligned32,
-                     std::span<Element<float>> nested_xs,
-                     std::span<Element<float>> nested_ys,
-                     std::span<Element<float>> nested_zs,
+                     std::span<Element<float>> nested_starts_xs,
+                     std::span<Element<float>> nested_starts_ys,
+                     std::span<Element<float>> nested_starts_zs,
+                     std::span<Element<float>> nested_ends_xs,
+                     std::span<Element<float>> nested_ends_ys,
+                     std::span<Element<float>> nested_ends_zs,
                      std::span<Element<Aligned64>> aligned64,
                      std::span<Element<Aligned256>> aligned256)
         : ResolvedViewImpl{bytes.data(),
-                           odd.data(),
+                           odd_first.data(),
+                           odd_second.data(),
                            aligned32.data(),
-                           nested_xs.data(),
-                           nested_ys.data(),
-                           nested_zs.data(),
+                           nested_starts_xs.data(),
+                           nested_starts_ys.data(),
+                           nested_starts_zs.data(),
+                           nested_ends_xs.data(),
+                           nested_ends_ys.data(),
+                           nested_ends_zs.data(),
                            aligned64.data(),
                            aligned256.data(),
                            ioj::soa_storage_detail::checked_row_count(bytes.size())} {
-        ioj::soa_storage_detail::validate_column_sizes(
-            count_, bytes, odd, aligned32, nested_xs, nested_ys, nested_zs, aligned64, aligned256);
+        ioj::soa_storage_detail::validate_column_sizes(count_,
+                                                       bytes,
+                                                       odd_first,
+                                                       odd_second,
+                                                       aligned32,
+                                                       nested_starts_xs,
+                                                       nested_starts_ys,
+                                                       nested_starts_zs,
+                                                       nested_ends_xs,
+                                                       nested_ends_ys,
+                                                       nested_ends_zs,
+                                                       aligned64,
+                                                       aligned256);
     }
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
         : bytes_{other.bytes_}
-        , odd_{other.odd_}
+        , odd_first_{other.odd_first_}
+        , odd_second_{other.odd_second_}
         , aligned32_{other.aligned32_}
-        , nested_xs_{other.nested_xs_}
-        , nested_ys_{other.nested_ys_}
-        , nested_zs_{other.nested_zs_}
+        , nested_starts_xs_{other.nested_starts_xs_}
+        , nested_starts_ys_{other.nested_starts_ys_}
+        , nested_starts_zs_{other.nested_starts_zs_}
+        , nested_ends_xs_{other.nested_ends_xs_}
+        , nested_ends_ys_{other.nested_ends_ys_}
+        , nested_ends_zs_{other.nested_ends_zs_}
         , aligned64_{other.aligned64_}
         , aligned256_{other.aligned256_}
         , count_{other.count_} {}
@@ -3125,34 +2353,53 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         assert(offset <= self.count_ && count <= self.count_ - offset);
         using Result = std::remove_cvref_t<decltype(self)>;
         return Result{self.bytes_ == nullptr ? nullptr : self.bytes_ + offset,
-                      self.odd_ == nullptr ? nullptr : self.odd_ + offset,
+                      self.odd_first_ == nullptr ? nullptr : self.odd_first_ + offset,
+                      self.odd_second_ == nullptr ? nullptr : self.odd_second_ + offset,
                       self.aligned32_ == nullptr ? nullptr : self.aligned32_ + offset,
-                      self.nested_xs_ == nullptr ? nullptr : self.nested_xs_ + offset,
-                      self.nested_ys_ == nullptr ? nullptr : self.nested_ys_ + offset,
-                      self.nested_zs_ == nullptr ? nullptr : self.nested_zs_ + offset,
+                      self.nested_starts_xs_ == nullptr ? nullptr : self.nested_starts_xs_ + offset,
+                      self.nested_starts_ys_ == nullptr ? nullptr : self.nested_starts_ys_ + offset,
+                      self.nested_starts_zs_ == nullptr ? nullptr : self.nested_starts_zs_ + offset,
+                      self.nested_ends_xs_ == nullptr ? nullptr : self.nested_ends_xs_ + offset,
+                      self.nested_ends_ys_ == nullptr ? nullptr : self.nested_ends_ys_ + offset,
+                      self.nested_ends_zs_ == nullptr ? nullptr : self.nested_ends_zs_ + offset,
                       self.aligned64_ == nullptr ? nullptr : self.aligned64_ + offset,
                       self.aligned256_ == nullptr ? nullptr : self.aligned256_ + offset,
                       count};
     }
     auto bytes() const { return std::span{bytes_, count_}; }
-    auto odd() const { return std::span{odd_, count_}; }
+    auto view_odd() const
+        -> std::conditional_t<Const,
+                              ::ioj::native_soa_fixture::odd_pairs::ResolvedConstView,
+                              ::ioj::native_soa_fixture::odd_pairs::ResolvedView> {
+        return {odd_first_, odd_second_, count_};
+    }
     auto aligned32() const { return std::span{aligned32_, count_}; }
     auto view_nested() const
         -> std::conditional_t<Const,
-                              ::ioj::native_soa_fixture::vectors::ResolvedConstView,
-                              ::ioj::native_soa_fixture::vectors::ResolvedView> {
-        return {nested_xs_, nested_ys_, nested_zs_, count_};
+                              ::ioj::native_soa_fixture::vector_groups::ResolvedConstView,
+                              ::ioj::native_soa_fixture::vector_groups::ResolvedView> {
+        return {nested_starts_xs_,
+                nested_starts_ys_,
+                nested_starts_zs_,
+                nested_ends_xs_,
+                nested_ends_ys_,
+                nested_ends_zs_,
+                count_};
     }
     auto aligned64() const { return std::span{aligned64_, count_}; }
     auto aligned256() const { return std::span{aligned256_, count_}; }
     template <typename Func>
     void each_column(Func&& func) const {
         func(std::span{bytes_, count_});
-        func(std::span{odd_, count_});
+        func(std::span{odd_first_, count_});
+        func(std::span{odd_second_, count_});
         func(std::span{aligned32_, count_});
-        func(std::span{nested_xs_, count_});
-        func(std::span{nested_ys_, count_});
-        func(std::span{nested_zs_, count_});
+        func(std::span{nested_starts_xs_, count_});
+        func(std::span{nested_starts_ys_, count_});
+        func(std::span{nested_starts_zs_, count_});
+        func(std::span{nested_ends_xs_, count_});
+        func(std::span{nested_ends_ys_, count_});
+        func(std::span{nested_ends_zs_, count_});
         func(std::span{aligned64_, count_});
         func(std::span{aligned256_, count_});
     }
@@ -3160,11 +2407,15 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     template <bool>
     friend struct ResolvedViewImpl;
     Element<std::uint8_t>* bytes_{};
-    Element<OddBytes>* odd_{};
+    Element<OddBytes>* odd_first_{};
+    Element<OddBytes>* odd_second_{};
     Element<Aligned32>* aligned32_{};
-    Element<float>* nested_xs_{};
-    Element<float>* nested_ys_{};
-    Element<float>* nested_zs_{};
+    Element<float>* nested_starts_xs_{};
+    Element<float>* nested_starts_ys_{};
+    Element<float>* nested_starts_zs_{};
+    Element<float>* nested_ends_xs_{};
+    Element<float>* nested_ends_ys_{};
+    Element<float>* nested_ends_zs_{};
     Element<Aligned64>* aligned64_{};
     Element<Aligned256>* aligned256_{};
     size_type count_{};
@@ -3178,20 +2429,28 @@ struct ResolvedView : ResolvedViewImpl<false> {
     using Base::Base;
     void set(size_type index,
              std::uint8_t const new_bytes,
-             OddBytes const new_odd,
+             OddBytes const new_odd_first,
+             OddBytes const new_odd_second,
              Aligned32 const new_aligned32,
-             float const new_nested_xs,
-             float const new_nested_ys,
-             float const new_nested_zs,
+             float const new_nested_starts_xs,
+             float const new_nested_starts_ys,
+             float const new_nested_starts_zs,
+             float const new_nested_ends_xs,
+             float const new_nested_ends_ys,
+             float const new_nested_ends_zs,
              Aligned64 const new_aligned64,
              Aligned256 const new_aligned256) const {
         assert(index < num());
         this->bytes()[index] = new_bytes;
-        this->odd()[index] = new_odd;
+        this->view_odd().first()[index] = new_odd_first;
+        this->view_odd().second()[index] = new_odd_second;
         this->aligned32()[index] = new_aligned32;
-        this->view_nested().xs()[index] = new_nested_xs;
-        this->view_nested().ys()[index] = new_nested_ys;
-        this->view_nested().zs()[index] = new_nested_zs;
+        this->view_nested().view_starts().xs()[index] = new_nested_starts_xs;
+        this->view_nested().view_starts().ys()[index] = new_nested_starts_ys;
+        this->view_nested().view_starts().zs()[index] = new_nested_starts_zs;
+        this->view_nested().view_ends().xs()[index] = new_nested_ends_xs;
+        this->view_nested().view_ends().ys()[index] = new_nested_ends_ys;
+        this->view_nested().view_ends().zs()[index] = new_nested_ends_zs;
         this->aligned64()[index] = new_aligned64;
         this->aligned256()[index] = new_aligned256;
     }
@@ -3213,32 +2472,52 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
         requires Enabled
         : Base{other} {}
     auto bytes() const { return this->column(Layout::columns.BytesColumn); }
-    auto odd() const { return this->column(Layout::columns.OddColumn); }
-    auto aligned32() const { return this->column(Layout::columns.Aligned32Column); }
-    auto view_nested() const -> std::conditional_t<Const,
-                                                   ::ioj::native_soa_fixture::vectors::ConstView,
-                                                   ::ioj::native_soa_fixture::vectors::View> {
+    auto view_odd() const -> std::conditional_t<Const,
+                                                ::ioj::native_soa_fixture::odd_pairs::ConstView,
+                                                ::ioj::native_soa_fixture::odd_pairs::View> {
         return ioj::soa_storage_detail::make_strided_view<
             std::conditional_t<Const,
-                               ::ioj::native_soa_fixture::vectors::ConstView,
-                               ::ioj::native_soa_fixture::vectors::View>>(
+                               ::ioj::native_soa_fixture::odd_pairs::ConstView,
+                               ::ioj::native_soa_fixture::odd_pairs::View>>(
             this->state_,
             this->offset_,
             this->num(),
-            Layout::columns.Nested.XsColumn,
-            Layout::columns.Nested.YsColumn);
+            Layout::columns.Odd.FirstColumn,
+            Layout::columns.Odd.SecondColumn);
+    }
+    auto aligned32() const { return this->column(Layout::columns.Aligned32Column); }
+    auto view_nested() const
+        -> std::conditional_t<Const,
+                              ::ioj::native_soa_fixture::vector_groups::ConstView,
+                              ::ioj::native_soa_fixture::vector_groups::View> {
+        return ioj::soa_storage_detail::make_strided_view<
+            std::conditional_t<Const,
+                               ::ioj::native_soa_fixture::vector_groups::ConstView,
+                               ::ioj::native_soa_fixture::vector_groups::View>>(
+            this->state_,
+            this->offset_,
+            this->num(),
+            Layout::columns.Nested.Starts.XsColumn,
+            Layout::columns.Nested.Starts.YsColumn);
     }
     auto aligned64() const { return this->column(Layout::columns.Aligned64Column); }
     auto aligned256() const { return this->column(Layout::columns.Aligned256Column); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(bytes());
-        func(odd());
+        auto const& odd_view{view_odd()};
+        func(odd_view.first());
+        func(odd_view.second());
         func(aligned32());
         auto const& nested_view{view_nested()};
-        func(nested_view.xs());
-        func(nested_view.ys());
-        func(nested_view.zs());
+        auto const& nested_starts_view{nested_view.view_starts()};
+        func(nested_starts_view.xs());
+        func(nested_starts_view.ys());
+        func(nested_starts_view.zs());
+        auto const& nested_ends_view{nested_view.view_ends()};
+        func(nested_ends_view.xs());
+        func(nested_ends_view.ys());
+        func(nested_ends_view.zs());
         func(aligned64());
         func(aligned256());
     }
@@ -3247,11 +2526,15 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
                               ::ioj::native_soa_fixture::single_alignment_rows::ResolvedConstView,
                               ::ioj::native_soa_fixture::single_alignment_rows::ResolvedView> {
         return {this->column(Layout::columns.BytesColumn).data(),
-                this->column(Layout::columns.OddColumn).data(),
+                this->column(Layout::columns.Odd.FirstColumn).data(),
+                this->column(Layout::columns.Odd.SecondColumn).data(),
                 this->column(Layout::columns.Aligned32Column).data(),
-                this->column(Layout::columns.Nested.XsColumn).data(),
-                this->column(Layout::columns.Nested.YsColumn).data(),
-                this->column(Layout::columns.Nested.ZsColumn).data(),
+                this->column(Layout::columns.Nested.Starts.XsColumn).data(),
+                this->column(Layout::columns.Nested.Starts.YsColumn).data(),
+                this->column(Layout::columns.Nested.Starts.ZsColumn).data(),
+                this->column(Layout::columns.Nested.Ends.XsColumn).data(),
+                this->column(Layout::columns.Nested.Ends.YsColumn).data(),
+                this->column(Layout::columns.Nested.Ends.ZsColumn).data(),
                 this->column(Layout::columns.Aligned64Column).data(),
                 this->column(Layout::columns.Aligned256Column).data(),
                 this->num()};
@@ -3267,20 +2550,28 @@ struct View : ViewImpl<false> {
     using Base::Base;
     void set(size_type index,
              std::uint8_t const new_bytes,
-             OddBytes const new_odd,
+             OddBytes const new_odd_first,
+             OddBytes const new_odd_second,
              Aligned32 const new_aligned32,
-             float const new_nested_xs,
-             float const new_nested_ys,
-             float const new_nested_zs,
+             float const new_nested_starts_xs,
+             float const new_nested_starts_ys,
+             float const new_nested_starts_zs,
+             float const new_nested_ends_xs,
+             float const new_nested_ends_ys,
+             float const new_nested_ends_zs,
              Aligned64 const new_aligned64,
              Aligned256 const new_aligned256) const {
         assert(index < num());
         this->bytes()[index] = new_bytes;
-        this->odd()[index] = new_odd;
+        this->view_odd().first()[index] = new_odd_first;
+        this->view_odd().second()[index] = new_odd_second;
         this->aligned32()[index] = new_aligned32;
-        this->view_nested().xs()[index] = new_nested_xs;
-        this->view_nested().ys()[index] = new_nested_ys;
-        this->view_nested().zs()[index] = new_nested_zs;
+        this->view_nested().view_starts().xs()[index] = new_nested_starts_xs;
+        this->view_nested().view_starts().ys()[index] = new_nested_starts_ys;
+        this->view_nested().view_starts().zs()[index] = new_nested_starts_zs;
+        this->view_nested().view_ends().xs()[index] = new_nested_ends_xs;
+        this->view_nested().view_ends().ys()[index] = new_nested_ends_ys;
+        this->view_nested().view_ends().zs()[index] = new_nested_ends_zs;
         this->aligned64()[index] = new_aligned64;
         this->aligned256()[index] = new_aligned256;
     }
@@ -3294,11 +2585,15 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
 /* **************************************** */
 // Columns:
 // bytes: std::uint8_t
-// odd: OddBytes
+// odd_first: OddBytes
+// odd_second: OddBytes
 // aligned32: Aligned32
-// nested_xs: float
-// nested_ys: float
-// nested_zs: float
+// nested_starts_xs: float
+// nested_starts_ys: float
+// nested_starts_zs: float
+// nested_ends_xs: float
+// nested_ends_ys: float
+// nested_ends_zs: float
 // aligned64: Aligned64
 // aligned256: Aligned256
 struct SingleAlignmentRows
@@ -3346,11 +2641,15 @@ struct SingleAlignmentRows
         template <typename T>
         using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
         Element<std::uint8_t>* bytes{};
-        Element<OddBytes>* odd{};
+        Element<OddBytes>* odd_first{};
+        Element<OddBytes>* odd_second{};
         Element<Aligned32>* aligned32{};
-        Element<float>* nested_xs{};
-        Element<float>* nested_ys{};
-        Element<float>* nested_zs{};
+        Element<float>* nested_starts_xs{};
+        Element<float>* nested_starts_ys{};
+        Element<float>* nested_starts_zs{};
+        Element<float>* nested_ends_xs{};
+        Element<float>* nested_ends_ys{};
+        Element<float>* nested_ends_zs{};
         Element<Aligned64>* aligned64{};
         Element<Aligned256>* aligned256{};
         auto operator+(size_type const offset) const noexcept -> DataPointers {
@@ -3358,11 +2657,15 @@ struct SingleAlignmentRows
                 return {};
             }
             return {bytes + offset,
-                    odd + offset,
+                    odd_first + offset,
+                    odd_second + offset,
                     aligned32 + offset,
-                    nested_xs + offset,
-                    nested_ys + offset,
-                    nested_zs + offset,
+                    nested_starts_xs + offset,
+                    nested_starts_ys + offset,
+                    nested_starts_zs + offset,
+                    nested_ends_xs + offset,
+                    nested_ends_ys + offset,
+                    nested_ends_zs + offset,
                     aligned64 + offset,
                     aligned256 + offset};
         }
@@ -3378,11 +2681,15 @@ struct SingleAlignmentRows
         -> DataPointers<Byte> {
         ioj::native_soa::LayoutCursor cursor{blocks};
         return {cursor.column_pointer(data, Layout::columns.BytesColumn),
-                cursor.column_pointer(data, Layout::columns.OddColumn),
+                cursor.column_pointer(data, Layout::columns.Odd.FirstColumn),
+                cursor.column_pointer(data, Layout::columns.Odd.SecondColumn),
                 cursor.column_pointer(data, Layout::columns.Aligned32Column),
-                cursor.column_pointer(data, Layout::columns.Nested.XsColumn),
-                cursor.column_pointer(data, Layout::columns.Nested.YsColumn),
-                cursor.column_pointer(data, Layout::columns.Nested.ZsColumn),
+                cursor.column_pointer(data, Layout::columns.Nested.Starts.XsColumn),
+                cursor.column_pointer(data, Layout::columns.Nested.Starts.YsColumn),
+                cursor.column_pointer(data, Layout::columns.Nested.Starts.ZsColumn),
+                cursor.column_pointer(data, Layout::columns.Nested.Ends.XsColumn),
+                cursor.column_pointer(data, Layout::columns.Nested.Ends.YsColumn),
+                cursor.column_pointer(data, Layout::columns.Nested.Ends.ZsColumn),
                 cursor.column_pointer(data, Layout::columns.Aligned64Column),
                 cursor.column_pointer(data, Layout::columns.Aligned256Column)};
     }
@@ -3394,11 +2701,15 @@ struct SingleAlignmentRows
         using ioj::native_soa::default_construct_n;
         auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
         default_construct_n(columns.bytes, count);
-        default_construct_n(columns.odd, count);
+        default_construct_n(columns.odd_first, count);
+        default_construct_n(columns.odd_second, count);
         default_construct_n(columns.aligned32, count);
-        default_construct_n(columns.nested_xs, count);
-        default_construct_n(columns.nested_ys, count);
-        default_construct_n(columns.nested_zs, count);
+        default_construct_n(columns.nested_starts_xs, count);
+        default_construct_n(columns.nested_starts_ys, count);
+        default_construct_n(columns.nested_starts_zs, count);
+        default_construct_n(columns.nested_ends_xs, count);
+        default_construct_n(columns.nested_ends_ys, count);
+        default_construct_n(columns.nested_ends_zs, count);
         default_construct_n(columns.aligned64, count);
         default_construct_n(columns.aligned256, count);
     }
@@ -3410,11 +2721,15 @@ struct SingleAlignmentRows
             ioj::native_soa::transfer_n<Overlapping>(dst, src, count);
         };
         transfer(destination.bytes, source.bytes);
-        transfer(destination.odd, source.odd);
+        transfer(destination.odd_first, source.odd_first);
+        transfer(destination.odd_second, source.odd_second);
         transfer(destination.aligned32, source.aligned32);
-        transfer(destination.nested_xs, source.nested_xs);
-        transfer(destination.nested_ys, source.nested_ys);
-        transfer(destination.nested_zs, source.nested_zs);
+        transfer(destination.nested_starts_xs, source.nested_starts_xs);
+        transfer(destination.nested_starts_ys, source.nested_starts_ys);
+        transfer(destination.nested_starts_zs, source.nested_starts_zs);
+        transfer(destination.nested_ends_xs, source.nested_ends_xs);
+        transfer(destination.nested_ends_ys, source.nested_ends_ys);
+        transfer(destination.nested_ends_zs, source.nested_ends_zs);
         transfer(destination.aligned64, source.aligned64);
         transfer(destination.aligned256, source.aligned256);
     }
@@ -3423,59 +2738,82 @@ struct SingleAlignmentRows
         requires ioj::soa_storage_detail::SoaSourceFor<Columns, SingleAlignmentRows, size_type>
     {
         using ioj::native_soa::source_data;
+        auto const& odd_view{source.view_odd()};
         auto const& nested_view{source.view_nested()};
+        auto const& nested_starts_view{nested_view.view_starts()};
+        auto const& nested_ends_view{nested_view.view_ends()};
         return {source_data(source.bytes()),
-                source_data(source.odd()),
+                source_data(odd_view.first()),
+                source_data(odd_view.second()),
                 source_data(source.aligned32()),
-                source_data(nested_view.xs()),
-                source_data(nested_view.ys()),
-                source_data(nested_view.zs()),
+                source_data(nested_starts_view.xs()),
+                source_data(nested_starts_view.ys()),
+                source_data(nested_starts_view.zs()),
+                source_data(nested_ends_view.xs()),
+                source_data(nested_ends_view.ys()),
+                source_data(nested_ends_view.zs()),
                 source_data(source.aligned64()),
                 source_data(source.aligned256())};
     }
   public:
     auto bytes(this auto& self) { return self.get_view().bytes(); }
-    auto odd(this auto& self) { return self.get_view().odd(); }
+    auto view_odd(this auto& self) { return self.get_view().view_odd(); }
     auto aligned32(this auto& self) { return self.get_view().aligned32(); }
     auto view_nested(this auto& self) { return self.get_view().view_nested(); }
     auto aligned64(this auto& self) { return self.get_view().aligned64(); }
     auto aligned256(this auto& self) { return self.get_view().aligned256(); }
     void set(size_type index,
              std::uint8_t const new_bytes,
-             OddBytes const new_odd,
+             OddBytes const new_odd_first,
+             OddBytes const new_odd_second,
              Aligned32 const new_aligned32,
-             float const new_nested_xs,
-             float const new_nested_ys,
-             float const new_nested_zs,
+             float const new_nested_starts_xs,
+             float const new_nested_starts_ys,
+             float const new_nested_starts_zs,
+             float const new_nested_ends_xs,
+             float const new_nested_ends_ys,
+             float const new_nested_ends_zs,
              Aligned64 const new_aligned64,
              Aligned256 const new_aligned256) {
         assert(index < num());
         get_view().bytes()[index] = new_bytes;
-        get_view().odd()[index] = new_odd;
+        get_view().view_odd().first()[index] = new_odd_first;
+        get_view().view_odd().second()[index] = new_odd_second;
         get_view().aligned32()[index] = new_aligned32;
-        get_view().view_nested().xs()[index] = new_nested_xs;
-        get_view().view_nested().ys()[index] = new_nested_ys;
-        get_view().view_nested().zs()[index] = new_nested_zs;
+        get_view().view_nested().view_starts().xs()[index] = new_nested_starts_xs;
+        get_view().view_nested().view_starts().ys()[index] = new_nested_starts_ys;
+        get_view().view_nested().view_starts().zs()[index] = new_nested_starts_zs;
+        get_view().view_nested().view_ends().xs()[index] = new_nested_ends_xs;
+        get_view().view_nested().view_ends().ys()[index] = new_nested_ends_ys;
+        get_view().view_nested().view_ends().zs()[index] = new_nested_ends_zs;
         get_view().aligned64()[index] = new_aligned64;
         get_view().aligned256()[index] = new_aligned256;
     }
     size_type add(std::uint8_t const new_bytes,
-                  OddBytes const new_odd,
+                  OddBytes const new_odd_first,
+                  OddBytes const new_odd_second,
                   Aligned32 const new_aligned32,
-                  float const new_nested_xs,
-                  float const new_nested_ys,
-                  float const new_nested_zs,
+                  float const new_nested_starts_xs,
+                  float const new_nested_starts_ys,
+                  float const new_nested_starts_zs,
+                  float const new_nested_ends_xs,
+                  float const new_nested_ends_ys,
+                  float const new_nested_ends_zs,
                   Aligned64 const new_aligned64,
                   Aligned256 const new_aligned256) {
         auto const index{num()};
         add_uninitialised(1);
         set(index,
             new_bytes,
-            new_odd,
+            new_odd_first,
+            new_odd_second,
             new_aligned32,
-            new_nested_xs,
-            new_nested_ys,
-            new_nested_zs,
+            new_nested_starts_xs,
+            new_nested_starts_ys,
+            new_nested_starts_zs,
+            new_nested_ends_xs,
+            new_nested_ends_ys,
+            new_nested_ends_zs,
             new_aligned64,
             new_aligned256);
         return index;
@@ -3485,11 +2823,15 @@ struct SingleAlignmentRows
         auto const columns{get_data()};
         auto const permute{ioj::ColumnPermutation{num_, indices}};
         permute(columns.bytes,
-                columns.odd,
+                columns.odd_first,
+                columns.odd_second,
                 columns.aligned32,
-                columns.nested_xs,
-                columns.nested_ys,
-                columns.nested_zs,
+                columns.nested_starts_xs,
+                columns.nested_starts_ys,
+                columns.nested_starts_zs,
+                columns.nested_ends_xs,
+                columns.nested_ends_ys,
+                columns.nested_ends_zs,
                 columns.aligned64,
                 columns.aligned256);
     }
