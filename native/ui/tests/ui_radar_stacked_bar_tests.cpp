@@ -46,16 +46,13 @@ TEST(Radar2D, OwnsReplacesRejectsAndClearsPositionBuckets) {
     Positions positions;
     positions.add(1.0f, 2.0f);
     positions.add(3.0f, 4.0f);
-    ASSERT_TRUE(data.set_positions(first, positions));
-    positions.xs[0] = 100.0f;
-    EXPECT_FLOAT_EQ(data.buckets()[0].xs[0], 1.0f);
+    ASSERT_TRUE(data.set_positions(first, positions.get_const_view()));
+    positions.xs()[0] = 100.0f;
+    EXPECT_FLOAT_EQ(data.buckets()[0].xs()[0], 1.0f);
     EXPECT_FALSE(data.set_positions(1, {}));
-    Positions invalid;
-    invalid.xs.push_back(1.0f);
-    EXPECT_FALSE(data.set_positions(first, std::move(invalid)));
-    EXPECT_EQ(data.buckets()[0].size(), 2);
+    EXPECT_EQ(data.buckets()[0].num(), 2);
     EXPECT_TRUE(data.clear_positions(first));
-    EXPECT_TRUE(data.buckets()[0].empty());
+    EXPECT_TRUE(data.buckets()[0].is_empty());
     data.clear_buckets();
     EXPECT_TRUE(data.buckets().empty());
 }

@@ -39,15 +39,15 @@ void ASandboxISMCLabActor::Tick(float delta_seconds) {
     TRACE_CPUPROFILER_EVENT_SCOPE(ASandboxISMCLabActor::Tick);
     Super::Tick(delta_seconds);
 
-    auto const instance_count{instance_data_.num()};
+    auto const instance_count{instance_data_.Num()};
     if (animate_ && instance_count > 0 && animated_instance_count_ > 0) {
         auto const update_count{FMath::Min(animated_instance_count_, instance_count)};
         auto const delta_rotation{FQuat4f{
             FVector3f::UpVector, FMath::DegreesToRadians(rotation_speed_degrees_ * delta_seconds)}};
 
-        for (auto instance_index = 0; instance_index < update_count; ++instance_index) {
-            instance_data_.rotations[instance_index] =
-                (delta_rotation * instance_data_.rotations[instance_index]).GetNormalized();
+        for (int32 instance_index{}; instance_index < update_count; ++instance_index) {
+            auto& rotation{instance_data_[instance_index].rotation};
+            rotation = (delta_rotation * rotation).GetNormalized();
         }
 
         submit_instances();
@@ -84,7 +84,7 @@ void ASandboxISMCLabActor::regenerate_instances() {
     }
 
     instances_->set_static_mesh(*static_mesh_);
-    instance_data_.reset();
+    instance_data_.Reset();
 
     if (distribution_ == ESandboxISMCLabDistribution::Grid) {
         auto const dimensions = FIntVector{
@@ -93,7 +93,7 @@ void ASandboxISMCLabActor::regenerate_instances() {
             FMath::Max(grid_dimensions_.Z, 1),
         };
         auto const instance_count = dimensions.X * dimensions.Y * dimensions.Z;
-        instance_data_.add_uninitialised(instance_count);
+        instance_data_.SetNumUninitialized(instance_count);
 
         auto const grid_extent = FVector3f{
             static_cast<float>(dimensions.X - 1) * static_cast<float>(grid_spacing_.X),
@@ -113,14 +113,13 @@ void ASandboxISMCLabActor::regenerate_instances() {
                                  };
                     auto const instance_index{z * dimensions.X * dimensions.Y + y * dimensions.X +
                                               x};
-                    instance_data_.positions[instance_index] = position;
-                    instance_data_.rotations[instance_index] = FQuat4f::Identity;
+                    instance_data_[instance_index] = {position, FQuat4f::Identity};
                 }
             }
         }
     } else {
         auto const instance_count = FMath::Max(cloud_instance_count_, 1);
-        instance_data_.add_uninitialised(instance_count);
+        instance_data_.SetNumUninitialized(instance_count);
         FRandomStream random{random_seed_};
         auto const extent = FVector3f{cloud_extent_};
 
@@ -134,8 +133,7 @@ void ASandboxISMCLabActor::regenerate_instances() {
                 FVector3f::UpVector,
                 static_cast<float>(random.FRandRange(0.0f, 2.0f * UE_PI)),
             };
-            instance_data_.positions[instance_index] = position;
-            instance_data_.rotations[instance_index] = rotation;
+            instance_data_[instance_index] = {position, rotation};
         }
     }
 
@@ -149,24 +147,31 @@ void ASandboxISMCLabActor::regenerate_instances() {
 }
 
 void ASandboxISMCLabActor::clear_instances() {
-    instance_data_.reset();
+    instance_data_.Reset();
     instances_->clear_instances();
 }
 
 void ASandboxISMCLabActor::submit_instances() {
     TRACE_CPUPROFILER_EVENT_SCOPE(ASandboxISMCLabActor::submit_instances);
-    auto const source{instance_data_.get_const_view()};
     FBox3f position_bounds{ForceInit};
-    for (auto const position : source.positions) {
-        position_bounds += position;
+    for (auto const& instance : instance_data_) {
+        position_bounds += instance.position;
     }
-    instances_->set_instances(source.num(),
+    instances_->set_instances(instance_data_.Num(),
                               position_bounds,
                               ESandboxISMCParallelism::Auto,
                               [&](FSandboxISMCInstanceChunkWriter& chunk) {
                                   auto const [first_index, chunk_count]{chunk.range()};
+                                  TArray<FVector3f> positions;
+                                  TArray<FQuat4f> rotations;
+                                  positions.SetNumUninitialized(chunk_count);
+                                  rotations.SetNumUninitialized(chunk_count);
+                                  for (int32 index{}; index < chunk_count; ++index) {
+                                      auto const& instance{instance_data_[first_index + index]};
+                                      positions[index] = instance.position;
+                                      rotations[index] = instance.rotation;
+                                  }
                                   chunk.set_transforms<ESandboxISMCBoundsMode::Calculate>(
-                                      source.positions.Slice(first_index, chunk_count),
-                                      source.rotations.Slice(first_index, chunk_count));
+                                      positions, rotations);
                               });
 }

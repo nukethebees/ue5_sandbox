@@ -62,11 +62,11 @@ TEST_CLASS(CollisionUniformGrid, "Sandbox.UnitTests")
             collision_host.initialise_static_geometry(*world, config, grid_geometry));
 
         auto const sources{collision_host.get_static_collision_sources()};
-        auto const source_count{sources.num()};
+        auto const source_count{sources.Num()};
         int32 source_index{INDEX_NONE};
         int32 harvested_actor_source_count{};
         for (int32 i{}; i < source_count; ++i) {
-            auto* const component{sources.components[i].Get()};
+            auto* const component{sources[i].component.Get()};
             if (IsValid(component) && component->GetOwner() == harvested_actor) {
                 ++harvested_actor_source_count;
             }
@@ -91,7 +91,7 @@ TEST_CLASS(CollisionUniformGrid, "Sandbox.UnitTests")
         grid.set_static_aabbs(
             collision_host.initialise_static_geometry(*world, config, grid_geometry));
         checks.are_equal(source_count,
-                         collision_host.get_static_collision_sources().num(),
+                         collision_host.get_static_collision_sources().Num(),
                          TEXT("Reinitialization restores and reharvests static geometry"));
         checks.is_true(harvested_actor->get_collision_component()->GetCollisionEnabled() ==
                            ECollisionEnabled::NoCollision,

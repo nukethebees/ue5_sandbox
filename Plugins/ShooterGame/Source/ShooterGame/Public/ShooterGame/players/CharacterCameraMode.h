@@ -8,17 +8,18 @@
 #include "CoreMinimal.h"
 
 #include <cstddef>
+#include <cstdint>
 
 #include "CharacterCameraMode.generated.h"
 
 // Logical bit width: 1.
 UENUM(BlueprintType)
-enum class ECharacterCameraMode : uint8 {
+enum class ECharacterCameraMode : std::uint8_t {
     FirstPerson UMETA(DisplayName = "First Person"),
     ThirdPerson UMETA(DisplayName = "Third Person"),
 };
 
-using ECharacterCameraModeUnderlying = uint8;
+using ECharacterCameraModeUnderlying = std::uint8_t;
 
 namespace ioj {
 template <>

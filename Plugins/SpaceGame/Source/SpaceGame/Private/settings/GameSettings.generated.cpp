@@ -852,7 +852,7 @@ auto set_game_setting_value(FGameSettingsState& state,
             return true;
         }
         case EGameSetting::Bees: {
-            auto const* typed_value{std::get_if<int32>(&value)};
+            auto const* typed_value{std::get_if<std::int32_t>(&value)};
             if (typed_value == nullptr) {
                 return false;
             }

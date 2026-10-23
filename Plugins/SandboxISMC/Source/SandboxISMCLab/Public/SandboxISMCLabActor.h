@@ -1,8 +1,8 @@
 #pragma once
 
-#include "SandboxISMCInstanceData.h"
-
+#include "Containers/Array.h"
 #include "GameFramework/Actor.h"
+#include "Math/Quat.h"
 
 #include "SandboxISMCLabActor.generated.h"
 
@@ -32,6 +32,11 @@ class SANDBOXISMCLAB_API ASandboxISMCLabActor final : public AActor {
     void clear_instances();
   private:
     void submit_instances();
+
+    struct FInstance {
+        FVector3f position{};
+        FQuat4f rotation{};
+    };
 
     UPROPERTY(VisibleAnywhere, Category = "Sandbox ISMC Lab")
     TObjectPtr<USandboxISMCComponent> instances_;
@@ -80,6 +85,6 @@ class SANDBOXISMCLAB_API ASandboxISMCLabActor final : public AActor {
               meta = (ClampMin = "0.1"))
     float log_interval_seconds_{1.0f};
 
-    ioj::ismc::InstanceData instance_data_;
+    TArray<FInstance> instance_data_;
     double next_log_time_seconds_{0.0};
 };

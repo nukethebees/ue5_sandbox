@@ -1,139 +1,58 @@
-(module level_definition_soa
-  :header "Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/levels/LevelDefinitionSoA.h"
-  :source "Plugins/SpaceGame/Source/SpaceGameSimulation/Private/levels/LevelDefinitionSoA.cpp"
-  :header-include "SpaceGameSimulation/levels/LevelDefinitionSoA.h"
-  :namespace ioj
-  :include-order ("SpaceGame/" "SandboxCore/")
-  (struct FLevelEntityTable
-    :operations (all)
-    :export-specifier SPACEGAMESIMULATION_API
-    (member ids array @level_entity_id)
-    (member archetypes array @entity_archetype_id)
-    (member teams array @native_team)
-    (member positions nested @vectors_3d)
-    (member rotations nested @rotators_d)
-    (member spawn_times_seconds array double)))
-
 (module level_runtime_events_level_spawn_groups
   :header "native/simulation/include/ioj/sim/levels/level_spawn_groups.h"
-  :backend standard-library
   :namespace ioj::sim
-  (struct Vectors3f
-    :layout-only true
-    :vector-components (xs ys zs)
-    (member xs array float)
-    (member ys array float)
-    (member zs array float))
-  (struct Rotators3f
-    :layout-only true
-    :vector-components (pitches yaws rolls)
-    (member pitches array float)
-    (member yaws array float)
-    (member rolls array float))
   (struct LevelSpawnGroups
     :operations (all)
     (member types array @native_entity_type)
     (member offsets array int32)
     (member counts array @native_level_event_count)
-    (single-allocation LevelSpawnGroups)))
+))
 
 (module level_runtime_events_level_capital_spawn_events
   :header "native/simulation/include/ioj/sim/levels/level_capital_spawn_events.h"
-  :backend standard-library
   :namespace ioj::sim
-  (struct Vectors3f
-    :layout-only true
-    :vector-components (xs ys zs)
-    (member xs array float)
-    (member ys array float)
-    (member zs array float))
-  (struct Rotators3f
-    :layout-only true
-    :vector-components (pitches yaws rolls)
-    (member pitches array float)
-    (member yaws array float)
-    (member rolls array float))
   (struct LevelCapitalSpawnEvents
     :operations (all)
     (member entity_indices array @native_level_entity_index)
     (member target_entity_indices array @native_level_entity_index)
-    (member locations nested @native_vectors_3f :nested-schema Vectors3f)
-    (member rotations nested @native_rotators_3f :nested-schema Rotators3f)
+    (member locations nested @native_vectors_3f)
+    (member rotations nested @native_rotators_3f)
     (member teams array @native_team)
     (member healths array @native_health)
     (member initial_fighter_spawn_delays array float)
     (member fighter_spawn_cooldowns array float)
-    (single-allocation LevelCapitalSpawnEvents)))
+))
 
 (module level_runtime_events_level_turret_spawn_events
   :header "native/simulation/include/ioj/sim/levels/level_turret_spawn_events.h"
-  :backend standard-library
   :namespace ioj::sim
-  (struct Vectors3f
-    :layout-only true
-    :vector-components (xs ys zs)
-    (member xs array float)
-    (member ys array float)
-    (member zs array float))
-  (struct Rotators3f
-    :layout-only true
-    :vector-components (pitches yaws rolls)
-    (member pitches array float)
-    (member yaws array float)
-    (member rolls array float))
   (struct LevelTurretSpawnEvents
     :operations (all)
     (member entity_indices array @native_level_entity_index)
-    (member locations nested @native_vectors_3f :nested-schema Vectors3f)
-    (member rotations nested @native_rotators_3f :nested-schema Rotators3f)
+    (member locations nested @native_vectors_3f)
+    (member rotations nested @native_rotators_3f)
     (member teams array @native_team)
     (member healths array @native_health)
     (member laser_damages array int32)
-    (single-allocation LevelTurretSpawnEvents)))
+))
 
 (module level_runtime_events_level_spinner_spawn_events
   :header "native/simulation/include/ioj/sim/levels/level_spinner_spawn_events.h"
-  :backend standard-library
   :namespace ioj::sim
-  (struct Vectors3f
-    :layout-only true
-    :vector-components (xs ys zs)
-    (member xs array float)
-    (member ys array float)
-    (member zs array float))
-  (struct Rotators3f
-    :layout-only true
-    :vector-components (pitches yaws rolls)
-    (member pitches array float)
-    (member yaws array float)
-    (member rolls array float))
   (struct LevelSpinnerSpawnEvents
     :operations (all)
     (member entity_indices array @native_level_entity_index)
-    (member locations nested @native_vectors_3f :nested-schema Vectors3f)
+    (member locations nested @native_vectors_3f)
     (member yaws array float)
     (member initial_fire_point_indices array int32)
-    (single-allocation LevelSpinnerSpawnEvents)))
+))
 
 (module level_runtime_events_level_mission_event_groups
   :header "native/simulation/include/ioj/sim/levels/level_mission_event_groups.h"
-  :backend standard-library
   :namespace ioj::sim
-  (struct Vectors3f
-    :layout-only true
-    :vector-components (xs ys zs)
-    (member xs array float)
-    (member ys array float)
-    (member zs array float))
-  (struct Rotators3f
-    :layout-only true
-    :vector-components (pitches yaws rolls)
-    (member pitches array float)
-    (member yaws array float)
-    (member rolls array float))
   (struct LevelMissionEventGroups
     :operations (all)
     (member types array @native_level_mission_event_type)
     (member offsets array int32)
     (member counts array @native_level_event_count)
-    (single-allocation LevelMissionEventGroups)))
+))

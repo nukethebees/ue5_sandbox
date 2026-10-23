@@ -224,15 +224,7 @@ auto FLevelCollisionHost::initialise_static_geometry(
     TRACE_CPUPROFILER_EVENT_SCOPE(
         Sandbox::ioj::sim::FLevelCollisionHost::initialise_static_geometry);
     checkf(config.is_valid(), TEXT("Cannot harvest static collision with an invalid grid config"));
-    auto const previous_sources{static_collision_sources_.get_const_view()};
-    auto const previous_source_count{previous_sources.num()};
-    for (int32 source_index{}; source_index < previous_source_count; ++source_index) {
-        if (auto* const component{previous_sources.components[source_index].Get()};
-            IsValid(component)) {
-            component->SetCollisionEnabled(previous_sources.original_collision_modes[source_index]);
-        }
-    }
-    static_collision_sources_.reset();
+    restore_collision();
 
     sim::collision::WorldAABBs static_aabbs;
     int32 unexpected_actor_count{};
@@ -295,14 +287,12 @@ auto FLevelCollisionHost::initialise_static_geometry(
             sim::collision::add(static_aabbs,
                                 {data->min_point.X, data->min_point.Y, data->min_point.Z},
                                 {data->max_point.X, data->max_point.Y, data->max_point.Z});
-            static_collision_sources_.add(component, data->original_collision_mode);
+            static_collision_sources_.Add({component, data->original_collision_mode});
         }
     }
 
-    auto const sources{static_collision_sources_.get_const_view()};
-    auto const source_count{sources.num()};
-    for (int32 source_index{}; source_index < source_count; ++source_index) {
-        if (auto* const component{sources.components[source_index].Get()}; IsValid(component)) {
+    for (auto const& source : static_collision_sources_) {
+        if (auto* const component{source.component.Get()}; IsValid(component)) {
             component->SetCollisionEnabled(ECollisionEnabled::NoCollision);
         }
     }
@@ -311,19 +301,17 @@ auto FLevelCollisionHost::initialise_static_geometry(
            Display,
            TEXT("Harvested %d static collision components; reported %d unsupported components and "
                 "%d unexpected actors"),
-           static_collision_sources_.num(),
+           static_collision_sources_.Num(),
            unsupported_component_count,
            unexpected_actor_count);
     return static_aabbs;
 }
 void FLevelCollisionHost::restore_collision() {
-    auto const sources{static_collision_sources_.get_const_view()};
-    auto const count{sources.num()};
-    for (int32 i{}; i < count; ++i) {
-        if (auto* component{sources.components[i].Get()}; IsValid(component)) {
-            component->SetCollisionEnabled(sources.original_collision_modes[i]);
+    for (auto const& source : static_collision_sources_) {
+        if (auto* component{source.component.Get()}; IsValid(component)) {
+            component->SetCollisionEnabled(source.original_collision_mode);
         }
     }
-    static_collision_sources_.reset();
+    static_collision_sources_.Reset();
 }
 }

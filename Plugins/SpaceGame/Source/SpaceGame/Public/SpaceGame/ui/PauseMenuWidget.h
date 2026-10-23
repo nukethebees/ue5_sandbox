@@ -27,7 +27,8 @@ class UMenuButtonWidget;
 struct FPauseMenuData {
     sim::LevelTelemetrySnapshot telemetry;
     sim::telemetry::EntityCounts alive_per_team_and_type{};
-    ship_hud::FTopKillerEntries top_killers;
+    TArray<ship_hud::FTopKillerEntry, TInlineAllocator<ship_hud::top_killer_inline_capacity>>
+        top_killers;
     ship_hud::FTeamKillMatrix team_kill_matrix;
     FTeamColours team_colours;
 };

@@ -6,7 +6,6 @@
 #include <ioj/sim/levels/level_spawn_groups.h>
 #include <ioj/sim/levels/level_spinner_spawn_events.h>
 #include <ioj/sim/levels/level_turret_spawn_events.h>
-#include <SpaceGameSimulation/levels/LevelDefinitionSoA.h>
 #include <SpaceGameSimulation/levels/LevelTypes.h>
 
 #include <CoreMinimal.h>
@@ -73,7 +72,7 @@ struct SPACEGAME_API FLevelDraft {
     TOptional<FLevelCollisionGridDefinition> collision_grid{NullOpt};
     TOptional<FLevelMissionDefinition> mission{NullOpt};
     TArray<FLevelMissionObjectiveEvent> mission_events{};
-    FLevelEntityTable entities{};
+    TArray<FEntitySpawnDefinition> entities{};
 };
 
 class SPACEGAME_API FLevelBuilder {

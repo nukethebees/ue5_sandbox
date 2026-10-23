@@ -8,12 +8,13 @@
 #include "CoreMinimal.h"
 
 #include <cstddef>
+#include <cstdint>
 
 #include "GameUiStyleTypes.generated.h"
 
 // Logical bit width: 4.
 UENUM()
-enum class EGameTextStyle : uint8 {
+enum class EGameTextStyle : std::uint8_t {
     Body,
     BodySecondary UMETA(DisplayName = "Body Secondary"),
     Caption,
@@ -26,20 +27,20 @@ enum class EGameTextStyle : uint8 {
     Disabled,
 };
 
-using EGameTextStyleUnderlying = uint8;
+using EGameTextStyleUnderlying = std::uint8_t;
 
 // Logical bit width: 1.
 UENUM()
-enum class EGameButtonStyle : uint8 {
+enum class EGameButtonStyle : std::uint8_t {
     Primary,
     Secondary,
 };
 
-using EGameButtonStyleUnderlying = uint8;
+using EGameButtonStyleUnderlying = std::uint8_t;
 
 // Logical bit width: 4.
 UENUM()
-enum class EGameUiIcon : uint8 {
+enum class EGameUiIcon : std::uint8_t {
     Hive,
     Video,
     Gameplay,
@@ -51,7 +52,7 @@ enum class EGameUiIcon : uint8 {
     LevelComplete,
 };
 
-using EGameUiIconUnderlying = uint8;
+using EGameUiIconUnderlying = std::uint8_t;
 
 namespace ioj {
 template <>

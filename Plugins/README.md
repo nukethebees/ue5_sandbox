@@ -10,7 +10,6 @@ Use this map to find the owner before following a plugin's own README or source 
 | Game and authoring | `SpaceGame`, `SandboxEditorTools`, `ShooterGame`, `SGLegacy` |
 
 Several plugins already have local documentation: [SpaceGame](SpaceGame/README.md),
-[SandboxCore storage](SandboxCore/Source/SandboxCore/single_allocation_storage.md),
 [SandboxShaders](SandboxShaders/README.md), [SandboxUI](SandboxUI/README.md),
 [SandboxISMC](SandboxISMC/README.md).
 

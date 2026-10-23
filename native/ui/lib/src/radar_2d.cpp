@@ -5,16 +5,6 @@
 #include <utility>
 
 namespace ioj::ui::radar_2d {
-void Positions::add(float const x, float const y) {
-    xs.push_back(x);
-    ys.push_back(y);
-}
-
-void Positions::clear() {
-    xs.clear();
-    ys.clear();
-}
-
 auto make_layout(Vector2f const widget_size, float const range) noexcept -> Layout {
     auto const width{std::max(widget_size.x(), 0.0f)};
     auto const height{std::max(widget_size.y(), 0.0f)};
@@ -44,12 +34,8 @@ auto Data::set_range(float const range) noexcept -> bool {
     return true;
 }
 
-auto Data::set_buckets(std::vector<Positions> buckets) -> bool {
-    if (!std::ranges::all_of(buckets, &Positions::is_valid)) {
-        return false;
-    }
+void Data::set_buckets(std::vector<Positions> buckets) {
     buckets_ = std::move(buckets);
-    return true;
 }
 
 auto Data::add_bucket() -> std::int32_t {
@@ -57,26 +43,29 @@ auto Data::add_bucket() -> std::int32_t {
     return static_cast<std::int32_t>(buckets_.size() - 1);
 }
 
-auto Data::set_positions(std::int32_t const index, Positions positions) -> bool {
-    if (index < 0 || static_cast<std::size_t>(index) >= buckets_.size() || !positions.is_valid()) {
+auto Data::set_positions(std::int32_t const index, PositionsConstView const positions) -> bool {
+    if (index < 0 || static_cast<std::size_t>(index) >= buckets_.size()) {
         return false;
     }
-    buckets_[static_cast<std::size_t>(index)] = std::move(positions);
+
+    Positions snapshot;
+    snapshot.append_from(positions);
+    buckets_[static_cast<std::size_t>(index)] = std::move(snapshot);
     return true;
 }
 
 auto Data::clear_positions(std::int32_t const index) -> bool {
     if (index < 0 || static_cast<std::size_t>(index) >= buckets_.size() ||
-        buckets_[static_cast<std::size_t>(index)].empty()) {
+        buckets_[static_cast<std::size_t>(index)].is_empty()) {
         return false;
     }
-    buckets_[static_cast<std::size_t>(index)].clear();
+    buckets_[static_cast<std::size_t>(index)].reset();
     return true;
 }
 
 void Data::clear_positions() {
     for (auto& bucket : buckets_) {
-        bucket.clear();
+        bucket.reset();
     }
 }
 

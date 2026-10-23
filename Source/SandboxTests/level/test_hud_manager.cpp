@@ -469,10 +469,9 @@ void FTestHUDManagerScenario::player_kill_on_tick(ATestBatchOrchestrator&) {
     auto const& player_ship{test_driver->get_player_ship()};
     auto const& kill_data{hud_manager.get_kill_data()};
     int32 top_killer_kills{0};
-    auto const n_top_killers{kill_data.top_killers.num()};
-    for (int32 i{0}; i < n_top_killers; ++i) {
-        if (kill_data.top_killers.entity_ids[i] == player_ship.get_unique_id()) {
-            top_killer_kills = kill_data.top_killers.kills[i];
+    for (auto const& entry : kill_data.top_killers) {
+        if (entry.entity_id == player_ship.get_unique_id()) {
+            top_killer_kills = entry.kills;
             break;
         }
     }

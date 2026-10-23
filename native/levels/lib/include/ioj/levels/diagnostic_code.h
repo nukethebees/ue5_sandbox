@@ -17,7 +17,6 @@ enum class DiagnosticCode : DiagnosticCodeUnderlying {
     MissingViewpoint,
     ConflictingViewpoints,
     PlayerEntityNotFound,
-    MismatchedEntityColumns,
     UnsupportedTeam,
     EmptyArchetypeId,
     UnsupportedArchetype,

@@ -1,6 +1,5 @@
 #include "SpaceGame/levels/LevelDefinition.h"
 
-#include <SpaceGame/levels/LevelEntityTableOperations.h>
 #include <SpaceGame/levels/native_level_definition_conversion.h>
 
 #include <SandboxCoreEngine/strings.h>
@@ -35,7 +34,7 @@ void FLevelBuilder::add_mission_event(FLevelMissionObjectiveEvent const& event) 
 }
 
 auto FLevelBuilder::add_entity(FEntitySpawnDefinition const& entity) -> FLevelEntityId {
-    level_entity_table_detail::append(definition_.entities, entity);
+    definition_.entities.Add(entity);
     return entity.id;
 }
 

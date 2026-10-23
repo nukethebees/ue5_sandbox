@@ -23,7 +23,6 @@
 (module native_levels_entity_archetype
   :header "native/levels/lib/include/ioj/levels/entity_archetype.h"
   :header-include "ioj/levels/entity_archetype.h"
-  :backend standard-library
   :namespace ioj::levels
   (enum EntityArchetype std::uint8_t
     :native-api true
@@ -35,7 +34,6 @@
 (module native_levels_level_mission_mode
   :header "native/levels/lib/include/ioj/levels/level_mission_mode.h"
   :header-include "ioj/levels/level_mission_mode.h"
-  :backend standard-library
   :namespace ioj::levels
   (enum LevelMissionMode std::uint8_t
     :native-api true
@@ -48,7 +46,6 @@
 (module native_levels_diagnostic_code
   :header "native/levels/lib/include/ioj/levels/diagnostic_code.h"
   :header-include "ioj/levels/diagnostic_code.h"
-  :backend standard-library
   :namespace ioj::levels
   (enum DiagnosticCode std::uint8_t
     (value MissingLevelId)
@@ -58,7 +55,6 @@
     (value MissingViewpoint)
     (value ConflictingViewpoints)
     (value PlayerEntityNotFound)
-    (value MismatchedEntityColumns)
     (value UnsupportedTeam)
     (value EmptyArchetypeId)
     (value UnsupportedArchetype)

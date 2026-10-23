@@ -7,13 +7,6 @@
 
 namespace ioj::levels::authoring {
 namespace {
-auto columns_have_equal_size(FLevelEntityTable const& entities) -> bool {
-    auto const count{entities.ids.Num()};
-    return entities.archetypes.Num() == count && entities.teams.Num() == count &&
-           entities.positions.num() == count && entities.rotations.num() == count &&
-           entities.spawn_times_seconds.Num() == count;
-}
-
 auto to_utf8(FString const& value) -> std::string {
     auto const converted{FTCHARToUTF8{*value, value.Len()}};
     return {converted.Get(), static_cast<std::size_t>(converted.Length())};
@@ -52,12 +45,6 @@ auto to_unreal_ids(std::vector<NativeId> const& source) -> TArray<Id> {
 } // namespace
 
 auto to_native(FLevelDraft const& definition) -> std::expected<LevelDefinition, Diagnostics> {
-    if (!columns_have_equal_size(definition.entities)) {
-        return std::unexpected{Diagnostics{{DiagnosticCode::MismatchedEntityColumns,
-                                            "level.entities",
-                                            "Level entity columns have inconsistent lengths"}}};
-    }
-
     LevelDefinitionComponents result;
     Diagnostics errors;
     result.metadata.id = LevelId{to_utf8(definition.metadata.id.value)};
@@ -128,11 +115,12 @@ auto to_native(FLevelDraft const& definition) -> std::expected<LevelDefinition, 
             .kill_target_increase = event.kill_target_increase,
         });
     }
-    auto const entities{definition.entities.get_const_view()};
-    auto const entity_count{entities.num()};
+    auto const& entities{definition.entities};
+    auto const entity_count{entities.Num()};
     result.entities.reserve(entity_count);
     for (int32 index{}; index < entity_count; ++index) {
-        auto const archetype_name{to_utf8(entities.archetypes[index].value)};
+        auto const& entity{entities[index]};
+        auto const archetype_name{to_utf8(entity.archetype.value)};
         auto const archetype{try_parse_serialized_entity_archetype(archetype_name)};
         if (!archetype) {
             errors.emplace_back(archetype_name.empty() ? DiagnosticCode::EmptyArchetypeId
@@ -141,16 +129,12 @@ auto to_native(FLevelDraft const& definition) -> std::expected<LevelDefinition, 
                                 std::format("Unknown archetype '{}'", archetype_name));
         }
         result.entities.push_back({
-            .id = EntityId{to_utf8(entities.ids[index].value)},
+            .id = EntityId{to_utf8(entity.id.value)},
             .archetype = archetype.value_or(EntityArchetype::PlayerFighter),
-            .team = entities.teams[index],
-            .position = {entities.positions.xs[index],
-                         entities.positions.ys[index],
-                         entities.positions.zs[index]},
-            .rotation = {entities.rotations.pitches[index],
-                         entities.rotations.yaws[index],
-                         entities.rotations.rolls[index]},
-            .spawn_time_seconds = entities.spawn_times_seconds[index],
+            .team = entity.team,
+            .position = {entity.position.X, entity.position.Y, entity.position.Z},
+            .rotation = {entity.rotation.Pitch, entity.rotation.Yaw, entity.rotation.Roll},
+            .spawn_time_seconds = entity.spawn_time_seconds,
         });
     }
     if (!errors.empty()) {

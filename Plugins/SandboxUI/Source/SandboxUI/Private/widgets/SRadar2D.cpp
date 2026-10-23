@@ -5,34 +5,6 @@
 #include "Brushes/SlateColorBrush.h"
 #include "Rendering/DrawElementTypes.h"
 
-namespace {
-auto to_native(FVectors2f const& positions) -> ioj::ui::radar_2d::Positions {
-    ioj::ui::radar_2d::Positions result;
-    result.xs.reserve(static_cast<std::size_t>(positions.xs.Num()));
-    result.ys.reserve(static_cast<std::size_t>(positions.ys.Num()));
-    for (auto const value : positions.xs) {
-        result.xs.push_back(value);
-    }
-    for (auto const value : positions.ys) {
-        result.ys.push_back(value);
-    }
-    return result;
-}
-
-auto to_unreal(ioj::ui::radar_2d::Positions const& positions) -> FVectors2f {
-    FVectors2f result;
-    result.xs.Reserve(static_cast<int32>(positions.xs.size()));
-    result.ys.Reserve(static_cast<int32>(positions.ys.size()));
-    for (auto const value : positions.xs) {
-        result.xs.Add(value);
-    }
-    for (auto const value : positions.ys) {
-        result.ys.Add(value);
-    }
-    return result;
-}
-}
-
 struct SRadar2D::FData {
     ioj::ui::radar_2d::Data native;
 };
@@ -80,15 +52,11 @@ bool SRadar2D::set_presentation(FRadar2DPresentation presentation) {
 bool SRadar2D::set_buckets(TArray<FRadar2DStyleBucket> buckets) {
     std::vector<ioj::ui::radar_2d::Positions> positions;
     positions.reserve(static_cast<std::size_t>(buckets.Num()));
-    for (auto const& bucket : buckets) {
+    for (auto& bucket : buckets) {
         if (!is_valid_style(bucket.style)) {
             return false;
         }
-        auto native_positions{to_native(bucket.positions)};
-        if (!native_positions.is_valid()) {
-            return false;
-        }
-        positions.push_back(std::move(native_positions));
+        positions.push_back(std::move(bucket.positions));
     }
 
     TArray<FRadar2DContactStyle> styles;
@@ -97,9 +65,7 @@ bool SRadar2D::set_buckets(TArray<FRadar2DStyleBucket> buckets) {
         styles.Add(MoveTemp(bucket.style));
     }
 
-    if (!data_->native.set_buckets(std::move(positions))) {
-        return false;
-    }
+    data_->native.set_buckets(std::move(positions));
     styles_ = MoveTemp(styles);
     check_invariants();
     Invalidate(EInvalidateWidgetReason::Paint);
@@ -133,9 +99,10 @@ bool SRadar2D::set_style(int32 const style_index, FRadar2DContactStyle style) {
     return true;
 }
 
-bool SRadar2D::set_positions(int32 const style_index, FVectors2f positions) {
+bool SRadar2D::set_positions(int32 const style_index,
+                             ioj::ui::radar_2d::PositionsConstView const positions) {
     check_invariants();
-    if (!data_->native.set_positions(style_index, to_native(positions))) {
+    if (!data_->native.set_positions(style_index, positions)) {
         return false;
     }
     check_invariants();
@@ -157,7 +124,7 @@ void SRadar2D::clear_positions() {
     check_invariants();
     bool changed{false};
     for (auto const& positions : data_->native.buckets()) {
-        changed |= !positions.empty();
+        changed |= !positions.is_empty();
     }
     if (changed) {
         data_->native.clear_positions();
@@ -187,9 +154,12 @@ auto SRadar2D::get_buckets() const -> TArray<FRadar2DStyleBucket> {
     auto const native_buckets{data_->native.buckets()};
     TArray<FRadar2DStyleBucket> result;
     result.Reserve(styles_.Num());
-    for (int32 index{}; index < styles_.Num(); ++index) {
-        result.Add({.style = styles_[index],
-                    .positions = to_unreal(native_buckets[static_cast<std::size_t>(index)])});
+    auto const count{styles_.Num()};
+    for (int32 index{}; index < count; ++index) {
+        auto& bucket{result.AddDefaulted_GetRef()};
+        bucket.style = styles_[index];
+        bucket.positions.append_from(
+            native_buckets[static_cast<std::size_t>(index)].get_const_view());
     }
     return result;
 }
@@ -234,7 +204,7 @@ int32 SRadar2D::OnPaint(FPaintArgs const&,
     auto const bucket_count{static_cast<int32>(positions_buckets.size())};
     for (int32 bucket_index{}; bucket_index < bucket_count; ++bucket_index) {
         auto const& positions{positions_buckets[bucket_index]};
-        auto const contact_count{static_cast<int32>(positions.size())};
+        auto const contact_count{positions.num()};
         if (contact_count == 0) {
             continue;
         }
@@ -242,9 +212,9 @@ int32 SRadar2D::OnPaint(FPaintArgs const&,
         auto const& style{styles_[bucket_index]};
         auto const half_size{style.rendered_size * 0.5f};
         auto const tint{style.tint * inherited_tint};
-        auto const* const xs{positions.xs.data()};
-        auto const* const ys{positions.ys.data()};
-        for (int32 contact_index{0}; contact_index < contact_count; ++contact_index) {
+        auto const xs{positions.xs()};
+        auto const ys{positions.ys()};
+        for (std::uint32_t contact_index{}; contact_index < contact_count; ++contact_index) {
             auto const native_centre{
                 ioj::ui::radar_2d::to_local({xs[contact_index], ys[contact_index]}, layout)};
             auto const local_centre{FVector2f{native_centre.x(), native_centre.y()}};
@@ -293,7 +263,4 @@ bool SRadar2D::is_valid_presentation(FRadar2DPresentation const& presentation) {
 void SRadar2D::check_invariants() const {
     auto const buckets{data_->native.buckets()};
     check(static_cast<int32>(buckets.size()) == styles_.Num());
-    for (auto const& positions : buckets) {
-        check(positions.is_valid());
-    }
 }

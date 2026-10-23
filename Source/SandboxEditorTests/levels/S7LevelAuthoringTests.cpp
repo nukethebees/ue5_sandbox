@@ -1917,7 +1917,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
                              source->Contains(TEXT(":spawn-at 2.5")));
 
         auto updated_definition{*collected};
-        updated_definition.entities.spawn_times_seconds[0] = 4.0;
+        updated_definition.entities[0].spawn_time_seconds = 4.0;
         auto const update_plan{make_plan(*world->GetCurrentLevel(), *document, updated_definition)};
         if (!TestRunner->TestTrue(TEXT("Delay-only preview builds"), update_plan.has_value())) {
             TestRunner->AddError(update_plan.error());

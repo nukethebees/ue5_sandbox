@@ -952,16 +952,15 @@ void FHUDManager::collect_kill_data() {
                                                        entity_ledger->get_history_index(rhs);
                });
 
-    next_data.top_killers.reset();
-    next_data.top_killers.add_defaulted(top_killer_ids_buffer.Num());
+    next_data.top_killers.Reset();
     auto const n_top_killers{top_killer_ids_buffer.Num()};
     for (int32 top_killer_index{0}; top_killer_index < n_top_killers; ++top_killer_index) {
         auto const entity_id{top_killer_ids_buffer[top_killer_index]};
         auto const history_index{entity_ledger->get_history_index(entity_id)};
-        next_data.top_killers.entity_ids[top_killer_index] = entity_id;
-        next_data.top_killers.entity_types[top_killer_index] = entity_types[history_index];
-        next_data.top_killers.teams[top_killer_index] = ioj::to_unreal(teams[history_index]);
-        next_data.top_killers.kills[top_killer_index] = static_cast<int32>(kills[history_index]);
+        next_data.top_killers.Add({entity_id,
+                                   entity_types[history_index],
+                                   ioj::to_unreal(teams[history_index]),
+                                   static_cast<int32>(kills[history_index])});
     }
 
     next_data.team_kill_matrix = {};

@@ -4,44 +4,22 @@
 #include <ioj/sim/entities/entity_type.h>
 #include <SpaceGamePresentation/entities/TestTeam.h>
 
-#include <SandboxCore/soa_array_mixin.h>
 #include <SandboxCoreEngine/enums.h>
 
 #include <Containers/Array.h>
 #include <Containers/StaticArray.h>
 #include <CoreMinimal.h>
 
-#include <utility>
-
 namespace ioj::ship_hud {
-struct FTopKillerEntries : public FSoAArrayMixin {
-    static constexpr int32 minimum_size{10};
+inline constexpr int32 top_killer_inline_capacity{10};
 
-    bool operator==(FTopKillerEntries const& other) const noexcept {
-        return entity_ids == other.entity_ids && entity_types == other.entity_types &&
-               teams == other.teams && kills == other.kills;
-    }
+struct FTopKillerEntry {
+    bool operator==(FTopKillerEntry const&) const noexcept = default;
 
-    void add(sim::EntityId const entity_id,
-             sim::EntityType const entity_type,
-             ETestTeam const team,
-             int32 const kill_count) {
-        entity_ids.Add(entity_id);
-        entity_types.Add(entity_type);
-        teams.Add(team);
-        kills.Add(kill_count);
-    }
-
-    template <typename TFunc>
-    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
-        return std::forward<TFunc>(func)(
-            self.entity_ids, self.entity_types, self.teams, self.kills);
-    }
-
-    TArray<sim::EntityId, TInlineAllocator<minimum_size>> entity_ids;
-    TArray<sim::EntityType, TInlineAllocator<minimum_size>> entity_types;
-    TArray<ETestTeam, TInlineAllocator<minimum_size>> teams;
-    TArray<int32, TInlineAllocator<minimum_size>> kills;
+    sim::EntityId entity_id{};
+    sim::EntityType entity_type{};
+    ETestTeam team{};
+    int32 kills{};
 };
 
 struct FTeamKillMatrix {

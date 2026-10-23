@@ -68,9 +68,11 @@ void FLevelLoaderCameraScenario::load_fixture() {
 
     auto definition{levels::authoring::to_unreal(scripted_definition.value())};
     auto const red_capital_index{
-        definition.entities.ids.IndexOfByKey(FLevelEntityId{FName{TEXT("red-capital")}})};
+        definition.entities.IndexOfByPredicate([](FEntitySpawnDefinition const& entity) {
+            return entity.id == FLevelEntityId{FName{TEXT("red-capital")}};
+        })};
     check(red_capital_index != INDEX_NONE);
-    definition.entities.positions.xs[red_capital_index] = 90000.0;
+    definition.entities[red_capital_index].position.X = 90000.0;
 
     FLevelLoader loader{context_.orchestrator};
     auto const native{levels::authoring::to_native(definition).value()};
@@ -382,7 +384,7 @@ void FLevelLoaderScenario::load_fixture() {
     FLevelLoader loader{context_.orchestrator};
 
     auto invalid_definition{example_levels::make_example_draft()};
-    invalid_definition.entities.teams[1] = static_cast<Team>(255);
+    invalid_definition.entities[1].team = static_cast<Team>(255);
     auto const invalid_result{levels::authoring::to_native(invalid_definition)};
     checks.is_true(!static_cast<bool>(invalid_result), TEXT("Invalid definition is rejected"));
     checks.are_equal(

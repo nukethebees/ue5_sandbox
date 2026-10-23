@@ -3,18 +3,28 @@
 #include <ioj/sim/collision/entity_aabbs.h>
 #include <ioj/sim/collision/world_aabbs.h>
 #include <ioj/sim/entities/entity_type.h>
-#include <SpaceGame/simulation/StaticCollisionSources.h>
 #include <SpaceGameSimulation/levels/LevelStartErrors.h>
+
+#include <Containers/Array.h>
+#include <Containers/ArrayView.h>
+#include <Engine/EngineTypes.h>
+#include <UObject/WeakObjectPtrTemplates.h>
 
 #include <cstddef>
 #include <expected>
 
 class UStaticMesh;
+class UPrimitiveComponent;
 class UWorld;
 struct FCollisionGridConfig;
 
 namespace ioj {
 using FEntityBoundsExtractionResult = std::expected<sim::collision::EntityAABBs, FLevelStartErrors>;
+
+struct FStaticCollisionSource {
+    TWeakObjectPtr<UPrimitiveComponent> component;
+    ECollisionEnabled::Type original_collision_mode{ECollisionEnabled::NoCollision};
+};
 
 struct SPACEGAME_API FLevelCollisionHost {
     using EntityMeshes = EnumArray<sim::EntityType, UStaticMesh const*>;
@@ -24,10 +34,10 @@ struct SPACEGAME_API FLevelCollisionHost {
                                     sim::collision::GridGeometry grid_geometry)
         -> sim::collision::WorldAABBs;
     void restore_collision();
-    auto get_static_collision_sources() const noexcept -> FStaticCollisionSources::ConstView {
-        return static_collision_sources_.get_const_view();
+    auto get_static_collision_sources() const noexcept -> TConstArrayView<FStaticCollisionSource> {
+        return static_collision_sources_;
     }
   private:
-    FStaticCollisionSources static_collision_sources_;
+    TArray<FStaticCollisionSource> static_collision_sources_;
 };
 }

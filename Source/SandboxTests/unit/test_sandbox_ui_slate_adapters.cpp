@@ -97,27 +97,27 @@ TEST_CLASS(SandboxUISlateAdapters, "Sandbox.UnitTests")
         auto stored{widget->get_buckets()};
         TestRunner->TestEqual(TEXT("Every position bucket retains a style"), stored.Num(), 2);
         TestRunner->TestEqual(
-            TEXT("The first bucket retains its position"), stored[0].positions.xs[0], 1.0f);
+            TEXT("The first bucket retains its position"), stored[0].positions.xs()[0], 1.0f);
 
         FRadar2DStyleBucket invalid_bucket;
-        invalid_bucket.positions.xs.Add(9.0f);
+        invalid_bucket.style.rendered_size = {0.0f, 6.0f};
         TArray<FRadar2DStyleBucket> invalid_buckets;
         invalid_buckets.Add(MoveTemp(invalid_bucket));
-        TestRunner->TestFalse(TEXT("Mismatched Unreal SOA data is rejected"),
+        TestRunner->TestFalse(TEXT("Invalid contact styles are rejected"),
                               widget->set_buckets(MoveTemp(invalid_buckets)));
         TestRunner->TestEqual(
             TEXT("Rejected snapshots preserve both buckets"), widget->get_buckets().Num(), 2);
 
-        FVectors2f replacement;
+        ioj::ui::radar_2d::Positions replacement;
         replacement.add(5.0f, 6.0f);
         TestRunner->TestTrue(TEXT("One position bucket can be replaced"),
-                             widget->set_positions(0, replacement));
-        replacement.xs[0] = 100.0f;
+                             widget->set_positions(0, replacement.get_const_view()));
+        replacement.xs()[0] = 100.0f;
         stored = widget->get_buckets();
         TestRunner->TestEqual(
-            TEXT("Radar position updates own their Unreal input"), stored[0].positions.xs[0], 5.0f);
+            TEXT("Radar position updates own their input"), stored[0].positions.xs()[0], 5.0f);
         TestRunner->TestEqual(TEXT("Replacing positions does not disturb other styles"),
-                              stored[1].positions.xs[0],
+                              stored[1].positions.xs()[0],
                               3.0f);
 
         TestRunner->TestTrue(TEXT("Individual native position buckets can be cleared"),

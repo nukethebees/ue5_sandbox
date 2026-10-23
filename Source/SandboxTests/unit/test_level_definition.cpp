@@ -40,14 +40,14 @@ auto make_camera_level() -> ioj::FLevelDraft {
 
 TEST_CLASS(LevelDefinition, "Sandbox.UnitTests")
 {
-    TEST_METHOD(BuilderConstructsValidSoALevel)
+    TEST_METHOD(BuilderConstructsValidLevel)
     {
         auto const definition{ioj::example_levels::make_example_draft()};
         auto const validation{ioj::validate_level(definition)};
 
         TestRunner->TestTrue(TEXT("Definition is valid"), static_cast<bool>(validation));
         TestRunner->TestEqual(
-            TEXT("Definition has four entity rows"), definition.entities.num(), 4);
+            TEXT("Definition has four entity rows"), definition.entities.Num(), 4);
         TestRunner->TestEqual(
             TEXT("Title is preserved"), definition.metadata.title, FString{TEXT("Native Example")});
         TestRunner->TestFalse(TEXT("Omitted par time remains unset"),
@@ -59,15 +59,15 @@ TEST_CLASS(LevelDefinition, "Sandbox.UnitTests")
                              definition.player_entity_id ==
                                  ioj::FLevelEntityId{FName{TEXT("player")}});
         TestRunner->TestTrue(TEXT("Player archetype is preserved"),
-                             definition.entities.archetypes[0] ==
+                             definition.entities[0].archetype ==
                                  ioj::level_archetypes::player_fighter);
         TestRunner->TestTrue(TEXT("Player team is preserved"),
-                             definition.entities.teams[0] == ::ioj::Team::Blue);
-        TestRunner->TestTrue(TEXT("Player position is preserved"),
-                             definition.entities.positions.get_const_view()[0].Equals(
-                                 FVector{0.0, -25000.0, 1000.0}));
+                             definition.entities[0].team == ::ioj::Team::Blue);
+        TestRunner->TestTrue(
+            TEXT("Player position is preserved"),
+            definition.entities[0].position.Equals(FVector{0.0, -25000.0, 1000.0}));
         TestRunner->TestTrue(TEXT("Turret archetype is preserved"),
-                             definition.entities.archetypes[3] ==
+                             definition.entities[3].archetype ==
                                  ioj::level_archetypes::static_turret);
         if (TestRunner->TestTrue(TEXT("Mission is preserved"), definition.mission.IsSet())) {
             auto const& mission{definition.mission.GetValue()};
@@ -86,7 +86,7 @@ TEST_CLASS(LevelDefinition, "Sandbox.UnitTests")
     TEST_METHOD(UnsupportedTeamFailsValidation)
     {
         auto definition{ioj::example_levels::make_example_draft()};
-        definition.entities.teams[1] = static_cast<::ioj::Team>(255);
+        definition.entities[1].team = static_cast<::ioj::Team>(255);
 
         auto const validation{ioj::validate_level(definition)};
         TestRunner->TestFalse(TEXT("Definition is invalid"), static_cast<bool>(validation));
@@ -171,12 +171,11 @@ TEST_CLASS(LevelDefinition, "Sandbox.UnitTests")
         auto const first{builder.finish()};
         TestRunner->TestTrue(TEXT("First definition is valid"),
                              static_cast<bool>(ioj::validate_level(first)));
-        TestRunner->TestEqual(TEXT("First definition has one row"), first.entities.num(), 1);
+        TestRunner->TestEqual(TEXT("First definition has one row"), first.entities.Num(), 1);
         TestRunner->TestTrue(TEXT("Player references the authored entity"),
                              first.player_entity_id == first_player);
-        TestRunner->TestTrue(
-            TEXT("Player entity position is preserved"),
-            first.entities.positions.get_const_view()[0].Equals(FVector{10.0, 20.0, 30.0}));
+        TestRunner->TestTrue(TEXT("Player entity position is preserved"),
+                             first.entities[0].position.Equals(FVector{10.0, 20.0, 30.0}));
 
         builder.set_metadata(ioj::FLevelMetadata{.id = ioj::FLevelId{FName{TEXT("second")}},
                                                  .title = TEXT("Second")});
@@ -191,7 +190,7 @@ TEST_CLASS(LevelDefinition, "Sandbox.UnitTests")
         TestRunner->TestTrue(TEXT("Reused builder produces a valid definition"),
                              static_cast<bool>(ioj::validate_level(second)));
         TestRunner->TestEqual(
-            TEXT("Reused builder starts with empty entity storage"), second.entities.num(), 1);
+            TEXT("Reused builder starts with empty entity storage"), second.entities.Num(), 1);
         TestRunner->TestEqual(TEXT("Reused builder replaces metadata"),
                               second.metadata.title,
                               FString{TEXT("Second")});
@@ -200,7 +199,7 @@ TEST_CLASS(LevelDefinition, "Sandbox.UnitTests")
     TEST_METHOD(DuplicateAuthoredEntityIdFailsValidation)
     {
         auto definition{ioj::example_levels::make_example_draft()};
-        definition.entities.ids[1] = definition.player_entity_id;
+        definition.entities[1].id = definition.player_entity_id;
 
         auto const validation{ioj::validate_level(definition)};
         TestRunner->TestFalse(TEXT("Definition is invalid"), static_cast<bool>(validation));
@@ -361,7 +360,7 @@ TEST_CLASS(LevelDefinition, "Sandbox.UnitTests")
                                             ioj::ELevelValidationErrorCode::MissingViewpoint));
 
         auto unsupported_archetype{ioj::example_levels::make_example_draft()};
-        unsupported_archetype.entities.archetypes[1] =
+        unsupported_archetype.entities[1].archetype =
             ioj::FEntityArchetypeId{FName{TEXT("pirate-fighter")}};
         auto const unsupported_archetype_validation{ioj::validate_level(unsupported_archetype)};
         TestRunner->TestTrue(TEXT("Unsupported archetype is reported"),
@@ -369,19 +368,11 @@ TEST_CLASS(LevelDefinition, "Sandbox.UnitTests")
                                             ioj::ELevelValidationErrorCode::UnsupportedArchetype));
 
         auto invalid_placement{ioj::example_levels::make_example_draft()};
-        invalid_placement.entities.positions.xs[1] = std::numeric_limits<double>::quiet_NaN();
+        invalid_placement.entities[1].position.X = std::numeric_limits<double>::quiet_NaN();
         auto const invalid_placement_validation{ioj::validate_level(invalid_placement)};
         TestRunner->TestTrue(TEXT("Invalid placement is reported"),
                              contains_error(invalid_placement_validation,
                                             ioj::ELevelValidationErrorCode::InvalidPlacement));
-
-        auto mismatched_columns{ioj::example_levels::make_example_draft()};
-        mismatched_columns.entities.teams.Pop();
-        auto const mismatched_columns_validation{ioj::validate_level(mismatched_columns)};
-        TestRunner->TestTrue(
-            TEXT("Mismatched columns are reported"),
-            contains_error(mismatched_columns_validation,
-                           ioj::ELevelValidationErrorCode::MismatchedEntityColumns));
     }
 
     TEST_METHOD(CameraAndPlayerAreMutuallyExclusive)

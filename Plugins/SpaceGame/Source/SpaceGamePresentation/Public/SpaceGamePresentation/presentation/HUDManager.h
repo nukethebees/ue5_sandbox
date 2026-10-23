@@ -118,7 +118,8 @@ struct FEntityCountDataCache {
 struct FKillDataCache {
     bool operator==(FKillDataCache const& other) const noexcept = default;
 
-    ship_hud::FTopKillerEntries top_killers;
+    TArray<ship_hud::FTopKillerEntry, TInlineAllocator<ship_hud::top_killer_inline_capacity>>
+        top_killers;
     ship_hud::FTeamKillMatrix team_kill_matrix;
 };
 
@@ -304,7 +305,7 @@ struct SPACEGAMEPRESENTATION_API FHUDManager {
     ioj::MultiBuffer<ioj::hud_manager::FKillDataCache, 2> kill_data_buffers;
     ioj::MultiBuffer<ioj::hud_manager::FPlayerStatusDataCache, 2> player_status_data_buffers;
     ioj::MultiBuffer<ioj::hud_manager::FPlayerFlightDataCache, 2> player_flight_data_buffers;
-    TArray<::ioj::sim::EntityId, TInlineAllocator<ioj::ship_hud::FTopKillerEntries::minimum_size>>
+    TArray<::ioj::sim::EntityId, TInlineAllocator<ioj::ship_hud::top_killer_inline_capacity>>
         top_killer_ids_buffer;
 
     bool has_mission_data{false};

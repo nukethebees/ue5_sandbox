@@ -8,6 +8,7 @@
 #include "Containers/ArrayView.h"
 #include "CoreMinimal.h"
 
+#include <cstdint>
 #include <variant>
 
 namespace ioj {
@@ -155,7 +156,7 @@ struct SPACEGAME_API FGameSettingsState {
     float music_volume{};
     float sfx_volume{};
     float ui_volume{};
-    int32 bees{};
+    std::int32_t bees{};
     float mouse_turn_sensitivity{};
     float gamepad_turn_sensitivity{};
     float gamepad_turn_dead_zone{};
@@ -177,7 +178,7 @@ using FGameSettingValue = std::variant<FIntPoint,
                                        EGameGraphicsPreset,
                                        EGameQualityLevel,
                                        EGameAntiAliasingMethod,
-                                       int32>;
+                                       std::int32_t>;
 
 SPACEGAME_API auto game_setting_category_descriptors()
     -> TConstArrayView<FGameSettingCategoryDescriptor>;
@@ -344,9 +345,9 @@ class TGameSettingsAccess {
         derived().set_setting(EGameSetting::UIVolume, FGameSettingValue{value});
     }
 
-    auto bees() const -> int32 { return derived().settings_state().bees; }
+    auto bees() const -> std::int32_t { return derived().settings_state().bees; }
 
-    void set_bees(int32 const value) {
+    void set_bees(std::int32_t const value) {
         derived().set_setting(EGameSetting::Bees, FGameSettingValue{value});
     }
 
