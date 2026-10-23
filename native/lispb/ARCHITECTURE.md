@@ -287,11 +287,12 @@ supplies a reusable nested group without an owner or standalone views. Such type
 C++ spelling and cannot be record members or function parameter types. They remain valid logical
 relationship targets and nested groups.
 
-`NameLayoutColumns` composes scalar `ColumnLayout<T>` members and nested schema column groups.
-Groups construct their predecessor chains in place, expose `last_column()`, and cannot be copied
-or moved. `NameLayout` uses the shared `Layout<Columns>` metadata and owns the stable constexpr
-start and columns. These determine offsets, exact allocation bytes, and alignment without adding
-state to owners or views. The existing layout uses 64 rows per block, a
+`NameLayout` derives from `ColumnLayouts<Ts...>` in physical leaf order and supplies named
+accessors for empty, typed column descriptors. C++26 pack indexing selects each element type;
+`make_column_layouts()` computes one constant metadata array without predecessor pointers or
+constructor chains. Linear offsets use direct arithmetic; capacity-dependent alignment scans
+only the nonlinear suffix. Layouts and descriptors are freely copyable and add no state to
+owners or views. The existing layout uses 64 rows per block, a
 192-byte inter-column gap, and 64-byte minimum alignment. `LayoutCursor` materializes typed column
 pointers in one linear pass using the same placement primitives. The conservative capacity bound
 and exact byte calculation retain overflow checks. C++ verifies element alignment, trivial
@@ -326,7 +327,7 @@ move path; allocation growth and non-overlapping append use the copy path.
 
 ## Shared schema views
 
-Each schema has one snake-case namespace containing `LayoutColumns`, `Layout`, `Schema`,
+Each schema has one snake-case namespace containing `Layout`, `Schema`,
 `View`, `ConstView`, `ResolvedView` and `ResolvedConstView`. Owners retain their declared names
 and expose `View` and `ConstView` aliases. Nested accessors return the child's shared view;
 the generator does not create types for individual occurrences of a nested schema.

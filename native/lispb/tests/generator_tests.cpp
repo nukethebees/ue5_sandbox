@@ -90,7 +90,8 @@ TEST(Generator, LowersSoaFieldMaskFromAnnotatedMembers) {
     EXPECT_NE(
         header.find("matrix_field(std::int32_t const row_index, std::int32_t const column_index)"),
         std::string::npos);
-    EXPECT_NE(header.find("ColLayout<FFieldMask> MasksColumn"), std::string::npos);
+    EXPECT_NE(header.find("ColumnLayouts<FFieldMask, std::int32_t, std::int32_t, std::int32_t>"),
+              std::string::npos);
     EXPECT_EQ(header.find("CoreMinimal.h"), std::string::npos);
 }
 

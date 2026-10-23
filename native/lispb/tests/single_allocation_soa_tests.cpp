@@ -31,18 +31,19 @@ TEST(SingleAllocationSoa, OrdinarySchemasGenerateNativeOwnersAndViews) {
             (member local_types array example::Token)
             (member nested_types array example::sub::Token)
             (member foreign_types array other::Token)
-            (member shadowed_types array example::ColLayout))))"))};
+            (member shadowed_types array example::Base))))"))};
     auto const& output{files.front().content};
     EXPECT_NE(output.find("namespace rows"), std::string::npos);
     EXPECT_NE(output.find("struct View"), std::string::npos);
     EXPECT_NE(output.find("struct ConstView"), std::string::npos);
-    EXPECT_NE(output.find("ColLayout<std::int32_t> IdsColumn"), std::string::npos);
+    EXPECT_NE(
+        output.find("ColumnLayouts<std::int32_t, float, Token, sub::Token, other::Token, Base>"),
+        std::string::npos);
+    EXPECT_NE(output.find("Element<example::Base>* shadowed_types"), std::string::npos);
     EXPECT_NE(output.find("auto ids() const"), std::string::npos);
-    EXPECT_NE(output.find("Nested{IdsColumn}"), std::string::npos);
-    EXPECT_NE(output.find("ColLayout<Token> LocalTypesColumn"), std::string::npos);
-    EXPECT_NE(output.find("ColLayout<sub::Token> NestedTypesColumn"), std::string::npos);
-    EXPECT_NE(output.find("ColLayout<other::Token> ForeignTypesColumn"), std::string::npos);
-    EXPECT_NE(output.find("ColLayout<example::ColLayout> ShadowedTypesColumn"), std::string::npos);
+    EXPECT_NE(output.find("ids_column()"), std::string::npos);
+    EXPECT_NE(output.find("nested_xs_column()"), std::string::npos);
+    EXPECT_EQ(output.find("LayoutColumns"), std::string::npos);
     EXPECT_NE(output.find("CompactViewBase<Const>"), std::string::npos);
     EXPECT_EQ(output.find("State* state_{};"), std::string::npos);
     EXPECT_NE(output.find("transfer_n<Overlapping>(dst, src, count);"), std::string::npos);
@@ -219,8 +220,9 @@ TEST(SingleAllocationSoa, FlattensMultipleLevelsAndRepeatedNestedSchemas) {
         (struct Grandparent
           (member first nested Rows)
           (member second nested Rows)))")};
-    EXPECT_NE(output.find("Second{First.last_column()}"), std::string::npos);
-    EXPECT_NE(output.find("Layout::columns.Second.Nested.WideColumn"), std::string::npos);
+    EXPECT_NE(output.find("second_nested_wide_column()"), std::string::npos);
+    EXPECT_NE(output.find("Layout::second_nested_wide_column()"), std::string::npos);
+    EXPECT_EQ(output.find("last_column()"), std::string::npos);
     EXPECT_EQ(output.find("GrandparentView_first"), std::string::npos);
     EXPECT_EQ(output.find("GrandparentView_second_nested"), std::string::npos);
     EXPECT_NE(output.find("rows::ResolvedView"), std::string::npos);
