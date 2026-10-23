@@ -26,6 +26,9 @@ struct WorkloadTableResolvedConstView;
 struct WorkloadTableView;
 struct WorkloadTableConstView;
 
+/* **************************************** */
+// Layout
+/* **************************************** */
 struct WorkloadTableLayoutColumns {
     template <typename T>
     using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
@@ -71,9 +74,11 @@ struct WorkloadTableLayoutColumns {
     WorkloadTableLayoutColumns(WorkloadTableLayoutColumns const&) = delete;
     auto operator=(WorkloadTableLayoutColumns const&) -> WorkloadTableLayoutColumns& = delete;
 };
-
 struct WorkloadTableLayout : ioj::single_allocation_layout::Layout<WorkloadTableLayoutColumns> {};
 
+/* **************************************** */
+// Resolved views
+/* **************************************** */
 template <bool Const>
 struct WorkloadTableResolvedViewImpl {
     using size_type = std::uint32_t;
@@ -357,12 +362,10 @@ struct WorkloadTableResolvedViewImpl {
     Element<std::optional<std::uint64_t>>* capacity_slack_bytes_{};
     size_type count_{};
 };
-
 struct WorkloadTableResolvedConstView : WorkloadTableResolvedViewImpl<true> {
     using Base = WorkloadTableResolvedViewImpl<true>;
     using Base::Base;
 };
-
 struct WorkloadTableResolvedView : WorkloadTableResolvedViewImpl<false> {
     using Base = WorkloadTableResolvedViewImpl<false>;
     using Base::Base;
@@ -403,6 +406,9 @@ struct WorkloadTableResolvedView : WorkloadTableResolvedViewImpl<false> {
     }
 };
 
+/* **************************************** */
+// Compact views
+/* **************************************** */
 template <bool Const>
 struct WorkloadTableViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = WorkloadTableSchema;
@@ -479,13 +485,11 @@ struct WorkloadTableViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
                 this->count_};
     }
 };
-
 struct WorkloadTableConstView : WorkloadTableViewImpl<true> {
     using Base = WorkloadTableViewImpl<true>;
     using Base::Base;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<WorkloadTableConstView>());
-
 struct WorkloadTableView : WorkloadTableViewImpl<false> {
     using Base = WorkloadTableViewImpl<false>;
     using Base::Base;
@@ -527,6 +531,9 @@ struct WorkloadTableView : WorkloadTableViewImpl<false> {
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<WorkloadTableView>());
 
+/* **************************************** */
+// Owner
+/* **************************************** */
 // Columns:
 // analysis: ioj::layout::AnalysisId
 // selections: ioj::layout::RowRange

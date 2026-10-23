@@ -17,6 +17,9 @@ struct WorldAABBsResolvedConstView;
 struct WorldAABBsView;
 struct WorldAABBsConstView;
 
+/* **************************************** */
+// Layout
+/* **************************************** */
 struct WorldAABBsLayoutColumns {
     template <typename T>
     using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
@@ -42,9 +45,11 @@ struct WorldAABBsLayoutColumns {
     WorldAABBsLayoutColumns(WorldAABBsLayoutColumns const&) = delete;
     auto operator=(WorldAABBsLayoutColumns const&) -> WorldAABBsLayoutColumns& = delete;
 };
-
 struct WorldAABBsLayout : ioj::single_allocation_layout::Layout<WorldAABBsLayoutColumns> {};
 
+/* **************************************** */
+// Resolved views
+/* **************************************** */
 template <bool Const>
 struct WorldAABBsResolvedViewImpl {
     using size_type = std::uint32_t;
@@ -160,12 +165,10 @@ struct WorldAABBsResolvedViewImpl {
     Element<float>* max_zs_{};
     size_type count_{};
 };
-
 struct WorldAABBsResolvedConstView : WorldAABBsResolvedViewImpl<true> {
     using Base = WorldAABBsResolvedViewImpl<true>;
     using Base::Base;
 };
-
 struct WorldAABBsResolvedView : WorldAABBsResolvedViewImpl<false> {
     using Base = WorldAABBsResolvedViewImpl<false>;
     using Base::Base;
@@ -186,6 +189,9 @@ struct WorldAABBsResolvedView : WorldAABBsResolvedViewImpl<false> {
     }
 };
 
+/* **************************************** */
+// Compact views
+/* **************************************** */
 template <bool Const>
 struct WorldAABBsViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = WorldAABBsSchema;
@@ -224,13 +230,11 @@ struct WorldAABBsViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
                 this->count_};
     }
 };
-
 struct WorldAABBsConstView : WorldAABBsViewImpl<true> {
     using Base = WorldAABBsViewImpl<true>;
     using Base::Base;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<WorldAABBsConstView>());
-
 struct WorldAABBsView : WorldAABBsViewImpl<false> {
     using Base = WorldAABBsViewImpl<false>;
     using Base::Base;
@@ -252,6 +256,9 @@ struct WorldAABBsView : WorldAABBsViewImpl<false> {
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<WorldAABBsView>());
 
+/* **************************************** */
+// Owner
+/* **************************************** */
 // Columns:
 // min_xs: float
 // min_ys: float

@@ -34,6 +34,9 @@ struct TurretEntityDataConstView_target_locations;
 struct TurretEntityDataView_target_velocities;
 struct TurretEntityDataConstView_target_velocities;
 
+/* **************************************** */
+// Layout
+/* **************************************** */
 struct TurretEntityDataLayoutColumns {
     template <typename T>
     using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
@@ -73,10 +76,12 @@ struct TurretEntityDataLayoutColumns {
     TurretEntityDataLayoutColumns(TurretEntityDataLayoutColumns const&) = delete;
     auto operator=(TurretEntityDataLayoutColumns const&) -> TurretEntityDataLayoutColumns& = delete;
 };
-
 struct TurretEntityDataLayout
     : ioj::single_allocation_layout::Layout<TurretEntityDataLayoutColumns> {};
 
+/* **************************************** */
+// Resolved views
+/* **************************************** */
 template <bool Const>
 struct TurretEntityDataResolvedViewImpl {
     using size_type = std::uint32_t;
@@ -435,12 +440,10 @@ struct TurretEntityDataResolvedViewImpl {
     Element<float>* target_velocities_zs_{};
     size_type count_{};
 };
-
 struct TurretEntityDataResolvedConstView : TurretEntityDataResolvedViewImpl<true> {
     using Base = TurretEntityDataResolvedViewImpl<true>;
     using Base::Base;
 };
-
 struct TurretEntityDataResolvedView : TurretEntityDataResolvedViewImpl<false> {
     using Base = TurretEntityDataResolvedViewImpl<false>;
     using Base::Base;
@@ -526,6 +529,9 @@ struct TurretEntityDataResolvedView : TurretEntityDataResolvedViewImpl<false> {
     }
 };
 
+/* **************************************** */
+// locations compact views
+/* **************************************** */
 template <bool Const>
 struct TurretEntityDataView_locationsImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = Vectors3fSchema;
@@ -555,7 +561,6 @@ struct TurretEntityDataView_locationsImpl : ioj::soa_storage_detail::CompactView
                 this->count_};
     }
 };
-
 struct TurretEntityDataConstView_locations : TurretEntityDataView_locationsImpl<true> {
     using Base = TurretEntityDataView_locationsImpl<true>;
     using Base::Base;
@@ -567,7 +572,6 @@ struct TurretEntityDataConstView_locations : TurretEntityDataView_locationsImpl<
 };
 static_assert(
     ioj::soa_storage_detail::validate_compact_view<TurretEntityDataConstView_locations>());
-
 struct TurretEntityDataView_locations : TurretEntityDataView_locationsImpl<false> {
     using Base = TurretEntityDataView_locationsImpl<false>;
     using Base::Base;
@@ -588,6 +592,9 @@ struct TurretEntityDataView_locations : TurretEntityDataView_locationsImpl<false
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<TurretEntityDataView_locations>());
 
+/* **************************************** */
+// fire_point_locations compact views
+/* **************************************** */
 template <bool Const>
 struct TurretEntityDataView_fire_point_locationsImpl
     : ioj::soa_storage_detail::CompactViewBase<Const> {
@@ -619,7 +626,6 @@ struct TurretEntityDataView_fire_point_locationsImpl
                 this->count_};
     }
 };
-
 struct TurretEntityDataConstView_fire_point_locations
     : TurretEntityDataView_fire_point_locationsImpl<true> {
     using Base = TurretEntityDataView_fire_point_locationsImpl<true>;
@@ -632,7 +638,6 @@ struct TurretEntityDataConstView_fire_point_locations
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<
               TurretEntityDataConstView_fire_point_locations>());
-
 struct TurretEntityDataView_fire_point_locations
     : TurretEntityDataView_fire_point_locationsImpl<false> {
     using Base = TurretEntityDataView_fire_point_locationsImpl<false>;
@@ -655,6 +660,9 @@ struct TurretEntityDataView_fire_point_locations
 static_assert(
     ioj::soa_storage_detail::validate_compact_view<TurretEntityDataView_fire_point_locations>());
 
+/* **************************************** */
+// rotations compact views
+/* **************************************** */
 template <bool Const>
 struct TurretEntityDataView_rotationsImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = Rotators3fSchema;
@@ -684,7 +692,6 @@ struct TurretEntityDataView_rotationsImpl : ioj::soa_storage_detail::CompactView
                 this->count_};
     }
 };
-
 struct TurretEntityDataConstView_rotations : TurretEntityDataView_rotationsImpl<true> {
     using Base = TurretEntityDataView_rotationsImpl<true>;
     using Base::Base;
@@ -696,7 +703,6 @@ struct TurretEntityDataConstView_rotations : TurretEntityDataView_rotationsImpl<
 };
 static_assert(
     ioj::soa_storage_detail::validate_compact_view<TurretEntityDataConstView_rotations>());
-
 struct TurretEntityDataView_rotations : TurretEntityDataView_rotationsImpl<false> {
     using Base = TurretEntityDataView_rotationsImpl<false>;
     using Base::Base;
@@ -720,6 +726,9 @@ struct TurretEntityDataView_rotations : TurretEntityDataView_rotationsImpl<false
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<TurretEntityDataView_rotations>());
 
+/* **************************************** */
+// target_locations compact views
+/* **************************************** */
 template <bool Const>
 struct TurretEntityDataView_target_locationsImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = Vectors3fSchema;
@@ -750,7 +759,6 @@ struct TurretEntityDataView_target_locationsImpl : ioj::soa_storage_detail::Comp
                 this->count_};
     }
 };
-
 struct TurretEntityDataConstView_target_locations
     : TurretEntityDataView_target_locationsImpl<true> {
     using Base = TurretEntityDataView_target_locationsImpl<true>;
@@ -763,7 +771,6 @@ struct TurretEntityDataConstView_target_locations
 };
 static_assert(
     ioj::soa_storage_detail::validate_compact_view<TurretEntityDataConstView_target_locations>());
-
 struct TurretEntityDataView_target_locations : TurretEntityDataView_target_locationsImpl<false> {
     using Base = TurretEntityDataView_target_locationsImpl<false>;
     using Base::Base;
@@ -785,6 +792,9 @@ struct TurretEntityDataView_target_locations : TurretEntityDataView_target_locat
 static_assert(
     ioj::soa_storage_detail::validate_compact_view<TurretEntityDataView_target_locations>());
 
+/* **************************************** */
+// target_velocities compact views
+/* **************************************** */
 template <bool Const>
 struct TurretEntityDataView_target_velocitiesImpl
     : ioj::soa_storage_detail::CompactViewBase<Const> {
@@ -816,7 +826,6 @@ struct TurretEntityDataView_target_velocitiesImpl
                 this->count_};
     }
 };
-
 struct TurretEntityDataConstView_target_velocities
     : TurretEntityDataView_target_velocitiesImpl<true> {
     using Base = TurretEntityDataView_target_velocitiesImpl<true>;
@@ -829,7 +838,6 @@ struct TurretEntityDataConstView_target_velocities
 };
 static_assert(
     ioj::soa_storage_detail::validate_compact_view<TurretEntityDataConstView_target_velocities>());
-
 struct TurretEntityDataView_target_velocities : TurretEntityDataView_target_velocitiesImpl<false> {
     using Base = TurretEntityDataView_target_velocitiesImpl<false>;
     using Base::Base;
@@ -851,6 +859,9 @@ struct TurretEntityDataView_target_velocities : TurretEntityDataView_target_velo
 static_assert(
     ioj::soa_storage_detail::validate_compact_view<TurretEntityDataView_target_velocities>());
 
+/* **************************************** */
+// Compact views
+/* **************************************** */
 template <bool Const>
 struct TurretEntityDataViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = TurretEntityDataSchema;
@@ -960,13 +971,11 @@ struct TurretEntityDataViewImpl : ioj::soa_storage_detail::CompactViewBase<Const
                 this->count_};
     }
 };
-
 struct TurretEntityDataConstView : TurretEntityDataViewImpl<true> {
     using Base = TurretEntityDataViewImpl<true>;
     using Base::Base;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<TurretEntityDataConstView>());
-
 struct TurretEntityDataView : TurretEntityDataViewImpl<false> {
     using Base = TurretEntityDataViewImpl<false>;
     using Base::Base;
@@ -1053,6 +1062,9 @@ struct TurretEntityDataView : TurretEntityDataViewImpl<false> {
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<TurretEntityDataView>());
 
+/* **************************************** */
+// Owner
+/* **************************************** */
 // Columns:
 // entity_ids: EntityId
 // integral_biases: std::uint32_t

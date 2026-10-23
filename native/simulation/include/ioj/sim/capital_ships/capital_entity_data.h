@@ -28,6 +28,9 @@ struct CapitalEntityDataConstView_locations;
 struct CapitalEntityDataView_rotations;
 struct CapitalEntityDataConstView_rotations;
 
+/* **************************************** */
+// Layout
+/* **************************************** */
 struct CapitalEntityDataLayoutColumns {
     template <typename T>
     using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
@@ -58,10 +61,12 @@ struct CapitalEntityDataLayoutColumns {
     auto operator=(CapitalEntityDataLayoutColumns const&)
         -> CapitalEntityDataLayoutColumns& = delete;
 };
-
 struct CapitalEntityDataLayout
     : ioj::single_allocation_layout::Layout<CapitalEntityDataLayoutColumns> {};
 
+/* **************************************** */
+// Resolved views
+/* **************************************** */
 template <bool Const>
 struct CapitalEntityDataResolvedViewImpl {
     using size_type = std::uint32_t;
@@ -270,12 +275,10 @@ struct CapitalEntityDataResolvedViewImpl {
     Element<EntityId>* target_ids_{};
     size_type count_{};
 };
-
 struct CapitalEntityDataResolvedConstView : CapitalEntityDataResolvedViewImpl<true> {
     using Base = CapitalEntityDataResolvedViewImpl<true>;
     using Base::Base;
 };
-
 struct CapitalEntityDataResolvedView : CapitalEntityDataResolvedViewImpl<false> {
     using Base = CapitalEntityDataResolvedViewImpl<false>;
     using Base::Base;
@@ -327,6 +330,9 @@ struct CapitalEntityDataResolvedView : CapitalEntityDataResolvedViewImpl<false> 
     }
 };
 
+/* **************************************** */
+// locations compact views
+/* **************************************** */
 template <bool Const>
 struct CapitalEntityDataView_locationsImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = Vectors3fSchema;
@@ -356,7 +362,6 @@ struct CapitalEntityDataView_locationsImpl : ioj::soa_storage_detail::CompactVie
                 this->count_};
     }
 };
-
 struct CapitalEntityDataConstView_locations : CapitalEntityDataView_locationsImpl<true> {
     using Base = CapitalEntityDataView_locationsImpl<true>;
     using Base::Base;
@@ -368,7 +373,6 @@ struct CapitalEntityDataConstView_locations : CapitalEntityDataView_locationsImp
 };
 static_assert(
     ioj::soa_storage_detail::validate_compact_view<CapitalEntityDataConstView_locations>());
-
 struct CapitalEntityDataView_locations : CapitalEntityDataView_locationsImpl<false> {
     using Base = CapitalEntityDataView_locationsImpl<false>;
     using Base::Base;
@@ -389,6 +393,9 @@ struct CapitalEntityDataView_locations : CapitalEntityDataView_locationsImpl<fal
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<CapitalEntityDataView_locations>());
 
+/* **************************************** */
+// rotations compact views
+/* **************************************** */
 template <bool Const>
 struct CapitalEntityDataView_rotationsImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = Rotators3fSchema;
@@ -418,7 +425,6 @@ struct CapitalEntityDataView_rotationsImpl : ioj::soa_storage_detail::CompactVie
                 this->count_};
     }
 };
-
 struct CapitalEntityDataConstView_rotations : CapitalEntityDataView_rotationsImpl<true> {
     using Base = CapitalEntityDataView_rotationsImpl<true>;
     using Base::Base;
@@ -430,7 +436,6 @@ struct CapitalEntityDataConstView_rotations : CapitalEntityDataView_rotationsImp
 };
 static_assert(
     ioj::soa_storage_detail::validate_compact_view<CapitalEntityDataConstView_rotations>());
-
 struct CapitalEntityDataView_rotations : CapitalEntityDataView_rotationsImpl<false> {
     using Base = CapitalEntityDataView_rotationsImpl<false>;
     using Base::Base;
@@ -454,6 +459,9 @@ struct CapitalEntityDataView_rotations : CapitalEntityDataView_rotationsImpl<fal
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<CapitalEntityDataView_rotations>());
 
+/* **************************************** */
+// Compact views
+/* **************************************** */
 template <bool Const>
 struct CapitalEntityDataViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = CapitalEntityDataSchema;
@@ -520,13 +528,11 @@ struct CapitalEntityDataViewImpl : ioj::soa_storage_detail::CompactViewBase<Cons
                 this->count_};
     }
 };
-
 struct CapitalEntityDataConstView : CapitalEntityDataViewImpl<true> {
     using Base = CapitalEntityDataViewImpl<true>;
     using Base::Base;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<CapitalEntityDataConstView>());
-
 struct CapitalEntityDataView : CapitalEntityDataViewImpl<false> {
     using Base = CapitalEntityDataViewImpl<false>;
     using Base::Base;
@@ -579,6 +585,9 @@ struct CapitalEntityDataView : CapitalEntityDataViewImpl<false> {
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<CapitalEntityDataView>());
 
+/* **************************************** */
+// Owner
+/* **************************************** */
 // Columns:
 // entity_ids: EntityId
 // locations_xs: float

@@ -28,6 +28,9 @@ struct LevelCapitalSpawnEventsConstView_locations;
 struct LevelCapitalSpawnEventsView_rotations;
 struct LevelCapitalSpawnEventsConstView_rotations;
 
+/* **************************************** */
+// Layout
+/* **************************************** */
 struct LevelCapitalSpawnEventsLayoutColumns {
     template <typename T>
     using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
@@ -58,10 +61,12 @@ struct LevelCapitalSpawnEventsLayoutColumns {
     auto operator=(LevelCapitalSpawnEventsLayoutColumns const&)
         -> LevelCapitalSpawnEventsLayoutColumns& = delete;
 };
-
 struct LevelCapitalSpawnEventsLayout
     : ioj::single_allocation_layout::Layout<LevelCapitalSpawnEventsLayoutColumns> {};
 
+/* **************************************** */
+// Resolved views
+/* **************************************** */
 template <bool Const>
 struct LevelCapitalSpawnEventsResolvedViewImpl {
     using size_type = std::uint32_t;
@@ -277,12 +282,10 @@ struct LevelCapitalSpawnEventsResolvedViewImpl {
     Element<float>* fighter_spawn_cooldowns_{};
     size_type count_{};
 };
-
 struct LevelCapitalSpawnEventsResolvedConstView : LevelCapitalSpawnEventsResolvedViewImpl<true> {
     using Base = LevelCapitalSpawnEventsResolvedViewImpl<true>;
     using Base::Base;
 };
-
 struct LevelCapitalSpawnEventsResolvedView : LevelCapitalSpawnEventsResolvedViewImpl<false> {
     using Base = LevelCapitalSpawnEventsResolvedViewImpl<false>;
     using Base::Base;
@@ -334,6 +337,9 @@ struct LevelCapitalSpawnEventsResolvedView : LevelCapitalSpawnEventsResolvedView
     }
 };
 
+/* **************************************** */
+// locations compact views
+/* **************************************** */
 template <bool Const>
 struct LevelCapitalSpawnEventsView_locationsImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = Vectors3fSchema;
@@ -364,7 +370,6 @@ struct LevelCapitalSpawnEventsView_locationsImpl : ioj::soa_storage_detail::Comp
                 this->count_};
     }
 };
-
 struct LevelCapitalSpawnEventsConstView_locations
     : LevelCapitalSpawnEventsView_locationsImpl<true> {
     using Base = LevelCapitalSpawnEventsView_locationsImpl<true>;
@@ -377,7 +382,6 @@ struct LevelCapitalSpawnEventsConstView_locations
 };
 static_assert(
     ioj::soa_storage_detail::validate_compact_view<LevelCapitalSpawnEventsConstView_locations>());
-
 struct LevelCapitalSpawnEventsView_locations : LevelCapitalSpawnEventsView_locationsImpl<false> {
     using Base = LevelCapitalSpawnEventsView_locationsImpl<false>;
     using Base::Base;
@@ -399,6 +403,9 @@ struct LevelCapitalSpawnEventsView_locations : LevelCapitalSpawnEventsView_locat
 static_assert(
     ioj::soa_storage_detail::validate_compact_view<LevelCapitalSpawnEventsView_locations>());
 
+/* **************************************** */
+// rotations compact views
+/* **************************************** */
 template <bool Const>
 struct LevelCapitalSpawnEventsView_rotationsImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = Rotators3fSchema;
@@ -429,7 +436,6 @@ struct LevelCapitalSpawnEventsView_rotationsImpl : ioj::soa_storage_detail::Comp
                 this->count_};
     }
 };
-
 struct LevelCapitalSpawnEventsConstView_rotations
     : LevelCapitalSpawnEventsView_rotationsImpl<true> {
     using Base = LevelCapitalSpawnEventsView_rotationsImpl<true>;
@@ -442,7 +448,6 @@ struct LevelCapitalSpawnEventsConstView_rotations
 };
 static_assert(
     ioj::soa_storage_detail::validate_compact_view<LevelCapitalSpawnEventsConstView_rotations>());
-
 struct LevelCapitalSpawnEventsView_rotations : LevelCapitalSpawnEventsView_rotationsImpl<false> {
     using Base = LevelCapitalSpawnEventsView_rotationsImpl<false>;
     using Base::Base;
@@ -467,6 +472,9 @@ struct LevelCapitalSpawnEventsView_rotations : LevelCapitalSpawnEventsView_rotat
 static_assert(
     ioj::soa_storage_detail::validate_compact_view<LevelCapitalSpawnEventsView_rotations>());
 
+/* **************************************** */
+// Compact views
+/* **************************************** */
 template <bool Const>
 struct LevelCapitalSpawnEventsViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = LevelCapitalSpawnEventsSchema;
@@ -536,13 +544,11 @@ struct LevelCapitalSpawnEventsViewImpl : ioj::soa_storage_detail::CompactViewBas
                 this->count_};
     }
 };
-
 struct LevelCapitalSpawnEventsConstView : LevelCapitalSpawnEventsViewImpl<true> {
     using Base = LevelCapitalSpawnEventsViewImpl<true>;
     using Base::Base;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<LevelCapitalSpawnEventsConstView>());
-
 struct LevelCapitalSpawnEventsView : LevelCapitalSpawnEventsViewImpl<false> {
     using Base = LevelCapitalSpawnEventsViewImpl<false>;
     using Base::Base;
@@ -595,6 +601,9 @@ struct LevelCapitalSpawnEventsView : LevelCapitalSpawnEventsViewImpl<false> {
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<LevelCapitalSpawnEventsView>());
 
+/* **************************************** */
+// Owner
+/* **************************************** */
 // Columns:
 // entity_indices: ioj::sim::LevelEntityIndex
 // target_entity_indices: ioj::sim::LevelEntityIndex

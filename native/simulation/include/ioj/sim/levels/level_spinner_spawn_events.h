@@ -23,6 +23,9 @@ struct LevelSpinnerSpawnEventsConstView;
 struct LevelSpinnerSpawnEventsView_locations;
 struct LevelSpinnerSpawnEventsConstView_locations;
 
+/* **************************************** */
+// Layout
+/* **************************************** */
 struct LevelSpinnerSpawnEventsLayoutColumns {
     template <typename T>
     using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
@@ -45,10 +48,12 @@ struct LevelSpinnerSpawnEventsLayoutColumns {
     auto operator=(LevelSpinnerSpawnEventsLayoutColumns const&)
         -> LevelSpinnerSpawnEventsLayoutColumns& = delete;
 };
-
 struct LevelSpinnerSpawnEventsLayout
     : ioj::single_allocation_layout::Layout<LevelSpinnerSpawnEventsLayoutColumns> {};
 
+/* **************************************** */
+// Resolved views
+/* **************************************** */
 template <bool Const>
 struct LevelSpinnerSpawnEventsResolvedViewImpl {
     using size_type = std::uint32_t;
@@ -184,12 +189,10 @@ struct LevelSpinnerSpawnEventsResolvedViewImpl {
     Element<std::int32_t>* initial_fire_point_indices_{};
     size_type count_{};
 };
-
 struct LevelSpinnerSpawnEventsResolvedConstView : LevelSpinnerSpawnEventsResolvedViewImpl<true> {
     using Base = LevelSpinnerSpawnEventsResolvedViewImpl<true>;
     using Base::Base;
 };
-
 struct LevelSpinnerSpawnEventsResolvedView : LevelSpinnerSpawnEventsResolvedViewImpl<false> {
     using Base = LevelSpinnerSpawnEventsResolvedViewImpl<false>;
     using Base::Base;
@@ -221,6 +224,9 @@ struct LevelSpinnerSpawnEventsResolvedView : LevelSpinnerSpawnEventsResolvedView
     }
 };
 
+/* **************************************** */
+// locations compact views
+/* **************************************** */
 template <bool Const>
 struct LevelSpinnerSpawnEventsView_locationsImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = Vectors3fSchema;
@@ -251,7 +257,6 @@ struct LevelSpinnerSpawnEventsView_locationsImpl : ioj::soa_storage_detail::Comp
                 this->count_};
     }
 };
-
 struct LevelSpinnerSpawnEventsConstView_locations
     : LevelSpinnerSpawnEventsView_locationsImpl<true> {
     using Base = LevelSpinnerSpawnEventsView_locationsImpl<true>;
@@ -264,7 +269,6 @@ struct LevelSpinnerSpawnEventsConstView_locations
 };
 static_assert(
     ioj::soa_storage_detail::validate_compact_view<LevelSpinnerSpawnEventsConstView_locations>());
-
 struct LevelSpinnerSpawnEventsView_locations : LevelSpinnerSpawnEventsView_locationsImpl<false> {
     using Base = LevelSpinnerSpawnEventsView_locationsImpl<false>;
     using Base::Base;
@@ -286,6 +290,9 @@ struct LevelSpinnerSpawnEventsView_locations : LevelSpinnerSpawnEventsView_locat
 static_assert(
     ioj::soa_storage_detail::validate_compact_view<LevelSpinnerSpawnEventsView_locations>());
 
+/* **************************************** */
+// Compact views
+/* **************************************** */
 template <bool Const>
 struct LevelSpinnerSpawnEventsViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = LevelSpinnerSpawnEventsSchema;
@@ -330,13 +337,11 @@ struct LevelSpinnerSpawnEventsViewImpl : ioj::soa_storage_detail::CompactViewBas
                 this->count_};
     }
 };
-
 struct LevelSpinnerSpawnEventsConstView : LevelSpinnerSpawnEventsViewImpl<true> {
     using Base = LevelSpinnerSpawnEventsViewImpl<true>;
     using Base::Base;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<LevelSpinnerSpawnEventsConstView>());
-
 struct LevelSpinnerSpawnEventsView : LevelSpinnerSpawnEventsViewImpl<false> {
     using Base = LevelSpinnerSpawnEventsViewImpl<false>;
     using Base::Base;
@@ -369,6 +374,9 @@ struct LevelSpinnerSpawnEventsView : LevelSpinnerSpawnEventsViewImpl<false> {
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<LevelSpinnerSpawnEventsView>());
 
+/* **************************************** */
+// Owner
+/* **************************************** */
 // Columns:
 // entity_indices: ioj::sim::LevelEntityIndex
 // locations_xs: float

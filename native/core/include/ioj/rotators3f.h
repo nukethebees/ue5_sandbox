@@ -18,6 +18,9 @@ struct Rotators3fResolvedConstView;
 struct Rotators3fView;
 struct Rotators3fConstView;
 
+/* **************************************** */
+// Layout
+/* **************************************** */
 struct Rotators3fLayoutColumns {
     template <typename T>
     using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
@@ -37,9 +40,11 @@ struct Rotators3fLayoutColumns {
     Rotators3fLayoutColumns(Rotators3fLayoutColumns const&) = delete;
     auto operator=(Rotators3fLayoutColumns const&) -> Rotators3fLayoutColumns& = delete;
 };
-
 struct Rotators3fLayout : ioj::single_allocation_layout::Layout<Rotators3fLayoutColumns> {};
 
+/* **************************************** */
+// Resolved views
+/* **************************************** */
 template <bool Const>
 struct Rotators3fResolvedViewImpl {
     using size_type = std::uint32_t;
@@ -120,7 +125,6 @@ struct Rotators3fResolvedViewImpl {
     Element<float>* rolls_{};
     size_type count_{};
 };
-
 struct Rotators3fResolvedConstView : Rotators3fResolvedViewImpl<true> {
     using Base = Rotators3fResolvedViewImpl<true>;
     using Base::Base;
@@ -130,7 +134,6 @@ struct Rotators3fResolvedConstView : Rotators3fResolvedViewImpl<true> {
         return equivalent_type{pitches()[index], yaws()[index], rolls()[index]};
     }
 };
-
 struct Rotators3fResolvedView : Rotators3fResolvedViewImpl<false> {
     using Base = Rotators3fResolvedViewImpl<false>;
     using Base::Base;
@@ -153,6 +156,9 @@ struct Rotators3fResolvedView : Rotators3fResolvedViewImpl<false> {
     }
 };
 
+/* **************************************** */
+// Compact views
+/* **************************************** */
 template <bool Const>
 struct Rotators3fViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = Rotators3fSchema;
@@ -182,7 +188,6 @@ struct Rotators3fViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
                 this->count_};
     }
 };
-
 struct Rotators3fConstView : Rotators3fViewImpl<true> {
     using Base = Rotators3fViewImpl<true>;
     using Base::Base;
@@ -193,7 +198,6 @@ struct Rotators3fConstView : Rotators3fViewImpl<true> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<Rotators3fConstView>());
-
 struct Rotators3fView : Rotators3fViewImpl<false> {
     using Base = Rotators3fViewImpl<false>;
     using Base::Base;
@@ -217,6 +221,9 @@ struct Rotators3fView : Rotators3fViewImpl<false> {
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<Rotators3fView>());
 
+/* **************************************** */
+// Owner
+/* **************************************** */
 // Columns:
 // pitches: float
 // yaws: float

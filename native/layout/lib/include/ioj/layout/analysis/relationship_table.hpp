@@ -23,6 +23,9 @@ struct RelationshipTableResolvedConstView;
 struct RelationshipTableView;
 struct RelationshipTableConstView;
 
+/* **************************************** */
+// Layout
+/* **************************************** */
 struct RelationshipTableLayoutColumns {
     template <typename T>
     using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
@@ -45,10 +48,12 @@ struct RelationshipTableLayoutColumns {
     auto operator=(RelationshipTableLayoutColumns const&)
         -> RelationshipTableLayoutColumns& = delete;
 };
-
 struct RelationshipTableLayout
     : ioj::single_allocation_layout::Layout<RelationshipTableLayoutColumns> {};
 
+/* **************************************** */
+// Resolved views
+/* **************************************** */
 template <bool Const>
 struct RelationshipTableResolvedViewImpl {
     using size_type = std::uint32_t;
@@ -148,12 +153,10 @@ struct RelationshipTableResolvedViewImpl {
     Element<std::optional<ioj::layout::RelationshipMetrics>>* metrics_{};
     size_type count_{};
 };
-
 struct RelationshipTableResolvedConstView : RelationshipTableResolvedViewImpl<true> {
     using Base = RelationshipTableResolvedViewImpl<true>;
     using Base::Base;
 };
-
 struct RelationshipTableResolvedView : RelationshipTableResolvedViewImpl<false> {
     using Base = RelationshipTableResolvedViewImpl<false>;
     using Base::Base;
@@ -170,6 +173,9 @@ struct RelationshipTableResolvedView : RelationshipTableResolvedViewImpl<false> 
     }
 };
 
+/* **************************************** */
+// Compact views
+/* **************************************** */
 template <bool Const>
 struct RelationshipTableViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = RelationshipTableSchema;
@@ -202,13 +208,11 @@ struct RelationshipTableViewImpl : ioj::soa_storage_detail::CompactViewBase<Cons
                 this->count_};
     }
 };
-
 struct RelationshipTableConstView : RelationshipTableViewImpl<true> {
     using Base = RelationshipTableViewImpl<true>;
     using Base::Base;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<RelationshipTableConstView>());
-
 struct RelationshipTableView : RelationshipTableViewImpl<false> {
     using Base = RelationshipTableViewImpl<false>;
     using Base::Base;
@@ -226,6 +230,9 @@ struct RelationshipTableView : RelationshipTableViewImpl<false> {
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<RelationshipTableView>());
 
+/* **************************************** */
+// Owner
+/* **************************************** */
 // Columns:
 // owner: ioj::layout::AnalysisId
 // field: std::optional<std::size_t>

@@ -30,6 +30,9 @@ struct LaserEntitiesConstView_rotations;
 struct LaserEntitiesView_velocities;
 struct LaserEntitiesConstView_velocities;
 
+/* **************************************** */
+// Layout
+/* **************************************** */
 struct LaserEntitiesLayoutColumns {
     template <typename T>
     using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
@@ -63,9 +66,11 @@ struct LaserEntitiesLayoutColumns {
     LaserEntitiesLayoutColumns(LaserEntitiesLayoutColumns const&) = delete;
     auto operator=(LaserEntitiesLayoutColumns const&) -> LaserEntitiesLayoutColumns& = delete;
 };
-
 struct LaserEntitiesLayout : ioj::single_allocation_layout::Layout<LaserEntitiesLayoutColumns> {};
 
+/* **************************************** */
+// Resolved views
+/* **************************************** */
 template <bool Const>
 struct LaserEntitiesResolvedViewImpl {
     using size_type = std::uint32_t;
@@ -321,12 +326,10 @@ struct LaserEntitiesResolvedViewImpl {
     Element<float>* spawn_times_{};
     size_type count_{};
 };
-
 struct LaserEntitiesResolvedConstView : LaserEntitiesResolvedViewImpl<true> {
     using Base = LaserEntitiesResolvedViewImpl<true>;
     using Base::Base;
 };
-
 struct LaserEntitiesResolvedView : LaserEntitiesResolvedViewImpl<false> {
     using Base = LaserEntitiesResolvedViewImpl<false>;
     using Base::Base;
@@ -390,6 +393,9 @@ struct LaserEntitiesResolvedView : LaserEntitiesResolvedViewImpl<false> {
     }
 };
 
+/* **************************************** */
+// locations compact views
+/* **************************************** */
 template <bool Const>
 struct LaserEntitiesView_locationsImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = Vectors3fSchema;
@@ -419,7 +425,6 @@ struct LaserEntitiesView_locationsImpl : ioj::soa_storage_detail::CompactViewBas
                 this->count_};
     }
 };
-
 struct LaserEntitiesConstView_locations : LaserEntitiesView_locationsImpl<true> {
     using Base = LaserEntitiesView_locationsImpl<true>;
     using Base::Base;
@@ -430,7 +435,6 @@ struct LaserEntitiesConstView_locations : LaserEntitiesView_locationsImpl<true> 
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<LaserEntitiesConstView_locations>());
-
 struct LaserEntitiesView_locations : LaserEntitiesView_locationsImpl<false> {
     using Base = LaserEntitiesView_locationsImpl<false>;
     using Base::Base;
@@ -451,6 +455,9 @@ struct LaserEntitiesView_locations : LaserEntitiesView_locationsImpl<false> {
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<LaserEntitiesView_locations>());
 
+/* **************************************** */
+// rotations compact views
+/* **************************************** */
 template <bool Const>
 struct LaserEntitiesView_rotationsImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = Rotators3fSchema;
@@ -480,7 +487,6 @@ struct LaserEntitiesView_rotationsImpl : ioj::soa_storage_detail::CompactViewBas
                 this->count_};
     }
 };
-
 struct LaserEntitiesConstView_rotations : LaserEntitiesView_rotationsImpl<true> {
     using Base = LaserEntitiesView_rotationsImpl<true>;
     using Base::Base;
@@ -491,7 +497,6 @@ struct LaserEntitiesConstView_rotations : LaserEntitiesView_rotationsImpl<true> 
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<LaserEntitiesConstView_rotations>());
-
 struct LaserEntitiesView_rotations : LaserEntitiesView_rotationsImpl<false> {
     using Base = LaserEntitiesView_rotationsImpl<false>;
     using Base::Base;
@@ -515,6 +520,9 @@ struct LaserEntitiesView_rotations : LaserEntitiesView_rotationsImpl<false> {
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<LaserEntitiesView_rotations>());
 
+/* **************************************** */
+// velocities compact views
+/* **************************************** */
 template <bool Const>
 struct LaserEntitiesView_velocitiesImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = Vectors3fSchema;
@@ -544,7 +552,6 @@ struct LaserEntitiesView_velocitiesImpl : ioj::soa_storage_detail::CompactViewBa
                 this->count_};
     }
 };
-
 struct LaserEntitiesConstView_velocities : LaserEntitiesView_velocitiesImpl<true> {
     using Base = LaserEntitiesView_velocitiesImpl<true>;
     using Base::Base;
@@ -555,7 +562,6 @@ struct LaserEntitiesConstView_velocities : LaserEntitiesView_velocitiesImpl<true
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<LaserEntitiesConstView_velocities>());
-
 struct LaserEntitiesView_velocities : LaserEntitiesView_velocitiesImpl<false> {
     using Base = LaserEntitiesView_velocitiesImpl<false>;
     using Base::Base;
@@ -576,6 +582,9 @@ struct LaserEntitiesView_velocities : LaserEntitiesView_velocitiesImpl<false> {
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<LaserEntitiesView_velocities>());
 
+/* **************************************** */
+// Compact views
+/* **************************************** */
 template <bool Const>
 struct LaserEntitiesViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = LaserEntitiesSchema;
@@ -652,13 +661,11 @@ struct LaserEntitiesViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
                 this->count_};
     }
 };
-
 struct LaserEntitiesConstView : LaserEntitiesViewImpl<true> {
     using Base = LaserEntitiesViewImpl<true>;
     using Base::Base;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<LaserEntitiesConstView>());
-
 struct LaserEntitiesView : LaserEntitiesViewImpl<false> {
     using Base = LaserEntitiesViewImpl<false>;
     using Base::Base;
@@ -723,6 +730,9 @@ struct LaserEntitiesView : LaserEntitiesViewImpl<false> {
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<LaserEntitiesView>());
 
+/* **************************************** */
+// Owner
+/* **************************************** */
 // Columns:
 // active: std::uint8_t
 // sources: ioj::sim::LaserSource

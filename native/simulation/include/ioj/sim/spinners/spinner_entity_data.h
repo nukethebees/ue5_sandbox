@@ -23,6 +23,9 @@ struct SpinnerEntityDataConstView;
 struct SpinnerEntityDataView_locations;
 struct SpinnerEntityDataConstView_locations;
 
+/* **************************************** */
+// Layout
+/* **************************************** */
 struct SpinnerEntityDataLayoutColumns {
     template <typename T>
     using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
@@ -47,10 +50,12 @@ struct SpinnerEntityDataLayoutColumns {
     auto operator=(SpinnerEntityDataLayoutColumns const&)
         -> SpinnerEntityDataLayoutColumns& = delete;
 };
-
 struct SpinnerEntityDataLayout
     : ioj::single_allocation_layout::Layout<SpinnerEntityDataLayoutColumns> {};
 
+/* **************************************** */
+// Resolved views
+/* **************************************** */
 template <bool Const>
 struct SpinnerEntityDataResolvedViewImpl {
     using size_type = std::uint32_t;
@@ -196,12 +201,10 @@ struct SpinnerEntityDataResolvedViewImpl {
     Element<std::int32_t>* next_fire_point_indices_{};
     size_type count_{};
 };
-
 struct SpinnerEntityDataResolvedConstView : SpinnerEntityDataResolvedViewImpl<true> {
     using Base = SpinnerEntityDataResolvedViewImpl<true>;
     using Base::Base;
 };
-
 struct SpinnerEntityDataResolvedView : SpinnerEntityDataResolvedViewImpl<false> {
     using Base = SpinnerEntityDataResolvedViewImpl<false>;
     using Base::Base;
@@ -237,6 +240,9 @@ struct SpinnerEntityDataResolvedView : SpinnerEntityDataResolvedViewImpl<false> 
     }
 };
 
+/* **************************************** */
+// locations compact views
+/* **************************************** */
 template <bool Const>
 struct SpinnerEntityDataView_locationsImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = Vectors3fSchema;
@@ -266,7 +272,6 @@ struct SpinnerEntityDataView_locationsImpl : ioj::soa_storage_detail::CompactVie
                 this->count_};
     }
 };
-
 struct SpinnerEntityDataConstView_locations : SpinnerEntityDataView_locationsImpl<true> {
     using Base = SpinnerEntityDataView_locationsImpl<true>;
     using Base::Base;
@@ -278,7 +283,6 @@ struct SpinnerEntityDataConstView_locations : SpinnerEntityDataView_locationsImp
 };
 static_assert(
     ioj::soa_storage_detail::validate_compact_view<SpinnerEntityDataConstView_locations>());
-
 struct SpinnerEntityDataView_locations : SpinnerEntityDataView_locationsImpl<false> {
     using Base = SpinnerEntityDataView_locationsImpl<false>;
     using Base::Base;
@@ -299,6 +303,9 @@ struct SpinnerEntityDataView_locations : SpinnerEntityDataView_locationsImpl<fal
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<SpinnerEntityDataView_locations>());
 
+/* **************************************** */
+// Compact views
+/* **************************************** */
 template <bool Const>
 struct SpinnerEntityDataViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = SpinnerEntityDataSchema;
@@ -345,13 +352,11 @@ struct SpinnerEntityDataViewImpl : ioj::soa_storage_detail::CompactViewBase<Cons
                 this->count_};
     }
 };
-
 struct SpinnerEntityDataConstView : SpinnerEntityDataViewImpl<true> {
     using Base = SpinnerEntityDataViewImpl<true>;
     using Base::Base;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<SpinnerEntityDataConstView>());
-
 struct SpinnerEntityDataView : SpinnerEntityDataViewImpl<false> {
     using Base = SpinnerEntityDataViewImpl<false>;
     using Base::Base;
@@ -388,6 +393,9 @@ struct SpinnerEntityDataView : SpinnerEntityDataViewImpl<false> {
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<SpinnerEntityDataView>());
 
+/* **************************************** */
+// Owner
+/* **************************************** */
 // Columns:
 // entity_ids: EntityId
 // locations_xs: float

@@ -29,6 +29,9 @@ struct LevelTurretSpawnEventsConstView_locations;
 struct LevelTurretSpawnEventsView_rotations;
 struct LevelTurretSpawnEventsConstView_rotations;
 
+/* **************************************** */
+// Layout
+/* **************************************** */
 struct LevelTurretSpawnEventsLayoutColumns {
     template <typename T>
     using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
@@ -55,10 +58,12 @@ struct LevelTurretSpawnEventsLayoutColumns {
     auto operator=(LevelTurretSpawnEventsLayoutColumns const&)
         -> LevelTurretSpawnEventsLayoutColumns& = delete;
 };
-
 struct LevelTurretSpawnEventsLayout
     : ioj::single_allocation_layout::Layout<LevelTurretSpawnEventsLayoutColumns> {};
 
+/* **************************************** */
+// Resolved views
+/* **************************************** */
 template <bool Const>
 struct LevelTurretSpawnEventsResolvedViewImpl {
     using size_type = std::uint32_t;
@@ -242,12 +247,10 @@ struct LevelTurretSpawnEventsResolvedViewImpl {
     Element<std::int32_t>* laser_damages_{};
     size_type count_{};
 };
-
 struct LevelTurretSpawnEventsResolvedConstView : LevelTurretSpawnEventsResolvedViewImpl<true> {
     using Base = LevelTurretSpawnEventsResolvedViewImpl<true>;
     using Base::Base;
 };
-
 struct LevelTurretSpawnEventsResolvedView : LevelTurretSpawnEventsResolvedViewImpl<false> {
     using Base = LevelTurretSpawnEventsResolvedViewImpl<false>;
     using Base::Base;
@@ -291,6 +294,9 @@ struct LevelTurretSpawnEventsResolvedView : LevelTurretSpawnEventsResolvedViewIm
     }
 };
 
+/* **************************************** */
+// locations compact views
+/* **************************************** */
 template <bool Const>
 struct LevelTurretSpawnEventsView_locationsImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = Vectors3fSchema;
@@ -321,7 +327,6 @@ struct LevelTurretSpawnEventsView_locationsImpl : ioj::soa_storage_detail::Compa
                 this->count_};
     }
 };
-
 struct LevelTurretSpawnEventsConstView_locations : LevelTurretSpawnEventsView_locationsImpl<true> {
     using Base = LevelTurretSpawnEventsView_locationsImpl<true>;
     using Base::Base;
@@ -333,7 +338,6 @@ struct LevelTurretSpawnEventsConstView_locations : LevelTurretSpawnEventsView_lo
 };
 static_assert(
     ioj::soa_storage_detail::validate_compact_view<LevelTurretSpawnEventsConstView_locations>());
-
 struct LevelTurretSpawnEventsView_locations : LevelTurretSpawnEventsView_locationsImpl<false> {
     using Base = LevelTurretSpawnEventsView_locationsImpl<false>;
     using Base::Base;
@@ -355,6 +359,9 @@ struct LevelTurretSpawnEventsView_locations : LevelTurretSpawnEventsView_locatio
 static_assert(
     ioj::soa_storage_detail::validate_compact_view<LevelTurretSpawnEventsView_locations>());
 
+/* **************************************** */
+// rotations compact views
+/* **************************************** */
 template <bool Const>
 struct LevelTurretSpawnEventsView_rotationsImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = Rotators3fSchema;
@@ -385,7 +392,6 @@ struct LevelTurretSpawnEventsView_rotationsImpl : ioj::soa_storage_detail::Compa
                 this->count_};
     }
 };
-
 struct LevelTurretSpawnEventsConstView_rotations : LevelTurretSpawnEventsView_rotationsImpl<true> {
     using Base = LevelTurretSpawnEventsView_rotationsImpl<true>;
     using Base::Base;
@@ -397,7 +403,6 @@ struct LevelTurretSpawnEventsConstView_rotations : LevelTurretSpawnEventsView_ro
 };
 static_assert(
     ioj::soa_storage_detail::validate_compact_view<LevelTurretSpawnEventsConstView_rotations>());
-
 struct LevelTurretSpawnEventsView_rotations : LevelTurretSpawnEventsView_rotationsImpl<false> {
     using Base = LevelTurretSpawnEventsView_rotationsImpl<false>;
     using Base::Base;
@@ -422,6 +427,9 @@ struct LevelTurretSpawnEventsView_rotations : LevelTurretSpawnEventsView_rotatio
 static_assert(
     ioj::soa_storage_detail::validate_compact_view<LevelTurretSpawnEventsView_rotations>());
 
+/* **************************************** */
+// Compact views
+/* **************************************** */
 template <bool Const>
 struct LevelTurretSpawnEventsViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = LevelTurretSpawnEventsSchema;
@@ -479,13 +487,11 @@ struct LevelTurretSpawnEventsViewImpl : ioj::soa_storage_detail::CompactViewBase
                 this->count_};
     }
 };
-
 struct LevelTurretSpawnEventsConstView : LevelTurretSpawnEventsViewImpl<true> {
     using Base = LevelTurretSpawnEventsViewImpl<true>;
     using Base::Base;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<LevelTurretSpawnEventsConstView>());
-
 struct LevelTurretSpawnEventsView : LevelTurretSpawnEventsViewImpl<false> {
     using Base = LevelTurretSpawnEventsViewImpl<false>;
     using Base::Base;
@@ -530,6 +536,9 @@ struct LevelTurretSpawnEventsView : LevelTurretSpawnEventsViewImpl<false> {
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<LevelTurretSpawnEventsView>());
 
+/* **************************************** */
+// Owner
+/* **************************************** */
 // Columns:
 // entity_indices: ioj::sim::LevelEntityIndex
 // locations_xs: float

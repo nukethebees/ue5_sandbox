@@ -22,6 +22,9 @@ struct RangeQueryMatchesConstView;
 struct RangeQueryMatchesView_directions;
 struct RangeQueryMatchesConstView_directions;
 
+/* **************************************** */
+// Layout
+/* **************************************** */
 struct RangeQueryMatchesLayoutColumns {
     template <typename T>
     using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
@@ -42,10 +45,12 @@ struct RangeQueryMatchesLayoutColumns {
     auto operator=(RangeQueryMatchesLayoutColumns const&)
         -> RangeQueryMatchesLayoutColumns& = delete;
 };
-
 struct RangeQueryMatchesLayout
     : ioj::single_allocation_layout::Layout<RangeQueryMatchesLayoutColumns> {};
 
+/* **************************************** */
+// Resolved views
+/* **************************************** */
 template <bool Const>
 struct RangeQueryMatchesResolvedViewImpl {
     using size_type = std::uint32_t;
@@ -153,12 +158,10 @@ struct RangeQueryMatchesResolvedViewImpl {
     Element<float>* directions_zs_{};
     size_type count_{};
 };
-
 struct RangeQueryMatchesResolvedConstView : RangeQueryMatchesResolvedViewImpl<true> {
     using Base = RangeQueryMatchesResolvedViewImpl<true>;
     using Base::Base;
 };
-
 struct RangeQueryMatchesResolvedView : RangeQueryMatchesResolvedViewImpl<false> {
     using Base = RangeQueryMatchesResolvedViewImpl<false>;
     using Base::Base;
@@ -186,6 +189,9 @@ struct RangeQueryMatchesResolvedView : RangeQueryMatchesResolvedViewImpl<false> 
     }
 };
 
+/* **************************************** */
+// directions compact views
+/* **************************************** */
 template <bool Const>
 struct RangeQueryMatchesView_directionsImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = Vectors3fSchema;
@@ -215,7 +221,6 @@ struct RangeQueryMatchesView_directionsImpl : ioj::soa_storage_detail::CompactVi
                 this->count_};
     }
 };
-
 struct RangeQueryMatchesConstView_directions : RangeQueryMatchesView_directionsImpl<true> {
     using Base = RangeQueryMatchesView_directionsImpl<true>;
     using Base::Base;
@@ -227,7 +232,6 @@ struct RangeQueryMatchesConstView_directions : RangeQueryMatchesView_directionsI
 };
 static_assert(
     ioj::soa_storage_detail::validate_compact_view<RangeQueryMatchesConstView_directions>());
-
 struct RangeQueryMatchesView_directions : RangeQueryMatchesView_directionsImpl<false> {
     using Base = RangeQueryMatchesView_directionsImpl<false>;
     using Base::Base;
@@ -248,6 +252,9 @@ struct RangeQueryMatchesView_directions : RangeQueryMatchesView_directionsImpl<f
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<RangeQueryMatchesView_directions>());
 
+/* **************************************** */
+// Compact views
+/* **************************************** */
 template <bool Const>
 struct RangeQueryMatchesViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = RangeQueryMatchesSchema;
@@ -286,13 +293,11 @@ struct RangeQueryMatchesViewImpl : ioj::soa_storage_detail::CompactViewBase<Cons
                 this->count_};
     }
 };
-
 struct RangeQueryMatchesConstView : RangeQueryMatchesViewImpl<true> {
     using Base = RangeQueryMatchesViewImpl<true>;
     using Base::Base;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<RangeQueryMatchesConstView>());
-
 struct RangeQueryMatchesView : RangeQueryMatchesViewImpl<false> {
     using Base = RangeQueryMatchesViewImpl<false>;
     using Base::Base;
@@ -321,6 +326,9 @@ struct RangeQueryMatchesView : RangeQueryMatchesViewImpl<false> {
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<RangeQueryMatchesView>());
 
+/* **************************************** */
+// Owner
+/* **************************************** */
 // Columns:
 // entities: EntityId
 // distances: float

@@ -618,6 +618,11 @@ auto emit_resolved_views(LoweringContext& context,
         }
     }
 
+    auto const path{context.path_text(views.member_prefix[row], ".")};
+    result
+        .append(section_header(context, path.empty() ? "Resolved views" : path + " resolved views"))
+        .new_lines(1);
+
     auto pointer_name = [&](SingleAllocationColumnId column) {
         return context.text(columns.flattened_identifier[columns.index(column)]) + "_";
     };
@@ -799,7 +804,7 @@ auto emit_resolved_views(LoweringContext& context,
     ir.set_record_template(record,
                            ir.template_declaration({ir.value_template_parameter(
                                ir.types.intern("bool"), ir.strings.intern("Const"))}));
-    result.add(record).new_lines(2);
+    result.add(record).new_lines(1);
     for (bool const is_const : {true, false}) {
         auto const name{is_const ? const_name : mutable_name};
         auto const base{implementation + (is_const ? "<true>" : "<false>")};
@@ -816,7 +821,7 @@ auto emit_resolved_views(LoweringContext& context,
         source.append(api.source).new_lines(1);
         auto const type{ir.record(ir.strings.intern(name), wrapper.build(), RecordKind::struct_)};
         ir.set_record_bases(type, {ir.types.intern(base)});
-        result.add(type).new_lines(2);
+        result.add(type).new_lines(1);
     }
     return result.build();
 }
@@ -1043,8 +1048,10 @@ auto emit_single_allocation_layout(LoweringContext& context, SingleAllocationMod
                         {ir.types.intern("ioj::single_allocation_layout::Layout<" +
                                          context.text(models.layout_name[row]) + "Columns>")});
     NodeListBuilder result{ir};
-    result.add(emit_single_allocation_column_group(context, models.schema[row]))
-        .new_lines(2)
+    result.append(section_header(context, "Layout"))
+        .new_lines(1)
+        .add(emit_single_allocation_column_group(context, models.schema[row]))
+        .new_lines(1)
         .add(layout);
     return result.build();
 }
@@ -1140,13 +1147,16 @@ auto emit_views(LoweringContext& context,
             result.append(emit_views(context, nested, source, declarations)).new_lines(2);
         }
     }
-    result.add(compact_view_node(context, view))
-        .new_lines(2)
+    auto const path{context.path_text(view_store.member_prefix[view_store_index], ".")};
+    result.append(section_header(context, path.empty() ? "Compact views" : path + " compact views"))
+        .new_lines(1)
+        .add(compact_view_node(context, view))
+        .new_lines(1)
         .add(wrapper(true))
         .new_lines(1)
         .append(view_validation_nodes(context,
                                       context.text(view_store.const_view_name[view_store_index])))
-        .new_lines(2)
+        .new_lines(1)
         .add(wrapper(false))
         .new_lines(1)
         .append(

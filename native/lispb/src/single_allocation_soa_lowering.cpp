@@ -26,6 +26,12 @@ auto lower_single_allocation(LoweringContext& context, DeclarationHandle schema)
     result.append(declarations.build()).new_lines(2);
     result.append(emit_single_allocation_layout(context, model)).new_lines(2);
     result.append(views).new_lines(2);
+    result.add(ir.block_comment("****************************************"))
+        .new_lines(1)
+        .add(ir.line_comment("Owner"))
+        .new_lines(1)
+        .add(ir.block_comment("****************************************"))
+        .new_lines(1);
     result.add(ir.line_comment("Columns:")).new_lines(1);
     for (auto const column :
          ir.lowering.items(ir.lowering.single_allocation_models

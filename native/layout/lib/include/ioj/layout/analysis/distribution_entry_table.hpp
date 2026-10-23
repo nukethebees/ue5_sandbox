@@ -22,6 +22,9 @@ struct DistributionEntryTableResolvedConstView;
 struct DistributionEntryTableView;
 struct DistributionEntryTableConstView;
 
+/* **************************************** */
+// Layout
+/* **************************************** */
 struct DistributionEntryTableLayoutColumns {
     template <typename T>
     using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
@@ -50,10 +53,12 @@ struct DistributionEntryTableLayoutColumns {
     auto operator=(DistributionEntryTableLayoutColumns const&)
         -> DistributionEntryTableLayoutColumns& = delete;
 };
-
 struct DistributionEntryTableLayout
     : ioj::single_allocation_layout::Layout<DistributionEntryTableLayoutColumns> {};
 
+/* **************************************** */
+// Resolved views
+/* **************************************** */
 template <bool Const>
 struct DistributionEntryTableResolvedViewImpl {
     using size_type = std::uint32_t;
@@ -208,12 +213,10 @@ struct DistributionEntryTableResolvedViewImpl {
     Element<std::optional<std::uint64_t>>* weighted_slack_bytes_{};
     size_type count_{};
 };
-
 struct DistributionEntryTableResolvedConstView : DistributionEntryTableResolvedViewImpl<true> {
     using Base = DistributionEntryTableResolvedViewImpl<true>;
     using Base::Base;
 };
-
 struct DistributionEntryTableResolvedView : DistributionEntryTableResolvedViewImpl<false> {
     using Base = DistributionEntryTableResolvedViewImpl<false>;
     using Base::Base;
@@ -236,6 +239,9 @@ struct DistributionEntryTableResolvedView : DistributionEntryTableResolvedViewIm
     }
 };
 
+/* **************************************** */
+// Compact views
+/* **************************************** */
 template <bool Const>
 struct DistributionEntryTableViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = DistributionEntryTableSchema;
@@ -282,13 +288,11 @@ struct DistributionEntryTableViewImpl : ioj::soa_storage_detail::CompactViewBase
                 this->count_};
     }
 };
-
 struct DistributionEntryTableConstView : DistributionEntryTableViewImpl<true> {
     using Base = DistributionEntryTableViewImpl<true>;
     using Base::Base;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<DistributionEntryTableConstView>());
-
 struct DistributionEntryTableView : DistributionEntryTableViewImpl<false> {
     using Base = DistributionEntryTableViewImpl<false>;
     using Base::Base;
@@ -312,6 +316,9 @@ struct DistributionEntryTableView : DistributionEntryTableViewImpl<false> {
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<DistributionEntryTableView>());
 
+/* **************************************** */
+// Owner
+/* **************************************** */
 // Columns:
 // component: std::optional<std::size_t>
 // value: std::optional<lispb::codegen::PackedIntegerValue>

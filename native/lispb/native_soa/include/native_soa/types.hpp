@@ -67,6 +67,9 @@ struct PointerAResolvedConstView;
 struct PointerAView;
 struct PointerAConstView;
 
+/* **************************************** */
+// Layout
+/* **************************************** */
 struct PointerALayoutColumns {
     template <typename T>
     using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
@@ -82,9 +85,11 @@ struct PointerALayoutColumns {
     PointerALayoutColumns(PointerALayoutColumns const&) = delete;
     auto operator=(PointerALayoutColumns const&) -> PointerALayoutColumns& = delete;
 };
-
 struct PointerALayout : ioj::single_allocation_layout::Layout<PointerALayoutColumns> {};
 
+/* **************************************** */
+// Resolved views
+/* **************************************** */
 template <bool Const>
 struct PointerAResolvedViewImpl {
     using size_type = std::uint32_t;
@@ -145,12 +150,10 @@ struct PointerAResolvedViewImpl {
     Element<PointerB*>* others_{};
     size_type count_{};
 };
-
 struct PointerAResolvedConstView : PointerAResolvedViewImpl<true> {
     using Base = PointerAResolvedViewImpl<true>;
     using Base::Base;
 };
-
 struct PointerAResolvedView : PointerAResolvedViewImpl<false> {
     using Base = PointerAResolvedViewImpl<false>;
     using Base::Base;
@@ -160,6 +163,9 @@ struct PointerAResolvedView : PointerAResolvedViewImpl<false> {
     }
 };
 
+/* **************************************** */
+// Compact views
+/* **************************************** */
 template <bool Const>
 struct PointerAViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = PointerASchema;
@@ -182,13 +188,11 @@ struct PointerAViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
         return {this->column(Layout::columns.OthersColumn).data(), this->count_};
     }
 };
-
 struct PointerAConstView : PointerAViewImpl<true> {
     using Base = PointerAViewImpl<true>;
     using Base::Base;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<PointerAConstView>());
-
 struct PointerAView : PointerAViewImpl<false> {
     using Base = PointerAViewImpl<false>;
     using Base::Base;
@@ -199,6 +203,9 @@ struct PointerAView : PointerAViewImpl<false> {
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<PointerAView>());
 
+/* **************************************** */
+// Owner
+/* **************************************** */
 // Columns:
 // others: PointerB*
 struct PointerA
@@ -315,6 +322,9 @@ struct PointerBResolvedConstView;
 struct PointerBView;
 struct PointerBConstView;
 
+/* **************************************** */
+// Layout
+/* **************************************** */
 struct PointerBLayoutColumns {
     template <typename T>
     using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
@@ -330,9 +340,11 @@ struct PointerBLayoutColumns {
     PointerBLayoutColumns(PointerBLayoutColumns const&) = delete;
     auto operator=(PointerBLayoutColumns const&) -> PointerBLayoutColumns& = delete;
 };
-
 struct PointerBLayout : ioj::single_allocation_layout::Layout<PointerBLayoutColumns> {};
 
+/* **************************************** */
+// Resolved views
+/* **************************************** */
 template <bool Const>
 struct PointerBResolvedViewImpl {
     using size_type = std::uint32_t;
@@ -393,12 +405,10 @@ struct PointerBResolvedViewImpl {
     Element<PointerA*>* others_{};
     size_type count_{};
 };
-
 struct PointerBResolvedConstView : PointerBResolvedViewImpl<true> {
     using Base = PointerBResolvedViewImpl<true>;
     using Base::Base;
 };
-
 struct PointerBResolvedView : PointerBResolvedViewImpl<false> {
     using Base = PointerBResolvedViewImpl<false>;
     using Base::Base;
@@ -408,6 +418,9 @@ struct PointerBResolvedView : PointerBResolvedViewImpl<false> {
     }
 };
 
+/* **************************************** */
+// Compact views
+/* **************************************** */
 template <bool Const>
 struct PointerBViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = PointerBSchema;
@@ -430,13 +443,11 @@ struct PointerBViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
         return {this->column(Layout::columns.OthersColumn).data(), this->count_};
     }
 };
-
 struct PointerBConstView : PointerBViewImpl<true> {
     using Base = PointerBViewImpl<true>;
     using Base::Base;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<PointerBConstView>());
-
 struct PointerBView : PointerBViewImpl<false> {
     using Base = PointerBViewImpl<false>;
     using Base::Base;
@@ -447,6 +458,9 @@ struct PointerBView : PointerBViewImpl<false> {
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<PointerBView>());
 
+/* **************************************** */
+// Owner
+/* **************************************** */
 // Columns:
 // others: PointerA*
 struct PointerB
@@ -563,6 +577,9 @@ struct ReverseBResolvedConstView;
 struct ReverseBView;
 struct ReverseBConstView;
 
+/* **************************************** */
+// Layout
+/* **************************************** */
 struct ReverseBLayoutColumns {
     template <typename T>
     using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
@@ -578,9 +595,11 @@ struct ReverseBLayoutColumns {
     ReverseBLayoutColumns(ReverseBLayoutColumns const&) = delete;
     auto operator=(ReverseBLayoutColumns const&) -> ReverseBLayoutColumns& = delete;
 };
-
 struct ReverseBLayout : ioj::single_allocation_layout::Layout<ReverseBLayoutColumns> {};
 
+/* **************************************** */
+// Resolved views
+/* **************************************** */
 template <bool Const>
 struct ReverseBResolvedViewImpl {
     using size_type = std::uint32_t;
@@ -641,12 +660,10 @@ struct ReverseBResolvedViewImpl {
     Element<ReverseA*>* others_{};
     size_type count_{};
 };
-
 struct ReverseBResolvedConstView : ReverseBResolvedViewImpl<true> {
     using Base = ReverseBResolvedViewImpl<true>;
     using Base::Base;
 };
-
 struct ReverseBResolvedView : ReverseBResolvedViewImpl<false> {
     using Base = ReverseBResolvedViewImpl<false>;
     using Base::Base;
@@ -656,6 +673,9 @@ struct ReverseBResolvedView : ReverseBResolvedViewImpl<false> {
     }
 };
 
+/* **************************************** */
+// Compact views
+/* **************************************** */
 template <bool Const>
 struct ReverseBViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = ReverseBSchema;
@@ -678,13 +698,11 @@ struct ReverseBViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
         return {this->column(Layout::columns.OthersColumn).data(), this->count_};
     }
 };
-
 struct ReverseBConstView : ReverseBViewImpl<true> {
     using Base = ReverseBViewImpl<true>;
     using Base::Base;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<ReverseBConstView>());
-
 struct ReverseBView : ReverseBViewImpl<false> {
     using Base = ReverseBViewImpl<false>;
     using Base::Base;
@@ -695,6 +713,9 @@ struct ReverseBView : ReverseBViewImpl<false> {
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<ReverseBView>());
 
+/* **************************************** */
+// Owner
+/* **************************************** */
 // Columns:
 // others: ReverseA*
 struct ReverseB
@@ -811,6 +832,9 @@ struct ReverseAResolvedConstView;
 struct ReverseAView;
 struct ReverseAConstView;
 
+/* **************************************** */
+// Layout
+/* **************************************** */
 struct ReverseALayoutColumns {
     template <typename T>
     using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
@@ -826,9 +850,11 @@ struct ReverseALayoutColumns {
     ReverseALayoutColumns(ReverseALayoutColumns const&) = delete;
     auto operator=(ReverseALayoutColumns const&) -> ReverseALayoutColumns& = delete;
 };
-
 struct ReverseALayout : ioj::single_allocation_layout::Layout<ReverseALayoutColumns> {};
 
+/* **************************************** */
+// Resolved views
+/* **************************************** */
 template <bool Const>
 struct ReverseAResolvedViewImpl {
     using size_type = std::uint32_t;
@@ -889,12 +915,10 @@ struct ReverseAResolvedViewImpl {
     Element<ReverseB*>* others_{};
     size_type count_{};
 };
-
 struct ReverseAResolvedConstView : ReverseAResolvedViewImpl<true> {
     using Base = ReverseAResolvedViewImpl<true>;
     using Base::Base;
 };
-
 struct ReverseAResolvedView : ReverseAResolvedViewImpl<false> {
     using Base = ReverseAResolvedViewImpl<false>;
     using Base::Base;
@@ -904,6 +928,9 @@ struct ReverseAResolvedView : ReverseAResolvedViewImpl<false> {
     }
 };
 
+/* **************************************** */
+// Compact views
+/* **************************************** */
 template <bool Const>
 struct ReverseAViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = ReverseASchema;
@@ -926,13 +953,11 @@ struct ReverseAViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
         return {this->column(Layout::columns.OthersColumn).data(), this->count_};
     }
 };
-
 struct ReverseAConstView : ReverseAViewImpl<true> {
     using Base = ReverseAViewImpl<true>;
     using Base::Base;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<ReverseAConstView>());
-
 struct ReverseAView : ReverseAViewImpl<false> {
     using Base = ReverseAViewImpl<false>;
     using Base::Base;
@@ -943,6 +968,9 @@ struct ReverseAView : ReverseAViewImpl<false> {
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<ReverseAView>());
 
+/* **************************************** */
+// Owner
+/* **************************************** */
 // Columns:
 // others: ReverseB*
 struct ReverseA
@@ -1063,6 +1091,9 @@ struct MixedRowsResolvedConstView;
 struct MixedRowsView;
 struct MixedRowsConstView;
 
+/* **************************************** */
+// Layout
+/* **************************************** */
 struct MixedRowsLayoutColumns {
     template <typename T>
     using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
@@ -1078,9 +1109,11 @@ struct MixedRowsLayoutColumns {
     MixedRowsLayoutColumns(MixedRowsLayoutColumns const&) = delete;
     auto operator=(MixedRowsLayoutColumns const&) -> MixedRowsLayoutColumns& = delete;
 };
-
 struct MixedRowsLayout : ioj::single_allocation_layout::Layout<MixedRowsLayoutColumns> {};
 
+/* **************************************** */
+// Resolved views
+/* **************************************** */
 template <bool Const>
 struct MixedRowsResolvedViewImpl {
     using size_type = std::uint32_t;
@@ -1141,12 +1174,10 @@ struct MixedRowsResolvedViewImpl {
     Element<MixedRecord*>* records_{};
     size_type count_{};
 };
-
 struct MixedRowsResolvedConstView : MixedRowsResolvedViewImpl<true> {
     using Base = MixedRowsResolvedViewImpl<true>;
     using Base::Base;
 };
-
 struct MixedRowsResolvedView : MixedRowsResolvedViewImpl<false> {
     using Base = MixedRowsResolvedViewImpl<false>;
     using Base::Base;
@@ -1156,6 +1187,9 @@ struct MixedRowsResolvedView : MixedRowsResolvedViewImpl<false> {
     }
 };
 
+/* **************************************** */
+// Compact views
+/* **************************************** */
 template <bool Const>
 struct MixedRowsViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = MixedRowsSchema;
@@ -1178,13 +1212,11 @@ struct MixedRowsViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
         return {this->column(Layout::columns.RecordsColumn).data(), this->count_};
     }
 };
-
 struct MixedRowsConstView : MixedRowsViewImpl<true> {
     using Base = MixedRowsViewImpl<true>;
     using Base::Base;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<MixedRowsConstView>());
-
 struct MixedRowsView : MixedRowsViewImpl<false> {
     using Base = MixedRowsViewImpl<false>;
     using Base::Base;
@@ -1195,6 +1227,9 @@ struct MixedRowsView : MixedRowsViewImpl<false> {
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<MixedRowsView>());
 
+/* **************************************** */
+// Owner
+/* **************************************** */
 // Columns:
 // records: MixedRecord*
 struct MixedRows
@@ -1321,6 +1356,9 @@ struct PairRowsResolvedConstView;
 struct PairRowsView;
 struct PairRowsConstView;
 
+/* **************************************** */
+// Layout
+/* **************************************** */
 struct PairRowsLayoutColumns {
     template <typename T>
     using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
@@ -1338,9 +1376,11 @@ struct PairRowsLayoutColumns {
     PairRowsLayoutColumns(PairRowsLayoutColumns const&) = delete;
     auto operator=(PairRowsLayoutColumns const&) -> PairRowsLayoutColumns& = delete;
 };
-
 struct PairRowsLayout : ioj::single_allocation_layout::Layout<PairRowsLayoutColumns> {};
 
+/* **************************************** */
+// Resolved views
+/* **************************************** */
 template <bool Const>
 struct PairRowsResolvedViewImpl {
     using size_type = std::uint32_t;
@@ -1409,12 +1449,10 @@ struct PairRowsResolvedViewImpl {
     Element<Node*>* pointers_{};
     size_type count_{};
 };
-
 struct PairRowsResolvedConstView : PairRowsResolvedViewImpl<true> {
     using Base = PairRowsResolvedViewImpl<true>;
     using Base::Base;
 };
-
 struct PairRowsResolvedView : PairRowsResolvedViewImpl<false> {
     using Base = PairRowsResolvedViewImpl<false>;
     using Base::Base;
@@ -1425,6 +1463,9 @@ struct PairRowsResolvedView : PairRowsResolvedViewImpl<false> {
     }
 };
 
+/* **************************************** */
+// Compact views
+/* **************************************** */
 template <bool Const>
 struct PairRowsViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = PairRowsSchema;
@@ -1451,13 +1492,11 @@ struct PairRowsViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
                 this->count_};
     }
 };
-
 struct PairRowsConstView : PairRowsViewImpl<true> {
     using Base = PairRowsViewImpl<true>;
     using Base::Base;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<PairRowsConstView>());
-
 struct PairRowsView : PairRowsViewImpl<false> {
     using Base = PairRowsViewImpl<false>;
     using Base::Base;
@@ -1469,6 +1508,9 @@ struct PairRowsView : PairRowsViewImpl<false> {
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<PairRowsView>());
 
+/* **************************************** */
+// Owner
+/* **************************************** */
 // Columns:
 // pairs: Pair
 // pointers: Node*
@@ -1593,6 +1635,9 @@ struct VectorsResolvedConstView;
 struct VectorsView;
 struct VectorsConstView;
 
+/* **************************************** */
+// Layout
+/* **************************************** */
 struct VectorsLayoutColumns {
     template <typename T>
     using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
@@ -1612,9 +1657,11 @@ struct VectorsLayoutColumns {
     VectorsLayoutColumns(VectorsLayoutColumns const&) = delete;
     auto operator=(VectorsLayoutColumns const&) -> VectorsLayoutColumns& = delete;
 };
-
 struct VectorsLayout : ioj::single_allocation_layout::Layout<VectorsLayoutColumns> {};
 
+/* **************************************** */
+// Resolved views
+/* **************************************** */
 template <bool Const>
 struct VectorsResolvedViewImpl {
     using size_type = std::uint32_t;
@@ -1695,12 +1742,10 @@ struct VectorsResolvedViewImpl {
     Element<float>* zs_{};
     size_type count_{};
 };
-
 struct VectorsResolvedConstView : VectorsResolvedViewImpl<true> {
     using Base = VectorsResolvedViewImpl<true>;
     using Base::Base;
 };
-
 struct VectorsResolvedView : VectorsResolvedViewImpl<false> {
     using Base = VectorsResolvedViewImpl<false>;
     using Base::Base;
@@ -1712,6 +1757,9 @@ struct VectorsResolvedView : VectorsResolvedViewImpl<false> {
     }
 };
 
+/* **************************************** */
+// Compact views
+/* **************************************** */
 template <bool Const>
 struct VectorsViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = VectorsSchema;
@@ -1741,13 +1789,11 @@ struct VectorsViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
                 this->count_};
     }
 };
-
 struct VectorsConstView : VectorsViewImpl<true> {
     using Base = VectorsViewImpl<true>;
     using Base::Base;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<VectorsConstView>());
-
 struct VectorsView : VectorsViewImpl<false> {
     using Base = VectorsViewImpl<false>;
     using Base::Base;
@@ -1760,6 +1806,9 @@ struct VectorsView : VectorsViewImpl<false> {
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<VectorsView>());
 
+/* **************************************** */
+// Owner
+/* **************************************** */
 // Columns:
 // xs: float
 // ys: float
@@ -1896,6 +1945,9 @@ struct SingleRowsConstView_positions;
 struct SingleRowsView_velocities;
 struct SingleRowsConstView_velocities;
 
+/* **************************************** */
+// Layout
+/* **************************************** */
 struct SingleRowsLayoutColumns {
     template <typename T>
     using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
@@ -1915,9 +1967,11 @@ struct SingleRowsLayoutColumns {
     SingleRowsLayoutColumns(SingleRowsLayoutColumns const&) = delete;
     auto operator=(SingleRowsLayoutColumns const&) -> SingleRowsLayoutColumns& = delete;
 };
-
 struct SingleRowsLayout : ioj::single_allocation_layout::Layout<SingleRowsLayoutColumns> {};
 
+/* **************************************** */
+// Resolved views
+/* **************************************** */
 template <bool Const>
 struct SingleRowsResolvedViewImpl {
     using size_type = std::uint32_t;
@@ -2061,12 +2115,10 @@ struct SingleRowsResolvedViewImpl {
     Element<float>* velocities_zs_{};
     size_type count_{};
 };
-
 struct SingleRowsResolvedConstView : SingleRowsResolvedViewImpl<true> {
     using Base = SingleRowsResolvedViewImpl<true>;
     using Base::Base;
 };
-
 struct SingleRowsResolvedView : SingleRowsResolvedViewImpl<false> {
     using Base = SingleRowsResolvedViewImpl<false>;
     using Base::Base;
@@ -2089,6 +2141,9 @@ struct SingleRowsResolvedView : SingleRowsResolvedViewImpl<false> {
     }
 };
 
+/* **************************************** */
+// positions compact views
+/* **************************************** */
 template <bool Const>
 struct SingleRowsView_positionsImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = VectorsSchema;
@@ -2119,13 +2174,11 @@ struct SingleRowsView_positionsImpl : ioj::soa_storage_detail::CompactViewBase<C
                 this->count_};
     }
 };
-
 struct SingleRowsConstView_positions : SingleRowsView_positionsImpl<true> {
     using Base = SingleRowsView_positionsImpl<true>;
     using Base::Base;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<SingleRowsConstView_positions>());
-
 struct SingleRowsView_positions : SingleRowsView_positionsImpl<false> {
     using Base = SingleRowsView_positionsImpl<false>;
     using Base::Base;
@@ -2138,6 +2191,9 @@ struct SingleRowsView_positions : SingleRowsView_positionsImpl<false> {
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<SingleRowsView_positions>());
 
+/* **************************************** */
+// velocities compact views
+/* **************************************** */
 template <bool Const>
 struct SingleRowsView_velocitiesImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = VectorsSchema;
@@ -2168,13 +2224,11 @@ struct SingleRowsView_velocitiesImpl : ioj::soa_storage_detail::CompactViewBase<
                 this->count_};
     }
 };
-
 struct SingleRowsConstView_velocities : SingleRowsView_velocitiesImpl<true> {
     using Base = SingleRowsView_velocitiesImpl<true>;
     using Base::Base;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<SingleRowsConstView_velocities>());
-
 struct SingleRowsView_velocities : SingleRowsView_velocitiesImpl<false> {
     using Base = SingleRowsView_velocitiesImpl<false>;
     using Base::Base;
@@ -2187,6 +2241,9 @@ struct SingleRowsView_velocities : SingleRowsView_velocitiesImpl<false> {
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<SingleRowsView_velocities>());
 
+/* **************************************** */
+// Compact views
+/* **************************************** */
 template <bool Const>
 struct SingleRowsViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = SingleRowsSchema;
@@ -2232,13 +2289,11 @@ struct SingleRowsViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
                 this->count_};
     }
 };
-
 struct SingleRowsConstView : SingleRowsViewImpl<true> {
     using Base = SingleRowsViewImpl<true>;
     using Base::Base;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<SingleRowsConstView>());
-
 struct SingleRowsView : SingleRowsViewImpl<false> {
     using Base = SingleRowsViewImpl<false>;
     using Base::Base;
@@ -2262,6 +2317,9 @@ struct SingleRowsView : SingleRowsViewImpl<false> {
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<SingleRowsView>());
 
+/* **************************************** */
+// Owner
+/* **************************************** */
 // Columns:
 // values: std::int32_t
 // positions_xs: float
@@ -2460,6 +2518,9 @@ struct SingleAlignmentRowsConstView;
 struct SingleAlignmentRowsView_nested;
 struct SingleAlignmentRowsConstView_nested;
 
+/* **************************************** */
+// Layout
+/* **************************************** */
 struct SingleAlignmentRowsLayoutColumns {
     template <typename T>
     using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
@@ -2486,10 +2547,12 @@ struct SingleAlignmentRowsLayoutColumns {
     auto operator=(SingleAlignmentRowsLayoutColumns const&)
         -> SingleAlignmentRowsLayoutColumns& = delete;
 };
-
 struct SingleAlignmentRowsLayout
     : ioj::single_allocation_layout::Layout<SingleAlignmentRowsLayoutColumns> {};
 
+/* **************************************** */
+// Resolved views
+/* **************************************** */
 template <bool Const>
 struct SingleAlignmentRowsResolvedViewImpl {
     using size_type = std::uint32_t;
@@ -2636,12 +2699,10 @@ struct SingleAlignmentRowsResolvedViewImpl {
     Element<Aligned256>* aligned256_{};
     size_type count_{};
 };
-
 struct SingleAlignmentRowsResolvedConstView : SingleAlignmentRowsResolvedViewImpl<true> {
     using Base = SingleAlignmentRowsResolvedViewImpl<true>;
     using Base::Base;
 };
-
 struct SingleAlignmentRowsResolvedView : SingleAlignmentRowsResolvedViewImpl<false> {
     using Base = SingleAlignmentRowsResolvedViewImpl<false>;
     using Base::Base;
@@ -2666,6 +2727,9 @@ struct SingleAlignmentRowsResolvedView : SingleAlignmentRowsResolvedViewImpl<fal
     }
 };
 
+/* **************************************** */
+// nested compact views
+/* **************************************** */
 template <bool Const>
 struct SingleAlignmentRowsView_nestedImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = VectorsSchema;
@@ -2696,14 +2760,12 @@ struct SingleAlignmentRowsView_nestedImpl : ioj::soa_storage_detail::CompactView
                 this->count_};
     }
 };
-
 struct SingleAlignmentRowsConstView_nested : SingleAlignmentRowsView_nestedImpl<true> {
     using Base = SingleAlignmentRowsView_nestedImpl<true>;
     using Base::Base;
 };
 static_assert(
     ioj::soa_storage_detail::validate_compact_view<SingleAlignmentRowsConstView_nested>());
-
 struct SingleAlignmentRowsView_nested : SingleAlignmentRowsView_nestedImpl<false> {
     using Base = SingleAlignmentRowsView_nestedImpl<false>;
     using Base::Base;
@@ -2716,6 +2778,9 @@ struct SingleAlignmentRowsView_nested : SingleAlignmentRowsView_nestedImpl<false
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<SingleAlignmentRowsView_nested>());
 
+/* **************************************** */
+// Compact views
+/* **************************************** */
 template <bool Const>
 struct SingleAlignmentRowsViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = SingleAlignmentRowsSchema;
@@ -2763,13 +2828,11 @@ struct SingleAlignmentRowsViewImpl : ioj::soa_storage_detail::CompactViewBase<Co
                 this->count_};
     }
 };
-
 struct SingleAlignmentRowsConstView : SingleAlignmentRowsViewImpl<true> {
     using Base = SingleAlignmentRowsViewImpl<true>;
     using Base::Base;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<SingleAlignmentRowsConstView>());
-
 struct SingleAlignmentRowsView : SingleAlignmentRowsViewImpl<false> {
     using Base = SingleAlignmentRowsViewImpl<false>;
     using Base::Base;
@@ -2795,6 +2858,9 @@ struct SingleAlignmentRowsView : SingleAlignmentRowsViewImpl<false> {
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<SingleAlignmentRowsView>());
 
+/* **************************************** */
+// Owner
+/* **************************************** */
 // Columns:
 // bytes: std::uint8_t
 // odd: OddBytes
@@ -3078,6 +3144,9 @@ struct ApiConstView;
 struct ApiView_positions;
 struct ApiConstView_positions;
 
+/* **************************************** */
+// Layout
+/* **************************************** */
 struct ApiOwnerLayoutColumns {
     template <typename T>
     using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
@@ -3097,9 +3166,11 @@ struct ApiOwnerLayoutColumns {
     ApiOwnerLayoutColumns(ApiOwnerLayoutColumns const&) = delete;
     auto operator=(ApiOwnerLayoutColumns const&) -> ApiOwnerLayoutColumns& = delete;
 };
-
 struct ApiOwnerLayout : ioj::single_allocation_layout::Layout<ApiOwnerLayoutColumns> {};
 
+/* **************************************** */
+// positions resolved views
+/* **************************************** */
 template <bool Const>
 struct ApiResolvedView_positionsImpl {
     using size_type = std::uint32_t;
@@ -3172,7 +3243,6 @@ struct ApiResolvedView_positionsImpl {
     Element<float>* positions_ys_{};
     size_type count_{};
 };
-
 struct ApiResolvedConstView_positions : ApiResolvedView_positionsImpl<true> {
     using Base = ApiResolvedView_positionsImpl<true>;
     using Base::Base;
@@ -3183,7 +3253,6 @@ struct ApiResolvedConstView_positions : ApiResolvedView_positionsImpl<true> {
         return equivalent_type{xs()[index], ys()[index]};
     }
 };
-
 struct ApiResolvedView_positions : ApiResolvedView_positionsImpl<false> {
     using Base = ApiResolvedView_positionsImpl<false>;
     using Base::Base;
@@ -3208,6 +3277,9 @@ struct ApiResolvedView_positions : ApiResolvedView_positionsImpl<false> {
     }
 };
 
+/* **************************************** */
+// Resolved views
+/* **************************************** */
 template <bool Const>
 struct ApiResolvedViewImpl {
     using size_type = std::uint32_t;
@@ -3302,7 +3374,6 @@ struct ApiResolvedViewImpl {
     Element<float>* positions_ys_{};
     size_type count_{};
 };
-
 struct ApiResolvedConstView : ApiResolvedViewImpl<true> {
     using Base = ApiResolvedViewImpl<true>;
     using Base::Base;
@@ -3310,7 +3381,6 @@ struct ApiResolvedConstView : ApiResolvedViewImpl<true> {
     [[nodiscard]] constexpr int schema_version() const { return 7; }
     float first_x() const;
 };
-
 struct ApiResolvedView : ApiResolvedViewImpl<false> {
     using Base = ApiResolvedViewImpl<false>;
     using Base::Base;
@@ -3341,6 +3411,9 @@ struct ApiResolvedView : ApiResolvedViewImpl<false> {
     void assign_first(float value) { this->values()[0] = value; }
 };
 
+/* **************************************** */
+// positions compact views
+/* **************************************** */
 template <bool Const>
 struct ApiView_positionsImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = ApiCoordinatesSchema;
@@ -3367,7 +3440,6 @@ struct ApiView_positionsImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
                 this->count_};
     }
 };
-
 struct ApiConstView_positions : ApiView_positionsImpl<true> {
     using Base = ApiView_positionsImpl<true>;
     using Base::Base;
@@ -3379,7 +3451,6 @@ struct ApiConstView_positions : ApiView_positionsImpl<true> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<ApiConstView_positions>());
-
 struct ApiView_positions : ApiView_positionsImpl<false> {
     using Base = ApiView_positionsImpl<false>;
     using Base::Base;
@@ -3405,6 +3476,9 @@ struct ApiView_positions : ApiView_positionsImpl<false> {
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<ApiView_positions>());
 
+/* **************************************** */
+// Compact views
+/* **************************************** */
 template <bool Const>
 struct ApiViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = ApiOwnerSchema;
@@ -3439,7 +3513,6 @@ struct ApiViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
                 this->count_};
     }
 };
-
 struct NATIVE_SOA_FIXTURE_API ApiConstView : ApiViewImpl<true> {
     using Base = ApiViewImpl<true>;
     using Base::Base;
@@ -3448,7 +3521,6 @@ struct NATIVE_SOA_FIXTURE_API ApiConstView : ApiViewImpl<true> {
     float first_x() const;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<ApiConstView>());
-
 struct NATIVE_SOA_FIXTURE_API ApiView : ApiViewImpl<false> {
     using Base = ApiViewImpl<false>;
     using Base::Base;
@@ -3480,6 +3552,9 @@ struct NATIVE_SOA_FIXTURE_API ApiView : ApiViewImpl<false> {
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<ApiView>());
 
+/* **************************************** */
+// Owner
+/* **************************************** */
 // Columns:
 // values: float
 // masks: ApiMask
@@ -3655,6 +3730,9 @@ struct EquivalentOwnerResolvedConstView;
 struct EquivalentOwnerView;
 struct EquivalentOwnerConstView;
 
+/* **************************************** */
+// Layout
+/* **************************************** */
 struct EquivalentOwnerLayoutColumns {
     template <typename T>
     using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
@@ -3672,10 +3750,12 @@ struct EquivalentOwnerLayoutColumns {
     EquivalentOwnerLayoutColumns(EquivalentOwnerLayoutColumns const&) = delete;
     auto operator=(EquivalentOwnerLayoutColumns const&) -> EquivalentOwnerLayoutColumns& = delete;
 };
-
 struct EquivalentOwnerLayout
     : ioj::single_allocation_layout::Layout<EquivalentOwnerLayoutColumns> {};
 
+/* **************************************** */
+// Resolved views
+/* **************************************** */
 template <bool Const>
 struct EquivalentOwnerResolvedViewImpl {
     using size_type = std::uint32_t;
@@ -3743,7 +3823,6 @@ struct EquivalentOwnerResolvedViewImpl {
     Element<float>* ys_{};
     size_type count_{};
 };
-
 struct EquivalentOwnerResolvedConstView : EquivalentOwnerResolvedViewImpl<true> {
     using Base = EquivalentOwnerResolvedViewImpl<true>;
     using Base::Base;
@@ -3753,7 +3832,6 @@ struct EquivalentOwnerResolvedConstView : EquivalentOwnerResolvedViewImpl<true> 
         return equivalent_type{xs()[index], ys()[index]};
     }
 };
-
 struct EquivalentOwnerResolvedView : EquivalentOwnerResolvedViewImpl<false> {
     using Base = EquivalentOwnerResolvedViewImpl<false>;
     using Base::Base;
@@ -3770,6 +3848,9 @@ struct EquivalentOwnerResolvedView : EquivalentOwnerResolvedViewImpl<false> {
     }
 };
 
+/* **************************************** */
+// Compact views
+/* **************************************** */
 template <bool Const>
 struct EquivalentOwnerViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = EquivalentOwnerSchema;
@@ -3796,7 +3877,6 @@ struct EquivalentOwnerViewImpl : ioj::soa_storage_detail::CompactViewBase<Const>
                 this->count_};
     }
 };
-
 struct EquivalentOwnerConstView : EquivalentOwnerViewImpl<true> {
     using Base = EquivalentOwnerViewImpl<true>;
     using Base::Base;
@@ -3807,7 +3887,6 @@ struct EquivalentOwnerConstView : EquivalentOwnerViewImpl<true> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<EquivalentOwnerConstView>());
-
 struct EquivalentOwnerView : EquivalentOwnerViewImpl<false> {
     using Base = EquivalentOwnerViewImpl<false>;
     using Base::Base;
@@ -3825,6 +3904,9 @@ struct EquivalentOwnerView : EquivalentOwnerViewImpl<false> {
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<EquivalentOwnerView>());
 
+/* **************************************** */
+// Owner
+/* **************************************** */
 // Columns:
 // xs: float
 // ys: float
@@ -3962,6 +4044,9 @@ struct AccessorOwnerResolvedConstView;
 struct AccessorOwnerView;
 struct AccessorOwnerConstView;
 
+/* **************************************** */
+// Layout
+/* **************************************** */
 struct AccessorOwnerLayoutColumns {
     template <typename T>
     using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
@@ -3981,9 +4066,11 @@ struct AccessorOwnerLayoutColumns {
     AccessorOwnerLayoutColumns(AccessorOwnerLayoutColumns const&) = delete;
     auto operator=(AccessorOwnerLayoutColumns const&) -> AccessorOwnerLayoutColumns& = delete;
 };
-
 struct AccessorOwnerLayout : ioj::single_allocation_layout::Layout<AccessorOwnerLayoutColumns> {};
 
+/* **************************************** */
+// Resolved views
+/* **************************************** */
 template <bool Const>
 struct AccessorOwnerResolvedViewImpl {
     using size_type = std::uint32_t;
@@ -4065,7 +4152,6 @@ struct AccessorOwnerResolvedViewImpl {
     Element<float>* depth_{};
     size_type count_{};
 };
-
 struct AccessorOwnerResolvedConstView : AccessorOwnerResolvedViewImpl<true> {
     using Base = AccessorOwnerResolvedViewImpl<true>;
     using Base::Base;
@@ -4075,7 +4161,6 @@ struct AccessorOwnerResolvedConstView : AccessorOwnerResolvedViewImpl<true> {
         return equivalent_type{horizontal()[index], vertical()[index], depth()[index]};
     }
 };
-
 struct AccessorOwnerResolvedView : AccessorOwnerResolvedViewImpl<false> {
     using Base = AccessorOwnerResolvedViewImpl<false>;
     using Base::Base;
@@ -4098,6 +4183,9 @@ struct AccessorOwnerResolvedView : AccessorOwnerResolvedViewImpl<false> {
     }
 };
 
+/* **************************************** */
+// Compact views
+/* **************************************** */
 template <bool Const>
 struct AccessorOwnerViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = AccessorOwnerSchema;
@@ -4127,7 +4215,6 @@ struct AccessorOwnerViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
                 this->count_};
     }
 };
-
 struct AccessorOwnerConstView : AccessorOwnerViewImpl<true> {
     using Base = AccessorOwnerViewImpl<true>;
     using Base::Base;
@@ -4138,7 +4225,6 @@ struct AccessorOwnerConstView : AccessorOwnerViewImpl<true> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<AccessorOwnerConstView>());
-
 struct AccessorOwnerView : AccessorOwnerViewImpl<false> {
     using Base = AccessorOwnerViewImpl<false>;
     using Base::Base;
@@ -4162,6 +4248,9 @@ struct AccessorOwnerView : AccessorOwnerViewImpl<false> {
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<AccessorOwnerView>());
 
+/* **************************************** */
+// Owner
+/* **************************************** */
 // Columns:
 // horizontal: float
 // vertical: float

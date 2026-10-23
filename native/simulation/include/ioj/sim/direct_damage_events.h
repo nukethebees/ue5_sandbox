@@ -19,6 +19,9 @@ struct DirectDamageEventsResolvedConstView;
 struct DirectDamageEventsView;
 struct DirectDamageEventsConstView;
 
+/* **************************************** */
+// Layout
+/* **************************************** */
 struct DirectDamageEventsLayoutColumns {
     template <typename T>
     using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
@@ -39,10 +42,12 @@ struct DirectDamageEventsLayoutColumns {
     auto operator=(DirectDamageEventsLayoutColumns const&)
         -> DirectDamageEventsLayoutColumns& = delete;
 };
-
 struct DirectDamageEventsLayout
     : ioj::single_allocation_layout::Layout<DirectDamageEventsLayoutColumns> {};
 
+/* **************************************** */
+// Resolved views
+/* **************************************** */
 template <bool Const>
 struct DirectDamageEventsResolvedViewImpl {
     using size_type = std::uint32_t;
@@ -130,12 +135,10 @@ struct DirectDamageEventsResolvedViewImpl {
     Element<EntityId>* instigators_{};
     size_type count_{};
 };
-
 struct DirectDamageEventsResolvedConstView : DirectDamageEventsResolvedViewImpl<true> {
     using Base = DirectDamageEventsResolvedViewImpl<true>;
     using Base::Base;
 };
-
 struct DirectDamageEventsResolvedView : DirectDamageEventsResolvedViewImpl<false> {
     using Base = DirectDamageEventsResolvedViewImpl<false>;
     using Base::Base;
@@ -150,6 +153,9 @@ struct DirectDamageEventsResolvedView : DirectDamageEventsResolvedViewImpl<false
     }
 };
 
+/* **************************************** */
+// Compact views
+/* **************************************** */
 template <bool Const>
 struct DirectDamageEventsViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = DirectDamageEventsSchema;
@@ -179,13 +185,11 @@ struct DirectDamageEventsViewImpl : ioj::soa_storage_detail::CompactViewBase<Con
                 this->count_};
     }
 };
-
 struct DirectDamageEventsConstView : DirectDamageEventsViewImpl<true> {
     using Base = DirectDamageEventsViewImpl<true>;
     using Base::Base;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<DirectDamageEventsConstView>());
-
 struct DirectDamageEventsView : DirectDamageEventsViewImpl<false> {
     using Base = DirectDamageEventsViewImpl<false>;
     using Base::Base;
@@ -201,6 +205,9 @@ struct DirectDamageEventsView : DirectDamageEventsViewImpl<false> {
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<DirectDamageEventsView>());
 
+/* **************************************** */
+// Owner
+/* **************************************** */
 // Columns:
 // damaged_entities: EntityId
 // damage_amounts: std::int32_t

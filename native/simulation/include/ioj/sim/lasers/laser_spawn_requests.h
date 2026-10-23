@@ -30,6 +30,9 @@ struct LaserSpawnRequestsConstView_rotations;
 struct LaserSpawnRequestsView_base_velocities;
 struct LaserSpawnRequestsConstView_base_velocities;
 
+/* **************************************** */
+// Layout
+/* **************************************** */
 struct LaserSpawnRequestsLayoutColumns {
     template <typename T>
     using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
@@ -60,10 +63,12 @@ struct LaserSpawnRequestsLayoutColumns {
     auto operator=(LaserSpawnRequestsLayoutColumns const&)
         -> LaserSpawnRequestsLayoutColumns& = delete;
 };
-
 struct LaserSpawnRequestsLayout
     : ioj::single_allocation_layout::Layout<LaserSpawnRequestsLayoutColumns> {};
 
+/* **************************************** */
+// Resolved views
+/* **************************************** */
 template <bool Const>
 struct LaserSpawnRequestsResolvedViewImpl {
     using size_type = std::uint32_t;
@@ -292,12 +297,10 @@ struct LaserSpawnRequestsResolvedViewImpl {
     Element<ioj::sim::LaserSource>* sources_{};
     size_type count_{};
 };
-
 struct LaserSpawnRequestsResolvedConstView : LaserSpawnRequestsResolvedViewImpl<true> {
     using Base = LaserSpawnRequestsResolvedViewImpl<true>;
     using Base::Base;
 };
-
 struct LaserSpawnRequestsResolvedView : LaserSpawnRequestsResolvedViewImpl<false> {
     using Base = LaserSpawnRequestsResolvedViewImpl<false>;
     using Base::Base;
@@ -353,6 +356,9 @@ struct LaserSpawnRequestsResolvedView : LaserSpawnRequestsResolvedViewImpl<false
     }
 };
 
+/* **************************************** */
+// locations compact views
+/* **************************************** */
 template <bool Const>
 struct LaserSpawnRequestsView_locationsImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = Vectors3fSchema;
@@ -382,7 +388,6 @@ struct LaserSpawnRequestsView_locationsImpl : ioj::soa_storage_detail::CompactVi
                 this->count_};
     }
 };
-
 struct LaserSpawnRequestsConstView_locations : LaserSpawnRequestsView_locationsImpl<true> {
     using Base = LaserSpawnRequestsView_locationsImpl<true>;
     using Base::Base;
@@ -394,7 +399,6 @@ struct LaserSpawnRequestsConstView_locations : LaserSpawnRequestsView_locationsI
 };
 static_assert(
     ioj::soa_storage_detail::validate_compact_view<LaserSpawnRequestsConstView_locations>());
-
 struct LaserSpawnRequestsView_locations : LaserSpawnRequestsView_locationsImpl<false> {
     using Base = LaserSpawnRequestsView_locationsImpl<false>;
     using Base::Base;
@@ -415,6 +419,9 @@ struct LaserSpawnRequestsView_locations : LaserSpawnRequestsView_locationsImpl<f
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<LaserSpawnRequestsView_locations>());
 
+/* **************************************** */
+// rotations compact views
+/* **************************************** */
 template <bool Const>
 struct LaserSpawnRequestsView_rotationsImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = Rotators3fSchema;
@@ -444,7 +451,6 @@ struct LaserSpawnRequestsView_rotationsImpl : ioj::soa_storage_detail::CompactVi
                 this->count_};
     }
 };
-
 struct LaserSpawnRequestsConstView_rotations : LaserSpawnRequestsView_rotationsImpl<true> {
     using Base = LaserSpawnRequestsView_rotationsImpl<true>;
     using Base::Base;
@@ -456,7 +462,6 @@ struct LaserSpawnRequestsConstView_rotations : LaserSpawnRequestsView_rotationsI
 };
 static_assert(
     ioj::soa_storage_detail::validate_compact_view<LaserSpawnRequestsConstView_rotations>());
-
 struct LaserSpawnRequestsView_rotations : LaserSpawnRequestsView_rotationsImpl<false> {
     using Base = LaserSpawnRequestsView_rotationsImpl<false>;
     using Base::Base;
@@ -480,6 +485,9 @@ struct LaserSpawnRequestsView_rotations : LaserSpawnRequestsView_rotationsImpl<f
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<LaserSpawnRequestsView_rotations>());
 
+/* **************************************** */
+// base_velocities compact views
+/* **************************************** */
 template <bool Const>
 struct LaserSpawnRequestsView_base_velocitiesImpl
     : ioj::soa_storage_detail::CompactViewBase<Const> {
@@ -511,7 +519,6 @@ struct LaserSpawnRequestsView_base_velocitiesImpl
                 this->count_};
     }
 };
-
 struct LaserSpawnRequestsConstView_base_velocities
     : LaserSpawnRequestsView_base_velocitiesImpl<true> {
     using Base = LaserSpawnRequestsView_base_velocitiesImpl<true>;
@@ -524,7 +531,6 @@ struct LaserSpawnRequestsConstView_base_velocities
 };
 static_assert(
     ioj::soa_storage_detail::validate_compact_view<LaserSpawnRequestsConstView_base_velocities>());
-
 struct LaserSpawnRequestsView_base_velocities : LaserSpawnRequestsView_base_velocitiesImpl<false> {
     using Base = LaserSpawnRequestsView_base_velocitiesImpl<false>;
     using Base::Base;
@@ -546,6 +552,9 @@ struct LaserSpawnRequestsView_base_velocities : LaserSpawnRequestsView_base_velo
 static_assert(
     ioj::soa_storage_detail::validate_compact_view<LaserSpawnRequestsView_base_velocities>());
 
+/* **************************************** */
+// Compact views
+/* **************************************** */
 template <bool Const>
 struct LaserSpawnRequestsViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = LaserSpawnRequestsSchema;
@@ -618,13 +627,11 @@ struct LaserSpawnRequestsViewImpl : ioj::soa_storage_detail::CompactViewBase<Con
                 this->count_};
     }
 };
-
 struct LaserSpawnRequestsConstView : LaserSpawnRequestsViewImpl<true> {
     using Base = LaserSpawnRequestsViewImpl<true>;
     using Base::Base;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<LaserSpawnRequestsConstView>());
-
 struct LaserSpawnRequestsView : LaserSpawnRequestsViewImpl<false> {
     using Base = LaserSpawnRequestsViewImpl<false>;
     using Base::Base;
@@ -681,6 +688,9 @@ struct LaserSpawnRequestsView : LaserSpawnRequestsViewImpl<false> {
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<LaserSpawnRequestsView>());
 
+/* **************************************** */
+// Owner
+/* **************************************** */
 // Columns:
 // locations_xs: float
 // locations_ys: float
