@@ -212,7 +212,9 @@ auto storage_lifetime_nodes(LoweringContext& context, SingleAllocationModelId mo
     ir.set_function_noexcept(resource_constructor);
     ir.set_function_body(
         resource_constructor,
-        {ir.raw("assert(resource != nullptr);")},
+        {ir.expr_stmt(ir.call(
+            ir.named("assert"),
+            {ir.binary(BinaryOperator::not_equal, ir.named("resource"), ir.literal("nullptr"))}))},
         {ir.member_initializer(ir.strings.intern("resource_"), ir.store_text("resource"))});
     auto const resource_accessor{ir.function("get_memory_resource", "auto")};
     ir.set_function_body(resource_accessor, {ir.return_stmt(ir.named("resource_"))});
@@ -237,12 +239,17 @@ auto storage_lifetime_nodes(LoweringContext& context, SingleAllocationModelId mo
     ir.set_function_noexcept(move_constructor);
     ir.set_function_body(
         move_constructor,
-        {ir.raw("Operations::take_storage(*this, other);")},
+        {ir.expr_stmt(
+            ir.call(ir.named("Operations::take_storage"),
+                    {ir.unary(UnaryOperator::dereference, ir.named("this")), ir.named("other")}))},
         {ir.member_initializer(ir.strings.intern("resource_"), ir.store_text("other.resource_"))});
     auto const move_assignment{ir.function("operator=", "auto")};
     ir.set_function_parameters(move_assignment, {move_parameter});
-    ir.set_function_body(move_assignment,
-                         {ir.raw("return Operations::move_assign(*this, other);")});
+    ir.set_function_body(
+        move_assignment,
+        {ir.return_stmt(
+            ir.call(ir.named("Operations::move_assign"),
+                    {ir.unary(UnaryOperator::dereference, ir.named("this")), ir.named("other")}))});
     ir.set_function_return_type(
         move_assignment,
         ir.types.intern(context.text(model_store.owner_name[model_store_index]) + "&"),
@@ -277,7 +284,7 @@ auto data_pointers_node(LoweringContext& context, SingleAllocationModelId model)
         children.new_lines(1).add(ir.instance_member(
             ir.types.decorate(column_store.type[column_store.index(column)], "Element<", ">*"),
             column_store.flattened_identifier[column_store.index(column)],
-            ir.raw_expr("")));
+            ir.init_list({})));
     }
 
     std::vector<Expr> shifted_columns;
@@ -361,8 +368,10 @@ auto column_pointer_nodes(LoweringContext& context, SingleAllocationModelId mode
     auto& column_store{context.ir.lowering.single_allocation_columns};
     auto& ir{context.ir};
     NodeListBuilder make_data_body{ir};
-    make_data_body.add(ir.raw(context.text(model_store.runtime_namespace[model_store_index]) +
-                              "LayoutCursor cursor{blocks};"));
+    make_data_body.add(
+        ir.variable(context.text(model_store.runtime_namespace[model_store_index]) + "LayoutCursor",
+                    "cursor",
+                    ir.named("blocks")));
     std::vector<Expr> pointers;
     pointers.reserve(context.ir.lowering.items(model_store.columns[model_store_index]).size());
     for (auto const column : context.ir.lowering.items(model_store.columns[model_store_index])) {
@@ -398,7 +407,9 @@ auto column_pointer_nodes(LoweringContext& context, SingleAllocationModelId mode
     ir.set_function_noexcept(capacity_blocks);
 
     NodeListBuilder result{ir};
-    result.add(ir.raw("friend Operations;\nfriend ::ioj::soa_storage_detail::StorageRequirements;"))
+    result.add(ir.friend_type(ir.types.intern("Operations")))
+        .new_lines(1)
+        .add(ir.friend_type(ir.types.intern("::ioj::soa_storage_detail::StorageRequirements")))
         .new_lines(1)
         .append(section_header(context, "Column pointers"))
         .new_lines(1)
@@ -486,16 +497,20 @@ auto column_copying_nodes(LoweringContext& context, SingleAllocationModelId mode
         ir.template_declaration(
             {ir.value_template_parameter(ir.types.intern("bool"), ir.strings.intern("Overlapping")),
              ir.type_template_parameter(ir.strings.intern("Byte"))}));
-    auto const copy{make_function(
-        ir,
-        "copy_columns",
-        "void",
-        {ir.parameter("DataPointers<std::byte> const&", "columns"),
-         ir.parameter("size_type", "index"),
-         ir.parameter("size_type", "source"),
-         ir.parameter("size_type", "move_count")},
-        {ir.raw("transfer_columns<false>(columns + index, columns + source, move_count);")},
-        FunctionReceiver::static_)};
+    auto const copy{
+        make_function(ir,
+                      "copy_columns",
+                      "void",
+                      {ir.parameter("DataPointers<std::byte> const&", "columns"),
+                       ir.parameter("size_type", "index"),
+                       ir.parameter("size_type", "source"),
+                       ir.parameter("size_type", "move_count")},
+                      {ir.expr_stmt(ir.call(
+                          ir.template_id(ir.named("transfer_columns"), {ir.literal("false")}),
+                          {ir.binary(BinaryOperator::add, ir.named("columns"), ir.named("index")),
+                           ir.binary(BinaryOperator::add, ir.named("columns"), ir.named("source")),
+                           ir.named("move_count")}))},
+                      FunctionReceiver::static_)};
 
     auto const remove_indices{make_function(
         ir,
@@ -556,8 +571,13 @@ auto source_copy_node(LoweringContext& context,
          ir.parameter("size_type", "source_first"),
          ir.parameter("size_type", "first"),
          ir.parameter("size_type", "count")},
-        {ir.raw(std::string{"transfer_columns<"} + (overlapping ? "true" : "false") +
-                ">(get_data(first), source_pointers(source) + source_first, count);")})};
+        {ir.expr_stmt(ir.call(ir.template_id(ir.named("transfer_columns"),
+                                             {ir.literal(overlapping ? "true" : "false")}),
+                              {ir.call(ir.named("get_data"), {ir.named("first")}),
+                               ir.binary(BinaryOperator::add,
+                                         ir.call(ir.named("source_pointers"), {ir.named("source")}),
+                                         ir.named("source_first")),
+                               ir.named("count")}))})};
     set_source_template(context, model, function);
     return inline_function(context, function);
 }
@@ -582,7 +602,9 @@ auto live_column_copy_node(LoweringContext& context) -> NodeId {
         "auto const",
         "destination",
         ir.call(ir.named("make_data_unchecked"), {ir.named("new_data"), ir.named("new_blocks")})));
-    copy_live.add(ir.raw("transfer_columns<false>(destination, source, num_);"));
+    copy_live.add(
+        ir.expr_stmt(ir.call(ir.template_id(ir.named("transfer_columns"), {ir.literal("false")}),
+                             {ir.named("destination"), ir.named("source"), ir.named("num_")})));
 
     auto const function{make_function(ir,
                                       "copy_live_columns",
@@ -871,11 +893,11 @@ auto compact_view_node(LoweringContext& context,
         .append(adjacent(
             context,
             {ir.instance_member(
-                 ir.types.intern("State*"), ir.strings.intern("state_"), ir.raw_expr("")),
+                 ir.types.intern("State*"), ir.strings.intern("state_"), ir.init_list({})),
              ir.instance_member(
-                 ir.types.intern("size_type"), ir.strings.intern("offset_"), ir.raw_expr("")),
+                 ir.types.intern("size_type"), ir.strings.intern("offset_"), ir.init_list({})),
              ir.instance_member(
-                 ir.types.intern("size_type"), ir.strings.intern("count_"), ir.raw_expr(""))}));
+                 ir.types.intern("size_type"), ir.strings.intern("count_"), ir.init_list({}))}));
     auto const created_record{
         ir.record(ir.strings.intern(name), children.build(), RecordKind::struct_)};
     describe_compact_scope(context, created_record, view_store.schema[view_store_index]);
@@ -914,7 +936,7 @@ auto emit_single_allocation_layout(LoweringContext& context, SingleAllocationMod
             ir.types.intern(context.text(model_store.runtime_namespace[model_store_index]) +
                             "ColumnLayoutStart"),
             ir.strings.intern("LayoutStart"),
-            ir.raw_expr("")))
+            ir.init_list({})))
         .new_lines(2);
     std::vector<MemberInitializerId> constructor_initializers;
     auto const constructor{ir.constructor(ir.strings.intern(columns_name))};
@@ -986,7 +1008,7 @@ auto emit_single_allocation_layout(LoweringContext& context, SingleAllocationMod
             }))
         .new_lines(2)
         .add(ir.constexpr_member(
-            ir.types.intern(columns_name), ir.strings.intern("columns"), ir.raw_expr("")))
+            ir.types.intern(columns_name), ir.strings.intern("columns"), ir.init_list({})))
         .new_lines(2);
     children
         .add(ir.constexpr_member(ir.types.intern("byte_size_type"),
@@ -1055,7 +1077,7 @@ auto storage_implementation_nodes(LoweringContext& context, SingleAllocationMode
         .new_lines(1)
         .add(ir.instance_member(ir.types.intern("std::pmr::memory_resource*"),
                                 ir.strings.intern("resource_"),
-                                ir.raw_expr("")))
+                                ir.init_list({})))
         .new_lines(1)
         .append(column_pointer_nodes(context, model))
         .new_lines(2)
@@ -1188,7 +1210,8 @@ auto emit_single_allocation_container(LoweringContext& context,
                     model_store.schema[model_store_index])]) +
                 "Schema")))
         .new_lines(1);
-    children.add(ir.raw("using Operations = " + operations + ";")).new_lines(1);
+    children.add(ir.using_declaration(ir.strings.intern("Operations"), ir.types.intern(operations)))
+        .new_lines(1);
     children
         .add(ir.raw("using Layout = " + context.text(model_store.layout_name[model_store_index]) +
                     ";\n"

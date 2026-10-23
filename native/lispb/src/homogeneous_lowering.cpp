@@ -2,6 +2,7 @@
 #include "homogeneous_internal.h"
 #include "lowering_context.h"
 
+#include <codegen/ast/binary_operator.h>
 #include <codegen/ast/cpp_ir.h>
 #include <codegen/ast/cpp_types.h>
 #include <codegen/ast/indices.h>
@@ -21,15 +22,18 @@ auto homogeneous_permutation_function(LoweringContext& context, DeclarationHandl
     -> FunctionId {
     auto& ir{context.ir};
     NodeListBuilder body{ir};
-    body.add(ir.expr_stmt(ir.raw_expr("validate_array_sizes()")))
-        .add(ir.expr_stmt(ir.raw_expr("check(indices.Num() == num())"),
+    body.add(ir.expr_stmt(ir.call(ir.named("validate_array_sizes"))))
+        .add(ir.expr_stmt(ir.call(ir.named("check"),
+                                  {ir.binary(BinaryOperator::equal,
+                                             ir.call(ir.member_access(ir.named("indices"), "Num")),
+                                             ir.call(ir.named("num")))}),
                           {ir.types.dependency("check", "CoreMinimal.h")}));
     for (auto const component_id : context.declarations.items(
              context.declarations.homogeneous_layouts
                  .components[context.declarations.homogeneous_layouts.index(layout)])) {
         auto const component{context.text(component_id)};
         body.add(ir.expr_stmt(
-            ir.raw_expr("ioj::apply_permutation(" + component + ", indices)"),
+            ir.call(ir.named("ioj::apply_permutation"), {ir.named(component), ir.named("indices")}),
             {ir.types.dependency("ioj::apply_permutation", "SandboxCore/soa_permutation.h")}));
     }
     auto const created_function{ir.function("apply_permutation", "void")};

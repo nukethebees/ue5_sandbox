@@ -14,6 +14,7 @@
 #include <codegen/ast/node_list_builder.h>
 #include <codegen/ast/nodes.h>
 #include <codegen/ast/record_kind.h>
+#include <codegen/ast/unary_operator.h>
 #include <codegen/schema/declarations.h>
 #include <codegen/schema/facade_method_schemas.h>
 #include <codegen/schema/facade_schemas.h>
@@ -60,7 +61,7 @@ auto lower_facade_impl(LoweringContext& context, DeclarationHandle facade) -> De
             {ir.assignment(
                 ir.named(
                     declarations.facades.target_member_name[declarations.facades.index(facade)]),
-                ir.raw_expr("&new_target"))});
+                ir.unary(UnaryOperator::address_of, ir.named("new_target")))});
     }
     std::vector<FunctionId> methods;
     for (auto const method_id : declarations.items(
@@ -182,7 +183,7 @@ auto lower_facade_impl(LoweringContext& context, DeclarationHandle facade) -> De
                   qualify(ir, target_type, "*"),
                   context.declarations.facades
                       .target_member_name[context.declarations.facades.index(facade)],
-                  ir.raw_expr("nullptr")));
+                  ir.literal("nullptr")));
 
     NodeListBuilder class_nodes{ir};
     if (has_public_nodes) {

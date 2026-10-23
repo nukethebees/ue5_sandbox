@@ -2,6 +2,7 @@
 #include "lowering_context.h"
 #include "lowering_utils.h"
 
+#include <codegen/ast/binary_operator.h>
 #include <codegen/ast/cpp_ir.h>
 #include <codegen/ast/cpp_types.h>
 #include <codegen/ast/function_body_layout.h>
@@ -15,6 +16,7 @@
 #include <codegen/ast/nodes.h>
 #include <codegen/ast/return_syntax.h>
 #include <codegen/ast/template_id.h>
+#include <codegen/ast/unary_operator.h>
 #include <codegen/schema/declarations.h>
 #include <codegen/schema/homogeneous_layout_schemas.h>
 #include <codegen/schema/homogeneous_value_schemas.h>
@@ -393,10 +395,18 @@ auto homogeneous_storage_copy_nodes(LoweringContext& context, DeclarationHandle 
     add("copy_to_tail",
         {src},
         Nodes{
-            ir.variable("auto const", "count", ir.raw_expr("src.num()")),
-            ir.expr_stmt(ir.raw_expr("check(num() >= count)"),
+            ir.variable("auto const", "count", ir.call(ir.member_access(ir.named("src"), "num"))),
+            ir.expr_stmt(ir.call(ir.named("check"),
+                                 {ir.binary(BinaryOperator::greater_equal,
+                                            ir.call(ir.named("num")),
+                                            ir.named("count"))}),
                          {ir.types.dependency("check", "CoreMinimal.h")}),
-            ir.expr_stmt(ir.raw_expr("copy_elements(num() - count, src, 0, count)")),
+            ir.expr_stmt(ir.call(
+                ir.named("copy_elements"),
+                {ir.binary(BinaryOperator::subtract, ir.call(ir.named("num")), ir.named("count")),
+                 ir.named("src"),
+                 ir.literal("0"),
+                 ir.named("count")})),
         });
     add("append_from",
         {ir.parameter("Other const&", "other")},
@@ -413,15 +423,20 @@ auto homogeneous_storage_sort_nodes(LoweringContext& context, FunctionId const p
     result.add(ir.declaration(permutation), 1);
     auto sort_body = [&ir](std::string_view sort_expression) {
         NodeListBuilder body{ir};
-        return body.add(ir.expr_stmt(ir.raw_expr("validate_array_sizes()")))
-            .add(ir.variable("auto const", "n", ir.raw_expr("num()")))
-            .add(ir.expr_stmt(ir.raw_expr("check(scratch_indices.Num() == n)"),
-                              {ir.types.dependency("check", "CoreMinimal.h")}))
+        return body.add(ir.expr_stmt(ir.call(ir.named("validate_array_sizes"))))
+            .add(ir.variable("auto const", "n", ir.call(ir.named("num"))))
             .add(ir.expr_stmt(
-                ir.raw_expr("ioj::fill_indices(scratch_indices)"),
+                ir.call(ir.named("check"),
+                        {ir.binary(BinaryOperator::equal,
+                                   ir.call(ir.member_access(ir.named("scratch_indices"), "Num")),
+                                   ir.named("n"))}),
+                {ir.types.dependency("check", "CoreMinimal.h")}))
+            .add(ir.expr_stmt(
+                ir.call(ir.named("ioj::fill_indices"), {ir.named("scratch_indices")}),
                 {ir.types.dependency("ioj::fill_indices", "SandboxCore/array_utils.h")}))
             .add(ir.raw(sort_expression))
-            .add(ir.expr_stmt(ir.raw_expr("apply_permutation(scratch_indices)")))
+            .add(
+                ir.expr_stmt(ir.call(ir.named("apply_permutation"), {ir.named("scratch_indices")})))
             .build();
     };
     result.add(
@@ -523,12 +538,20 @@ auto homogeneous_storage_value_nodes(LoweringContext& context,
                      ir.types.intern("equivalent_type"),
                      {index_id},
                      Nodes{
-                         ir.expr_stmt(ir.raw_expr("validate_array_sizes()")),
-                         ir.expr_stmt(ir.raw_expr("check(index >= 0)"),
+                         ir.expr_stmt(ir.call(ir.named("validate_array_sizes"))),
+                         ir.expr_stmt(ir.call(ir.named("check"),
+                                              {ir.binary(BinaryOperator::greater_equal,
+                                                         ir.named("index"),
+                                                         ir.literal("0"))}),
                                       {ir.types.dependency("check", "CoreMinimal.h")}),
-                         ir.expr_stmt(ir.raw_expr("check(index < num())"),
+                         ir.expr_stmt(ir.call(ir.named("check"),
+                                              {ir.binary(BinaryOperator::less,
+                                                         ir.named("index"),
+                                                         ir.call(ir.named("num")))}),
                                       {ir.types.dependency("check", "CoreMinimal.h")}),
-                         ir.return_stmt(ir.raw_expr("(*this)[index]")),
+                         ir.return_stmt(
+                             ir.subscript(ir.unary(UnaryOperator::dereference, ir.named("this")),
+                                          ir.named("index"))),
                      },
                      FunctionReceiver::const_,
                      ReturnSyntax::trailing),
@@ -547,8 +570,8 @@ auto homogeneous_storage_value_nodes(LoweringContext& context,
              context.declarations.homogeneous_layouts
                  .components[context.declarations.homogeneous_layouts.index(layout)])) {
         auto const component{context.text(component_id)};
-        set_body.add(ir.assignment(ir.raw_expr(component + "[index]"),
-                                   ir.raw_expr(std::string{component.front()})));
+        set_body.add(ir.assignment(ir.subscript(ir.named(component), ir.named("index")),
+                                   ir.named(std::string{component.front()})));
     }
     auto set_parameters{component_parameters};
     set_parameters.insert(set_parameters.begin(), index_id);
@@ -562,10 +585,10 @@ auto homogeneous_storage_value_nodes(LoweringContext& context,
             .items(context.declarations.homogeneous_layouts
                        .components[context.declarations.homogeneous_layouts.index(layout)])
             .front())};
-    component_body.add(
-        ir.variable("auto const",
-                    "index",
-                    ir.raw_expr(first_component + ".Add(" + first_component.front() + ")")));
+    component_body.add(ir.variable("auto const",
+                                   "index",
+                                   ir.call(ir.member_access(ir.named(first_component), "Add"),
+                                           {ir.named(std::string{first_component.front()})})));
     for (std::size_t index{1};
          index < context.declarations.homogeneous_layouts
                      .components[context.declarations.homogeneous_layouts.index(layout)]
@@ -574,10 +597,10 @@ auto homogeneous_storage_value_nodes(LoweringContext& context,
         auto const& component{context.text(context.declarations.items(
             context.declarations.homogeneous_layouts
                 .components[context.declarations.homogeneous_layouts.index(layout)])[index])};
-        component_body.add(
-            ir.expr_stmt(ir.raw_expr(component + ".Add(" + component.front() + ")")));
+        component_body.add(ir.expr_stmt(ir.call(ir.member_access(ir.named(component), "Add"),
+                                                {ir.named(std::string{component.front()})})));
     }
-    component_body.add(ir.return_stmt(ir.raw_expr("index")));
+    component_body.add(ir.return_stmt(ir.named("index")));
     result.add(homogeneous_function(context,
                                     "add",
                                     ir.types.intern("size_type"),
@@ -604,34 +627,34 @@ auto homogeneous_storage_value_nodes(LoweringContext& context,
                            .input_members[context.declarations.homogeneous_layouts.index(
                                layout)])[index]);
     };
-    std::vector<std::string> arguments;
+    std::vector<Expr> arguments;
     for (std::size_t index{0};
          index < context.declarations.homogeneous_layouts
                      .components[context.declarations.homogeneous_layouts.index(layout)]
                      .size();
          ++index) {
-        arguments.push_back("value." + input_member(index));
+        arguments.push_back(ir.member_access(ir.named("value"), input_member(index)));
     }
+    auto set_arguments{arguments};
+    set_arguments.insert(set_arguments.begin(), ir.named("index"));
     for (auto const input_reference : context.declarations.items(
              context.declarations.homogeneous_values
                  .input_types[context.declarations.homogeneous_values.index(value)])) {
         auto const input_type{qualify(ir, context.resolve(input_reference), " const&")};
         result
-            .add(homogeneous_function(
-                     context,
-                     "set",
-                     ir.types.intern("void"),
-                     {index_id, ir.parameter(input_type, "value")},
-                     Nodes{ir.expr_stmt(ir.raw_expr("set(index, " + join(arguments, ", ") + ")"))}),
+            .add(homogeneous_function(context,
+                                      "set",
+                                      ir.types.intern("void"),
+                                      {index_id, ir.parameter(input_type, "value")},
+                                      Nodes{ir.expr_stmt(ir.call(ir.named("set"), set_arguments))}),
                  1)
-            .add(homogeneous_function(
-                     context,
-                     "add",
-                     ir.types.intern("size_type"),
-                     {ir.parameter(input_type, "value")},
-                     Nodes{ir.return_stmt(ir.raw_expr("add(" + join(arguments, ", ") + ")"))},
-                     FunctionReceiver::unqualified,
-                     ReturnSyntax::trailing),
+            .add(homogeneous_function(context,
+                                      "add",
+                                      ir.types.intern("size_type"),
+                                      {ir.parameter(input_type, "value")},
+                                      Nodes{ir.return_stmt(ir.call(ir.named("add"), arguments))},
+                                      FunctionReceiver::unqualified,
+                                      ReturnSyntax::trailing),
                  1);
     }
     return result.build();

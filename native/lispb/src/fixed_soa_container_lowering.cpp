@@ -283,11 +283,19 @@ auto fixed_container_lifecycle_nodes(LoweringContext& context,
 
     auto const copy_constructor{ir.constructor(identifier)};
     ir.set_function_parameters(copy_constructor, {ir.parameter(const_reference, "other")});
-    ir.set_function_body(copy_constructor,
-                         {ir.raw("for (size_type i{}; i < other.size_; ++i) {\n"
-                                 "    storage_.copy_construct_at(size_, other.storage_, i);\n"
-                                 "    ++size_;\n"
-                                 "}")});
+    ir.set_function_body(
+        copy_constructor,
+        {ir.for_stmt(
+            ir.variable("size_type", "i"),
+            ir.binary(
+                BinaryOperator::less, ir.named("i"), ir.member_access(ir.named("other"), "size_")),
+            ir.unary(UnaryOperator::preincrement, ir.named("i")),
+            ir.block(
+                {ir.expr_stmt(ir.call(ir.member_access(ir.named("storage_"), "copy_construct_at"),
+                                      {ir.named("size_"),
+                                       ir.member_access(ir.named("other"), "storage_"),
+                                       ir.named("i")})),
+                 ir.expr_stmt(ir.unary(UnaryOperator::preincrement, ir.named("size_")))}))});
     ir.function_flags(copy_constructor).set_is_inline(true);
     ir.function_flags(copy_constructor).set_define_in_header(true);
     ir.set_function_requires_clause(copy_constructor, copy_constructible);
@@ -304,12 +312,20 @@ auto fixed_container_lifecycle_nodes(LoweringContext& context,
 
     auto const move_constructor{ir.constructor(identifier)};
     ir.set_function_parameters(move_constructor, {ir.parameter(move_reference, "other")});
-    ir.set_function_body(move_constructor,
-                         {ir.raw("for (size_type i{}; i < other.size_; ++i) {\n"
-                                 "    storage_.move_construct_at(size_, other.storage_, i);\n"
-                                 "    ++size_;\n"
-                                 "}\n"
-                                 "other.reset();")});
+    ir.set_function_body(
+        move_constructor,
+        {ir.for_stmt(
+             ir.variable("size_type", "i"),
+             ir.binary(
+                 BinaryOperator::less, ir.named("i"), ir.member_access(ir.named("other"), "size_")),
+             ir.unary(UnaryOperator::preincrement, ir.named("i")),
+             ir.block(
+                 {ir.expr_stmt(ir.call(ir.member_access(ir.named("storage_"), "move_construct_at"),
+                                       {ir.named("size_"),
+                                        ir.member_access(ir.named("other"), "storage_"),
+                                        ir.named("i")})),
+                  ir.expr_stmt(ir.unary(UnaryOperator::preincrement, ir.named("size_")))})),
+         ir.expr_stmt(ir.call(ir.member_access(ir.named("other"), "reset")))});
     ir.function_flags(move_constructor).set_is_inline(true);
     ir.function_flags(move_constructor).set_define_in_header(true);
     ir.set_function_conditional_noexcept(move_constructor, nothrow_move);
@@ -326,7 +342,7 @@ auto fixed_container_lifecycle_nodes(LoweringContext& context,
         FunctionDispositionPlacement::next_line;
 
     auto const destructor{ir.destructor(identifier)};
-    ir.set_function_body(destructor, {ir.raw("reset();")});
+    ir.set_function_body(destructor, {ir.expr_stmt(ir.call(ir.named("reset")))});
     ir.function_flags(destructor).set_is_inline(true);
     ir.function_flags(destructor).set_define_in_header(true);
     ir.function_formatting(destructor) = compact_function_formatting();
@@ -534,13 +550,15 @@ auto fixed_container_set_nodes(LoweringContext& context,
 
     NodeListBuilder result{ir};
     for (auto& setter : setters) {
-        std::vector<std::string> arguments;
+        std::vector<Expr> arguments;
         arguments.reserve(ir.function_parameters(setter).size());
         for (auto const parameter : ir.function_parameters(setter)) {
-            arguments.emplace_back(ir.strings.view(ir.parameter_name(parameter)));
+            arguments.push_back(ir.named(ir.parameter_name(parameter)));
         }
         ir.set_function_body(
-            setter, {ir.expr_stmt(ir.raw_expr("get_view().set(" + join(arguments, ", ") + ")"))});
+            setter,
+            {ir.expr_stmt(
+                ir.call(ir.member_access(ir.call(ir.named("get_view")), "set"), arguments))});
         switch (ir.function_receiver(setter)) {
             case FunctionReceiver::const_:
                 ir.set_function_receiver(setter, FunctionReceiver::unqualified);
