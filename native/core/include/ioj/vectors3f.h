@@ -5,154 +5,439 @@
 
 #include "ioj/math_types.h"
 #include "ioj/native_soa/storage.h"
-#include "ioj/native_soa/vector_storage_ops.h"
-#include "ioj/vector_soa_view.h"
+#include "ioj/soa_permutation.h"
 
 #include <cassert>
-#include <utility>
+#include <memory_resource>
 
 namespace ioj {
-using Vectors3fView = ioj::Vector3fSoAView;
-using Vectors3fConstView = ioj::Vector3fSoAConstView;
-struct Vectors3f {
-    using View = Vectors3fView;
-    using ConstView = Vectors3fConstView;
+struct Vectors3fSchema;
+struct Vectors3fView;
+struct Vectors3fConstView;
+struct Vectors3fLayoutColumns {
+    template <typename T>
+    using ColLayout = ioj::native_soa::ColumnLayout<T>;
+
+    ioj::native_soa::ColumnLayoutStart LayoutStart{};
+
+    ColLayout<float> XsColumn;
+    ColLayout<float> YsColumn;
+    ColLayout<float> ZsColumn;
+
+    constexpr Vectors3fLayoutColumns() noexcept
+        : XsColumn{LayoutStart}
+        , YsColumn{XsColumn}
+        , ZsColumn{YsColumn} {}
+    Vectors3fLayoutColumns(Vectors3fLayoutColumns const&) = delete;
+    auto operator=(Vectors3fLayoutColumns const&) -> Vectors3fLayoutColumns& = delete;
+};
+struct Vectors3fLayout {
     using size_type = std::uint32_t;
-    using equivalent_type = Vector3f;
-    auto operator[](size_type const index) const -> equivalent_type {
-        return get_const_view()[index];
+    using byte_size_type = std::size_t;
+
+    static constexpr size_type capacity_granularity{
+        ioj::native_soa::LayoutPolicy::capacity_granularity};
+    static constexpr byte_size_type column_gap{ioj::native_soa::LayoutPolicy::column_gap};
+
+    static constexpr Vectors3fLayoutColumns columns{};
+
+    static constexpr byte_size_type allocation_alignment{columns.ZsColumn.allocation_alignment};
+
+    // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
+    // capacity.
+    static constexpr byte_size_type capacity_block_bound{
+        ioj::native_soa::capacity_block_bound(columns.ZsColumn)};
+    static constexpr size_type max_capacity{
+        ioj::native_soa::maximum_capacity(capacity_block_bound)};
+    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
+        return blocks == 0 ? 0 : columns.ZsColumn.data_end(blocks);
     }
-    ioj::native_soa::Vector<float> xs;
-    ioj::native_soa::Vector<float> ys;
-    ioj::native_soa::Vector<float> zs;
-    auto num() const noexcept -> size_type { return static_cast<size_type>(xs.size()); }
-    auto is_empty() const noexcept -> bool { return num() == 0; }
-    template <typename Fn>
-    void each_column(Fn&& fn) {
-        fn(xs);
-        fn(ys);
-        fn(zs);
-    }
-    template <typename Fn>
-    void each_column(Fn&& fn) const {
-        fn(xs);
-        fn(ys);
-        fn(zs);
-    }
-    void validate_array_sizes() const { get_const_view().validate_array_sizes(); }
-    void reset() { ioj::native_soa::vector_storage_ops::reset(*this); }
-    void reserve(size_type const count) {
-        ioj::native_soa::vector_storage_ops::reserve(*this, count);
-    }
-    void add_uninitialised(size_type const count) {
-        ioj::native_soa::vector_storage_ops::add_uninitialised(*this, count);
-    }
-    void add_defaulted(size_type const count) {
-        ioj::native_soa::vector_storage_ops::add_defaulted(*this, count);
-    }
-    void remove_at_swap(size_type const index, size_type const count) {
-        ioj::native_soa::vector_storage_ops::remove_at_swap(*this, index, count);
-    }
-    void set_num(size_type const count) {
-        ioj::native_soa::vector_storage_ops::set_num(*this, count);
-    }
-    void apply_permutation(std::span<std::int32_t> const indices) {
-        ioj::native_soa::vector_storage_ops::apply_permutation(*this, indices);
-    }
-    template <typename Compare>
-    void sort(Compare&& compare, std::span<std::int32_t> const scratch_indices) {
-        ioj::native_soa::vector_storage_ops::sort(
-            *this, std::forward<Compare>(compare), scratch_indices);
-    }
-    void set(size_type const index, float const new_xs, float const new_ys, float const new_zs) {
-        get_view().set(index, new_xs, new_ys, new_zs);
-    }
-    auto add(float const new_xs, float const new_ys, float const new_zs) -> size_type {
-        return ioj::native_soa::vector_storage_ops::append_rows(*this, 1, [&] {
-            xs.emplace_back(new_xs);
-            ys.emplace_back(new_ys);
-            zs.emplace_back(new_zs);
-        });
-    }
-    void set(size_type const index, equivalent_type const value) { get_view().set(index, value); }
-    auto add(equivalent_type const value) -> size_type {
-        return add(value.x(), value.y(), value.z());
-    }
-    void append_from(ConstView source) {
-        auto const count{source.num()};
-        assert(count <= std::numeric_limits<size_type>::max() - num());
-        source.validate_array_sizes();
-        if (count == 0) {
-            return;
-        }
-        assert(ioj::native_soa::is_external_source(xs, source.xs()));
-        assert(ioj::native_soa::is_external_source(ys, source.ys()));
-        assert(ioj::native_soa::is_external_source(zs, source.zs()));
-        ioj::native_soa::vector_storage_ops::append_rows(*this, count, [&] {
-            xs.insert(xs.end(), source.xs().data(), source.xs().data() + count);
-            ys.insert(ys.end(), source.ys().data(), source.ys().data() + count);
-            zs.insert(zs.end(), source.zs().data(), source.zs().data() + count);
-        });
-    }
-    auto get_view() -> View {
-        return {
-            xs.data(),
-            ys.data(),
-            zs.data(),
-            num(),
-        };
-    }
-    auto get_view() const -> ConstView {
-        return {
-            xs.data(),
-            ys.data(),
-            zs.data(),
-            num(),
-        };
-    }
-    auto get_const_view() const -> ConstView { return get_view(); }
-    auto get_view(size_type const offset, size_type const count) -> View {
-        return get_view().slice(offset, count);
-    }
-    auto get_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_view().slice(offset, count);
-    }
-    auto get_const_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view().slice(offset, count);
-    }
-    auto slice(size_type const offset, size_type const count) -> View {
-        return get_view(offset, count);
-    }
-    auto slice(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view(offset, count);
-    }
-    auto left(size_type const count) -> View { return slice(0, count); }
-    auto right(size_type const count) -> View {
-        assert(count <= num());
-        return slice(num() - count, count);
-    }
-    auto left(size_type const count) const -> ConstView { return slice(0, count); }
-    auto right(size_type const count) const -> ConstView {
-        assert(count <= num());
-        return slice(num() - count, count);
-    }
-    template <typename Other>
-    void copy_element(size_type const dst_index, Other const& other, size_type const src_index) {
-        auto const destination_index{static_cast<std::size_t>(dst_index)};
-        auto const source_index{static_cast<std::size_t>(src_index)};
-        xs[destination_index] = other.xs[source_index];
-        ys[destination_index] = other.ys[source_index];
-        zs[destination_index] = other.zs[source_index];
-    }
-    template <typename Other>
-    void copy_elements(size_type const dst_index,
-                       Other const& other,
-                       size_type const src_index,
-                       size_type const count) {
-        for (size_type i{}; i < count; ++i) {
-            copy_element(dst_index + i, other, src_index + i);
-        }
-    }
+    static_assert(max_capacity >= capacity_granularity);
 };
 
+struct Vectors3fResolvedView;
+struct Vectors3fResolvedConstView;
+template <bool Const>
+struct Vectors3fResolvedViewImpl {
+    using size_type = std::uint32_t;
+    using View = Vectors3fResolvedView;
+    using ConstView = Vectors3fResolvedConstView;
+    using soa_schema = ::ioj::Vectors3fSchema;
+    template <typename T>
+    using Element = std::conditional_t<Const, T const, T>;
+    Vectors3fResolvedViewImpl() = default;
+    Vectors3fResolvedViewImpl(Element<float>* xs,
+                              Element<float>* ys,
+                              Element<float>* zs,
+                              size_type count)
+        : xs_{xs}
+        , ys_{ys}
+        , zs_{zs}
+        , count_{count} {
+        ioj::soa_storage_detail::validate_column_pointers(count_, xs_, ys_, zs_);
+    }
+    Vectors3fResolvedViewImpl(std::span<Element<float>> xs,
+                              std::span<Element<float>> ys,
+                              std::span<Element<float>> zs)
+        : Vectors3fResolvedViewImpl{xs.data(),
+                                    ys.data(),
+                                    zs.data(),
+                                    ioj::soa_storage_detail::checked_row_count(xs.size())} {
+        assert(xs.size() == count_);
+        assert(ys.size() == count_);
+        assert(zs.size() == count_);
+    }
+    template <bool Enabled = Const>
+    Vectors3fResolvedViewImpl(Vectors3fResolvedViewImpl<false> const& other)
+        requires Enabled
+        : xs_{other.xs_}
+        , ys_{other.ys_}
+        , zs_{other.zs_}
+        , count_{other.count_} {}
+    auto num() const noexcept -> size_type { return count_; }
+    auto is_empty() const noexcept -> bool { return count_ == 0; }
+    auto get_view(this auto const& self) { return self; }
+    auto get_const_view(this auto const& self) {
+        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
+        return Result{self.xs_, self.ys_, self.zs_, self.count_};
+    }
+    auto resolve(this auto const& self) { return self; }
+    void validate() const {}
+    auto slice(this auto const& self, size_type offset, size_type count) {
+        assert(offset <= self.count_ && count <= self.count_ - offset);
+        using Result = std::remove_cvref_t<decltype(self)>;
+        return Result{self.xs_ == nullptr ? nullptr : self.xs_ + offset,
+                      self.ys_ == nullptr ? nullptr : self.ys_ + offset,
+                      self.zs_ == nullptr ? nullptr : self.zs_ + offset,
+                      count};
+    }
+    auto get_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count);
+    }
+    auto get_const_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count).get_const_view();
+    }
+    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
+    auto right(this auto const& self, size_type count) {
+        assert(count <= self.num());
+        return self.slice(self.num() - count, count);
+    }
+    auto xs() const -> std::span<Element<float>> { return {xs_, count_}; }
+    auto ys() const -> std::span<Element<float>> { return {ys_, count_}; }
+    auto zs() const -> std::span<Element<float>> { return {zs_, count_}; }
+    template <typename Func>
+    void each_column(Func&& func) const {
+        func(std::span<Element<float>>{xs_, count_});
+        func(std::span<Element<float>>{ys_, count_});
+        func(std::span<Element<float>>{zs_, count_});
+    }
+  private:
+    template <bool>
+    friend struct Vectors3fResolvedViewImpl;
+    Element<float>* xs_{};
+    Element<float>* ys_{};
+    Element<float>* zs_{};
+    size_type count_{};
+};
+struct Vectors3fResolvedConstView : Vectors3fResolvedViewImpl<true> {
+    using Base = Vectors3fResolvedViewImpl<true>;
+    using Base::Base;
+    using equivalent_type = Vector3f;
+    auto operator[](std::uint32_t index) const -> equivalent_type {
+        assert(index < num());
+        return equivalent_type{xs()[index], ys()[index], zs()[index]};
+    }
+};
+struct Vectors3fResolvedView : Vectors3fResolvedViewImpl<false> {
+    using Base = Vectors3fResolvedViewImpl<false>;
+    using Base::Base;
+    void set(size_type index, float const new_xs, float const new_ys, float const new_zs) const {
+        assert(index < num());
+        this->xs()[index] = new_xs;
+        this->ys()[index] = new_ys;
+        this->zs()[index] = new_zs;
+    }
+    void set(size_type index, Vector3f const value) const {
+        set(index, (value.x()), (value.y()), (value.z()));
+    }
+    using equivalent_type = Vector3f;
+    auto operator[](std::uint32_t index) const -> equivalent_type {
+        assert(index < num());
+        return equivalent_type{xs()[index], ys()[index], zs()[index]};
+    }
+};
+template <bool Const>
+struct Vectors3fViewImpl : ioj::soa_storage_detail::CompactViewOperations {
+    using soa_schema = Vectors3fSchema;
+    using size_type = std::uint32_t;
+    using Layout = Vectors3fLayout;
+    using Storage = ioj::native_soa::StorageState;
+    using State = std::conditional_t<Const, Storage const, Storage>;
+    template <typename T>
+    using Element = std::conditional_t<Const, T const, T>;
+    using View = Vectors3fView;
+    using ConstView = Vectors3fConstView;
+    Vectors3fViewImpl() = default;
+    Vectors3fViewImpl(State* state, size_type offset, size_type count)
+        : state_{state}
+        , offset_{offset}
+        , count_{count} {}
+    template <bool Enabled = Const>
+    Vectors3fViewImpl(Vectors3fViewImpl<false> const& other)
+        requires Enabled
+        : state_{other.state_}
+        , offset_{other.offset_}
+        , count_{other.count_} {}
+    auto xs() const { return make_column_view(Layout::columns.XsColumn); }
+    auto ys() const { return make_column_view(Layout::columns.YsColumn); }
+    auto zs() const { return make_column_view(Layout::columns.ZsColumn); }
+    template <typename Func>
+    void each_column(Func&& func) const {
+        func(xs());
+        func(ys());
+        func(zs());
+    }
+    auto resolve() const
+        -> std::conditional_t<Const, Vectors3fResolvedConstView, Vectors3fResolvedView> {
+        return {(make_column_view(Layout::columns.XsColumn).data()),
+                (make_column_view(Layout::columns.YsColumn).data()),
+                (make_column_view(Layout::columns.ZsColumn).data()),
+                count_};
+    }
+  private:
+    template <typename T>
+    auto make_column_view(ioj::native_soa::ColumnLayout<T> const& layout) const {
+        return ioj::soa_storage_detail::column_view<std::span<Element<T>>>(
+            state_, offset_, count_, layout);
+    }
+    friend ioj::soa_storage_detail::CompactViewOperations;
+    template <bool>
+    friend struct Vectors3fViewImpl;
+    State* state_{};
+    size_type offset_{};
+    size_type count_{};
+};
+struct Vectors3fConstView : Vectors3fViewImpl<true> {
+    using Base = Vectors3fViewImpl<true>;
+    using Base::Base;
+    using equivalent_type = Vector3f;
+    auto operator[](std::uint32_t index) const -> equivalent_type {
+        assert(index < num());
+        return equivalent_type{xs()[index], ys()[index], zs()[index]};
+    }
+};
+static_assert(ioj::soa_storage_detail::validate_compact_view<Vectors3fConstView>());
+struct Vectors3fView : Vectors3fViewImpl<false> {
+    using Base = Vectors3fViewImpl<false>;
+    using Base::Base;
+    void set(size_type index, float const new_xs, float const new_ys, float const new_zs) const {
+        assert(index < num());
+        this->xs()[index] = new_xs;
+        this->ys()[index] = new_ys;
+        this->zs()[index] = new_zs;
+    }
+    void set(size_type index, Vector3f const value) const {
+        set(index, (value.x()), (value.y()), (value.z()));
+    }
+    using equivalent_type = Vector3f;
+    auto operator[](std::uint32_t index) const -> equivalent_type {
+        assert(index < num());
+        return equivalent_type{xs()[index], ys()[index], zs()[index]};
+    }
+};
+static_assert(ioj::soa_storage_detail::validate_compact_view<Vectors3fView>());
+// Columns:
+// xs: float
+// ys: float
+// zs: float
+struct Vectors3f
+    : protected ioj::native_soa::StorageState
+    , ioj::native_soa::StorageOperations {
+    using soa_schema = Vectors3fSchema;
+    using Operations = ioj::native_soa::StorageOperations;
+    using Layout = Vectors3fLayout;
+    using size_type = Layout::size_type;
+    using byte_size_type = Layout::byte_size_type;
+
+    static constexpr auto capacity_granularity = Layout::capacity_granularity;
+    static constexpr auto allocation_alignment = Layout::allocation_alignment;
+    static constexpr auto capacity_block_bound = Layout::capacity_block_bound;
+    static constexpr auto max_capacity = Layout::max_capacity;
+
+    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
+        return Layout::layout_bytes(blocks);
+    }
+
+    using View = Vectors3fView;
+    using ConstView = Vectors3fConstView;
+
+    /* **************************************** */
+    // Lifetime
+    /* **************************************** */
+    Vectors3f() noexcept
+        : Vectors3f{*std::pmr::get_default_resource()} {}
+    explicit Vectors3f(std::pmr::memory_resource& resource) noexcept
+        : resource_{&resource} {}
+    auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+    ~Vectors3f() { Operations::release_storage(*this); }
+    Vectors3f(Vectors3f const&) = delete;
+    auto operator=(Vectors3f const&) -> Vectors3f& = delete;
+    Vectors3f(Vectors3f&& other) noexcept
+        : resource_{other.resource_} {
+        Operations::take_storage(*this, other);
+    }
+    auto operator=(Vectors3f&& other) -> Vectors3f& {
+        return Operations::move_assign(*this, other);
+    }
+  protected:
+    template <typename Byte>
+    struct DataPointers {
+        template <typename T>
+        using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
+        Element<float>* xs{};
+        Element<float>* ys{};
+        Element<float>* zs{};
+        auto operator+(size_type const offset) const noexcept -> DataPointers {
+            if (xs == nullptr) {
+                return {};
+            }
+            return {xs + offset, ys + offset, zs + offset};
+        }
+    };
+    template <typename Self>
+    auto get_data(this Self& self) noexcept {
+        using Byte = std::conditional_t<std::is_const_v<Self>, std::byte const, std::byte>;
+        if (self.data_ == nullptr) {
+            return DataPointers<Byte>{};
+        }
+        return make_data_unchecked(static_cast<Byte*>(self.data_), self.capacity_blocks());
+    }
+    template <typename Self>
+    auto get_data(this Self& self, size_type const offset) noexcept {
+        return self.get_data() + offset;
+    }
+  private:
+    friend Operations;
+    friend ::ioj::soa_storage_detail::StorageRequirements;
+    /* **************************************** */
+    // Column pointers
+    /* **************************************** */
+    template <typename Byte>
+    static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
+        -> DataPointers<Byte> {
+        ioj::native_soa::LayoutCursor cursor{blocks};
+        return {cursor.column_pointer(data, Layout::columns.XsColumn),
+                cursor.column_pointer(data, Layout::columns.YsColumn),
+                cursor.column_pointer(data, Layout::columns.ZsColumn)};
+    }
+    auto capacity_blocks() const noexcept -> byte_size_type {
+        return static_cast<byte_size_type>(capacity_ / capacity_granularity);
+    }
+
+    /* **************************************** */
+    // Typed mutations and growth
+    /* **************************************** */
+    void default_construct_columns(size_type const first, size_type const count) {
+        using ioj::native_soa::default_construct_n;
+        auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
+        default_construct_n(columns.xs, count);
+        default_construct_n(columns.ys, count);
+        default_construct_n(columns.zs, count);
+    }
+    template <bool Overlapping, typename Byte>
+    static void transfer_columns(DataPointers<std::byte> const& destination,
+                                 DataPointers<Byte> const& source,
+                                 size_type count) {
+        auto transfer = [count](auto* dst, auto const* src) {
+            ioj::native_soa::transfer_n<Overlapping>(dst, src, count);
+        };
+        transfer(destination.xs, source.xs);
+        transfer(destination.ys, source.ys);
+        transfer(destination.zs, source.zs);
+    }
+    void swap_remove_columns(size_type const index,
+                             size_type const source,
+                             size_type const move_count) {
+        copy_columns(get_data(), index, source, move_count);
+    }
+    static void copy_columns(DataPointers<std::byte> const& columns,
+                             size_type index,
+                             size_type source,
+                             size_type move_count) {
+        transfer_columns<false>(columns + index, columns + source, move_count);
+    }
+    void swap_remove_indices(std::span<size_type const> indices) {
+        auto const columns{get_data()};
+        ioj::soa_storage_detail::for_each_removal_run(
+            num_, indices, [&](size_type index, size_type source, size_type count) {
+                copy_columns(columns, index, source, count);
+            });
+    }
+    template <typename Columns>
+    static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
+        requires ioj::soa_storage_detail::SoaSourceFor<Columns, Vectors3f, size_type>
+    {
+        using ioj::native_soa::source_data;
+        return {source_data(source.xs()), source_data(source.ys()), source_data(source.zs())};
+    }
+    template <typename Columns>
+    void append_columns(Columns const& source,
+                        size_type source_first,
+                        size_type first,
+                        size_type count)
+        requires ioj::soa_storage_detail::SoaSourceFor<Columns, Vectors3f, size_type>
+    {
+        transfer_columns<false>(get_data(first), source_pointers(source) + source_first, count);
+    }
+    template <typename Columns>
+    void copy_columns_from(Columns const& source,
+                           size_type source_first,
+                           size_type first,
+                           size_type count)
+        requires ioj::soa_storage_detail::SoaSourceFor<Columns, Vectors3f, size_type>
+    {
+        transfer_columns<true>(get_data(first), source_pointers(source) + source_first, count);
+    }
+    void copy_live_columns(std::byte* const new_data, size_type const new_capacity) noexcept {
+        auto const old_blocks{capacity_blocks()};
+        auto const new_blocks{static_cast<byte_size_type>(new_capacity / capacity_granularity)};
+        auto const source{make_data_unchecked(static_cast<std::byte const*>(data_), old_blocks)};
+        auto const destination{make_data_unchecked(new_data, new_blocks)};
+        transfer_columns<false>(destination, source, num_);
+    }
+  public:
+    auto xs(this auto& self) { return self.get_view().xs(); }
+    auto ys(this auto& self) { return self.get_view().ys(); }
+    auto zs(this auto& self) { return self.get_view().zs(); }
+    void set(size_type index, float const new_xs, float const new_ys, float const new_zs) {
+        assert(index < num());
+        get_view().xs()[index] = new_xs;
+        get_view().ys()[index] = new_ys;
+        get_view().zs()[index] = new_zs;
+    }
+    size_type add(float const new_xs, float const new_ys, float const new_zs) {
+        auto const index{num()};
+        add_uninitialised(1);
+        set(index, new_xs, new_ys, new_zs);
+        return index;
+    }
+    void set(size_type index, Vector3f const value) {
+        set(index, (value.x()), (value.y()), (value.z()));
+    }
+    size_type add(Vector3f const value) { return add((value.x()), (value.y()), (value.z())); }
+    using equivalent_type = Vector3f;
+    auto operator[](std::uint32_t index) const -> equivalent_type {
+        assert(index < num());
+        return get_const_view()[index];
+    }
+    void apply_permutation(std::span<size_type> indices) {
+        assert(indices.size() == num_);
+        auto const columns{get_data()};
+        ioj::apply_permutation(std::span{columns.xs, num_}, indices);
+        ioj::apply_permutation(std::span{columns.ys, num_}, indices);
+        ioj::apply_permutation(std::span{columns.zs, num_}, indices);
+    }
+  private:
+    std::pmr::memory_resource* resource_{};
+};
 } // namespace ioj

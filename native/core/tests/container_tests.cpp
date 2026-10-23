@@ -112,6 +112,50 @@ TEST(NativeCorePermutation, AppliesCyclesAndRestoresIndices) {
     EXPECT_EQ(indices, original);
 }
 
+TEST(NativeCorePermutation, UnsignedCyclesRestoreIndicesForTheNextColumn) {
+    std::vector<std::string> values{"zero", "one", "two", "three", "four", "five"};
+    std::vector<int> numbers{0, 1, 2, 3, 4, 5};
+    std::array<std::uint32_t, 6> indices{1, 0, 2, 5, 3, 4};
+    auto const original{indices};
+
+    ioj::apply_permutation(std::span{values}, std::span{indices});
+
+    EXPECT_EQ(values, (std::vector<std::string>{"one", "zero", "two", "five", "three", "four"}));
+    EXPECT_EQ(indices, original);
+
+    ioj::apply_permutation(std::span{numbers}, std::span{indices});
+
+    EXPECT_EQ(numbers, (std::vector<int>{1, 0, 2, 5, 3, 4}));
+    EXPECT_EQ(indices, original);
+}
+
+TEST(NativeCorePermutation, UnsignedEmptyAndIdentityPermutationsPreserveValues) {
+    std::vector<int> values;
+    std::span<std::uint32_t> empty_indices;
+    ioj::apply_permutation(std::span{values}, empty_indices);
+    EXPECT_TRUE(values.empty());
+
+    values = {10, 20, 30};
+    std::array<std::uint32_t, 3> indices{0, 1, 2};
+    auto const original{indices};
+    ioj::apply_permutation(std::span{values}, std::span{indices});
+    EXPECT_EQ(values, (std::vector<int>{10, 20, 30}));
+    EXPECT_EQ(indices, original);
+}
+
+#ifndef NDEBUG
+TEST(NativeCorePermutation, RejectsInvalidUnsignedIndices) {
+    std::vector<int> values{10, 20, 30};
+    std::array<std::uint32_t, 3> duplicate{0, 0, 2};
+    std::array<std::uint32_t, 3> out_of_bounds{0, 3, 2};
+    std::array<std::uint32_t, 3> reserved_bit{0, 0x80000000u, 2};
+
+    EXPECT_DEATH(ioj::apply_permutation(std::span{values}, std::span{duplicate}), "");
+    EXPECT_DEATH(ioj::apply_permutation(std::span{values}, std::span{out_of_bounds}), "");
+    EXPECT_DEATH(ioj::apply_permutation(std::span{values}, std::span{reserved_bit}), "");
+}
+#endif
+
 TEST(NativeCoreContainerOps, RemovesRangeByMovingTailIntoRemovedRange) {
     std::vector<int> values{0, 1, 2, 3, 4, 5};
 

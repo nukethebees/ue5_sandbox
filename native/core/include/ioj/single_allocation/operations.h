@@ -120,7 +120,7 @@ struct StorageOperations {
     }
     template <GrowableStorage Self>
     void add_uninitialised(this Self& self, StorageSize<Self> const count) {
-        assert(count >= 0 && count <= Self::max_capacity - self.num_);
+        assert(count <= Self::max_capacity - self.num_);
         auto const new_num{self.num_ + count};
         if (new_num > self.capacity_) {
             self.reallocate(GrowthCapacity(new_num, self.capacity_, Self::capacity_block_bound));
@@ -135,9 +135,8 @@ struct StorageOperations {
                        StorageSize<Self> const offset,
                        StorageSize<Self> const count) {
         source.validate();
-        assert(destination >= 0 && destination <= self.num_ && count >= 0 &&
-               count <= self.num_ - destination && offset >= 0 && offset <= source.num() &&
-               count <= source.num() - offset);
+        assert(destination <= self.num_ && count <= self.num_ - destination &&
+               offset <= source.num() && count <= source.num() - offset);
         if (count > 0) {
             self.copy_columns_from(source, offset, destination, count);
         }
@@ -162,10 +161,9 @@ struct StorageOperations {
                      StorageSize<Self> const offset,
                      StorageSize<Self> const count) -> StorageSize<Self> {
         source.validate();
-        assert(offset >= 0 && offset <= source.num() && count >= 0 &&
-               count <= source.num() - offset);
+        assert(offset <= source.num() && count <= source.num() - offset);
         auto const first{self.num_};
-        assert(count >= 0 && count <= Self::max_capacity - first);
+        assert(count <= Self::max_capacity - first);
         if (count == 0) {
             return first;
         }
@@ -191,6 +189,79 @@ struct StorageOperations {
         self.num_ = new_num;
         return first;
     }
+    template <typename Self, typename Source>
+        requires AppendableStorage<Self, Source>
+    auto append_from(this Self& self, Source const& source, std::span<std::uint32_t const> indices)
+        -> StorageSize<Self> {
+        source.validate();
+        auto const count{checked_row_count(indices.size())};
+        [[maybe_unused]] auto const source_count{source.num()};
+        for ([[maybe_unused]] auto const index : indices) {
+            assert(index < source_count);
+        }
+        auto const first{self.num_};
+        assert(count <= Self::max_capacity - first);
+        if (count == 0) {
+            return first;
+        }
+
+        auto const source_columns{self.source_pointers(source)};
+        auto const new_num{first + count};
+        if (new_num > self.capacity_) {
+            auto const new_capacity{
+                GrowthCapacity(new_num, self.capacity_, Self::capacity_block_bound)};
+            auto* const new_data{allocate_storage(self, new_capacity)};
+            if (first > 0) {
+                self.copy_live_columns(new_data, new_capacity);
+            }
+            auto const destination{
+                self.make_data_unchecked(new_data, new_capacity / Self::capacity_granularity) +
+                first};
+            for (std::uint32_t row{}; row < count; ++row) {
+                self.template transfer_columns<false>(
+                    destination + row, source_columns + indices[row], 1);
+            }
+            release_storage(self);
+            self.data_ = new_data;
+            self.capacity_ = new_capacity;
+        } else {
+            auto const destination{self.get_data(first)};
+            for (std::uint32_t row{}; row < count; ++row) {
+                self.template transfer_columns<false>(
+                    destination + row, source_columns + indices[row], 1);
+            }
+        }
+        self.num_ = new_num;
+        return first;
+    }
+    template <typename Self, typename Compare>
+    void sort(this Self& self, Compare&& compare, std::span<std::uint32_t> indices) {
+        auto const count{self.num()};
+        assert(indices.size() == count);
+        for (std::uint32_t index{}; index < count; ++index) {
+            indices[index] = index;
+        }
+        std::sort(indices.begin(),
+                  indices.end(),
+                  [&self, &compare](std::uint32_t left, std::uint32_t right) {
+                      return compare(self, left, right);
+                  });
+        self.apply_permutation(indices);
+    }
+    template <typename Self, typename Compare>
+    void stable_sort(this Self& self, Compare&& compare, std::span<std::uint32_t> indices) {
+        auto const count{self.num()};
+        assert(indices.size() == count);
+        for (std::uint32_t index{}; index < count; ++index) {
+            indices[index] = index;
+        }
+        std::stable_sort(indices.begin(),
+                         indices.end(),
+                         [&self, &compare](std::uint32_t left, std::uint32_t right) {
+                             return compare(self, left, right);
+                         });
+        self.apply_permutation(indices);
+    }
     template <IndexRemovableStorage Self>
     void remove_at_swap(this Self& self, std::span<StorageSize<Self> const> indices) {
         self.swap_remove_indices(indices);
@@ -206,7 +277,6 @@ struct StorageOperations {
     }
     template <ResizableStorage Self>
     void set_num(this Self& self, StorageSize<Self> const count) {
-        assert(count >= 0);
         if (count > self.num_) {
             self.add_defaulted(count - self.num_);
         } else {
@@ -217,7 +287,7 @@ struct StorageOperations {
     void remove_at_swap(this Self& self,
                         StorageSize<Self> const index,
                         StorageSize<Self> const count) {
-        assert(index >= 0 && index <= self.num_ && count >= 0 && count <= self.num_ - index);
+        assert(index <= self.num_ && count <= self.num_ - index);
         auto const tail{self.num_ - index - count};
         auto const move_count{std::min(count, tail)};
         if (move_count > 0) {

@@ -19,7 +19,7 @@ inline void copy_vectors(VectorColumns auto const& destination, VectorColumns au
 }
 inline void assign_from(Vectors3f& dst, VectorColumns auto const& src) {
     dst.set_num(src.num());
-    copy_vectors(dst.get_view(), src);
+    copy_vectors(dst.get_view().resolve(), src);
 }
 
 inline void fill(VectorColumns auto const& vectors, float const value) {
@@ -86,7 +86,7 @@ inline void direction(VectorColumns auto const& out,
 
 inline void to_rotations(Rotators3f& out, VectorColumns auto const& directions) {
     out.set_num(directions.num());
-    auto const rotations{out.get_view()};
+    auto const rotations{out.get_view().resolve()};
     auto const direction_count{directions.num()};
     for (std::uint32_t i{}; i < direction_count; ++i) {
         rotations.set(i, direction_to_rotation(vector_at(directions, i)));

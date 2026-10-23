@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ioj/vector_soa_view.h"
+#include "ioj/vectors3f.h"
 
 #include <cmath>
 #include <cstdint>
@@ -15,17 +15,17 @@ auto solve_intercept_time(Vector3f shooter_position,
 
 namespace ioj::detail::solve_intercept_times_aos {
 void solve_intercept_times(float* out_intercept_times,
-                           Vector3fSoAConstView shooter_positions,
-                           Vector3fSoAConstView target_positions,
-                           Vector3fSoAConstView target_velocities,
+                           Vectors3fResolvedConstView shooter_positions,
+                           Vectors3fResolvedConstView target_positions,
+                           Vectors3fResolvedConstView target_velocities,
                            float projectile_speed) noexcept;
 }
 
 namespace ioj::detail::solve_intercept_times_struct_loop {
 void solve_intercept_times(float* out_intercept_times,
-                           Vector3fSoAConstView shooter_positions,
-                           Vector3fSoAConstView target_positions,
-                           Vector3fSoAConstView target_velocities,
+                           Vectors3fResolvedConstView shooter_positions,
+                           Vectors3fResolvedConstView target_positions,
+                           Vectors3fResolvedConstView target_velocities,
                            float projectile_speed) noexcept;
 }
 

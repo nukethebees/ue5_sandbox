@@ -7,9 +7,9 @@
 
 namespace projectile_intercept_benchmarks {
 using BatchSolver = void (*)(float*,
-                             ioj::Vector3fSoAConstView,
-                             ioj::Vector3fSoAConstView,
-                             ioj::Vector3fSoAConstView,
+                             ioj::Vectors3fResolvedConstView,
+                             ioj::Vectors3fResolvedConstView,
+                             ioj::Vectors3fResolvedConstView,
                              float) noexcept;
 
 struct ProjectileBuffers {
@@ -35,11 +35,15 @@ struct ProjectileBuffers {
         }
     }
 
-    auto shooters() const -> ioj::Vector3fSoAConstView { return {shooter_x, shooter_y, shooter_z}; }
+    auto shooters() const -> ioj::Vectors3fResolvedConstView {
+        return {shooter_x, shooter_y, shooter_z};
+    }
 
-    auto targets() const -> ioj::Vector3fSoAConstView { return {target_x, target_y, target_z}; }
+    auto targets() const -> ioj::Vectors3fResolvedConstView {
+        return {target_x, target_y, target_z};
+    }
 
-    auto velocities() const -> ioj::Vector3fSoAConstView {
+    auto velocities() const -> ioj::Vectors3fResolvedConstView {
         return {velocity_x, velocity_y, velocity_z};
     }
 

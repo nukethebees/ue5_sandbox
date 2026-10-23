@@ -1,8 +1,5 @@
 #pragma once
 
-#include <ioj/address_cast.h>
-#include <ioj/compact_vector_view.h>
-#include <ioj/rotator_soa_view.h>
 #include <ioj/single_allocation/layout.h>
 #include <ioj/single_allocation/operations.h>
 #include <ioj/single_allocation/removal.h>
@@ -13,50 +10,12 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
-#include <limits>
 #include <memory>
-#include <new>
 #include <span>
 #include <type_traits>
 #include <utility>
-#include <vector>
-
-#ifndef NATIVE_SOA_MIMALLOC
-#define NATIVE_SOA_MIMALLOC 0
-#endif
-
-#if NATIVE_SOA_MIMALLOC
-#include <sbx/memory.h>
-#endif
 
 namespace ioj::native_soa {
-
-#if NATIVE_SOA_MIMALLOC
-template <typename T>
-struct MimallocAllocator {
-    using value_type = T;
-    MimallocAllocator() = default;
-    template <typename U>
-    MimallocAllocator(MimallocAllocator<U> const&) noexcept {}
-    auto allocate(std::size_t count) -> T* {
-        if (count > std::numeric_limits<std::size_t>::max() / sizeof(T)) {
-            throw std::bad_array_new_length{};
-        }
-        auto* const allocation{sbx::memory::allocate_aligned(count * sizeof(T), alignof(T))};
-        if (allocation == nullptr) {
-            throw std::bad_alloc{};
-        }
-        return static_cast<T*>(allocation);
-    }
-    void deallocate(T* data, std::size_t) noexcept { sbx::memory::free(data); }
-    friend auto operator==(MimallocAllocator const&, MimallocAllocator const&) -> bool = default;
-};
-template <typename T>
-using Vector = std::vector<T, MimallocAllocator<T>>;
-#else
-template <typename T>
-using Vector = std::vector<T>;
-#endif
 
 using single_allocation_layout::capacity_block_bound;
 using single_allocation_layout::capacity_granularity;
@@ -70,13 +29,6 @@ using single_allocation_layout::supported_leaf;
 using single_allocation_layout::try_allocation_bytes;
 using single_allocation_layout::try_round_capacity;
 using soa_storage_detail::source_data;
-
-template <typename Destination, typename Source>
-auto is_external_source(Destination const& destination, Source const& source) -> bool {
-    auto const address{address_cast(source.data())};
-    auto const begin{address_cast(destination.data())};
-    return address < begin || address >= begin + destination.size() * sizeof(*destination.data());
-}
 
 template <bool Overlapping, typename T>
 void transfer_n(T* const destination, T const* const source, std::uint32_t const count) noexcept {
@@ -96,12 +48,12 @@ void default_construct_n(T* const destination, std::uint32_t const count) {
     std::uninitialized_value_construct_n(destination, count);
 }
 
-using StorageState = soa_storage_detail::StorageState<std::uint32_t>;
+using StorageState = soa_storage_detail::StorageState;
 
-inline auto rounded_capacity(std::int64_t const required,
+inline auto rounded_capacity(std::uint32_t const required,
                              [[maybe_unused]] std::size_t const block_bytes) -> std::uint32_t {
-    assert(required >= 0 && required <= maximum_capacity(block_bytes));
-    auto const rounded{((required + capacity_granularity - 1) / capacity_granularity) *
+    assert(required <= maximum_capacity(block_bytes));
+    auto const rounded{((std::size_t{required} + capacity_granularity - 1) / capacity_granularity) *
                        capacity_granularity};
     assert(rounded <= maximum_capacity(block_bytes));
     return static_cast<std::uint32_t>(rounded);
@@ -118,32 +70,9 @@ inline auto growth_capacity(std::uint32_t const required,
     auto const bounded{geometric < static_cast<std::size_t>(maximum)
                            ? geometric
                            : static_cast<std::size_t>(maximum)};
-    return rounded_capacity(static_cast<std::int64_t>(bounded), block_bytes);
-}
-
-inline auto allocation_bytes(std::uint32_t const capacity, std::size_t const block_bytes)
-    -> std::size_t {
-    assert(capacity >= 0 && capacity % capacity_granularity == 0 &&
-           capacity <= maximum_capacity(block_bytes));
-    return static_cast<std::size_t>(capacity / capacity_granularity) * block_bytes;
+    return rounded_capacity(static_cast<std::uint32_t>(bounded), block_bytes);
 }
 
 using StorageOperations = soa_storage_detail::StorageOperations<rounded_capacity, growth_capacity>;
 
-}
-
-namespace ioj::native_soa {
-template <typename T>
-using Vector2View = soa_storage_detail::VectorView<T, 2, std::span>;
-template <typename T>
-using Vector2ConstView = Vector2View<T const>;
-template <typename T>
-using Vector3View = soa_storage_detail::VectorView<T, 3, std::span>;
-template <typename T>
-using Vector3ConstView = Vector3View<T const>;
-
-template <typename T, typename Value = std::array<std::remove_const_t<T>, 3>>
-using RotatorSoAView = soa_storage_detail::RotatorSoAView<T, std::span, std::uint32_t, Value>;
-template <typename T, typename Value = std::array<std::remove_const_t<T>, 3>>
-using RotatorSoAConstView = RotatorSoAView<T const, Value>;
 }

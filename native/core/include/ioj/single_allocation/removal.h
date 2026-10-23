@@ -9,17 +9,17 @@
 namespace ioj::soa_storage_detail {
 
 // Indices describe the original rows in strictly descending order.
-template <typename Size, typename Copy>
-void for_each_removal_run(Size num, std::span<Size const> indices, Copy copy) {
+template <typename Copy>
+void for_each_removal_run(std::uint32_t num, std::span<std::uint32_t const> indices, Copy copy) {
     assert(indices.size() <= static_cast<std::size_t>(num));
 #ifndef NDEBUG
     auto previous{num};
     for (auto const index : indices) {
-        assert(index >= 0 && index < previous);
+        assert(index < previous);
         previous = index;
     }
 #endif
-    auto const count{static_cast<Size>(indices.size())};
+    auto const count{static_cast<std::uint32_t>(indices.size())};
     auto const final_num{num - count};
     auto hole{static_cast<std::ptrdiff_t>(count) - 1};
     auto removed_tail{hole};

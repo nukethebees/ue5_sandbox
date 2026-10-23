@@ -4,271 +4,448 @@
 #pragma once
 
 #include "ioj/native_soa/storage.h"
-#include "ioj/native_soa/vector_storage_ops.h"
 #include "ioj/rotator_types.h"
+#include "ioj/soa_permutation.h"
 
 #include <cassert>
-#include <utility>
+#include <memory_resource>
 
 namespace ioj {
+struct Rotators3fSchema;
 struct Rotators3fView;
 struct Rotators3fConstView;
-struct Rotators3fConstView {
-    using View = Rotators3fView;
-    using ConstView = Rotators3fConstView;
+struct Rotators3fLayoutColumns {
+    template <typename T>
+    using ColLayout = ioj::native_soa::ColumnLayout<T>;
+
+    ioj::native_soa::ColumnLayoutStart LayoutStart{};
+
+    ColLayout<float> PitchesColumn;
+    ColLayout<float> YawsColumn;
+    ColLayout<float> RollsColumn;
+
+    constexpr Rotators3fLayoutColumns() noexcept
+        : PitchesColumn{LayoutStart}
+        , YawsColumn{PitchesColumn}
+        , RollsColumn{YawsColumn} {}
+    Rotators3fLayoutColumns(Rotators3fLayoutColumns const&) = delete;
+    auto operator=(Rotators3fLayoutColumns const&) -> Rotators3fLayoutColumns& = delete;
+};
+struct Rotators3fLayout {
     using size_type = std::uint32_t;
+    using byte_size_type = std::size_t;
+
+    static constexpr size_type capacity_granularity{
+        ioj::native_soa::LayoutPolicy::capacity_granularity};
+    static constexpr byte_size_type column_gap{ioj::native_soa::LayoutPolicy::column_gap};
+
+    static constexpr Rotators3fLayoutColumns columns{};
+
+    static constexpr byte_size_type allocation_alignment{columns.RollsColumn.allocation_alignment};
+
+    // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
+    // capacity.
+    static constexpr byte_size_type capacity_block_bound{
+        ioj::native_soa::capacity_block_bound(columns.RollsColumn)};
+    static constexpr size_type max_capacity{
+        ioj::native_soa::maximum_capacity(capacity_block_bound)};
+    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
+        return blocks == 0 ? 0 : columns.RollsColumn.data_end(blocks);
+    }
+    static_assert(max_capacity >= capacity_granularity);
+};
+
+struct Rotators3fResolvedView;
+struct Rotators3fResolvedConstView;
+template <bool Const>
+struct Rotators3fResolvedViewImpl {
+    using size_type = std::uint32_t;
+    using View = Rotators3fResolvedView;
+    using ConstView = Rotators3fResolvedConstView;
+    using soa_schema = ::ioj::Rotators3fSchema;
+    template <typename T>
+    using Element = std::conditional_t<Const, T const, T>;
+    Rotators3fResolvedViewImpl() = default;
+    Rotators3fResolvedViewImpl(Element<float>* pitches,
+                               Element<float>* yaws,
+                               Element<float>* rolls,
+                               size_type count)
+        : pitches_{pitches}
+        , yaws_{yaws}
+        , rolls_{rolls}
+        , count_{count} {
+        ioj::soa_storage_detail::validate_column_pointers(count_, pitches_, yaws_, rolls_);
+    }
+    Rotators3fResolvedViewImpl(std::span<Element<float>> pitches,
+                               std::span<Element<float>> yaws,
+                               std::span<Element<float>> rolls)
+        : Rotators3fResolvedViewImpl{pitches.data(),
+                                     yaws.data(),
+                                     rolls.data(),
+                                     ioj::soa_storage_detail::checked_row_count(pitches.size())} {
+        assert(pitches.size() == count_);
+        assert(yaws.size() == count_);
+        assert(rolls.size() == count_);
+    }
+    template <bool Enabled = Const>
+    Rotators3fResolvedViewImpl(Rotators3fResolvedViewImpl<false> const& other)
+        requires Enabled
+        : pitches_{other.pitches_}
+        , yaws_{other.yaws_}
+        , rolls_{other.rolls_}
+        , count_{other.count_} {}
+    auto num() const noexcept -> size_type { return count_; }
+    auto is_empty() const noexcept -> bool { return count_ == 0; }
+    auto get_view(this auto const& self) { return self; }
+    auto get_const_view(this auto const& self) {
+        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
+        return Result{self.pitches_, self.yaws_, self.rolls_, self.count_};
+    }
+    auto resolve(this auto const& self) { return self; }
+    void validate() const {}
+    auto slice(this auto const& self, size_type offset, size_type count) {
+        assert(offset <= self.count_ && count <= self.count_ - offset);
+        using Result = std::remove_cvref_t<decltype(self)>;
+        return Result{self.pitches_ == nullptr ? nullptr : self.pitches_ + offset,
+                      self.yaws_ == nullptr ? nullptr : self.yaws_ + offset,
+                      self.rolls_ == nullptr ? nullptr : self.rolls_ + offset,
+                      count};
+    }
+    auto get_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count);
+    }
+    auto get_const_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count).get_const_view();
+    }
+    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
+    auto right(this auto const& self, size_type count) {
+        assert(count <= self.num());
+        return self.slice(self.num() - count, count);
+    }
+    auto pitches() const -> std::span<Element<float>> { return {pitches_, count_}; }
+    auto yaws() const -> std::span<Element<float>> { return {yaws_, count_}; }
+    auto rolls() const -> std::span<Element<float>> { return {rolls_, count_}; }
+    template <typename Func>
+    void each_column(Func&& func) const {
+        func(std::span<Element<float>>{pitches_, count_});
+        func(std::span<Element<float>>{yaws_, count_});
+        func(std::span<Element<float>>{rolls_, count_});
+    }
+  private:
+    template <bool>
+    friend struct Rotators3fResolvedViewImpl;
+    Element<float>* pitches_{};
+    Element<float>* yaws_{};
+    Element<float>* rolls_{};
+    size_type count_{};
+};
+struct Rotators3fResolvedConstView : Rotators3fResolvedViewImpl<true> {
+    using Base = Rotators3fResolvedViewImpl<true>;
+    using Base::Base;
     using equivalent_type = Rotator3f;
-    auto operator[](size_type const index) const -> equivalent_type {
-        return {pitches[static_cast<std::size_t>(index)],
-                yaws[static_cast<std::size_t>(index)],
-                rolls[static_cast<std::size_t>(index)]};
-    }
-    std::span<float const> pitches;
-    std::span<float const> yaws;
-    std::span<float const> rolls;
-    auto num() const noexcept -> size_type { return static_cast<size_type>(pitches.size()); }
-    auto is_empty() const noexcept -> bool { return num() == 0; }
-    template <typename Fn>
-    void each_column(Fn&& fn) const {
-        fn(pitches);
-        fn(yaws);
-        fn(rolls);
-    }
-    void validate_array_sizes() const {
-        ioj::native_soa::vector_storage_ops::validate_array_sizes(*this);
-    }
-    auto slice(size_type const offset, size_type const count) const -> Rotators3fConstView {
-        assert(offset <= num() && count <= num() - offset);
-        return {
-            pitches.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            yaws.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            rolls.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-        };
-    }
-    auto get_view() const -> Rotators3fConstView { return *this; }
-    auto get_view(size_type const offset, size_type const count) const -> Rotators3fConstView {
-        return slice(offset, count);
-    }
-    auto get_const_view() const -> ConstView {
-        return {
-            pitches,
-            yaws,
-            rolls,
-        };
-    }
-    auto get_const_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view().slice(offset, count);
-    }
-    auto left(size_type const count) const -> Rotators3fConstView { return slice(0, count); }
-    auto right(size_type const count) const -> Rotators3fConstView {
-        assert(count <= num());
-        return slice(num() - count, count);
+    auto operator[](std::uint32_t index) const -> equivalent_type {
+        assert(index < num());
+        return equivalent_type{pitches()[index], yaws()[index], rolls()[index]};
     }
 };
-struct Rotators3fView {
-    using View = Rotators3fView;
-    using ConstView = Rotators3fConstView;
-    using size_type = std::uint32_t;
-    using equivalent_type = Rotator3f;
-    auto operator[](size_type const index) const -> equivalent_type {
-        return {pitches[static_cast<std::size_t>(index)],
-                yaws[static_cast<std::size_t>(index)],
-                rolls[static_cast<std::size_t>(index)]};
-    }
-    std::span<float> pitches;
-    std::span<float> yaws;
-    std::span<float> rolls;
-    auto num() const noexcept -> size_type { return static_cast<size_type>(pitches.size()); }
-    auto is_empty() const noexcept -> bool { return num() == 0; }
-    template <typename Fn>
-    void each_column(Fn&& fn) const {
-        fn(pitches);
-        fn(yaws);
-        fn(rolls);
-    }
-    void validate_array_sizes() const {
-        ioj::native_soa::vector_storage_ops::validate_array_sizes(*this);
-    }
-    auto slice(size_type const offset, size_type const count) const -> Rotators3fView {
-        assert(offset <= num() && count <= num() - offset);
-        return {
-            pitches.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            yaws.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            rolls.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-        };
-    }
-    auto get_view() const -> Rotators3fView { return *this; }
-    auto get_view(size_type const offset, size_type const count) const -> Rotators3fView {
-        return slice(offset, count);
-    }
-    auto get_const_view() const -> ConstView {
-        return {
-            pitches,
-            yaws,
-            rolls,
-        };
-    }
-    auto get_const_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view().slice(offset, count);
-    }
-    auto left(size_type const count) const -> Rotators3fView { return slice(0, count); }
-    auto right(size_type const count) const -> Rotators3fView {
-        assert(count <= num());
-        return slice(num() - count, count);
-    }
-    void set(size_type const index,
+struct Rotators3fResolvedView : Rotators3fResolvedViewImpl<false> {
+    using Base = Rotators3fResolvedViewImpl<false>;
+    using Base::Base;
+    void set(size_type index,
              float const new_pitches,
              float const new_yaws,
              float const new_rolls) const {
         assert(index < num());
-        pitches[static_cast<std::size_t>(index)] = new_pitches;
-        yaws[static_cast<std::size_t>(index)] = new_yaws;
-        rolls[static_cast<std::size_t>(index)] = new_rolls;
+        this->pitches()[index] = new_pitches;
+        this->yaws()[index] = new_yaws;
+        this->rolls()[index] = new_rolls;
     }
-    void set(size_type const index, equivalent_type const value) const {
-        set(index, value.pitch, value.yaw, value.roll);
+    void set(size_type index, Rotator3f const value) const {
+        set(index, (value.pitch), (value.yaw), (value.roll));
+    }
+    using equivalent_type = Rotator3f;
+    auto operator[](std::uint32_t index) const -> equivalent_type {
+        assert(index < num());
+        return equivalent_type{pitches()[index], yaws()[index], rolls()[index]};
     }
 };
-struct Rotators3f {
+template <bool Const>
+struct Rotators3fViewImpl : ioj::soa_storage_detail::CompactViewOperations {
+    using soa_schema = Rotators3fSchema;
+    using size_type = std::uint32_t;
+    using Layout = Rotators3fLayout;
+    using Storage = ioj::native_soa::StorageState;
+    using State = std::conditional_t<Const, Storage const, Storage>;
+    template <typename T>
+    using Element = std::conditional_t<Const, T const, T>;
     using View = Rotators3fView;
     using ConstView = Rotators3fConstView;
-    using size_type = std::uint32_t;
+    Rotators3fViewImpl() = default;
+    Rotators3fViewImpl(State* state, size_type offset, size_type count)
+        : state_{state}
+        , offset_{offset}
+        , count_{count} {}
+    template <bool Enabled = Const>
+    Rotators3fViewImpl(Rotators3fViewImpl<false> const& other)
+        requires Enabled
+        : state_{other.state_}
+        , offset_{other.offset_}
+        , count_{other.count_} {}
+    auto pitches() const { return make_column_view(Layout::columns.PitchesColumn); }
+    auto yaws() const { return make_column_view(Layout::columns.YawsColumn); }
+    auto rolls() const { return make_column_view(Layout::columns.RollsColumn); }
+    template <typename Func>
+    void each_column(Func&& func) const {
+        func(pitches());
+        func(yaws());
+        func(rolls());
+    }
+    auto resolve() const
+        -> std::conditional_t<Const, Rotators3fResolvedConstView, Rotators3fResolvedView> {
+        return {(make_column_view(Layout::columns.PitchesColumn).data()),
+                (make_column_view(Layout::columns.YawsColumn).data()),
+                (make_column_view(Layout::columns.RollsColumn).data()),
+                count_};
+    }
+  private:
+    template <typename T>
+    auto make_column_view(ioj::native_soa::ColumnLayout<T> const& layout) const {
+        return ioj::soa_storage_detail::column_view<std::span<Element<T>>>(
+            state_, offset_, count_, layout);
+    }
+    friend ioj::soa_storage_detail::CompactViewOperations;
+    template <bool>
+    friend struct Rotators3fViewImpl;
+    State* state_{};
+    size_type offset_{};
+    size_type count_{};
+};
+struct Rotators3fConstView : Rotators3fViewImpl<true> {
+    using Base = Rotators3fViewImpl<true>;
+    using Base::Base;
     using equivalent_type = Rotator3f;
-    auto operator[](size_type const index) const -> equivalent_type {
-        return get_const_view()[index];
-    }
-    ioj::native_soa::Vector<float> pitches;
-    ioj::native_soa::Vector<float> yaws;
-    ioj::native_soa::Vector<float> rolls;
-    auto num() const noexcept -> size_type { return static_cast<size_type>(pitches.size()); }
-    auto is_empty() const noexcept -> bool { return num() == 0; }
-    template <typename Fn>
-    void each_column(Fn&& fn) {
-        fn(pitches);
-        fn(yaws);
-        fn(rolls);
-    }
-    template <typename Fn>
-    void each_column(Fn&& fn) const {
-        fn(pitches);
-        fn(yaws);
-        fn(rolls);
-    }
-    void validate_array_sizes() const { get_const_view().validate_array_sizes(); }
-    void reset() { ioj::native_soa::vector_storage_ops::reset(*this); }
-    void reserve(size_type const count) {
-        ioj::native_soa::vector_storage_ops::reserve(*this, count);
-    }
-    void add_uninitialised(size_type const count) {
-        ioj::native_soa::vector_storage_ops::add_uninitialised(*this, count);
-    }
-    void add_defaulted(size_type const count) {
-        ioj::native_soa::vector_storage_ops::add_defaulted(*this, count);
-    }
-    void remove_at_swap(size_type const index, size_type const count) {
-        ioj::native_soa::vector_storage_ops::remove_at_swap(*this, index, count);
-    }
-    void set_num(size_type const count) {
-        ioj::native_soa::vector_storage_ops::set_num(*this, count);
-    }
-    void apply_permutation(std::span<std::int32_t> const indices) {
-        ioj::native_soa::vector_storage_ops::apply_permutation(*this, indices);
-    }
-    template <typename Compare>
-    void sort(Compare&& compare, std::span<std::int32_t> const scratch_indices) {
-        ioj::native_soa::vector_storage_ops::sort(
-            *this, std::forward<Compare>(compare), scratch_indices);
-    }
-    void set(size_type const index,
-             float const new_pitches,
-             float const new_yaws,
-             float const new_rolls) {
-        get_view().set(index, new_pitches, new_yaws, new_rolls);
-    }
-    auto add(float const new_pitches, float const new_yaws, float const new_rolls) -> size_type {
-        return ioj::native_soa::vector_storage_ops::append_rows(*this, 1, [&] {
-            pitches.emplace_back(new_pitches);
-            yaws.emplace_back(new_yaws);
-            rolls.emplace_back(new_rolls);
-        });
-    }
-    void set(size_type const index, equivalent_type const value) { get_view().set(index, value); }
-    auto add(equivalent_type const value) -> size_type {
-        return add(value.pitch, value.yaw, value.roll);
-    }
-    void append_from(ConstView source) {
-        auto const count{source.num()};
-        assert(count <= std::numeric_limits<size_type>::max() - num());
-        source.validate_array_sizes();
-        if (count == 0) {
-            return;
-        }
-        assert(ioj::native_soa::is_external_source(pitches, source.pitches));
-        assert(ioj::native_soa::is_external_source(yaws, source.yaws));
-        assert(ioj::native_soa::is_external_source(rolls, source.rolls));
-        ioj::native_soa::vector_storage_ops::append_rows(*this, count, [&] {
-            pitches.insert(pitches.end(), source.pitches.data(), source.pitches.data() + count);
-            yaws.insert(yaws.end(), source.yaws.data(), source.yaws.data() + count);
-            rolls.insert(rolls.end(), source.rolls.data(), source.rolls.data() + count);
-        });
-    }
-    auto get_view() -> View {
-        return {
-            pitches,
-            yaws,
-            rolls,
-        };
-    }
-    auto get_view() const -> ConstView {
-        return {
-            pitches,
-            yaws,
-            rolls,
-        };
-    }
-    auto get_const_view() const -> ConstView { return get_view(); }
-    auto get_view(size_type const offset, size_type const count) -> View {
-        return get_view().slice(offset, count);
-    }
-    auto get_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_view().slice(offset, count);
-    }
-    auto get_const_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view().slice(offset, count);
-    }
-    auto slice(size_type const offset, size_type const count) -> View {
-        return get_view(offset, count);
-    }
-    auto slice(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view(offset, count);
-    }
-    auto left(size_type const count) -> View { return slice(0, count); }
-    auto right(size_type const count) -> View {
-        assert(count <= num());
-        return slice(num() - count, count);
-    }
-    auto left(size_type const count) const -> ConstView { return slice(0, count); }
-    auto right(size_type const count) const -> ConstView {
-        assert(count <= num());
-        return slice(num() - count, count);
-    }
-    template <typename Other>
-    void copy_element(size_type const dst_index, Other const& other, size_type const src_index) {
-        auto const destination_index{static_cast<std::size_t>(dst_index)};
-        auto const source_index{static_cast<std::size_t>(src_index)};
-        pitches[destination_index] = other.pitches[source_index];
-        yaws[destination_index] = other.yaws[source_index];
-        rolls[destination_index] = other.rolls[source_index];
-    }
-    template <typename Other>
-    void copy_elements(size_type const dst_index,
-                       Other const& other,
-                       size_type const src_index,
-                       size_type const count) {
-        for (size_type i{}; i < count; ++i) {
-            copy_element(dst_index + i, other, src_index + i);
-        }
+    auto operator[](std::uint32_t index) const -> equivalent_type {
+        assert(index < num());
+        return equivalent_type{pitches()[index], yaws()[index], rolls()[index]};
     }
 };
+static_assert(ioj::soa_storage_detail::validate_compact_view<Rotators3fConstView>());
+struct Rotators3fView : Rotators3fViewImpl<false> {
+    using Base = Rotators3fViewImpl<false>;
+    using Base::Base;
+    void set(size_type index,
+             float const new_pitches,
+             float const new_yaws,
+             float const new_rolls) const {
+        assert(index < num());
+        this->pitches()[index] = new_pitches;
+        this->yaws()[index] = new_yaws;
+        this->rolls()[index] = new_rolls;
+    }
+    void set(size_type index, Rotator3f const value) const {
+        set(index, (value.pitch), (value.yaw), (value.roll));
+    }
+    using equivalent_type = Rotator3f;
+    auto operator[](std::uint32_t index) const -> equivalent_type {
+        assert(index < num());
+        return equivalent_type{pitches()[index], yaws()[index], rolls()[index]};
+    }
+};
+static_assert(ioj::soa_storage_detail::validate_compact_view<Rotators3fView>());
+// Columns:
+// pitches: float
+// yaws: float
+// rolls: float
+struct Rotators3f
+    : protected ioj::native_soa::StorageState
+    , ioj::native_soa::StorageOperations {
+    using soa_schema = Rotators3fSchema;
+    using Operations = ioj::native_soa::StorageOperations;
+    using Layout = Rotators3fLayout;
+    using size_type = Layout::size_type;
+    using byte_size_type = Layout::byte_size_type;
 
+    static constexpr auto capacity_granularity = Layout::capacity_granularity;
+    static constexpr auto allocation_alignment = Layout::allocation_alignment;
+    static constexpr auto capacity_block_bound = Layout::capacity_block_bound;
+    static constexpr auto max_capacity = Layout::max_capacity;
+
+    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
+        return Layout::layout_bytes(blocks);
+    }
+
+    using View = Rotators3fView;
+    using ConstView = Rotators3fConstView;
+
+    /* **************************************** */
+    // Lifetime
+    /* **************************************** */
+    Rotators3f() noexcept
+        : Rotators3f{*std::pmr::get_default_resource()} {}
+    explicit Rotators3f(std::pmr::memory_resource& resource) noexcept
+        : resource_{&resource} {}
+    auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+    ~Rotators3f() { Operations::release_storage(*this); }
+    Rotators3f(Rotators3f const&) = delete;
+    auto operator=(Rotators3f const&) -> Rotators3f& = delete;
+    Rotators3f(Rotators3f&& other) noexcept
+        : resource_{other.resource_} {
+        Operations::take_storage(*this, other);
+    }
+    auto operator=(Rotators3f&& other) -> Rotators3f& {
+        return Operations::move_assign(*this, other);
+    }
+  protected:
+    template <typename Byte>
+    struct DataPointers {
+        template <typename T>
+        using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
+        Element<float>* pitches{};
+        Element<float>* yaws{};
+        Element<float>* rolls{};
+        auto operator+(size_type const offset) const noexcept -> DataPointers {
+            if (pitches == nullptr) {
+                return {};
+            }
+            return {pitches + offset, yaws + offset, rolls + offset};
+        }
+    };
+    template <typename Self>
+    auto get_data(this Self& self) noexcept {
+        using Byte = std::conditional_t<std::is_const_v<Self>, std::byte const, std::byte>;
+        if (self.data_ == nullptr) {
+            return DataPointers<Byte>{};
+        }
+        return make_data_unchecked(static_cast<Byte*>(self.data_), self.capacity_blocks());
+    }
+    template <typename Self>
+    auto get_data(this Self& self, size_type const offset) noexcept {
+        return self.get_data() + offset;
+    }
+  private:
+    friend Operations;
+    friend ::ioj::soa_storage_detail::StorageRequirements;
+    /* **************************************** */
+    // Column pointers
+    /* **************************************** */
+    template <typename Byte>
+    static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
+        -> DataPointers<Byte> {
+        ioj::native_soa::LayoutCursor cursor{blocks};
+        return {cursor.column_pointer(data, Layout::columns.PitchesColumn),
+                cursor.column_pointer(data, Layout::columns.YawsColumn),
+                cursor.column_pointer(data, Layout::columns.RollsColumn)};
+    }
+    auto capacity_blocks() const noexcept -> byte_size_type {
+        return static_cast<byte_size_type>(capacity_ / capacity_granularity);
+    }
+
+    /* **************************************** */
+    // Typed mutations and growth
+    /* **************************************** */
+    void default_construct_columns(size_type const first, size_type const count) {
+        using ioj::native_soa::default_construct_n;
+        auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
+        default_construct_n(columns.pitches, count);
+        default_construct_n(columns.yaws, count);
+        default_construct_n(columns.rolls, count);
+    }
+    template <bool Overlapping, typename Byte>
+    static void transfer_columns(DataPointers<std::byte> const& destination,
+                                 DataPointers<Byte> const& source,
+                                 size_type count) {
+        auto transfer = [count](auto* dst, auto const* src) {
+            ioj::native_soa::transfer_n<Overlapping>(dst, src, count);
+        };
+        transfer(destination.pitches, source.pitches);
+        transfer(destination.yaws, source.yaws);
+        transfer(destination.rolls, source.rolls);
+    }
+    void swap_remove_columns(size_type const index,
+                             size_type const source,
+                             size_type const move_count) {
+        copy_columns(get_data(), index, source, move_count);
+    }
+    static void copy_columns(DataPointers<std::byte> const& columns,
+                             size_type index,
+                             size_type source,
+                             size_type move_count) {
+        transfer_columns<false>(columns + index, columns + source, move_count);
+    }
+    void swap_remove_indices(std::span<size_type const> indices) {
+        auto const columns{get_data()};
+        ioj::soa_storage_detail::for_each_removal_run(
+            num_, indices, [&](size_type index, size_type source, size_type count) {
+                copy_columns(columns, index, source, count);
+            });
+    }
+    template <typename Columns>
+    static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
+        requires ioj::soa_storage_detail::SoaSourceFor<Columns, Rotators3f, size_type>
+    {
+        using ioj::native_soa::source_data;
+        return {
+            source_data(source.pitches()), source_data(source.yaws()), source_data(source.rolls())};
+    }
+    template <typename Columns>
+    void append_columns(Columns const& source,
+                        size_type source_first,
+                        size_type first,
+                        size_type count)
+        requires ioj::soa_storage_detail::SoaSourceFor<Columns, Rotators3f, size_type>
+    {
+        transfer_columns<false>(get_data(first), source_pointers(source) + source_first, count);
+    }
+    template <typename Columns>
+    void copy_columns_from(Columns const& source,
+                           size_type source_first,
+                           size_type first,
+                           size_type count)
+        requires ioj::soa_storage_detail::SoaSourceFor<Columns, Rotators3f, size_type>
+    {
+        transfer_columns<true>(get_data(first), source_pointers(source) + source_first, count);
+    }
+    void copy_live_columns(std::byte* const new_data, size_type const new_capacity) noexcept {
+        auto const old_blocks{capacity_blocks()};
+        auto const new_blocks{static_cast<byte_size_type>(new_capacity / capacity_granularity)};
+        auto const source{make_data_unchecked(static_cast<std::byte const*>(data_), old_blocks)};
+        auto const destination{make_data_unchecked(new_data, new_blocks)};
+        transfer_columns<false>(destination, source, num_);
+    }
+  public:
+    auto pitches(this auto& self) { return self.get_view().pitches(); }
+    auto yaws(this auto& self) { return self.get_view().yaws(); }
+    auto rolls(this auto& self) { return self.get_view().rolls(); }
+    void
+        set(size_type index, float const new_pitches, float const new_yaws, float const new_rolls) {
+        assert(index < num());
+        get_view().pitches()[index] = new_pitches;
+        get_view().yaws()[index] = new_yaws;
+        get_view().rolls()[index] = new_rolls;
+    }
+    size_type add(float const new_pitches, float const new_yaws, float const new_rolls) {
+        auto const index{num()};
+        add_uninitialised(1);
+        set(index, new_pitches, new_yaws, new_rolls);
+        return index;
+    }
+    void set(size_type index, Rotator3f const value) {
+        set(index, (value.pitch), (value.yaw), (value.roll));
+    }
+    size_type add(Rotator3f const value) { return add((value.pitch), (value.yaw), (value.roll)); }
+    using equivalent_type = Rotator3f;
+    auto operator[](std::uint32_t index) const -> equivalent_type {
+        assert(index < num());
+        return get_const_view()[index];
+    }
+    void apply_permutation(std::span<size_type> indices) {
+        assert(indices.size() == num_);
+        auto const columns{get_data()};
+        ioj::apply_permutation(std::span{columns.pitches, num_}, indices);
+        ioj::apply_permutation(std::span{columns.yaws, num_}, indices);
+        ioj::apply_permutation(std::span{columns.rolls, num_}, indices);
+    }
+  private:
+    std::pmr::memory_resource* resource_{};
+};
 } // namespace ioj

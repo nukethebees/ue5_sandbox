@@ -12,10 +12,6 @@ target_include_directories(native-core-headers
 )
 target_sources(native-core
   PRIVATE
-    include/ioj/frame_vectors3f.h
-    src/frame_vectors3f.cpp
-    include/ioj/frame_rotators3f.h
-    src/frame_rotators3f.cpp
     include/ioj/vectors3f.h
     include/ioj/vector_operations.h
     include/ioj/column_math.h
@@ -41,7 +37,6 @@ target_sources(native-core
     include/ioj/quaternion.h
     include/ioj/math_types.h
     include/ioj/native_soa/storage.h
-    include/ioj/native_soa/vector_storage_ops.h
     include/ioj/periodic_tick_countdown.h
     include/ioj/tick_countdown.h
     include/ioj/vector_normalization.h
@@ -120,7 +115,6 @@ target_sources(native-core-tests
     tests/lock_free_mpsc_queue_tests.cpp
     tests/loop_bounds_tests.cpp
     tests/monitored_lock_free_mpsc_queue_tests.cpp
-    tests/native_soa_vector_storage_ops_tests.cpp
     tests/projectile_intercept_tests.cpp
     tests/quantized_decimal_tests.cpp
     tests/rotation_tests.cpp
