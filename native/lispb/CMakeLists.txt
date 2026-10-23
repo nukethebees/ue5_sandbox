@@ -197,6 +197,7 @@ target_sources(codegen-lib PRIVATE
   src/lowering/single_allocation_views.cpp
   src/lowering/packed_field_layouts.cpp
   src/ast/cpp_ir.cpp
+  src/ast/environments.cpp
   src/ast/cpp_files.cpp
   src/ast/modules.cpp
   src/ast/cpp_ir_templates.cpp
@@ -365,6 +366,7 @@ ioj_enable_warnings(codegen-generated-tests CODEGEN)
 add_executable(codegen-tests
   tests/test_utilities.cpp
   tests/ast_tests.cpp
+  tests/environment_tests.cpp
   tests/expr_tests.cpp
   tests/fixed_soa_lowering_tests.cpp
   tests/single_allocation_soa_tests.cpp
