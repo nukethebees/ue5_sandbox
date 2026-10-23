@@ -20,7 +20,7 @@ using ThreadIndex = std::uint32_t;
 [[nodiscard]] inline auto task_arena_concurrency(Positive<std::uint32_t> const work_count,
                                                  Positive<std::uint32_t> const grain_size) noexcept
     -> int {
-    auto const chunk_count{(work_count.get() - 1) / grain_size.get() + 1};
+    auto const chunk_count{(work_count - 1) / grain_size + 1};
     auto const max_concurrency{static_cast<std::uint32_t>(tbb::this_task_arena::max_concurrency())};
 
     return static_cast<int>(std::min(chunk_count, max_concurrency));
