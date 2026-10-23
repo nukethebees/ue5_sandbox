@@ -121,18 +121,6 @@ pub fn run(arguments: &[OsString]) -> Result<i32, String> {
     }
     let clang_tidy = llvm_tool(&["clang-tidy"])?;
     let runner = llvm_tool(&["run-clang-tidy", "run-clang-tidy.py"])?;
-    if matches!(args.scope.as_str(), "native" | "lispb") {
-        let status = Command::new("cmake")
-            .arg("--build")
-            .arg(&build)
-            .args(["--target", "generate-native-soa-fixture"])
-            .current_dir(&root)
-            .status()
-            .map_err(|error| error.to_string())?;
-        if !status.success() {
-            return Ok(status.code().unwrap_or(1));
-        }
-    }
     let name = if args.scope == "native" {
         "clang-tidy".to_owned()
     } else {

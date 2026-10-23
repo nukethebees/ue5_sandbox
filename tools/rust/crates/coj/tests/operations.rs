@@ -7,7 +7,7 @@ fn configured(root: &Path) -> std::path::PathBuf {
     fs::write(root.join("CMakeLists.txt"), r#"
 cmake_minimum_required(VERSION 3.25)
 project(Operations NONE)
-foreach(target IN ITEMS editor compile-space-dust-material generate-native-soa-fixture)
+foreach(target IN ITEMS editor compile-space-dust-material)
   add_custom_target(${target} COMMAND "${CMAKE_COMMAND}" -E touch "${CMAKE_BINARY_DIR}/${target}.stamp")
 endforeach()
 "#).unwrap();
@@ -85,7 +85,7 @@ add_custom_target(benchmark-tools-host
 }
 
 #[test]
-fn tidy_passes_policy_workers_and_builds_only_required_inputs() {
+fn tidy_passes_policy_and_workers_without_building_checked_in_fixtures() {
     let repo = Repo::new();
     let root = &repo.feature;
     let build = configured(root);
@@ -109,8 +109,7 @@ assert args[args.index('-j')+1]=='3'
 assert pathlib.Path.cwd().name=='native'
 assert re.search(args[-1],str(pathlib.Path.cwd()/'lispb/src/a.cpp'))
 assert not re.search(args[-1],str(pathlib.Path.cwd()/'third_party/a.cpp'))
-for name in ('generate-native-soa-fixture',):
-    assert (build/(name+'.stamp')).exists()
+assert not list(build.glob('*.stamp'))
 print('runner log')
 raise SystemExit(23)
 "#,

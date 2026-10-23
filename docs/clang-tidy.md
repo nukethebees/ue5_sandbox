@@ -66,8 +66,8 @@ database at `out/build/win-x64-clangcl-debug/clang-tidy`. Only source selection 
 vary. This tree disables precompiled headers and C++ dependency scanning so entries can be
 analyzed independently without build-only module-map response files.
 
-LispB and full audits automatically prepare their required generated build-tree inputs,
-including in a fresh tree. Up-to-date generated outputs are reused on subsequent runs.
+LispB and full audits use the checked-in generated inputs directly; no fixture generation build
+is needed before analysis.
 
 For a comprehensive whole-native audit:
 
