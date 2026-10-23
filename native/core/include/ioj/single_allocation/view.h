@@ -63,7 +63,7 @@ struct ViewOperations {
     auto is_empty(this auto const& self) noexcept -> bool { return self.num() == 0; }
     auto get_view(this auto const& self) { return self; }
     template <typename Self>
-    auto get_const_view(this Self const& self) -> typename Self::ConstView {
+    auto get_const_view(this Self const& self) -> typename Self::const_view_type {
         return self;
     }
     template <typename Self>
@@ -75,7 +75,7 @@ struct ViewOperations {
     template <typename Self>
     auto get_const_view(this Self const& self,
                         typename Self::size_type offset,
-                        typename Self::size_type count) -> typename Self::ConstView {
+                        typename Self::size_type count) -> typename Self::const_view_type {
         return self.slice(offset, count);
     }
     template <typename Self>

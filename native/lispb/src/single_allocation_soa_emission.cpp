@@ -546,12 +546,12 @@ auto emit_resolved_views(LoweringContext& context,
     };
     NodeListBuilder children{ir};
     children
-        .add(ir.raw(
-            "using size_type = std::uint32_t;\nusing View = " + schema_namespace(context, schema) +
-            "::" + mutable_name + ";\nusing ConstView = " + schema_namespace(context, schema) +
-            "::" + const_name + ";\nusing soa_schema = " + schema_namespace(context, schema) +
-            "::Schema;\n"
-            "template <typename T> using Element = std::conditional_t<Const, T const, T>;"))
+        .add(ir.raw("using size_type = std::uint32_t;\nusing view_type = " +
+                    schema_namespace(context, schema) + "::" + mutable_name +
+                    ";\nusing const_view_type = " + schema_namespace(context, schema) + "::" +
+                    const_name + ";\nusing soa_schema = " + schema_namespace(context, schema) +
+                    "::Schema;\n"
+                    "template <typename T> using Element = std::conditional_t<Const, T const, T>;"))
         .new_lines(1);
     auto const default_constructor{ir.constructor(ir.strings.intern(implementation))};
     ir.set_function_defaulted(default_constructor);
@@ -706,7 +706,9 @@ auto emit_resolved_views(LoweringContext& context,
 
                                storage.equivalent_constructors.at({model, schema}))};
         wrapper.append(api.header);
-        source.append(api.source).new_lines(1);
+        if (!api.source.empty()) {
+            source.append(api.source).new_lines(1);
+        }
         auto const type{ir.record(ir.strings.intern(name), wrapper.build(), RecordKind::struct_)};
         ir.set_record_bases(type, {ir.types.intern(base)});
         result.add(type).new_lines(1);
@@ -738,9 +740,9 @@ auto compact_view_node(LoweringContext& context, SingleAllocationModelId model) 
          ir.raw("using Base::Base;"),
          ir.using_declaration(ir.strings.intern("Layout"),
                               ir.types.intern(context.text(models.layout_name[model_row]))),
-         ir.using_declaration(ir.strings.intern("View"),
+         ir.using_declaration(ir.strings.intern("view_type"),
                               ir.types.intern(context.text(models.view_name[model_row]))),
-         ir.using_declaration(ir.strings.intern("ConstView"),
+         ir.using_declaration(ir.strings.intern("const_view_type"),
                               ir.types.intern(context.text(models.const_view_name[model_row])))}));
     if (strided && !context.declarations.soas.layout_only[schema_row]) {
         children.new_lines(1).add(
@@ -1036,7 +1038,9 @@ auto emit_single_allocation_views(LoweringContext& context,
                                name,
                                ir.lowering.equivalent_constructors.at({model, schema}))};
         children.append(api.header);
-        source.append(api.source).new_lines(2);
+        if (!api.source.empty()) {
+            source.append(api.source).new_lines(2);
+        }
         auto const record{
             ir.record(ir.strings.intern(name), children.build(), RecordKind::struct_)};
         ir.set_record_bases(record, {ir.types.intern(base)});
