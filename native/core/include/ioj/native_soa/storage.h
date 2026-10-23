@@ -128,8 +128,7 @@ inline auto allocation_bytes(std::uint32_t const capacity, std::size_t const blo
     return static_cast<std::size_t>(capacity / capacity_granularity) * block_bytes;
 }
 
-using StorageOperations =
-    soa_storage_detail::StorageOperations<std::uint32_t, rounded_capacity, growth_capacity>;
+using StorageOperations = soa_storage_detail::StorageOperations<rounded_capacity, growth_capacity>;
 
 }
 

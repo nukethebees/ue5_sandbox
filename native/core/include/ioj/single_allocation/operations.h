@@ -15,7 +15,7 @@
 namespace ioj::soa_storage_detail {
 
 // Generated owners supply state and explicit typed column operations.
-template <typename Size, auto RoundedCapacity, auto GrowthCapacity>
+template <auto RoundedCapacity, auto GrowthCapacity>
 struct StorageOperations {
     friend StorageRequirements;
   protected:
@@ -67,7 +67,7 @@ struct StorageOperations {
     /* **************************************** */
   private:
     template <typename Owner>
-    static auto allocate_storage(Owner& owner, Size const capacity) -> std::byte* {
+    static auto allocate_storage(Owner& owner, StorageSize<Owner> const capacity) -> std::byte* {
         auto const bytes{Owner::layout_bytes(
             static_cast<typename Owner::byte_size_type>(capacity / Owner::capacity_granularity))};
         auto* const allocation{owner.resource_->allocate(bytes, Owner::allocation_alignment)};
@@ -75,9 +75,8 @@ struct StorageOperations {
         return ::new (allocation) std::byte[bytes];
     }
 
-    template <typename Self>
-        requires ReallocatableStorage<Self, Size>
-    void reallocate(this Self& self, Size const new_capacity) {
+    template <ReallocatableStorage Self>
+    void reallocate(this Self& self, StorageSize<Self> const new_capacity) {
         auto* const new_data{allocate_storage(self, new_capacity)};
         if (self.num_ > 0) {
             self.copy_live_columns(new_data, new_capacity);
@@ -91,43 +90,36 @@ struct StorageOperations {
     // Capacity and mutations
     /* **************************************** */
   public:
-    template <typename Self>
-        requires SizedStorage<Self, Size>
-    auto num(this Self const& self) noexcept -> Size {
+    template <SizedStorage Self>
+    auto num(this Self const& self) noexcept -> StorageSize<Self> {
         return self.num_;
     }
-    template <typename Self>
-        requires CapacityStorage<Self, Size>
-    auto capacity(this Self const& self) noexcept -> Size {
+    template <CapacityStorage Self>
+    auto capacity(this Self const& self) noexcept -> StorageSize<Self> {
         return self.capacity_;
     }
-    template <typename Self>
-        requires SizedStorage<Self, Size>
+    template <SizedStorage Self>
     auto is_empty(this Self const& self) noexcept -> bool {
         return self.num_ == 0;
     }
-    template <typename Self>
-        requires MeasurableStorage<Self>
+    template <MeasurableStorage Self>
     auto allocated_bytes(this Self const& self) -> std::size_t {
         return Self::layout_bytes(
             static_cast<std::size_t>(self.capacity_ / Self::capacity_granularity));
     }
-    template <typename Self>
-        requires ReservableStorage<Self, Size>
-    void reserve(this Self& self, Size const count) {
+    template <ReservableStorage Self>
+    void reserve(this Self& self, StorageSize<Self> const count) {
         auto const requested{RoundedCapacity(count, Self::capacity_block_bound)};
         if (requested > self.capacity_) {
             self.reallocate(requested);
         }
     }
-    template <typename Self>
-        requires ResettableStorage<Self, Size>
+    template <ResettableStorage Self>
     void reset(this Self& self) noexcept {
         self.num_ = 0;
     }
-    template <typename Self>
-        requires GrowableStorage<Self, Size>
-    void add_uninitialised(this Self& self, Size const count) {
+    template <GrowableStorage Self>
+    void add_uninitialised(this Self& self, StorageSize<Self> const count) {
         assert(count >= 0 && count <= Self::max_capacity - self.num_);
         auto const new_num{self.num_ + count};
         if (new_num > self.capacity_) {
@@ -136,12 +128,12 @@ struct StorageOperations {
         self.num_ = new_num;
     }
     template <typename Self, typename Source>
-        requires CopyableStorage<Self, Source, Size>
+        requires CopyableStorage<Self, Source>
     void copy_elements(this Self& self,
-                       Size const destination,
+                       StorageSize<Self> const destination,
                        Source const& source,
-                       Size const offset,
-                       Size const count) {
+                       StorageSize<Self> const offset,
+                       StorageSize<Self> const count) {
         source.validate();
         assert(destination >= 0 && destination <= self.num_ && count >= 0 &&
                count <= self.num_ - destination && offset >= 0 && offset <= source.num() &&
@@ -151,22 +143,24 @@ struct StorageOperations {
         }
     }
     template <typename Self, typename Source>
-        requires CopyableTo<Source, Self, Size>
+        requires CopyableTo<Source, Self, StorageSize<Self>>
     void copy_element(this Self& self,
-                      Size const destination,
+                      StorageSize<Self> const destination,
                       Source const& source,
-                      Size const offset) {
+                      StorageSize<Self> const offset) {
         self.copy_elements(destination, source, offset, 1);
     }
     template <typename Self, typename Source>
-        requires AppendableStorage<Self, Source, Size>
-    auto append_from(this Self& self, Source const& source) -> Size {
+        requires AppendableStorage<Self, Source>
+    auto append_from(this Self& self, Source const& source) -> StorageSize<Self> {
         return self.append_from(source, 0, source.num());
     }
     template <typename Self, typename Source>
-        requires AppendableStorage<Self, Source, Size>
-    auto append_from(this Self& self, Source const& source, Size const offset, Size const count)
-        -> Size {
+        requires AppendableStorage<Self, Source>
+    auto append_from(this Self& self,
+                     Source const& source,
+                     StorageSize<Self> const offset,
+                     StorageSize<Self> const count) -> StorageSize<Self> {
         source.validate();
         assert(offset >= 0 && offset <= source.num() && count >= 0 &&
                count <= source.num() - offset);
@@ -183,24 +177,21 @@ struct StorageOperations {
         self.num_ = new_num;
         return first;
     }
-    template <typename Self>
-        requires IndexRemovableStorage<Self, Size>
-    void remove_at_swap(this Self& self, std::span<Size const> indices) {
+    template <IndexRemovableStorage Self>
+    void remove_at_swap(this Self& self, std::span<StorageSize<Self> const> indices) {
         self.swap_remove_indices(indices);
-        self.num_ -= static_cast<Size>(indices.size());
+        self.num_ -= static_cast<StorageSize<Self>>(indices.size());
     }
-    template <typename Self>
-        requires DefaultableStorage<Self, Size>
-    void add_defaulted(this Self& self, Size const count) {
+    template <DefaultableStorage Self>
+    void add_defaulted(this Self& self, StorageSize<Self> const count) {
         auto const first{self.num_};
         self.add_uninitialised(count);
         if (count > 0) {
             self.default_construct_columns(first, count);
         }
     }
-    template <typename Self>
-        requires ResizableStorage<Self, Size>
-    void set_num(this Self& self, Size const count) {
+    template <ResizableStorage Self>
+    void set_num(this Self& self, StorageSize<Self> const count) {
         assert(count >= 0);
         if (count > self.num_) {
             self.add_defaulted(count - self.num_);
@@ -208,9 +199,10 @@ struct StorageOperations {
             self.num_ = count;
         }
     }
-    template <typename Self>
-        requires RangeRemovableStorage<Self, Size>
-    void remove_at_swap(this Self& self, Size const index, Size const count) {
+    template <RangeRemovableStorage Self>
+    void remove_at_swap(this Self& self,
+                        StorageSize<Self> const index,
+                        StorageSize<Self> const count) {
         assert(index >= 0 && index <= self.num_ && count >= 0 && count <= self.num_ - index);
         auto const tail{self.num_ - index - count};
         auto const move_count{std::min(count, tail)};
@@ -223,41 +215,34 @@ struct StorageOperations {
     /* **************************************** */
     // Borrowing
     /* **************************************** */
-    template <typename Self>
-        requires SliceableStorage<Self, Size>
+    template <SliceableStorage Self>
     auto get_view(this Self&& self) {
         return self.get_view(0, self.num_);
     }
-    template <typename Self>
-        requires BorrowableStorage<Self, Size>
-    auto get_view(this Self&& self, Size offset, Size count) {
+    template <BorrowableStorage Self>
+    auto get_view(this Self&& self, StorageSize<Self> offset, StorageSize<Self> count) {
         validate_view(&self, offset, count);
         return StorageView<Self>{&self, offset, count};
     }
-    template <typename Self>
-        requires ConstSliceableStorage<Self, Size>
+    template <ConstSliceableStorage Self>
     auto get_const_view(this Self&& self) {
         return self.get_const_view(0, self.num_);
     }
-    template <typename Self>
-        requires ConstBorrowableStorage<Self, Size>
-    auto get_const_view(this Self&& self, Size offset, Size count) {
+    template <ConstBorrowableStorage Self>
+    auto get_const_view(this Self&& self, StorageSize<Self> offset, StorageSize<Self> count) {
         validate_view(&self, offset, count);
         return StorageConstView<Self>{&self, offset, count};
     }
-    template <typename Self>
-        requires SliceableStorage<Self, Size>
-    auto slice(this Self&& self, Size offset, Size count) {
+    template <SliceableStorage Self>
+    auto slice(this Self&& self, StorageSize<Self> offset, StorageSize<Self> count) {
         return self.get_view(offset, count);
     }
-    template <typename Self>
-        requires LeftBorrowableStorage<Self, Size>
-    auto left(this Self&& self, Size count) {
+    template <LeftBorrowableStorage Self>
+    auto left(this Self&& self, StorageSize<Self> count) {
         return self.get_view().left(count);
     }
-    template <typename Self>
-        requires RightBorrowableStorage<Self, Size>
-    auto right(this Self&& self, Size count) {
+    template <RightBorrowableStorage Self>
+    auto right(this Self&& self, StorageSize<Self> count) {
         return self.get_view().right(count);
     }
 };

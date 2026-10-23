@@ -6,7 +6,6 @@
 
 namespace ioj::soa_storage {
 
-using StorageOperations =
-    soa_storage_detail::StorageOperations<int32, rounded_capacity, growth_capacity>;
+using StorageOperations = soa_storage_detail::StorageOperations<rounded_capacity, growth_capacity>;
 
 }
