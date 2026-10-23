@@ -15,6 +15,8 @@
 namespace ioj::layout {
 struct AnalysisSettings {
     using DeclarationId = lispb::schema::DeclarationId;
+    template <typename T>
+    using DeclIdMap = std::map<DeclarationId, T>;
     auto operator==(AnalysisSettings const&) const -> bool = default;
 
     void erase_declaration(DeclarationId declaration);
@@ -27,9 +29,9 @@ struct AnalysisSettings {
     std::uint64_t default_soa_capacity{65536};
     std::uint64_t access_multiplicity{1};
     AccessOperation access_operation{AccessOperation::read};
-    std::map<DeclarationId, AccessSet> access_sets{};
-    std::map<DeclarationId, std::vector<IntegerVarintDistributionEntry>> varint_distributions{};
-    std::map<DeclarationId, std::vector<UnionDistributionEntry>> union_distributions{};
-    std::map<DeclarationId, std::vector<TaggedUnionDistributionEntry>> tagged_union_distributions{};
+    DeclIdMap<AccessSet> access_sets{};
+    DeclIdMap<std::vector<IntegerVarintDistributionEntry>> varint_distributions{};
+    DeclIdMap<std::vector<UnionDistributionEntry>> union_distributions{};
+    DeclIdMap<std::vector<TaggedUnionDistributionEntry>> tagged_union_distributions{};
 };
 }

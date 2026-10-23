@@ -95,27 +95,21 @@ void
     auto& fields{context.storage.fields};
     result.fields.begin = fields.num();
     for (auto const& segment : types.definitions().packed.segments_of(packed)) {
-        auto const field{((segment).kind() == lispb::schema::PackedSegmentKind::field
-                              ? std::optional{segment}
-                              : std::nullopt)};
-        auto const reserved{((segment).kind() == lispb::schema::PackedSegmentKind::reserved
-                                 ? std::optional{segment}
-                                 : std::nullopt)};
-        auto const schema_field_row{field ? packed_fields.index(*field) : 0};
-        auto const reserved_row{reserved ? packed_reserved_bits.index(*reserved) : 0};
+        auto const is_field{segment.kind() == lispb::schema::PackedSegmentKind::field};
+        auto const schema_field_row{is_field ? packed_fields.index(segment) : 0};
+        auto const reserved_row{is_field ? 0 : packed_reserved_bits.index(segment)};
         auto const field_override{
-            field.has_value() &&
-            variant.overrides.packed_field_widths.contains(
-                FieldOverrideId{.type = type, .field_name = packed_fields.name[schema_field_row]})};
+            is_field && variant.overrides.packed_field_widths.contains(FieldOverrideId{
+                            .type = type, .field_name = packed_fields.name[schema_field_row]})};
         auto const representation_owned_width{
-            field.has_value() &&
+            is_field &&
             (packed_fields.kind[schema_field_row] == PackedFieldKind::linear_quantized ||
              packed_fields.kind[schema_field_row] == PackedFieldKind::fixed_point ||
              packed_fields.kind[schema_field_row] == PackedFieldKind::mini_float)};
-        auto const width{field.has_value() && !representation_owned_width
-                             ? effective_field_width(types, type, *field, variant)
-                         : field.has_value() ? packed_fields.bit_width[schema_field_row]
-                                             : packed_reserved_bits.bit_width[reserved_row]};
+        auto const width{is_field && !representation_owned_width
+                             ? effective_field_width(types, type, segment, variant)
+                         : is_field ? packed_fields.bit_width[schema_field_row]
+                                    : packed_reserved_bits.bit_width[reserved_row]};
         auto const next_offset{checked_add(offset, width)};
         auto least_significant_bit{offset};
         if (packed_table.bit_order[packed_row] ==
@@ -130,46 +124,45 @@ void
         auto const field_columns{fields.get_view().resolve()};
         field_columns.parent()[field_row] = id;
         field_columns.segment()[field_row] = segment;
-        field_columns.name()[field_row] = types.strings().view(
-            field ? packed_fields.name[schema_field_row] : packed_reserved_bits.name[reserved_row]);
+        field_columns.name()[field_row] =
+            types.strings().view(is_field ? packed_fields.name[schema_field_row]
+                                          : packed_reserved_bits.name[reserved_row]);
         field_columns.semantic_type()[field_row] =
-            field.has_value()
+            is_field
                 ? std::optional<
                       lispb::schema::TypeId>{types.occurrences().type[types.occurrences().index(
                       packed_fields.semantic_type[schema_field_row])]}
                 : std::nullopt;
         field_columns.logical_type()[field_row] = context.storage.strings.intern(
-            field.has_value() ? std::string{types.strings().view(types.cpp_spelling(
-                                    types.occurrences().type[types.occurrences().index(
-                                        packed_fields.semantic_type[schema_field_row])]))}
-                              : "Reserved bits");
-        field_columns.kind()[field_row] = field.has_value() ? packed_fields.kind[schema_field_row]
-                                                            : PackedFieldKind::unsigned_integer;
-        field_columns.reserved()[field_row] = reserved.has_value();
+            is_field ? std::string{types.strings().view(
+                           types.cpp_spelling(types.occurrences().type[types.occurrences().index(
+                               packed_fields.semantic_type[schema_field_row])]))}
+                     : "Reserved bits");
+        field_columns.kind()[field_row] =
+            is_field ? packed_fields.kind[schema_field_row] : PackedFieldKind::unsigned_integer;
+        field_columns.reserved()[field_row] = !is_field;
         field_columns.schema_bit_width()[field_row] =
-            field.has_value() ? packed_fields.bit_width[schema_field_row]
-                              : packed_reserved_bits.bit_width[reserved_row];
+            is_field ? packed_fields.bit_width[schema_field_row]
+                     : packed_reserved_bits.bit_width[reserved_row];
         field_columns.schema_bit_width_auto()[field_row] =
-            field.has_value() && packed_fields.bit_width_auto[schema_field_row];
+            is_field && packed_fields.bit_width_auto[schema_field_row];
         field_columns.bit_width()[field_row] = width;
         field_columns.overridden()[field_row] = field_override && !representation_owned_width;
         field_columns.least_significant_bit()[field_row] = least_significant_bit;
         field_columns.maximum_unsigned_value()[field_row] =
-            field.has_value() ? maximum_unsigned_value(width) : std::nullopt;
+            is_field ? maximum_unsigned_value(width) : std::nullopt;
         field_columns.minimum_signed_value()[field_row] =
-            field.has_value() &&
-                    packed_fields.kind[schema_field_row] == PackedFieldKind::signed_integer
+            is_field && packed_fields.kind[schema_field_row] == PackedFieldKind::signed_integer
                 ? minimum_signed_value(width)
                 : std::nullopt;
         field_columns.maximum_signed_value()[field_row] =
-            field.has_value() &&
-                    packed_fields.kind[schema_field_row] == PackedFieldKind::signed_integer
+            is_field && packed_fields.kind[schema_field_row] == PackedFieldKind::signed_integer
                 ? maximum_signed_value(width)
                 : std::nullopt;
         field_columns.minimum_semantic_value()[field_row] =
-            field.has_value() ? packed_fields.minimum_value[schema_field_row] : std::nullopt;
+            is_field ? packed_fields.minimum_value[schema_field_row] : std::nullopt;
         field_columns.maximum_semantic_value()[field_row] =
-            field.has_value() ? packed_fields.maximum_value[schema_field_row] : std::nullopt;
+            is_field ? packed_fields.maximum_value[schema_field_row] : std::nullopt;
 
         if (field_override && representation_owned_width) {
             context.report(
@@ -185,7 +178,7 @@ void
                              : "mini-float"} +
                      " representation owns the exact encoded width."});
         }
-        if (field.has_value() && !field_columns.maximum_unsigned_value()[field_row].has_value()) {
+        if (is_field && !field_columns.maximum_unsigned_value()[field_row].has_value()) {
             context.report(
                 {DiagnosticSeverity::error,
                  "Packed field '" +
@@ -194,7 +187,7 @@ void
         }
         std::optional<lispb::codegen::PackedIntegerValue> minimum_required_code;
         std::optional<lispb::codegen::PackedIntegerValue> maximum_required_code;
-        if (field.has_value()) {
+        if (is_field) {
             auto& codes{context.storage.codes};
             field_columns.codes()[field_row].begin = codes.num();
             auto const& named_codes{types.declarations().packed_named_codes};
@@ -278,7 +271,7 @@ void
                 lispb::codegen::minimum_packed_integer_bits(
                     *minimum_required_code,
                     *maximum_required_code,
-                    field.has_value() &&
+                    is_field &&
                         packed_fields.kind[schema_field_row] == PackedFieldKind::signed_integer);
         }
         if (next_offset.has_value()) {
@@ -295,11 +288,10 @@ void
             context.report(
                 {DiagnosticSeverity::error, "Packed segment bit offsets overflow uint64."});
         }
-        auto const next_category_bits{
-            checked_add(field.has_value() ? payload_bits : reserved_bits, width)};
+        auto const next_category_bits{checked_add(is_field ? payload_bits : reserved_bits, width)};
         if (!next_category_bits.has_value()) {
             width_overflow = true;
-        } else if (field.has_value()) {
+        } else if (is_field) {
             payload_bits = *next_category_bits;
         } else {
             reserved_bits = *next_category_bits;

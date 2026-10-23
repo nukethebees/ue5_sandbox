@@ -65,14 +65,11 @@ inline auto rounded_capacity(size_type const required,
 inline auto growth_capacity(size_type const required,
                             size_type const current,
                             byte_size_type const block_bytes) -> size_type {
-    auto const maximum{maximum_capacity(block_bytes)};
+    auto const maximum{byte_size_type{maximum_capacity(block_bytes)}};
     assert(required > current && required <= maximum);
-    auto const geometric{
-        std::max(static_cast<byte_size_type>(required),
-                 static_cast<byte_size_type>(current) + static_cast<byte_size_type>(current) / 2)};
-    auto const bounded{geometric < static_cast<byte_size_type>(maximum)
-                           ? geometric
-                           : static_cast<byte_size_type>(maximum)};
+    auto const wide_current{byte_size_type{current}};
+    auto const geometric{std::max<byte_size_type>(required, wide_current + wide_current / 2)};
+    auto const bounded{std::min(geometric, maximum)};
     return rounded_capacity(static_cast<size_type>(bounded), block_bytes);
 }
 
