@@ -31,6 +31,13 @@ struct Layout
     static constexpr std::size_t targets_column{3};
 };
 
+struct Schema {
+    template <typename Columns, typename Func>
+    static auto with_columns(Columns const& source, Func&& func) {
+        return func(source.entity_ids(), source.orders(), source.tasks(), source.targets());
+    }
+};
+
 /* **************************************** */
 // Resolved views
 /* **************************************** */
@@ -70,33 +77,23 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
-        : entity_ids_{other.entity_ids_}
-        , orders_{other.orders_}
-        , tasks_{other.tasks_}
-        , targets_{other.targets_}
-        , count_{other.count_} {}
+    {
+        auto& [... destination] = *this;
+        auto const& [... source] = other;
+        ((destination = source), ...);
+    }
     auto num() const noexcept -> size_type { return count_; }
     auto resolve(this auto const& self) { return self; }
     auto slice(this auto const& self, size_type offset, size_type count) {
-        assert(offset <= self.count_ && count <= self.count_ - offset);
+        auto const& [... pointers, source_count] = static_cast<ResolvedViewImpl const&>(self);
+        assert(offset <= source_count && count <= source_count - offset);
         using Result = std::remove_cvref_t<decltype(self)>;
-        return Result{self.entity_ids_ == nullptr ? nullptr : self.entity_ids_ + offset,
-                      self.orders_ == nullptr ? nullptr : self.orders_ + offset,
-                      self.tasks_ == nullptr ? nullptr : self.tasks_ + offset,
-                      self.targets_ == nullptr ? nullptr : self.targets_ + offset,
-                      count};
+        return Result{(pointers ? pointers + offset : nullptr)..., count};
     }
     auto entity_ids() const { return std::span{entity_ids_, count_}; }
     auto orders() const { return std::span{orders_, count_}; }
     auto tasks() const { return std::span{tasks_, count_}; }
     auto targets() const { return std::span{targets_, count_}; }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        func(std::span{entity_ids_, count_});
-        func(std::span{orders_, count_});
-        func(std::span{tasks_, count_});
-        func(std::span{targets_, count_});
-    }
   private:
     template <bool>
     friend struct ResolvedViewImpl;
@@ -137,6 +134,10 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using Layout = ::ioj::sim::fighter_order_queue::Layout;
     using view_type = ::ioj::sim::fighter_order_queue::View;
     using const_view_type = ::ioj::sim::fighter_order_queue::ConstView;
+    using resolved_view_type =
+        std::conditional_t<Const,
+                           ::ioj::sim::fighter_order_queue::ResolvedConstView,
+                           ::ioj::sim::fighter_order_queue::ResolvedView>;
     template <bool Enabled = Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
@@ -145,22 +146,6 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     auto orders() const { return this->template column<FighterOrder>(Layout::orders_column); }
     auto tasks() const { return this->template column<FighterTask>(Layout::tasks_column); }
     auto targets() const { return this->template column<EntityId>(Layout::targets_column); }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        func(entity_ids());
-        func(orders());
-        func(tasks());
-        func(targets());
-    }
-    auto resolve() const -> std::conditional_t<Const,
-                                               ::ioj::sim::fighter_order_queue::ResolvedConstView,
-                                               ::ioj::sim::fighter_order_queue::ResolvedView> {
-        return {this->template column<EntityId>(Layout::entity_ids_column).data(),
-                this->template column<FighterOrder>(Layout::orders_column).data(),
-                this->template column<FighterTask>(Layout::tasks_column).data(),
-                this->template column<EntityId>(Layout::targets_column).data(),
-                this->num()};
-    }
 };
 struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;
@@ -242,12 +227,6 @@ struct FighterOrderQueue
         Element<FighterOrder>* orders{};
         Element<FighterTask>* tasks{};
         Element<EntityId>* targets{};
-        auto operator+(size_type const offset) const noexcept -> DataPointers {
-            if (entity_ids == nullptr) {
-                return {};
-            }
-            return {entity_ids + offset, orders + offset, tasks + offset, targets + offset};
-        }
     };
   private:
     friend Operations;
@@ -264,14 +243,6 @@ struct FighterOrderQueue
     /* **************************************** */
     // Typed mutations and growth
     /* **************************************** */
-    void default_construct_columns(size_type const first, size_type const count) {
-        using ioj::native_soa::default_construct_n;
-        auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
-        default_construct_n(columns.entity_ids, count);
-        default_construct_n(columns.orders, count);
-        default_construct_n(columns.tasks, count);
-        default_construct_n(columns.targets, count);
-    }
     template <bool Overlapping, typename Byte>
     static void transfer_columns(DataPointers<std::byte> const& destination,
                                  DataPointers<Byte> const& source,
@@ -283,16 +254,6 @@ struct FighterOrderQueue
         transfer(destination.orders, source.orders);
         transfer(destination.tasks, source.tasks);
         transfer(destination.targets, source.targets);
-    }
-    template <typename Columns>
-    static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
-        requires ioj::soa_storage_detail::SoaSourceFor<Columns, FighterOrderQueue, size_type>
-    {
-        using ioj::native_soa::source_data;
-        return {source_data(source.entity_ids()),
-                source_data(source.orders()),
-                source_data(source.tasks()),
-                source_data(source.targets())};
     }
   public:
     auto entity_ids(this auto& self) { return self.get_view().entity_ids(); }

@@ -29,6 +29,13 @@ struct Layout : ioj::single_allocation_layout::ColumnLayouts<EntityId, std::int3
     static constexpr std::size_t instigators_column{2};
 };
 
+struct Schema {
+    template <typename Columns, typename Func>
+    static auto with_columns(Columns const& source, Func&& func) {
+        return func(source.damaged_entities(), source.damage_amounts(), source.instigators());
+    }
+};
+
 /* **************************************** */
 // Resolved views
 /* **************************************** */
@@ -65,29 +72,22 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
-        : damaged_entities_{other.damaged_entities_}
-        , damage_amounts_{other.damage_amounts_}
-        , instigators_{other.instigators_}
-        , count_{other.count_} {}
+    {
+        auto& [... destination] = *this;
+        auto const& [... source] = other;
+        ((destination = source), ...);
+    }
     auto num() const noexcept -> size_type { return count_; }
     auto resolve(this auto const& self) { return self; }
     auto slice(this auto const& self, size_type offset, size_type count) {
-        assert(offset <= self.count_ && count <= self.count_ - offset);
+        auto const& [... pointers, source_count] = static_cast<ResolvedViewImpl const&>(self);
+        assert(offset <= source_count && count <= source_count - offset);
         using Result = std::remove_cvref_t<decltype(self)>;
-        return Result{self.damaged_entities_ == nullptr ? nullptr : self.damaged_entities_ + offset,
-                      self.damage_amounts_ == nullptr ? nullptr : self.damage_amounts_ + offset,
-                      self.instigators_ == nullptr ? nullptr : self.instigators_ + offset,
-                      count};
+        return Result{(pointers ? pointers + offset : nullptr)..., count};
     }
     auto damaged_entities() const { return std::span{damaged_entities_, count_}; }
     auto damage_amounts() const { return std::span{damage_amounts_, count_}; }
     auto instigators() const { return std::span{instigators_, count_}; }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        func(std::span{damaged_entities_, count_});
-        func(std::span{damage_amounts_, count_});
-        func(std::span{instigators_, count_});
-    }
   private:
     template <bool>
     friend struct ResolvedViewImpl;
@@ -125,6 +125,10 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using Layout = ::ioj::sim::direct_damage_events::Layout;
     using view_type = ::ioj::sim::direct_damage_events::View;
     using const_view_type = ::ioj::sim::direct_damage_events::ConstView;
+    using resolved_view_type =
+        std::conditional_t<Const,
+                           ::ioj::sim::direct_damage_events::ResolvedConstView,
+                           ::ioj::sim::direct_damage_events::ResolvedView>;
     template <bool Enabled = Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
@@ -136,20 +140,6 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
         return this->template column<std::int32_t>(Layout::damage_amounts_column);
     }
     auto instigators() const { return this->template column<EntityId>(Layout::instigators_column); }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        func(damaged_entities());
-        func(damage_amounts());
-        func(instigators());
-    }
-    auto resolve() const -> std::conditional_t<Const,
-                                               ::ioj::sim::direct_damage_events::ResolvedConstView,
-                                               ::ioj::sim::direct_damage_events::ResolvedView> {
-        return {this->template column<EntityId>(Layout::damaged_entities_column).data(),
-                this->template column<std::int32_t>(Layout::damage_amounts_column).data(),
-                this->template column<EntityId>(Layout::instigators_column).data(),
-                this->num()};
-    }
 };
 struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;
@@ -227,12 +217,6 @@ struct DirectDamageEvents
         Element<EntityId>* damaged_entities{};
         Element<std::int32_t>* damage_amounts{};
         Element<EntityId>* instigators{};
-        auto operator+(size_type const offset) const noexcept -> DataPointers {
-            if (damaged_entities == nullptr) {
-                return {};
-            }
-            return {damaged_entities + offset, damage_amounts + offset, instigators + offset};
-        }
     };
   private:
     friend Operations;
@@ -249,13 +233,6 @@ struct DirectDamageEvents
     /* **************************************** */
     // Typed mutations and growth
     /* **************************************** */
-    void default_construct_columns(size_type const first, size_type const count) {
-        using ioj::native_soa::default_construct_n;
-        auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
-        default_construct_n(columns.damaged_entities, count);
-        default_construct_n(columns.damage_amounts, count);
-        default_construct_n(columns.instigators, count);
-    }
     template <bool Overlapping, typename Byte>
     static void transfer_columns(DataPointers<std::byte> const& destination,
                                  DataPointers<Byte> const& source,
@@ -266,15 +243,6 @@ struct DirectDamageEvents
         transfer(destination.damaged_entities, source.damaged_entities);
         transfer(destination.damage_amounts, source.damage_amounts);
         transfer(destination.instigators, source.instigators);
-    }
-    template <typename Columns>
-    static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
-        requires ioj::soa_storage_detail::SoaSourceFor<Columns, DirectDamageEvents, size_type>
-    {
-        using ioj::native_soa::source_data;
-        return {source_data(source.damaged_entities()),
-                source_data(source.damage_amounts()),
-                source_data(source.instigators())};
     }
   public:
     auto damaged_entities(this auto& self) { return self.get_view().damaged_entities(); }

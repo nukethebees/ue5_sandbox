@@ -32,6 +32,18 @@ struct Layout : ioj::single_allocation_layout::ColumnLayouts<EntityId, float, fl
     static constexpr std::size_t directions_zs_column{4};
 };
 
+struct Schema {
+    template <typename Columns, typename Func>
+    static auto with_columns(Columns const& source, Func&& func) {
+        auto const& directions_view{source.view_directions()};
+        return func(source.entities(),
+                    source.distances(),
+                    directions_view.xs(),
+                    directions_view.ys(),
+                    directions_view.zs());
+    }
+};
+
 /* **************************************** */
 // Resolved views
 /* **************************************** */
@@ -76,37 +88,24 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
-        : entities_{other.entities_}
-        , distances_{other.distances_}
-        , directions_xs_{other.directions_xs_}
-        , directions_ys_{other.directions_ys_}
-        , directions_zs_{other.directions_zs_}
-        , count_{other.count_} {}
+    {
+        auto& [... destination] = *this;
+        auto const& [... source] = other;
+        ((destination = source), ...);
+    }
     auto num() const noexcept -> size_type { return count_; }
     auto resolve(this auto const& self) { return self; }
     auto slice(this auto const& self, size_type offset, size_type count) {
-        assert(offset <= self.count_ && count <= self.count_ - offset);
+        auto const& [... pointers, source_count] = static_cast<ResolvedViewImpl const&>(self);
+        assert(offset <= source_count && count <= source_count - offset);
         using Result = std::remove_cvref_t<decltype(self)>;
-        return Result{self.entities_ == nullptr ? nullptr : self.entities_ + offset,
-                      self.distances_ == nullptr ? nullptr : self.distances_ + offset,
-                      self.directions_xs_ == nullptr ? nullptr : self.directions_xs_ + offset,
-                      self.directions_ys_ == nullptr ? nullptr : self.directions_ys_ + offset,
-                      self.directions_zs_ == nullptr ? nullptr : self.directions_zs_ + offset,
-                      count};
+        return Result{(pointers ? pointers + offset : nullptr)..., count};
     }
     auto entities() const { return std::span{entities_, count_}; }
     auto distances() const { return std::span{distances_, count_}; }
     auto view_directions() const -> std::
         conditional_t<Const, ::ioj::vectors3f::ResolvedConstView, ::ioj::vectors3f::ResolvedView> {
         return {directions_xs_, directions_ys_, directions_zs_, count_};
-    }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        func(std::span{entities_, count_});
-        func(std::span{distances_, count_});
-        func(std::span{directions_xs_, count_});
-        func(std::span{directions_ys_, count_});
-        func(std::span{directions_zs_, count_});
     }
   private:
     template <bool>
@@ -160,6 +159,10 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using Layout = ::ioj::sim::range_query_matches::Layout;
     using view_type = ::ioj::sim::range_query_matches::View;
     using const_view_type = ::ioj::sim::range_query_matches::ConstView;
+    using resolved_view_type =
+        std::conditional_t<Const,
+                           ::ioj::sim::range_query_matches::ResolvedConstView,
+                           ::ioj::sim::range_query_matches::ResolvedView>;
     template <bool Enabled = Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
@@ -175,25 +178,6 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
                     this->num(),
                     Layout::directions_xs_column,
                     Layout::directions_ys_column);
-    }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        func(entities());
-        func(distances());
-        auto const& directions_view{view_directions()};
-        func(directions_view.xs());
-        func(directions_view.ys());
-        func(directions_view.zs());
-    }
-    auto resolve() const -> std::conditional_t<Const,
-                                               ::ioj::sim::range_query_matches::ResolvedConstView,
-                                               ::ioj::sim::range_query_matches::ResolvedView> {
-        return {this->template column<EntityId>(Layout::entities_column).data(),
-                this->template column<float>(Layout::distances_column).data(),
-                this->template column<float>(Layout::directions_xs_column).data(),
-                this->template column<float>(Layout::directions_ys_column).data(),
-                this->template column<float>(Layout::directions_zs_column).data(),
-                this->num()};
     }
 };
 struct ConstView : ViewImpl<true> {
@@ -289,16 +273,6 @@ struct RangeQueryMatches
         Element<float>* directions_xs{};
         Element<float>* directions_ys{};
         Element<float>* directions_zs{};
-        auto operator+(size_type const offset) const noexcept -> DataPointers {
-            if (entities == nullptr) {
-                return {};
-            }
-            return {entities + offset,
-                    distances + offset,
-                    directions_xs + offset,
-                    directions_ys + offset,
-                    directions_zs + offset};
-        }
     };
   private:
     friend Operations;
@@ -315,15 +289,6 @@ struct RangeQueryMatches
     /* **************************************** */
     // Typed mutations and growth
     /* **************************************** */
-    void default_construct_columns(size_type const first, size_type const count) {
-        using ioj::native_soa::default_construct_n;
-        auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
-        default_construct_n(columns.entities, count);
-        default_construct_n(columns.distances, count);
-        default_construct_n(columns.directions_xs, count);
-        default_construct_n(columns.directions_ys, count);
-        default_construct_n(columns.directions_zs, count);
-    }
     template <bool Overlapping, typename Byte>
     static void transfer_columns(DataPointers<std::byte> const& destination,
                                  DataPointers<Byte> const& source,
@@ -336,18 +301,6 @@ struct RangeQueryMatches
         transfer(destination.directions_xs, source.directions_xs);
         transfer(destination.directions_ys, source.directions_ys);
         transfer(destination.directions_zs, source.directions_zs);
-    }
-    template <typename Columns>
-    static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
-        requires ioj::soa_storage_detail::SoaSourceFor<Columns, RangeQueryMatches, size_type>
-    {
-        using ioj::native_soa::source_data;
-        auto const& directions_view{source.view_directions()};
-        return {source_data(source.entities()),
-                source_data(source.distances()),
-                source_data(directions_view.xs()),
-                source_data(directions_view.ys()),
-                source_data(directions_view.zs())};
     }
   public:
     auto entities(this auto& self) { return self.get_view().entities(); }

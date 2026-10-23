@@ -77,6 +77,40 @@ struct Layout
     static constexpr std::size_t target_velocities_zs_column{22};
 };
 
+struct Schema {
+    template <typename Columns, typename Func>
+    static auto with_columns(Columns const& source, Func&& func) {
+        auto const& locations_view{source.view_locations()};
+        auto const& fire_point_locations_view{source.view_fire_point_locations()};
+        auto const& rotations_view{source.view_rotations()};
+        auto const& target_locations_view{source.view_target_locations()};
+        auto const& target_velocities_view{source.view_target_velocities()};
+        return func(source.entity_ids(),
+                    source.integral_biases(),
+                    locations_view.xs(),
+                    locations_view.ys(),
+                    locations_view.zs(),
+                    fire_point_locations_view.xs(),
+                    fire_point_locations_view.ys(),
+                    fire_point_locations_view.zs(),
+                    rotations_view.pitches(),
+                    rotations_view.yaws(),
+                    rotations_view.rolls(),
+                    source.teams(),
+                    source.laser_cooldowns(),
+                    source.laser_damages(),
+                    source.target_refresh_countdowns_periods(),
+                    source.target_refresh_countdowns_remaining_ticks(),
+                    source.target_ids(),
+                    target_locations_view.xs(),
+                    target_locations_view.ys(),
+                    target_locations_view.zs(),
+                    target_velocities_view.xs(),
+                    target_velocities_view.ys(),
+                    target_velocities_view.zs());
+    }
+};
+
 /* **************************************** */
 // Resolved views
 /* **************************************** */
@@ -238,68 +272,18 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
-        : entity_ids_{other.entity_ids_}
-        , integral_biases_{other.integral_biases_}
-        , locations_xs_{other.locations_xs_}
-        , locations_ys_{other.locations_ys_}
-        , locations_zs_{other.locations_zs_}
-        , fire_point_locations_xs_{other.fire_point_locations_xs_}
-        , fire_point_locations_ys_{other.fire_point_locations_ys_}
-        , fire_point_locations_zs_{other.fire_point_locations_zs_}
-        , rotations_pitches_{other.rotations_pitches_}
-        , rotations_yaws_{other.rotations_yaws_}
-        , rotations_rolls_{other.rotations_rolls_}
-        , teams_{other.teams_}
-        , laser_cooldowns_{other.laser_cooldowns_}
-        , laser_damages_{other.laser_damages_}
-        , target_refresh_countdowns_periods_{other.target_refresh_countdowns_periods_}
-        , target_refresh_countdowns_remaining_ticks_{other
-                                                         .target_refresh_countdowns_remaining_ticks_}
-        , target_ids_{other.target_ids_}
-        , target_locations_xs_{other.target_locations_xs_}
-        , target_locations_ys_{other.target_locations_ys_}
-        , target_locations_zs_{other.target_locations_zs_}
-        , target_velocities_xs_{other.target_velocities_xs_}
-        , target_velocities_ys_{other.target_velocities_ys_}
-        , target_velocities_zs_{other.target_velocities_zs_}
-        , count_{other.count_} {}
+    {
+        auto& [... destination] = *this;
+        auto const& [... source] = other;
+        ((destination = source), ...);
+    }
     auto num() const noexcept -> size_type { return count_; }
     auto resolve(this auto const& self) { return self; }
     auto slice(this auto const& self, size_type offset, size_type count) {
-        assert(offset <= self.count_ && count <= self.count_ - offset);
+        auto const& [... pointers, source_count] = static_cast<ResolvedViewImpl const&>(self);
+        assert(offset <= source_count && count <= source_count - offset);
         using Result = std::remove_cvref_t<decltype(self)>;
-        return Result{
-            self.entity_ids_ == nullptr ? nullptr : self.entity_ids_ + offset,
-            self.integral_biases_ == nullptr ? nullptr : self.integral_biases_ + offset,
-            self.locations_xs_ == nullptr ? nullptr : self.locations_xs_ + offset,
-            self.locations_ys_ == nullptr ? nullptr : self.locations_ys_ + offset,
-            self.locations_zs_ == nullptr ? nullptr : self.locations_zs_ + offset,
-            self.fire_point_locations_xs_ == nullptr ? nullptr
-                                                     : self.fire_point_locations_xs_ + offset,
-            self.fire_point_locations_ys_ == nullptr ? nullptr
-                                                     : self.fire_point_locations_ys_ + offset,
-            self.fire_point_locations_zs_ == nullptr ? nullptr
-                                                     : self.fire_point_locations_zs_ + offset,
-            self.rotations_pitches_ == nullptr ? nullptr : self.rotations_pitches_ + offset,
-            self.rotations_yaws_ == nullptr ? nullptr : self.rotations_yaws_ + offset,
-            self.rotations_rolls_ == nullptr ? nullptr : self.rotations_rolls_ + offset,
-            self.teams_ == nullptr ? nullptr : self.teams_ + offset,
-            self.laser_cooldowns_ == nullptr ? nullptr : self.laser_cooldowns_ + offset,
-            self.laser_damages_ == nullptr ? nullptr : self.laser_damages_ + offset,
-            self.target_refresh_countdowns_periods_ == nullptr
-                ? nullptr
-                : self.target_refresh_countdowns_periods_ + offset,
-            self.target_refresh_countdowns_remaining_ticks_ == nullptr
-                ? nullptr
-                : self.target_refresh_countdowns_remaining_ticks_ + offset,
-            self.target_ids_ == nullptr ? nullptr : self.target_ids_ + offset,
-            self.target_locations_xs_ == nullptr ? nullptr : self.target_locations_xs_ + offset,
-            self.target_locations_ys_ == nullptr ? nullptr : self.target_locations_ys_ + offset,
-            self.target_locations_zs_ == nullptr ? nullptr : self.target_locations_zs_ + offset,
-            self.target_velocities_xs_ == nullptr ? nullptr : self.target_velocities_xs_ + offset,
-            self.target_velocities_ys_ == nullptr ? nullptr : self.target_velocities_ys_ + offset,
-            self.target_velocities_zs_ == nullptr ? nullptr : self.target_velocities_zs_ + offset,
-            count};
+        return Result{(pointers ? pointers + offset : nullptr)..., count};
     }
     auto entity_ids() const { return std::span{entity_ids_, count_}; }
     auto integral_biases() const { return std::span{integral_biases_, count_}; }
@@ -334,32 +318,6 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     auto view_target_velocities() const -> std::
         conditional_t<Const, ::ioj::vectors3f::ResolvedConstView, ::ioj::vectors3f::ResolvedView> {
         return {target_velocities_xs_, target_velocities_ys_, target_velocities_zs_, count_};
-    }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        func(std::span{entity_ids_, count_});
-        func(std::span{integral_biases_, count_});
-        func(std::span{locations_xs_, count_});
-        func(std::span{locations_ys_, count_});
-        func(std::span{locations_zs_, count_});
-        func(std::span{fire_point_locations_xs_, count_});
-        func(std::span{fire_point_locations_ys_, count_});
-        func(std::span{fire_point_locations_zs_, count_});
-        func(std::span{rotations_pitches_, count_});
-        func(std::span{rotations_yaws_, count_});
-        func(std::span{rotations_rolls_, count_});
-        func(std::span{teams_, count_});
-        func(std::span{laser_cooldowns_, count_});
-        func(std::span{laser_damages_, count_});
-        func(std::span{target_refresh_countdowns_periods_, count_});
-        func(std::span{target_refresh_countdowns_remaining_ticks_, count_});
-        func(std::span{target_ids_, count_});
-        func(std::span{target_locations_xs_, count_});
-        func(std::span{target_locations_ys_, count_});
-        func(std::span{target_locations_zs_, count_});
-        func(std::span{target_velocities_xs_, count_});
-        func(std::span{target_velocities_ys_, count_});
-        func(std::span{target_velocities_zs_, count_});
     }
   private:
     template <bool>
@@ -489,6 +447,9 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using Layout = ::ioj::sim::turret_entity_data::Layout;
     using view_type = ::ioj::sim::turret_entity_data::View;
     using const_view_type = ::ioj::sim::turret_entity_data::ConstView;
+    using resolved_view_type = std::conditional_t<Const,
+                                                  ::ioj::sim::turret_entity_data::ResolvedConstView,
+                                                  ::ioj::sim::turret_entity_data::ResolvedView>;
     template <bool Enabled = Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
@@ -562,69 +523,6 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
                     this->num(),
                     Layout::target_velocities_xs_column,
                     Layout::target_velocities_ys_column);
-    }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        func(entity_ids());
-        func(integral_biases());
-        auto const& locations_view{view_locations()};
-        func(locations_view.xs());
-        func(locations_view.ys());
-        func(locations_view.zs());
-        auto const& fire_point_locations_view{view_fire_point_locations()};
-        func(fire_point_locations_view.xs());
-        func(fire_point_locations_view.ys());
-        func(fire_point_locations_view.zs());
-        auto const& rotations_view{view_rotations()};
-        func(rotations_view.pitches());
-        func(rotations_view.yaws());
-        func(rotations_view.rolls());
-        func(teams());
-        func(laser_cooldowns());
-        func(laser_damages());
-        func(target_refresh_countdowns_periods());
-        func(target_refresh_countdowns_remaining_ticks());
-        func(target_ids());
-        auto const& target_locations_view{view_target_locations()};
-        func(target_locations_view.xs());
-        func(target_locations_view.ys());
-        func(target_locations_view.zs());
-        auto const& target_velocities_view{view_target_velocities()};
-        func(target_velocities_view.xs());
-        func(target_velocities_view.ys());
-        func(target_velocities_view.zs());
-    }
-    auto resolve() const -> std::conditional_t<Const,
-                                               ::ioj::sim::turret_entity_data::ResolvedConstView,
-                                               ::ioj::sim::turret_entity_data::ResolvedView> {
-        return {
-            this->template column<EntityId>(Layout::entity_ids_column).data(),
-            this->template column<std::uint32_t>(Layout::integral_biases_column).data(),
-            this->template column<float>(Layout::locations_xs_column).data(),
-            this->template column<float>(Layout::locations_ys_column).data(),
-            this->template column<float>(Layout::locations_zs_column).data(),
-            this->template column<float>(Layout::fire_point_locations_xs_column).data(),
-            this->template column<float>(Layout::fire_point_locations_ys_column).data(),
-            this->template column<float>(Layout::fire_point_locations_zs_column).data(),
-            this->template column<float>(Layout::rotations_pitches_column).data(),
-            this->template column<float>(Layout::rotations_yaws_column).data(),
-            this->template column<float>(Layout::rotations_rolls_column).data(),
-            this->template column<::ioj::Team>(Layout::teams_column).data(),
-            this->template column<std::int16_t>(Layout::laser_cooldowns_column).data(),
-            this->template column<std::int32_t>(Layout::laser_damages_column).data(),
-            this->template column<std::int16_t>(Layout::target_refresh_countdowns_periods_column)
-                .data(),
-            this->template column<std::int16_t>(
-                    Layout::target_refresh_countdowns_remaining_ticks_column)
-                .data(),
-            this->template column<EntityId>(Layout::target_ids_column).data(),
-            this->template column<float>(Layout::target_locations_xs_column).data(),
-            this->template column<float>(Layout::target_locations_ys_column).data(),
-            this->template column<float>(Layout::target_locations_zs_column).data(),
-            this->template column<float>(Layout::target_velocities_xs_column).data(),
-            this->template column<float>(Layout::target_velocities_ys_column).data(),
-            this->template column<float>(Layout::target_velocities_zs_column).data(),
-            this->num()};
     }
 };
 struct ConstView : ViewImpl<true> {
@@ -814,34 +712,6 @@ struct TurretEntityData
         Element<float>* target_velocities_xs{};
         Element<float>* target_velocities_ys{};
         Element<float>* target_velocities_zs{};
-        auto operator+(size_type const offset) const noexcept -> DataPointers {
-            if (entity_ids == nullptr) {
-                return {};
-            }
-            return {entity_ids + offset,
-                    integral_biases + offset,
-                    locations_xs + offset,
-                    locations_ys + offset,
-                    locations_zs + offset,
-                    fire_point_locations_xs + offset,
-                    fire_point_locations_ys + offset,
-                    fire_point_locations_zs + offset,
-                    rotations_pitches + offset,
-                    rotations_yaws + offset,
-                    rotations_rolls + offset,
-                    teams + offset,
-                    laser_cooldowns + offset,
-                    laser_damages + offset,
-                    target_refresh_countdowns_periods + offset,
-                    target_refresh_countdowns_remaining_ticks + offset,
-                    target_ids + offset,
-                    target_locations_xs + offset,
-                    target_locations_ys + offset,
-                    target_locations_zs + offset,
-                    target_velocities_xs + offset,
-                    target_velocities_ys + offset,
-                    target_velocities_zs + offset};
-        }
     };
   private:
     friend Operations;
@@ -858,33 +728,6 @@ struct TurretEntityData
     /* **************************************** */
     // Typed mutations and growth
     /* **************************************** */
-    void default_construct_columns(size_type const first, size_type const count) {
-        using ioj::native_soa::default_construct_n;
-        auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
-        default_construct_n(columns.entity_ids, count);
-        default_construct_n(columns.integral_biases, count);
-        default_construct_n(columns.locations_xs, count);
-        default_construct_n(columns.locations_ys, count);
-        default_construct_n(columns.locations_zs, count);
-        default_construct_n(columns.fire_point_locations_xs, count);
-        default_construct_n(columns.fire_point_locations_ys, count);
-        default_construct_n(columns.fire_point_locations_zs, count);
-        default_construct_n(columns.rotations_pitches, count);
-        default_construct_n(columns.rotations_yaws, count);
-        default_construct_n(columns.rotations_rolls, count);
-        default_construct_n(columns.teams, count);
-        default_construct_n(columns.laser_cooldowns, count);
-        default_construct_n(columns.laser_damages, count);
-        default_construct_n(columns.target_refresh_countdowns_periods, count);
-        default_construct_n(columns.target_refresh_countdowns_remaining_ticks, count);
-        default_construct_n(columns.target_ids, count);
-        default_construct_n(columns.target_locations_xs, count);
-        default_construct_n(columns.target_locations_ys, count);
-        default_construct_n(columns.target_locations_zs, count);
-        default_construct_n(columns.target_velocities_xs, count);
-        default_construct_n(columns.target_velocities_ys, count);
-        default_construct_n(columns.target_velocities_zs, count);
-    }
     template <bool Overlapping, typename Byte>
     static void transfer_columns(DataPointers<std::byte> const& destination,
                                  DataPointers<Byte> const& source,
@@ -917,40 +760,6 @@ struct TurretEntityData
         transfer(destination.target_velocities_xs, source.target_velocities_xs);
         transfer(destination.target_velocities_ys, source.target_velocities_ys);
         transfer(destination.target_velocities_zs, source.target_velocities_zs);
-    }
-    template <typename Columns>
-    static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
-        requires ioj::soa_storage_detail::SoaSourceFor<Columns, TurretEntityData, size_type>
-    {
-        using ioj::native_soa::source_data;
-        auto const& locations_view{source.view_locations()};
-        auto const& fire_point_locations_view{source.view_fire_point_locations()};
-        auto const& rotations_view{source.view_rotations()};
-        auto const& target_locations_view{source.view_target_locations()};
-        auto const& target_velocities_view{source.view_target_velocities()};
-        return {source_data(source.entity_ids()),
-                source_data(source.integral_biases()),
-                source_data(locations_view.xs()),
-                source_data(locations_view.ys()),
-                source_data(locations_view.zs()),
-                source_data(fire_point_locations_view.xs()),
-                source_data(fire_point_locations_view.ys()),
-                source_data(fire_point_locations_view.zs()),
-                source_data(rotations_view.pitches()),
-                source_data(rotations_view.yaws()),
-                source_data(rotations_view.rolls()),
-                source_data(source.teams()),
-                source_data(source.laser_cooldowns()),
-                source_data(source.laser_damages()),
-                source_data(source.target_refresh_countdowns_periods()),
-                source_data(source.target_refresh_countdowns_remaining_ticks()),
-                source_data(source.target_ids()),
-                source_data(target_locations_view.xs()),
-                source_data(target_locations_view.ys()),
-                source_data(target_locations_view.zs()),
-                source_data(target_velocities_view.xs()),
-                source_data(target_velocities_view.ys()),
-                source_data(target_velocities_view.zs())};
     }
   public:
     auto entity_ids(this auto& self) { return self.get_view().entity_ids(); }

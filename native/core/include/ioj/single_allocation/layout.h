@@ -167,6 +167,10 @@ struct ColumnLayouts {
         // Braced initialization advances the cursor in physical column order.
         return Result{cursor.column_pointer<Ts>(data)...};
     }
+    template <typename Result, typename GetPointer>
+    static auto make_resolved_view(GetPointer get_pointer, size_type count) -> Result {
+        return Result{get_pointer.template operator()<Ts>()..., count};
+    }
     static_assert(max_capacity >= capacity_granularity);
 };
 

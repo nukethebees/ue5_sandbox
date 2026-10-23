@@ -64,6 +64,27 @@ struct Layout
     static constexpr std::size_t cache_line_tiling_column{14};
 };
 
+struct Schema {
+    template <typename Columns, typename Func>
+    static auto with_columns(Columns const& source, Func&& func) {
+        return func(source.parent(),
+                    source.name(),
+                    source.semantic_type(),
+                    source.schema_type(),
+                    source.physical_type(),
+                    source.overridden(),
+                    source.type_facts(),
+                    source.total_bytes(),
+                    source.allocation_offset_bytes(),
+                    source.padding_before_bytes(),
+                    source.minimum_cache_lines(),
+                    source.elements_per_cache_line(),
+                    source.minimum_pages(),
+                    source.complete_elements_per_page(),
+                    source.cache_line_tiling());
+    }
+};
+
 /* **************************************** */
 // Resolved views
 /* **************************************** */
@@ -177,47 +198,18 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
-        : parent_{other.parent_}
-        , name_{other.name_}
-        , semantic_type_{other.semantic_type_}
-        , schema_type_{other.schema_type_}
-        , physical_type_{other.physical_type_}
-        , overridden_{other.overridden_}
-        , type_facts_{other.type_facts_}
-        , total_bytes_{other.total_bytes_}
-        , allocation_offset_bytes_{other.allocation_offset_bytes_}
-        , padding_before_bytes_{other.padding_before_bytes_}
-        , minimum_cache_lines_{other.minimum_cache_lines_}
-        , elements_per_cache_line_{other.elements_per_cache_line_}
-        , minimum_pages_{other.minimum_pages_}
-        , complete_elements_per_page_{other.complete_elements_per_page_}
-        , cache_line_tiling_{other.cache_line_tiling_}
-        , count_{other.count_} {}
+    {
+        auto& [... destination] = *this;
+        auto const& [... source] = other;
+        ((destination = source), ...);
+    }
     auto num() const noexcept -> size_type { return count_; }
     auto resolve(this auto const& self) { return self; }
     auto slice(this auto const& self, size_type offset, size_type count) {
-        assert(offset <= self.count_ && count <= self.count_ - offset);
+        auto const& [... pointers, source_count] = static_cast<ResolvedViewImpl const&>(self);
+        assert(offset <= source_count && count <= source_count - offset);
         using Result = std::remove_cvref_t<decltype(self)>;
-        return Result{
-            self.parent_ == nullptr ? nullptr : self.parent_ + offset,
-            self.name_ == nullptr ? nullptr : self.name_ + offset,
-            self.semantic_type_ == nullptr ? nullptr : self.semantic_type_ + offset,
-            self.schema_type_ == nullptr ? nullptr : self.schema_type_ + offset,
-            self.physical_type_ == nullptr ? nullptr : self.physical_type_ + offset,
-            self.overridden_ == nullptr ? nullptr : self.overridden_ + offset,
-            self.type_facts_ == nullptr ? nullptr : self.type_facts_ + offset,
-            self.total_bytes_ == nullptr ? nullptr : self.total_bytes_ + offset,
-            self.allocation_offset_bytes_ == nullptr ? nullptr
-                                                     : self.allocation_offset_bytes_ + offset,
-            self.padding_before_bytes_ == nullptr ? nullptr : self.padding_before_bytes_ + offset,
-            self.minimum_cache_lines_ == nullptr ? nullptr : self.minimum_cache_lines_ + offset,
-            self.elements_per_cache_line_ == nullptr ? nullptr
-                                                     : self.elements_per_cache_line_ + offset,
-            self.minimum_pages_ == nullptr ? nullptr : self.minimum_pages_ + offset,
-            self.complete_elements_per_page_ == nullptr ? nullptr
-                                                        : self.complete_elements_per_page_ + offset,
-            self.cache_line_tiling_ == nullptr ? nullptr : self.cache_line_tiling_ + offset,
-            count};
+        return Result{(pointers ? pointers + offset : nullptr)..., count};
     }
     auto parent() const { return std::span{parent_, count_}; }
     auto name() const { return std::span{name_, count_}; }
@@ -236,24 +228,6 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         return std::span{complete_elements_per_page_, count_};
     }
     auto cache_line_tiling() const { return std::span{cache_line_tiling_, count_}; }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        func(std::span{parent_, count_});
-        func(std::span{name_, count_});
-        func(std::span{semantic_type_, count_});
-        func(std::span{schema_type_, count_});
-        func(std::span{physical_type_, count_});
-        func(std::span{overridden_, count_});
-        func(std::span{type_facts_, count_});
-        func(std::span{total_bytes_, count_});
-        func(std::span{allocation_offset_bytes_, count_});
-        func(std::span{padding_before_bytes_, count_});
-        func(std::span{minimum_cache_lines_, count_});
-        func(std::span{elements_per_cache_line_, count_});
-        func(std::span{minimum_pages_, count_});
-        func(std::span{complete_elements_per_page_, count_});
-        func(std::span{cache_line_tiling_, count_});
-    }
   private:
     template <bool>
     friend struct ResolvedViewImpl;
@@ -327,6 +301,10 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using Layout = ::ioj::layout::soa_column_table::Layout;
     using view_type = ::ioj::layout::soa_column_table::View;
     using const_view_type = ::ioj::layout::soa_column_table::ConstView;
+    using resolved_view_type =
+        std::conditional_t<Const,
+                           ::ioj::layout::soa_column_table::ResolvedConstView,
+                           ::ioj::layout::soa_column_table::ResolvedView>;
     template <bool Enabled = Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
@@ -378,58 +356,6 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     auto cache_line_tiling() const {
         return this->template column<std::optional<ioj::layout::CacheLineTiling>>(
             Layout::cache_line_tiling_column);
-    }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        func(parent());
-        func(name());
-        func(semantic_type());
-        func(schema_type());
-        func(physical_type());
-        func(overridden());
-        func(type_facts());
-        func(total_bytes());
-        func(allocation_offset_bytes());
-        func(padding_before_bytes());
-        func(minimum_cache_lines());
-        func(elements_per_cache_line());
-        func(minimum_pages());
-        func(complete_elements_per_page());
-        func(cache_line_tiling());
-    }
-    auto resolve() const -> std::conditional_t<Const,
-                                               ::ioj::layout::soa_column_table::ResolvedConstView,
-                                               ::ioj::layout::soa_column_table::ResolvedView> {
-        return {
-            this->template column<AnalysisId>(Layout::parent_column).data(),
-            this->template column<std::string_view>(Layout::name_column).data(),
-            this->template column<lispb::schema::TypeId>(Layout::semantic_type_column).data(),
-            this->template column<lispb::StringId>(Layout::schema_type_column).data(),
-            this->template column<lispb::StringId>(Layout::physical_type_column).data(),
-            this->template column<std::uint8_t>(Layout::overridden_column).data(),
-            this->template column<std::optional<ioj::layout::PhysicalFactId>>(
-                    Layout::type_facts_column)
-                .data(),
-            this->template column<std::optional<std::uint64_t>>(Layout::total_bytes_column).data(),
-            this->template column<std::optional<std::uint64_t>>(
-                    Layout::allocation_offset_bytes_column)
-                .data(),
-            this->template column<std::optional<std::uint64_t>>(Layout::padding_before_bytes_column)
-                .data(),
-            this->template column<std::optional<std::uint64_t>>(Layout::minimum_cache_lines_column)
-                .data(),
-            this->template column<std::optional<std::uint64_t>>(
-                    Layout::elements_per_cache_line_column)
-                .data(),
-            this->template column<std::optional<std::uint64_t>>(Layout::minimum_pages_column)
-                .data(),
-            this->template column<std::optional<std::uint64_t>>(
-                    Layout::complete_elements_per_page_column)
-                .data(),
-            this->template column<std::optional<ioj::layout::CacheLineTiling>>(
-                    Layout::cache_line_tiling_column)
-                .data(),
-            this->num()};
     }
 };
 struct ConstView : ViewImpl<true> {
@@ -556,26 +482,6 @@ struct SoaColumnTable
         Element<std::optional<std::uint64_t>>* minimum_pages{};
         Element<std::optional<std::uint64_t>>* complete_elements_per_page{};
         Element<std::optional<ioj::layout::CacheLineTiling>>* cache_line_tiling{};
-        auto operator+(size_type const offset) const noexcept -> DataPointers {
-            if (parent == nullptr) {
-                return {};
-            }
-            return {parent + offset,
-                    name + offset,
-                    semantic_type + offset,
-                    schema_type + offset,
-                    physical_type + offset,
-                    overridden + offset,
-                    type_facts + offset,
-                    total_bytes + offset,
-                    allocation_offset_bytes + offset,
-                    padding_before_bytes + offset,
-                    minimum_cache_lines + offset,
-                    elements_per_cache_line + offset,
-                    minimum_pages + offset,
-                    complete_elements_per_page + offset,
-                    cache_line_tiling + offset};
-        }
     };
   private:
     friend Operations;
@@ -592,25 +498,6 @@ struct SoaColumnTable
     /* **************************************** */
     // Typed mutations and growth
     /* **************************************** */
-    void default_construct_columns(size_type const first, size_type const count) {
-        using ioj::native_soa::default_construct_n;
-        auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
-        default_construct_n(columns.parent, count);
-        default_construct_n(columns.name, count);
-        default_construct_n(columns.semantic_type, count);
-        default_construct_n(columns.schema_type, count);
-        default_construct_n(columns.physical_type, count);
-        default_construct_n(columns.overridden, count);
-        default_construct_n(columns.type_facts, count);
-        default_construct_n(columns.total_bytes, count);
-        default_construct_n(columns.allocation_offset_bytes, count);
-        default_construct_n(columns.padding_before_bytes, count);
-        default_construct_n(columns.minimum_cache_lines, count);
-        default_construct_n(columns.elements_per_cache_line, count);
-        default_construct_n(columns.minimum_pages, count);
-        default_construct_n(columns.complete_elements_per_page, count);
-        default_construct_n(columns.cache_line_tiling, count);
-    }
     template <bool Overlapping, typename Byte>
     static void transfer_columns(DataPointers<std::byte> const& destination,
                                  DataPointers<Byte> const& source,
@@ -633,27 +520,6 @@ struct SoaColumnTable
         transfer(destination.minimum_pages, source.minimum_pages);
         transfer(destination.complete_elements_per_page, source.complete_elements_per_page);
         transfer(destination.cache_line_tiling, source.cache_line_tiling);
-    }
-    template <typename Columns>
-    static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
-        requires ioj::soa_storage_detail::SoaSourceFor<Columns, SoaColumnTable, size_type>
-    {
-        using ioj::native_soa::source_data;
-        return {source_data(source.parent()),
-                source_data(source.name()),
-                source_data(source.semantic_type()),
-                source_data(source.schema_type()),
-                source_data(source.physical_type()),
-                source_data(source.overridden()),
-                source_data(source.type_facts()),
-                source_data(source.total_bytes()),
-                source_data(source.allocation_offset_bytes()),
-                source_data(source.padding_before_bytes()),
-                source_data(source.minimum_cache_lines()),
-                source_data(source.elements_per_cache_line()),
-                source_data(source.minimum_pages()),
-                source_data(source.complete_elements_per_page()),
-                source_data(source.cache_line_tiling())};
     }
   public:
     auto parent(this auto& self) { return self.get_view().parent(); }

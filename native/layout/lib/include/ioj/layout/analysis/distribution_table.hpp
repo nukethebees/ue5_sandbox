@@ -49,6 +49,22 @@ struct Layout
     static constexpr std::size_t expected_selected_slack_bytes_column{9};
 };
 
+struct Schema {
+    template <typename Columns, typename Func>
+    static auto with_columns(Columns const& source, Func&& func) {
+        return func(source.analysis(),
+                    source.entries(),
+                    source.element_count(),
+                    source.total_weight(),
+                    source.total_extent_bytes(),
+                    source.total_slack_bytes(),
+                    source.expected_extent_bytes(),
+                    source.expected_slack_bytes(),
+                    source.expected_selected_extent_bytes(),
+                    source.expected_selected_slack_bytes());
+    }
+};
+
 /* **************************************** */
 // Resolved views
 /* **************************************** */
@@ -131,38 +147,18 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
-        : analysis_{other.analysis_}
-        , entries_{other.entries_}
-        , element_count_{other.element_count_}
-        , total_weight_{other.total_weight_}
-        , total_extent_bytes_{other.total_extent_bytes_}
-        , total_slack_bytes_{other.total_slack_bytes_}
-        , expected_extent_bytes_{other.expected_extent_bytes_}
-        , expected_slack_bytes_{other.expected_slack_bytes_}
-        , expected_selected_extent_bytes_{other.expected_selected_extent_bytes_}
-        , expected_selected_slack_bytes_{other.expected_selected_slack_bytes_}
-        , count_{other.count_} {}
+    {
+        auto& [... destination] = *this;
+        auto const& [... source] = other;
+        ((destination = source), ...);
+    }
     auto num() const noexcept -> size_type { return count_; }
     auto resolve(this auto const& self) { return self; }
     auto slice(this auto const& self, size_type offset, size_type count) {
-        assert(offset <= self.count_ && count <= self.count_ - offset);
+        auto const& [... pointers, source_count] = static_cast<ResolvedViewImpl const&>(self);
+        assert(offset <= source_count && count <= source_count - offset);
         using Result = std::remove_cvref_t<decltype(self)>;
-        return Result{
-            self.analysis_ == nullptr ? nullptr : self.analysis_ + offset,
-            self.entries_ == nullptr ? nullptr : self.entries_ + offset,
-            self.element_count_ == nullptr ? nullptr : self.element_count_ + offset,
-            self.total_weight_ == nullptr ? nullptr : self.total_weight_ + offset,
-            self.total_extent_bytes_ == nullptr ? nullptr : self.total_extent_bytes_ + offset,
-            self.total_slack_bytes_ == nullptr ? nullptr : self.total_slack_bytes_ + offset,
-            self.expected_extent_bytes_ == nullptr ? nullptr : self.expected_extent_bytes_ + offset,
-            self.expected_slack_bytes_ == nullptr ? nullptr : self.expected_slack_bytes_ + offset,
-            self.expected_selected_extent_bytes_ == nullptr
-                ? nullptr
-                : self.expected_selected_extent_bytes_ + offset,
-            self.expected_selected_slack_bytes_ == nullptr
-                ? nullptr
-                : self.expected_selected_slack_bytes_ + offset,
-            count};
+        return Result{(pointers ? pointers + offset : nullptr)..., count};
     }
     auto analysis() const { return std::span{analysis_, count_}; }
     auto entries() const { return std::span{entries_, count_}; }
@@ -177,19 +173,6 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     }
     auto expected_selected_slack_bytes() const {
         return std::span{expected_selected_slack_bytes_, count_};
-    }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        func(std::span{analysis_, count_});
-        func(std::span{entries_, count_});
-        func(std::span{element_count_, count_});
-        func(std::span{total_weight_, count_});
-        func(std::span{total_extent_bytes_, count_});
-        func(std::span{total_slack_bytes_, count_});
-        func(std::span{expected_extent_bytes_, count_});
-        func(std::span{expected_slack_bytes_, count_});
-        func(std::span{expected_selected_extent_bytes_, count_});
-        func(std::span{expected_selected_slack_bytes_, count_});
     }
   private:
     template <bool>
@@ -249,6 +232,10 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using Layout = ::ioj::layout::distribution_table::Layout;
     using view_type = ::ioj::layout::distribution_table::View;
     using const_view_type = ::ioj::layout::distribution_table::ConstView;
+    using resolved_view_type =
+        std::conditional_t<Const,
+                           ::ioj::layout::distribution_table::ResolvedConstView,
+                           ::ioj::layout::distribution_table::ResolvedView>;
     template <bool Enabled = Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
@@ -284,43 +271,6 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     auto expected_selected_slack_bytes() const {
         return this->template column<std::optional<long double>>(
             Layout::expected_selected_slack_bytes_column);
-    }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        func(analysis());
-        func(entries());
-        func(element_count());
-        func(total_weight());
-        func(total_extent_bytes());
-        func(total_slack_bytes());
-        func(expected_extent_bytes());
-        func(expected_slack_bytes());
-        func(expected_selected_extent_bytes());
-        func(expected_selected_slack_bytes());
-    }
-    auto resolve() const -> std::conditional_t<Const,
-                                               ::ioj::layout::distribution_table::ResolvedConstView,
-                                               ::ioj::layout::distribution_table::ResolvedView> {
-        return {
-            this->template column<AnalysisId>(Layout::analysis_column).data(),
-            this->template column<RowRange>(Layout::entries_column).data(),
-            this->template column<std::uint64_t>(Layout::element_count_column).data(),
-            this->template column<std::optional<std::uint64_t>>(Layout::total_weight_column).data(),
-            this->template column<std::optional<std::uint64_t>>(Layout::total_extent_bytes_column)
-                .data(),
-            this->template column<std::optional<std::uint64_t>>(Layout::total_slack_bytes_column)
-                .data(),
-            this->template column<std::optional<long double>>(Layout::expected_extent_bytes_column)
-                .data(),
-            this->template column<std::optional<long double>>(Layout::expected_slack_bytes_column)
-                .data(),
-            this->template column<std::optional<long double>>(
-                    Layout::expected_selected_extent_bytes_column)
-                .data(),
-            this->template column<std::optional<long double>>(
-                    Layout::expected_selected_slack_bytes_column)
-                .data(),
-            this->num()};
     }
 };
 struct ConstView : ViewImpl<true> {
@@ -427,21 +377,6 @@ struct DistributionTable
         Element<std::optional<long double>>* expected_slack_bytes{};
         Element<std::optional<long double>>* expected_selected_extent_bytes{};
         Element<std::optional<long double>>* expected_selected_slack_bytes{};
-        auto operator+(size_type const offset) const noexcept -> DataPointers {
-            if (analysis == nullptr) {
-                return {};
-            }
-            return {analysis + offset,
-                    entries + offset,
-                    element_count + offset,
-                    total_weight + offset,
-                    total_extent_bytes + offset,
-                    total_slack_bytes + offset,
-                    expected_extent_bytes + offset,
-                    expected_slack_bytes + offset,
-                    expected_selected_extent_bytes + offset,
-                    expected_selected_slack_bytes + offset};
-        }
     };
   private:
     friend Operations;
@@ -458,20 +393,6 @@ struct DistributionTable
     /* **************************************** */
     // Typed mutations and growth
     /* **************************************** */
-    void default_construct_columns(size_type const first, size_type const count) {
-        using ioj::native_soa::default_construct_n;
-        auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
-        default_construct_n(columns.analysis, count);
-        default_construct_n(columns.entries, count);
-        default_construct_n(columns.element_count, count);
-        default_construct_n(columns.total_weight, count);
-        default_construct_n(columns.total_extent_bytes, count);
-        default_construct_n(columns.total_slack_bytes, count);
-        default_construct_n(columns.expected_extent_bytes, count);
-        default_construct_n(columns.expected_slack_bytes, count);
-        default_construct_n(columns.expected_selected_extent_bytes, count);
-        default_construct_n(columns.expected_selected_slack_bytes, count);
-    }
     template <bool Overlapping, typename Byte>
     static void transfer_columns(DataPointers<std::byte> const& destination,
                                  DataPointers<Byte> const& source,
@@ -489,22 +410,6 @@ struct DistributionTable
         transfer(destination.expected_slack_bytes, source.expected_slack_bytes);
         transfer(destination.expected_selected_extent_bytes, source.expected_selected_extent_bytes);
         transfer(destination.expected_selected_slack_bytes, source.expected_selected_slack_bytes);
-    }
-    template <typename Columns>
-    static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
-        requires ioj::soa_storage_detail::SoaSourceFor<Columns, DistributionTable, size_type>
-    {
-        using ioj::native_soa::source_data;
-        return {source_data(source.analysis()),
-                source_data(source.entries()),
-                source_data(source.element_count()),
-                source_data(source.total_weight()),
-                source_data(source.total_extent_bytes()),
-                source_data(source.total_slack_bytes()),
-                source_data(source.expected_extent_bytes()),
-                source_data(source.expected_slack_bytes()),
-                source_data(source.expected_selected_extent_bytes()),
-                source_data(source.expected_selected_slack_bytes())};
     }
   public:
     auto analysis(this auto& self) { return self.get_view().analysis(); }

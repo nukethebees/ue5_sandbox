@@ -31,6 +31,18 @@ struct Layout
     static constexpr std::size_t max_zs_column{5};
 };
 
+struct Schema {
+    template <typename Columns, typename Func>
+    static auto with_columns(Columns const& source, Func&& func) {
+        return func(source.min_xs(),
+                    source.min_ys(),
+                    source.min_zs(),
+                    source.max_xs(),
+                    source.max_ys(),
+                    source.max_zs());
+    }
+};
+
 /* **************************************** */
 // Resolved views
 /* **************************************** */
@@ -79,25 +91,18 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
-        : min_xs_{other.min_xs_}
-        , min_ys_{other.min_ys_}
-        , min_zs_{other.min_zs_}
-        , max_xs_{other.max_xs_}
-        , max_ys_{other.max_ys_}
-        , max_zs_{other.max_zs_}
-        , count_{other.count_} {}
+    {
+        auto& [... destination] = *this;
+        auto const& [... source] = other;
+        ((destination = source), ...);
+    }
     auto num() const noexcept -> size_type { return count_; }
     auto resolve(this auto const& self) { return self; }
     auto slice(this auto const& self, size_type offset, size_type count) {
-        assert(offset <= self.count_ && count <= self.count_ - offset);
+        auto const& [... pointers, source_count] = static_cast<ResolvedViewImpl const&>(self);
+        assert(offset <= source_count && count <= source_count - offset);
         using Result = std::remove_cvref_t<decltype(self)>;
-        return Result{self.min_xs_ == nullptr ? nullptr : self.min_xs_ + offset,
-                      self.min_ys_ == nullptr ? nullptr : self.min_ys_ + offset,
-                      self.min_zs_ == nullptr ? nullptr : self.min_zs_ + offset,
-                      self.max_xs_ == nullptr ? nullptr : self.max_xs_ + offset,
-                      self.max_ys_ == nullptr ? nullptr : self.max_ys_ + offset,
-                      self.max_zs_ == nullptr ? nullptr : self.max_zs_ + offset,
-                      count};
+        return Result{(pointers ? pointers + offset : nullptr)..., count};
     }
     auto min_xs() const { return std::span{min_xs_, count_}; }
     auto min_ys() const { return std::span{min_ys_, count_}; }
@@ -105,15 +110,6 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     auto max_xs() const { return std::span{max_xs_, count_}; }
     auto max_ys() const { return std::span{max_ys_, count_}; }
     auto max_zs() const { return std::span{max_zs_, count_}; }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        func(std::span{min_xs_, count_});
-        func(std::span{min_ys_, count_});
-        func(std::span{min_zs_, count_});
-        func(std::span{max_xs_, count_});
-        func(std::span{max_ys_, count_});
-        func(std::span{max_zs_, count_});
-    }
   private:
     template <bool>
     friend struct ResolvedViewImpl;
@@ -160,6 +156,10 @@ struct ViewImpl : ioj::soa_storage_detail::StridedViewBase<float, Const> {
     using Layout = ::ioj::sim::collision::world_aab_bs::Layout;
     using view_type = ::ioj::sim::collision::world_aab_bs::View;
     using const_view_type = ::ioj::sim::collision::world_aab_bs::ConstView;
+    using resolved_view_type =
+        std::conditional_t<Const,
+                           ::ioj::sim::collision::world_aab_bs::ResolvedConstView,
+                           ::ioj::sim::collision::world_aab_bs::ResolvedView>;
     using State = std::conditional_t<Const,
                                      ioj::soa_storage_detail::StorageState const,
                                      ioj::soa_storage_detail::StorageState>;
@@ -176,27 +176,6 @@ struct ViewImpl : ioj::soa_storage_detail::StridedViewBase<float, Const> {
     auto max_xs() const { return this->column(3); }
     auto max_ys() const { return this->column(4); }
     auto max_zs() const { return this->column(5); }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        func(min_xs());
-        func(min_ys());
-        func(min_zs());
-        func(max_xs());
-        func(max_ys());
-        func(max_zs());
-    }
-    auto resolve() const
-        -> std::conditional_t<Const,
-                              ::ioj::sim::collision::world_aab_bs::ResolvedConstView,
-                              ::ioj::sim::collision::world_aab_bs::ResolvedView> {
-        return {this->column(0).data(),
-                this->column(1).data(),
-                this->column(2).data(),
-                this->column(3).data(),
-                this->column(4).data(),
-                this->column(5).data(),
-                this->num()};
-    }
 };
 struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;
@@ -286,17 +265,6 @@ struct WorldAABBs
         Element<float>* max_xs{};
         Element<float>* max_ys{};
         Element<float>* max_zs{};
-        auto operator+(size_type const offset) const noexcept -> DataPointers {
-            if (min_xs == nullptr) {
-                return {};
-            }
-            return {min_xs + offset,
-                    min_ys + offset,
-                    min_zs + offset,
-                    max_xs + offset,
-                    max_ys + offset,
-                    max_zs + offset};
-        }
     };
   private:
     friend Operations;
@@ -313,16 +281,6 @@ struct WorldAABBs
     /* **************************************** */
     // Typed mutations and growth
     /* **************************************** */
-    void default_construct_columns(size_type const first, size_type const count) {
-        using ioj::native_soa::default_construct_n;
-        auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
-        default_construct_n(columns.min_xs, count);
-        default_construct_n(columns.min_ys, count);
-        default_construct_n(columns.min_zs, count);
-        default_construct_n(columns.max_xs, count);
-        default_construct_n(columns.max_ys, count);
-        default_construct_n(columns.max_zs, count);
-    }
     template <bool Overlapping, typename Byte>
     static void transfer_columns(DataPointers<std::byte> const& destination,
                                  DataPointers<Byte> const& source,
@@ -336,18 +294,6 @@ struct WorldAABBs
         transfer(destination.max_xs, source.max_xs);
         transfer(destination.max_ys, source.max_ys);
         transfer(destination.max_zs, source.max_zs);
-    }
-    template <typename Columns>
-    static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
-        requires ioj::soa_storage_detail::SoaSourceFor<Columns, WorldAABBs, size_type>
-    {
-        using ioj::native_soa::source_data;
-        return {source_data(source.min_xs()),
-                source_data(source.min_ys()),
-                source_data(source.min_zs()),
-                source_data(source.max_xs()),
-                source_data(source.max_ys()),
-                source_data(source.max_zs())};
     }
   public:
     auto min_xs(this auto& self) { return self.get_view().min_xs(); }

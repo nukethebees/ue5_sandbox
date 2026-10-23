@@ -52,6 +52,25 @@ struct Layout
     static constexpr std::size_t entity_ids_column{12};
 };
 
+struct Schema {
+    template <typename Columns, typename Func>
+    static auto with_columns(Columns const& source, Func&& func) {
+        return func(source.min_point_xs(),
+                    source.min_point_ys(),
+                    source.min_point_zs(),
+                    source.max_point_xs(),
+                    source.max_point_ys(),
+                    source.max_point_zs(),
+                    source.min_cell_xs(),
+                    source.min_cell_ys(),
+                    source.min_cell_zs(),
+                    source.max_cell_xs(),
+                    source.max_cell_ys(),
+                    source.max_cell_zs(),
+                    source.entity_ids());
+    }
+};
+
 /* **************************************** */
 // Resolved views
 /* **************************************** */
@@ -152,39 +171,18 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
-        : min_point_xs_{other.min_point_xs_}
-        , min_point_ys_{other.min_point_ys_}
-        , min_point_zs_{other.min_point_zs_}
-        , max_point_xs_{other.max_point_xs_}
-        , max_point_ys_{other.max_point_ys_}
-        , max_point_zs_{other.max_point_zs_}
-        , min_cell_xs_{other.min_cell_xs_}
-        , min_cell_ys_{other.min_cell_ys_}
-        , min_cell_zs_{other.min_cell_zs_}
-        , max_cell_xs_{other.max_cell_xs_}
-        , max_cell_ys_{other.max_cell_ys_}
-        , max_cell_zs_{other.max_cell_zs_}
-        , entity_ids_{other.entity_ids_}
-        , count_{other.count_} {}
+    {
+        auto& [... destination] = *this;
+        auto const& [... source] = other;
+        ((destination = source), ...);
+    }
     auto num() const noexcept -> size_type { return count_; }
     auto resolve(this auto const& self) { return self; }
     auto slice(this auto const& self, size_type offset, size_type count) {
-        assert(offset <= self.count_ && count <= self.count_ - offset);
+        auto const& [... pointers, source_count] = static_cast<ResolvedViewImpl const&>(self);
+        assert(offset <= source_count && count <= source_count - offset);
         using Result = std::remove_cvref_t<decltype(self)>;
-        return Result{self.min_point_xs_ == nullptr ? nullptr : self.min_point_xs_ + offset,
-                      self.min_point_ys_ == nullptr ? nullptr : self.min_point_ys_ + offset,
-                      self.min_point_zs_ == nullptr ? nullptr : self.min_point_zs_ + offset,
-                      self.max_point_xs_ == nullptr ? nullptr : self.max_point_xs_ + offset,
-                      self.max_point_ys_ == nullptr ? nullptr : self.max_point_ys_ + offset,
-                      self.max_point_zs_ == nullptr ? nullptr : self.max_point_zs_ + offset,
-                      self.min_cell_xs_ == nullptr ? nullptr : self.min_cell_xs_ + offset,
-                      self.min_cell_ys_ == nullptr ? nullptr : self.min_cell_ys_ + offset,
-                      self.min_cell_zs_ == nullptr ? nullptr : self.min_cell_zs_ + offset,
-                      self.max_cell_xs_ == nullptr ? nullptr : self.max_cell_xs_ + offset,
-                      self.max_cell_ys_ == nullptr ? nullptr : self.max_cell_ys_ + offset,
-                      self.max_cell_zs_ == nullptr ? nullptr : self.max_cell_zs_ + offset,
-                      self.entity_ids_ == nullptr ? nullptr : self.entity_ids_ + offset,
-                      count};
+        return Result{(pointers ? pointers + offset : nullptr)..., count};
     }
     auto min_point_xs() const { return std::span{min_point_xs_, count_}; }
     auto min_point_ys() const { return std::span{min_point_ys_, count_}; }
@@ -199,22 +197,6 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     auto max_cell_ys() const { return std::span{max_cell_ys_, count_}; }
     auto max_cell_zs() const { return std::span{max_cell_zs_, count_}; }
     auto entity_ids() const { return std::span{entity_ids_, count_}; }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        func(std::span{min_point_xs_, count_});
-        func(std::span{min_point_ys_, count_});
-        func(std::span{min_point_zs_, count_});
-        func(std::span{max_point_xs_, count_});
-        func(std::span{max_point_ys_, count_});
-        func(std::span{max_point_zs_, count_});
-        func(std::span{min_cell_xs_, count_});
-        func(std::span{min_cell_ys_, count_});
-        func(std::span{min_cell_zs_, count_});
-        func(std::span{max_cell_xs_, count_});
-        func(std::span{max_cell_ys_, count_});
-        func(std::span{max_cell_zs_, count_});
-        func(std::span{entity_ids_, count_});
-    }
   private:
     template <bool>
     friend struct ResolvedViewImpl;
@@ -282,6 +264,10 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using Layout = ::ioj::sim::collision::entity_cell_data::Layout;
     using view_type = ::ioj::sim::collision::entity_cell_data::View;
     using const_view_type = ::ioj::sim::collision::entity_cell_data::ConstView;
+    using resolved_view_type =
+        std::conditional_t<Const,
+                           ::ioj::sim::collision::entity_cell_data::ResolvedConstView,
+                           ::ioj::sim::collision::entity_cell_data::ResolvedView>;
     template <bool Enabled = Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
@@ -311,41 +297,6 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
         return this->template column<std::int32_t>(Layout::max_cell_zs_column);
     }
     auto entity_ids() const { return this->template column<EntityId>(Layout::entity_ids_column); }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        func(min_point_xs());
-        func(min_point_ys());
-        func(min_point_zs());
-        func(max_point_xs());
-        func(max_point_ys());
-        func(max_point_zs());
-        func(min_cell_xs());
-        func(min_cell_ys());
-        func(min_cell_zs());
-        func(max_cell_xs());
-        func(max_cell_ys());
-        func(max_cell_zs());
-        func(entity_ids());
-    }
-    auto resolve() const
-        -> std::conditional_t<Const,
-                              ::ioj::sim::collision::entity_cell_data::ResolvedConstView,
-                              ::ioj::sim::collision::entity_cell_data::ResolvedView> {
-        return {this->template column<float>(Layout::min_point_xs_column).data(),
-                this->template column<float>(Layout::min_point_ys_column).data(),
-                this->template column<float>(Layout::min_point_zs_column).data(),
-                this->template column<float>(Layout::max_point_xs_column).data(),
-                this->template column<float>(Layout::max_point_ys_column).data(),
-                this->template column<float>(Layout::max_point_zs_column).data(),
-                this->template column<std::int32_t>(Layout::min_cell_xs_column).data(),
-                this->template column<std::int32_t>(Layout::min_cell_ys_column).data(),
-                this->template column<std::int32_t>(Layout::min_cell_zs_column).data(),
-                this->template column<std::int32_t>(Layout::max_cell_xs_column).data(),
-                this->template column<std::int32_t>(Layout::max_cell_ys_column).data(),
-                this->template column<std::int32_t>(Layout::max_cell_zs_column).data(),
-                this->template column<EntityId>(Layout::entity_ids_column).data(),
-                this->num()};
-    }
 };
 struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;
@@ -463,24 +414,6 @@ struct EntityCellData
         Element<std::int32_t>* max_cell_ys{};
         Element<std::int32_t>* max_cell_zs{};
         Element<EntityId>* entity_ids{};
-        auto operator+(size_type const offset) const noexcept -> DataPointers {
-            if (min_point_xs == nullptr) {
-                return {};
-            }
-            return {min_point_xs + offset,
-                    min_point_ys + offset,
-                    min_point_zs + offset,
-                    max_point_xs + offset,
-                    max_point_ys + offset,
-                    max_point_zs + offset,
-                    min_cell_xs + offset,
-                    min_cell_ys + offset,
-                    min_cell_zs + offset,
-                    max_cell_xs + offset,
-                    max_cell_ys + offset,
-                    max_cell_zs + offset,
-                    entity_ids + offset};
-        }
     };
   private:
     friend Operations;
@@ -497,23 +430,6 @@ struct EntityCellData
     /* **************************************** */
     // Typed mutations and growth
     /* **************************************** */
-    void default_construct_columns(size_type const first, size_type const count) {
-        using ioj::native_soa::default_construct_n;
-        auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
-        default_construct_n(columns.min_point_xs, count);
-        default_construct_n(columns.min_point_ys, count);
-        default_construct_n(columns.min_point_zs, count);
-        default_construct_n(columns.max_point_xs, count);
-        default_construct_n(columns.max_point_ys, count);
-        default_construct_n(columns.max_point_zs, count);
-        default_construct_n(columns.min_cell_xs, count);
-        default_construct_n(columns.min_cell_ys, count);
-        default_construct_n(columns.min_cell_zs, count);
-        default_construct_n(columns.max_cell_xs, count);
-        default_construct_n(columns.max_cell_ys, count);
-        default_construct_n(columns.max_cell_zs, count);
-        default_construct_n(columns.entity_ids, count);
-    }
     template <bool Overlapping, typename Byte>
     static void transfer_columns(DataPointers<std::byte> const& destination,
                                  DataPointers<Byte> const& source,
@@ -534,25 +450,6 @@ struct EntityCellData
         transfer(destination.max_cell_ys, source.max_cell_ys);
         transfer(destination.max_cell_zs, source.max_cell_zs);
         transfer(destination.entity_ids, source.entity_ids);
-    }
-    template <typename Columns>
-    static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
-        requires ioj::soa_storage_detail::SoaSourceFor<Columns, EntityCellData, size_type>
-    {
-        using ioj::native_soa::source_data;
-        return {source_data(source.min_point_xs()),
-                source_data(source.min_point_ys()),
-                source_data(source.min_point_zs()),
-                source_data(source.max_point_xs()),
-                source_data(source.max_point_ys()),
-                source_data(source.max_point_zs()),
-                source_data(source.min_cell_xs()),
-                source_data(source.min_cell_ys()),
-                source_data(source.min_cell_zs()),
-                source_data(source.max_cell_xs()),
-                source_data(source.max_cell_ys()),
-                source_data(source.max_cell_zs()),
-                source_data(source.entity_ids())};
     }
   public:
     auto min_point_xs(this auto& self) { return self.get_view().min_point_xs(); }

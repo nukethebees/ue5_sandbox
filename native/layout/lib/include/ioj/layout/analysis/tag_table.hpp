@@ -33,6 +33,13 @@ struct Layout
     static constexpr std::size_t count_sentinel_column{3};
 };
 
+struct Schema {
+    template <typename Columns, typename Func>
+    static auto with_columns(Columns const& source, Func&& func) {
+        return func(source.name(), source.mapped(), source.sentinel(), source.count_sentinel());
+    }
+};
+
 /* **************************************** */
 // Resolved views
 /* **************************************** */
@@ -73,33 +80,23 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
-        : name_{other.name_}
-        , mapped_{other.mapped_}
-        , sentinel_{other.sentinel_}
-        , count_sentinel_{other.count_sentinel_}
-        , count_{other.count_} {}
+    {
+        auto& [... destination] = *this;
+        auto const& [... source] = other;
+        ((destination = source), ...);
+    }
     auto num() const noexcept -> size_type { return count_; }
     auto resolve(this auto const& self) { return self; }
     auto slice(this auto const& self, size_type offset, size_type count) {
-        assert(offset <= self.count_ && count <= self.count_ - offset);
+        auto const& [... pointers, source_count] = static_cast<ResolvedViewImpl const&>(self);
+        assert(offset <= source_count && count <= source_count - offset);
         using Result = std::remove_cvref_t<decltype(self)>;
-        return Result{self.name_ == nullptr ? nullptr : self.name_ + offset,
-                      self.mapped_ == nullptr ? nullptr : self.mapped_ + offset,
-                      self.sentinel_ == nullptr ? nullptr : self.sentinel_ + offset,
-                      self.count_sentinel_ == nullptr ? nullptr : self.count_sentinel_ + offset,
-                      count};
+        return Result{(pointers ? pointers + offset : nullptr)..., count};
     }
     auto name() const { return std::span{name_, count_}; }
     auto mapped() const { return std::span{mapped_, count_}; }
     auto sentinel() const { return std::span{sentinel_, count_}; }
     auto count_sentinel() const { return std::span{count_sentinel_, count_}; }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        func(std::span{name_, count_});
-        func(std::span{mapped_, count_});
-        func(std::span{sentinel_, count_});
-        func(std::span{count_sentinel_, count_});
-    }
   private:
     template <bool>
     friend struct ResolvedViewImpl;
@@ -140,6 +137,9 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using Layout = ::ioj::layout::tag_table::Layout;
     using view_type = ::ioj::layout::tag_table::View;
     using const_view_type = ::ioj::layout::tag_table::ConstView;
+    using resolved_view_type = std::conditional_t<Const,
+                                                  ::ioj::layout::tag_table::ResolvedConstView,
+                                                  ::ioj::layout::tag_table::ResolvedView>;
     template <bool Enabled = Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
@@ -149,22 +149,6 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     auto sentinel() const { return this->template column<std::uint8_t>(Layout::sentinel_column); }
     auto count_sentinel() const {
         return this->template column<std::uint8_t>(Layout::count_sentinel_column);
-    }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        func(name());
-        func(mapped());
-        func(sentinel());
-        func(count_sentinel());
-    }
-    auto resolve() const -> std::conditional_t<Const,
-                                               ::ioj::layout::tag_table::ResolvedConstView,
-                                               ::ioj::layout::tag_table::ResolvedView> {
-        return {this->template column<std::string_view>(Layout::name_column).data(),
-                this->template column<std::uint8_t>(Layout::mapped_column).data(),
-                this->template column<std::uint8_t>(Layout::sentinel_column).data(),
-                this->template column<std::uint8_t>(Layout::count_sentinel_column).data(),
-                this->num()};
     }
 };
 struct ConstView : ViewImpl<true> {
@@ -245,12 +229,6 @@ struct TagTable
         Element<std::uint8_t>* mapped{};
         Element<std::uint8_t>* sentinel{};
         Element<std::uint8_t>* count_sentinel{};
-        auto operator+(size_type const offset) const noexcept -> DataPointers {
-            if (name == nullptr) {
-                return {};
-            }
-            return {name + offset, mapped + offset, sentinel + offset, count_sentinel + offset};
-        }
     };
   private:
     friend Operations;
@@ -267,14 +245,6 @@ struct TagTable
     /* **************************************** */
     // Typed mutations and growth
     /* **************************************** */
-    void default_construct_columns(size_type const first, size_type const count) {
-        using ioj::native_soa::default_construct_n;
-        auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
-        default_construct_n(columns.name, count);
-        default_construct_n(columns.mapped, count);
-        default_construct_n(columns.sentinel, count);
-        default_construct_n(columns.count_sentinel, count);
-    }
     template <bool Overlapping, typename Byte>
     static void transfer_columns(DataPointers<std::byte> const& destination,
                                  DataPointers<Byte> const& source,
@@ -286,16 +256,6 @@ struct TagTable
         transfer(destination.mapped, source.mapped);
         transfer(destination.sentinel, source.sentinel);
         transfer(destination.count_sentinel, source.count_sentinel);
-    }
-    template <typename Columns>
-    static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
-        requires ioj::soa_storage_detail::SoaSourceFor<Columns, TagTable, size_type>
-    {
-        using ioj::native_soa::source_data;
-        return {source_data(source.name()),
-                source_data(source.mapped()),
-                source_data(source.sentinel()),
-                source_data(source.count_sentinel())};
     }
   public:
     auto name(this auto& self) { return self.get_view().name(); }

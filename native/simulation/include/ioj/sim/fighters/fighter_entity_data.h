@@ -141,6 +141,78 @@ struct Layout
     static constexpr std::size_t target_radii_column{54};
 };
 
+struct Schema {
+    template <typename Columns, typename Func>
+    static auto with_columns(Columns const& source, Func&& func) {
+        auto const& locations_view{source.view_locations()};
+        auto const& desired_move_locations_view{source.view_desired_move_locations()};
+        auto const& aim_directions_view{source.view_aim_directions()};
+        auto const& planned_aim_directions_view{source.view_planned_aim_directions()};
+        auto const& desired_aiming_directions_view{source.view_desired_aiming_directions()};
+        auto const& movement_directions_view{source.view_movement_directions()};
+        auto const& velocities_view{source.view_velocities()};
+        auto const& separation_steering_view{source.view_separation_steering()};
+        auto const& target_locations_view{source.view_target_locations()};
+        auto const& target_velocities_view{source.view_target_velocities()};
+        auto const& target_directions_view{source.view_target_directions()};
+        return func(source.entity_ids(),
+                    source.integral_biases(),
+                    source.float_biases(),
+                    source.tasks(),
+                    locations_view.xs(),
+                    locations_view.ys(),
+                    locations_view.zs(),
+                    desired_move_locations_view.xs(),
+                    desired_move_locations_view.ys(),
+                    desired_move_locations_view.zs(),
+                    aim_directions_view.xs(),
+                    aim_directions_view.ys(),
+                    aim_directions_view.zs(),
+                    planned_aim_directions_view.xs(),
+                    planned_aim_directions_view.ys(),
+                    planned_aim_directions_view.zs(),
+                    desired_aiming_directions_view.xs(),
+                    desired_aiming_directions_view.ys(),
+                    desired_aiming_directions_view.zs(),
+                    movement_directions_view.xs(),
+                    movement_directions_view.ys(),
+                    movement_directions_view.zs(),
+                    velocities_view.xs(),
+                    velocities_view.ys(),
+                    velocities_view.zs(),
+                    source.move_distances(),
+                    source.speeds(),
+                    source.teams(),
+                    source.parent_ids(),
+                    source.awareness_scan_countdowns(),
+                    source.navigation_update_countdowns_remaining_ticks(),
+                    source.navigation_update_countdowns_periods(),
+                    separation_steering_view.xs(),
+                    separation_steering_view.ys(),
+                    separation_steering_view.zs(),
+                    source.navigation_risk_tiers(),
+                    source.navigation_lower_risk_scan_counts(),
+                    source.avoidance_choice_indices(),
+                    source.avoidance_clear_scan_counts(),
+                    source.attack_reposition_countdowns(),
+                    source.attack_cooldowns(),
+                    source.target_ids(),
+                    target_locations_view.xs(),
+                    target_locations_view.ys(),
+                    target_locations_view.zs(),
+                    target_velocities_view.xs(),
+                    target_velocities_view.ys(),
+                    target_velocities_view.zs(),
+                    target_directions_view.xs(),
+                    target_directions_view.ys(),
+                    target_directions_view.zs(),
+                    source.intercept_times(),
+                    source.target_distance_sq(),
+                    source.target_distances(),
+                    source.target_radii());
+    }
+};
+
 /* **************************************** */
 // Resolved views
 /* **************************************** */
@@ -497,155 +569,18 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
-        : entity_ids_{other.entity_ids_}
-        , integral_biases_{other.integral_biases_}
-        , float_biases_{other.float_biases_}
-        , tasks_{other.tasks_}
-        , locations_xs_{other.locations_xs_}
-        , locations_ys_{other.locations_ys_}
-        , locations_zs_{other.locations_zs_}
-        , desired_move_locations_xs_{other.desired_move_locations_xs_}
-        , desired_move_locations_ys_{other.desired_move_locations_ys_}
-        , desired_move_locations_zs_{other.desired_move_locations_zs_}
-        , aim_directions_xs_{other.aim_directions_xs_}
-        , aim_directions_ys_{other.aim_directions_ys_}
-        , aim_directions_zs_{other.aim_directions_zs_}
-        , planned_aim_directions_xs_{other.planned_aim_directions_xs_}
-        , planned_aim_directions_ys_{other.planned_aim_directions_ys_}
-        , planned_aim_directions_zs_{other.planned_aim_directions_zs_}
-        , desired_aiming_directions_xs_{other.desired_aiming_directions_xs_}
-        , desired_aiming_directions_ys_{other.desired_aiming_directions_ys_}
-        , desired_aiming_directions_zs_{other.desired_aiming_directions_zs_}
-        , movement_directions_xs_{other.movement_directions_xs_}
-        , movement_directions_ys_{other.movement_directions_ys_}
-        , movement_directions_zs_{other.movement_directions_zs_}
-        , velocities_xs_{other.velocities_xs_}
-        , velocities_ys_{other.velocities_ys_}
-        , velocities_zs_{other.velocities_zs_}
-        , move_distances_{other.move_distances_}
-        , speeds_{other.speeds_}
-        , teams_{other.teams_}
-        , parent_ids_{other.parent_ids_}
-        , awareness_scan_countdowns_{other.awareness_scan_countdowns_}
-        , navigation_update_countdowns_remaining_ticks_{other
-                                                            .navigation_update_countdowns_remaining_ticks_}
-        , navigation_update_countdowns_periods_{other.navigation_update_countdowns_periods_}
-        , separation_steering_xs_{other.separation_steering_xs_}
-        , separation_steering_ys_{other.separation_steering_ys_}
-        , separation_steering_zs_{other.separation_steering_zs_}
-        , navigation_risk_tiers_{other.navigation_risk_tiers_}
-        , navigation_lower_risk_scan_counts_{other.navigation_lower_risk_scan_counts_}
-        , avoidance_choice_indices_{other.avoidance_choice_indices_}
-        , avoidance_clear_scan_counts_{other.avoidance_clear_scan_counts_}
-        , attack_reposition_countdowns_{other.attack_reposition_countdowns_}
-        , attack_cooldowns_{other.attack_cooldowns_}
-        , target_ids_{other.target_ids_}
-        , target_locations_xs_{other.target_locations_xs_}
-        , target_locations_ys_{other.target_locations_ys_}
-        , target_locations_zs_{other.target_locations_zs_}
-        , target_velocities_xs_{other.target_velocities_xs_}
-        , target_velocities_ys_{other.target_velocities_ys_}
-        , target_velocities_zs_{other.target_velocities_zs_}
-        , target_directions_xs_{other.target_directions_xs_}
-        , target_directions_ys_{other.target_directions_ys_}
-        , target_directions_zs_{other.target_directions_zs_}
-        , intercept_times_{other.intercept_times_}
-        , target_distance_sq_{other.target_distance_sq_}
-        , target_distances_{other.target_distances_}
-        , target_radii_{other.target_radii_}
-        , count_{other.count_} {}
+    {
+        auto& [... destination] = *this;
+        auto const& [... source] = other;
+        ((destination = source), ...);
+    }
     auto num() const noexcept -> size_type { return count_; }
     auto resolve(this auto const& self) { return self; }
     auto slice(this auto const& self, size_type offset, size_type count) {
-        assert(offset <= self.count_ && count <= self.count_ - offset);
+        auto const& [... pointers, source_count] = static_cast<ResolvedViewImpl const&>(self);
+        assert(offset <= source_count && count <= source_count - offset);
         using Result = std::remove_cvref_t<decltype(self)>;
-        return Result{
-            self.entity_ids_ == nullptr ? nullptr : self.entity_ids_ + offset,
-            self.integral_biases_ == nullptr ? nullptr : self.integral_biases_ + offset,
-            self.float_biases_ == nullptr ? nullptr : self.float_biases_ + offset,
-            self.tasks_ == nullptr ? nullptr : self.tasks_ + offset,
-            self.locations_xs_ == nullptr ? nullptr : self.locations_xs_ + offset,
-            self.locations_ys_ == nullptr ? nullptr : self.locations_ys_ + offset,
-            self.locations_zs_ == nullptr ? nullptr : self.locations_zs_ + offset,
-            self.desired_move_locations_xs_ == nullptr ? nullptr
-                                                       : self.desired_move_locations_xs_ + offset,
-            self.desired_move_locations_ys_ == nullptr ? nullptr
-                                                       : self.desired_move_locations_ys_ + offset,
-            self.desired_move_locations_zs_ == nullptr ? nullptr
-                                                       : self.desired_move_locations_zs_ + offset,
-            self.aim_directions_xs_ == nullptr ? nullptr : self.aim_directions_xs_ + offset,
-            self.aim_directions_ys_ == nullptr ? nullptr : self.aim_directions_ys_ + offset,
-            self.aim_directions_zs_ == nullptr ? nullptr : self.aim_directions_zs_ + offset,
-            self.planned_aim_directions_xs_ == nullptr ? nullptr
-                                                       : self.planned_aim_directions_xs_ + offset,
-            self.planned_aim_directions_ys_ == nullptr ? nullptr
-                                                       : self.planned_aim_directions_ys_ + offset,
-            self.planned_aim_directions_zs_ == nullptr ? nullptr
-                                                       : self.planned_aim_directions_zs_ + offset,
-            self.desired_aiming_directions_xs_ == nullptr
-                ? nullptr
-                : self.desired_aiming_directions_xs_ + offset,
-            self.desired_aiming_directions_ys_ == nullptr
-                ? nullptr
-                : self.desired_aiming_directions_ys_ + offset,
-            self.desired_aiming_directions_zs_ == nullptr
-                ? nullptr
-                : self.desired_aiming_directions_zs_ + offset,
-            self.movement_directions_xs_ == nullptr ? nullptr
-                                                    : self.movement_directions_xs_ + offset,
-            self.movement_directions_ys_ == nullptr ? nullptr
-                                                    : self.movement_directions_ys_ + offset,
-            self.movement_directions_zs_ == nullptr ? nullptr
-                                                    : self.movement_directions_zs_ + offset,
-            self.velocities_xs_ == nullptr ? nullptr : self.velocities_xs_ + offset,
-            self.velocities_ys_ == nullptr ? nullptr : self.velocities_ys_ + offset,
-            self.velocities_zs_ == nullptr ? nullptr : self.velocities_zs_ + offset,
-            self.move_distances_ == nullptr ? nullptr : self.move_distances_ + offset,
-            self.speeds_ == nullptr ? nullptr : self.speeds_ + offset,
-            self.teams_ == nullptr ? nullptr : self.teams_ + offset,
-            self.parent_ids_ == nullptr ? nullptr : self.parent_ids_ + offset,
-            self.awareness_scan_countdowns_ == nullptr ? nullptr
-                                                       : self.awareness_scan_countdowns_ + offset,
-            self.navigation_update_countdowns_remaining_ticks_ == nullptr
-                ? nullptr
-                : self.navigation_update_countdowns_remaining_ticks_ + offset,
-            self.navigation_update_countdowns_periods_ == nullptr
-                ? nullptr
-                : self.navigation_update_countdowns_periods_ + offset,
-            self.separation_steering_xs_ == nullptr ? nullptr
-                                                    : self.separation_steering_xs_ + offset,
-            self.separation_steering_ys_ == nullptr ? nullptr
-                                                    : self.separation_steering_ys_ + offset,
-            self.separation_steering_zs_ == nullptr ? nullptr
-                                                    : self.separation_steering_zs_ + offset,
-            self.navigation_risk_tiers_ == nullptr ? nullptr : self.navigation_risk_tiers_ + offset,
-            self.navigation_lower_risk_scan_counts_ == nullptr
-                ? nullptr
-                : self.navigation_lower_risk_scan_counts_ + offset,
-            self.avoidance_choice_indices_ == nullptr ? nullptr
-                                                      : self.avoidance_choice_indices_ + offset,
-            self.avoidance_clear_scan_counts_ == nullptr
-                ? nullptr
-                : self.avoidance_clear_scan_counts_ + offset,
-            self.attack_reposition_countdowns_ == nullptr
-                ? nullptr
-                : self.attack_reposition_countdowns_ + offset,
-            self.attack_cooldowns_ == nullptr ? nullptr : self.attack_cooldowns_ + offset,
-            self.target_ids_ == nullptr ? nullptr : self.target_ids_ + offset,
-            self.target_locations_xs_ == nullptr ? nullptr : self.target_locations_xs_ + offset,
-            self.target_locations_ys_ == nullptr ? nullptr : self.target_locations_ys_ + offset,
-            self.target_locations_zs_ == nullptr ? nullptr : self.target_locations_zs_ + offset,
-            self.target_velocities_xs_ == nullptr ? nullptr : self.target_velocities_xs_ + offset,
-            self.target_velocities_ys_ == nullptr ? nullptr : self.target_velocities_ys_ + offset,
-            self.target_velocities_zs_ == nullptr ? nullptr : self.target_velocities_zs_ + offset,
-            self.target_directions_xs_ == nullptr ? nullptr : self.target_directions_xs_ + offset,
-            self.target_directions_ys_ == nullptr ? nullptr : self.target_directions_ys_ + offset,
-            self.target_directions_zs_ == nullptr ? nullptr : self.target_directions_zs_ + offset,
-            self.intercept_times_ == nullptr ? nullptr : self.intercept_times_ + offset,
-            self.target_distance_sq_ == nullptr ? nullptr : self.target_distance_sq_ + offset,
-            self.target_distances_ == nullptr ? nullptr : self.target_distances_ + offset,
-            self.target_radii_ == nullptr ? nullptr : self.target_radii_ + offset,
-            count};
+        return Result{(pointers ? pointers + offset : nullptr)..., count};
     }
     auto entity_ids() const { return std::span{entity_ids_, count_}; }
     auto integral_biases() const { return std::span{integral_biases_, count_}; }
@@ -732,64 +667,6 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     auto target_distance_sq() const { return std::span{target_distance_sq_, count_}; }
     auto target_distances() const { return std::span{target_distances_, count_}; }
     auto target_radii() const { return std::span{target_radii_, count_}; }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        func(std::span{entity_ids_, count_});
-        func(std::span{integral_biases_, count_});
-        func(std::span{float_biases_, count_});
-        func(std::span{tasks_, count_});
-        func(std::span{locations_xs_, count_});
-        func(std::span{locations_ys_, count_});
-        func(std::span{locations_zs_, count_});
-        func(std::span{desired_move_locations_xs_, count_});
-        func(std::span{desired_move_locations_ys_, count_});
-        func(std::span{desired_move_locations_zs_, count_});
-        func(std::span{aim_directions_xs_, count_});
-        func(std::span{aim_directions_ys_, count_});
-        func(std::span{aim_directions_zs_, count_});
-        func(std::span{planned_aim_directions_xs_, count_});
-        func(std::span{planned_aim_directions_ys_, count_});
-        func(std::span{planned_aim_directions_zs_, count_});
-        func(std::span{desired_aiming_directions_xs_, count_});
-        func(std::span{desired_aiming_directions_ys_, count_});
-        func(std::span{desired_aiming_directions_zs_, count_});
-        func(std::span{movement_directions_xs_, count_});
-        func(std::span{movement_directions_ys_, count_});
-        func(std::span{movement_directions_zs_, count_});
-        func(std::span{velocities_xs_, count_});
-        func(std::span{velocities_ys_, count_});
-        func(std::span{velocities_zs_, count_});
-        func(std::span{move_distances_, count_});
-        func(std::span{speeds_, count_});
-        func(std::span{teams_, count_});
-        func(std::span{parent_ids_, count_});
-        func(std::span{awareness_scan_countdowns_, count_});
-        func(std::span{navigation_update_countdowns_remaining_ticks_, count_});
-        func(std::span{navigation_update_countdowns_periods_, count_});
-        func(std::span{separation_steering_xs_, count_});
-        func(std::span{separation_steering_ys_, count_});
-        func(std::span{separation_steering_zs_, count_});
-        func(std::span{navigation_risk_tiers_, count_});
-        func(std::span{navigation_lower_risk_scan_counts_, count_});
-        func(std::span{avoidance_choice_indices_, count_});
-        func(std::span{avoidance_clear_scan_counts_, count_});
-        func(std::span{attack_reposition_countdowns_, count_});
-        func(std::span{attack_cooldowns_, count_});
-        func(std::span{target_ids_, count_});
-        func(std::span{target_locations_xs_, count_});
-        func(std::span{target_locations_ys_, count_});
-        func(std::span{target_locations_zs_, count_});
-        func(std::span{target_velocities_xs_, count_});
-        func(std::span{target_velocities_ys_, count_});
-        func(std::span{target_velocities_zs_, count_});
-        func(std::span{target_directions_xs_, count_});
-        func(std::span{target_directions_ys_, count_});
-        func(std::span{target_directions_zs_, count_});
-        func(std::span{intercept_times_, count_});
-        func(std::span{target_distance_sq_, count_});
-        func(std::span{target_distances_, count_});
-        func(std::span{target_radii_, count_});
-    }
   private:
     template <bool>
     friend struct ResolvedViewImpl;
@@ -1056,6 +933,10 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using Layout = ::ioj::sim::fighter_entity_data::Layout;
     using view_type = ::ioj::sim::fighter_entity_data::View;
     using const_view_type = ::ioj::sim::fighter_entity_data::ConstView;
+    using resolved_view_type =
+        std::conditional_t<Const,
+                           ::ioj::sim::fighter_entity_data::ResolvedConstView,
+                           ::ioj::sim::fighter_entity_data::ResolvedView>;
     template <bool Enabled = Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
@@ -1226,147 +1107,6 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
         return this->template column<float>(Layout::target_distances_column);
     }
     auto target_radii() const { return this->template column<float>(Layout::target_radii_column); }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        func(entity_ids());
-        func(integral_biases());
-        func(float_biases());
-        func(tasks());
-        auto const& locations_view{view_locations()};
-        func(locations_view.xs());
-        func(locations_view.ys());
-        func(locations_view.zs());
-        auto const& desired_move_locations_view{view_desired_move_locations()};
-        func(desired_move_locations_view.xs());
-        func(desired_move_locations_view.ys());
-        func(desired_move_locations_view.zs());
-        auto const& aim_directions_view{view_aim_directions()};
-        func(aim_directions_view.xs());
-        func(aim_directions_view.ys());
-        func(aim_directions_view.zs());
-        auto const& planned_aim_directions_view{view_planned_aim_directions()};
-        func(planned_aim_directions_view.xs());
-        func(planned_aim_directions_view.ys());
-        func(planned_aim_directions_view.zs());
-        auto const& desired_aiming_directions_view{view_desired_aiming_directions()};
-        func(desired_aiming_directions_view.xs());
-        func(desired_aiming_directions_view.ys());
-        func(desired_aiming_directions_view.zs());
-        auto const& movement_directions_view{view_movement_directions()};
-        func(movement_directions_view.xs());
-        func(movement_directions_view.ys());
-        func(movement_directions_view.zs());
-        auto const& velocities_view{view_velocities()};
-        func(velocities_view.xs());
-        func(velocities_view.ys());
-        func(velocities_view.zs());
-        func(move_distances());
-        func(speeds());
-        func(teams());
-        func(parent_ids());
-        func(awareness_scan_countdowns());
-        func(navigation_update_countdowns_remaining_ticks());
-        func(navigation_update_countdowns_periods());
-        auto const& separation_steering_view{view_separation_steering()};
-        func(separation_steering_view.xs());
-        func(separation_steering_view.ys());
-        func(separation_steering_view.zs());
-        func(navigation_risk_tiers());
-        func(navigation_lower_risk_scan_counts());
-        func(avoidance_choice_indices());
-        func(avoidance_clear_scan_counts());
-        func(attack_reposition_countdowns());
-        func(attack_cooldowns());
-        func(target_ids());
-        auto const& target_locations_view{view_target_locations()};
-        func(target_locations_view.xs());
-        func(target_locations_view.ys());
-        func(target_locations_view.zs());
-        auto const& target_velocities_view{view_target_velocities()};
-        func(target_velocities_view.xs());
-        func(target_velocities_view.ys());
-        func(target_velocities_view.zs());
-        auto const& target_directions_view{view_target_directions()};
-        func(target_directions_view.xs());
-        func(target_directions_view.ys());
-        func(target_directions_view.zs());
-        func(intercept_times());
-        func(target_distance_sq());
-        func(target_distances());
-        func(target_radii());
-    }
-    auto resolve() const -> std::conditional_t<Const,
-                                               ::ioj::sim::fighter_entity_data::ResolvedConstView,
-                                               ::ioj::sim::fighter_entity_data::ResolvedView> {
-        return {
-            this->template column<EntityId>(Layout::entity_ids_column).data(),
-            this->template column<std::uint32_t>(Layout::integral_biases_column).data(),
-            this->template column<float>(Layout::float_biases_column).data(),
-            this->template column<FighterTask>(Layout::tasks_column).data(),
-            this->template column<float>(Layout::locations_xs_column).data(),
-            this->template column<float>(Layout::locations_ys_column).data(),
-            this->template column<float>(Layout::locations_zs_column).data(),
-            this->template column<float>(Layout::desired_move_locations_xs_column).data(),
-            this->template column<float>(Layout::desired_move_locations_ys_column).data(),
-            this->template column<float>(Layout::desired_move_locations_zs_column).data(),
-            this->template column<float>(Layout::aim_directions_xs_column).data(),
-            this->template column<float>(Layout::aim_directions_ys_column).data(),
-            this->template column<float>(Layout::aim_directions_zs_column).data(),
-            this->template column<float>(Layout::planned_aim_directions_xs_column).data(),
-            this->template column<float>(Layout::planned_aim_directions_ys_column).data(),
-            this->template column<float>(Layout::planned_aim_directions_zs_column).data(),
-            this->template column<float>(Layout::desired_aiming_directions_xs_column).data(),
-            this->template column<float>(Layout::desired_aiming_directions_ys_column).data(),
-            this->template column<float>(Layout::desired_aiming_directions_zs_column).data(),
-            this->template column<float>(Layout::movement_directions_xs_column).data(),
-            this->template column<float>(Layout::movement_directions_ys_column).data(),
-            this->template column<float>(Layout::movement_directions_zs_column).data(),
-            this->template column<float>(Layout::velocities_xs_column).data(),
-            this->template column<float>(Layout::velocities_ys_column).data(),
-            this->template column<float>(Layout::velocities_zs_column).data(),
-            this->template column<float>(Layout::move_distances_column).data(),
-            this->template column<float>(Layout::speeds_column).data(),
-            this->template column<::ioj::Team>(Layout::teams_column).data(),
-            this->template column<EntityId>(Layout::parent_ids_column).data(),
-            this->template column<std::int8_t>(Layout::awareness_scan_countdowns_column).data(),
-            this->template column<std::int16_t>(
-                    Layout::navigation_update_countdowns_remaining_ticks_column)
-                .data(),
-            this->template column<std::int16_t>(Layout::navigation_update_countdowns_periods_column)
-                .data(),
-            this->template column<float>(Layout::separation_steering_xs_column).data(),
-            this->template column<float>(Layout::separation_steering_ys_column).data(),
-            this->template column<float>(Layout::separation_steering_zs_column).data(),
-            this->template column<fighters::NavigationRiskCode>(
-                    Layout::navigation_risk_tiers_column)
-                .data(),
-            this->template column<fighters::NavigationScanCount>(
-                    Layout::navigation_lower_risk_scan_counts_column)
-                .data(),
-            this->template column<fighters::AvoidanceChoice>(
-                    Layout::avoidance_choice_indices_column)
-                .data(),
-            this->template column<fighters::NavigationScanCount>(
-                    Layout::avoidance_clear_scan_counts_column)
-                .data(),
-            this->template column<std::int16_t>(Layout::attack_reposition_countdowns_column).data(),
-            this->template column<std::int16_t>(Layout::attack_cooldowns_column).data(),
-            this->template column<EntityId>(Layout::target_ids_column).data(),
-            this->template column<float>(Layout::target_locations_xs_column).data(),
-            this->template column<float>(Layout::target_locations_ys_column).data(),
-            this->template column<float>(Layout::target_locations_zs_column).data(),
-            this->template column<float>(Layout::target_velocities_xs_column).data(),
-            this->template column<float>(Layout::target_velocities_ys_column).data(),
-            this->template column<float>(Layout::target_velocities_zs_column).data(),
-            this->template column<float>(Layout::target_directions_xs_column).data(),
-            this->template column<float>(Layout::target_directions_ys_column).data(),
-            this->template column<float>(Layout::target_directions_zs_column).data(),
-            this->template column<float>(Layout::intercept_times_column).data(),
-            this->template column<float>(Layout::target_distance_sq_column).data(),
-            this->template column<float>(Layout::target_distances_column).data(),
-            this->template column<float>(Layout::target_radii_column).data(),
-            this->num()};
-    }
 };
 struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;
@@ -1725,66 +1465,6 @@ struct FighterEntityData
         Element<float>* target_distance_sq{};
         Element<float>* target_distances{};
         Element<float>* target_radii{};
-        auto operator+(size_type const offset) const noexcept -> DataPointers {
-            if (entity_ids == nullptr) {
-                return {};
-            }
-            return {entity_ids + offset,
-                    integral_biases + offset,
-                    float_biases + offset,
-                    tasks + offset,
-                    locations_xs + offset,
-                    locations_ys + offset,
-                    locations_zs + offset,
-                    desired_move_locations_xs + offset,
-                    desired_move_locations_ys + offset,
-                    desired_move_locations_zs + offset,
-                    aim_directions_xs + offset,
-                    aim_directions_ys + offset,
-                    aim_directions_zs + offset,
-                    planned_aim_directions_xs + offset,
-                    planned_aim_directions_ys + offset,
-                    planned_aim_directions_zs + offset,
-                    desired_aiming_directions_xs + offset,
-                    desired_aiming_directions_ys + offset,
-                    desired_aiming_directions_zs + offset,
-                    movement_directions_xs + offset,
-                    movement_directions_ys + offset,
-                    movement_directions_zs + offset,
-                    velocities_xs + offset,
-                    velocities_ys + offset,
-                    velocities_zs + offset,
-                    move_distances + offset,
-                    speeds + offset,
-                    teams + offset,
-                    parent_ids + offset,
-                    awareness_scan_countdowns + offset,
-                    navigation_update_countdowns_remaining_ticks + offset,
-                    navigation_update_countdowns_periods + offset,
-                    separation_steering_xs + offset,
-                    separation_steering_ys + offset,
-                    separation_steering_zs + offset,
-                    navigation_risk_tiers + offset,
-                    navigation_lower_risk_scan_counts + offset,
-                    avoidance_choice_indices + offset,
-                    avoidance_clear_scan_counts + offset,
-                    attack_reposition_countdowns + offset,
-                    attack_cooldowns + offset,
-                    target_ids + offset,
-                    target_locations_xs + offset,
-                    target_locations_ys + offset,
-                    target_locations_zs + offset,
-                    target_velocities_xs + offset,
-                    target_velocities_ys + offset,
-                    target_velocities_zs + offset,
-                    target_directions_xs + offset,
-                    target_directions_ys + offset,
-                    target_directions_zs + offset,
-                    intercept_times + offset,
-                    target_distance_sq + offset,
-                    target_distances + offset,
-                    target_radii + offset};
-        }
     };
   private:
     friend Operations;
@@ -1801,65 +1481,6 @@ struct FighterEntityData
     /* **************************************** */
     // Typed mutations and growth
     /* **************************************** */
-    void default_construct_columns(size_type const first, size_type const count) {
-        using ioj::native_soa::default_construct_n;
-        auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
-        default_construct_n(columns.entity_ids, count);
-        default_construct_n(columns.integral_biases, count);
-        default_construct_n(columns.float_biases, count);
-        default_construct_n(columns.tasks, count);
-        default_construct_n(columns.locations_xs, count);
-        default_construct_n(columns.locations_ys, count);
-        default_construct_n(columns.locations_zs, count);
-        default_construct_n(columns.desired_move_locations_xs, count);
-        default_construct_n(columns.desired_move_locations_ys, count);
-        default_construct_n(columns.desired_move_locations_zs, count);
-        default_construct_n(columns.aim_directions_xs, count);
-        default_construct_n(columns.aim_directions_ys, count);
-        default_construct_n(columns.aim_directions_zs, count);
-        default_construct_n(columns.planned_aim_directions_xs, count);
-        default_construct_n(columns.planned_aim_directions_ys, count);
-        default_construct_n(columns.planned_aim_directions_zs, count);
-        default_construct_n(columns.desired_aiming_directions_xs, count);
-        default_construct_n(columns.desired_aiming_directions_ys, count);
-        default_construct_n(columns.desired_aiming_directions_zs, count);
-        default_construct_n(columns.movement_directions_xs, count);
-        default_construct_n(columns.movement_directions_ys, count);
-        default_construct_n(columns.movement_directions_zs, count);
-        default_construct_n(columns.velocities_xs, count);
-        default_construct_n(columns.velocities_ys, count);
-        default_construct_n(columns.velocities_zs, count);
-        default_construct_n(columns.move_distances, count);
-        default_construct_n(columns.speeds, count);
-        default_construct_n(columns.teams, count);
-        default_construct_n(columns.parent_ids, count);
-        default_construct_n(columns.awareness_scan_countdowns, count);
-        default_construct_n(columns.navigation_update_countdowns_remaining_ticks, count);
-        default_construct_n(columns.navigation_update_countdowns_periods, count);
-        default_construct_n(columns.separation_steering_xs, count);
-        default_construct_n(columns.separation_steering_ys, count);
-        default_construct_n(columns.separation_steering_zs, count);
-        default_construct_n(columns.navigation_risk_tiers, count);
-        default_construct_n(columns.navigation_lower_risk_scan_counts, count);
-        default_construct_n(columns.avoidance_choice_indices, count);
-        default_construct_n(columns.avoidance_clear_scan_counts, count);
-        default_construct_n(columns.attack_reposition_countdowns, count);
-        default_construct_n(columns.attack_cooldowns, count);
-        default_construct_n(columns.target_ids, count);
-        default_construct_n(columns.target_locations_xs, count);
-        default_construct_n(columns.target_locations_ys, count);
-        default_construct_n(columns.target_locations_zs, count);
-        default_construct_n(columns.target_velocities_xs, count);
-        default_construct_n(columns.target_velocities_ys, count);
-        default_construct_n(columns.target_velocities_zs, count);
-        default_construct_n(columns.target_directions_xs, count);
-        default_construct_n(columns.target_directions_ys, count);
-        default_construct_n(columns.target_directions_zs, count);
-        default_construct_n(columns.intercept_times, count);
-        default_construct_n(columns.target_distance_sq, count);
-        default_construct_n(columns.target_distances, count);
-        default_construct_n(columns.target_radii, count);
-    }
     template <bool Overlapping, typename Byte>
     static void transfer_columns(DataPointers<std::byte> const& destination,
                                  DataPointers<Byte> const& source,
@@ -1925,78 +1546,6 @@ struct FighterEntityData
         transfer(destination.target_distance_sq, source.target_distance_sq);
         transfer(destination.target_distances, source.target_distances);
         transfer(destination.target_radii, source.target_radii);
-    }
-    template <typename Columns>
-    static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
-        requires ioj::soa_storage_detail::SoaSourceFor<Columns, FighterEntityData, size_type>
-    {
-        using ioj::native_soa::source_data;
-        auto const& locations_view{source.view_locations()};
-        auto const& desired_move_locations_view{source.view_desired_move_locations()};
-        auto const& aim_directions_view{source.view_aim_directions()};
-        auto const& planned_aim_directions_view{source.view_planned_aim_directions()};
-        auto const& desired_aiming_directions_view{source.view_desired_aiming_directions()};
-        auto const& movement_directions_view{source.view_movement_directions()};
-        auto const& velocities_view{source.view_velocities()};
-        auto const& separation_steering_view{source.view_separation_steering()};
-        auto const& target_locations_view{source.view_target_locations()};
-        auto const& target_velocities_view{source.view_target_velocities()};
-        auto const& target_directions_view{source.view_target_directions()};
-        return {source_data(source.entity_ids()),
-                source_data(source.integral_biases()),
-                source_data(source.float_biases()),
-                source_data(source.tasks()),
-                source_data(locations_view.xs()),
-                source_data(locations_view.ys()),
-                source_data(locations_view.zs()),
-                source_data(desired_move_locations_view.xs()),
-                source_data(desired_move_locations_view.ys()),
-                source_data(desired_move_locations_view.zs()),
-                source_data(aim_directions_view.xs()),
-                source_data(aim_directions_view.ys()),
-                source_data(aim_directions_view.zs()),
-                source_data(planned_aim_directions_view.xs()),
-                source_data(planned_aim_directions_view.ys()),
-                source_data(planned_aim_directions_view.zs()),
-                source_data(desired_aiming_directions_view.xs()),
-                source_data(desired_aiming_directions_view.ys()),
-                source_data(desired_aiming_directions_view.zs()),
-                source_data(movement_directions_view.xs()),
-                source_data(movement_directions_view.ys()),
-                source_data(movement_directions_view.zs()),
-                source_data(velocities_view.xs()),
-                source_data(velocities_view.ys()),
-                source_data(velocities_view.zs()),
-                source_data(source.move_distances()),
-                source_data(source.speeds()),
-                source_data(source.teams()),
-                source_data(source.parent_ids()),
-                source_data(source.awareness_scan_countdowns()),
-                source_data(source.navigation_update_countdowns_remaining_ticks()),
-                source_data(source.navigation_update_countdowns_periods()),
-                source_data(separation_steering_view.xs()),
-                source_data(separation_steering_view.ys()),
-                source_data(separation_steering_view.zs()),
-                source_data(source.navigation_risk_tiers()),
-                source_data(source.navigation_lower_risk_scan_counts()),
-                source_data(source.avoidance_choice_indices()),
-                source_data(source.avoidance_clear_scan_counts()),
-                source_data(source.attack_reposition_countdowns()),
-                source_data(source.attack_cooldowns()),
-                source_data(source.target_ids()),
-                source_data(target_locations_view.xs()),
-                source_data(target_locations_view.ys()),
-                source_data(target_locations_view.zs()),
-                source_data(target_velocities_view.xs()),
-                source_data(target_velocities_view.ys()),
-                source_data(target_velocities_view.zs()),
-                source_data(target_directions_view.xs()),
-                source_data(target_directions_view.ys()),
-                source_data(target_directions_view.zs()),
-                source_data(source.intercept_times()),
-                source_data(source.target_distance_sq()),
-                source_data(source.target_distances()),
-                source_data(source.target_radii())};
     }
   public:
     auto entity_ids(this auto& self) { return self.get_view().entity_ids(); }

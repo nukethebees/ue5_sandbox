@@ -41,11 +41,6 @@ void transfer_n(T* const destination, T const* const source, size_type const cou
     }
 }
 
-template <typename T>
-void default_construct_n(T* const destination, size_type const count) {
-    std::uninitialized_value_construct_n(destination, count);
-}
-
 using StorageState = soa_storage_detail::StorageState;
 
 inline auto rounded_capacity(size_type const required,

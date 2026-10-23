@@ -59,6 +59,29 @@ struct Layout
     static constexpr std::size_t sources_column{13};
 };
 
+struct Schema {
+    template <typename Columns, typename Func>
+    static auto with_columns(Columns const& source, Func&& func) {
+        auto const& locations_view{source.view_locations()};
+        auto const& rotations_view{source.view_rotations()};
+        auto const& base_velocities_view{source.view_base_velocities()};
+        return func(locations_view.xs(),
+                    locations_view.ys(),
+                    locations_view.zs(),
+                    rotations_view.pitches(),
+                    rotations_view.yaws(),
+                    rotations_view.rolls(),
+                    base_velocities_view.xs(),
+                    base_velocities_view.ys(),
+                    base_velocities_view.zs(),
+                    source.damages(),
+                    source.speeds(),
+                    source.max_distances(),
+                    source.instigator_ids(),
+                    source.sources());
+    }
+};
+
 /* **************************************** */
 // Resolved views
 /* **************************************** */
@@ -165,42 +188,18 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
-        : locations_xs_{other.locations_xs_}
-        , locations_ys_{other.locations_ys_}
-        , locations_zs_{other.locations_zs_}
-        , rotations_pitches_{other.rotations_pitches_}
-        , rotations_yaws_{other.rotations_yaws_}
-        , rotations_rolls_{other.rotations_rolls_}
-        , base_velocities_xs_{other.base_velocities_xs_}
-        , base_velocities_ys_{other.base_velocities_ys_}
-        , base_velocities_zs_{other.base_velocities_zs_}
-        , damages_{other.damages_}
-        , speeds_{other.speeds_}
-        , max_distances_{other.max_distances_}
-        , instigator_ids_{other.instigator_ids_}
-        , sources_{other.sources_}
-        , count_{other.count_} {}
+    {
+        auto& [... destination] = *this;
+        auto const& [... source] = other;
+        ((destination = source), ...);
+    }
     auto num() const noexcept -> size_type { return count_; }
     auto resolve(this auto const& self) { return self; }
     auto slice(this auto const& self, size_type offset, size_type count) {
-        assert(offset <= self.count_ && count <= self.count_ - offset);
+        auto const& [... pointers, source_count] = static_cast<ResolvedViewImpl const&>(self);
+        assert(offset <= source_count && count <= source_count - offset);
         using Result = std::remove_cvref_t<decltype(self)>;
-        return Result{
-            self.locations_xs_ == nullptr ? nullptr : self.locations_xs_ + offset,
-            self.locations_ys_ == nullptr ? nullptr : self.locations_ys_ + offset,
-            self.locations_zs_ == nullptr ? nullptr : self.locations_zs_ + offset,
-            self.rotations_pitches_ == nullptr ? nullptr : self.rotations_pitches_ + offset,
-            self.rotations_yaws_ == nullptr ? nullptr : self.rotations_yaws_ + offset,
-            self.rotations_rolls_ == nullptr ? nullptr : self.rotations_rolls_ + offset,
-            self.base_velocities_xs_ == nullptr ? nullptr : self.base_velocities_xs_ + offset,
-            self.base_velocities_ys_ == nullptr ? nullptr : self.base_velocities_ys_ + offset,
-            self.base_velocities_zs_ == nullptr ? nullptr : self.base_velocities_zs_ + offset,
-            self.damages_ == nullptr ? nullptr : self.damages_ + offset,
-            self.speeds_ == nullptr ? nullptr : self.speeds_ + offset,
-            self.max_distances_ == nullptr ? nullptr : self.max_distances_ + offset,
-            self.instigator_ids_ == nullptr ? nullptr : self.instigator_ids_ + offset,
-            self.sources_ == nullptr ? nullptr : self.sources_ + offset,
-            count};
+        return Result{(pointers ? pointers + offset : nullptr)..., count};
     }
     auto view_locations() const -> std::
         conditional_t<Const, ::ioj::vectors3f::ResolvedConstView, ::ioj::vectors3f::ResolvedView> {
@@ -220,23 +219,6 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     auto max_distances() const { return std::span{max_distances_, count_}; }
     auto instigator_ids() const { return std::span{instigator_ids_, count_}; }
     auto sources() const { return std::span{sources_, count_}; }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        func(std::span{locations_xs_, count_});
-        func(std::span{locations_ys_, count_});
-        func(std::span{locations_zs_, count_});
-        func(std::span{rotations_pitches_, count_});
-        func(std::span{rotations_yaws_, count_});
-        func(std::span{rotations_rolls_, count_});
-        func(std::span{base_velocities_xs_, count_});
-        func(std::span{base_velocities_ys_, count_});
-        func(std::span{base_velocities_zs_, count_});
-        func(std::span{damages_, count_});
-        func(std::span{speeds_, count_});
-        func(std::span{max_distances_, count_});
-        func(std::span{instigator_ids_, count_});
-        func(std::span{sources_, count_});
-    }
   private:
     template <bool>
     friend struct ResolvedViewImpl;
@@ -326,6 +308,10 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using Layout = ::ioj::sim::lasers::laser_spawn_requests::Layout;
     using view_type = ::ioj::sim::lasers::laser_spawn_requests::View;
     using const_view_type = ::ioj::sim::lasers::laser_spawn_requests::ConstView;
+    using resolved_view_type =
+        std::conditional_t<Const,
+                           ::ioj::sim::lasers::laser_spawn_requests::ResolvedConstView,
+                           ::ioj::sim::lasers::laser_spawn_requests::ResolvedView>;
     template <bool Enabled = Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
@@ -369,46 +355,6 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
         return this->template column<EntityId>(Layout::instigator_ids_column);
     }
     auto sources() const { return this->template column<LaserSource>(Layout::sources_column); }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        auto const& locations_view{view_locations()};
-        func(locations_view.xs());
-        func(locations_view.ys());
-        func(locations_view.zs());
-        auto const& rotations_view{view_rotations()};
-        func(rotations_view.pitches());
-        func(rotations_view.yaws());
-        func(rotations_view.rolls());
-        auto const& base_velocities_view{view_base_velocities()};
-        func(base_velocities_view.xs());
-        func(base_velocities_view.ys());
-        func(base_velocities_view.zs());
-        func(damages());
-        func(speeds());
-        func(max_distances());
-        func(instigator_ids());
-        func(sources());
-    }
-    auto resolve() const
-        -> std::conditional_t<Const,
-                              ::ioj::sim::lasers::laser_spawn_requests::ResolvedConstView,
-                              ::ioj::sim::lasers::laser_spawn_requests::ResolvedView> {
-        return {this->template column<float>(Layout::locations_xs_column).data(),
-                this->template column<float>(Layout::locations_ys_column).data(),
-                this->template column<float>(Layout::locations_zs_column).data(),
-                this->template column<float>(Layout::rotations_pitches_column).data(),
-                this->template column<float>(Layout::rotations_yaws_column).data(),
-                this->template column<float>(Layout::rotations_rolls_column).data(),
-                this->template column<float>(Layout::base_velocities_xs_column).data(),
-                this->template column<float>(Layout::base_velocities_ys_column).data(),
-                this->template column<float>(Layout::base_velocities_zs_column).data(),
-                this->template column<std::int32_t>(Layout::damages_column).data(),
-                this->template column<float>(Layout::speeds_column).data(),
-                this->template column<float>(Layout::max_distances_column).data(),
-                this->template column<EntityId>(Layout::instigator_ids_column).data(),
-                this->template column<LaserSource>(Layout::sources_column).data(),
-                this->num()};
-    }
 };
 struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;
@@ -549,25 +495,6 @@ struct LaserSpawnRequests
         Element<float>* max_distances{};
         Element<EntityId>* instigator_ids{};
         Element<LaserSource>* sources{};
-        auto operator+(size_type const offset) const noexcept -> DataPointers {
-            if (locations_xs == nullptr) {
-                return {};
-            }
-            return {locations_xs + offset,
-                    locations_ys + offset,
-                    locations_zs + offset,
-                    rotations_pitches + offset,
-                    rotations_yaws + offset,
-                    rotations_rolls + offset,
-                    base_velocities_xs + offset,
-                    base_velocities_ys + offset,
-                    base_velocities_zs + offset,
-                    damages + offset,
-                    speeds + offset,
-                    max_distances + offset,
-                    instigator_ids + offset,
-                    sources + offset};
-        }
     };
   private:
     friend Operations;
@@ -584,24 +511,6 @@ struct LaserSpawnRequests
     /* **************************************** */
     // Typed mutations and growth
     /* **************************************** */
-    void default_construct_columns(size_type const first, size_type const count) {
-        using ioj::native_soa::default_construct_n;
-        auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
-        default_construct_n(columns.locations_xs, count);
-        default_construct_n(columns.locations_ys, count);
-        default_construct_n(columns.locations_zs, count);
-        default_construct_n(columns.rotations_pitches, count);
-        default_construct_n(columns.rotations_yaws, count);
-        default_construct_n(columns.rotations_rolls, count);
-        default_construct_n(columns.base_velocities_xs, count);
-        default_construct_n(columns.base_velocities_ys, count);
-        default_construct_n(columns.base_velocities_zs, count);
-        default_construct_n(columns.damages, count);
-        default_construct_n(columns.speeds, count);
-        default_construct_n(columns.max_distances, count);
-        default_construct_n(columns.instigator_ids, count);
-        default_construct_n(columns.sources, count);
-    }
     template <bool Overlapping, typename Byte>
     static void transfer_columns(DataPointers<std::byte> const& destination,
                                  DataPointers<Byte> const& source,
@@ -623,29 +532,6 @@ struct LaserSpawnRequests
         transfer(destination.max_distances, source.max_distances);
         transfer(destination.instigator_ids, source.instigator_ids);
         transfer(destination.sources, source.sources);
-    }
-    template <typename Columns>
-    static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
-        requires ioj::soa_storage_detail::SoaSourceFor<Columns, LaserSpawnRequests, size_type>
-    {
-        using ioj::native_soa::source_data;
-        auto const& locations_view{source.view_locations()};
-        auto const& rotations_view{source.view_rotations()};
-        auto const& base_velocities_view{source.view_base_velocities()};
-        return {source_data(locations_view.xs()),
-                source_data(locations_view.ys()),
-                source_data(locations_view.zs()),
-                source_data(rotations_view.pitches()),
-                source_data(rotations_view.yaws()),
-                source_data(rotations_view.rolls()),
-                source_data(base_velocities_view.xs()),
-                source_data(base_velocities_view.ys()),
-                source_data(base_velocities_view.zs()),
-                source_data(source.damages()),
-                source_data(source.speeds()),
-                source_data(source.max_distances()),
-                source_data(source.instigator_ids()),
-                source_data(source.sources())};
     }
   public:
     auto view_locations(this auto& self) { return self.get_view().view_locations(); }

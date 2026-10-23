@@ -26,6 +26,13 @@ struct Layout : ioj::single_allocation_layout::ColumnLayouts<RestrictedLeaf> {
     static constexpr std::size_t restricted_column{0};
 };
 
+struct Schema {
+    template <typename Columns, typename Func>
+    static auto with_columns(Columns const& source, Func&& func) {
+        return func(source.restricted());
+    }
+};
+
 /* **************************************** */
 // Resolved views
 /* **************************************** */
@@ -51,20 +58,20 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
-        : restricted_{other.restricted_}
-        , count_{other.count_} {}
+    {
+        auto& [... destination] = *this;
+        auto const& [... source] = other;
+        ((destination = source), ...);
+    }
     auto num() const noexcept -> size_type { return count_; }
     auto resolve(this auto const& self) { return self; }
     auto slice(this auto const& self, size_type offset, size_type count) {
-        assert(offset <= self.count_ && count <= self.count_ - offset);
+        auto const& [... pointers, source_count] = static_cast<ResolvedViewImpl const&>(self);
+        assert(offset <= source_count && count <= source_count - offset);
         using Result = std::remove_cvref_t<decltype(self)>;
-        return Result{self.restricted_ == nullptr ? nullptr : self.restricted_ + offset, count};
+        return Result{(pointers ? pointers + offset : nullptr)..., count};
     }
     auto restricted() const { return std::span{restricted_, count_}; }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        func(std::span{restricted_, count_});
-    }
   private:
     template <bool>
     friend struct ResolvedViewImpl;
@@ -95,23 +102,16 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using Layout = ::codegen_compile_fixture::single_restriction_rows::Layout;
     using view_type = ::codegen_compile_fixture::single_restriction_rows::View;
     using const_view_type = ::codegen_compile_fixture::single_restriction_rows::ConstView;
+    using resolved_view_type =
+        std::conditional_t<Const,
+                           ::codegen_compile_fixture::single_restriction_rows::ResolvedConstView,
+                           ::codegen_compile_fixture::single_restriction_rows::ResolvedView>;
     template <bool Enabled = Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
     auto restricted() const {
         return this->template column<RestrictedLeaf>(Layout::restricted_column);
-    }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        func(restricted());
-    }
-    auto resolve() const
-        -> std::conditional_t<Const,
-                              ::codegen_compile_fixture::single_restriction_rows::ResolvedConstView,
-                              ::codegen_compile_fixture::single_restriction_rows::ResolvedView> {
-        return {this->template column<RestrictedLeaf>(Layout::restricted_column).data(),
-                this->num()};
     }
 };
 struct ConstView : ViewImpl<true> {
@@ -181,12 +181,6 @@ struct SingleRestrictionRows
         template <typename T>
         using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
         Element<RestrictedLeaf>* restricted{};
-        auto operator+(size_type const offset) const noexcept -> DataPointers {
-            if (restricted == nullptr) {
-                return {};
-            }
-            return {restricted + offset};
-        }
     };
   private:
     friend Operations;
@@ -203,11 +197,6 @@ struct SingleRestrictionRows
     /* **************************************** */
     // Typed mutations and growth
     /* **************************************** */
-    void default_construct_columns(size_type const first, size_type const count) {
-        using ioj::native_soa::default_construct_n;
-        auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
-        default_construct_n(columns.restricted, count);
-    }
     template <bool Overlapping, typename Byte>
     static void transfer_columns(DataPointers<std::byte> const& destination,
                                  DataPointers<Byte> const& source,
@@ -216,13 +205,6 @@ struct SingleRestrictionRows
             ioj::native_soa::transfer_n<Overlapping>(dst, src, count);
         };
         transfer(destination.restricted, source.restricted);
-    }
-    template <typename Columns>
-    static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
-        requires ioj::soa_storage_detail::SoaSourceFor<Columns, SingleRestrictionRows, size_type>
-    {
-        using ioj::native_soa::source_data;
-        return {source_data(source.restricted())};
     }
   public:
     auto restricted(this auto& self) { return self.get_view().restricted(); }

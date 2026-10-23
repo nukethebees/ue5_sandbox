@@ -60,6 +60,11 @@ void validate_source(Source const& source) {
 }
 
 struct ViewOperations {
+    template <typename Self, typename Func>
+    void each_column(this Self const& self, Func&& func) {
+        Self::soa_schema::with_columns(
+            self, [&](auto const&... columns) { (func(std::span{columns}), ...); });
+    }
     auto is_empty(this auto const& self) noexcept -> bool { return self.num() == 0; }
     auto get_view(this auto const& self) { return self; }
     template <typename Self>
@@ -144,6 +149,16 @@ struct CompactViewBase : ViewOperations {
     void validate(this auto const& self) { validate_view(self.state_, self.offset_, self.count_); }
     auto num(this auto const& self) noexcept { return self.count_; }
     template <typename Self>
+    auto resolve(this Self const& self) -> typename Self::resolved_view_type {
+        single_allocation_layout::LayoutCursor cursor{view_capacity_blocks(self.state_)};
+        return Self::Layout::template make_resolved_view<typename Self::resolved_view_type>(
+            [&]<typename T> {
+                return view_column_data<T>(
+                    self.state_, self.offset_, cursor.advance(sizeof(T), alignof(T)));
+            },
+            self.count_);
+    }
+    template <typename Self>
     auto slice(this Self const& self,
                typename Self::size_type offset,
                typename Self::size_type count) -> Self {
@@ -195,6 +210,13 @@ struct StridedViewBase : ViewOperations {
     }
 
     auto num() const noexcept -> size_type { return count_; }
+
+    template <typename Self>
+    auto resolve(this Self const& self) -> typename Self::resolved_view_type {
+        std::size_t index{};
+        return Self::Layout::template make_resolved_view<typename Self::resolved_view_type>(
+            [&]<typename> { return self.column(index++).data(); }, self.num());
+    }
 
     template <typename Self>
     auto slice(this Self const& self, size_type offset, size_type count) -> Self {

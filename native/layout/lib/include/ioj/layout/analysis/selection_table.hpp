@@ -44,6 +44,19 @@ struct Layout
     static constexpr std::size_t capacity_slack_bytes_column{6};
 };
 
+struct Schema {
+    template <typename Columns, typename Func>
+    static auto with_columns(Columns const& source, Func&& func) {
+        return func(source.source(),
+                    source.operation(),
+                    source.bytes(),
+                    source.bits(),
+                    source.cache(),
+                    source.pages(),
+                    source.capacity_slack_bytes());
+    }
+};
+
 /* **************************************** */
 // Resolved views
 /* **************************************** */
@@ -96,28 +109,18 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
-        : source_{other.source_}
-        , operation_{other.operation_}
-        , bytes_{other.bytes_}
-        , bits_{other.bits_}
-        , cache_{other.cache_}
-        , pages_{other.pages_}
-        , capacity_slack_bytes_{other.capacity_slack_bytes_}
-        , count_{other.count_} {}
+    {
+        auto& [... destination] = *this;
+        auto const& [... source] = other;
+        ((destination = source), ...);
+    }
     auto num() const noexcept -> size_type { return count_; }
     auto resolve(this auto const& self) { return self; }
     auto slice(this auto const& self, size_type offset, size_type count) {
-        assert(offset <= self.count_ && count <= self.count_ - offset);
+        auto const& [... pointers, source_count] = static_cast<ResolvedViewImpl const&>(self);
+        assert(offset <= source_count && count <= source_count - offset);
         using Result = std::remove_cvref_t<decltype(self)>;
-        return Result{self.source_ == nullptr ? nullptr : self.source_ + offset,
-                      self.operation_ == nullptr ? nullptr : self.operation_ + offset,
-                      self.bytes_ == nullptr ? nullptr : self.bytes_ + offset,
-                      self.bits_ == nullptr ? nullptr : self.bits_ + offset,
-                      self.cache_ == nullptr ? nullptr : self.cache_ + offset,
-                      self.pages_ == nullptr ? nullptr : self.pages_ + offset,
-                      self.capacity_slack_bytes_ == nullptr ? nullptr
-                                                            : self.capacity_slack_bytes_ + offset,
-                      count};
+        return Result{(pointers ? pointers + offset : nullptr)..., count};
     }
     auto source() const { return std::span{source_, count_}; }
     auto operation() const { return std::span{operation_, count_}; }
@@ -126,16 +129,6 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     auto cache() const { return std::span{cache_, count_}; }
     auto pages() const { return std::span{pages_, count_}; }
     auto capacity_slack_bytes() const { return std::span{capacity_slack_bytes_, count_}; }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        func(std::span{source_, count_});
-        func(std::span{operation_, count_});
-        func(std::span{bytes_, count_});
-        func(std::span{bits_, count_});
-        func(std::span{cache_, count_});
-        func(std::span{pages_, count_});
-        func(std::span{capacity_slack_bytes_, count_});
-    }
   private:
     template <bool>
     friend struct ResolvedViewImpl;
@@ -185,6 +178,9 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using Layout = ::ioj::layout::selection_table::Layout;
     using view_type = ::ioj::layout::selection_table::View;
     using const_view_type = ::ioj::layout::selection_table::ConstView;
+    using resolved_view_type = std::conditional_t<Const,
+                                                  ::ioj::layout::selection_table::ResolvedConstView,
+                                                  ::ioj::layout::selection_table::ResolvedView>;
     template <bool Enabled = Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
@@ -200,30 +196,6 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     auto capacity_slack_bytes() const {
         return this->template column<std::optional<std::uint64_t>>(
             Layout::capacity_slack_bytes_column);
-    }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        func(source());
-        func(operation());
-        func(bytes());
-        func(bits());
-        func(cache());
-        func(pages());
-        func(capacity_slack_bytes());
-    }
-    auto resolve() const -> std::conditional_t<Const,
-                                               ::ioj::layout::selection_table::ResolvedConstView,
-                                               ::ioj::layout::selection_table::ResolvedView> {
-        return {
-            this->template column<std::size_t>(Layout::source_column).data(),
-            this->template column<AccessOperation>(Layout::operation_column).data(),
-            this->template column<PayloadFootprint>(Layout::bytes_column).data(),
-            this->template column<PayloadFootprint>(Layout::bits_column).data(),
-            this->template column<RegionFootprint>(Layout::cache_column).data(),
-            this->template column<RegionFootprint>(Layout::pages_column).data(),
-            this->template column<std::optional<std::uint64_t>>(Layout::capacity_slack_bytes_column)
-                .data(),
-            this->num()};
     }
 };
 struct ConstView : ViewImpl<true> {
@@ -318,18 +290,6 @@ struct SelectionTable
         Element<RegionFootprint>* cache{};
         Element<RegionFootprint>* pages{};
         Element<std::optional<std::uint64_t>>* capacity_slack_bytes{};
-        auto operator+(size_type const offset) const noexcept -> DataPointers {
-            if (source == nullptr) {
-                return {};
-            }
-            return {source + offset,
-                    operation + offset,
-                    bytes + offset,
-                    bits + offset,
-                    cache + offset,
-                    pages + offset,
-                    capacity_slack_bytes + offset};
-        }
     };
   private:
     friend Operations;
@@ -346,17 +306,6 @@ struct SelectionTable
     /* **************************************** */
     // Typed mutations and growth
     /* **************************************** */
-    void default_construct_columns(size_type const first, size_type const count) {
-        using ioj::native_soa::default_construct_n;
-        auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
-        default_construct_n(columns.source, count);
-        default_construct_n(columns.operation, count);
-        default_construct_n(columns.bytes, count);
-        default_construct_n(columns.bits, count);
-        default_construct_n(columns.cache, count);
-        default_construct_n(columns.pages, count);
-        default_construct_n(columns.capacity_slack_bytes, count);
-    }
     template <bool Overlapping, typename Byte>
     static void transfer_columns(DataPointers<std::byte> const& destination,
                                  DataPointers<Byte> const& source,
@@ -371,19 +320,6 @@ struct SelectionTable
         transfer(destination.cache, source.cache);
         transfer(destination.pages, source.pages);
         transfer(destination.capacity_slack_bytes, source.capacity_slack_bytes);
-    }
-    template <typename Columns>
-    static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
-        requires ioj::soa_storage_detail::SoaSourceFor<Columns, SelectionTable, size_type>
-    {
-        using ioj::native_soa::source_data;
-        return {source_data(source.source()),
-                source_data(source.operation()),
-                source_data(source.bytes()),
-                source_data(source.bits()),
-                source_data(source.cache()),
-                source_data(source.pages()),
-                source_data(source.capacity_slack_bytes())};
     }
   public:
     auto source(this auto& self) { return self.get_view().source(); }

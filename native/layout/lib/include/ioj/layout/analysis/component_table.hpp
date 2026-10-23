@@ -52,6 +52,22 @@ struct Layout
     static constexpr std::size_t slack_bytes_column{9};
 };
 
+struct Schema {
+    template <typename Columns, typename Func>
+    static auto with_columns(Columns const& source, Func&& func) {
+        return func(source.parent(),
+                    source.name(),
+                    source.tag(),
+                    source.semantic_type(),
+                    source.element_count(),
+                    source.element_facts(),
+                    source.offset_bytes(),
+                    source.extent_bytes(),
+                    source.padding_before_bytes(),
+                    source.slack_bytes());
+    }
+};
+
 /* **************************************** */
 // Resolved views
 /* **************************************** */
@@ -134,34 +150,18 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
-        : parent_{other.parent_}
-        , name_{other.name_}
-        , tag_{other.tag_}
-        , semantic_type_{other.semantic_type_}
-        , element_count_{other.element_count_}
-        , element_facts_{other.element_facts_}
-        , offset_bytes_{other.offset_bytes_}
-        , extent_bytes_{other.extent_bytes_}
-        , padding_before_bytes_{other.padding_before_bytes_}
-        , slack_bytes_{other.slack_bytes_}
-        , count_{other.count_} {}
+    {
+        auto& [... destination] = *this;
+        auto const& [... source] = other;
+        ((destination = source), ...);
+    }
     auto num() const noexcept -> size_type { return count_; }
     auto resolve(this auto const& self) { return self; }
     auto slice(this auto const& self, size_type offset, size_type count) {
-        assert(offset <= self.count_ && count <= self.count_ - offset);
+        auto const& [... pointers, source_count] = static_cast<ResolvedViewImpl const&>(self);
+        assert(offset <= source_count && count <= source_count - offset);
         using Result = std::remove_cvref_t<decltype(self)>;
-        return Result{self.parent_ == nullptr ? nullptr : self.parent_ + offset,
-                      self.name_ == nullptr ? nullptr : self.name_ + offset,
-                      self.tag_ == nullptr ? nullptr : self.tag_ + offset,
-                      self.semantic_type_ == nullptr ? nullptr : self.semantic_type_ + offset,
-                      self.element_count_ == nullptr ? nullptr : self.element_count_ + offset,
-                      self.element_facts_ == nullptr ? nullptr : self.element_facts_ + offset,
-                      self.offset_bytes_ == nullptr ? nullptr : self.offset_bytes_ + offset,
-                      self.extent_bytes_ == nullptr ? nullptr : self.extent_bytes_ + offset,
-                      self.padding_before_bytes_ == nullptr ? nullptr
-                                                            : self.padding_before_bytes_ + offset,
-                      self.slack_bytes_ == nullptr ? nullptr : self.slack_bytes_ + offset,
-                      count};
+        return Result{(pointers ? pointers + offset : nullptr)..., count};
     }
     auto parent() const { return std::span{parent_, count_}; }
     auto name() const { return std::span{name_, count_}; }
@@ -173,19 +173,6 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     auto extent_bytes() const { return std::span{extent_bytes_, count_}; }
     auto padding_before_bytes() const { return std::span{padding_before_bytes_, count_}; }
     auto slack_bytes() const { return std::span{slack_bytes_, count_}; }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        func(std::span{parent_, count_});
-        func(std::span{name_, count_});
-        func(std::span{tag_, count_});
-        func(std::span{semantic_type_, count_});
-        func(std::span{element_count_, count_});
-        func(std::span{element_facts_, count_});
-        func(std::span{offset_bytes_, count_});
-        func(std::span{extent_bytes_, count_});
-        func(std::span{padding_before_bytes_, count_});
-        func(std::span{slack_bytes_, count_});
-    }
   private:
     template <bool>
     friend struct ResolvedViewImpl;
@@ -244,6 +231,9 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using Layout = ::ioj::layout::component_table::Layout;
     using view_type = ::ioj::layout::component_table::View;
     using const_view_type = ::ioj::layout::component_table::ConstView;
+    using resolved_view_type = std::conditional_t<Const,
+                                                  ::ioj::layout::component_table::ResolvedConstView,
+                                                  ::ioj::layout::component_table::ResolvedView>;
     template <bool Enabled = Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
@@ -273,38 +263,6 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     }
     auto slack_bytes() const {
         return this->template column<std::optional<std::uint64_t>>(Layout::slack_bytes_column);
-    }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        func(parent());
-        func(name());
-        func(tag());
-        func(semantic_type());
-        func(element_count());
-        func(element_facts());
-        func(offset_bytes());
-        func(extent_bytes());
-        func(padding_before_bytes());
-        func(slack_bytes());
-    }
-    auto resolve() const -> std::conditional_t<Const,
-                                               ::ioj::layout::component_table::ResolvedConstView,
-                                               ::ioj::layout::component_table::ResolvedView> {
-        return {
-            this->template column<AnalysisId>(Layout::parent_column).data(),
-            this->template column<std::string_view>(Layout::name_column).data(),
-            this->template column<std::string_view>(Layout::tag_column).data(),
-            this->template column<lispb::schema::TypeId>(Layout::semantic_type_column).data(),
-            this->template column<std::uint64_t>(Layout::element_count_column).data(),
-            this->template column<std::optional<ioj::layout::PhysicalFactId>>(
-                    Layout::element_facts_column)
-                .data(),
-            this->template column<std::optional<std::uint64_t>>(Layout::offset_bytes_column).data(),
-            this->template column<std::optional<std::uint64_t>>(Layout::extent_bytes_column).data(),
-            this->template column<std::optional<std::uint64_t>>(Layout::padding_before_bytes_column)
-                .data(),
-            this->template column<std::optional<std::uint64_t>>(Layout::slack_bytes_column).data(),
-            this->num()};
     }
 };
 struct ConstView : ViewImpl<true> {
@@ -411,21 +369,6 @@ struct ComponentTable
         Element<std::optional<std::uint64_t>>* extent_bytes{};
         Element<std::optional<std::uint64_t>>* padding_before_bytes{};
         Element<std::optional<std::uint64_t>>* slack_bytes{};
-        auto operator+(size_type const offset) const noexcept -> DataPointers {
-            if (parent == nullptr) {
-                return {};
-            }
-            return {parent + offset,
-                    name + offset,
-                    tag + offset,
-                    semantic_type + offset,
-                    element_count + offset,
-                    element_facts + offset,
-                    offset_bytes + offset,
-                    extent_bytes + offset,
-                    padding_before_bytes + offset,
-                    slack_bytes + offset};
-        }
     };
   private:
     friend Operations;
@@ -442,20 +385,6 @@ struct ComponentTable
     /* **************************************** */
     // Typed mutations and growth
     /* **************************************** */
-    void default_construct_columns(size_type const first, size_type const count) {
-        using ioj::native_soa::default_construct_n;
-        auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
-        default_construct_n(columns.parent, count);
-        default_construct_n(columns.name, count);
-        default_construct_n(columns.tag, count);
-        default_construct_n(columns.semantic_type, count);
-        default_construct_n(columns.element_count, count);
-        default_construct_n(columns.element_facts, count);
-        default_construct_n(columns.offset_bytes, count);
-        default_construct_n(columns.extent_bytes, count);
-        default_construct_n(columns.padding_before_bytes, count);
-        default_construct_n(columns.slack_bytes, count);
-    }
     template <bool Overlapping, typename Byte>
     static void transfer_columns(DataPointers<std::byte> const& destination,
                                  DataPointers<Byte> const& source,
@@ -473,22 +402,6 @@ struct ComponentTable
         transfer(destination.extent_bytes, source.extent_bytes);
         transfer(destination.padding_before_bytes, source.padding_before_bytes);
         transfer(destination.slack_bytes, source.slack_bytes);
-    }
-    template <typename Columns>
-    static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
-        requires ioj::soa_storage_detail::SoaSourceFor<Columns, ComponentTable, size_type>
-    {
-        using ioj::native_soa::source_data;
-        return {source_data(source.parent()),
-                source_data(source.name()),
-                source_data(source.tag()),
-                source_data(source.semantic_type()),
-                source_data(source.element_count()),
-                source_data(source.element_facts()),
-                source_data(source.offset_bytes()),
-                source_data(source.extent_bytes()),
-                source_data(source.padding_before_bytes()),
-                source_data(source.slack_bytes())};
     }
   public:
     auto parent(this auto& self) { return self.get_view().parent(); }

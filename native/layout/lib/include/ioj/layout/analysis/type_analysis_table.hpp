@@ -48,6 +48,19 @@ struct Layout
     static constexpr std::size_t soa_column{6};
 };
 
+struct Schema {
+    template <typename Columns, typename Func>
+    static auto with_columns(Columns const& source, Func&& func) {
+        return func(source.schema_type(),
+                    source.scenario(),
+                    source.physical(),
+                    source.enum_backing(),
+                    source.aggregate(),
+                    source.packed(),
+                    source.soa());
+    }
+};
+
 /* **************************************** */
 // Resolved views
 /* **************************************** */
@@ -100,27 +113,18 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
-        : schema_type_{other.schema_type_}
-        , scenario_{other.scenario_}
-        , physical_{other.physical_}
-        , enum_backing_{other.enum_backing_}
-        , aggregate_{other.aggregate_}
-        , packed_{other.packed_}
-        , soa_{other.soa_}
-        , count_{other.count_} {}
+    {
+        auto& [... destination] = *this;
+        auto const& [... source] = other;
+        ((destination = source), ...);
+    }
     auto num() const noexcept -> size_type { return count_; }
     auto resolve(this auto const& self) { return self; }
     auto slice(this auto const& self, size_type offset, size_type count) {
-        assert(offset <= self.count_ && count <= self.count_ - offset);
+        auto const& [... pointers, source_count] = static_cast<ResolvedViewImpl const&>(self);
+        assert(offset <= source_count && count <= source_count - offset);
         using Result = std::remove_cvref_t<decltype(self)>;
-        return Result{self.schema_type_ == nullptr ? nullptr : self.schema_type_ + offset,
-                      self.scenario_ == nullptr ? nullptr : self.scenario_ + offset,
-                      self.physical_ == nullptr ? nullptr : self.physical_ + offset,
-                      self.enum_backing_ == nullptr ? nullptr : self.enum_backing_ + offset,
-                      self.aggregate_ == nullptr ? nullptr : self.aggregate_ + offset,
-                      self.packed_ == nullptr ? nullptr : self.packed_ + offset,
-                      self.soa_ == nullptr ? nullptr : self.soa_ + offset,
-                      count};
+        return Result{(pointers ? pointers + offset : nullptr)..., count};
     }
     auto schema_type() const { return std::span{schema_type_, count_}; }
     auto scenario() const { return std::span{scenario_, count_}; }
@@ -129,16 +133,6 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     auto aggregate() const { return std::span{aggregate_, count_}; }
     auto packed() const { return std::span{packed_, count_}; }
     auto soa() const { return std::span{soa_, count_}; }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        func(std::span{schema_type_, count_});
-        func(std::span{scenario_, count_});
-        func(std::span{physical_, count_});
-        func(std::span{enum_backing_, count_});
-        func(std::span{aggregate_, count_});
-        func(std::span{packed_, count_});
-        func(std::span{soa_, count_});
-    }
   private:
     template <bool>
     friend struct ResolvedViewImpl;
@@ -188,6 +182,10 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using Layout = ::ioj::layout::type_analysis_table::Layout;
     using view_type = ::ioj::layout::type_analysis_table::View;
     using const_view_type = ::ioj::layout::type_analysis_table::ConstView;
+    using resolved_view_type =
+        std::conditional_t<Const,
+                           ::ioj::layout::type_analysis_table::ResolvedConstView,
+                           ::ioj::layout::type_analysis_table::ResolvedView>;
     template <bool Enabled = Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
@@ -214,37 +212,6 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     }
     auto soa() const {
         return this->template column<std::optional<ioj::layout::SoaLayout>>(Layout::soa_column);
-    }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        func(schema_type());
-        func(scenario());
-        func(physical());
-        func(enum_backing());
-        func(aggregate());
-        func(packed());
-        func(soa());
-    }
-    auto resolve() const
-        -> std::conditional_t<Const,
-                              ::ioj::layout::type_analysis_table::ResolvedConstView,
-                              ::ioj::layout::type_analysis_table::ResolvedView> {
-        return {
-            this->template column<lispb::schema::TypeId>(Layout::schema_type_column).data(),
-            this->template column<ScenarioId>(Layout::scenario_column).data(),
-            this->template column<std::optional<ioj::layout::PhysicalFactId>>(
-                    Layout::physical_column)
-                .data(),
-            this->template column<std::optional<ioj::layout::EnumBacking>>(
-                    Layout::enum_backing_column)
-                .data(),
-            this->template column<std::optional<ioj::layout::AggregateLayout>>(
-                    Layout::aggregate_column)
-                .data(),
-            this->template column<std::optional<ioj::layout::PackedLayout>>(Layout::packed_column)
-                .data(),
-            this->template column<std::optional<ioj::layout::SoaLayout>>(Layout::soa_column).data(),
-            this->num()};
     }
 };
 struct ConstView : ViewImpl<true> {
@@ -339,18 +306,6 @@ struct TypeAnalysisTable
         Element<std::optional<ioj::layout::AggregateLayout>>* aggregate{};
         Element<std::optional<ioj::layout::PackedLayout>>* packed{};
         Element<std::optional<ioj::layout::SoaLayout>>* soa{};
-        auto operator+(size_type const offset) const noexcept -> DataPointers {
-            if (schema_type == nullptr) {
-                return {};
-            }
-            return {schema_type + offset,
-                    scenario + offset,
-                    physical + offset,
-                    enum_backing + offset,
-                    aggregate + offset,
-                    packed + offset,
-                    soa + offset};
-        }
     };
   private:
     friend Operations;
@@ -367,17 +322,6 @@ struct TypeAnalysisTable
     /* **************************************** */
     // Typed mutations and growth
     /* **************************************** */
-    void default_construct_columns(size_type const first, size_type const count) {
-        using ioj::native_soa::default_construct_n;
-        auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
-        default_construct_n(columns.schema_type, count);
-        default_construct_n(columns.scenario, count);
-        default_construct_n(columns.physical, count);
-        default_construct_n(columns.enum_backing, count);
-        default_construct_n(columns.aggregate, count);
-        default_construct_n(columns.packed, count);
-        default_construct_n(columns.soa, count);
-    }
     template <bool Overlapping, typename Byte>
     static void transfer_columns(DataPointers<std::byte> const& destination,
                                  DataPointers<Byte> const& source,
@@ -392,19 +336,6 @@ struct TypeAnalysisTable
         transfer(destination.aggregate, source.aggregate);
         transfer(destination.packed, source.packed);
         transfer(destination.soa, source.soa);
-    }
-    template <typename Columns>
-    static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
-        requires ioj::soa_storage_detail::SoaSourceFor<Columns, TypeAnalysisTable, size_type>
-    {
-        using ioj::native_soa::source_data;
-        return {source_data(source.schema_type()),
-                source_data(source.scenario()),
-                source_data(source.physical()),
-                source_data(source.enum_backing()),
-                source_data(source.aggregate()),
-                source_data(source.packed()),
-                source_data(source.soa())};
     }
   public:
     auto schema_type(this auto& self) { return self.get_view().schema_type(); }

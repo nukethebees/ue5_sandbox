@@ -55,6 +55,21 @@ struct Layout
     static constexpr std::size_t varint_encoding_column{8};
 };
 
+struct Schema {
+    template <typename Columns, typename Func>
+    static auto with_columns(Columns const& source, Func&& func) {
+        return func(source.type(),
+                    source.integer_domain(),
+                    source.enum_domain(),
+                    source.optional_sentinel_encoding(),
+                    source.optional_presence_encoding(),
+                    source.quantized_encoding(),
+                    source.fixed_encoding(),
+                    source.float_encoding(),
+                    source.varint_encoding());
+    }
+};
+
 /* **************************************** */
 // Resolved views
 /* **************************************** */
@@ -135,34 +150,18 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
-        : type_{other.type_}
-        , integer_domain_{other.integer_domain_}
-        , enum_domain_{other.enum_domain_}
-        , optional_sentinel_encoding_{other.optional_sentinel_encoding_}
-        , optional_presence_encoding_{other.optional_presence_encoding_}
-        , quantized_encoding_{other.quantized_encoding_}
-        , fixed_encoding_{other.fixed_encoding_}
-        , float_encoding_{other.float_encoding_}
-        , varint_encoding_{other.varint_encoding_}
-        , count_{other.count_} {}
+    {
+        auto& [... destination] = *this;
+        auto const& [... source] = other;
+        ((destination = source), ...);
+    }
     auto num() const noexcept -> size_type { return count_; }
     auto resolve(this auto const& self) { return self; }
     auto slice(this auto const& self, size_type offset, size_type count) {
-        assert(offset <= self.count_ && count <= self.count_ - offset);
+        auto const& [... pointers, source_count] = static_cast<ResolvedViewImpl const&>(self);
+        assert(offset <= source_count && count <= source_count - offset);
         using Result = std::remove_cvref_t<decltype(self)>;
-        return Result{
-            self.type_ == nullptr ? nullptr : self.type_ + offset,
-            self.integer_domain_ == nullptr ? nullptr : self.integer_domain_ + offset,
-            self.enum_domain_ == nullptr ? nullptr : self.enum_domain_ + offset,
-            self.optional_sentinel_encoding_ == nullptr ? nullptr
-                                                        : self.optional_sentinel_encoding_ + offset,
-            self.optional_presence_encoding_ == nullptr ? nullptr
-                                                        : self.optional_presence_encoding_ + offset,
-            self.quantized_encoding_ == nullptr ? nullptr : self.quantized_encoding_ + offset,
-            self.fixed_encoding_ == nullptr ? nullptr : self.fixed_encoding_ + offset,
-            self.float_encoding_ == nullptr ? nullptr : self.float_encoding_ + offset,
-            self.varint_encoding_ == nullptr ? nullptr : self.varint_encoding_ + offset,
-            count};
+        return Result{(pointers ? pointers + offset : nullptr)..., count};
     }
     auto type() const { return std::span{type_, count_}; }
     auto integer_domain() const { return std::span{integer_domain_, count_}; }
@@ -177,18 +176,6 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     auto fixed_encoding() const { return std::span{fixed_encoding_, count_}; }
     auto float_encoding() const { return std::span{float_encoding_, count_}; }
     auto varint_encoding() const { return std::span{varint_encoding_, count_}; }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        func(std::span{type_, count_});
-        func(std::span{integer_domain_, count_});
-        func(std::span{enum_domain_, count_});
-        func(std::span{optional_sentinel_encoding_, count_});
-        func(std::span{optional_presence_encoding_, count_});
-        func(std::span{quantized_encoding_, count_});
-        func(std::span{fixed_encoding_, count_});
-        func(std::span{float_encoding_, count_});
-        func(std::span{varint_encoding_, count_});
-    }
   private:
     template <bool>
     friend struct ResolvedViewImpl;
@@ -245,6 +232,9 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using Layout = ::ioj::layout::scalar_table::Layout;
     using view_type = ::ioj::layout::scalar_table::View;
     using const_view_type = ::ioj::layout::scalar_table::ConstView;
+    using resolved_view_type = std::conditional_t<Const,
+                                                  ::ioj::layout::scalar_table::ResolvedConstView,
+                                                  ::ioj::layout::scalar_table::ResolvedView>;
     template <bool Enabled = Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
@@ -281,48 +271,6 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     auto varint_encoding() const {
         return this->template column<std::optional<ioj::layout::VarintEncoding>>(
             Layout::varint_encoding_column);
-    }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        func(type());
-        func(integer_domain());
-        func(enum_domain());
-        func(optional_sentinel_encoding());
-        func(optional_presence_encoding());
-        func(quantized_encoding());
-        func(fixed_encoding());
-        func(float_encoding());
-        func(varint_encoding());
-    }
-    auto resolve() const -> std::conditional_t<Const,
-                                               ::ioj::layout::scalar_table::ResolvedConstView,
-                                               ::ioj::layout::scalar_table::ResolvedView> {
-        return {this->template column<lispb::schema::TypeId>(Layout::type_column).data(),
-                this->template column<std::optional<ioj::layout::IntegerDomain>>(
-                        Layout::integer_domain_column)
-                    .data(),
-                this->template column<std::optional<ioj::layout::EnumDomain>>(
-                        Layout::enum_domain_column)
-                    .data(),
-                this->template column<std::optional<ioj::layout::OptionalSentinelEncoding>>(
-                        Layout::optional_sentinel_encoding_column)
-                    .data(),
-                this->template column<std::optional<ioj::layout::OptionalPresenceEncoding>>(
-                        Layout::optional_presence_encoding_column)
-                    .data(),
-                this->template column<std::optional<ioj::layout::QuantizedEncoding>>(
-                        Layout::quantized_encoding_column)
-                    .data(),
-                this->template column<std::optional<ioj::layout::FixedEncoding>>(
-                        Layout::fixed_encoding_column)
-                    .data(),
-                this->template column<std::optional<ioj::layout::FloatEncoding>>(
-                        Layout::float_encoding_column)
-                    .data(),
-                this->template column<std::optional<ioj::layout::VarintEncoding>>(
-                        Layout::varint_encoding_column)
-                    .data(),
-                this->num()};
     }
 };
 struct ConstView : ViewImpl<true> {
@@ -426,20 +374,6 @@ struct ScalarTable
         Element<std::optional<ioj::layout::FixedEncoding>>* fixed_encoding{};
         Element<std::optional<ioj::layout::FloatEncoding>>* float_encoding{};
         Element<std::optional<ioj::layout::VarintEncoding>>* varint_encoding{};
-        auto operator+(size_type const offset) const noexcept -> DataPointers {
-            if (type == nullptr) {
-                return {};
-            }
-            return {type + offset,
-                    integer_domain + offset,
-                    enum_domain + offset,
-                    optional_sentinel_encoding + offset,
-                    optional_presence_encoding + offset,
-                    quantized_encoding + offset,
-                    fixed_encoding + offset,
-                    float_encoding + offset,
-                    varint_encoding + offset};
-        }
     };
   private:
     friend Operations;
@@ -456,19 +390,6 @@ struct ScalarTable
     /* **************************************** */
     // Typed mutations and growth
     /* **************************************** */
-    void default_construct_columns(size_type const first, size_type const count) {
-        using ioj::native_soa::default_construct_n;
-        auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
-        default_construct_n(columns.type, count);
-        default_construct_n(columns.integer_domain, count);
-        default_construct_n(columns.enum_domain, count);
-        default_construct_n(columns.optional_sentinel_encoding, count);
-        default_construct_n(columns.optional_presence_encoding, count);
-        default_construct_n(columns.quantized_encoding, count);
-        default_construct_n(columns.fixed_encoding, count);
-        default_construct_n(columns.float_encoding, count);
-        default_construct_n(columns.varint_encoding, count);
-    }
     template <bool Overlapping, typename Byte>
     static void transfer_columns(DataPointers<std::byte> const& destination,
                                  DataPointers<Byte> const& source,
@@ -485,21 +406,6 @@ struct ScalarTable
         transfer(destination.fixed_encoding, source.fixed_encoding);
         transfer(destination.float_encoding, source.float_encoding);
         transfer(destination.varint_encoding, source.varint_encoding);
-    }
-    template <typename Columns>
-    static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
-        requires ioj::soa_storage_detail::SoaSourceFor<Columns, ScalarTable, size_type>
-    {
-        using ioj::native_soa::source_data;
-        return {source_data(source.type()),
-                source_data(source.integer_domain()),
-                source_data(source.enum_domain()),
-                source_data(source.optional_sentinel_encoding()),
-                source_data(source.optional_presence_encoding()),
-                source_data(source.quantized_encoding()),
-                source_data(source.fixed_encoding()),
-                source_data(source.float_encoding()),
-                source_data(source.varint_encoding())};
     }
   public:
     auto type(this auto& self) { return self.get_view().type(); }

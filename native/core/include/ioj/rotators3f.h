@@ -28,6 +28,13 @@ struct Layout : ioj::single_allocation_layout::ColumnLayouts<float, float, float
     static constexpr std::size_t rolls_column{2};
 };
 
+struct Schema {
+    template <typename Columns, typename Func>
+    static auto with_columns(Columns const& source, Func&& func) {
+        return func(source.pitches(), source.yaws(), source.rolls());
+    }
+};
+
 /* **************************************** */
 // Resolved views
 /* **************************************** */
@@ -62,29 +69,22 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
-        : pitches_{other.pitches_}
-        , yaws_{other.yaws_}
-        , rolls_{other.rolls_}
-        , count_{other.count_} {}
+    {
+        auto& [... destination] = *this;
+        auto const& [... source] = other;
+        ((destination = source), ...);
+    }
     auto num() const noexcept -> size_type { return count_; }
     auto resolve(this auto const& self) { return self; }
     auto slice(this auto const& self, size_type offset, size_type count) {
-        assert(offset <= self.count_ && count <= self.count_ - offset);
+        auto const& [... pointers, source_count] = static_cast<ResolvedViewImpl const&>(self);
+        assert(offset <= source_count && count <= source_count - offset);
         using Result = std::remove_cvref_t<decltype(self)>;
-        return Result{self.pitches_ == nullptr ? nullptr : self.pitches_ + offset,
-                      self.yaws_ == nullptr ? nullptr : self.yaws_ + offset,
-                      self.rolls_ == nullptr ? nullptr : self.rolls_ + offset,
-                      count};
+        return Result{(pointers ? pointers + offset : nullptr)..., count};
     }
     auto pitches() const { return std::span{pitches_, count_}; }
     auto yaws() const { return std::span{yaws_, count_}; }
     auto rolls() const { return std::span{rolls_, count_}; }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        func(std::span{pitches_, count_});
-        func(std::span{yaws_, count_});
-        func(std::span{rolls_, count_});
-    }
   private:
     template <bool>
     friend struct ResolvedViewImpl;
@@ -135,6 +135,8 @@ struct ViewImpl : ioj::soa_storage_detail::StridedViewBase<float, Const> {
     using Layout = ::ioj::rotators3f::Layout;
     using view_type = ::ioj::rotators3f::View;
     using const_view_type = ::ioj::rotators3f::ConstView;
+    using resolved_view_type = std::
+        conditional_t<Const, ::ioj::rotators3f::ResolvedConstView, ::ioj::rotators3f::ResolvedView>;
     using State = std::conditional_t<Const,
                                      ioj::soa_storage_detail::StorageState const,
                                      ioj::soa_storage_detail::StorageState>;
@@ -148,18 +150,6 @@ struct ViewImpl : ioj::soa_storage_detail::StridedViewBase<float, Const> {
     auto pitches() const { return this->column(0); }
     auto yaws() const { return this->column(1); }
     auto rolls() const { return this->column(2); }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        func(pitches());
-        func(yaws());
-        func(rolls());
-    }
-    auto resolve() const -> std::conditional_t<Const,
-                                               ::ioj::rotators3f::ResolvedConstView,
-                                               ::ioj::rotators3f::ResolvedView> {
-        return {
-            this->column(0).data(), this->column(1).data(), this->column(2).data(), this->num()};
-    }
 };
 struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;
@@ -250,12 +240,6 @@ struct Rotators3f
         Element<float>* pitches{};
         Element<float>* yaws{};
         Element<float>* rolls{};
-        auto operator+(size_type const offset) const noexcept -> DataPointers {
-            if (pitches == nullptr) {
-                return {};
-            }
-            return {pitches + offset, yaws + offset, rolls + offset};
-        }
     };
   private:
     friend Operations;
@@ -272,13 +256,6 @@ struct Rotators3f
     /* **************************************** */
     // Typed mutations and growth
     /* **************************************** */
-    void default_construct_columns(size_type const first, size_type const count) {
-        using ioj::native_soa::default_construct_n;
-        auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
-        default_construct_n(columns.pitches, count);
-        default_construct_n(columns.yaws, count);
-        default_construct_n(columns.rolls, count);
-    }
     template <bool Overlapping, typename Byte>
     static void transfer_columns(DataPointers<std::byte> const& destination,
                                  DataPointers<Byte> const& source,
@@ -289,14 +266,6 @@ struct Rotators3f
         transfer(destination.pitches, source.pitches);
         transfer(destination.yaws, source.yaws);
         transfer(destination.rolls, source.rolls);
-    }
-    template <typename Columns>
-    static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
-        requires ioj::soa_storage_detail::SoaSourceFor<Columns, Rotators3f, size_type>
-    {
-        using ioj::native_soa::source_data;
-        return {
-            source_data(source.pitches()), source_data(source.yaws()), source_data(source.rolls())};
     }
   public:
     auto pitches(this auto& self) { return self.get_view().pitches(); }

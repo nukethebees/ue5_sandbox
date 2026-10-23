@@ -28,6 +28,13 @@ struct Layout : ioj::single_allocation_layout::ColumnLayouts<EntityId, EntityId>
     static constexpr std::size_t second_entities_column{1};
 };
 
+struct Schema {
+    template <typename Columns, typename Func>
+    static auto with_columns(Columns const& source, Func&& func) {
+        return func(source.first_entities(), source.second_entities());
+    }
+};
+
 /* **************************************** */
 // Resolved views
 /* **************************************** */
@@ -59,25 +66,21 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
-        : first_entities_{other.first_entities_}
-        , second_entities_{other.second_entities_}
-        , count_{other.count_} {}
+    {
+        auto& [... destination] = *this;
+        auto const& [... source] = other;
+        ((destination = source), ...);
+    }
     auto num() const noexcept -> size_type { return count_; }
     auto resolve(this auto const& self) { return self; }
     auto slice(this auto const& self, size_type offset, size_type count) {
-        assert(offset <= self.count_ && count <= self.count_ - offset);
+        auto const& [... pointers, source_count] = static_cast<ResolvedViewImpl const&>(self);
+        assert(offset <= source_count && count <= source_count - offset);
         using Result = std::remove_cvref_t<decltype(self)>;
-        return Result{self.first_entities_ == nullptr ? nullptr : self.first_entities_ + offset,
-                      self.second_entities_ == nullptr ? nullptr : self.second_entities_ + offset,
-                      count};
+        return Result{(pointers ? pointers + offset : nullptr)..., count};
     }
     auto first_entities() const { return std::span{first_entities_, count_}; }
     auto second_entities() const { return std::span{second_entities_, count_}; }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        func(std::span{first_entities_, count_});
-        func(std::span{second_entities_, count_});
-    }
   private:
     template <bool>
     friend struct ResolvedViewImpl;
@@ -112,6 +115,10 @@ struct ViewImpl : ioj::soa_storage_detail::StridedViewBase<EntityId, Const> {
     using Layout = ::ioj::sim::collision::entity_entity_overlaps::Layout;
     using view_type = ::ioj::sim::collision::entity_entity_overlaps::View;
     using const_view_type = ::ioj::sim::collision::entity_entity_overlaps::ConstView;
+    using resolved_view_type =
+        std::conditional_t<Const,
+                           ::ioj::sim::collision::entity_entity_overlaps::ResolvedConstView,
+                           ::ioj::sim::collision::entity_entity_overlaps::ResolvedView>;
     using State = std::conditional_t<Const,
                                      ioj::soa_storage_detail::StorageState const,
                                      ioj::soa_storage_detail::StorageState>;
@@ -128,17 +135,6 @@ struct ViewImpl : ioj::soa_storage_detail::StridedViewBase<EntityId, Const> {
         : Base{other} {}
     auto first_entities() const { return this->column(0); }
     auto second_entities() const { return this->column(1); }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        func(first_entities());
-        func(second_entities());
-    }
-    auto resolve() const
-        -> std::conditional_t<Const,
-                              ::ioj::sim::collision::entity_entity_overlaps::ResolvedConstView,
-                              ::ioj::sim::collision::entity_entity_overlaps::ResolvedView> {
-        return {this->column(0).data(), this->column(1).data(), this->num()};
-    }
 };
 struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;
@@ -212,12 +208,6 @@ struct EntityEntityOverlaps
         using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
         Element<EntityId>* first_entities{};
         Element<EntityId>* second_entities{};
-        auto operator+(size_type const offset) const noexcept -> DataPointers {
-            if (first_entities == nullptr) {
-                return {};
-            }
-            return {first_entities + offset, second_entities + offset};
-        }
     };
   private:
     friend Operations;
@@ -234,12 +224,6 @@ struct EntityEntityOverlaps
     /* **************************************** */
     // Typed mutations and growth
     /* **************************************** */
-    void default_construct_columns(size_type const first, size_type const count) {
-        using ioj::native_soa::default_construct_n;
-        auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
-        default_construct_n(columns.first_entities, count);
-        default_construct_n(columns.second_entities, count);
-    }
     template <bool Overlapping, typename Byte>
     static void transfer_columns(DataPointers<std::byte> const& destination,
                                  DataPointers<Byte> const& source,
@@ -249,13 +233,6 @@ struct EntityEntityOverlaps
         };
         transfer(destination.first_entities, source.first_entities);
         transfer(destination.second_entities, source.second_entities);
-    }
-    template <typename Columns>
-    static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
-        requires ioj::soa_storage_detail::SoaSourceFor<Columns, EntityEntityOverlaps, size_type>
-    {
-        using ioj::native_soa::source_data;
-        return {source_data(source.first_entities()), source_data(source.second_entities())};
     }
   public:
     auto first_entities(this auto& self) { return self.get_view().first_entities(); }
@@ -298,6 +275,13 @@ struct Layout : ioj::single_allocation_layout::ColumnLayouts<EntityId, StaticGeo
     static constexpr std::size_t static_geometry_indices_column{1};
 };
 
+struct Schema {
+    template <typename Columns, typename Func>
+    static auto with_columns(Columns const& source, Func&& func) {
+        return func(source.entities(), source.static_geometry_indices());
+    }
+};
+
 /* **************************************** */
 // Resolved views
 /* **************************************** */
@@ -330,27 +314,21 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
-        : entities_{other.entities_}
-        , static_geometry_indices_{other.static_geometry_indices_}
-        , count_{other.count_} {}
+    {
+        auto& [... destination] = *this;
+        auto const& [... source] = other;
+        ((destination = source), ...);
+    }
     auto num() const noexcept -> size_type { return count_; }
     auto resolve(this auto const& self) { return self; }
     auto slice(this auto const& self, size_type offset, size_type count) {
-        assert(offset <= self.count_ && count <= self.count_ - offset);
+        auto const& [... pointers, source_count] = static_cast<ResolvedViewImpl const&>(self);
+        assert(offset <= source_count && count <= source_count - offset);
         using Result = std::remove_cvref_t<decltype(self)>;
-        return Result{self.entities_ == nullptr ? nullptr : self.entities_ + offset,
-                      self.static_geometry_indices_ == nullptr
-                          ? nullptr
-                          : self.static_geometry_indices_ + offset,
-                      count};
+        return Result{(pointers ? pointers + offset : nullptr)..., count};
     }
     auto entities() const { return std::span{entities_, count_}; }
     auto static_geometry_indices() const { return std::span{static_geometry_indices_, count_}; }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        func(std::span{entities_, count_});
-        func(std::span{static_geometry_indices_, count_});
-    }
   private:
     template <bool>
     friend struct ResolvedViewImpl;
@@ -385,6 +363,10 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using Layout = ::ioj::sim::collision::entity_static_overlaps::Layout;
     using view_type = ::ioj::sim::collision::entity_static_overlaps::View;
     using const_view_type = ::ioj::sim::collision::entity_static_overlaps::ConstView;
+    using resolved_view_type =
+        std::conditional_t<Const,
+                           ::ioj::sim::collision::entity_static_overlaps::ResolvedConstView,
+                           ::ioj::sim::collision::entity_static_overlaps::ResolvedView>;
     template <bool Enabled = Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
@@ -392,20 +374,6 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     auto entities() const { return this->template column<EntityId>(Layout::entities_column); }
     auto static_geometry_indices() const {
         return this->template column<StaticGeometryIndex>(Layout::static_geometry_indices_column);
-    }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        func(entities());
-        func(static_geometry_indices());
-    }
-    auto resolve() const
-        -> std::conditional_t<Const,
-                              ::ioj::sim::collision::entity_static_overlaps::ResolvedConstView,
-                              ::ioj::sim::collision::entity_static_overlaps::ResolvedView> {
-        return {this->template column<EntityId>(Layout::entities_column).data(),
-                this->template column<StaticGeometryIndex>(Layout::static_geometry_indices_column)
-                    .data(),
-                this->num()};
     }
 };
 struct ConstView : ViewImpl<true> {
@@ -480,12 +448,6 @@ struct EntityStaticOverlaps
         using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
         Element<EntityId>* entities{};
         Element<StaticGeometryIndex>* static_geometry_indices{};
-        auto operator+(size_type const offset) const noexcept -> DataPointers {
-            if (entities == nullptr) {
-                return {};
-            }
-            return {entities + offset, static_geometry_indices + offset};
-        }
     };
   private:
     friend Operations;
@@ -502,12 +464,6 @@ struct EntityStaticOverlaps
     /* **************************************** */
     // Typed mutations and growth
     /* **************************************** */
-    void default_construct_columns(size_type const first, size_type const count) {
-        using ioj::native_soa::default_construct_n;
-        auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
-        default_construct_n(columns.entities, count);
-        default_construct_n(columns.static_geometry_indices, count);
-    }
     template <bool Overlapping, typename Byte>
     static void transfer_columns(DataPointers<std::byte> const& destination,
                                  DataPointers<Byte> const& source,
@@ -517,13 +473,6 @@ struct EntityStaticOverlaps
         };
         transfer(destination.entities, source.entities);
         transfer(destination.static_geometry_indices, source.static_geometry_indices);
-    }
-    template <typename Columns>
-    static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
-        requires ioj::soa_storage_detail::SoaSourceFor<Columns, EntityStaticOverlaps, size_type>
-    {
-        using ioj::native_soa::source_data;
-        return {source_data(source.entities()), source_data(source.static_geometry_indices())};
     }
   public:
     auto entities(this auto& self) { return self.get_view().entities(); }

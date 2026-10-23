@@ -38,6 +38,19 @@ struct Layout
     static constexpr std::size_t hits_column{5};
 };
 
+struct Schema {
+    template <typename Columns, typename Func>
+    static auto with_columns(Columns const& source, Func&& func) {
+        auto const& locations_view{source.view_locations()};
+        return func(locations_view.xs(),
+                    locations_view.ys(),
+                    locations_view.zs(),
+                    source.entities(),
+                    source.static_geometry_indices(),
+                    source.hits());
+    }
+};
+
 /* **************************************** */
 // Resolved views
 /* **************************************** */
@@ -97,27 +110,18 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
-        : locations_xs_{other.locations_xs_}
-        , locations_ys_{other.locations_ys_}
-        , locations_zs_{other.locations_zs_}
-        , entities_{other.entities_}
-        , static_geometry_indices_{other.static_geometry_indices_}
-        , hits_{other.hits_}
-        , count_{other.count_} {}
+    {
+        auto& [... destination] = *this;
+        auto const& [... source] = other;
+        ((destination = source), ...);
+    }
     auto num() const noexcept -> size_type { return count_; }
     auto resolve(this auto const& self) { return self; }
     auto slice(this auto const& self, size_type offset, size_type count) {
-        assert(offset <= self.count_ && count <= self.count_ - offset);
+        auto const& [... pointers, source_count] = static_cast<ResolvedViewImpl const&>(self);
+        assert(offset <= source_count && count <= source_count - offset);
         using Result = std::remove_cvref_t<decltype(self)>;
-        return Result{self.locations_xs_ == nullptr ? nullptr : self.locations_xs_ + offset,
-                      self.locations_ys_ == nullptr ? nullptr : self.locations_ys_ + offset,
-                      self.locations_zs_ == nullptr ? nullptr : self.locations_zs_ + offset,
-                      self.entities_ == nullptr ? nullptr : self.entities_ + offset,
-                      self.static_geometry_indices_ == nullptr
-                          ? nullptr
-                          : self.static_geometry_indices_ + offset,
-                      self.hits_ == nullptr ? nullptr : self.hits_ + offset,
-                      count};
+        return Result{(pointers ? pointers + offset : nullptr)..., count};
     }
     auto view_locations() const -> std::
         conditional_t<Const, ::ioj::vectors3f::ResolvedConstView, ::ioj::vectors3f::ResolvedView> {
@@ -126,15 +130,6 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     auto entities() const { return std::span{entities_, count_}; }
     auto static_geometry_indices() const { return std::span{static_geometry_indices_, count_}; }
     auto hits() const { return std::span{hits_, count_}; }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        func(std::span{locations_xs_, count_});
-        func(std::span{locations_ys_, count_});
-        func(std::span{locations_zs_, count_});
-        func(std::span{entities_, count_});
-        func(std::span{static_geometry_indices_, count_});
-        func(std::span{hits_, count_});
-    }
   private:
     template <bool>
     friend struct ResolvedViewImpl;
@@ -192,6 +187,9 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using Layout = ::ioj::sim::trace_hits::Layout;
     using view_type = ::ioj::sim::trace_hits::View;
     using const_view_type = ::ioj::sim::trace_hits::ConstView;
+    using resolved_view_type = std::conditional_t<Const,
+                                                  ::ioj::sim::trace_hits::ResolvedConstView,
+                                                  ::ioj::sim::trace_hits::ResolvedView>;
     template <bool Enabled = Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
@@ -212,29 +210,6 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
             Layout::static_geometry_indices_column);
     }
     auto hits() const { return this->template column<TraceHit>(Layout::hits_column); }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        auto const& locations_view{view_locations()};
-        func(locations_view.xs());
-        func(locations_view.ys());
-        func(locations_view.zs());
-        func(entities());
-        func(static_geometry_indices());
-        func(hits());
-    }
-    auto resolve() const -> std::conditional_t<Const,
-                                               ::ioj::sim::trace_hits::ResolvedConstView,
-                                               ::ioj::sim::trace_hits::ResolvedView> {
-        return {this->template column<float>(Layout::locations_xs_column).data(),
-                this->template column<float>(Layout::locations_ys_column).data(),
-                this->template column<float>(Layout::locations_zs_column).data(),
-                this->template column<EntityId>(Layout::entities_column).data(),
-                this->template column<collision::StaticGeometryIndex>(
-                        Layout::static_geometry_indices_column)
-                    .data(),
-                this->template column<TraceHit>(Layout::hits_column).data(),
-                this->num()};
-    }
 };
 struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;
@@ -335,17 +310,6 @@ struct TraceHits
         Element<EntityId>* entities{};
         Element<collision::StaticGeometryIndex>* static_geometry_indices{};
         Element<TraceHit>* hits{};
-        auto operator+(size_type const offset) const noexcept -> DataPointers {
-            if (locations_xs == nullptr) {
-                return {};
-            }
-            return {locations_xs + offset,
-                    locations_ys + offset,
-                    locations_zs + offset,
-                    entities + offset,
-                    static_geometry_indices + offset,
-                    hits + offset};
-        }
     };
   private:
     friend Operations;
@@ -362,16 +326,6 @@ struct TraceHits
     /* **************************************** */
     // Typed mutations and growth
     /* **************************************** */
-    void default_construct_columns(size_type const first, size_type const count) {
-        using ioj::native_soa::default_construct_n;
-        auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
-        default_construct_n(columns.locations_xs, count);
-        default_construct_n(columns.locations_ys, count);
-        default_construct_n(columns.locations_zs, count);
-        default_construct_n(columns.entities, count);
-        default_construct_n(columns.static_geometry_indices, count);
-        default_construct_n(columns.hits, count);
-    }
     template <bool Overlapping, typename Byte>
     static void transfer_columns(DataPointers<std::byte> const& destination,
                                  DataPointers<Byte> const& source,
@@ -385,19 +339,6 @@ struct TraceHits
         transfer(destination.entities, source.entities);
         transfer(destination.static_geometry_indices, source.static_geometry_indices);
         transfer(destination.hits, source.hits);
-    }
-    template <typename Columns>
-    static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
-        requires ioj::soa_storage_detail::SoaSourceFor<Columns, TraceHits, size_type>
-    {
-        using ioj::native_soa::source_data;
-        auto const& locations_view{source.view_locations()};
-        return {source_data(locations_view.xs()),
-                source_data(locations_view.ys()),
-                source_data(locations_view.zs()),
-                source_data(source.entities()),
-                source_data(source.static_geometry_indices()),
-                source_data(source.hits())};
     }
   public:
     auto view_locations(this auto& self) { return self.get_view().view_locations(); }

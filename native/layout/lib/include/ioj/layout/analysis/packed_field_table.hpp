@@ -85,6 +85,36 @@ struct Layout
     static constexpr std::size_t codes_column{23};
 };
 
+struct Schema {
+    template <typename Columns, typename Func>
+    static auto with_columns(Columns const& source, Func&& func) {
+        return func(source.parent(),
+                    source.segment(),
+                    source.name(),
+                    source.semantic_type(),
+                    source.logical_type(),
+                    source.kind(),
+                    source.reserved(),
+                    source.schema_bit_width(),
+                    source.schema_bit_width_auto(),
+                    source.bit_width(),
+                    source.overridden(),
+                    source.least_significant_bit(),
+                    source.most_significant_bit(),
+                    source.maximum_unsigned_value(),
+                    source.minimum_signed_value(),
+                    source.maximum_signed_value(),
+                    source.minimum_semantic_value(),
+                    source.maximum_semantic_value(),
+                    source.semantic_value_count(),
+                    source.sentinel_code_count(),
+                    source.required_code_count(),
+                    source.minimum_required_bits(),
+                    source.unused_codes(),
+                    source.codes());
+    }
+};
+
 /* **************************************** */
 // Resolved views
 /* **************************************** */
@@ -254,65 +284,18 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
-        : parent_{other.parent_}
-        , segment_{other.segment_}
-        , name_{other.name_}
-        , semantic_type_{other.semantic_type_}
-        , logical_type_{other.logical_type_}
-        , kind_{other.kind_}
-        , reserved_{other.reserved_}
-        , schema_bit_width_{other.schema_bit_width_}
-        , schema_bit_width_auto_{other.schema_bit_width_auto_}
-        , bit_width_{other.bit_width_}
-        , overridden_{other.overridden_}
-        , least_significant_bit_{other.least_significant_bit_}
-        , most_significant_bit_{other.most_significant_bit_}
-        , maximum_unsigned_value_{other.maximum_unsigned_value_}
-        , minimum_signed_value_{other.minimum_signed_value_}
-        , maximum_signed_value_{other.maximum_signed_value_}
-        , minimum_semantic_value_{other.minimum_semantic_value_}
-        , maximum_semantic_value_{other.maximum_semantic_value_}
-        , semantic_value_count_{other.semantic_value_count_}
-        , sentinel_code_count_{other.sentinel_code_count_}
-        , required_code_count_{other.required_code_count_}
-        , minimum_required_bits_{other.minimum_required_bits_}
-        , unused_codes_{other.unused_codes_}
-        , codes_{other.codes_}
-        , count_{other.count_} {}
+    {
+        auto& [... destination] = *this;
+        auto const& [... source] = other;
+        ((destination = source), ...);
+    }
     auto num() const noexcept -> size_type { return count_; }
     auto resolve(this auto const& self) { return self; }
     auto slice(this auto const& self, size_type offset, size_type count) {
-        assert(offset <= self.count_ && count <= self.count_ - offset);
+        auto const& [... pointers, source_count] = static_cast<ResolvedViewImpl const&>(self);
+        assert(offset <= source_count && count <= source_count - offset);
         using Result = std::remove_cvref_t<decltype(self)>;
-        return Result{
-            self.parent_ == nullptr ? nullptr : self.parent_ + offset,
-            self.segment_ == nullptr ? nullptr : self.segment_ + offset,
-            self.name_ == nullptr ? nullptr : self.name_ + offset,
-            self.semantic_type_ == nullptr ? nullptr : self.semantic_type_ + offset,
-            self.logical_type_ == nullptr ? nullptr : self.logical_type_ + offset,
-            self.kind_ == nullptr ? nullptr : self.kind_ + offset,
-            self.reserved_ == nullptr ? nullptr : self.reserved_ + offset,
-            self.schema_bit_width_ == nullptr ? nullptr : self.schema_bit_width_ + offset,
-            self.schema_bit_width_auto_ == nullptr ? nullptr : self.schema_bit_width_auto_ + offset,
-            self.bit_width_ == nullptr ? nullptr : self.bit_width_ + offset,
-            self.overridden_ == nullptr ? nullptr : self.overridden_ + offset,
-            self.least_significant_bit_ == nullptr ? nullptr : self.least_significant_bit_ + offset,
-            self.most_significant_bit_ == nullptr ? nullptr : self.most_significant_bit_ + offset,
-            self.maximum_unsigned_value_ == nullptr ? nullptr
-                                                    : self.maximum_unsigned_value_ + offset,
-            self.minimum_signed_value_ == nullptr ? nullptr : self.minimum_signed_value_ + offset,
-            self.maximum_signed_value_ == nullptr ? nullptr : self.maximum_signed_value_ + offset,
-            self.minimum_semantic_value_ == nullptr ? nullptr
-                                                    : self.minimum_semantic_value_ + offset,
-            self.maximum_semantic_value_ == nullptr ? nullptr
-                                                    : self.maximum_semantic_value_ + offset,
-            self.semantic_value_count_ == nullptr ? nullptr : self.semantic_value_count_ + offset,
-            self.sentinel_code_count_ == nullptr ? nullptr : self.sentinel_code_count_ + offset,
-            self.required_code_count_ == nullptr ? nullptr : self.required_code_count_ + offset,
-            self.minimum_required_bits_ == nullptr ? nullptr : self.minimum_required_bits_ + offset,
-            self.unused_codes_ == nullptr ? nullptr : self.unused_codes_ + offset,
-            self.codes_ == nullptr ? nullptr : self.codes_ + offset,
-            count};
+        return Result{(pointers ? pointers + offset : nullptr)..., count};
     }
     auto parent() const { return std::span{parent_, count_}; }
     auto segment() const { return std::span{segment_, count_}; }
@@ -338,33 +321,6 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     auto minimum_required_bits() const { return std::span{minimum_required_bits_, count_}; }
     auto unused_codes() const { return std::span{unused_codes_, count_}; }
     auto codes() const { return std::span{codes_, count_}; }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        func(std::span{parent_, count_});
-        func(std::span{segment_, count_});
-        func(std::span{name_, count_});
-        func(std::span{semantic_type_, count_});
-        func(std::span{logical_type_, count_});
-        func(std::span{kind_, count_});
-        func(std::span{reserved_, count_});
-        func(std::span{schema_bit_width_, count_});
-        func(std::span{schema_bit_width_auto_, count_});
-        func(std::span{bit_width_, count_});
-        func(std::span{overridden_, count_});
-        func(std::span{least_significant_bit_, count_});
-        func(std::span{most_significant_bit_, count_});
-        func(std::span{maximum_unsigned_value_, count_});
-        func(std::span{minimum_signed_value_, count_});
-        func(std::span{maximum_signed_value_, count_});
-        func(std::span{minimum_semantic_value_, count_});
-        func(std::span{maximum_semantic_value_, count_});
-        func(std::span{semantic_value_count_, count_});
-        func(std::span{sentinel_code_count_, count_});
-        func(std::span{required_code_count_, count_});
-        func(std::span{minimum_required_bits_, count_});
-        func(std::span{unused_codes_, count_});
-        func(std::span{codes_, count_});
-    }
   private:
     template <bool>
     friend struct ResolvedViewImpl;
@@ -465,6 +421,10 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using Layout = ::ioj::layout::packed_field_table::Layout;
     using view_type = ::ioj::layout::packed_field_table::View;
     using const_view_type = ::ioj::layout::packed_field_table::ConstView;
+    using resolved_view_type =
+        std::conditional_t<Const,
+                           ::ioj::layout::packed_field_table::ResolvedConstView,
+                           ::ioj::layout::packed_field_table::ResolvedView>;
     template <bool Enabled = Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
@@ -543,78 +503,6 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
         return this->template column<std::optional<std::uint64_t>>(Layout::unused_codes_column);
     }
     auto codes() const { return this->template column<RowRange>(Layout::codes_column); }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        func(parent());
-        func(segment());
-        func(name());
-        func(semantic_type());
-        func(logical_type());
-        func(kind());
-        func(reserved());
-        func(schema_bit_width());
-        func(schema_bit_width_auto());
-        func(bit_width());
-        func(overridden());
-        func(least_significant_bit());
-        func(most_significant_bit());
-        func(maximum_unsigned_value());
-        func(minimum_signed_value());
-        func(maximum_signed_value());
-        func(minimum_semantic_value());
-        func(maximum_semantic_value());
-        func(semantic_value_count());
-        func(sentinel_code_count());
-        func(required_code_count());
-        func(minimum_required_bits());
-        func(unused_codes());
-        func(codes());
-    }
-    auto resolve() const -> std::conditional_t<Const,
-                                               ::ioj::layout::packed_field_table::ResolvedConstView,
-                                               ::ioj::layout::packed_field_table::ResolvedView> {
-        return {
-            this->template column<AnalysisId>(Layout::parent_column).data(),
-            this->template column<lispb::schema::PackedSegmentId>(Layout::segment_column).data(),
-            this->template column<std::string_view>(Layout::name_column).data(),
-            this->template column<std::optional<lispb::schema::TypeId>>(
-                    Layout::semantic_type_column)
-                .data(),
-            this->template column<lispb::StringId>(Layout::logical_type_column).data(),
-            this->template column<lispb::codegen::PackedFieldKind>(Layout::kind_column).data(),
-            this->template column<std::uint8_t>(Layout::reserved_column).data(),
-            this->template column<std::uint32_t>(Layout::schema_bit_width_column).data(),
-            this->template column<std::uint8_t>(Layout::schema_bit_width_auto_column).data(),
-            this->template column<std::uint32_t>(Layout::bit_width_column).data(),
-            this->template column<std::uint8_t>(Layout::overridden_column).data(),
-            this->template column<std::uint64_t>(Layout::least_significant_bit_column).data(),
-            this->template column<std::optional<std::uint64_t>>(Layout::most_significant_bit_column)
-                .data(),
-            this->template column<std::optional<std::uint64_t>>(
-                    Layout::maximum_unsigned_value_column)
-                .data(),
-            this->template column<std::optional<std::int64_t>>(Layout::minimum_signed_value_column)
-                .data(),
-            this->template column<std::optional<std::int64_t>>(Layout::maximum_signed_value_column)
-                .data(),
-            this->template column<std::optional<lispb::codegen::PackedIntegerValue>>(
-                    Layout::minimum_semantic_value_column)
-                .data(),
-            this->template column<std::optional<lispb::codegen::PackedIntegerValue>>(
-                    Layout::maximum_semantic_value_column)
-                .data(),
-            this->template column<std::optional<std::uint64_t>>(Layout::semantic_value_count_column)
-                .data(),
-            this->template column<std::uint64_t>(Layout::sentinel_code_count_column).data(),
-            this->template column<std::optional<std::uint64_t>>(Layout::required_code_count_column)
-                .data(),
-            this->template column<std::optional<std::uint32_t>>(
-                    Layout::minimum_required_bits_column)
-                .data(),
-            this->template column<std::optional<std::uint64_t>>(Layout::unused_codes_column).data(),
-            this->template column<RowRange>(Layout::codes_column).data(),
-            this->num()};
-    }
 };
 struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;
@@ -776,35 +664,6 @@ struct PackedFieldTable
         Element<std::optional<std::uint32_t>>* minimum_required_bits{};
         Element<std::optional<std::uint64_t>>* unused_codes{};
         Element<RowRange>* codes{};
-        auto operator+(size_type const offset) const noexcept -> DataPointers {
-            if (parent == nullptr) {
-                return {};
-            }
-            return {parent + offset,
-                    segment + offset,
-                    name + offset,
-                    semantic_type + offset,
-                    logical_type + offset,
-                    kind + offset,
-                    reserved + offset,
-                    schema_bit_width + offset,
-                    schema_bit_width_auto + offset,
-                    bit_width + offset,
-                    overridden + offset,
-                    least_significant_bit + offset,
-                    most_significant_bit + offset,
-                    maximum_unsigned_value + offset,
-                    minimum_signed_value + offset,
-                    maximum_signed_value + offset,
-                    minimum_semantic_value + offset,
-                    maximum_semantic_value + offset,
-                    semantic_value_count + offset,
-                    sentinel_code_count + offset,
-                    required_code_count + offset,
-                    minimum_required_bits + offset,
-                    unused_codes + offset,
-                    codes + offset};
-        }
     };
   private:
     friend Operations;
@@ -821,34 +680,6 @@ struct PackedFieldTable
     /* **************************************** */
     // Typed mutations and growth
     /* **************************************** */
-    void default_construct_columns(size_type const first, size_type const count) {
-        using ioj::native_soa::default_construct_n;
-        auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
-        default_construct_n(columns.parent, count);
-        default_construct_n(columns.segment, count);
-        default_construct_n(columns.name, count);
-        default_construct_n(columns.semantic_type, count);
-        default_construct_n(columns.logical_type, count);
-        default_construct_n(columns.kind, count);
-        default_construct_n(columns.reserved, count);
-        default_construct_n(columns.schema_bit_width, count);
-        default_construct_n(columns.schema_bit_width_auto, count);
-        default_construct_n(columns.bit_width, count);
-        default_construct_n(columns.overridden, count);
-        default_construct_n(columns.least_significant_bit, count);
-        default_construct_n(columns.most_significant_bit, count);
-        default_construct_n(columns.maximum_unsigned_value, count);
-        default_construct_n(columns.minimum_signed_value, count);
-        default_construct_n(columns.maximum_signed_value, count);
-        default_construct_n(columns.minimum_semantic_value, count);
-        default_construct_n(columns.maximum_semantic_value, count);
-        default_construct_n(columns.semantic_value_count, count);
-        default_construct_n(columns.sentinel_code_count, count);
-        default_construct_n(columns.required_code_count, count);
-        default_construct_n(columns.minimum_required_bits, count);
-        default_construct_n(columns.unused_codes, count);
-        default_construct_n(columns.codes, count);
-    }
     template <bool Overlapping, typename Byte>
     static void transfer_columns(DataPointers<std::byte> const& destination,
                                  DataPointers<Byte> const& source,
@@ -880,36 +711,6 @@ struct PackedFieldTable
         transfer(destination.minimum_required_bits, source.minimum_required_bits);
         transfer(destination.unused_codes, source.unused_codes);
         transfer(destination.codes, source.codes);
-    }
-    template <typename Columns>
-    static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
-        requires ioj::soa_storage_detail::SoaSourceFor<Columns, PackedFieldTable, size_type>
-    {
-        using ioj::native_soa::source_data;
-        return {source_data(source.parent()),
-                source_data(source.segment()),
-                source_data(source.name()),
-                source_data(source.semantic_type()),
-                source_data(source.logical_type()),
-                source_data(source.kind()),
-                source_data(source.reserved()),
-                source_data(source.schema_bit_width()),
-                source_data(source.schema_bit_width_auto()),
-                source_data(source.bit_width()),
-                source_data(source.overridden()),
-                source_data(source.least_significant_bit()),
-                source_data(source.most_significant_bit()),
-                source_data(source.maximum_unsigned_value()),
-                source_data(source.minimum_signed_value()),
-                source_data(source.maximum_signed_value()),
-                source_data(source.minimum_semantic_value()),
-                source_data(source.maximum_semantic_value()),
-                source_data(source.semantic_value_count()),
-                source_data(source.sentinel_code_count()),
-                source_data(source.required_code_count()),
-                source_data(source.minimum_required_bits()),
-                source_data(source.unused_codes()),
-                source_data(source.codes())};
     }
   public:
     auto parent(this auto& self) { return self.get_view().parent(); }

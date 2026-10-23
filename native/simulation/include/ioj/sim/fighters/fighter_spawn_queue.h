@@ -41,6 +41,23 @@ struct Layout
     static constexpr std::size_t targets_column{8};
 };
 
+struct Schema {
+    template <typename Columns, typename Func>
+    static auto with_columns(Columns const& source, Func&& func) {
+        auto const& locations_view{source.view_locations()};
+        auto const& rotations_view{source.view_rotations()};
+        return func(locations_view.xs(),
+                    locations_view.ys(),
+                    locations_view.zs(),
+                    rotations_view.pitches(),
+                    rotations_view.yaws(),
+                    rotations_view.rolls(),
+                    source.teams(),
+                    source.parents(),
+                    source.targets());
+    }
+};
+
 /* **************************************** */
 // Resolved views
 /* **************************************** */
@@ -117,32 +134,18 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
-        : locations_xs_{other.locations_xs_}
-        , locations_ys_{other.locations_ys_}
-        , locations_zs_{other.locations_zs_}
-        , rotations_pitches_{other.rotations_pitches_}
-        , rotations_yaws_{other.rotations_yaws_}
-        , rotations_rolls_{other.rotations_rolls_}
-        , teams_{other.teams_}
-        , parents_{other.parents_}
-        , targets_{other.targets_}
-        , count_{other.count_} {}
+    {
+        auto& [... destination] = *this;
+        auto const& [... source] = other;
+        ((destination = source), ...);
+    }
     auto num() const noexcept -> size_type { return count_; }
     auto resolve(this auto const& self) { return self; }
     auto slice(this auto const& self, size_type offset, size_type count) {
-        assert(offset <= self.count_ && count <= self.count_ - offset);
+        auto const& [... pointers, source_count] = static_cast<ResolvedViewImpl const&>(self);
+        assert(offset <= source_count && count <= source_count - offset);
         using Result = std::remove_cvref_t<decltype(self)>;
-        return Result{self.locations_xs_ == nullptr ? nullptr : self.locations_xs_ + offset,
-                      self.locations_ys_ == nullptr ? nullptr : self.locations_ys_ + offset,
-                      self.locations_zs_ == nullptr ? nullptr : self.locations_zs_ + offset,
-                      self.rotations_pitches_ == nullptr ? nullptr
-                                                         : self.rotations_pitches_ + offset,
-                      self.rotations_yaws_ == nullptr ? nullptr : self.rotations_yaws_ + offset,
-                      self.rotations_rolls_ == nullptr ? nullptr : self.rotations_rolls_ + offset,
-                      self.teams_ == nullptr ? nullptr : self.teams_ + offset,
-                      self.parents_ == nullptr ? nullptr : self.parents_ + offset,
-                      self.targets_ == nullptr ? nullptr : self.targets_ + offset,
-                      count};
+        return Result{(pointers ? pointers + offset : nullptr)..., count};
     }
     auto view_locations() const -> std::
         conditional_t<Const, ::ioj::vectors3f::ResolvedConstView, ::ioj::vectors3f::ResolvedView> {
@@ -156,18 +159,6 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     auto teams() const { return std::span{teams_, count_}; }
     auto parents() const { return std::span{parents_, count_}; }
     auto targets() const { return std::span{targets_, count_}; }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        func(std::span{locations_xs_, count_});
-        func(std::span{locations_ys_, count_});
-        func(std::span{locations_zs_, count_});
-        func(std::span{rotations_pitches_, count_});
-        func(std::span{rotations_yaws_, count_});
-        func(std::span{rotations_rolls_, count_});
-        func(std::span{teams_, count_});
-        func(std::span{parents_, count_});
-        func(std::span{targets_, count_});
-    }
   private:
     template <bool>
     friend struct ResolvedViewImpl;
@@ -236,6 +227,10 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using Layout = ::ioj::sim::fighter_spawn_queue::Layout;
     using view_type = ::ioj::sim::fighter_spawn_queue::View;
     using const_view_type = ::ioj::sim::fighter_spawn_queue::ConstView;
+    using resolved_view_type =
+        std::conditional_t<Const,
+                           ::ioj::sim::fighter_spawn_queue::ResolvedConstView,
+                           ::ioj::sim::fighter_spawn_queue::ResolvedView>;
     template <bool Enabled = Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
@@ -263,34 +258,6 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     auto teams() const { return this->template column<::ioj::Team>(Layout::teams_column); }
     auto parents() const { return this->template column<EntityId>(Layout::parents_column); }
     auto targets() const { return this->template column<EntityId>(Layout::targets_column); }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        auto const& locations_view{view_locations()};
-        func(locations_view.xs());
-        func(locations_view.ys());
-        func(locations_view.zs());
-        auto const& rotations_view{view_rotations()};
-        func(rotations_view.pitches());
-        func(rotations_view.yaws());
-        func(rotations_view.rolls());
-        func(teams());
-        func(parents());
-        func(targets());
-    }
-    auto resolve() const -> std::conditional_t<Const,
-                                               ::ioj::sim::fighter_spawn_queue::ResolvedConstView,
-                                               ::ioj::sim::fighter_spawn_queue::ResolvedView> {
-        return {this->template column<float>(Layout::locations_xs_column).data(),
-                this->template column<float>(Layout::locations_ys_column).data(),
-                this->template column<float>(Layout::locations_zs_column).data(),
-                this->template column<float>(Layout::rotations_pitches_column).data(),
-                this->template column<float>(Layout::rotations_yaws_column).data(),
-                this->template column<float>(Layout::rotations_rolls_column).data(),
-                this->template column<::ioj::Team>(Layout::teams_column).data(),
-                this->template column<EntityId>(Layout::parents_column).data(),
-                this->template column<EntityId>(Layout::targets_column).data(),
-                this->num()};
-    }
 };
 struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;
@@ -405,20 +372,6 @@ struct FighterSpawnQueue
         Element<::ioj::Team>* teams{};
         Element<EntityId>* parents{};
         Element<EntityId>* targets{};
-        auto operator+(size_type const offset) const noexcept -> DataPointers {
-            if (locations_xs == nullptr) {
-                return {};
-            }
-            return {locations_xs + offset,
-                    locations_ys + offset,
-                    locations_zs + offset,
-                    rotations_pitches + offset,
-                    rotations_yaws + offset,
-                    rotations_rolls + offset,
-                    teams + offset,
-                    parents + offset,
-                    targets + offset};
-        }
     };
   private:
     friend Operations;
@@ -435,19 +388,6 @@ struct FighterSpawnQueue
     /* **************************************** */
     // Typed mutations and growth
     /* **************************************** */
-    void default_construct_columns(size_type const first, size_type const count) {
-        using ioj::native_soa::default_construct_n;
-        auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
-        default_construct_n(columns.locations_xs, count);
-        default_construct_n(columns.locations_ys, count);
-        default_construct_n(columns.locations_zs, count);
-        default_construct_n(columns.rotations_pitches, count);
-        default_construct_n(columns.rotations_yaws, count);
-        default_construct_n(columns.rotations_rolls, count);
-        default_construct_n(columns.teams, count);
-        default_construct_n(columns.parents, count);
-        default_construct_n(columns.targets, count);
-    }
     template <bool Overlapping, typename Byte>
     static void transfer_columns(DataPointers<std::byte> const& destination,
                                  DataPointers<Byte> const& source,
@@ -464,23 +404,6 @@ struct FighterSpawnQueue
         transfer(destination.teams, source.teams);
         transfer(destination.parents, source.parents);
         transfer(destination.targets, source.targets);
-    }
-    template <typename Columns>
-    static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
-        requires ioj::soa_storage_detail::SoaSourceFor<Columns, FighterSpawnQueue, size_type>
-    {
-        using ioj::native_soa::source_data;
-        auto const& locations_view{source.view_locations()};
-        auto const& rotations_view{source.view_rotations()};
-        return {source_data(locations_view.xs()),
-                source_data(locations_view.ys()),
-                source_data(locations_view.zs()),
-                source_data(rotations_view.pitches()),
-                source_data(rotations_view.yaws()),
-                source_data(rotations_view.rolls()),
-                source_data(source.teams()),
-                source_data(source.parents()),
-                source_data(source.targets())};
     }
   public:
     auto view_locations(this auto& self) { return self.get_view().view_locations(); }

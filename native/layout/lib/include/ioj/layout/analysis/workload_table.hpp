@@ -65,6 +65,28 @@ struct Layout
     static constexpr std::size_t capacity_slack_bytes_column{15};
 };
 
+struct Schema {
+    template <typename Columns, typename Func>
+    static auto with_columns(Columns const& source, Func&& func) {
+        return func(source.analysis(),
+                    source.selections(),
+                    source.element_count(),
+                    source.multiplicity(),
+                    source.bytes(),
+                    source.bits(),
+                    source.cache(),
+                    source.pages(),
+                    source.cache_capacity(),
+                    source.packed_waste(),
+                    source.footprint_exact(),
+                    source.storage_bytes(),
+                    source.full_logical_payload_bytes(),
+                    source.unselected_payload_bytes(),
+                    source.allocated_payload_bytes(),
+                    source.capacity_slack_bytes());
+    }
+};
+
 /* **************************************** */
 // Resolved views
 /* **************************************** */
@@ -183,49 +205,18 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
-        : analysis_{other.analysis_}
-        , selections_{other.selections_}
-        , element_count_{other.element_count_}
-        , multiplicity_{other.multiplicity_}
-        , bytes_{other.bytes_}
-        , bits_{other.bits_}
-        , cache_{other.cache_}
-        , pages_{other.pages_}
-        , cache_capacity_{other.cache_capacity_}
-        , packed_waste_{other.packed_waste_}
-        , footprint_exact_{other.footprint_exact_}
-        , storage_bytes_{other.storage_bytes_}
-        , full_logical_payload_bytes_{other.full_logical_payload_bytes_}
-        , unselected_payload_bytes_{other.unselected_payload_bytes_}
-        , allocated_payload_bytes_{other.allocated_payload_bytes_}
-        , capacity_slack_bytes_{other.capacity_slack_bytes_}
-        , count_{other.count_} {}
+    {
+        auto& [... destination] = *this;
+        auto const& [... source] = other;
+        ((destination = source), ...);
+    }
     auto num() const noexcept -> size_type { return count_; }
     auto resolve(this auto const& self) { return self; }
     auto slice(this auto const& self, size_type offset, size_type count) {
-        assert(offset <= self.count_ && count <= self.count_ - offset);
+        auto const& [... pointers, source_count] = static_cast<ResolvedViewImpl const&>(self);
+        assert(offset <= source_count && count <= source_count - offset);
         using Result = std::remove_cvref_t<decltype(self)>;
-        return Result{
-            self.analysis_ == nullptr ? nullptr : self.analysis_ + offset,
-            self.selections_ == nullptr ? nullptr : self.selections_ + offset,
-            self.element_count_ == nullptr ? nullptr : self.element_count_ + offset,
-            self.multiplicity_ == nullptr ? nullptr : self.multiplicity_ + offset,
-            self.bytes_ == nullptr ? nullptr : self.bytes_ + offset,
-            self.bits_ == nullptr ? nullptr : self.bits_ + offset,
-            self.cache_ == nullptr ? nullptr : self.cache_ + offset,
-            self.pages_ == nullptr ? nullptr : self.pages_ + offset,
-            self.cache_capacity_ == nullptr ? nullptr : self.cache_capacity_ + offset,
-            self.packed_waste_ == nullptr ? nullptr : self.packed_waste_ + offset,
-            self.footprint_exact_ == nullptr ? nullptr : self.footprint_exact_ + offset,
-            self.storage_bytes_ == nullptr ? nullptr : self.storage_bytes_ + offset,
-            self.full_logical_payload_bytes_ == nullptr ? nullptr
-                                                        : self.full_logical_payload_bytes_ + offset,
-            self.unselected_payload_bytes_ == nullptr ? nullptr
-                                                      : self.unselected_payload_bytes_ + offset,
-            self.allocated_payload_bytes_ == nullptr ? nullptr
-                                                     : self.allocated_payload_bytes_ + offset,
-            self.capacity_slack_bytes_ == nullptr ? nullptr : self.capacity_slack_bytes_ + offset,
-            count};
+        return Result{(pointers ? pointers + offset : nullptr)..., count};
     }
     auto analysis() const { return std::span{analysis_, count_}; }
     auto selections() const { return std::span{selections_, count_}; }
@@ -245,25 +236,6 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     auto unselected_payload_bytes() const { return std::span{unselected_payload_bytes_, count_}; }
     auto allocated_payload_bytes() const { return std::span{allocated_payload_bytes_, count_}; }
     auto capacity_slack_bytes() const { return std::span{capacity_slack_bytes_, count_}; }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        func(std::span{analysis_, count_});
-        func(std::span{selections_, count_});
-        func(std::span{element_count_, count_});
-        func(std::span{multiplicity_, count_});
-        func(std::span{bytes_, count_});
-        func(std::span{bits_, count_});
-        func(std::span{cache_, count_});
-        func(std::span{pages_, count_});
-        func(std::span{cache_capacity_, count_});
-        func(std::span{packed_waste_, count_});
-        func(std::span{footprint_exact_, count_});
-        func(std::span{storage_bytes_, count_});
-        func(std::span{full_logical_payload_bytes_, count_});
-        func(std::span{unselected_payload_bytes_, count_});
-        func(std::span{allocated_payload_bytes_, count_});
-        func(std::span{capacity_slack_bytes_, count_});
-    }
   private:
     template <bool>
     friend struct ResolvedViewImpl;
@@ -340,6 +312,9 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using Layout = ::ioj::layout::workload_table::Layout;
     using view_type = ::ioj::layout::workload_table::View;
     using const_view_type = ::ioj::layout::workload_table::ConstView;
+    using resolved_view_type = std::conditional_t<Const,
+                                                  ::ioj::layout::workload_table::ResolvedConstView,
+                                                  ::ioj::layout::workload_table::ResolvedView>;
     template <bool Enabled = Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
@@ -383,55 +358,6 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     auto capacity_slack_bytes() const {
         return this->template column<std::optional<std::uint64_t>>(
             Layout::capacity_slack_bytes_column);
-    }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        func(analysis());
-        func(selections());
-        func(element_count());
-        func(multiplicity());
-        func(bytes());
-        func(bits());
-        func(cache());
-        func(pages());
-        func(cache_capacity());
-        func(packed_waste());
-        func(footprint_exact());
-        func(storage_bytes());
-        func(full_logical_payload_bytes());
-        func(unselected_payload_bytes());
-        func(allocated_payload_bytes());
-        func(capacity_slack_bytes());
-    }
-    auto resolve() const -> std::conditional_t<Const,
-                                               ::ioj::layout::workload_table::ResolvedConstView,
-                                               ::ioj::layout::workload_table::ResolvedView> {
-        return {
-            this->template column<AnalysisId>(Layout::analysis_column).data(),
-            this->template column<RowRange>(Layout::selections_column).data(),
-            this->template column<std::uint64_t>(Layout::element_count_column).data(),
-            this->template column<std::uint64_t>(Layout::multiplicity_column).data(),
-            this->template column<PayloadFootprint>(Layout::bytes_column).data(),
-            this->template column<PayloadFootprint>(Layout::bits_column).data(),
-            this->template column<RegionFootprint>(Layout::cache_column).data(),
-            this->template column<RegionFootprint>(Layout::pages_column).data(),
-            this->template column<CacheCapacityAnalysis>(Layout::cache_capacity_column).data(),
-            this->template column<PackedAccessWaste>(Layout::packed_waste_column).data(),
-            this->template column<std::uint8_t>(Layout::footprint_exact_column).data(),
-            this->template column<std::optional<std::uint64_t>>(Layout::storage_bytes_column)
-                .data(),
-            this->template column<std::optional<std::uint64_t>>(
-                    Layout::full_logical_payload_bytes_column)
-                .data(),
-            this->template column<std::optional<std::uint64_t>>(
-                    Layout::unselected_payload_bytes_column)
-                .data(),
-            this->template column<std::optional<std::uint64_t>>(
-                    Layout::allocated_payload_bytes_column)
-                .data(),
-            this->template column<std::optional<std::uint64_t>>(Layout::capacity_slack_bytes_column)
-                .data(),
-            this->num()};
     }
 };
 struct ConstView : ViewImpl<true> {
@@ -562,27 +488,6 @@ struct WorkloadTable
         Element<std::optional<std::uint64_t>>* unselected_payload_bytes{};
         Element<std::optional<std::uint64_t>>* allocated_payload_bytes{};
         Element<std::optional<std::uint64_t>>* capacity_slack_bytes{};
-        auto operator+(size_type const offset) const noexcept -> DataPointers {
-            if (analysis == nullptr) {
-                return {};
-            }
-            return {analysis + offset,
-                    selections + offset,
-                    element_count + offset,
-                    multiplicity + offset,
-                    bytes + offset,
-                    bits + offset,
-                    cache + offset,
-                    pages + offset,
-                    cache_capacity + offset,
-                    packed_waste + offset,
-                    footprint_exact + offset,
-                    storage_bytes + offset,
-                    full_logical_payload_bytes + offset,
-                    unselected_payload_bytes + offset,
-                    allocated_payload_bytes + offset,
-                    capacity_slack_bytes + offset};
-        }
     };
   private:
     friend Operations;
@@ -599,26 +504,6 @@ struct WorkloadTable
     /* **************************************** */
     // Typed mutations and growth
     /* **************************************** */
-    void default_construct_columns(size_type const first, size_type const count) {
-        using ioj::native_soa::default_construct_n;
-        auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
-        default_construct_n(columns.analysis, count);
-        default_construct_n(columns.selections, count);
-        default_construct_n(columns.element_count, count);
-        default_construct_n(columns.multiplicity, count);
-        default_construct_n(columns.bytes, count);
-        default_construct_n(columns.bits, count);
-        default_construct_n(columns.cache, count);
-        default_construct_n(columns.pages, count);
-        default_construct_n(columns.cache_capacity, count);
-        default_construct_n(columns.packed_waste, count);
-        default_construct_n(columns.footprint_exact, count);
-        default_construct_n(columns.storage_bytes, count);
-        default_construct_n(columns.full_logical_payload_bytes, count);
-        default_construct_n(columns.unselected_payload_bytes, count);
-        default_construct_n(columns.allocated_payload_bytes, count);
-        default_construct_n(columns.capacity_slack_bytes, count);
-    }
     template <bool Overlapping, typename Byte>
     static void transfer_columns(DataPointers<std::byte> const& destination,
                                  DataPointers<Byte> const& source,
@@ -642,28 +527,6 @@ struct WorkloadTable
         transfer(destination.unselected_payload_bytes, source.unselected_payload_bytes);
         transfer(destination.allocated_payload_bytes, source.allocated_payload_bytes);
         transfer(destination.capacity_slack_bytes, source.capacity_slack_bytes);
-    }
-    template <typename Columns>
-    static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
-        requires ioj::soa_storage_detail::SoaSourceFor<Columns, WorkloadTable, size_type>
-    {
-        using ioj::native_soa::source_data;
-        return {source_data(source.analysis()),
-                source_data(source.selections()),
-                source_data(source.element_count()),
-                source_data(source.multiplicity()),
-                source_data(source.bytes()),
-                source_data(source.bits()),
-                source_data(source.cache()),
-                source_data(source.pages()),
-                source_data(source.cache_capacity()),
-                source_data(source.packed_waste()),
-                source_data(source.footprint_exact()),
-                source_data(source.storage_bytes()),
-                source_data(source.full_logical_payload_bytes()),
-                source_data(source.unselected_payload_bytes()),
-                source_data(source.allocated_payload_bytes()),
-                source_data(source.capacity_slack_bytes())};
     }
   public:
     auto analysis(this auto& self) { return self.get_view().analysis(); }

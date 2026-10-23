@@ -32,6 +32,13 @@ struct Layout
     static constexpr std::size_t locations_column{3};
 };
 
+struct Schema {
+    template <typename Columns, typename Func>
+    static auto with_columns(Columns const& source, Func&& func) {
+        return func(source.reasons(), source.victims(), source.killers(), source.locations());
+    }
+};
+
 /* **************************************** */
 // Resolved views
 /* **************************************** */
@@ -72,33 +79,23 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
-        : reasons_{other.reasons_}
-        , victims_{other.victims_}
-        , killers_{other.killers_}
-        , locations_{other.locations_}
-        , count_{other.count_} {}
+    {
+        auto& [... destination] = *this;
+        auto const& [... source] = other;
+        ((destination = source), ...);
+    }
     auto num() const noexcept -> size_type { return count_; }
     auto resolve(this auto const& self) { return self; }
     auto slice(this auto const& self, size_type offset, size_type count) {
-        assert(offset <= self.count_ && count <= self.count_ - offset);
+        auto const& [... pointers, source_count] = static_cast<ResolvedViewImpl const&>(self);
+        assert(offset <= source_count && count <= source_count - offset);
         using Result = std::remove_cvref_t<decltype(self)>;
-        return Result{self.reasons_ == nullptr ? nullptr : self.reasons_ + offset,
-                      self.victims_ == nullptr ? nullptr : self.victims_ + offset,
-                      self.killers_ == nullptr ? nullptr : self.killers_ + offset,
-                      self.locations_ == nullptr ? nullptr : self.locations_ + offset,
-                      count};
+        return Result{(pointers ? pointers + offset : nullptr)..., count};
     }
     auto reasons() const { return std::span{reasons_, count_}; }
     auto victims() const { return std::span{victims_, count_}; }
     auto killers() const { return std::span{killers_, count_}; }
     auto locations() const { return std::span{locations_, count_}; }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        func(std::span{reasons_, count_});
-        func(std::span{victims_, count_});
-        func(std::span{killers_, count_});
-        func(std::span{locations_, count_});
-    }
   private:
     template <bool>
     friend struct ResolvedViewImpl;
@@ -139,6 +136,9 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using Layout = ::ioj::sim::entity_death_info::Layout;
     using view_type = ::ioj::sim::entity_death_info::View;
     using const_view_type = ::ioj::sim::entity_death_info::ConstView;
+    using resolved_view_type = std::conditional_t<Const,
+                                                  ::ioj::sim::entity_death_info::ResolvedConstView,
+                                                  ::ioj::sim::entity_death_info::ResolvedView>;
     template <bool Enabled = Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
@@ -147,22 +147,6 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     auto victims() const { return this->template column<EntityId>(Layout::victims_column); }
     auto killers() const { return this->template column<EntityId>(Layout::killers_column); }
     auto locations() const { return this->template column<Vector3f>(Layout::locations_column); }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        func(reasons());
-        func(victims());
-        func(killers());
-        func(locations());
-    }
-    auto resolve() const -> std::conditional_t<Const,
-                                               ::ioj::sim::entity_death_info::ResolvedConstView,
-                                               ::ioj::sim::entity_death_info::ResolvedView> {
-        return {this->template column<DeathReason>(Layout::reasons_column).data(),
-                this->template column<EntityId>(Layout::victims_column).data(),
-                this->template column<EntityId>(Layout::killers_column).data(),
-                this->template column<Vector3f>(Layout::locations_column).data(),
-                this->num()};
-    }
 };
 struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;
@@ -244,12 +228,6 @@ struct EntityDeathInfo
         Element<EntityId>* victims{};
         Element<EntityId>* killers{};
         Element<Vector3f>* locations{};
-        auto operator+(size_type const offset) const noexcept -> DataPointers {
-            if (reasons == nullptr) {
-                return {};
-            }
-            return {reasons + offset, victims + offset, killers + offset, locations + offset};
-        }
     };
   private:
     friend Operations;
@@ -266,14 +244,6 @@ struct EntityDeathInfo
     /* **************************************** */
     // Typed mutations and growth
     /* **************************************** */
-    void default_construct_columns(size_type const first, size_type const count) {
-        using ioj::native_soa::default_construct_n;
-        auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
-        default_construct_n(columns.reasons, count);
-        default_construct_n(columns.victims, count);
-        default_construct_n(columns.killers, count);
-        default_construct_n(columns.locations, count);
-    }
     template <bool Overlapping, typename Byte>
     static void transfer_columns(DataPointers<std::byte> const& destination,
                                  DataPointers<Byte> const& source,
@@ -285,16 +255,6 @@ struct EntityDeathInfo
         transfer(destination.victims, source.victims);
         transfer(destination.killers, source.killers);
         transfer(destination.locations, source.locations);
-    }
-    template <typename Columns>
-    static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
-        requires ioj::soa_storage_detail::SoaSourceFor<Columns, EntityDeathInfo, size_type>
-    {
-        using ioj::native_soa::source_data;
-        return {source_data(source.reasons()),
-                source_data(source.victims()),
-                source_data(source.killers()),
-                source_data(source.locations())};
     }
   public:
     auto reasons(this auto& self) { return self.get_view().reasons(); }

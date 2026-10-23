@@ -31,6 +31,13 @@ struct Layout
     static constexpr std::size_t counts_column{2};
 };
 
+struct Schema {
+    template <typename Columns, typename Func>
+    static auto with_columns(Columns const& source, Func&& func) {
+        return func(source.types(), source.offsets(), source.counts());
+    }
+};
+
 /* **************************************** */
 // Resolved views
 /* **************************************** */
@@ -65,29 +72,22 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
-        : types_{other.types_}
-        , offsets_{other.offsets_}
-        , counts_{other.counts_}
-        , count_{other.count_} {}
+    {
+        auto& [... destination] = *this;
+        auto const& [... source] = other;
+        ((destination = source), ...);
+    }
     auto num() const noexcept -> size_type { return count_; }
     auto resolve(this auto const& self) { return self; }
     auto slice(this auto const& self, size_type offset, size_type count) {
-        assert(offset <= self.count_ && count <= self.count_ - offset);
+        auto const& [... pointers, source_count] = static_cast<ResolvedViewImpl const&>(self);
+        assert(offset <= source_count && count <= source_count - offset);
         using Result = std::remove_cvref_t<decltype(self)>;
-        return Result{self.types_ == nullptr ? nullptr : self.types_ + offset,
-                      self.offsets_ == nullptr ? nullptr : self.offsets_ + offset,
-                      self.counts_ == nullptr ? nullptr : self.counts_ + offset,
-                      count};
+        return Result{(pointers ? pointers + offset : nullptr)..., count};
     }
     auto types() const { return std::span{types_, count_}; }
     auto offsets() const { return std::span{offsets_, count_}; }
     auto counts() const { return std::span{counts_, count_}; }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        func(std::span{types_, count_});
-        func(std::span{offsets_, count_});
-        func(std::span{counts_, count_});
-    }
   private:
     template <bool>
     friend struct ResolvedViewImpl;
@@ -125,6 +125,10 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using Layout = ::ioj::sim::level_mission_event_groups::Layout;
     using view_type = ::ioj::sim::level_mission_event_groups::View;
     using const_view_type = ::ioj::sim::level_mission_event_groups::ConstView;
+    using resolved_view_type =
+        std::conditional_t<Const,
+                           ::ioj::sim::level_mission_event_groups::ResolvedConstView,
+                           ::ioj::sim::level_mission_event_groups::ResolvedView>;
     template <bool Enabled = Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
@@ -134,21 +138,6 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     }
     auto offsets() const { return this->template column<std::int32_t>(Layout::offsets_column); }
     auto counts() const { return this->template column<LevelEventCount>(Layout::counts_column); }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        func(types());
-        func(offsets());
-        func(counts());
-    }
-    auto resolve() const
-        -> std::conditional_t<Const,
-                              ::ioj::sim::level_mission_event_groups::ResolvedConstView,
-                              ::ioj::sim::level_mission_event_groups::ResolvedView> {
-        return {this->template column<LevelMissionEventType>(Layout::types_column).data(),
-                this->template column<std::int32_t>(Layout::offsets_column).data(),
-                this->template column<LevelEventCount>(Layout::counts_column).data(),
-                this->num()};
-    }
 };
 struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;
@@ -226,12 +215,6 @@ struct LevelMissionEventGroups
         Element<LevelMissionEventType>* types{};
         Element<std::int32_t>* offsets{};
         Element<LevelEventCount>* counts{};
-        auto operator+(size_type const offset) const noexcept -> DataPointers {
-            if (types == nullptr) {
-                return {};
-            }
-            return {types + offset, offsets + offset, counts + offset};
-        }
     };
   private:
     friend Operations;
@@ -248,13 +231,6 @@ struct LevelMissionEventGroups
     /* **************************************** */
     // Typed mutations and growth
     /* **************************************** */
-    void default_construct_columns(size_type const first, size_type const count) {
-        using ioj::native_soa::default_construct_n;
-        auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
-        default_construct_n(columns.types, count);
-        default_construct_n(columns.offsets, count);
-        default_construct_n(columns.counts, count);
-    }
     template <bool Overlapping, typename Byte>
     static void transfer_columns(DataPointers<std::byte> const& destination,
                                  DataPointers<Byte> const& source,
@@ -265,15 +241,6 @@ struct LevelMissionEventGroups
         transfer(destination.types, source.types);
         transfer(destination.offsets, source.offsets);
         transfer(destination.counts, source.counts);
-    }
-    template <typename Columns>
-    static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
-        requires ioj::soa_storage_detail::SoaSourceFor<Columns, LevelMissionEventGroups, size_type>
-    {
-        using ioj::native_soa::source_data;
-        return {source_data(source.types()),
-                source_data(source.offsets()),
-                source_data(source.counts())};
     }
   public:
     auto types(this auto& self) { return self.get_view().types(); }

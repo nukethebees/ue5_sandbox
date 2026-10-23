@@ -52,6 +52,24 @@ struct Layout
     static constexpr std::size_t laser_damages_column{9};
 };
 
+struct Schema {
+    template <typename Columns, typename Func>
+    static auto with_columns(Columns const& source, Func&& func) {
+        auto const& locations_view{source.view_locations()};
+        auto const& rotations_view{source.view_rotations()};
+        return func(source.entity_indices(),
+                    locations_view.xs(),
+                    locations_view.ys(),
+                    locations_view.zs(),
+                    rotations_view.pitches(),
+                    rotations_view.yaws(),
+                    rotations_view.rolls(),
+                    source.teams(),
+                    source.healths(),
+                    source.laser_damages());
+    }
+};
+
 /* **************************************** */
 // Resolved views
 /* **************************************** */
@@ -134,34 +152,18 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
-        : entity_indices_{other.entity_indices_}
-        , locations_xs_{other.locations_xs_}
-        , locations_ys_{other.locations_ys_}
-        , locations_zs_{other.locations_zs_}
-        , rotations_pitches_{other.rotations_pitches_}
-        , rotations_yaws_{other.rotations_yaws_}
-        , rotations_rolls_{other.rotations_rolls_}
-        , teams_{other.teams_}
-        , healths_{other.healths_}
-        , laser_damages_{other.laser_damages_}
-        , count_{other.count_} {}
+    {
+        auto& [... destination] = *this;
+        auto const& [... source] = other;
+        ((destination = source), ...);
+    }
     auto num() const noexcept -> size_type { return count_; }
     auto resolve(this auto const& self) { return self; }
     auto slice(this auto const& self, size_type offset, size_type count) {
-        assert(offset <= self.count_ && count <= self.count_ - offset);
+        auto const& [... pointers, source_count] = static_cast<ResolvedViewImpl const&>(self);
+        assert(offset <= source_count && count <= source_count - offset);
         using Result = std::remove_cvref_t<decltype(self)>;
-        return Result{self.entity_indices_ == nullptr ? nullptr : self.entity_indices_ + offset,
-                      self.locations_xs_ == nullptr ? nullptr : self.locations_xs_ + offset,
-                      self.locations_ys_ == nullptr ? nullptr : self.locations_ys_ + offset,
-                      self.locations_zs_ == nullptr ? nullptr : self.locations_zs_ + offset,
-                      self.rotations_pitches_ == nullptr ? nullptr
-                                                         : self.rotations_pitches_ + offset,
-                      self.rotations_yaws_ == nullptr ? nullptr : self.rotations_yaws_ + offset,
-                      self.rotations_rolls_ == nullptr ? nullptr : self.rotations_rolls_ + offset,
-                      self.teams_ == nullptr ? nullptr : self.teams_ + offset,
-                      self.healths_ == nullptr ? nullptr : self.healths_ + offset,
-                      self.laser_damages_ == nullptr ? nullptr : self.laser_damages_ + offset,
-                      count};
+        return Result{(pointers ? pointers + offset : nullptr)..., count};
     }
     auto entity_indices() const { return std::span{entity_indices_, count_}; }
     auto view_locations() const -> std::
@@ -176,19 +178,6 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     auto teams() const { return std::span{teams_, count_}; }
     auto healths() const { return std::span{healths_, count_}; }
     auto laser_damages() const { return std::span{laser_damages_, count_}; }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        func(std::span{entity_indices_, count_});
-        func(std::span{locations_xs_, count_});
-        func(std::span{locations_ys_, count_});
-        func(std::span{locations_zs_, count_});
-        func(std::span{rotations_pitches_, count_});
-        func(std::span{rotations_yaws_, count_});
-        func(std::span{rotations_rolls_, count_});
-        func(std::span{teams_, count_});
-        func(std::span{healths_, count_});
-        func(std::span{laser_damages_, count_});
-    }
   private:
     template <bool>
     friend struct ResolvedViewImpl;
@@ -262,6 +251,10 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using Layout = ::ioj::sim::level_turret_spawn_events::Layout;
     using view_type = ::ioj::sim::level_turret_spawn_events::View;
     using const_view_type = ::ioj::sim::level_turret_spawn_events::ConstView;
+    using resolved_view_type =
+        std::conditional_t<Const,
+                           ::ioj::sim::level_turret_spawn_events::ResolvedConstView,
+                           ::ioj::sim::level_turret_spawn_events::ResolvedView>;
     template <bool Enabled = Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
@@ -293,37 +286,6 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     auto healths() const { return this->template column<Health>(Layout::healths_column); }
     auto laser_damages() const {
         return this->template column<std::int32_t>(Layout::laser_damages_column);
-    }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        func(entity_indices());
-        auto const& locations_view{view_locations()};
-        func(locations_view.xs());
-        func(locations_view.ys());
-        func(locations_view.zs());
-        auto const& rotations_view{view_rotations()};
-        func(rotations_view.pitches());
-        func(rotations_view.yaws());
-        func(rotations_view.rolls());
-        func(teams());
-        func(healths());
-        func(laser_damages());
-    }
-    auto resolve() const
-        -> std::conditional_t<Const,
-                              ::ioj::sim::level_turret_spawn_events::ResolvedConstView,
-                              ::ioj::sim::level_turret_spawn_events::ResolvedView> {
-        return {this->template column<LevelEntityIndex>(Layout::entity_indices_column).data(),
-                this->template column<float>(Layout::locations_xs_column).data(),
-                this->template column<float>(Layout::locations_ys_column).data(),
-                this->template column<float>(Layout::locations_zs_column).data(),
-                this->template column<float>(Layout::rotations_pitches_column).data(),
-                this->template column<float>(Layout::rotations_yaws_column).data(),
-                this->template column<float>(Layout::rotations_rolls_column).data(),
-                this->template column<::ioj::Team>(Layout::teams_column).data(),
-                this->template column<Health>(Layout::healths_column).data(),
-                this->template column<std::int32_t>(Layout::laser_damages_column).data(),
-                this->num()};
     }
 };
 struct ConstView : ViewImpl<true> {
@@ -445,21 +407,6 @@ struct LevelTurretSpawnEvents
         Element<::ioj::Team>* teams{};
         Element<Health>* healths{};
         Element<std::int32_t>* laser_damages{};
-        auto operator+(size_type const offset) const noexcept -> DataPointers {
-            if (entity_indices == nullptr) {
-                return {};
-            }
-            return {entity_indices + offset,
-                    locations_xs + offset,
-                    locations_ys + offset,
-                    locations_zs + offset,
-                    rotations_pitches + offset,
-                    rotations_yaws + offset,
-                    rotations_rolls + offset,
-                    teams + offset,
-                    healths + offset,
-                    laser_damages + offset};
-        }
     };
   private:
     friend Operations;
@@ -476,20 +423,6 @@ struct LevelTurretSpawnEvents
     /* **************************************** */
     // Typed mutations and growth
     /* **************************************** */
-    void default_construct_columns(size_type const first, size_type const count) {
-        using ioj::native_soa::default_construct_n;
-        auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
-        default_construct_n(columns.entity_indices, count);
-        default_construct_n(columns.locations_xs, count);
-        default_construct_n(columns.locations_ys, count);
-        default_construct_n(columns.locations_zs, count);
-        default_construct_n(columns.rotations_pitches, count);
-        default_construct_n(columns.rotations_yaws, count);
-        default_construct_n(columns.rotations_rolls, count);
-        default_construct_n(columns.teams, count);
-        default_construct_n(columns.healths, count);
-        default_construct_n(columns.laser_damages, count);
-    }
     template <bool Overlapping, typename Byte>
     static void transfer_columns(DataPointers<std::byte> const& destination,
                                  DataPointers<Byte> const& source,
@@ -507,24 +440,6 @@ struct LevelTurretSpawnEvents
         transfer(destination.teams, source.teams);
         transfer(destination.healths, source.healths);
         transfer(destination.laser_damages, source.laser_damages);
-    }
-    template <typename Columns>
-    static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
-        requires ioj::soa_storage_detail::SoaSourceFor<Columns, LevelTurretSpawnEvents, size_type>
-    {
-        using ioj::native_soa::source_data;
-        auto const& locations_view{source.view_locations()};
-        auto const& rotations_view{source.view_rotations()};
-        return {source_data(source.entity_indices()),
-                source_data(locations_view.xs()),
-                source_data(locations_view.ys()),
-                source_data(locations_view.zs()),
-                source_data(rotations_view.pitches()),
-                source_data(rotations_view.yaws()),
-                source_data(rotations_view.rolls()),
-                source_data(source.teams()),
-                source_data(source.healths()),
-                source_data(source.laser_damages())};
     }
   public:
     auto entity_indices(this auto& self) { return self.get_view().entity_indices(); }

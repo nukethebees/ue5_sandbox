@@ -144,24 +144,6 @@ auto make_function(CppIR& ir,
     return function;
 }
 
-void set_source_template(LoweringContext& context,
-                         SingleAllocationModelId model,
-                         FunctionId function) {
-    auto& ir{context.ir};
-    auto const& models{ir.lowering.single_allocation_models};
-    auto const& soas{context.declarations.soas};
-    auto const owner_name{soas.name[soas.index(models.schema[models.index(model)])]};
-    ir.set_function_template(
-        function,
-        ir.template_declaration({ir.type_template_parameter(ir.strings.intern("Columns"))}));
-    ir.set_function_requires_clause(
-        function,
-        ir.template_id(ir.named("ioj::soa_storage_detail::SoaSourceFor"),
-                       {ir.type_reference(ir.types.intern("Columns")),
-                        ir.type_reference(ir.types.intern(context.text(owner_name))),
-                        ir.type_reference(ir.types.intern("size_type"))}));
-}
-
 auto column_access(LoweringContext& context,
                    LoweringPathId path,
                    std::string receiver,
@@ -278,32 +260,6 @@ auto data_pointers_node(LoweringContext& context, SingleAllocationModelId model)
             ir.init_list({})));
     }
 
-    std::vector<Expr> shifted_columns;
-    shifted_columns.reserve(
-        context.ir.lowering.items(model_store.columns[model_store_index]).size());
-    for (auto const column : context.ir.lowering.items(model_store.columns[model_store_index])) {
-        shifted_columns.push_back(ir.binary(
-            BinaryOperator::add,
-            ir.named(context.text(column_store.flattened_identifier[column_store.index(column)])),
-            ir.named("offset")));
-    }
-    auto const offset_operator{make_function(
-        ir,
-        "operator+",
-        "DataPointers",
-        {ir.parameter("size_type const", "offset")},
-        {ir.if_stmt(
-             ir.binary(
-                 BinaryOperator::equal,
-                 ir.named(context.text(column_store.flattened_identifier[column_store.index(
-                     context.ir.lowering.items(model_store.columns[model_store_index]).front())])),
-                 ir.literal("nullptr")),
-             ir.block({ir.return_stmt(ir.init_list({}))})),
-         ir.return_stmt(ir.init_list(std::move(shifted_columns)))},
-        FunctionReceiver::const_,
-        ReturnSyntax::trailing)};
-    ir.set_function_noexcept(offset_operator);
-    children.new_lines(1).add(inline_function(context, offset_operator));
     auto const created_record{
         ir.record(ir.strings.intern("DataPointers"), children.build(), RecordKind::struct_)};
     ir.set_record_template(
@@ -347,38 +303,6 @@ auto column_pointer_nodes(LoweringContext& context) -> Nodes {
         .new_lines(1)
         .add(inline_function(context, make_data));
     return result.build();
-}
-
-auto default_construction_node(LoweringContext& context, SingleAllocationModelId model) -> NodeId {
-    auto& model_store{context.ir.lowering.single_allocation_models};
-    auto const model_store_index{model_store.index(model)};
-    auto& column_store{context.ir.lowering.single_allocation_columns};
-    auto& ir{context.ir};
-    NodeListBuilder body{ir};
-    body.add(ir.raw("using " + std::string{"ioj::native_soa::default_construct_n;"}));
-    body.add(
-        ir.variable("auto const",
-                    "columns",
-                    ir.binary(BinaryOperator::add,
-                              ir.call(ir.named("make_data_unchecked"),
-                                      {ir.named("data_"), ir.call(ir.named("capacity_blocks"))}),
-                              ir.named("first"))));
-    for (auto const column : context.ir.lowering.items(model_store.columns[model_store_index])) {
-        body.add(ir.expr_stmt(ir.call(
-            ir.named("default_construct_n",
-                     ir.types.dependencies(column_store.type[column_store.index(column)])),
-            {ir.member_access(
-                 ir.named("columns"),
-                 context.text(column_store.flattened_identifier[column_store.index(column)])),
-             ir.named("count")})));
-    }
-    return inline_function(context,
-                           make_function(ir,
-                                         "default_construct_columns",
-                                         "void",
-                                         {ir.parameter("size_type const", "first"),
-                                          ir.parameter("size_type const", "count")},
-                                         body.build()));
 }
 
 auto column_copying_nodes(LoweringContext& context, SingleAllocationModelId model) -> Nodes {
@@ -442,36 +366,6 @@ auto permutation_node(LoweringContext& context, SingleAllocationModelId model) -
     return inline_function(context, function);
 }
 
-auto source_pointers_node(LoweringContext& context, SingleAllocationModelId model) -> NodeId {
-    auto& model_store{context.ir.lowering.single_allocation_models};
-    auto const model_store_index{model_store.index(model)};
-    auto& column_store{context.ir.lowering.single_allocation_columns};
-    auto& ir{context.ir};
-    NodeListBuilder body{ir};
-    body.add(ir.raw("using " + std::string{"ioj::native_soa::source_data;"}));
-    std::map<LoweringPathId, StringId> groups;
-    std::vector<Expr> pointers;
-    for (auto const column : context.ir.lowering.items(model_store.columns[model_store_index])) {
-        pointers.push_back(
-            ir.call(ir.named("source_data"),
-                    {column_access(context,
-                                   column_store.member_path[column_store.index(column)],
-                                   "source",
-                                   groups,
-                                   body)}));
-    }
-    body.add(ir.return_stmt(ir.init_list(std::move(pointers))));
-    auto const function{make_function(ir,
-                                      "source_pointers",
-                                      "DataPointers<std::byte const>",
-                                      {ir.parameter("Columns const&", "source")},
-                                      body.build(),
-                                      FunctionReceiver::static_,
-                                      ReturnSyntax::trailing)};
-    set_source_template(context, model, function);
-    return inline_function(context, function);
-}
-
 auto member_columns(LoweringContext& context, SingleAllocationModelId model, StringId member)
     -> std::vector<SingleAllocationColumnId> {
     auto const& storage{context.ir.lowering};
@@ -484,6 +378,33 @@ auto member_columns(LoweringContext& context, SingleAllocationModelId model, Str
         }
     }
     return result;
+}
+
+auto schema_node(LoweringContext& context, SingleAllocationModelId model) -> NodeId {
+    auto& ir{context.ir};
+    auto const& models{ir.lowering.single_allocation_models};
+    auto const& columns{ir.lowering.single_allocation_columns};
+    NodeListBuilder body{ir};
+    std::map<LoweringPathId, StringId> groups;
+    std::vector<Expr> arguments;
+    for (auto const column : ir.lowering.items(models.columns[models.index(model)])) {
+        arguments.push_back(column_access(
+            context, columns.member_path[columns.index(column)], "source", groups, body));
+    }
+    body.add(ir.return_stmt(ir.call(ir.named("func"), arguments)));
+    auto const function{
+        make_function(ir,
+                      "with_columns",
+                      "auto",
+                      {ir.parameter("Columns const&", "source"), ir.parameter("Func&&", "func")},
+                      body.build(),
+                      FunctionReceiver::static_)};
+    ir.set_function_template(
+        function,
+        ir.template_declaration({ir.type_template_parameter(ir.strings.intern("Columns")),
+                                 ir.type_template_parameter(ir.strings.intern("Func"))}));
+    return ir.record(
+        ir.strings.intern("Schema"), {inline_function(context, function)}, RecordKind::struct_);
 }
 
 auto shared_view_type(LoweringContext& context, DeclarationHandle schema, bool resolved)
@@ -540,7 +461,6 @@ auto emit_resolved_views(LoweringContext& context,
     std::vector<MemberInitializerId> initializers;
     std::vector<std::string> span_arguments;
     std::vector<Expr> size_validation_arguments{ir.named("count_")};
-    std::vector<MemberInitializerId> conversions;
     NodeListBuilder validation{ir};
     std::vector<Expr> validation_arguments{ir.named("count_")};
     for (auto const column : selected) {
@@ -549,9 +469,6 @@ auto emit_resolved_views(LoweringContext& context,
         spans.push_back(ir.parameter("std::span<" + element_type(column) + ">", name));
         initializers.push_back(
             ir.member_initializer(ir.strings.intern(pointer_name(column)), ir.store_text(name)));
-        conversions.push_back(
-            ir.member_initializer(ir.strings.intern(pointer_name(column)),
-                                  ir.store_text("other." + pointer_name(column))));
         span_arguments.push_back(name + ".data()");
         size_validation_arguments.push_back(ir.named(name));
         validation_arguments.push_back(ir.named(pointer_name(column)));
@@ -580,8 +497,6 @@ auto emit_resolved_views(LoweringContext& context,
                                ir.store_text(join(span_arguments, ", ")))});
     children.add(inline_function(context, span_constructor)).new_lines(1);
 
-    conversions.push_back(
-        ir.member_initializer(ir.strings.intern("count_"), ir.store_text("other.count_")));
     auto const conversion{ir.constructor(ir.strings.intern(implementation))};
     ir.set_function_parameters(conversion,
                                {ir.parameter(implementation + "<false> const&", "other")});
@@ -590,25 +505,22 @@ auto emit_resolved_views(LoweringContext& context,
         ir.template_declaration({ir.value_template_parameter(
             ir.types.intern("bool"), ir.strings.intern("Enabled"), ir.named("Const"))}));
     ir.set_function_requires_clause(conversion, ir.named("Enabled"));
-    ir.set_function_body(conversion, {}, conversions);
+    ir.set_function_body(conversion,
+                         {ir.raw("auto& [...destination] = *this;\n"
+                                 "auto const& [...source] = other;\n"
+                                 "((destination = source), ...);")});
     children.add(inline_function(context, conversion)).new_lines(1);
 
     children.add(ir.raw("auto num() const noexcept -> size_type { return count_; }\n"
                         "auto resolve(this auto const& self) { return self; }"));
 
-    std::vector<std::string> slice_arguments;
-    for (auto const column : selected) {
-        auto const name{pointer_name(column)};
-        slice_arguments.push_back("self." + name + " == nullptr ? nullptr : self." + name +
-                                  " + offset");
-    }
-    slice_arguments.push_back("count");
     children.new_lines(1).add(
         ir.raw("auto slice(this auto const& self, size_type offset, size_type count) {\n"
-               "assert(offset <= self.count_ && count <= self.count_ - offset);\n"
+               "auto const& [...pointers, source_count] = "
+               "static_cast<ResolvedViewImpl const&>(self);\n"
+               "assert(offset <= source_count && count <= source_count - offset);\n"
                "using Result = std::remove_cvref_t<decltype(self)>;\n"
-               "return Result{" +
-               join(slice_arguments, ", ") + "};\n}"));
+               "return Result{(pointers ? pointers + offset : nullptr)..., count};\n}"));
 
     for (auto const member : context.declarations.items(
              context.declarations.soas.members[context.declarations.soas.index(schema)])) {
@@ -631,22 +543,7 @@ auto emit_resolved_views(LoweringContext& context,
                                              pointer_name(column) + ", count_}; }"));
         }
     }
-    NodeListBuilder iteration{ir};
-    for (auto const column : selected) {
-        iteration.add(ir.raw("func(std::span{" + pointer_name(column) + ", count_});"));
-    }
-    auto const each_column{make_function(ir,
-                                         "each_column",
-                                         "void",
-                                         {ir.parameter("Func&&", "func")},
-                                         iteration.build(),
-                                         FunctionReceiver::const_)};
-    ir.set_function_template(
-        each_column,
-        ir.template_declaration({ir.type_template_parameter(ir.strings.intern("Func"))}));
     children.new_lines(1)
-        .add(inline_function(context, each_column))
-        .new_lines(1)
         .add(ir.access(Access::private_))
         .new_lines(1)
         .add(ir.friend_declaration(
@@ -715,7 +612,9 @@ auto compact_view_node(LoweringContext& context, SingleAllocationModelId model) 
          ir.using_declaration(ir.strings.intern("Layout"), ir.types.intern(scope + "::Layout")),
          ir.using_declaration(ir.strings.intern("view_type"), ir.types.intern(scope + "::View")),
          ir.using_declaration(ir.strings.intern("const_view_type"),
-                              ir.types.intern(scope + "::ConstView"))}));
+                              ir.types.intern(scope + "::ConstView")),
+         ir.using_declaration(ir.strings.intern("resolved_view_type"),
+                              ir.types.intern(shared_view_type(context, schema, true)))}));
     if (strided && !context.declarations.soas.layout_only[schema_row]) {
         children.new_lines(1).add(
             ir.raw("using State = std::conditional_t<Const, ioj::soa_storage_detail::StorageState "
@@ -809,31 +708,6 @@ auto compact_view_node(LoweringContext& context, SingleAllocationModelId model) 
             accessor(name, column_span(column));
         }
     }
-    NodeListBuilder body{ir};
-    std::map<LoweringPathId, StringId> groups;
-    for (auto const column : selected) {
-        auto const value{
-            column_access(context, columns.member_path[columns.index(column)], "", groups, body)};
-        body.add(ir.expr_stmt(ir.call(ir.named("func"), {value})));
-    }
-    auto const iteration{make_function(ir,
-                                       "each_column",
-                                       "void",
-                                       {ir.parameter("Func&&", "func")},
-                                       body.build(),
-                                       FunctionReceiver::const_)};
-    ir.set_function_template(
-        iteration,
-        ir.template_declaration({ir.type_template_parameter(ir.strings.intern("Func"))}));
-    children.new_lines(1).add(compact_function(context, iteration));
-    std::vector<Expr> pointers;
-    for (auto const column : selected) {
-        pointers.push_back(ir.call(ir.member_access(column_span(column), "data")));
-    }
-    pointers.push_back(ir.call(ir.named("this->num")));
-    accessor("resolve",
-             ir.init_list(pointers),
-             ir.types.intern(shared_view_type(context, schema, true)));
     auto const record{
         ir.record(ir.strings.intern("ViewImpl"), children.build(), RecordKind::struct_)};
     describe_compact_scope(context, record, schema);
@@ -897,6 +771,7 @@ auto emit_single_allocation_layout(LoweringContext& context, SingleAllocationMod
                             "max_capacity",
                             "offset",
                             "make_data",
+                            "make_resolved_view",
                             "layout_bytes"}) {
         inherited.push_back(ir.strings.intern(name));
     }
@@ -932,11 +807,7 @@ auto storage_implementation_nodes(LoweringContext& context, SingleAllocationMode
         .new_lines(2)
         .append(section_header(context, "Typed mutations and growth"))
         .new_lines(1)
-        .add(default_construction_node(context, model))
-        .new_lines(1)
-        .append(std::move(copying))
-        .new_lines(1)
-        .add(source_pointers_node(context, model));
+        .append(std::move(copying));
 
     return children.build();
 }
@@ -954,7 +825,9 @@ auto emit_single_allocation_views(LoweringContext& context,
         .add(ir.forward_declaration(ir.strings.intern("ConstView")))
         .new_lines(1);
     NodeListBuilder result{ir};
-    result.append(emit_resolved_views(context, model, source, declarations))
+    result.add(schema_node(context, model))
+        .new_lines(2)
+        .append(emit_resolved_views(context, model, source, declarations))
         .new_lines(2)
         .append(section_header(context, strided ? "Strided views" : "Compact views"))
         .new_lines(1)

@@ -42,6 +42,18 @@ struct Layout
     static constexpr std::size_t origin_column{5};
 };
 
+struct Schema {
+    template <typename Columns, typename Func>
+    static auto with_columns(Columns const& source, Func&& func) {
+        return func(source.size_bytes(),
+                    source.alignment_bytes(),
+                    source.signedness(),
+                    source.unsigned_value_bits(),
+                    source.provenance(),
+                    source.origin());
+    }
+};
+
 /* **************************************** */
 // Resolved views
 /* **************************************** */
@@ -100,26 +112,18 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
-        : size_bytes_{other.size_bytes_}
-        , alignment_bytes_{other.alignment_bytes_}
-        , signedness_{other.signedness_}
-        , unsigned_value_bits_{other.unsigned_value_bits_}
-        , provenance_{other.provenance_}
-        , origin_{other.origin_}
-        , count_{other.count_} {}
+    {
+        auto& [... destination] = *this;
+        auto const& [... source] = other;
+        ((destination = source), ...);
+    }
     auto num() const noexcept -> size_type { return count_; }
     auto resolve(this auto const& self) { return self; }
     auto slice(this auto const& self, size_type offset, size_type count) {
-        assert(offset <= self.count_ && count <= self.count_ - offset);
+        auto const& [... pointers, source_count] = static_cast<ResolvedViewImpl const&>(self);
+        assert(offset <= source_count && count <= source_count - offset);
         using Result = std::remove_cvref_t<decltype(self)>;
-        return Result{self.size_bytes_ == nullptr ? nullptr : self.size_bytes_ + offset,
-                      self.alignment_bytes_ == nullptr ? nullptr : self.alignment_bytes_ + offset,
-                      self.signedness_ == nullptr ? nullptr : self.signedness_ + offset,
-                      self.unsigned_value_bits_ == nullptr ? nullptr
-                                                           : self.unsigned_value_bits_ + offset,
-                      self.provenance_ == nullptr ? nullptr : self.provenance_ + offset,
-                      self.origin_ == nullptr ? nullptr : self.origin_ + offset,
-                      count};
+        return Result{(pointers ? pointers + offset : nullptr)..., count};
     }
     auto size_bytes() const { return std::span{size_bytes_, count_}; }
     auto alignment_bytes() const { return std::span{alignment_bytes_, count_}; }
@@ -127,15 +131,6 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     auto unsigned_value_bits() const { return std::span{unsigned_value_bits_, count_}; }
     auto provenance() const { return std::span{provenance_, count_}; }
     auto origin() const { return std::span{origin_, count_}; }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        func(std::span{size_bytes_, count_});
-        func(std::span{alignment_bytes_, count_});
-        func(std::span{signedness_, count_});
-        func(std::span{unsigned_value_bits_, count_});
-        func(std::span{provenance_, count_});
-        func(std::span{origin_, count_});
-    }
   private:
     template <bool>
     friend struct ResolvedViewImpl;
@@ -182,6 +177,10 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using Layout = ::ioj::layout::physical_fact_table::Layout;
     using view_type = ::ioj::layout::physical_fact_table::View;
     using const_view_type = ::ioj::layout::physical_fact_table::ConstView;
+    using resolved_view_type =
+        std::conditional_t<Const,
+                           ::ioj::layout::physical_fact_table::ResolvedConstView,
+                           ::ioj::layout::physical_fact_table::ResolvedView>;
     template <bool Enabled = Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
@@ -203,29 +202,6 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
         return this->template column<lispb::StringId>(Layout::provenance_column);
     }
     auto origin() const { return this->template column<FactOrigin>(Layout::origin_column); }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        func(size_bytes());
-        func(alignment_bytes());
-        func(signedness());
-        func(unsigned_value_bits());
-        func(provenance());
-        func(origin());
-    }
-    auto resolve() const
-        -> std::conditional_t<Const,
-                              ::ioj::layout::physical_fact_table::ResolvedConstView,
-                              ::ioj::layout::physical_fact_table::ResolvedView> {
-        return {
-            this->template column<std::uint64_t>(Layout::size_bytes_column).data(),
-            this->template column<std::uint64_t>(Layout::alignment_bytes_column).data(),
-            this->template column<lispb::schema::EnumSignedness>(Layout::signedness_column).data(),
-            this->template column<std::optional<std::uint32_t>>(Layout::unsigned_value_bits_column)
-                .data(),
-            this->template column<lispb::StringId>(Layout::provenance_column).data(),
-            this->template column<FactOrigin>(Layout::origin_column).data(),
-            this->num()};
-    }
 };
 struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;
@@ -315,17 +291,6 @@ struct PhysicalFactTable
         Element<std::optional<std::uint32_t>>* unsigned_value_bits{};
         Element<lispb::StringId>* provenance{};
         Element<FactOrigin>* origin{};
-        auto operator+(size_type const offset) const noexcept -> DataPointers {
-            if (size_bytes == nullptr) {
-                return {};
-            }
-            return {size_bytes + offset,
-                    alignment_bytes + offset,
-                    signedness + offset,
-                    unsigned_value_bits + offset,
-                    provenance + offset,
-                    origin + offset};
-        }
     };
   private:
     friend Operations;
@@ -342,16 +307,6 @@ struct PhysicalFactTable
     /* **************************************** */
     // Typed mutations and growth
     /* **************************************** */
-    void default_construct_columns(size_type const first, size_type const count) {
-        using ioj::native_soa::default_construct_n;
-        auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
-        default_construct_n(columns.size_bytes, count);
-        default_construct_n(columns.alignment_bytes, count);
-        default_construct_n(columns.signedness, count);
-        default_construct_n(columns.unsigned_value_bits, count);
-        default_construct_n(columns.provenance, count);
-        default_construct_n(columns.origin, count);
-    }
     template <bool Overlapping, typename Byte>
     static void transfer_columns(DataPointers<std::byte> const& destination,
                                  DataPointers<Byte> const& source,
@@ -365,18 +320,6 @@ struct PhysicalFactTable
         transfer(destination.unsigned_value_bits, source.unsigned_value_bits);
         transfer(destination.provenance, source.provenance);
         transfer(destination.origin, source.origin);
-    }
-    template <typename Columns>
-    static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
-        requires ioj::soa_storage_detail::SoaSourceFor<Columns, PhysicalFactTable, size_type>
-    {
-        using ioj::native_soa::source_data;
-        return {source_data(source.size_bytes()),
-                source_data(source.alignment_bytes()),
-                source_data(source.signedness()),
-                source_data(source.unsigned_value_bits()),
-                source_data(source.provenance()),
-                source_data(source.origin())};
     }
   public:
     auto size_bytes(this auto& self) { return self.get_view().size_bytes(); }

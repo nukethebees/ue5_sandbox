@@ -293,6 +293,7 @@ class Validator {
             "get_memory_resource",
             "each_column",
             "soa_schema",
+            "resolved_view_type",
         };
         return names.contains(value);
     }

@@ -36,6 +36,19 @@ struct Layout
     static constexpr std::size_t initial_fire_point_indices_column{5};
 };
 
+struct Schema {
+    template <typename Columns, typename Func>
+    static auto with_columns(Columns const& source, Func&& func) {
+        auto const& locations_view{source.view_locations()};
+        return func(source.entity_indices(),
+                    locations_view.xs(),
+                    locations_view.ys(),
+                    locations_view.zs(),
+                    source.yaws(),
+                    source.initial_fire_point_indices());
+    }
+};
+
 /* **************************************** */
 // Resolved views
 /* **************************************** */
@@ -94,27 +107,18 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
-        : entity_indices_{other.entity_indices_}
-        , locations_xs_{other.locations_xs_}
-        , locations_ys_{other.locations_ys_}
-        , locations_zs_{other.locations_zs_}
-        , yaws_{other.yaws_}
-        , initial_fire_point_indices_{other.initial_fire_point_indices_}
-        , count_{other.count_} {}
+    {
+        auto& [... destination] = *this;
+        auto const& [... source] = other;
+        ((destination = source), ...);
+    }
     auto num() const noexcept -> size_type { return count_; }
     auto resolve(this auto const& self) { return self; }
     auto slice(this auto const& self, size_type offset, size_type count) {
-        assert(offset <= self.count_ && count <= self.count_ - offset);
+        auto const& [... pointers, source_count] = static_cast<ResolvedViewImpl const&>(self);
+        assert(offset <= source_count && count <= source_count - offset);
         using Result = std::remove_cvref_t<decltype(self)>;
-        return Result{self.entity_indices_ == nullptr ? nullptr : self.entity_indices_ + offset,
-                      self.locations_xs_ == nullptr ? nullptr : self.locations_xs_ + offset,
-                      self.locations_ys_ == nullptr ? nullptr : self.locations_ys_ + offset,
-                      self.locations_zs_ == nullptr ? nullptr : self.locations_zs_ + offset,
-                      self.yaws_ == nullptr ? nullptr : self.yaws_ + offset,
-                      self.initial_fire_point_indices_ == nullptr
-                          ? nullptr
-                          : self.initial_fire_point_indices_ + offset,
-                      count};
+        return Result{(pointers ? pointers + offset : nullptr)..., count};
     }
     auto entity_indices() const { return std::span{entity_indices_, count_}; }
     auto view_locations() const -> std::
@@ -124,15 +128,6 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     auto yaws() const { return std::span{yaws_, count_}; }
     auto initial_fire_point_indices() const {
         return std::span{initial_fire_point_indices_, count_};
-    }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        func(std::span{entity_indices_, count_});
-        func(std::span{locations_xs_, count_});
-        func(std::span{locations_ys_, count_});
-        func(std::span{locations_zs_, count_});
-        func(std::span{yaws_, count_});
-        func(std::span{initial_fire_point_indices_, count_});
     }
   private:
     template <bool>
@@ -191,6 +186,10 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using Layout = ::ioj::sim::level_spinner_spawn_events::Layout;
     using view_type = ::ioj::sim::level_spinner_spawn_events::View;
     using const_view_type = ::ioj::sim::level_spinner_spawn_events::ConstView;
+    using resolved_view_type =
+        std::conditional_t<Const,
+                           ::ioj::sim::level_spinner_spawn_events::ResolvedConstView,
+                           ::ioj::sim::level_spinner_spawn_events::ResolvedView>;
     template <bool Enabled = Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
@@ -211,29 +210,6 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     auto yaws() const { return this->template column<float>(Layout::yaws_column); }
     auto initial_fire_point_indices() const {
         return this->template column<std::int32_t>(Layout::initial_fire_point_indices_column);
-    }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        func(entity_indices());
-        auto const& locations_view{view_locations()};
-        func(locations_view.xs());
-        func(locations_view.ys());
-        func(locations_view.zs());
-        func(yaws());
-        func(initial_fire_point_indices());
-    }
-    auto resolve() const
-        -> std::conditional_t<Const,
-                              ::ioj::sim::level_spinner_spawn_events::ResolvedConstView,
-                              ::ioj::sim::level_spinner_spawn_events::ResolvedView> {
-        return {
-            this->template column<LevelEntityIndex>(Layout::entity_indices_column).data(),
-            this->template column<float>(Layout::locations_xs_column).data(),
-            this->template column<float>(Layout::locations_ys_column).data(),
-            this->template column<float>(Layout::locations_zs_column).data(),
-            this->template column<float>(Layout::yaws_column).data(),
-            this->template column<std::int32_t>(Layout::initial_fire_point_indices_column).data(),
-            this->num()};
     }
 };
 struct ConstView : ViewImpl<true> {
@@ -335,17 +311,6 @@ struct LevelSpinnerSpawnEvents
         Element<float>* locations_zs{};
         Element<float>* yaws{};
         Element<std::int32_t>* initial_fire_point_indices{};
-        auto operator+(size_type const offset) const noexcept -> DataPointers {
-            if (entity_indices == nullptr) {
-                return {};
-            }
-            return {entity_indices + offset,
-                    locations_xs + offset,
-                    locations_ys + offset,
-                    locations_zs + offset,
-                    yaws + offset,
-                    initial_fire_point_indices + offset};
-        }
     };
   private:
     friend Operations;
@@ -362,16 +327,6 @@ struct LevelSpinnerSpawnEvents
     /* **************************************** */
     // Typed mutations and growth
     /* **************************************** */
-    void default_construct_columns(size_type const first, size_type const count) {
-        using ioj::native_soa::default_construct_n;
-        auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
-        default_construct_n(columns.entity_indices, count);
-        default_construct_n(columns.locations_xs, count);
-        default_construct_n(columns.locations_ys, count);
-        default_construct_n(columns.locations_zs, count);
-        default_construct_n(columns.yaws, count);
-        default_construct_n(columns.initial_fire_point_indices, count);
-    }
     template <bool Overlapping, typename Byte>
     static void transfer_columns(DataPointers<std::byte> const& destination,
                                  DataPointers<Byte> const& source,
@@ -385,19 +340,6 @@ struct LevelSpinnerSpawnEvents
         transfer(destination.locations_zs, source.locations_zs);
         transfer(destination.yaws, source.yaws);
         transfer(destination.initial_fire_point_indices, source.initial_fire_point_indices);
-    }
-    template <typename Columns>
-    static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
-        requires ioj::soa_storage_detail::SoaSourceFor<Columns, LevelSpinnerSpawnEvents, size_type>
-    {
-        using ioj::native_soa::source_data;
-        auto const& locations_view{source.view_locations()};
-        return {source_data(source.entity_indices()),
-                source_data(locations_view.xs()),
-                source_data(locations_view.ys()),
-                source_data(locations_view.zs()),
-                source_data(source.yaws()),
-                source_data(source.initial_fire_point_indices())};
     }
   public:
     auto entity_indices(this auto& self) { return self.get_view().entity_indices(); }

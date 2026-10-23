@@ -28,6 +28,13 @@ struct Layout : ioj::single_allocation_layout::ColumnLayouts<float, float, float
     static constexpr std::size_t zs_column{2};
 };
 
+struct Schema {
+    template <typename Columns, typename Func>
+    static auto with_columns(Columns const& source, Func&& func) {
+        return func(source.xs(), source.ys(), source.zs());
+    }
+};
+
 /* **************************************** */
 // Resolved views
 /* **************************************** */
@@ -59,29 +66,22 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
-        : xs_{other.xs_}
-        , ys_{other.ys_}
-        , zs_{other.zs_}
-        , count_{other.count_} {}
+    {
+        auto& [... destination] = *this;
+        auto const& [... source] = other;
+        ((destination = source), ...);
+    }
     auto num() const noexcept -> size_type { return count_; }
     auto resolve(this auto const& self) { return self; }
     auto slice(this auto const& self, size_type offset, size_type count) {
-        assert(offset <= self.count_ && count <= self.count_ - offset);
+        auto const& [... pointers, source_count] = static_cast<ResolvedViewImpl const&>(self);
+        assert(offset <= source_count && count <= source_count - offset);
         using Result = std::remove_cvref_t<decltype(self)>;
-        return Result{self.xs_ == nullptr ? nullptr : self.xs_ + offset,
-                      self.ys_ == nullptr ? nullptr : self.ys_ + offset,
-                      self.zs_ == nullptr ? nullptr : self.zs_ + offset,
-                      count};
+        return Result{(pointers ? pointers + offset : nullptr)..., count};
     }
     auto xs() const { return std::span{xs_, count_}; }
     auto ys() const { return std::span{ys_, count_}; }
     auto zs() const { return std::span{zs_, count_}; }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        func(std::span{xs_, count_});
-        func(std::span{ys_, count_});
-        func(std::span{zs_, count_});
-    }
   private:
     template <bool>
     friend struct ResolvedViewImpl;
@@ -129,6 +129,8 @@ struct ViewImpl : ioj::soa_storage_detail::StridedViewBase<float, Const> {
     using Layout = ::ioj::vectors3f::Layout;
     using view_type = ::ioj::vectors3f::View;
     using const_view_type = ::ioj::vectors3f::ConstView;
+    using resolved_view_type = std::
+        conditional_t<Const, ::ioj::vectors3f::ResolvedConstView, ::ioj::vectors3f::ResolvedView>;
     using State = std::conditional_t<Const,
                                      ioj::soa_storage_detail::StorageState const,
                                      ioj::soa_storage_detail::StorageState>;
@@ -142,17 +144,6 @@ struct ViewImpl : ioj::soa_storage_detail::StridedViewBase<float, Const> {
     auto xs() const { return this->column(0); }
     auto ys() const { return this->column(1); }
     auto zs() const { return this->column(2); }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        func(xs());
-        func(ys());
-        func(zs());
-    }
-    auto resolve() const -> std::
-        conditional_t<Const, ::ioj::vectors3f::ResolvedConstView, ::ioj::vectors3f::ResolvedView> {
-        return {
-            this->column(0).data(), this->column(1).data(), this->column(2).data(), this->num()};
-    }
 };
 struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;
@@ -240,12 +231,6 @@ struct Vectors3f
         Element<float>* xs{};
         Element<float>* ys{};
         Element<float>* zs{};
-        auto operator+(size_type const offset) const noexcept -> DataPointers {
-            if (xs == nullptr) {
-                return {};
-            }
-            return {xs + offset, ys + offset, zs + offset};
-        }
     };
   private:
     friend Operations;
@@ -262,13 +247,6 @@ struct Vectors3f
     /* **************************************** */
     // Typed mutations and growth
     /* **************************************** */
-    void default_construct_columns(size_type const first, size_type const count) {
-        using ioj::native_soa::default_construct_n;
-        auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
-        default_construct_n(columns.xs, count);
-        default_construct_n(columns.ys, count);
-        default_construct_n(columns.zs, count);
-    }
     template <bool Overlapping, typename Byte>
     static void transfer_columns(DataPointers<std::byte> const& destination,
                                  DataPointers<Byte> const& source,
@@ -279,13 +257,6 @@ struct Vectors3f
         transfer(destination.xs, source.xs);
         transfer(destination.ys, source.ys);
         transfer(destination.zs, source.zs);
-    }
-    template <typename Columns>
-    static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
-        requires ioj::soa_storage_detail::SoaSourceFor<Columns, Vectors3f, size_type>
-    {
-        using ioj::native_soa::source_data;
-        return {source_data(source.xs()), source_data(source.ys()), source_data(source.zs())};
     }
   public:
     auto xs(this auto& self) { return self.get_view().xs(); }

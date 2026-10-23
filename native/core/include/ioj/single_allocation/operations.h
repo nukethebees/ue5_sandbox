@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <cassert>
 #include <cstddef>
+#include <memory>
 #include <memory_resource>
 #include <new>
 #include <span>
@@ -14,6 +15,18 @@
 #include <utility>
 
 namespace ioj::soa_storage_detail {
+
+template <typename Data>
+auto offset_columns(Data pointers, std::uint32_t offset) noexcept -> Data {
+    auto const& [first, ... rest] = pointers;
+    if (first == nullptr) {
+        return {};
+    }
+    template for (auto& pointer : pointers) {
+        pointer += offset;
+    }
+    return pointers;
+}
 
 // Generated owners supply state and explicit typed column operations.
 template <auto RoundedCapacity, auto GrowthCapacity>
@@ -33,16 +46,34 @@ struct StorageOperations {
     }
     template <StorageOwner Self>
     auto get_data(this Self& self, StorageSize<Self> const offset) noexcept {
-        return self.get_data() + offset;
+        return offset_columns(self.get_data(), offset);
     }
     template <StorageOwner Self>
     auto capacity_blocks(this Self const& self) noexcept -> std::size_t {
         return self.capacity_ / Self::capacity_granularity;
     }
 
+    template <StorageOwner Self, typename Source>
+        requires SoaSourceFor<Source, Self, StorageSize<Self>>
+    auto source_pointers(this Self const&, Source const& source) {
+        return Self::soa_schema::with_columns(source, [](auto const&... columns) {
+            return typename Self::template DataPointers<std::byte const>{source_data(columns)...};
+        });
+    }
+
     /* **************************************** */
     // Lifetime
     /* **************************************** */
+    template <StorageOwner Self>
+        requires (!std::is_const_v<Self>)
+    void default_construct_columns(this Self& self,
+                                   StorageSize<Self> first,
+                                   StorageSize<Self> count) {
+        template for (auto* column : self.get_data(first)) {
+            std::uninitialized_value_construct_n(column, count);
+        }
+    }
+
     template <typename Owner>
     static void release_storage(Owner& owner) noexcept {
         if (owner.data_ != nullptr) {
@@ -106,7 +137,9 @@ struct StorageOperations {
                         StorageSize<Self> first,
                         StorageSize<Self> count) {
         self.template transfer_columns<false>(
-            self.get_data(first), self.source_pointers(source) + source_first, count);
+            self.get_data(first),
+            offset_columns(self.source_pointers(source), source_first),
+            count);
     }
     template <StorageOwner Self, typename Source>
         requires (!std::is_const_v<Self> && SoaSourceFor<Source, Self, StorageSize<Self>>)
@@ -116,7 +149,9 @@ struct StorageOperations {
                            StorageSize<Self> first,
                            StorageSize<Self> count) {
         self.template transfer_columns<true>(
-            self.get_data(first), self.source_pointers(source) + source_first, count);
+            self.get_data(first),
+            offset_columns(self.source_pointers(source), source_first),
+            count);
     }
     template <StorageOwner Self>
         requires (!std::is_const_v<Self>)
@@ -125,14 +160,16 @@ struct StorageOperations {
                              StorageSize<Self> source,
                              StorageSize<Self> count) {
         auto const columns{self.get_data()};
-        self.template transfer_columns<false>(columns + index, columns + source, count);
+        self.template transfer_columns<false>(
+            offset_columns(columns, index), offset_columns(columns, source), count);
     }
     template <StorageOwner Self>
         requires (!std::is_const_v<Self>)
     void swap_remove_indices(this Self& self, std::span<StorageSize<Self> const> indices) {
         auto const columns{self.get_data()};
         for_each_removal_run(self.num_, indices, [&](auto index, auto source, auto count) {
-            self.template transfer_columns<false>(columns + index, columns + source, count);
+            self.template transfer_columns<false>(
+                offset_columns(columns, index), offset_columns(columns, source), count);
         });
     }
 
@@ -238,7 +275,7 @@ struct StorageOperations {
             return first;
         }
         // Keep source columns alive until both existing and appended rows have been copied.
-        auto const source_columns{self.source_pointers(source) + offset};
+        auto const source_columns{offset_columns(self.source_pointers(source), offset)};
         auto const new_num{first + count};
         if (new_num > self.capacity_) {
             auto const new_capacity{
@@ -249,7 +286,8 @@ struct StorageOperations {
             }
             auto const destination{
                 self.make_data_unchecked(new_data, new_capacity / Self::capacity_granularity)};
-            self.template transfer_columns<false>(destination + first, source_columns, count);
+            self.template transfer_columns<false>(
+                offset_columns(destination, first), source_columns, count);
             release_storage(self);
             self.data_ = new_data;
             self.capacity_ = new_capacity;
@@ -284,12 +322,13 @@ struct StorageOperations {
             if (first > 0) {
                 self.copy_live_columns(new_data, new_capacity);
             }
-            auto const destination{
-                self.make_data_unchecked(new_data, new_capacity / Self::capacity_granularity) +
-                first};
+            auto const destination{offset_columns(
+                self.make_data_unchecked(new_data, new_capacity / Self::capacity_granularity),
+                first)};
             for (std::uint32_t row{}; row < count; ++row) {
-                self.template transfer_columns<false>(
-                    destination + row, source_columns + indices[row], 1);
+                self.template transfer_columns<false>(offset_columns(destination, row),
+                                                      offset_columns(source_columns, indices[row]),
+                                                      1);
             }
             release_storage(self);
             self.data_ = new_data;
@@ -297,8 +336,9 @@ struct StorageOperations {
         } else {
             auto const destination{self.get_data(first)};
             for (std::uint32_t row{}; row < count; ++row) {
-                self.template transfer_columns<false>(
-                    destination + row, source_columns + indices[row], 1);
+                self.template transfer_columns<false>(offset_columns(destination, row),
+                                                      offset_columns(source_columns, indices[row]),
+                                                      1);
             }
         }
         self.num_ = new_num;

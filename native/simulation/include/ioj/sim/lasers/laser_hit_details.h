@@ -36,6 +36,21 @@ struct Layout
     static constexpr std::size_t sources_column{6};
 };
 
+struct Schema {
+    template <typename Columns, typename Func>
+    static auto with_columns(Columns const& source, Func&& func) {
+        auto const& locations_view{source.view_locations()};
+        auto const& emission_directions_view{source.view_emission_directions()};
+        return func(locations_view.xs(),
+                    locations_view.ys(),
+                    locations_view.zs(),
+                    emission_directions_view.xs(),
+                    emission_directions_view.ys(),
+                    emission_directions_view.zs(),
+                    source.sources());
+    }
+};
+
 /* **************************************** */
 // Resolved views
 /* **************************************** */
@@ -100,31 +115,18 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
-        : locations_xs_{other.locations_xs_}
-        , locations_ys_{other.locations_ys_}
-        , locations_zs_{other.locations_zs_}
-        , emission_directions_xs_{other.emission_directions_xs_}
-        , emission_directions_ys_{other.emission_directions_ys_}
-        , emission_directions_zs_{other.emission_directions_zs_}
-        , sources_{other.sources_}
-        , count_{other.count_} {}
+    {
+        auto& [... destination] = *this;
+        auto const& [... source] = other;
+        ((destination = source), ...);
+    }
     auto num() const noexcept -> size_type { return count_; }
     auto resolve(this auto const& self) { return self; }
     auto slice(this auto const& self, size_type offset, size_type count) {
-        assert(offset <= self.count_ && count <= self.count_ - offset);
+        auto const& [... pointers, source_count] = static_cast<ResolvedViewImpl const&>(self);
+        assert(offset <= source_count && count <= source_count - offset);
         using Result = std::remove_cvref_t<decltype(self)>;
-        return Result{
-            self.locations_xs_ == nullptr ? nullptr : self.locations_xs_ + offset,
-            self.locations_ys_ == nullptr ? nullptr : self.locations_ys_ + offset,
-            self.locations_zs_ == nullptr ? nullptr : self.locations_zs_ + offset,
-            self.emission_directions_xs_ == nullptr ? nullptr
-                                                    : self.emission_directions_xs_ + offset,
-            self.emission_directions_ys_ == nullptr ? nullptr
-                                                    : self.emission_directions_ys_ + offset,
-            self.emission_directions_zs_ == nullptr ? nullptr
-                                                    : self.emission_directions_zs_ + offset,
-            self.sources_ == nullptr ? nullptr : self.sources_ + offset,
-            count};
+        return Result{(pointers ? pointers + offset : nullptr)..., count};
     }
     auto view_locations() const -> std::
         conditional_t<Const, ::ioj::vectors3f::ResolvedConstView, ::ioj::vectors3f::ResolvedView> {
@@ -135,16 +137,6 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         return {emission_directions_xs_, emission_directions_ys_, emission_directions_zs_, count_};
     }
     auto sources() const { return std::span{sources_, count_}; }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        func(std::span{locations_xs_, count_});
-        func(std::span{locations_ys_, count_});
-        func(std::span{locations_zs_, count_});
-        func(std::span{emission_directions_xs_, count_});
-        func(std::span{emission_directions_ys_, count_});
-        func(std::span{emission_directions_zs_, count_});
-        func(std::span{sources_, count_});
-    }
   private:
     template <bool>
     friend struct ResolvedViewImpl;
@@ -203,6 +195,9 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using Layout = ::ioj::sim::laser_hit_details::Layout;
     using view_type = ::ioj::sim::laser_hit_details::View;
     using const_view_type = ::ioj::sim::laser_hit_details::ConstView;
+    using resolved_view_type = std::conditional_t<Const,
+                                                  ::ioj::sim::laser_hit_details::ResolvedConstView,
+                                                  ::ioj::sim::laser_hit_details::ResolvedView>;
     template <bool Enabled = Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
@@ -228,30 +223,6 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
                     Layout::emission_directions_ys_column);
     }
     auto sources() const { return this->template column<LaserSource>(Layout::sources_column); }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        auto const& locations_view{view_locations()};
-        func(locations_view.xs());
-        func(locations_view.ys());
-        func(locations_view.zs());
-        auto const& emission_directions_view{view_emission_directions()};
-        func(emission_directions_view.xs());
-        func(emission_directions_view.ys());
-        func(emission_directions_view.zs());
-        func(sources());
-    }
-    auto resolve() const -> std::conditional_t<Const,
-                                               ::ioj::sim::laser_hit_details::ResolvedConstView,
-                                               ::ioj::sim::laser_hit_details::ResolvedView> {
-        return {this->template column<float>(Layout::locations_xs_column).data(),
-                this->template column<float>(Layout::locations_ys_column).data(),
-                this->template column<float>(Layout::locations_zs_column).data(),
-                this->template column<float>(Layout::emission_directions_xs_column).data(),
-                this->template column<float>(Layout::emission_directions_ys_column).data(),
-                this->template column<float>(Layout::emission_directions_zs_column).data(),
-                this->template column<LaserSource>(Layout::sources_column).data(),
-                this->num()};
-    }
 };
 struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;
@@ -354,18 +325,6 @@ struct LaserHitDetails
         Element<float>* emission_directions_ys{};
         Element<float>* emission_directions_zs{};
         Element<LaserSource>* sources{};
-        auto operator+(size_type const offset) const noexcept -> DataPointers {
-            if (locations_xs == nullptr) {
-                return {};
-            }
-            return {locations_xs + offset,
-                    locations_ys + offset,
-                    locations_zs + offset,
-                    emission_directions_xs + offset,
-                    emission_directions_ys + offset,
-                    emission_directions_zs + offset,
-                    sources + offset};
-        }
     };
   private:
     friend Operations;
@@ -382,17 +341,6 @@ struct LaserHitDetails
     /* **************************************** */
     // Typed mutations and growth
     /* **************************************** */
-    void default_construct_columns(size_type const first, size_type const count) {
-        using ioj::native_soa::default_construct_n;
-        auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
-        default_construct_n(columns.locations_xs, count);
-        default_construct_n(columns.locations_ys, count);
-        default_construct_n(columns.locations_zs, count);
-        default_construct_n(columns.emission_directions_xs, count);
-        default_construct_n(columns.emission_directions_ys, count);
-        default_construct_n(columns.emission_directions_zs, count);
-        default_construct_n(columns.sources, count);
-    }
     template <bool Overlapping, typename Byte>
     static void transfer_columns(DataPointers<std::byte> const& destination,
                                  DataPointers<Byte> const& source,
@@ -407,21 +355,6 @@ struct LaserHitDetails
         transfer(destination.emission_directions_ys, source.emission_directions_ys);
         transfer(destination.emission_directions_zs, source.emission_directions_zs);
         transfer(destination.sources, source.sources);
-    }
-    template <typename Columns>
-    static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
-        requires ioj::soa_storage_detail::SoaSourceFor<Columns, LaserHitDetails, size_type>
-    {
-        using ioj::native_soa::source_data;
-        auto const& locations_view{source.view_locations()};
-        auto const& emission_directions_view{source.view_emission_directions()};
-        return {source_data(locations_view.xs()),
-                source_data(locations_view.ys()),
-                source_data(locations_view.zs()),
-                source_data(emission_directions_view.xs()),
-                source_data(emission_directions_view.ys()),
-                source_data(emission_directions_view.zs()),
-                source_data(source.sources())};
     }
   public:
     auto view_locations(this auto& self) { return self.get_view().view_locations(); }
