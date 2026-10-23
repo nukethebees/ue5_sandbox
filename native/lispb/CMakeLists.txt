@@ -180,7 +180,6 @@ target_sources(codegen-lib PRIVATE
   src/lowering/lowering_storage.cpp
   src/lowering/single_allocation_columns.cpp
   src/lowering/single_allocation_models.cpp
-  src/lowering/single_allocation_views.cpp
   src/lowering/packed_field_layouts.cpp
   src/ast/cpp_ir.cpp
   src/ast/cpp_renderer.cpp

@@ -6,9 +6,11 @@
 #include <codegen/ast/cpp_ir.h>
 #include <codegen/ast/cpp_types.h>
 #include <codegen/ast/node_list_builder.h>
+#include <codegen/schema/declaration_schema.h>
 #include <codegen/schema/declarations.h>
 #include <codegen/schema/soa_schemas.h>
 #include <lispb/indices.h>
+#include <lispb/strings.h>
 
 #include <map>
 #include <string>
@@ -17,15 +19,30 @@ namespace lispb::codegen::detail {
 
 auto lower_single_allocation(LoweringContext& context, DeclarationHandle schema) -> LoweredSoa {
     auto& ir{context.ir};
-    auto model{build_single_allocation_model(context, schema)};
+    auto const model{build_single_allocation_model(context, schema)};
+    auto const& soas{context.declarations.soas};
+    auto const row{soas.index(schema)};
+    auto const namespace_name{ir.strings.intern(soa_namespace_name(context.text(soas.name[row])))};
     NodeListBuilder result{ir};
     NodeListBuilder source{ir};
+    NodeListBuilder view_source{ir};
+    NodeListBuilder shared{ir};
     NodeListBuilder declarations{ir};
-    auto const views{emit_single_allocation_views(context, model, source, declarations)};
+    declarations.add(ir.forward_declaration(ir.strings.intern("Schema"))).new_lines(1);
+    auto const views{emit_single_allocation_views(context, model, view_source, declarations)};
 
-    result.append(declarations.build()).new_lines(2);
-    result.append(emit_single_allocation_layout(context, model)).new_lines(2);
-    result.append(views).new_lines(2);
+    shared.append(declarations.build()).new_lines(2);
+    shared.append(emit_single_allocation_layout(context, model)).new_lines(2);
+    shared.append(views);
+    result.add(ir.namespace_node(namespace_name, shared.build()));
+    auto const source_views{view_source.build()};
+    if (!source_views.empty()) {
+        source.add(ir.namespace_node(namespace_name, source_views)).new_lines(2);
+    }
+    if (soas.layout_only[row]) {
+        return {result.build(), source.build()};
+    }
+    result.new_lines(2);
     result.add(ir.block_comment("****************************************"))
         .new_lines(1)
         .add(ir.line_comment("Owner"))

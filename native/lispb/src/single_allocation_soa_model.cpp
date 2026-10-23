@@ -6,6 +6,7 @@
 
 #include <codegen/ast/cpp_ir.h>
 #include <codegen/ast/cpp_types.h>
+#include <codegen/schema/declaration_schema.h>
 #include <codegen/schema/declarations.h>
 #include <codegen/schema/function_schemas.h>
 #include <codegen/schema/soa_member_kind.h>
@@ -29,6 +30,45 @@
 #include <vector>
 
 namespace lispb::codegen::detail {
+auto schema_namespace(LoweringContext& context, DeclarationHandle schema) -> std::string {
+    auto const scoped{context.for_declaration(schema)};
+    auto const& declarations{context.declarations};
+    auto const& settings{declarations.module_settings_store};
+    auto const namespace_name{
+        settings.namespace_name[settings.index(declarations.module_settings(scoped.module))]};
+    return (namespace_name ? "::" + context.text(*namespace_name) + "::" : "::") +
+           soa_namespace_name(
+               context.text(declarations.soas.name[declarations.soas.index(schema)]));
+}
+
+auto is_strided_schema(LoweringContext& context, DeclarationHandle schema) -> bool {
+    auto const& declarations{context.declarations};
+    auto const& soas{declarations.soas};
+    auto const& members{declarations.soa_members};
+    std::optional<CppTypeId> element_type;
+    std::size_t count{};
+    auto homogeneous = [&](auto&& self, DeclarationHandle current) -> bool {
+        auto const scoped{context.for_declaration(current)};
+        for (auto const member : declarations.items(soas.members[soas.index(current)])) {
+            auto const row{members.index(member)};
+            if (members.kind[row] == SoaMemberKind::nested) {
+                if (!self(self, scoped.nested_declaration(member))) {
+                    return false;
+                }
+            } else {
+                auto const type{scoped.resolve(members.type[row])};
+                if (element_type && *element_type != type) {
+                    return false;
+                }
+                element_type = type;
+                ++count;
+            }
+        }
+        return true;
+    };
+    return homogeneous(homogeneous, schema) && count >= 2;
+}
+
 auto build_single_allocation_model(LoweringContext& context, DeclarationHandle schema)
     -> SingleAllocationModelId {
     auto& ir{context.ir};
@@ -43,12 +83,10 @@ auto build_single_allocation_model(LoweringContext& context, DeclarationHandle s
     auto const source_row{sources.index(schema)};
     models.schema[row] = schema;
     models.owner_name[row] = sources.name[source_row];
-    auto const name{context.text(sources.name[source_row])};
-    models.layout_name[row] = ir.strings.intern(name + "Layout");
-    models.view_name[row] =
-        sources.view_name[source_row].value_or(ir.strings.intern(name + "View"));
-    models.const_view_name[row] =
-        sources.const_view_name[source_row].value_or(ir.strings.intern(name + "ConstView"));
+    auto const namespace_name{schema_namespace(context, schema)};
+    models.layout_name[row] = ir.strings.intern(namespace_name + "::Layout");
+    models.view_name[row] = ir.strings.intern(namespace_name + "::View");
+    models.const_view_name[row] = ir.strings.intern(namespace_name + "::ConstView");
     std::vector<TypeDependencyId> dependencies{
         ir.types.dependency("assert", "cassert"),
         ir.types.dependency("memory_resource", "memory_resource"),

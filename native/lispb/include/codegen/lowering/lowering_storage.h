@@ -3,7 +3,6 @@
 #include <codegen/lowering/packed_field_layouts.h>
 #include <codegen/lowering/single_allocation_columns.h>
 #include <codegen/lowering/single_allocation_models.h>
-#include <codegen/lowering/single_allocation_views.h>
 
 #include <map>
 #include <span>
@@ -14,9 +13,6 @@ class LoweringStorage {
   public:
     PackedFieldLayouts packed_field_layouts;
     SingleAllocationModels single_allocation_models;
-    SingleAllocationViews single_allocation_views;
-    std::map<std::pair<SingleAllocationModelId, LoweringPathId>, SingleAllocationViewId>
-        view_lookup;
     std::map<std::pair<SingleAllocationModelId, LoweringPathId>, SingleAllocationColumnId>
         column_lookup;
     std::map<std::pair<SingleAllocationModelId, DeclarationHandle>, StringId>

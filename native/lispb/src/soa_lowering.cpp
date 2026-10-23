@@ -4,6 +4,7 @@
 #include "lowering_context.h"
 #include "lowering_utils.h"
 #include "single_allocation_soa_emission.h"
+#include "single_allocation_soa_model.h"
 #include "soa_internal.h"
 #include <ioj/format_writer.h>
 
@@ -12,11 +13,13 @@
 #include <codegen/ast/indices.h>
 #include <codegen/ast/node_list_builder.h>
 #include <codegen/ast/nodes.h>
+#include <codegen/schema/declaration_schema.h>
 #include <codegen/schema/declarations.h>
 #include <codegen/schema/indices.h>
 #include <codegen/schema/soa_mask_dimension_schemas.h>
 #include <codegen/schema/soa_member_schemas.h>
 #include <codegen/schema/soa_schemas.h>
+#include <lispb/schema/type_graph.h>
 #include <lispb/strings.h>
 
 #include <cstddef>
@@ -180,15 +183,19 @@ auto lower_soa_declaration(LoweringContext& context, DeclarationHandle schema)
     auto const& soas{context.declarations.soas};
     auto const row{soas.index(schema)};
     NodeListBuilder header{ir};
-    header.add(ir.forward_declaration(ir.strings.intern(context.text(soas.name[row]) + "Schema")))
-        .new_lines(1);
     auto const masks{field_mask_nodes(context, schema)};
     if (!masks.empty()) {
         header.new_lines(2).append(masks).new_lines(2);
     }
-    if (soas.layout_only[row]) {
-        header.new_lines(2).add(emit_single_allocation_column_group(context, schema));
-        return {.header = header.build(), .format_generated = true};
+    if (soas.layout_only[row] && soas.const_view_functions[row].empty() &&
+        soas.mutable_view_functions[row].empty() && !soas.equivalent_type[row]) {
+        auto const type{context.semantic.find_declared(context.module, soas.name[row])};
+        if (context.semantic.users_of(*type).empty()) {
+            header.add(ir.namespace_node(
+                ir.strings.intern(soa_namespace_name(context.text(soas.name[row]))),
+                {emit_single_allocation_column_group(context, schema)}));
+            return {.header = header.build(), .format_generated = true};
+        }
     }
     auto lowered{lower_single_allocation(context, schema)};
     header.append(lowered.header);

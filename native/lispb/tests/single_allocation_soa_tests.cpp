@@ -33,8 +33,9 @@ TEST(SingleAllocationSoa, OrdinarySchemasGenerateNativeOwnersAndViews) {
             (member foreign_types array other::Token)
             (member shadowed_types array example::ColLayout))))"))};
     auto const& output{files.front().content};
-    EXPECT_NE(output.find("struct RowsView"), std::string::npos);
-    EXPECT_NE(output.find("struct RowsConstView"), std::string::npos);
+    EXPECT_NE(output.find("namespace rows"), std::string::npos);
+    EXPECT_NE(output.find("struct View"), std::string::npos);
+    EXPECT_NE(output.find("struct ConstView"), std::string::npos);
     EXPECT_NE(output.find("ColLayout<std::int32_t> IdsColumn"), std::string::npos);
     EXPECT_NE(output.find("auto ids() const"), std::string::npos);
     EXPECT_NE(output.find("Nested{IdsColumn}"), std::string::npos);
@@ -165,10 +166,12 @@ TEST(SingleAllocationSoa, RejectsInvalidPartialAppendDeclarations) {
 
 TEST(SingleAllocationSoa, RejectsGeneratedNameCollisions) {
     EXPECT_THROW(render(changed("small array", "validate array")), std::invalid_argument);
-    EXPECT_THROW(render(schemas() + "(struct RowsView (member value array float))"),
+    EXPECT_THROW(render(schemas() + "(struct rows (member value array float))"),
                  std::invalid_argument);
-    EXPECT_THROW(render(schemas() + "(struct RowsLayout (member value array float))"),
+    EXPECT_THROW(render("(struct FooBar (member value array float))"
+                        "(struct Foo_Bar (member value array float))"),
                  std::invalid_argument);
+    EXPECT_NO_THROW(render(schemas() + "(struct RowsView (member value array float))"));
 }
 
 TEST(SingleAllocationSoa, RejectsInvalidFlatteningAndOwnerNames) {
@@ -208,16 +211,18 @@ TEST(SingleAllocationSoa, FlattensMultipleLevelsAndRepeatedNestedSchemas) {
           (member second nested Rows)))")};
     EXPECT_NE(output.find("Second{First.last_column()}"), std::string::npos);
     EXPECT_NE(output.find("Layout::columns.Second.Nested.WideColumn"), std::string::npos);
-    EXPECT_NE(output.find("GrandparentView_first"), std::string::npos);
-    EXPECT_NE(output.find("GrandparentView_second_nested"), std::string::npos);
+    EXPECT_EQ(output.find("GrandparentView_first"), std::string::npos);
+    EXPECT_EQ(output.find("GrandparentView_second_nested"), std::string::npos);
+    EXPECT_NE(output.find("rows::ResolvedView"), std::string::npos);
+    EXPECT_NE(output.find("child::ResolvedView"), std::string::npos);
     EXPECT_NE(output.find("second_nested_view.wide()"), std::string::npos);
 }
 
-TEST(SingleAllocationSoa, PreservesCommonApiAndCustomViewNames) {
+TEST(SingleAllocationSoa, PreservesCommonApiInSchemaNamespace) {
     CompilerTestContext context;
     auto const files{render_test_manifest(context, parse_test_manifest(context, R"(
         (module api :header "Api.h" :source "Api.cpp"
-          (struct LogicalRows :view-name NamedView :const-view-name NamedConstView
+          (struct LogicalRows
             :export-specifier ROWS_API :using-declarations ("Value = float")
             (member values array float)
             (function first float :const true :body #cpp{return $column(values)[0];}cpp#)
@@ -228,8 +233,9 @@ TEST(SingleAllocationSoa, PreservesCommonApiAndCustomViewNames) {
     auto const& header{files.front().content};
     auto const& implementation{files.back().content};
     EXPECT_NE(header.find("struct ROWS_API LogicalRows"), std::string::npos);
-    EXPECT_NE(header.find("struct ROWS_API NamedView"), std::string::npos);
-    EXPECT_NE(header.find("struct ROWS_API NamedConstView"), std::string::npos);
+    EXPECT_NE(header.find("namespace logical_rows"), std::string::npos);
+    EXPECT_NE(header.find("struct ROWS_API View"), std::string::npos);
+    EXPECT_NE(header.find("struct ROWS_API ConstView"), std::string::npos);
     EXPECT_NE(header.find("using Value = float;"), std::string::npos);
     EXPECT_NE(header.find("read_first() const"), std::string::npos);
     EXPECT_NE(header.find("clear_first()"), std::string::npos);
