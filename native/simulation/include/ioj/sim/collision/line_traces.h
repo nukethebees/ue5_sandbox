@@ -123,12 +123,12 @@ struct LineTracesResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     }
     template <typename Func>
     void each_column(Func&& func) const {
-        func(std::span<Element<float>>{starts_xs_, count_});
-        func(std::span<Element<float>>{starts_ys_, count_});
-        func(std::span<Element<float>>{starts_zs_, count_});
-        func(std::span<Element<float>>{ends_xs_, count_});
-        func(std::span<Element<float>>{ends_ys_, count_});
-        func(std::span<Element<float>>{ends_zs_, count_});
+        func(std::span{starts_xs_, count_});
+        func(std::span{starts_ys_, count_});
+        func(std::span{starts_zs_, count_});
+        func(std::span{ends_xs_, count_});
+        func(std::span{ends_ys_, count_});
+        func(std::span{ends_zs_, count_});
     }
   private:
     template <bool>

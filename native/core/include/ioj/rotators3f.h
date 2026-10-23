@@ -90,14 +90,14 @@ struct Rotators3fResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
                       self.rolls_ == nullptr ? nullptr : self.rolls_ + offset,
                       count};
     }
-    auto pitches() const -> std::span<Element<float>> { return {pitches_, count_}; }
-    auto yaws() const -> std::span<Element<float>> { return {yaws_, count_}; }
-    auto rolls() const -> std::span<Element<float>> { return {rolls_, count_}; }
+    auto pitches() const { return std::span{pitches_, count_}; }
+    auto yaws() const { return std::span{yaws_, count_}; }
+    auto rolls() const { return std::span{rolls_, count_}; }
     template <typename Func>
     void each_column(Func&& func) const {
-        func(std::span<Element<float>>{pitches_, count_});
-        func(std::span<Element<float>>{yaws_, count_});
-        func(std::span<Element<float>>{rolls_, count_});
+        func(std::span{pitches_, count_});
+        func(std::span{yaws_, count_});
+        func(std::span{rolls_, count_});
     }
   private:
     template <bool>

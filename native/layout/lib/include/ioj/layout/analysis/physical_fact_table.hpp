@@ -136,26 +136,20 @@ struct PhysicalFactTableResolvedViewImpl : ioj::soa_storage_detail::ViewOperatio
                       self.origin_ == nullptr ? nullptr : self.origin_ + offset,
                       count};
     }
-    auto size_bytes() const -> std::span<Element<std::uint64_t>> { return {size_bytes_, count_}; }
-    auto alignment_bytes() const -> std::span<Element<std::uint64_t>> {
-        return {alignment_bytes_, count_};
-    }
-    auto signedness() const -> std::span<Element<lispb::schema::EnumSignedness>> {
-        return {signedness_, count_};
-    }
-    auto unsigned_value_bits() const -> std::span<Element<std::optional<std::uint32_t>>> {
-        return {unsigned_value_bits_, count_};
-    }
-    auto provenance() const -> std::span<Element<lispb::StringId>> { return {provenance_, count_}; }
-    auto origin() const -> std::span<Element<ioj::layout::FactOrigin>> { return {origin_, count_}; }
+    auto size_bytes() const { return std::span{size_bytes_, count_}; }
+    auto alignment_bytes() const { return std::span{alignment_bytes_, count_}; }
+    auto signedness() const { return std::span{signedness_, count_}; }
+    auto unsigned_value_bits() const { return std::span{unsigned_value_bits_, count_}; }
+    auto provenance() const { return std::span{provenance_, count_}; }
+    auto origin() const { return std::span{origin_, count_}; }
     template <typename Func>
     void each_column(Func&& func) const {
-        func(std::span<Element<std::uint64_t>>{size_bytes_, count_});
-        func(std::span<Element<std::uint64_t>>{alignment_bytes_, count_});
-        func(std::span<Element<lispb::schema::EnumSignedness>>{signedness_, count_});
-        func(std::span<Element<std::optional<std::uint32_t>>>{unsigned_value_bits_, count_});
-        func(std::span<Element<lispb::StringId>>{provenance_, count_});
-        func(std::span<Element<ioj::layout::FactOrigin>>{origin_, count_});
+        func(std::span{size_bytes_, count_});
+        func(std::span{alignment_bytes_, count_});
+        func(std::span{signedness_, count_});
+        func(std::span{unsigned_value_bits_, count_});
+        func(std::span{provenance_, count_});
+        func(std::span{origin_, count_});
     }
   private:
     template <bool>

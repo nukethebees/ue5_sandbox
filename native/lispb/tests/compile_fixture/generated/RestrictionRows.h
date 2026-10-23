@@ -74,10 +74,10 @@ struct SingleRestrictionRowsResolvedViewImpl : ioj::soa_storage_detail::ViewOper
         using Result = std::remove_cvref_t<decltype(self)>;
         return Result{self.restricted_ == nullptr ? nullptr : self.restricted_ + offset, count};
     }
-    auto restricted() const -> std::span<Element<RestrictedLeaf>> { return {restricted_, count_}; }
+    auto restricted() const { return std::span{restricted_, count_}; }
     template <typename Func>
     void each_column(Func&& func) const {
-        func(std::span<Element<RestrictedLeaf>>{restricted_, count_});
+        func(std::span{restricted_, count_});
     }
   private:
     template <bool>

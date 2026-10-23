@@ -94,14 +94,14 @@ struct LevelSpawnGroupsResolvedViewImpl : ioj::soa_storage_detail::ViewOperation
                       self.counts_ == nullptr ? nullptr : self.counts_ + offset,
                       count};
     }
-    auto types() const -> std::span<Element<ioj::sim::EntityType>> { return {types_, count_}; }
-    auto offsets() const -> std::span<Element<std::int32_t>> { return {offsets_, count_}; }
-    auto counts() const -> std::span<Element<LevelEventCount>> { return {counts_, count_}; }
+    auto types() const { return std::span{types_, count_}; }
+    auto offsets() const { return std::span{offsets_, count_}; }
+    auto counts() const { return std::span{counts_, count_}; }
     template <typename Func>
     void each_column(Func&& func) const {
-        func(std::span<Element<ioj::sim::EntityType>>{types_, count_});
-        func(std::span<Element<std::int32_t>>{offsets_, count_});
-        func(std::span<Element<LevelEventCount>>{counts_, count_});
+        func(std::span{types_, count_});
+        func(std::span{offsets_, count_});
+        func(std::span{counts_, count_});
     }
   private:
     template <bool>

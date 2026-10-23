@@ -148,16 +148,16 @@ struct LaserHitDetailsResolvedViewImpl : ioj::soa_storage_detail::ViewOperations
         conditional_t<Const, ::ioj::Vectors3fResolvedConstView, ::ioj::Vectors3fResolvedView> {
         return {emission_directions_xs_, emission_directions_ys_, emission_directions_zs_, count_};
     }
-    auto sources() const -> std::span<Element<ioj::sim::LaserSource>> { return {sources_, count_}; }
+    auto sources() const { return std::span{sources_, count_}; }
     template <typename Func>
     void each_column(Func&& func) const {
-        func(std::span<Element<float>>{locations_xs_, count_});
-        func(std::span<Element<float>>{locations_ys_, count_});
-        func(std::span<Element<float>>{locations_zs_, count_});
-        func(std::span<Element<float>>{emission_directions_xs_, count_});
-        func(std::span<Element<float>>{emission_directions_ys_, count_});
-        func(std::span<Element<float>>{emission_directions_zs_, count_});
-        func(std::span<Element<ioj::sim::LaserSource>>{sources_, count_});
+        func(std::span{locations_xs_, count_});
+        func(std::span{locations_ys_, count_});
+        func(std::span{locations_zs_, count_});
+        func(std::span{emission_directions_xs_, count_});
+        func(std::span{emission_directions_ys_, count_});
+        func(std::span{emission_directions_zs_, count_});
+        func(std::span{sources_, count_});
     }
   private:
     template <bool>

@@ -121,10 +121,10 @@ struct PointerAResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         using Result = std::remove_cvref_t<decltype(self)>;
         return Result{self.others_ == nullptr ? nullptr : self.others_ + offset, count};
     }
-    auto others() const -> std::span<Element<PointerB*>> { return {others_, count_}; }
+    auto others() const { return std::span{others_, count_}; }
     template <typename Func>
     void each_column(Func&& func) const {
-        func(std::span<Element<PointerB*>>{others_, count_});
+        func(std::span{others_, count_});
     }
   private:
     template <bool>
@@ -359,10 +359,10 @@ struct PointerBResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         using Result = std::remove_cvref_t<decltype(self)>;
         return Result{self.others_ == nullptr ? nullptr : self.others_ + offset, count};
     }
-    auto others() const -> std::span<Element<PointerA*>> { return {others_, count_}; }
+    auto others() const { return std::span{others_, count_}; }
     template <typename Func>
     void each_column(Func&& func) const {
-        func(std::span<Element<PointerA*>>{others_, count_});
+        func(std::span{others_, count_});
     }
   private:
     template <bool>
@@ -597,10 +597,10 @@ struct ReverseBResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         using Result = std::remove_cvref_t<decltype(self)>;
         return Result{self.others_ == nullptr ? nullptr : self.others_ + offset, count};
     }
-    auto others() const -> std::span<Element<ReverseA*>> { return {others_, count_}; }
+    auto others() const { return std::span{others_, count_}; }
     template <typename Func>
     void each_column(Func&& func) const {
-        func(std::span<Element<ReverseA*>>{others_, count_});
+        func(std::span{others_, count_});
     }
   private:
     template <bool>
@@ -835,10 +835,10 @@ struct ReverseAResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         using Result = std::remove_cvref_t<decltype(self)>;
         return Result{self.others_ == nullptr ? nullptr : self.others_ + offset, count};
     }
-    auto others() const -> std::span<Element<ReverseB*>> { return {others_, count_}; }
+    auto others() const { return std::span{others_, count_}; }
     template <typename Func>
     void each_column(Func&& func) const {
-        func(std::span<Element<ReverseB*>>{others_, count_});
+        func(std::span{others_, count_});
     }
   private:
     template <bool>
@@ -1077,10 +1077,10 @@ struct MixedRowsResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         using Result = std::remove_cvref_t<decltype(self)>;
         return Result{self.records_ == nullptr ? nullptr : self.records_ + offset, count};
     }
-    auto records() const -> std::span<Element<MixedRecord*>> { return {records_, count_}; }
+    auto records() const { return std::span{records_, count_}; }
     template <typename Func>
     void each_column(Func&& func) const {
-        func(std::span<Element<MixedRecord*>>{records_, count_});
+        func(std::span{records_, count_});
     }
   private:
     template <bool>
@@ -1332,12 +1332,12 @@ struct PairRowsResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
                       self.pointers_ == nullptr ? nullptr : self.pointers_ + offset,
                       count};
     }
-    auto pairs() const -> std::span<Element<Pair>> { return {pairs_, count_}; }
-    auto pointers() const -> std::span<Element<Node*>> { return {pointers_, count_}; }
+    auto pairs() const { return std::span{pairs_, count_}; }
+    auto pointers() const { return std::span{pointers_, count_}; }
     template <typename Func>
     void each_column(Func&& func) const {
-        func(std::span<Element<Pair>>{pairs_, count_});
-        func(std::span<Element<Node*>>{pointers_, count_});
+        func(std::span{pairs_, count_});
+        func(std::span{pointers_, count_});
     }
   private:
     template <bool>
@@ -1604,14 +1604,14 @@ struct VectorsResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
                       self.zs_ == nullptr ? nullptr : self.zs_ + offset,
                       count};
     }
-    auto xs() const -> std::span<Element<float>> { return {xs_, count_}; }
-    auto ys() const -> std::span<Element<float>> { return {ys_, count_}; }
-    auto zs() const -> std::span<Element<float>> { return {zs_, count_}; }
+    auto xs() const { return std::span{xs_, count_}; }
+    auto ys() const { return std::span{ys_, count_}; }
+    auto zs() const { return std::span{zs_, count_}; }
     template <typename Func>
     void each_column(Func&& func) const {
-        func(std::span<Element<float>>{xs_, count_});
-        func(std::span<Element<float>>{ys_, count_});
-        func(std::span<Element<float>>{zs_, count_});
+        func(std::span{xs_, count_});
+        func(std::span{ys_, count_});
+        func(std::span{zs_, count_});
     }
   private:
     template <bool>
@@ -1933,7 +1933,7 @@ struct SingleRowsResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
                       self.velocities_zs_ == nullptr ? nullptr : self.velocities_zs_ + offset,
                       count};
     }
-    auto values() const -> std::span<Element<std::int32_t>> { return {values_, count_}; }
+    auto values() const { return std::span{values_, count_}; }
     auto view_positions() const
         -> std::conditional_t<Const,
                               ::ioj::native_soa_fixture::VectorsResolvedConstView,
@@ -1948,13 +1948,13 @@ struct SingleRowsResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     }
     template <typename Func>
     void each_column(Func&& func) const {
-        func(std::span<Element<std::int32_t>>{values_, count_});
-        func(std::span<Element<float>>{positions_xs_, count_});
-        func(std::span<Element<float>>{positions_ys_, count_});
-        func(std::span<Element<float>>{positions_zs_, count_});
-        func(std::span<Element<float>>{velocities_xs_, count_});
-        func(std::span<Element<float>>{velocities_ys_, count_});
-        func(std::span<Element<float>>{velocities_zs_, count_});
+        func(std::span{values_, count_});
+        func(std::span{positions_xs_, count_});
+        func(std::span{positions_ys_, count_});
+        func(std::span{positions_zs_, count_});
+        func(std::span{velocities_xs_, count_});
+        func(std::span{velocities_ys_, count_});
+        func(std::span{velocities_zs_, count_});
     }
   private:
     template <bool>
@@ -2492,27 +2492,27 @@ struct SingleAlignmentRowsResolvedViewImpl : ioj::soa_storage_detail::ViewOperat
                       self.aligned256_ == nullptr ? nullptr : self.aligned256_ + offset,
                       count};
     }
-    auto bytes() const -> std::span<Element<std::uint8_t>> { return {bytes_, count_}; }
-    auto odd() const -> std::span<Element<OddBytes>> { return {odd_, count_}; }
-    auto aligned32() const -> std::span<Element<Aligned32>> { return {aligned32_, count_}; }
+    auto bytes() const { return std::span{bytes_, count_}; }
+    auto odd() const { return std::span{odd_, count_}; }
+    auto aligned32() const { return std::span{aligned32_, count_}; }
     auto view_nested() const
         -> std::conditional_t<Const,
                               ::ioj::native_soa_fixture::VectorsResolvedConstView,
                               ::ioj::native_soa_fixture::VectorsResolvedView> {
         return {nested_xs_, nested_ys_, nested_zs_, count_};
     }
-    auto aligned64() const -> std::span<Element<Aligned64>> { return {aligned64_, count_}; }
-    auto aligned256() const -> std::span<Element<Aligned256>> { return {aligned256_, count_}; }
+    auto aligned64() const { return std::span{aligned64_, count_}; }
+    auto aligned256() const { return std::span{aligned256_, count_}; }
     template <typename Func>
     void each_column(Func&& func) const {
-        func(std::span<Element<std::uint8_t>>{bytes_, count_});
-        func(std::span<Element<OddBytes>>{odd_, count_});
-        func(std::span<Element<Aligned32>>{aligned32_, count_});
-        func(std::span<Element<float>>{nested_xs_, count_});
-        func(std::span<Element<float>>{nested_ys_, count_});
-        func(std::span<Element<float>>{nested_zs_, count_});
-        func(std::span<Element<Aligned64>>{aligned64_, count_});
-        func(std::span<Element<Aligned256>>{aligned256_, count_});
+        func(std::span{bytes_, count_});
+        func(std::span{odd_, count_});
+        func(std::span{aligned32_, count_});
+        func(std::span{nested_xs_, count_});
+        func(std::span{nested_ys_, count_});
+        func(std::span{nested_zs_, count_});
+        func(std::span{aligned64_, count_});
+        func(std::span{aligned256_, count_});
     }
   private:
     template <bool>
@@ -3040,12 +3040,12 @@ struct ApiResolvedView_positionsImpl : ioj::soa_storage_detail::ViewOperations {
                       self.positions_ys_ == nullptr ? nullptr : self.positions_ys_ + offset,
                       count};
     }
-    auto xs() const -> std::span<Element<float>> { return {positions_xs_, count_}; }
-    auto ys() const -> std::span<Element<float>> { return {positions_ys_, count_}; }
+    auto xs() const { return std::span{positions_xs_, count_}; }
+    auto ys() const { return std::span{positions_ys_, count_}; }
     template <typename Func>
     void each_column(Func&& func) const {
-        func(std::span<Element<float>>{positions_xs_, count_});
-        func(std::span<Element<float>>{positions_ys_, count_});
+        func(std::span{positions_xs_, count_});
+        func(std::span{positions_ys_, count_});
     }
   private:
     template <bool>
@@ -3144,18 +3144,18 @@ struct ApiResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
                       self.positions_ys_ == nullptr ? nullptr : self.positions_ys_ + offset,
                       count};
     }
-    auto values() const -> std::span<Element<float>> { return {values_, count_}; }
-    auto masks() const -> std::span<Element<ApiMask>> { return {masks_, count_}; }
+    auto values() const { return std::span{values_, count_}; }
+    auto masks() const { return std::span{masks_, count_}; }
     auto view_positions() const
         -> std::conditional_t<Const, ApiResolvedConstView_positions, ApiResolvedView_positions> {
         return {positions_xs_, positions_ys_, count_};
     }
     template <typename Func>
     void each_column(Func&& func) const {
-        func(std::span<Element<float>>{values_, count_});
-        func(std::span<Element<ApiMask>>{masks_, count_});
-        func(std::span<Element<float>>{positions_xs_, count_});
-        func(std::span<Element<float>>{positions_ys_, count_});
+        func(std::span{values_, count_});
+        func(std::span{masks_, count_});
+        func(std::span{positions_xs_, count_});
+        func(std::span{positions_ys_, count_});
     }
   private:
     template <bool>
@@ -3588,12 +3588,12 @@ struct EquivalentOwnerResolvedViewImpl : ioj::soa_storage_detail::ViewOperations
                       self.ys_ == nullptr ? nullptr : self.ys_ + offset,
                       count};
     }
-    auto xs() const -> std::span<Element<float>> { return {xs_, count_}; }
-    auto ys() const -> std::span<Element<float>> { return {ys_, count_}; }
+    auto xs() const { return std::span{xs_, count_}; }
+    auto ys() const { return std::span{ys_, count_}; }
     template <typename Func>
     void each_column(Func&& func) const {
-        func(std::span<Element<float>>{xs_, count_});
-        func(std::span<Element<float>>{ys_, count_});
+        func(std::span{xs_, count_});
+        func(std::span{ys_, count_});
     }
   private:
     template <bool>
@@ -3896,14 +3896,14 @@ struct AccessorOwnerResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
                       self.depth_ == nullptr ? nullptr : self.depth_ + offset,
                       count};
     }
-    auto horizontal() const -> std::span<Element<float>> { return {horizontal_, count_}; }
-    auto vertical() const -> std::span<Element<float>> { return {vertical_, count_}; }
-    auto depth() const -> std::span<Element<float>> { return {depth_, count_}; }
+    auto horizontal() const { return std::span{horizontal_, count_}; }
+    auto vertical() const { return std::span{vertical_, count_}; }
+    auto depth() const { return std::span{depth_, count_}; }
     template <typename Func>
     void each_column(Func&& func) const {
-        func(std::span<Element<float>>{horizontal_, count_});
-        func(std::span<Element<float>>{vertical_, count_});
-        func(std::span<Element<float>>{depth_, count_});
+        func(std::span{horizontal_, count_});
+        func(std::span{vertical_, count_});
+        func(std::span{depth_, count_});
     }
   private:
     template <bool>

@@ -147,34 +147,22 @@ struct DistributionEntryTableResolvedViewImpl : ioj::soa_storage_detail::ViewOpe
             self.weighted_slack_bytes_ == nullptr ? nullptr : self.weighted_slack_bytes_ + offset,
             count};
     }
-    auto component() const -> std::span<Element<std::optional<std::size_t>>> {
-        return {component_, count_};
-    }
-    auto value() const -> std::span<Element<std::optional<lispb::codegen::PackedIntegerValue>>> {
-        return {value_, count_};
-    }
-    auto weight() const -> std::span<Element<std::uint64_t>> { return {weight_, count_}; }
-    auto extent_bytes() const -> std::span<Element<std::optional<std::uint64_t>>> {
-        return {extent_bytes_, count_};
-    }
-    auto slack_bytes() const -> std::span<Element<std::optional<std::uint64_t>>> {
-        return {slack_bytes_, count_};
-    }
-    auto weighted_extent_bytes() const -> std::span<Element<std::optional<std::uint64_t>>> {
-        return {weighted_extent_bytes_, count_};
-    }
-    auto weighted_slack_bytes() const -> std::span<Element<std::optional<std::uint64_t>>> {
-        return {weighted_slack_bytes_, count_};
-    }
+    auto component() const { return std::span{component_, count_}; }
+    auto value() const { return std::span{value_, count_}; }
+    auto weight() const { return std::span{weight_, count_}; }
+    auto extent_bytes() const { return std::span{extent_bytes_, count_}; }
+    auto slack_bytes() const { return std::span{slack_bytes_, count_}; }
+    auto weighted_extent_bytes() const { return std::span{weighted_extent_bytes_, count_}; }
+    auto weighted_slack_bytes() const { return std::span{weighted_slack_bytes_, count_}; }
     template <typename Func>
     void each_column(Func&& func) const {
-        func(std::span<Element<std::optional<std::size_t>>>{component_, count_});
-        func(std::span<Element<std::optional<lispb::codegen::PackedIntegerValue>>>{value_, count_});
-        func(std::span<Element<std::uint64_t>>{weight_, count_});
-        func(std::span<Element<std::optional<std::uint64_t>>>{extent_bytes_, count_});
-        func(std::span<Element<std::optional<std::uint64_t>>>{slack_bytes_, count_});
-        func(std::span<Element<std::optional<std::uint64_t>>>{weighted_extent_bytes_, count_});
-        func(std::span<Element<std::optional<std::uint64_t>>>{weighted_slack_bytes_, count_});
+        func(std::span{component_, count_});
+        func(std::span{value_, count_});
+        func(std::span{weight_, count_});
+        func(std::span{extent_bytes_, count_});
+        func(std::span{slack_bytes_, count_});
+        func(std::span{weighted_extent_bytes_, count_});
+        func(std::span{weighted_slack_bytes_, count_});
     }
   private:
     template <bool>

@@ -222,29 +222,27 @@ struct LaserSpawnRequestsResolvedViewImpl : ioj::soa_storage_detail::ViewOperati
         conditional_t<Const, ::ioj::Vectors3fResolvedConstView, ::ioj::Vectors3fResolvedView> {
         return {base_velocities_xs_, base_velocities_ys_, base_velocities_zs_, count_};
     }
-    auto damages() const -> std::span<Element<std::int32_t>> { return {damages_, count_}; }
-    auto speeds() const -> std::span<Element<float>> { return {speeds_, count_}; }
-    auto max_distances() const -> std::span<Element<float>> { return {max_distances_, count_}; }
-    auto instigator_ids() const -> std::span<Element<EntityId>> {
-        return {instigator_ids_, count_};
-    }
-    auto sources() const -> std::span<Element<ioj::sim::LaserSource>> { return {sources_, count_}; }
+    auto damages() const { return std::span{damages_, count_}; }
+    auto speeds() const { return std::span{speeds_, count_}; }
+    auto max_distances() const { return std::span{max_distances_, count_}; }
+    auto instigator_ids() const { return std::span{instigator_ids_, count_}; }
+    auto sources() const { return std::span{sources_, count_}; }
     template <typename Func>
     void each_column(Func&& func) const {
-        func(std::span<Element<float>>{locations_xs_, count_});
-        func(std::span<Element<float>>{locations_ys_, count_});
-        func(std::span<Element<float>>{locations_zs_, count_});
-        func(std::span<Element<float>>{rotations_pitches_, count_});
-        func(std::span<Element<float>>{rotations_yaws_, count_});
-        func(std::span<Element<float>>{rotations_rolls_, count_});
-        func(std::span<Element<float>>{base_velocities_xs_, count_});
-        func(std::span<Element<float>>{base_velocities_ys_, count_});
-        func(std::span<Element<float>>{base_velocities_zs_, count_});
-        func(std::span<Element<std::int32_t>>{damages_, count_});
-        func(std::span<Element<float>>{speeds_, count_});
-        func(std::span<Element<float>>{max_distances_, count_});
-        func(std::span<Element<EntityId>>{instigator_ids_, count_});
-        func(std::span<Element<ioj::sim::LaserSource>>{sources_, count_});
+        func(std::span{locations_xs_, count_});
+        func(std::span{locations_ys_, count_});
+        func(std::span{locations_zs_, count_});
+        func(std::span{rotations_pitches_, count_});
+        func(std::span{rotations_yaws_, count_});
+        func(std::span{rotations_rolls_, count_});
+        func(std::span{base_velocities_xs_, count_});
+        func(std::span{base_velocities_ys_, count_});
+        func(std::span{base_velocities_zs_, count_});
+        func(std::span{damages_, count_});
+        func(std::span{speeds_, count_});
+        func(std::span{max_distances_, count_});
+        func(std::span{instigator_ids_, count_});
+        func(std::span{sources_, count_});
     }
   private:
     template <bool>

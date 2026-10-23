@@ -306,10 +306,8 @@ struct TurretEntityDataResolvedViewImpl : ioj::soa_storage_detail::ViewOperation
             self.target_velocities_zs_ == nullptr ? nullptr : self.target_velocities_zs_ + offset,
             count};
     }
-    auto entity_ids() const -> std::span<Element<EntityId>> { return {entity_ids_, count_}; }
-    auto integral_biases() const -> std::span<Element<std::uint32_t>> {
-        return {integral_biases_, count_};
-    }
+    auto entity_ids() const { return std::span{entity_ids_, count_}; }
+    auto integral_biases() const { return std::span{integral_biases_, count_}; }
     auto view_locations() const -> std::
         conditional_t<Const, ::ioj::Vectors3fResolvedConstView, ::ioj::Vectors3fResolvedView> {
         return {locations_xs_, locations_ys_, locations_zs_, count_};
@@ -323,20 +321,16 @@ struct TurretEntityDataResolvedViewImpl : ioj::soa_storage_detail::ViewOperation
         conditional_t<Const, ::ioj::Rotators3fResolvedConstView, ::ioj::Rotators3fResolvedView> {
         return {rotations_pitches_, rotations_yaws_, rotations_rolls_, count_};
     }
-    auto teams() const -> std::span<Element<::ioj::Team>> { return {teams_, count_}; }
-    auto laser_cooldowns() const -> std::span<Element<std::int16_t>> {
-        return {laser_cooldowns_, count_};
+    auto teams() const { return std::span{teams_, count_}; }
+    auto laser_cooldowns() const { return std::span{laser_cooldowns_, count_}; }
+    auto laser_damages() const { return std::span{laser_damages_, count_}; }
+    auto target_refresh_countdowns_periods() const {
+        return std::span{target_refresh_countdowns_periods_, count_};
     }
-    auto laser_damages() const -> std::span<Element<std::int32_t>> {
-        return {laser_damages_, count_};
+    auto target_refresh_countdowns_remaining_ticks() const {
+        return std::span{target_refresh_countdowns_remaining_ticks_, count_};
     }
-    auto target_refresh_countdowns_periods() const -> std::span<Element<std::int16_t>> {
-        return {target_refresh_countdowns_periods_, count_};
-    }
-    auto target_refresh_countdowns_remaining_ticks() const -> std::span<Element<std::int16_t>> {
-        return {target_refresh_countdowns_remaining_ticks_, count_};
-    }
-    auto target_ids() const -> std::span<Element<EntityId>> { return {target_ids_, count_}; }
+    auto target_ids() const { return std::span{target_ids_, count_}; }
     auto view_target_locations() const -> std::
         conditional_t<Const, ::ioj::Vectors3fResolvedConstView, ::ioj::Vectors3fResolvedView> {
         return {target_locations_xs_, target_locations_ys_, target_locations_zs_, count_};
@@ -347,29 +341,29 @@ struct TurretEntityDataResolvedViewImpl : ioj::soa_storage_detail::ViewOperation
     }
     template <typename Func>
     void each_column(Func&& func) const {
-        func(std::span<Element<EntityId>>{entity_ids_, count_});
-        func(std::span<Element<std::uint32_t>>{integral_biases_, count_});
-        func(std::span<Element<float>>{locations_xs_, count_});
-        func(std::span<Element<float>>{locations_ys_, count_});
-        func(std::span<Element<float>>{locations_zs_, count_});
-        func(std::span<Element<float>>{fire_point_locations_xs_, count_});
-        func(std::span<Element<float>>{fire_point_locations_ys_, count_});
-        func(std::span<Element<float>>{fire_point_locations_zs_, count_});
-        func(std::span<Element<float>>{rotations_pitches_, count_});
-        func(std::span<Element<float>>{rotations_yaws_, count_});
-        func(std::span<Element<float>>{rotations_rolls_, count_});
-        func(std::span<Element<::ioj::Team>>{teams_, count_});
-        func(std::span<Element<std::int16_t>>{laser_cooldowns_, count_});
-        func(std::span<Element<std::int32_t>>{laser_damages_, count_});
-        func(std::span<Element<std::int16_t>>{target_refresh_countdowns_periods_, count_});
-        func(std::span<Element<std::int16_t>>{target_refresh_countdowns_remaining_ticks_, count_});
-        func(std::span<Element<EntityId>>{target_ids_, count_});
-        func(std::span<Element<float>>{target_locations_xs_, count_});
-        func(std::span<Element<float>>{target_locations_ys_, count_});
-        func(std::span<Element<float>>{target_locations_zs_, count_});
-        func(std::span<Element<float>>{target_velocities_xs_, count_});
-        func(std::span<Element<float>>{target_velocities_ys_, count_});
-        func(std::span<Element<float>>{target_velocities_zs_, count_});
+        func(std::span{entity_ids_, count_});
+        func(std::span{integral_biases_, count_});
+        func(std::span{locations_xs_, count_});
+        func(std::span{locations_ys_, count_});
+        func(std::span{locations_zs_, count_});
+        func(std::span{fire_point_locations_xs_, count_});
+        func(std::span{fire_point_locations_ys_, count_});
+        func(std::span{fire_point_locations_zs_, count_});
+        func(std::span{rotations_pitches_, count_});
+        func(std::span{rotations_yaws_, count_});
+        func(std::span{rotations_rolls_, count_});
+        func(std::span{teams_, count_});
+        func(std::span{laser_cooldowns_, count_});
+        func(std::span{laser_damages_, count_});
+        func(std::span{target_refresh_countdowns_periods_, count_});
+        func(std::span{target_refresh_countdowns_remaining_ticks_, count_});
+        func(std::span{target_ids_, count_});
+        func(std::span{target_locations_xs_, count_});
+        func(std::span{target_locations_ys_, count_});
+        func(std::span{target_locations_zs_, count_});
+        func(std::span{target_velocities_xs_, count_});
+        func(std::span{target_velocities_ys_, count_});
+        func(std::span{target_velocities_zs_, count_});
     }
   private:
     template <bool>

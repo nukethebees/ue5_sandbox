@@ -109,22 +109,16 @@ struct RelationshipTableResolvedViewImpl : ioj::soa_storage_detail::ViewOperatio
                       self.metrics_ == nullptr ? nullptr : self.metrics_ + offset,
                       count};
     }
-    auto owner() const -> std::span<Element<ioj::layout::AnalysisId>> { return {owner_, count_}; }
-    auto field() const -> std::span<Element<std::optional<std::size_t>>> {
-        return {field_, count_};
-    }
-    auto relationship() const -> std::span<Element<lispb::schema::RelationshipId>> {
-        return {relationship_, count_};
-    }
-    auto metrics() const -> std::span<Element<std::optional<ioj::layout::RelationshipMetrics>>> {
-        return {metrics_, count_};
-    }
+    auto owner() const { return std::span{owner_, count_}; }
+    auto field() const { return std::span{field_, count_}; }
+    auto relationship() const { return std::span{relationship_, count_}; }
+    auto metrics() const { return std::span{metrics_, count_}; }
     template <typename Func>
     void each_column(Func&& func) const {
-        func(std::span<Element<ioj::layout::AnalysisId>>{owner_, count_});
-        func(std::span<Element<std::optional<std::size_t>>>{field_, count_});
-        func(std::span<Element<lispb::schema::RelationshipId>>{relationship_, count_});
-        func(std::span<Element<std::optional<ioj::layout::RelationshipMetrics>>>{metrics_, count_});
+        func(std::span{owner_, count_});
+        func(std::span{field_, count_});
+        func(std::span{relationship_, count_});
+        func(std::span{metrics_, count_});
     }
   private:
     template <bool>

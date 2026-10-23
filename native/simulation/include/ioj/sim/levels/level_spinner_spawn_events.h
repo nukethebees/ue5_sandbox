@@ -134,25 +134,23 @@ struct LevelSpinnerSpawnEventsResolvedViewImpl : ioj::soa_storage_detail::ViewOp
                           : self.initial_fire_point_indices_ + offset,
                       count};
     }
-    auto entity_indices() const -> std::span<Element<ioj::sim::LevelEntityIndex>> {
-        return {entity_indices_, count_};
-    }
+    auto entity_indices() const { return std::span{entity_indices_, count_}; }
     auto view_locations() const -> std::
         conditional_t<Const, ::ioj::Vectors3fResolvedConstView, ::ioj::Vectors3fResolvedView> {
         return {locations_xs_, locations_ys_, locations_zs_, count_};
     }
-    auto yaws() const -> std::span<Element<float>> { return {yaws_, count_}; }
-    auto initial_fire_point_indices() const -> std::span<Element<std::int32_t>> {
-        return {initial_fire_point_indices_, count_};
+    auto yaws() const { return std::span{yaws_, count_}; }
+    auto initial_fire_point_indices() const {
+        return std::span{initial_fire_point_indices_, count_};
     }
     template <typename Func>
     void each_column(Func&& func) const {
-        func(std::span<Element<ioj::sim::LevelEntityIndex>>{entity_indices_, count_});
-        func(std::span<Element<float>>{locations_xs_, count_});
-        func(std::span<Element<float>>{locations_ys_, count_});
-        func(std::span<Element<float>>{locations_zs_, count_});
-        func(std::span<Element<float>>{yaws_, count_});
-        func(std::span<Element<std::int32_t>>{initial_fire_point_indices_, count_});
+        func(std::span{entity_indices_, count_});
+        func(std::span{locations_xs_, count_});
+        func(std::span{locations_ys_, count_});
+        func(std::span{locations_zs_, count_});
+        func(std::span{yaws_, count_});
+        func(std::span{initial_fire_point_indices_, count_});
     }
   private:
     template <bool>

@@ -232,64 +232,40 @@ struct SoaColumnTableResolvedViewImpl : ioj::soa_storage_detail::ViewOperations 
             self.cache_line_tiling_ == nullptr ? nullptr : self.cache_line_tiling_ + offset,
             count};
     }
-    auto parent() const -> std::span<Element<ioj::layout::AnalysisId>> { return {parent_, count_}; }
-    auto name() const -> std::span<Element<std::string_view>> { return {name_, count_}; }
-    auto semantic_type() const -> std::span<Element<lispb::schema::TypeId>> {
-        return {semantic_type_, count_};
+    auto parent() const { return std::span{parent_, count_}; }
+    auto name() const { return std::span{name_, count_}; }
+    auto semantic_type() const { return std::span{semantic_type_, count_}; }
+    auto schema_type() const { return std::span{schema_type_, count_}; }
+    auto physical_type() const { return std::span{physical_type_, count_}; }
+    auto overridden() const { return std::span{overridden_, count_}; }
+    auto type_facts() const { return std::span{type_facts_, count_}; }
+    auto total_bytes() const { return std::span{total_bytes_, count_}; }
+    auto allocation_offset_bytes() const { return std::span{allocation_offset_bytes_, count_}; }
+    auto padding_before_bytes() const { return std::span{padding_before_bytes_, count_}; }
+    auto minimum_cache_lines() const { return std::span{minimum_cache_lines_, count_}; }
+    auto elements_per_cache_line() const { return std::span{elements_per_cache_line_, count_}; }
+    auto minimum_pages() const { return std::span{minimum_pages_, count_}; }
+    auto complete_elements_per_page() const {
+        return std::span{complete_elements_per_page_, count_};
     }
-    auto schema_type() const -> std::span<Element<lispb::StringId>> {
-        return {schema_type_, count_};
-    }
-    auto physical_type() const -> std::span<Element<lispb::StringId>> {
-        return {physical_type_, count_};
-    }
-    auto overridden() const -> std::span<Element<std::uint8_t>> { return {overridden_, count_}; }
-    auto type_facts() const -> std::span<Element<std::optional<ioj::layout::PhysicalFactId>>> {
-        return {type_facts_, count_};
-    }
-    auto total_bytes() const -> std::span<Element<std::optional<std::uint64_t>>> {
-        return {total_bytes_, count_};
-    }
-    auto allocation_offset_bytes() const -> std::span<Element<std::optional<std::uint64_t>>> {
-        return {allocation_offset_bytes_, count_};
-    }
-    auto padding_before_bytes() const -> std::span<Element<std::optional<std::uint64_t>>> {
-        return {padding_before_bytes_, count_};
-    }
-    auto minimum_cache_lines() const -> std::span<Element<std::optional<std::uint64_t>>> {
-        return {minimum_cache_lines_, count_};
-    }
-    auto elements_per_cache_line() const -> std::span<Element<std::optional<std::uint64_t>>> {
-        return {elements_per_cache_line_, count_};
-    }
-    auto minimum_pages() const -> std::span<Element<std::optional<std::uint64_t>>> {
-        return {minimum_pages_, count_};
-    }
-    auto complete_elements_per_page() const -> std::span<Element<std::optional<std::uint64_t>>> {
-        return {complete_elements_per_page_, count_};
-    }
-    auto cache_line_tiling() const
-        -> std::span<Element<std::optional<ioj::layout::CacheLineTiling>>> {
-        return {cache_line_tiling_, count_};
-    }
+    auto cache_line_tiling() const { return std::span{cache_line_tiling_, count_}; }
     template <typename Func>
     void each_column(Func&& func) const {
-        func(std::span<Element<ioj::layout::AnalysisId>>{parent_, count_});
-        func(std::span<Element<std::string_view>>{name_, count_});
-        func(std::span<Element<lispb::schema::TypeId>>{semantic_type_, count_});
-        func(std::span<Element<lispb::StringId>>{schema_type_, count_});
-        func(std::span<Element<lispb::StringId>>{physical_type_, count_});
-        func(std::span<Element<std::uint8_t>>{overridden_, count_});
-        func(std::span<Element<std::optional<ioj::layout::PhysicalFactId>>>{type_facts_, count_});
-        func(std::span<Element<std::optional<std::uint64_t>>>{total_bytes_, count_});
-        func(std::span<Element<std::optional<std::uint64_t>>>{allocation_offset_bytes_, count_});
-        func(std::span<Element<std::optional<std::uint64_t>>>{padding_before_bytes_, count_});
-        func(std::span<Element<std::optional<std::uint64_t>>>{minimum_cache_lines_, count_});
-        func(std::span<Element<std::optional<std::uint64_t>>>{elements_per_cache_line_, count_});
-        func(std::span<Element<std::optional<std::uint64_t>>>{minimum_pages_, count_});
-        func(std::span<Element<std::optional<std::uint64_t>>>{complete_elements_per_page_, count_});
-        func(std::span<Element<std::optional<ioj::layout::CacheLineTiling>>>{cache_line_tiling_,
-                                                                             count_});
+        func(std::span{parent_, count_});
+        func(std::span{name_, count_});
+        func(std::span{semantic_type_, count_});
+        func(std::span{schema_type_, count_});
+        func(std::span{physical_type_, count_});
+        func(std::span{overridden_, count_});
+        func(std::span{type_facts_, count_});
+        func(std::span{total_bytes_, count_});
+        func(std::span{allocation_offset_bytes_, count_});
+        func(std::span{padding_before_bytes_, count_});
+        func(std::span{minimum_cache_lines_, count_});
+        func(std::span{elements_per_cache_line_, count_});
+        func(std::span{minimum_pages_, count_});
+        func(std::span{complete_elements_per_page_, count_});
+        func(std::span{cache_line_tiling_, count_});
     }
   private:
     template <bool>

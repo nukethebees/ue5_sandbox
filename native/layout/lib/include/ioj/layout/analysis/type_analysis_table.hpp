@@ -138,36 +138,22 @@ struct TypeAnalysisTableResolvedViewImpl : ioj::soa_storage_detail::ViewOperatio
                       self.soa_ == nullptr ? nullptr : self.soa_ + offset,
                       count};
     }
-    auto schema_type() const -> std::span<Element<lispb::schema::TypeId>> {
-        return {schema_type_, count_};
-    }
-    auto scenario() const -> std::span<Element<ioj::layout::ScenarioId>> {
-        return {scenario_, count_};
-    }
-    auto physical() const -> std::span<Element<std::optional<ioj::layout::PhysicalFactId>>> {
-        return {physical_, count_};
-    }
-    auto enum_backing() const -> std::span<Element<std::optional<ioj::layout::EnumBacking>>> {
-        return {enum_backing_, count_};
-    }
-    auto aggregate() const -> std::span<Element<std::optional<ioj::layout::AggregateLayout>>> {
-        return {aggregate_, count_};
-    }
-    auto packed() const -> std::span<Element<std::optional<ioj::layout::PackedLayout>>> {
-        return {packed_, count_};
-    }
-    auto soa() const -> std::span<Element<std::optional<ioj::layout::SoaLayout>>> {
-        return {soa_, count_};
-    }
+    auto schema_type() const { return std::span{schema_type_, count_}; }
+    auto scenario() const { return std::span{scenario_, count_}; }
+    auto physical() const { return std::span{physical_, count_}; }
+    auto enum_backing() const { return std::span{enum_backing_, count_}; }
+    auto aggregate() const { return std::span{aggregate_, count_}; }
+    auto packed() const { return std::span{packed_, count_}; }
+    auto soa() const { return std::span{soa_, count_}; }
     template <typename Func>
     void each_column(Func&& func) const {
-        func(std::span<Element<lispb::schema::TypeId>>{schema_type_, count_});
-        func(std::span<Element<ioj::layout::ScenarioId>>{scenario_, count_});
-        func(std::span<Element<std::optional<ioj::layout::PhysicalFactId>>>{physical_, count_});
-        func(std::span<Element<std::optional<ioj::layout::EnumBacking>>>{enum_backing_, count_});
-        func(std::span<Element<std::optional<ioj::layout::AggregateLayout>>>{aggregate_, count_});
-        func(std::span<Element<std::optional<ioj::layout::PackedLayout>>>{packed_, count_});
-        func(std::span<Element<std::optional<ioj::layout::SoaLayout>>>{soa_, count_});
+        func(std::span{schema_type_, count_});
+        func(std::span{scenario_, count_});
+        func(std::span{physical_, count_});
+        func(std::span{enum_backing_, count_});
+        func(std::span{aggregate_, count_});
+        func(std::span{packed_, count_});
+        func(std::span{soa_, count_});
     }
   private:
     template <bool>

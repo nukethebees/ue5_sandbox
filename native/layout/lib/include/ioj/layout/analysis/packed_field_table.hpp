@@ -327,96 +327,56 @@ struct PackedFieldTableResolvedViewImpl : ioj::soa_storage_detail::ViewOperation
             self.codes_ == nullptr ? nullptr : self.codes_ + offset,
             count};
     }
-    auto parent() const -> std::span<Element<ioj::layout::AnalysisId>> { return {parent_, count_}; }
-    auto segment() const -> std::span<Element<lispb::schema::PackedSegmentId>> {
-        return {segment_, count_};
-    }
-    auto name() const -> std::span<Element<std::string_view>> { return {name_, count_}; }
-    auto semantic_type() const -> std::span<Element<std::optional<lispb::schema::TypeId>>> {
-        return {semantic_type_, count_};
-    }
-    auto logical_type() const -> std::span<Element<lispb::StringId>> {
-        return {logical_type_, count_};
-    }
-    auto kind() const -> std::span<Element<lispb::codegen::PackedFieldKind>> {
-        return {kind_, count_};
-    }
-    auto reserved() const -> std::span<Element<std::uint8_t>> { return {reserved_, count_}; }
-    auto schema_bit_width() const -> std::span<Element<std::uint32_t>> {
-        return {schema_bit_width_, count_};
-    }
-    auto schema_bit_width_auto() const -> std::span<Element<std::uint8_t>> {
-        return {schema_bit_width_auto_, count_};
-    }
-    auto bit_width() const -> std::span<Element<std::uint32_t>> { return {bit_width_, count_}; }
-    auto overridden() const -> std::span<Element<std::uint8_t>> { return {overridden_, count_}; }
-    auto least_significant_bit() const -> std::span<Element<std::uint64_t>> {
-        return {least_significant_bit_, count_};
-    }
-    auto most_significant_bit() const -> std::span<Element<std::optional<std::uint64_t>>> {
-        return {most_significant_bit_, count_};
-    }
-    auto maximum_unsigned_value() const -> std::span<Element<std::optional<std::uint64_t>>> {
-        return {maximum_unsigned_value_, count_};
-    }
-    auto minimum_signed_value() const -> std::span<Element<std::optional<std::int64_t>>> {
-        return {minimum_signed_value_, count_};
-    }
-    auto maximum_signed_value() const -> std::span<Element<std::optional<std::int64_t>>> {
-        return {maximum_signed_value_, count_};
-    }
-    auto minimum_semantic_value() const
-        -> std::span<Element<std::optional<lispb::codegen::PackedIntegerValue>>> {
-        return {minimum_semantic_value_, count_};
-    }
-    auto maximum_semantic_value() const
-        -> std::span<Element<std::optional<lispb::codegen::PackedIntegerValue>>> {
-        return {maximum_semantic_value_, count_};
-    }
-    auto semantic_value_count() const -> std::span<Element<std::optional<std::uint64_t>>> {
-        return {semantic_value_count_, count_};
-    }
-    auto sentinel_code_count() const -> std::span<Element<std::uint64_t>> {
-        return {sentinel_code_count_, count_};
-    }
-    auto required_code_count() const -> std::span<Element<std::optional<std::uint64_t>>> {
-        return {required_code_count_, count_};
-    }
-    auto minimum_required_bits() const -> std::span<Element<std::optional<std::uint32_t>>> {
-        return {minimum_required_bits_, count_};
-    }
-    auto unused_codes() const -> std::span<Element<std::optional<std::uint64_t>>> {
-        return {unused_codes_, count_};
-    }
-    auto codes() const -> std::span<Element<ioj::layout::RowRange>> { return {codes_, count_}; }
+    auto parent() const { return std::span{parent_, count_}; }
+    auto segment() const { return std::span{segment_, count_}; }
+    auto name() const { return std::span{name_, count_}; }
+    auto semantic_type() const { return std::span{semantic_type_, count_}; }
+    auto logical_type() const { return std::span{logical_type_, count_}; }
+    auto kind() const { return std::span{kind_, count_}; }
+    auto reserved() const { return std::span{reserved_, count_}; }
+    auto schema_bit_width() const { return std::span{schema_bit_width_, count_}; }
+    auto schema_bit_width_auto() const { return std::span{schema_bit_width_auto_, count_}; }
+    auto bit_width() const { return std::span{bit_width_, count_}; }
+    auto overridden() const { return std::span{overridden_, count_}; }
+    auto least_significant_bit() const { return std::span{least_significant_bit_, count_}; }
+    auto most_significant_bit() const { return std::span{most_significant_bit_, count_}; }
+    auto maximum_unsigned_value() const { return std::span{maximum_unsigned_value_, count_}; }
+    auto minimum_signed_value() const { return std::span{minimum_signed_value_, count_}; }
+    auto maximum_signed_value() const { return std::span{maximum_signed_value_, count_}; }
+    auto minimum_semantic_value() const { return std::span{minimum_semantic_value_, count_}; }
+    auto maximum_semantic_value() const { return std::span{maximum_semantic_value_, count_}; }
+    auto semantic_value_count() const { return std::span{semantic_value_count_, count_}; }
+    auto sentinel_code_count() const { return std::span{sentinel_code_count_, count_}; }
+    auto required_code_count() const { return std::span{required_code_count_, count_}; }
+    auto minimum_required_bits() const { return std::span{minimum_required_bits_, count_}; }
+    auto unused_codes() const { return std::span{unused_codes_, count_}; }
+    auto codes() const { return std::span{codes_, count_}; }
     template <typename Func>
     void each_column(Func&& func) const {
-        func(std::span<Element<ioj::layout::AnalysisId>>{parent_, count_});
-        func(std::span<Element<lispb::schema::PackedSegmentId>>{segment_, count_});
-        func(std::span<Element<std::string_view>>{name_, count_});
-        func(std::span<Element<std::optional<lispb::schema::TypeId>>>{semantic_type_, count_});
-        func(std::span<Element<lispb::StringId>>{logical_type_, count_});
-        func(std::span<Element<lispb::codegen::PackedFieldKind>>{kind_, count_});
-        func(std::span<Element<std::uint8_t>>{reserved_, count_});
-        func(std::span<Element<std::uint32_t>>{schema_bit_width_, count_});
-        func(std::span<Element<std::uint8_t>>{schema_bit_width_auto_, count_});
-        func(std::span<Element<std::uint32_t>>{bit_width_, count_});
-        func(std::span<Element<std::uint8_t>>{overridden_, count_});
-        func(std::span<Element<std::uint64_t>>{least_significant_bit_, count_});
-        func(std::span<Element<std::optional<std::uint64_t>>>{most_significant_bit_, count_});
-        func(std::span<Element<std::optional<std::uint64_t>>>{maximum_unsigned_value_, count_});
-        func(std::span<Element<std::optional<std::int64_t>>>{minimum_signed_value_, count_});
-        func(std::span<Element<std::optional<std::int64_t>>>{maximum_signed_value_, count_});
-        func(std::span<Element<std::optional<lispb::codegen::PackedIntegerValue>>>{
-            minimum_semantic_value_, count_});
-        func(std::span<Element<std::optional<lispb::codegen::PackedIntegerValue>>>{
-            maximum_semantic_value_, count_});
-        func(std::span<Element<std::optional<std::uint64_t>>>{semantic_value_count_, count_});
-        func(std::span<Element<std::uint64_t>>{sentinel_code_count_, count_});
-        func(std::span<Element<std::optional<std::uint64_t>>>{required_code_count_, count_});
-        func(std::span<Element<std::optional<std::uint32_t>>>{minimum_required_bits_, count_});
-        func(std::span<Element<std::optional<std::uint64_t>>>{unused_codes_, count_});
-        func(std::span<Element<ioj::layout::RowRange>>{codes_, count_});
+        func(std::span{parent_, count_});
+        func(std::span{segment_, count_});
+        func(std::span{name_, count_});
+        func(std::span{semantic_type_, count_});
+        func(std::span{logical_type_, count_});
+        func(std::span{kind_, count_});
+        func(std::span{reserved_, count_});
+        func(std::span{schema_bit_width_, count_});
+        func(std::span{schema_bit_width_auto_, count_});
+        func(std::span{bit_width_, count_});
+        func(std::span{overridden_, count_});
+        func(std::span{least_significant_bit_, count_});
+        func(std::span{most_significant_bit_, count_});
+        func(std::span{maximum_unsigned_value_, count_});
+        func(std::span{minimum_signed_value_, count_});
+        func(std::span{maximum_signed_value_, count_});
+        func(std::span{minimum_semantic_value_, count_});
+        func(std::span{maximum_semantic_value_, count_});
+        func(std::span{semantic_value_count_, count_});
+        func(std::span{sentinel_code_count_, count_});
+        func(std::span{required_code_count_, count_});
+        func(std::span{minimum_required_bits_, count_});
+        func(std::span{unused_codes_, count_});
+        func(std::span{codes_, count_});
     }
   private:
     template <bool>

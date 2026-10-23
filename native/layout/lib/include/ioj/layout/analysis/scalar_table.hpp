@@ -174,52 +174,30 @@ struct ScalarTableResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
             self.varint_encoding_ == nullptr ? nullptr : self.varint_encoding_ + offset,
             count};
     }
-    auto type() const -> std::span<Element<lispb::schema::TypeId>> { return {type_, count_}; }
-    auto integer_domain() const -> std::span<Element<std::optional<ioj::layout::IntegerDomain>>> {
-        return {integer_domain_, count_};
+    auto type() const { return std::span{type_, count_}; }
+    auto integer_domain() const { return std::span{integer_domain_, count_}; }
+    auto enum_domain() const { return std::span{enum_domain_, count_}; }
+    auto optional_sentinel_encoding() const {
+        return std::span{optional_sentinel_encoding_, count_};
     }
-    auto enum_domain() const -> std::span<Element<std::optional<ioj::layout::EnumDomain>>> {
-        return {enum_domain_, count_};
+    auto optional_presence_encoding() const {
+        return std::span{optional_presence_encoding_, count_};
     }
-    auto optional_sentinel_encoding() const
-        -> std::span<Element<std::optional<ioj::layout::OptionalSentinelEncoding>>> {
-        return {optional_sentinel_encoding_, count_};
-    }
-    auto optional_presence_encoding() const
-        -> std::span<Element<std::optional<ioj::layout::OptionalPresenceEncoding>>> {
-        return {optional_presence_encoding_, count_};
-    }
-    auto quantized_encoding() const
-        -> std::span<Element<std::optional<ioj::layout::QuantizedEncoding>>> {
-        return {quantized_encoding_, count_};
-    }
-    auto fixed_encoding() const -> std::span<Element<std::optional<ioj::layout::FixedEncoding>>> {
-        return {fixed_encoding_, count_};
-    }
-    auto float_encoding() const -> std::span<Element<std::optional<ioj::layout::FloatEncoding>>> {
-        return {float_encoding_, count_};
-    }
-    auto varint_encoding() const -> std::span<Element<std::optional<ioj::layout::VarintEncoding>>> {
-        return {varint_encoding_, count_};
-    }
+    auto quantized_encoding() const { return std::span{quantized_encoding_, count_}; }
+    auto fixed_encoding() const { return std::span{fixed_encoding_, count_}; }
+    auto float_encoding() const { return std::span{float_encoding_, count_}; }
+    auto varint_encoding() const { return std::span{varint_encoding_, count_}; }
     template <typename Func>
     void each_column(Func&& func) const {
-        func(std::span<Element<lispb::schema::TypeId>>{type_, count_});
-        func(
-            std::span<Element<std::optional<ioj::layout::IntegerDomain>>>{integer_domain_, count_});
-        func(std::span<Element<std::optional<ioj::layout::EnumDomain>>>{enum_domain_, count_});
-        func(std::span<Element<std::optional<ioj::layout::OptionalSentinelEncoding>>>{
-            optional_sentinel_encoding_, count_});
-        func(std::span<Element<std::optional<ioj::layout::OptionalPresenceEncoding>>>{
-            optional_presence_encoding_, count_});
-        func(std::span<Element<std::optional<ioj::layout::QuantizedEncoding>>>{quantized_encoding_,
-                                                                               count_});
-        func(
-            std::span<Element<std::optional<ioj::layout::FixedEncoding>>>{fixed_encoding_, count_});
-        func(
-            std::span<Element<std::optional<ioj::layout::FloatEncoding>>>{float_encoding_, count_});
-        func(std::span<Element<std::optional<ioj::layout::VarintEncoding>>>{varint_encoding_,
-                                                                            count_});
+        func(std::span{type_, count_});
+        func(std::span{integer_domain_, count_});
+        func(std::span{enum_domain_, count_});
+        func(std::span{optional_sentinel_encoding_, count_});
+        func(std::span{optional_presence_encoding_, count_});
+        func(std::span{quantized_encoding_, count_});
+        func(std::span{fixed_encoding_, count_});
+        func(std::span{float_encoding_, count_});
+        func(std::span{varint_encoding_, count_});
     }
   private:
     template <bool>

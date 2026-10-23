@@ -96,18 +96,14 @@ struct DirectDamageEventsResolvedViewImpl : ioj::soa_storage_detail::ViewOperati
                       self.instigators_ == nullptr ? nullptr : self.instigators_ + offset,
                       count};
     }
-    auto damaged_entities() const -> std::span<Element<EntityId>> {
-        return {damaged_entities_, count_};
-    }
-    auto damage_amounts() const -> std::span<Element<std::int32_t>> {
-        return {damage_amounts_, count_};
-    }
-    auto instigators() const -> std::span<Element<EntityId>> { return {instigators_, count_}; }
+    auto damaged_entities() const { return std::span{damaged_entities_, count_}; }
+    auto damage_amounts() const { return std::span{damage_amounts_, count_}; }
+    auto instigators() const { return std::span{instigators_, count_}; }
     template <typename Func>
     void each_column(Func&& func) const {
-        func(std::span<Element<EntityId>>{damaged_entities_, count_});
-        func(std::span<Element<std::int32_t>>{damage_amounts_, count_});
-        func(std::span<Element<EntityId>>{instigators_, count_});
+        func(std::span{damaged_entities_, count_});
+        func(std::span{damage_amounts_, count_});
+        func(std::span{instigators_, count_});
     }
   private:
     template <bool>

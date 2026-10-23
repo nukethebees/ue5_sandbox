@@ -198,34 +198,34 @@ struct EntityCellDataResolvedViewImpl : ioj::soa_storage_detail::ViewOperations 
                       self.entity_ids_ == nullptr ? nullptr : self.entity_ids_ + offset,
                       count};
     }
-    auto min_point_xs() const -> std::span<Element<float>> { return {min_point_xs_, count_}; }
-    auto min_point_ys() const -> std::span<Element<float>> { return {min_point_ys_, count_}; }
-    auto min_point_zs() const -> std::span<Element<float>> { return {min_point_zs_, count_}; }
-    auto max_point_xs() const -> std::span<Element<float>> { return {max_point_xs_, count_}; }
-    auto max_point_ys() const -> std::span<Element<float>> { return {max_point_ys_, count_}; }
-    auto max_point_zs() const -> std::span<Element<float>> { return {max_point_zs_, count_}; }
-    auto min_cell_xs() const -> std::span<Element<std::int32_t>> { return {min_cell_xs_, count_}; }
-    auto min_cell_ys() const -> std::span<Element<std::int32_t>> { return {min_cell_ys_, count_}; }
-    auto min_cell_zs() const -> std::span<Element<std::int32_t>> { return {min_cell_zs_, count_}; }
-    auto max_cell_xs() const -> std::span<Element<std::int32_t>> { return {max_cell_xs_, count_}; }
-    auto max_cell_ys() const -> std::span<Element<std::int32_t>> { return {max_cell_ys_, count_}; }
-    auto max_cell_zs() const -> std::span<Element<std::int32_t>> { return {max_cell_zs_, count_}; }
-    auto entity_ids() const -> std::span<Element<EntityId>> { return {entity_ids_, count_}; }
+    auto min_point_xs() const { return std::span{min_point_xs_, count_}; }
+    auto min_point_ys() const { return std::span{min_point_ys_, count_}; }
+    auto min_point_zs() const { return std::span{min_point_zs_, count_}; }
+    auto max_point_xs() const { return std::span{max_point_xs_, count_}; }
+    auto max_point_ys() const { return std::span{max_point_ys_, count_}; }
+    auto max_point_zs() const { return std::span{max_point_zs_, count_}; }
+    auto min_cell_xs() const { return std::span{min_cell_xs_, count_}; }
+    auto min_cell_ys() const { return std::span{min_cell_ys_, count_}; }
+    auto min_cell_zs() const { return std::span{min_cell_zs_, count_}; }
+    auto max_cell_xs() const { return std::span{max_cell_xs_, count_}; }
+    auto max_cell_ys() const { return std::span{max_cell_ys_, count_}; }
+    auto max_cell_zs() const { return std::span{max_cell_zs_, count_}; }
+    auto entity_ids() const { return std::span{entity_ids_, count_}; }
     template <typename Func>
     void each_column(Func&& func) const {
-        func(std::span<Element<float>>{min_point_xs_, count_});
-        func(std::span<Element<float>>{min_point_ys_, count_});
-        func(std::span<Element<float>>{min_point_zs_, count_});
-        func(std::span<Element<float>>{max_point_xs_, count_});
-        func(std::span<Element<float>>{max_point_ys_, count_});
-        func(std::span<Element<float>>{max_point_zs_, count_});
-        func(std::span<Element<std::int32_t>>{min_cell_xs_, count_});
-        func(std::span<Element<std::int32_t>>{min_cell_ys_, count_});
-        func(std::span<Element<std::int32_t>>{min_cell_zs_, count_});
-        func(std::span<Element<std::int32_t>>{max_cell_xs_, count_});
-        func(std::span<Element<std::int32_t>>{max_cell_ys_, count_});
-        func(std::span<Element<std::int32_t>>{max_cell_zs_, count_});
-        func(std::span<Element<EntityId>>{entity_ids_, count_});
+        func(std::span{min_point_xs_, count_});
+        func(std::span{min_point_ys_, count_});
+        func(std::span{min_point_zs_, count_});
+        func(std::span{max_point_xs_, count_});
+        func(std::span{max_point_ys_, count_});
+        func(std::span{max_point_zs_, count_});
+        func(std::span{min_cell_xs_, count_});
+        func(std::span{min_cell_ys_, count_});
+        func(std::span{min_cell_zs_, count_});
+        func(std::span{max_cell_xs_, count_});
+        func(std::span{max_cell_ys_, count_});
+        func(std::span{max_cell_zs_, count_});
+        func(std::span{entity_ids_, count_});
     }
   private:
     template <bool>

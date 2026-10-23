@@ -87,16 +87,12 @@ struct EntityEntityOverlapsResolvedViewImpl : ioj::soa_storage_detail::ViewOpera
                       self.second_entities_ == nullptr ? nullptr : self.second_entities_ + offset,
                       count};
     }
-    auto first_entities() const -> std::span<Element<EntityId>> {
-        return {first_entities_, count_};
-    }
-    auto second_entities() const -> std::span<Element<EntityId>> {
-        return {second_entities_, count_};
-    }
+    auto first_entities() const { return std::span{first_entities_, count_}; }
+    auto second_entities() const { return std::span{second_entities_, count_}; }
     template <typename Func>
     void each_column(Func&& func) const {
-        func(std::span<Element<EntityId>>{first_entities_, count_});
-        func(std::span<Element<EntityId>>{second_entities_, count_});
+        func(std::span{first_entities_, count_});
+        func(std::span{second_entities_, count_});
     }
   private:
     template <bool>
@@ -372,16 +368,12 @@ struct EntityStaticOverlapsResolvedViewImpl : ioj::soa_storage_detail::ViewOpera
                           : self.static_geometry_indices_ + offset,
                       count};
     }
-    auto entities() const -> std::span<Element<EntityId>> { return {entities_, count_}; }
-    auto static_geometry_indices() const
-        -> std::span<Element<ioj::sim::collision::StaticGeometryIndex>> {
-        return {static_geometry_indices_, count_};
-    }
+    auto entities() const { return std::span{entities_, count_}; }
+    auto static_geometry_indices() const { return std::span{static_geometry_indices_, count_}; }
     template <typename Func>
     void each_column(Func&& func) const {
-        func(std::span<Element<EntityId>>{entities_, count_});
-        func(std::span<Element<ioj::sim::collision::StaticGeometryIndex>>{static_geometry_indices_,
-                                                                          count_});
+        func(std::span{entities_, count_});
+        func(std::span{static_geometry_indices_, count_});
     }
   private:
     template <bool>

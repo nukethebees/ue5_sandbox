@@ -177,43 +177,28 @@ struct ComponentTableResolvedViewImpl : ioj::soa_storage_detail::ViewOperations 
                       self.slack_bytes_ == nullptr ? nullptr : self.slack_bytes_ + offset,
                       count};
     }
-    auto parent() const -> std::span<Element<ioj::layout::AnalysisId>> { return {parent_, count_}; }
-    auto name() const -> std::span<Element<std::string_view>> { return {name_, count_}; }
-    auto tag() const -> std::span<Element<std::string_view>> { return {tag_, count_}; }
-    auto semantic_type() const -> std::span<Element<lispb::schema::TypeId>> {
-        return {semantic_type_, count_};
-    }
-    auto element_count() const -> std::span<Element<std::uint64_t>> {
-        return {element_count_, count_};
-    }
-    auto element_facts() const -> std::span<Element<std::optional<ioj::layout::PhysicalFactId>>> {
-        return {element_facts_, count_};
-    }
-    auto offset_bytes() const -> std::span<Element<std::optional<std::uint64_t>>> {
-        return {offset_bytes_, count_};
-    }
-    auto extent_bytes() const -> std::span<Element<std::optional<std::uint64_t>>> {
-        return {extent_bytes_, count_};
-    }
-    auto padding_before_bytes() const -> std::span<Element<std::optional<std::uint64_t>>> {
-        return {padding_before_bytes_, count_};
-    }
-    auto slack_bytes() const -> std::span<Element<std::optional<std::uint64_t>>> {
-        return {slack_bytes_, count_};
-    }
+    auto parent() const { return std::span{parent_, count_}; }
+    auto name() const { return std::span{name_, count_}; }
+    auto tag() const { return std::span{tag_, count_}; }
+    auto semantic_type() const { return std::span{semantic_type_, count_}; }
+    auto element_count() const { return std::span{element_count_, count_}; }
+    auto element_facts() const { return std::span{element_facts_, count_}; }
+    auto offset_bytes() const { return std::span{offset_bytes_, count_}; }
+    auto extent_bytes() const { return std::span{extent_bytes_, count_}; }
+    auto padding_before_bytes() const { return std::span{padding_before_bytes_, count_}; }
+    auto slack_bytes() const { return std::span{slack_bytes_, count_}; }
     template <typename Func>
     void each_column(Func&& func) const {
-        func(std::span<Element<ioj::layout::AnalysisId>>{parent_, count_});
-        func(std::span<Element<std::string_view>>{name_, count_});
-        func(std::span<Element<std::string_view>>{tag_, count_});
-        func(std::span<Element<lispb::schema::TypeId>>{semantic_type_, count_});
-        func(std::span<Element<std::uint64_t>>{element_count_, count_});
-        func(
-            std::span<Element<std::optional<ioj::layout::PhysicalFactId>>>{element_facts_, count_});
-        func(std::span<Element<std::optional<std::uint64_t>>>{offset_bytes_, count_});
-        func(std::span<Element<std::optional<std::uint64_t>>>{extent_bytes_, count_});
-        func(std::span<Element<std::optional<std::uint64_t>>>{padding_before_bytes_, count_});
-        func(std::span<Element<std::optional<std::uint64_t>>>{slack_bytes_, count_});
+        func(std::span{parent_, count_});
+        func(std::span{name_, count_});
+        func(std::span{tag_, count_});
+        func(std::span{semantic_type_, count_});
+        func(std::span{element_count_, count_});
+        func(std::span{element_facts_, count_});
+        func(std::span{offset_bytes_, count_});
+        func(std::span{extent_bytes_, count_});
+        func(std::span{padding_before_bytes_, count_});
+        func(std::span{slack_bytes_, count_});
     }
   private:
     template <bool>

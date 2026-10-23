@@ -639,12 +639,10 @@ struct FighterEntityDataResolvedViewImpl : ioj::soa_storage_detail::ViewOperatio
             self.target_radii_ == nullptr ? nullptr : self.target_radii_ + offset,
             count};
     }
-    auto entity_ids() const -> std::span<Element<EntityId>> { return {entity_ids_, count_}; }
-    auto integral_biases() const -> std::span<Element<std::uint32_t>> {
-        return {integral_biases_, count_};
-    }
-    auto float_biases() const -> std::span<Element<float>> { return {float_biases_, count_}; }
-    auto tasks() const -> std::span<Element<FighterTask>> { return {tasks_, count_}; }
+    auto entity_ids() const { return std::span{entity_ids_, count_}; }
+    auto integral_biases() const { return std::span{integral_biases_, count_}; }
+    auto float_biases() const { return std::span{float_biases_, count_}; }
+    auto tasks() const { return std::span{tasks_, count_}; }
     auto view_locations() const -> std::
         conditional_t<Const, ::ioj::Vectors3fResolvedConstView, ::ioj::Vectors3fResolvedView> {
         return {locations_xs_, locations_ys_, locations_zs_, count_};
@@ -682,46 +680,34 @@ struct FighterEntityDataResolvedViewImpl : ioj::soa_storage_detail::ViewOperatio
         conditional_t<Const, ::ioj::Vectors3fResolvedConstView, ::ioj::Vectors3fResolvedView> {
         return {velocities_xs_, velocities_ys_, velocities_zs_, count_};
     }
-    auto move_distances() const -> std::span<Element<float>> { return {move_distances_, count_}; }
-    auto speeds() const -> std::span<Element<float>> { return {speeds_, count_}; }
-    auto teams() const -> std::span<Element<::ioj::Team>> { return {teams_, count_}; }
-    auto parent_ids() const -> std::span<Element<EntityId>> { return {parent_ids_, count_}; }
-    auto awareness_scan_countdowns() const -> std::span<Element<std::int8_t>> {
-        return {awareness_scan_countdowns_, count_};
+    auto move_distances() const { return std::span{move_distances_, count_}; }
+    auto speeds() const { return std::span{speeds_, count_}; }
+    auto teams() const { return std::span{teams_, count_}; }
+    auto parent_ids() const { return std::span{parent_ids_, count_}; }
+    auto awareness_scan_countdowns() const { return std::span{awareness_scan_countdowns_, count_}; }
+    auto navigation_update_countdowns_remaining_ticks() const {
+        return std::span{navigation_update_countdowns_remaining_ticks_, count_};
     }
-    auto navigation_update_countdowns_remaining_ticks() const -> std::span<Element<std::int16_t>> {
-        return {navigation_update_countdowns_remaining_ticks_, count_};
-    }
-    auto navigation_update_countdowns_periods() const -> std::span<Element<std::int16_t>> {
-        return {navigation_update_countdowns_periods_, count_};
+    auto navigation_update_countdowns_periods() const {
+        return std::span{navigation_update_countdowns_periods_, count_};
     }
     auto view_separation_steering() const -> std::
         conditional_t<Const, ::ioj::Vectors3fResolvedConstView, ::ioj::Vectors3fResolvedView> {
         return {separation_steering_xs_, separation_steering_ys_, separation_steering_zs_, count_};
     }
-    auto navigation_risk_tiers() const
-        -> std::span<Element<ioj::sim::fighters::NavigationRiskCode>> {
-        return {navigation_risk_tiers_, count_};
+    auto navigation_risk_tiers() const { return std::span{navigation_risk_tiers_, count_}; }
+    auto navigation_lower_risk_scan_counts() const {
+        return std::span{navigation_lower_risk_scan_counts_, count_};
     }
-    auto navigation_lower_risk_scan_counts() const
-        -> std::span<Element<ioj::sim::fighters::NavigationScanCount>> {
-        return {navigation_lower_risk_scan_counts_, count_};
+    auto avoidance_choice_indices() const { return std::span{avoidance_choice_indices_, count_}; }
+    auto avoidance_clear_scan_counts() const {
+        return std::span{avoidance_clear_scan_counts_, count_};
     }
-    auto avoidance_choice_indices() const
-        -> std::span<Element<ioj::sim::fighters::AvoidanceChoice>> {
-        return {avoidance_choice_indices_, count_};
+    auto attack_reposition_countdowns() const {
+        return std::span{attack_reposition_countdowns_, count_};
     }
-    auto avoidance_clear_scan_counts() const
-        -> std::span<Element<ioj::sim::fighters::NavigationScanCount>> {
-        return {avoidance_clear_scan_counts_, count_};
-    }
-    auto attack_reposition_countdowns() const -> std::span<Element<std::int16_t>> {
-        return {attack_reposition_countdowns_, count_};
-    }
-    auto attack_cooldowns() const -> std::span<Element<std::int16_t>> {
-        return {attack_cooldowns_, count_};
-    }
-    auto target_ids() const -> std::span<Element<EntityId>> { return {target_ids_, count_}; }
+    auto attack_cooldowns() const { return std::span{attack_cooldowns_, count_}; }
+    auto target_ids() const { return std::span{target_ids_, count_}; }
     auto view_target_locations() const -> std::
         conditional_t<Const, ::ioj::Vectors3fResolvedConstView, ::ioj::Vectors3fResolvedView> {
         return {target_locations_xs_, target_locations_ys_, target_locations_zs_, count_};
@@ -734,76 +720,67 @@ struct FighterEntityDataResolvedViewImpl : ioj::soa_storage_detail::ViewOperatio
         conditional_t<Const, ::ioj::Vectors3fResolvedConstView, ::ioj::Vectors3fResolvedView> {
         return {target_directions_xs_, target_directions_ys_, target_directions_zs_, count_};
     }
-    auto intercept_times() const -> std::span<Element<float>> { return {intercept_times_, count_}; }
-    auto target_distance_sq() const -> std::span<Element<float>> {
-        return {target_distance_sq_, count_};
-    }
-    auto target_distances() const -> std::span<Element<float>> {
-        return {target_distances_, count_};
-    }
-    auto target_radii() const -> std::span<Element<float>> { return {target_radii_, count_}; }
+    auto intercept_times() const { return std::span{intercept_times_, count_}; }
+    auto target_distance_sq() const { return std::span{target_distance_sq_, count_}; }
+    auto target_distances() const { return std::span{target_distances_, count_}; }
+    auto target_radii() const { return std::span{target_radii_, count_}; }
     template <typename Func>
     void each_column(Func&& func) const {
-        func(std::span<Element<EntityId>>{entity_ids_, count_});
-        func(std::span<Element<std::uint32_t>>{integral_biases_, count_});
-        func(std::span<Element<float>>{float_biases_, count_});
-        func(std::span<Element<FighterTask>>{tasks_, count_});
-        func(std::span<Element<float>>{locations_xs_, count_});
-        func(std::span<Element<float>>{locations_ys_, count_});
-        func(std::span<Element<float>>{locations_zs_, count_});
-        func(std::span<Element<float>>{desired_move_locations_xs_, count_});
-        func(std::span<Element<float>>{desired_move_locations_ys_, count_});
-        func(std::span<Element<float>>{desired_move_locations_zs_, count_});
-        func(std::span<Element<float>>{aim_directions_xs_, count_});
-        func(std::span<Element<float>>{aim_directions_ys_, count_});
-        func(std::span<Element<float>>{aim_directions_zs_, count_});
-        func(std::span<Element<float>>{planned_aim_directions_xs_, count_});
-        func(std::span<Element<float>>{planned_aim_directions_ys_, count_});
-        func(std::span<Element<float>>{planned_aim_directions_zs_, count_});
-        func(std::span<Element<float>>{desired_aiming_directions_xs_, count_});
-        func(std::span<Element<float>>{desired_aiming_directions_ys_, count_});
-        func(std::span<Element<float>>{desired_aiming_directions_zs_, count_});
-        func(std::span<Element<float>>{movement_directions_xs_, count_});
-        func(std::span<Element<float>>{movement_directions_ys_, count_});
-        func(std::span<Element<float>>{movement_directions_zs_, count_});
-        func(std::span<Element<float>>{velocities_xs_, count_});
-        func(std::span<Element<float>>{velocities_ys_, count_});
-        func(std::span<Element<float>>{velocities_zs_, count_});
-        func(std::span<Element<float>>{move_distances_, count_});
-        func(std::span<Element<float>>{speeds_, count_});
-        func(std::span<Element<::ioj::Team>>{teams_, count_});
-        func(std::span<Element<EntityId>>{parent_ids_, count_});
-        func(std::span<Element<std::int8_t>>{awareness_scan_countdowns_, count_});
-        func(std::span<Element<std::int16_t>>{navigation_update_countdowns_remaining_ticks_,
-                                              count_});
-        func(std::span<Element<std::int16_t>>{navigation_update_countdowns_periods_, count_});
-        func(std::span<Element<float>>{separation_steering_xs_, count_});
-        func(std::span<Element<float>>{separation_steering_ys_, count_});
-        func(std::span<Element<float>>{separation_steering_zs_, count_});
-        func(std::span<Element<ioj::sim::fighters::NavigationRiskCode>>{navigation_risk_tiers_,
-                                                                        count_});
-        func(std::span<Element<ioj::sim::fighters::NavigationScanCount>>{
-            navigation_lower_risk_scan_counts_, count_});
-        func(std::span<Element<ioj::sim::fighters::AvoidanceChoice>>{avoidance_choice_indices_,
-                                                                     count_});
-        func(std::span<Element<ioj::sim::fighters::NavigationScanCount>>{
-            avoidance_clear_scan_counts_, count_});
-        func(std::span<Element<std::int16_t>>{attack_reposition_countdowns_, count_});
-        func(std::span<Element<std::int16_t>>{attack_cooldowns_, count_});
-        func(std::span<Element<EntityId>>{target_ids_, count_});
-        func(std::span<Element<float>>{target_locations_xs_, count_});
-        func(std::span<Element<float>>{target_locations_ys_, count_});
-        func(std::span<Element<float>>{target_locations_zs_, count_});
-        func(std::span<Element<float>>{target_velocities_xs_, count_});
-        func(std::span<Element<float>>{target_velocities_ys_, count_});
-        func(std::span<Element<float>>{target_velocities_zs_, count_});
-        func(std::span<Element<float>>{target_directions_xs_, count_});
-        func(std::span<Element<float>>{target_directions_ys_, count_});
-        func(std::span<Element<float>>{target_directions_zs_, count_});
-        func(std::span<Element<float>>{intercept_times_, count_});
-        func(std::span<Element<float>>{target_distance_sq_, count_});
-        func(std::span<Element<float>>{target_distances_, count_});
-        func(std::span<Element<float>>{target_radii_, count_});
+        func(std::span{entity_ids_, count_});
+        func(std::span{integral_biases_, count_});
+        func(std::span{float_biases_, count_});
+        func(std::span{tasks_, count_});
+        func(std::span{locations_xs_, count_});
+        func(std::span{locations_ys_, count_});
+        func(std::span{locations_zs_, count_});
+        func(std::span{desired_move_locations_xs_, count_});
+        func(std::span{desired_move_locations_ys_, count_});
+        func(std::span{desired_move_locations_zs_, count_});
+        func(std::span{aim_directions_xs_, count_});
+        func(std::span{aim_directions_ys_, count_});
+        func(std::span{aim_directions_zs_, count_});
+        func(std::span{planned_aim_directions_xs_, count_});
+        func(std::span{planned_aim_directions_ys_, count_});
+        func(std::span{planned_aim_directions_zs_, count_});
+        func(std::span{desired_aiming_directions_xs_, count_});
+        func(std::span{desired_aiming_directions_ys_, count_});
+        func(std::span{desired_aiming_directions_zs_, count_});
+        func(std::span{movement_directions_xs_, count_});
+        func(std::span{movement_directions_ys_, count_});
+        func(std::span{movement_directions_zs_, count_});
+        func(std::span{velocities_xs_, count_});
+        func(std::span{velocities_ys_, count_});
+        func(std::span{velocities_zs_, count_});
+        func(std::span{move_distances_, count_});
+        func(std::span{speeds_, count_});
+        func(std::span{teams_, count_});
+        func(std::span{parent_ids_, count_});
+        func(std::span{awareness_scan_countdowns_, count_});
+        func(std::span{navigation_update_countdowns_remaining_ticks_, count_});
+        func(std::span{navigation_update_countdowns_periods_, count_});
+        func(std::span{separation_steering_xs_, count_});
+        func(std::span{separation_steering_ys_, count_});
+        func(std::span{separation_steering_zs_, count_});
+        func(std::span{navigation_risk_tiers_, count_});
+        func(std::span{navigation_lower_risk_scan_counts_, count_});
+        func(std::span{avoidance_choice_indices_, count_});
+        func(std::span{avoidance_clear_scan_counts_, count_});
+        func(std::span{attack_reposition_countdowns_, count_});
+        func(std::span{attack_cooldowns_, count_});
+        func(std::span{target_ids_, count_});
+        func(std::span{target_locations_xs_, count_});
+        func(std::span{target_locations_ys_, count_});
+        func(std::span{target_locations_zs_, count_});
+        func(std::span{target_velocities_xs_, count_});
+        func(std::span{target_velocities_ys_, count_});
+        func(std::span{target_velocities_zs_, count_});
+        func(std::span{target_directions_xs_, count_});
+        func(std::span{target_directions_ys_, count_});
+        func(std::span{target_directions_zs_, count_});
+        func(std::span{intercept_times_, count_});
+        func(std::span{target_distance_sq_, count_});
+        func(std::span{target_distances_, count_});
+        func(std::span{target_radii_, count_});
     }
   private:
     template <bool>

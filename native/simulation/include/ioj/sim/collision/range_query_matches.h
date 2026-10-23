@@ -111,19 +111,19 @@ struct RangeQueryMatchesResolvedViewImpl : ioj::soa_storage_detail::ViewOperatio
                       self.directions_zs_ == nullptr ? nullptr : self.directions_zs_ + offset,
                       count};
     }
-    auto entities() const -> std::span<Element<EntityId>> { return {entities_, count_}; }
-    auto distances() const -> std::span<Element<float>> { return {distances_, count_}; }
+    auto entities() const { return std::span{entities_, count_}; }
+    auto distances() const { return std::span{distances_, count_}; }
     auto view_directions() const -> std::
         conditional_t<Const, ::ioj::Vectors3fResolvedConstView, ::ioj::Vectors3fResolvedView> {
         return {directions_xs_, directions_ys_, directions_zs_, count_};
     }
     template <typename Func>
     void each_column(Func&& func) const {
-        func(std::span<Element<EntityId>>{entities_, count_});
-        func(std::span<Element<float>>{distances_, count_});
-        func(std::span<Element<float>>{directions_xs_, count_});
-        func(std::span<Element<float>>{directions_ys_, count_});
-        func(std::span<Element<float>>{directions_zs_, count_});
+        func(std::span{entities_, count_});
+        func(std::span{distances_, count_});
+        func(std::span{directions_xs_, count_});
+        func(std::span{directions_ys_, count_});
+        func(std::span{directions_zs_, count_});
     }
   private:
     template <bool>

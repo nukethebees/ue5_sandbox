@@ -77,12 +77,12 @@ struct PositionsResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
                       self.ys_ == nullptr ? nullptr : self.ys_ + offset,
                       count};
     }
-    auto xs() const -> std::span<Element<float>> { return {xs_, count_}; }
-    auto ys() const -> std::span<Element<float>> { return {ys_, count_}; }
+    auto xs() const { return std::span{xs_, count_}; }
+    auto ys() const { return std::span{ys_, count_}; }
     template <typename Func>
     void each_column(Func&& func) const {
-        func(std::span<Element<float>>{xs_, count_});
-        func(std::span<Element<float>>{ys_, count_});
+        func(std::span{xs_, count_});
+        func(std::span{ys_, count_});
     }
   private:
     template <bool>

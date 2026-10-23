@@ -138,21 +138,17 @@ struct TraceHitsResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         conditional_t<Const, ::ioj::Vectors3fResolvedConstView, ::ioj::Vectors3fResolvedView> {
         return {locations_xs_, locations_ys_, locations_zs_, count_};
     }
-    auto entities() const -> std::span<Element<EntityId>> { return {entities_, count_}; }
-    auto static_geometry_indices() const
-        -> std::span<Element<ioj::sim::collision::StaticGeometryIndex>> {
-        return {static_geometry_indices_, count_};
-    }
-    auto hits() const -> std::span<Element<ioj::sim::TraceHit>> { return {hits_, count_}; }
+    auto entities() const { return std::span{entities_, count_}; }
+    auto static_geometry_indices() const { return std::span{static_geometry_indices_, count_}; }
+    auto hits() const { return std::span{hits_, count_}; }
     template <typename Func>
     void each_column(Func&& func) const {
-        func(std::span<Element<float>>{locations_xs_, count_});
-        func(std::span<Element<float>>{locations_ys_, count_});
-        func(std::span<Element<float>>{locations_zs_, count_});
-        func(std::span<Element<EntityId>>{entities_, count_});
-        func(std::span<Element<ioj::sim::collision::StaticGeometryIndex>>{static_geometry_indices_,
-                                                                          count_});
-        func(std::span<Element<ioj::sim::TraceHit>>{hits_, count_});
+        func(std::span{locations_xs_, count_});
+        func(std::span{locations_ys_, count_});
+        func(std::span{locations_zs_, count_});
+        func(std::span{entities_, count_});
+        func(std::span{static_geometry_indices_, count_});
+        func(std::span{hits_, count_});
     }
   private:
     template <bool>

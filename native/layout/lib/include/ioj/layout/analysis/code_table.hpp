@@ -116,26 +116,18 @@ struct CodeTableResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
                       self.integer_value_ == nullptr ? nullptr : self.integer_value_ + offset,
                       count};
     }
-    auto name() const -> std::span<Element<std::string_view>> { return {name_, count_}; }
-    auto sentinel() const -> std::span<Element<std::uint8_t>> { return {sentinel_, count_}; }
-    auto count_sentinel() const -> std::span<Element<std::uint8_t>> {
-        return {count_sentinel_, count_};
-    }
-    auto code() const -> std::span<Element<std::optional<ioj::layout::EnumCodeValue>>> {
-        return {code_, count_};
-    }
-    auto integer_value() const
-        -> std::span<Element<std::optional<lispb::codegen::PackedIntegerValue>>> {
-        return {integer_value_, count_};
-    }
+    auto name() const { return std::span{name_, count_}; }
+    auto sentinel() const { return std::span{sentinel_, count_}; }
+    auto count_sentinel() const { return std::span{count_sentinel_, count_}; }
+    auto code() const { return std::span{code_, count_}; }
+    auto integer_value() const { return std::span{integer_value_, count_}; }
     template <typename Func>
     void each_column(Func&& func) const {
-        func(std::span<Element<std::string_view>>{name_, count_});
-        func(std::span<Element<std::uint8_t>>{sentinel_, count_});
-        func(std::span<Element<std::uint8_t>>{count_sentinel_, count_});
-        func(std::span<Element<std::optional<ioj::layout::EnumCodeValue>>>{code_, count_});
-        func(std::span<Element<std::optional<lispb::codegen::PackedIntegerValue>>>{integer_value_,
-                                                                                   count_});
+        func(std::span{name_, count_});
+        func(std::span{sentinel_, count_});
+        func(std::span{count_sentinel_, count_});
+        func(std::span{code_, count_});
+        func(std::span{integer_value_, count_});
     }
   private:
     template <bool>

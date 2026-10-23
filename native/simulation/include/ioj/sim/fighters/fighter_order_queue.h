@@ -103,16 +103,16 @@ struct FighterOrderQueueResolvedViewImpl : ioj::soa_storage_detail::ViewOperatio
                       self.targets_ == nullptr ? nullptr : self.targets_ + offset,
                       count};
     }
-    auto entity_ids() const -> std::span<Element<EntityId>> { return {entity_ids_, count_}; }
-    auto orders() const -> std::span<Element<FighterOrder>> { return {orders_, count_}; }
-    auto tasks() const -> std::span<Element<FighterTask>> { return {tasks_, count_}; }
-    auto targets() const -> std::span<Element<EntityId>> { return {targets_, count_}; }
+    auto entity_ids() const { return std::span{entity_ids_, count_}; }
+    auto orders() const { return std::span{orders_, count_}; }
+    auto tasks() const { return std::span{tasks_, count_}; }
+    auto targets() const { return std::span{targets_, count_}; }
     template <typename Func>
     void each_column(Func&& func) const {
-        func(std::span<Element<EntityId>>{entity_ids_, count_});
-        func(std::span<Element<FighterOrder>>{orders_, count_});
-        func(std::span<Element<FighterTask>>{tasks_, count_});
-        func(std::span<Element<EntityId>>{targets_, count_});
+        func(std::span{entity_ids_, count_});
+        func(std::span{orders_, count_});
+        func(std::span{tasks_, count_});
+        func(std::span{targets_, count_});
     }
   private:
     template <bool>

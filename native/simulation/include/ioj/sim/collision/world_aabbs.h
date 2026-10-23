@@ -115,20 +115,20 @@ struct WorldAABBsResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
                       self.max_zs_ == nullptr ? nullptr : self.max_zs_ + offset,
                       count};
     }
-    auto min_xs() const -> std::span<Element<float>> { return {min_xs_, count_}; }
-    auto min_ys() const -> std::span<Element<float>> { return {min_ys_, count_}; }
-    auto min_zs() const -> std::span<Element<float>> { return {min_zs_, count_}; }
-    auto max_xs() const -> std::span<Element<float>> { return {max_xs_, count_}; }
-    auto max_ys() const -> std::span<Element<float>> { return {max_ys_, count_}; }
-    auto max_zs() const -> std::span<Element<float>> { return {max_zs_, count_}; }
+    auto min_xs() const { return std::span{min_xs_, count_}; }
+    auto min_ys() const { return std::span{min_ys_, count_}; }
+    auto min_zs() const { return std::span{min_zs_, count_}; }
+    auto max_xs() const { return std::span{max_xs_, count_}; }
+    auto max_ys() const { return std::span{max_ys_, count_}; }
+    auto max_zs() const { return std::span{max_zs_, count_}; }
     template <typename Func>
     void each_column(Func&& func) const {
-        func(std::span<Element<float>>{min_xs_, count_});
-        func(std::span<Element<float>>{min_ys_, count_});
-        func(std::span<Element<float>>{min_zs_, count_});
-        func(std::span<Element<float>>{max_xs_, count_});
-        func(std::span<Element<float>>{max_ys_, count_});
-        func(std::span<Element<float>>{max_zs_, count_});
+        func(std::span{min_xs_, count_});
+        func(std::span{min_ys_, count_});
+        func(std::span{min_zs_, count_});
+        func(std::span{max_xs_, count_});
+        func(std::span{max_ys_, count_});
+        func(std::span{max_zs_, count_});
     }
   private:
     template <bool>

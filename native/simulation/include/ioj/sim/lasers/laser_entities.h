@@ -227,8 +227,8 @@ struct LaserEntitiesResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
             self.spawn_times_ == nullptr ? nullptr : self.spawn_times_ + offset,
             count};
     }
-    auto active() const -> std::span<Element<std::uint8_t>> { return {active_, count_}; }
-    auto sources() const -> std::span<Element<ioj::sim::LaserSource>> { return {sources_, count_}; }
+    auto active() const { return std::span{active_, count_}; }
+    auto sources() const { return std::span{sources_, count_}; }
     auto view_locations() const -> std::
         conditional_t<Const, ::ioj::Vectors3fResolvedConstView, ::ioj::Vectors3fResolvedView> {
         return {locations_xs_, locations_ys_, locations_zs_, count_};
@@ -241,35 +241,29 @@ struct LaserEntitiesResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         conditional_t<Const, ::ioj::Vectors3fResolvedConstView, ::ioj::Vectors3fResolvedView> {
         return {velocities_xs_, velocities_ys_, velocities_zs_, count_};
     }
-    auto damages() const -> std::span<Element<std::int32_t>> { return {damages_, count_}; }
-    auto lifetimes_remaining() const -> std::span<Element<float>> {
-        return {lifetimes_remaining_, count_};
-    }
-    auto instigator_ids() const -> std::span<Element<EntityId>> {
-        return {instigator_ids_, count_};
-    }
-    auto initial_lifetimes() const -> std::span<Element<float>> {
-        return {initial_lifetimes_, count_};
-    }
-    auto spawn_times() const -> std::span<Element<float>> { return {spawn_times_, count_}; }
+    auto damages() const { return std::span{damages_, count_}; }
+    auto lifetimes_remaining() const { return std::span{lifetimes_remaining_, count_}; }
+    auto instigator_ids() const { return std::span{instigator_ids_, count_}; }
+    auto initial_lifetimes() const { return std::span{initial_lifetimes_, count_}; }
+    auto spawn_times() const { return std::span{spawn_times_, count_}; }
     template <typename Func>
     void each_column(Func&& func) const {
-        func(std::span<Element<std::uint8_t>>{active_, count_});
-        func(std::span<Element<ioj::sim::LaserSource>>{sources_, count_});
-        func(std::span<Element<float>>{locations_xs_, count_});
-        func(std::span<Element<float>>{locations_ys_, count_});
-        func(std::span<Element<float>>{locations_zs_, count_});
-        func(std::span<Element<float>>{rotations_pitches_, count_});
-        func(std::span<Element<float>>{rotations_yaws_, count_});
-        func(std::span<Element<float>>{rotations_rolls_, count_});
-        func(std::span<Element<float>>{velocities_xs_, count_});
-        func(std::span<Element<float>>{velocities_ys_, count_});
-        func(std::span<Element<float>>{velocities_zs_, count_});
-        func(std::span<Element<std::int32_t>>{damages_, count_});
-        func(std::span<Element<float>>{lifetimes_remaining_, count_});
-        func(std::span<Element<EntityId>>{instigator_ids_, count_});
-        func(std::span<Element<float>>{initial_lifetimes_, count_});
-        func(std::span<Element<float>>{spawn_times_, count_});
+        func(std::span{active_, count_});
+        func(std::span{sources_, count_});
+        func(std::span{locations_xs_, count_});
+        func(std::span{locations_ys_, count_});
+        func(std::span{locations_zs_, count_});
+        func(std::span{rotations_pitches_, count_});
+        func(std::span{rotations_yaws_, count_});
+        func(std::span{rotations_rolls_, count_});
+        func(std::span{velocities_xs_, count_});
+        func(std::span{velocities_ys_, count_});
+        func(std::span{velocities_zs_, count_});
+        func(std::span{damages_, count_});
+        func(std::span{lifetimes_remaining_, count_});
+        func(std::span{instigator_ids_, count_});
+        func(std::span{initial_lifetimes_, count_});
+        func(std::span{spawn_times_, count_});
     }
   private:
     template <bool>

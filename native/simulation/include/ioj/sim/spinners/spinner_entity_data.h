@@ -142,27 +142,23 @@ struct SpinnerEntityDataResolvedViewImpl : ioj::soa_storage_detail::ViewOperatio
                           : self.next_fire_point_indices_ + offset,
                       count};
     }
-    auto entity_ids() const -> std::span<Element<EntityId>> { return {entity_ids_, count_}; }
+    auto entity_ids() const { return std::span{entity_ids_, count_}; }
     auto view_locations() const -> std::
         conditional_t<Const, ::ioj::Vectors3fResolvedConstView, ::ioj::Vectors3fResolvedView> {
         return {locations_xs_, locations_ys_, locations_zs_, count_};
     }
-    auto yaws() const -> std::span<Element<float>> { return {yaws_, count_}; }
-    auto laser_cooldowns() const -> std::span<Element<std::int16_t>> {
-        return {laser_cooldowns_, count_};
-    }
-    auto next_fire_point_indices() const -> std::span<Element<std::int32_t>> {
-        return {next_fire_point_indices_, count_};
-    }
+    auto yaws() const { return std::span{yaws_, count_}; }
+    auto laser_cooldowns() const { return std::span{laser_cooldowns_, count_}; }
+    auto next_fire_point_indices() const { return std::span{next_fire_point_indices_, count_}; }
     template <typename Func>
     void each_column(Func&& func) const {
-        func(std::span<Element<EntityId>>{entity_ids_, count_});
-        func(std::span<Element<float>>{locations_xs_, count_});
-        func(std::span<Element<float>>{locations_ys_, count_});
-        func(std::span<Element<float>>{locations_zs_, count_});
-        func(std::span<Element<float>>{yaws_, count_});
-        func(std::span<Element<std::int16_t>>{laser_cooldowns_, count_});
-        func(std::span<Element<std::int32_t>>{next_fire_point_indices_, count_});
+        func(std::span{entity_ids_, count_});
+        func(std::span{locations_xs_, count_});
+        func(std::span{locations_ys_, count_});
+        func(std::span{locations_zs_, count_});
+        func(std::span{yaws_, count_});
+        func(std::span{laser_cooldowns_, count_});
+        func(std::span{next_fire_point_indices_, count_});
     }
   private:
     template <bool>

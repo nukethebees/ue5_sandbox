@@ -240,72 +240,42 @@ struct WorkloadTableResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
             self.capacity_slack_bytes_ == nullptr ? nullptr : self.capacity_slack_bytes_ + offset,
             count};
     }
-    auto analysis() const -> std::span<Element<ioj::layout::AnalysisId>> {
-        return {analysis_, count_};
+    auto analysis() const { return std::span{analysis_, count_}; }
+    auto selections() const { return std::span{selections_, count_}; }
+    auto element_count() const { return std::span{element_count_, count_}; }
+    auto multiplicity() const { return std::span{multiplicity_, count_}; }
+    auto bytes() const { return std::span{bytes_, count_}; }
+    auto bits() const { return std::span{bits_, count_}; }
+    auto cache() const { return std::span{cache_, count_}; }
+    auto pages() const { return std::span{pages_, count_}; }
+    auto cache_capacity() const { return std::span{cache_capacity_, count_}; }
+    auto packed_waste() const { return std::span{packed_waste_, count_}; }
+    auto footprint_exact() const { return std::span{footprint_exact_, count_}; }
+    auto storage_bytes() const { return std::span{storage_bytes_, count_}; }
+    auto full_logical_payload_bytes() const {
+        return std::span{full_logical_payload_bytes_, count_};
     }
-    auto selections() const -> std::span<Element<ioj::layout::RowRange>> {
-        return {selections_, count_};
-    }
-    auto element_count() const -> std::span<Element<std::uint64_t>> {
-        return {element_count_, count_};
-    }
-    auto multiplicity() const -> std::span<Element<std::uint64_t>> {
-        return {multiplicity_, count_};
-    }
-    auto bytes() const -> std::span<Element<ioj::layout::PayloadFootprint>> {
-        return {bytes_, count_};
-    }
-    auto bits() const -> std::span<Element<ioj::layout::PayloadFootprint>> {
-        return {bits_, count_};
-    }
-    auto cache() const -> std::span<Element<ioj::layout::RegionFootprint>> {
-        return {cache_, count_};
-    }
-    auto pages() const -> std::span<Element<ioj::layout::RegionFootprint>> {
-        return {pages_, count_};
-    }
-    auto cache_capacity() const -> std::span<Element<ioj::layout::CacheCapacityAnalysis>> {
-        return {cache_capacity_, count_};
-    }
-    auto packed_waste() const -> std::span<Element<ioj::layout::PackedAccessWaste>> {
-        return {packed_waste_, count_};
-    }
-    auto footprint_exact() const -> std::span<Element<std::uint8_t>> {
-        return {footprint_exact_, count_};
-    }
-    auto storage_bytes() const -> std::span<Element<std::optional<std::uint64_t>>> {
-        return {storage_bytes_, count_};
-    }
-    auto full_logical_payload_bytes() const -> std::span<Element<std::optional<std::uint64_t>>> {
-        return {full_logical_payload_bytes_, count_};
-    }
-    auto unselected_payload_bytes() const -> std::span<Element<std::optional<std::uint64_t>>> {
-        return {unselected_payload_bytes_, count_};
-    }
-    auto allocated_payload_bytes() const -> std::span<Element<std::optional<std::uint64_t>>> {
-        return {allocated_payload_bytes_, count_};
-    }
-    auto capacity_slack_bytes() const -> std::span<Element<std::optional<std::uint64_t>>> {
-        return {capacity_slack_bytes_, count_};
-    }
+    auto unselected_payload_bytes() const { return std::span{unselected_payload_bytes_, count_}; }
+    auto allocated_payload_bytes() const { return std::span{allocated_payload_bytes_, count_}; }
+    auto capacity_slack_bytes() const { return std::span{capacity_slack_bytes_, count_}; }
     template <typename Func>
     void each_column(Func&& func) const {
-        func(std::span<Element<ioj::layout::AnalysisId>>{analysis_, count_});
-        func(std::span<Element<ioj::layout::RowRange>>{selections_, count_});
-        func(std::span<Element<std::uint64_t>>{element_count_, count_});
-        func(std::span<Element<std::uint64_t>>{multiplicity_, count_});
-        func(std::span<Element<ioj::layout::PayloadFootprint>>{bytes_, count_});
-        func(std::span<Element<ioj::layout::PayloadFootprint>>{bits_, count_});
-        func(std::span<Element<ioj::layout::RegionFootprint>>{cache_, count_});
-        func(std::span<Element<ioj::layout::RegionFootprint>>{pages_, count_});
-        func(std::span<Element<ioj::layout::CacheCapacityAnalysis>>{cache_capacity_, count_});
-        func(std::span<Element<ioj::layout::PackedAccessWaste>>{packed_waste_, count_});
-        func(std::span<Element<std::uint8_t>>{footprint_exact_, count_});
-        func(std::span<Element<std::optional<std::uint64_t>>>{storage_bytes_, count_});
-        func(std::span<Element<std::optional<std::uint64_t>>>{full_logical_payload_bytes_, count_});
-        func(std::span<Element<std::optional<std::uint64_t>>>{unselected_payload_bytes_, count_});
-        func(std::span<Element<std::optional<std::uint64_t>>>{allocated_payload_bytes_, count_});
-        func(std::span<Element<std::optional<std::uint64_t>>>{capacity_slack_bytes_, count_});
+        func(std::span{analysis_, count_});
+        func(std::span{selections_, count_});
+        func(std::span{element_count_, count_});
+        func(std::span{multiplicity_, count_});
+        func(std::span{bytes_, count_});
+        func(std::span{bits_, count_});
+        func(std::span{cache_, count_});
+        func(std::span{pages_, count_});
+        func(std::span{cache_capacity_, count_});
+        func(std::span{packed_waste_, count_});
+        func(std::span{footprint_exact_, count_});
+        func(std::span{storage_bytes_, count_});
+        func(std::span{full_logical_payload_bytes_, count_});
+        func(std::span{unselected_payload_bytes_, count_});
+        func(std::span{allocated_payload_bytes_, count_});
+        func(std::span{capacity_slack_bytes_, count_});
     }
   private:
     template <bool>

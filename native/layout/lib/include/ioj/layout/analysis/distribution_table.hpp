@@ -180,48 +180,32 @@ struct DistributionTableResolvedViewImpl : ioj::soa_storage_detail::ViewOperatio
                 : self.expected_selected_slack_bytes_ + offset,
             count};
     }
-    auto analysis() const -> std::span<Element<ioj::layout::AnalysisId>> {
-        return {analysis_, count_};
+    auto analysis() const { return std::span{analysis_, count_}; }
+    auto entries() const { return std::span{entries_, count_}; }
+    auto element_count() const { return std::span{element_count_, count_}; }
+    auto total_weight() const { return std::span{total_weight_, count_}; }
+    auto total_extent_bytes() const { return std::span{total_extent_bytes_, count_}; }
+    auto total_slack_bytes() const { return std::span{total_slack_bytes_, count_}; }
+    auto expected_extent_bytes() const { return std::span{expected_extent_bytes_, count_}; }
+    auto expected_slack_bytes() const { return std::span{expected_slack_bytes_, count_}; }
+    auto expected_selected_extent_bytes() const {
+        return std::span{expected_selected_extent_bytes_, count_};
     }
-    auto entries() const -> std::span<Element<ioj::layout::RowRange>> { return {entries_, count_}; }
-    auto element_count() const -> std::span<Element<std::uint64_t>> {
-        return {element_count_, count_};
-    }
-    auto total_weight() const -> std::span<Element<std::optional<std::uint64_t>>> {
-        return {total_weight_, count_};
-    }
-    auto total_extent_bytes() const -> std::span<Element<std::optional<std::uint64_t>>> {
-        return {total_extent_bytes_, count_};
-    }
-    auto total_slack_bytes() const -> std::span<Element<std::optional<std::uint64_t>>> {
-        return {total_slack_bytes_, count_};
-    }
-    auto expected_extent_bytes() const -> std::span<Element<std::optional<long double>>> {
-        return {expected_extent_bytes_, count_};
-    }
-    auto expected_slack_bytes() const -> std::span<Element<std::optional<long double>>> {
-        return {expected_slack_bytes_, count_};
-    }
-    auto expected_selected_extent_bytes() const -> std::span<Element<std::optional<long double>>> {
-        return {expected_selected_extent_bytes_, count_};
-    }
-    auto expected_selected_slack_bytes() const -> std::span<Element<std::optional<long double>>> {
-        return {expected_selected_slack_bytes_, count_};
+    auto expected_selected_slack_bytes() const {
+        return std::span{expected_selected_slack_bytes_, count_};
     }
     template <typename Func>
     void each_column(Func&& func) const {
-        func(std::span<Element<ioj::layout::AnalysisId>>{analysis_, count_});
-        func(std::span<Element<ioj::layout::RowRange>>{entries_, count_});
-        func(std::span<Element<std::uint64_t>>{element_count_, count_});
-        func(std::span<Element<std::optional<std::uint64_t>>>{total_weight_, count_});
-        func(std::span<Element<std::optional<std::uint64_t>>>{total_extent_bytes_, count_});
-        func(std::span<Element<std::optional<std::uint64_t>>>{total_slack_bytes_, count_});
-        func(std::span<Element<std::optional<long double>>>{expected_extent_bytes_, count_});
-        func(std::span<Element<std::optional<long double>>>{expected_slack_bytes_, count_});
-        func(std::span<Element<std::optional<long double>>>{expected_selected_extent_bytes_,
-                                                            count_});
-        func(
-            std::span<Element<std::optional<long double>>>{expected_selected_slack_bytes_, count_});
+        func(std::span{analysis_, count_});
+        func(std::span{entries_, count_});
+        func(std::span{element_count_, count_});
+        func(std::span{total_weight_, count_});
+        func(std::span{total_extent_bytes_, count_});
+        func(std::span{total_slack_bytes_, count_});
+        func(std::span{expected_extent_bytes_, count_});
+        func(std::span{expected_slack_bytes_, count_});
+        func(std::span{expected_selected_extent_bytes_, count_});
+        func(std::span{expected_selected_slack_bytes_, count_});
     }
   private:
     template <bool>

@@ -193,7 +193,7 @@ struct CapitalEntityDataResolvedViewImpl : ioj::soa_storage_detail::ViewOperatio
             self.target_ids_ == nullptr ? nullptr : self.target_ids_ + offset,
             count};
     }
-    auto entity_ids() const -> std::span<Element<EntityId>> { return {entity_ids_, count_}; }
+    auto entity_ids() const { return std::span{entity_ids_, count_}; }
     auto view_locations() const -> std::
         conditional_t<Const, ::ioj::Vectors3fResolvedConstView, ::ioj::Vectors3fResolvedView> {
         return {locations_xs_, locations_ys_, locations_zs_, count_};
@@ -202,31 +202,25 @@ struct CapitalEntityDataResolvedViewImpl : ioj::soa_storage_detail::ViewOperatio
         conditional_t<Const, ::ioj::Rotators3fResolvedConstView, ::ioj::Rotators3fResolvedView> {
         return {rotations_pitches_, rotations_yaws_, rotations_rolls_, count_};
     }
-    auto fighter_spawn_timers() const -> std::span<Element<float>> {
-        return {fighter_spawn_timers_, count_};
-    }
-    auto fighter_spawn_cooldowns() const -> std::span<Element<float>> {
-        return {fighter_spawn_cooldowns_, count_};
-    }
-    auto teams() const -> std::span<Element<::ioj::Team>> { return {teams_, count_}; }
-    auto fighter_id_spans() const -> std::span<Element<ioj::sim::IndexSpan>> {
-        return {fighter_id_spans_, count_};
-    }
-    auto target_ids() const -> std::span<Element<EntityId>> { return {target_ids_, count_}; }
+    auto fighter_spawn_timers() const { return std::span{fighter_spawn_timers_, count_}; }
+    auto fighter_spawn_cooldowns() const { return std::span{fighter_spawn_cooldowns_, count_}; }
+    auto teams() const { return std::span{teams_, count_}; }
+    auto fighter_id_spans() const { return std::span{fighter_id_spans_, count_}; }
+    auto target_ids() const { return std::span{target_ids_, count_}; }
     template <typename Func>
     void each_column(Func&& func) const {
-        func(std::span<Element<EntityId>>{entity_ids_, count_});
-        func(std::span<Element<float>>{locations_xs_, count_});
-        func(std::span<Element<float>>{locations_ys_, count_});
-        func(std::span<Element<float>>{locations_zs_, count_});
-        func(std::span<Element<float>>{rotations_pitches_, count_});
-        func(std::span<Element<float>>{rotations_yaws_, count_});
-        func(std::span<Element<float>>{rotations_rolls_, count_});
-        func(std::span<Element<float>>{fighter_spawn_timers_, count_});
-        func(std::span<Element<float>>{fighter_spawn_cooldowns_, count_});
-        func(std::span<Element<::ioj::Team>>{teams_, count_});
-        func(std::span<Element<ioj::sim::IndexSpan>>{fighter_id_spans_, count_});
-        func(std::span<Element<EntityId>>{target_ids_, count_});
+        func(std::span{entity_ids_, count_});
+        func(std::span{locations_xs_, count_});
+        func(std::span{locations_ys_, count_});
+        func(std::span{locations_zs_, count_});
+        func(std::span{rotations_pitches_, count_});
+        func(std::span{rotations_yaws_, count_});
+        func(std::span{rotations_rolls_, count_});
+        func(std::span{fighter_spawn_timers_, count_});
+        func(std::span{fighter_spawn_cooldowns_, count_});
+        func(std::span{teams_, count_});
+        func(std::span{fighter_id_spans_, count_});
+        func(std::span{target_ids_, count_});
     }
   private:
     template <bool>

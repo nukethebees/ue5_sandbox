@@ -132,34 +132,22 @@ struct SelectionTableResolvedViewImpl : ioj::soa_storage_detail::ViewOperations 
                                                             : self.capacity_slack_bytes_ + offset,
                       count};
     }
-    auto source() const -> std::span<Element<std::size_t>> { return {source_, count_}; }
-    auto operation() const -> std::span<Element<ioj::layout::AccessOperation>> {
-        return {operation_, count_};
-    }
-    auto bytes() const -> std::span<Element<ioj::layout::PayloadFootprint>> {
-        return {bytes_, count_};
-    }
-    auto bits() const -> std::span<Element<ioj::layout::PayloadFootprint>> {
-        return {bits_, count_};
-    }
-    auto cache() const -> std::span<Element<ioj::layout::RegionFootprint>> {
-        return {cache_, count_};
-    }
-    auto pages() const -> std::span<Element<ioj::layout::RegionFootprint>> {
-        return {pages_, count_};
-    }
-    auto capacity_slack_bytes() const -> std::span<Element<std::optional<std::uint64_t>>> {
-        return {capacity_slack_bytes_, count_};
-    }
+    auto source() const { return std::span{source_, count_}; }
+    auto operation() const { return std::span{operation_, count_}; }
+    auto bytes() const { return std::span{bytes_, count_}; }
+    auto bits() const { return std::span{bits_, count_}; }
+    auto cache() const { return std::span{cache_, count_}; }
+    auto pages() const { return std::span{pages_, count_}; }
+    auto capacity_slack_bytes() const { return std::span{capacity_slack_bytes_, count_}; }
     template <typename Func>
     void each_column(Func&& func) const {
-        func(std::span<Element<std::size_t>>{source_, count_});
-        func(std::span<Element<ioj::layout::AccessOperation>>{operation_, count_});
-        func(std::span<Element<ioj::layout::PayloadFootprint>>{bytes_, count_});
-        func(std::span<Element<ioj::layout::PayloadFootprint>>{bits_, count_});
-        func(std::span<Element<ioj::layout::RegionFootprint>>{cache_, count_});
-        func(std::span<Element<ioj::layout::RegionFootprint>>{pages_, count_});
-        func(std::span<Element<std::optional<std::uint64_t>>>{capacity_slack_bytes_, count_});
+        func(std::span{source_, count_});
+        func(std::span{operation_, count_});
+        func(std::span{bytes_, count_});
+        func(std::span{bits_, count_});
+        func(std::span{cache_, count_});
+        func(std::span{pages_, count_});
+        func(std::span{capacity_slack_bytes_, count_});
     }
   private:
     template <bool>

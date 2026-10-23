@@ -169,20 +169,20 @@ struct FighterSpawnQueueResolvedViewImpl : ioj::soa_storage_detail::ViewOperatio
         conditional_t<Const, ::ioj::Rotators3fResolvedConstView, ::ioj::Rotators3fResolvedView> {
         return {rotations_pitches_, rotations_yaws_, rotations_rolls_, count_};
     }
-    auto teams() const -> std::span<Element<::ioj::Team>> { return {teams_, count_}; }
-    auto parents() const -> std::span<Element<EntityId>> { return {parents_, count_}; }
-    auto targets() const -> std::span<Element<EntityId>> { return {targets_, count_}; }
+    auto teams() const { return std::span{teams_, count_}; }
+    auto parents() const { return std::span{parents_, count_}; }
+    auto targets() const { return std::span{targets_, count_}; }
     template <typename Func>
     void each_column(Func&& func) const {
-        func(std::span<Element<float>>{locations_xs_, count_});
-        func(std::span<Element<float>>{locations_ys_, count_});
-        func(std::span<Element<float>>{locations_zs_, count_});
-        func(std::span<Element<float>>{rotations_pitches_, count_});
-        func(std::span<Element<float>>{rotations_yaws_, count_});
-        func(std::span<Element<float>>{rotations_rolls_, count_});
-        func(std::span<Element<::ioj::Team>>{teams_, count_});
-        func(std::span<Element<EntityId>>{parents_, count_});
-        func(std::span<Element<EntityId>>{targets_, count_});
+        func(std::span{locations_xs_, count_});
+        func(std::span{locations_ys_, count_});
+        func(std::span{locations_zs_, count_});
+        func(std::span{rotations_pitches_, count_});
+        func(std::span{rotations_yaws_, count_});
+        func(std::span{rotations_rolls_, count_});
+        func(std::span{teams_, count_});
+        func(std::span{parents_, count_});
+        func(std::span{targets_, count_});
     }
   private:
     template <bool>

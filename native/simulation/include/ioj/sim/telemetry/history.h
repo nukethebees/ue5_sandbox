@@ -245,50 +245,30 @@ struct HistoryRowsResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
             self.lasers_fired_ == nullptr ? nullptr : self.lasers_fired_ + offset,
             count};
     }
-    auto completed_ticks() const -> std::span<Element<SimTick>> {
-        return {completed_ticks_, count_};
+    auto completed_ticks() const { return std::span{completed_ticks_, count_}; }
+    auto validity_masks() const { return std::span{validity_masks_, count_}; }
+    auto active_entities() const { return std::span{active_entities_, count_}; }
+    auto active_entities_by_type() const { return std::span{active_entities_by_type_, count_}; }
+    auto active_entities_by_team_and_type() const {
+        return std::span{active_entities_by_team_and_type_, count_};
     }
-    auto validity_masks() const -> std::span<Element<HistoryFieldMask>> {
-        return {validity_masks_, count_};
-    }
-    auto active_entities() const -> std::span<Element<std::int32_t>> {
-        return {active_entities_, count_};
-    }
-    auto active_entities_by_type() const
-        -> std::span<Element<ioj::sim::telemetry::EntityTypeCounts>> {
-        return {active_entities_by_type_, count_};
-    }
-    auto active_entities_by_team_and_type() const
-        -> std::span<Element<ioj::sim::telemetry::EntityCounts>> {
-        return {active_entities_by_team_and_type_, count_};
-    }
-    auto spawned_entities() const -> std::span<Element<std::int32_t>> {
-        return {spawned_entities_, count_};
-    }
-    auto destroyed_entities() const -> std::span<Element<std::int32_t>> {
-        return {destroyed_entities_, count_};
-    }
-    auto kills() const -> std::span<Element<std::int32_t>> { return {kills_, count_}; }
-    auto active_lasers() const -> std::span<Element<std::int32_t>> {
-        return {active_lasers_, count_};
-    }
-    auto lasers_fired() const -> std::span<Element<std::int32_t>> {
-        return {lasers_fired_, count_};
-    }
+    auto spawned_entities() const { return std::span{spawned_entities_, count_}; }
+    auto destroyed_entities() const { return std::span{destroyed_entities_, count_}; }
+    auto kills() const { return std::span{kills_, count_}; }
+    auto active_lasers() const { return std::span{active_lasers_, count_}; }
+    auto lasers_fired() const { return std::span{lasers_fired_, count_}; }
     template <typename Func>
     void each_column(Func&& func) const {
-        func(std::span<Element<SimTick>>{completed_ticks_, count_});
-        func(std::span<Element<HistoryFieldMask>>{validity_masks_, count_});
-        func(std::span<Element<std::int32_t>>{active_entities_, count_});
-        func(std::span<Element<ioj::sim::telemetry::EntityTypeCounts>>{active_entities_by_type_,
-                                                                       count_});
-        func(std::span<Element<ioj::sim::telemetry::EntityCounts>>{
-            active_entities_by_team_and_type_, count_});
-        func(std::span<Element<std::int32_t>>{spawned_entities_, count_});
-        func(std::span<Element<std::int32_t>>{destroyed_entities_, count_});
-        func(std::span<Element<std::int32_t>>{kills_, count_});
-        func(std::span<Element<std::int32_t>>{active_lasers_, count_});
-        func(std::span<Element<std::int32_t>>{lasers_fired_, count_});
+        func(std::span{completed_ticks_, count_});
+        func(std::span{validity_masks_, count_});
+        func(std::span{active_entities_, count_});
+        func(std::span{active_entities_by_type_, count_});
+        func(std::span{active_entities_by_team_and_type_, count_});
+        func(std::span{spawned_entities_, count_});
+        func(std::span{destroyed_entities_, count_});
+        func(std::span{kills_, count_});
+        func(std::span{active_lasers_, count_});
+        func(std::span{lasers_fired_, count_});
     }
   private:
     template <bool>

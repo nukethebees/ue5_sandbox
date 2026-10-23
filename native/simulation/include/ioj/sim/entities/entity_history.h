@@ -153,28 +153,24 @@ struct EntityHistoryResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
                       self.death_locations_ == nullptr ? nullptr : self.death_locations_ + offset,
                       count};
     }
-    auto entity_ids() const -> std::span<Element<EntityId>> { return {entity_ids_, count_}; }
-    auto entity_types() const -> std::span<Element<ioj::sim::EntityType>> {
-        return {entity_types_, count_};
-    }
-    auto teams() const -> std::span<Element<::ioj::Team>> { return {teams_, count_}; }
-    auto kills() const -> std::span<Element<std::uint32_t>> { return {kills_, count_}; }
-    auto killed_by() const -> std::span<Element<EntityId>> { return {killed_by_, count_}; }
-    auto life_state() const -> std::span<Element<LifeState>> { return {life_state_, count_}; }
-    auto death_ticks() const -> std::span<Element<SimTick>> { return {death_ticks_, count_}; }
-    auto death_locations() const -> std::span<Element<Vector3f>> {
-        return {death_locations_, count_};
-    }
+    auto entity_ids() const { return std::span{entity_ids_, count_}; }
+    auto entity_types() const { return std::span{entity_types_, count_}; }
+    auto teams() const { return std::span{teams_, count_}; }
+    auto kills() const { return std::span{kills_, count_}; }
+    auto killed_by() const { return std::span{killed_by_, count_}; }
+    auto life_state() const { return std::span{life_state_, count_}; }
+    auto death_ticks() const { return std::span{death_ticks_, count_}; }
+    auto death_locations() const { return std::span{death_locations_, count_}; }
     template <typename Func>
     void each_column(Func&& func) const {
-        func(std::span<Element<EntityId>>{entity_ids_, count_});
-        func(std::span<Element<ioj::sim::EntityType>>{entity_types_, count_});
-        func(std::span<Element<::ioj::Team>>{teams_, count_});
-        func(std::span<Element<std::uint32_t>>{kills_, count_});
-        func(std::span<Element<EntityId>>{killed_by_, count_});
-        func(std::span<Element<LifeState>>{life_state_, count_});
-        func(std::span<Element<SimTick>>{death_ticks_, count_});
-        func(std::span<Element<Vector3f>>{death_locations_, count_});
+        func(std::span{entity_ids_, count_});
+        func(std::span{entity_types_, count_});
+        func(std::span{teams_, count_});
+        func(std::span{kills_, count_});
+        func(std::span{killed_by_, count_});
+        func(std::span{life_state_, count_});
+        func(std::span{death_ticks_, count_});
+        func(std::span{death_locations_, count_});
     }
   private:
     template <bool>

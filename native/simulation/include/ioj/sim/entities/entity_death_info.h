@@ -104,16 +104,16 @@ struct EntityDeathInfoResolvedViewImpl : ioj::soa_storage_detail::ViewOperations
                       self.locations_ == nullptr ? nullptr : self.locations_ + offset,
                       count};
     }
-    auto reasons() const -> std::span<Element<DeathReason>> { return {reasons_, count_}; }
-    auto victims() const -> std::span<Element<EntityId>> { return {victims_, count_}; }
-    auto killers() const -> std::span<Element<EntityId>> { return {killers_, count_}; }
-    auto locations() const -> std::span<Element<Vector3f>> { return {locations_, count_}; }
+    auto reasons() const { return std::span{reasons_, count_}; }
+    auto victims() const { return std::span{victims_, count_}; }
+    auto killers() const { return std::span{killers_, count_}; }
+    auto locations() const { return std::span{locations_, count_}; }
     template <typename Func>
     void each_column(Func&& func) const {
-        func(std::span<Element<DeathReason>>{reasons_, count_});
-        func(std::span<Element<EntityId>>{victims_, count_});
-        func(std::span<Element<EntityId>>{killers_, count_});
-        func(std::span<Element<Vector3f>>{locations_, count_});
+        func(std::span{reasons_, count_});
+        func(std::span{victims_, count_});
+        func(std::span{killers_, count_});
+        func(std::span{locations_, count_});
     }
   private:
     template <bool>

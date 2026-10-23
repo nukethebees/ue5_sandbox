@@ -175,9 +175,7 @@ struct LevelTurretSpawnEventsResolvedViewImpl : ioj::soa_storage_detail::ViewOpe
                       self.laser_damages_ == nullptr ? nullptr : self.laser_damages_ + offset,
                       count};
     }
-    auto entity_indices() const -> std::span<Element<ioj::sim::LevelEntityIndex>> {
-        return {entity_indices_, count_};
-    }
+    auto entity_indices() const { return std::span{entity_indices_, count_}; }
     auto view_locations() const -> std::
         conditional_t<Const, ::ioj::Vectors3fResolvedConstView, ::ioj::Vectors3fResolvedView> {
         return {locations_xs_, locations_ys_, locations_zs_, count_};
@@ -186,23 +184,21 @@ struct LevelTurretSpawnEventsResolvedViewImpl : ioj::soa_storage_detail::ViewOpe
         conditional_t<Const, ::ioj::Rotators3fResolvedConstView, ::ioj::Rotators3fResolvedView> {
         return {rotations_pitches_, rotations_yaws_, rotations_rolls_, count_};
     }
-    auto teams() const -> std::span<Element<::ioj::Team>> { return {teams_, count_}; }
-    auto healths() const -> std::span<Element<Health>> { return {healths_, count_}; }
-    auto laser_damages() const -> std::span<Element<std::int32_t>> {
-        return {laser_damages_, count_};
-    }
+    auto teams() const { return std::span{teams_, count_}; }
+    auto healths() const { return std::span{healths_, count_}; }
+    auto laser_damages() const { return std::span{laser_damages_, count_}; }
     template <typename Func>
     void each_column(Func&& func) const {
-        func(std::span<Element<ioj::sim::LevelEntityIndex>>{entity_indices_, count_});
-        func(std::span<Element<float>>{locations_xs_, count_});
-        func(std::span<Element<float>>{locations_ys_, count_});
-        func(std::span<Element<float>>{locations_zs_, count_});
-        func(std::span<Element<float>>{rotations_pitches_, count_});
-        func(std::span<Element<float>>{rotations_yaws_, count_});
-        func(std::span<Element<float>>{rotations_rolls_, count_});
-        func(std::span<Element<::ioj::Team>>{teams_, count_});
-        func(std::span<Element<Health>>{healths_, count_});
-        func(std::span<Element<std::int32_t>>{laser_damages_, count_});
+        func(std::span{entity_indices_, count_});
+        func(std::span{locations_xs_, count_});
+        func(std::span{locations_ys_, count_});
+        func(std::span{locations_zs_, count_});
+        func(std::span{rotations_pitches_, count_});
+        func(std::span{rotations_yaws_, count_});
+        func(std::span{rotations_rolls_, count_});
+        func(std::span{teams_, count_});
+        func(std::span{healths_, count_});
+        func(std::span{laser_damages_, count_});
     }
   private:
     template <bool>

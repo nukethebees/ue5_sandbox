@@ -102,18 +102,16 @@ struct TagTableResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
                       self.count_sentinel_ == nullptr ? nullptr : self.count_sentinel_ + offset,
                       count};
     }
-    auto name() const -> std::span<Element<std::string_view>> { return {name_, count_}; }
-    auto mapped() const -> std::span<Element<std::uint8_t>> { return {mapped_, count_}; }
-    auto sentinel() const -> std::span<Element<std::uint8_t>> { return {sentinel_, count_}; }
-    auto count_sentinel() const -> std::span<Element<std::uint8_t>> {
-        return {count_sentinel_, count_};
-    }
+    auto name() const { return std::span{name_, count_}; }
+    auto mapped() const { return std::span{mapped_, count_}; }
+    auto sentinel() const { return std::span{sentinel_, count_}; }
+    auto count_sentinel() const { return std::span{count_sentinel_, count_}; }
     template <typename Func>
     void each_column(Func&& func) const {
-        func(std::span<Element<std::string_view>>{name_, count_});
-        func(std::span<Element<std::uint8_t>>{mapped_, count_});
-        func(std::span<Element<std::uint8_t>>{sentinel_, count_});
-        func(std::span<Element<std::uint8_t>>{count_sentinel_, count_});
+        func(std::span{name_, count_});
+        func(std::span{mapped_, count_});
+        func(std::span{sentinel_, count_});
+        func(std::span{count_sentinel_, count_});
     }
   private:
     template <bool>

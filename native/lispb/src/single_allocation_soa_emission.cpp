@@ -739,15 +739,13 @@ auto emit_resolved_views(LoweringContext& context,
             auto const path{
                 storage.paths.append(views.member_prefix[row], members.name[member_row])};
             auto const column{column_for(context, model, path)};
-            children.new_lines(1).add(ir.raw("auto " + name + "() const -> std::span<" +
-                                             element_type(column) + "> { return {" +
+            children.new_lines(1).add(ir.raw("auto " + name + "() const { return std::span{" +
                                              pointer_name(column) + ", count_}; }"));
         }
     }
     NodeListBuilder iteration{ir};
     for (auto const column : selected) {
-        iteration.add(ir.raw("func(std::span<" + element_type(column) + ">{" +
-                             pointer_name(column) + ", count_});"));
+        iteration.add(ir.raw("func(std::span{" + pointer_name(column) + ", count_});"));
     }
     auto const each_column{make_function(ir,
                                          "each_column",
