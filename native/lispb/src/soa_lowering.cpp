@@ -181,7 +181,8 @@ auto lower_soa_declaration(LoweringContext& context, DeclarationHandle schema)
         if (context.semantic.users_of(*type).empty()) {
             header.add(ir.namespace_node(
                 ir.strings.intern(soa_namespace_name(context.text(soas.name[row]))),
-                {emit_single_allocation_column_group(context, schema)}));
+                emit_single_allocation_layout(context,
+                                              build_single_allocation_model(context, schema))));
             return {.header = header.build(), .format_generated = true};
         }
     }

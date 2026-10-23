@@ -25,28 +25,17 @@ struct ResolvedConstView;
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct LayoutColumns {
-    template <typename T>
-    using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
-    ColLayout<LevelEntityIndex> EntityIndicesColumn;
-    ::ioj::vectors3f::LayoutColumns Locations;
-    ColLayout<float> YawsColumn;
-    ColLayout<std::int32_t> InitialFirePointIndicesColumn;
-
-    constexpr explicit LayoutColumns(
-        ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
-        : EntityIndicesColumn{previous}
-        , Locations{EntityIndicesColumn}
-        , YawsColumn{Locations.last_column()}
-        , InitialFirePointIndicesColumn{YawsColumn} {}
-    constexpr auto last_column() const noexcept
-        -> ioj::single_allocation_layout::ColumnLayoutBase const& {
-        return InitialFirePointIndicesColumn;
-    }
-    LayoutColumns(LayoutColumns const&) = delete;
-    auto operator=(LayoutColumns const&) -> LayoutColumns& = delete;
+struct Layout
+    : ioj::single_allocation_layout::
+          ColumnLayouts<LevelEntityIndex, float, float, float, float, std::int32_t> {
+    using Base = ColumnLayouts;
+    static constexpr auto entity_indices_column() noexcept { return Base::column<0>(); }
+    static constexpr auto locations_xs_column() noexcept { return Base::column<1>(); }
+    static constexpr auto locations_ys_column() noexcept { return Base::column<2>(); }
+    static constexpr auto locations_zs_column() noexcept { return Base::column<3>(); }
+    static constexpr auto yaws_column() noexcept { return Base::column<4>(); }
+    static constexpr auto initial_fire_point_indices_column() noexcept { return Base::column<5>(); }
 };
-struct Layout : ioj::single_allocation_layout::Layout<LayoutColumns> {};
 
 /* **************************************** */
 // Resolved views
@@ -207,7 +196,7 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto entity_indices() const { return this->column(Layout::columns.EntityIndicesColumn); }
+    auto entity_indices() const { return this->column(Layout::entity_indices_column()); }
     auto view_locations() const
         -> std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View> {
         return ioj::soa_storage_detail::make_strided_view<
@@ -215,12 +204,12 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
             this->state_,
             this->offset_,
             this->num(),
-            Layout::columns.Locations.XsColumn,
-            Layout::columns.Locations.YsColumn);
+            Layout::locations_xs_column(),
+            Layout::locations_ys_column());
     }
-    auto yaws() const { return this->column(Layout::columns.YawsColumn); }
+    auto yaws() const { return this->column(Layout::yaws_column()); }
     auto initial_fire_point_indices() const {
-        return this->column(Layout::columns.InitialFirePointIndicesColumn);
+        return this->column(Layout::initial_fire_point_indices_column());
     }
     template <typename Func>
     void each_column(Func&& func) const {
@@ -236,12 +225,12 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
         -> std::conditional_t<Const,
                               ::ioj::sim::level_spinner_spawn_events::ResolvedConstView,
                               ::ioj::sim::level_spinner_spawn_events::ResolvedView> {
-        return {this->column(Layout::columns.EntityIndicesColumn).data(),
-                this->column(Layout::columns.Locations.XsColumn).data(),
-                this->column(Layout::columns.Locations.YsColumn).data(),
-                this->column(Layout::columns.Locations.ZsColumn).data(),
-                this->column(Layout::columns.YawsColumn).data(),
-                this->column(Layout::columns.InitialFirePointIndicesColumn).data(),
+        return {this->column(Layout::entity_indices_column()).data(),
+                this->column(Layout::locations_xs_column()).data(),
+                this->column(Layout::locations_ys_column()).data(),
+                this->column(Layout::locations_zs_column()).data(),
+                this->column(Layout::yaws_column()).data(),
+                this->column(Layout::initial_fire_point_indices_column()).data(),
                 this->num()};
     }
 };
@@ -366,12 +355,12 @@ struct LevelSpinnerSpawnEvents
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
         ioj::native_soa::LayoutCursor cursor{blocks};
-        return {cursor.column_pointer(data, Layout::columns.EntityIndicesColumn),
-                cursor.column_pointer(data, Layout::columns.Locations.XsColumn),
-                cursor.column_pointer(data, Layout::columns.Locations.YsColumn),
-                cursor.column_pointer(data, Layout::columns.Locations.ZsColumn),
-                cursor.column_pointer(data, Layout::columns.YawsColumn),
-                cursor.column_pointer(data, Layout::columns.InitialFirePointIndicesColumn)};
+        return {cursor.column_pointer(data, Layout::entity_indices_column()),
+                cursor.column_pointer(data, Layout::locations_xs_column()),
+                cursor.column_pointer(data, Layout::locations_ys_column()),
+                cursor.column_pointer(data, Layout::locations_zs_column()),
+                cursor.column_pointer(data, Layout::yaws_column()),
+                cursor.column_pointer(data, Layout::initial_fire_point_indices_column())};
     }
 
     /* **************************************** */

@@ -328,7 +328,6 @@ auto soa_generated_cpp_names(Declarations const& declarations, DeclarationHandle
     auto const scope{soa_namespace_name(strings.view(soas.name[row]))};
     std::vector<StringId> result{strings.intern(scope)};
     for (auto const name : {"Schema",
-                            "LayoutColumns",
                             "Layout",
                             "ViewImpl",
                             "View",

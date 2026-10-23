@@ -28,40 +28,41 @@ struct ResolvedConstView;
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct LayoutColumns {
-    template <typename T>
-    using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
-    ColLayout<std::uint8_t> ActiveColumn;
-    ColLayout<LaserSource> SourcesColumn;
-    ::ioj::vectors3f::LayoutColumns Locations;
-    ::ioj::rotators3f::LayoutColumns Rotations;
-    ::ioj::vectors3f::LayoutColumns Velocities;
-    ColLayout<std::int32_t> DamagesColumn;
-    ColLayout<float> LifetimesRemainingColumn;
-    ColLayout<EntityId> InstigatorIdsColumn;
-    ColLayout<float> InitialLifetimesColumn;
-    ColLayout<float> SpawnTimesColumn;
-
-    constexpr explicit LayoutColumns(
-        ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
-        : ActiveColumn{previous}
-        , SourcesColumn{ActiveColumn}
-        , Locations{SourcesColumn}
-        , Rotations{Locations.last_column()}
-        , Velocities{Rotations.last_column()}
-        , DamagesColumn{Velocities.last_column()}
-        , LifetimesRemainingColumn{DamagesColumn}
-        , InstigatorIdsColumn{LifetimesRemainingColumn}
-        , InitialLifetimesColumn{InstigatorIdsColumn}
-        , SpawnTimesColumn{InitialLifetimesColumn} {}
-    constexpr auto last_column() const noexcept
-        -> ioj::single_allocation_layout::ColumnLayoutBase const& {
-        return SpawnTimesColumn;
-    }
-    LayoutColumns(LayoutColumns const&) = delete;
-    auto operator=(LayoutColumns const&) -> LayoutColumns& = delete;
+struct Layout
+    : ioj::single_allocation_layout::ColumnLayouts<std::uint8_t,
+                                                   LaserSource,
+                                                   float,
+                                                   float,
+                                                   float,
+                                                   float,
+                                                   float,
+                                                   float,
+                                                   float,
+                                                   float,
+                                                   float,
+                                                   std::int32_t,
+                                                   float,
+                                                   EntityId,
+                                                   float,
+                                                   float> {
+    using Base = ColumnLayouts;
+    static constexpr auto active_column() noexcept { return Base::column<0>(); }
+    static constexpr auto sources_column() noexcept { return Base::column<1>(); }
+    static constexpr auto locations_xs_column() noexcept { return Base::column<2>(); }
+    static constexpr auto locations_ys_column() noexcept { return Base::column<3>(); }
+    static constexpr auto locations_zs_column() noexcept { return Base::column<4>(); }
+    static constexpr auto rotations_pitches_column() noexcept { return Base::column<5>(); }
+    static constexpr auto rotations_yaws_column() noexcept { return Base::column<6>(); }
+    static constexpr auto rotations_rolls_column() noexcept { return Base::column<7>(); }
+    static constexpr auto velocities_xs_column() noexcept { return Base::column<8>(); }
+    static constexpr auto velocities_ys_column() noexcept { return Base::column<9>(); }
+    static constexpr auto velocities_zs_column() noexcept { return Base::column<10>(); }
+    static constexpr auto damages_column() noexcept { return Base::column<11>(); }
+    static constexpr auto lifetimes_remaining_column() noexcept { return Base::column<12>(); }
+    static constexpr auto instigator_ids_column() noexcept { return Base::column<13>(); }
+    static constexpr auto initial_lifetimes_column() noexcept { return Base::column<14>(); }
+    static constexpr auto spawn_times_column() noexcept { return Base::column<15>(); }
 };
-struct Layout : ioj::single_allocation_layout::Layout<LayoutColumns> {};
 
 /* **************************************** */
 // Resolved views
@@ -364,8 +365,8 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto active() const { return this->column(Layout::columns.ActiveColumn); }
-    auto sources() const { return this->column(Layout::columns.SourcesColumn); }
+    auto active() const { return this->column(Layout::active_column()); }
+    auto sources() const { return this->column(Layout::sources_column()); }
     auto view_locations() const
         -> std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View> {
         return ioj::soa_storage_detail::make_strided_view<
@@ -373,8 +374,8 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
             this->state_,
             this->offset_,
             this->num(),
-            Layout::columns.Locations.XsColumn,
-            Layout::columns.Locations.YsColumn);
+            Layout::locations_xs_column(),
+            Layout::locations_ys_column());
     }
     auto view_rotations() const
         -> std::conditional_t<Const, ::ioj::rotators3f::ConstView, ::ioj::rotators3f::View> {
@@ -383,8 +384,8 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
             this->state_,
             this->offset_,
             this->num(),
-            Layout::columns.Rotations.PitchesColumn,
-            Layout::columns.Rotations.YawsColumn);
+            Layout::rotations_pitches_column(),
+            Layout::rotations_yaws_column());
     }
     auto view_velocities() const
         -> std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View> {
@@ -393,16 +394,14 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
             this->state_,
             this->offset_,
             this->num(),
-            Layout::columns.Velocities.XsColumn,
-            Layout::columns.Velocities.YsColumn);
+            Layout::velocities_xs_column(),
+            Layout::velocities_ys_column());
     }
-    auto damages() const { return this->column(Layout::columns.DamagesColumn); }
-    auto lifetimes_remaining() const {
-        return this->column(Layout::columns.LifetimesRemainingColumn);
-    }
-    auto instigator_ids() const { return this->column(Layout::columns.InstigatorIdsColumn); }
-    auto initial_lifetimes() const { return this->column(Layout::columns.InitialLifetimesColumn); }
-    auto spawn_times() const { return this->column(Layout::columns.SpawnTimesColumn); }
+    auto damages() const { return this->column(Layout::damages_column()); }
+    auto lifetimes_remaining() const { return this->column(Layout::lifetimes_remaining_column()); }
+    auto instigator_ids() const { return this->column(Layout::instigator_ids_column()); }
+    auto initial_lifetimes() const { return this->column(Layout::initial_lifetimes_column()); }
+    auto spawn_times() const { return this->column(Layout::spawn_times_column()); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(active());
@@ -429,22 +428,22 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
         -> std::conditional_t<Const,
                               ::ioj::sim::lasers::laser_entities::ResolvedConstView,
                               ::ioj::sim::lasers::laser_entities::ResolvedView> {
-        return {this->column(Layout::columns.ActiveColumn).data(),
-                this->column(Layout::columns.SourcesColumn).data(),
-                this->column(Layout::columns.Locations.XsColumn).data(),
-                this->column(Layout::columns.Locations.YsColumn).data(),
-                this->column(Layout::columns.Locations.ZsColumn).data(),
-                this->column(Layout::columns.Rotations.PitchesColumn).data(),
-                this->column(Layout::columns.Rotations.YawsColumn).data(),
-                this->column(Layout::columns.Rotations.RollsColumn).data(),
-                this->column(Layout::columns.Velocities.XsColumn).data(),
-                this->column(Layout::columns.Velocities.YsColumn).data(),
-                this->column(Layout::columns.Velocities.ZsColumn).data(),
-                this->column(Layout::columns.DamagesColumn).data(),
-                this->column(Layout::columns.LifetimesRemainingColumn).data(),
-                this->column(Layout::columns.InstigatorIdsColumn).data(),
-                this->column(Layout::columns.InitialLifetimesColumn).data(),
-                this->column(Layout::columns.SpawnTimesColumn).data(),
+        return {this->column(Layout::active_column()).data(),
+                this->column(Layout::sources_column()).data(),
+                this->column(Layout::locations_xs_column()).data(),
+                this->column(Layout::locations_ys_column()).data(),
+                this->column(Layout::locations_zs_column()).data(),
+                this->column(Layout::rotations_pitches_column()).data(),
+                this->column(Layout::rotations_yaws_column()).data(),
+                this->column(Layout::rotations_rolls_column()).data(),
+                this->column(Layout::velocities_xs_column()).data(),
+                this->column(Layout::velocities_ys_column()).data(),
+                this->column(Layout::velocities_zs_column()).data(),
+                this->column(Layout::damages_column()).data(),
+                this->column(Layout::lifetimes_remaining_column()).data(),
+                this->column(Layout::instigator_ids_column()).data(),
+                this->column(Layout::initial_lifetimes_column()).data(),
+                this->column(Layout::spawn_times_column()).data(),
                 this->num()};
     }
 };
@@ -631,22 +630,22 @@ struct LaserEntities
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
         ioj::native_soa::LayoutCursor cursor{blocks};
-        return {cursor.column_pointer(data, Layout::columns.ActiveColumn),
-                cursor.column_pointer(data, Layout::columns.SourcesColumn),
-                cursor.column_pointer(data, Layout::columns.Locations.XsColumn),
-                cursor.column_pointer(data, Layout::columns.Locations.YsColumn),
-                cursor.column_pointer(data, Layout::columns.Locations.ZsColumn),
-                cursor.column_pointer(data, Layout::columns.Rotations.PitchesColumn),
-                cursor.column_pointer(data, Layout::columns.Rotations.YawsColumn),
-                cursor.column_pointer(data, Layout::columns.Rotations.RollsColumn),
-                cursor.column_pointer(data, Layout::columns.Velocities.XsColumn),
-                cursor.column_pointer(data, Layout::columns.Velocities.YsColumn),
-                cursor.column_pointer(data, Layout::columns.Velocities.ZsColumn),
-                cursor.column_pointer(data, Layout::columns.DamagesColumn),
-                cursor.column_pointer(data, Layout::columns.LifetimesRemainingColumn),
-                cursor.column_pointer(data, Layout::columns.InstigatorIdsColumn),
-                cursor.column_pointer(data, Layout::columns.InitialLifetimesColumn),
-                cursor.column_pointer(data, Layout::columns.SpawnTimesColumn)};
+        return {cursor.column_pointer(data, Layout::active_column()),
+                cursor.column_pointer(data, Layout::sources_column()),
+                cursor.column_pointer(data, Layout::locations_xs_column()),
+                cursor.column_pointer(data, Layout::locations_ys_column()),
+                cursor.column_pointer(data, Layout::locations_zs_column()),
+                cursor.column_pointer(data, Layout::rotations_pitches_column()),
+                cursor.column_pointer(data, Layout::rotations_yaws_column()),
+                cursor.column_pointer(data, Layout::rotations_rolls_column()),
+                cursor.column_pointer(data, Layout::velocities_xs_column()),
+                cursor.column_pointer(data, Layout::velocities_ys_column()),
+                cursor.column_pointer(data, Layout::velocities_zs_column()),
+                cursor.column_pointer(data, Layout::damages_column()),
+                cursor.column_pointer(data, Layout::lifetimes_remaining_column()),
+                cursor.column_pointer(data, Layout::instigator_ids_column()),
+                cursor.column_pointer(data, Layout::initial_lifetimes_column()),
+                cursor.column_pointer(data, Layout::spawn_times_column())};
     }
 
     /* **************************************** */

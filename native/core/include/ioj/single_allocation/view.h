@@ -161,11 +161,12 @@ struct CompactViewBase : ViewOperations {
         , offset_{other.offset_}
         , count_{other.count_} {}
 
-    template <typename T>
-    auto column(single_allocation_layout::ColumnLayout<T> const& layout) const
-        -> std::span<Element<T>> {
-        return {view_column_data<T>(state_, offset_, layout.offset(view_capacity_blocks(state_))),
-                count_};
+    template <typename Layout, std::size_t Index>
+    auto column(single_allocation_layout::ColumnDescriptor<Layout, Index> layout) const {
+        using T = typename decltype(layout)::value_type;
+        return std::span<Element<T>>{
+            view_column_data<T>(state_, offset_, layout.offset(view_capacity_blocks(state_))),
+            count_};
     }
 
     State* state_{};
@@ -255,12 +256,14 @@ struct StridedViewBase : ViewOperations {
     size_type count_{};
 };
 
-template <typename View, typename State, typename T>
+template <typename View, typename State, typename Layout, std::size_t First, std::size_t Second>
 auto make_strided_view(State* state,
                        std::uint32_t offset,
                        std::uint32_t count,
-                       single_allocation_layout::ColumnLayout<T> const& first,
-                       single_allocation_layout::ColumnLayout<T> const& second) -> View {
+                       single_allocation_layout::ColumnDescriptor<Layout, First> first,
+                       single_allocation_layout::ColumnDescriptor<Layout, Second> second) -> View {
+    using T = typename decltype(first)::value_type;
+    static_assert(std::is_same_v<T, typename decltype(second)::value_type>);
     validate_view(state, offset, count);
     if (!state || !state->data_) {
         return {};

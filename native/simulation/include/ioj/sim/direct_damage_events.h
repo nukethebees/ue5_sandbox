@@ -23,26 +23,12 @@ struct ResolvedConstView;
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct LayoutColumns {
-    template <typename T>
-    using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
-    ColLayout<EntityId> DamagedEntitiesColumn;
-    ColLayout<std::int32_t> DamageAmountsColumn;
-    ColLayout<EntityId> InstigatorsColumn;
-
-    constexpr explicit LayoutColumns(
-        ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
-        : DamagedEntitiesColumn{previous}
-        , DamageAmountsColumn{DamagedEntitiesColumn}
-        , InstigatorsColumn{DamageAmountsColumn} {}
-    constexpr auto last_column() const noexcept
-        -> ioj::single_allocation_layout::ColumnLayoutBase const& {
-        return InstigatorsColumn;
-    }
-    LayoutColumns(LayoutColumns const&) = delete;
-    auto operator=(LayoutColumns const&) -> LayoutColumns& = delete;
+struct Layout : ioj::single_allocation_layout::ColumnLayouts<EntityId, std::int32_t, EntityId> {
+    using Base = ColumnLayouts;
+    static constexpr auto damaged_entities_column() noexcept { return Base::column<0>(); }
+    static constexpr auto damage_amounts_column() noexcept { return Base::column<1>(); }
+    static constexpr auto instigators_column() noexcept { return Base::column<2>(); }
 };
-struct Layout : ioj::single_allocation_layout::Layout<LayoutColumns> {};
 
 /* **************************************** */
 // Resolved views
@@ -144,9 +130,9 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto damaged_entities() const { return this->column(Layout::columns.DamagedEntitiesColumn); }
-    auto damage_amounts() const { return this->column(Layout::columns.DamageAmountsColumn); }
-    auto instigators() const { return this->column(Layout::columns.InstigatorsColumn); }
+    auto damaged_entities() const { return this->column(Layout::damaged_entities_column()); }
+    auto damage_amounts() const { return this->column(Layout::damage_amounts_column()); }
+    auto instigators() const { return this->column(Layout::instigators_column()); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(damaged_entities());
@@ -156,9 +142,9 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     auto resolve() const -> std::conditional_t<Const,
                                                ::ioj::sim::direct_damage_events::ResolvedConstView,
                                                ::ioj::sim::direct_damage_events::ResolvedView> {
-        return {this->column(Layout::columns.DamagedEntitiesColumn).data(),
-                this->column(Layout::columns.DamageAmountsColumn).data(),
-                this->column(Layout::columns.InstigatorsColumn).data(),
+        return {this->column(Layout::damaged_entities_column()).data(),
+                this->column(Layout::damage_amounts_column()).data(),
+                this->column(Layout::instigators_column()).data(),
                 this->num()};
     }
 };
@@ -255,9 +241,9 @@ struct DirectDamageEvents
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
         ioj::native_soa::LayoutCursor cursor{blocks};
-        return {cursor.column_pointer(data, Layout::columns.DamagedEntitiesColumn),
-                cursor.column_pointer(data, Layout::columns.DamageAmountsColumn),
-                cursor.column_pointer(data, Layout::columns.InstigatorsColumn)};
+        return {cursor.column_pointer(data, Layout::damaged_entities_column()),
+                cursor.column_pointer(data, Layout::damage_amounts_column()),
+                cursor.column_pointer(data, Layout::instigators_column())};
     }
 
     /* **************************************** */

@@ -29,22 +29,13 @@ static_assert(sizeof(FFieldMask8) == sizeof(FFieldMask8::storage_type));
 static_assert(std::is_trivially_copyable_v<FFieldMask8>);
 
 namespace f_mask_rows8 {
-struct LayoutColumns {
-    template <typename T>
-    using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
-    ColLayout<FFieldMask8> MasksColumn;
-    ColLayout<std::int32_t> ValuesColumn;
-
-    constexpr explicit LayoutColumns(
-        ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
-        : MasksColumn{previous}
-        , ValuesColumn{MasksColumn} {}
-    constexpr auto last_column() const noexcept
-        -> ioj::single_allocation_layout::ColumnLayoutBase const& {
-        return ValuesColumn;
-    }
-    LayoutColumns(LayoutColumns const&) = delete;
-    auto operator=(LayoutColumns const&) -> LayoutColumns& = delete;
+/* **************************************** */
+// Layout
+/* **************************************** */
+struct Layout : ioj::single_allocation_layout::ColumnLayouts<FFieldMask8, std::int32_t> {
+    using Base = ColumnLayouts;
+    static constexpr auto masks_column() noexcept { return Base::column<0>(); }
+    static constexpr auto values_column() noexcept { return Base::column<1>(); }
 };
 } // namespace f_mask_rows8
 
@@ -68,24 +59,15 @@ static_assert(sizeof(FFieldMask9) == sizeof(FFieldMask9::storage_type));
 static_assert(std::is_trivially_copyable_v<FFieldMask9>);
 
 namespace f_mask_rows9 {
-struct LayoutColumns {
-    template <typename T>
-    using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
-    ColLayout<FFieldMask9> MasksColumn;
-    ColLayout<std::int32_t> ValuesColumn;
-    ColLayout<std::int32_t> TailColumn;
-
-    constexpr explicit LayoutColumns(
-        ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
-        : MasksColumn{previous}
-        , ValuesColumn{MasksColumn}
-        , TailColumn{ValuesColumn} {}
-    constexpr auto last_column() const noexcept
-        -> ioj::single_allocation_layout::ColumnLayoutBase const& {
-        return TailColumn;
-    }
-    LayoutColumns(LayoutColumns const&) = delete;
-    auto operator=(LayoutColumns const&) -> LayoutColumns& = delete;
+/* **************************************** */
+// Layout
+/* **************************************** */
+struct Layout
+    : ioj::single_allocation_layout::ColumnLayouts<FFieldMask9, std::int32_t, std::int32_t> {
+    using Base = ColumnLayouts;
+    static constexpr auto masks_column() noexcept { return Base::column<0>(); }
+    static constexpr auto values_column() noexcept { return Base::column<1>(); }
+    static constexpr auto tail_column() noexcept { return Base::column<2>(); }
 };
 } // namespace f_mask_rows9
 
@@ -108,22 +90,13 @@ static_assert(sizeof(FFieldMask16) == sizeof(FFieldMask16::storage_type));
 static_assert(std::is_trivially_copyable_v<FFieldMask16>);
 
 namespace f_mask_rows16 {
-struct LayoutColumns {
-    template <typename T>
-    using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
-    ColLayout<FFieldMask16> MasksColumn;
-    ColLayout<std::int32_t> ValuesColumn;
-
-    constexpr explicit LayoutColumns(
-        ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
-        : MasksColumn{previous}
-        , ValuesColumn{MasksColumn} {}
-    constexpr auto last_column() const noexcept
-        -> ioj::single_allocation_layout::ColumnLayoutBase const& {
-        return ValuesColumn;
-    }
-    LayoutColumns(LayoutColumns const&) = delete;
-    auto operator=(LayoutColumns const&) -> LayoutColumns& = delete;
+/* **************************************** */
+// Layout
+/* **************************************** */
+struct Layout : ioj::single_allocation_layout::ColumnLayouts<FFieldMask16, std::int32_t> {
+    using Base = ColumnLayouts;
+    static constexpr auto masks_column() noexcept { return Base::column<0>(); }
+    static constexpr auto values_column() noexcept { return Base::column<1>(); }
 };
 } // namespace f_mask_rows16
 
@@ -146,22 +119,13 @@ static_assert(sizeof(FFieldMask17) == sizeof(FFieldMask17::storage_type));
 static_assert(std::is_trivially_copyable_v<FFieldMask17>);
 
 namespace f_mask_rows17 {
-struct LayoutColumns {
-    template <typename T>
-    using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
-    ColLayout<FFieldMask17> MasksColumn;
-    ColLayout<std::int32_t> ValuesColumn;
-
-    constexpr explicit LayoutColumns(
-        ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
-        : MasksColumn{previous}
-        , ValuesColumn{MasksColumn} {}
-    constexpr auto last_column() const noexcept
-        -> ioj::single_allocation_layout::ColumnLayoutBase const& {
-        return ValuesColumn;
-    }
-    LayoutColumns(LayoutColumns const&) = delete;
-    auto operator=(LayoutColumns const&) -> LayoutColumns& = delete;
+/* **************************************** */
+// Layout
+/* **************************************** */
+struct Layout : ioj::single_allocation_layout::ColumnLayouts<FFieldMask17, std::int32_t> {
+    using Base = ColumnLayouts;
+    static constexpr auto masks_column() noexcept { return Base::column<0>(); }
+    static constexpr auto values_column() noexcept { return Base::column<1>(); }
 };
 } // namespace f_mask_rows17
 
@@ -184,22 +148,13 @@ static_assert(sizeof(FFieldMask32) == sizeof(FFieldMask32::storage_type));
 static_assert(std::is_trivially_copyable_v<FFieldMask32>);
 
 namespace f_mask_rows32 {
-struct LayoutColumns {
-    template <typename T>
-    using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
-    ColLayout<FFieldMask32> MasksColumn;
-    ColLayout<std::int32_t> ValuesColumn;
-
-    constexpr explicit LayoutColumns(
-        ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
-        : MasksColumn{previous}
-        , ValuesColumn{MasksColumn} {}
-    constexpr auto last_column() const noexcept
-        -> ioj::single_allocation_layout::ColumnLayoutBase const& {
-        return ValuesColumn;
-    }
-    LayoutColumns(LayoutColumns const&) = delete;
-    auto operator=(LayoutColumns const&) -> LayoutColumns& = delete;
+/* **************************************** */
+// Layout
+/* **************************************** */
+struct Layout : ioj::single_allocation_layout::ColumnLayouts<FFieldMask32, std::int32_t> {
+    using Base = ColumnLayouts;
+    static constexpr auto masks_column() noexcept { return Base::column<0>(); }
+    static constexpr auto values_column() noexcept { return Base::column<1>(); }
 };
 } // namespace f_mask_rows32
 
@@ -222,22 +177,13 @@ static_assert(sizeof(FFieldMask33) == sizeof(FFieldMask33::storage_type));
 static_assert(std::is_trivially_copyable_v<FFieldMask33>);
 
 namespace f_mask_rows33 {
-struct LayoutColumns {
-    template <typename T>
-    using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
-    ColLayout<FFieldMask33> MasksColumn;
-    ColLayout<std::int32_t> ValuesColumn;
-
-    constexpr explicit LayoutColumns(
-        ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
-        : MasksColumn{previous}
-        , ValuesColumn{MasksColumn} {}
-    constexpr auto last_column() const noexcept
-        -> ioj::single_allocation_layout::ColumnLayoutBase const& {
-        return ValuesColumn;
-    }
-    LayoutColumns(LayoutColumns const&) = delete;
-    auto operator=(LayoutColumns const&) -> LayoutColumns& = delete;
+/* **************************************** */
+// Layout
+/* **************************************** */
+struct Layout : ioj::single_allocation_layout::ColumnLayouts<FFieldMask33, std::int32_t> {
+    using Base = ColumnLayouts;
+    static constexpr auto masks_column() noexcept { return Base::column<0>(); }
+    static constexpr auto values_column() noexcept { return Base::column<1>(); }
 };
 } // namespace f_mask_rows33
 } // namespace codegen_compile_fixture

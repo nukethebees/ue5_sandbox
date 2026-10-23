@@ -31,9 +31,7 @@
 #include <cstddef>
 #include <initializer_list>
 #include <map>
-#include <set>
 #include <span>
-#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -317,15 +315,9 @@ auto data_pointers_node(LoweringContext& context, SingleAllocationModelId model)
 auto layout_column(LoweringContext& context, SingleAllocationColumnId column) -> Expr {
     auto& ir{context.ir};
     auto const& columns{ir.lowering.single_allocation_columns};
-    auto const path{ir.lowering.paths.items(columns.member_path[columns.index(column)])};
-    auto result{ir.named("Layout::columns")};
-    auto const count{path.size()};
-    for (std::size_t index{}; index < count; ++index) {
-        result = ir.member_access(result,
-                                  title_case_identifier(context.text(path[index])) +
-                                      (index + 1 == count ? "Column" : ""));
-    }
-    return result;
+    return ir.call(
+        ir.named("Layout::" + context.text(columns.flattened_identifier[columns.index(column)]) +
+                 "_column"));
 }
 
 auto column_pointer_nodes(LoweringContext& context, SingleAllocationModelId model) -> Nodes {
@@ -743,12 +735,9 @@ auto compact_view_node(LoweringContext& context, SingleAllocationModelId model) 
                                     ir.parameter("std::uint32_t", "count")});
         std::vector<std::string> arguments{"state", "offset", "count"};
         for (auto const column : selected.first(2)) {
-            std::string argument{"Layout::columns"};
-            for (auto const component :
-                 ir.lowering.paths.items(columns.member_path[columns.index(column)])) {
-                argument += "." + title_case_identifier(context.text(component));
-            }
-            arguments.push_back(argument + "Column");
+            arguments.push_back(
+                "Layout::" + context.text(columns.flattened_identifier[columns.index(column)]) +
+                "_column()");
         }
         ir.set_function_body(constructor,
                              {},
@@ -870,91 +859,59 @@ auto view_validation_nodes(LoweringContext& context, std::string const& name, bo
 
 } // namespace
 
-auto emit_single_allocation_column_group(LoweringContext& context, DeclarationHandle schema)
-    -> NodeId {
-    auto& ir{context.ir};
-    auto const scoped{context.for_declaration(schema)};
-    auto const& soas{context.declarations.soas};
-    auto const& members{context.declarations.soa_members};
-    auto const row{soas.index(schema)};
-    std::string const name{"LayoutColumns"};
-    NodeListBuilder children{ir};
-    children.add(ir.using_declaration(
-        ir.strings.intern("ColLayout"),
-        ir.types.intern("ioj::single_allocation_layout::ColumnLayout<T>"),
-        ir.template_declaration({ir.type_template_parameter(ir.strings.intern("T"))})));
-    std::vector<MemberInitializerId> initializers;
-    std::set<std::string> names{"ColLayout", name};
-    std::string previous{"previous"};
-    for (auto const member : context.declarations.items(soas.members[row])) {
-        auto const member_row{members.index(member)};
-        auto const nested{members.kind[member_row] == SoaMemberKind::nested};
-        auto const member_name{title_case_identifier(context.text(members.name[member_row])) +
-                               (nested ? "" : "Column")};
-        if (!names.insert(member_name).second) {
-            throw std::invalid_argument{"Single-allocation column name collision: " + member_name};
-        }
-        auto const type{scoped.resolve(members.type[member_row])};
-        auto const member_type{
-            nested ? ir.types.intern(schema_namespace(context, scoped.nested_declaration(member)) +
-                                         "::LayoutColumns",
-                                     ir.types.dependencies(type))
-                   : ir.types.template_type(ir.types.intern("ColLayout"), {type})};
-        children.new_lines(1).add(ir.instance_member(member_type, ir.strings.intern(member_name)));
-        initializers.push_back(
-            ir.member_initializer(ir.strings.intern(member_name), ir.store_text(previous)));
-        previous = member_name + (nested ? ".last_column()" : "");
-    }
-    auto const constructor{ir.constructor(ir.strings.intern(name), true)};
-    ir.set_function_parameters(
-        constructor,
-        {ir.parameter("ioj::single_allocation_layout::ColumnLayoutBase const&", "previous")});
-    ir.set_function_noexcept(constructor);
-    ir.function_flags(constructor).set_is_constexpr(true);
-    ir.set_function_body(constructor, {}, initializers);
-    auto const last{make_function(ir,
-                                  "last_column",
-                                  "ioj::single_allocation_layout::ColumnLayoutBase const&",
-                                  {},
-                                  {ir.return_stmt(ir.named(previous))},
-                                  FunctionReceiver::const_,
-                                  ReturnSyntax::trailing)};
-    ir.set_function_noexcept(last);
-    ir.function_flags(last).set_is_constexpr(true);
-    auto const copy{ir.constructor(ir.strings.intern(name))};
-    ir.set_function_parameters(copy, {ir.parameter(name + " const&")});
-    ir.set_function_deleted(copy);
-    auto const assignment{ir.function("operator=", name + "&")};
-    ir.set_function_parameters(assignment, {ir.parameter(name + " const&")});
-    ir.set_function_return_type(
-        assignment, ir.function_return_type(assignment), ReturnSyntax::trailing);
-    ir.set_function_deleted(assignment);
-    children.new_lines(2).append(adjacent(context,
-                                          {inline_function(context, constructor),
-                                           compact_function(context, last),
-                                           ir.declaration(copy),
-                                           ir.declaration(assignment)}));
-    auto const result{ir.record(ir.strings.intern(name), children.build(), RecordKind::struct_)};
-    ir.set_record_dependencies(
-        result,
-        {ir.types.dependency("single_allocation_layout", "ioj/single_allocation/layout.h")});
-    return result;
-}
-
 auto emit_single_allocation_layout(LoweringContext& context, SingleAllocationModelId model)
     -> Nodes {
     auto& ir{context.ir};
     auto const& models{ir.lowering.single_allocation_models};
-    auto const row{models.index(model)};
-    auto const layout{ir.record(ir.strings.intern("Layout"), {}, RecordKind::struct_)};
-    ir.set_record_bases(layout,
-                        {ir.types.intern("ioj::single_allocation_layout::Layout<LayoutColumns>")});
+    auto const& columns{ir.lowering.single_allocation_columns};
+    auto const selected{ir.lowering.items(models.columns[models.index(model)])};
+    std::vector<CppTypeId> types;
+    for (auto const column : selected) {
+        types.push_back(columns.type[columns.index(column)]);
+    }
+    auto const base{ir.types.template_type(
+        ir.types.intern(
+            "ioj::single_allocation_layout::ColumnLayouts",
+            {ir.types.dependency("single_allocation_layout", "ioj/single_allocation/layout.h")}),
+        types)};
+    NodeListBuilder children{ir};
+    children.add(ir.using_declaration(ir.strings.intern("Base"), ir.types.intern("ColumnLayouts")));
+    for (std::size_t index{}; index < selected.size(); ++index) {
+        auto const row{columns.index(selected[index])};
+        auto const function{
+            make_function(ir,
+                          context.text(columns.flattened_identifier[row]) + "_column",
+                          "auto",
+                          {},
+                          {ir.return_stmt(ir.call(ir.template_id(
+                              ir.named("Base::column"), {ir.literal(std::to_string(index))})))},
+                          FunctionReceiver::static_)};
+        ir.function_flags(function).set_is_constexpr(true);
+        ir.set_function_noexcept(function);
+        children.new_lines(1).add(compact_function(context, function));
+    }
+    auto const layout{
+        ir.record(ir.strings.intern("Layout"), children.build(), RecordKind::struct_)};
+    ir.set_record_bases(layout, {base});
+    std::vector<StringId> inherited;
+    for (auto const name : {"ColumnLayouts",
+                            "Element",
+                            "metadata",
+                            "num_columns",
+                            "size_type",
+                            "byte_size_type",
+                            "capacity_granularity",
+                            "column_gap",
+                            "allocation_alignment",
+                            "capacity_block_bound",
+                            "max_capacity",
+                            "column",
+                            "layout_bytes"}) {
+        inherited.push_back(ir.strings.intern(name));
+    }
+    ir.set_scope_bindings(layout, inherited);
     NodeListBuilder result{ir};
-    result.append(section_header(context, "Layout"))
-        .new_lines(1)
-        .add(emit_single_allocation_column_group(context, models.schema[row]))
-        .new_lines(1)
-        .add(layout);
+    result.append(section_header(context, "Layout")).new_lines(1).add(layout);
     return result.build();
 }
 

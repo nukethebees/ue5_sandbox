@@ -19,10 +19,7 @@ namespace ioj::native_soa {
 using size_type = std::uint32_t;
 using byte_size_type = std::size_t;
 
-using single_allocation_layout::capacity_block_bound;
 using single_allocation_layout::capacity_granularity;
-using single_allocation_layout::ColumnLayout;
-using single_allocation_layout::ColumnLayoutStart;
 using single_allocation_layout::layout_align;
 using single_allocation_layout::LayoutCursor;
 using single_allocation_layout::LayoutPolicy;

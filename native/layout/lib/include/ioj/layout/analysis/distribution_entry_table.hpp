@@ -26,34 +26,24 @@ struct ResolvedConstView;
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct LayoutColumns {
-    template <typename T>
-    using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
-    ColLayout<std::optional<std::size_t>> ComponentColumn;
-    ColLayout<std::optional<lispb::codegen::PackedIntegerValue>> ValueColumn;
-    ColLayout<std::uint64_t> WeightColumn;
-    ColLayout<std::optional<std::uint64_t>> ExtentBytesColumn;
-    ColLayout<std::optional<std::uint64_t>> SlackBytesColumn;
-    ColLayout<std::optional<std::uint64_t>> WeightedExtentBytesColumn;
-    ColLayout<std::optional<std::uint64_t>> WeightedSlackBytesColumn;
-
-    constexpr explicit LayoutColumns(
-        ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
-        : ComponentColumn{previous}
-        , ValueColumn{ComponentColumn}
-        , WeightColumn{ValueColumn}
-        , ExtentBytesColumn{WeightColumn}
-        , SlackBytesColumn{ExtentBytesColumn}
-        , WeightedExtentBytesColumn{SlackBytesColumn}
-        , WeightedSlackBytesColumn{WeightedExtentBytesColumn} {}
-    constexpr auto last_column() const noexcept
-        -> ioj::single_allocation_layout::ColumnLayoutBase const& {
-        return WeightedSlackBytesColumn;
-    }
-    LayoutColumns(LayoutColumns const&) = delete;
-    auto operator=(LayoutColumns const&) -> LayoutColumns& = delete;
+struct Layout
+    : ioj::single_allocation_layout::ColumnLayouts<
+          std::optional<std::size_t>,
+          std::optional<lispb::codegen::PackedIntegerValue>,
+          std::uint64_t,
+          std::optional<std::uint64_t>,
+          std::optional<std::uint64_t>,
+          std::optional<std::uint64_t>,
+          std::optional<std::uint64_t>> {
+    using Base = ColumnLayouts;
+    static constexpr auto component_column() noexcept { return Base::column<0>(); }
+    static constexpr auto value_column() noexcept { return Base::column<1>(); }
+    static constexpr auto weight_column() noexcept { return Base::column<2>(); }
+    static constexpr auto extent_bytes_column() noexcept { return Base::column<3>(); }
+    static constexpr auto slack_bytes_column() noexcept { return Base::column<4>(); }
+    static constexpr auto weighted_extent_bytes_column() noexcept { return Base::column<5>(); }
+    static constexpr auto weighted_slack_bytes_column() noexcept { return Base::column<6>(); }
 };
-struct Layout : ioj::single_allocation_layout::Layout<LayoutColumns> {};
 
 /* **************************************** */
 // Resolved views
@@ -212,16 +202,16 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto component() const { return this->column(Layout::columns.ComponentColumn); }
-    auto value() const { return this->column(Layout::columns.ValueColumn); }
-    auto weight() const { return this->column(Layout::columns.WeightColumn); }
-    auto extent_bytes() const { return this->column(Layout::columns.ExtentBytesColumn); }
-    auto slack_bytes() const { return this->column(Layout::columns.SlackBytesColumn); }
+    auto component() const { return this->column(Layout::component_column()); }
+    auto value() const { return this->column(Layout::value_column()); }
+    auto weight() const { return this->column(Layout::weight_column()); }
+    auto extent_bytes() const { return this->column(Layout::extent_bytes_column()); }
+    auto slack_bytes() const { return this->column(Layout::slack_bytes_column()); }
     auto weighted_extent_bytes() const {
-        return this->column(Layout::columns.WeightedExtentBytesColumn);
+        return this->column(Layout::weighted_extent_bytes_column());
     }
     auto weighted_slack_bytes() const {
-        return this->column(Layout::columns.WeightedSlackBytesColumn);
+        return this->column(Layout::weighted_slack_bytes_column());
     }
     template <typename Func>
     void each_column(Func&& func) const {
@@ -237,13 +227,13 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
         -> std::conditional_t<Const,
                               ::ioj::layout::distribution_entry_table::ResolvedConstView,
                               ::ioj::layout::distribution_entry_table::ResolvedView> {
-        return {this->column(Layout::columns.ComponentColumn).data(),
-                this->column(Layout::columns.ValueColumn).data(),
-                this->column(Layout::columns.WeightColumn).data(),
-                this->column(Layout::columns.ExtentBytesColumn).data(),
-                this->column(Layout::columns.SlackBytesColumn).data(),
-                this->column(Layout::columns.WeightedExtentBytesColumn).data(),
-                this->column(Layout::columns.WeightedSlackBytesColumn).data(),
+        return {this->column(Layout::component_column()).data(),
+                this->column(Layout::value_column()).data(),
+                this->column(Layout::weight_column()).data(),
+                this->column(Layout::extent_bytes_column()).data(),
+                this->column(Layout::slack_bytes_column()).data(),
+                this->column(Layout::weighted_extent_bytes_column()).data(),
+                this->column(Layout::weighted_slack_bytes_column()).data(),
                 this->num()};
     }
 };
@@ -362,13 +352,13 @@ struct DistributionEntryTable
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
         ioj::native_soa::LayoutCursor cursor{blocks};
-        return {cursor.column_pointer(data, Layout::columns.ComponentColumn),
-                cursor.column_pointer(data, Layout::columns.ValueColumn),
-                cursor.column_pointer(data, Layout::columns.WeightColumn),
-                cursor.column_pointer(data, Layout::columns.ExtentBytesColumn),
-                cursor.column_pointer(data, Layout::columns.SlackBytesColumn),
-                cursor.column_pointer(data, Layout::columns.WeightedExtentBytesColumn),
-                cursor.column_pointer(data, Layout::columns.WeightedSlackBytesColumn)};
+        return {cursor.column_pointer(data, Layout::component_column()),
+                cursor.column_pointer(data, Layout::value_column()),
+                cursor.column_pointer(data, Layout::weight_column()),
+                cursor.column_pointer(data, Layout::extent_bytes_column()),
+                cursor.column_pointer(data, Layout::slack_bytes_column()),
+                cursor.column_pointer(data, Layout::weighted_extent_bytes_column()),
+                cursor.column_pointer(data, Layout::weighted_slack_bytes_column())};
     }
 
     /* **************************************** */

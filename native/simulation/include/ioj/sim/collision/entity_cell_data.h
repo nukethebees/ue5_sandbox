@@ -23,46 +23,35 @@ struct ResolvedConstView;
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct LayoutColumns {
-    template <typename T>
-    using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
-    ColLayout<float> MinPointXsColumn;
-    ColLayout<float> MinPointYsColumn;
-    ColLayout<float> MinPointZsColumn;
-    ColLayout<float> MaxPointXsColumn;
-    ColLayout<float> MaxPointYsColumn;
-    ColLayout<float> MaxPointZsColumn;
-    ColLayout<std::int32_t> MinCellXsColumn;
-    ColLayout<std::int32_t> MinCellYsColumn;
-    ColLayout<std::int32_t> MinCellZsColumn;
-    ColLayout<std::int32_t> MaxCellXsColumn;
-    ColLayout<std::int32_t> MaxCellYsColumn;
-    ColLayout<std::int32_t> MaxCellZsColumn;
-    ColLayout<EntityId> EntityIdsColumn;
-
-    constexpr explicit LayoutColumns(
-        ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
-        : MinPointXsColumn{previous}
-        , MinPointYsColumn{MinPointXsColumn}
-        , MinPointZsColumn{MinPointYsColumn}
-        , MaxPointXsColumn{MinPointZsColumn}
-        , MaxPointYsColumn{MaxPointXsColumn}
-        , MaxPointZsColumn{MaxPointYsColumn}
-        , MinCellXsColumn{MaxPointZsColumn}
-        , MinCellYsColumn{MinCellXsColumn}
-        , MinCellZsColumn{MinCellYsColumn}
-        , MaxCellXsColumn{MinCellZsColumn}
-        , MaxCellYsColumn{MaxCellXsColumn}
-        , MaxCellZsColumn{MaxCellYsColumn}
-        , EntityIdsColumn{MaxCellZsColumn} {}
-    constexpr auto last_column() const noexcept
-        -> ioj::single_allocation_layout::ColumnLayoutBase const& {
-        return EntityIdsColumn;
-    }
-    LayoutColumns(LayoutColumns const&) = delete;
-    auto operator=(LayoutColumns const&) -> LayoutColumns& = delete;
+struct Layout
+    : ioj::single_allocation_layout::ColumnLayouts<float,
+                                                   float,
+                                                   float,
+                                                   float,
+                                                   float,
+                                                   float,
+                                                   std::int32_t,
+                                                   std::int32_t,
+                                                   std::int32_t,
+                                                   std::int32_t,
+                                                   std::int32_t,
+                                                   std::int32_t,
+                                                   EntityId> {
+    using Base = ColumnLayouts;
+    static constexpr auto min_point_xs_column() noexcept { return Base::column<0>(); }
+    static constexpr auto min_point_ys_column() noexcept { return Base::column<1>(); }
+    static constexpr auto min_point_zs_column() noexcept { return Base::column<2>(); }
+    static constexpr auto max_point_xs_column() noexcept { return Base::column<3>(); }
+    static constexpr auto max_point_ys_column() noexcept { return Base::column<4>(); }
+    static constexpr auto max_point_zs_column() noexcept { return Base::column<5>(); }
+    static constexpr auto min_cell_xs_column() noexcept { return Base::column<6>(); }
+    static constexpr auto min_cell_ys_column() noexcept { return Base::column<7>(); }
+    static constexpr auto min_cell_zs_column() noexcept { return Base::column<8>(); }
+    static constexpr auto max_cell_xs_column() noexcept { return Base::column<9>(); }
+    static constexpr auto max_cell_ys_column() noexcept { return Base::column<10>(); }
+    static constexpr auto max_cell_zs_column() noexcept { return Base::column<11>(); }
+    static constexpr auto entity_ids_column() noexcept { return Base::column<12>(); }
 };
-struct Layout : ioj::single_allocation_layout::Layout<LayoutColumns> {};
 
 /* **************************************** */
 // Resolved views
@@ -298,19 +287,19 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto min_point_xs() const { return this->column(Layout::columns.MinPointXsColumn); }
-    auto min_point_ys() const { return this->column(Layout::columns.MinPointYsColumn); }
-    auto min_point_zs() const { return this->column(Layout::columns.MinPointZsColumn); }
-    auto max_point_xs() const { return this->column(Layout::columns.MaxPointXsColumn); }
-    auto max_point_ys() const { return this->column(Layout::columns.MaxPointYsColumn); }
-    auto max_point_zs() const { return this->column(Layout::columns.MaxPointZsColumn); }
-    auto min_cell_xs() const { return this->column(Layout::columns.MinCellXsColumn); }
-    auto min_cell_ys() const { return this->column(Layout::columns.MinCellYsColumn); }
-    auto min_cell_zs() const { return this->column(Layout::columns.MinCellZsColumn); }
-    auto max_cell_xs() const { return this->column(Layout::columns.MaxCellXsColumn); }
-    auto max_cell_ys() const { return this->column(Layout::columns.MaxCellYsColumn); }
-    auto max_cell_zs() const { return this->column(Layout::columns.MaxCellZsColumn); }
-    auto entity_ids() const { return this->column(Layout::columns.EntityIdsColumn); }
+    auto min_point_xs() const { return this->column(Layout::min_point_xs_column()); }
+    auto min_point_ys() const { return this->column(Layout::min_point_ys_column()); }
+    auto min_point_zs() const { return this->column(Layout::min_point_zs_column()); }
+    auto max_point_xs() const { return this->column(Layout::max_point_xs_column()); }
+    auto max_point_ys() const { return this->column(Layout::max_point_ys_column()); }
+    auto max_point_zs() const { return this->column(Layout::max_point_zs_column()); }
+    auto min_cell_xs() const { return this->column(Layout::min_cell_xs_column()); }
+    auto min_cell_ys() const { return this->column(Layout::min_cell_ys_column()); }
+    auto min_cell_zs() const { return this->column(Layout::min_cell_zs_column()); }
+    auto max_cell_xs() const { return this->column(Layout::max_cell_xs_column()); }
+    auto max_cell_ys() const { return this->column(Layout::max_cell_ys_column()); }
+    auto max_cell_zs() const { return this->column(Layout::max_cell_zs_column()); }
+    auto entity_ids() const { return this->column(Layout::entity_ids_column()); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(min_point_xs());
@@ -331,19 +320,19 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
         -> std::conditional_t<Const,
                               ::ioj::sim::collision::entity_cell_data::ResolvedConstView,
                               ::ioj::sim::collision::entity_cell_data::ResolvedView> {
-        return {this->column(Layout::columns.MinPointXsColumn).data(),
-                this->column(Layout::columns.MinPointYsColumn).data(),
-                this->column(Layout::columns.MinPointZsColumn).data(),
-                this->column(Layout::columns.MaxPointXsColumn).data(),
-                this->column(Layout::columns.MaxPointYsColumn).data(),
-                this->column(Layout::columns.MaxPointZsColumn).data(),
-                this->column(Layout::columns.MinCellXsColumn).data(),
-                this->column(Layout::columns.MinCellYsColumn).data(),
-                this->column(Layout::columns.MinCellZsColumn).data(),
-                this->column(Layout::columns.MaxCellXsColumn).data(),
-                this->column(Layout::columns.MaxCellYsColumn).data(),
-                this->column(Layout::columns.MaxCellZsColumn).data(),
-                this->column(Layout::columns.EntityIdsColumn).data(),
+        return {this->column(Layout::min_point_xs_column()).data(),
+                this->column(Layout::min_point_ys_column()).data(),
+                this->column(Layout::min_point_zs_column()).data(),
+                this->column(Layout::max_point_xs_column()).data(),
+                this->column(Layout::max_point_ys_column()).data(),
+                this->column(Layout::max_point_zs_column()).data(),
+                this->column(Layout::min_cell_xs_column()).data(),
+                this->column(Layout::min_cell_ys_column()).data(),
+                this->column(Layout::min_cell_zs_column()).data(),
+                this->column(Layout::max_cell_xs_column()).data(),
+                this->column(Layout::max_cell_ys_column()).data(),
+                this->column(Layout::max_cell_zs_column()).data(),
+                this->column(Layout::entity_ids_column()).data(),
                 this->num()};
     }
 };
@@ -492,19 +481,19 @@ struct EntityCellData
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
         ioj::native_soa::LayoutCursor cursor{blocks};
-        return {cursor.column_pointer(data, Layout::columns.MinPointXsColumn),
-                cursor.column_pointer(data, Layout::columns.MinPointYsColumn),
-                cursor.column_pointer(data, Layout::columns.MinPointZsColumn),
-                cursor.column_pointer(data, Layout::columns.MaxPointXsColumn),
-                cursor.column_pointer(data, Layout::columns.MaxPointYsColumn),
-                cursor.column_pointer(data, Layout::columns.MaxPointZsColumn),
-                cursor.column_pointer(data, Layout::columns.MinCellXsColumn),
-                cursor.column_pointer(data, Layout::columns.MinCellYsColumn),
-                cursor.column_pointer(data, Layout::columns.MinCellZsColumn),
-                cursor.column_pointer(data, Layout::columns.MaxCellXsColumn),
-                cursor.column_pointer(data, Layout::columns.MaxCellYsColumn),
-                cursor.column_pointer(data, Layout::columns.MaxCellZsColumn),
-                cursor.column_pointer(data, Layout::columns.EntityIdsColumn)};
+        return {cursor.column_pointer(data, Layout::min_point_xs_column()),
+                cursor.column_pointer(data, Layout::min_point_ys_column()),
+                cursor.column_pointer(data, Layout::min_point_zs_column()),
+                cursor.column_pointer(data, Layout::max_point_xs_column()),
+                cursor.column_pointer(data, Layout::max_point_ys_column()),
+                cursor.column_pointer(data, Layout::max_point_zs_column()),
+                cursor.column_pointer(data, Layout::min_cell_xs_column()),
+                cursor.column_pointer(data, Layout::min_cell_ys_column()),
+                cursor.column_pointer(data, Layout::min_cell_zs_column()),
+                cursor.column_pointer(data, Layout::max_cell_xs_column()),
+                cursor.column_pointer(data, Layout::max_cell_ys_column()),
+                cursor.column_pointer(data, Layout::max_cell_zs_column()),
+                cursor.column_pointer(data, Layout::entity_ids_column())};
     }
 
     /* **************************************** */

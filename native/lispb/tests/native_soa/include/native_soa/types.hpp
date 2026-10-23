@@ -67,22 +67,10 @@ struct ResolvedConstView;
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct LayoutColumns {
-    template <typename T>
-    using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
-    ColLayout<PointerA*> OthersColumn;
-
-    constexpr explicit LayoutColumns(
-        ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
-        : OthersColumn{previous} {}
-    constexpr auto last_column() const noexcept
-        -> ioj::single_allocation_layout::ColumnLayoutBase const& {
-        return OthersColumn;
-    }
-    LayoutColumns(LayoutColumns const&) = delete;
-    auto operator=(LayoutColumns const&) -> LayoutColumns& = delete;
+struct Layout : ioj::single_allocation_layout::ColumnLayouts<PointerA*> {
+    using Base = ColumnLayouts;
+    static constexpr auto others_column() noexcept { return Base::column<0>(); }
 };
-struct Layout : ioj::single_allocation_layout::Layout<LayoutColumns> {};
 
 /* **************************************** */
 // Resolved views
@@ -157,7 +145,7 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto others() const { return this->column(Layout::columns.OthersColumn); }
+    auto others() const { return this->column(Layout::others_column()); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(others());
@@ -166,7 +154,7 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
         -> std::conditional_t<Const,
                               ::ioj::native_soa_fixture::pointer_b::ResolvedConstView,
                               ::ioj::native_soa_fixture::pointer_b::ResolvedView> {
-        return {this->column(Layout::columns.OthersColumn).data(), this->num()};
+        return {this->column(Layout::others_column()).data(), this->num()};
     }
 };
 struct ConstView : ViewImpl<true> {
@@ -251,7 +239,7 @@ struct PointerB
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
         ioj::native_soa::LayoutCursor cursor{blocks};
-        return {cursor.column_pointer(data, Layout::columns.OthersColumn)};
+        return {cursor.column_pointer(data, Layout::others_column())};
     }
 
     /* **************************************** */
@@ -310,22 +298,10 @@ struct ResolvedConstView;
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct LayoutColumns {
-    template <typename T>
-    using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
-    ColLayout<PointerB*> OthersColumn;
-
-    constexpr explicit LayoutColumns(
-        ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
-        : OthersColumn{previous} {}
-    constexpr auto last_column() const noexcept
-        -> ioj::single_allocation_layout::ColumnLayoutBase const& {
-        return OthersColumn;
-    }
-    LayoutColumns(LayoutColumns const&) = delete;
-    auto operator=(LayoutColumns const&) -> LayoutColumns& = delete;
+struct Layout : ioj::single_allocation_layout::ColumnLayouts<PointerB*> {
+    using Base = ColumnLayouts;
+    static constexpr auto others_column() noexcept { return Base::column<0>(); }
 };
-struct Layout : ioj::single_allocation_layout::Layout<LayoutColumns> {};
 
 /* **************************************** */
 // Resolved views
@@ -400,7 +376,7 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto others() const { return this->column(Layout::columns.OthersColumn); }
+    auto others() const { return this->column(Layout::others_column()); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(others());
@@ -409,7 +385,7 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
         -> std::conditional_t<Const,
                               ::ioj::native_soa_fixture::pointer_a::ResolvedConstView,
                               ::ioj::native_soa_fixture::pointer_a::ResolvedView> {
-        return {this->column(Layout::columns.OthersColumn).data(), this->num()};
+        return {this->column(Layout::others_column()).data(), this->num()};
     }
 };
 struct ConstView : ViewImpl<true> {
@@ -494,7 +470,7 @@ struct PointerA
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
         ioj::native_soa::LayoutCursor cursor{blocks};
-        return {cursor.column_pointer(data, Layout::columns.OthersColumn)};
+        return {cursor.column_pointer(data, Layout::others_column())};
     }
 
     /* **************************************** */
@@ -557,22 +533,10 @@ struct ResolvedConstView;
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct LayoutColumns {
-    template <typename T>
-    using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
-    ColLayout<MixedRecord*> RecordsColumn;
-
-    constexpr explicit LayoutColumns(
-        ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
-        : RecordsColumn{previous} {}
-    constexpr auto last_column() const noexcept
-        -> ioj::single_allocation_layout::ColumnLayoutBase const& {
-        return RecordsColumn;
-    }
-    LayoutColumns(LayoutColumns const&) = delete;
-    auto operator=(LayoutColumns const&) -> LayoutColumns& = delete;
+struct Layout : ioj::single_allocation_layout::ColumnLayouts<MixedRecord*> {
+    using Base = ColumnLayouts;
+    static constexpr auto records_column() noexcept { return Base::column<0>(); }
 };
-struct Layout : ioj::single_allocation_layout::Layout<LayoutColumns> {};
 
 /* **************************************** */
 // Resolved views
@@ -647,7 +611,7 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto records() const { return this->column(Layout::columns.RecordsColumn); }
+    auto records() const { return this->column(Layout::records_column()); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(records());
@@ -656,7 +620,7 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
         -> std::conditional_t<Const,
                               ::ioj::native_soa_fixture::mixed_rows::ResolvedConstView,
                               ::ioj::native_soa_fixture::mixed_rows::ResolvedView> {
-        return {this->column(Layout::columns.RecordsColumn).data(), this->num()};
+        return {this->column(Layout::records_column()).data(), this->num()};
     }
 };
 struct ConstView : ViewImpl<true> {
@@ -743,7 +707,7 @@ struct MixedRows
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
         ioj::native_soa::LayoutCursor cursor{blocks};
-        return {cursor.column_pointer(data, Layout::columns.RecordsColumn)};
+        return {cursor.column_pointer(data, Layout::records_column())};
     }
 
     /* **************************************** */
@@ -810,24 +774,11 @@ struct ResolvedConstView;
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct LayoutColumns {
-    template <typename T>
-    using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
-    ColLayout<Pair> PairsColumn;
-    ColLayout<Node*> PointersColumn;
-
-    constexpr explicit LayoutColumns(
-        ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
-        : PairsColumn{previous}
-        , PointersColumn{PairsColumn} {}
-    constexpr auto last_column() const noexcept
-        -> ioj::single_allocation_layout::ColumnLayoutBase const& {
-        return PointersColumn;
-    }
-    LayoutColumns(LayoutColumns const&) = delete;
-    auto operator=(LayoutColumns const&) -> LayoutColumns& = delete;
+struct Layout : ioj::single_allocation_layout::ColumnLayouts<Pair, Node*> {
+    using Base = ColumnLayouts;
+    static constexpr auto pairs_column() noexcept { return Base::column<0>(); }
+    static constexpr auto pointers_column() noexcept { return Base::column<1>(); }
 };
-struct Layout : ioj::single_allocation_layout::Layout<LayoutColumns> {};
 
 /* **************************************** */
 // Resolved views
@@ -911,8 +862,8 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto pairs() const { return this->column(Layout::columns.PairsColumn); }
-    auto pointers() const { return this->column(Layout::columns.PointersColumn); }
+    auto pairs() const { return this->column(Layout::pairs_column()); }
+    auto pointers() const { return this->column(Layout::pointers_column()); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(pairs());
@@ -922,8 +873,8 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
         -> std::conditional_t<Const,
                               ::ioj::native_soa_fixture::pair_rows::ResolvedConstView,
                               ::ioj::native_soa_fixture::pair_rows::ResolvedView> {
-        return {this->column(Layout::columns.PairsColumn).data(),
-                this->column(Layout::columns.PointersColumn).data(),
+        return {this->column(Layout::pairs_column()).data(),
+                this->column(Layout::pointers_column()).data(),
                 this->num()};
     }
 };
@@ -1012,8 +963,8 @@ struct PairRows
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
         ioj::native_soa::LayoutCursor cursor{blocks};
-        return {cursor.column_pointer(data, Layout::columns.PairsColumn),
-                cursor.column_pointer(data, Layout::columns.PointersColumn)};
+        return {cursor.column_pointer(data, Layout::pairs_column()),
+                cursor.column_pointer(data, Layout::pointers_column())};
     }
 
     /* **************************************** */
@@ -1076,26 +1027,12 @@ struct ResolvedConstView;
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct LayoutColumns {
-    template <typename T>
-    using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
-    ColLayout<float> XsColumn;
-    ColLayout<float> YsColumn;
-    ColLayout<float> ZsColumn;
-
-    constexpr explicit LayoutColumns(
-        ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
-        : XsColumn{previous}
-        , YsColumn{XsColumn}
-        , ZsColumn{YsColumn} {}
-    constexpr auto last_column() const noexcept
-        -> ioj::single_allocation_layout::ColumnLayoutBase const& {
-        return ZsColumn;
-    }
-    LayoutColumns(LayoutColumns const&) = delete;
-    auto operator=(LayoutColumns const&) -> LayoutColumns& = delete;
+struct Layout : ioj::single_allocation_layout::ColumnLayouts<float, float, float> {
+    using Base = ColumnLayouts;
+    static constexpr auto xs_column() noexcept { return Base::column<0>(); }
+    static constexpr auto ys_column() noexcept { return Base::column<1>(); }
+    static constexpr auto zs_column() noexcept { return Base::column<2>(); }
 };
-struct Layout : ioj::single_allocation_layout::Layout<LayoutColumns> {};
 
 /* **************************************** */
 // Resolved views
@@ -1190,7 +1127,7 @@ struct ViewImpl : ioj::soa_storage_detail::StridedViewBase<float, Const> {
                                      ioj::soa_storage_detail::StorageState>;
     ViewImpl(State* state, std::uint32_t offset, std::uint32_t count)
         : Base{ioj::soa_storage_detail::make_strided_view<Base>(
-              state, offset, count, Layout::columns.XsColumn, Layout::columns.YsColumn)} {}
+              state, offset, count, Layout::xs_column(), Layout::ys_column())} {}
     template <bool Enabled = Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
@@ -1300,9 +1237,9 @@ struct Vectors
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
         ioj::native_soa::LayoutCursor cursor{blocks};
-        return {cursor.column_pointer(data, Layout::columns.XsColumn),
-                cursor.column_pointer(data, Layout::columns.YsColumn),
-                cursor.column_pointer(data, Layout::columns.ZsColumn)};
+        return {cursor.column_pointer(data, Layout::xs_column()),
+                cursor.column_pointer(data, Layout::ys_column()),
+                cursor.column_pointer(data, Layout::zs_column())};
     }
 
     /* **************************************** */
@@ -1369,24 +1306,11 @@ struct ResolvedConstView;
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct LayoutColumns {
-    template <typename T>
-    using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
-    ColLayout<OddBytes> FirstColumn;
-    ColLayout<OddBytes> SecondColumn;
-
-    constexpr explicit LayoutColumns(
-        ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
-        : FirstColumn{previous}
-        , SecondColumn{FirstColumn} {}
-    constexpr auto last_column() const noexcept
-        -> ioj::single_allocation_layout::ColumnLayoutBase const& {
-        return SecondColumn;
-    }
-    LayoutColumns(LayoutColumns const&) = delete;
-    auto operator=(LayoutColumns const&) -> LayoutColumns& = delete;
+struct Layout : ioj::single_allocation_layout::ColumnLayouts<OddBytes, OddBytes> {
+    using Base = ColumnLayouts;
+    static constexpr auto first_column() noexcept { return Base::column<0>(); }
+    static constexpr auto second_column() noexcept { return Base::column<1>(); }
 };
-struct Layout : ioj::single_allocation_layout::Layout<LayoutColumns> {};
 
 /* **************************************** */
 // Resolved views
@@ -1512,24 +1436,16 @@ struct ResolvedConstView;
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct LayoutColumns {
-    template <typename T>
-    using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
-    ::ioj::native_soa_fixture::vectors::LayoutColumns Starts;
-    ::ioj::native_soa_fixture::vectors::LayoutColumns Ends;
-
-    constexpr explicit LayoutColumns(
-        ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
-        : Starts{previous}
-        , Ends{Starts.last_column()} {}
-    constexpr auto last_column() const noexcept
-        -> ioj::single_allocation_layout::ColumnLayoutBase const& {
-        return Ends.last_column();
-    }
-    LayoutColumns(LayoutColumns const&) = delete;
-    auto operator=(LayoutColumns const&) -> LayoutColumns& = delete;
+struct Layout
+    : ioj::single_allocation_layout::ColumnLayouts<float, float, float, float, float, float> {
+    using Base = ColumnLayouts;
+    static constexpr auto starts_xs_column() noexcept { return Base::column<0>(); }
+    static constexpr auto starts_ys_column() noexcept { return Base::column<1>(); }
+    static constexpr auto starts_zs_column() noexcept { return Base::column<2>(); }
+    static constexpr auto ends_xs_column() noexcept { return Base::column<3>(); }
+    static constexpr auto ends_ys_column() noexcept { return Base::column<4>(); }
+    static constexpr auto ends_zs_column() noexcept { return Base::column<5>(); }
 };
-struct Layout : ioj::single_allocation_layout::Layout<LayoutColumns> {};
 
 /* **************************************** */
 // Resolved views
@@ -1742,26 +1658,18 @@ struct ResolvedConstView;
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct LayoutColumns {
-    template <typename T>
-    using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
-    ColLayout<std::int32_t> ValuesColumn;
-    ::ioj::native_soa_fixture::vectors::LayoutColumns Positions;
-    ::ioj::native_soa_fixture::vectors::LayoutColumns Velocities;
-
-    constexpr explicit LayoutColumns(
-        ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
-        : ValuesColumn{previous}
-        , Positions{ValuesColumn}
-        , Velocities{Positions.last_column()} {}
-    constexpr auto last_column() const noexcept
-        -> ioj::single_allocation_layout::ColumnLayoutBase const& {
-        return Velocities.last_column();
-    }
-    LayoutColumns(LayoutColumns const&) = delete;
-    auto operator=(LayoutColumns const&) -> LayoutColumns& = delete;
+struct Layout
+    : ioj::single_allocation_layout::
+          ColumnLayouts<std::int32_t, float, float, float, float, float, float> {
+    using Base = ColumnLayouts;
+    static constexpr auto values_column() noexcept { return Base::column<0>(); }
+    static constexpr auto positions_xs_column() noexcept { return Base::column<1>(); }
+    static constexpr auto positions_ys_column() noexcept { return Base::column<2>(); }
+    static constexpr auto positions_zs_column() noexcept { return Base::column<3>(); }
+    static constexpr auto velocities_xs_column() noexcept { return Base::column<4>(); }
+    static constexpr auto velocities_ys_column() noexcept { return Base::column<5>(); }
+    static constexpr auto velocities_zs_column() noexcept { return Base::column<6>(); }
 };
-struct Layout : ioj::single_allocation_layout::Layout<LayoutColumns> {};
 
 /* **************************************** */
 // Resolved views
@@ -1925,7 +1833,7 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto values() const { return this->column(Layout::columns.ValuesColumn); }
+    auto values() const { return this->column(Layout::values_column()); }
     auto view_positions() const -> std::conditional_t<Const,
                                                       ::ioj::native_soa_fixture::vectors::ConstView,
                                                       ::ioj::native_soa_fixture::vectors::View> {
@@ -1936,8 +1844,8 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
             this->state_,
             this->offset_,
             this->num(),
-            Layout::columns.Positions.XsColumn,
-            Layout::columns.Positions.YsColumn);
+            Layout::positions_xs_column(),
+            Layout::positions_ys_column());
     }
     auto view_velocities() const
         -> std::conditional_t<Const,
@@ -1950,8 +1858,8 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
             this->state_,
             this->offset_,
             this->num(),
-            Layout::columns.Velocities.XsColumn,
-            Layout::columns.Velocities.YsColumn);
+            Layout::velocities_xs_column(),
+            Layout::velocities_ys_column());
     }
     template <typename Func>
     void each_column(Func&& func) const {
@@ -1969,13 +1877,13 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
         -> std::conditional_t<Const,
                               ::ioj::native_soa_fixture::single_rows::ResolvedConstView,
                               ::ioj::native_soa_fixture::single_rows::ResolvedView> {
-        return {this->column(Layout::columns.ValuesColumn).data(),
-                this->column(Layout::columns.Positions.XsColumn).data(),
-                this->column(Layout::columns.Positions.YsColumn).data(),
-                this->column(Layout::columns.Positions.ZsColumn).data(),
-                this->column(Layout::columns.Velocities.XsColumn).data(),
-                this->column(Layout::columns.Velocities.YsColumn).data(),
-                this->column(Layout::columns.Velocities.ZsColumn).data(),
+        return {this->column(Layout::values_column()).data(),
+                this->column(Layout::positions_xs_column()).data(),
+                this->column(Layout::positions_ys_column()).data(),
+                this->column(Layout::positions_zs_column()).data(),
+                this->column(Layout::velocities_xs_column()).data(),
+                this->column(Layout::velocities_ys_column()).data(),
+                this->column(Layout::velocities_zs_column()).data(),
                 this->num()};
     }
 };
@@ -2094,13 +2002,13 @@ struct SingleRows
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
         ioj::native_soa::LayoutCursor cursor{blocks};
-        return {cursor.column_pointer(data, Layout::columns.ValuesColumn),
-                cursor.column_pointer(data, Layout::columns.Positions.XsColumn),
-                cursor.column_pointer(data, Layout::columns.Positions.YsColumn),
-                cursor.column_pointer(data, Layout::columns.Positions.ZsColumn),
-                cursor.column_pointer(data, Layout::columns.Velocities.XsColumn),
-                cursor.column_pointer(data, Layout::columns.Velocities.YsColumn),
-                cursor.column_pointer(data, Layout::columns.Velocities.ZsColumn)};
+        return {cursor.column_pointer(data, Layout::values_column()),
+                cursor.column_pointer(data, Layout::positions_xs_column()),
+                cursor.column_pointer(data, Layout::positions_ys_column()),
+                cursor.column_pointer(data, Layout::positions_zs_column()),
+                cursor.column_pointer(data, Layout::velocities_xs_column()),
+                cursor.column_pointer(data, Layout::velocities_ys_column()),
+                cursor.column_pointer(data, Layout::velocities_zs_column())};
     }
 
     /* **************************************** */
@@ -2213,32 +2121,33 @@ struct ResolvedConstView;
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct LayoutColumns {
-    template <typename T>
-    using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
-    ColLayout<std::uint8_t> BytesColumn;
-    ::ioj::native_soa_fixture::odd_pairs::LayoutColumns Odd;
-    ColLayout<Aligned32> Aligned32Column;
-    ::ioj::native_soa_fixture::vector_groups::LayoutColumns Nested;
-    ColLayout<Aligned64> Aligned64Column;
-    ColLayout<Aligned256> Aligned256Column;
-
-    constexpr explicit LayoutColumns(
-        ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
-        : BytesColumn{previous}
-        , Odd{BytesColumn}
-        , Aligned32Column{Odd.last_column()}
-        , Nested{Aligned32Column}
-        , Aligned64Column{Nested.last_column()}
-        , Aligned256Column{Aligned64Column} {}
-    constexpr auto last_column() const noexcept
-        -> ioj::single_allocation_layout::ColumnLayoutBase const& {
-        return Aligned256Column;
-    }
-    LayoutColumns(LayoutColumns const&) = delete;
-    auto operator=(LayoutColumns const&) -> LayoutColumns& = delete;
+struct Layout
+    : ioj::single_allocation_layout::ColumnLayouts<std::uint8_t,
+                                                   OddBytes,
+                                                   OddBytes,
+                                                   Aligned32,
+                                                   float,
+                                                   float,
+                                                   float,
+                                                   float,
+                                                   float,
+                                                   float,
+                                                   Aligned64,
+                                                   Aligned256> {
+    using Base = ColumnLayouts;
+    static constexpr auto bytes_column() noexcept { return Base::column<0>(); }
+    static constexpr auto odd_first_column() noexcept { return Base::column<1>(); }
+    static constexpr auto odd_second_column() noexcept { return Base::column<2>(); }
+    static constexpr auto aligned32_column() noexcept { return Base::column<3>(); }
+    static constexpr auto nested_starts_xs_column() noexcept { return Base::column<4>(); }
+    static constexpr auto nested_starts_ys_column() noexcept { return Base::column<5>(); }
+    static constexpr auto nested_starts_zs_column() noexcept { return Base::column<6>(); }
+    static constexpr auto nested_ends_xs_column() noexcept { return Base::column<7>(); }
+    static constexpr auto nested_ends_ys_column() noexcept { return Base::column<8>(); }
+    static constexpr auto nested_ends_zs_column() noexcept { return Base::column<9>(); }
+    static constexpr auto aligned64_column() noexcept { return Base::column<10>(); }
+    static constexpr auto aligned256_column() noexcept { return Base::column<11>(); }
 };
-struct Layout : ioj::single_allocation_layout::Layout<LayoutColumns> {};
 
 /* **************************************** */
 // Resolved views
@@ -2471,7 +2380,7 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto bytes() const { return this->column(Layout::columns.BytesColumn); }
+    auto bytes() const { return this->column(Layout::bytes_column()); }
     auto view_odd() const -> std::conditional_t<Const,
                                                 ::ioj::native_soa_fixture::odd_pairs::ConstView,
                                                 ::ioj::native_soa_fixture::odd_pairs::View> {
@@ -2482,10 +2391,10 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
             this->state_,
             this->offset_,
             this->num(),
-            Layout::columns.Odd.FirstColumn,
-            Layout::columns.Odd.SecondColumn);
+            Layout::odd_first_column(),
+            Layout::odd_second_column());
     }
-    auto aligned32() const { return this->column(Layout::columns.Aligned32Column); }
+    auto aligned32() const { return this->column(Layout::aligned32_column()); }
     auto view_nested() const
         -> std::conditional_t<Const,
                               ::ioj::native_soa_fixture::vector_groups::ConstView,
@@ -2497,11 +2406,11 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
             this->state_,
             this->offset_,
             this->num(),
-            Layout::columns.Nested.Starts.XsColumn,
-            Layout::columns.Nested.Starts.YsColumn);
+            Layout::nested_starts_xs_column(),
+            Layout::nested_starts_ys_column());
     }
-    auto aligned64() const { return this->column(Layout::columns.Aligned64Column); }
-    auto aligned256() const { return this->column(Layout::columns.Aligned256Column); }
+    auto aligned64() const { return this->column(Layout::aligned64_column()); }
+    auto aligned256() const { return this->column(Layout::aligned256_column()); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(bytes());
@@ -2525,18 +2434,18 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
         -> std::conditional_t<Const,
                               ::ioj::native_soa_fixture::single_alignment_rows::ResolvedConstView,
                               ::ioj::native_soa_fixture::single_alignment_rows::ResolvedView> {
-        return {this->column(Layout::columns.BytesColumn).data(),
-                this->column(Layout::columns.Odd.FirstColumn).data(),
-                this->column(Layout::columns.Odd.SecondColumn).data(),
-                this->column(Layout::columns.Aligned32Column).data(),
-                this->column(Layout::columns.Nested.Starts.XsColumn).data(),
-                this->column(Layout::columns.Nested.Starts.YsColumn).data(),
-                this->column(Layout::columns.Nested.Starts.ZsColumn).data(),
-                this->column(Layout::columns.Nested.Ends.XsColumn).data(),
-                this->column(Layout::columns.Nested.Ends.YsColumn).data(),
-                this->column(Layout::columns.Nested.Ends.ZsColumn).data(),
-                this->column(Layout::columns.Aligned64Column).data(),
-                this->column(Layout::columns.Aligned256Column).data(),
+        return {this->column(Layout::bytes_column()).data(),
+                this->column(Layout::odd_first_column()).data(),
+                this->column(Layout::odd_second_column()).data(),
+                this->column(Layout::aligned32_column()).data(),
+                this->column(Layout::nested_starts_xs_column()).data(),
+                this->column(Layout::nested_starts_ys_column()).data(),
+                this->column(Layout::nested_starts_zs_column()).data(),
+                this->column(Layout::nested_ends_xs_column()).data(),
+                this->column(Layout::nested_ends_ys_column()).data(),
+                this->column(Layout::nested_ends_zs_column()).data(),
+                this->column(Layout::aligned64_column()).data(),
+                this->column(Layout::aligned256_column()).data(),
                 this->num()};
     }
 };
@@ -2680,18 +2589,18 @@ struct SingleAlignmentRows
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
         ioj::native_soa::LayoutCursor cursor{blocks};
-        return {cursor.column_pointer(data, Layout::columns.BytesColumn),
-                cursor.column_pointer(data, Layout::columns.Odd.FirstColumn),
-                cursor.column_pointer(data, Layout::columns.Odd.SecondColumn),
-                cursor.column_pointer(data, Layout::columns.Aligned32Column),
-                cursor.column_pointer(data, Layout::columns.Nested.Starts.XsColumn),
-                cursor.column_pointer(data, Layout::columns.Nested.Starts.YsColumn),
-                cursor.column_pointer(data, Layout::columns.Nested.Starts.ZsColumn),
-                cursor.column_pointer(data, Layout::columns.Nested.Ends.XsColumn),
-                cursor.column_pointer(data, Layout::columns.Nested.Ends.YsColumn),
-                cursor.column_pointer(data, Layout::columns.Nested.Ends.ZsColumn),
-                cursor.column_pointer(data, Layout::columns.Aligned64Column),
-                cursor.column_pointer(data, Layout::columns.Aligned256Column)};
+        return {cursor.column_pointer(data, Layout::bytes_column()),
+                cursor.column_pointer(data, Layout::odd_first_column()),
+                cursor.column_pointer(data, Layout::odd_second_column()),
+                cursor.column_pointer(data, Layout::aligned32_column()),
+                cursor.column_pointer(data, Layout::nested_starts_xs_column()),
+                cursor.column_pointer(data, Layout::nested_starts_ys_column()),
+                cursor.column_pointer(data, Layout::nested_starts_zs_column()),
+                cursor.column_pointer(data, Layout::nested_ends_xs_column()),
+                cursor.column_pointer(data, Layout::nested_ends_ys_column()),
+                cursor.column_pointer(data, Layout::nested_ends_zs_column()),
+                cursor.column_pointer(data, Layout::aligned64_column()),
+                cursor.column_pointer(data, Layout::aligned256_column())};
     }
 
     /* **************************************** */
@@ -2855,24 +2764,11 @@ struct ResolvedConstView;
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct LayoutColumns {
-    template <typename T>
-    using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
-    ColLayout<float> XsColumn;
-    ColLayout<float> YsColumn;
-
-    constexpr explicit LayoutColumns(
-        ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
-        : XsColumn{previous}
-        , YsColumn{XsColumn} {}
-    constexpr auto last_column() const noexcept
-        -> ioj::single_allocation_layout::ColumnLayoutBase const& {
-        return YsColumn;
-    }
-    LayoutColumns(LayoutColumns const&) = delete;
-    auto operator=(LayoutColumns const&) -> LayoutColumns& = delete;
+struct Layout : ioj::single_allocation_layout::ColumnLayouts<float, float> {
+    using Base = ColumnLayouts;
+    static constexpr auto xs_column() noexcept { return Base::column<0>(); }
+    static constexpr auto ys_column() noexcept { return Base::column<1>(); }
 };
-struct Layout : ioj::single_allocation_layout::Layout<LayoutColumns> {};
 
 /* **************************************** */
 // Resolved views
@@ -3051,26 +2947,13 @@ struct ResolvedConstView;
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct LayoutColumns {
-    template <typename T>
-    using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
-    ColLayout<float> ValuesColumn;
-    ColLayout<ApiMask> MasksColumn;
-    ::ioj::native_soa_fixture::api_coordinates::LayoutColumns Positions;
-
-    constexpr explicit LayoutColumns(
-        ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
-        : ValuesColumn{previous}
-        , MasksColumn{ValuesColumn}
-        , Positions{MasksColumn} {}
-    constexpr auto last_column() const noexcept
-        -> ioj::single_allocation_layout::ColumnLayoutBase const& {
-        return Positions.last_column();
-    }
-    LayoutColumns(LayoutColumns const&) = delete;
-    auto operator=(LayoutColumns const&) -> LayoutColumns& = delete;
+struct Layout : ioj::single_allocation_layout::ColumnLayouts<float, ApiMask, float, float> {
+    using Base = ColumnLayouts;
+    static constexpr auto values_column() noexcept { return Base::column<0>(); }
+    static constexpr auto masks_column() noexcept { return Base::column<1>(); }
+    static constexpr auto positions_xs_column() noexcept { return Base::column<2>(); }
+    static constexpr auto positions_ys_column() noexcept { return Base::column<3>(); }
 };
-struct Layout : ioj::single_allocation_layout::Layout<LayoutColumns> {};
 
 /* **************************************** */
 // Resolved views
@@ -3204,8 +3087,8 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto values() const { return this->column(Layout::columns.ValuesColumn); }
-    auto masks() const { return this->column(Layout::columns.MasksColumn); }
+    auto values() const { return this->column(Layout::values_column()); }
+    auto masks() const { return this->column(Layout::masks_column()); }
     auto view_positions() const
         -> std::conditional_t<Const,
                               ::ioj::native_soa_fixture::api_coordinates::ConstView,
@@ -3217,8 +3100,8 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
             this->state_,
             this->offset_,
             this->num(),
-            Layout::columns.Positions.XsColumn,
-            Layout::columns.Positions.YsColumn);
+            Layout::positions_xs_column(),
+            Layout::positions_ys_column());
     }
     template <typename Func>
     void each_column(Func&& func) const {
@@ -3232,10 +3115,10 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
         -> std::conditional_t<Const,
                               ::ioj::native_soa_fixture::api_owner::ResolvedConstView,
                               ::ioj::native_soa_fixture::api_owner::ResolvedView> {
-        return {this->column(Layout::columns.ValuesColumn).data(),
-                this->column(Layout::columns.MasksColumn).data(),
-                this->column(Layout::columns.Positions.XsColumn).data(),
-                this->column(Layout::columns.Positions.YsColumn).data(),
+        return {this->column(Layout::values_column()).data(),
+                this->column(Layout::masks_column()).data(),
+                this->column(Layout::positions_xs_column()).data(),
+                this->column(Layout::positions_ys_column()).data(),
                 this->num()};
     }
 };
@@ -3351,10 +3234,10 @@ struct NATIVE_SOA_FIXTURE_API ApiOwner
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
         ioj::native_soa::LayoutCursor cursor{blocks};
-        return {cursor.column_pointer(data, Layout::columns.ValuesColumn),
-                cursor.column_pointer(data, Layout::columns.MasksColumn),
-                cursor.column_pointer(data, Layout::columns.Positions.XsColumn),
-                cursor.column_pointer(data, Layout::columns.Positions.YsColumn)};
+        return {cursor.column_pointer(data, Layout::values_column()),
+                cursor.column_pointer(data, Layout::masks_column()),
+                cursor.column_pointer(data, Layout::positions_xs_column()),
+                cursor.column_pointer(data, Layout::positions_ys_column())};
     }
 
     /* **************************************** */
@@ -3467,24 +3350,11 @@ struct ResolvedConstView;
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct LayoutColumns {
-    template <typename T>
-    using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
-    ColLayout<float> XsColumn;
-    ColLayout<float> YsColumn;
-
-    constexpr explicit LayoutColumns(
-        ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
-        : XsColumn{previous}
-        , YsColumn{XsColumn} {}
-    constexpr auto last_column() const noexcept
-        -> ioj::single_allocation_layout::ColumnLayoutBase const& {
-        return YsColumn;
-    }
-    LayoutColumns(LayoutColumns const&) = delete;
-    auto operator=(LayoutColumns const&) -> LayoutColumns& = delete;
+struct Layout : ioj::single_allocation_layout::ColumnLayouts<float, float> {
+    using Base = ColumnLayouts;
+    static constexpr auto xs_column() noexcept { return Base::column<0>(); }
+    static constexpr auto ys_column() noexcept { return Base::column<1>(); }
 };
-struct Layout : ioj::single_allocation_layout::Layout<LayoutColumns> {};
 
 /* **************************************** */
 // Resolved views
@@ -3579,7 +3449,7 @@ struct ViewImpl : ioj::soa_storage_detail::StridedViewBase<float, Const> {
                                      ioj::soa_storage_detail::StorageState>;
     ViewImpl(State* state, std::uint32_t offset, std::uint32_t count)
         : Base{ioj::soa_storage_detail::make_strided_view<Base>(
-              state, offset, count, Layout::columns.XsColumn, Layout::columns.YsColumn)} {}
+              state, offset, count, Layout::xs_column(), Layout::ys_column())} {}
     template <bool Enabled = Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
@@ -3696,8 +3566,8 @@ struct EquivalentOwner
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
         ioj::native_soa::LayoutCursor cursor{blocks};
-        return {cursor.column_pointer(data, Layout::columns.XsColumn),
-                cursor.column_pointer(data, Layout::columns.YsColumn)};
+        return {cursor.column_pointer(data, Layout::xs_column()),
+                cursor.column_pointer(data, Layout::ys_column())};
     }
 
     /* **************************************** */
@@ -3771,26 +3641,12 @@ struct ResolvedConstView;
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct LayoutColumns {
-    template <typename T>
-    using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
-    ColLayout<float> HorizontalColumn;
-    ColLayout<float> VerticalColumn;
-    ColLayout<float> DepthColumn;
-
-    constexpr explicit LayoutColumns(
-        ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
-        : HorizontalColumn{previous}
-        , VerticalColumn{HorizontalColumn}
-        , DepthColumn{VerticalColumn} {}
-    constexpr auto last_column() const noexcept
-        -> ioj::single_allocation_layout::ColumnLayoutBase const& {
-        return DepthColumn;
-    }
-    LayoutColumns(LayoutColumns const&) = delete;
-    auto operator=(LayoutColumns const&) -> LayoutColumns& = delete;
+struct Layout : ioj::single_allocation_layout::ColumnLayouts<float, float, float> {
+    using Base = ColumnLayouts;
+    static constexpr auto horizontal_column() noexcept { return Base::column<0>(); }
+    static constexpr auto vertical_column() noexcept { return Base::column<1>(); }
+    static constexpr auto depth_column() noexcept { return Base::column<2>(); }
 };
-struct Layout : ioj::single_allocation_layout::Layout<LayoutColumns> {};
 
 /* **************************************** */
 // Resolved views
@@ -3903,11 +3759,8 @@ struct ViewImpl : ioj::soa_storage_detail::StridedViewBase<float, Const> {
                                      ioj::soa_storage_detail::StorageState const,
                                      ioj::soa_storage_detail::StorageState>;
     ViewImpl(State* state, std::uint32_t offset, std::uint32_t count)
-        : Base{ioj::soa_storage_detail::make_strided_view<Base>(state,
-                                                                offset,
-                                                                count,
-                                                                Layout::columns.HorizontalColumn,
-                                                                Layout::columns.VerticalColumn)} {}
+        : Base{ioj::soa_storage_detail::make_strided_view<Base>(
+              state, offset, count, Layout::horizontal_column(), Layout::vertical_column())} {}
     template <bool Enabled = Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
@@ -4035,9 +3888,9 @@ struct AccessorOwner
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
         ioj::native_soa::LayoutCursor cursor{blocks};
-        return {cursor.column_pointer(data, Layout::columns.HorizontalColumn),
-                cursor.column_pointer(data, Layout::columns.VerticalColumn),
-                cursor.column_pointer(data, Layout::columns.DepthColumn)};
+        return {cursor.column_pointer(data, Layout::horizontal_column()),
+                cursor.column_pointer(data, Layout::vertical_column()),
+                cursor.column_pointer(data, Layout::depth_column())};
     }
 
     /* **************************************** */

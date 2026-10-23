@@ -24,26 +24,13 @@ struct ResolvedConstView;
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct LayoutColumns {
-    template <typename T>
-    using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
-    ColLayout<EntityType> TypesColumn;
-    ColLayout<std::int32_t> OffsetsColumn;
-    ColLayout<LevelEventCount> CountsColumn;
-
-    constexpr explicit LayoutColumns(
-        ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
-        : TypesColumn{previous}
-        , OffsetsColumn{TypesColumn}
-        , CountsColumn{OffsetsColumn} {}
-    constexpr auto last_column() const noexcept
-        -> ioj::single_allocation_layout::ColumnLayoutBase const& {
-        return CountsColumn;
-    }
-    LayoutColumns(LayoutColumns const&) = delete;
-    auto operator=(LayoutColumns const&) -> LayoutColumns& = delete;
+struct Layout
+    : ioj::single_allocation_layout::ColumnLayouts<EntityType, std::int32_t, LevelEventCount> {
+    using Base = ColumnLayouts;
+    static constexpr auto types_column() noexcept { return Base::column<0>(); }
+    static constexpr auto offsets_column() noexcept { return Base::column<1>(); }
+    static constexpr auto counts_column() noexcept { return Base::column<2>(); }
 };
-struct Layout : ioj::single_allocation_layout::Layout<LayoutColumns> {};
 
 /* **************************************** */
 // Resolved views
@@ -143,9 +130,9 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto types() const { return this->column(Layout::columns.TypesColumn); }
-    auto offsets() const { return this->column(Layout::columns.OffsetsColumn); }
-    auto counts() const { return this->column(Layout::columns.CountsColumn); }
+    auto types() const { return this->column(Layout::types_column()); }
+    auto offsets() const { return this->column(Layout::offsets_column()); }
+    auto counts() const { return this->column(Layout::counts_column()); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(types());
@@ -155,9 +142,9 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     auto resolve() const -> std::conditional_t<Const,
                                                ::ioj::sim::level_spawn_groups::ResolvedConstView,
                                                ::ioj::sim::level_spawn_groups::ResolvedView> {
-        return {this->column(Layout::columns.TypesColumn).data(),
-                this->column(Layout::columns.OffsetsColumn).data(),
-                this->column(Layout::columns.CountsColumn).data(),
+        return {this->column(Layout::types_column()).data(),
+                this->column(Layout::offsets_column()).data(),
+                this->column(Layout::counts_column()).data(),
                 this->num()};
     }
 };
@@ -254,9 +241,9 @@ struct LevelSpawnGroups
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
         ioj::native_soa::LayoutCursor cursor{blocks};
-        return {cursor.column_pointer(data, Layout::columns.TypesColumn),
-                cursor.column_pointer(data, Layout::columns.OffsetsColumn),
-                cursor.column_pointer(data, Layout::columns.CountsColumn)};
+        return {cursor.column_pointer(data, Layout::types_column()),
+                cursor.column_pointer(data, Layout::offsets_column()),
+                cursor.column_pointer(data, Layout::counts_column())};
     }
 
     /* **************************************** */

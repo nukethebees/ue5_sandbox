@@ -26,40 +26,33 @@ struct ResolvedConstView;
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct LayoutColumns {
-    template <typename T>
-    using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
-    ColLayout<AnalysisId> AnalysisColumn;
-    ColLayout<RowRange> EntriesColumn;
-    ColLayout<std::uint64_t> ElementCountColumn;
-    ColLayout<std::optional<std::uint64_t>> TotalWeightColumn;
-    ColLayout<std::optional<std::uint64_t>> TotalExtentBytesColumn;
-    ColLayout<std::optional<std::uint64_t>> TotalSlackBytesColumn;
-    ColLayout<std::optional<long double>> ExpectedExtentBytesColumn;
-    ColLayout<std::optional<long double>> ExpectedSlackBytesColumn;
-    ColLayout<std::optional<long double>> ExpectedSelectedExtentBytesColumn;
-    ColLayout<std::optional<long double>> ExpectedSelectedSlackBytesColumn;
-
-    constexpr explicit LayoutColumns(
-        ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
-        : AnalysisColumn{previous}
-        , EntriesColumn{AnalysisColumn}
-        , ElementCountColumn{EntriesColumn}
-        , TotalWeightColumn{ElementCountColumn}
-        , TotalExtentBytesColumn{TotalWeightColumn}
-        , TotalSlackBytesColumn{TotalExtentBytesColumn}
-        , ExpectedExtentBytesColumn{TotalSlackBytesColumn}
-        , ExpectedSlackBytesColumn{ExpectedExtentBytesColumn}
-        , ExpectedSelectedExtentBytesColumn{ExpectedSlackBytesColumn}
-        , ExpectedSelectedSlackBytesColumn{ExpectedSelectedExtentBytesColumn} {}
-    constexpr auto last_column() const noexcept
-        -> ioj::single_allocation_layout::ColumnLayoutBase const& {
-        return ExpectedSelectedSlackBytesColumn;
+struct Layout
+    : ioj::single_allocation_layout::ColumnLayouts<AnalysisId,
+                                                   RowRange,
+                                                   std::uint64_t,
+                                                   std::optional<std::uint64_t>,
+                                                   std::optional<std::uint64_t>,
+                                                   std::optional<std::uint64_t>,
+                                                   std::optional<long double>,
+                                                   std::optional<long double>,
+                                                   std::optional<long double>,
+                                                   std::optional<long double>> {
+    using Base = ColumnLayouts;
+    static constexpr auto analysis_column() noexcept { return Base::column<0>(); }
+    static constexpr auto entries_column() noexcept { return Base::column<1>(); }
+    static constexpr auto element_count_column() noexcept { return Base::column<2>(); }
+    static constexpr auto total_weight_column() noexcept { return Base::column<3>(); }
+    static constexpr auto total_extent_bytes_column() noexcept { return Base::column<4>(); }
+    static constexpr auto total_slack_bytes_column() noexcept { return Base::column<5>(); }
+    static constexpr auto expected_extent_bytes_column() noexcept { return Base::column<6>(); }
+    static constexpr auto expected_slack_bytes_column() noexcept { return Base::column<7>(); }
+    static constexpr auto expected_selected_extent_bytes_column() noexcept {
+        return Base::column<8>();
     }
-    LayoutColumns(LayoutColumns const&) = delete;
-    auto operator=(LayoutColumns const&) -> LayoutColumns& = delete;
+    static constexpr auto expected_selected_slack_bytes_column() noexcept {
+        return Base::column<9>();
+    }
 };
-struct Layout : ioj::single_allocation_layout::Layout<LayoutColumns> {};
 
 /* **************************************** */
 // Resolved views
@@ -265,23 +258,23 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto analysis() const { return this->column(Layout::columns.AnalysisColumn); }
-    auto entries() const { return this->column(Layout::columns.EntriesColumn); }
-    auto element_count() const { return this->column(Layout::columns.ElementCountColumn); }
-    auto total_weight() const { return this->column(Layout::columns.TotalWeightColumn); }
-    auto total_extent_bytes() const { return this->column(Layout::columns.TotalExtentBytesColumn); }
-    auto total_slack_bytes() const { return this->column(Layout::columns.TotalSlackBytesColumn); }
+    auto analysis() const { return this->column(Layout::analysis_column()); }
+    auto entries() const { return this->column(Layout::entries_column()); }
+    auto element_count() const { return this->column(Layout::element_count_column()); }
+    auto total_weight() const { return this->column(Layout::total_weight_column()); }
+    auto total_extent_bytes() const { return this->column(Layout::total_extent_bytes_column()); }
+    auto total_slack_bytes() const { return this->column(Layout::total_slack_bytes_column()); }
     auto expected_extent_bytes() const {
-        return this->column(Layout::columns.ExpectedExtentBytesColumn);
+        return this->column(Layout::expected_extent_bytes_column());
     }
     auto expected_slack_bytes() const {
-        return this->column(Layout::columns.ExpectedSlackBytesColumn);
+        return this->column(Layout::expected_slack_bytes_column());
     }
     auto expected_selected_extent_bytes() const {
-        return this->column(Layout::columns.ExpectedSelectedExtentBytesColumn);
+        return this->column(Layout::expected_selected_extent_bytes_column());
     }
     auto expected_selected_slack_bytes() const {
-        return this->column(Layout::columns.ExpectedSelectedSlackBytesColumn);
+        return this->column(Layout::expected_selected_slack_bytes_column());
     }
     template <typename Func>
     void each_column(Func&& func) const {
@@ -299,16 +292,16 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     auto resolve() const -> std::conditional_t<Const,
                                                ::ioj::layout::distribution_table::ResolvedConstView,
                                                ::ioj::layout::distribution_table::ResolvedView> {
-        return {this->column(Layout::columns.AnalysisColumn).data(),
-                this->column(Layout::columns.EntriesColumn).data(),
-                this->column(Layout::columns.ElementCountColumn).data(),
-                this->column(Layout::columns.TotalWeightColumn).data(),
-                this->column(Layout::columns.TotalExtentBytesColumn).data(),
-                this->column(Layout::columns.TotalSlackBytesColumn).data(),
-                this->column(Layout::columns.ExpectedExtentBytesColumn).data(),
-                this->column(Layout::columns.ExpectedSlackBytesColumn).data(),
-                this->column(Layout::columns.ExpectedSelectedExtentBytesColumn).data(),
-                this->column(Layout::columns.ExpectedSelectedSlackBytesColumn).data(),
+        return {this->column(Layout::analysis_column()).data(),
+                this->column(Layout::entries_column()).data(),
+                this->column(Layout::element_count_column()).data(),
+                this->column(Layout::total_weight_column()).data(),
+                this->column(Layout::total_extent_bytes_column()).data(),
+                this->column(Layout::total_slack_bytes_column()).data(),
+                this->column(Layout::expected_extent_bytes_column()).data(),
+                this->column(Layout::expected_slack_bytes_column()).data(),
+                this->column(Layout::expected_selected_extent_bytes_column()).data(),
+                this->column(Layout::expected_selected_slack_bytes_column()).data(),
                 this->num()};
     }
 };
@@ -442,16 +435,16 @@ struct DistributionTable
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
         ioj::native_soa::LayoutCursor cursor{blocks};
-        return {cursor.column_pointer(data, Layout::columns.AnalysisColumn),
-                cursor.column_pointer(data, Layout::columns.EntriesColumn),
-                cursor.column_pointer(data, Layout::columns.ElementCountColumn),
-                cursor.column_pointer(data, Layout::columns.TotalWeightColumn),
-                cursor.column_pointer(data, Layout::columns.TotalExtentBytesColumn),
-                cursor.column_pointer(data, Layout::columns.TotalSlackBytesColumn),
-                cursor.column_pointer(data, Layout::columns.ExpectedExtentBytesColumn),
-                cursor.column_pointer(data, Layout::columns.ExpectedSlackBytesColumn),
-                cursor.column_pointer(data, Layout::columns.ExpectedSelectedExtentBytesColumn),
-                cursor.column_pointer(data, Layout::columns.ExpectedSelectedSlackBytesColumn)};
+        return {cursor.column_pointer(data, Layout::analysis_column()),
+                cursor.column_pointer(data, Layout::entries_column()),
+                cursor.column_pointer(data, Layout::element_count_column()),
+                cursor.column_pointer(data, Layout::total_weight_column()),
+                cursor.column_pointer(data, Layout::total_extent_bytes_column()),
+                cursor.column_pointer(data, Layout::total_slack_bytes_column()),
+                cursor.column_pointer(data, Layout::expected_extent_bytes_column()),
+                cursor.column_pointer(data, Layout::expected_slack_bytes_column()),
+                cursor.column_pointer(data, Layout::expected_selected_extent_bytes_column()),
+                cursor.column_pointer(data, Layout::expected_selected_slack_bytes_column())};
     }
 
     /* **************************************** */

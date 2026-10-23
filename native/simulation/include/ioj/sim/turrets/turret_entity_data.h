@@ -28,46 +28,59 @@ struct ResolvedConstView;
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct LayoutColumns {
-    template <typename T>
-    using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
-    ColLayout<EntityId> EntityIdsColumn;
-    ColLayout<std::uint32_t> IntegralBiasesColumn;
-    ::ioj::vectors3f::LayoutColumns Locations;
-    ::ioj::vectors3f::LayoutColumns FirePointLocations;
-    ::ioj::rotators3f::LayoutColumns Rotations;
-    ColLayout<::ioj::Team> TeamsColumn;
-    ColLayout<std::int16_t> LaserCooldownsColumn;
-    ColLayout<std::int32_t> LaserDamagesColumn;
-    ColLayout<std::int16_t> TargetRefreshCountdownsPeriodsColumn;
-    ColLayout<std::int16_t> TargetRefreshCountdownsRemainingTicksColumn;
-    ColLayout<EntityId> TargetIdsColumn;
-    ::ioj::vectors3f::LayoutColumns TargetLocations;
-    ::ioj::vectors3f::LayoutColumns TargetVelocities;
-
-    constexpr explicit LayoutColumns(
-        ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
-        : EntityIdsColumn{previous}
-        , IntegralBiasesColumn{EntityIdsColumn}
-        , Locations{IntegralBiasesColumn}
-        , FirePointLocations{Locations.last_column()}
-        , Rotations{FirePointLocations.last_column()}
-        , TeamsColumn{Rotations.last_column()}
-        , LaserCooldownsColumn{TeamsColumn}
-        , LaserDamagesColumn{LaserCooldownsColumn}
-        , TargetRefreshCountdownsPeriodsColumn{LaserDamagesColumn}
-        , TargetRefreshCountdownsRemainingTicksColumn{TargetRefreshCountdownsPeriodsColumn}
-        , TargetIdsColumn{TargetRefreshCountdownsRemainingTicksColumn}
-        , TargetLocations{TargetIdsColumn}
-        , TargetVelocities{TargetLocations.last_column()} {}
-    constexpr auto last_column() const noexcept
-        -> ioj::single_allocation_layout::ColumnLayoutBase const& {
-        return TargetVelocities.last_column();
+struct Layout
+    : ioj::single_allocation_layout::ColumnLayouts<EntityId,
+                                                   std::uint32_t,
+                                                   float,
+                                                   float,
+                                                   float,
+                                                   float,
+                                                   float,
+                                                   float,
+                                                   float,
+                                                   float,
+                                                   float,
+                                                   ::ioj::Team,
+                                                   std::int16_t,
+                                                   std::int32_t,
+                                                   std::int16_t,
+                                                   std::int16_t,
+                                                   EntityId,
+                                                   float,
+                                                   float,
+                                                   float,
+                                                   float,
+                                                   float,
+                                                   float> {
+    using Base = ColumnLayouts;
+    static constexpr auto entity_ids_column() noexcept { return Base::column<0>(); }
+    static constexpr auto integral_biases_column() noexcept { return Base::column<1>(); }
+    static constexpr auto locations_xs_column() noexcept { return Base::column<2>(); }
+    static constexpr auto locations_ys_column() noexcept { return Base::column<3>(); }
+    static constexpr auto locations_zs_column() noexcept { return Base::column<4>(); }
+    static constexpr auto fire_point_locations_xs_column() noexcept { return Base::column<5>(); }
+    static constexpr auto fire_point_locations_ys_column() noexcept { return Base::column<6>(); }
+    static constexpr auto fire_point_locations_zs_column() noexcept { return Base::column<7>(); }
+    static constexpr auto rotations_pitches_column() noexcept { return Base::column<8>(); }
+    static constexpr auto rotations_yaws_column() noexcept { return Base::column<9>(); }
+    static constexpr auto rotations_rolls_column() noexcept { return Base::column<10>(); }
+    static constexpr auto teams_column() noexcept { return Base::column<11>(); }
+    static constexpr auto laser_cooldowns_column() noexcept { return Base::column<12>(); }
+    static constexpr auto laser_damages_column() noexcept { return Base::column<13>(); }
+    static constexpr auto target_refresh_countdowns_periods_column() noexcept {
+        return Base::column<14>();
     }
-    LayoutColumns(LayoutColumns const&) = delete;
-    auto operator=(LayoutColumns const&) -> LayoutColumns& = delete;
+    static constexpr auto target_refresh_countdowns_remaining_ticks_column() noexcept {
+        return Base::column<15>();
+    }
+    static constexpr auto target_ids_column() noexcept { return Base::column<16>(); }
+    static constexpr auto target_locations_xs_column() noexcept { return Base::column<17>(); }
+    static constexpr auto target_locations_ys_column() noexcept { return Base::column<18>(); }
+    static constexpr auto target_locations_zs_column() noexcept { return Base::column<19>(); }
+    static constexpr auto target_velocities_xs_column() noexcept { return Base::column<20>(); }
+    static constexpr auto target_velocities_ys_column() noexcept { return Base::column<21>(); }
+    static constexpr auto target_velocities_zs_column() noexcept { return Base::column<22>(); }
 };
-struct Layout : ioj::single_allocation_layout::Layout<LayoutColumns> {};
 
 /* **************************************** */
 // Resolved views
@@ -485,8 +498,8 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto entity_ids() const { return this->column(Layout::columns.EntityIdsColumn); }
-    auto integral_biases() const { return this->column(Layout::columns.IntegralBiasesColumn); }
+    auto entity_ids() const { return this->column(Layout::entity_ids_column()); }
+    auto integral_biases() const { return this->column(Layout::integral_biases_column()); }
     auto view_locations() const
         -> std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View> {
         return ioj::soa_storage_detail::make_strided_view<
@@ -494,8 +507,8 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
             this->state_,
             this->offset_,
             this->num(),
-            Layout::columns.Locations.XsColumn,
-            Layout::columns.Locations.YsColumn);
+            Layout::locations_xs_column(),
+            Layout::locations_ys_column());
     }
     auto view_fire_point_locations() const
         -> std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View> {
@@ -504,8 +517,8 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
             this->state_,
             this->offset_,
             this->num(),
-            Layout::columns.FirePointLocations.XsColumn,
-            Layout::columns.FirePointLocations.YsColumn);
+            Layout::fire_point_locations_xs_column(),
+            Layout::fire_point_locations_ys_column());
     }
     auto view_rotations() const
         -> std::conditional_t<Const, ::ioj::rotators3f::ConstView, ::ioj::rotators3f::View> {
@@ -514,19 +527,19 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
             this->state_,
             this->offset_,
             this->num(),
-            Layout::columns.Rotations.PitchesColumn,
-            Layout::columns.Rotations.YawsColumn);
+            Layout::rotations_pitches_column(),
+            Layout::rotations_yaws_column());
     }
-    auto teams() const { return this->column(Layout::columns.TeamsColumn); }
-    auto laser_cooldowns() const { return this->column(Layout::columns.LaserCooldownsColumn); }
-    auto laser_damages() const { return this->column(Layout::columns.LaserDamagesColumn); }
+    auto teams() const { return this->column(Layout::teams_column()); }
+    auto laser_cooldowns() const { return this->column(Layout::laser_cooldowns_column()); }
+    auto laser_damages() const { return this->column(Layout::laser_damages_column()); }
     auto target_refresh_countdowns_periods() const {
-        return this->column(Layout::columns.TargetRefreshCountdownsPeriodsColumn);
+        return this->column(Layout::target_refresh_countdowns_periods_column());
     }
     auto target_refresh_countdowns_remaining_ticks() const {
-        return this->column(Layout::columns.TargetRefreshCountdownsRemainingTicksColumn);
+        return this->column(Layout::target_refresh_countdowns_remaining_ticks_column());
     }
-    auto target_ids() const { return this->column(Layout::columns.TargetIdsColumn); }
+    auto target_ids() const { return this->column(Layout::target_ids_column()); }
     auto view_target_locations() const
         -> std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View> {
         return ioj::soa_storage_detail::make_strided_view<
@@ -534,8 +547,8 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
             this->state_,
             this->offset_,
             this->num(),
-            Layout::columns.TargetLocations.XsColumn,
-            Layout::columns.TargetLocations.YsColumn);
+            Layout::target_locations_xs_column(),
+            Layout::target_locations_ys_column());
     }
     auto view_target_velocities() const
         -> std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View> {
@@ -544,8 +557,8 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
             this->state_,
             this->offset_,
             this->num(),
-            Layout::columns.TargetVelocities.XsColumn,
-            Layout::columns.TargetVelocities.YsColumn);
+            Layout::target_velocities_xs_column(),
+            Layout::target_velocities_ys_column());
     }
     template <typename Func>
     void each_column(Func&& func) const {
@@ -581,29 +594,29 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     auto resolve() const -> std::conditional_t<Const,
                                                ::ioj::sim::turret_entity_data::ResolvedConstView,
                                                ::ioj::sim::turret_entity_data::ResolvedView> {
-        return {this->column(Layout::columns.EntityIdsColumn).data(),
-                this->column(Layout::columns.IntegralBiasesColumn).data(),
-                this->column(Layout::columns.Locations.XsColumn).data(),
-                this->column(Layout::columns.Locations.YsColumn).data(),
-                this->column(Layout::columns.Locations.ZsColumn).data(),
-                this->column(Layout::columns.FirePointLocations.XsColumn).data(),
-                this->column(Layout::columns.FirePointLocations.YsColumn).data(),
-                this->column(Layout::columns.FirePointLocations.ZsColumn).data(),
-                this->column(Layout::columns.Rotations.PitchesColumn).data(),
-                this->column(Layout::columns.Rotations.YawsColumn).data(),
-                this->column(Layout::columns.Rotations.RollsColumn).data(),
-                this->column(Layout::columns.TeamsColumn).data(),
-                this->column(Layout::columns.LaserCooldownsColumn).data(),
-                this->column(Layout::columns.LaserDamagesColumn).data(),
-                this->column(Layout::columns.TargetRefreshCountdownsPeriodsColumn).data(),
-                this->column(Layout::columns.TargetRefreshCountdownsRemainingTicksColumn).data(),
-                this->column(Layout::columns.TargetIdsColumn).data(),
-                this->column(Layout::columns.TargetLocations.XsColumn).data(),
-                this->column(Layout::columns.TargetLocations.YsColumn).data(),
-                this->column(Layout::columns.TargetLocations.ZsColumn).data(),
-                this->column(Layout::columns.TargetVelocities.XsColumn).data(),
-                this->column(Layout::columns.TargetVelocities.YsColumn).data(),
-                this->column(Layout::columns.TargetVelocities.ZsColumn).data(),
+        return {this->column(Layout::entity_ids_column()).data(),
+                this->column(Layout::integral_biases_column()).data(),
+                this->column(Layout::locations_xs_column()).data(),
+                this->column(Layout::locations_ys_column()).data(),
+                this->column(Layout::locations_zs_column()).data(),
+                this->column(Layout::fire_point_locations_xs_column()).data(),
+                this->column(Layout::fire_point_locations_ys_column()).data(),
+                this->column(Layout::fire_point_locations_zs_column()).data(),
+                this->column(Layout::rotations_pitches_column()).data(),
+                this->column(Layout::rotations_yaws_column()).data(),
+                this->column(Layout::rotations_rolls_column()).data(),
+                this->column(Layout::teams_column()).data(),
+                this->column(Layout::laser_cooldowns_column()).data(),
+                this->column(Layout::laser_damages_column()).data(),
+                this->column(Layout::target_refresh_countdowns_periods_column()).data(),
+                this->column(Layout::target_refresh_countdowns_remaining_ticks_column()).data(),
+                this->column(Layout::target_ids_column()).data(),
+                this->column(Layout::target_locations_xs_column()).data(),
+                this->column(Layout::target_locations_ys_column()).data(),
+                this->column(Layout::target_locations_zs_column()).data(),
+                this->column(Layout::target_velocities_xs_column()).data(),
+                this->column(Layout::target_velocities_ys_column()).data(),
+                this->column(Layout::target_velocities_zs_column()).data(),
                 this->num()};
     }
 };
@@ -833,30 +846,30 @@ struct TurretEntityData
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
         ioj::native_soa::LayoutCursor cursor{blocks};
-        return {cursor.column_pointer(data, Layout::columns.EntityIdsColumn),
-                cursor.column_pointer(data, Layout::columns.IntegralBiasesColumn),
-                cursor.column_pointer(data, Layout::columns.Locations.XsColumn),
-                cursor.column_pointer(data, Layout::columns.Locations.YsColumn),
-                cursor.column_pointer(data, Layout::columns.Locations.ZsColumn),
-                cursor.column_pointer(data, Layout::columns.FirePointLocations.XsColumn),
-                cursor.column_pointer(data, Layout::columns.FirePointLocations.YsColumn),
-                cursor.column_pointer(data, Layout::columns.FirePointLocations.ZsColumn),
-                cursor.column_pointer(data, Layout::columns.Rotations.PitchesColumn),
-                cursor.column_pointer(data, Layout::columns.Rotations.YawsColumn),
-                cursor.column_pointer(data, Layout::columns.Rotations.RollsColumn),
-                cursor.column_pointer(data, Layout::columns.TeamsColumn),
-                cursor.column_pointer(data, Layout::columns.LaserCooldownsColumn),
-                cursor.column_pointer(data, Layout::columns.LaserDamagesColumn),
-                cursor.column_pointer(data, Layout::columns.TargetRefreshCountdownsPeriodsColumn),
-                cursor.column_pointer(data,
-                                      Layout::columns.TargetRefreshCountdownsRemainingTicksColumn),
-                cursor.column_pointer(data, Layout::columns.TargetIdsColumn),
-                cursor.column_pointer(data, Layout::columns.TargetLocations.XsColumn),
-                cursor.column_pointer(data, Layout::columns.TargetLocations.YsColumn),
-                cursor.column_pointer(data, Layout::columns.TargetLocations.ZsColumn),
-                cursor.column_pointer(data, Layout::columns.TargetVelocities.XsColumn),
-                cursor.column_pointer(data, Layout::columns.TargetVelocities.YsColumn),
-                cursor.column_pointer(data, Layout::columns.TargetVelocities.ZsColumn)};
+        return {
+            cursor.column_pointer(data, Layout::entity_ids_column()),
+            cursor.column_pointer(data, Layout::integral_biases_column()),
+            cursor.column_pointer(data, Layout::locations_xs_column()),
+            cursor.column_pointer(data, Layout::locations_ys_column()),
+            cursor.column_pointer(data, Layout::locations_zs_column()),
+            cursor.column_pointer(data, Layout::fire_point_locations_xs_column()),
+            cursor.column_pointer(data, Layout::fire_point_locations_ys_column()),
+            cursor.column_pointer(data, Layout::fire_point_locations_zs_column()),
+            cursor.column_pointer(data, Layout::rotations_pitches_column()),
+            cursor.column_pointer(data, Layout::rotations_yaws_column()),
+            cursor.column_pointer(data, Layout::rotations_rolls_column()),
+            cursor.column_pointer(data, Layout::teams_column()),
+            cursor.column_pointer(data, Layout::laser_cooldowns_column()),
+            cursor.column_pointer(data, Layout::laser_damages_column()),
+            cursor.column_pointer(data, Layout::target_refresh_countdowns_periods_column()),
+            cursor.column_pointer(data, Layout::target_refresh_countdowns_remaining_ticks_column()),
+            cursor.column_pointer(data, Layout::target_ids_column()),
+            cursor.column_pointer(data, Layout::target_locations_xs_column()),
+            cursor.column_pointer(data, Layout::target_locations_ys_column()),
+            cursor.column_pointer(data, Layout::target_locations_zs_column()),
+            cursor.column_pointer(data, Layout::target_velocities_xs_column()),
+            cursor.column_pointer(data, Layout::target_velocities_ys_column()),
+            cursor.column_pointer(data, Layout::target_velocities_zs_column())};
     }
 
     /* **************************************** */

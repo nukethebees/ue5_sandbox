@@ -29,32 +29,29 @@ struct ResolvedConstView;
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct LayoutColumns {
-    template <typename T>
-    using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
-    ColLayout<LevelEntityIndex> EntityIndicesColumn;
-    ::ioj::vectors3f::LayoutColumns Locations;
-    ::ioj::rotators3f::LayoutColumns Rotations;
-    ColLayout<::ioj::Team> TeamsColumn;
-    ColLayout<Health> HealthsColumn;
-    ColLayout<std::int32_t> LaserDamagesColumn;
-
-    constexpr explicit LayoutColumns(
-        ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
-        : EntityIndicesColumn{previous}
-        , Locations{EntityIndicesColumn}
-        , Rotations{Locations.last_column()}
-        , TeamsColumn{Rotations.last_column()}
-        , HealthsColumn{TeamsColumn}
-        , LaserDamagesColumn{HealthsColumn} {}
-    constexpr auto last_column() const noexcept
-        -> ioj::single_allocation_layout::ColumnLayoutBase const& {
-        return LaserDamagesColumn;
-    }
-    LayoutColumns(LayoutColumns const&) = delete;
-    auto operator=(LayoutColumns const&) -> LayoutColumns& = delete;
+struct Layout
+    : ioj::single_allocation_layout::ColumnLayouts<LevelEntityIndex,
+                                                   float,
+                                                   float,
+                                                   float,
+                                                   float,
+                                                   float,
+                                                   float,
+                                                   ::ioj::Team,
+                                                   Health,
+                                                   std::int32_t> {
+    using Base = ColumnLayouts;
+    static constexpr auto entity_indices_column() noexcept { return Base::column<0>(); }
+    static constexpr auto locations_xs_column() noexcept { return Base::column<1>(); }
+    static constexpr auto locations_ys_column() noexcept { return Base::column<2>(); }
+    static constexpr auto locations_zs_column() noexcept { return Base::column<3>(); }
+    static constexpr auto rotations_pitches_column() noexcept { return Base::column<4>(); }
+    static constexpr auto rotations_yaws_column() noexcept { return Base::column<5>(); }
+    static constexpr auto rotations_rolls_column() noexcept { return Base::column<6>(); }
+    static constexpr auto teams_column() noexcept { return Base::column<7>(); }
+    static constexpr auto healths_column() noexcept { return Base::column<8>(); }
+    static constexpr auto laser_damages_column() noexcept { return Base::column<9>(); }
 };
-struct Layout : ioj::single_allocation_layout::Layout<LayoutColumns> {};
 
 /* **************************************** */
 // Resolved views
@@ -270,7 +267,7 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto entity_indices() const { return this->column(Layout::columns.EntityIndicesColumn); }
+    auto entity_indices() const { return this->column(Layout::entity_indices_column()); }
     auto view_locations() const
         -> std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View> {
         return ioj::soa_storage_detail::make_strided_view<
@@ -278,8 +275,8 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
             this->state_,
             this->offset_,
             this->num(),
-            Layout::columns.Locations.XsColumn,
-            Layout::columns.Locations.YsColumn);
+            Layout::locations_xs_column(),
+            Layout::locations_ys_column());
     }
     auto view_rotations() const
         -> std::conditional_t<Const, ::ioj::rotators3f::ConstView, ::ioj::rotators3f::View> {
@@ -288,12 +285,12 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
             this->state_,
             this->offset_,
             this->num(),
-            Layout::columns.Rotations.PitchesColumn,
-            Layout::columns.Rotations.YawsColumn);
+            Layout::rotations_pitches_column(),
+            Layout::rotations_yaws_column());
     }
-    auto teams() const { return this->column(Layout::columns.TeamsColumn); }
-    auto healths() const { return this->column(Layout::columns.HealthsColumn); }
-    auto laser_damages() const { return this->column(Layout::columns.LaserDamagesColumn); }
+    auto teams() const { return this->column(Layout::teams_column()); }
+    auto healths() const { return this->column(Layout::healths_column()); }
+    auto laser_damages() const { return this->column(Layout::laser_damages_column()); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(entity_indices());
@@ -313,16 +310,16 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
         -> std::conditional_t<Const,
                               ::ioj::sim::level_turret_spawn_events::ResolvedConstView,
                               ::ioj::sim::level_turret_spawn_events::ResolvedView> {
-        return {this->column(Layout::columns.EntityIndicesColumn).data(),
-                this->column(Layout::columns.Locations.XsColumn).data(),
-                this->column(Layout::columns.Locations.YsColumn).data(),
-                this->column(Layout::columns.Locations.ZsColumn).data(),
-                this->column(Layout::columns.Rotations.PitchesColumn).data(),
-                this->column(Layout::columns.Rotations.YawsColumn).data(),
-                this->column(Layout::columns.Rotations.RollsColumn).data(),
-                this->column(Layout::columns.TeamsColumn).data(),
-                this->column(Layout::columns.HealthsColumn).data(),
-                this->column(Layout::columns.LaserDamagesColumn).data(),
+        return {this->column(Layout::entity_indices_column()).data(),
+                this->column(Layout::locations_xs_column()).data(),
+                this->column(Layout::locations_ys_column()).data(),
+                this->column(Layout::locations_zs_column()).data(),
+                this->column(Layout::rotations_pitches_column()).data(),
+                this->column(Layout::rotations_yaws_column()).data(),
+                this->column(Layout::rotations_rolls_column()).data(),
+                this->column(Layout::teams_column()).data(),
+                this->column(Layout::healths_column()).data(),
+                this->column(Layout::laser_damages_column()).data(),
                 this->num()};
     }
 };
@@ -471,16 +468,16 @@ struct LevelTurretSpawnEvents
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
         ioj::native_soa::LayoutCursor cursor{blocks};
-        return {cursor.column_pointer(data, Layout::columns.EntityIndicesColumn),
-                cursor.column_pointer(data, Layout::columns.Locations.XsColumn),
-                cursor.column_pointer(data, Layout::columns.Locations.YsColumn),
-                cursor.column_pointer(data, Layout::columns.Locations.ZsColumn),
-                cursor.column_pointer(data, Layout::columns.Rotations.PitchesColumn),
-                cursor.column_pointer(data, Layout::columns.Rotations.YawsColumn),
-                cursor.column_pointer(data, Layout::columns.Rotations.RollsColumn),
-                cursor.column_pointer(data, Layout::columns.TeamsColumn),
-                cursor.column_pointer(data, Layout::columns.HealthsColumn),
-                cursor.column_pointer(data, Layout::columns.LaserDamagesColumn)};
+        return {cursor.column_pointer(data, Layout::entity_indices_column()),
+                cursor.column_pointer(data, Layout::locations_xs_column()),
+                cursor.column_pointer(data, Layout::locations_ys_column()),
+                cursor.column_pointer(data, Layout::locations_zs_column()),
+                cursor.column_pointer(data, Layout::rotations_pitches_column()),
+                cursor.column_pointer(data, Layout::rotations_yaws_column()),
+                cursor.column_pointer(data, Layout::rotations_rolls_column()),
+                cursor.column_pointer(data, Layout::teams_column()),
+                cursor.column_pointer(data, Layout::healths_column()),
+                cursor.column_pointer(data, Layout::laser_damages_column())};
     }
 
     /* **************************************** */

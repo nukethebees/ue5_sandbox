@@ -63,40 +63,31 @@ struct ResolvedConstView;
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct LayoutColumns {
-    template <typename T>
-    using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
-    ColLayout<SimTick> CompletedTicksColumn;
-    ColLayout<HistoryFieldMask> ValidityMasksColumn;
-    ColLayout<std::int32_t> ActiveEntitiesColumn;
-    ColLayout<EntityTypeCounts> ActiveEntitiesByTypeColumn;
-    ColLayout<EntityCounts> ActiveEntitiesByTeamAndTypeColumn;
-    ColLayout<std::int32_t> SpawnedEntitiesColumn;
-    ColLayout<std::int32_t> DestroyedEntitiesColumn;
-    ColLayout<std::int32_t> KillsColumn;
-    ColLayout<std::int32_t> ActiveLasersColumn;
-    ColLayout<std::int32_t> LasersFiredColumn;
-
-    constexpr explicit LayoutColumns(
-        ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
-        : CompletedTicksColumn{previous}
-        , ValidityMasksColumn{CompletedTicksColumn}
-        , ActiveEntitiesColumn{ValidityMasksColumn}
-        , ActiveEntitiesByTypeColumn{ActiveEntitiesColumn}
-        , ActiveEntitiesByTeamAndTypeColumn{ActiveEntitiesByTypeColumn}
-        , SpawnedEntitiesColumn{ActiveEntitiesByTeamAndTypeColumn}
-        , DestroyedEntitiesColumn{SpawnedEntitiesColumn}
-        , KillsColumn{DestroyedEntitiesColumn}
-        , ActiveLasersColumn{KillsColumn}
-        , LasersFiredColumn{ActiveLasersColumn} {}
-    constexpr auto last_column() const noexcept
-        -> ioj::single_allocation_layout::ColumnLayoutBase const& {
-        return LasersFiredColumn;
+struct Layout
+    : ioj::single_allocation_layout::ColumnLayouts<SimTick,
+                                                   HistoryFieldMask,
+                                                   std::int32_t,
+                                                   EntityTypeCounts,
+                                                   EntityCounts,
+                                                   std::int32_t,
+                                                   std::int32_t,
+                                                   std::int32_t,
+                                                   std::int32_t,
+                                                   std::int32_t> {
+    using Base = ColumnLayouts;
+    static constexpr auto completed_ticks_column() noexcept { return Base::column<0>(); }
+    static constexpr auto validity_masks_column() noexcept { return Base::column<1>(); }
+    static constexpr auto active_entities_column() noexcept { return Base::column<2>(); }
+    static constexpr auto active_entities_by_type_column() noexcept { return Base::column<3>(); }
+    static constexpr auto active_entities_by_team_and_type_column() noexcept {
+        return Base::column<4>();
     }
-    LayoutColumns(LayoutColumns const&) = delete;
-    auto operator=(LayoutColumns const&) -> LayoutColumns& = delete;
+    static constexpr auto spawned_entities_column() noexcept { return Base::column<5>(); }
+    static constexpr auto destroyed_entities_column() noexcept { return Base::column<6>(); }
+    static constexpr auto kills_column() noexcept { return Base::column<7>(); }
+    static constexpr auto active_lasers_column() noexcept { return Base::column<8>(); }
+    static constexpr auto lasers_fired_column() noexcept { return Base::column<9>(); }
 };
-struct Layout : ioj::single_allocation_layout::Layout<LayoutColumns> {};
 
 /* **************************************** */
 // Resolved views
@@ -300,22 +291,20 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto completed_ticks() const { return this->column(Layout::columns.CompletedTicksColumn); }
-    auto validity_masks() const { return this->column(Layout::columns.ValidityMasksColumn); }
-    auto active_entities() const { return this->column(Layout::columns.ActiveEntitiesColumn); }
+    auto completed_ticks() const { return this->column(Layout::completed_ticks_column()); }
+    auto validity_masks() const { return this->column(Layout::validity_masks_column()); }
+    auto active_entities() const { return this->column(Layout::active_entities_column()); }
     auto active_entities_by_type() const {
-        return this->column(Layout::columns.ActiveEntitiesByTypeColumn);
+        return this->column(Layout::active_entities_by_type_column());
     }
     auto active_entities_by_team_and_type() const {
-        return this->column(Layout::columns.ActiveEntitiesByTeamAndTypeColumn);
+        return this->column(Layout::active_entities_by_team_and_type_column());
     }
-    auto spawned_entities() const { return this->column(Layout::columns.SpawnedEntitiesColumn); }
-    auto destroyed_entities() const {
-        return this->column(Layout::columns.DestroyedEntitiesColumn);
-    }
-    auto kills() const { return this->column(Layout::columns.KillsColumn); }
-    auto active_lasers() const { return this->column(Layout::columns.ActiveLasersColumn); }
-    auto lasers_fired() const { return this->column(Layout::columns.LasersFiredColumn); }
+    auto spawned_entities() const { return this->column(Layout::spawned_entities_column()); }
+    auto destroyed_entities() const { return this->column(Layout::destroyed_entities_column()); }
+    auto kills() const { return this->column(Layout::kills_column()); }
+    auto active_lasers() const { return this->column(Layout::active_lasers_column()); }
+    auto lasers_fired() const { return this->column(Layout::lasers_fired_column()); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(completed_ticks());
@@ -333,16 +322,16 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
         -> std::conditional_t<Const,
                               ::ioj::sim::telemetry::history_rows::ResolvedConstView,
                               ::ioj::sim::telemetry::history_rows::ResolvedView> {
-        return {this->column(Layout::columns.CompletedTicksColumn).data(),
-                this->column(Layout::columns.ValidityMasksColumn).data(),
-                this->column(Layout::columns.ActiveEntitiesColumn).data(),
-                this->column(Layout::columns.ActiveEntitiesByTypeColumn).data(),
-                this->column(Layout::columns.ActiveEntitiesByTeamAndTypeColumn).data(),
-                this->column(Layout::columns.SpawnedEntitiesColumn).data(),
-                this->column(Layout::columns.DestroyedEntitiesColumn).data(),
-                this->column(Layout::columns.KillsColumn).data(),
-                this->column(Layout::columns.ActiveLasersColumn).data(),
-                this->column(Layout::columns.LasersFiredColumn).data(),
+        return {this->column(Layout::completed_ticks_column()).data(),
+                this->column(Layout::validity_masks_column()).data(),
+                this->column(Layout::active_entities_column()).data(),
+                this->column(Layout::active_entities_by_type_column()).data(),
+                this->column(Layout::active_entities_by_team_and_type_column()).data(),
+                this->column(Layout::spawned_entities_column()).data(),
+                this->column(Layout::destroyed_entities_column()).data(),
+                this->column(Layout::kills_column()).data(),
+                this->column(Layout::active_lasers_column()).data(),
+                this->column(Layout::lasers_fired_column()).data(),
                 this->num()};
     }
 };
@@ -476,16 +465,16 @@ struct HistoryRows
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
         ioj::native_soa::LayoutCursor cursor{blocks};
-        return {cursor.column_pointer(data, Layout::columns.CompletedTicksColumn),
-                cursor.column_pointer(data, Layout::columns.ValidityMasksColumn),
-                cursor.column_pointer(data, Layout::columns.ActiveEntitiesColumn),
-                cursor.column_pointer(data, Layout::columns.ActiveEntitiesByTypeColumn),
-                cursor.column_pointer(data, Layout::columns.ActiveEntitiesByTeamAndTypeColumn),
-                cursor.column_pointer(data, Layout::columns.SpawnedEntitiesColumn),
-                cursor.column_pointer(data, Layout::columns.DestroyedEntitiesColumn),
-                cursor.column_pointer(data, Layout::columns.KillsColumn),
-                cursor.column_pointer(data, Layout::columns.ActiveLasersColumn),
-                cursor.column_pointer(data, Layout::columns.LasersFiredColumn)};
+        return {cursor.column_pointer(data, Layout::completed_ticks_column()),
+                cursor.column_pointer(data, Layout::validity_masks_column()),
+                cursor.column_pointer(data, Layout::active_entities_column()),
+                cursor.column_pointer(data, Layout::active_entities_by_type_column()),
+                cursor.column_pointer(data, Layout::active_entities_by_team_and_type_column()),
+                cursor.column_pointer(data, Layout::spawned_entities_column()),
+                cursor.column_pointer(data, Layout::destroyed_entities_column()),
+                cursor.column_pointer(data, Layout::kills_column()),
+                cursor.column_pointer(data, Layout::active_lasers_column()),
+                cursor.column_pointer(data, Layout::lasers_fired_column())};
     }
 
     /* **************************************** */

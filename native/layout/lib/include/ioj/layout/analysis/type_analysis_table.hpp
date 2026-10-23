@@ -31,34 +31,23 @@ struct ResolvedConstView;
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct LayoutColumns {
-    template <typename T>
-    using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
-    ColLayout<lispb::schema::TypeId> SchemaTypeColumn;
-    ColLayout<ScenarioId> ScenarioColumn;
-    ColLayout<std::optional<ioj::layout::PhysicalFactId>> PhysicalColumn;
-    ColLayout<std::optional<ioj::layout::EnumBacking>> EnumBackingColumn;
-    ColLayout<std::optional<ioj::layout::AggregateLayout>> AggregateColumn;
-    ColLayout<std::optional<ioj::layout::PackedLayout>> PackedColumn;
-    ColLayout<std::optional<ioj::layout::SoaLayout>> SoaColumn;
-
-    constexpr explicit LayoutColumns(
-        ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
-        : SchemaTypeColumn{previous}
-        , ScenarioColumn{SchemaTypeColumn}
-        , PhysicalColumn{ScenarioColumn}
-        , EnumBackingColumn{PhysicalColumn}
-        , AggregateColumn{EnumBackingColumn}
-        , PackedColumn{AggregateColumn}
-        , SoaColumn{PackedColumn} {}
-    constexpr auto last_column() const noexcept
-        -> ioj::single_allocation_layout::ColumnLayoutBase const& {
-        return SoaColumn;
-    }
-    LayoutColumns(LayoutColumns const&) = delete;
-    auto operator=(LayoutColumns const&) -> LayoutColumns& = delete;
+struct Layout
+    : ioj::single_allocation_layout::ColumnLayouts<lispb::schema::TypeId,
+                                                   ScenarioId,
+                                                   std::optional<ioj::layout::PhysicalFactId>,
+                                                   std::optional<ioj::layout::EnumBacking>,
+                                                   std::optional<ioj::layout::AggregateLayout>,
+                                                   std::optional<ioj::layout::PackedLayout>,
+                                                   std::optional<ioj::layout::SoaLayout>> {
+    using Base = ColumnLayouts;
+    static constexpr auto schema_type_column() noexcept { return Base::column<0>(); }
+    static constexpr auto scenario_column() noexcept { return Base::column<1>(); }
+    static constexpr auto physical_column() noexcept { return Base::column<2>(); }
+    static constexpr auto enum_backing_column() noexcept { return Base::column<3>(); }
+    static constexpr auto aggregate_column() noexcept { return Base::column<4>(); }
+    static constexpr auto packed_column() noexcept { return Base::column<5>(); }
+    static constexpr auto soa_column() noexcept { return Base::column<6>(); }
 };
-struct Layout : ioj::single_allocation_layout::Layout<LayoutColumns> {};
 
 /* **************************************** */
 // Resolved views
@@ -204,13 +193,13 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto schema_type() const { return this->column(Layout::columns.SchemaTypeColumn); }
-    auto scenario() const { return this->column(Layout::columns.ScenarioColumn); }
-    auto physical() const { return this->column(Layout::columns.PhysicalColumn); }
-    auto enum_backing() const { return this->column(Layout::columns.EnumBackingColumn); }
-    auto aggregate() const { return this->column(Layout::columns.AggregateColumn); }
-    auto packed() const { return this->column(Layout::columns.PackedColumn); }
-    auto soa() const { return this->column(Layout::columns.SoaColumn); }
+    auto schema_type() const { return this->column(Layout::schema_type_column()); }
+    auto scenario() const { return this->column(Layout::scenario_column()); }
+    auto physical() const { return this->column(Layout::physical_column()); }
+    auto enum_backing() const { return this->column(Layout::enum_backing_column()); }
+    auto aggregate() const { return this->column(Layout::aggregate_column()); }
+    auto packed() const { return this->column(Layout::packed_column()); }
+    auto soa() const { return this->column(Layout::soa_column()); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(schema_type());
@@ -225,13 +214,13 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
         -> std::conditional_t<Const,
                               ::ioj::layout::type_analysis_table::ResolvedConstView,
                               ::ioj::layout::type_analysis_table::ResolvedView> {
-        return {this->column(Layout::columns.SchemaTypeColumn).data(),
-                this->column(Layout::columns.ScenarioColumn).data(),
-                this->column(Layout::columns.PhysicalColumn).data(),
-                this->column(Layout::columns.EnumBackingColumn).data(),
-                this->column(Layout::columns.AggregateColumn).data(),
-                this->column(Layout::columns.PackedColumn).data(),
-                this->column(Layout::columns.SoaColumn).data(),
+        return {this->column(Layout::schema_type_column()).data(),
+                this->column(Layout::scenario_column()).data(),
+                this->column(Layout::physical_column()).data(),
+                this->column(Layout::enum_backing_column()).data(),
+                this->column(Layout::aggregate_column()).data(),
+                this->column(Layout::packed_column()).data(),
+                this->column(Layout::soa_column()).data(),
                 this->num()};
     }
 };
@@ -350,13 +339,13 @@ struct TypeAnalysisTable
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
         ioj::native_soa::LayoutCursor cursor{blocks};
-        return {cursor.column_pointer(data, Layout::columns.SchemaTypeColumn),
-                cursor.column_pointer(data, Layout::columns.ScenarioColumn),
-                cursor.column_pointer(data, Layout::columns.PhysicalColumn),
-                cursor.column_pointer(data, Layout::columns.EnumBackingColumn),
-                cursor.column_pointer(data, Layout::columns.AggregateColumn),
-                cursor.column_pointer(data, Layout::columns.PackedColumn),
-                cursor.column_pointer(data, Layout::columns.SoaColumn)};
+        return {cursor.column_pointer(data, Layout::schema_type_column()),
+                cursor.column_pointer(data, Layout::scenario_column()),
+                cursor.column_pointer(data, Layout::physical_column()),
+                cursor.column_pointer(data, Layout::enum_backing_column()),
+                cursor.column_pointer(data, Layout::aggregate_column()),
+                cursor.column_pointer(data, Layout::packed_column()),
+                cursor.column_pointer(data, Layout::soa_column())};
     }
 
     /* **************************************** */

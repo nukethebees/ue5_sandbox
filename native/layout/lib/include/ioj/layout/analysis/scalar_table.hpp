@@ -33,38 +33,28 @@ struct ResolvedConstView;
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct LayoutColumns {
-    template <typename T>
-    using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
-    ColLayout<lispb::schema::TypeId> TypeColumn;
-    ColLayout<std::optional<ioj::layout::IntegerDomain>> IntegerDomainColumn;
-    ColLayout<std::optional<ioj::layout::EnumDomain>> EnumDomainColumn;
-    ColLayout<std::optional<ioj::layout::OptionalSentinelEncoding>> OptionalSentinelEncodingColumn;
-    ColLayout<std::optional<ioj::layout::OptionalPresenceEncoding>> OptionalPresenceEncodingColumn;
-    ColLayout<std::optional<ioj::layout::QuantizedEncoding>> QuantizedEncodingColumn;
-    ColLayout<std::optional<ioj::layout::FixedEncoding>> FixedEncodingColumn;
-    ColLayout<std::optional<ioj::layout::FloatEncoding>> FloatEncodingColumn;
-    ColLayout<std::optional<ioj::layout::VarintEncoding>> VarintEncodingColumn;
-
-    constexpr explicit LayoutColumns(
-        ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
-        : TypeColumn{previous}
-        , IntegerDomainColumn{TypeColumn}
-        , EnumDomainColumn{IntegerDomainColumn}
-        , OptionalSentinelEncodingColumn{EnumDomainColumn}
-        , OptionalPresenceEncodingColumn{OptionalSentinelEncodingColumn}
-        , QuantizedEncodingColumn{OptionalPresenceEncodingColumn}
-        , FixedEncodingColumn{QuantizedEncodingColumn}
-        , FloatEncodingColumn{FixedEncodingColumn}
-        , VarintEncodingColumn{FloatEncodingColumn} {}
-    constexpr auto last_column() const noexcept
-        -> ioj::single_allocation_layout::ColumnLayoutBase const& {
-        return VarintEncodingColumn;
-    }
-    LayoutColumns(LayoutColumns const&) = delete;
-    auto operator=(LayoutColumns const&) -> LayoutColumns& = delete;
+struct Layout
+    : ioj::single_allocation_layout::ColumnLayouts<
+          lispb::schema::TypeId,
+          std::optional<ioj::layout::IntegerDomain>,
+          std::optional<ioj::layout::EnumDomain>,
+          std::optional<ioj::layout::OptionalSentinelEncoding>,
+          std::optional<ioj::layout::OptionalPresenceEncoding>,
+          std::optional<ioj::layout::QuantizedEncoding>,
+          std::optional<ioj::layout::FixedEncoding>,
+          std::optional<ioj::layout::FloatEncoding>,
+          std::optional<ioj::layout::VarintEncoding>> {
+    using Base = ColumnLayouts;
+    static constexpr auto type_column() noexcept { return Base::column<0>(); }
+    static constexpr auto integer_domain_column() noexcept { return Base::column<1>(); }
+    static constexpr auto enum_domain_column() noexcept { return Base::column<2>(); }
+    static constexpr auto optional_sentinel_encoding_column() noexcept { return Base::column<3>(); }
+    static constexpr auto optional_presence_encoding_column() noexcept { return Base::column<4>(); }
+    static constexpr auto quantized_encoding_column() noexcept { return Base::column<5>(); }
+    static constexpr auto fixed_encoding_column() noexcept { return Base::column<6>(); }
+    static constexpr auto float_encoding_column() noexcept { return Base::column<7>(); }
+    static constexpr auto varint_encoding_column() noexcept { return Base::column<8>(); }
 };
-struct Layout : ioj::single_allocation_layout::Layout<LayoutColumns> {};
 
 /* **************************************** */
 // Resolved views
@@ -260,21 +250,19 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto type() const { return this->column(Layout::columns.TypeColumn); }
-    auto integer_domain() const { return this->column(Layout::columns.IntegerDomainColumn); }
-    auto enum_domain() const { return this->column(Layout::columns.EnumDomainColumn); }
+    auto type() const { return this->column(Layout::type_column()); }
+    auto integer_domain() const { return this->column(Layout::integer_domain_column()); }
+    auto enum_domain() const { return this->column(Layout::enum_domain_column()); }
     auto optional_sentinel_encoding() const {
-        return this->column(Layout::columns.OptionalSentinelEncodingColumn);
+        return this->column(Layout::optional_sentinel_encoding_column());
     }
     auto optional_presence_encoding() const {
-        return this->column(Layout::columns.OptionalPresenceEncodingColumn);
+        return this->column(Layout::optional_presence_encoding_column());
     }
-    auto quantized_encoding() const {
-        return this->column(Layout::columns.QuantizedEncodingColumn);
-    }
-    auto fixed_encoding() const { return this->column(Layout::columns.FixedEncodingColumn); }
-    auto float_encoding() const { return this->column(Layout::columns.FloatEncodingColumn); }
-    auto varint_encoding() const { return this->column(Layout::columns.VarintEncodingColumn); }
+    auto quantized_encoding() const { return this->column(Layout::quantized_encoding_column()); }
+    auto fixed_encoding() const { return this->column(Layout::fixed_encoding_column()); }
+    auto float_encoding() const { return this->column(Layout::float_encoding_column()); }
+    auto varint_encoding() const { return this->column(Layout::varint_encoding_column()); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(type());
@@ -290,15 +278,15 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     auto resolve() const -> std::conditional_t<Const,
                                                ::ioj::layout::scalar_table::ResolvedConstView,
                                                ::ioj::layout::scalar_table::ResolvedView> {
-        return {this->column(Layout::columns.TypeColumn).data(),
-                this->column(Layout::columns.IntegerDomainColumn).data(),
-                this->column(Layout::columns.EnumDomainColumn).data(),
-                this->column(Layout::columns.OptionalSentinelEncodingColumn).data(),
-                this->column(Layout::columns.OptionalPresenceEncodingColumn).data(),
-                this->column(Layout::columns.QuantizedEncodingColumn).data(),
-                this->column(Layout::columns.FixedEncodingColumn).data(),
-                this->column(Layout::columns.FloatEncodingColumn).data(),
-                this->column(Layout::columns.VarintEncodingColumn).data(),
+        return {this->column(Layout::type_column()).data(),
+                this->column(Layout::integer_domain_column()).data(),
+                this->column(Layout::enum_domain_column()).data(),
+                this->column(Layout::optional_sentinel_encoding_column()).data(),
+                this->column(Layout::optional_presence_encoding_column()).data(),
+                this->column(Layout::quantized_encoding_column()).data(),
+                this->column(Layout::fixed_encoding_column()).data(),
+                this->column(Layout::float_encoding_column()).data(),
+                this->column(Layout::varint_encoding_column()).data(),
                 this->num()};
     }
 };
@@ -428,15 +416,15 @@ struct ScalarTable
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
         ioj::native_soa::LayoutCursor cursor{blocks};
-        return {cursor.column_pointer(data, Layout::columns.TypeColumn),
-                cursor.column_pointer(data, Layout::columns.IntegerDomainColumn),
-                cursor.column_pointer(data, Layout::columns.EnumDomainColumn),
-                cursor.column_pointer(data, Layout::columns.OptionalSentinelEncodingColumn),
-                cursor.column_pointer(data, Layout::columns.OptionalPresenceEncodingColumn),
-                cursor.column_pointer(data, Layout::columns.QuantizedEncodingColumn),
-                cursor.column_pointer(data, Layout::columns.FixedEncodingColumn),
-                cursor.column_pointer(data, Layout::columns.FloatEncodingColumn),
-                cursor.column_pointer(data, Layout::columns.VarintEncodingColumn)};
+        return {cursor.column_pointer(data, Layout::type_column()),
+                cursor.column_pointer(data, Layout::integer_domain_column()),
+                cursor.column_pointer(data, Layout::enum_domain_column()),
+                cursor.column_pointer(data, Layout::optional_sentinel_encoding_column()),
+                cursor.column_pointer(data, Layout::optional_presence_encoding_column()),
+                cursor.column_pointer(data, Layout::quantized_encoding_column()),
+                cursor.column_pointer(data, Layout::fixed_encoding_column()),
+                cursor.column_pointer(data, Layout::float_encoding_column()),
+                cursor.column_pointer(data, Layout::varint_encoding_column())};
     }
 
     /* **************************************** */

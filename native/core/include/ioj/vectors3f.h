@@ -22,26 +22,12 @@ struct ResolvedConstView;
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct LayoutColumns {
-    template <typename T>
-    using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
-    ColLayout<float> XsColumn;
-    ColLayout<float> YsColumn;
-    ColLayout<float> ZsColumn;
-
-    constexpr explicit LayoutColumns(
-        ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
-        : XsColumn{previous}
-        , YsColumn{XsColumn}
-        , ZsColumn{YsColumn} {}
-    constexpr auto last_column() const noexcept
-        -> ioj::single_allocation_layout::ColumnLayoutBase const& {
-        return ZsColumn;
-    }
-    LayoutColumns(LayoutColumns const&) = delete;
-    auto operator=(LayoutColumns const&) -> LayoutColumns& = delete;
+struct Layout : ioj::single_allocation_layout::ColumnLayouts<float, float, float> {
+    using Base = ColumnLayouts;
+    static constexpr auto xs_column() noexcept { return Base::column<0>(); }
+    static constexpr auto ys_column() noexcept { return Base::column<1>(); }
+    static constexpr auto zs_column() noexcept { return Base::column<2>(); }
 };
-struct Layout : ioj::single_allocation_layout::Layout<LayoutColumns> {};
 
 /* **************************************** */
 // Resolved views
@@ -149,7 +135,7 @@ struct ViewImpl : ioj::soa_storage_detail::StridedViewBase<float, Const> {
                                      ioj::soa_storage_detail::StorageState>;
     ViewImpl(State* state, std::uint32_t offset, std::uint32_t count)
         : Base{ioj::soa_storage_detail::make_strided_view<Base>(
-              state, offset, count, Layout::columns.XsColumn, Layout::columns.YsColumn)} {}
+              state, offset, count, Layout::xs_column(), Layout::ys_column())} {}
     template <bool Enabled = Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
@@ -272,9 +258,9 @@ struct Vectors3f
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
         ioj::native_soa::LayoutCursor cursor{blocks};
-        return {cursor.column_pointer(data, Layout::columns.XsColumn),
-                cursor.column_pointer(data, Layout::columns.YsColumn),
-                cursor.column_pointer(data, Layout::columns.ZsColumn)};
+        return {cursor.column_pointer(data, Layout::xs_column()),
+                cursor.column_pointer(data, Layout::ys_column()),
+                cursor.column_pointer(data, Layout::zs_column())};
     }
 
     /* **************************************** */

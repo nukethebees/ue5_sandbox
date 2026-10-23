@@ -23,24 +23,11 @@ struct ResolvedConstView;
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct LayoutColumns {
-    template <typename T>
-    using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
-    ColLayout<EntityId> FirstEntitiesColumn;
-    ColLayout<EntityId> SecondEntitiesColumn;
-
-    constexpr explicit LayoutColumns(
-        ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
-        : FirstEntitiesColumn{previous}
-        , SecondEntitiesColumn{FirstEntitiesColumn} {}
-    constexpr auto last_column() const noexcept
-        -> ioj::single_allocation_layout::ColumnLayoutBase const& {
-        return SecondEntitiesColumn;
-    }
-    LayoutColumns(LayoutColumns const&) = delete;
-    auto operator=(LayoutColumns const&) -> LayoutColumns& = delete;
+struct Layout : ioj::single_allocation_layout::ColumnLayouts<EntityId, EntityId> {
+    using Base = ColumnLayouts;
+    static constexpr auto first_entities_column() noexcept { return Base::column<0>(); }
+    static constexpr auto second_entities_column() noexcept { return Base::column<1>(); }
 };
-struct Layout : ioj::single_allocation_layout::Layout<LayoutColumns> {};
 
 /* **************************************** */
 // Resolved views
@@ -130,12 +117,13 @@ struct ViewImpl : ioj::soa_storage_detail::StridedViewBase<EntityId, Const> {
                                      ioj::soa_storage_detail::StorageState const,
                                      ioj::soa_storage_detail::StorageState>;
     ViewImpl(State* state, std::uint32_t offset, std::uint32_t count)
-        : Base{ioj::soa_storage_detail::make_strided_view<Base>(
-              state,
-              offset,
-              count,
-              Layout::columns.FirstEntitiesColumn,
-              Layout::columns.SecondEntitiesColumn)} {}
+        : Base{ioj::soa_storage_detail::make_strided_view<Base>(state,
+                                                                offset,
+                                                                count,
+                                                                Layout::first_entities_column(),
+                                                                Layout::second_entities_column())} {
+
+    }
     template <bool Enabled = Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
@@ -243,8 +231,8 @@ struct EntityEntityOverlaps
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
         ioj::native_soa::LayoutCursor cursor{blocks};
-        return {cursor.column_pointer(data, Layout::columns.FirstEntitiesColumn),
-                cursor.column_pointer(data, Layout::columns.SecondEntitiesColumn)};
+        return {cursor.column_pointer(data, Layout::first_entities_column()),
+                cursor.column_pointer(data, Layout::second_entities_column())};
     }
 
     /* **************************************** */
@@ -309,24 +297,11 @@ struct ResolvedConstView;
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct LayoutColumns {
-    template <typename T>
-    using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
-    ColLayout<EntityId> EntitiesColumn;
-    ColLayout<StaticGeometryIndex> StaticGeometryIndicesColumn;
-
-    constexpr explicit LayoutColumns(
-        ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
-        : EntitiesColumn{previous}
-        , StaticGeometryIndicesColumn{EntitiesColumn} {}
-    constexpr auto last_column() const noexcept
-        -> ioj::single_allocation_layout::ColumnLayoutBase const& {
-        return StaticGeometryIndicesColumn;
-    }
-    LayoutColumns(LayoutColumns const&) = delete;
-    auto operator=(LayoutColumns const&) -> LayoutColumns& = delete;
+struct Layout : ioj::single_allocation_layout::ColumnLayouts<EntityId, StaticGeometryIndex> {
+    using Base = ColumnLayouts;
+    static constexpr auto entities_column() noexcept { return Base::column<0>(); }
+    static constexpr auto static_geometry_indices_column() noexcept { return Base::column<1>(); }
 };
-struct Layout : ioj::single_allocation_layout::Layout<LayoutColumns> {};
 
 /* **************************************** */
 // Resolved views
@@ -419,9 +394,9 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto entities() const { return this->column(Layout::columns.EntitiesColumn); }
+    auto entities() const { return this->column(Layout::entities_column()); }
     auto static_geometry_indices() const {
-        return this->column(Layout::columns.StaticGeometryIndicesColumn);
+        return this->column(Layout::static_geometry_indices_column());
     }
     template <typename Func>
     void each_column(Func&& func) const {
@@ -432,8 +407,8 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
         -> std::conditional_t<Const,
                               ::ioj::sim::collision::entity_static_overlaps::ResolvedConstView,
                               ::ioj::sim::collision::entity_static_overlaps::ResolvedView> {
-        return {this->column(Layout::columns.EntitiesColumn).data(),
-                this->column(Layout::columns.StaticGeometryIndicesColumn).data(),
+        return {this->column(Layout::entities_column()).data(),
+                this->column(Layout::static_geometry_indices_column()).data(),
                 this->num()};
     }
 };
@@ -526,8 +501,8 @@ struct EntityStaticOverlaps
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
         ioj::native_soa::LayoutCursor cursor{blocks};
-        return {cursor.column_pointer(data, Layout::columns.EntitiesColumn),
-                cursor.column_pointer(data, Layout::columns.StaticGeometryIndicesColumn)};
+        return {cursor.column_pointer(data, Layout::entities_column()),
+                cursor.column_pointer(data, Layout::static_geometry_indices_column())};
     }
 
     /* **************************************** */

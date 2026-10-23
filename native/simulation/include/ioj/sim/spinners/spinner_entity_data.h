@@ -25,30 +25,18 @@ struct ResolvedConstView;
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct LayoutColumns {
-    template <typename T>
-    using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
-    ColLayout<EntityId> EntityIdsColumn;
-    ::ioj::vectors3f::LayoutColumns Locations;
-    ColLayout<float> YawsColumn;
-    ColLayout<std::int16_t> LaserCooldownsColumn;
-    ColLayout<std::int32_t> NextFirePointIndicesColumn;
-
-    constexpr explicit LayoutColumns(
-        ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
-        : EntityIdsColumn{previous}
-        , Locations{EntityIdsColumn}
-        , YawsColumn{Locations.last_column()}
-        , LaserCooldownsColumn{YawsColumn}
-        , NextFirePointIndicesColumn{LaserCooldownsColumn} {}
-    constexpr auto last_column() const noexcept
-        -> ioj::single_allocation_layout::ColumnLayoutBase const& {
-        return NextFirePointIndicesColumn;
-    }
-    LayoutColumns(LayoutColumns const&) = delete;
-    auto operator=(LayoutColumns const&) -> LayoutColumns& = delete;
+struct Layout
+    : ioj::single_allocation_layout::
+          ColumnLayouts<EntityId, float, float, float, float, std::int16_t, std::int32_t> {
+    using Base = ColumnLayouts;
+    static constexpr auto entity_ids_column() noexcept { return Base::column<0>(); }
+    static constexpr auto locations_xs_column() noexcept { return Base::column<1>(); }
+    static constexpr auto locations_ys_column() noexcept { return Base::column<2>(); }
+    static constexpr auto locations_zs_column() noexcept { return Base::column<3>(); }
+    static constexpr auto yaws_column() noexcept { return Base::column<4>(); }
+    static constexpr auto laser_cooldowns_column() noexcept { return Base::column<5>(); }
+    static constexpr auto next_fire_point_indices_column() noexcept { return Base::column<6>(); }
 };
-struct Layout : ioj::single_allocation_layout::Layout<LayoutColumns> {};
 
 /* **************************************** */
 // Resolved views
@@ -222,7 +210,7 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto entity_ids() const { return this->column(Layout::columns.EntityIdsColumn); }
+    auto entity_ids() const { return this->column(Layout::entity_ids_column()); }
     auto view_locations() const
         -> std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View> {
         return ioj::soa_storage_detail::make_strided_view<
@@ -230,13 +218,13 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
             this->state_,
             this->offset_,
             this->num(),
-            Layout::columns.Locations.XsColumn,
-            Layout::columns.Locations.YsColumn);
+            Layout::locations_xs_column(),
+            Layout::locations_ys_column());
     }
-    auto yaws() const { return this->column(Layout::columns.YawsColumn); }
-    auto laser_cooldowns() const { return this->column(Layout::columns.LaserCooldownsColumn); }
+    auto yaws() const { return this->column(Layout::yaws_column()); }
+    auto laser_cooldowns() const { return this->column(Layout::laser_cooldowns_column()); }
     auto next_fire_point_indices() const {
-        return this->column(Layout::columns.NextFirePointIndicesColumn);
+        return this->column(Layout::next_fire_point_indices_column());
     }
     template <typename Func>
     void each_column(Func&& func) const {
@@ -252,13 +240,13 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     auto resolve() const -> std::conditional_t<Const,
                                                ::ioj::sim::spinner_entity_data::ResolvedConstView,
                                                ::ioj::sim::spinner_entity_data::ResolvedView> {
-        return {this->column(Layout::columns.EntityIdsColumn).data(),
-                this->column(Layout::columns.Locations.XsColumn).data(),
-                this->column(Layout::columns.Locations.YsColumn).data(),
-                this->column(Layout::columns.Locations.ZsColumn).data(),
-                this->column(Layout::columns.YawsColumn).data(),
-                this->column(Layout::columns.LaserCooldownsColumn).data(),
-                this->column(Layout::columns.NextFirePointIndicesColumn).data(),
+        return {this->column(Layout::entity_ids_column()).data(),
+                this->column(Layout::locations_xs_column()).data(),
+                this->column(Layout::locations_ys_column()).data(),
+                this->column(Layout::locations_zs_column()).data(),
+                this->column(Layout::yaws_column()).data(),
+                this->column(Layout::laser_cooldowns_column()).data(),
+                this->column(Layout::next_fire_point_indices_column()).data(),
                 this->num()};
     }
 };
@@ -390,13 +378,13 @@ struct SpinnerEntityData
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
         ioj::native_soa::LayoutCursor cursor{blocks};
-        return {cursor.column_pointer(data, Layout::columns.EntityIdsColumn),
-                cursor.column_pointer(data, Layout::columns.Locations.XsColumn),
-                cursor.column_pointer(data, Layout::columns.Locations.YsColumn),
-                cursor.column_pointer(data, Layout::columns.Locations.ZsColumn),
-                cursor.column_pointer(data, Layout::columns.YawsColumn),
-                cursor.column_pointer(data, Layout::columns.LaserCooldownsColumn),
-                cursor.column_pointer(data, Layout::columns.NextFirePointIndicesColumn)};
+        return {cursor.column_pointer(data, Layout::entity_ids_column()),
+                cursor.column_pointer(data, Layout::locations_xs_column()),
+                cursor.column_pointer(data, Layout::locations_ys_column()),
+                cursor.column_pointer(data, Layout::locations_zs_column()),
+                cursor.column_pointer(data, Layout::yaws_column()),
+                cursor.column_pointer(data, Layout::laser_cooldowns_column()),
+                cursor.column_pointer(data, Layout::next_fire_point_indices_column())};
     }
 
     /* **************************************** */

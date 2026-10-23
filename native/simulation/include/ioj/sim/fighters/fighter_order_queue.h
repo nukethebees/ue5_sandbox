@@ -23,28 +23,14 @@ struct ResolvedConstView;
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct LayoutColumns {
-    template <typename T>
-    using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
-    ColLayout<EntityId> EntityIdsColumn;
-    ColLayout<FighterOrder> OrdersColumn;
-    ColLayout<FighterTask> TasksColumn;
-    ColLayout<EntityId> TargetsColumn;
-
-    constexpr explicit LayoutColumns(
-        ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
-        : EntityIdsColumn{previous}
-        , OrdersColumn{EntityIdsColumn}
-        , TasksColumn{OrdersColumn}
-        , TargetsColumn{TasksColumn} {}
-    constexpr auto last_column() const noexcept
-        -> ioj::single_allocation_layout::ColumnLayoutBase const& {
-        return TargetsColumn;
-    }
-    LayoutColumns(LayoutColumns const&) = delete;
-    auto operator=(LayoutColumns const&) -> LayoutColumns& = delete;
+struct Layout
+    : ioj::single_allocation_layout::ColumnLayouts<EntityId, FighterOrder, FighterTask, EntityId> {
+    using Base = ColumnLayouts;
+    static constexpr auto entity_ids_column() noexcept { return Base::column<0>(); }
+    static constexpr auto orders_column() noexcept { return Base::column<1>(); }
+    static constexpr auto tasks_column() noexcept { return Base::column<2>(); }
+    static constexpr auto targets_column() noexcept { return Base::column<3>(); }
 };
-struct Layout : ioj::single_allocation_layout::Layout<LayoutColumns> {};
 
 /* **************************************** */
 // Resolved views
@@ -156,10 +142,10 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto entity_ids() const { return this->column(Layout::columns.EntityIdsColumn); }
-    auto orders() const { return this->column(Layout::columns.OrdersColumn); }
-    auto tasks() const { return this->column(Layout::columns.TasksColumn); }
-    auto targets() const { return this->column(Layout::columns.TargetsColumn); }
+    auto entity_ids() const { return this->column(Layout::entity_ids_column()); }
+    auto orders() const { return this->column(Layout::orders_column()); }
+    auto tasks() const { return this->column(Layout::tasks_column()); }
+    auto targets() const { return this->column(Layout::targets_column()); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(entity_ids());
@@ -170,10 +156,10 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     auto resolve() const -> std::conditional_t<Const,
                                                ::ioj::sim::fighter_order_queue::ResolvedConstView,
                                                ::ioj::sim::fighter_order_queue::ResolvedView> {
-        return {this->column(Layout::columns.EntityIdsColumn).data(),
-                this->column(Layout::columns.OrdersColumn).data(),
-                this->column(Layout::columns.TasksColumn).data(),
-                this->column(Layout::columns.TargetsColumn).data(),
+        return {this->column(Layout::entity_ids_column()).data(),
+                this->column(Layout::orders_column()).data(),
+                this->column(Layout::tasks_column()).data(),
+                this->column(Layout::targets_column()).data(),
                 this->num()};
     }
 };
@@ -274,10 +260,10 @@ struct FighterOrderQueue
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
         ioj::native_soa::LayoutCursor cursor{blocks};
-        return {cursor.column_pointer(data, Layout::columns.EntityIdsColumn),
-                cursor.column_pointer(data, Layout::columns.OrdersColumn),
-                cursor.column_pointer(data, Layout::columns.TasksColumn),
-                cursor.column_pointer(data, Layout::columns.TargetsColumn)};
+        return {cursor.column_pointer(data, Layout::entity_ids_column()),
+                cursor.column_pointer(data, Layout::orders_column()),
+                cursor.column_pointer(data, Layout::tasks_column()),
+                cursor.column_pointer(data, Layout::targets_column())};
     }
 
     /* **************************************** */

@@ -24,28 +24,14 @@ struct ResolvedConstView;
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct LayoutColumns {
-    template <typename T>
-    using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
-    ColLayout<DeathReason> ReasonsColumn;
-    ColLayout<EntityId> VictimsColumn;
-    ColLayout<EntityId> KillersColumn;
-    ColLayout<Vector3f> LocationsColumn;
-
-    constexpr explicit LayoutColumns(
-        ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
-        : ReasonsColumn{previous}
-        , VictimsColumn{ReasonsColumn}
-        , KillersColumn{VictimsColumn}
-        , LocationsColumn{KillersColumn} {}
-    constexpr auto last_column() const noexcept
-        -> ioj::single_allocation_layout::ColumnLayoutBase const& {
-        return LocationsColumn;
-    }
-    LayoutColumns(LayoutColumns const&) = delete;
-    auto operator=(LayoutColumns const&) -> LayoutColumns& = delete;
+struct Layout
+    : ioj::single_allocation_layout::ColumnLayouts<DeathReason, EntityId, EntityId, Vector3f> {
+    using Base = ColumnLayouts;
+    static constexpr auto reasons_column() noexcept { return Base::column<0>(); }
+    static constexpr auto victims_column() noexcept { return Base::column<1>(); }
+    static constexpr auto killers_column() noexcept { return Base::column<2>(); }
+    static constexpr auto locations_column() noexcept { return Base::column<3>(); }
 };
-struct Layout : ioj::single_allocation_layout::Layout<LayoutColumns> {};
 
 /* **************************************** */
 // Resolved views
@@ -158,10 +144,10 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto reasons() const { return this->column(Layout::columns.ReasonsColumn); }
-    auto victims() const { return this->column(Layout::columns.VictimsColumn); }
-    auto killers() const { return this->column(Layout::columns.KillersColumn); }
-    auto locations() const { return this->column(Layout::columns.LocationsColumn); }
+    auto reasons() const { return this->column(Layout::reasons_column()); }
+    auto victims() const { return this->column(Layout::victims_column()); }
+    auto killers() const { return this->column(Layout::killers_column()); }
+    auto locations() const { return this->column(Layout::locations_column()); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(reasons());
@@ -172,10 +158,10 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     auto resolve() const -> std::conditional_t<Const,
                                                ::ioj::sim::entity_death_info::ResolvedConstView,
                                                ::ioj::sim::entity_death_info::ResolvedView> {
-        return {this->column(Layout::columns.ReasonsColumn).data(),
-                this->column(Layout::columns.VictimsColumn).data(),
-                this->column(Layout::columns.KillersColumn).data(),
-                this->column(Layout::columns.LocationsColumn).data(),
+        return {this->column(Layout::reasons_column()).data(),
+                this->column(Layout::victims_column()).data(),
+                this->column(Layout::killers_column()).data(),
+                this->column(Layout::locations_column()).data(),
                 this->num()};
     }
 };
@@ -276,10 +262,10 @@ struct EntityDeathInfo
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
         ioj::native_soa::LayoutCursor cursor{blocks};
-        return {cursor.column_pointer(data, Layout::columns.ReasonsColumn),
-                cursor.column_pointer(data, Layout::columns.VictimsColumn),
-                cursor.column_pointer(data, Layout::columns.KillersColumn),
-                cursor.column_pointer(data, Layout::columns.LocationsColumn)};
+        return {cursor.column_pointer(data, Layout::reasons_column()),
+                cursor.column_pointer(data, Layout::victims_column()),
+                cursor.column_pointer(data, Layout::killers_column()),
+                cursor.column_pointer(data, Layout::locations_column())};
     }
 
     /* **************************************** */

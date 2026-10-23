@@ -21,32 +21,16 @@ struct ResolvedConstView;
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct LayoutColumns {
-    template <typename T>
-    using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
-    ColLayout<float> MinXsColumn;
-    ColLayout<float> MinYsColumn;
-    ColLayout<float> MinZsColumn;
-    ColLayout<float> MaxXsColumn;
-    ColLayout<float> MaxYsColumn;
-    ColLayout<float> MaxZsColumn;
-
-    constexpr explicit LayoutColumns(
-        ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
-        : MinXsColumn{previous}
-        , MinYsColumn{MinXsColumn}
-        , MinZsColumn{MinYsColumn}
-        , MaxXsColumn{MinZsColumn}
-        , MaxYsColumn{MaxXsColumn}
-        , MaxZsColumn{MaxYsColumn} {}
-    constexpr auto last_column() const noexcept
-        -> ioj::single_allocation_layout::ColumnLayoutBase const& {
-        return MaxZsColumn;
-    }
-    LayoutColumns(LayoutColumns const&) = delete;
-    auto operator=(LayoutColumns const&) -> LayoutColumns& = delete;
+struct Layout
+    : ioj::single_allocation_layout::ColumnLayouts<float, float, float, float, float, float> {
+    using Base = ColumnLayouts;
+    static constexpr auto min_xs_column() noexcept { return Base::column<0>(); }
+    static constexpr auto min_ys_column() noexcept { return Base::column<1>(); }
+    static constexpr auto min_zs_column() noexcept { return Base::column<2>(); }
+    static constexpr auto max_xs_column() noexcept { return Base::column<3>(); }
+    static constexpr auto max_ys_column() noexcept { return Base::column<4>(); }
+    static constexpr auto max_zs_column() noexcept { return Base::column<5>(); }
 };
-struct Layout : ioj::single_allocation_layout::Layout<LayoutColumns> {};
 
 /* **************************************** */
 // Resolved views
@@ -182,7 +166,7 @@ struct ViewImpl : ioj::soa_storage_detail::StridedViewBase<float, Const> {
                                      ioj::soa_storage_detail::StorageState>;
     ViewImpl(State* state, std::uint32_t offset, std::uint32_t count)
         : Base{ioj::soa_storage_detail::make_strided_view<Base>(
-              state, offset, count, Layout::columns.MinXsColumn, Layout::columns.MinYsColumn)} {}
+              state, offset, count, Layout::min_xs_column(), Layout::min_ys_column())} {}
     template <bool Enabled = Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
@@ -325,12 +309,12 @@ struct WorldAABBs
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
         ioj::native_soa::LayoutCursor cursor{blocks};
-        return {cursor.column_pointer(data, Layout::columns.MinXsColumn),
-                cursor.column_pointer(data, Layout::columns.MinYsColumn),
-                cursor.column_pointer(data, Layout::columns.MinZsColumn),
-                cursor.column_pointer(data, Layout::columns.MaxXsColumn),
-                cursor.column_pointer(data, Layout::columns.MaxYsColumn),
-                cursor.column_pointer(data, Layout::columns.MaxZsColumn)};
+        return {cursor.column_pointer(data, Layout::min_xs_column()),
+                cursor.column_pointer(data, Layout::min_ys_column()),
+                cursor.column_pointer(data, Layout::min_zs_column()),
+                cursor.column_pointer(data, Layout::max_xs_column()),
+                cursor.column_pointer(data, Layout::max_ys_column()),
+                cursor.column_pointer(data, Layout::max_zs_column())};
     }
 
     /* **************************************** */

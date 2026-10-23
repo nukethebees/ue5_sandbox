@@ -27,34 +27,23 @@ struct ResolvedConstView;
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct LayoutColumns {
-    template <typename T>
-    using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
-    ColLayout<std::size_t> SourceColumn;
-    ColLayout<AccessOperation> OperationColumn;
-    ColLayout<PayloadFootprint> BytesColumn;
-    ColLayout<PayloadFootprint> BitsColumn;
-    ColLayout<RegionFootprint> CacheColumn;
-    ColLayout<RegionFootprint> PagesColumn;
-    ColLayout<std::optional<std::uint64_t>> CapacitySlackBytesColumn;
-
-    constexpr explicit LayoutColumns(
-        ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
-        : SourceColumn{previous}
-        , OperationColumn{SourceColumn}
-        , BytesColumn{OperationColumn}
-        , BitsColumn{BytesColumn}
-        , CacheColumn{BitsColumn}
-        , PagesColumn{CacheColumn}
-        , CapacitySlackBytesColumn{PagesColumn} {}
-    constexpr auto last_column() const noexcept
-        -> ioj::single_allocation_layout::ColumnLayoutBase const& {
-        return CapacitySlackBytesColumn;
-    }
-    LayoutColumns(LayoutColumns const&) = delete;
-    auto operator=(LayoutColumns const&) -> LayoutColumns& = delete;
+struct Layout
+    : ioj::single_allocation_layout::ColumnLayouts<std::size_t,
+                                                   AccessOperation,
+                                                   PayloadFootprint,
+                                                   PayloadFootprint,
+                                                   RegionFootprint,
+                                                   RegionFootprint,
+                                                   std::optional<std::uint64_t>> {
+    using Base = ColumnLayouts;
+    static constexpr auto source_column() noexcept { return Base::column<0>(); }
+    static constexpr auto operation_column() noexcept { return Base::column<1>(); }
+    static constexpr auto bytes_column() noexcept { return Base::column<2>(); }
+    static constexpr auto bits_column() noexcept { return Base::column<3>(); }
+    static constexpr auto cache_column() noexcept { return Base::column<4>(); }
+    static constexpr auto pages_column() noexcept { return Base::column<5>(); }
+    static constexpr auto capacity_slack_bytes_column() noexcept { return Base::column<6>(); }
 };
-struct Layout : ioj::single_allocation_layout::Layout<LayoutColumns> {};
 
 /* **************************************** */
 // Resolved views
@@ -201,14 +190,14 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto source() const { return this->column(Layout::columns.SourceColumn); }
-    auto operation() const { return this->column(Layout::columns.OperationColumn); }
-    auto bytes() const { return this->column(Layout::columns.BytesColumn); }
-    auto bits() const { return this->column(Layout::columns.BitsColumn); }
-    auto cache() const { return this->column(Layout::columns.CacheColumn); }
-    auto pages() const { return this->column(Layout::columns.PagesColumn); }
+    auto source() const { return this->column(Layout::source_column()); }
+    auto operation() const { return this->column(Layout::operation_column()); }
+    auto bytes() const { return this->column(Layout::bytes_column()); }
+    auto bits() const { return this->column(Layout::bits_column()); }
+    auto cache() const { return this->column(Layout::cache_column()); }
+    auto pages() const { return this->column(Layout::pages_column()); }
     auto capacity_slack_bytes() const {
-        return this->column(Layout::columns.CapacitySlackBytesColumn);
+        return this->column(Layout::capacity_slack_bytes_column());
     }
     template <typename Func>
     void each_column(Func&& func) const {
@@ -223,13 +212,13 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     auto resolve() const -> std::conditional_t<Const,
                                                ::ioj::layout::selection_table::ResolvedConstView,
                                                ::ioj::layout::selection_table::ResolvedView> {
-        return {this->column(Layout::columns.SourceColumn).data(),
-                this->column(Layout::columns.OperationColumn).data(),
-                this->column(Layout::columns.BytesColumn).data(),
-                this->column(Layout::columns.BitsColumn).data(),
-                this->column(Layout::columns.CacheColumn).data(),
-                this->column(Layout::columns.PagesColumn).data(),
-                this->column(Layout::columns.CapacitySlackBytesColumn).data(),
+        return {this->column(Layout::source_column()).data(),
+                this->column(Layout::operation_column()).data(),
+                this->column(Layout::bytes_column()).data(),
+                this->column(Layout::bits_column()).data(),
+                this->column(Layout::cache_column()).data(),
+                this->column(Layout::pages_column()).data(),
+                this->column(Layout::capacity_slack_bytes_column()).data(),
                 this->num()};
     }
 };
@@ -348,13 +337,13 @@ struct SelectionTable
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
         ioj::native_soa::LayoutCursor cursor{blocks};
-        return {cursor.column_pointer(data, Layout::columns.SourceColumn),
-                cursor.column_pointer(data, Layout::columns.OperationColumn),
-                cursor.column_pointer(data, Layout::columns.BytesColumn),
-                cursor.column_pointer(data, Layout::columns.BitsColumn),
-                cursor.column_pointer(data, Layout::columns.CacheColumn),
-                cursor.column_pointer(data, Layout::columns.PagesColumn),
-                cursor.column_pointer(data, Layout::columns.CapacitySlackBytesColumn)};
+        return {cursor.column_pointer(data, Layout::source_column()),
+                cursor.column_pointer(data, Layout::operation_column()),
+                cursor.column_pointer(data, Layout::bytes_column()),
+                cursor.column_pointer(data, Layout::bits_column()),
+                cursor.column_pointer(data, Layout::cache_column()),
+                cursor.column_pointer(data, Layout::pages_column()),
+                cursor.column_pointer(data, Layout::capacity_slack_bytes_column())};
     }
 
     /* **************************************** */
