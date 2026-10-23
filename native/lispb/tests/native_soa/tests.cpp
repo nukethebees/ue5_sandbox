@@ -371,6 +371,9 @@ TEST(NativeSoa, EmptyResolvedViewsCanBeSlicedAndConverted) {
     EXPECT_TRUE(resolved.get_const_view().view_positions().is_empty());
     EXPECT_EQ(resolved.values().data(), nullptr);
     EXPECT_EQ(resolved.view_positions().xs().data(), nullptr);
+    EXPECT_EQ(api_owner::View{}.resolve().values().data(), nullptr);
+    owner.reserve(2);
+    EXPECT_EQ(owner.get_const_view().resolve().values().data(), owner.values().data());
 }
 
 TEST(NativeSoa, ResolvedSelfAppendPreservesAliasedColumnsAcrossGrowthAndAllocationFailure) {
@@ -935,6 +938,11 @@ TEST(NativeSoa, OddSizedGroupsPreservePaddedStridesAcrossGrowth) {
         EXPECT_EQ(slice.first().data(), view.first().data() + count - 1);
         EXPECT_EQ(slice.second().data(), view.second().data() + count - 1);
         EXPECT_EQ(slice.num(), 1U);
+        auto const resolved{slice.resolve()};
+        EXPECT_EQ(resolved.first().data(), slice.first().data());
+        EXPECT_EQ(resolved.second().data(), slice.second().data());
+        auto const parent{owner.get_const_view().slice(count - 1, 1).resolve()};
+        EXPECT_EQ(parent.aligned256().data(), owner.aligned256().data() + count - 1);
     }
 }
 
@@ -946,7 +954,10 @@ TEST(NativeSoa, HomogeneousNestedGroupsReuseViewsAndPhysicalColumnOrder) {
     static_assert(std::is_same_v<decltype(view.view_starts()), vectors::View>);
     static_assert(std::is_same_v<decltype(view.view_ends()), vectors::View>);
     float ordinal{};
-    view.each_column([&](auto column) { std::ranges::fill(column, ++ordinal); });
+    view.each_column([&](auto&& column) {
+        static_assert(std::is_rvalue_reference_v<decltype(column)>);
+        std::ranges::fill(column, ++ordinal);
+    });
 
     auto const starts{view.view_starts()};
     auto const ends{view.view_ends()};

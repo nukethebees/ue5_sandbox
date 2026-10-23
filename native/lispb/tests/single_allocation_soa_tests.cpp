@@ -51,10 +51,11 @@ TEST(SingleAllocationSoa, OrdinarySchemasGenerateNativeOwnersAndViews) {
     EXPECT_EQ(output.find("TArray"), std::string::npos);
     EXPECT_EQ(output.find("FMemory"), std::string::npos);
     EXPECT_EQ(output.find("CoreMinimal"), std::string::npos);
-    EXPECT_NE(output.find("using ioj::native_soa::default_construct_n;"), std::string::npos);
-    EXPECT_NE(output.find("default_construct_n(columns.nested_xs, count);"), std::string::npos);
-    EXPECT_NE(output.find("using ioj::native_soa::source_data;"), std::string::npos);
-    EXPECT_NE(output.find("source_data(nested_view.xs())"), std::string::npos);
+    EXPECT_EQ(output.find("void default_construct_columns("), std::string::npos);
+    EXPECT_EQ(output.find("source_pointers("), std::string::npos);
+    EXPECT_NE(output.find("with_columns(Columns const& source, Func&& func)"), std::string::npos);
+    EXPECT_NE(output.find("return func(source.ids(), nested_view.xs(),"), std::string::npos);
+    EXPECT_NE(output.find("using resolved_view_type ="), std::string::npos);
     EXPECT_NE(output.find("Operations::release_storage(*this);"), std::string::npos);
 }
 

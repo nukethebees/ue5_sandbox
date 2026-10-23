@@ -307,13 +307,14 @@ transferring storage when resources compare equal and copying columns otherwise.
 and assignment are deleted.
 
 `StorageOperations` coordinates lifetime, pointer access, copying, growth and removal using
-generated, typed per-column operations. Generated flat pointer structures are initialized by
-`ColumnLayouts::make_data()` expanding the element types in physical order. Source access,
-default construction and transfers retain explicit statements for each leaf.
+generated, typed column operations. Generated flat pointer structures are initialized by
+`ColumnLayouts::make_data()` expanding the element types in physical order. Aggregate expansion
+shares pointer offsetting and default construction. One generated `Schema::with_columns()`
+maps named source accessors into physical order for source pointers and column iteration.
 It never stores independently resizable columns. One row count and capacity govern growth,
 insertion, removal, copying, and permutation; equal-column-size validation is unnecessary inside
-the owner. Keep per-column construction, copying, and destruction explicit instead of replacing
-them with a variadic storage abstraction. Row indices and counts use `std::uint32_t`; allocation
+the owner. Transfers remain explicit per-column operations. Row indices and counts use
+`std::uint32_t`; allocation
 bytes use `std::size_t`. Span lengths are checked before conversion to the row-count type.
 
 Append and copy accept owners, views, and structural sources with a matching `soa_schema` tag,
@@ -347,6 +348,8 @@ checks the initial range; slicing checks its subrange. Accessors trust these pre
 
 Calling `.resolve()` materializes a pointer per physical column plus one count. Resolve once
 outside a hot loop when repeated layout calculations would be wasteful. Resolved views preserve
+physical column order through the layout's type pack; compact and strided bases share the
+construction, using the owner's layout and the borrowed stride respectively. Resolved views retain
 logical nesting and the declared equivalent-value and custom view API. A dynamic nested group's
 resolved view uses the child's canonical resolved type, including layout-only groups.
 Resolving an already resolved view returns that view. External span constructors
