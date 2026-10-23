@@ -66,7 +66,7 @@ coj tidy --scope simulation --build-dir out/build/win-x64-clangcl-debug/clang-ti
 The default scope is `native`. Named scopes and exclusions live in `.clang-tidy-scopes.json`;
 nested `.clang-tidy` policy still applies. `--jobs N` forwards LLVM's worker count (zero means
 automatic). LLVM_ROOT/bin is exclusive when set; otherwise PATH supplies the tools. Full-native
-and LispB analysis build the existing generated-input targets first. Logs stay in the analysis tree.
+and LispB analysis use checked-in generated inputs without building fixtures. Logs stay in the analysis tree.
 
 ## Unreal operations and benchmarks
 
