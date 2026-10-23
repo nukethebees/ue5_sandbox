@@ -3,8 +3,6 @@
   :header "native/core/include/ioj/rotators3f.h"
   :namespace ioj
   (struct Rotators3f
-    :view-name Rotators3fView
-    :const-view-name Rotators3fConstView
     :equivalent-type @native_rotator_3f
     (member pitches array float :equivalent-member pitch)
     (member yaws array float :equivalent-member yaw)

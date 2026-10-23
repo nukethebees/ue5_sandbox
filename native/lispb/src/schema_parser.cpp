@@ -412,9 +412,7 @@ auto SchemaParser::parse_member(Declarations& declarations, sexpr::FormId const 
 auto SchemaParser::parse_soa(Declarations& declarations, sexpr::FormId const form)
     -> DeclarationHandle {
     Fields const fields{parser_, form, "struct", 1};
-    fields.validate({"view-name",
-                     "const-view-name",
-                     "export-specifier",
+    fields.validate({"export-specifier",
                      "using-declarations",
                      "equivalent-type",
                      "equivalent-constructor",
@@ -449,8 +447,6 @@ auto SchemaParser::parse_soa(Declarations& declarations, sexpr::FormId const for
     auto const record_id{records.append()};
     auto const record_index{records.index(record_id)};
     records.name[record_index] = parser_.identifier(fields.positional(0), "struct name");
-    records.view_name[record_index] = optional_identifier(fields, "view-name");
-    records.const_view_name[record_index] = optional_identifier(fields, "const-view-name");
     records.members[record_index] = declarations.range(members);
     records.export_specifier[record_index] = parse_export_specifier(fields);
     records.functions[record_index] = declarations.range(functions);

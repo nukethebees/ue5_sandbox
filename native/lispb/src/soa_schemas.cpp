@@ -14,8 +14,6 @@ auto SoaSchemas::append() -> DeclarationHandle {
     auto const index{static_cast<std::uint32_t>(name.size())};
     assert(index < 0x00fffffe);
     name.push_back({});
-    view_name.push_back({});
-    const_view_name.push_back({});
     members.push_back({});
     export_specifier.push_back({});
     functions.push_back({});
@@ -35,8 +33,6 @@ auto SoaSchemas::clone(DeclarationHandle id) -> DeclarationHandle {
     auto const result{append()};
     auto const destination{index(result)};
     name[destination] = name[source_index];
-    view_name[destination] = view_name[source_index];
-    const_view_name[destination] = const_view_name[source_index];
     members[destination] = members[source_index];
     export_specifier[destination] = export_specifier[source_index];
     functions[destination] = functions[source_index];
@@ -52,8 +48,6 @@ auto SoaSchemas::clone(DeclarationHandle id) -> DeclarationHandle {
 }
 void SoaSchemas::clear() {
     name.clear();
-    view_name.clear();
-    const_view_name.clear();
     members.clear();
     export_specifier.clear();
     functions.clear();

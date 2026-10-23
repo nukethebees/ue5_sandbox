@@ -61,8 +61,6 @@
 auto const count = num();
 for (std::uint32_t i{}; i < count; ++i) { xs[i] += amount; }}cpp#))
   (struct ApiOwner
-    :view-name ApiView
-    :const-view-name ApiConstView
     :export-specifier NATIVE_SOA_FIXTURE_API
     :using-declarations ("Value = float")
     :field-mask-name ApiMask

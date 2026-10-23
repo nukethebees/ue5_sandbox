@@ -19,8 +19,6 @@ struct SoaSchemas {
     void clear();
 
     std::vector<StringId> name;
-    std::vector<std::optional<StringId>> view_name;
-    std::vector<std::optional<StringId>> const_view_name;
     std::vector<SchemaRange<SoaMemberId>> members;
     std::vector<StringId> export_specifier;
     std::vector<SchemaRange<FunctionSchemaId>> functions;

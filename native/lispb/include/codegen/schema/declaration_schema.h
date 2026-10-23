@@ -8,6 +8,7 @@
 #include <lispb/indices.h>
 
 #include <functional>
+#include <string>
 #include <string_view>
 #include <vector>
 
@@ -29,5 +30,6 @@ auto rewrite_type_references(
     -> DeclarationHandle;
 auto generated_cpp_names(Declarations const& declarations, DeclarationHandle declaration)
     -> std::vector<StringId>;
+auto soa_namespace_name(std::string_view name) -> std::string;
 
 } // namespace lispb::codegen

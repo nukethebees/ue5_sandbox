@@ -507,8 +507,6 @@ auto CanonicalRenderer::build_soa(codegen::DeclarationHandle const schema) -> Ex
     auto const& soas{store_.soas};
     auto const index{soas.index(schema)};
     auto result{ir_.form("struct", {ir_.atom(soas.name[index])})};
-    result.optional_field("view-name", soas.view_name[index], atom);
-    result.optional_field("const-view-name", soas.const_view_name[index], atom);
     if (soas.export_specifier[index].value != 0) {
         result.field("export-specifier", ir_.atom(soas.export_specifier[index]));
     }

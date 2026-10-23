@@ -3,8 +3,6 @@
   :header-include "ioj/vectors3f.h"
   :namespace ioj
   (struct Vectors3f
-    :view-name Vectors3fView
-    :const-view-name Vectors3fConstView
     :equivalent-type @native_vector_3f
     (member xs array float :equivalent-member x :equivalent-accessor true)
     (member ys array float :equivalent-member y :equivalent-accessor true)

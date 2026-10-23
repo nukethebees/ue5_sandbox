@@ -2536,25 +2536,13 @@ class Validator {
                                "SOA name");
             auto const context{
                 "SOA '" + text(declarations_.soas.name[declarations_.soas.index(schema)]) + "'"};
+            require_identifier(
+                soa_namespace_name(text(declarations_.soas.name[declarations_.soas.index(schema)])),
+                context + " namespace");
             if (declarations_.soas.layout_only[declarations_.soas.index(schema)] &&
-                (!declarations_.soas.functions[declarations_.soas.index(schema)].empty() ||
-                 declarations_.soas.view_name[declarations_.soas.index(schema)] ||
-                 declarations_.soas.const_view_name[declarations_.soas.index(schema)])) {
+                !declarations_.soas.functions[declarations_.soas.index(schema)].empty()) {
                 throw std::invalid_argument{
-                    context + " layout-only has no owner or standalone named views; use "
-                              "view functions on its nested compact views"};
-            }
-            if (declarations_.soas.view_name[declarations_.soas.index(schema)].has_value()) {
-                require_identifier(
-                    *declarations_.soas.view_name[declarations_.soas.index(schema)],
-                    "SOA '" + text(declarations_.soas.name[declarations_.soas.index(schema)]) +
-                        "' view name");
-            }
-            if (declarations_.soas.const_view_name[declarations_.soas.index(schema)].has_value()) {
-                require_identifier(
-                    *declarations_.soas.const_view_name[declarations_.soas.index(schema)],
-                    "SOA '" + text(declarations_.soas.name[declarations_.soas.index(schema)]) +
-                        "' const view name");
+                    context + " layout-only has no owner; use view functions"};
             }
 
             if (declarations_.soas.field_mask_name[declarations_.soas.index(schema)].has_value() !=
@@ -3445,57 +3433,9 @@ class Validator {
         }
     }
 
-    void append_nested_soa_names(DeclarationHandle schema,
-                                 ModuleHandle module,
-                                 std::vector<StringId>& names) const {
-        auto const& soas{declarations_.soas};
-        auto const row{soas.index(schema)};
-        if (soas.layout_only[row]) {
-            return;
-        }
-        auto const name{text(soas.name[row])};
-        auto const view{soas.view_name[row] ? text(*soas.view_name[row]) : name + "View"};
-        auto const const_view{soas.const_view_name[row] ? text(*soas.const_view_name[row])
-                                                        : name + "ConstView"};
-        auto add = [&](std::string spelling) {
-            names.push_back(declarations_.strings().intern(spelling));
-        };
-        auto resolved = [&](std::string spelling, bool is_const) {
-            auto const position{spelling.find(is_const ? "ConstView" : "View")};
-            spelling.insert(position == std::string::npos ? spelling.size() : position, "Resolved");
-            return spelling;
-        };
-        auto collect = [&](auto&& self,
-                           DeclarationHandle parent,
-                           ModuleHandle current_module,
-                           std::string const& suffix) -> void {
-            auto const& members{declarations_.soa_members};
-            for (auto const member : declarations_.items(soas.members[soas.index(parent)])) {
-                auto const member_row{members.index(member)};
-                if (members.kind[member_row] != SoaMemberKind::nested) {
-                    continue;
-                }
-                auto const occurrence{graph_.resolved(current_module, members.type[member_row])};
-                auto const& occurrences{graph_.occurrences()};
-                auto const child_type{occurrences.type[occurrences.index(occurrence)]};
-                auto const child{graph_.source_declaration(child_type)};
-                auto const path{suffix + "_" + text(members.name[member_row])};
-                add(view + path);
-                add(const_view + path);
-                add(view + path + "Impl");
-                if (soas.layout_only[soas.index(child)]) {
-                    add(resolved(view + path, false));
-                    add(resolved(const_view + path, true));
-                    add(resolved(view + path, false) + "Impl");
-                }
-                self(self, child, graph_.module(child_type), path);
-            }
-        };
-        collect(collect, schema, module, "");
-    }
-
     void validate_normal_module(lispb::codegen::ModuleHandle const& module,
-                                Manifest const& manifest) {
+                                Manifest const& manifest,
+                                std::set<std::string>& generated_names) {
         if (declarations_.normal_modules
                 .enum_helper_namespace[declarations_.normal_modules.index(module)]
                 .has_value()) {
@@ -3506,7 +3446,11 @@ class Validator {
         }
         std::vector<lispb::codegen::DeclarationHandle> schemas;
         std::set<lispb::StringId> names;
-        std::set<lispb::StringId> generated_names;
+        auto const& modules{declarations_.normal_modules};
+        auto const& settings{declarations_.module_settings_store};
+        auto const settings_row{settings.index(modules.settings[modules.index(module)])};
+        auto const namespace_name{settings.namespace_name[settings_row]};
+        auto const prefix{namespace_name ? text(*namespace_name) + "::" : std::string{}};
         for (auto const declaration :
              declarations_.items(declarations_.normal_modules
                                      .declarations[declarations_.normal_modules.index(module)])) {
@@ -3520,12 +3464,8 @@ class Validator {
                                      .settings[declarations_.normal_modules.index(module)])]) +
                     "': " + text(name)};
             }
-            auto emitted_names{generated_cpp_names(declarations_, declaration)};
-            if (declaration.kind() == DeclarationKind::soa) {
-                append_nested_soa_names(declaration, module_, emitted_names);
-            }
-            for (auto const generated_name : emitted_names) {
-                if (!generated_names.insert(generated_name).second) {
+            for (auto const generated_name : generated_cpp_names(declarations_, declaration)) {
+                if (!generated_names.insert(prefix + text(generated_name)).second) {
                     throw std::invalid_argument{
                         "Generated C++ name collision in module '" +
                         text(declarations_.module_settings_store
@@ -3676,6 +3616,7 @@ class Validator {
         }
         std::set<lispb::StringId> module_names;
         std::set<std::string> output_paths;
+        std::set<std::string> generated_names;
         auto const& cpp_types{manifest.types.cpp_types};
         for (auto const& [name_id, registered] : manifest.types.entries) {
             auto const name{std::string{cpp_types.strings().view(name_id)}};
@@ -3738,7 +3679,7 @@ class Validator {
                             }
                         }
 
-                        validate_normal_module(module, manifest);
+                        validate_normal_module(module, manifest, generated_names);
                         break;
                     }
                     case lispb::codegen::ModuleKind::settings: {

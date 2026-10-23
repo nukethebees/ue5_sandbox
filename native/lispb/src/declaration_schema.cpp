@@ -1,5 +1,6 @@
 #include <codegen/schema/declaration_schema.h>
 
+#include <ioj/ascii.h>
 #include <ioj/is_any.h>
 
 #include <codegen/schema/declarations.h>
@@ -323,31 +324,12 @@ auto soa_generated_cpp_names(Declarations const& declarations, DeclarationHandle
     -> std::vector<StringId> {
     auto const& soas{declarations.soas};
     auto const row{soas.index(schema)};
-    if (soas.layout_only[row]) {
-        return {};
-    }
     auto& strings{declarations.strings()};
-    auto text = [&](auto id) { return std::string{strings.view(id)}; };
-    auto const name{text(soas.name[row])};
-    auto const view{soas.view_name[row] ? text(*soas.view_name[row]) : name + "View"};
-    auto const const_view{soas.const_view_name[row] ? text(*soas.const_view_name[row])
-                                                    : name + "ConstView"};
-    std::vector<StringId> result{soas.name[row]};
-    auto add = [&](std::string const& spelling) { result.push_back(strings.intern(spelling)); };
-    auto resolved = [&](std::string spelling, bool is_const) {
-        auto const position{spelling.find(is_const ? "ConstView" : "View")};
-        spelling.insert(position == std::string::npos ? spelling.size() : position, "Resolved");
-        return spelling;
-    };
-    add(name + "Schema");
-    add(name + "Layout");
-    add(name + "LayoutColumns");
-    add(view);
-    add(const_view);
-    add(view + "Impl");
-    add(resolved(view, false));
-    add(resolved(const_view, true));
-    add(resolved(view, false) + "Impl");
+    std::vector<StringId> result{
+        strings.intern(soa_namespace_name(strings.view(soas.name[row])))};
+    if (!soas.layout_only[row]) {
+        result.push_back(soas.name[row]);
+    }
     if (soas.field_mask_name[row]) {
         result.push_back(*soas.field_mask_name[row]);
     }
@@ -358,6 +340,22 @@ auto soa_generated_cpp_names(Declarations const& declarations, DeclarationHandle
 }
 
 } // namespace
+
+auto soa_namespace_name(std::string_view const name) -> std::string {
+    std::string result;
+    auto const count{name.size()};
+    for (std::size_t index{}; index < count; ++index) {
+        auto const character{name[index]};
+        auto const previous_lower{index > 0 && ioj::islower(name[index - 1])};
+        auto const next_lower{index + 1 < count && ioj::islower(name[index + 1])};
+        if (ioj::isupper(character) && !result.empty() && result.back() != '_' &&
+            (previous_lower || next_lower)) {
+            result += '_';
+        }
+        result += ioj::tolower(character);
+    }
+    return result;
+}
 
 auto declaration_head(DeclarationHandle declaration) -> std::string_view {
     switch (declaration.kind()) {
