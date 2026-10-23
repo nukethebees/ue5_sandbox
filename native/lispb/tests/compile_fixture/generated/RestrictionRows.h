@@ -23,8 +23,7 @@ struct ResolvedConstView;
 // Layout
 /* **************************************** */
 struct Layout : ioj::single_allocation_layout::ColumnLayouts<RestrictedLeaf> {
-    using Base = ColumnLayouts;
-    static constexpr auto restricted_column() noexcept { return Base::column<0>(); }
+    static constexpr std::size_t restricted_column{0};
 };
 
 /* **************************************** */
@@ -100,7 +99,9 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto restricted() const { return this->column(Layout::restricted_column()); }
+    auto restricted() const {
+        return this->template column<RestrictedLeaf>(Layout::restricted_column);
+    }
     template <typename Func>
     void each_column(Func&& func) const {
         func(restricted());
@@ -109,7 +110,8 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
         -> std::conditional_t<Const,
                               ::codegen_compile_fixture::single_restriction_rows::ResolvedConstView,
                               ::codegen_compile_fixture::single_restriction_rows::ResolvedView> {
-        return {this->column(Layout::restricted_column()).data(), this->num()};
+        return {this->template column<RestrictedLeaf>(Layout::restricted_column).data(),
+                this->num()};
     }
 };
 struct ConstView : ViewImpl<true> {
@@ -195,8 +197,7 @@ struct SingleRestrictionRows
     template <typename Byte>
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
-        ioj::native_soa::LayoutCursor cursor{blocks};
-        return {cursor.column_pointer(data, Layout::restricted_column())};
+        return Layout::make_data<DataPointers<Byte>>(data, blocks);
     }
 
     /* **************************************** */

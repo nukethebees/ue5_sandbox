@@ -33,9 +33,8 @@ namespace f_mask_rows8 {
 // Layout
 /* **************************************** */
 struct Layout : ioj::single_allocation_layout::ColumnLayouts<FFieldMask8, std::int32_t> {
-    using Base = ColumnLayouts;
-    static constexpr auto masks_column() noexcept { return Base::column<0>(); }
-    static constexpr auto values_column() noexcept { return Base::column<1>(); }
+    static constexpr std::size_t masks_column{0};
+    static constexpr std::size_t values_column{1};
 };
 } // namespace f_mask_rows8
 
@@ -64,10 +63,9 @@ namespace f_mask_rows9 {
 /* **************************************** */
 struct Layout
     : ioj::single_allocation_layout::ColumnLayouts<FFieldMask9, std::int32_t, std::int32_t> {
-    using Base = ColumnLayouts;
-    static constexpr auto masks_column() noexcept { return Base::column<0>(); }
-    static constexpr auto values_column() noexcept { return Base::column<1>(); }
-    static constexpr auto tail_column() noexcept { return Base::column<2>(); }
+    static constexpr std::size_t masks_column{0};
+    static constexpr std::size_t values_column{1};
+    static constexpr std::size_t tail_column{2};
 };
 } // namespace f_mask_rows9
 
@@ -94,9 +92,8 @@ namespace f_mask_rows16 {
 // Layout
 /* **************************************** */
 struct Layout : ioj::single_allocation_layout::ColumnLayouts<FFieldMask16, std::int32_t> {
-    using Base = ColumnLayouts;
-    static constexpr auto masks_column() noexcept { return Base::column<0>(); }
-    static constexpr auto values_column() noexcept { return Base::column<1>(); }
+    static constexpr std::size_t masks_column{0};
+    static constexpr std::size_t values_column{1};
 };
 } // namespace f_mask_rows16
 
@@ -123,9 +120,8 @@ namespace f_mask_rows17 {
 // Layout
 /* **************************************** */
 struct Layout : ioj::single_allocation_layout::ColumnLayouts<FFieldMask17, std::int32_t> {
-    using Base = ColumnLayouts;
-    static constexpr auto masks_column() noexcept { return Base::column<0>(); }
-    static constexpr auto values_column() noexcept { return Base::column<1>(); }
+    static constexpr std::size_t masks_column{0};
+    static constexpr std::size_t values_column{1};
 };
 } // namespace f_mask_rows17
 
@@ -152,9 +148,8 @@ namespace f_mask_rows32 {
 // Layout
 /* **************************************** */
 struct Layout : ioj::single_allocation_layout::ColumnLayouts<FFieldMask32, std::int32_t> {
-    using Base = ColumnLayouts;
-    static constexpr auto masks_column() noexcept { return Base::column<0>(); }
-    static constexpr auto values_column() noexcept { return Base::column<1>(); }
+    static constexpr std::size_t masks_column{0};
+    static constexpr std::size_t values_column{1};
 };
 } // namespace f_mask_rows32
 
@@ -181,9 +176,8 @@ namespace f_mask_rows33 {
 // Layout
 /* **************************************** */
 struct Layout : ioj::single_allocation_layout::ColumnLayouts<FFieldMask33, std::int32_t> {
-    using Base = ColumnLayouts;
-    static constexpr auto masks_column() noexcept { return Base::column<0>(); }
-    static constexpr auto values_column() noexcept { return Base::column<1>(); }
+    static constexpr std::size_t masks_column{0};
+    static constexpr std::size_t values_column{1};
 };
 } // namespace f_mask_rows33
 } // namespace codegen_compile_fixture

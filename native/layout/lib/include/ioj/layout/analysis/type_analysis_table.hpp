@@ -39,14 +39,13 @@ struct Layout
                                                    std::optional<ioj::layout::AggregateLayout>,
                                                    std::optional<ioj::layout::PackedLayout>,
                                                    std::optional<ioj::layout::SoaLayout>> {
-    using Base = ColumnLayouts;
-    static constexpr auto schema_type_column() noexcept { return Base::column<0>(); }
-    static constexpr auto scenario_column() noexcept { return Base::column<1>(); }
-    static constexpr auto physical_column() noexcept { return Base::column<2>(); }
-    static constexpr auto enum_backing_column() noexcept { return Base::column<3>(); }
-    static constexpr auto aggregate_column() noexcept { return Base::column<4>(); }
-    static constexpr auto packed_column() noexcept { return Base::column<5>(); }
-    static constexpr auto soa_column() noexcept { return Base::column<6>(); }
+    static constexpr std::size_t schema_type_column{0};
+    static constexpr std::size_t scenario_column{1};
+    static constexpr std::size_t physical_column{2};
+    static constexpr std::size_t enum_backing_column{3};
+    static constexpr std::size_t aggregate_column{4};
+    static constexpr std::size_t packed_column{5};
+    static constexpr std::size_t soa_column{6};
 };
 
 /* **************************************** */
@@ -193,13 +192,29 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto schema_type() const { return this->column(Layout::schema_type_column()); }
-    auto scenario() const { return this->column(Layout::scenario_column()); }
-    auto physical() const { return this->column(Layout::physical_column()); }
-    auto enum_backing() const { return this->column(Layout::enum_backing_column()); }
-    auto aggregate() const { return this->column(Layout::aggregate_column()); }
-    auto packed() const { return this->column(Layout::packed_column()); }
-    auto soa() const { return this->column(Layout::soa_column()); }
+    auto schema_type() const {
+        return this->template column<lispb::schema::TypeId>(Layout::schema_type_column);
+    }
+    auto scenario() const { return this->template column<ScenarioId>(Layout::scenario_column); }
+    auto physical() const {
+        return this->template column<std::optional<ioj::layout::PhysicalFactId>>(
+            Layout::physical_column);
+    }
+    auto enum_backing() const {
+        return this->template column<std::optional<ioj::layout::EnumBacking>>(
+            Layout::enum_backing_column);
+    }
+    auto aggregate() const {
+        return this->template column<std::optional<ioj::layout::AggregateLayout>>(
+            Layout::aggregate_column);
+    }
+    auto packed() const {
+        return this->template column<std::optional<ioj::layout::PackedLayout>>(
+            Layout::packed_column);
+    }
+    auto soa() const {
+        return this->template column<std::optional<ioj::layout::SoaLayout>>(Layout::soa_column);
+    }
     template <typename Func>
     void each_column(Func&& func) const {
         func(schema_type());
@@ -214,14 +229,22 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
         -> std::conditional_t<Const,
                               ::ioj::layout::type_analysis_table::ResolvedConstView,
                               ::ioj::layout::type_analysis_table::ResolvedView> {
-        return {this->column(Layout::schema_type_column()).data(),
-                this->column(Layout::scenario_column()).data(),
-                this->column(Layout::physical_column()).data(),
-                this->column(Layout::enum_backing_column()).data(),
-                this->column(Layout::aggregate_column()).data(),
-                this->column(Layout::packed_column()).data(),
-                this->column(Layout::soa_column()).data(),
-                this->num()};
+        return {
+            this->template column<lispb::schema::TypeId>(Layout::schema_type_column).data(),
+            this->template column<ScenarioId>(Layout::scenario_column).data(),
+            this->template column<std::optional<ioj::layout::PhysicalFactId>>(
+                    Layout::physical_column)
+                .data(),
+            this->template column<std::optional<ioj::layout::EnumBacking>>(
+                    Layout::enum_backing_column)
+                .data(),
+            this->template column<std::optional<ioj::layout::AggregateLayout>>(
+                    Layout::aggregate_column)
+                .data(),
+            this->template column<std::optional<ioj::layout::PackedLayout>>(Layout::packed_column)
+                .data(),
+            this->template column<std::optional<ioj::layout::SoaLayout>>(Layout::soa_column).data(),
+            this->num()};
     }
 };
 struct ConstView : ViewImpl<true> {
@@ -338,14 +361,7 @@ struct TypeAnalysisTable
     template <typename Byte>
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
-        ioj::native_soa::LayoutCursor cursor{blocks};
-        return {cursor.column_pointer(data, Layout::schema_type_column()),
-                cursor.column_pointer(data, Layout::scenario_column()),
-                cursor.column_pointer(data, Layout::physical_column()),
-                cursor.column_pointer(data, Layout::enum_backing_column()),
-                cursor.column_pointer(data, Layout::aggregate_column()),
-                cursor.column_pointer(data, Layout::packed_column()),
-                cursor.column_pointer(data, Layout::soa_column())};
+        return Layout::make_data<DataPointers<Byte>>(data, blocks);
     }
 
     /* **************************************** */

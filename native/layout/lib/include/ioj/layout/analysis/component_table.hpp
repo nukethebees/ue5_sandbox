@@ -40,17 +40,16 @@ struct Layout
                                                    std::optional<std::uint64_t>,
                                                    std::optional<std::uint64_t>,
                                                    std::optional<std::uint64_t>> {
-    using Base = ColumnLayouts;
-    static constexpr auto parent_column() noexcept { return Base::column<0>(); }
-    static constexpr auto name_column() noexcept { return Base::column<1>(); }
-    static constexpr auto tag_column() noexcept { return Base::column<2>(); }
-    static constexpr auto semantic_type_column() noexcept { return Base::column<3>(); }
-    static constexpr auto element_count_column() noexcept { return Base::column<4>(); }
-    static constexpr auto element_facts_column() noexcept { return Base::column<5>(); }
-    static constexpr auto offset_bytes_column() noexcept { return Base::column<6>(); }
-    static constexpr auto extent_bytes_column() noexcept { return Base::column<7>(); }
-    static constexpr auto padding_before_bytes_column() noexcept { return Base::column<8>(); }
-    static constexpr auto slack_bytes_column() noexcept { return Base::column<9>(); }
+    static constexpr std::size_t parent_column{0};
+    static constexpr std::size_t name_column{1};
+    static constexpr std::size_t tag_column{2};
+    static constexpr std::size_t semantic_type_column{3};
+    static constexpr std::size_t element_count_column{4};
+    static constexpr std::size_t element_facts_column{5};
+    static constexpr std::size_t offset_bytes_column{6};
+    static constexpr std::size_t extent_bytes_column{7};
+    static constexpr std::size_t padding_before_bytes_column{8};
+    static constexpr std::size_t slack_bytes_column{9};
 };
 
 /* **************************************** */
@@ -249,18 +248,32 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto parent() const { return this->column(Layout::parent_column()); }
-    auto name() const { return this->column(Layout::name_column()); }
-    auto tag() const { return this->column(Layout::tag_column()); }
-    auto semantic_type() const { return this->column(Layout::semantic_type_column()); }
-    auto element_count() const { return this->column(Layout::element_count_column()); }
-    auto element_facts() const { return this->column(Layout::element_facts_column()); }
-    auto offset_bytes() const { return this->column(Layout::offset_bytes_column()); }
-    auto extent_bytes() const { return this->column(Layout::extent_bytes_column()); }
-    auto padding_before_bytes() const {
-        return this->column(Layout::padding_before_bytes_column());
+    auto parent() const { return this->template column<AnalysisId>(Layout::parent_column); }
+    auto name() const { return this->template column<std::string_view>(Layout::name_column); }
+    auto tag() const { return this->template column<std::string_view>(Layout::tag_column); }
+    auto semantic_type() const {
+        return this->template column<lispb::schema::TypeId>(Layout::semantic_type_column);
     }
-    auto slack_bytes() const { return this->column(Layout::slack_bytes_column()); }
+    auto element_count() const {
+        return this->template column<std::uint64_t>(Layout::element_count_column);
+    }
+    auto element_facts() const {
+        return this->template column<std::optional<ioj::layout::PhysicalFactId>>(
+            Layout::element_facts_column);
+    }
+    auto offset_bytes() const {
+        return this->template column<std::optional<std::uint64_t>>(Layout::offset_bytes_column);
+    }
+    auto extent_bytes() const {
+        return this->template column<std::optional<std::uint64_t>>(Layout::extent_bytes_column);
+    }
+    auto padding_before_bytes() const {
+        return this->template column<std::optional<std::uint64_t>>(
+            Layout::padding_before_bytes_column);
+    }
+    auto slack_bytes() const {
+        return this->template column<std::optional<std::uint64_t>>(Layout::slack_bytes_column);
+    }
     template <typename Func>
     void each_column(Func&& func) const {
         func(parent());
@@ -277,17 +290,21 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     auto resolve() const -> std::conditional_t<Const,
                                                ::ioj::layout::component_table::ResolvedConstView,
                                                ::ioj::layout::component_table::ResolvedView> {
-        return {this->column(Layout::parent_column()).data(),
-                this->column(Layout::name_column()).data(),
-                this->column(Layout::tag_column()).data(),
-                this->column(Layout::semantic_type_column()).data(),
-                this->column(Layout::element_count_column()).data(),
-                this->column(Layout::element_facts_column()).data(),
-                this->column(Layout::offset_bytes_column()).data(),
-                this->column(Layout::extent_bytes_column()).data(),
-                this->column(Layout::padding_before_bytes_column()).data(),
-                this->column(Layout::slack_bytes_column()).data(),
-                this->num()};
+        return {
+            this->template column<AnalysisId>(Layout::parent_column).data(),
+            this->template column<std::string_view>(Layout::name_column).data(),
+            this->template column<std::string_view>(Layout::tag_column).data(),
+            this->template column<lispb::schema::TypeId>(Layout::semantic_type_column).data(),
+            this->template column<std::uint64_t>(Layout::element_count_column).data(),
+            this->template column<std::optional<ioj::layout::PhysicalFactId>>(
+                    Layout::element_facts_column)
+                .data(),
+            this->template column<std::optional<std::uint64_t>>(Layout::offset_bytes_column).data(),
+            this->template column<std::optional<std::uint64_t>>(Layout::extent_bytes_column).data(),
+            this->template column<std::optional<std::uint64_t>>(Layout::padding_before_bytes_column)
+                .data(),
+            this->template column<std::optional<std::uint64_t>>(Layout::slack_bytes_column).data(),
+            this->num()};
     }
 };
 struct ConstView : ViewImpl<true> {
@@ -419,17 +436,7 @@ struct ComponentTable
     template <typename Byte>
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
-        ioj::native_soa::LayoutCursor cursor{blocks};
-        return {cursor.column_pointer(data, Layout::parent_column()),
-                cursor.column_pointer(data, Layout::name_column()),
-                cursor.column_pointer(data, Layout::tag_column()),
-                cursor.column_pointer(data, Layout::semantic_type_column()),
-                cursor.column_pointer(data, Layout::element_count_column()),
-                cursor.column_pointer(data, Layout::element_facts_column()),
-                cursor.column_pointer(data, Layout::offset_bytes_column()),
-                cursor.column_pointer(data, Layout::extent_bytes_column()),
-                cursor.column_pointer(data, Layout::padding_before_bytes_column()),
-                cursor.column_pointer(data, Layout::slack_bytes_column())};
+        return Layout::make_data<DataPointers<Byte>>(data, blocks);
     }
 
     /* **************************************** */

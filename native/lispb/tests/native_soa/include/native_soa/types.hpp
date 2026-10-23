@@ -68,8 +68,7 @@ struct ResolvedConstView;
 // Layout
 /* **************************************** */
 struct Layout : ioj::single_allocation_layout::ColumnLayouts<PointerA*> {
-    using Base = ColumnLayouts;
-    static constexpr auto others_column() noexcept { return Base::column<0>(); }
+    static constexpr std::size_t others_column{0};
 };
 
 /* **************************************** */
@@ -145,7 +144,7 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto others() const { return this->column(Layout::others_column()); }
+    auto others() const { return this->template column<PointerA*>(Layout::others_column); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(others());
@@ -154,7 +153,7 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
         -> std::conditional_t<Const,
                               ::ioj::native_soa_fixture::pointer_b::ResolvedConstView,
                               ::ioj::native_soa_fixture::pointer_b::ResolvedView> {
-        return {this->column(Layout::others_column()).data(), this->num()};
+        return {this->template column<PointerA*>(Layout::others_column).data(), this->num()};
     }
 };
 struct ConstView : ViewImpl<true> {
@@ -238,8 +237,7 @@ struct PointerB
     template <typename Byte>
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
-        ioj::native_soa::LayoutCursor cursor{blocks};
-        return {cursor.column_pointer(data, Layout::others_column())};
+        return Layout::make_data<DataPointers<Byte>>(data, blocks);
     }
 
     /* **************************************** */
@@ -299,8 +297,7 @@ struct ResolvedConstView;
 // Layout
 /* **************************************** */
 struct Layout : ioj::single_allocation_layout::ColumnLayouts<PointerB*> {
-    using Base = ColumnLayouts;
-    static constexpr auto others_column() noexcept { return Base::column<0>(); }
+    static constexpr std::size_t others_column{0};
 };
 
 /* **************************************** */
@@ -376,7 +373,7 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto others() const { return this->column(Layout::others_column()); }
+    auto others() const { return this->template column<PointerB*>(Layout::others_column); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(others());
@@ -385,7 +382,7 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
         -> std::conditional_t<Const,
                               ::ioj::native_soa_fixture::pointer_a::ResolvedConstView,
                               ::ioj::native_soa_fixture::pointer_a::ResolvedView> {
-        return {this->column(Layout::others_column()).data(), this->num()};
+        return {this->template column<PointerB*>(Layout::others_column).data(), this->num()};
     }
 };
 struct ConstView : ViewImpl<true> {
@@ -469,8 +466,7 @@ struct PointerA
     template <typename Byte>
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
-        ioj::native_soa::LayoutCursor cursor{blocks};
-        return {cursor.column_pointer(data, Layout::others_column())};
+        return Layout::make_data<DataPointers<Byte>>(data, blocks);
     }
 
     /* **************************************** */
@@ -534,8 +530,7 @@ struct ResolvedConstView;
 // Layout
 /* **************************************** */
 struct Layout : ioj::single_allocation_layout::ColumnLayouts<MixedRecord*> {
-    using Base = ColumnLayouts;
-    static constexpr auto records_column() noexcept { return Base::column<0>(); }
+    static constexpr std::size_t records_column{0};
 };
 
 /* **************************************** */
@@ -611,7 +606,7 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto records() const { return this->column(Layout::records_column()); }
+    auto records() const { return this->template column<MixedRecord*>(Layout::records_column); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(records());
@@ -620,7 +615,7 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
         -> std::conditional_t<Const,
                               ::ioj::native_soa_fixture::mixed_rows::ResolvedConstView,
                               ::ioj::native_soa_fixture::mixed_rows::ResolvedView> {
-        return {this->column(Layout::records_column()).data(), this->num()};
+        return {this->template column<MixedRecord*>(Layout::records_column).data(), this->num()};
     }
 };
 struct ConstView : ViewImpl<true> {
@@ -706,8 +701,7 @@ struct MixedRows
     template <typename Byte>
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
-        ioj::native_soa::LayoutCursor cursor{blocks};
-        return {cursor.column_pointer(data, Layout::records_column())};
+        return Layout::make_data<DataPointers<Byte>>(data, blocks);
     }
 
     /* **************************************** */
@@ -775,9 +769,8 @@ struct ResolvedConstView;
 // Layout
 /* **************************************** */
 struct Layout : ioj::single_allocation_layout::ColumnLayouts<Pair, Node*> {
-    using Base = ColumnLayouts;
-    static constexpr auto pairs_column() noexcept { return Base::column<0>(); }
-    static constexpr auto pointers_column() noexcept { return Base::column<1>(); }
+    static constexpr std::size_t pairs_column{0};
+    static constexpr std::size_t pointers_column{1};
 };
 
 /* **************************************** */
@@ -862,8 +855,8 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto pairs() const { return this->column(Layout::pairs_column()); }
-    auto pointers() const { return this->column(Layout::pointers_column()); }
+    auto pairs() const { return this->template column<Pair>(Layout::pairs_column); }
+    auto pointers() const { return this->template column<Node*>(Layout::pointers_column); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(pairs());
@@ -873,8 +866,8 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
         -> std::conditional_t<Const,
                               ::ioj::native_soa_fixture::pair_rows::ResolvedConstView,
                               ::ioj::native_soa_fixture::pair_rows::ResolvedView> {
-        return {this->column(Layout::pairs_column()).data(),
-                this->column(Layout::pointers_column()).data(),
+        return {this->template column<Pair>(Layout::pairs_column).data(),
+                this->template column<Node*>(Layout::pointers_column).data(),
                 this->num()};
     }
 };
@@ -962,9 +955,7 @@ struct PairRows
     template <typename Byte>
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
-        ioj::native_soa::LayoutCursor cursor{blocks};
-        return {cursor.column_pointer(data, Layout::pairs_column()),
-                cursor.column_pointer(data, Layout::pointers_column())};
+        return Layout::make_data<DataPointers<Byte>>(data, blocks);
     }
 
     /* **************************************** */
@@ -1028,10 +1019,9 @@ struct ResolvedConstView;
 // Layout
 /* **************************************** */
 struct Layout : ioj::single_allocation_layout::ColumnLayouts<float, float, float> {
-    using Base = ColumnLayouts;
-    static constexpr auto xs_column() noexcept { return Base::column<0>(); }
-    static constexpr auto ys_column() noexcept { return Base::column<1>(); }
-    static constexpr auto zs_column() noexcept { return Base::column<2>(); }
+    static constexpr std::size_t xs_column{0};
+    static constexpr std::size_t ys_column{1};
+    static constexpr std::size_t zs_column{2};
 };
 
 /* **************************************** */
@@ -1126,8 +1116,8 @@ struct ViewImpl : ioj::soa_storage_detail::StridedViewBase<float, Const> {
                                      ioj::soa_storage_detail::StorageState const,
                                      ioj::soa_storage_detail::StorageState>;
     ViewImpl(State* state, std::uint32_t offset, std::uint32_t count)
-        : Base{ioj::soa_storage_detail::make_strided_view<Base>(
-              state, offset, count, Layout::xs_column(), Layout::ys_column())} {}
+        : Base{ioj::soa_storage_detail::make_strided_view<Base, Layout>(
+              state, offset, count, Layout::xs_column, Layout::ys_column)} {}
     template <bool Enabled = Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
@@ -1236,10 +1226,7 @@ struct Vectors
     template <typename Byte>
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
-        ioj::native_soa::LayoutCursor cursor{blocks};
-        return {cursor.column_pointer(data, Layout::xs_column()),
-                cursor.column_pointer(data, Layout::ys_column()),
-                cursor.column_pointer(data, Layout::zs_column())};
+        return Layout::make_data<DataPointers<Byte>>(data, blocks);
     }
 
     /* **************************************** */
@@ -1307,9 +1294,8 @@ struct ResolvedConstView;
 // Layout
 /* **************************************** */
 struct Layout : ioj::single_allocation_layout::ColumnLayouts<OddBytes, OddBytes> {
-    using Base = ColumnLayouts;
-    static constexpr auto first_column() noexcept { return Base::column<0>(); }
-    static constexpr auto second_column() noexcept { return Base::column<1>(); }
+    static constexpr std::size_t first_column{0};
+    static constexpr std::size_t second_column{1};
 };
 
 /* **************************************** */
@@ -1438,13 +1424,12 @@ struct ResolvedConstView;
 /* **************************************** */
 struct Layout
     : ioj::single_allocation_layout::ColumnLayouts<float, float, float, float, float, float> {
-    using Base = ColumnLayouts;
-    static constexpr auto starts_xs_column() noexcept { return Base::column<0>(); }
-    static constexpr auto starts_ys_column() noexcept { return Base::column<1>(); }
-    static constexpr auto starts_zs_column() noexcept { return Base::column<2>(); }
-    static constexpr auto ends_xs_column() noexcept { return Base::column<3>(); }
-    static constexpr auto ends_ys_column() noexcept { return Base::column<4>(); }
-    static constexpr auto ends_zs_column() noexcept { return Base::column<5>(); }
+    static constexpr std::size_t starts_xs_column{0};
+    static constexpr std::size_t starts_ys_column{1};
+    static constexpr std::size_t starts_zs_column{2};
+    static constexpr std::size_t ends_xs_column{3};
+    static constexpr std::size_t ends_ys_column{4};
+    static constexpr std::size_t ends_zs_column{5};
 };
 
 /* **************************************** */
@@ -1661,14 +1646,13 @@ struct ResolvedConstView;
 struct Layout
     : ioj::single_allocation_layout::
           ColumnLayouts<std::int32_t, float, float, float, float, float, float> {
-    using Base = ColumnLayouts;
-    static constexpr auto values_column() noexcept { return Base::column<0>(); }
-    static constexpr auto positions_xs_column() noexcept { return Base::column<1>(); }
-    static constexpr auto positions_ys_column() noexcept { return Base::column<2>(); }
-    static constexpr auto positions_zs_column() noexcept { return Base::column<3>(); }
-    static constexpr auto velocities_xs_column() noexcept { return Base::column<4>(); }
-    static constexpr auto velocities_ys_column() noexcept { return Base::column<5>(); }
-    static constexpr auto velocities_zs_column() noexcept { return Base::column<6>(); }
+    static constexpr std::size_t values_column{0};
+    static constexpr std::size_t positions_xs_column{1};
+    static constexpr std::size_t positions_ys_column{2};
+    static constexpr std::size_t positions_zs_column{3};
+    static constexpr std::size_t velocities_xs_column{4};
+    static constexpr std::size_t velocities_ys_column{5};
+    static constexpr std::size_t velocities_zs_column{6};
 };
 
 /* **************************************** */
@@ -1833,19 +1817,19 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto values() const { return this->column(Layout::values_column()); }
+    auto values() const { return this->template column<std::int32_t>(Layout::values_column); }
     auto view_positions() const -> std::conditional_t<Const,
                                                       ::ioj::native_soa_fixture::vectors::ConstView,
                                                       ::ioj::native_soa_fixture::vectors::View> {
         return ioj::soa_storage_detail::make_strided_view<
             std::conditional_t<Const,
                                ::ioj::native_soa_fixture::vectors::ConstView,
-                               ::ioj::native_soa_fixture::vectors::View>>(
-            this->state_,
-            this->offset_,
-            this->num(),
-            Layout::positions_xs_column(),
-            Layout::positions_ys_column());
+                               ::ioj::native_soa_fixture::vectors::View>,
+            Layout>(this->state_,
+                    this->offset_,
+                    this->num(),
+                    Layout::positions_xs_column,
+                    Layout::positions_ys_column);
     }
     auto view_velocities() const
         -> std::conditional_t<Const,
@@ -1854,12 +1838,12 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
         return ioj::soa_storage_detail::make_strided_view<
             std::conditional_t<Const,
                                ::ioj::native_soa_fixture::vectors::ConstView,
-                               ::ioj::native_soa_fixture::vectors::View>>(
-            this->state_,
-            this->offset_,
-            this->num(),
-            Layout::velocities_xs_column(),
-            Layout::velocities_ys_column());
+                               ::ioj::native_soa_fixture::vectors::View>,
+            Layout>(this->state_,
+                    this->offset_,
+                    this->num(),
+                    Layout::velocities_xs_column,
+                    Layout::velocities_ys_column);
     }
     template <typename Func>
     void each_column(Func&& func) const {
@@ -1877,13 +1861,13 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
         -> std::conditional_t<Const,
                               ::ioj::native_soa_fixture::single_rows::ResolvedConstView,
                               ::ioj::native_soa_fixture::single_rows::ResolvedView> {
-        return {this->column(Layout::values_column()).data(),
-                this->column(Layout::positions_xs_column()).data(),
-                this->column(Layout::positions_ys_column()).data(),
-                this->column(Layout::positions_zs_column()).data(),
-                this->column(Layout::velocities_xs_column()).data(),
-                this->column(Layout::velocities_ys_column()).data(),
-                this->column(Layout::velocities_zs_column()).data(),
+        return {this->template column<std::int32_t>(Layout::values_column).data(),
+                this->template column<float>(Layout::positions_xs_column).data(),
+                this->template column<float>(Layout::positions_ys_column).data(),
+                this->template column<float>(Layout::positions_zs_column).data(),
+                this->template column<float>(Layout::velocities_xs_column).data(),
+                this->template column<float>(Layout::velocities_ys_column).data(),
+                this->template column<float>(Layout::velocities_zs_column).data(),
                 this->num()};
     }
 };
@@ -2001,14 +1985,7 @@ struct SingleRows
     template <typename Byte>
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
-        ioj::native_soa::LayoutCursor cursor{blocks};
-        return {cursor.column_pointer(data, Layout::values_column()),
-                cursor.column_pointer(data, Layout::positions_xs_column()),
-                cursor.column_pointer(data, Layout::positions_ys_column()),
-                cursor.column_pointer(data, Layout::positions_zs_column()),
-                cursor.column_pointer(data, Layout::velocities_xs_column()),
-                cursor.column_pointer(data, Layout::velocities_ys_column()),
-                cursor.column_pointer(data, Layout::velocities_zs_column())};
+        return Layout::make_data<DataPointers<Byte>>(data, blocks);
     }
 
     /* **************************************** */
@@ -2134,19 +2111,18 @@ struct Layout
                                                    float,
                                                    Aligned64,
                                                    Aligned256> {
-    using Base = ColumnLayouts;
-    static constexpr auto bytes_column() noexcept { return Base::column<0>(); }
-    static constexpr auto odd_first_column() noexcept { return Base::column<1>(); }
-    static constexpr auto odd_second_column() noexcept { return Base::column<2>(); }
-    static constexpr auto aligned32_column() noexcept { return Base::column<3>(); }
-    static constexpr auto nested_starts_xs_column() noexcept { return Base::column<4>(); }
-    static constexpr auto nested_starts_ys_column() noexcept { return Base::column<5>(); }
-    static constexpr auto nested_starts_zs_column() noexcept { return Base::column<6>(); }
-    static constexpr auto nested_ends_xs_column() noexcept { return Base::column<7>(); }
-    static constexpr auto nested_ends_ys_column() noexcept { return Base::column<8>(); }
-    static constexpr auto nested_ends_zs_column() noexcept { return Base::column<9>(); }
-    static constexpr auto aligned64_column() noexcept { return Base::column<10>(); }
-    static constexpr auto aligned256_column() noexcept { return Base::column<11>(); }
+    static constexpr std::size_t bytes_column{0};
+    static constexpr std::size_t odd_first_column{1};
+    static constexpr std::size_t odd_second_column{2};
+    static constexpr std::size_t aligned32_column{3};
+    static constexpr std::size_t nested_starts_xs_column{4};
+    static constexpr std::size_t nested_starts_ys_column{5};
+    static constexpr std::size_t nested_starts_zs_column{6};
+    static constexpr std::size_t nested_ends_xs_column{7};
+    static constexpr std::size_t nested_ends_ys_column{8};
+    static constexpr std::size_t nested_ends_zs_column{9};
+    static constexpr std::size_t aligned64_column{10};
+    static constexpr std::size_t aligned256_column{11};
 };
 
 /* **************************************** */
@@ -2380,21 +2356,21 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto bytes() const { return this->column(Layout::bytes_column()); }
+    auto bytes() const { return this->template column<std::uint8_t>(Layout::bytes_column); }
     auto view_odd() const -> std::conditional_t<Const,
                                                 ::ioj::native_soa_fixture::odd_pairs::ConstView,
                                                 ::ioj::native_soa_fixture::odd_pairs::View> {
         return ioj::soa_storage_detail::make_strided_view<
             std::conditional_t<Const,
                                ::ioj::native_soa_fixture::odd_pairs::ConstView,
-                               ::ioj::native_soa_fixture::odd_pairs::View>>(
-            this->state_,
-            this->offset_,
-            this->num(),
-            Layout::odd_first_column(),
-            Layout::odd_second_column());
+                               ::ioj::native_soa_fixture::odd_pairs::View>,
+            Layout>(this->state_,
+                    this->offset_,
+                    this->num(),
+                    Layout::odd_first_column,
+                    Layout::odd_second_column);
     }
-    auto aligned32() const { return this->column(Layout::aligned32_column()); }
+    auto aligned32() const { return this->template column<Aligned32>(Layout::aligned32_column); }
     auto view_nested() const
         -> std::conditional_t<Const,
                               ::ioj::native_soa_fixture::vector_groups::ConstView,
@@ -2402,15 +2378,15 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
         return ioj::soa_storage_detail::make_strided_view<
             std::conditional_t<Const,
                                ::ioj::native_soa_fixture::vector_groups::ConstView,
-                               ::ioj::native_soa_fixture::vector_groups::View>>(
-            this->state_,
-            this->offset_,
-            this->num(),
-            Layout::nested_starts_xs_column(),
-            Layout::nested_starts_ys_column());
+                               ::ioj::native_soa_fixture::vector_groups::View>,
+            Layout>(this->state_,
+                    this->offset_,
+                    this->num(),
+                    Layout::nested_starts_xs_column,
+                    Layout::nested_starts_ys_column);
     }
-    auto aligned64() const { return this->column(Layout::aligned64_column()); }
-    auto aligned256() const { return this->column(Layout::aligned256_column()); }
+    auto aligned64() const { return this->template column<Aligned64>(Layout::aligned64_column); }
+    auto aligned256() const { return this->template column<Aligned256>(Layout::aligned256_column); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(bytes());
@@ -2434,18 +2410,18 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
         -> std::conditional_t<Const,
                               ::ioj::native_soa_fixture::single_alignment_rows::ResolvedConstView,
                               ::ioj::native_soa_fixture::single_alignment_rows::ResolvedView> {
-        return {this->column(Layout::bytes_column()).data(),
-                this->column(Layout::odd_first_column()).data(),
-                this->column(Layout::odd_second_column()).data(),
-                this->column(Layout::aligned32_column()).data(),
-                this->column(Layout::nested_starts_xs_column()).data(),
-                this->column(Layout::nested_starts_ys_column()).data(),
-                this->column(Layout::nested_starts_zs_column()).data(),
-                this->column(Layout::nested_ends_xs_column()).data(),
-                this->column(Layout::nested_ends_ys_column()).data(),
-                this->column(Layout::nested_ends_zs_column()).data(),
-                this->column(Layout::aligned64_column()).data(),
-                this->column(Layout::aligned256_column()).data(),
+        return {this->template column<std::uint8_t>(Layout::bytes_column).data(),
+                this->template column<OddBytes>(Layout::odd_first_column).data(),
+                this->template column<OddBytes>(Layout::odd_second_column).data(),
+                this->template column<Aligned32>(Layout::aligned32_column).data(),
+                this->template column<float>(Layout::nested_starts_xs_column).data(),
+                this->template column<float>(Layout::nested_starts_ys_column).data(),
+                this->template column<float>(Layout::nested_starts_zs_column).data(),
+                this->template column<float>(Layout::nested_ends_xs_column).data(),
+                this->template column<float>(Layout::nested_ends_ys_column).data(),
+                this->template column<float>(Layout::nested_ends_zs_column).data(),
+                this->template column<Aligned64>(Layout::aligned64_column).data(),
+                this->template column<Aligned256>(Layout::aligned256_column).data(),
                 this->num()};
     }
 };
@@ -2588,19 +2564,7 @@ struct SingleAlignmentRows
     template <typename Byte>
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
-        ioj::native_soa::LayoutCursor cursor{blocks};
-        return {cursor.column_pointer(data, Layout::bytes_column()),
-                cursor.column_pointer(data, Layout::odd_first_column()),
-                cursor.column_pointer(data, Layout::odd_second_column()),
-                cursor.column_pointer(data, Layout::aligned32_column()),
-                cursor.column_pointer(data, Layout::nested_starts_xs_column()),
-                cursor.column_pointer(data, Layout::nested_starts_ys_column()),
-                cursor.column_pointer(data, Layout::nested_starts_zs_column()),
-                cursor.column_pointer(data, Layout::nested_ends_xs_column()),
-                cursor.column_pointer(data, Layout::nested_ends_ys_column()),
-                cursor.column_pointer(data, Layout::nested_ends_zs_column()),
-                cursor.column_pointer(data, Layout::aligned64_column()),
-                cursor.column_pointer(data, Layout::aligned256_column())};
+        return Layout::make_data<DataPointers<Byte>>(data, blocks);
     }
 
     /* **************************************** */
@@ -2765,9 +2729,8 @@ struct ResolvedConstView;
 // Layout
 /* **************************************** */
 struct Layout : ioj::single_allocation_layout::ColumnLayouts<float, float> {
-    using Base = ColumnLayouts;
-    static constexpr auto xs_column() noexcept { return Base::column<0>(); }
-    static constexpr auto ys_column() noexcept { return Base::column<1>(); }
+    static constexpr std::size_t xs_column{0};
+    static constexpr std::size_t ys_column{1};
 };
 
 /* **************************************** */
@@ -2948,11 +2911,10 @@ struct ResolvedConstView;
 // Layout
 /* **************************************** */
 struct Layout : ioj::single_allocation_layout::ColumnLayouts<float, ApiMask, float, float> {
-    using Base = ColumnLayouts;
-    static constexpr auto values_column() noexcept { return Base::column<0>(); }
-    static constexpr auto masks_column() noexcept { return Base::column<1>(); }
-    static constexpr auto positions_xs_column() noexcept { return Base::column<2>(); }
-    static constexpr auto positions_ys_column() noexcept { return Base::column<3>(); }
+    static constexpr std::size_t values_column{0};
+    static constexpr std::size_t masks_column{1};
+    static constexpr std::size_t positions_xs_column{2};
+    static constexpr std::size_t positions_ys_column{3};
 };
 
 /* **************************************** */
@@ -3087,8 +3049,8 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto values() const { return this->column(Layout::values_column()); }
-    auto masks() const { return this->column(Layout::masks_column()); }
+    auto values() const { return this->template column<float>(Layout::values_column); }
+    auto masks() const { return this->template column<ApiMask>(Layout::masks_column); }
     auto view_positions() const
         -> std::conditional_t<Const,
                               ::ioj::native_soa_fixture::api_coordinates::ConstView,
@@ -3096,12 +3058,12 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
         return ioj::soa_storage_detail::make_strided_view<
             std::conditional_t<Const,
                                ::ioj::native_soa_fixture::api_coordinates::ConstView,
-                               ::ioj::native_soa_fixture::api_coordinates::View>>(
-            this->state_,
-            this->offset_,
-            this->num(),
-            Layout::positions_xs_column(),
-            Layout::positions_ys_column());
+                               ::ioj::native_soa_fixture::api_coordinates::View>,
+            Layout>(this->state_,
+                    this->offset_,
+                    this->num(),
+                    Layout::positions_xs_column,
+                    Layout::positions_ys_column);
     }
     template <typename Func>
     void each_column(Func&& func) const {
@@ -3115,10 +3077,10 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
         -> std::conditional_t<Const,
                               ::ioj::native_soa_fixture::api_owner::ResolvedConstView,
                               ::ioj::native_soa_fixture::api_owner::ResolvedView> {
-        return {this->column(Layout::values_column()).data(),
-                this->column(Layout::masks_column()).data(),
-                this->column(Layout::positions_xs_column()).data(),
-                this->column(Layout::positions_ys_column()).data(),
+        return {this->template column<float>(Layout::values_column).data(),
+                this->template column<ApiMask>(Layout::masks_column).data(),
+                this->template column<float>(Layout::positions_xs_column).data(),
+                this->template column<float>(Layout::positions_ys_column).data(),
                 this->num()};
     }
 };
@@ -3233,11 +3195,7 @@ struct NATIVE_SOA_FIXTURE_API ApiOwner
     template <typename Byte>
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
-        ioj::native_soa::LayoutCursor cursor{blocks};
-        return {cursor.column_pointer(data, Layout::values_column()),
-                cursor.column_pointer(data, Layout::masks_column()),
-                cursor.column_pointer(data, Layout::positions_xs_column()),
-                cursor.column_pointer(data, Layout::positions_ys_column())};
+        return Layout::make_data<DataPointers<Byte>>(data, blocks);
     }
 
     /* **************************************** */
@@ -3351,9 +3309,8 @@ struct ResolvedConstView;
 // Layout
 /* **************************************** */
 struct Layout : ioj::single_allocation_layout::ColumnLayouts<float, float> {
-    using Base = ColumnLayouts;
-    static constexpr auto xs_column() noexcept { return Base::column<0>(); }
-    static constexpr auto ys_column() noexcept { return Base::column<1>(); }
+    static constexpr std::size_t xs_column{0};
+    static constexpr std::size_t ys_column{1};
 };
 
 /* **************************************** */
@@ -3448,8 +3405,8 @@ struct ViewImpl : ioj::soa_storage_detail::StridedViewBase<float, Const> {
                                      ioj::soa_storage_detail::StorageState const,
                                      ioj::soa_storage_detail::StorageState>;
     ViewImpl(State* state, std::uint32_t offset, std::uint32_t count)
-        : Base{ioj::soa_storage_detail::make_strided_view<Base>(
-              state, offset, count, Layout::xs_column(), Layout::ys_column())} {}
+        : Base{ioj::soa_storage_detail::make_strided_view<Base, Layout>(
+              state, offset, count, Layout::xs_column, Layout::ys_column)} {}
     template <bool Enabled = Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
@@ -3565,9 +3522,7 @@ struct EquivalentOwner
     template <typename Byte>
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
-        ioj::native_soa::LayoutCursor cursor{blocks};
-        return {cursor.column_pointer(data, Layout::xs_column()),
-                cursor.column_pointer(data, Layout::ys_column())};
+        return Layout::make_data<DataPointers<Byte>>(data, blocks);
     }
 
     /* **************************************** */
@@ -3642,10 +3597,9 @@ struct ResolvedConstView;
 // Layout
 /* **************************************** */
 struct Layout : ioj::single_allocation_layout::ColumnLayouts<float, float, float> {
-    using Base = ColumnLayouts;
-    static constexpr auto horizontal_column() noexcept { return Base::column<0>(); }
-    static constexpr auto vertical_column() noexcept { return Base::column<1>(); }
-    static constexpr auto depth_column() noexcept { return Base::column<2>(); }
+    static constexpr std::size_t horizontal_column{0};
+    static constexpr std::size_t vertical_column{1};
+    static constexpr std::size_t depth_column{2};
 };
 
 /* **************************************** */
@@ -3759,8 +3713,8 @@ struct ViewImpl : ioj::soa_storage_detail::StridedViewBase<float, Const> {
                                      ioj::soa_storage_detail::StorageState const,
                                      ioj::soa_storage_detail::StorageState>;
     ViewImpl(State* state, std::uint32_t offset, std::uint32_t count)
-        : Base{ioj::soa_storage_detail::make_strided_view<Base>(
-              state, offset, count, Layout::horizontal_column(), Layout::vertical_column())} {}
+        : Base{ioj::soa_storage_detail::make_strided_view<Base, Layout>(
+              state, offset, count, Layout::horizontal_column, Layout::vertical_column)} {}
     template <bool Enabled = Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
@@ -3887,10 +3841,7 @@ struct AccessorOwner
     template <typename Byte>
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
-        ioj::native_soa::LayoutCursor cursor{blocks};
-        return {cursor.column_pointer(data, Layout::horizontal_column()),
-                cursor.column_pointer(data, Layout::vertical_column()),
-                cursor.column_pointer(data, Layout::depth_column())};
+        return Layout::make_data<DataPointers<Byte>>(data, blocks);
     }
 
     /* **************************************** */

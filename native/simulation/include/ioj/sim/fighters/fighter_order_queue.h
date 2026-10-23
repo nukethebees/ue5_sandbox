@@ -25,11 +25,10 @@ struct ResolvedConstView;
 /* **************************************** */
 struct Layout
     : ioj::single_allocation_layout::ColumnLayouts<EntityId, FighterOrder, FighterTask, EntityId> {
-    using Base = ColumnLayouts;
-    static constexpr auto entity_ids_column() noexcept { return Base::column<0>(); }
-    static constexpr auto orders_column() noexcept { return Base::column<1>(); }
-    static constexpr auto tasks_column() noexcept { return Base::column<2>(); }
-    static constexpr auto targets_column() noexcept { return Base::column<3>(); }
+    static constexpr std::size_t entity_ids_column{0};
+    static constexpr std::size_t orders_column{1};
+    static constexpr std::size_t tasks_column{2};
+    static constexpr std::size_t targets_column{3};
 };
 
 /* **************************************** */
@@ -142,10 +141,10 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto entity_ids() const { return this->column(Layout::entity_ids_column()); }
-    auto orders() const { return this->column(Layout::orders_column()); }
-    auto tasks() const { return this->column(Layout::tasks_column()); }
-    auto targets() const { return this->column(Layout::targets_column()); }
+    auto entity_ids() const { return this->template column<EntityId>(Layout::entity_ids_column); }
+    auto orders() const { return this->template column<FighterOrder>(Layout::orders_column); }
+    auto tasks() const { return this->template column<FighterTask>(Layout::tasks_column); }
+    auto targets() const { return this->template column<EntityId>(Layout::targets_column); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(entity_ids());
@@ -156,10 +155,10 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     auto resolve() const -> std::conditional_t<Const,
                                                ::ioj::sim::fighter_order_queue::ResolvedConstView,
                                                ::ioj::sim::fighter_order_queue::ResolvedView> {
-        return {this->column(Layout::entity_ids_column()).data(),
-                this->column(Layout::orders_column()).data(),
-                this->column(Layout::tasks_column()).data(),
-                this->column(Layout::targets_column()).data(),
+        return {this->template column<EntityId>(Layout::entity_ids_column).data(),
+                this->template column<FighterOrder>(Layout::orders_column).data(),
+                this->template column<FighterTask>(Layout::tasks_column).data(),
+                this->template column<EntityId>(Layout::targets_column).data(),
                 this->num()};
     }
 };
@@ -259,11 +258,7 @@ struct FighterOrderQueue
     template <typename Byte>
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
-        ioj::native_soa::LayoutCursor cursor{blocks};
-        return {cursor.column_pointer(data, Layout::entity_ids_column()),
-                cursor.column_pointer(data, Layout::orders_column()),
-                cursor.column_pointer(data, Layout::tasks_column()),
-                cursor.column_pointer(data, Layout::targets_column())};
+        return Layout::make_data<DataPointers<Byte>>(data, blocks);
     }
 
     /* **************************************** */

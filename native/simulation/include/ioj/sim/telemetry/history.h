@@ -74,19 +74,16 @@ struct Layout
                                                    std::int32_t,
                                                    std::int32_t,
                                                    std::int32_t> {
-    using Base = ColumnLayouts;
-    static constexpr auto completed_ticks_column() noexcept { return Base::column<0>(); }
-    static constexpr auto validity_masks_column() noexcept { return Base::column<1>(); }
-    static constexpr auto active_entities_column() noexcept { return Base::column<2>(); }
-    static constexpr auto active_entities_by_type_column() noexcept { return Base::column<3>(); }
-    static constexpr auto active_entities_by_team_and_type_column() noexcept {
-        return Base::column<4>();
-    }
-    static constexpr auto spawned_entities_column() noexcept { return Base::column<5>(); }
-    static constexpr auto destroyed_entities_column() noexcept { return Base::column<6>(); }
-    static constexpr auto kills_column() noexcept { return Base::column<7>(); }
-    static constexpr auto active_lasers_column() noexcept { return Base::column<8>(); }
-    static constexpr auto lasers_fired_column() noexcept { return Base::column<9>(); }
+    static constexpr std::size_t completed_ticks_column{0};
+    static constexpr std::size_t validity_masks_column{1};
+    static constexpr std::size_t active_entities_column{2};
+    static constexpr std::size_t active_entities_by_type_column{3};
+    static constexpr std::size_t active_entities_by_team_and_type_column{4};
+    static constexpr std::size_t spawned_entities_column{5};
+    static constexpr std::size_t destroyed_entities_column{6};
+    static constexpr std::size_t kills_column{7};
+    static constexpr std::size_t active_lasers_column{8};
+    static constexpr std::size_t lasers_fired_column{9};
 };
 
 /* **************************************** */
@@ -291,20 +288,34 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto completed_ticks() const { return this->column(Layout::completed_ticks_column()); }
-    auto validity_masks() const { return this->column(Layout::validity_masks_column()); }
-    auto active_entities() const { return this->column(Layout::active_entities_column()); }
+    auto completed_ticks() const {
+        return this->template column<SimTick>(Layout::completed_ticks_column);
+    }
+    auto validity_masks() const {
+        return this->template column<HistoryFieldMask>(Layout::validity_masks_column);
+    }
+    auto active_entities() const {
+        return this->template column<std::int32_t>(Layout::active_entities_column);
+    }
     auto active_entities_by_type() const {
-        return this->column(Layout::active_entities_by_type_column());
+        return this->template column<EntityTypeCounts>(Layout::active_entities_by_type_column);
     }
     auto active_entities_by_team_and_type() const {
-        return this->column(Layout::active_entities_by_team_and_type_column());
+        return this->template column<EntityCounts>(Layout::active_entities_by_team_and_type_column);
     }
-    auto spawned_entities() const { return this->column(Layout::spawned_entities_column()); }
-    auto destroyed_entities() const { return this->column(Layout::destroyed_entities_column()); }
-    auto kills() const { return this->column(Layout::kills_column()); }
-    auto active_lasers() const { return this->column(Layout::active_lasers_column()); }
-    auto lasers_fired() const { return this->column(Layout::lasers_fired_column()); }
+    auto spawned_entities() const {
+        return this->template column<std::int32_t>(Layout::spawned_entities_column);
+    }
+    auto destroyed_entities() const {
+        return this->template column<std::int32_t>(Layout::destroyed_entities_column);
+    }
+    auto kills() const { return this->template column<std::int32_t>(Layout::kills_column); }
+    auto active_lasers() const {
+        return this->template column<std::int32_t>(Layout::active_lasers_column);
+    }
+    auto lasers_fired() const {
+        return this->template column<std::int32_t>(Layout::lasers_fired_column);
+    }
     template <typename Func>
     void each_column(Func&& func) const {
         func(completed_ticks());
@@ -322,17 +333,19 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
         -> std::conditional_t<Const,
                               ::ioj::sim::telemetry::history_rows::ResolvedConstView,
                               ::ioj::sim::telemetry::history_rows::ResolvedView> {
-        return {this->column(Layout::completed_ticks_column()).data(),
-                this->column(Layout::validity_masks_column()).data(),
-                this->column(Layout::active_entities_column()).data(),
-                this->column(Layout::active_entities_by_type_column()).data(),
-                this->column(Layout::active_entities_by_team_and_type_column()).data(),
-                this->column(Layout::spawned_entities_column()).data(),
-                this->column(Layout::destroyed_entities_column()).data(),
-                this->column(Layout::kills_column()).data(),
-                this->column(Layout::active_lasers_column()).data(),
-                this->column(Layout::lasers_fired_column()).data(),
-                this->num()};
+        return {
+            this->template column<SimTick>(Layout::completed_ticks_column).data(),
+            this->template column<HistoryFieldMask>(Layout::validity_masks_column).data(),
+            this->template column<std::int32_t>(Layout::active_entities_column).data(),
+            this->template column<EntityTypeCounts>(Layout::active_entities_by_type_column).data(),
+            this->template column<EntityCounts>(Layout::active_entities_by_team_and_type_column)
+                .data(),
+            this->template column<std::int32_t>(Layout::spawned_entities_column).data(),
+            this->template column<std::int32_t>(Layout::destroyed_entities_column).data(),
+            this->template column<std::int32_t>(Layout::kills_column).data(),
+            this->template column<std::int32_t>(Layout::active_lasers_column).data(),
+            this->template column<std::int32_t>(Layout::lasers_fired_column).data(),
+            this->num()};
     }
 };
 struct ConstView : ViewImpl<true> {
@@ -464,17 +477,7 @@ struct HistoryRows
     template <typename Byte>
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
-        ioj::native_soa::LayoutCursor cursor{blocks};
-        return {cursor.column_pointer(data, Layout::completed_ticks_column()),
-                cursor.column_pointer(data, Layout::validity_masks_column()),
-                cursor.column_pointer(data, Layout::active_entities_column()),
-                cursor.column_pointer(data, Layout::active_entities_by_type_column()),
-                cursor.column_pointer(data, Layout::active_entities_by_team_and_type_column()),
-                cursor.column_pointer(data, Layout::spawned_entities_column()),
-                cursor.column_pointer(data, Layout::destroyed_entities_column()),
-                cursor.column_pointer(data, Layout::kills_column()),
-                cursor.column_pointer(data, Layout::active_lasers_column()),
-                cursor.column_pointer(data, Layout::lasers_fired_column())};
+        return Layout::make_data<DataPointers<Byte>>(data, blocks);
     }
 
     /* **************************************** */

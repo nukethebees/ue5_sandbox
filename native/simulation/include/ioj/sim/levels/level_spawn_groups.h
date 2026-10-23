@@ -26,10 +26,9 @@ struct ResolvedConstView;
 /* **************************************** */
 struct Layout
     : ioj::single_allocation_layout::ColumnLayouts<EntityType, std::int32_t, LevelEventCount> {
-    using Base = ColumnLayouts;
-    static constexpr auto types_column() noexcept { return Base::column<0>(); }
-    static constexpr auto offsets_column() noexcept { return Base::column<1>(); }
-    static constexpr auto counts_column() noexcept { return Base::column<2>(); }
+    static constexpr std::size_t types_column{0};
+    static constexpr std::size_t offsets_column{1};
+    static constexpr std::size_t counts_column{2};
 };
 
 /* **************************************** */
@@ -130,9 +129,9 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto types() const { return this->column(Layout::types_column()); }
-    auto offsets() const { return this->column(Layout::offsets_column()); }
-    auto counts() const { return this->column(Layout::counts_column()); }
+    auto types() const { return this->template column<EntityType>(Layout::types_column); }
+    auto offsets() const { return this->template column<std::int32_t>(Layout::offsets_column); }
+    auto counts() const { return this->template column<LevelEventCount>(Layout::counts_column); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(types());
@@ -142,9 +141,9 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     auto resolve() const -> std::conditional_t<Const,
                                                ::ioj::sim::level_spawn_groups::ResolvedConstView,
                                                ::ioj::sim::level_spawn_groups::ResolvedView> {
-        return {this->column(Layout::types_column()).data(),
-                this->column(Layout::offsets_column()).data(),
-                this->column(Layout::counts_column()).data(),
+        return {this->template column<EntityType>(Layout::types_column).data(),
+                this->template column<std::int32_t>(Layout::offsets_column).data(),
+                this->template column<LevelEventCount>(Layout::counts_column).data(),
                 this->num()};
     }
 };
@@ -240,10 +239,7 @@ struct LevelSpawnGroups
     template <typename Byte>
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
-        ioj::native_soa::LayoutCursor cursor{blocks};
-        return {cursor.column_pointer(data, Layout::types_column()),
-                cursor.column_pointer(data, Layout::offsets_column()),
-                cursor.column_pointer(data, Layout::counts_column())};
+        return Layout::make_data<DataPointers<Byte>>(data, blocks);
     }
 
     /* **************************************** */

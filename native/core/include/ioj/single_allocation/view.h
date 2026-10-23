@@ -161,12 +161,13 @@ struct CompactViewBase : ViewOperations {
         , offset_{other.offset_}
         , count_{other.count_} {}
 
-    template <typename Layout, std::size_t Index>
-    auto column(single_allocation_layout::ColumnDescriptor<Layout, Index> layout) const {
-        using T = typename decltype(layout)::value_type;
+    template <typename T, typename Self>
+    auto column(this Self const& self, std::size_t index) {
         return std::span<Element<T>>{
-            view_column_data<T>(state_, offset_, layout.offset(view_capacity_blocks(state_))),
-            count_};
+            view_column_data<T>(self.state_,
+                                self.offset_,
+                                Self::Layout::offset(index, view_capacity_blocks(self.state_))),
+            self.count_};
     }
 
     State* state_{};
@@ -256,21 +257,18 @@ struct StridedViewBase : ViewOperations {
     size_type count_{};
 };
 
-template <typename View, typename State, typename Layout, std::size_t First, std::size_t Second>
-auto make_strided_view(State* state,
-                       std::uint32_t offset,
-                       std::uint32_t count,
-                       single_allocation_layout::ColumnDescriptor<Layout, First> first,
-                       single_allocation_layout::ColumnDescriptor<Layout, Second> second) -> View {
-    using T = typename decltype(first)::value_type;
-    static_assert(std::is_same_v<T, typename decltype(second)::value_type>);
+template <typename View, typename Layout, typename State>
+auto make_strided_view(
+    State* state, std::uint32_t offset, std::uint32_t count, std::size_t first, std::size_t second)
+    -> View {
+    using T = typename View::element_type;
     validate_view(state, offset, count);
     if (!state || !state->data_) {
         return {};
     }
     auto const blocks{view_capacity_blocks(state)};
-    auto const first_offset{first.offset(blocks)};
-    auto const stride{second.offset(blocks) - first_offset};
+    auto const first_offset{Layout::offset(first, blocks)};
+    auto const stride{Layout::offset(second, blocks) - first_offset};
     return View{view_column_data_unchecked<T>(state, offset, first_offset), stride, count};
 }
 

@@ -37,15 +37,14 @@ struct Layout
                                                    LifeState,
                                                    SimTick,
                                                    Vector3f> {
-    using Base = ColumnLayouts;
-    static constexpr auto entity_ids_column() noexcept { return Base::column<0>(); }
-    static constexpr auto entity_types_column() noexcept { return Base::column<1>(); }
-    static constexpr auto teams_column() noexcept { return Base::column<2>(); }
-    static constexpr auto kills_column() noexcept { return Base::column<3>(); }
-    static constexpr auto killed_by_column() noexcept { return Base::column<4>(); }
-    static constexpr auto life_state_column() noexcept { return Base::column<5>(); }
-    static constexpr auto death_ticks_column() noexcept { return Base::column<6>(); }
-    static constexpr auto death_locations_column() noexcept { return Base::column<7>(); }
+    static constexpr std::size_t entity_ids_column{0};
+    static constexpr std::size_t entity_types_column{1};
+    static constexpr std::size_t teams_column{2};
+    static constexpr std::size_t kills_column{3};
+    static constexpr std::size_t killed_by_column{4};
+    static constexpr std::size_t life_state_column{5};
+    static constexpr std::size_t death_ticks_column{6};
+    static constexpr std::size_t death_locations_column{7};
 };
 
 /* **************************************** */
@@ -217,14 +216,18 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto entity_ids() const { return this->column(Layout::entity_ids_column()); }
-    auto entity_types() const { return this->column(Layout::entity_types_column()); }
-    auto teams() const { return this->column(Layout::teams_column()); }
-    auto kills() const { return this->column(Layout::kills_column()); }
-    auto killed_by() const { return this->column(Layout::killed_by_column()); }
-    auto life_state() const { return this->column(Layout::life_state_column()); }
-    auto death_ticks() const { return this->column(Layout::death_ticks_column()); }
-    auto death_locations() const { return this->column(Layout::death_locations_column()); }
+    auto entity_ids() const { return this->template column<EntityId>(Layout::entity_ids_column); }
+    auto entity_types() const {
+        return this->template column<EntityType>(Layout::entity_types_column);
+    }
+    auto teams() const { return this->template column<::ioj::Team>(Layout::teams_column); }
+    auto kills() const { return this->template column<std::uint32_t>(Layout::kills_column); }
+    auto killed_by() const { return this->template column<EntityId>(Layout::killed_by_column); }
+    auto life_state() const { return this->template column<LifeState>(Layout::life_state_column); }
+    auto death_ticks() const { return this->template column<SimTick>(Layout::death_ticks_column); }
+    auto death_locations() const {
+        return this->template column<Vector3f>(Layout::death_locations_column);
+    }
     template <typename Func>
     void each_column(Func&& func) const {
         func(entity_ids());
@@ -239,14 +242,14 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     auto resolve() const -> std::conditional_t<Const,
                                                ::ioj::sim::entity_history::ResolvedConstView,
                                                ::ioj::sim::entity_history::ResolvedView> {
-        return {this->column(Layout::entity_ids_column()).data(),
-                this->column(Layout::entity_types_column()).data(),
-                this->column(Layout::teams_column()).data(),
-                this->column(Layout::kills_column()).data(),
-                this->column(Layout::killed_by_column()).data(),
-                this->column(Layout::life_state_column()).data(),
-                this->column(Layout::death_ticks_column()).data(),
-                this->column(Layout::death_locations_column()).data(),
+        return {this->template column<EntityId>(Layout::entity_ids_column).data(),
+                this->template column<EntityType>(Layout::entity_types_column).data(),
+                this->template column<::ioj::Team>(Layout::teams_column).data(),
+                this->template column<std::uint32_t>(Layout::kills_column).data(),
+                this->template column<EntityId>(Layout::killed_by_column).data(),
+                this->template column<LifeState>(Layout::life_state_column).data(),
+                this->template column<SimTick>(Layout::death_ticks_column).data(),
+                this->template column<Vector3f>(Layout::death_locations_column).data(),
                 this->num()};
     }
 };
@@ -369,15 +372,7 @@ struct EntityHistory
     template <typename Byte>
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
-        ioj::native_soa::LayoutCursor cursor{blocks};
-        return {cursor.column_pointer(data, Layout::entity_ids_column()),
-                cursor.column_pointer(data, Layout::entity_types_column()),
-                cursor.column_pointer(data, Layout::teams_column()),
-                cursor.column_pointer(data, Layout::kills_column()),
-                cursor.column_pointer(data, Layout::killed_by_column()),
-                cursor.column_pointer(data, Layout::life_state_column()),
-                cursor.column_pointer(data, Layout::death_ticks_column()),
-                cursor.column_pointer(data, Layout::death_locations_column())};
+        return Layout::make_data<DataPointers<Byte>>(data, blocks);
     }
 
     /* **************************************** */

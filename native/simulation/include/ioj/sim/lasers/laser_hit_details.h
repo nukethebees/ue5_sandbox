@@ -27,14 +27,13 @@ struct ResolvedConstView;
 struct Layout
     : ioj::single_allocation_layout::
           ColumnLayouts<float, float, float, float, float, float, LaserSource> {
-    using Base = ColumnLayouts;
-    static constexpr auto locations_xs_column() noexcept { return Base::column<0>(); }
-    static constexpr auto locations_ys_column() noexcept { return Base::column<1>(); }
-    static constexpr auto locations_zs_column() noexcept { return Base::column<2>(); }
-    static constexpr auto emission_directions_xs_column() noexcept { return Base::column<3>(); }
-    static constexpr auto emission_directions_ys_column() noexcept { return Base::column<4>(); }
-    static constexpr auto emission_directions_zs_column() noexcept { return Base::column<5>(); }
-    static constexpr auto sources_column() noexcept { return Base::column<6>(); }
+    static constexpr std::size_t locations_xs_column{0};
+    static constexpr std::size_t locations_ys_column{1};
+    static constexpr std::size_t locations_zs_column{2};
+    static constexpr std::size_t emission_directions_xs_column{3};
+    static constexpr std::size_t emission_directions_ys_column{4};
+    static constexpr std::size_t emission_directions_zs_column{5};
+    static constexpr std::size_t sources_column{6};
 };
 
 /* **************************************** */
@@ -211,24 +210,24 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     auto view_locations() const
         -> std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View> {
         return ioj::soa_storage_detail::make_strided_view<
-            std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View>>(
-            this->state_,
-            this->offset_,
-            this->num(),
-            Layout::locations_xs_column(),
-            Layout::locations_ys_column());
+            std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View>,
+            Layout>(this->state_,
+                    this->offset_,
+                    this->num(),
+                    Layout::locations_xs_column,
+                    Layout::locations_ys_column);
     }
     auto view_emission_directions() const
         -> std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View> {
         return ioj::soa_storage_detail::make_strided_view<
-            std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View>>(
-            this->state_,
-            this->offset_,
-            this->num(),
-            Layout::emission_directions_xs_column(),
-            Layout::emission_directions_ys_column());
+            std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View>,
+            Layout>(this->state_,
+                    this->offset_,
+                    this->num(),
+                    Layout::emission_directions_xs_column,
+                    Layout::emission_directions_ys_column);
     }
-    auto sources() const { return this->column(Layout::sources_column()); }
+    auto sources() const { return this->template column<LaserSource>(Layout::sources_column); }
     template <typename Func>
     void each_column(Func&& func) const {
         auto const& locations_view{view_locations()};
@@ -244,13 +243,13 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     auto resolve() const -> std::conditional_t<Const,
                                                ::ioj::sim::laser_hit_details::ResolvedConstView,
                                                ::ioj::sim::laser_hit_details::ResolvedView> {
-        return {this->column(Layout::locations_xs_column()).data(),
-                this->column(Layout::locations_ys_column()).data(),
-                this->column(Layout::locations_zs_column()).data(),
-                this->column(Layout::emission_directions_xs_column()).data(),
-                this->column(Layout::emission_directions_ys_column()).data(),
-                this->column(Layout::emission_directions_zs_column()).data(),
-                this->column(Layout::sources_column()).data(),
+        return {this->template column<float>(Layout::locations_xs_column).data(),
+                this->template column<float>(Layout::locations_ys_column).data(),
+                this->template column<float>(Layout::locations_zs_column).data(),
+                this->template column<float>(Layout::emission_directions_xs_column).data(),
+                this->template column<float>(Layout::emission_directions_ys_column).data(),
+                this->template column<float>(Layout::emission_directions_zs_column).data(),
+                this->template column<LaserSource>(Layout::sources_column).data(),
                 this->num()};
     }
 };
@@ -377,14 +376,7 @@ struct LaserHitDetails
     template <typename Byte>
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
-        ioj::native_soa::LayoutCursor cursor{blocks};
-        return {cursor.column_pointer(data, Layout::locations_xs_column()),
-                cursor.column_pointer(data, Layout::locations_ys_column()),
-                cursor.column_pointer(data, Layout::locations_zs_column()),
-                cursor.column_pointer(data, Layout::emission_directions_xs_column()),
-                cursor.column_pointer(data, Layout::emission_directions_ys_column()),
-                cursor.column_pointer(data, Layout::emission_directions_zs_column()),
-                cursor.column_pointer(data, Layout::sources_column())};
+        return Layout::make_data<DataPointers<Byte>>(data, blocks);
     }
 
     /* **************************************** */

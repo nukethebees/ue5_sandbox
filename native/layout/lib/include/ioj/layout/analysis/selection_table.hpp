@@ -35,14 +35,13 @@ struct Layout
                                                    RegionFootprint,
                                                    RegionFootprint,
                                                    std::optional<std::uint64_t>> {
-    using Base = ColumnLayouts;
-    static constexpr auto source_column() noexcept { return Base::column<0>(); }
-    static constexpr auto operation_column() noexcept { return Base::column<1>(); }
-    static constexpr auto bytes_column() noexcept { return Base::column<2>(); }
-    static constexpr auto bits_column() noexcept { return Base::column<3>(); }
-    static constexpr auto cache_column() noexcept { return Base::column<4>(); }
-    static constexpr auto pages_column() noexcept { return Base::column<5>(); }
-    static constexpr auto capacity_slack_bytes_column() noexcept { return Base::column<6>(); }
+    static constexpr std::size_t source_column{0};
+    static constexpr std::size_t operation_column{1};
+    static constexpr std::size_t bytes_column{2};
+    static constexpr std::size_t bits_column{3};
+    static constexpr std::size_t cache_column{4};
+    static constexpr std::size_t pages_column{5};
+    static constexpr std::size_t capacity_slack_bytes_column{6};
 };
 
 /* **************************************** */
@@ -190,14 +189,17 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto source() const { return this->column(Layout::source_column()); }
-    auto operation() const { return this->column(Layout::operation_column()); }
-    auto bytes() const { return this->column(Layout::bytes_column()); }
-    auto bits() const { return this->column(Layout::bits_column()); }
-    auto cache() const { return this->column(Layout::cache_column()); }
-    auto pages() const { return this->column(Layout::pages_column()); }
+    auto source() const { return this->template column<std::size_t>(Layout::source_column); }
+    auto operation() const {
+        return this->template column<AccessOperation>(Layout::operation_column);
+    }
+    auto bytes() const { return this->template column<PayloadFootprint>(Layout::bytes_column); }
+    auto bits() const { return this->template column<PayloadFootprint>(Layout::bits_column); }
+    auto cache() const { return this->template column<RegionFootprint>(Layout::cache_column); }
+    auto pages() const { return this->template column<RegionFootprint>(Layout::pages_column); }
     auto capacity_slack_bytes() const {
-        return this->column(Layout::capacity_slack_bytes_column());
+        return this->template column<std::optional<std::uint64_t>>(
+            Layout::capacity_slack_bytes_column);
     }
     template <typename Func>
     void each_column(Func&& func) const {
@@ -212,14 +214,16 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     auto resolve() const -> std::conditional_t<Const,
                                                ::ioj::layout::selection_table::ResolvedConstView,
                                                ::ioj::layout::selection_table::ResolvedView> {
-        return {this->column(Layout::source_column()).data(),
-                this->column(Layout::operation_column()).data(),
-                this->column(Layout::bytes_column()).data(),
-                this->column(Layout::bits_column()).data(),
-                this->column(Layout::cache_column()).data(),
-                this->column(Layout::pages_column()).data(),
-                this->column(Layout::capacity_slack_bytes_column()).data(),
-                this->num()};
+        return {
+            this->template column<std::size_t>(Layout::source_column).data(),
+            this->template column<AccessOperation>(Layout::operation_column).data(),
+            this->template column<PayloadFootprint>(Layout::bytes_column).data(),
+            this->template column<PayloadFootprint>(Layout::bits_column).data(),
+            this->template column<RegionFootprint>(Layout::cache_column).data(),
+            this->template column<RegionFootprint>(Layout::pages_column).data(),
+            this->template column<std::optional<std::uint64_t>>(Layout::capacity_slack_bytes_column)
+                .data(),
+            this->num()};
     }
 };
 struct ConstView : ViewImpl<true> {
@@ -336,14 +340,7 @@ struct SelectionTable
     template <typename Byte>
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
-        ioj::native_soa::LayoutCursor cursor{blocks};
-        return {cursor.column_pointer(data, Layout::source_column()),
-                cursor.column_pointer(data, Layout::operation_column()),
-                cursor.column_pointer(data, Layout::bytes_column()),
-                cursor.column_pointer(data, Layout::bits_column()),
-                cursor.column_pointer(data, Layout::cache_column()),
-                cursor.column_pointer(data, Layout::pages_column()),
-                cursor.column_pointer(data, Layout::capacity_slack_bytes_column())};
+        return Layout::make_data<DataPointers<Byte>>(data, blocks);
     }
 
     /* **************************************** */

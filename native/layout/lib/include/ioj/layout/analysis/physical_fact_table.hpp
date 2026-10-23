@@ -34,13 +34,12 @@ struct Layout
                                                    std::optional<std::uint32_t>,
                                                    lispb::StringId,
                                                    FactOrigin> {
-    using Base = ColumnLayouts;
-    static constexpr auto size_bytes_column() noexcept { return Base::column<0>(); }
-    static constexpr auto alignment_bytes_column() noexcept { return Base::column<1>(); }
-    static constexpr auto signedness_column() noexcept { return Base::column<2>(); }
-    static constexpr auto unsigned_value_bits_column() noexcept { return Base::column<3>(); }
-    static constexpr auto provenance_column() noexcept { return Base::column<4>(); }
-    static constexpr auto origin_column() noexcept { return Base::column<5>(); }
+    static constexpr std::size_t size_bytes_column{0};
+    static constexpr std::size_t alignment_bytes_column{1};
+    static constexpr std::size_t signedness_column{2};
+    static constexpr std::size_t unsigned_value_bits_column{3};
+    static constexpr std::size_t provenance_column{4};
+    static constexpr std::size_t origin_column{5};
 };
 
 /* **************************************** */
@@ -187,12 +186,23 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto size_bytes() const { return this->column(Layout::size_bytes_column()); }
-    auto alignment_bytes() const { return this->column(Layout::alignment_bytes_column()); }
-    auto signedness() const { return this->column(Layout::signedness_column()); }
-    auto unsigned_value_bits() const { return this->column(Layout::unsigned_value_bits_column()); }
-    auto provenance() const { return this->column(Layout::provenance_column()); }
-    auto origin() const { return this->column(Layout::origin_column()); }
+    auto size_bytes() const {
+        return this->template column<std::uint64_t>(Layout::size_bytes_column);
+    }
+    auto alignment_bytes() const {
+        return this->template column<std::uint64_t>(Layout::alignment_bytes_column);
+    }
+    auto signedness() const {
+        return this->template column<lispb::schema::EnumSignedness>(Layout::signedness_column);
+    }
+    auto unsigned_value_bits() const {
+        return this->template column<std::optional<std::uint32_t>>(
+            Layout::unsigned_value_bits_column);
+    }
+    auto provenance() const {
+        return this->template column<lispb::StringId>(Layout::provenance_column);
+    }
+    auto origin() const { return this->template column<FactOrigin>(Layout::origin_column); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(size_bytes());
@@ -206,13 +216,15 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
         -> std::conditional_t<Const,
                               ::ioj::layout::physical_fact_table::ResolvedConstView,
                               ::ioj::layout::physical_fact_table::ResolvedView> {
-        return {this->column(Layout::size_bytes_column()).data(),
-                this->column(Layout::alignment_bytes_column()).data(),
-                this->column(Layout::signedness_column()).data(),
-                this->column(Layout::unsigned_value_bits_column()).data(),
-                this->column(Layout::provenance_column()).data(),
-                this->column(Layout::origin_column()).data(),
-                this->num()};
+        return {
+            this->template column<std::uint64_t>(Layout::size_bytes_column).data(),
+            this->template column<std::uint64_t>(Layout::alignment_bytes_column).data(),
+            this->template column<lispb::schema::EnumSignedness>(Layout::signedness_column).data(),
+            this->template column<std::optional<std::uint32_t>>(Layout::unsigned_value_bits_column)
+                .data(),
+            this->template column<lispb::StringId>(Layout::provenance_column).data(),
+            this->template column<FactOrigin>(Layout::origin_column).data(),
+            this->num()};
     }
 };
 struct ConstView : ViewImpl<true> {
@@ -324,13 +336,7 @@ struct PhysicalFactTable
     template <typename Byte>
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
-        ioj::native_soa::LayoutCursor cursor{blocks};
-        return {cursor.column_pointer(data, Layout::size_bytes_column()),
-                cursor.column_pointer(data, Layout::alignment_bytes_column()),
-                cursor.column_pointer(data, Layout::signedness_column()),
-                cursor.column_pointer(data, Layout::unsigned_value_bits_column()),
-                cursor.column_pointer(data, Layout::provenance_column()),
-                cursor.column_pointer(data, Layout::origin_column())};
+        return Layout::make_data<DataPointers<Byte>>(data, blocks);
     }
 
     /* **************************************** */

@@ -26,11 +26,10 @@ struct ResolvedConstView;
 /* **************************************** */
 struct Layout
     : ioj::single_allocation_layout::ColumnLayouts<DeathReason, EntityId, EntityId, Vector3f> {
-    using Base = ColumnLayouts;
-    static constexpr auto reasons_column() noexcept { return Base::column<0>(); }
-    static constexpr auto victims_column() noexcept { return Base::column<1>(); }
-    static constexpr auto killers_column() noexcept { return Base::column<2>(); }
-    static constexpr auto locations_column() noexcept { return Base::column<3>(); }
+    static constexpr std::size_t reasons_column{0};
+    static constexpr std::size_t victims_column{1};
+    static constexpr std::size_t killers_column{2};
+    static constexpr std::size_t locations_column{3};
 };
 
 /* **************************************** */
@@ -144,10 +143,10 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto reasons() const { return this->column(Layout::reasons_column()); }
-    auto victims() const { return this->column(Layout::victims_column()); }
-    auto killers() const { return this->column(Layout::killers_column()); }
-    auto locations() const { return this->column(Layout::locations_column()); }
+    auto reasons() const { return this->template column<DeathReason>(Layout::reasons_column); }
+    auto victims() const { return this->template column<EntityId>(Layout::victims_column); }
+    auto killers() const { return this->template column<EntityId>(Layout::killers_column); }
+    auto locations() const { return this->template column<Vector3f>(Layout::locations_column); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(reasons());
@@ -158,10 +157,10 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     auto resolve() const -> std::conditional_t<Const,
                                                ::ioj::sim::entity_death_info::ResolvedConstView,
                                                ::ioj::sim::entity_death_info::ResolvedView> {
-        return {this->column(Layout::reasons_column()).data(),
-                this->column(Layout::victims_column()).data(),
-                this->column(Layout::killers_column()).data(),
-                this->column(Layout::locations_column()).data(),
+        return {this->template column<DeathReason>(Layout::reasons_column).data(),
+                this->template column<EntityId>(Layout::victims_column).data(),
+                this->template column<EntityId>(Layout::killers_column).data(),
+                this->template column<Vector3f>(Layout::locations_column).data(),
                 this->num()};
     }
 };
@@ -261,11 +260,7 @@ struct EntityDeathInfo
     template <typename Byte>
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
-        ioj::native_soa::LayoutCursor cursor{blocks};
-        return {cursor.column_pointer(data, Layout::reasons_column()),
-                cursor.column_pointer(data, Layout::victims_column()),
-                cursor.column_pointer(data, Layout::killers_column()),
-                cursor.column_pointer(data, Layout::locations_column())};
+        return Layout::make_data<DataPointers<Byte>>(data, blocks);
     }
 
     /* **************************************** */

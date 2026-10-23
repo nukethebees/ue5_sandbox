@@ -760,8 +760,6 @@ TEST(NativeSoa, ColumnOffsetsMatchSequentialLayoutAcrossAlignments) {
     };
     using Layout =
         ColumnLayouts<std::int32_t, std::int32_t, Overaligned, std::byte, Overaligned, float>;
-    static_assert(std::is_same_v<Layout::Element<2>, Overaligned>);
-    static_assert(std::is_same_v<decltype(Layout::column<3>())::value_type, std::byte>);
     static_assert(Layout::metadata.first_non_linear == 4);
     static_assert(Layout::allocation_alignment == 256);
 
@@ -771,30 +769,27 @@ TEST(NativeSoa, ColumnOffsetsMatchSequentialLayoutAcrossAlignments) {
     }()};
     static_assert(copied.columns[4].block_offset == Layout::metadata.columns[4].block_offset);
     static_assert(copied.columns[4].gap_offset == Layout::metadata.columns[4].gap_offset);
-    constexpr auto descriptor{Layout::column<4>()};
-    constexpr auto copied_descriptor{descriptor};
-    static_assert(copied_descriptor.offset(3) == descriptor.offset(3));
+    static_assert(copied.offset(4, 3) == Layout::offset(4, 3));
 
     for (std::size_t const blocks : {0, 1, 2, 3, 16, 1024}) {
         SCOPED_TRACE(blocks);
         LayoutCursor cursor{blocks};
         std::size_t next{};
-        auto check = [&](auto column) {
-            using T = typename decltype(column)::value_type;
+        auto check = [&]<typename T>(std::size_t index) {
             auto const alignment{std::max(std::size_t{64}, alignof(T))};
             auto const expected{((next + alignment - 1) / alignment) * alignment};
-            EXPECT_EQ(column.offset(blocks), expected);
-            EXPECT_EQ(cursor.advance(column), expected);
-            EXPECT_EQ(column.alignment, alignment);
+            EXPECT_EQ(Layout::offset(index, blocks), expected);
+            EXPECT_EQ(cursor.advance(sizeof(T), alignof(T)), expected);
+            EXPECT_EQ(Layout::metadata.columns[index].alignment, alignment);
+            EXPECT_EQ(Layout::metadata.columns[index].element_size, sizeof(T));
             next = expected + blocks * 64 * sizeof(T) + 192;
-            EXPECT_EQ(column.data_end(blocks), next - 192);
         };
-        check(Layout::column<0>());
-        check(Layout::column<1>());
-        check(Layout::column<2>());
-        check(Layout::column<3>());
-        check(Layout::column<4>());
-        check(Layout::column<5>());
+        check.operator()<std::int32_t>(0);
+        check.operator()<std::int32_t>(1);
+        check.operator()<Overaligned>(2);
+        check.operator()<std::byte>(3);
+        check.operator()<Overaligned>(4);
+        check.operator()<float>(5);
         EXPECT_EQ(Layout::layout_bytes(blocks), blocks == 0 ? 0 : next - 192);
         EXPECT_LE(Layout::layout_bytes(blocks), blocks * Layout::capacity_block_bound);
     }
@@ -839,30 +834,29 @@ TEST(NativeSoa, IndexedLayoutsPreserveEveryNestedPhysicalColumn) {
         std::size_t next{};
         std::size_t count{};
         std::size_t alignment{1};
-        auto check = [&](auto column) {
-            using T = typename decltype(column)::value_type;
+        auto check = [&]<typename T>(std::size_t index) {
             auto const column_alignment{std::max(std::size_t{64}, alignof(T))};
             auto const expected{((next + column_alignment - 1) / column_alignment) *
                                 column_alignment};
-            EXPECT_EQ(column.offset(blocks), expected);
-            EXPECT_EQ(column.alignment, column_alignment);
-            EXPECT_EQ(column.index, count++);
+            EXPECT_EQ(Layout::offset(index, blocks), expected);
+            EXPECT_EQ(Layout::metadata.columns[index].alignment, column_alignment);
+            EXPECT_EQ(Layout::metadata.columns[index].element_size, sizeof(T));
+            EXPECT_EQ(index, count++);
             alignment = std::max(alignment, column_alignment);
             next = expected + blocks * 64 * sizeof(T) + 192;
-            EXPECT_EQ(column.data_end(blocks), next - 192);
         };
-        check(Layout::bytes_column());
-        check(Layout::odd_first_column());
-        check(Layout::odd_second_column());
-        check(Layout::aligned32_column());
-        check(Layout::nested_starts_xs_column());
-        check(Layout::nested_starts_ys_column());
-        check(Layout::nested_starts_zs_column());
-        check(Layout::nested_ends_xs_column());
-        check(Layout::nested_ends_ys_column());
-        check(Layout::nested_ends_zs_column());
-        check(Layout::aligned64_column());
-        check(Layout::aligned256_column());
+        check.operator()<std::uint8_t>(Layout::bytes_column);
+        check.operator()<OddBytes>(Layout::odd_first_column);
+        check.operator()<OddBytes>(Layout::odd_second_column);
+        check.operator()<Aligned32>(Layout::aligned32_column);
+        check.operator()<float>(Layout::nested_starts_xs_column);
+        check.operator()<float>(Layout::nested_starts_ys_column);
+        check.operator()<float>(Layout::nested_starts_zs_column);
+        check.operator()<float>(Layout::nested_ends_xs_column);
+        check.operator()<float>(Layout::nested_ends_ys_column);
+        check.operator()<float>(Layout::nested_ends_zs_column);
+        check.operator()<Aligned64>(Layout::aligned64_column);
+        check.operator()<Aligned256>(Layout::aligned256_column);
         EXPECT_EQ(count, Layout::num_columns);
         EXPECT_EQ(alignment, Layout::allocation_alignment);
         EXPECT_EQ(Layout::layout_bytes(blocks), blocks == 0 ? 0 : next - 192);
@@ -929,8 +923,8 @@ TEST(NativeSoa, OddSizedGroupsPreservePaddedStridesAcrossGrowth) {
         auto const view{owner.view_odd()};
         auto const blocks{owner.capacity() / SingleAlignmentRows::capacity_granularity};
         using Layout = SingleAlignmentRows::Layout;
-        auto const stride{Layout::odd_second_column().offset(blocks) -
-                          Layout::odd_first_column().offset(blocks)};
+        auto const stride{Layout::offset(Layout::odd_second_column, blocks) -
+                          Layout::offset(Layout::odd_first_column, blocks)};
         EXPECT_EQ(reinterpret_cast<std::uintptr_t>(view.second().data()) -
                       reinterpret_cast<std::uintptr_t>(view.first().data()),
                   stride);

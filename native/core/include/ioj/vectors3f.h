@@ -23,10 +23,9 @@ struct ResolvedConstView;
 // Layout
 /* **************************************** */
 struct Layout : ioj::single_allocation_layout::ColumnLayouts<float, float, float> {
-    using Base = ColumnLayouts;
-    static constexpr auto xs_column() noexcept { return Base::column<0>(); }
-    static constexpr auto ys_column() noexcept { return Base::column<1>(); }
-    static constexpr auto zs_column() noexcept { return Base::column<2>(); }
+    static constexpr std::size_t xs_column{0};
+    static constexpr std::size_t ys_column{1};
+    static constexpr std::size_t zs_column{2};
 };
 
 /* **************************************** */
@@ -134,8 +133,8 @@ struct ViewImpl : ioj::soa_storage_detail::StridedViewBase<float, Const> {
                                      ioj::soa_storage_detail::StorageState const,
                                      ioj::soa_storage_detail::StorageState>;
     ViewImpl(State* state, std::uint32_t offset, std::uint32_t count)
-        : Base{ioj::soa_storage_detail::make_strided_view<Base>(
-              state, offset, count, Layout::xs_column(), Layout::ys_column())} {}
+        : Base{ioj::soa_storage_detail::make_strided_view<Base, Layout>(
+              state, offset, count, Layout::xs_column, Layout::ys_column)} {}
     template <bool Enabled = Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
@@ -257,10 +256,7 @@ struct Vectors3f
     template <typename Byte>
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
-        ioj::native_soa::LayoutCursor cursor{blocks};
-        return {cursor.column_pointer(data, Layout::xs_column()),
-                cursor.column_pointer(data, Layout::ys_column()),
-                cursor.column_pointer(data, Layout::zs_column())};
+        return Layout::make_data<DataPointers<Byte>>(data, blocks);
     }
 
     /* **************************************** */

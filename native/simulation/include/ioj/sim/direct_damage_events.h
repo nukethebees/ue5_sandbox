@@ -24,10 +24,9 @@ struct ResolvedConstView;
 // Layout
 /* **************************************** */
 struct Layout : ioj::single_allocation_layout::ColumnLayouts<EntityId, std::int32_t, EntityId> {
-    using Base = ColumnLayouts;
-    static constexpr auto damaged_entities_column() noexcept { return Base::column<0>(); }
-    static constexpr auto damage_amounts_column() noexcept { return Base::column<1>(); }
-    static constexpr auto instigators_column() noexcept { return Base::column<2>(); }
+    static constexpr std::size_t damaged_entities_column{0};
+    static constexpr std::size_t damage_amounts_column{1};
+    static constexpr std::size_t instigators_column{2};
 };
 
 /* **************************************** */
@@ -130,9 +129,13 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto damaged_entities() const { return this->column(Layout::damaged_entities_column()); }
-    auto damage_amounts() const { return this->column(Layout::damage_amounts_column()); }
-    auto instigators() const { return this->column(Layout::instigators_column()); }
+    auto damaged_entities() const {
+        return this->template column<EntityId>(Layout::damaged_entities_column);
+    }
+    auto damage_amounts() const {
+        return this->template column<std::int32_t>(Layout::damage_amounts_column);
+    }
+    auto instigators() const { return this->template column<EntityId>(Layout::instigators_column); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(damaged_entities());
@@ -142,9 +145,9 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     auto resolve() const -> std::conditional_t<Const,
                                                ::ioj::sim::direct_damage_events::ResolvedConstView,
                                                ::ioj::sim::direct_damage_events::ResolvedView> {
-        return {this->column(Layout::damaged_entities_column()).data(),
-                this->column(Layout::damage_amounts_column()).data(),
-                this->column(Layout::instigators_column()).data(),
+        return {this->template column<EntityId>(Layout::damaged_entities_column).data(),
+                this->template column<std::int32_t>(Layout::damage_amounts_column).data(),
+                this->template column<EntityId>(Layout::instigators_column).data(),
                 this->num()};
     }
 };
@@ -240,10 +243,7 @@ struct DirectDamageEvents
     template <typename Byte>
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
-        ioj::native_soa::LayoutCursor cursor{blocks};
-        return {cursor.column_pointer(data, Layout::damaged_entities_column()),
-                cursor.column_pointer(data, Layout::damage_amounts_column()),
-                cursor.column_pointer(data, Layout::instigators_column())};
+        return Layout::make_data<DataPointers<Byte>>(data, blocks);
     }
 
     /* **************************************** */

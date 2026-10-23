@@ -41,8 +41,8 @@ TEST(SingleAllocationSoa, OrdinarySchemasGenerateNativeOwnersAndViews) {
         std::string::npos);
     EXPECT_NE(output.find("Element<example::Base>* shadowed_types"), std::string::npos);
     EXPECT_NE(output.find("auto ids() const"), std::string::npos);
-    EXPECT_NE(output.find("ids_column()"), std::string::npos);
-    EXPECT_NE(output.find("nested_xs_column()"), std::string::npos);
+    EXPECT_NE(output.find("ids_column{0}"), std::string::npos);
+    EXPECT_NE(output.find("nested_xs_column{1}"), std::string::npos);
     EXPECT_EQ(output.find("LayoutColumns"), std::string::npos);
     EXPECT_NE(output.find("CompactViewBase<Const>"), std::string::npos);
     EXPECT_EQ(output.find("State* state_{};"), std::string::npos);
@@ -220,8 +220,8 @@ TEST(SingleAllocationSoa, FlattensMultipleLevelsAndRepeatedNestedSchemas) {
         (struct Grandparent
           (member first nested Rows)
           (member second nested Rows)))")};
-    EXPECT_NE(output.find("second_nested_wide_column()"), std::string::npos);
-    EXPECT_NE(output.find("Layout::second_nested_wide_column()"), std::string::npos);
+    EXPECT_NE(output.find("second_nested_wide_column{"), std::string::npos);
+    EXPECT_NE(output.find("Layout::second_nested_wide_column"), std::string::npos);
     EXPECT_EQ(output.find("last_column()"), std::string::npos);
     EXPECT_EQ(output.find("GrandparentView_first"), std::string::npos);
     EXPECT_EQ(output.find("GrandparentView_second_nested"), std::string::npos);

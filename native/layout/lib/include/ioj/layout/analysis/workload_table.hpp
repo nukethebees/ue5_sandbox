@@ -47,25 +47,22 @@ struct Layout
                                                    std::optional<std::uint64_t>,
                                                    std::optional<std::uint64_t>,
                                                    std::optional<std::uint64_t>> {
-    using Base = ColumnLayouts;
-    static constexpr auto analysis_column() noexcept { return Base::column<0>(); }
-    static constexpr auto selections_column() noexcept { return Base::column<1>(); }
-    static constexpr auto element_count_column() noexcept { return Base::column<2>(); }
-    static constexpr auto multiplicity_column() noexcept { return Base::column<3>(); }
-    static constexpr auto bytes_column() noexcept { return Base::column<4>(); }
-    static constexpr auto bits_column() noexcept { return Base::column<5>(); }
-    static constexpr auto cache_column() noexcept { return Base::column<6>(); }
-    static constexpr auto pages_column() noexcept { return Base::column<7>(); }
-    static constexpr auto cache_capacity_column() noexcept { return Base::column<8>(); }
-    static constexpr auto packed_waste_column() noexcept { return Base::column<9>(); }
-    static constexpr auto footprint_exact_column() noexcept { return Base::column<10>(); }
-    static constexpr auto storage_bytes_column() noexcept { return Base::column<11>(); }
-    static constexpr auto full_logical_payload_bytes_column() noexcept {
-        return Base::column<12>();
-    }
-    static constexpr auto unselected_payload_bytes_column() noexcept { return Base::column<13>(); }
-    static constexpr auto allocated_payload_bytes_column() noexcept { return Base::column<14>(); }
-    static constexpr auto capacity_slack_bytes_column() noexcept { return Base::column<15>(); }
+    static constexpr std::size_t analysis_column{0};
+    static constexpr std::size_t selections_column{1};
+    static constexpr std::size_t element_count_column{2};
+    static constexpr std::size_t multiplicity_column{3};
+    static constexpr std::size_t bytes_column{4};
+    static constexpr std::size_t bits_column{5};
+    static constexpr std::size_t cache_column{6};
+    static constexpr std::size_t pages_column{7};
+    static constexpr std::size_t cache_capacity_column{8};
+    static constexpr std::size_t packed_waste_column{9};
+    static constexpr std::size_t footprint_exact_column{10};
+    static constexpr std::size_t storage_bytes_column{11};
+    static constexpr std::size_t full_logical_payload_bytes_column{12};
+    static constexpr std::size_t unselected_payload_bytes_column{13};
+    static constexpr std::size_t allocated_payload_bytes_column{14};
+    static constexpr std::size_t capacity_slack_bytes_column{15};
 };
 
 /* **************************************** */
@@ -347,29 +344,45 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto analysis() const { return this->column(Layout::analysis_column()); }
-    auto selections() const { return this->column(Layout::selections_column()); }
-    auto element_count() const { return this->column(Layout::element_count_column()); }
-    auto multiplicity() const { return this->column(Layout::multiplicity_column()); }
-    auto bytes() const { return this->column(Layout::bytes_column()); }
-    auto bits() const { return this->column(Layout::bits_column()); }
-    auto cache() const { return this->column(Layout::cache_column()); }
-    auto pages() const { return this->column(Layout::pages_column()); }
-    auto cache_capacity() const { return this->column(Layout::cache_capacity_column()); }
-    auto packed_waste() const { return this->column(Layout::packed_waste_column()); }
-    auto footprint_exact() const { return this->column(Layout::footprint_exact_column()); }
-    auto storage_bytes() const { return this->column(Layout::storage_bytes_column()); }
+    auto analysis() const { return this->template column<AnalysisId>(Layout::analysis_column); }
+    auto selections() const { return this->template column<RowRange>(Layout::selections_column); }
+    auto element_count() const {
+        return this->template column<std::uint64_t>(Layout::element_count_column);
+    }
+    auto multiplicity() const {
+        return this->template column<std::uint64_t>(Layout::multiplicity_column);
+    }
+    auto bytes() const { return this->template column<PayloadFootprint>(Layout::bytes_column); }
+    auto bits() const { return this->template column<PayloadFootprint>(Layout::bits_column); }
+    auto cache() const { return this->template column<RegionFootprint>(Layout::cache_column); }
+    auto pages() const { return this->template column<RegionFootprint>(Layout::pages_column); }
+    auto cache_capacity() const {
+        return this->template column<CacheCapacityAnalysis>(Layout::cache_capacity_column);
+    }
+    auto packed_waste() const {
+        return this->template column<PackedAccessWaste>(Layout::packed_waste_column);
+    }
+    auto footprint_exact() const {
+        return this->template column<std::uint8_t>(Layout::footprint_exact_column);
+    }
+    auto storage_bytes() const {
+        return this->template column<std::optional<std::uint64_t>>(Layout::storage_bytes_column);
+    }
     auto full_logical_payload_bytes() const {
-        return this->column(Layout::full_logical_payload_bytes_column());
+        return this->template column<std::optional<std::uint64_t>>(
+            Layout::full_logical_payload_bytes_column);
     }
     auto unselected_payload_bytes() const {
-        return this->column(Layout::unselected_payload_bytes_column());
+        return this->template column<std::optional<std::uint64_t>>(
+            Layout::unselected_payload_bytes_column);
     }
     auto allocated_payload_bytes() const {
-        return this->column(Layout::allocated_payload_bytes_column());
+        return this->template column<std::optional<std::uint64_t>>(
+            Layout::allocated_payload_bytes_column);
     }
     auto capacity_slack_bytes() const {
-        return this->column(Layout::capacity_slack_bytes_column());
+        return this->template column<std::optional<std::uint64_t>>(
+            Layout::capacity_slack_bytes_column);
     }
     template <typename Func>
     void each_column(Func&& func) const {
@@ -393,23 +406,32 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     auto resolve() const -> std::conditional_t<Const,
                                                ::ioj::layout::workload_table::ResolvedConstView,
                                                ::ioj::layout::workload_table::ResolvedView> {
-        return {this->column(Layout::analysis_column()).data(),
-                this->column(Layout::selections_column()).data(),
-                this->column(Layout::element_count_column()).data(),
-                this->column(Layout::multiplicity_column()).data(),
-                this->column(Layout::bytes_column()).data(),
-                this->column(Layout::bits_column()).data(),
-                this->column(Layout::cache_column()).data(),
-                this->column(Layout::pages_column()).data(),
-                this->column(Layout::cache_capacity_column()).data(),
-                this->column(Layout::packed_waste_column()).data(),
-                this->column(Layout::footprint_exact_column()).data(),
-                this->column(Layout::storage_bytes_column()).data(),
-                this->column(Layout::full_logical_payload_bytes_column()).data(),
-                this->column(Layout::unselected_payload_bytes_column()).data(),
-                this->column(Layout::allocated_payload_bytes_column()).data(),
-                this->column(Layout::capacity_slack_bytes_column()).data(),
-                this->num()};
+        return {
+            this->template column<AnalysisId>(Layout::analysis_column).data(),
+            this->template column<RowRange>(Layout::selections_column).data(),
+            this->template column<std::uint64_t>(Layout::element_count_column).data(),
+            this->template column<std::uint64_t>(Layout::multiplicity_column).data(),
+            this->template column<PayloadFootprint>(Layout::bytes_column).data(),
+            this->template column<PayloadFootprint>(Layout::bits_column).data(),
+            this->template column<RegionFootprint>(Layout::cache_column).data(),
+            this->template column<RegionFootprint>(Layout::pages_column).data(),
+            this->template column<CacheCapacityAnalysis>(Layout::cache_capacity_column).data(),
+            this->template column<PackedAccessWaste>(Layout::packed_waste_column).data(),
+            this->template column<std::uint8_t>(Layout::footprint_exact_column).data(),
+            this->template column<std::optional<std::uint64_t>>(Layout::storage_bytes_column)
+                .data(),
+            this->template column<std::optional<std::uint64_t>>(
+                    Layout::full_logical_payload_bytes_column)
+                .data(),
+            this->template column<std::optional<std::uint64_t>>(
+                    Layout::unselected_payload_bytes_column)
+                .data(),
+            this->template column<std::optional<std::uint64_t>>(
+                    Layout::allocated_payload_bytes_column)
+                .data(),
+            this->template column<std::optional<std::uint64_t>>(Layout::capacity_slack_bytes_column)
+                .data(),
+            this->num()};
     }
 };
 struct ConstView : ViewImpl<true> {
@@ -571,23 +593,7 @@ struct WorkloadTable
     template <typename Byte>
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
-        ioj::native_soa::LayoutCursor cursor{blocks};
-        return {cursor.column_pointer(data, Layout::analysis_column()),
-                cursor.column_pointer(data, Layout::selections_column()),
-                cursor.column_pointer(data, Layout::element_count_column()),
-                cursor.column_pointer(data, Layout::multiplicity_column()),
-                cursor.column_pointer(data, Layout::bytes_column()),
-                cursor.column_pointer(data, Layout::bits_column()),
-                cursor.column_pointer(data, Layout::cache_column()),
-                cursor.column_pointer(data, Layout::pages_column()),
-                cursor.column_pointer(data, Layout::cache_capacity_column()),
-                cursor.column_pointer(data, Layout::packed_waste_column()),
-                cursor.column_pointer(data, Layout::footprint_exact_column()),
-                cursor.column_pointer(data, Layout::storage_bytes_column()),
-                cursor.column_pointer(data, Layout::full_logical_payload_bytes_column()),
-                cursor.column_pointer(data, Layout::unselected_payload_bytes_column()),
-                cursor.column_pointer(data, Layout::allocated_payload_bytes_column()),
-                cursor.column_pointer(data, Layout::capacity_slack_bytes_column())};
+        return Layout::make_data<DataPointers<Byte>>(data, blocks);
     }
 
     /* **************************************** */

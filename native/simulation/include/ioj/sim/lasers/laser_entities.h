@@ -45,23 +45,22 @@ struct Layout
                                                    EntityId,
                                                    float,
                                                    float> {
-    using Base = ColumnLayouts;
-    static constexpr auto active_column() noexcept { return Base::column<0>(); }
-    static constexpr auto sources_column() noexcept { return Base::column<1>(); }
-    static constexpr auto locations_xs_column() noexcept { return Base::column<2>(); }
-    static constexpr auto locations_ys_column() noexcept { return Base::column<3>(); }
-    static constexpr auto locations_zs_column() noexcept { return Base::column<4>(); }
-    static constexpr auto rotations_pitches_column() noexcept { return Base::column<5>(); }
-    static constexpr auto rotations_yaws_column() noexcept { return Base::column<6>(); }
-    static constexpr auto rotations_rolls_column() noexcept { return Base::column<7>(); }
-    static constexpr auto velocities_xs_column() noexcept { return Base::column<8>(); }
-    static constexpr auto velocities_ys_column() noexcept { return Base::column<9>(); }
-    static constexpr auto velocities_zs_column() noexcept { return Base::column<10>(); }
-    static constexpr auto damages_column() noexcept { return Base::column<11>(); }
-    static constexpr auto lifetimes_remaining_column() noexcept { return Base::column<12>(); }
-    static constexpr auto instigator_ids_column() noexcept { return Base::column<13>(); }
-    static constexpr auto initial_lifetimes_column() noexcept { return Base::column<14>(); }
-    static constexpr auto spawn_times_column() noexcept { return Base::column<15>(); }
+    static constexpr std::size_t active_column{0};
+    static constexpr std::size_t sources_column{1};
+    static constexpr std::size_t locations_xs_column{2};
+    static constexpr std::size_t locations_ys_column{3};
+    static constexpr std::size_t locations_zs_column{4};
+    static constexpr std::size_t rotations_pitches_column{5};
+    static constexpr std::size_t rotations_yaws_column{6};
+    static constexpr std::size_t rotations_rolls_column{7};
+    static constexpr std::size_t velocities_xs_column{8};
+    static constexpr std::size_t velocities_ys_column{9};
+    static constexpr std::size_t velocities_zs_column{10};
+    static constexpr std::size_t damages_column{11};
+    static constexpr std::size_t lifetimes_remaining_column{12};
+    static constexpr std::size_t instigator_ids_column{13};
+    static constexpr std::size_t initial_lifetimes_column{14};
+    static constexpr std::size_t spawn_times_column{15};
 };
 
 /* **************************************** */
@@ -365,43 +364,49 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto active() const { return this->column(Layout::active_column()); }
-    auto sources() const { return this->column(Layout::sources_column()); }
+    auto active() const { return this->template column<std::uint8_t>(Layout::active_column); }
+    auto sources() const { return this->template column<LaserSource>(Layout::sources_column); }
     auto view_locations() const
         -> std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View> {
         return ioj::soa_storage_detail::make_strided_view<
-            std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View>>(
-            this->state_,
-            this->offset_,
-            this->num(),
-            Layout::locations_xs_column(),
-            Layout::locations_ys_column());
+            std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View>,
+            Layout>(this->state_,
+                    this->offset_,
+                    this->num(),
+                    Layout::locations_xs_column,
+                    Layout::locations_ys_column);
     }
     auto view_rotations() const
         -> std::conditional_t<Const, ::ioj::rotators3f::ConstView, ::ioj::rotators3f::View> {
         return ioj::soa_storage_detail::make_strided_view<
-            std::conditional_t<Const, ::ioj::rotators3f::ConstView, ::ioj::rotators3f::View>>(
-            this->state_,
-            this->offset_,
-            this->num(),
-            Layout::rotations_pitches_column(),
-            Layout::rotations_yaws_column());
+            std::conditional_t<Const, ::ioj::rotators3f::ConstView, ::ioj::rotators3f::View>,
+            Layout>(this->state_,
+                    this->offset_,
+                    this->num(),
+                    Layout::rotations_pitches_column,
+                    Layout::rotations_yaws_column);
     }
     auto view_velocities() const
         -> std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View> {
         return ioj::soa_storage_detail::make_strided_view<
-            std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View>>(
-            this->state_,
-            this->offset_,
-            this->num(),
-            Layout::velocities_xs_column(),
-            Layout::velocities_ys_column());
+            std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View>,
+            Layout>(this->state_,
+                    this->offset_,
+                    this->num(),
+                    Layout::velocities_xs_column,
+                    Layout::velocities_ys_column);
     }
-    auto damages() const { return this->column(Layout::damages_column()); }
-    auto lifetimes_remaining() const { return this->column(Layout::lifetimes_remaining_column()); }
-    auto instigator_ids() const { return this->column(Layout::instigator_ids_column()); }
-    auto initial_lifetimes() const { return this->column(Layout::initial_lifetimes_column()); }
-    auto spawn_times() const { return this->column(Layout::spawn_times_column()); }
+    auto damages() const { return this->template column<std::int32_t>(Layout::damages_column); }
+    auto lifetimes_remaining() const {
+        return this->template column<float>(Layout::lifetimes_remaining_column);
+    }
+    auto instigator_ids() const {
+        return this->template column<EntityId>(Layout::instigator_ids_column);
+    }
+    auto initial_lifetimes() const {
+        return this->template column<float>(Layout::initial_lifetimes_column);
+    }
+    auto spawn_times() const { return this->template column<float>(Layout::spawn_times_column); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(active());
@@ -428,22 +433,22 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
         -> std::conditional_t<Const,
                               ::ioj::sim::lasers::laser_entities::ResolvedConstView,
                               ::ioj::sim::lasers::laser_entities::ResolvedView> {
-        return {this->column(Layout::active_column()).data(),
-                this->column(Layout::sources_column()).data(),
-                this->column(Layout::locations_xs_column()).data(),
-                this->column(Layout::locations_ys_column()).data(),
-                this->column(Layout::locations_zs_column()).data(),
-                this->column(Layout::rotations_pitches_column()).data(),
-                this->column(Layout::rotations_yaws_column()).data(),
-                this->column(Layout::rotations_rolls_column()).data(),
-                this->column(Layout::velocities_xs_column()).data(),
-                this->column(Layout::velocities_ys_column()).data(),
-                this->column(Layout::velocities_zs_column()).data(),
-                this->column(Layout::damages_column()).data(),
-                this->column(Layout::lifetimes_remaining_column()).data(),
-                this->column(Layout::instigator_ids_column()).data(),
-                this->column(Layout::initial_lifetimes_column()).data(),
-                this->column(Layout::spawn_times_column()).data(),
+        return {this->template column<std::uint8_t>(Layout::active_column).data(),
+                this->template column<LaserSource>(Layout::sources_column).data(),
+                this->template column<float>(Layout::locations_xs_column).data(),
+                this->template column<float>(Layout::locations_ys_column).data(),
+                this->template column<float>(Layout::locations_zs_column).data(),
+                this->template column<float>(Layout::rotations_pitches_column).data(),
+                this->template column<float>(Layout::rotations_yaws_column).data(),
+                this->template column<float>(Layout::rotations_rolls_column).data(),
+                this->template column<float>(Layout::velocities_xs_column).data(),
+                this->template column<float>(Layout::velocities_ys_column).data(),
+                this->template column<float>(Layout::velocities_zs_column).data(),
+                this->template column<std::int32_t>(Layout::damages_column).data(),
+                this->template column<float>(Layout::lifetimes_remaining_column).data(),
+                this->template column<EntityId>(Layout::instigator_ids_column).data(),
+                this->template column<float>(Layout::initial_lifetimes_column).data(),
+                this->template column<float>(Layout::spawn_times_column).data(),
                 this->num()};
     }
 };
@@ -629,23 +634,7 @@ struct LaserEntities
     template <typename Byte>
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
-        ioj::native_soa::LayoutCursor cursor{blocks};
-        return {cursor.column_pointer(data, Layout::active_column()),
-                cursor.column_pointer(data, Layout::sources_column()),
-                cursor.column_pointer(data, Layout::locations_xs_column()),
-                cursor.column_pointer(data, Layout::locations_ys_column()),
-                cursor.column_pointer(data, Layout::locations_zs_column()),
-                cursor.column_pointer(data, Layout::rotations_pitches_column()),
-                cursor.column_pointer(data, Layout::rotations_yaws_column()),
-                cursor.column_pointer(data, Layout::rotations_rolls_column()),
-                cursor.column_pointer(data, Layout::velocities_xs_column()),
-                cursor.column_pointer(data, Layout::velocities_ys_column()),
-                cursor.column_pointer(data, Layout::velocities_zs_column()),
-                cursor.column_pointer(data, Layout::damages_column()),
-                cursor.column_pointer(data, Layout::lifetimes_remaining_column()),
-                cursor.column_pointer(data, Layout::instigator_ids_column()),
-                cursor.column_pointer(data, Layout::initial_lifetimes_column()),
-                cursor.column_pointer(data, Layout::spawn_times_column())};
+        return Layout::make_data<DataPointers<Byte>>(data, blocks);
     }
 
     /* **************************************** */

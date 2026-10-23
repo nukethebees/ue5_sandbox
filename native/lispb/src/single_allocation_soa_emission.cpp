@@ -315,30 +315,22 @@ auto data_pointers_node(LoweringContext& context, SingleAllocationModelId model)
 auto layout_column(LoweringContext& context, SingleAllocationColumnId column) -> Expr {
     auto& ir{context.ir};
     auto const& columns{ir.lowering.single_allocation_columns};
-    return ir.call(
-        ir.named("Layout::" + context.text(columns.flattened_identifier[columns.index(column)]) +
-                 "_column"));
+    return ir.named("Layout::" + context.text(columns.flattened_identifier[columns.index(column)]) +
+                    "_column");
 }
 
-auto column_pointer_nodes(LoweringContext& context, SingleAllocationModelId model) -> Nodes {
-    auto& model_store{context.ir.lowering.single_allocation_models};
-    auto const model_store_index{model_store.index(model)};
+auto column_pointer_nodes(LoweringContext& context) -> Nodes {
     auto& ir{context.ir};
-    NodeListBuilder make_data_body{ir};
-    make_data_body.add(
-        ir.variable(std::string{"ioj::native_soa::LayoutCursor"}, "cursor", ir.named("blocks")));
-    std::vector<Expr> pointers;
-    pointers.reserve(context.ir.lowering.items(model_store.columns[model_store_index]).size());
-    for (auto const column : context.ir.lowering.items(model_store.columns[model_store_index])) {
-        pointers.push_back(ir.call(ir.member_access(ir.named("cursor"), "column_pointer"),
-                                   {ir.named("data"), layout_column(context, column)}));
-    }
-    make_data_body.add(ir.return_stmt(ir.init_list(std::move(pointers))));
     auto const make_data{ir.function("make_data_unchecked", "auto")};
     ir.set_function_parameters(
         make_data,
         {ir.parameter("Byte* const", "data"), ir.parameter("byte_size_type const", "blocks")});
-    ir.set_function_body(make_data, make_data_body.build());
+    ir.set_function_body(
+        make_data,
+        {ir.return_stmt(
+            ir.call(ir.template_id(ir.named("Layout::make_data"),
+                                   {ir.type_reference(ir.types.intern("DataPointers<Byte>"))}),
+                    {ir.named("data"), ir.named("blocks")}))});
     ir.set_function_return_type(
         make_data, ir.types.intern("DataPointers<Byte>"), ReturnSyntax::trailing);
     ir.set_function_noexcept(make_data);
@@ -737,14 +729,15 @@ auto compact_view_node(LoweringContext& context, SingleAllocationModelId model) 
         for (auto const column : selected.first(2)) {
             arguments.push_back(
                 "Layout::" + context.text(columns.flattened_identifier[columns.index(column)]) +
-                "_column()");
+                "_column");
         }
-        ir.set_function_body(constructor,
-                             {},
-                             {ir.member_initializer(
-                                 ir.strings.intern("Base"),
-                                 ir.store_text("ioj::soa_storage_detail::make_strided_view<Base>(" +
-                                               join(arguments, ", ") + ")"))});
+        ir.set_function_body(
+            constructor,
+            {},
+            {ir.member_initializer(
+                ir.strings.intern("Base"),
+                ir.store_text("ioj::soa_storage_detail::make_strided_view<Base, Layout>(" +
+                              join(arguments, ", ") + ")"))});
         children.new_lines(1).add(inline_function(context, constructor));
     }
     auto const conversion{ir.constructor(ir.strings.intern("ViewImpl"))};
@@ -767,9 +760,12 @@ auto compact_view_node(LoweringContext& context, SingleAllocationModelId model) 
     };
     auto column_span = [&](SingleAllocationColumnId column) {
         auto const index{std::find(selected.begin(), selected.end(), column) - selected.begin()};
-        return ir.call(
-            ir.named("this->column", ir.types.dependencies(columns.type[columns.index(column)])),
-            {strided ? ir.literal(std::to_string(index)) : layout_column(context, column)});
+        if (strided) {
+            return ir.call(ir.named("this->column"), {ir.literal(std::to_string(index))});
+        }
+        return ir.call(ir.template_id(ir.named("this->template column"),
+                                      {ir.type_reference(columns.type[columns.index(column)])}),
+                       {layout_column(context, column)});
     };
     for (auto const member :
          context.declarations.items(context.declarations.soas.members[schema_row])) {
@@ -788,9 +784,9 @@ auto compact_view_node(LoweringContext& context, SingleAllocationModelId model) 
                                        ir.call(ir.named("this->num"))}),
                          type);
             } else if (nested_strided) {
-                auto const factory{
-                    ir.template_id(ir.named("ioj::soa_storage_detail::make_strided_view"),
-                                   {ir.type_reference(type)})};
+                auto const factory{ir.template_id(
+                    ir.named("ioj::soa_storage_detail::make_strided_view"),
+                    {ir.type_reference(type), ir.type_reference(ir.types.intern("Layout"))})};
                 accessor("view_" + name,
                          ir.call(factory,
                                  {ir.named("this->state_"),
@@ -875,27 +871,21 @@ auto emit_single_allocation_layout(LoweringContext& context, SingleAllocationMod
             {ir.types.dependency("single_allocation_layout", "ioj/single_allocation/layout.h")}),
         types)};
     NodeListBuilder children{ir};
-    children.add(ir.using_declaration(ir.strings.intern("Base"), ir.types.intern("ColumnLayouts")));
     for (std::size_t index{}; index < selected.size(); ++index) {
         auto const row{columns.index(selected[index])};
-        auto const function{
-            make_function(ir,
-                          context.text(columns.flattened_identifier[row]) + "_column",
-                          "auto",
-                          {},
-                          {ir.return_stmt(ir.call(ir.template_id(
-                              ir.named("Base::column"), {ir.literal(std::to_string(index))})))},
-                          FunctionReceiver::static_)};
-        ir.function_flags(function).set_is_constexpr(true);
-        ir.set_function_noexcept(function);
-        children.new_lines(1).add(compact_function(context, function));
+        if (index != 0) {
+            children.new_lines(1);
+        }
+        children.add(ir.constexpr_member(
+            ir.types.intern("std::size_t"),
+            ir.strings.intern(context.text(columns.flattened_identifier[row]) + "_column"),
+            ir.literal(std::to_string(index))));
     }
     auto const layout{
         ir.record(ir.strings.intern("Layout"), children.build(), RecordKind::struct_)};
     ir.set_record_bases(layout, {base});
     std::vector<StringId> inherited;
     for (auto const name : {"ColumnLayouts",
-                            "Element",
                             "metadata",
                             "num_columns",
                             "size_type",
@@ -905,7 +895,8 @@ auto emit_single_allocation_layout(LoweringContext& context, SingleAllocationMod
                             "allocation_alignment",
                             "capacity_block_bound",
                             "max_capacity",
-                            "column",
+                            "offset",
+                            "make_data",
                             "layout_bytes"}) {
         inherited.push_back(ir.strings.intern(name));
     }
@@ -937,7 +928,7 @@ auto storage_implementation_nodes(LoweringContext& context, SingleAllocationMode
         .new_lines(1)
         .add(ir.access(Access::private_))
         .new_lines(1)
-        .append(column_pointer_nodes(context, model))
+        .append(column_pointer_nodes(context))
         .new_lines(2)
         .append(section_header(context, "Typed mutations and growth"))
         .new_lines(1)

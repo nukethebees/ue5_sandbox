@@ -84,78 +84,61 @@ struct Layout
                                                    float,
                                                    float,
                                                    float> {
-    using Base = ColumnLayouts;
-    static constexpr auto entity_ids_column() noexcept { return Base::column<0>(); }
-    static constexpr auto integral_biases_column() noexcept { return Base::column<1>(); }
-    static constexpr auto float_biases_column() noexcept { return Base::column<2>(); }
-    static constexpr auto tasks_column() noexcept { return Base::column<3>(); }
-    static constexpr auto locations_xs_column() noexcept { return Base::column<4>(); }
-    static constexpr auto locations_ys_column() noexcept { return Base::column<5>(); }
-    static constexpr auto locations_zs_column() noexcept { return Base::column<6>(); }
-    static constexpr auto desired_move_locations_xs_column() noexcept { return Base::column<7>(); }
-    static constexpr auto desired_move_locations_ys_column() noexcept { return Base::column<8>(); }
-    static constexpr auto desired_move_locations_zs_column() noexcept { return Base::column<9>(); }
-    static constexpr auto aim_directions_xs_column() noexcept { return Base::column<10>(); }
-    static constexpr auto aim_directions_ys_column() noexcept { return Base::column<11>(); }
-    static constexpr auto aim_directions_zs_column() noexcept { return Base::column<12>(); }
-    static constexpr auto planned_aim_directions_xs_column() noexcept { return Base::column<13>(); }
-    static constexpr auto planned_aim_directions_ys_column() noexcept { return Base::column<14>(); }
-    static constexpr auto planned_aim_directions_zs_column() noexcept { return Base::column<15>(); }
-    static constexpr auto desired_aiming_directions_xs_column() noexcept {
-        return Base::column<16>();
-    }
-    static constexpr auto desired_aiming_directions_ys_column() noexcept {
-        return Base::column<17>();
-    }
-    static constexpr auto desired_aiming_directions_zs_column() noexcept {
-        return Base::column<18>();
-    }
-    static constexpr auto movement_directions_xs_column() noexcept { return Base::column<19>(); }
-    static constexpr auto movement_directions_ys_column() noexcept { return Base::column<20>(); }
-    static constexpr auto movement_directions_zs_column() noexcept { return Base::column<21>(); }
-    static constexpr auto velocities_xs_column() noexcept { return Base::column<22>(); }
-    static constexpr auto velocities_ys_column() noexcept { return Base::column<23>(); }
-    static constexpr auto velocities_zs_column() noexcept { return Base::column<24>(); }
-    static constexpr auto move_distances_column() noexcept { return Base::column<25>(); }
-    static constexpr auto speeds_column() noexcept { return Base::column<26>(); }
-    static constexpr auto teams_column() noexcept { return Base::column<27>(); }
-    static constexpr auto parent_ids_column() noexcept { return Base::column<28>(); }
-    static constexpr auto awareness_scan_countdowns_column() noexcept { return Base::column<29>(); }
-    static constexpr auto navigation_update_countdowns_remaining_ticks_column() noexcept {
-        return Base::column<30>();
-    }
-    static constexpr auto navigation_update_countdowns_periods_column() noexcept {
-        return Base::column<31>();
-    }
-    static constexpr auto separation_steering_xs_column() noexcept { return Base::column<32>(); }
-    static constexpr auto separation_steering_ys_column() noexcept { return Base::column<33>(); }
-    static constexpr auto separation_steering_zs_column() noexcept { return Base::column<34>(); }
-    static constexpr auto navigation_risk_tiers_column() noexcept { return Base::column<35>(); }
-    static constexpr auto navigation_lower_risk_scan_counts_column() noexcept {
-        return Base::column<36>();
-    }
-    static constexpr auto avoidance_choice_indices_column() noexcept { return Base::column<37>(); }
-    static constexpr auto avoidance_clear_scan_counts_column() noexcept {
-        return Base::column<38>();
-    }
-    static constexpr auto attack_reposition_countdowns_column() noexcept {
-        return Base::column<39>();
-    }
-    static constexpr auto attack_cooldowns_column() noexcept { return Base::column<40>(); }
-    static constexpr auto target_ids_column() noexcept { return Base::column<41>(); }
-    static constexpr auto target_locations_xs_column() noexcept { return Base::column<42>(); }
-    static constexpr auto target_locations_ys_column() noexcept { return Base::column<43>(); }
-    static constexpr auto target_locations_zs_column() noexcept { return Base::column<44>(); }
-    static constexpr auto target_velocities_xs_column() noexcept { return Base::column<45>(); }
-    static constexpr auto target_velocities_ys_column() noexcept { return Base::column<46>(); }
-    static constexpr auto target_velocities_zs_column() noexcept { return Base::column<47>(); }
-    static constexpr auto target_directions_xs_column() noexcept { return Base::column<48>(); }
-    static constexpr auto target_directions_ys_column() noexcept { return Base::column<49>(); }
-    static constexpr auto target_directions_zs_column() noexcept { return Base::column<50>(); }
-    static constexpr auto intercept_times_column() noexcept { return Base::column<51>(); }
-    static constexpr auto target_distance_sq_column() noexcept { return Base::column<52>(); }
-    static constexpr auto target_distances_column() noexcept { return Base::column<53>(); }
-    static constexpr auto target_radii_column() noexcept { return Base::column<54>(); }
+    static constexpr std::size_t entity_ids_column{0};
+    static constexpr std::size_t integral_biases_column{1};
+    static constexpr std::size_t float_biases_column{2};
+    static constexpr std::size_t tasks_column{3};
+    static constexpr std::size_t locations_xs_column{4};
+    static constexpr std::size_t locations_ys_column{5};
+    static constexpr std::size_t locations_zs_column{6};
+    static constexpr std::size_t desired_move_locations_xs_column{7};
+    static constexpr std::size_t desired_move_locations_ys_column{8};
+    static constexpr std::size_t desired_move_locations_zs_column{9};
+    static constexpr std::size_t aim_directions_xs_column{10};
+    static constexpr std::size_t aim_directions_ys_column{11};
+    static constexpr std::size_t aim_directions_zs_column{12};
+    static constexpr std::size_t planned_aim_directions_xs_column{13};
+    static constexpr std::size_t planned_aim_directions_ys_column{14};
+    static constexpr std::size_t planned_aim_directions_zs_column{15};
+    static constexpr std::size_t desired_aiming_directions_xs_column{16};
+    static constexpr std::size_t desired_aiming_directions_ys_column{17};
+    static constexpr std::size_t desired_aiming_directions_zs_column{18};
+    static constexpr std::size_t movement_directions_xs_column{19};
+    static constexpr std::size_t movement_directions_ys_column{20};
+    static constexpr std::size_t movement_directions_zs_column{21};
+    static constexpr std::size_t velocities_xs_column{22};
+    static constexpr std::size_t velocities_ys_column{23};
+    static constexpr std::size_t velocities_zs_column{24};
+    static constexpr std::size_t move_distances_column{25};
+    static constexpr std::size_t speeds_column{26};
+    static constexpr std::size_t teams_column{27};
+    static constexpr std::size_t parent_ids_column{28};
+    static constexpr std::size_t awareness_scan_countdowns_column{29};
+    static constexpr std::size_t navigation_update_countdowns_remaining_ticks_column{30};
+    static constexpr std::size_t navigation_update_countdowns_periods_column{31};
+    static constexpr std::size_t separation_steering_xs_column{32};
+    static constexpr std::size_t separation_steering_ys_column{33};
+    static constexpr std::size_t separation_steering_zs_column{34};
+    static constexpr std::size_t navigation_risk_tiers_column{35};
+    static constexpr std::size_t navigation_lower_risk_scan_counts_column{36};
+    static constexpr std::size_t avoidance_choice_indices_column{37};
+    static constexpr std::size_t avoidance_clear_scan_counts_column{38};
+    static constexpr std::size_t attack_reposition_countdowns_column{39};
+    static constexpr std::size_t attack_cooldowns_column{40};
+    static constexpr std::size_t target_ids_column{41};
+    static constexpr std::size_t target_locations_xs_column{42};
+    static constexpr std::size_t target_locations_ys_column{43};
+    static constexpr std::size_t target_locations_zs_column{44};
+    static constexpr std::size_t target_velocities_xs_column{45};
+    static constexpr std::size_t target_velocities_ys_column{46};
+    static constexpr std::size_t target_velocities_zs_column{47};
+    static constexpr std::size_t target_directions_xs_column{48};
+    static constexpr std::size_t target_directions_ys_column{49};
+    static constexpr std::size_t target_directions_zs_column{50};
+    static constexpr std::size_t intercept_times_column{51};
+    static constexpr std::size_t target_distance_sq_column{52};
+    static constexpr std::size_t target_distances_column{53};
+    static constexpr std::size_t target_radii_column{54};
 };
 
 /* **************************************** */
@@ -1077,154 +1060,172 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto entity_ids() const { return this->column(Layout::entity_ids_column()); }
-    auto integral_biases() const { return this->column(Layout::integral_biases_column()); }
-    auto float_biases() const { return this->column(Layout::float_biases_column()); }
-    auto tasks() const { return this->column(Layout::tasks_column()); }
+    auto entity_ids() const { return this->template column<EntityId>(Layout::entity_ids_column); }
+    auto integral_biases() const {
+        return this->template column<std::uint32_t>(Layout::integral_biases_column);
+    }
+    auto float_biases() const { return this->template column<float>(Layout::float_biases_column); }
+    auto tasks() const { return this->template column<FighterTask>(Layout::tasks_column); }
     auto view_locations() const
         -> std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View> {
         return ioj::soa_storage_detail::make_strided_view<
-            std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View>>(
-            this->state_,
-            this->offset_,
-            this->num(),
-            Layout::locations_xs_column(),
-            Layout::locations_ys_column());
+            std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View>,
+            Layout>(this->state_,
+                    this->offset_,
+                    this->num(),
+                    Layout::locations_xs_column,
+                    Layout::locations_ys_column);
     }
     auto view_desired_move_locations() const
         -> std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View> {
         return ioj::soa_storage_detail::make_strided_view<
-            std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View>>(
-            this->state_,
-            this->offset_,
-            this->num(),
-            Layout::desired_move_locations_xs_column(),
-            Layout::desired_move_locations_ys_column());
+            std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View>,
+            Layout>(this->state_,
+                    this->offset_,
+                    this->num(),
+                    Layout::desired_move_locations_xs_column,
+                    Layout::desired_move_locations_ys_column);
     }
     auto view_aim_directions() const
         -> std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View> {
         return ioj::soa_storage_detail::make_strided_view<
-            std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View>>(
-            this->state_,
-            this->offset_,
-            this->num(),
-            Layout::aim_directions_xs_column(),
-            Layout::aim_directions_ys_column());
+            std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View>,
+            Layout>(this->state_,
+                    this->offset_,
+                    this->num(),
+                    Layout::aim_directions_xs_column,
+                    Layout::aim_directions_ys_column);
     }
     auto view_planned_aim_directions() const
         -> std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View> {
         return ioj::soa_storage_detail::make_strided_view<
-            std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View>>(
-            this->state_,
-            this->offset_,
-            this->num(),
-            Layout::planned_aim_directions_xs_column(),
-            Layout::planned_aim_directions_ys_column());
+            std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View>,
+            Layout>(this->state_,
+                    this->offset_,
+                    this->num(),
+                    Layout::planned_aim_directions_xs_column,
+                    Layout::planned_aim_directions_ys_column);
     }
     auto view_desired_aiming_directions() const
         -> std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View> {
         return ioj::soa_storage_detail::make_strided_view<
-            std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View>>(
-            this->state_,
-            this->offset_,
-            this->num(),
-            Layout::desired_aiming_directions_xs_column(),
-            Layout::desired_aiming_directions_ys_column());
+            std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View>,
+            Layout>(this->state_,
+                    this->offset_,
+                    this->num(),
+                    Layout::desired_aiming_directions_xs_column,
+                    Layout::desired_aiming_directions_ys_column);
     }
     auto view_movement_directions() const
         -> std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View> {
         return ioj::soa_storage_detail::make_strided_view<
-            std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View>>(
-            this->state_,
-            this->offset_,
-            this->num(),
-            Layout::movement_directions_xs_column(),
-            Layout::movement_directions_ys_column());
+            std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View>,
+            Layout>(this->state_,
+                    this->offset_,
+                    this->num(),
+                    Layout::movement_directions_xs_column,
+                    Layout::movement_directions_ys_column);
     }
     auto view_velocities() const
         -> std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View> {
         return ioj::soa_storage_detail::make_strided_view<
-            std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View>>(
-            this->state_,
-            this->offset_,
-            this->num(),
-            Layout::velocities_xs_column(),
-            Layout::velocities_ys_column());
+            std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View>,
+            Layout>(this->state_,
+                    this->offset_,
+                    this->num(),
+                    Layout::velocities_xs_column,
+                    Layout::velocities_ys_column);
     }
-    auto move_distances() const { return this->column(Layout::move_distances_column()); }
-    auto speeds() const { return this->column(Layout::speeds_column()); }
-    auto teams() const { return this->column(Layout::teams_column()); }
-    auto parent_ids() const { return this->column(Layout::parent_ids_column()); }
+    auto move_distances() const {
+        return this->template column<float>(Layout::move_distances_column);
+    }
+    auto speeds() const { return this->template column<float>(Layout::speeds_column); }
+    auto teams() const { return this->template column<::ioj::Team>(Layout::teams_column); }
+    auto parent_ids() const { return this->template column<EntityId>(Layout::parent_ids_column); }
     auto awareness_scan_countdowns() const {
-        return this->column(Layout::awareness_scan_countdowns_column());
+        return this->template column<std::int8_t>(Layout::awareness_scan_countdowns_column);
     }
     auto navigation_update_countdowns_remaining_ticks() const {
-        return this->column(Layout::navigation_update_countdowns_remaining_ticks_column());
+        return this->template column<std::int16_t>(
+            Layout::navigation_update_countdowns_remaining_ticks_column);
     }
     auto navigation_update_countdowns_periods() const {
-        return this->column(Layout::navigation_update_countdowns_periods_column());
+        return this->template column<std::int16_t>(
+            Layout::navigation_update_countdowns_periods_column);
     }
     auto view_separation_steering() const
         -> std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View> {
         return ioj::soa_storage_detail::make_strided_view<
-            std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View>>(
-            this->state_,
-            this->offset_,
-            this->num(),
-            Layout::separation_steering_xs_column(),
-            Layout::separation_steering_ys_column());
+            std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View>,
+            Layout>(this->state_,
+                    this->offset_,
+                    this->num(),
+                    Layout::separation_steering_xs_column,
+                    Layout::separation_steering_ys_column);
     }
     auto navigation_risk_tiers() const {
-        return this->column(Layout::navigation_risk_tiers_column());
+        return this->template column<fighters::NavigationRiskCode>(
+            Layout::navigation_risk_tiers_column);
     }
     auto navigation_lower_risk_scan_counts() const {
-        return this->column(Layout::navigation_lower_risk_scan_counts_column());
+        return this->template column<fighters::NavigationScanCount>(
+            Layout::navigation_lower_risk_scan_counts_column);
     }
     auto avoidance_choice_indices() const {
-        return this->column(Layout::avoidance_choice_indices_column());
+        return this->template column<fighters::AvoidanceChoice>(
+            Layout::avoidance_choice_indices_column);
     }
     auto avoidance_clear_scan_counts() const {
-        return this->column(Layout::avoidance_clear_scan_counts_column());
+        return this->template column<fighters::NavigationScanCount>(
+            Layout::avoidance_clear_scan_counts_column);
     }
     auto attack_reposition_countdowns() const {
-        return this->column(Layout::attack_reposition_countdowns_column());
+        return this->template column<std::int16_t>(Layout::attack_reposition_countdowns_column);
     }
-    auto attack_cooldowns() const { return this->column(Layout::attack_cooldowns_column()); }
-    auto target_ids() const { return this->column(Layout::target_ids_column()); }
+    auto attack_cooldowns() const {
+        return this->template column<std::int16_t>(Layout::attack_cooldowns_column);
+    }
+    auto target_ids() const { return this->template column<EntityId>(Layout::target_ids_column); }
     auto view_target_locations() const
         -> std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View> {
         return ioj::soa_storage_detail::make_strided_view<
-            std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View>>(
-            this->state_,
-            this->offset_,
-            this->num(),
-            Layout::target_locations_xs_column(),
-            Layout::target_locations_ys_column());
+            std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View>,
+            Layout>(this->state_,
+                    this->offset_,
+                    this->num(),
+                    Layout::target_locations_xs_column,
+                    Layout::target_locations_ys_column);
     }
     auto view_target_velocities() const
         -> std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View> {
         return ioj::soa_storage_detail::make_strided_view<
-            std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View>>(
-            this->state_,
-            this->offset_,
-            this->num(),
-            Layout::target_velocities_xs_column(),
-            Layout::target_velocities_ys_column());
+            std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View>,
+            Layout>(this->state_,
+                    this->offset_,
+                    this->num(),
+                    Layout::target_velocities_xs_column,
+                    Layout::target_velocities_ys_column);
     }
     auto view_target_directions() const
         -> std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View> {
         return ioj::soa_storage_detail::make_strided_view<
-            std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View>>(
-            this->state_,
-            this->offset_,
-            this->num(),
-            Layout::target_directions_xs_column(),
-            Layout::target_directions_ys_column());
+            std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View>,
+            Layout>(this->state_,
+                    this->offset_,
+                    this->num(),
+                    Layout::target_directions_xs_column,
+                    Layout::target_directions_ys_column);
     }
-    auto intercept_times() const { return this->column(Layout::intercept_times_column()); }
-    auto target_distance_sq() const { return this->column(Layout::target_distance_sq_column()); }
-    auto target_distances() const { return this->column(Layout::target_distances_column()); }
-    auto target_radii() const { return this->column(Layout::target_radii_column()); }
+    auto intercept_times() const {
+        return this->template column<float>(Layout::intercept_times_column);
+    }
+    auto target_distance_sq() const {
+        return this->template column<float>(Layout::target_distance_sq_column);
+    }
+    auto target_distances() const {
+        return this->template column<float>(Layout::target_distances_column);
+    }
+    auto target_radii() const { return this->template column<float>(Layout::target_radii_column); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(entity_ids());
@@ -1297,62 +1298,74 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     auto resolve() const -> std::conditional_t<Const,
                                                ::ioj::sim::fighter_entity_data::ResolvedConstView,
                                                ::ioj::sim::fighter_entity_data::ResolvedView> {
-        return {this->column(Layout::entity_ids_column()).data(),
-                this->column(Layout::integral_biases_column()).data(),
-                this->column(Layout::float_biases_column()).data(),
-                this->column(Layout::tasks_column()).data(),
-                this->column(Layout::locations_xs_column()).data(),
-                this->column(Layout::locations_ys_column()).data(),
-                this->column(Layout::locations_zs_column()).data(),
-                this->column(Layout::desired_move_locations_xs_column()).data(),
-                this->column(Layout::desired_move_locations_ys_column()).data(),
-                this->column(Layout::desired_move_locations_zs_column()).data(),
-                this->column(Layout::aim_directions_xs_column()).data(),
-                this->column(Layout::aim_directions_ys_column()).data(),
-                this->column(Layout::aim_directions_zs_column()).data(),
-                this->column(Layout::planned_aim_directions_xs_column()).data(),
-                this->column(Layout::planned_aim_directions_ys_column()).data(),
-                this->column(Layout::planned_aim_directions_zs_column()).data(),
-                this->column(Layout::desired_aiming_directions_xs_column()).data(),
-                this->column(Layout::desired_aiming_directions_ys_column()).data(),
-                this->column(Layout::desired_aiming_directions_zs_column()).data(),
-                this->column(Layout::movement_directions_xs_column()).data(),
-                this->column(Layout::movement_directions_ys_column()).data(),
-                this->column(Layout::movement_directions_zs_column()).data(),
-                this->column(Layout::velocities_xs_column()).data(),
-                this->column(Layout::velocities_ys_column()).data(),
-                this->column(Layout::velocities_zs_column()).data(),
-                this->column(Layout::move_distances_column()).data(),
-                this->column(Layout::speeds_column()).data(),
-                this->column(Layout::teams_column()).data(),
-                this->column(Layout::parent_ids_column()).data(),
-                this->column(Layout::awareness_scan_countdowns_column()).data(),
-                this->column(Layout::navigation_update_countdowns_remaining_ticks_column()).data(),
-                this->column(Layout::navigation_update_countdowns_periods_column()).data(),
-                this->column(Layout::separation_steering_xs_column()).data(),
-                this->column(Layout::separation_steering_ys_column()).data(),
-                this->column(Layout::separation_steering_zs_column()).data(),
-                this->column(Layout::navigation_risk_tiers_column()).data(),
-                this->column(Layout::navigation_lower_risk_scan_counts_column()).data(),
-                this->column(Layout::avoidance_choice_indices_column()).data(),
-                this->column(Layout::avoidance_clear_scan_counts_column()).data(),
-                this->column(Layout::attack_reposition_countdowns_column()).data(),
-                this->column(Layout::attack_cooldowns_column()).data(),
-                this->column(Layout::target_ids_column()).data(),
-                this->column(Layout::target_locations_xs_column()).data(),
-                this->column(Layout::target_locations_ys_column()).data(),
-                this->column(Layout::target_locations_zs_column()).data(),
-                this->column(Layout::target_velocities_xs_column()).data(),
-                this->column(Layout::target_velocities_ys_column()).data(),
-                this->column(Layout::target_velocities_zs_column()).data(),
-                this->column(Layout::target_directions_xs_column()).data(),
-                this->column(Layout::target_directions_ys_column()).data(),
-                this->column(Layout::target_directions_zs_column()).data(),
-                this->column(Layout::intercept_times_column()).data(),
-                this->column(Layout::target_distance_sq_column()).data(),
-                this->column(Layout::target_distances_column()).data(),
-                this->column(Layout::target_radii_column()).data(),
-                this->num()};
+        return {
+            this->template column<EntityId>(Layout::entity_ids_column).data(),
+            this->template column<std::uint32_t>(Layout::integral_biases_column).data(),
+            this->template column<float>(Layout::float_biases_column).data(),
+            this->template column<FighterTask>(Layout::tasks_column).data(),
+            this->template column<float>(Layout::locations_xs_column).data(),
+            this->template column<float>(Layout::locations_ys_column).data(),
+            this->template column<float>(Layout::locations_zs_column).data(),
+            this->template column<float>(Layout::desired_move_locations_xs_column).data(),
+            this->template column<float>(Layout::desired_move_locations_ys_column).data(),
+            this->template column<float>(Layout::desired_move_locations_zs_column).data(),
+            this->template column<float>(Layout::aim_directions_xs_column).data(),
+            this->template column<float>(Layout::aim_directions_ys_column).data(),
+            this->template column<float>(Layout::aim_directions_zs_column).data(),
+            this->template column<float>(Layout::planned_aim_directions_xs_column).data(),
+            this->template column<float>(Layout::planned_aim_directions_ys_column).data(),
+            this->template column<float>(Layout::planned_aim_directions_zs_column).data(),
+            this->template column<float>(Layout::desired_aiming_directions_xs_column).data(),
+            this->template column<float>(Layout::desired_aiming_directions_ys_column).data(),
+            this->template column<float>(Layout::desired_aiming_directions_zs_column).data(),
+            this->template column<float>(Layout::movement_directions_xs_column).data(),
+            this->template column<float>(Layout::movement_directions_ys_column).data(),
+            this->template column<float>(Layout::movement_directions_zs_column).data(),
+            this->template column<float>(Layout::velocities_xs_column).data(),
+            this->template column<float>(Layout::velocities_ys_column).data(),
+            this->template column<float>(Layout::velocities_zs_column).data(),
+            this->template column<float>(Layout::move_distances_column).data(),
+            this->template column<float>(Layout::speeds_column).data(),
+            this->template column<::ioj::Team>(Layout::teams_column).data(),
+            this->template column<EntityId>(Layout::parent_ids_column).data(),
+            this->template column<std::int8_t>(Layout::awareness_scan_countdowns_column).data(),
+            this->template column<std::int16_t>(
+                    Layout::navigation_update_countdowns_remaining_ticks_column)
+                .data(),
+            this->template column<std::int16_t>(Layout::navigation_update_countdowns_periods_column)
+                .data(),
+            this->template column<float>(Layout::separation_steering_xs_column).data(),
+            this->template column<float>(Layout::separation_steering_ys_column).data(),
+            this->template column<float>(Layout::separation_steering_zs_column).data(),
+            this->template column<fighters::NavigationRiskCode>(
+                    Layout::navigation_risk_tiers_column)
+                .data(),
+            this->template column<fighters::NavigationScanCount>(
+                    Layout::navigation_lower_risk_scan_counts_column)
+                .data(),
+            this->template column<fighters::AvoidanceChoice>(
+                    Layout::avoidance_choice_indices_column)
+                .data(),
+            this->template column<fighters::NavigationScanCount>(
+                    Layout::avoidance_clear_scan_counts_column)
+                .data(),
+            this->template column<std::int16_t>(Layout::attack_reposition_countdowns_column).data(),
+            this->template column<std::int16_t>(Layout::attack_cooldowns_column).data(),
+            this->template column<EntityId>(Layout::target_ids_column).data(),
+            this->template column<float>(Layout::target_locations_xs_column).data(),
+            this->template column<float>(Layout::target_locations_ys_column).data(),
+            this->template column<float>(Layout::target_locations_zs_column).data(),
+            this->template column<float>(Layout::target_velocities_xs_column).data(),
+            this->template column<float>(Layout::target_velocities_ys_column).data(),
+            this->template column<float>(Layout::target_velocities_zs_column).data(),
+            this->template column<float>(Layout::target_directions_xs_column).data(),
+            this->template column<float>(Layout::target_directions_ys_column).data(),
+            this->template column<float>(Layout::target_directions_zs_column).data(),
+            this->template column<float>(Layout::intercept_times_column).data(),
+            this->template column<float>(Layout::target_distance_sq_column).data(),
+            this->template column<float>(Layout::target_distances_column).data(),
+            this->template column<float>(Layout::target_radii_column).data(),
+            this->num()};
     }
 };
 struct ConstView : ViewImpl<true> {
@@ -1782,63 +1795,7 @@ struct FighterEntityData
     template <typename Byte>
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
-        ioj::native_soa::LayoutCursor cursor{blocks};
-        return {cursor.column_pointer(data, Layout::entity_ids_column()),
-                cursor.column_pointer(data, Layout::integral_biases_column()),
-                cursor.column_pointer(data, Layout::float_biases_column()),
-                cursor.column_pointer(data, Layout::tasks_column()),
-                cursor.column_pointer(data, Layout::locations_xs_column()),
-                cursor.column_pointer(data, Layout::locations_ys_column()),
-                cursor.column_pointer(data, Layout::locations_zs_column()),
-                cursor.column_pointer(data, Layout::desired_move_locations_xs_column()),
-                cursor.column_pointer(data, Layout::desired_move_locations_ys_column()),
-                cursor.column_pointer(data, Layout::desired_move_locations_zs_column()),
-                cursor.column_pointer(data, Layout::aim_directions_xs_column()),
-                cursor.column_pointer(data, Layout::aim_directions_ys_column()),
-                cursor.column_pointer(data, Layout::aim_directions_zs_column()),
-                cursor.column_pointer(data, Layout::planned_aim_directions_xs_column()),
-                cursor.column_pointer(data, Layout::planned_aim_directions_ys_column()),
-                cursor.column_pointer(data, Layout::planned_aim_directions_zs_column()),
-                cursor.column_pointer(data, Layout::desired_aiming_directions_xs_column()),
-                cursor.column_pointer(data, Layout::desired_aiming_directions_ys_column()),
-                cursor.column_pointer(data, Layout::desired_aiming_directions_zs_column()),
-                cursor.column_pointer(data, Layout::movement_directions_xs_column()),
-                cursor.column_pointer(data, Layout::movement_directions_ys_column()),
-                cursor.column_pointer(data, Layout::movement_directions_zs_column()),
-                cursor.column_pointer(data, Layout::velocities_xs_column()),
-                cursor.column_pointer(data, Layout::velocities_ys_column()),
-                cursor.column_pointer(data, Layout::velocities_zs_column()),
-                cursor.column_pointer(data, Layout::move_distances_column()),
-                cursor.column_pointer(data, Layout::speeds_column()),
-                cursor.column_pointer(data, Layout::teams_column()),
-                cursor.column_pointer(data, Layout::parent_ids_column()),
-                cursor.column_pointer(data, Layout::awareness_scan_countdowns_column()),
-                cursor.column_pointer(
-                    data, Layout::navigation_update_countdowns_remaining_ticks_column()),
-                cursor.column_pointer(data, Layout::navigation_update_countdowns_periods_column()),
-                cursor.column_pointer(data, Layout::separation_steering_xs_column()),
-                cursor.column_pointer(data, Layout::separation_steering_ys_column()),
-                cursor.column_pointer(data, Layout::separation_steering_zs_column()),
-                cursor.column_pointer(data, Layout::navigation_risk_tiers_column()),
-                cursor.column_pointer(data, Layout::navigation_lower_risk_scan_counts_column()),
-                cursor.column_pointer(data, Layout::avoidance_choice_indices_column()),
-                cursor.column_pointer(data, Layout::avoidance_clear_scan_counts_column()),
-                cursor.column_pointer(data, Layout::attack_reposition_countdowns_column()),
-                cursor.column_pointer(data, Layout::attack_cooldowns_column()),
-                cursor.column_pointer(data, Layout::target_ids_column()),
-                cursor.column_pointer(data, Layout::target_locations_xs_column()),
-                cursor.column_pointer(data, Layout::target_locations_ys_column()),
-                cursor.column_pointer(data, Layout::target_locations_zs_column()),
-                cursor.column_pointer(data, Layout::target_velocities_xs_column()),
-                cursor.column_pointer(data, Layout::target_velocities_ys_column()),
-                cursor.column_pointer(data, Layout::target_velocities_zs_column()),
-                cursor.column_pointer(data, Layout::target_directions_xs_column()),
-                cursor.column_pointer(data, Layout::target_directions_ys_column()),
-                cursor.column_pointer(data, Layout::target_directions_zs_column()),
-                cursor.column_pointer(data, Layout::intercept_times_column()),
-                cursor.column_pointer(data, Layout::target_distance_sq_column()),
-                cursor.column_pointer(data, Layout::target_distances_column()),
-                cursor.column_pointer(data, Layout::target_radii_column())};
+        return Layout::make_data<DataPointers<Byte>>(data, blocks);
     }
 
     /* **************************************** */

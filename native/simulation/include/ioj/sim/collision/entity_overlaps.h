@@ -24,9 +24,8 @@ struct ResolvedConstView;
 // Layout
 /* **************************************** */
 struct Layout : ioj::single_allocation_layout::ColumnLayouts<EntityId, EntityId> {
-    using Base = ColumnLayouts;
-    static constexpr auto first_entities_column() noexcept { return Base::column<0>(); }
-    static constexpr auto second_entities_column() noexcept { return Base::column<1>(); }
+    static constexpr std::size_t first_entities_column{0};
+    static constexpr std::size_t second_entities_column{1};
 };
 
 /* **************************************** */
@@ -117,13 +116,12 @@ struct ViewImpl : ioj::soa_storage_detail::StridedViewBase<EntityId, Const> {
                                      ioj::soa_storage_detail::StorageState const,
                                      ioj::soa_storage_detail::StorageState>;
     ViewImpl(State* state, std::uint32_t offset, std::uint32_t count)
-        : Base{ioj::soa_storage_detail::make_strided_view<Base>(state,
-                                                                offset,
-                                                                count,
-                                                                Layout::first_entities_column(),
-                                                                Layout::second_entities_column())} {
-
-    }
+        : Base{ioj::soa_storage_detail::make_strided_view<Base, Layout>(
+              state,
+              offset,
+              count,
+              Layout::first_entities_column,
+              Layout::second_entities_column)} {}
     template <bool Enabled = Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
@@ -230,9 +228,7 @@ struct EntityEntityOverlaps
     template <typename Byte>
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
-        ioj::native_soa::LayoutCursor cursor{blocks};
-        return {cursor.column_pointer(data, Layout::first_entities_column()),
-                cursor.column_pointer(data, Layout::second_entities_column())};
+        return Layout::make_data<DataPointers<Byte>>(data, blocks);
     }
 
     /* **************************************** */
@@ -298,9 +294,8 @@ struct ResolvedConstView;
 // Layout
 /* **************************************** */
 struct Layout : ioj::single_allocation_layout::ColumnLayouts<EntityId, StaticGeometryIndex> {
-    using Base = ColumnLayouts;
-    static constexpr auto entities_column() noexcept { return Base::column<0>(); }
-    static constexpr auto static_geometry_indices_column() noexcept { return Base::column<1>(); }
+    static constexpr std::size_t entities_column{0};
+    static constexpr std::size_t static_geometry_indices_column{1};
 };
 
 /* **************************************** */
@@ -394,9 +389,9 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto entities() const { return this->column(Layout::entities_column()); }
+    auto entities() const { return this->template column<EntityId>(Layout::entities_column); }
     auto static_geometry_indices() const {
-        return this->column(Layout::static_geometry_indices_column());
+        return this->template column<StaticGeometryIndex>(Layout::static_geometry_indices_column);
     }
     template <typename Func>
     void each_column(Func&& func) const {
@@ -407,8 +402,9 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
         -> std::conditional_t<Const,
                               ::ioj::sim::collision::entity_static_overlaps::ResolvedConstView,
                               ::ioj::sim::collision::entity_static_overlaps::ResolvedView> {
-        return {this->column(Layout::entities_column()).data(),
-                this->column(Layout::static_geometry_indices_column()).data(),
+        return {this->template column<EntityId>(Layout::entities_column).data(),
+                this->template column<StaticGeometryIndex>(Layout::static_geometry_indices_column)
+                    .data(),
                 this->num()};
     }
 };
@@ -500,9 +496,7 @@ struct EntityStaticOverlaps
     template <typename Byte>
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
-        ioj::native_soa::LayoutCursor cursor{blocks};
-        return {cursor.column_pointer(data, Layout::entities_column()),
-                cursor.column_pointer(data, Layout::static_geometry_indices_column())};
+        return Layout::make_data<DataPointers<Byte>>(data, blocks);
     }
 
     /* **************************************** */

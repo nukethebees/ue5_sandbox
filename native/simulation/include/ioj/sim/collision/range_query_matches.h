@@ -25,12 +25,11 @@ struct ResolvedConstView;
 // Layout
 /* **************************************** */
 struct Layout : ioj::single_allocation_layout::ColumnLayouts<EntityId, float, float, float, float> {
-    using Base = ColumnLayouts;
-    static constexpr auto entities_column() noexcept { return Base::column<0>(); }
-    static constexpr auto distances_column() noexcept { return Base::column<1>(); }
-    static constexpr auto directions_xs_column() noexcept { return Base::column<2>(); }
-    static constexpr auto directions_ys_column() noexcept { return Base::column<3>(); }
-    static constexpr auto directions_zs_column() noexcept { return Base::column<4>(); }
+    static constexpr std::size_t entities_column{0};
+    static constexpr std::size_t distances_column{1};
+    static constexpr std::size_t directions_xs_column{2};
+    static constexpr std::size_t directions_ys_column{3};
+    static constexpr std::size_t directions_zs_column{4};
 };
 
 /* **************************************** */
@@ -165,17 +164,17 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto entities() const { return this->column(Layout::entities_column()); }
-    auto distances() const { return this->column(Layout::distances_column()); }
+    auto entities() const { return this->template column<EntityId>(Layout::entities_column); }
+    auto distances() const { return this->template column<float>(Layout::distances_column); }
     auto view_directions() const
         -> std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View> {
         return ioj::soa_storage_detail::make_strided_view<
-            std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View>>(
-            this->state_,
-            this->offset_,
-            this->num(),
-            Layout::directions_xs_column(),
-            Layout::directions_ys_column());
+            std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View>,
+            Layout>(this->state_,
+                    this->offset_,
+                    this->num(),
+                    Layout::directions_xs_column,
+                    Layout::directions_ys_column);
     }
     template <typename Func>
     void each_column(Func&& func) const {
@@ -189,11 +188,11 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     auto resolve() const -> std::conditional_t<Const,
                                                ::ioj::sim::range_query_matches::ResolvedConstView,
                                                ::ioj::sim::range_query_matches::ResolvedView> {
-        return {this->column(Layout::entities_column()).data(),
-                this->column(Layout::distances_column()).data(),
-                this->column(Layout::directions_xs_column()).data(),
-                this->column(Layout::directions_ys_column()).data(),
-                this->column(Layout::directions_zs_column()).data(),
+        return {this->template column<EntityId>(Layout::entities_column).data(),
+                this->template column<float>(Layout::distances_column).data(),
+                this->template column<float>(Layout::directions_xs_column).data(),
+                this->template column<float>(Layout::directions_ys_column).data(),
+                this->template column<float>(Layout::directions_zs_column).data(),
                 this->num()};
     }
 };
@@ -310,12 +309,7 @@ struct RangeQueryMatches
     template <typename Byte>
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
-        ioj::native_soa::LayoutCursor cursor{blocks};
-        return {cursor.column_pointer(data, Layout::entities_column()),
-                cursor.column_pointer(data, Layout::distances_column()),
-                cursor.column_pointer(data, Layout::directions_xs_column()),
-                cursor.column_pointer(data, Layout::directions_ys_column()),
-                cursor.column_pointer(data, Layout::directions_zs_column())};
+        return Layout::make_data<DataPointers<Byte>>(data, blocks);
     }
 
     /* **************************************** */

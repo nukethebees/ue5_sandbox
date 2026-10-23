@@ -35,12 +35,11 @@ struct Layout
           std::uint8_t,
           std::optional<ioj::layout::EnumCodeValue>,
           std::optional<lispb::codegen::PackedIntegerValue>> {
-    using Base = ColumnLayouts;
-    static constexpr auto name_column() noexcept { return Base::column<0>(); }
-    static constexpr auto sentinel_column() noexcept { return Base::column<1>(); }
-    static constexpr auto count_sentinel_column() noexcept { return Base::column<2>(); }
-    static constexpr auto code_column() noexcept { return Base::column<3>(); }
-    static constexpr auto integer_value_column() noexcept { return Base::column<4>(); }
+    static constexpr std::size_t name_column{0};
+    static constexpr std::size_t sentinel_column{1};
+    static constexpr std::size_t count_sentinel_column{2};
+    static constexpr std::size_t code_column{3};
+    static constexpr std::size_t integer_value_column{4};
 };
 
 /* **************************************** */
@@ -166,11 +165,19 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto name() const { return this->column(Layout::name_column()); }
-    auto sentinel() const { return this->column(Layout::sentinel_column()); }
-    auto count_sentinel() const { return this->column(Layout::count_sentinel_column()); }
-    auto code() const { return this->column(Layout::code_column()); }
-    auto integer_value() const { return this->column(Layout::integer_value_column()); }
+    auto name() const { return this->template column<std::string_view>(Layout::name_column); }
+    auto sentinel() const { return this->template column<std::uint8_t>(Layout::sentinel_column); }
+    auto count_sentinel() const {
+        return this->template column<std::uint8_t>(Layout::count_sentinel_column);
+    }
+    auto code() const {
+        return this->template column<std::optional<ioj::layout::EnumCodeValue>>(
+            Layout::code_column);
+    }
+    auto integer_value() const {
+        return this->template column<std::optional<lispb::codegen::PackedIntegerValue>>(
+            Layout::integer_value_column);
+    }
     template <typename Func>
     void each_column(Func&& func) const {
         func(name());
@@ -182,12 +189,16 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     auto resolve() const -> std::conditional_t<Const,
                                                ::ioj::layout::code_table::ResolvedConstView,
                                                ::ioj::layout::code_table::ResolvedView> {
-        return {this->column(Layout::name_column()).data(),
-                this->column(Layout::sentinel_column()).data(),
-                this->column(Layout::count_sentinel_column()).data(),
-                this->column(Layout::code_column()).data(),
-                this->column(Layout::integer_value_column()).data(),
-                this->num()};
+        return {
+            this->template column<std::string_view>(Layout::name_column).data(),
+            this->template column<std::uint8_t>(Layout::sentinel_column).data(),
+            this->template column<std::uint8_t>(Layout::count_sentinel_column).data(),
+            this->template column<std::optional<ioj::layout::EnumCodeValue>>(Layout::code_column)
+                .data(),
+            this->template column<std::optional<lispb::codegen::PackedIntegerValue>>(
+                    Layout::integer_value_column)
+                .data(),
+            this->num()};
     }
 };
 struct ConstView : ViewImpl<true> {
@@ -294,12 +305,7 @@ struct CodeTable
     template <typename Byte>
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
-        ioj::native_soa::LayoutCursor cursor{blocks};
-        return {cursor.column_pointer(data, Layout::name_column()),
-                cursor.column_pointer(data, Layout::sentinel_column()),
-                cursor.column_pointer(data, Layout::count_sentinel_column()),
-                cursor.column_pointer(data, Layout::code_column()),
-                cursor.column_pointer(data, Layout::integer_value_column())};
+        return Layout::make_data<DataPointers<Byte>>(data, blocks);
     }
 
     /* **************************************** */

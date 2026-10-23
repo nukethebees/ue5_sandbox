@@ -288,13 +288,13 @@ C++ spelling and cannot be record members or function parameter types. They rema
 relationship targets and nested groups.
 
 `NameLayout` derives from `ColumnLayouts<Ts...>` in physical leaf order and supplies named
-accessors for empty, typed column descriptors. C++26 pack indexing selects each element type;
+integer constants for column indices. Ordinary function parameters select columns;
 `make_column_layouts()` computes one constant metadata array without predecessor pointers or
 constructor chains. Linear offsets use direct arithmetic; capacity-dependent alignment scans
-only the nonlinear suffix. Layouts and descriptors are freely copyable and add no state to
+only the nonlinear suffix. Layout metadata is freely copyable and adds no state to
 owners or views. The existing layout uses 64 rows per block, a
 192-byte inter-column gap, and 64-byte minimum alignment. `LayoutCursor` materializes typed column
-pointers in one linear pass using the same placement primitives. The conservative capacity bound
+pointers in one linear pass from the generated element types. The conservative capacity bound
 and exact byte calculation retain overflow checks. C++ verifies element alignment, trivial
 copyability, and construction requirements; nontrivial owning element types are rejected.
 
@@ -307,8 +307,9 @@ transferring storage when resources compare equal and copying columns otherwise.
 and assignment are deleted.
 
 `StorageOperations` coordinates lifetime, pointer access, copying, growth and removal using
-generated, typed per-column operations. Generated flat pointer structures, pointer construction,
-source access, default construction and transfers retain explicit statements for each leaf.
+generated, typed per-column operations. Generated flat pointer structures are initialized by
+`ColumnLayouts::make_data()` expanding the element types in physical order. Source access,
+default construction and transfers retain explicit statements for each leaf.
 It never stores independently resizable columns. One row count and capacity govern growth,
 insertion, removal, copying, and permutation; equal-column-size validation is unnecessary inside
 the owner. Keep per-column construction, copying, and destruction explicit instead of replacing

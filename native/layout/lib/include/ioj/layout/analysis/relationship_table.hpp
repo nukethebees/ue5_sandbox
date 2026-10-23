@@ -33,11 +33,10 @@ struct Layout
           std::optional<std::size_t>,
           lispb::schema::RelationshipId,
           std::optional<ioj::layout::RelationshipMetrics>> {
-    using Base = ColumnLayouts;
-    static constexpr auto owner_column() noexcept { return Base::column<0>(); }
-    static constexpr auto field_column() noexcept { return Base::column<1>(); }
-    static constexpr auto relationship_column() noexcept { return Base::column<2>(); }
-    static constexpr auto metrics_column() noexcept { return Base::column<3>(); }
+    static constexpr std::size_t owner_column{0};
+    static constexpr std::size_t field_column{1};
+    static constexpr std::size_t relationship_column{2};
+    static constexpr std::size_t metrics_column{3};
 };
 
 /* **************************************** */
@@ -150,10 +149,17 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto owner() const { return this->column(Layout::owner_column()); }
-    auto field() const { return this->column(Layout::field_column()); }
-    auto relationship() const { return this->column(Layout::relationship_column()); }
-    auto metrics() const { return this->column(Layout::metrics_column()); }
+    auto owner() const { return this->template column<AnalysisId>(Layout::owner_column); }
+    auto field() const {
+        return this->template column<std::optional<std::size_t>>(Layout::field_column);
+    }
+    auto relationship() const {
+        return this->template column<lispb::schema::RelationshipId>(Layout::relationship_column);
+    }
+    auto metrics() const {
+        return this->template column<std::optional<ioj::layout::RelationshipMetrics>>(
+            Layout::metrics_column);
+    }
     template <typename Func>
     void each_column(Func&& func) const {
         func(owner());
@@ -164,10 +170,13 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     auto resolve() const -> std::conditional_t<Const,
                                                ::ioj::layout::relationship_table::ResolvedConstView,
                                                ::ioj::layout::relationship_table::ResolvedView> {
-        return {this->column(Layout::owner_column()).data(),
-                this->column(Layout::field_column()).data(),
-                this->column(Layout::relationship_column()).data(),
-                this->column(Layout::metrics_column()).data(),
+        return {this->template column<AnalysisId>(Layout::owner_column).data(),
+                this->template column<std::optional<std::size_t>>(Layout::field_column).data(),
+                this->template column<lispb::schema::RelationshipId>(Layout::relationship_column)
+                    .data(),
+                this->template column<std::optional<ioj::layout::RelationshipMetrics>>(
+                        Layout::metrics_column)
+                    .data(),
                 this->num()};
     }
 };
@@ -267,11 +276,7 @@ struct RelationshipTable
     template <typename Byte>
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
-        ioj::native_soa::LayoutCursor cursor{blocks};
-        return {cursor.column_pointer(data, Layout::owner_column()),
-                cursor.column_pointer(data, Layout::field_column()),
-                cursor.column_pointer(data, Layout::relationship_column()),
-                cursor.column_pointer(data, Layout::metrics_column())};
+        return Layout::make_data<DataPointers<Byte>>(data, blocks);
     }
 
     /* **************************************** */

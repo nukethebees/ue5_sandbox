@@ -21,7 +21,6 @@ using byte_size_type = std::size_t;
 
 using single_allocation_layout::capacity_granularity;
 using single_allocation_layout::layout_align;
-using single_allocation_layout::LayoutCursor;
 using single_allocation_layout::LayoutPolicy;
 using single_allocation_layout::maximum_capacity;
 using single_allocation_layout::supported_leaf;

@@ -47,24 +47,21 @@ struct Layout
                                                    std::optional<std::uint64_t>,
                                                    std::optional<std::uint64_t>,
                                                    std::optional<ioj::layout::CacheLineTiling>> {
-    using Base = ColumnLayouts;
-    static constexpr auto parent_column() noexcept { return Base::column<0>(); }
-    static constexpr auto name_column() noexcept { return Base::column<1>(); }
-    static constexpr auto semantic_type_column() noexcept { return Base::column<2>(); }
-    static constexpr auto schema_type_column() noexcept { return Base::column<3>(); }
-    static constexpr auto physical_type_column() noexcept { return Base::column<4>(); }
-    static constexpr auto overridden_column() noexcept { return Base::column<5>(); }
-    static constexpr auto type_facts_column() noexcept { return Base::column<6>(); }
-    static constexpr auto total_bytes_column() noexcept { return Base::column<7>(); }
-    static constexpr auto allocation_offset_bytes_column() noexcept { return Base::column<8>(); }
-    static constexpr auto padding_before_bytes_column() noexcept { return Base::column<9>(); }
-    static constexpr auto minimum_cache_lines_column() noexcept { return Base::column<10>(); }
-    static constexpr auto elements_per_cache_line_column() noexcept { return Base::column<11>(); }
-    static constexpr auto minimum_pages_column() noexcept { return Base::column<12>(); }
-    static constexpr auto complete_elements_per_page_column() noexcept {
-        return Base::column<13>();
-    }
-    static constexpr auto cache_line_tiling_column() noexcept { return Base::column<14>(); }
+    static constexpr std::size_t parent_column{0};
+    static constexpr std::size_t name_column{1};
+    static constexpr std::size_t semantic_type_column{2};
+    static constexpr std::size_t schema_type_column{3};
+    static constexpr std::size_t physical_type_column{4};
+    static constexpr std::size_t overridden_column{5};
+    static constexpr std::size_t type_facts_column{6};
+    static constexpr std::size_t total_bytes_column{7};
+    static constexpr std::size_t allocation_offset_bytes_column{8};
+    static constexpr std::size_t padding_before_bytes_column{9};
+    static constexpr std::size_t minimum_cache_lines_column{10};
+    static constexpr std::size_t elements_per_cache_line_column{11};
+    static constexpr std::size_t minimum_pages_column{12};
+    static constexpr std::size_t complete_elements_per_page_column{13};
+    static constexpr std::size_t cache_line_tiling_column{14};
 };
 
 /* **************************************** */
@@ -334,29 +331,54 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto parent() const { return this->column(Layout::parent_column()); }
-    auto name() const { return this->column(Layout::name_column()); }
-    auto semantic_type() const { return this->column(Layout::semantic_type_column()); }
-    auto schema_type() const { return this->column(Layout::schema_type_column()); }
-    auto physical_type() const { return this->column(Layout::physical_type_column()); }
-    auto overridden() const { return this->column(Layout::overridden_column()); }
-    auto type_facts() const { return this->column(Layout::type_facts_column()); }
-    auto total_bytes() const { return this->column(Layout::total_bytes_column()); }
+    auto parent() const { return this->template column<AnalysisId>(Layout::parent_column); }
+    auto name() const { return this->template column<std::string_view>(Layout::name_column); }
+    auto semantic_type() const {
+        return this->template column<lispb::schema::TypeId>(Layout::semantic_type_column);
+    }
+    auto schema_type() const {
+        return this->template column<lispb::StringId>(Layout::schema_type_column);
+    }
+    auto physical_type() const {
+        return this->template column<lispb::StringId>(Layout::physical_type_column);
+    }
+    auto overridden() const {
+        return this->template column<std::uint8_t>(Layout::overridden_column);
+    }
+    auto type_facts() const {
+        return this->template column<std::optional<ioj::layout::PhysicalFactId>>(
+            Layout::type_facts_column);
+    }
+    auto total_bytes() const {
+        return this->template column<std::optional<std::uint64_t>>(Layout::total_bytes_column);
+    }
     auto allocation_offset_bytes() const {
-        return this->column(Layout::allocation_offset_bytes_column());
+        return this->template column<std::optional<std::uint64_t>>(
+            Layout::allocation_offset_bytes_column);
     }
     auto padding_before_bytes() const {
-        return this->column(Layout::padding_before_bytes_column());
+        return this->template column<std::optional<std::uint64_t>>(
+            Layout::padding_before_bytes_column);
     }
-    auto minimum_cache_lines() const { return this->column(Layout::minimum_cache_lines_column()); }
+    auto minimum_cache_lines() const {
+        return this->template column<std::optional<std::uint64_t>>(
+            Layout::minimum_cache_lines_column);
+    }
     auto elements_per_cache_line() const {
-        return this->column(Layout::elements_per_cache_line_column());
+        return this->template column<std::optional<std::uint64_t>>(
+            Layout::elements_per_cache_line_column);
     }
-    auto minimum_pages() const { return this->column(Layout::minimum_pages_column()); }
+    auto minimum_pages() const {
+        return this->template column<std::optional<std::uint64_t>>(Layout::minimum_pages_column);
+    }
     auto complete_elements_per_page() const {
-        return this->column(Layout::complete_elements_per_page_column());
+        return this->template column<std::optional<std::uint64_t>>(
+            Layout::complete_elements_per_page_column);
     }
-    auto cache_line_tiling() const { return this->column(Layout::cache_line_tiling_column()); }
+    auto cache_line_tiling() const {
+        return this->template column<std::optional<ioj::layout::CacheLineTiling>>(
+            Layout::cache_line_tiling_column);
+    }
     template <typename Func>
     void each_column(Func&& func) const {
         func(parent());
@@ -378,22 +400,36 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     auto resolve() const -> std::conditional_t<Const,
                                                ::ioj::layout::soa_column_table::ResolvedConstView,
                                                ::ioj::layout::soa_column_table::ResolvedView> {
-        return {this->column(Layout::parent_column()).data(),
-                this->column(Layout::name_column()).data(),
-                this->column(Layout::semantic_type_column()).data(),
-                this->column(Layout::schema_type_column()).data(),
-                this->column(Layout::physical_type_column()).data(),
-                this->column(Layout::overridden_column()).data(),
-                this->column(Layout::type_facts_column()).data(),
-                this->column(Layout::total_bytes_column()).data(),
-                this->column(Layout::allocation_offset_bytes_column()).data(),
-                this->column(Layout::padding_before_bytes_column()).data(),
-                this->column(Layout::minimum_cache_lines_column()).data(),
-                this->column(Layout::elements_per_cache_line_column()).data(),
-                this->column(Layout::minimum_pages_column()).data(),
-                this->column(Layout::complete_elements_per_page_column()).data(),
-                this->column(Layout::cache_line_tiling_column()).data(),
-                this->num()};
+        return {
+            this->template column<AnalysisId>(Layout::parent_column).data(),
+            this->template column<std::string_view>(Layout::name_column).data(),
+            this->template column<lispb::schema::TypeId>(Layout::semantic_type_column).data(),
+            this->template column<lispb::StringId>(Layout::schema_type_column).data(),
+            this->template column<lispb::StringId>(Layout::physical_type_column).data(),
+            this->template column<std::uint8_t>(Layout::overridden_column).data(),
+            this->template column<std::optional<ioj::layout::PhysicalFactId>>(
+                    Layout::type_facts_column)
+                .data(),
+            this->template column<std::optional<std::uint64_t>>(Layout::total_bytes_column).data(),
+            this->template column<std::optional<std::uint64_t>>(
+                    Layout::allocation_offset_bytes_column)
+                .data(),
+            this->template column<std::optional<std::uint64_t>>(Layout::padding_before_bytes_column)
+                .data(),
+            this->template column<std::optional<std::uint64_t>>(Layout::minimum_cache_lines_column)
+                .data(),
+            this->template column<std::optional<std::uint64_t>>(
+                    Layout::elements_per_cache_line_column)
+                .data(),
+            this->template column<std::optional<std::uint64_t>>(Layout::minimum_pages_column)
+                .data(),
+            this->template column<std::optional<std::uint64_t>>(
+                    Layout::complete_elements_per_page_column)
+                .data(),
+            this->template column<std::optional<ioj::layout::CacheLineTiling>>(
+                    Layout::cache_line_tiling_column)
+                .data(),
+            this->num()};
     }
 };
 struct ConstView : ViewImpl<true> {
@@ -550,22 +586,7 @@ struct SoaColumnTable
     template <typename Byte>
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
-        ioj::native_soa::LayoutCursor cursor{blocks};
-        return {cursor.column_pointer(data, Layout::parent_column()),
-                cursor.column_pointer(data, Layout::name_column()),
-                cursor.column_pointer(data, Layout::semantic_type_column()),
-                cursor.column_pointer(data, Layout::schema_type_column()),
-                cursor.column_pointer(data, Layout::physical_type_column()),
-                cursor.column_pointer(data, Layout::overridden_column()),
-                cursor.column_pointer(data, Layout::type_facts_column()),
-                cursor.column_pointer(data, Layout::total_bytes_column()),
-                cursor.column_pointer(data, Layout::allocation_offset_bytes_column()),
-                cursor.column_pointer(data, Layout::padding_before_bytes_column()),
-                cursor.column_pointer(data, Layout::minimum_cache_lines_column()),
-                cursor.column_pointer(data, Layout::elements_per_cache_line_column()),
-                cursor.column_pointer(data, Layout::minimum_pages_column()),
-                cursor.column_pointer(data, Layout::complete_elements_per_page_column()),
-                cursor.column_pointer(data, Layout::cache_line_tiling_column())};
+        return Layout::make_data<DataPointers<Byte>>(data, blocks);
     }
 
     /* **************************************** */

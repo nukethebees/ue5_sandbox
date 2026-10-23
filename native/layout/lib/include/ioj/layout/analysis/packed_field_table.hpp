@@ -59,31 +59,30 @@ struct Layout
           std::optional<std::uint32_t>,
           std::optional<std::uint64_t>,
           RowRange> {
-    using Base = ColumnLayouts;
-    static constexpr auto parent_column() noexcept { return Base::column<0>(); }
-    static constexpr auto segment_column() noexcept { return Base::column<1>(); }
-    static constexpr auto name_column() noexcept { return Base::column<2>(); }
-    static constexpr auto semantic_type_column() noexcept { return Base::column<3>(); }
-    static constexpr auto logical_type_column() noexcept { return Base::column<4>(); }
-    static constexpr auto kind_column() noexcept { return Base::column<5>(); }
-    static constexpr auto reserved_column() noexcept { return Base::column<6>(); }
-    static constexpr auto schema_bit_width_column() noexcept { return Base::column<7>(); }
-    static constexpr auto schema_bit_width_auto_column() noexcept { return Base::column<8>(); }
-    static constexpr auto bit_width_column() noexcept { return Base::column<9>(); }
-    static constexpr auto overridden_column() noexcept { return Base::column<10>(); }
-    static constexpr auto least_significant_bit_column() noexcept { return Base::column<11>(); }
-    static constexpr auto most_significant_bit_column() noexcept { return Base::column<12>(); }
-    static constexpr auto maximum_unsigned_value_column() noexcept { return Base::column<13>(); }
-    static constexpr auto minimum_signed_value_column() noexcept { return Base::column<14>(); }
-    static constexpr auto maximum_signed_value_column() noexcept { return Base::column<15>(); }
-    static constexpr auto minimum_semantic_value_column() noexcept { return Base::column<16>(); }
-    static constexpr auto maximum_semantic_value_column() noexcept { return Base::column<17>(); }
-    static constexpr auto semantic_value_count_column() noexcept { return Base::column<18>(); }
-    static constexpr auto sentinel_code_count_column() noexcept { return Base::column<19>(); }
-    static constexpr auto required_code_count_column() noexcept { return Base::column<20>(); }
-    static constexpr auto minimum_required_bits_column() noexcept { return Base::column<21>(); }
-    static constexpr auto unused_codes_column() noexcept { return Base::column<22>(); }
-    static constexpr auto codes_column() noexcept { return Base::column<23>(); }
+    static constexpr std::size_t parent_column{0};
+    static constexpr std::size_t segment_column{1};
+    static constexpr std::size_t name_column{2};
+    static constexpr std::size_t semantic_type_column{3};
+    static constexpr std::size_t logical_type_column{4};
+    static constexpr std::size_t kind_column{5};
+    static constexpr std::size_t reserved_column{6};
+    static constexpr std::size_t schema_bit_width_column{7};
+    static constexpr std::size_t schema_bit_width_auto_column{8};
+    static constexpr std::size_t bit_width_column{9};
+    static constexpr std::size_t overridden_column{10};
+    static constexpr std::size_t least_significant_bit_column{11};
+    static constexpr std::size_t most_significant_bit_column{12};
+    static constexpr std::size_t maximum_unsigned_value_column{13};
+    static constexpr std::size_t minimum_signed_value_column{14};
+    static constexpr std::size_t maximum_signed_value_column{15};
+    static constexpr std::size_t minimum_semantic_value_column{16};
+    static constexpr std::size_t maximum_semantic_value_column{17};
+    static constexpr std::size_t semantic_value_count_column{18};
+    static constexpr std::size_t sentinel_code_count_column{19};
+    static constexpr std::size_t required_code_count_column{20};
+    static constexpr std::size_t minimum_required_bits_column{21};
+    static constexpr std::size_t unused_codes_column{22};
+    static constexpr std::size_t codes_column{23};
 };
 
 /* **************************************** */
@@ -470,50 +469,80 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto parent() const { return this->column(Layout::parent_column()); }
-    auto segment() const { return this->column(Layout::segment_column()); }
-    auto name() const { return this->column(Layout::name_column()); }
-    auto semantic_type() const { return this->column(Layout::semantic_type_column()); }
-    auto logical_type() const { return this->column(Layout::logical_type_column()); }
-    auto kind() const { return this->column(Layout::kind_column()); }
-    auto reserved() const { return this->column(Layout::reserved_column()); }
-    auto schema_bit_width() const { return this->column(Layout::schema_bit_width_column()); }
-    auto schema_bit_width_auto() const {
-        return this->column(Layout::schema_bit_width_auto_column());
+    auto parent() const { return this->template column<AnalysisId>(Layout::parent_column); }
+    auto segment() const {
+        return this->template column<lispb::schema::PackedSegmentId>(Layout::segment_column);
     }
-    auto bit_width() const { return this->column(Layout::bit_width_column()); }
-    auto overridden() const { return this->column(Layout::overridden_column()); }
+    auto name() const { return this->template column<std::string_view>(Layout::name_column); }
+    auto semantic_type() const {
+        return this->template column<std::optional<lispb::schema::TypeId>>(
+            Layout::semantic_type_column);
+    }
+    auto logical_type() const {
+        return this->template column<lispb::StringId>(Layout::logical_type_column);
+    }
+    auto kind() const {
+        return this->template column<lispb::codegen::PackedFieldKind>(Layout::kind_column);
+    }
+    auto reserved() const { return this->template column<std::uint8_t>(Layout::reserved_column); }
+    auto schema_bit_width() const {
+        return this->template column<std::uint32_t>(Layout::schema_bit_width_column);
+    }
+    auto schema_bit_width_auto() const {
+        return this->template column<std::uint8_t>(Layout::schema_bit_width_auto_column);
+    }
+    auto bit_width() const {
+        return this->template column<std::uint32_t>(Layout::bit_width_column);
+    }
+    auto overridden() const {
+        return this->template column<std::uint8_t>(Layout::overridden_column);
+    }
     auto least_significant_bit() const {
-        return this->column(Layout::least_significant_bit_column());
+        return this->template column<std::uint64_t>(Layout::least_significant_bit_column);
     }
     auto most_significant_bit() const {
-        return this->column(Layout::most_significant_bit_column());
+        return this->template column<std::optional<std::uint64_t>>(
+            Layout::most_significant_bit_column);
     }
     auto maximum_unsigned_value() const {
-        return this->column(Layout::maximum_unsigned_value_column());
+        return this->template column<std::optional<std::uint64_t>>(
+            Layout::maximum_unsigned_value_column);
     }
     auto minimum_signed_value() const {
-        return this->column(Layout::minimum_signed_value_column());
+        return this->template column<std::optional<std::int64_t>>(
+            Layout::minimum_signed_value_column);
     }
     auto maximum_signed_value() const {
-        return this->column(Layout::maximum_signed_value_column());
+        return this->template column<std::optional<std::int64_t>>(
+            Layout::maximum_signed_value_column);
     }
     auto minimum_semantic_value() const {
-        return this->column(Layout::minimum_semantic_value_column());
+        return this->template column<std::optional<lispb::codegen::PackedIntegerValue>>(
+            Layout::minimum_semantic_value_column);
     }
     auto maximum_semantic_value() const {
-        return this->column(Layout::maximum_semantic_value_column());
+        return this->template column<std::optional<lispb::codegen::PackedIntegerValue>>(
+            Layout::maximum_semantic_value_column);
     }
     auto semantic_value_count() const {
-        return this->column(Layout::semantic_value_count_column());
+        return this->template column<std::optional<std::uint64_t>>(
+            Layout::semantic_value_count_column);
     }
-    auto sentinel_code_count() const { return this->column(Layout::sentinel_code_count_column()); }
-    auto required_code_count() const { return this->column(Layout::required_code_count_column()); }
+    auto sentinel_code_count() const {
+        return this->template column<std::uint64_t>(Layout::sentinel_code_count_column);
+    }
+    auto required_code_count() const {
+        return this->template column<std::optional<std::uint64_t>>(
+            Layout::required_code_count_column);
+    }
     auto minimum_required_bits() const {
-        return this->column(Layout::minimum_required_bits_column());
+        return this->template column<std::optional<std::uint32_t>>(
+            Layout::minimum_required_bits_column);
     }
-    auto unused_codes() const { return this->column(Layout::unused_codes_column()); }
-    auto codes() const { return this->column(Layout::codes_column()); }
+    auto unused_codes() const {
+        return this->template column<std::optional<std::uint64_t>>(Layout::unused_codes_column);
+    }
+    auto codes() const { return this->template column<RowRange>(Layout::codes_column); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(parent());
@@ -544,31 +573,47 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     auto resolve() const -> std::conditional_t<Const,
                                                ::ioj::layout::packed_field_table::ResolvedConstView,
                                                ::ioj::layout::packed_field_table::ResolvedView> {
-        return {this->column(Layout::parent_column()).data(),
-                this->column(Layout::segment_column()).data(),
-                this->column(Layout::name_column()).data(),
-                this->column(Layout::semantic_type_column()).data(),
-                this->column(Layout::logical_type_column()).data(),
-                this->column(Layout::kind_column()).data(),
-                this->column(Layout::reserved_column()).data(),
-                this->column(Layout::schema_bit_width_column()).data(),
-                this->column(Layout::schema_bit_width_auto_column()).data(),
-                this->column(Layout::bit_width_column()).data(),
-                this->column(Layout::overridden_column()).data(),
-                this->column(Layout::least_significant_bit_column()).data(),
-                this->column(Layout::most_significant_bit_column()).data(),
-                this->column(Layout::maximum_unsigned_value_column()).data(),
-                this->column(Layout::minimum_signed_value_column()).data(),
-                this->column(Layout::maximum_signed_value_column()).data(),
-                this->column(Layout::minimum_semantic_value_column()).data(),
-                this->column(Layout::maximum_semantic_value_column()).data(),
-                this->column(Layout::semantic_value_count_column()).data(),
-                this->column(Layout::sentinel_code_count_column()).data(),
-                this->column(Layout::required_code_count_column()).data(),
-                this->column(Layout::minimum_required_bits_column()).data(),
-                this->column(Layout::unused_codes_column()).data(),
-                this->column(Layout::codes_column()).data(),
-                this->num()};
+        return {
+            this->template column<AnalysisId>(Layout::parent_column).data(),
+            this->template column<lispb::schema::PackedSegmentId>(Layout::segment_column).data(),
+            this->template column<std::string_view>(Layout::name_column).data(),
+            this->template column<std::optional<lispb::schema::TypeId>>(
+                    Layout::semantic_type_column)
+                .data(),
+            this->template column<lispb::StringId>(Layout::logical_type_column).data(),
+            this->template column<lispb::codegen::PackedFieldKind>(Layout::kind_column).data(),
+            this->template column<std::uint8_t>(Layout::reserved_column).data(),
+            this->template column<std::uint32_t>(Layout::schema_bit_width_column).data(),
+            this->template column<std::uint8_t>(Layout::schema_bit_width_auto_column).data(),
+            this->template column<std::uint32_t>(Layout::bit_width_column).data(),
+            this->template column<std::uint8_t>(Layout::overridden_column).data(),
+            this->template column<std::uint64_t>(Layout::least_significant_bit_column).data(),
+            this->template column<std::optional<std::uint64_t>>(Layout::most_significant_bit_column)
+                .data(),
+            this->template column<std::optional<std::uint64_t>>(
+                    Layout::maximum_unsigned_value_column)
+                .data(),
+            this->template column<std::optional<std::int64_t>>(Layout::minimum_signed_value_column)
+                .data(),
+            this->template column<std::optional<std::int64_t>>(Layout::maximum_signed_value_column)
+                .data(),
+            this->template column<std::optional<lispb::codegen::PackedIntegerValue>>(
+                    Layout::minimum_semantic_value_column)
+                .data(),
+            this->template column<std::optional<lispb::codegen::PackedIntegerValue>>(
+                    Layout::maximum_semantic_value_column)
+                .data(),
+            this->template column<std::optional<std::uint64_t>>(Layout::semantic_value_count_column)
+                .data(),
+            this->template column<std::uint64_t>(Layout::sentinel_code_count_column).data(),
+            this->template column<std::optional<std::uint64_t>>(Layout::required_code_count_column)
+                .data(),
+            this->template column<std::optional<std::uint32_t>>(
+                    Layout::minimum_required_bits_column)
+                .data(),
+            this->template column<std::optional<std::uint64_t>>(Layout::unused_codes_column).data(),
+            this->template column<RowRange>(Layout::codes_column).data(),
+            this->num()};
     }
 };
 struct ConstView : ViewImpl<true> {
@@ -770,31 +815,7 @@ struct PackedFieldTable
     template <typename Byte>
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
-        ioj::native_soa::LayoutCursor cursor{blocks};
-        return {cursor.column_pointer(data, Layout::parent_column()),
-                cursor.column_pointer(data, Layout::segment_column()),
-                cursor.column_pointer(data, Layout::name_column()),
-                cursor.column_pointer(data, Layout::semantic_type_column()),
-                cursor.column_pointer(data, Layout::logical_type_column()),
-                cursor.column_pointer(data, Layout::kind_column()),
-                cursor.column_pointer(data, Layout::reserved_column()),
-                cursor.column_pointer(data, Layout::schema_bit_width_column()),
-                cursor.column_pointer(data, Layout::schema_bit_width_auto_column()),
-                cursor.column_pointer(data, Layout::bit_width_column()),
-                cursor.column_pointer(data, Layout::overridden_column()),
-                cursor.column_pointer(data, Layout::least_significant_bit_column()),
-                cursor.column_pointer(data, Layout::most_significant_bit_column()),
-                cursor.column_pointer(data, Layout::maximum_unsigned_value_column()),
-                cursor.column_pointer(data, Layout::minimum_signed_value_column()),
-                cursor.column_pointer(data, Layout::maximum_signed_value_column()),
-                cursor.column_pointer(data, Layout::minimum_semantic_value_column()),
-                cursor.column_pointer(data, Layout::maximum_semantic_value_column()),
-                cursor.column_pointer(data, Layout::semantic_value_count_column()),
-                cursor.column_pointer(data, Layout::sentinel_code_count_column()),
-                cursor.column_pointer(data, Layout::required_code_count_column()),
-                cursor.column_pointer(data, Layout::minimum_required_bits_column()),
-                cursor.column_pointer(data, Layout::unused_codes_column()),
-                cursor.column_pointer(data, Layout::codes_column())};
+        return Layout::make_data<DataPointers<Byte>>(data, blocks);
     }
 
     /* **************************************** */
