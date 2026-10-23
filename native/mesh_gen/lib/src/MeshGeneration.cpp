@@ -278,8 +278,8 @@ auto describe_request(GenerationRequest const& request) -> std::string {
         case Shape::honeycomb_panel:
             write("honeycomb_panel;rows={};columns={};cell_radius={};wall_thickness={};"
                   "depth={};pointy_top={}",
-                  request.honeycomb_panel.rows.get(),
-                  request.honeycomb_panel.columns.get(),
+                  request.honeycomb_panel.rows,
+                  request.honeycomb_panel.columns,
                   format_number(request.honeycomb_panel.cell_radius),
                   format_number(request.honeycomb_panel.wall_thickness),
                   format_number(request.honeycomb_panel.depth),

@@ -6,6 +6,7 @@
 #include <concepts>
 #include <cstddef>
 #include <cstdlib>
+#include <format>
 #include <limits>
 #include <optional>
 #include <source_location>
@@ -105,3 +106,12 @@ using PositiveFinite = detail::ConstrainedNumber<T, detail::positive_finite_numb
 template <Numeric T>
 using NonNegativeFinite = detail::ConstrainedNumber<T, detail::nonnegative_finite_number_policy>;
 }
+
+template <ioj::Numeric T, ioj::detail::ConstrainedNumberPolicy policy, typename Char>
+struct std::formatter<ioj::detail::ConstrainedNumber<T, policy>, Char> : std::formatter<T, Char> {
+    template <typename FormatContext>
+    auto format(ioj::detail::ConstrainedNumber<T, policy> const value, FormatContext& context) const
+        -> typename FormatContext::iterator {
+        return std::formatter<T, Char>::format(value.get(), context);
+    }
+};
