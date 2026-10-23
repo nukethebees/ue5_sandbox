@@ -81,7 +81,7 @@ auto Sim::get_num_instances() const noexcept -> std::uint32_t {
 /* **************************************** */
 // Spawning
 /* **************************************** */
-auto Sim::spawn_instances(Vectors3fConstView const new_locations,
+auto Sim::spawn_instances(Vectors3fResolvedConstView const new_locations,
                           std::span<float const> const new_yaws,
                           std::span<std::int32_t const> const new_fire_point_indices)
     -> std::span<EntityId const> {
@@ -95,7 +95,7 @@ auto Sim::spawn_instances(Vectors3fConstView const new_locations,
 
     entities.add_uninitialised(n);
     auto const appended{entities.right(n)};
-    auto const locations{appended.view_locations()};
+    auto const locations{appended.view_locations().resolve()};
     auto const xs{locations.xs()};
     auto const ys{locations.ys()};
     auto const zs{locations.zs()};
@@ -151,13 +151,13 @@ void Sim::materialize_fire_commands(ActionInputs const inputs) {
     auto const fire_point_count{static_cast<std::uint32_t>(config.fire_point_offsets.size())};
     auto const new_lasers{inputs.laser_simulation.append_spawn_requests(ready_count)};
     auto const next_fire_points{entity_columns.next_fire_point_indices()};
-    auto const locations{entity_columns.view_locations()};
+    auto const locations{entity_columns.view_locations().resolve()};
     auto const yaws{entity_columns.yaws()};
     auto const entity_ids{entity_columns.entity_ids()};
 
-    auto const laser_locations{new_lasers.view_locations()};
-    auto const laser_rotations{new_lasers.view_rotations()};
-    auto const laser_base_velocities{new_lasers.view_base_velocities()};
+    auto const laser_locations{new_lasers.view_locations().resolve()};
+    auto const laser_rotations{new_lasers.view_rotations().resolve()};
+    auto const laser_base_velocities{new_lasers.view_base_velocities().resolve()};
     auto const laser_damages{new_lasers.damages()};
     auto const laser_speeds{new_lasers.speeds()};
     auto const laser_max_distances{new_lasers.max_distances()};

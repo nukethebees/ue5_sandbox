@@ -3,21 +3,20 @@
 
 #pragma once
 
+#include "ioj/math_types.h"
 #include "ioj/native_soa/storage.h"
 #include "ioj/sim/lasers/laser_source.h"
-#include "ioj/vector_soa_view.h"
+#include "ioj/soa_permutation.h"
+#include "ioj/vectors3f.h"
 
 #include <cassert>
 #include <memory_resource>
 
 namespace ioj::sim {
-struct Vectors3fSchema;
-
 struct LaserHitDetailsSchema;
-
-struct LaserHitDetailsSingleView;
-struct LaserHitDetailsSingleConstView;
-struct LaserHitDetailsSingleLayoutColumns {
+struct LaserHitDetailsView;
+struct LaserHitDetailsConstView;
+struct LaserHitDetailsLayoutColumns {
     template <typename T>
     using ColLayout = ioj::native_soa::ColumnLayout<T>;
 
@@ -31,7 +30,7 @@ struct LaserHitDetailsSingleLayoutColumns {
     ColLayout<float> EmissionDirectionsZsColumn;
     ColLayout<LaserSource> SourcesColumn;
 
-    constexpr LaserHitDetailsSingleLayoutColumns() noexcept
+    constexpr LaserHitDetailsLayoutColumns() noexcept
         : LocationsXsColumn{LayoutStart}
         , LocationsYsColumn{LocationsXsColumn}
         , LocationsZsColumn{LocationsYsColumn}
@@ -39,11 +38,10 @@ struct LaserHitDetailsSingleLayoutColumns {
         , EmissionDirectionsYsColumn{EmissionDirectionsXsColumn}
         , EmissionDirectionsZsColumn{EmissionDirectionsYsColumn}
         , SourcesColumn{EmissionDirectionsZsColumn} {}
-    LaserHitDetailsSingleLayoutColumns(LaserHitDetailsSingleLayoutColumns const&) = delete;
-    auto operator=(LaserHitDetailsSingleLayoutColumns const&)
-        -> LaserHitDetailsSingleLayoutColumns& = delete;
+    LaserHitDetailsLayoutColumns(LaserHitDetailsLayoutColumns const&) = delete;
+    auto operator=(LaserHitDetailsLayoutColumns const&) -> LaserHitDetailsLayoutColumns& = delete;
 };
-struct LaserHitDetailsSingleLayout {
+struct LaserHitDetailsLayout {
     using size_type = std::uint32_t;
     using byte_size_type = std::size_t;
 
@@ -51,7 +49,7 @@ struct LaserHitDetailsSingleLayout {
         ioj::native_soa::LayoutPolicy::capacity_granularity};
     static constexpr byte_size_type column_gap{ioj::native_soa::LayoutPolicy::column_gap};
 
-    static constexpr LaserHitDetailsSingleLayoutColumns columns{};
+    static constexpr LaserHitDetailsLayoutColumns columns{};
 
     static constexpr byte_size_type allocation_alignment{
         columns.SourcesColumn.allocation_alignment};
@@ -67,241 +65,25 @@ struct LaserHitDetailsSingleLayout {
     }
     static_assert(max_capacity >= capacity_granularity);
 };
-
-struct LaserHitDetailsSingleResolvedView_locations;
-struct LaserHitDetailsSingleResolvedConstView_locations;
+struct LaserHitDetailsResolvedView;
+struct LaserHitDetailsResolvedConstView;
 template <bool Const>
-struct LaserHitDetailsSingleResolvedView_locationsImpl {
+struct LaserHitDetailsResolvedViewImpl {
     using size_type = std::uint32_t;
-    using View = LaserHitDetailsSingleResolvedView_locations;
-    using ConstView = LaserHitDetailsSingleResolvedConstView_locations;
-    using soa_schema = Vectors3fSchema;
+    using View = LaserHitDetailsResolvedView;
+    using ConstView = LaserHitDetailsResolvedConstView;
+    using soa_schema = ::ioj::sim::LaserHitDetailsSchema;
     template <typename T>
     using Element = std::conditional_t<Const, T const, T>;
-    LaserHitDetailsSingleResolvedView_locationsImpl() = default;
-    LaserHitDetailsSingleResolvedView_locationsImpl(Element<float>* locations_xs,
-                                                    Element<float>* locations_ys,
-                                                    Element<float>* locations_zs,
-                                                    size_type count)
-        : locations_xs_{locations_xs}
-        , locations_ys_{locations_ys}
-        , locations_zs_{locations_zs}
-        , count_{count} {
-        ioj::soa_storage_detail::validate_column_pointers(
-            count_, locations_xs_, locations_ys_, locations_zs_);
-    }
-    LaserHitDetailsSingleResolvedView_locationsImpl(std::span<Element<float>> locations_xs,
-                                                    std::span<Element<float>> locations_ys,
-                                                    std::span<Element<float>> locations_zs)
-        : LaserHitDetailsSingleResolvedView_locationsImpl{
-              locations_xs.data(),
-              locations_ys.data(),
-              locations_zs.data(),
-              ioj::soa_storage_detail::checked_row_count(locations_xs.size())} {
-        assert(locations_xs.size() == count_);
-        assert(locations_ys.size() == count_);
-        assert(locations_zs.size() == count_);
-    }
-    template <bool Enabled = Const>
-    LaserHitDetailsSingleResolvedView_locationsImpl(
-        LaserHitDetailsSingleResolvedView_locationsImpl<false> const& other)
-        requires Enabled
-        : locations_xs_{other.locations_xs_}
-        , locations_ys_{other.locations_ys_}
-        , locations_zs_{other.locations_zs_}
-        , count_{other.count_} {}
-    auto num() const noexcept -> size_type { return count_; }
-    auto is_empty() const noexcept -> bool { return count_ == 0; }
-    auto get_view(this auto const& self) { return self; }
-    auto get_const_view(this auto const& self) {
-        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
-        return Result{self.locations_xs_, self.locations_ys_, self.locations_zs_, self.count_};
-    }
-    auto resolve(this auto const& self) { return self; }
-    void validate() const {}
-    auto slice(this auto const& self, size_type offset, size_type count) {
-        assert(offset <= self.count_ && count <= self.count_ - offset);
-        using Result = std::remove_cvref_t<decltype(self)>;
-        return Result{self.locations_xs_ == nullptr ? nullptr : self.locations_xs_ + offset,
-                      self.locations_ys_ == nullptr ? nullptr : self.locations_ys_ + offset,
-                      self.locations_zs_ == nullptr ? nullptr : self.locations_zs_ + offset,
-                      count};
-    }
-    auto get_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count);
-    }
-    auto get_const_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count).get_const_view();
-    }
-    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
-    auto right(this auto const& self, size_type count) {
-        assert(count <= self.num());
-        return self.slice(self.num() - count, count);
-    }
-    auto xs() const -> std::span<Element<float>> { return {locations_xs_, count_}; }
-    auto ys() const -> std::span<Element<float>> { return {locations_ys_, count_}; }
-    auto zs() const -> std::span<Element<float>> { return {locations_zs_, count_}; }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        func(std::span<Element<float>>{locations_xs_, count_});
-        func(std::span<Element<float>>{locations_ys_, count_});
-        func(std::span<Element<float>>{locations_zs_, count_});
-    }
-  private:
-    template <bool>
-    friend struct LaserHitDetailsSingleResolvedView_locationsImpl;
-    Element<float>* locations_xs_{};
-    Element<float>* locations_ys_{};
-    Element<float>* locations_zs_{};
-    size_type count_{};
-};
-struct LaserHitDetailsSingleResolvedConstView_locations
-    : LaserHitDetailsSingleResolvedView_locationsImpl<true> {
-    using Base = LaserHitDetailsSingleResolvedView_locationsImpl<true>;
-    using Base::Base;
-};
-struct LaserHitDetailsSingleResolvedView_locations
-    : LaserHitDetailsSingleResolvedView_locationsImpl<false> {
-    using Base = LaserHitDetailsSingleResolvedView_locationsImpl<false>;
-    using Base::Base;
-    void set(size_type index, float const new_xs, float const new_ys, float const new_zs) const {
-        assert(index < num());
-        this->xs()[index] = new_xs;
-        this->ys()[index] = new_ys;
-        this->zs()[index] = new_zs;
-    }
-};
-struct LaserHitDetailsSingleResolvedView_emission_directions;
-struct LaserHitDetailsSingleResolvedConstView_emission_directions;
-template <bool Const>
-struct LaserHitDetailsSingleResolvedView_emission_directionsImpl {
-    using size_type = std::uint32_t;
-    using View = LaserHitDetailsSingleResolvedView_emission_directions;
-    using ConstView = LaserHitDetailsSingleResolvedConstView_emission_directions;
-    using soa_schema = Vectors3fSchema;
-    template <typename T>
-    using Element = std::conditional_t<Const, T const, T>;
-    LaserHitDetailsSingleResolvedView_emission_directionsImpl() = default;
-    LaserHitDetailsSingleResolvedView_emission_directionsImpl(
-        Element<float>* emission_directions_xs,
-        Element<float>* emission_directions_ys,
-        Element<float>* emission_directions_zs,
-        size_type count)
-        : emission_directions_xs_{emission_directions_xs}
-        , emission_directions_ys_{emission_directions_ys}
-        , emission_directions_zs_{emission_directions_zs}
-        , count_{count} {
-        ioj::soa_storage_detail::validate_column_pointers(
-            count_, emission_directions_xs_, emission_directions_ys_, emission_directions_zs_);
-    }
-    LaserHitDetailsSingleResolvedView_emission_directionsImpl(
-        std::span<Element<float>> emission_directions_xs,
-        std::span<Element<float>> emission_directions_ys,
-        std::span<Element<float>> emission_directions_zs)
-        : LaserHitDetailsSingleResolvedView_emission_directionsImpl{
-              emission_directions_xs.data(),
-              emission_directions_ys.data(),
-              emission_directions_zs.data(),
-              ioj::soa_storage_detail::checked_row_count(emission_directions_xs.size())} {
-        assert(emission_directions_xs.size() == count_);
-        assert(emission_directions_ys.size() == count_);
-        assert(emission_directions_zs.size() == count_);
-    }
-    template <bool Enabled = Const>
-    LaserHitDetailsSingleResolvedView_emission_directionsImpl(
-        LaserHitDetailsSingleResolvedView_emission_directionsImpl<false> const& other)
-        requires Enabled
-        : emission_directions_xs_{other.emission_directions_xs_}
-        , emission_directions_ys_{other.emission_directions_ys_}
-        , emission_directions_zs_{other.emission_directions_zs_}
-        , count_{other.count_} {}
-    auto num() const noexcept -> size_type { return count_; }
-    auto is_empty() const noexcept -> bool { return count_ == 0; }
-    auto get_view(this auto const& self) { return self; }
-    auto get_const_view(this auto const& self) {
-        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
-        return Result{self.emission_directions_xs_,
-                      self.emission_directions_ys_,
-                      self.emission_directions_zs_,
-                      self.count_};
-    }
-    auto resolve(this auto const& self) { return self; }
-    void validate() const {}
-    auto slice(this auto const& self, size_type offset, size_type count) {
-        assert(offset <= self.count_ && count <= self.count_ - offset);
-        using Result = std::remove_cvref_t<decltype(self)>;
-        return Result{
-            self.emission_directions_xs_ == nullptr ? nullptr
-                                                    : self.emission_directions_xs_ + offset,
-            self.emission_directions_ys_ == nullptr ? nullptr
-                                                    : self.emission_directions_ys_ + offset,
-            self.emission_directions_zs_ == nullptr ? nullptr
-                                                    : self.emission_directions_zs_ + offset,
-            count};
-    }
-    auto get_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count);
-    }
-    auto get_const_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count).get_const_view();
-    }
-    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
-    auto right(this auto const& self, size_type count) {
-        assert(count <= self.num());
-        return self.slice(self.num() - count, count);
-    }
-    auto xs() const -> std::span<Element<float>> { return {emission_directions_xs_, count_}; }
-    auto ys() const -> std::span<Element<float>> { return {emission_directions_ys_, count_}; }
-    auto zs() const -> std::span<Element<float>> { return {emission_directions_zs_, count_}; }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        func(std::span<Element<float>>{emission_directions_xs_, count_});
-        func(std::span<Element<float>>{emission_directions_ys_, count_});
-        func(std::span<Element<float>>{emission_directions_zs_, count_});
-    }
-  private:
-    template <bool>
-    friend struct LaserHitDetailsSingleResolvedView_emission_directionsImpl;
-    Element<float>* emission_directions_xs_{};
-    Element<float>* emission_directions_ys_{};
-    Element<float>* emission_directions_zs_{};
-    size_type count_{};
-};
-struct LaserHitDetailsSingleResolvedConstView_emission_directions
-    : LaserHitDetailsSingleResolvedView_emission_directionsImpl<true> {
-    using Base = LaserHitDetailsSingleResolvedView_emission_directionsImpl<true>;
-    using Base::Base;
-};
-struct LaserHitDetailsSingleResolvedView_emission_directions
-    : LaserHitDetailsSingleResolvedView_emission_directionsImpl<false> {
-    using Base = LaserHitDetailsSingleResolvedView_emission_directionsImpl<false>;
-    using Base::Base;
-    void set(size_type index, float const new_xs, float const new_ys, float const new_zs) const {
-        assert(index < num());
-        this->xs()[index] = new_xs;
-        this->ys()[index] = new_ys;
-        this->zs()[index] = new_zs;
-    }
-};
-struct LaserHitDetailsSingleResolvedView;
-struct LaserHitDetailsSingleResolvedConstView;
-template <bool Const>
-struct LaserHitDetailsSingleResolvedViewImpl {
-    using size_type = std::uint32_t;
-    using View = LaserHitDetailsSingleResolvedView;
-    using ConstView = LaserHitDetailsSingleResolvedConstView;
-    using soa_schema = LaserHitDetailsSchema;
-    template <typename T>
-    using Element = std::conditional_t<Const, T const, T>;
-    LaserHitDetailsSingleResolvedViewImpl() = default;
-    LaserHitDetailsSingleResolvedViewImpl(Element<float>* locations_xs,
-                                          Element<float>* locations_ys,
-                                          Element<float>* locations_zs,
-                                          Element<float>* emission_directions_xs,
-                                          Element<float>* emission_directions_ys,
-                                          Element<float>* emission_directions_zs,
-                                          Element<ioj::sim::LaserSource>* sources,
-                                          size_type count)
+    LaserHitDetailsResolvedViewImpl() = default;
+    LaserHitDetailsResolvedViewImpl(Element<float>* locations_xs,
+                                    Element<float>* locations_ys,
+                                    Element<float>* locations_zs,
+                                    Element<float>* emission_directions_xs,
+                                    Element<float>* emission_directions_ys,
+                                    Element<float>* emission_directions_zs,
+                                    Element<ioj::sim::LaserSource>* sources,
+                                    size_type count)
         : locations_xs_{locations_xs}
         , locations_ys_{locations_ys}
         , locations_zs_{locations_zs}
@@ -319,14 +101,14 @@ struct LaserHitDetailsSingleResolvedViewImpl {
                                                           emission_directions_zs_,
                                                           sources_);
     }
-    LaserHitDetailsSingleResolvedViewImpl(std::span<Element<float>> locations_xs,
-                                          std::span<Element<float>> locations_ys,
-                                          std::span<Element<float>> locations_zs,
-                                          std::span<Element<float>> emission_directions_xs,
-                                          std::span<Element<float>> emission_directions_ys,
-                                          std::span<Element<float>> emission_directions_zs,
-                                          std::span<Element<ioj::sim::LaserSource>> sources)
-        : LaserHitDetailsSingleResolvedViewImpl{
+    LaserHitDetailsResolvedViewImpl(std::span<Element<float>> locations_xs,
+                                    std::span<Element<float>> locations_ys,
+                                    std::span<Element<float>> locations_zs,
+                                    std::span<Element<float>> emission_directions_xs,
+                                    std::span<Element<float>> emission_directions_ys,
+                                    std::span<Element<float>> emission_directions_zs,
+                                    std::span<Element<ioj::sim::LaserSource>> sources)
+        : LaserHitDetailsResolvedViewImpl{
               locations_xs.data(),
               locations_ys.data(),
               locations_zs.data(),
@@ -344,7 +126,7 @@ struct LaserHitDetailsSingleResolvedViewImpl {
         assert(sources.size() == count_);
     }
     template <bool Enabled = Const>
-    LaserHitDetailsSingleResolvedViewImpl(LaserHitDetailsSingleResolvedViewImpl<false> const& other)
+    LaserHitDetailsResolvedViewImpl(LaserHitDetailsResolvedViewImpl<false> const& other)
         requires Enabled
         : locations_xs_{other.locations_xs_}
         , locations_ys_{other.locations_ys_}
@@ -397,16 +179,12 @@ struct LaserHitDetailsSingleResolvedViewImpl {
         assert(count <= self.num());
         return self.slice(self.num() - count, count);
     }
-    auto view_locations() const
-        -> std::conditional_t<Const,
-                              LaserHitDetailsSingleResolvedConstView_locations,
-                              LaserHitDetailsSingleResolvedView_locations> {
+    auto view_locations() const -> std::
+        conditional_t<Const, ::ioj::Vectors3fResolvedConstView, ::ioj::Vectors3fResolvedView> {
         return {locations_xs_, locations_ys_, locations_zs_, count_};
     }
-    auto view_emission_directions() const
-        -> std::conditional_t<Const,
-                              LaserHitDetailsSingleResolvedConstView_emission_directions,
-                              LaserHitDetailsSingleResolvedView_emission_directions> {
+    auto view_emission_directions() const -> std::
+        conditional_t<Const, ::ioj::Vectors3fResolvedConstView, ::ioj::Vectors3fResolvedView> {
         return {emission_directions_xs_, emission_directions_ys_, emission_directions_zs_, count_};
     }
     auto sources() const -> std::span<Element<ioj::sim::LaserSource>> { return {sources_, count_}; }
@@ -422,7 +200,7 @@ struct LaserHitDetailsSingleResolvedViewImpl {
     }
   private:
     template <bool>
-    friend struct LaserHitDetailsSingleResolvedViewImpl;
+    friend struct LaserHitDetailsResolvedViewImpl;
     Element<float>* locations_xs_{};
     Element<float>* locations_ys_{};
     Element<float>* locations_zs_{};
@@ -432,12 +210,12 @@ struct LaserHitDetailsSingleResolvedViewImpl {
     Element<ioj::sim::LaserSource>* sources_{};
     size_type count_{};
 };
-struct LaserHitDetailsSingleResolvedConstView : LaserHitDetailsSingleResolvedViewImpl<true> {
-    using Base = LaserHitDetailsSingleResolvedViewImpl<true>;
+struct LaserHitDetailsResolvedConstView : LaserHitDetailsResolvedViewImpl<true> {
+    using Base = LaserHitDetailsResolvedViewImpl<true>;
     using Base::Base;
 };
-struct LaserHitDetailsSingleResolvedView : LaserHitDetailsSingleResolvedViewImpl<false> {
-    using Base = LaserHitDetailsSingleResolvedViewImpl<false>;
+struct LaserHitDetailsResolvedView : LaserHitDetailsResolvedViewImpl<false> {
+    using Base = LaserHitDetailsResolvedViewImpl<false>;
     using Base::Base;
     void set(size_type index,
              float const new_locations_xs,
@@ -456,48 +234,217 @@ struct LaserHitDetailsSingleResolvedView : LaserHitDetailsSingleResolvedViewImpl
         this->view_emission_directions().zs()[index] = new_emission_directions_zs;
         this->sources()[index] = new_sources;
     }
+    void set(size_type index,
+             Vector3f const new_locations,
+             Vector3f const new_emission_directions,
+             ioj::sim::LaserSource const new_sources) const {
+        assert(index < num());
+        this->view_locations().set(index, new_locations);
+        this->view_emission_directions().set(index, new_emission_directions);
+        this->sources()[index] = new_sources;
+    }
 };
+struct LaserHitDetailsView_locations;
+struct LaserHitDetailsConstView_locations;
 template <bool Const>
-struct LaserHitDetailsSingleViewImpl : ioj::soa_storage_detail::CompactViewOperations {
-    using soa_schema = LaserHitDetailsSchema;
+struct LaserHitDetailsView_locationsImpl : ioj::soa_storage_detail::CompactViewOperations {
+    using soa_schema = Vectors3fSchema;
     using size_type = std::uint32_t;
-    using Layout = LaserHitDetailsSingleLayout;
+    using Layout = LaserHitDetailsLayout;
     using Storage = ioj::native_soa::StorageState;
     using State = std::conditional_t<Const, Storage const, Storage>;
     template <typename T>
     using Element = std::conditional_t<Const, T const, T>;
-    using View = LaserHitDetailsSingleView;
-    using ConstView = LaserHitDetailsSingleConstView;
-    LaserHitDetailsSingleViewImpl() = default;
-    LaserHitDetailsSingleViewImpl(State* state, size_type offset, size_type count)
+    using View = LaserHitDetailsView_locations;
+    using ConstView = LaserHitDetailsConstView_locations;
+    LaserHitDetailsView_locationsImpl() = default;
+    LaserHitDetailsView_locationsImpl(State* state, size_type offset, size_type count)
         : state_{state}
         , offset_{offset}
         , count_{count} {}
     template <bool Enabled = Const>
-    LaserHitDetailsSingleViewImpl(LaserHitDetailsSingleViewImpl<false> const& other)
+    LaserHitDetailsView_locationsImpl(LaserHitDetailsView_locationsImpl<false> const& other)
         requires Enabled
         : state_{other.state_}
         , offset_{other.offset_}
         , count_{other.count_} {}
-    auto view_locations() const {
-        using ioj::soa_storage_detail::three_column_view;
-        return three_column_view<ioj::Vector3SoAView<Element<float>>>(
-            state_,
-            offset_,
-            count_,
-            Layout::columns.LocationsXsColumn,
-            Layout::columns.LocationsYsColumn,
-            Layout::columns.LocationsZsColumn);
+    auto xs() const { return make_column_view(Layout::columns.LocationsXsColumn); }
+    auto ys() const { return make_column_view(Layout::columns.LocationsYsColumn); }
+    auto zs() const { return make_column_view(Layout::columns.LocationsZsColumn); }
+    template <typename Func>
+    void each_column(Func&& func) const {
+        func(xs());
+        func(ys());
+        func(zs());
     }
-    auto view_emission_directions() const {
-        using ioj::soa_storage_detail::three_column_view;
-        return three_column_view<ioj::Vector3SoAView<Element<float>>>(
-            state_,
-            offset_,
-            count_,
-            Layout::columns.EmissionDirectionsXsColumn,
-            Layout::columns.EmissionDirectionsYsColumn,
-            Layout::columns.EmissionDirectionsZsColumn);
+    auto resolve() const -> std::
+        conditional_t<Const, ::ioj::Vectors3fResolvedConstView, ::ioj::Vectors3fResolvedView> {
+        return {(make_column_view(Layout::columns.LocationsXsColumn).data()),
+                (make_column_view(Layout::columns.LocationsYsColumn).data()),
+                (make_column_view(Layout::columns.LocationsZsColumn).data()),
+                count_};
+    }
+  private:
+    template <typename T>
+    auto make_column_view(ioj::native_soa::ColumnLayout<T> const& layout) const {
+        return ioj::soa_storage_detail::column_view<std::span<Element<T>>>(
+            state_, offset_, count_, layout);
+    }
+    friend ioj::soa_storage_detail::CompactViewOperations;
+    template <bool>
+    friend struct LaserHitDetailsView_locationsImpl;
+    State* state_{};
+    size_type offset_{};
+    size_type count_{};
+};
+struct LaserHitDetailsConstView_locations : LaserHitDetailsView_locationsImpl<true> {
+    using Base = LaserHitDetailsView_locationsImpl<true>;
+    using Base::Base;
+    using equivalent_type = Vector3f;
+    auto operator[](std::uint32_t index) const -> equivalent_type {
+        assert(index < num());
+        return equivalent_type{xs()[index], ys()[index], zs()[index]};
+    }
+};
+static_assert(ioj::soa_storage_detail::validate_compact_view<LaserHitDetailsConstView_locations>());
+struct LaserHitDetailsView_locations : LaserHitDetailsView_locationsImpl<false> {
+    using Base = LaserHitDetailsView_locationsImpl<false>;
+    using Base::Base;
+    void set(size_type index, float const new_xs, float const new_ys, float const new_zs) const {
+        assert(index < num());
+        this->xs()[index] = new_xs;
+        this->ys()[index] = new_ys;
+        this->zs()[index] = new_zs;
+    }
+    void set(size_type index, Vector3f const value) const {
+        set(index, (value.x()), (value.y()), (value.z()));
+    }
+    using equivalent_type = Vector3f;
+    auto operator[](std::uint32_t index) const -> equivalent_type {
+        assert(index < num());
+        return equivalent_type{xs()[index], ys()[index], zs()[index]};
+    }
+};
+static_assert(ioj::soa_storage_detail::validate_compact_view<LaserHitDetailsView_locations>());
+struct LaserHitDetailsView_emission_directions;
+struct LaserHitDetailsConstView_emission_directions;
+template <bool Const>
+struct LaserHitDetailsView_emission_directionsImpl
+    : ioj::soa_storage_detail::CompactViewOperations {
+    using soa_schema = Vectors3fSchema;
+    using size_type = std::uint32_t;
+    using Layout = LaserHitDetailsLayout;
+    using Storage = ioj::native_soa::StorageState;
+    using State = std::conditional_t<Const, Storage const, Storage>;
+    template <typename T>
+    using Element = std::conditional_t<Const, T const, T>;
+    using View = LaserHitDetailsView_emission_directions;
+    using ConstView = LaserHitDetailsConstView_emission_directions;
+    LaserHitDetailsView_emission_directionsImpl() = default;
+    LaserHitDetailsView_emission_directionsImpl(State* state, size_type offset, size_type count)
+        : state_{state}
+        , offset_{offset}
+        , count_{count} {}
+    template <bool Enabled = Const>
+    LaserHitDetailsView_emission_directionsImpl(
+        LaserHitDetailsView_emission_directionsImpl<false> const& other)
+        requires Enabled
+        : state_{other.state_}
+        , offset_{other.offset_}
+        , count_{other.count_} {}
+    auto xs() const { return make_column_view(Layout::columns.EmissionDirectionsXsColumn); }
+    auto ys() const { return make_column_view(Layout::columns.EmissionDirectionsYsColumn); }
+    auto zs() const { return make_column_view(Layout::columns.EmissionDirectionsZsColumn); }
+    template <typename Func>
+    void each_column(Func&& func) const {
+        func(xs());
+        func(ys());
+        func(zs());
+    }
+    auto resolve() const -> std::
+        conditional_t<Const, ::ioj::Vectors3fResolvedConstView, ::ioj::Vectors3fResolvedView> {
+        return {(make_column_view(Layout::columns.EmissionDirectionsXsColumn).data()),
+                (make_column_view(Layout::columns.EmissionDirectionsYsColumn).data()),
+                (make_column_view(Layout::columns.EmissionDirectionsZsColumn).data()),
+                count_};
+    }
+  private:
+    template <typename T>
+    auto make_column_view(ioj::native_soa::ColumnLayout<T> const& layout) const {
+        return ioj::soa_storage_detail::column_view<std::span<Element<T>>>(
+            state_, offset_, count_, layout);
+    }
+    friend ioj::soa_storage_detail::CompactViewOperations;
+    template <bool>
+    friend struct LaserHitDetailsView_emission_directionsImpl;
+    State* state_{};
+    size_type offset_{};
+    size_type count_{};
+};
+struct LaserHitDetailsConstView_emission_directions
+    : LaserHitDetailsView_emission_directionsImpl<true> {
+    using Base = LaserHitDetailsView_emission_directionsImpl<true>;
+    using Base::Base;
+    using equivalent_type = Vector3f;
+    auto operator[](std::uint32_t index) const -> equivalent_type {
+        assert(index < num());
+        return equivalent_type{xs()[index], ys()[index], zs()[index]};
+    }
+};
+static_assert(
+    ioj::soa_storage_detail::validate_compact_view<LaserHitDetailsConstView_emission_directions>());
+struct LaserHitDetailsView_emission_directions
+    : LaserHitDetailsView_emission_directionsImpl<false> {
+    using Base = LaserHitDetailsView_emission_directionsImpl<false>;
+    using Base::Base;
+    void set(size_type index, float const new_xs, float const new_ys, float const new_zs) const {
+        assert(index < num());
+        this->xs()[index] = new_xs;
+        this->ys()[index] = new_ys;
+        this->zs()[index] = new_zs;
+    }
+    void set(size_type index, Vector3f const value) const {
+        set(index, (value.x()), (value.y()), (value.z()));
+    }
+    using equivalent_type = Vector3f;
+    auto operator[](std::uint32_t index) const -> equivalent_type {
+        assert(index < num());
+        return equivalent_type{xs()[index], ys()[index], zs()[index]};
+    }
+};
+static_assert(
+    ioj::soa_storage_detail::validate_compact_view<LaserHitDetailsView_emission_directions>());
+template <bool Const>
+struct LaserHitDetailsViewImpl : ioj::soa_storage_detail::CompactViewOperations {
+    using soa_schema = LaserHitDetailsSchema;
+    using size_type = std::uint32_t;
+    using Layout = LaserHitDetailsLayout;
+    using Storage = ioj::native_soa::StorageState;
+    using State = std::conditional_t<Const, Storage const, Storage>;
+    template <typename T>
+    using Element = std::conditional_t<Const, T const, T>;
+    using View = LaserHitDetailsView;
+    using ConstView = LaserHitDetailsConstView;
+    LaserHitDetailsViewImpl() = default;
+    LaserHitDetailsViewImpl(State* state, size_type offset, size_type count)
+        : state_{state}
+        , offset_{offset}
+        , count_{count} {}
+    template <bool Enabled = Const>
+    LaserHitDetailsViewImpl(LaserHitDetailsViewImpl<false> const& other)
+        requires Enabled
+        : state_{other.state_}
+        , offset_{other.offset_}
+        , count_{other.count_} {}
+    auto view_locations() const -> std::
+        conditional_t<Const, LaserHitDetailsConstView_locations, LaserHitDetailsView_locations> {
+        return {state_, offset_, count_};
+    }
+    auto view_emission_directions() const
+        -> std::conditional_t<Const,
+                              LaserHitDetailsConstView_emission_directions,
+                              LaserHitDetailsView_emission_directions> {
+        return {state_, offset_, count_};
     }
     auto sources() const { return make_column_view(Layout::columns.SourcesColumn); }
     template <typename Func>
@@ -512,9 +459,8 @@ struct LaserHitDetailsSingleViewImpl : ioj::soa_storage_detail::CompactViewOpera
         func(emission_directions_view.zs());
         func(sources());
     }
-    auto resolve() const -> std::conditional_t<Const,
-                                               LaserHitDetailsSingleResolvedConstView,
-                                               LaserHitDetailsSingleResolvedView> {
+    auto resolve() const -> std::
+        conditional_t<Const, LaserHitDetailsResolvedConstView, LaserHitDetailsResolvedView> {
         return {(make_column_view(Layout::columns.LocationsXsColumn).data()),
                 (make_column_view(Layout::columns.LocationsYsColumn).data()),
                 (make_column_view(Layout::columns.LocationsZsColumn).data()),
@@ -532,18 +478,18 @@ struct LaserHitDetailsSingleViewImpl : ioj::soa_storage_detail::CompactViewOpera
     }
     friend ioj::soa_storage_detail::CompactViewOperations;
     template <bool>
-    friend struct LaserHitDetailsSingleViewImpl;
+    friend struct LaserHitDetailsViewImpl;
     State* state_{};
     size_type offset_{};
     size_type count_{};
 };
-struct LaserHitDetailsSingleConstView : LaserHitDetailsSingleViewImpl<true> {
-    using Base = LaserHitDetailsSingleViewImpl<true>;
+struct LaserHitDetailsConstView : LaserHitDetailsViewImpl<true> {
+    using Base = LaserHitDetailsViewImpl<true>;
     using Base::Base;
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<LaserHitDetailsSingleConstView>());
-struct LaserHitDetailsSingleView : LaserHitDetailsSingleViewImpl<false> {
-    using Base = LaserHitDetailsSingleViewImpl<false>;
+static_assert(ioj::soa_storage_detail::validate_compact_view<LaserHitDetailsConstView>());
+struct LaserHitDetailsView : LaserHitDetailsViewImpl<false> {
+    using Base = LaserHitDetailsViewImpl<false>;
     using Base::Base;
     void set(size_type index,
              float const new_locations_xs,
@@ -562,8 +508,17 @@ struct LaserHitDetailsSingleView : LaserHitDetailsSingleViewImpl<false> {
         this->view_emission_directions().zs()[index] = new_emission_directions_zs;
         this->sources()[index] = new_sources;
     }
+    void set(size_type index,
+             Vector3f const new_locations,
+             Vector3f const new_emission_directions,
+             ioj::sim::LaserSource const new_sources) const {
+        assert(index < num());
+        this->view_locations().set(index, new_locations);
+        this->view_emission_directions().set(index, new_emission_directions);
+        this->sources()[index] = new_sources;
+    }
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<LaserHitDetailsSingleView>());
+static_assert(ioj::soa_storage_detail::validate_compact_view<LaserHitDetailsView>());
 // Columns:
 // locations_xs: float
 // locations_ys: float
@@ -577,7 +532,7 @@ struct LaserHitDetails
     , ioj::native_soa::StorageOperations {
     using soa_schema = LaserHitDetailsSchema;
     using Operations = ioj::native_soa::StorageOperations;
-    using Layout = LaserHitDetailsSingleLayout;
+    using Layout = LaserHitDetailsLayout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
 
@@ -590,8 +545,8 @@ struct LaserHitDetails
         return Layout::layout_bytes(blocks);
     }
 
-    using View = LaserHitDetailsSingleView;
-    using ConstView = LaserHitDetailsSingleConstView;
+    using View = LaserHitDetailsView;
+    using ConstView = LaserHitDetailsConstView;
 
     /* **************************************** */
     // Lifetime
@@ -770,7 +725,7 @@ struct LaserHitDetails
              float const new_emission_directions_xs,
              float const new_emission_directions_ys,
              float const new_emission_directions_zs,
-             ioj::sim::LaserSource const new_sources) {
+             LaserSource const new_sources) {
         assert(index < num());
         get_view().view_locations().xs()[index] = new_locations_xs;
         get_view().view_locations().ys()[index] = new_locations_ys;
@@ -786,7 +741,7 @@ struct LaserHitDetails
                   float const new_emission_directions_xs,
                   float const new_emission_directions_ys,
                   float const new_emission_directions_zs,
-                  ioj::sim::LaserSource const new_sources) {
+                  LaserSource const new_sources) {
         auto const index{num()};
         add_uninitialised(1);
         set(index,
@@ -798,6 +753,34 @@ struct LaserHitDetails
             new_emission_directions_zs,
             new_sources);
         return index;
+    }
+    void set(size_type index,
+             Vector3f const new_locations,
+             Vector3f const new_emission_directions,
+             LaserSource const new_sources) {
+        assert(index < num());
+        get_view().view_locations().set(index, new_locations);
+        get_view().view_emission_directions().set(index, new_emission_directions);
+        get_view().sources()[index] = new_sources;
+    }
+    size_type add(Vector3f const new_locations,
+                  Vector3f const new_emission_directions,
+                  LaserSource const new_sources) {
+        auto const index{num()};
+        add_uninitialised(1);
+        set(index, new_locations, new_emission_directions, new_sources);
+        return index;
+    }
+    void apply_permutation(std::span<size_type> indices) {
+        assert(indices.size() == num_);
+        auto const columns{get_data()};
+        ioj::apply_permutation(std::span{columns.locations_xs, num_}, indices);
+        ioj::apply_permutation(std::span{columns.locations_ys, num_}, indices);
+        ioj::apply_permutation(std::span{columns.locations_zs, num_}, indices);
+        ioj::apply_permutation(std::span{columns.emission_directions_xs, num_}, indices);
+        ioj::apply_permutation(std::span{columns.emission_directions_ys, num_}, indices);
+        ioj::apply_permutation(std::span{columns.emission_directions_zs, num_}, indices);
+        ioj::apply_permutation(std::span{columns.sources, num_}, indices);
     }
   private:
     std::pmr::memory_resource* resource_{};

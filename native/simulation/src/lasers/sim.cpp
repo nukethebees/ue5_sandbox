@@ -2,7 +2,6 @@
 
 #include <ioj/column_math.h>
 #include <ioj/frame_array.h>
-#include <ioj/frame_vectors3f.h>
 #include <ioj/generated/array_math_kernels.h>
 #include <ioj/parallel_for.h>
 #include <ioj/sim/collision/spatial_query_manager.h>
@@ -11,6 +10,7 @@
 #include <ioj/sim/direct_damage_events.h>
 #include <ioj/sim/lasers/laser_hit_details.h>
 #include <ioj/sim/profiling.h>
+#include <ioj/vectors3f.h>
 
 #include <algorithm>
 #include <cassert>
@@ -108,9 +108,9 @@ void Sim::process_pending_spawns() {
     entities.add_uninitialised(n_to_add);
     auto const output{entities.get_view().right(n_to_add)};
     auto const output_active{output.active()};
-    auto const output_locations{output.view_locations()};
-    auto const output_rotations{output.view_rotations()};
-    auto const output_velocities{output.view_velocities()};
+    auto const output_locations{output.view_locations().resolve()};
+    auto const output_rotations{output.view_rotations().resolve()};
+    auto const output_velocities{output.view_velocities().resolve()};
     auto const output_sources{output.sources()};
     auto const output_damages{output.damages()};
     auto const output_instigator_ids{output.instigator_ids()};
@@ -120,9 +120,9 @@ void Sim::process_pending_spawns() {
 
     auto const requests_speeds{requests.speeds()};
     auto const requests_max_distances{requests.max_distances()};
-    auto const requests_rotations{requests.view_rotations()};
-    auto const requests_locations{requests.view_locations()};
-    auto const requests_base_velocities{requests.view_base_velocities()};
+    auto const requests_rotations{requests.view_rotations().resolve()};
+    auto const requests_locations{requests.view_locations().resolve()};
+    auto const requests_base_velocities{requests.view_base_velocities().resolve()};
     auto const requests_sources{requests.sources()};
     auto const requests_damages{requests.damages()};
     auto const requests_instigator_ids{requests.instigator_ids()};
@@ -185,8 +185,8 @@ void Sim::update_locations(float const dt) {
     auto const count{entities.num()};
     auto const active{entities.active()};
     auto const lifetimes{entities.lifetimes_remaining()};
-    auto const locations{entities.view_locations()};
-    auto const velocities{entities.view_velocities()};
+    auto const locations{entities.view_locations().resolve()};
+    auto const velocities{entities.view_velocities().resolve()};
 
     for (std::uint32_t index{}; index < count; ++index) {
         if (active[index] != 0) {
@@ -208,15 +208,15 @@ void Sim::handle_collisions(ActionInputs const inputs) {
         return;
     }
 
-    FrameVectors3f end_storage{scratch_resource};
+    Vectors3f end_storage{*scratch_resource};
     TraceHits hit_storage{*scratch_resource};
     end_storage.set_num(n);
     hit_storage.set_num(n);
-    auto const trace_ends{end_storage.get_view()};
+    auto const trace_ends{end_storage.get_view().resolve()};
     auto const trace_results{hit_storage.get_view()};
     auto const entities{this->entities.get_const_view()};
-    auto const locations{entities.view_locations().get_const_view()};
-    auto const velocities{entities.view_velocities().get_const_view()};
+    auto const locations{entities.view_locations().get_const_view().resolve()};
+    auto const velocities{entities.view_velocities().get_const_view().resolve()};
     auto const active_rows{entities.active()};
     auto const lifetimes{entities.lifetimes_remaining()};
     auto const instigator_ids{entities.instigator_ids()};
@@ -249,7 +249,7 @@ void Sim::handle_collisions(ActionInputs const inputs) {
     auto const trace_hits{hit_storage.get_const_view()};
     auto const hit_flags{trace_hits.hits()};
     auto const hit_entities{trace_hits.entities()};
-    auto const hit_locations{trace_hits.view_locations()};
+    auto const hit_locations{trace_hits.view_locations().resolve()};
     auto const hit_count{static_cast<std::uint32_t>(
         std::ranges::count_if(hit_flags, [](auto const hit) { return hit != 0; }))};
     to_remove.reserve(hit_count);

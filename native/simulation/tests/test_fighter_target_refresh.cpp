@@ -38,7 +38,7 @@ class FighterTargetRefresh : public ::testing::Test {
         FighterSpawnQueue spawns;
         spawns.add_defaulted(1);
         auto const spawn{spawns.get_view()};
-        auto const locations{spawn.view_locations()};
+        auto const locations{spawn.view_locations().resolve()};
         auto const teams{spawn.teams()};
         auto const parents{spawn.parents()};
         auto const spawn_source{spawns.get_const_view()};
@@ -154,7 +154,7 @@ TEST_F(FighterTargetRefresh, AwarenessFindsForwardTargetAmongMoreThan128Enemies)
     FighterSpawnQueue spawns;
     spawns.add_defaulted(count);
     auto const spawn{spawns.get_view()};
-    auto const locations{spawn.view_locations()};
+    auto const locations{spawn.view_locations().resolve()};
     auto const teams{spawn.teams()};
     auto const parents{spawn.parents()};
     auto const enemy_parent{simulation.get_capital_ships().get_id(1)};

@@ -68,8 +68,8 @@ TEST(MovedEntitiesBattle, HeadlessBattlePreservesUniquePerTickMovementAcrossLong
         auto const entities{fighters.get_entities()};
         auto const entity_count{entities.num()};
         auto const entity_ids{entities.entity_ids()};
-        auto const locations{entities.view_locations()};
-        auto const aim_directions{entities.view_aim_directions()};
+        auto const locations{entities.view_locations().resolve()};
+        auto const aim_directions{entities.view_aim_directions().resolve()};
         for (std::uint32_t index{}; index < entity_count; ++index) {
             previous_transforms.emplace(
                 entity_ids[index],
@@ -88,8 +88,8 @@ TEST(MovedEntitiesBattle, HeadlessBattlePreservesUniquePerTickMovementAcrossLong
         std::set<EntityId> expected_moved;
         auto const entity_count{entities.num()};
         auto const entity_ids{entities.entity_ids()};
-        auto const locations{entities.view_locations()};
-        auto const aim_directions{entities.view_aim_directions()};
+        auto const locations{entities.view_locations().resolve()};
+        auto const aim_directions{entities.view_aim_directions().resolve()};
         for (std::uint32_t index{}; index < entity_count; ++index) {
             auto const id{entity_ids[index]};
             auto const current{FighterTransformSnapshot{

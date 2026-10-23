@@ -13,16 +13,10 @@
 namespace ioj::sim::spinners {
 struct SpinnerSpawnTestAccess {
     static void spawn(Sim& simulation,
-                      Vectors3f::ConstView locations,
+                      Vectors3fResolvedConstView locations,
                       std::span<float const> yaws,
                       std::span<std::int32_t const> fire_points) {
-        simulation.spawn_instances(
-            locations,
-            std::span<float const>{
-                yaws.data(), static_cast<std::size_t>(static_cast<std::int32_t>(yaws.size()))},
-            std::span<std::int32_t const>{
-                fire_points.data(),
-                static_cast<std::size_t>(static_cast<std::int32_t>(fire_points.size()))});
+        simulation.spawn_instances(locations, yaws, fire_points);
     }
     static auto entities(Sim& simulation) -> Sim::EntityStorage& { return simulation.entities; }
     static void tick_cooldowns(Sim& simulation) { simulation.prepare_tick(0.f); }
@@ -63,7 +57,7 @@ TEST(SpinnerSpawning, RepeatedAppendsPreserveRowsAndCooldowns) {
     std::vector<float> const yaws{10.f, 20.f, 30.f};
     std::vector<std::int32_t> const fire_points{2, 0, 1};
     Access::spawn(simulation,
-                  locations.left(1).get_const_view(),
+                  locations.left(1).get_const_view().resolve(),
                   std::span{yaws}.first(1),
                   std::span{fire_points}.first(1));
     auto const first_id{entity_storage.get_const_view().entity_ids()[0]};
@@ -72,14 +66,14 @@ TEST(SpinnerSpawning, RepeatedAppendsPreserveRowsAndCooldowns) {
     auto const first_cooldown{entity_storage.get_const_view().laser_cooldowns()[0]};
 
     Access::spawn(simulation,
-                  locations.right(2).get_const_view(),
+                  locations.right(2).get_const_view().resolve(),
                   std::span{yaws}.last(2),
                   std::span{fire_points}.last(2));
     auto const second_id{entity_storage.get_const_view().entity_ids()[1]};
     Access::cooldowns(simulation).restart_counter(1);
-    Access::spawn(simulation, locations.get_const_view(), yaws, fire_points);
+    Access::spawn(simulation, locations.get_const_view().resolve(), yaws, fire_points);
     Access::spawn(simulation,
-                  locations.left(0).get_const_view(),
+                  locations.left(0).get_const_view().resolve(),
                   std::span{yaws}.first(0),
                   std::span{fire_points}.first(0));
 
@@ -95,9 +89,9 @@ TEST(SpinnerSpawning, RepeatedAppendsPreserveRowsAndCooldowns) {
         auto const source_index{i % 3};
         ASSERT_TRUE((yaws[source_index] == entities.yaws()[i]));
         ASSERT_EQ((fire_points[source_index]), (entities.next_fire_point_indices()[i]));
-        ASSERT_TRUE((locations.xs[source_index] == entities.view_locations().xs()[i]));
-        ASSERT_TRUE((locations.ys[source_index] == entities.view_locations().ys()[i]));
-        ASSERT_TRUE((locations.zs[source_index] == entities.view_locations().zs()[i]));
+        ASSERT_TRUE((locations.xs()[source_index] == entities.view_locations().xs()[i]));
+        ASSERT_TRUE((locations.ys()[source_index] == entities.view_locations().ys()[i]));
+        ASSERT_TRUE((locations.zs()[source_index] == entities.view_locations().zs()[i]));
         ASSERT_TRUE((ledger.is_valid_unique_id(entities.entity_ids()[i])));
         for (std::uint32_t j{}; j < i; ++j) {
             ASSERT_TRUE((entities.entity_ids()[i] != entities.entity_ids()[j]));

@@ -5,6 +5,7 @@
 
 #include "ioj/native_soa/storage.h"
 #include "ioj/sim/entities/entity_id.h"
+#include "ioj/soa_permutation.h"
 
 #include <cassert>
 #include <cstdint>
@@ -12,10 +13,9 @@
 
 namespace ioj::sim {
 struct DirectDamageEventsSchema;
-
-struct DirectDamageEventsSingleView;
-struct DirectDamageEventsSingleConstView;
-struct DirectDamageEventsSingleLayoutColumns {
+struct DirectDamageEventsView;
+struct DirectDamageEventsConstView;
+struct DirectDamageEventsLayoutColumns {
     template <typename T>
     using ColLayout = ioj::native_soa::ColumnLayout<T>;
 
@@ -25,15 +25,15 @@ struct DirectDamageEventsSingleLayoutColumns {
     ColLayout<std::int32_t> DamageAmountsColumn;
     ColLayout<EntityId> InstigatorsColumn;
 
-    constexpr DirectDamageEventsSingleLayoutColumns() noexcept
+    constexpr DirectDamageEventsLayoutColumns() noexcept
         : DamagedEntitiesColumn{LayoutStart}
         , DamageAmountsColumn{DamagedEntitiesColumn}
         , InstigatorsColumn{DamageAmountsColumn} {}
-    DirectDamageEventsSingleLayoutColumns(DirectDamageEventsSingleLayoutColumns const&) = delete;
-    auto operator=(DirectDamageEventsSingleLayoutColumns const&)
-        -> DirectDamageEventsSingleLayoutColumns& = delete;
+    DirectDamageEventsLayoutColumns(DirectDamageEventsLayoutColumns const&) = delete;
+    auto operator=(DirectDamageEventsLayoutColumns const&)
+        -> DirectDamageEventsLayoutColumns& = delete;
 };
-struct DirectDamageEventsSingleLayout {
+struct DirectDamageEventsLayout {
     using size_type = std::uint32_t;
     using byte_size_type = std::size_t;
 
@@ -41,7 +41,7 @@ struct DirectDamageEventsSingleLayout {
         ioj::native_soa::LayoutPolicy::capacity_granularity};
     static constexpr byte_size_type column_gap{ioj::native_soa::LayoutPolicy::column_gap};
 
-    static constexpr DirectDamageEventsSingleLayoutColumns columns{};
+    static constexpr DirectDamageEventsLayoutColumns columns{};
 
     static constexpr byte_size_type allocation_alignment{
         columns.InstigatorsColumn.allocation_alignment};
@@ -58,21 +58,21 @@ struct DirectDamageEventsSingleLayout {
     static_assert(max_capacity >= capacity_granularity);
 };
 
-struct DirectDamageEventsSingleResolvedView;
-struct DirectDamageEventsSingleResolvedConstView;
+struct DirectDamageEventsResolvedView;
+struct DirectDamageEventsResolvedConstView;
 template <bool Const>
-struct DirectDamageEventsSingleResolvedViewImpl {
+struct DirectDamageEventsResolvedViewImpl {
     using size_type = std::uint32_t;
-    using View = DirectDamageEventsSingleResolvedView;
-    using ConstView = DirectDamageEventsSingleResolvedConstView;
-    using soa_schema = DirectDamageEventsSchema;
+    using View = DirectDamageEventsResolvedView;
+    using ConstView = DirectDamageEventsResolvedConstView;
+    using soa_schema = ::ioj::sim::DirectDamageEventsSchema;
     template <typename T>
     using Element = std::conditional_t<Const, T const, T>;
-    DirectDamageEventsSingleResolvedViewImpl() = default;
-    DirectDamageEventsSingleResolvedViewImpl(Element<EntityId>* damaged_entities,
-                                             Element<std::int32_t>* damage_amounts,
-                                             Element<EntityId>* instigators,
-                                             size_type count)
+    DirectDamageEventsResolvedViewImpl() = default;
+    DirectDamageEventsResolvedViewImpl(Element<EntityId>* damaged_entities,
+                                       Element<std::int32_t>* damage_amounts,
+                                       Element<EntityId>* instigators,
+                                       size_type count)
         : damaged_entities_{damaged_entities}
         , damage_amounts_{damage_amounts}
         , instigators_{instigators}
@@ -80,10 +80,10 @@ struct DirectDamageEventsSingleResolvedViewImpl {
         ioj::soa_storage_detail::validate_column_pointers(
             count_, damaged_entities_, damage_amounts_, instigators_);
     }
-    DirectDamageEventsSingleResolvedViewImpl(std::span<Element<EntityId>> damaged_entities,
-                                             std::span<Element<std::int32_t>> damage_amounts,
-                                             std::span<Element<EntityId>> instigators)
-        : DirectDamageEventsSingleResolvedViewImpl{
+    DirectDamageEventsResolvedViewImpl(std::span<Element<EntityId>> damaged_entities,
+                                       std::span<Element<std::int32_t>> damage_amounts,
+                                       std::span<Element<EntityId>> instigators)
+        : DirectDamageEventsResolvedViewImpl{
               damaged_entities.data(),
               damage_amounts.data(),
               instigators.data(),
@@ -93,8 +93,7 @@ struct DirectDamageEventsSingleResolvedViewImpl {
         assert(instigators.size() == count_);
     }
     template <bool Enabled = Const>
-    DirectDamageEventsSingleResolvedViewImpl(
-        DirectDamageEventsSingleResolvedViewImpl<false> const& other)
+    DirectDamageEventsResolvedViewImpl(DirectDamageEventsResolvedViewImpl<false> const& other)
         requires Enabled
         : damaged_entities_{other.damaged_entities_}
         , damage_amounts_{other.damage_amounts_}
@@ -143,18 +142,18 @@ struct DirectDamageEventsSingleResolvedViewImpl {
     }
   private:
     template <bool>
-    friend struct DirectDamageEventsSingleResolvedViewImpl;
+    friend struct DirectDamageEventsResolvedViewImpl;
     Element<EntityId>* damaged_entities_{};
     Element<std::int32_t>* damage_amounts_{};
     Element<EntityId>* instigators_{};
     size_type count_{};
 };
-struct DirectDamageEventsSingleResolvedConstView : DirectDamageEventsSingleResolvedViewImpl<true> {
-    using Base = DirectDamageEventsSingleResolvedViewImpl<true>;
+struct DirectDamageEventsResolvedConstView : DirectDamageEventsResolvedViewImpl<true> {
+    using Base = DirectDamageEventsResolvedViewImpl<true>;
     using Base::Base;
 };
-struct DirectDamageEventsSingleResolvedView : DirectDamageEventsSingleResolvedViewImpl<false> {
-    using Base = DirectDamageEventsSingleResolvedViewImpl<false>;
+struct DirectDamageEventsResolvedView : DirectDamageEventsResolvedViewImpl<false> {
+    using Base = DirectDamageEventsResolvedViewImpl<false>;
     using Base::Base;
     void set(size_type index,
              EntityId const new_damaged_entities,
@@ -167,23 +166,23 @@ struct DirectDamageEventsSingleResolvedView : DirectDamageEventsSingleResolvedVi
     }
 };
 template <bool Const>
-struct DirectDamageEventsSingleViewImpl : ioj::soa_storage_detail::CompactViewOperations {
+struct DirectDamageEventsViewImpl : ioj::soa_storage_detail::CompactViewOperations {
     using soa_schema = DirectDamageEventsSchema;
     using size_type = std::uint32_t;
-    using Layout = DirectDamageEventsSingleLayout;
+    using Layout = DirectDamageEventsLayout;
     using Storage = ioj::native_soa::StorageState;
     using State = std::conditional_t<Const, Storage const, Storage>;
     template <typename T>
     using Element = std::conditional_t<Const, T const, T>;
-    using View = DirectDamageEventsSingleView;
-    using ConstView = DirectDamageEventsSingleConstView;
-    DirectDamageEventsSingleViewImpl() = default;
-    DirectDamageEventsSingleViewImpl(State* state, size_type offset, size_type count)
+    using View = DirectDamageEventsView;
+    using ConstView = DirectDamageEventsConstView;
+    DirectDamageEventsViewImpl() = default;
+    DirectDamageEventsViewImpl(State* state, size_type offset, size_type count)
         : state_{state}
         , offset_{offset}
         , count_{count} {}
     template <bool Enabled = Const>
-    DirectDamageEventsSingleViewImpl(DirectDamageEventsSingleViewImpl<false> const& other)
+    DirectDamageEventsViewImpl(DirectDamageEventsViewImpl<false> const& other)
         requires Enabled
         : state_{other.state_}
         , offset_{other.offset_}
@@ -199,9 +198,8 @@ struct DirectDamageEventsSingleViewImpl : ioj::soa_storage_detail::CompactViewOp
         func(damage_amounts());
         func(instigators());
     }
-    auto resolve() const -> std::conditional_t<Const,
-                                               DirectDamageEventsSingleResolvedConstView,
-                                               DirectDamageEventsSingleResolvedView> {
+    auto resolve() const -> std::
+        conditional_t<Const, DirectDamageEventsResolvedConstView, DirectDamageEventsResolvedView> {
         return {(make_column_view(Layout::columns.DamagedEntitiesColumn).data()),
                 (make_column_view(Layout::columns.DamageAmountsColumn).data()),
                 (make_column_view(Layout::columns.InstigatorsColumn).data()),
@@ -215,18 +213,18 @@ struct DirectDamageEventsSingleViewImpl : ioj::soa_storage_detail::CompactViewOp
     }
     friend ioj::soa_storage_detail::CompactViewOperations;
     template <bool>
-    friend struct DirectDamageEventsSingleViewImpl;
+    friend struct DirectDamageEventsViewImpl;
     State* state_{};
     size_type offset_{};
     size_type count_{};
 };
-struct DirectDamageEventsSingleConstView : DirectDamageEventsSingleViewImpl<true> {
-    using Base = DirectDamageEventsSingleViewImpl<true>;
+struct DirectDamageEventsConstView : DirectDamageEventsViewImpl<true> {
+    using Base = DirectDamageEventsViewImpl<true>;
     using Base::Base;
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<DirectDamageEventsSingleConstView>());
-struct DirectDamageEventsSingleView : DirectDamageEventsSingleViewImpl<false> {
-    using Base = DirectDamageEventsSingleViewImpl<false>;
+static_assert(ioj::soa_storage_detail::validate_compact_view<DirectDamageEventsConstView>());
+struct DirectDamageEventsView : DirectDamageEventsViewImpl<false> {
+    using Base = DirectDamageEventsViewImpl<false>;
     using Base::Base;
     void set(size_type index,
              EntityId const new_damaged_entities,
@@ -238,7 +236,7 @@ struct DirectDamageEventsSingleView : DirectDamageEventsSingleViewImpl<false> {
         this->instigators()[index] = new_instigators;
     }
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<DirectDamageEventsSingleView>());
+static_assert(ioj::soa_storage_detail::validate_compact_view<DirectDamageEventsView>());
 // Columns:
 // damaged_entities: EntityId
 // damage_amounts: std::int32_t
@@ -248,7 +246,7 @@ struct DirectDamageEvents
     , ioj::native_soa::StorageOperations {
     using soa_schema = DirectDamageEventsSchema;
     using Operations = ioj::native_soa::StorageOperations;
-    using Layout = DirectDamageEventsSingleLayout;
+    using Layout = DirectDamageEventsLayout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
 
@@ -261,8 +259,8 @@ struct DirectDamageEvents
         return Layout::layout_bytes(blocks);
     }
 
-    using View = DirectDamageEventsSingleView;
-    using ConstView = DirectDamageEventsSingleConstView;
+    using View = DirectDamageEventsView;
+    using ConstView = DirectDamageEventsConstView;
 
     /* **************************************** */
     // Lifetime
@@ -422,6 +420,13 @@ struct DirectDamageEvents
         events.damaged_entities()[index] = damaged_entity;
         events.damage_amounts()[index] = damage_amount;
         events.instigators()[index] = instigator;
+    }
+    void apply_permutation(std::span<size_type> indices) {
+        assert(indices.size() == num_);
+        auto const columns{get_data()};
+        ioj::apply_permutation(std::span{columns.damaged_entities, num_}, indices);
+        ioj::apply_permutation(std::span{columns.damage_amounts, num_}, indices);
+        ioj::apply_permutation(std::span{columns.instigators, num_}, indices);
     }
   private:
     std::pmr::memory_resource* resource_{};

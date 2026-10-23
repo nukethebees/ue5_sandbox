@@ -116,7 +116,7 @@ void LevelSpawnManager::spawn_turrets(LevelTurretSpawnEvents::ConstView const ev
 }
 
 void LevelSpawnManager::spawn_spinners(LevelSpinnerSpawnEvents::ConstView const events) {
-    auto const locations{events.view_locations()};
+    auto const locations{events.view_locations().resolve()};
     auto const ids{
         spinners_.spawn_instances(locations, events.yaws(), events.initial_fire_point_indices())};
     spawned_ids_this_tick_.insert(spawned_ids_this_tick_.end(), ids.begin(), ids.end());

@@ -1,17 +1,7 @@
 lispb-outputs-v1
-Plugins/SandboxCore/Source/SandboxCore/Private/soa_rotators.cpp
-Plugins/SandboxCore/Source/SandboxCore/Private/soa_vectors_2f.cpp
-Plugins/SandboxCore/Source/SandboxCore/Private/soa_vectors_3d.cpp
-Plugins/SandboxCore/Source/SandboxCore/Public/SandboxCore/soa_rotators.h
-Plugins/SandboxCore/Source/SandboxCore/Public/SandboxCore/soa_vectors.h
-Plugins/SandboxCore/Source/SandboxCore/Public/SandboxCore/soa_vectors_2f.h
-Plugins/SandboxCore/Source/SandboxCore/Public/SandboxCore/soa_vectors_3d.h
-Plugins/SandboxISMC/Source/SandboxISMC/Private/SandboxISMCInstanceData.cpp
-Plugins/SandboxISMC/Source/SandboxISMC/Public/SandboxISMCInstanceData.h
 Plugins/ShooterGame/Source/ShooterGame/Public/ShooterGame/players/CharacterCameraMode.h
 Plugins/SpaceGame/Source/SpaceGame/Private/s7/generated/presentation_fields.h
 Plugins/SpaceGame/Source/SpaceGame/Private/settings/GameSettings.generated.cpp
-Plugins/SpaceGame/Source/SpaceGame/Private/simulation/StaticCollisionSources.cpp
 Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/missions/TestMissionFailReason.h
 Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/missions/TestMissionFailReasonConversion.h
 Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/missions/TestMissionMode.h
@@ -21,13 +11,10 @@ Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/missions/TestMissionStateCon
 Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/settings/GameSettings.generated.h
 Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/ships/player/TestShipFireRate.h
 Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/ships/player/TestShipFireRateConversion.h
-Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/simulation/StaticCollisionSources.h
 Plugins/SpaceGame/Source/SpaceGamePresentation/Private/ui/style/GameUiStyleTypes.cpp
 Plugins/SpaceGame/Source/SpaceGamePresentation/Public/SpaceGamePresentation/entities/TestTeam.h
 Plugins/SpaceGame/Source/SpaceGamePresentation/Public/SpaceGamePresentation/entities/TestTeamConversion.h
 Plugins/SpaceGame/Source/SpaceGamePresentation/Public/SpaceGamePresentation/ui/style/GameUiStyleTypes.h
-Plugins/SpaceGame/Source/SpaceGameSimulation/Private/levels/LevelDefinitionSoA.cpp
-Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/levels/LevelDefinitionSoA.h
 native/core/include/ioj/rotators3f.h
 native/core/include/ioj/vectors3f.h
 native/ismc/lib/include/ioj/ismc/quat32.h
@@ -49,6 +36,7 @@ native/simulation/include/ioj/sim/collision/line_trace_result.h
 native/simulation/include/ioj/sim/collision/line_traces.h
 native/simulation/include/ioj/sim/collision/overlap_response_config.h
 native/simulation/include/ioj/sim/collision/query_result_types.h
+native/simulation/include/ioj/sim/collision/range_query_matches.h
 native/simulation/include/ioj/sim/collision/trace_entity_filter.h
 native/simulation/include/ioj/sim/collision/trace_hits.h
 native/simulation/include/ioj/sim/collision/world_aabb.h
@@ -115,3 +103,4 @@ native/simulation/include/ioj/sim/telemetry/run_end_reason.h
 native/simulation/include/ioj/sim/turrets/phase_interface.h
 native/simulation/include/ioj/sim/turrets/turret_entity_data.h
 native/simulation/s7/lib/src/generated/simulation_fields.h
+native/ui/lib/include/ioj/ui/radar_positions.hpp

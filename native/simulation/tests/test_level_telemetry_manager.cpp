@@ -1,5 +1,4 @@
 #include <ioj/column_math.h>
-#include <ioj/frame_vectors3f.h>
 #include <ioj/rotator_math.h>
 #include <ioj/sim/collision/spatial_query_manager.h>
 #include <ioj/sim/combat_events.h>
@@ -173,7 +172,7 @@ TEST(LevelTelemetryManager, RecordsAndReusesHistory) {
         entity_ledger,
         lasers,
         game_memory,
-        {.block_bytes = telemetry::HistoryRowsSingleLayout::layout_bytes(1)},
+        {.block_bytes = telemetry::HistoryRowsLayout::layout_bytes(1)},
     };
     clock.initialise({});
     boundary_manager.initialise();

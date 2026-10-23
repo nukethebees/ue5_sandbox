@@ -122,7 +122,7 @@ TEST(DamageResolution, RecordsOnlyDamageAppliedToLiveEntities) {
         resolve_damage_events(events.events_for(EntityType::Fighter),
                               indexes.for_type(EntityType::Fighter),
                               ids,
-                              locations.get_const_view(),
+                              locations.get_const_view().resolve(),
                               health_table.get_view<EntityType::Fighter>(ids.size()),
                               removals,
                               deaths,

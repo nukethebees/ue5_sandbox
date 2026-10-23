@@ -61,6 +61,6 @@ void make_avoidance_choice_order(
                                   std::span<std::int8_t const> choices,
                                   std::span<collision::SphereInBoundsResult const> in_world,
                                   std::span<TraceHit const> hits,
-                                  Vectors3fConstView hit_locations,
+                                  Vectors3fResolvedConstView hit_locations,
                                   std::int8_t stop_choice) noexcept -> std::int8_t;
 } // namespace ioj::sim::fighters

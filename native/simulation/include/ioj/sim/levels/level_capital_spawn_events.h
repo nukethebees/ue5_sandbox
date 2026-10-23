@@ -4,24 +4,23 @@
 #pragma once
 
 #include "ioj/levels/team.h"
+#include "ioj/math_types.h"
 #include "ioj/native_soa/storage.h"
+#include "ioj/rotator_types.h"
+#include "ioj/rotators3f.h"
 #include "ioj/sim/entities/health.h"
 #include "ioj/sim/levels/level_entity_index.h"
-#include "ioj/vector_soa_view.h"
+#include "ioj/soa_permutation.h"
+#include "ioj/vectors3f.h"
 
 #include <cassert>
 #include <memory_resource>
 
 namespace ioj::sim {
-struct Vectors3fSchema;
-
-struct Rotators3fSchema;
-
 struct LevelCapitalSpawnEventsSchema;
-
-struct LevelCapitalSpawnEventsSingleView;
-struct LevelCapitalSpawnEventsSingleConstView;
-struct LevelCapitalSpawnEventsSingleLayoutColumns {
+struct LevelCapitalSpawnEventsView;
+struct LevelCapitalSpawnEventsConstView;
+struct LevelCapitalSpawnEventsLayoutColumns {
     template <typename T>
     using ColLayout = ioj::native_soa::ColumnLayout<T>;
 
@@ -40,7 +39,7 @@ struct LevelCapitalSpawnEventsSingleLayoutColumns {
     ColLayout<float> InitialFighterSpawnDelaysColumn;
     ColLayout<float> FighterSpawnCooldownsColumn;
 
-    constexpr LevelCapitalSpawnEventsSingleLayoutColumns() noexcept
+    constexpr LevelCapitalSpawnEventsLayoutColumns() noexcept
         : EntityIndicesColumn{LayoutStart}
         , TargetEntityIndicesColumn{EntityIndicesColumn}
         , LocationsXsColumn{TargetEntityIndicesColumn}
@@ -53,12 +52,11 @@ struct LevelCapitalSpawnEventsSingleLayoutColumns {
         , HealthsColumn{TeamsColumn}
         , InitialFighterSpawnDelaysColumn{HealthsColumn}
         , FighterSpawnCooldownsColumn{InitialFighterSpawnDelaysColumn} {}
-    LevelCapitalSpawnEventsSingleLayoutColumns(LevelCapitalSpawnEventsSingleLayoutColumns const&) =
-        delete;
-    auto operator=(LevelCapitalSpawnEventsSingleLayoutColumns const&)
-        -> LevelCapitalSpawnEventsSingleLayoutColumns& = delete;
+    LevelCapitalSpawnEventsLayoutColumns(LevelCapitalSpawnEventsLayoutColumns const&) = delete;
+    auto operator=(LevelCapitalSpawnEventsLayoutColumns const&)
+        -> LevelCapitalSpawnEventsLayoutColumns& = delete;
 };
-struct LevelCapitalSpawnEventsSingleLayout {
+struct LevelCapitalSpawnEventsLayout {
     using size_type = std::uint32_t;
     using byte_size_type = std::size_t;
 
@@ -66,7 +64,7 @@ struct LevelCapitalSpawnEventsSingleLayout {
         ioj::native_soa::LayoutPolicy::capacity_granularity};
     static constexpr byte_size_type column_gap{ioj::native_soa::LayoutPolicy::column_gap};
 
-    static constexpr LevelCapitalSpawnEventsSingleLayoutColumns columns{};
+    static constexpr LevelCapitalSpawnEventsLayoutColumns columns{};
 
     static constexpr byte_size_type allocation_alignment{
         columns.FighterSpawnCooldownsColumn.allocation_alignment};
@@ -82,231 +80,18 @@ struct LevelCapitalSpawnEventsSingleLayout {
     }
     static_assert(max_capacity >= capacity_granularity);
 };
-
-struct LevelCapitalSpawnEventsSingleResolvedView_locations;
-struct LevelCapitalSpawnEventsSingleResolvedConstView_locations;
+struct LevelCapitalSpawnEventsResolvedView;
+struct LevelCapitalSpawnEventsResolvedConstView;
 template <bool Const>
-struct LevelCapitalSpawnEventsSingleResolvedView_locationsImpl {
+struct LevelCapitalSpawnEventsResolvedViewImpl {
     using size_type = std::uint32_t;
-    using View = LevelCapitalSpawnEventsSingleResolvedView_locations;
-    using ConstView = LevelCapitalSpawnEventsSingleResolvedConstView_locations;
-    using soa_schema = Vectors3fSchema;
+    using View = LevelCapitalSpawnEventsResolvedView;
+    using ConstView = LevelCapitalSpawnEventsResolvedConstView;
+    using soa_schema = ::ioj::sim::LevelCapitalSpawnEventsSchema;
     template <typename T>
     using Element = std::conditional_t<Const, T const, T>;
-    LevelCapitalSpawnEventsSingleResolvedView_locationsImpl() = default;
-    LevelCapitalSpawnEventsSingleResolvedView_locationsImpl(Element<float>* locations_xs,
-                                                            Element<float>* locations_ys,
-                                                            Element<float>* locations_zs,
-                                                            size_type count)
-        : locations_xs_{locations_xs}
-        , locations_ys_{locations_ys}
-        , locations_zs_{locations_zs}
-        , count_{count} {
-        ioj::soa_storage_detail::validate_column_pointers(
-            count_, locations_xs_, locations_ys_, locations_zs_);
-    }
-    LevelCapitalSpawnEventsSingleResolvedView_locationsImpl(std::span<Element<float>> locations_xs,
-                                                            std::span<Element<float>> locations_ys,
-                                                            std::span<Element<float>> locations_zs)
-        : LevelCapitalSpawnEventsSingleResolvedView_locationsImpl{
-              locations_xs.data(),
-              locations_ys.data(),
-              locations_zs.data(),
-              ioj::soa_storage_detail::checked_row_count(locations_xs.size())} {
-        assert(locations_xs.size() == count_);
-        assert(locations_ys.size() == count_);
-        assert(locations_zs.size() == count_);
-    }
-    template <bool Enabled = Const>
-    LevelCapitalSpawnEventsSingleResolvedView_locationsImpl(
-        LevelCapitalSpawnEventsSingleResolvedView_locationsImpl<false> const& other)
-        requires Enabled
-        : locations_xs_{other.locations_xs_}
-        , locations_ys_{other.locations_ys_}
-        , locations_zs_{other.locations_zs_}
-        , count_{other.count_} {}
-    auto num() const noexcept -> size_type { return count_; }
-    auto is_empty() const noexcept -> bool { return count_ == 0; }
-    auto get_view(this auto const& self) { return self; }
-    auto get_const_view(this auto const& self) {
-        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
-        return Result{self.locations_xs_, self.locations_ys_, self.locations_zs_, self.count_};
-    }
-    auto resolve(this auto const& self) { return self; }
-    void validate() const {}
-    auto slice(this auto const& self, size_type offset, size_type count) {
-        assert(offset <= self.count_ && count <= self.count_ - offset);
-        using Result = std::remove_cvref_t<decltype(self)>;
-        return Result{self.locations_xs_ == nullptr ? nullptr : self.locations_xs_ + offset,
-                      self.locations_ys_ == nullptr ? nullptr : self.locations_ys_ + offset,
-                      self.locations_zs_ == nullptr ? nullptr : self.locations_zs_ + offset,
-                      count};
-    }
-    auto get_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count);
-    }
-    auto get_const_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count).get_const_view();
-    }
-    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
-    auto right(this auto const& self, size_type count) {
-        assert(count <= self.num());
-        return self.slice(self.num() - count, count);
-    }
-    auto xs() const -> std::span<Element<float>> { return {locations_xs_, count_}; }
-    auto ys() const -> std::span<Element<float>> { return {locations_ys_, count_}; }
-    auto zs() const -> std::span<Element<float>> { return {locations_zs_, count_}; }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        func(std::span<Element<float>>{locations_xs_, count_});
-        func(std::span<Element<float>>{locations_ys_, count_});
-        func(std::span<Element<float>>{locations_zs_, count_});
-    }
-  private:
-    template <bool>
-    friend struct LevelCapitalSpawnEventsSingleResolvedView_locationsImpl;
-    Element<float>* locations_xs_{};
-    Element<float>* locations_ys_{};
-    Element<float>* locations_zs_{};
-    size_type count_{};
-};
-struct LevelCapitalSpawnEventsSingleResolvedConstView_locations
-    : LevelCapitalSpawnEventsSingleResolvedView_locationsImpl<true> {
-    using Base = LevelCapitalSpawnEventsSingleResolvedView_locationsImpl<true>;
-    using Base::Base;
-};
-struct LevelCapitalSpawnEventsSingleResolvedView_locations
-    : LevelCapitalSpawnEventsSingleResolvedView_locationsImpl<false> {
-    using Base = LevelCapitalSpawnEventsSingleResolvedView_locationsImpl<false>;
-    using Base::Base;
-    void set(size_type index, float const new_xs, float const new_ys, float const new_zs) const {
-        assert(index < num());
-        this->xs()[index] = new_xs;
-        this->ys()[index] = new_ys;
-        this->zs()[index] = new_zs;
-    }
-};
-struct LevelCapitalSpawnEventsSingleResolvedView_rotations;
-struct LevelCapitalSpawnEventsSingleResolvedConstView_rotations;
-template <bool Const>
-struct LevelCapitalSpawnEventsSingleResolvedView_rotationsImpl {
-    using size_type = std::uint32_t;
-    using View = LevelCapitalSpawnEventsSingleResolvedView_rotations;
-    using ConstView = LevelCapitalSpawnEventsSingleResolvedConstView_rotations;
-    using soa_schema = Rotators3fSchema;
-    template <typename T>
-    using Element = std::conditional_t<Const, T const, T>;
-    LevelCapitalSpawnEventsSingleResolvedView_rotationsImpl() = default;
-    LevelCapitalSpawnEventsSingleResolvedView_rotationsImpl(Element<float>* rotations_pitches,
-                                                            Element<float>* rotations_yaws,
-                                                            Element<float>* rotations_rolls,
-                                                            size_type count)
-        : rotations_pitches_{rotations_pitches}
-        , rotations_yaws_{rotations_yaws}
-        , rotations_rolls_{rotations_rolls}
-        , count_{count} {
-        ioj::soa_storage_detail::validate_column_pointers(
-            count_, rotations_pitches_, rotations_yaws_, rotations_rolls_);
-    }
-    LevelCapitalSpawnEventsSingleResolvedView_rotationsImpl(
-        std::span<Element<float>> rotations_pitches,
-        std::span<Element<float>> rotations_yaws,
-        std::span<Element<float>> rotations_rolls)
-        : LevelCapitalSpawnEventsSingleResolvedView_rotationsImpl{
-              rotations_pitches.data(),
-              rotations_yaws.data(),
-              rotations_rolls.data(),
-              ioj::soa_storage_detail::checked_row_count(rotations_pitches.size())} {
-        assert(rotations_pitches.size() == count_);
-        assert(rotations_yaws.size() == count_);
-        assert(rotations_rolls.size() == count_);
-    }
-    template <bool Enabled = Const>
-    LevelCapitalSpawnEventsSingleResolvedView_rotationsImpl(
-        LevelCapitalSpawnEventsSingleResolvedView_rotationsImpl<false> const& other)
-        requires Enabled
-        : rotations_pitches_{other.rotations_pitches_}
-        , rotations_yaws_{other.rotations_yaws_}
-        , rotations_rolls_{other.rotations_rolls_}
-        , count_{other.count_} {}
-    auto num() const noexcept -> size_type { return count_; }
-    auto is_empty() const noexcept -> bool { return count_ == 0; }
-    auto get_view(this auto const& self) { return self; }
-    auto get_const_view(this auto const& self) {
-        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
-        return Result{
-            self.rotations_pitches_, self.rotations_yaws_, self.rotations_rolls_, self.count_};
-    }
-    auto resolve(this auto const& self) { return self; }
-    void validate() const {}
-    auto slice(this auto const& self, size_type offset, size_type count) {
-        assert(offset <= self.count_ && count <= self.count_ - offset);
-        using Result = std::remove_cvref_t<decltype(self)>;
-        return Result{self.rotations_pitches_ == nullptr ? nullptr
-                                                         : self.rotations_pitches_ + offset,
-                      self.rotations_yaws_ == nullptr ? nullptr : self.rotations_yaws_ + offset,
-                      self.rotations_rolls_ == nullptr ? nullptr : self.rotations_rolls_ + offset,
-                      count};
-    }
-    auto get_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count);
-    }
-    auto get_const_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count).get_const_view();
-    }
-    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
-    auto right(this auto const& self, size_type count) {
-        assert(count <= self.num());
-        return self.slice(self.num() - count, count);
-    }
-    auto pitches() const -> std::span<Element<float>> { return {rotations_pitches_, count_}; }
-    auto yaws() const -> std::span<Element<float>> { return {rotations_yaws_, count_}; }
-    auto rolls() const -> std::span<Element<float>> { return {rotations_rolls_, count_}; }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        func(std::span<Element<float>>{rotations_pitches_, count_});
-        func(std::span<Element<float>>{rotations_yaws_, count_});
-        func(std::span<Element<float>>{rotations_rolls_, count_});
-    }
-  private:
-    template <bool>
-    friend struct LevelCapitalSpawnEventsSingleResolvedView_rotationsImpl;
-    Element<float>* rotations_pitches_{};
-    Element<float>* rotations_yaws_{};
-    Element<float>* rotations_rolls_{};
-    size_type count_{};
-};
-struct LevelCapitalSpawnEventsSingleResolvedConstView_rotations
-    : LevelCapitalSpawnEventsSingleResolvedView_rotationsImpl<true> {
-    using Base = LevelCapitalSpawnEventsSingleResolvedView_rotationsImpl<true>;
-    using Base::Base;
-};
-struct LevelCapitalSpawnEventsSingleResolvedView_rotations
-    : LevelCapitalSpawnEventsSingleResolvedView_rotationsImpl<false> {
-    using Base = LevelCapitalSpawnEventsSingleResolvedView_rotationsImpl<false>;
-    using Base::Base;
-    void set(size_type index,
-             float const new_pitches,
-             float const new_yaws,
-             float const new_rolls) const {
-        assert(index < num());
-        this->pitches()[index] = new_pitches;
-        this->yaws()[index] = new_yaws;
-        this->rolls()[index] = new_rolls;
-    }
-};
-struct LevelCapitalSpawnEventsSingleResolvedView;
-struct LevelCapitalSpawnEventsSingleResolvedConstView;
-template <bool Const>
-struct LevelCapitalSpawnEventsSingleResolvedViewImpl {
-    using size_type = std::uint32_t;
-    using View = LevelCapitalSpawnEventsSingleResolvedView;
-    using ConstView = LevelCapitalSpawnEventsSingleResolvedConstView;
-    using soa_schema = LevelCapitalSpawnEventsSchema;
-    template <typename T>
-    using Element = std::conditional_t<Const, T const, T>;
-    LevelCapitalSpawnEventsSingleResolvedViewImpl() = default;
-    LevelCapitalSpawnEventsSingleResolvedViewImpl(
+    LevelCapitalSpawnEventsResolvedViewImpl() = default;
+    LevelCapitalSpawnEventsResolvedViewImpl(
         Element<ioj::sim::LevelEntityIndex>* entity_indices,
         Element<ioj::sim::LevelEntityIndex>* target_entity_indices,
         Element<float>* locations_xs,
@@ -347,7 +132,7 @@ struct LevelCapitalSpawnEventsSingleResolvedViewImpl {
                                                           initial_fighter_spawn_delays_,
                                                           fighter_spawn_cooldowns_);
     }
-    LevelCapitalSpawnEventsSingleResolvedViewImpl(
+    LevelCapitalSpawnEventsResolvedViewImpl(
         std::span<Element<ioj::sim::LevelEntityIndex>> entity_indices,
         std::span<Element<ioj::sim::LevelEntityIndex>> target_entity_indices,
         std::span<Element<float>> locations_xs,
@@ -360,7 +145,7 @@ struct LevelCapitalSpawnEventsSingleResolvedViewImpl {
         std::span<Element<Health>> healths,
         std::span<Element<float>> initial_fighter_spawn_delays,
         std::span<Element<float>> fighter_spawn_cooldowns)
-        : LevelCapitalSpawnEventsSingleResolvedViewImpl{
+        : LevelCapitalSpawnEventsResolvedViewImpl{
               entity_indices.data(),
               target_entity_indices.data(),
               locations_xs.data(),
@@ -388,8 +173,8 @@ struct LevelCapitalSpawnEventsSingleResolvedViewImpl {
         assert(fighter_spawn_cooldowns.size() == count_);
     }
     template <bool Enabled = Const>
-    LevelCapitalSpawnEventsSingleResolvedViewImpl(
-        LevelCapitalSpawnEventsSingleResolvedViewImpl<false> const& other)
+    LevelCapitalSpawnEventsResolvedViewImpl(
+        LevelCapitalSpawnEventsResolvedViewImpl<false> const& other)
         requires Enabled
         : entity_indices_{other.entity_indices_}
         , target_entity_indices_{other.target_entity_indices_}
@@ -463,16 +248,12 @@ struct LevelCapitalSpawnEventsSingleResolvedViewImpl {
     auto target_entity_indices() const -> std::span<Element<ioj::sim::LevelEntityIndex>> {
         return {target_entity_indices_, count_};
     }
-    auto view_locations() const
-        -> std::conditional_t<Const,
-                              LevelCapitalSpawnEventsSingleResolvedConstView_locations,
-                              LevelCapitalSpawnEventsSingleResolvedView_locations> {
+    auto view_locations() const -> std::
+        conditional_t<Const, ::ioj::Vectors3fResolvedConstView, ::ioj::Vectors3fResolvedView> {
         return {locations_xs_, locations_ys_, locations_zs_, count_};
     }
-    auto view_rotations() const
-        -> std::conditional_t<Const,
-                              LevelCapitalSpawnEventsSingleResolvedConstView_rotations,
-                              LevelCapitalSpawnEventsSingleResolvedView_rotations> {
+    auto view_rotations() const -> std::
+        conditional_t<Const, ::ioj::Rotators3fResolvedConstView, ::ioj::Rotators3fResolvedView> {
         return {rotations_pitches_, rotations_yaws_, rotations_rolls_, count_};
     }
     auto teams() const -> std::span<Element<::ioj::Team>> { return {teams_, count_}; }
@@ -500,7 +281,7 @@ struct LevelCapitalSpawnEventsSingleResolvedViewImpl {
     }
   private:
     template <bool>
-    friend struct LevelCapitalSpawnEventsSingleResolvedViewImpl;
+    friend struct LevelCapitalSpawnEventsResolvedViewImpl;
     Element<ioj::sim::LevelEntityIndex>* entity_indices_{};
     Element<ioj::sim::LevelEntityIndex>* target_entity_indices_{};
     Element<float>* locations_xs_{};
@@ -515,14 +296,12 @@ struct LevelCapitalSpawnEventsSingleResolvedViewImpl {
     Element<float>* fighter_spawn_cooldowns_{};
     size_type count_{};
 };
-struct LevelCapitalSpawnEventsSingleResolvedConstView
-    : LevelCapitalSpawnEventsSingleResolvedViewImpl<true> {
-    using Base = LevelCapitalSpawnEventsSingleResolvedViewImpl<true>;
+struct LevelCapitalSpawnEventsResolvedConstView : LevelCapitalSpawnEventsResolvedViewImpl<true> {
+    using Base = LevelCapitalSpawnEventsResolvedViewImpl<true>;
     using Base::Base;
 };
-struct LevelCapitalSpawnEventsSingleResolvedView
-    : LevelCapitalSpawnEventsSingleResolvedViewImpl<false> {
-    using Base = LevelCapitalSpawnEventsSingleResolvedViewImpl<false>;
+struct LevelCapitalSpawnEventsResolvedView : LevelCapitalSpawnEventsResolvedViewImpl<false> {
+    using Base = LevelCapitalSpawnEventsResolvedViewImpl<false>;
     using Base::Base;
     void set(size_type index,
              ioj::sim::LevelEntityIndex const new_entity_indices,
@@ -551,25 +330,219 @@ struct LevelCapitalSpawnEventsSingleResolvedView
         this->initial_fighter_spawn_delays()[index] = new_initial_fighter_spawn_delays;
         this->fighter_spawn_cooldowns()[index] = new_fighter_spawn_cooldowns;
     }
+    void set(size_type index,
+             ioj::sim::LevelEntityIndex const new_entity_indices,
+             ioj::sim::LevelEntityIndex const new_target_entity_indices,
+             Vector3f const new_locations,
+             Rotator3f const new_rotations,
+             ::ioj::Team const new_teams,
+             Health const new_healths,
+             float const new_initial_fighter_spawn_delays,
+             float const new_fighter_spawn_cooldowns) const {
+        assert(index < num());
+        this->entity_indices()[index] = new_entity_indices;
+        this->target_entity_indices()[index] = new_target_entity_indices;
+        this->view_locations().set(index, new_locations);
+        this->view_rotations().set(index, new_rotations);
+        this->teams()[index] = new_teams;
+        this->healths()[index] = new_healths;
+        this->initial_fighter_spawn_delays()[index] = new_initial_fighter_spawn_delays;
+        this->fighter_spawn_cooldowns()[index] = new_fighter_spawn_cooldowns;
+    }
 };
+struct LevelCapitalSpawnEventsView_locations;
+struct LevelCapitalSpawnEventsConstView_locations;
 template <bool Const>
-struct LevelCapitalSpawnEventsSingleViewImpl : ioj::soa_storage_detail::CompactViewOperations {
-    using soa_schema = LevelCapitalSpawnEventsSchema;
+struct LevelCapitalSpawnEventsView_locationsImpl : ioj::soa_storage_detail::CompactViewOperations {
+    using soa_schema = Vectors3fSchema;
     using size_type = std::uint32_t;
-    using Layout = LevelCapitalSpawnEventsSingleLayout;
+    using Layout = LevelCapitalSpawnEventsLayout;
     using Storage = ioj::native_soa::StorageState;
     using State = std::conditional_t<Const, Storage const, Storage>;
     template <typename T>
     using Element = std::conditional_t<Const, T const, T>;
-    using View = LevelCapitalSpawnEventsSingleView;
-    using ConstView = LevelCapitalSpawnEventsSingleConstView;
-    LevelCapitalSpawnEventsSingleViewImpl() = default;
-    LevelCapitalSpawnEventsSingleViewImpl(State* state, size_type offset, size_type count)
+    using View = LevelCapitalSpawnEventsView_locations;
+    using ConstView = LevelCapitalSpawnEventsConstView_locations;
+    LevelCapitalSpawnEventsView_locationsImpl() = default;
+    LevelCapitalSpawnEventsView_locationsImpl(State* state, size_type offset, size_type count)
         : state_{state}
         , offset_{offset}
         , count_{count} {}
     template <bool Enabled = Const>
-    LevelCapitalSpawnEventsSingleViewImpl(LevelCapitalSpawnEventsSingleViewImpl<false> const& other)
+    LevelCapitalSpawnEventsView_locationsImpl(
+        LevelCapitalSpawnEventsView_locationsImpl<false> const& other)
+        requires Enabled
+        : state_{other.state_}
+        , offset_{other.offset_}
+        , count_{other.count_} {}
+    auto xs() const { return make_column_view(Layout::columns.LocationsXsColumn); }
+    auto ys() const { return make_column_view(Layout::columns.LocationsYsColumn); }
+    auto zs() const { return make_column_view(Layout::columns.LocationsZsColumn); }
+    template <typename Func>
+    void each_column(Func&& func) const {
+        func(xs());
+        func(ys());
+        func(zs());
+    }
+    auto resolve() const -> std::
+        conditional_t<Const, ::ioj::Vectors3fResolvedConstView, ::ioj::Vectors3fResolvedView> {
+        return {(make_column_view(Layout::columns.LocationsXsColumn).data()),
+                (make_column_view(Layout::columns.LocationsYsColumn).data()),
+                (make_column_view(Layout::columns.LocationsZsColumn).data()),
+                count_};
+    }
+  private:
+    template <typename T>
+    auto make_column_view(ioj::native_soa::ColumnLayout<T> const& layout) const {
+        return ioj::soa_storage_detail::column_view<std::span<Element<T>>>(
+            state_, offset_, count_, layout);
+    }
+    friend ioj::soa_storage_detail::CompactViewOperations;
+    template <bool>
+    friend struct LevelCapitalSpawnEventsView_locationsImpl;
+    State* state_{};
+    size_type offset_{};
+    size_type count_{};
+};
+struct LevelCapitalSpawnEventsConstView_locations
+    : LevelCapitalSpawnEventsView_locationsImpl<true> {
+    using Base = LevelCapitalSpawnEventsView_locationsImpl<true>;
+    using Base::Base;
+    using equivalent_type = Vector3f;
+    auto operator[](std::uint32_t index) const -> equivalent_type {
+        assert(index < num());
+        return equivalent_type{xs()[index], ys()[index], zs()[index]};
+    }
+};
+static_assert(
+    ioj::soa_storage_detail::validate_compact_view<LevelCapitalSpawnEventsConstView_locations>());
+struct LevelCapitalSpawnEventsView_locations : LevelCapitalSpawnEventsView_locationsImpl<false> {
+    using Base = LevelCapitalSpawnEventsView_locationsImpl<false>;
+    using Base::Base;
+    void set(size_type index, float const new_xs, float const new_ys, float const new_zs) const {
+        assert(index < num());
+        this->xs()[index] = new_xs;
+        this->ys()[index] = new_ys;
+        this->zs()[index] = new_zs;
+    }
+    void set(size_type index, Vector3f const value) const {
+        set(index, (value.x()), (value.y()), (value.z()));
+    }
+    using equivalent_type = Vector3f;
+    auto operator[](std::uint32_t index) const -> equivalent_type {
+        assert(index < num());
+        return equivalent_type{xs()[index], ys()[index], zs()[index]};
+    }
+};
+static_assert(
+    ioj::soa_storage_detail::validate_compact_view<LevelCapitalSpawnEventsView_locations>());
+struct LevelCapitalSpawnEventsView_rotations;
+struct LevelCapitalSpawnEventsConstView_rotations;
+template <bool Const>
+struct LevelCapitalSpawnEventsView_rotationsImpl : ioj::soa_storage_detail::CompactViewOperations {
+    using soa_schema = Rotators3fSchema;
+    using size_type = std::uint32_t;
+    using Layout = LevelCapitalSpawnEventsLayout;
+    using Storage = ioj::native_soa::StorageState;
+    using State = std::conditional_t<Const, Storage const, Storage>;
+    template <typename T>
+    using Element = std::conditional_t<Const, T const, T>;
+    using View = LevelCapitalSpawnEventsView_rotations;
+    using ConstView = LevelCapitalSpawnEventsConstView_rotations;
+    LevelCapitalSpawnEventsView_rotationsImpl() = default;
+    LevelCapitalSpawnEventsView_rotationsImpl(State* state, size_type offset, size_type count)
+        : state_{state}
+        , offset_{offset}
+        , count_{count} {}
+    template <bool Enabled = Const>
+    LevelCapitalSpawnEventsView_rotationsImpl(
+        LevelCapitalSpawnEventsView_rotationsImpl<false> const& other)
+        requires Enabled
+        : state_{other.state_}
+        , offset_{other.offset_}
+        , count_{other.count_} {}
+    auto pitches() const { return make_column_view(Layout::columns.RotationsPitchesColumn); }
+    auto yaws() const { return make_column_view(Layout::columns.RotationsYawsColumn); }
+    auto rolls() const { return make_column_view(Layout::columns.RotationsRollsColumn); }
+    template <typename Func>
+    void each_column(Func&& func) const {
+        func(pitches());
+        func(yaws());
+        func(rolls());
+    }
+    auto resolve() const -> std::
+        conditional_t<Const, ::ioj::Rotators3fResolvedConstView, ::ioj::Rotators3fResolvedView> {
+        return {(make_column_view(Layout::columns.RotationsPitchesColumn).data()),
+                (make_column_view(Layout::columns.RotationsYawsColumn).data()),
+                (make_column_view(Layout::columns.RotationsRollsColumn).data()),
+                count_};
+    }
+  private:
+    template <typename T>
+    auto make_column_view(ioj::native_soa::ColumnLayout<T> const& layout) const {
+        return ioj::soa_storage_detail::column_view<std::span<Element<T>>>(
+            state_, offset_, count_, layout);
+    }
+    friend ioj::soa_storage_detail::CompactViewOperations;
+    template <bool>
+    friend struct LevelCapitalSpawnEventsView_rotationsImpl;
+    State* state_{};
+    size_type offset_{};
+    size_type count_{};
+};
+struct LevelCapitalSpawnEventsConstView_rotations
+    : LevelCapitalSpawnEventsView_rotationsImpl<true> {
+    using Base = LevelCapitalSpawnEventsView_rotationsImpl<true>;
+    using Base::Base;
+    using equivalent_type = Rotator3f;
+    auto operator[](std::uint32_t index) const -> equivalent_type {
+        assert(index < num());
+        return equivalent_type{pitches()[index], yaws()[index], rolls()[index]};
+    }
+};
+static_assert(
+    ioj::soa_storage_detail::validate_compact_view<LevelCapitalSpawnEventsConstView_rotations>());
+struct LevelCapitalSpawnEventsView_rotations : LevelCapitalSpawnEventsView_rotationsImpl<false> {
+    using Base = LevelCapitalSpawnEventsView_rotationsImpl<false>;
+    using Base::Base;
+    void set(size_type index,
+             float const new_pitches,
+             float const new_yaws,
+             float const new_rolls) const {
+        assert(index < num());
+        this->pitches()[index] = new_pitches;
+        this->yaws()[index] = new_yaws;
+        this->rolls()[index] = new_rolls;
+    }
+    void set(size_type index, Rotator3f const value) const {
+        set(index, (value.pitch), (value.yaw), (value.roll));
+    }
+    using equivalent_type = Rotator3f;
+    auto operator[](std::uint32_t index) const -> equivalent_type {
+        assert(index < num());
+        return equivalent_type{pitches()[index], yaws()[index], rolls()[index]};
+    }
+};
+static_assert(
+    ioj::soa_storage_detail::validate_compact_view<LevelCapitalSpawnEventsView_rotations>());
+template <bool Const>
+struct LevelCapitalSpawnEventsViewImpl : ioj::soa_storage_detail::CompactViewOperations {
+    using soa_schema = LevelCapitalSpawnEventsSchema;
+    using size_type = std::uint32_t;
+    using Layout = LevelCapitalSpawnEventsLayout;
+    using Storage = ioj::native_soa::StorageState;
+    using State = std::conditional_t<Const, Storage const, Storage>;
+    template <typename T>
+    using Element = std::conditional_t<Const, T const, T>;
+    using View = LevelCapitalSpawnEventsView;
+    using ConstView = LevelCapitalSpawnEventsConstView;
+    LevelCapitalSpawnEventsViewImpl() = default;
+    LevelCapitalSpawnEventsViewImpl(State* state, size_type offset, size_type count)
+        : state_{state}
+        , offset_{offset}
+        , count_{count} {}
+    template <bool Enabled = Const>
+    LevelCapitalSpawnEventsViewImpl(LevelCapitalSpawnEventsViewImpl<false> const& other)
         requires Enabled
         : state_{other.state_}
         , offset_{other.offset_}
@@ -578,27 +551,15 @@ struct LevelCapitalSpawnEventsSingleViewImpl : ioj::soa_storage_detail::CompactV
     auto target_entity_indices() const {
         return make_column_view(Layout::columns.TargetEntityIndicesColumn);
     }
-    auto view_locations() const {
-        using ioj::soa_storage_detail::three_column_view;
-        return three_column_view<ioj::Vector3SoAView<Element<float>>>(
-            state_,
-            offset_,
-            count_,
-            Layout::columns.LocationsXsColumn,
-            Layout::columns.LocationsYsColumn,
-            Layout::columns.LocationsZsColumn);
+    auto view_locations() const -> std::conditional_t<Const,
+                                                      LevelCapitalSpawnEventsConstView_locations,
+                                                      LevelCapitalSpawnEventsView_locations> {
+        return {state_, offset_, count_};
     }
-    auto view_rotations() const {
-        using ioj::soa_storage_detail::three_column_view;
-        return three_column_view<std::conditional_t<Const,
-                                                    ioj::native_soa::RotatorSoAConstView<float>,
-                                                    ioj::native_soa::RotatorSoAView<float>>>(
-            state_,
-            offset_,
-            count_,
-            Layout::columns.RotationsPitchesColumn,
-            Layout::columns.RotationsYawsColumn,
-            Layout::columns.RotationsRollsColumn);
+    auto view_rotations() const -> std::conditional_t<Const,
+                                                      LevelCapitalSpawnEventsConstView_rotations,
+                                                      LevelCapitalSpawnEventsView_rotations> {
+        return {state_, offset_, count_};
     }
     auto teams() const { return make_column_view(Layout::columns.TeamsColumn); }
     auto healths() const { return make_column_view(Layout::columns.HealthsColumn); }
@@ -626,8 +587,8 @@ struct LevelCapitalSpawnEventsSingleViewImpl : ioj::soa_storage_detail::CompactV
         func(fighter_spawn_cooldowns());
     }
     auto resolve() const -> std::conditional_t<Const,
-                                               LevelCapitalSpawnEventsSingleResolvedConstView,
-                                               LevelCapitalSpawnEventsSingleResolvedView> {
+                                               LevelCapitalSpawnEventsResolvedConstView,
+                                               LevelCapitalSpawnEventsResolvedView> {
         return {(make_column_view(Layout::columns.EntityIndicesColumn).data()),
                 (make_column_view(Layout::columns.TargetEntityIndicesColumn).data()),
                 (make_column_view(Layout::columns.LocationsXsColumn).data()),
@@ -650,19 +611,18 @@ struct LevelCapitalSpawnEventsSingleViewImpl : ioj::soa_storage_detail::CompactV
     }
     friend ioj::soa_storage_detail::CompactViewOperations;
     template <bool>
-    friend struct LevelCapitalSpawnEventsSingleViewImpl;
+    friend struct LevelCapitalSpawnEventsViewImpl;
     State* state_{};
     size_type offset_{};
     size_type count_{};
 };
-struct LevelCapitalSpawnEventsSingleConstView : LevelCapitalSpawnEventsSingleViewImpl<true> {
-    using Base = LevelCapitalSpawnEventsSingleViewImpl<true>;
+struct LevelCapitalSpawnEventsConstView : LevelCapitalSpawnEventsViewImpl<true> {
+    using Base = LevelCapitalSpawnEventsViewImpl<true>;
     using Base::Base;
 };
-static_assert(
-    ioj::soa_storage_detail::validate_compact_view<LevelCapitalSpawnEventsSingleConstView>());
-struct LevelCapitalSpawnEventsSingleView : LevelCapitalSpawnEventsSingleViewImpl<false> {
-    using Base = LevelCapitalSpawnEventsSingleViewImpl<false>;
+static_assert(ioj::soa_storage_detail::validate_compact_view<LevelCapitalSpawnEventsConstView>());
+struct LevelCapitalSpawnEventsView : LevelCapitalSpawnEventsViewImpl<false> {
+    using Base = LevelCapitalSpawnEventsViewImpl<false>;
     using Base::Base;
     void set(size_type index,
              ioj::sim::LevelEntityIndex const new_entity_indices,
@@ -691,8 +651,27 @@ struct LevelCapitalSpawnEventsSingleView : LevelCapitalSpawnEventsSingleViewImpl
         this->initial_fighter_spawn_delays()[index] = new_initial_fighter_spawn_delays;
         this->fighter_spawn_cooldowns()[index] = new_fighter_spawn_cooldowns;
     }
+    void set(size_type index,
+             ioj::sim::LevelEntityIndex const new_entity_indices,
+             ioj::sim::LevelEntityIndex const new_target_entity_indices,
+             Vector3f const new_locations,
+             Rotator3f const new_rotations,
+             ::ioj::Team const new_teams,
+             Health const new_healths,
+             float const new_initial_fighter_spawn_delays,
+             float const new_fighter_spawn_cooldowns) const {
+        assert(index < num());
+        this->entity_indices()[index] = new_entity_indices;
+        this->target_entity_indices()[index] = new_target_entity_indices;
+        this->view_locations().set(index, new_locations);
+        this->view_rotations().set(index, new_rotations);
+        this->teams()[index] = new_teams;
+        this->healths()[index] = new_healths;
+        this->initial_fighter_spawn_delays()[index] = new_initial_fighter_spawn_delays;
+        this->fighter_spawn_cooldowns()[index] = new_fighter_spawn_cooldowns;
+    }
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<LevelCapitalSpawnEventsSingleView>());
+static_assert(ioj::soa_storage_detail::validate_compact_view<LevelCapitalSpawnEventsView>());
 // Columns:
 // entity_indices: ioj::sim::LevelEntityIndex
 // target_entity_indices: ioj::sim::LevelEntityIndex
@@ -711,7 +690,7 @@ struct LevelCapitalSpawnEvents
     , ioj::native_soa::StorageOperations {
     using soa_schema = LevelCapitalSpawnEventsSchema;
     using Operations = ioj::native_soa::StorageOperations;
-    using Layout = LevelCapitalSpawnEventsSingleLayout;
+    using Layout = LevelCapitalSpawnEventsLayout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
 
@@ -724,8 +703,8 @@ struct LevelCapitalSpawnEvents
         return Layout::layout_bytes(blocks);
     }
 
-    using View = LevelCapitalSpawnEventsSingleView;
-    using ConstView = LevelCapitalSpawnEventsSingleConstView;
+    using View = LevelCapitalSpawnEventsView;
+    using ConstView = LevelCapitalSpawnEventsConstView;
 
     /* **************************************** */
     // Lifetime
@@ -935,8 +914,8 @@ struct LevelCapitalSpawnEvents
         return self.get_view().fighter_spawn_cooldowns();
     }
     void set(size_type index,
-             ioj::sim::LevelEntityIndex const new_entity_indices,
-             ioj::sim::LevelEntityIndex const new_target_entity_indices,
+             LevelEntityIndex const new_entity_indices,
+             LevelEntityIndex const new_target_entity_indices,
              float const new_locations_xs,
              float const new_locations_ys,
              float const new_locations_zs,
@@ -961,8 +940,8 @@ struct LevelCapitalSpawnEvents
         get_view().initial_fighter_spawn_delays()[index] = new_initial_fighter_spawn_delays;
         get_view().fighter_spawn_cooldowns()[index] = new_fighter_spawn_cooldowns;
     }
-    size_type add(ioj::sim::LevelEntityIndex const new_entity_indices,
-                  ioj::sim::LevelEntityIndex const new_target_entity_indices,
+    size_type add(LevelEntityIndex const new_entity_indices,
+                  LevelEntityIndex const new_target_entity_indices,
                   float const new_locations_xs,
                   float const new_locations_ys,
                   float const new_locations_zs,
@@ -989,6 +968,62 @@ struct LevelCapitalSpawnEvents
             new_initial_fighter_spawn_delays,
             new_fighter_spawn_cooldowns);
         return index;
+    }
+    void set(size_type index,
+             LevelEntityIndex const new_entity_indices,
+             LevelEntityIndex const new_target_entity_indices,
+             Vector3f const new_locations,
+             Rotator3f const new_rotations,
+             ::ioj::Team const new_teams,
+             Health const new_healths,
+             float const new_initial_fighter_spawn_delays,
+             float const new_fighter_spawn_cooldowns) {
+        assert(index < num());
+        get_view().entity_indices()[index] = new_entity_indices;
+        get_view().target_entity_indices()[index] = new_target_entity_indices;
+        get_view().view_locations().set(index, new_locations);
+        get_view().view_rotations().set(index, new_rotations);
+        get_view().teams()[index] = new_teams;
+        get_view().healths()[index] = new_healths;
+        get_view().initial_fighter_spawn_delays()[index] = new_initial_fighter_spawn_delays;
+        get_view().fighter_spawn_cooldowns()[index] = new_fighter_spawn_cooldowns;
+    }
+    size_type add(LevelEntityIndex const new_entity_indices,
+                  LevelEntityIndex const new_target_entity_indices,
+                  Vector3f const new_locations,
+                  Rotator3f const new_rotations,
+                  ::ioj::Team const new_teams,
+                  Health const new_healths,
+                  float const new_initial_fighter_spawn_delays,
+                  float const new_fighter_spawn_cooldowns) {
+        auto const index{num()};
+        add_uninitialised(1);
+        set(index,
+            new_entity_indices,
+            new_target_entity_indices,
+            new_locations,
+            new_rotations,
+            new_teams,
+            new_healths,
+            new_initial_fighter_spawn_delays,
+            new_fighter_spawn_cooldowns);
+        return index;
+    }
+    void apply_permutation(std::span<size_type> indices) {
+        assert(indices.size() == num_);
+        auto const columns{get_data()};
+        ioj::apply_permutation(std::span{columns.entity_indices, num_}, indices);
+        ioj::apply_permutation(std::span{columns.target_entity_indices, num_}, indices);
+        ioj::apply_permutation(std::span{columns.locations_xs, num_}, indices);
+        ioj::apply_permutation(std::span{columns.locations_ys, num_}, indices);
+        ioj::apply_permutation(std::span{columns.locations_zs, num_}, indices);
+        ioj::apply_permutation(std::span{columns.rotations_pitches, num_}, indices);
+        ioj::apply_permutation(std::span{columns.rotations_yaws, num_}, indices);
+        ioj::apply_permutation(std::span{columns.rotations_rolls, num_}, indices);
+        ioj::apply_permutation(std::span{columns.teams, num_}, indices);
+        ioj::apply_permutation(std::span{columns.healths, num_}, indices);
+        ioj::apply_permutation(std::span{columns.initial_fighter_spawn_delays, num_}, indices);
+        ioj::apply_permutation(std::span{columns.fighter_spawn_cooldowns, num_}, indices);
     }
   private:
     std::pmr::memory_resource* resource_{};

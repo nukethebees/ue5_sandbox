@@ -48,7 +48,7 @@ void run_worldless_spatial_query_line_of_sight(tests::SimulationFixture const& c
     std::vector<EntityId> results{};
     results.resize(static_cast<std::size_t>(ends.num()));
     harness.get_simulation().get_spatial_query_manager().trace_line_of_sight(
-        starts.get_const_view(), ends.get_const_view(), results, &query_memory);
+        starts.get_const_view().resolve(), ends.get_const_view().resolve(), results, &query_memory);
     auto const count{static_cast<std::int32_t>(locations.size())};
     for (std::int32_t i{}; i < count; ++i) {
         SCOPED_TRACE(::testing::Message() << "index " << i);
@@ -60,7 +60,7 @@ void run_worldless_spatial_query_line_of_sight(tests::SimulationFixture const& c
     std::vector<LineQueryResult> has_los{};
     has_los.resize(static_cast<std::size_t>(ends.num()));
     harness.get_simulation().get_spatial_query_manager().has_line_of_sight_to_targets(
-        Vector3f{0.f, 0.f, 0.f}, ends.get_const_view(), targets, has_los, &query_memory);
+        Vector3f{0.f, 0.f, 0.f}, ends.get_const_view().resolve(), targets, has_los, &query_memory);
     auto const result_count{static_cast<std::int32_t>(has_los.size())};
     for (std::int32_t i{}; i < result_count; ++i) {
         SCOPED_TRACE(::testing::Message() << "index " << i);
@@ -72,7 +72,7 @@ void run_worldless_spatial_query_line_of_sight(tests::SimulationFixture const& c
         targets[i + 2 * count] = other;
     }
     harness.get_simulation().get_spatial_query_manager().has_line_of_sight_to_targets(
-        Vector3f{0.f, 0.f, 0.f}, ends.get_const_view(), targets, has_los, &query_memory);
+        Vector3f{0.f, 0.f, 0.f}, ends.get_const_view().resolve(), targets, has_los, &query_memory);
     for (std::int32_t i{}; i < count; ++i) {
         SCOPED_TRACE(::testing::Message() << "index " << i);
         EXPECT_EQ(LineQueryResult{1}, has_los[i]) << "Clear line remains visible";

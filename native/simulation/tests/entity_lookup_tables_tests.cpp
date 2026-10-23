@@ -1,8 +1,8 @@
 #include "support/collision_agent_storage.h"
 #include <ioj/column_math.h>
-#include <ioj/frame_vectors3f.h>
 #include <ioj/rotator_math.h>
 #include <ioj/sim/entities/entity_tables.h>
+#include <ioj/vectors3f.h>
 
 #include <gtest/gtest.h>
 
@@ -142,10 +142,11 @@ TEST(EntityMotion, CopiesMixedTypesAndReportsMissingEntitiesWithoutChangingIds) 
     owners.refresh(queries);
     alignas(FrameMemoryResource::backing_alignment) std::array<std::byte, 4096> backing;
     FrameMemoryResource scratch{backing};
-    queries.copy_entity_locations(ids, locations.get_view(), &scratch);
+    queries.copy_entity_locations(ids, locations.get_view().resolve(), &scratch);
     EXPECT_EQ(ids, original);
     std::array<EntityInstanceHandle, ids.size()> handles;
-    queries.copy_entity_motion(ids, locations.get_view(), velocities.get_view(), handles, &scratch);
+    queries.copy_entity_motion(
+        ids, locations.get_view().resolve(), velocities.get_view().resolve(), handles, &scratch);
     EXPECT_EQ(ids, original);
     EXPECT_TRUE(handles[0].is_valid());
     EXPECT_FALSE(handles[1].is_valid());
@@ -167,7 +168,8 @@ TEST(EntityMotion, CopiesMixedTypesAndReportsMissingEntitiesWithoutChangingIds) 
     owners.remove(fighter);
     owners.publish();
     owners.refresh(queries);
-    queries.copy_entity_motion(ids, locations.get_view(), velocities.get_view(), handles, &scratch);
+    queries.copy_entity_motion(
+        ids, locations.get_view().resolve(), velocities.get_view().resolve(), handles, &scratch);
     EXPECT_EQ(ids, original);
     EXPECT_FALSE(handles[0].is_valid());
     EXPECT_FALSE(handles[3].is_valid());

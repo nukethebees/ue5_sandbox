@@ -6,16 +6,16 @@
 #include "ioj/native_soa/storage.h"
 #include "ioj/sim/collision/collision_types.h"
 #include "ioj/sim/entities/entity_id.h"
+#include "ioj/soa_permutation.h"
 
 #include <cassert>
 #include <memory_resource>
 
 namespace ioj::sim::collision {
 struct EntityEntityOverlapsSchema;
-
-struct EntityEntityOverlapsSingleView;
-struct EntityEntityOverlapsSingleConstView;
-struct EntityEntityOverlapsSingleLayoutColumns {
+struct EntityEntityOverlapsView;
+struct EntityEntityOverlapsConstView;
+struct EntityEntityOverlapsLayoutColumns {
     template <typename T>
     using ColLayout = ioj::native_soa::ColumnLayout<T>;
 
@@ -24,15 +24,14 @@ struct EntityEntityOverlapsSingleLayoutColumns {
     ColLayout<EntityId> FirstEntitiesColumn;
     ColLayout<EntityId> SecondEntitiesColumn;
 
-    constexpr EntityEntityOverlapsSingleLayoutColumns() noexcept
+    constexpr EntityEntityOverlapsLayoutColumns() noexcept
         : FirstEntitiesColumn{LayoutStart}
         , SecondEntitiesColumn{FirstEntitiesColumn} {}
-    EntityEntityOverlapsSingleLayoutColumns(EntityEntityOverlapsSingleLayoutColumns const&) =
-        delete;
-    auto operator=(EntityEntityOverlapsSingleLayoutColumns const&)
-        -> EntityEntityOverlapsSingleLayoutColumns& = delete;
+    EntityEntityOverlapsLayoutColumns(EntityEntityOverlapsLayoutColumns const&) = delete;
+    auto operator=(EntityEntityOverlapsLayoutColumns const&)
+        -> EntityEntityOverlapsLayoutColumns& = delete;
 };
-struct EntityEntityOverlapsSingleLayout {
+struct EntityEntityOverlapsLayout {
     using size_type = std::uint32_t;
     using byte_size_type = std::size_t;
 
@@ -40,7 +39,7 @@ struct EntityEntityOverlapsSingleLayout {
         ioj::native_soa::LayoutPolicy::capacity_granularity};
     static constexpr byte_size_type column_gap{ioj::native_soa::LayoutPolicy::column_gap};
 
-    static constexpr EntityEntityOverlapsSingleLayoutColumns columns{};
+    static constexpr EntityEntityOverlapsLayoutColumns columns{};
 
     static constexpr byte_size_type allocation_alignment{
         columns.SecondEntitiesColumn.allocation_alignment};
@@ -57,29 +56,29 @@ struct EntityEntityOverlapsSingleLayout {
     static_assert(max_capacity >= capacity_granularity);
 };
 
-struct EntityEntityOverlapsSingleResolvedView;
-struct EntityEntityOverlapsSingleResolvedConstView;
+struct EntityEntityOverlapsResolvedView;
+struct EntityEntityOverlapsResolvedConstView;
 template <bool Const>
-struct EntityEntityOverlapsSingleResolvedViewImpl {
+struct EntityEntityOverlapsResolvedViewImpl {
     using size_type = std::uint32_t;
-    using View = EntityEntityOverlapsSingleResolvedView;
-    using ConstView = EntityEntityOverlapsSingleResolvedConstView;
-    using soa_schema = EntityEntityOverlapsSchema;
+    using View = EntityEntityOverlapsResolvedView;
+    using ConstView = EntityEntityOverlapsResolvedConstView;
+    using soa_schema = ::ioj::sim::collision::EntityEntityOverlapsSchema;
     template <typename T>
     using Element = std::conditional_t<Const, T const, T>;
-    EntityEntityOverlapsSingleResolvedViewImpl() = default;
-    EntityEntityOverlapsSingleResolvedViewImpl(Element<EntityId>* first_entities,
-                                               Element<EntityId>* second_entities,
-                                               size_type count)
+    EntityEntityOverlapsResolvedViewImpl() = default;
+    EntityEntityOverlapsResolvedViewImpl(Element<EntityId>* first_entities,
+                                         Element<EntityId>* second_entities,
+                                         size_type count)
         : first_entities_{first_entities}
         , second_entities_{second_entities}
         , count_{count} {
         ioj::soa_storage_detail::validate_column_pointers(
             count_, first_entities_, second_entities_);
     }
-    EntityEntityOverlapsSingleResolvedViewImpl(std::span<Element<EntityId>> first_entities,
-                                               std::span<Element<EntityId>> second_entities)
-        : EntityEntityOverlapsSingleResolvedViewImpl{
+    EntityEntityOverlapsResolvedViewImpl(std::span<Element<EntityId>> first_entities,
+                                         std::span<Element<EntityId>> second_entities)
+        : EntityEntityOverlapsResolvedViewImpl{
               first_entities.data(),
               second_entities.data(),
               ioj::soa_storage_detail::checked_row_count(first_entities.size())} {
@@ -87,8 +86,7 @@ struct EntityEntityOverlapsSingleResolvedViewImpl {
         assert(second_entities.size() == count_);
     }
     template <bool Enabled = Const>
-    EntityEntityOverlapsSingleResolvedViewImpl(
-        EntityEntityOverlapsSingleResolvedViewImpl<false> const& other)
+    EntityEntityOverlapsResolvedViewImpl(EntityEntityOverlapsResolvedViewImpl<false> const& other)
         requires Enabled
         : first_entities_{other.first_entities_}
         , second_entities_{other.second_entities_}
@@ -133,18 +131,17 @@ struct EntityEntityOverlapsSingleResolvedViewImpl {
     }
   private:
     template <bool>
-    friend struct EntityEntityOverlapsSingleResolvedViewImpl;
+    friend struct EntityEntityOverlapsResolvedViewImpl;
     Element<EntityId>* first_entities_{};
     Element<EntityId>* second_entities_{};
     size_type count_{};
 };
-struct EntityEntityOverlapsSingleResolvedConstView
-    : EntityEntityOverlapsSingleResolvedViewImpl<true> {
-    using Base = EntityEntityOverlapsSingleResolvedViewImpl<true>;
+struct EntityEntityOverlapsResolvedConstView : EntityEntityOverlapsResolvedViewImpl<true> {
+    using Base = EntityEntityOverlapsResolvedViewImpl<true>;
     using Base::Base;
 };
-struct EntityEntityOverlapsSingleResolvedView : EntityEntityOverlapsSingleResolvedViewImpl<false> {
-    using Base = EntityEntityOverlapsSingleResolvedViewImpl<false>;
+struct EntityEntityOverlapsResolvedView : EntityEntityOverlapsResolvedViewImpl<false> {
+    using Base = EntityEntityOverlapsResolvedViewImpl<false>;
     using Base::Base;
     void set(size_type index,
              EntityId const new_first_entities,
@@ -155,23 +152,23 @@ struct EntityEntityOverlapsSingleResolvedView : EntityEntityOverlapsSingleResolv
     }
 };
 template <bool Const>
-struct EntityEntityOverlapsSingleViewImpl : ioj::soa_storage_detail::CompactViewOperations {
+struct EntityEntityOverlapsViewImpl : ioj::soa_storage_detail::CompactViewOperations {
     using soa_schema = EntityEntityOverlapsSchema;
     using size_type = std::uint32_t;
-    using Layout = EntityEntityOverlapsSingleLayout;
+    using Layout = EntityEntityOverlapsLayout;
     using Storage = ioj::native_soa::StorageState;
     using State = std::conditional_t<Const, Storage const, Storage>;
     template <typename T>
     using Element = std::conditional_t<Const, T const, T>;
-    using View = EntityEntityOverlapsSingleView;
-    using ConstView = EntityEntityOverlapsSingleConstView;
-    EntityEntityOverlapsSingleViewImpl() = default;
-    EntityEntityOverlapsSingleViewImpl(State* state, size_type offset, size_type count)
+    using View = EntityEntityOverlapsView;
+    using ConstView = EntityEntityOverlapsConstView;
+    EntityEntityOverlapsViewImpl() = default;
+    EntityEntityOverlapsViewImpl(State* state, size_type offset, size_type count)
         : state_{state}
         , offset_{offset}
         , count_{count} {}
     template <bool Enabled = Const>
-    EntityEntityOverlapsSingleViewImpl(EntityEntityOverlapsSingleViewImpl<false> const& other)
+    EntityEntityOverlapsViewImpl(EntityEntityOverlapsViewImpl<false> const& other)
         requires Enabled
         : state_{other.state_}
         , offset_{other.offset_}
@@ -184,8 +181,8 @@ struct EntityEntityOverlapsSingleViewImpl : ioj::soa_storage_detail::CompactView
         func(second_entities());
     }
     auto resolve() const -> std::conditional_t<Const,
-                                               EntityEntityOverlapsSingleResolvedConstView,
-                                               EntityEntityOverlapsSingleResolvedView> {
+                                               EntityEntityOverlapsResolvedConstView,
+                                               EntityEntityOverlapsResolvedView> {
         return {(make_column_view(Layout::columns.FirstEntitiesColumn).data()),
                 (make_column_view(Layout::columns.SecondEntitiesColumn).data()),
                 count_};
@@ -198,19 +195,18 @@ struct EntityEntityOverlapsSingleViewImpl : ioj::soa_storage_detail::CompactView
     }
     friend ioj::soa_storage_detail::CompactViewOperations;
     template <bool>
-    friend struct EntityEntityOverlapsSingleViewImpl;
+    friend struct EntityEntityOverlapsViewImpl;
     State* state_{};
     size_type offset_{};
     size_type count_{};
 };
-struct EntityEntityOverlapsSingleConstView : EntityEntityOverlapsSingleViewImpl<true> {
-    using Base = EntityEntityOverlapsSingleViewImpl<true>;
+struct EntityEntityOverlapsConstView : EntityEntityOverlapsViewImpl<true> {
+    using Base = EntityEntityOverlapsViewImpl<true>;
     using Base::Base;
 };
-static_assert(
-    ioj::soa_storage_detail::validate_compact_view<EntityEntityOverlapsSingleConstView>());
-struct EntityEntityOverlapsSingleView : EntityEntityOverlapsSingleViewImpl<false> {
-    using Base = EntityEntityOverlapsSingleViewImpl<false>;
+static_assert(ioj::soa_storage_detail::validate_compact_view<EntityEntityOverlapsConstView>());
+struct EntityEntityOverlapsView : EntityEntityOverlapsViewImpl<false> {
+    using Base = EntityEntityOverlapsViewImpl<false>;
     using Base::Base;
     void set(size_type index,
              EntityId const new_first_entities,
@@ -220,7 +216,7 @@ struct EntityEntityOverlapsSingleView : EntityEntityOverlapsSingleViewImpl<false
         this->second_entities()[index] = new_second_entities;
     }
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<EntityEntityOverlapsSingleView>());
+static_assert(ioj::soa_storage_detail::validate_compact_view<EntityEntityOverlapsView>());
 // Columns:
 // first_entities: EntityId
 // second_entities: EntityId
@@ -229,7 +225,7 @@ struct EntityEntityOverlaps
     , ioj::native_soa::StorageOperations {
     using soa_schema = EntityEntityOverlapsSchema;
     using Operations = ioj::native_soa::StorageOperations;
-    using Layout = EntityEntityOverlapsSingleLayout;
+    using Layout = EntityEntityOverlapsLayout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
 
@@ -242,8 +238,8 @@ struct EntityEntityOverlaps
         return Layout::layout_bytes(blocks);
     }
 
-    using View = EntityEntityOverlapsSingleView;
-    using ConstView = EntityEntityOverlapsSingleConstView;
+    using View = EntityEntityOverlapsView;
+    using ConstView = EntityEntityOverlapsConstView;
 
     /* **************************************** */
     // Lifetime
@@ -391,15 +387,20 @@ struct EntityEntityOverlaps
         set(index, new_first_entities, new_second_entities);
         return index;
     }
+    void apply_permutation(std::span<size_type> indices) {
+        assert(indices.size() == num_);
+        auto const columns{get_data()};
+        ioj::apply_permutation(std::span{columns.first_entities, num_}, indices);
+        ioj::apply_permutation(std::span{columns.second_entities, num_}, indices);
+    }
   private:
     std::pmr::memory_resource* resource_{};
 };
 
 struct EntityStaticOverlapsSchema;
-
-struct EntityStaticOverlapsSingleView;
-struct EntityStaticOverlapsSingleConstView;
-struct EntityStaticOverlapsSingleLayoutColumns {
+struct EntityStaticOverlapsView;
+struct EntityStaticOverlapsConstView;
+struct EntityStaticOverlapsLayoutColumns {
     template <typename T>
     using ColLayout = ioj::native_soa::ColumnLayout<T>;
 
@@ -408,15 +409,14 @@ struct EntityStaticOverlapsSingleLayoutColumns {
     ColLayout<EntityId> EntitiesColumn;
     ColLayout<StaticGeometryIndex> StaticGeometryIndicesColumn;
 
-    constexpr EntityStaticOverlapsSingleLayoutColumns() noexcept
+    constexpr EntityStaticOverlapsLayoutColumns() noexcept
         : EntitiesColumn{LayoutStart}
         , StaticGeometryIndicesColumn{EntitiesColumn} {}
-    EntityStaticOverlapsSingleLayoutColumns(EntityStaticOverlapsSingleLayoutColumns const&) =
-        delete;
-    auto operator=(EntityStaticOverlapsSingleLayoutColumns const&)
-        -> EntityStaticOverlapsSingleLayoutColumns& = delete;
+    EntityStaticOverlapsLayoutColumns(EntityStaticOverlapsLayoutColumns const&) = delete;
+    auto operator=(EntityStaticOverlapsLayoutColumns const&)
+        -> EntityStaticOverlapsLayoutColumns& = delete;
 };
-struct EntityStaticOverlapsSingleLayout {
+struct EntityStaticOverlapsLayout {
     using size_type = std::uint32_t;
     using byte_size_type = std::size_t;
 
@@ -424,7 +424,7 @@ struct EntityStaticOverlapsSingleLayout {
         ioj::native_soa::LayoutPolicy::capacity_granularity};
     static constexpr byte_size_type column_gap{ioj::native_soa::LayoutPolicy::column_gap};
 
-    static constexpr EntityStaticOverlapsSingleLayoutColumns columns{};
+    static constexpr EntityStaticOverlapsLayoutColumns columns{};
 
     static constexpr byte_size_type allocation_alignment{
         columns.StaticGeometryIndicesColumn.allocation_alignment};
@@ -441,18 +441,18 @@ struct EntityStaticOverlapsSingleLayout {
     static_assert(max_capacity >= capacity_granularity);
 };
 
-struct EntityStaticOverlapsSingleResolvedView;
-struct EntityStaticOverlapsSingleResolvedConstView;
+struct EntityStaticOverlapsResolvedView;
+struct EntityStaticOverlapsResolvedConstView;
 template <bool Const>
-struct EntityStaticOverlapsSingleResolvedViewImpl {
+struct EntityStaticOverlapsResolvedViewImpl {
     using size_type = std::uint32_t;
-    using View = EntityStaticOverlapsSingleResolvedView;
-    using ConstView = EntityStaticOverlapsSingleResolvedConstView;
-    using soa_schema = EntityStaticOverlapsSchema;
+    using View = EntityStaticOverlapsResolvedView;
+    using ConstView = EntityStaticOverlapsResolvedConstView;
+    using soa_schema = ::ioj::sim::collision::EntityStaticOverlapsSchema;
     template <typename T>
     using Element = std::conditional_t<Const, T const, T>;
-    EntityStaticOverlapsSingleResolvedViewImpl() = default;
-    EntityStaticOverlapsSingleResolvedViewImpl(
+    EntityStaticOverlapsResolvedViewImpl() = default;
+    EntityStaticOverlapsResolvedViewImpl(
         Element<EntityId>* entities,
         Element<ioj::sim::collision::StaticGeometryIndex>* static_geometry_indices,
         size_type count)
@@ -462,10 +462,10 @@ struct EntityStaticOverlapsSingleResolvedViewImpl {
         ioj::soa_storage_detail::validate_column_pointers(
             count_, entities_, static_geometry_indices_);
     }
-    EntityStaticOverlapsSingleResolvedViewImpl(
+    EntityStaticOverlapsResolvedViewImpl(
         std::span<Element<EntityId>> entities,
         std::span<Element<ioj::sim::collision::StaticGeometryIndex>> static_geometry_indices)
-        : EntityStaticOverlapsSingleResolvedViewImpl{
+        : EntityStaticOverlapsResolvedViewImpl{
               entities.data(),
               static_geometry_indices.data(),
               ioj::soa_storage_detail::checked_row_count(entities.size())} {
@@ -473,8 +473,7 @@ struct EntityStaticOverlapsSingleResolvedViewImpl {
         assert(static_geometry_indices.size() == count_);
     }
     template <bool Enabled = Const>
-    EntityStaticOverlapsSingleResolvedViewImpl(
-        EntityStaticOverlapsSingleResolvedViewImpl<false> const& other)
+    EntityStaticOverlapsResolvedViewImpl(EntityStaticOverlapsResolvedViewImpl<false> const& other)
         requires Enabled
         : entities_{other.entities_}
         , static_geometry_indices_{other.static_geometry_indices_}
@@ -521,18 +520,17 @@ struct EntityStaticOverlapsSingleResolvedViewImpl {
     }
   private:
     template <bool>
-    friend struct EntityStaticOverlapsSingleResolvedViewImpl;
+    friend struct EntityStaticOverlapsResolvedViewImpl;
     Element<EntityId>* entities_{};
     Element<ioj::sim::collision::StaticGeometryIndex>* static_geometry_indices_{};
     size_type count_{};
 };
-struct EntityStaticOverlapsSingleResolvedConstView
-    : EntityStaticOverlapsSingleResolvedViewImpl<true> {
-    using Base = EntityStaticOverlapsSingleResolvedViewImpl<true>;
+struct EntityStaticOverlapsResolvedConstView : EntityStaticOverlapsResolvedViewImpl<true> {
+    using Base = EntityStaticOverlapsResolvedViewImpl<true>;
     using Base::Base;
 };
-struct EntityStaticOverlapsSingleResolvedView : EntityStaticOverlapsSingleResolvedViewImpl<false> {
-    using Base = EntityStaticOverlapsSingleResolvedViewImpl<false>;
+struct EntityStaticOverlapsResolvedView : EntityStaticOverlapsResolvedViewImpl<false> {
+    using Base = EntityStaticOverlapsResolvedViewImpl<false>;
     using Base::Base;
     void set(size_type index,
              EntityId const new_entities,
@@ -543,23 +541,23 @@ struct EntityStaticOverlapsSingleResolvedView : EntityStaticOverlapsSingleResolv
     }
 };
 template <bool Const>
-struct EntityStaticOverlapsSingleViewImpl : ioj::soa_storage_detail::CompactViewOperations {
+struct EntityStaticOverlapsViewImpl : ioj::soa_storage_detail::CompactViewOperations {
     using soa_schema = EntityStaticOverlapsSchema;
     using size_type = std::uint32_t;
-    using Layout = EntityStaticOverlapsSingleLayout;
+    using Layout = EntityStaticOverlapsLayout;
     using Storage = ioj::native_soa::StorageState;
     using State = std::conditional_t<Const, Storage const, Storage>;
     template <typename T>
     using Element = std::conditional_t<Const, T const, T>;
-    using View = EntityStaticOverlapsSingleView;
-    using ConstView = EntityStaticOverlapsSingleConstView;
-    EntityStaticOverlapsSingleViewImpl() = default;
-    EntityStaticOverlapsSingleViewImpl(State* state, size_type offset, size_type count)
+    using View = EntityStaticOverlapsView;
+    using ConstView = EntityStaticOverlapsConstView;
+    EntityStaticOverlapsViewImpl() = default;
+    EntityStaticOverlapsViewImpl(State* state, size_type offset, size_type count)
         : state_{state}
         , offset_{offset}
         , count_{count} {}
     template <bool Enabled = Const>
-    EntityStaticOverlapsSingleViewImpl(EntityStaticOverlapsSingleViewImpl<false> const& other)
+    EntityStaticOverlapsViewImpl(EntityStaticOverlapsViewImpl<false> const& other)
         requires Enabled
         : state_{other.state_}
         , offset_{other.offset_}
@@ -574,8 +572,8 @@ struct EntityStaticOverlapsSingleViewImpl : ioj::soa_storage_detail::CompactView
         func(static_geometry_indices());
     }
     auto resolve() const -> std::conditional_t<Const,
-                                               EntityStaticOverlapsSingleResolvedConstView,
-                                               EntityStaticOverlapsSingleResolvedView> {
+                                               EntityStaticOverlapsResolvedConstView,
+                                               EntityStaticOverlapsResolvedView> {
         return {(make_column_view(Layout::columns.EntitiesColumn).data()),
                 (make_column_view(Layout::columns.StaticGeometryIndicesColumn).data()),
                 count_};
@@ -588,19 +586,18 @@ struct EntityStaticOverlapsSingleViewImpl : ioj::soa_storage_detail::CompactView
     }
     friend ioj::soa_storage_detail::CompactViewOperations;
     template <bool>
-    friend struct EntityStaticOverlapsSingleViewImpl;
+    friend struct EntityStaticOverlapsViewImpl;
     State* state_{};
     size_type offset_{};
     size_type count_{};
 };
-struct EntityStaticOverlapsSingleConstView : EntityStaticOverlapsSingleViewImpl<true> {
-    using Base = EntityStaticOverlapsSingleViewImpl<true>;
+struct EntityStaticOverlapsConstView : EntityStaticOverlapsViewImpl<true> {
+    using Base = EntityStaticOverlapsViewImpl<true>;
     using Base::Base;
 };
-static_assert(
-    ioj::soa_storage_detail::validate_compact_view<EntityStaticOverlapsSingleConstView>());
-struct EntityStaticOverlapsSingleView : EntityStaticOverlapsSingleViewImpl<false> {
-    using Base = EntityStaticOverlapsSingleViewImpl<false>;
+static_assert(ioj::soa_storage_detail::validate_compact_view<EntityStaticOverlapsConstView>());
+struct EntityStaticOverlapsView : EntityStaticOverlapsViewImpl<false> {
+    using Base = EntityStaticOverlapsViewImpl<false>;
     using Base::Base;
     void set(size_type index,
              EntityId const new_entities,
@@ -610,7 +607,7 @@ struct EntityStaticOverlapsSingleView : EntityStaticOverlapsSingleViewImpl<false
         this->static_geometry_indices()[index] = new_static_geometry_indices;
     }
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<EntityStaticOverlapsSingleView>());
+static_assert(ioj::soa_storage_detail::validate_compact_view<EntityStaticOverlapsView>());
 // Columns:
 // entities: EntityId
 // static_geometry_indices: ioj::sim::collision::StaticGeometryIndex
@@ -619,7 +616,7 @@ struct EntityStaticOverlaps
     , ioj::native_soa::StorageOperations {
     using soa_schema = EntityStaticOverlapsSchema;
     using Operations = ioj::native_soa::StorageOperations;
-    using Layout = EntityStaticOverlapsSingleLayout;
+    using Layout = EntityStaticOverlapsLayout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
 
@@ -632,8 +629,8 @@ struct EntityStaticOverlaps
         return Layout::layout_bytes(blocks);
     }
 
-    using View = EntityStaticOverlapsSingleView;
-    using ConstView = EntityStaticOverlapsSingleConstView;
+    using View = EntityStaticOverlapsView;
+    using ConstView = EntityStaticOverlapsConstView;
 
     /* **************************************** */
     // Lifetime
@@ -772,17 +769,23 @@ struct EntityStaticOverlaps
     }
     void set(size_type index,
              EntityId const new_entities,
-             ioj::sim::collision::StaticGeometryIndex const new_static_geometry_indices) {
+             StaticGeometryIndex const new_static_geometry_indices) {
         assert(index < num());
         get_view().entities()[index] = new_entities;
         get_view().static_geometry_indices()[index] = new_static_geometry_indices;
     }
     size_type add(EntityId const new_entities,
-                  ioj::sim::collision::StaticGeometryIndex const new_static_geometry_indices) {
+                  StaticGeometryIndex const new_static_geometry_indices) {
         auto const index{num()};
         add_uninitialised(1);
         set(index, new_entities, new_static_geometry_indices);
         return index;
+    }
+    void apply_permutation(std::span<size_type> indices) {
+        assert(indices.size() == num_);
+        auto const columns{get_data()};
+        ioj::apply_permutation(std::span{columns.entities, num_}, indices);
+        ioj::apply_permutation(std::span{columns.static_geometry_indices, num_}, indices);
     }
   private:
     std::pmr::memory_resource* resource_{};

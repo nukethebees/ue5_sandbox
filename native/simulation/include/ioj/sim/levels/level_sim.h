@@ -1,7 +1,6 @@
 #pragma once
 #include <ioj/column_math.h>
 #include <ioj/frame_memory_resource.h>
-#include <ioj/frame_vectors3f.h>
 #include <ioj/rotator_math.h>
 #include <ioj/sim/capital_ships/sim.h>
 #include <ioj/sim/collision/spatial_query_manager.h>

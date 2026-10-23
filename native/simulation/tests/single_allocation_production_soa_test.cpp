@@ -45,6 +45,8 @@ void expect_storage_lifecycle() {
 } // namespace
 
 TEST(NativeSimulation, ProductionSingleAllocationSoaLifecycle) {
+    expect_storage_lifecycle<Vectors3f>();
+    expect_storage_lifecycle<Rotators3f>();
     expect_storage_lifecycle<FighterEntityData>();
     expect_storage_lifecycle<TurretEntityData>();
     expect_storage_lifecycle<lasers::LaserEntities>();
@@ -89,7 +91,7 @@ TEST(NativeSimulation, SpinnerAndLaserHitSingleAllocationRowsStaySynchronized) {
     spinners.add_defaulted(65);
     auto spinner_columns{spinners.get_view()};
     auto const spinner_count{spinners.num()};
-    auto const spinner_locations{spinner_columns.view_locations()};
+    auto const spinner_locations{spinner_columns.view_locations().resolve()};
     auto const yaws{spinner_columns.yaws()};
     auto const fire_point_indices{spinner_columns.next_fire_point_indices()};
     for (std::uint32_t index{}; index < spinner_count; ++index) {
@@ -113,8 +115,8 @@ TEST(NativeSimulation, SpinnerAndLaserHitSingleAllocationRowsStaySynchronized) {
     hits.add_defaulted(65);
     auto hit_columns{hits.get_view()};
     auto const hit_count{hits.num()};
-    auto const hit_locations{hit_columns.view_locations()};
-    auto const emission_directions{hit_columns.view_emission_directions()};
+    auto const hit_locations{hit_columns.view_locations().resolve()};
+    auto const emission_directions{hit_columns.view_emission_directions().resolve()};
     auto const sources{hit_columns.sources()};
     for (std::uint32_t index{}; index < hit_count; ++index) {
         set_vector(hit_locations, index, Vector3f{static_cast<float>(index), 4.f, 5.f});

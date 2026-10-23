@@ -497,9 +497,9 @@ void Sim::fire_lasers_from(ActionInputs const inputs,
                            std::span<Transform3d const> const fire_points) {
     auto const laser_count{static_cast<std::uint32_t>(fire_points.size())};
     auto const laser_columns{inputs.laser_simulation.append_spawn_requests(laser_count)};
-    auto const locations{laser_columns.view_locations()};
-    auto const rotations{laser_columns.view_rotations()};
-    auto const base_velocities{laser_columns.view_base_velocities()};
+    auto const locations{laser_columns.view_locations().resolve()};
+    auto const rotations{laser_columns.view_rotations().resolve()};
+    auto const base_velocities{laser_columns.view_base_velocities().resolve()};
 
     for (std::uint32_t i{}; i < laser_count; ++i) {
         set_vector(locations, i, to_float(fire_points[i].location));

@@ -146,8 +146,8 @@ struct LevelSimTestAccess {
                                    lasers::LaserSpawnRequests::ConstView requests) {
         auto const destination{simulation.lasers_simulation_.append_spawn_requests(requests.num())};
         copy_vectors(destination.view_locations(), requests.view_locations());
-        auto const rotations{destination.view_rotations()};
-        auto const source_rotations{requests.view_rotations()};
+        auto const rotations{destination.view_rotations().resolve()};
+        auto const source_rotations{requests.view_rotations().resolve()};
         std::ranges::copy(source_rotations.pitches(), rotations.pitches().begin());
         std::ranges::copy(source_rotations.yaws(), rotations.yaws().begin());
         std::ranges::copy(source_rotations.rolls(), rotations.rolls().begin());

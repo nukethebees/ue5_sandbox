@@ -19,8 +19,8 @@ struct EntityObservation {
 // Inspect current storage without extending a published frame handle's lifetime.
 inline auto observe_entity_columns(EntityId const id,
                                    std::span<EntityId const> ids,
-                                   Vectors3fConstView locations,
-                                   Vectors3fConstView velocities,
+                                   Vectors3fResolvedConstView locations,
+                                   Vectors3fResolvedConstView velocities,
                                    HealthConstView healths,
                                    std::span<Team const> teams)
     -> std::optional<EntityObservation> {
@@ -60,7 +60,7 @@ inline auto observe_entity(LevelSim const& simulation, EntityId const id)
             auto const entities{view.get_entities()};
             return observe_entity_columns(id,
                                           entities.entity_ids(),
-                                          entities.view_locations(),
+                                          entities.view_locations().resolve(),
                                           {},
                                           view.get_healths(),
                                           entities.teams());
@@ -70,8 +70,8 @@ inline auto observe_entity(LevelSim const& simulation, EntityId const id)
             auto const entities{view.get_entities()};
             return observe_entity_columns(id,
                                           entities.entity_ids(),
-                                          entities.view_locations(),
-                                          entities.view_velocities(),
+                                          entities.view_locations().resolve(),
+                                          entities.view_velocities().resolve(),
                                           view.get_healths(),
                                           entities.teams());
         }
@@ -80,7 +80,7 @@ inline auto observe_entity(LevelSim const& simulation, EntityId const id)
             auto const entities{view.get_entities()};
             return observe_entity_columns(id,
                                           entities.entity_ids(),
-                                          entities.view_locations(),
+                                          entities.view_locations().resolve(),
                                           {},
                                           view.get_healths(),
                                           entities.teams());
@@ -89,7 +89,7 @@ inline auto observe_entity(LevelSim const& simulation, EntityId const id)
             auto const& view{access.get_spinners()};
             auto const entities{view.get_entities()};
             return observe_entity_columns(
-                id, entities.entity_ids(), entities.view_locations(), {}, {}, {});
+                id, entities.entity_ids(), entities.view_locations().resolve(), {}, {}, {});
         }
         default:
             return {};

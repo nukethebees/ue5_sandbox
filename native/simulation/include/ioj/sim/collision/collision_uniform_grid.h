@@ -50,7 +50,7 @@ struct CollisionUniformGrid {
     auto to_cell_coord_bounds(Vector3f min_point, Vector3f max_point) const -> CellCoordBounds;
     auto is_cell_coord_in_bounds(CellCoord coord) const -> bool;
     auto is_cell_coord_in_bounds(CellCoord min_coord, CellCoord max_coord) const -> bool;
-    void are_spheres_in_bounds(Vectors3fConstView centres,
+    void are_spheres_in_bounds(Vectors3fResolvedConstView centres,
                                float radius,
                                std::span<SphereInBoundsResult> out_results) const;
     static auto to_string(CellCoord value) -> std::string;

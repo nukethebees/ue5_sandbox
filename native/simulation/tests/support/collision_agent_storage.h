@@ -51,7 +51,7 @@ struct CollisionAgentStorage {
                 capitals.add_defaulted(1);
                 auto out{capitals.get_view()};
                 out.entity_ids()[row] = id;
-                set_vector(out.view_locations(), row, location);
+                set_vector(out.view_locations().resolve(), row, location);
                 set_rotation(out.view_rotations(), row, rotation);
                 health_table.initialise_rows<EntityType::CapitalShip>(row, 1, health);
                 out.teams()[row] = team;
@@ -62,7 +62,7 @@ struct CollisionAgentStorage {
                 fighters.add_defaulted(1);
                 auto out{fighters.get_view()};
                 out.entity_ids()[row] = id;
-                set_vector(out.view_locations(), row, location);
+                set_vector(out.view_locations().resolve(), row, location);
                 set_vector(out.view_aim_directions(), row, forward_direction(rotation));
                 health_table.initialise_rows<EntityType::Fighter>(row, 1, health);
                 out.teams()[row] = team;
@@ -73,7 +73,7 @@ struct CollisionAgentStorage {
                 turrets.add_defaulted(1);
                 auto out{turrets.get_view()};
                 out.entity_ids()[row] = id;
-                set_vector(out.view_locations(), row, location);
+                set_vector(out.view_locations().resolve(), row, location);
                 set_rotation(out.view_rotations(), row, rotation);
                 health_table.initialise_rows<EntityType::Turret>(row, 1, health);
                 out.teams()[row] = team;
@@ -84,7 +84,7 @@ struct CollisionAgentStorage {
                 spinners.add_defaulted(1);
                 auto out{spinners.get_view()};
                 out.entity_ids()[row] = id;
-                set_vector(out.view_locations(), row, location);
+                set_vector(out.view_locations().resolve(), row, location);
                 out.yaws()[row] = rotation.yaw;
                 break;
             }
@@ -110,28 +110,28 @@ struct CollisionAgentStorage {
         switch (id.entity_type()) {
             case EntityType::CapitalShip: {
                 auto out{capitals.get_view()};
-                set_vector(out.view_locations(), row, location);
+                set_vector(out.view_locations().resolve(), row, location);
                 set_rotation(out.view_rotations(), row, rotation);
                 health_table.get_view<EntityType::CapitalShip>(out.num()).set_health(row, health);
                 break;
             }
             case EntityType::Fighter: {
                 auto out{fighters.get_view()};
-                set_vector(out.view_locations(), row, location);
+                set_vector(out.view_locations().resolve(), row, location);
                 set_vector(out.view_aim_directions(), row, forward_direction(rotation));
                 health_table.get_view<EntityType::Fighter>(out.num()).set_health(row, health);
                 break;
             }
             case EntityType::Turret: {
                 auto out{turrets.get_view()};
-                set_vector(out.view_locations(), row, location);
+                set_vector(out.view_locations().resolve(), row, location);
                 set_rotation(out.view_rotations(), row, rotation);
                 health_table.get_view<EntityType::Turret>(out.num()).set_health(row, health);
                 break;
             }
             case EntityType::TubeSpinner: {
                 auto out{spinners.get_view()};
-                set_vector(out.view_locations(), row, location);
+                set_vector(out.view_locations().resolve(), row, location);
                 out.yaws()[row] = rotation.yaw;
                 break;
             }
@@ -234,15 +234,16 @@ struct CollisionAgentStorage {
     }
     void refresh(SpatialQueryManager& queries) const {
         SpatialQueryManagerTestAccess::set_motion(
-            queries, EntityType::CapitalShip, capitals.get_const_view().view_locations());
-        SpatialQueryManagerTestAccess::set_motion(queries,
-                                                  EntityType::Fighter,
-                                                  fighters.get_const_view().view_locations(),
-                                                  fighters.get_const_view().view_velocities());
+            queries, EntityType::CapitalShip, capitals.get_const_view().view_locations().resolve());
         SpatialQueryManagerTestAccess::set_motion(
-            queries, EntityType::Turret, turrets.get_const_view().view_locations());
+            queries,
+            EntityType::Fighter,
+            fighters.get_const_view().view_locations().resolve(),
+            fighters.get_const_view().view_velocities().resolve());
         SpatialQueryManagerTestAccess::set_motion(
-            queries, EntityType::TubeSpinner, spinners.get_const_view().view_locations());
+            queries, EntityType::Turret, turrets.get_const_view().view_locations().resolve());
+        SpatialQueryManagerTestAccess::set_motion(
+            queries, EntityType::TubeSpinner, spinners.get_const_view().view_locations().resolve());
         SpatialQueryManagerTestAccess::set_player(queries, player_spatial());
         rebuild(SpatialQueryManagerTestAccess::uniform_grid(queries),
                 SpatialQueryManagerTestAccess::entity_aabbs(queries));
@@ -263,7 +264,7 @@ struct CollisionAgentStorage {
             [&](EntityType type, auto entities, HealthConstView healths, auto orientation_at) {
                 auto const count{entities.num()};
                 auto const ids{entities.entity_ids()};
-                auto const locations{entities.view_locations()};
+                auto const locations{entities.view_locations().resolve()};
                 CollisionGridTestAccess::size_rows(grid, type, count);
                 for (std::uint32_t row{}; row < count; ++row) {
                     if (healths.is_empty() || is_alive(healths.health(row))) {
@@ -275,21 +276,21 @@ struct CollisionAgentStorage {
         if (auto const player{player_spatial()}; player && is_alive(player->health)) {
             append(player->id, 0, player->location, player->orientation);
         }
-        auto const capital_rotations{capitals.get_const_view().view_rotations()};
+        auto const capital_rotations{capitals.get_const_view().view_rotations().resolve()};
         add_batch(EntityType::CapitalShip,
                   capitals.get_const_view(),
                   health_table.get_const_view<EntityType::CapitalShip>(capitals.num()),
                   [capital_rotations](auto row) {
                       return to_quaternion(rotation_at(capital_rotations, row));
                   });
-        auto const turret_rotations{turrets.get_const_view().view_rotations()};
+        auto const turret_rotations{turrets.get_const_view().view_rotations().resolve()};
         add_batch(EntityType::Turret,
                   turrets.get_const_view(),
                   health_table.get_const_view<EntityType::Turret>(turrets.num()),
                   [turret_rotations](auto row) {
                       return to_quaternion(rotation_at(turret_rotations, row));
                   });
-        auto const directions{fighters.get_const_view().view_aim_directions()};
+        auto const directions{fighters.get_const_view().view_aim_directions().resolve()};
         add_batch(EntityType::Fighter,
                   fighters.get_const_view(),
                   health_table.get_const_view<EntityType::Fighter>(fighters.num()),
@@ -334,7 +335,7 @@ inline auto observe_entity(CollisionAgentStorage const& owners, EntityId const i
             return observe_entity_columns(
                 id,
                 entities.entity_ids(),
-                entities.view_locations(),
+                entities.view_locations().resolve(),
                 {},
                 owners.health_table.get_const_view<EntityType::CapitalShip>(entities.num()),
                 entities.teams());
@@ -344,8 +345,8 @@ inline auto observe_entity(CollisionAgentStorage const& owners, EntityId const i
             return observe_entity_columns(
                 id,
                 entities.entity_ids(),
-                entities.view_locations(),
-                entities.view_velocities(),
+                entities.view_locations().resolve(),
+                entities.view_velocities().resolve(),
                 owners.health_table.get_const_view<EntityType::Fighter>(entities.num()),
                 entities.teams());
         }
@@ -354,7 +355,7 @@ inline auto observe_entity(CollisionAgentStorage const& owners, EntityId const i
             return observe_entity_columns(
                 id,
                 entities.entity_ids(),
-                entities.view_locations(),
+                entities.view_locations().resolve(),
                 {},
                 owners.health_table.get_const_view<EntityType::Turret>(entities.num()),
                 entities.teams());
@@ -362,7 +363,7 @@ inline auto observe_entity(CollisionAgentStorage const& owners, EntityId const i
         case EntityType::TubeSpinner: {
             auto const entities{owners.spinners.get_const_view()};
             return observe_entity_columns(
-                id, entities.entity_ids(), entities.view_locations(), {}, {}, {});
+                id, entities.entity_ids(), entities.view_locations().resolve(), {}, {}, {});
         }
         default:
             return {};

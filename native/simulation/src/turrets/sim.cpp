@@ -5,7 +5,6 @@
 #include <ioj/fixed_array.h>
 #include <ioj/frame_array.h>
 #include <ioj/frame_memory_resource.h>
-#include <ioj/frame_vectors3f.h>
 #include <ioj/loop_bounds.h>
 #include <ioj/parallel_for.h>
 #include <ioj/periodic_tick_countdown.h>
@@ -21,6 +20,7 @@
 #include <ioj/tick_countdown.h>
 #include <ioj/vector_math.h>
 #include <ioj/vector_normalization.h>
+#include <ioj/vectors3f.h>
 
 #include <algorithm>
 #include <array>
@@ -63,21 +63,21 @@ auto Sim::register_turrets(LevelTurretSpawnEvents::ConstView const spawn_data)
     entities.add_defaulted(n_to_add);
     auto const entities{this->entities.get_view()};
     auto const spawn_count{static_cast<std::size_t>(n_to_add)};
-    auto const entities_locations{entities.view_locations()};
-    auto const entities_fire_point_locations{entities.view_fire_point_locations()};
+    auto const entities_locations{entities.view_locations().resolve()};
+    auto const entities_fire_point_locations{entities.view_fire_point_locations().resolve()};
     auto const entities_teams{entities.teams()};
     auto const entities_laser_damages{entities.laser_damages()};
     auto const entities_target_refresh_countdowns_periods{
         entities.target_refresh_countdowns_periods()};
     auto const entities_target_refresh_countdowns_remaining_ticks{
         entities.target_refresh_countdowns_remaining_ticks()};
-    auto const entities_rotations{entities.view_rotations()};
+    auto const entities_rotations{entities.view_rotations().resolve()};
     auto const entities_entity_ids{entities.entity_ids()};
 
-    auto const spawn_data_locations{spawn_data.view_locations()};
+    auto const spawn_data_locations{spawn_data.view_locations().resolve()};
     auto const spawn_data_teams{spawn_data.teams()};
     auto const spawn_data_laser_damages{spawn_data.laser_damages()};
-    auto const spawn_data_rotations{spawn_data.view_rotations()};
+    auto const spawn_data_rotations{spawn_data.view_rotations().resolve()};
     auto const spawn_data_healths{spawn_data.healths()};
 
     for (std::uint32_t local_index{}; local_index < n_to_add; ++local_index) {
@@ -174,8 +174,8 @@ void Sim::refresh_target_data(ThinkingInputs const inputs) {
     FrameArray<EntityInstanceHandle> targets{scratch_resource};
     targets.set_num(count);
     inputs.spatial_query_manager.copy_entity_motion(target_ids,
-                                                    entities.view_target_locations(),
-                                                    entities.view_target_velocities(),
+                                                    entities.view_target_locations().resolve(),
+                                                    entities.view_target_velocities().resolve(),
                                                     targets,
                                                     scratch_resource);
     for (std::uint32_t row{}; row < count; ++row) {
@@ -205,13 +205,13 @@ void Sim::resolve_damage_events(ResolutionInputs const inputs) {
     sim::resolve_damage_events(inputs.combat_events.events_for(EntityType::Turret),
                                entity_tables_.lookups.for_type(EntityType::Turret),
                                entities.entity_ids(),
-                               entities.view_locations().get_const_view(),
+                               entities.view_locations().get_const_view().resolve(),
                                healths,
                                local_indices_to_remove,
                                entity_death_info,
                                ledger_,
                                scratch_resource);
-    auto const locations{entities.view_locations()};
+    auto const locations{entities.view_locations().resolve()};
 
     for (auto const index : local_indices_to_remove) {
         death_locations_.push_back(vector_at(locations, index));
@@ -290,9 +290,9 @@ void Sim::perform_search_on_slice(std::uint32_t const begin,
         entities.target_refresh_countdowns_remaining_ticks(),
         entities.target_refresh_countdowns_periods()};
     auto const current_targets{entities.target_ids()};
-    auto const locations{entities.view_locations()};
+    auto const locations{entities.view_locations().resolve()};
     auto const turret_teams{entities.teams()};
-    auto const fire_point_locations{entities.view_fire_point_locations()};
+    auto const fire_point_locations{entities.view_fire_point_locations().resolve()};
     auto const integral_biases{entities.integral_biases()};
     FixedArray<EntityId, 128> target_ids;
     auto const target_capacity{target_ids.capacity_view()};
@@ -317,9 +317,10 @@ void Sim::perform_search_on_slice(std::uint32_t const begin,
             has_line_of_sight.set_num_uninitialised(target_count);
             // Each turret produces a differently sized candidate batch.
             // NOLINTBEGIN(ioj-loop-view-construction,ioj-loop-view-accessor-call)
-            Vectors3fView const candidate_locations_view{std::span{candidate_xs}.first(count),
-                                                         std::span{candidate_ys}.first(count),
-                                                         std::span{candidate_zs}.first(count)};
+            Vectors3fResolvedView const candidate_locations_view{
+                std::span{candidate_xs}.first(count),
+                std::span{candidate_ys}.first(count),
+                std::span{candidate_zs}.first(count)};
             inputs.spatial_query_manager.copy_entity_locations(
                 target_ids, candidate_locations_view, scratch_resource);
 
@@ -367,8 +368,8 @@ void Sim::fire_at_enemies(ThinkingInputs const inputs) {
     auto const count{get_num_instances()};
     FrameArray<std::uint32_t> candidate_indices{scratch_resource};
     FrameArray<EntityId> hit_ids{scratch_resource};
-    FrameVectors3f starts{scratch_resource};
-    FrameVectors3f ends{scratch_resource};
+    Vectors3f starts{*scratch_resource};
+    Vectors3f ends{*scratch_resource};
     candidate_indices.reserve(count);
     starts.reserve(count);
     ends.reserve(count);
@@ -379,9 +380,9 @@ void Sim::fire_at_enemies(ThinkingInputs const inputs) {
     auto cooldowns{
         TickCountdownView<std::int16_t>{entities.laser_cooldowns(), cooldown_restart_ticks_}};
     auto const target_ids{entities.target_ids()};
-    auto const locations{entities.view_locations()};
-    auto const target_locations{entities.view_target_locations()};
-    auto const fire_point_locations{entities.view_fire_point_locations()};
+    auto const locations{entities.view_locations().resolve()};
+    auto const target_locations{entities.view_target_locations().resolve()};
+    auto const fire_point_locations{entities.view_fire_point_locations().resolve()};
 
     for (std::uint32_t index{}; index < count; ++index) {
         auto const element{static_cast<std::size_t>(index)};
@@ -411,8 +412,8 @@ void Sim::fire_at_enemies(ThinkingInputs const inputs) {
     hit_ids.set_num(candidate_count);
 
     inputs.spatial_query_manager.trace_line_of_sight(
-        starts.get_const_view(),
-        ends.get_const_view(),
+        starts.get_const_view().resolve(),
+        ends.get_const_view().resolve(),
         {hit_ids.data(), static_cast<std::size_t>(candidate_count)},
         scratch_resource);
 
@@ -425,16 +426,16 @@ void Sim::fire_at_enemies(ThinkingInputs const inputs) {
     }
 
     auto const new_lasers{inputs.laser_simulation.append_spawn_requests(accepted_count)};
-    auto const laser_locations{new_lasers.view_locations()};
-    auto const laser_rotations{new_lasers.view_rotations()};
-    auto const laser_velocities{new_lasers.view_base_velocities()};
+    auto const laser_locations{new_lasers.view_locations().resolve()};
+    auto const laser_rotations{new_lasers.view_rotations().resolve()};
+    auto const laser_velocities{new_lasers.view_base_velocities().resolve()};
     auto const damages{new_lasers.damages()};
     auto const laser_ids{new_lasers.instigator_ids()};
     auto const laser_sources{new_lasers.sources()};
     std::ranges::fill(new_lasers.speeds(), config.laser.projectile_speed);
     std::ranges::fill(new_lasers.max_distances(), config.laser.max_distance);
 
-    auto const target_velocities{entities.view_target_velocities()};
+    auto const target_velocities{entities.view_target_velocities().resolve()};
     auto const laser_damages{entities.laser_damages()};
     auto const entity_ids{entities.entity_ids()};
     auto const teams{entities.teams()};

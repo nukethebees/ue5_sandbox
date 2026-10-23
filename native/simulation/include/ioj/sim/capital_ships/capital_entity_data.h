@@ -4,24 +4,23 @@
 #pragma once
 
 #include "ioj/levels/team.h"
+#include "ioj/math_types.h"
 #include "ioj/native_soa/storage.h"
+#include "ioj/rotator_types.h"
+#include "ioj/rotators3f.h"
 #include "ioj/sim/entities/entity_id.h"
 #include "ioj/sim/index_span.h"
-#include "ioj/vector_soa_view.h"
+#include "ioj/soa_permutation.h"
+#include "ioj/vectors3f.h"
 
 #include <cassert>
 #include <memory_resource>
 
 namespace ioj::sim {
-struct Vectors3fSchema;
-
-struct Rotators3fSchema;
-
 struct CapitalEntityDataSchema;
-
-struct CapitalEntityDataSingleView;
-struct CapitalEntityDataSingleConstView;
-struct CapitalEntityDataSingleLayoutColumns {
+struct CapitalEntityDataView;
+struct CapitalEntityDataConstView;
+struct CapitalEntityDataLayoutColumns {
     template <typename T>
     using ColLayout = ioj::native_soa::ColumnLayout<T>;
 
@@ -40,7 +39,7 @@ struct CapitalEntityDataSingleLayoutColumns {
     ColLayout<IndexSpan> FighterIdSpansColumn;
     ColLayout<EntityId> TargetIdsColumn;
 
-    constexpr CapitalEntityDataSingleLayoutColumns() noexcept
+    constexpr CapitalEntityDataLayoutColumns() noexcept
         : EntityIdsColumn{LayoutStart}
         , LocationsXsColumn{EntityIdsColumn}
         , LocationsYsColumn{LocationsXsColumn}
@@ -53,11 +52,11 @@ struct CapitalEntityDataSingleLayoutColumns {
         , TeamsColumn{FighterSpawnCooldownsColumn}
         , FighterIdSpansColumn{TeamsColumn}
         , TargetIdsColumn{FighterIdSpansColumn} {}
-    CapitalEntityDataSingleLayoutColumns(CapitalEntityDataSingleLayoutColumns const&) = delete;
-    auto operator=(CapitalEntityDataSingleLayoutColumns const&)
-        -> CapitalEntityDataSingleLayoutColumns& = delete;
+    CapitalEntityDataLayoutColumns(CapitalEntityDataLayoutColumns const&) = delete;
+    auto operator=(CapitalEntityDataLayoutColumns const&)
+        -> CapitalEntityDataLayoutColumns& = delete;
 };
-struct CapitalEntityDataSingleLayout {
+struct CapitalEntityDataLayout {
     using size_type = std::uint32_t;
     using byte_size_type = std::size_t;
 
@@ -65,7 +64,7 @@ struct CapitalEntityDataSingleLayout {
         ioj::native_soa::LayoutPolicy::capacity_granularity};
     static constexpr byte_size_type column_gap{ioj::native_soa::LayoutPolicy::column_gap};
 
-    static constexpr CapitalEntityDataSingleLayoutColumns columns{};
+    static constexpr CapitalEntityDataLayoutColumns columns{};
 
     static constexpr byte_size_type allocation_alignment{
         columns.TargetIdsColumn.allocation_alignment};
@@ -81,242 +80,30 @@ struct CapitalEntityDataSingleLayout {
     }
     static_assert(max_capacity >= capacity_granularity);
 };
-
-struct CapitalEntityDataSingleResolvedView_locations;
-struct CapitalEntityDataSingleResolvedConstView_locations;
+struct CapitalEntityDataResolvedView;
+struct CapitalEntityDataResolvedConstView;
 template <bool Const>
-struct CapitalEntityDataSingleResolvedView_locationsImpl {
+struct CapitalEntityDataResolvedViewImpl {
     using size_type = std::uint32_t;
-    using View = CapitalEntityDataSingleResolvedView_locations;
-    using ConstView = CapitalEntityDataSingleResolvedConstView_locations;
-    using soa_schema = Vectors3fSchema;
+    using View = CapitalEntityDataResolvedView;
+    using ConstView = CapitalEntityDataResolvedConstView;
+    using soa_schema = ::ioj::sim::CapitalEntityDataSchema;
     template <typename T>
     using Element = std::conditional_t<Const, T const, T>;
-    CapitalEntityDataSingleResolvedView_locationsImpl() = default;
-    CapitalEntityDataSingleResolvedView_locationsImpl(Element<float>* locations_xs,
-                                                      Element<float>* locations_ys,
-                                                      Element<float>* locations_zs,
-                                                      size_type count)
-        : locations_xs_{locations_xs}
-        , locations_ys_{locations_ys}
-        , locations_zs_{locations_zs}
-        , count_{count} {
-        ioj::soa_storage_detail::validate_column_pointers(
-            count_, locations_xs_, locations_ys_, locations_zs_);
-    }
-    CapitalEntityDataSingleResolvedView_locationsImpl(std::span<Element<float>> locations_xs,
-                                                      std::span<Element<float>> locations_ys,
-                                                      std::span<Element<float>> locations_zs)
-        : CapitalEntityDataSingleResolvedView_locationsImpl{
-              locations_xs.data(),
-              locations_ys.data(),
-              locations_zs.data(),
-              ioj::soa_storage_detail::checked_row_count(locations_xs.size())} {
-        assert(locations_xs.size() == count_);
-        assert(locations_ys.size() == count_);
-        assert(locations_zs.size() == count_);
-    }
-    template <bool Enabled = Const>
-    CapitalEntityDataSingleResolvedView_locationsImpl(
-        CapitalEntityDataSingleResolvedView_locationsImpl<false> const& other)
-        requires Enabled
-        : locations_xs_{other.locations_xs_}
-        , locations_ys_{other.locations_ys_}
-        , locations_zs_{other.locations_zs_}
-        , count_{other.count_} {}
-    auto num() const noexcept -> size_type { return count_; }
-    auto is_empty() const noexcept -> bool { return count_ == 0; }
-    auto get_view(this auto const& self) { return self; }
-    auto get_const_view(this auto const& self) {
-        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
-        return Result{self.locations_xs_, self.locations_ys_, self.locations_zs_, self.count_};
-    }
-    auto resolve(this auto const& self) { return self; }
-    void validate() const {}
-    auto slice(this auto const& self, size_type offset, size_type count) {
-        assert(offset <= self.count_ && count <= self.count_ - offset);
-        using Result = std::remove_cvref_t<decltype(self)>;
-        return Result{self.locations_xs_ == nullptr ? nullptr : self.locations_xs_ + offset,
-                      self.locations_ys_ == nullptr ? nullptr : self.locations_ys_ + offset,
-                      self.locations_zs_ == nullptr ? nullptr : self.locations_zs_ + offset,
-                      count};
-    }
-    auto get_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count);
-    }
-    auto get_const_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count).get_const_view();
-    }
-    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
-    auto right(this auto const& self, size_type count) {
-        assert(count <= self.num());
-        return self.slice(self.num() - count, count);
-    }
-    auto xs() const -> std::span<Element<float>> { return {locations_xs_, count_}; }
-    auto ys() const -> std::span<Element<float>> { return {locations_ys_, count_}; }
-    auto zs() const -> std::span<Element<float>> { return {locations_zs_, count_}; }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        func(std::span<Element<float>>{locations_xs_, count_});
-        func(std::span<Element<float>>{locations_ys_, count_});
-        func(std::span<Element<float>>{locations_zs_, count_});
-    }
-  private:
-    template <bool>
-    friend struct CapitalEntityDataSingleResolvedView_locationsImpl;
-    Element<float>* locations_xs_{};
-    Element<float>* locations_ys_{};
-    Element<float>* locations_zs_{};
-    size_type count_{};
-};
-struct CapitalEntityDataSingleResolvedConstView_locations
-    : CapitalEntityDataSingleResolvedView_locationsImpl<true> {
-    using Base = CapitalEntityDataSingleResolvedView_locationsImpl<true>;
-    using Base::Base;
-};
-struct CapitalEntityDataSingleResolvedView_locations
-    : CapitalEntityDataSingleResolvedView_locationsImpl<false> {
-    using Base = CapitalEntityDataSingleResolvedView_locationsImpl<false>;
-    using Base::Base;
-    void set(size_type index, float const new_xs, float const new_ys, float const new_zs) const {
-        assert(index < num());
-        this->xs()[index] = new_xs;
-        this->ys()[index] = new_ys;
-        this->zs()[index] = new_zs;
-    }
-};
-struct CapitalEntityDataSingleResolvedView_rotations;
-struct CapitalEntityDataSingleResolvedConstView_rotations;
-template <bool Const>
-struct CapitalEntityDataSingleResolvedView_rotationsImpl {
-    using size_type = std::uint32_t;
-    using View = CapitalEntityDataSingleResolvedView_rotations;
-    using ConstView = CapitalEntityDataSingleResolvedConstView_rotations;
-    using soa_schema = Rotators3fSchema;
-    template <typename T>
-    using Element = std::conditional_t<Const, T const, T>;
-    CapitalEntityDataSingleResolvedView_rotationsImpl() = default;
-    CapitalEntityDataSingleResolvedView_rotationsImpl(Element<float>* rotations_pitches,
-                                                      Element<float>* rotations_yaws,
-                                                      Element<float>* rotations_rolls,
-                                                      size_type count)
-        : rotations_pitches_{rotations_pitches}
-        , rotations_yaws_{rotations_yaws}
-        , rotations_rolls_{rotations_rolls}
-        , count_{count} {
-        ioj::soa_storage_detail::validate_column_pointers(
-            count_, rotations_pitches_, rotations_yaws_, rotations_rolls_);
-    }
-    CapitalEntityDataSingleResolvedView_rotationsImpl(std::span<Element<float>> rotations_pitches,
-                                                      std::span<Element<float>> rotations_yaws,
-                                                      std::span<Element<float>> rotations_rolls)
-        : CapitalEntityDataSingleResolvedView_rotationsImpl{
-              rotations_pitches.data(),
-              rotations_yaws.data(),
-              rotations_rolls.data(),
-              ioj::soa_storage_detail::checked_row_count(rotations_pitches.size())} {
-        assert(rotations_pitches.size() == count_);
-        assert(rotations_yaws.size() == count_);
-        assert(rotations_rolls.size() == count_);
-    }
-    template <bool Enabled = Const>
-    CapitalEntityDataSingleResolvedView_rotationsImpl(
-        CapitalEntityDataSingleResolvedView_rotationsImpl<false> const& other)
-        requires Enabled
-        : rotations_pitches_{other.rotations_pitches_}
-        , rotations_yaws_{other.rotations_yaws_}
-        , rotations_rolls_{other.rotations_rolls_}
-        , count_{other.count_} {}
-    auto num() const noexcept -> size_type { return count_; }
-    auto is_empty() const noexcept -> bool { return count_ == 0; }
-    auto get_view(this auto const& self) { return self; }
-    auto get_const_view(this auto const& self) {
-        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
-        return Result{
-            self.rotations_pitches_, self.rotations_yaws_, self.rotations_rolls_, self.count_};
-    }
-    auto resolve(this auto const& self) { return self; }
-    void validate() const {}
-    auto slice(this auto const& self, size_type offset, size_type count) {
-        assert(offset <= self.count_ && count <= self.count_ - offset);
-        using Result = std::remove_cvref_t<decltype(self)>;
-        return Result{self.rotations_pitches_ == nullptr ? nullptr
-                                                         : self.rotations_pitches_ + offset,
-                      self.rotations_yaws_ == nullptr ? nullptr : self.rotations_yaws_ + offset,
-                      self.rotations_rolls_ == nullptr ? nullptr : self.rotations_rolls_ + offset,
-                      count};
-    }
-    auto get_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count);
-    }
-    auto get_const_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count).get_const_view();
-    }
-    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
-    auto right(this auto const& self, size_type count) {
-        assert(count <= self.num());
-        return self.slice(self.num() - count, count);
-    }
-    auto pitches() const -> std::span<Element<float>> { return {rotations_pitches_, count_}; }
-    auto yaws() const -> std::span<Element<float>> { return {rotations_yaws_, count_}; }
-    auto rolls() const -> std::span<Element<float>> { return {rotations_rolls_, count_}; }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        func(std::span<Element<float>>{rotations_pitches_, count_});
-        func(std::span<Element<float>>{rotations_yaws_, count_});
-        func(std::span<Element<float>>{rotations_rolls_, count_});
-    }
-  private:
-    template <bool>
-    friend struct CapitalEntityDataSingleResolvedView_rotationsImpl;
-    Element<float>* rotations_pitches_{};
-    Element<float>* rotations_yaws_{};
-    Element<float>* rotations_rolls_{};
-    size_type count_{};
-};
-struct CapitalEntityDataSingleResolvedConstView_rotations
-    : CapitalEntityDataSingleResolvedView_rotationsImpl<true> {
-    using Base = CapitalEntityDataSingleResolvedView_rotationsImpl<true>;
-    using Base::Base;
-};
-struct CapitalEntityDataSingleResolvedView_rotations
-    : CapitalEntityDataSingleResolvedView_rotationsImpl<false> {
-    using Base = CapitalEntityDataSingleResolvedView_rotationsImpl<false>;
-    using Base::Base;
-    void set(size_type index,
-             float const new_pitches,
-             float const new_yaws,
-             float const new_rolls) const {
-        assert(index < num());
-        this->pitches()[index] = new_pitches;
-        this->yaws()[index] = new_yaws;
-        this->rolls()[index] = new_rolls;
-    }
-};
-struct CapitalEntityDataSingleResolvedView;
-struct CapitalEntityDataSingleResolvedConstView;
-template <bool Const>
-struct CapitalEntityDataSingleResolvedViewImpl {
-    using size_type = std::uint32_t;
-    using View = CapitalEntityDataSingleResolvedView;
-    using ConstView = CapitalEntityDataSingleResolvedConstView;
-    using soa_schema = CapitalEntityDataSchema;
-    template <typename T>
-    using Element = std::conditional_t<Const, T const, T>;
-    CapitalEntityDataSingleResolvedViewImpl() = default;
-    CapitalEntityDataSingleResolvedViewImpl(Element<EntityId>* entity_ids,
-                                            Element<float>* locations_xs,
-                                            Element<float>* locations_ys,
-                                            Element<float>* locations_zs,
-                                            Element<float>* rotations_pitches,
-                                            Element<float>* rotations_yaws,
-                                            Element<float>* rotations_rolls,
-                                            Element<float>* fighter_spawn_timers,
-                                            Element<float>* fighter_spawn_cooldowns,
-                                            Element<::ioj::Team>* teams,
-                                            Element<ioj::sim::IndexSpan>* fighter_id_spans,
-                                            Element<EntityId>* target_ids,
-                                            size_type count)
+    CapitalEntityDataResolvedViewImpl() = default;
+    CapitalEntityDataResolvedViewImpl(Element<EntityId>* entity_ids,
+                                      Element<float>* locations_xs,
+                                      Element<float>* locations_ys,
+                                      Element<float>* locations_zs,
+                                      Element<float>* rotations_pitches,
+                                      Element<float>* rotations_yaws,
+                                      Element<float>* rotations_rolls,
+                                      Element<float>* fighter_spawn_timers,
+                                      Element<float>* fighter_spawn_cooldowns,
+                                      Element<::ioj::Team>* teams,
+                                      Element<ioj::sim::IndexSpan>* fighter_id_spans,
+                                      Element<EntityId>* target_ids,
+                                      size_type count)
         : entity_ids_{entity_ids}
         , locations_xs_{locations_xs}
         , locations_ys_{locations_ys}
@@ -344,20 +131,19 @@ struct CapitalEntityDataSingleResolvedViewImpl {
                                                           fighter_id_spans_,
                                                           target_ids_);
     }
-    CapitalEntityDataSingleResolvedViewImpl(
-        std::span<Element<EntityId>> entity_ids,
-        std::span<Element<float>> locations_xs,
-        std::span<Element<float>> locations_ys,
-        std::span<Element<float>> locations_zs,
-        std::span<Element<float>> rotations_pitches,
-        std::span<Element<float>> rotations_yaws,
-        std::span<Element<float>> rotations_rolls,
-        std::span<Element<float>> fighter_spawn_timers,
-        std::span<Element<float>> fighter_spawn_cooldowns,
-        std::span<Element<::ioj::Team>> teams,
-        std::span<Element<ioj::sim::IndexSpan>> fighter_id_spans,
-        std::span<Element<EntityId>> target_ids)
-        : CapitalEntityDataSingleResolvedViewImpl{
+    CapitalEntityDataResolvedViewImpl(std::span<Element<EntityId>> entity_ids,
+                                      std::span<Element<float>> locations_xs,
+                                      std::span<Element<float>> locations_ys,
+                                      std::span<Element<float>> locations_zs,
+                                      std::span<Element<float>> rotations_pitches,
+                                      std::span<Element<float>> rotations_yaws,
+                                      std::span<Element<float>> rotations_rolls,
+                                      std::span<Element<float>> fighter_spawn_timers,
+                                      std::span<Element<float>> fighter_spawn_cooldowns,
+                                      std::span<Element<::ioj::Team>> teams,
+                                      std::span<Element<ioj::sim::IndexSpan>> fighter_id_spans,
+                                      std::span<Element<EntityId>> target_ids)
+        : CapitalEntityDataResolvedViewImpl{
               entity_ids.data(),
               locations_xs.data(),
               locations_ys.data(),
@@ -385,8 +171,7 @@ struct CapitalEntityDataSingleResolvedViewImpl {
         assert(target_ids.size() == count_);
     }
     template <bool Enabled = Const>
-    CapitalEntityDataSingleResolvedViewImpl(
-        CapitalEntityDataSingleResolvedViewImpl<false> const& other)
+    CapitalEntityDataResolvedViewImpl(CapitalEntityDataResolvedViewImpl<false> const& other)
         requires Enabled
         : entity_ids_{other.entity_ids_}
         , locations_xs_{other.locations_xs_}
@@ -453,16 +238,12 @@ struct CapitalEntityDataSingleResolvedViewImpl {
         return self.slice(self.num() - count, count);
     }
     auto entity_ids() const -> std::span<Element<EntityId>> { return {entity_ids_, count_}; }
-    auto view_locations() const
-        -> std::conditional_t<Const,
-                              CapitalEntityDataSingleResolvedConstView_locations,
-                              CapitalEntityDataSingleResolvedView_locations> {
+    auto view_locations() const -> std::
+        conditional_t<Const, ::ioj::Vectors3fResolvedConstView, ::ioj::Vectors3fResolvedView> {
         return {locations_xs_, locations_ys_, locations_zs_, count_};
     }
-    auto view_rotations() const
-        -> std::conditional_t<Const,
-                              CapitalEntityDataSingleResolvedConstView_rotations,
-                              CapitalEntityDataSingleResolvedView_rotations> {
+    auto view_rotations() const -> std::
+        conditional_t<Const, ::ioj::Rotators3fResolvedConstView, ::ioj::Rotators3fResolvedView> {
         return {rotations_pitches_, rotations_yaws_, rotations_rolls_, count_};
     }
     auto fighter_spawn_timers() const -> std::span<Element<float>> {
@@ -493,7 +274,7 @@ struct CapitalEntityDataSingleResolvedViewImpl {
     }
   private:
     template <bool>
-    friend struct CapitalEntityDataSingleResolvedViewImpl;
+    friend struct CapitalEntityDataResolvedViewImpl;
     Element<EntityId>* entity_ids_{};
     Element<float>* locations_xs_{};
     Element<float>* locations_ys_{};
@@ -508,12 +289,12 @@ struct CapitalEntityDataSingleResolvedViewImpl {
     Element<EntityId>* target_ids_{};
     size_type count_{};
 };
-struct CapitalEntityDataSingleResolvedConstView : CapitalEntityDataSingleResolvedViewImpl<true> {
-    using Base = CapitalEntityDataSingleResolvedViewImpl<true>;
+struct CapitalEntityDataResolvedConstView : CapitalEntityDataResolvedViewImpl<true> {
+    using Base = CapitalEntityDataResolvedViewImpl<true>;
     using Base::Base;
 };
-struct CapitalEntityDataSingleResolvedView : CapitalEntityDataSingleResolvedViewImpl<false> {
-    using Base = CapitalEntityDataSingleResolvedViewImpl<false>;
+struct CapitalEntityDataResolvedView : CapitalEntityDataResolvedViewImpl<false> {
+    using Base = CapitalEntityDataResolvedViewImpl<false>;
     using Base::Base;
     void set(size_type index,
              EntityId const new_entity_ids,
@@ -542,51 +323,227 @@ struct CapitalEntityDataSingleResolvedView : CapitalEntityDataSingleResolvedView
         this->fighter_id_spans()[index] = new_fighter_id_spans;
         this->target_ids()[index] = new_target_ids;
     }
+    void set(size_type index,
+             EntityId const new_entity_ids,
+             Vector3f const new_locations,
+             Rotator3f const new_rotations,
+             float const new_fighter_spawn_timers,
+             float const new_fighter_spawn_cooldowns,
+             ::ioj::Team const new_teams,
+             ioj::sim::IndexSpan const new_fighter_id_spans,
+             EntityId const new_target_ids) const {
+        assert(index < num());
+        this->entity_ids()[index] = new_entity_ids;
+        this->view_locations().set(index, new_locations);
+        this->view_rotations().set(index, new_rotations);
+        this->fighter_spawn_timers()[index] = new_fighter_spawn_timers;
+        this->fighter_spawn_cooldowns()[index] = new_fighter_spawn_cooldowns;
+        this->teams()[index] = new_teams;
+        this->fighter_id_spans()[index] = new_fighter_id_spans;
+        this->target_ids()[index] = new_target_ids;
+    }
 };
+struct CapitalEntityDataView_locations;
+struct CapitalEntityDataConstView_locations;
 template <bool Const>
-struct CapitalEntityDataSingleViewImpl : ioj::soa_storage_detail::CompactViewOperations {
-    using soa_schema = CapitalEntityDataSchema;
+struct CapitalEntityDataView_locationsImpl : ioj::soa_storage_detail::CompactViewOperations {
+    using soa_schema = Vectors3fSchema;
     using size_type = std::uint32_t;
-    using Layout = CapitalEntityDataSingleLayout;
+    using Layout = CapitalEntityDataLayout;
     using Storage = ioj::native_soa::StorageState;
     using State = std::conditional_t<Const, Storage const, Storage>;
     template <typename T>
     using Element = std::conditional_t<Const, T const, T>;
-    using View = CapitalEntityDataSingleView;
-    using ConstView = CapitalEntityDataSingleConstView;
-    CapitalEntityDataSingleViewImpl() = default;
-    CapitalEntityDataSingleViewImpl(State* state, size_type offset, size_type count)
+    using View = CapitalEntityDataView_locations;
+    using ConstView = CapitalEntityDataConstView_locations;
+    CapitalEntityDataView_locationsImpl() = default;
+    CapitalEntityDataView_locationsImpl(State* state, size_type offset, size_type count)
         : state_{state}
         , offset_{offset}
         , count_{count} {}
     template <bool Enabled = Const>
-    CapitalEntityDataSingleViewImpl(CapitalEntityDataSingleViewImpl<false> const& other)
+    CapitalEntityDataView_locationsImpl(CapitalEntityDataView_locationsImpl<false> const& other)
+        requires Enabled
+        : state_{other.state_}
+        , offset_{other.offset_}
+        , count_{other.count_} {}
+    auto xs() const { return make_column_view(Layout::columns.LocationsXsColumn); }
+    auto ys() const { return make_column_view(Layout::columns.LocationsYsColumn); }
+    auto zs() const { return make_column_view(Layout::columns.LocationsZsColumn); }
+    template <typename Func>
+    void each_column(Func&& func) const {
+        func(xs());
+        func(ys());
+        func(zs());
+    }
+    auto resolve() const -> std::
+        conditional_t<Const, ::ioj::Vectors3fResolvedConstView, ::ioj::Vectors3fResolvedView> {
+        return {(make_column_view(Layout::columns.LocationsXsColumn).data()),
+                (make_column_view(Layout::columns.LocationsYsColumn).data()),
+                (make_column_view(Layout::columns.LocationsZsColumn).data()),
+                count_};
+    }
+  private:
+    template <typename T>
+    auto make_column_view(ioj::native_soa::ColumnLayout<T> const& layout) const {
+        return ioj::soa_storage_detail::column_view<std::span<Element<T>>>(
+            state_, offset_, count_, layout);
+    }
+    friend ioj::soa_storage_detail::CompactViewOperations;
+    template <bool>
+    friend struct CapitalEntityDataView_locationsImpl;
+    State* state_{};
+    size_type offset_{};
+    size_type count_{};
+};
+struct CapitalEntityDataConstView_locations : CapitalEntityDataView_locationsImpl<true> {
+    using Base = CapitalEntityDataView_locationsImpl<true>;
+    using Base::Base;
+    using equivalent_type = Vector3f;
+    auto operator[](std::uint32_t index) const -> equivalent_type {
+        assert(index < num());
+        return equivalent_type{xs()[index], ys()[index], zs()[index]};
+    }
+};
+static_assert(
+    ioj::soa_storage_detail::validate_compact_view<CapitalEntityDataConstView_locations>());
+struct CapitalEntityDataView_locations : CapitalEntityDataView_locationsImpl<false> {
+    using Base = CapitalEntityDataView_locationsImpl<false>;
+    using Base::Base;
+    void set(size_type index, float const new_xs, float const new_ys, float const new_zs) const {
+        assert(index < num());
+        this->xs()[index] = new_xs;
+        this->ys()[index] = new_ys;
+        this->zs()[index] = new_zs;
+    }
+    void set(size_type index, Vector3f const value) const {
+        set(index, (value.x()), (value.y()), (value.z()));
+    }
+    using equivalent_type = Vector3f;
+    auto operator[](std::uint32_t index) const -> equivalent_type {
+        assert(index < num());
+        return equivalent_type{xs()[index], ys()[index], zs()[index]};
+    }
+};
+static_assert(ioj::soa_storage_detail::validate_compact_view<CapitalEntityDataView_locations>());
+struct CapitalEntityDataView_rotations;
+struct CapitalEntityDataConstView_rotations;
+template <bool Const>
+struct CapitalEntityDataView_rotationsImpl : ioj::soa_storage_detail::CompactViewOperations {
+    using soa_schema = Rotators3fSchema;
+    using size_type = std::uint32_t;
+    using Layout = CapitalEntityDataLayout;
+    using Storage = ioj::native_soa::StorageState;
+    using State = std::conditional_t<Const, Storage const, Storage>;
+    template <typename T>
+    using Element = std::conditional_t<Const, T const, T>;
+    using View = CapitalEntityDataView_rotations;
+    using ConstView = CapitalEntityDataConstView_rotations;
+    CapitalEntityDataView_rotationsImpl() = default;
+    CapitalEntityDataView_rotationsImpl(State* state, size_type offset, size_type count)
+        : state_{state}
+        , offset_{offset}
+        , count_{count} {}
+    template <bool Enabled = Const>
+    CapitalEntityDataView_rotationsImpl(CapitalEntityDataView_rotationsImpl<false> const& other)
+        requires Enabled
+        : state_{other.state_}
+        , offset_{other.offset_}
+        , count_{other.count_} {}
+    auto pitches() const { return make_column_view(Layout::columns.RotationsPitchesColumn); }
+    auto yaws() const { return make_column_view(Layout::columns.RotationsYawsColumn); }
+    auto rolls() const { return make_column_view(Layout::columns.RotationsRollsColumn); }
+    template <typename Func>
+    void each_column(Func&& func) const {
+        func(pitches());
+        func(yaws());
+        func(rolls());
+    }
+    auto resolve() const -> std::
+        conditional_t<Const, ::ioj::Rotators3fResolvedConstView, ::ioj::Rotators3fResolvedView> {
+        return {(make_column_view(Layout::columns.RotationsPitchesColumn).data()),
+                (make_column_view(Layout::columns.RotationsYawsColumn).data()),
+                (make_column_view(Layout::columns.RotationsRollsColumn).data()),
+                count_};
+    }
+  private:
+    template <typename T>
+    auto make_column_view(ioj::native_soa::ColumnLayout<T> const& layout) const {
+        return ioj::soa_storage_detail::column_view<std::span<Element<T>>>(
+            state_, offset_, count_, layout);
+    }
+    friend ioj::soa_storage_detail::CompactViewOperations;
+    template <bool>
+    friend struct CapitalEntityDataView_rotationsImpl;
+    State* state_{};
+    size_type offset_{};
+    size_type count_{};
+};
+struct CapitalEntityDataConstView_rotations : CapitalEntityDataView_rotationsImpl<true> {
+    using Base = CapitalEntityDataView_rotationsImpl<true>;
+    using Base::Base;
+    using equivalent_type = Rotator3f;
+    auto operator[](std::uint32_t index) const -> equivalent_type {
+        assert(index < num());
+        return equivalent_type{pitches()[index], yaws()[index], rolls()[index]};
+    }
+};
+static_assert(
+    ioj::soa_storage_detail::validate_compact_view<CapitalEntityDataConstView_rotations>());
+struct CapitalEntityDataView_rotations : CapitalEntityDataView_rotationsImpl<false> {
+    using Base = CapitalEntityDataView_rotationsImpl<false>;
+    using Base::Base;
+    void set(size_type index,
+             float const new_pitches,
+             float const new_yaws,
+             float const new_rolls) const {
+        assert(index < num());
+        this->pitches()[index] = new_pitches;
+        this->yaws()[index] = new_yaws;
+        this->rolls()[index] = new_rolls;
+    }
+    void set(size_type index, Rotator3f const value) const {
+        set(index, (value.pitch), (value.yaw), (value.roll));
+    }
+    using equivalent_type = Rotator3f;
+    auto operator[](std::uint32_t index) const -> equivalent_type {
+        assert(index < num());
+        return equivalent_type{pitches()[index], yaws()[index], rolls()[index]};
+    }
+};
+static_assert(ioj::soa_storage_detail::validate_compact_view<CapitalEntityDataView_rotations>());
+template <bool Const>
+struct CapitalEntityDataViewImpl : ioj::soa_storage_detail::CompactViewOperations {
+    using soa_schema = CapitalEntityDataSchema;
+    using size_type = std::uint32_t;
+    using Layout = CapitalEntityDataLayout;
+    using Storage = ioj::native_soa::StorageState;
+    using State = std::conditional_t<Const, Storage const, Storage>;
+    template <typename T>
+    using Element = std::conditional_t<Const, T const, T>;
+    using View = CapitalEntityDataView;
+    using ConstView = CapitalEntityDataConstView;
+    CapitalEntityDataViewImpl() = default;
+    CapitalEntityDataViewImpl(State* state, size_type offset, size_type count)
+        : state_{state}
+        , offset_{offset}
+        , count_{count} {}
+    template <bool Enabled = Const>
+    CapitalEntityDataViewImpl(CapitalEntityDataViewImpl<false> const& other)
         requires Enabled
         : state_{other.state_}
         , offset_{other.offset_}
         , count_{other.count_} {}
     auto entity_ids() const { return make_column_view(Layout::columns.EntityIdsColumn); }
-    auto view_locations() const {
-        using ioj::soa_storage_detail::three_column_view;
-        return three_column_view<ioj::Vector3SoAView<Element<float>>>(
-            state_,
-            offset_,
-            count_,
-            Layout::columns.LocationsXsColumn,
-            Layout::columns.LocationsYsColumn,
-            Layout::columns.LocationsZsColumn);
+    auto view_locations() const -> std::conditional_t<Const,
+                                                      CapitalEntityDataConstView_locations,
+                                                      CapitalEntityDataView_locations> {
+        return {state_, offset_, count_};
     }
-    auto view_rotations() const {
-        using ioj::soa_storage_detail::three_column_view;
-        return three_column_view<std::conditional_t<Const,
-                                                    ioj::native_soa::RotatorSoAConstView<float>,
-                                                    ioj::native_soa::RotatorSoAView<float>>>(
-            state_,
-            offset_,
-            count_,
-            Layout::columns.RotationsPitchesColumn,
-            Layout::columns.RotationsYawsColumn,
-            Layout::columns.RotationsRollsColumn);
+    auto view_rotations() const -> std::conditional_t<Const,
+                                                      CapitalEntityDataConstView_rotations,
+                                                      CapitalEntityDataView_rotations> {
+        return {state_, offset_, count_};
     }
     auto fighter_spawn_timers() const {
         return make_column_view(Layout::columns.FighterSpawnTimersColumn);
@@ -614,9 +571,8 @@ struct CapitalEntityDataSingleViewImpl : ioj::soa_storage_detail::CompactViewOpe
         func(fighter_id_spans());
         func(target_ids());
     }
-    auto resolve() const -> std::conditional_t<Const,
-                                               CapitalEntityDataSingleResolvedConstView,
-                                               CapitalEntityDataSingleResolvedView> {
+    auto resolve() const -> std::
+        conditional_t<Const, CapitalEntityDataResolvedConstView, CapitalEntityDataResolvedView> {
         return {(make_column_view(Layout::columns.EntityIdsColumn).data()),
                 (make_column_view(Layout::columns.LocationsXsColumn).data()),
                 (make_column_view(Layout::columns.LocationsYsColumn).data()),
@@ -639,18 +595,18 @@ struct CapitalEntityDataSingleViewImpl : ioj::soa_storage_detail::CompactViewOpe
     }
     friend ioj::soa_storage_detail::CompactViewOperations;
     template <bool>
-    friend struct CapitalEntityDataSingleViewImpl;
+    friend struct CapitalEntityDataViewImpl;
     State* state_{};
     size_type offset_{};
     size_type count_{};
 };
-struct CapitalEntityDataSingleConstView : CapitalEntityDataSingleViewImpl<true> {
-    using Base = CapitalEntityDataSingleViewImpl<true>;
+struct CapitalEntityDataConstView : CapitalEntityDataViewImpl<true> {
+    using Base = CapitalEntityDataViewImpl<true>;
     using Base::Base;
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<CapitalEntityDataSingleConstView>());
-struct CapitalEntityDataSingleView : CapitalEntityDataSingleViewImpl<false> {
-    using Base = CapitalEntityDataSingleViewImpl<false>;
+static_assert(ioj::soa_storage_detail::validate_compact_view<CapitalEntityDataConstView>());
+struct CapitalEntityDataView : CapitalEntityDataViewImpl<false> {
+    using Base = CapitalEntityDataViewImpl<false>;
     using Base::Base;
     void set(size_type index,
              EntityId const new_entity_ids,
@@ -679,8 +635,27 @@ struct CapitalEntityDataSingleView : CapitalEntityDataSingleViewImpl<false> {
         this->fighter_id_spans()[index] = new_fighter_id_spans;
         this->target_ids()[index] = new_target_ids;
     }
+    void set(size_type index,
+             EntityId const new_entity_ids,
+             Vector3f const new_locations,
+             Rotator3f const new_rotations,
+             float const new_fighter_spawn_timers,
+             float const new_fighter_spawn_cooldowns,
+             ::ioj::Team const new_teams,
+             ioj::sim::IndexSpan const new_fighter_id_spans,
+             EntityId const new_target_ids) const {
+        assert(index < num());
+        this->entity_ids()[index] = new_entity_ids;
+        this->view_locations().set(index, new_locations);
+        this->view_rotations().set(index, new_rotations);
+        this->fighter_spawn_timers()[index] = new_fighter_spawn_timers;
+        this->fighter_spawn_cooldowns()[index] = new_fighter_spawn_cooldowns;
+        this->teams()[index] = new_teams;
+        this->fighter_id_spans()[index] = new_fighter_id_spans;
+        this->target_ids()[index] = new_target_ids;
+    }
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<CapitalEntityDataSingleView>());
+static_assert(ioj::soa_storage_detail::validate_compact_view<CapitalEntityDataView>());
 // Columns:
 // entity_ids: EntityId
 // locations_xs: float
@@ -699,7 +674,7 @@ struct CapitalEntityData
     , ioj::native_soa::StorageOperations {
     using soa_schema = CapitalEntityDataSchema;
     using Operations = ioj::native_soa::StorageOperations;
-    using Layout = CapitalEntityDataSingleLayout;
+    using Layout = CapitalEntityDataLayout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
 
@@ -712,8 +687,8 @@ struct CapitalEntityData
         return Layout::layout_bytes(blocks);
     }
 
-    using View = CapitalEntityDataSingleView;
-    using ConstView = CapitalEntityDataSingleConstView;
+    using View = CapitalEntityDataView;
+    using ConstView = CapitalEntityDataConstView;
 
     /* **************************************** */
     // Lifetime
@@ -931,7 +906,7 @@ struct CapitalEntityData
              float const new_fighter_spawn_timers,
              float const new_fighter_spawn_cooldowns,
              ::ioj::Team const new_teams,
-             ioj::sim::IndexSpan const new_fighter_id_spans,
+             IndexSpan const new_fighter_id_spans,
              EntityId const new_target_ids) {
         assert(index < num());
         get_view().entity_ids()[index] = new_entity_ids;
@@ -957,7 +932,7 @@ struct CapitalEntityData
                   float const new_fighter_spawn_timers,
                   float const new_fighter_spawn_cooldowns,
                   ::ioj::Team const new_teams,
-                  ioj::sim::IndexSpan const new_fighter_id_spans,
+                  IndexSpan const new_fighter_id_spans,
                   EntityId const new_target_ids) {
         auto const index{num()};
         add_uninitialised(1);
@@ -975,6 +950,62 @@ struct CapitalEntityData
             new_fighter_id_spans,
             new_target_ids);
         return index;
+    }
+    void set(size_type index,
+             EntityId const new_entity_ids,
+             Vector3f const new_locations,
+             Rotator3f const new_rotations,
+             float const new_fighter_spawn_timers,
+             float const new_fighter_spawn_cooldowns,
+             ::ioj::Team const new_teams,
+             IndexSpan const new_fighter_id_spans,
+             EntityId const new_target_ids) {
+        assert(index < num());
+        get_view().entity_ids()[index] = new_entity_ids;
+        get_view().view_locations().set(index, new_locations);
+        get_view().view_rotations().set(index, new_rotations);
+        get_view().fighter_spawn_timers()[index] = new_fighter_spawn_timers;
+        get_view().fighter_spawn_cooldowns()[index] = new_fighter_spawn_cooldowns;
+        get_view().teams()[index] = new_teams;
+        get_view().fighter_id_spans()[index] = new_fighter_id_spans;
+        get_view().target_ids()[index] = new_target_ids;
+    }
+    size_type add(EntityId const new_entity_ids,
+                  Vector3f const new_locations,
+                  Rotator3f const new_rotations,
+                  float const new_fighter_spawn_timers,
+                  float const new_fighter_spawn_cooldowns,
+                  ::ioj::Team const new_teams,
+                  IndexSpan const new_fighter_id_spans,
+                  EntityId const new_target_ids) {
+        auto const index{num()};
+        add_uninitialised(1);
+        set(index,
+            new_entity_ids,
+            new_locations,
+            new_rotations,
+            new_fighter_spawn_timers,
+            new_fighter_spawn_cooldowns,
+            new_teams,
+            new_fighter_id_spans,
+            new_target_ids);
+        return index;
+    }
+    void apply_permutation(std::span<size_type> indices) {
+        assert(indices.size() == num_);
+        auto const columns{get_data()};
+        ioj::apply_permutation(std::span{columns.entity_ids, num_}, indices);
+        ioj::apply_permutation(std::span{columns.locations_xs, num_}, indices);
+        ioj::apply_permutation(std::span{columns.locations_ys, num_}, indices);
+        ioj::apply_permutation(std::span{columns.locations_zs, num_}, indices);
+        ioj::apply_permutation(std::span{columns.rotations_pitches, num_}, indices);
+        ioj::apply_permutation(std::span{columns.rotations_yaws, num_}, indices);
+        ioj::apply_permutation(std::span{columns.rotations_rolls, num_}, indices);
+        ioj::apply_permutation(std::span{columns.fighter_spawn_timers, num_}, indices);
+        ioj::apply_permutation(std::span{columns.fighter_spawn_cooldowns, num_}, indices);
+        ioj::apply_permutation(std::span{columns.teams, num_}, indices);
+        ioj::apply_permutation(std::span{columns.fighter_id_spans, num_}, indices);
+        ioj::apply_permutation(std::span{columns.target_ids, num_}, indices);
     }
   private:
     std::pmr::memory_resource* resource_{};

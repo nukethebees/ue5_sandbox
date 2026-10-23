@@ -46,7 +46,7 @@ class FighterMembershipRefresh : public ::testing::Test {
         FighterSpawnQueue spawns;
         spawns.add_defaulted(count);
         auto const data{spawns.get_view()};
-        auto const locations{data.view_locations()};
+        auto const locations{data.view_locations().resolve()};
         auto const teams{data.teams()};
         auto const parents{data.parents()};
         auto const targets{data.targets()};

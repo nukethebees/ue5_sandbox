@@ -4,13 +4,12 @@
 #include <ioj/countdown.h>
 #include <ioj/diagnostics.h>
 #include <ioj/frame_array.h>
-#include <ioj/frame_vectors3f.h>
 #include <ioj/generated/array_math_kernels.h>
 #include <ioj/periodic_tick_countdown.h>
 #include <ioj/projectile_intercept.h>
 #include <ioj/rotator_math.h>
 #include <ioj/sim/batch_operations.h>
-#include <ioj/sim/collision/frame_range_query_results.h>
+#include <ioj/sim/collision/range_query_results.h>
 #include <ioj/sim/collision/spatial_query_manager.h>
 #include <ioj/sim/collision/trace_hits.h>
 #include <ioj/sim/combat_events.h>
@@ -25,7 +24,7 @@
 #include <ioj/vector_math.h>
 #include <ioj/vector_normalization.h>
 #include <ioj/vector_operations.h>
-#include <ioj/vector_soa_view.h>
+#include <ioj/vectors3f.h>
 
 #include <algorithm>
 #include <array>
@@ -242,11 +241,11 @@ void Sim::think(ThinkingInputs const inputs) {
 
     TickCountdownView<std::int8_t> const awareness_countdowns{data.awareness_scan_countdowns(),
                                                               awareness_restart_ticks_};
-    auto const locations{data.view_locations()};
+    auto const locations{data.view_locations().resolve()};
     auto const target_ids{data.target_ids()};
     auto const target_distance_sq{data.target_distance_sq()};
     auto const teams{data.teams()};
-    auto const aim_directions{data.view_aim_directions()};
+    auto const aim_directions{data.view_aim_directions().resolve()};
 
     {
         SANDBOX_PROFILE_SCOPE("awareness_scan");
@@ -273,25 +272,27 @@ void Sim::think(ThinkingInputs const inputs) {
 
         if (!scan_indices.is_empty()) {
             auto const scan_count{scan_indices.num()};
-            FrameVectors3f scan_origins{scratch_resource};
+            Vectors3f scan_origins{*scratch_resource};
             FrameArray<Team> scan_teams{scratch_resource};
-            FrameRangeQueryResults nearby{scratch_resource};
+            RangeQueryResults nearby{*scratch_resource};
 
             {
                 SANDBOX_PROFILE_SCOPE("add origins and teams");
                 auto const indices{scan_indices.view()};
-                scan_origins.add(locations, indices);
+                scan_origins.append_from(locations, indices);
                 scan_teams.add(teams, indices);
             }
 
             inputs.spatial_query_manager.collect_non_team_entities_in_range(
-                scan_origins.get_const_view(),
+                scan_origins.get_const_view().resolve(),
                 scan_teams.view(),
                 awareness_radius,
                 nearby,
                 scratch_resource);
 
-            auto const directions{nearby.directions.get_const_view()};
+            auto const matches{nearby.matches.get_const_view().resolve()};
+            auto const entities{matches.entities()};
+            auto const directions{matches.view_directions()};
             for (std::uint32_t scan_index{}; scan_index < scan_count; ++scan_index) {
                 auto const index{scan_indices[scan_index]};
                 auto const aim_direction{vector_at(aim_directions, index)};
@@ -299,7 +300,7 @@ void Sim::think(ThinkingInputs const inputs) {
                 auto const end{range.end()};
                 for (auto match{range.offset}; match < end; ++match) {
                     if (dot(aim_direction, directions[match]) > dot_threshold) {
-                        auto const selected_target{nearby.entities[match]};
+                        auto const selected_target{entities[match]};
                         if (selected_target != target_ids[index]) {
                             target_ids[index] = selected_target;
                             targets_changed = true;
@@ -340,13 +341,14 @@ void Sim::plan_movement(ThinkingInputs const inputs) {
     auto const outer_attack_distance{laser_max_distance * attack_distance_band.maximum_ratio};
 
     if (do_attack) {
-        auto const locations{attack_view.view_locations()};
-        auto const target_locations{attack_view.view_target_locations()};
-        auto const target_velocities{attack_view.view_target_velocities()};
+        auto const locations{attack_view.view_locations().resolve()};
+        auto const target_locations{attack_view.view_target_locations().resolve()};
+        auto const target_velocities{attack_view.view_target_velocities().resolve()};
         auto const intercept_times{attack_view.intercept_times()};
-        auto const desired_aiming_directions{attack_view.view_desired_aiming_directions()};
-        auto const desired_move_locations{attack_view.view_desired_move_locations()};
-        auto const target_directions{attack_view.view_target_directions()};
+        auto const desired_aiming_directions{
+            attack_view.view_desired_aiming_directions().resolve()};
+        auto const desired_move_locations{attack_view.view_desired_move_locations().resolve()};
+        auto const target_directions{attack_view.view_target_directions().resolve()};
         detail::solve_intercept_times_soa_loop::solve_intercept_times(
             intercept_times.data(),
             locations,
@@ -384,9 +386,9 @@ void Sim::plan_movement(ThinkingInputs const inputs) {
         }
     }
 
-    auto const locations{data.view_locations()};
-    auto const destinations{data.view_desired_move_locations()};
-    auto const directions{data.view_movement_directions()};
+    auto const locations{data.view_locations().resolve()};
+    auto const destinations{data.view_desired_move_locations().resolve()};
+    auto const directions{data.view_movement_directions().resolve()};
     native_math::direction_and_distance(directions.xs().data(),
                                         directions.ys().data(),
                                         directions.zs().data(),
@@ -400,15 +402,15 @@ void Sim::plan_movement(ThinkingInputs const inputs) {
                                         data.num());
     update_navigation_steering(inputs);
     if (do_move) {
-        auto const movement_directions{move_view.view_movement_directions()};
+        auto const movement_directions{move_view.view_movement_directions().resolve()};
         lerp_in_place(move_view.view_planned_aim_directions(), movement_directions, d_turn);
     }
     if (do_attack) {
         auto const choices{attack_view.avoidance_choice_indices()};
-        auto const movement_directions{attack_view.view_movement_directions()};
-        auto const desired_directions{attack_view.view_desired_aiming_directions()};
-        auto const aim_directions{attack_view.view_aim_directions()};
-        auto const planned_directions{attack_view.view_planned_aim_directions()};
+        auto const movement_directions{attack_view.view_movement_directions().resolve()};
+        auto const desired_directions{attack_view.view_desired_aiming_directions().resolve()};
+        auto const aim_directions{attack_view.view_aim_directions().resolve()};
+        auto const planned_directions{attack_view.view_planned_aim_directions().resolve()};
         for (std::uint32_t index{}; index < n_attack; ++index) {
             auto const choice{choices[index]};
             auto const desired_direction{is_avoidance_direction_choice(choice)
@@ -432,10 +434,10 @@ void Sim::plan_movement(ThinkingInputs const inputs) {
     clamp_move_distances(move_view);
     clamp_move_distances(attack_view);
 
-    auto const attack_locations{attack_view.view_locations()};
-    auto const attack_directions{attack_view.view_movement_directions()};
+    auto const attack_locations{attack_view.view_locations().resolve()};
+    auto const attack_directions{attack_view.view_movement_directions().resolve()};
     auto const attack_move_distances{attack_view.move_distances()};
-    auto const attack_targets{attack_view.view_target_locations()};
+    auto const attack_targets{attack_view.view_target_locations().resolve()};
     auto const attack_target_distance_sq{attack_view.target_distance_sq()};
     auto const attack_target_distances{attack_view.target_distances()};
 
@@ -455,8 +457,8 @@ void Sim::apply_movement(ActionInputs const inputs) {
     auto const data{entity_buffers.current().get_view()};
     overlap_candidates_.clear();
     auto const count{data.num()};
-    auto const aim_directions{data.view_aim_directions()};
-    auto const planned_directions{data.view_planned_aim_directions()};
+    auto const aim_directions{data.view_aim_directions().resolve()};
+    auto const planned_directions{data.view_planned_aim_directions().resolve()};
     auto const entity_ids{data.entity_ids()};
 
     for (std::uint32_t index{}; index < count; ++index) {
@@ -472,7 +474,8 @@ void Sim::apply_movement(ActionInputs const inputs) {
             overlap_candidates_.push_back(entity_ids[index]);
         }
     }
-    data.view_velocities().each_column([](auto column) { std::ranges::fill(column, 0.f); });
+    data.view_velocities().resolve().each_column(
+        [](auto column) { std::ranges::fill(column, 0.f); });
     copy_vectors(aim_directions, planned_directions.get_const_view());
     move(movement_tick_period_, get_task_view(Task::MoveToDestination), scratch_resource);
     move(movement_tick_period_, get_task_view(Task::Attack), scratch_resource);
@@ -482,17 +485,17 @@ void Sim::apply_movement(ActionInputs const inputs) {
 
     auto const fire_count{static_cast<std::uint32_t>(pending_fire_indices_.size())};
     auto const requests{inputs.laser_simulation.append_spawn_requests(fire_count)};
-    auto const laser_locations{requests.view_locations()};
-    auto const laser_rotations{requests.view_rotations()};
-    auto const laser_velocities{requests.view_base_velocities()};
+    auto const laser_locations{requests.view_locations().resolve()};
+    auto const laser_rotations{requests.view_rotations().resolve()};
+    auto const laser_velocities{requests.view_base_velocities().resolve()};
     auto const laser_ids{requests.instigator_ids()};
     auto const laser_sources{requests.sources()};
     std::ranges::fill(requests.damages(), config.laser.damage);
     std::ranges::fill(requests.speeds(), config.laser.projectile_speed);
     std::ranges::fill(requests.max_distances(), config.laser.max_distance);
 
-    auto const locations{data.view_locations()};
-    auto const velocities{data.view_velocities()};
+    auto const locations{data.view_locations().resolve()};
+    auto const velocities{data.view_velocities().resolve()};
     auto const teams{data.teams()};
 
     for (std::uint32_t row{}; row < fire_count; ++row) {
@@ -524,7 +527,7 @@ void Sim::resolve_damage_events(ResolutionInputs const inputs) {
     sim::resolve_damage_events(damage_events,
                                entity_tables_.lookups.for_type(EntityType::Fighter),
                                data.entity_ids(),
-                               data.view_locations().get_const_view(),
+                               data.view_locations().get_const_view().resolve(),
                                healths,
                                local_indices_to_remove,
                                entity_death_info,
@@ -623,13 +626,14 @@ void Sim::finish_action() {
 void Sim::move(float const dt, TaskView fighters, FrameMemoryResource* const scratch_resource) {
     assert(dt > 0.f);
     auto const count{fighters.num()};
-    auto const directions{fighters.view_movement_directions().get_const_view()};
-    FrameVectors3f previous_locations{scratch_resource};
+    auto const directions{fighters.view_movement_directions().get_const_view().resolve()};
+    Vectors3f previous_locations{*scratch_resource};
     previous_locations.set_num(count);
-    copy_vectors(previous_locations.get_view(), fighters.view_locations().get_const_view());
+    copy_vectors(previous_locations.get_view().resolve(),
+                 fighters.view_locations().get_const_view().resolve());
     auto const move_distances{fighters.move_distances()};
-    auto const velocities{fighters.view_velocities()};
-    auto const locations{fighters.view_locations()};
+    auto const velocities{fighters.view_velocities().resolve()};
+    auto const locations{fighters.view_locations().resolve()};
     auto const entity_ids{fighters.entity_ids()};
     auto const direction_xs{directions.xs()};
     auto const direction_ys{directions.ys()};
@@ -654,7 +658,7 @@ void Sim::move(float const dt, TaskView fighters, FrameMemoryResource* const scr
                                              move_distances.data(),
                                              1.f,
                                              count);
-    auto const before_locations{previous_locations.get_const_view()};
+    auto const before_locations{previous_locations.get_const_view().resolve()};
     for (std::uint32_t index{}; index < count; ++index) {
         auto const before{before_locations[index]};
         auto const after{vector_at(locations, index)};
@@ -737,12 +741,12 @@ void Sim::update_separation_observations(NavigationScratch& scratch, ThinkingInp
     auto const immediate_distance_sq{immediate_distance * immediate_distance};
     auto const close_distance_sq{close_distance * close_distance};
 
-    auto const movement_directions{data.view_movement_directions()};
+    auto const movement_directions{data.view_movement_directions().resolve()};
     auto const move_distances{data.move_distances()};
-    auto const separation_steering{data.view_separation_steering()};
+    auto const separation_steering{data.view_separation_steering().resolve()};
     auto const choices{data.avoidance_choice_indices()};
     auto const clear_scan_counts{data.avoidance_clear_scan_counts()};
-    auto const locations{data.view_locations()};
+    auto const locations{data.view_locations().resolve()};
     auto const entity_ids{data.entity_ids()};
     auto const risk_tiers{data.navigation_risk_tiers()};
     auto const integral_biases{data.integral_biases()};
@@ -823,8 +827,8 @@ void Sim::apply_separation_steering() {
     auto const data{entity_buffers.current().get_view()};
     std::array const active_spans{get_task_span(Task::MoveToDestination),
                                   get_task_span(Task::Attack)};
-    auto const movement_directions{data.view_movement_directions()};
-    auto const separation_steering{data.view_separation_steering()};
+    auto const movement_directions{data.view_movement_directions().resolve()};
+    auto const separation_steering{data.view_separation_steering().resolve()};
 
     for (auto const span : active_spans) {
         auto const end{span.end()};
@@ -853,10 +857,10 @@ void Sim::scan_preferred_navigation(NavigationScratch& scratch,
     scratch.trace_fighter_indices.reserve(count);
     scratch.blocked_fighter_indices.reserve(count);
 
-    auto const movement_directions{data.view_movement_directions()};
+    auto const movement_directions{data.view_movement_directions().resolve()};
     auto const move_distances{data.move_distances()};
     auto const speeds{data.speeds()};
-    auto const locations{data.view_locations()};
+    auto const locations{data.view_locations().resolve()};
 
     for (auto const index : scratch.ready_fighter_indices) {
         auto const element{static_cast<std::size_t>(index)};
@@ -916,8 +920,8 @@ void Sim::scan_alternative_navigation(NavigationScratch& scratch,
     auto const data{entity_buffers.current().get_const_view()};
     scratch.trace_fighter_indices.clear();
     scratch.trace_choice_indices.clear();
-    scratch.line_of_sight_starts.clear();
-    scratch.line_of_sight_ends.clear();
+    scratch.line_of_sight_starts.reset();
+    scratch.line_of_sight_ends.reset();
     scratch.line_of_sight_results.clear();
     scratch.trace_hits.reset();
 
@@ -927,8 +931,8 @@ void Sim::scan_alternative_navigation(NavigationScratch& scratch,
     scratch.trace_choice_indices.reserve(count);
     auto const speeds{data.speeds()};
     auto const move_distances{data.move_distances()};
-    auto const locations{data.view_locations()};
-    auto const movement_directions{data.view_movement_directions()};
+    auto const locations{data.view_locations().resolve()};
+    auto const movement_directions{data.view_movement_directions().resolve()};
     auto const float_biases{data.float_biases()};
     auto const integral_biases{data.integral_biases()};
     auto const choices{data.avoidance_choice_indices()};
@@ -968,18 +972,19 @@ void Sim::execute_navigation_sweeps(NavigationScratch& scratch,
     auto const moving_half_extent{Vector3f{clearance, clearance, clearance}};
     scratch.line_of_sight_results.set_num(trace_count);
     inputs.spatial_query_manager.are_spheres_in_bounds(
-        scratch.line_of_sight_ends.get_const_view(),
+        scratch.line_of_sight_ends.get_const_view().resolve(),
         clearance,
         {scratch.line_of_sight_results.data(),
          static_cast<std::size_t>(scratch.line_of_sight_results.num())});
     scratch.trace_hits.set_num(trace_count);
     // Fighters contribute soft steering; solid entities (including the parent capital) block.
-    inputs.spatial_query_manager.sweep_closest_aabbs(scratch.line_of_sight_starts.get_const_view(),
-                                                     scratch.line_of_sight_ends.get_const_view(),
-                                                     moving_half_extent,
-                                                     scratch.trace_hits.get_view(),
-                                                     {},
-                                                     collision::TraceEntityFilter::ExcludeFighters);
+    inputs.spatial_query_manager.sweep_closest_aabbs(
+        scratch.line_of_sight_starts.get_const_view().resolve(),
+        scratch.line_of_sight_ends.get_const_view().resolve(),
+        moving_half_extent,
+        scratch.trace_hits.get_view(),
+        {},
+        collision::TraceEntityFilter::ExcludeFighters);
     navigation_telemetry.hard_trace_count += trace_count;
 }
 void Sim::select_navigation_alternatives(NavigationScratch& scratch,
@@ -991,21 +996,19 @@ void Sim::select_navigation_alternatives(NavigationScratch& scratch,
         diagnostic_stop_reports = 0;
     }
     auto const n_blocked_fighters{scratch.blocked_fighter_indices.num()};
-    auto const locations{data.view_locations()};
+    auto const locations{data.view_locations().resolve()};
     auto const speeds{data.speeds()};
     auto const choices{data.avoidance_choice_indices()};
     auto const trace_results{scratch.trace_hits.get_const_view()};
     auto const hits{trace_results.hits()};
     auto const hit_entities{trace_results.entities()};
     auto const hit_static_indices{trace_results.static_geometry_indices()};
-    auto const hit_location_columns{trace_results.view_locations()};
-    Vectors3fConstView const hit_locations{
-        hit_location_columns.xs(), hit_location_columns.ys(), hit_location_columns.zs()};
-    auto const trace_ends{scratch.line_of_sight_ends.get_const_view()};
+    auto const hit_locations{trace_results.view_locations().resolve()};
+    auto const trace_ends{scratch.line_of_sight_ends.get_const_view().resolve()};
     auto const entity_ids{data.entity_ids()};
-    auto const destinations{data.view_desired_move_locations()};
-    auto const movement_directions{data.view_movement_directions()};
-    auto const separation_steering{data.view_separation_steering()};
+    auto const destinations{data.view_desired_move_locations().resolve()};
+    auto const movement_directions{data.view_movement_directions().resolve()};
+    auto const separation_steering{data.view_separation_steering().resolve()};
     auto const risk_tiers{data.navigation_risk_tiers()};
 
     for (std::uint32_t blocked_index{}; blocked_index < n_blocked_fighters; ++blocked_index) {
@@ -1090,8 +1093,8 @@ void Sim::apply_navigation_choices(NavigationScratch const& scratch) {
         remaining_ticks[element] = period;
     }
 
-    auto const separation_steering{data.view_separation_steering()};
-    auto const movement_directions{data.view_movement_directions()};
+    auto const separation_steering{data.view_separation_steering().resolve()};
+    auto const movement_directions{data.view_movement_directions().resolve()};
     auto const float_biases{data.float_biases()};
 
     for (auto const span : active_spans) {
@@ -1192,7 +1195,7 @@ auto Sim::get_target_id(EntityId const fighter) const noexcept -> EntityId {
     return entity_buffers.current().get_const_view().target_ids()[find_index(fighter)];
 }
 auto Sim::get_target_location(EntityId const fighter) const -> Vector3f {
-    return vector_at(entity_buffers.current().get_const_view().view_target_locations(),
+    return vector_at(entity_buffers.current().get_const_view().view_target_locations().resolve(),
                      find_index(fighter));
 }
 auto Sim::get_tasks() const -> std::span<Task const> {
@@ -1252,8 +1255,8 @@ void Sim::refresh_target_data(ThinkingInputs const inputs) {
     FrameArray<EntityInstanceHandle> targets{scratch_resource};
     targets.set_num(count);
     inputs.spatial_query_manager.copy_entity_motion(target_ids,
-                                                    data.view_target_locations(),
-                                                    data.view_target_velocities(),
+                                                    data.view_target_locations().resolve(),
+                                                    data.view_target_velocities().resolve(),
                                                     targets,
                                                     scratch_resource);
     for (std::uint32_t index{}; index < count; ++index) {
@@ -1267,8 +1270,8 @@ void Sim::refresh_target_data(ThinkingInputs const inputs) {
     }
     distance_and_squared(data.target_distances(),
                          data.target_distance_sq(),
-                         data.view_locations().get_const_view(),
-                         data.view_target_locations().get_const_view());
+                         data.view_locations().get_const_view().resolve(),
+                         data.view_target_locations().get_const_view().resolve());
 }
 
 /* **************************************** */
@@ -1411,8 +1414,9 @@ void Sim::commit_spawns() {
     auto const new_data{data.get_view(n_cur, n_new)};
     auto const spawns{spawn_queue.get_const_view()};
     auto const navigation_period{get_navigation_tick_period(NavigationRiskTier::Nearby)};
-    copy_vectors(new_data.view_locations(), spawns.view_locations());
-    copy_vectors(new_data.view_desired_move_locations(), spawns.view_locations());
+    copy_vectors(new_data.view_locations().resolve(), spawns.view_locations().resolve());
+    copy_vectors(new_data.view_desired_move_locations().resolve(),
+                 spawns.view_locations().resolve());
     std::ranges::fill(new_data.tasks(), FighterTask::Attack);
     std::ranges::fill(new_data.speeds(), config.speed);
     std::ranges::copy(spawns.teams(), new_data.teams().begin());
@@ -1423,8 +1427,8 @@ void Sim::commit_spawns() {
     std::ranges::fill(new_data.avoidance_choice_indices(), direct_movement_choice);
     std::ranges::fill(new_data.navigation_update_countdowns_periods(), navigation_period);
 
-    auto const aim_directions{new_data.view_aim_directions()};
-    auto const rotations{spawns.view_rotations()};
+    auto const aim_directions{new_data.view_aim_directions().resolve()};
+    auto const rotations{spawns.view_rotations().resolve()};
     auto const pitches{rotations.pitches()};
     auto const yaws{rotations.yaws()};
     auto const rolls{rotations.rolls()};
@@ -1444,7 +1448,7 @@ void Sim::commit_spawns() {
     if (diagnostics_enabled_) {
         auto const parent_ids{new_data.parent_ids()};
         auto const target_ids{new_data.target_ids()};
-        auto const spawn_locations{new_data.view_locations()};
+        auto const spawn_locations{new_data.view_locations().resolve()};
         for (std::uint32_t i{}; i < n_new; ++i) {
             if (!diagnostics::take_report(diagnostics_enabled_, diagnostic_spawn_reports, 64)) {
                 break;
@@ -1488,8 +1492,8 @@ void Sim::handle_firing(TaskView data, ThinkingInputs const inputs) {
 
     SANDBOX_PROFILE_SCOPE("fighters::Sim::handle_firing");
 
-    auto const locations{data.view_locations()};
-    auto const movement_directions{data.view_movement_directions()};
+    auto const locations{data.view_locations().resolve()};
+    auto const movement_directions{data.view_movement_directions().resolve()};
     auto const move_distances{data.move_distances()};
 
     auto predicted_location =
@@ -1508,12 +1512,12 @@ void Sim::handle_firing(TaskView data, ThinkingInputs const inputs) {
     auto const attack_position_arrival_distance_sq{arrival_distance * arrival_distance};
     FrameArray<float> aiming_dot_products{scratch_resource};
     FrameArray<std::uint32_t> can_fire{scratch_resource};
-    FrameVectors3f line_of_sight_starts{scratch_resource};
-    FrameVectors3f line_of_sight_ends{scratch_resource};
+    Vectors3f line_of_sight_starts{*scratch_resource};
+    Vectors3f line_of_sight_ends{*scratch_resource};
     FrameArray<LineQueryResult> line_of_sight_results{scratch_resource};
     FrameArray<EntityId> firing_ignored_entities{scratch_resource};
     FrameArray<std::uint32_t> firing_position_fighter_indices{scratch_resource};
-    FrameVectors3f firing_position_candidates{scratch_resource};
+    Vectors3f firing_position_candidates{*scratch_resource};
 
     firing_position_fighter_indices.reserve(n_ships);
     firing_position_candidates.reserve(n_ships);
@@ -1522,8 +1526,8 @@ void Sim::handle_firing(TaskView data, ThinkingInputs const inputs) {
     TickCountdownView<std::int16_t> const cooldowns{
         std::span<std::int16_t>{data.attack_cooldowns()}, attack_retry_cooldown_tick_value};
     aiming_dot_products.set_num(n_ships);
-    auto const planned_aim_directions{data.view_planned_aim_directions()};
-    auto const desired_aiming_directions{data.view_desired_aiming_directions()};
+    auto const planned_aim_directions{data.view_planned_aim_directions().resolve()};
+    auto const desired_aiming_directions{data.view_desired_aiming_directions().resolve()};
     native_math::dot_product_vector(aiming_dot_products.data(),
                                     planned_aim_directions.xs().data(),
                                     planned_aim_directions.ys().data(),
@@ -1551,10 +1555,10 @@ void Sim::handle_firing(TaskView data, ThinkingInputs const inputs) {
         can_fire.add(index);
     }
 
-    auto const planned_directions{data.view_planned_aim_directions()};
+    auto const planned_directions{data.view_planned_aim_directions().resolve()};
     auto const target_radii{data.target_radii()};
     auto const entity_ids{data.entity_ids()};
-    auto const target_locations{data.view_target_locations()};
+    auto const target_locations{data.view_target_locations().resolve()};
 
     auto const firing_count{can_fire.num()};
     line_of_sight_starts.set_num(firing_count);
@@ -1580,13 +1584,13 @@ void Sim::handle_firing(TaskView data, ThinkingInputs const inputs) {
     line_of_sight_results.set_num(n_can_fire_before_los);
 
     inputs.spatial_query_manager.have_clear_lines(
-        line_of_sight_starts.get_const_view(),
-        line_of_sight_ends.get_const_view(),
+        line_of_sight_starts.get_const_view().resolve(),
+        line_of_sight_ends.get_const_view().resolve(),
         {line_of_sight_results.data(), static_cast<std::size_t>(line_of_sight_results.num())},
         scratch_resource,
         {firing_ignored_entities.data(), static_cast<std::size_t>(firing_ignored_entities.num())});
 
-    auto const desired_move_locations{data.view_desired_move_locations()};
+    auto const desired_move_locations{data.view_desired_move_locations().resolve()};
 
     for (auto remaining{can_fire.num()}; remaining > 0; --remaining) {
         auto const index{remaining - 1};
@@ -1640,13 +1644,13 @@ void Sim::handle_firing(TaskView data, ThinkingInputs const inputs) {
         // Candidate buffers resize as the remaining fighter set shrinks.
         // NOLINTBEGIN(ioj-loop-view-construction,ioj-loop-view-accessor-call)
         inputs.spatial_query_manager.have_clear_lines(
-            line_of_sight_starts.get_const_view(),
-            line_of_sight_ends.get_const_view(),
+            line_of_sight_starts.get_const_view().resolve(),
+            line_of_sight_ends.get_const_view().resolve(),
             {line_of_sight_results.data(), static_cast<std::size_t>(line_of_sight_results.num())},
             scratch_resource,
             {firing_ignored_entities.data(),
              static_cast<std::size_t>(firing_ignored_entities.num())});
-        auto const candidate_locations{firing_position_candidates.get_const_view()};
+        auto const candidate_locations{firing_position_candidates.get_const_view().resolve()};
         // NOLINTEND(ioj-loop-view-construction,ioj-loop-view-accessor-call)
 
         for (auto remaining{n_fighters}; remaining > 0; --remaining) {
@@ -1707,11 +1711,11 @@ void Sim::commit_orders() {
     assert(check_valid_ids(order_entity_ids, EntityType::Fighter));
 
     auto const tasks{data.tasks()};
-    auto const desired_move_locations{data.view_desired_move_locations()};
-    auto const locations{data.view_locations()};
+    auto const desired_move_locations{data.view_desired_move_locations().resolve()};
+    auto const locations{data.view_locations().resolve()};
     auto const attack_reposition_countdowns{data.attack_reposition_countdowns()};
     auto const target_ids{data.target_ids()};
-    auto const separation_steering{data.view_separation_steering()};
+    auto const separation_steering{data.view_separation_steering().resolve()};
 
     auto const reset_navigation_state{
         [separation_xs = separation_steering.xs(),

@@ -4,24 +4,24 @@
 #pragma once
 
 #include "ioj/levels/team.h"
+#include "ioj/math_types.h"
 #include "ioj/native_soa/storage.h"
+#include "ioj/rotator_types.h"
+#include "ioj/rotators3f.h"
 #include "ioj/sim/entities/health.h"
 #include "ioj/sim/levels/level_entity_index.h"
-#include "ioj/vector_soa_view.h"
+#include "ioj/soa_permutation.h"
+#include "ioj/vectors3f.h"
 
 #include <cassert>
+#include <cstdint>
 #include <memory_resource>
 
 namespace ioj::sim {
-struct Vectors3fSchema;
-
-struct Rotators3fSchema;
-
 struct LevelTurretSpawnEventsSchema;
-
-struct LevelTurretSpawnEventsSingleView;
-struct LevelTurretSpawnEventsSingleConstView;
-struct LevelTurretSpawnEventsSingleLayoutColumns {
+struct LevelTurretSpawnEventsView;
+struct LevelTurretSpawnEventsConstView;
+struct LevelTurretSpawnEventsLayoutColumns {
     template <typename T>
     using ColLayout = ioj::native_soa::ColumnLayout<T>;
 
@@ -38,7 +38,7 @@ struct LevelTurretSpawnEventsSingleLayoutColumns {
     ColLayout<Health> HealthsColumn;
     ColLayout<std::int32_t> LaserDamagesColumn;
 
-    constexpr LevelTurretSpawnEventsSingleLayoutColumns() noexcept
+    constexpr LevelTurretSpawnEventsLayoutColumns() noexcept
         : EntityIndicesColumn{LayoutStart}
         , LocationsXsColumn{EntityIndicesColumn}
         , LocationsYsColumn{LocationsXsColumn}
@@ -49,12 +49,11 @@ struct LevelTurretSpawnEventsSingleLayoutColumns {
         , TeamsColumn{RotationsRollsColumn}
         , HealthsColumn{TeamsColumn}
         , LaserDamagesColumn{HealthsColumn} {}
-    LevelTurretSpawnEventsSingleLayoutColumns(LevelTurretSpawnEventsSingleLayoutColumns const&) =
-        delete;
-    auto operator=(LevelTurretSpawnEventsSingleLayoutColumns const&)
-        -> LevelTurretSpawnEventsSingleLayoutColumns& = delete;
+    LevelTurretSpawnEventsLayoutColumns(LevelTurretSpawnEventsLayoutColumns const&) = delete;
+    auto operator=(LevelTurretSpawnEventsLayoutColumns const&)
+        -> LevelTurretSpawnEventsLayoutColumns& = delete;
 };
-struct LevelTurretSpawnEventsSingleLayout {
+struct LevelTurretSpawnEventsLayout {
     using size_type = std::uint32_t;
     using byte_size_type = std::size_t;
 
@@ -62,7 +61,7 @@ struct LevelTurretSpawnEventsSingleLayout {
         ioj::native_soa::LayoutPolicy::capacity_granularity};
     static constexpr byte_size_type column_gap{ioj::native_soa::LayoutPolicy::column_gap};
 
-    static constexpr LevelTurretSpawnEventsSingleLayoutColumns columns{};
+    static constexpr LevelTurretSpawnEventsLayoutColumns columns{};
 
     static constexpr byte_size_type allocation_alignment{
         columns.LaserDamagesColumn.allocation_alignment};
@@ -78,242 +77,28 @@ struct LevelTurretSpawnEventsSingleLayout {
     }
     static_assert(max_capacity >= capacity_granularity);
 };
-
-struct LevelTurretSpawnEventsSingleResolvedView_locations;
-struct LevelTurretSpawnEventsSingleResolvedConstView_locations;
+struct LevelTurretSpawnEventsResolvedView;
+struct LevelTurretSpawnEventsResolvedConstView;
 template <bool Const>
-struct LevelTurretSpawnEventsSingleResolvedView_locationsImpl {
+struct LevelTurretSpawnEventsResolvedViewImpl {
     using size_type = std::uint32_t;
-    using View = LevelTurretSpawnEventsSingleResolvedView_locations;
-    using ConstView = LevelTurretSpawnEventsSingleResolvedConstView_locations;
-    using soa_schema = Vectors3fSchema;
+    using View = LevelTurretSpawnEventsResolvedView;
+    using ConstView = LevelTurretSpawnEventsResolvedConstView;
+    using soa_schema = ::ioj::sim::LevelTurretSpawnEventsSchema;
     template <typename T>
     using Element = std::conditional_t<Const, T const, T>;
-    LevelTurretSpawnEventsSingleResolvedView_locationsImpl() = default;
-    LevelTurretSpawnEventsSingleResolvedView_locationsImpl(Element<float>* locations_xs,
-                                                           Element<float>* locations_ys,
-                                                           Element<float>* locations_zs,
-                                                           size_type count)
-        : locations_xs_{locations_xs}
-        , locations_ys_{locations_ys}
-        , locations_zs_{locations_zs}
-        , count_{count} {
-        ioj::soa_storage_detail::validate_column_pointers(
-            count_, locations_xs_, locations_ys_, locations_zs_);
-    }
-    LevelTurretSpawnEventsSingleResolvedView_locationsImpl(std::span<Element<float>> locations_xs,
-                                                           std::span<Element<float>> locations_ys,
-                                                           std::span<Element<float>> locations_zs)
-        : LevelTurretSpawnEventsSingleResolvedView_locationsImpl{
-              locations_xs.data(),
-              locations_ys.data(),
-              locations_zs.data(),
-              ioj::soa_storage_detail::checked_row_count(locations_xs.size())} {
-        assert(locations_xs.size() == count_);
-        assert(locations_ys.size() == count_);
-        assert(locations_zs.size() == count_);
-    }
-    template <bool Enabled = Const>
-    LevelTurretSpawnEventsSingleResolvedView_locationsImpl(
-        LevelTurretSpawnEventsSingleResolvedView_locationsImpl<false> const& other)
-        requires Enabled
-        : locations_xs_{other.locations_xs_}
-        , locations_ys_{other.locations_ys_}
-        , locations_zs_{other.locations_zs_}
-        , count_{other.count_} {}
-    auto num() const noexcept -> size_type { return count_; }
-    auto is_empty() const noexcept -> bool { return count_ == 0; }
-    auto get_view(this auto const& self) { return self; }
-    auto get_const_view(this auto const& self) {
-        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
-        return Result{self.locations_xs_, self.locations_ys_, self.locations_zs_, self.count_};
-    }
-    auto resolve(this auto const& self) { return self; }
-    void validate() const {}
-    auto slice(this auto const& self, size_type offset, size_type count) {
-        assert(offset <= self.count_ && count <= self.count_ - offset);
-        using Result = std::remove_cvref_t<decltype(self)>;
-        return Result{self.locations_xs_ == nullptr ? nullptr : self.locations_xs_ + offset,
-                      self.locations_ys_ == nullptr ? nullptr : self.locations_ys_ + offset,
-                      self.locations_zs_ == nullptr ? nullptr : self.locations_zs_ + offset,
-                      count};
-    }
-    auto get_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count);
-    }
-    auto get_const_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count).get_const_view();
-    }
-    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
-    auto right(this auto const& self, size_type count) {
-        assert(count <= self.num());
-        return self.slice(self.num() - count, count);
-    }
-    auto xs() const -> std::span<Element<float>> { return {locations_xs_, count_}; }
-    auto ys() const -> std::span<Element<float>> { return {locations_ys_, count_}; }
-    auto zs() const -> std::span<Element<float>> { return {locations_zs_, count_}; }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        func(std::span<Element<float>>{locations_xs_, count_});
-        func(std::span<Element<float>>{locations_ys_, count_});
-        func(std::span<Element<float>>{locations_zs_, count_});
-    }
-  private:
-    template <bool>
-    friend struct LevelTurretSpawnEventsSingleResolvedView_locationsImpl;
-    Element<float>* locations_xs_{};
-    Element<float>* locations_ys_{};
-    Element<float>* locations_zs_{};
-    size_type count_{};
-};
-struct LevelTurretSpawnEventsSingleResolvedConstView_locations
-    : LevelTurretSpawnEventsSingleResolvedView_locationsImpl<true> {
-    using Base = LevelTurretSpawnEventsSingleResolvedView_locationsImpl<true>;
-    using Base::Base;
-};
-struct LevelTurretSpawnEventsSingleResolvedView_locations
-    : LevelTurretSpawnEventsSingleResolvedView_locationsImpl<false> {
-    using Base = LevelTurretSpawnEventsSingleResolvedView_locationsImpl<false>;
-    using Base::Base;
-    void set(size_type index, float const new_xs, float const new_ys, float const new_zs) const {
-        assert(index < num());
-        this->xs()[index] = new_xs;
-        this->ys()[index] = new_ys;
-        this->zs()[index] = new_zs;
-    }
-};
-struct LevelTurretSpawnEventsSingleResolvedView_rotations;
-struct LevelTurretSpawnEventsSingleResolvedConstView_rotations;
-template <bool Const>
-struct LevelTurretSpawnEventsSingleResolvedView_rotationsImpl {
-    using size_type = std::uint32_t;
-    using View = LevelTurretSpawnEventsSingleResolvedView_rotations;
-    using ConstView = LevelTurretSpawnEventsSingleResolvedConstView_rotations;
-    using soa_schema = Rotators3fSchema;
-    template <typename T>
-    using Element = std::conditional_t<Const, T const, T>;
-    LevelTurretSpawnEventsSingleResolvedView_rotationsImpl() = default;
-    LevelTurretSpawnEventsSingleResolvedView_rotationsImpl(Element<float>* rotations_pitches,
-                                                           Element<float>* rotations_yaws,
-                                                           Element<float>* rotations_rolls,
-                                                           size_type count)
-        : rotations_pitches_{rotations_pitches}
-        , rotations_yaws_{rotations_yaws}
-        , rotations_rolls_{rotations_rolls}
-        , count_{count} {
-        ioj::soa_storage_detail::validate_column_pointers(
-            count_, rotations_pitches_, rotations_yaws_, rotations_rolls_);
-    }
-    LevelTurretSpawnEventsSingleResolvedView_rotationsImpl(
-        std::span<Element<float>> rotations_pitches,
-        std::span<Element<float>> rotations_yaws,
-        std::span<Element<float>> rotations_rolls)
-        : LevelTurretSpawnEventsSingleResolvedView_rotationsImpl{
-              rotations_pitches.data(),
-              rotations_yaws.data(),
-              rotations_rolls.data(),
-              ioj::soa_storage_detail::checked_row_count(rotations_pitches.size())} {
-        assert(rotations_pitches.size() == count_);
-        assert(rotations_yaws.size() == count_);
-        assert(rotations_rolls.size() == count_);
-    }
-    template <bool Enabled = Const>
-    LevelTurretSpawnEventsSingleResolvedView_rotationsImpl(
-        LevelTurretSpawnEventsSingleResolvedView_rotationsImpl<false> const& other)
-        requires Enabled
-        : rotations_pitches_{other.rotations_pitches_}
-        , rotations_yaws_{other.rotations_yaws_}
-        , rotations_rolls_{other.rotations_rolls_}
-        , count_{other.count_} {}
-    auto num() const noexcept -> size_type { return count_; }
-    auto is_empty() const noexcept -> bool { return count_ == 0; }
-    auto get_view(this auto const& self) { return self; }
-    auto get_const_view(this auto const& self) {
-        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
-        return Result{
-            self.rotations_pitches_, self.rotations_yaws_, self.rotations_rolls_, self.count_};
-    }
-    auto resolve(this auto const& self) { return self; }
-    void validate() const {}
-    auto slice(this auto const& self, size_type offset, size_type count) {
-        assert(offset <= self.count_ && count <= self.count_ - offset);
-        using Result = std::remove_cvref_t<decltype(self)>;
-        return Result{self.rotations_pitches_ == nullptr ? nullptr
-                                                         : self.rotations_pitches_ + offset,
-                      self.rotations_yaws_ == nullptr ? nullptr : self.rotations_yaws_ + offset,
-                      self.rotations_rolls_ == nullptr ? nullptr : self.rotations_rolls_ + offset,
-                      count};
-    }
-    auto get_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count);
-    }
-    auto get_const_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count).get_const_view();
-    }
-    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
-    auto right(this auto const& self, size_type count) {
-        assert(count <= self.num());
-        return self.slice(self.num() - count, count);
-    }
-    auto pitches() const -> std::span<Element<float>> { return {rotations_pitches_, count_}; }
-    auto yaws() const -> std::span<Element<float>> { return {rotations_yaws_, count_}; }
-    auto rolls() const -> std::span<Element<float>> { return {rotations_rolls_, count_}; }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        func(std::span<Element<float>>{rotations_pitches_, count_});
-        func(std::span<Element<float>>{rotations_yaws_, count_});
-        func(std::span<Element<float>>{rotations_rolls_, count_});
-    }
-  private:
-    template <bool>
-    friend struct LevelTurretSpawnEventsSingleResolvedView_rotationsImpl;
-    Element<float>* rotations_pitches_{};
-    Element<float>* rotations_yaws_{};
-    Element<float>* rotations_rolls_{};
-    size_type count_{};
-};
-struct LevelTurretSpawnEventsSingleResolvedConstView_rotations
-    : LevelTurretSpawnEventsSingleResolvedView_rotationsImpl<true> {
-    using Base = LevelTurretSpawnEventsSingleResolvedView_rotationsImpl<true>;
-    using Base::Base;
-};
-struct LevelTurretSpawnEventsSingleResolvedView_rotations
-    : LevelTurretSpawnEventsSingleResolvedView_rotationsImpl<false> {
-    using Base = LevelTurretSpawnEventsSingleResolvedView_rotationsImpl<false>;
-    using Base::Base;
-    void set(size_type index,
-             float const new_pitches,
-             float const new_yaws,
-             float const new_rolls) const {
-        assert(index < num());
-        this->pitches()[index] = new_pitches;
-        this->yaws()[index] = new_yaws;
-        this->rolls()[index] = new_rolls;
-    }
-};
-struct LevelTurretSpawnEventsSingleResolvedView;
-struct LevelTurretSpawnEventsSingleResolvedConstView;
-template <bool Const>
-struct LevelTurretSpawnEventsSingleResolvedViewImpl {
-    using size_type = std::uint32_t;
-    using View = LevelTurretSpawnEventsSingleResolvedView;
-    using ConstView = LevelTurretSpawnEventsSingleResolvedConstView;
-    using soa_schema = LevelTurretSpawnEventsSchema;
-    template <typename T>
-    using Element = std::conditional_t<Const, T const, T>;
-    LevelTurretSpawnEventsSingleResolvedViewImpl() = default;
-    LevelTurretSpawnEventsSingleResolvedViewImpl(
-        Element<ioj::sim::LevelEntityIndex>* entity_indices,
-        Element<float>* locations_xs,
-        Element<float>* locations_ys,
-        Element<float>* locations_zs,
-        Element<float>* rotations_pitches,
-        Element<float>* rotations_yaws,
-        Element<float>* rotations_rolls,
-        Element<::ioj::Team>* teams,
-        Element<Health>* healths,
-        Element<std::int32_t>* laser_damages,
-        size_type count)
+    LevelTurretSpawnEventsResolvedViewImpl() = default;
+    LevelTurretSpawnEventsResolvedViewImpl(Element<ioj::sim::LevelEntityIndex>* entity_indices,
+                                           Element<float>* locations_xs,
+                                           Element<float>* locations_ys,
+                                           Element<float>* locations_zs,
+                                           Element<float>* rotations_pitches,
+                                           Element<float>* rotations_yaws,
+                                           Element<float>* rotations_rolls,
+                                           Element<::ioj::Team>* teams,
+                                           Element<Health>* healths,
+                                           Element<std::int32_t>* laser_damages,
+                                           size_type count)
         : entity_indices_{entity_indices}
         , locations_xs_{locations_xs}
         , locations_ys_{locations_ys}
@@ -337,7 +122,7 @@ struct LevelTurretSpawnEventsSingleResolvedViewImpl {
                                                           healths_,
                                                           laser_damages_);
     }
-    LevelTurretSpawnEventsSingleResolvedViewImpl(
+    LevelTurretSpawnEventsResolvedViewImpl(
         std::span<Element<ioj::sim::LevelEntityIndex>> entity_indices,
         std::span<Element<float>> locations_xs,
         std::span<Element<float>> locations_ys,
@@ -348,7 +133,7 @@ struct LevelTurretSpawnEventsSingleResolvedViewImpl {
         std::span<Element<::ioj::Team>> teams,
         std::span<Element<Health>> healths,
         std::span<Element<std::int32_t>> laser_damages)
-        : LevelTurretSpawnEventsSingleResolvedViewImpl{
+        : LevelTurretSpawnEventsResolvedViewImpl{
               entity_indices.data(),
               locations_xs.data(),
               locations_ys.data(),
@@ -372,8 +157,8 @@ struct LevelTurretSpawnEventsSingleResolvedViewImpl {
         assert(laser_damages.size() == count_);
     }
     template <bool Enabled = Const>
-    LevelTurretSpawnEventsSingleResolvedViewImpl(
-        LevelTurretSpawnEventsSingleResolvedViewImpl<false> const& other)
+    LevelTurretSpawnEventsResolvedViewImpl(
+        LevelTurretSpawnEventsResolvedViewImpl<false> const& other)
         requires Enabled
         : entity_indices_{other.entity_indices_}
         , locations_xs_{other.locations_xs_}
@@ -435,16 +220,12 @@ struct LevelTurretSpawnEventsSingleResolvedViewImpl {
     auto entity_indices() const -> std::span<Element<ioj::sim::LevelEntityIndex>> {
         return {entity_indices_, count_};
     }
-    auto view_locations() const
-        -> std::conditional_t<Const,
-                              LevelTurretSpawnEventsSingleResolvedConstView_locations,
-                              LevelTurretSpawnEventsSingleResolvedView_locations> {
+    auto view_locations() const -> std::
+        conditional_t<Const, ::ioj::Vectors3fResolvedConstView, ::ioj::Vectors3fResolvedView> {
         return {locations_xs_, locations_ys_, locations_zs_, count_};
     }
-    auto view_rotations() const
-        -> std::conditional_t<Const,
-                              LevelTurretSpawnEventsSingleResolvedConstView_rotations,
-                              LevelTurretSpawnEventsSingleResolvedView_rotations> {
+    auto view_rotations() const -> std::
+        conditional_t<Const, ::ioj::Rotators3fResolvedConstView, ::ioj::Rotators3fResolvedView> {
         return {rotations_pitches_, rotations_yaws_, rotations_rolls_, count_};
     }
     auto teams() const -> std::span<Element<::ioj::Team>> { return {teams_, count_}; }
@@ -467,7 +248,7 @@ struct LevelTurretSpawnEventsSingleResolvedViewImpl {
     }
   private:
     template <bool>
-    friend struct LevelTurretSpawnEventsSingleResolvedViewImpl;
+    friend struct LevelTurretSpawnEventsResolvedViewImpl;
     Element<ioj::sim::LevelEntityIndex>* entity_indices_{};
     Element<float>* locations_xs_{};
     Element<float>* locations_ys_{};
@@ -480,14 +261,12 @@ struct LevelTurretSpawnEventsSingleResolvedViewImpl {
     Element<std::int32_t>* laser_damages_{};
     size_type count_{};
 };
-struct LevelTurretSpawnEventsSingleResolvedConstView
-    : LevelTurretSpawnEventsSingleResolvedViewImpl<true> {
-    using Base = LevelTurretSpawnEventsSingleResolvedViewImpl<true>;
+struct LevelTurretSpawnEventsResolvedConstView : LevelTurretSpawnEventsResolvedViewImpl<true> {
+    using Base = LevelTurretSpawnEventsResolvedViewImpl<true>;
     using Base::Base;
 };
-struct LevelTurretSpawnEventsSingleResolvedView
-    : LevelTurretSpawnEventsSingleResolvedViewImpl<false> {
-    using Base = LevelTurretSpawnEventsSingleResolvedViewImpl<false>;
+struct LevelTurretSpawnEventsResolvedView : LevelTurretSpawnEventsResolvedViewImpl<false> {
+    using Base = LevelTurretSpawnEventsResolvedViewImpl<false>;
     using Base::Base;
     void set(size_type index,
              ioj::sim::LevelEntityIndex const new_entity_indices,
@@ -512,51 +291,227 @@ struct LevelTurretSpawnEventsSingleResolvedView
         this->healths()[index] = new_healths;
         this->laser_damages()[index] = new_laser_damages;
     }
+    void set(size_type index,
+             ioj::sim::LevelEntityIndex const new_entity_indices,
+             Vector3f const new_locations,
+             Rotator3f const new_rotations,
+             ::ioj::Team const new_teams,
+             Health const new_healths,
+             std::int32_t const new_laser_damages) const {
+        assert(index < num());
+        this->entity_indices()[index] = new_entity_indices;
+        this->view_locations().set(index, new_locations);
+        this->view_rotations().set(index, new_rotations);
+        this->teams()[index] = new_teams;
+        this->healths()[index] = new_healths;
+        this->laser_damages()[index] = new_laser_damages;
+    }
 };
+struct LevelTurretSpawnEventsView_locations;
+struct LevelTurretSpawnEventsConstView_locations;
 template <bool Const>
-struct LevelTurretSpawnEventsSingleViewImpl : ioj::soa_storage_detail::CompactViewOperations {
-    using soa_schema = LevelTurretSpawnEventsSchema;
+struct LevelTurretSpawnEventsView_locationsImpl : ioj::soa_storage_detail::CompactViewOperations {
+    using soa_schema = Vectors3fSchema;
     using size_type = std::uint32_t;
-    using Layout = LevelTurretSpawnEventsSingleLayout;
+    using Layout = LevelTurretSpawnEventsLayout;
     using Storage = ioj::native_soa::StorageState;
     using State = std::conditional_t<Const, Storage const, Storage>;
     template <typename T>
     using Element = std::conditional_t<Const, T const, T>;
-    using View = LevelTurretSpawnEventsSingleView;
-    using ConstView = LevelTurretSpawnEventsSingleConstView;
-    LevelTurretSpawnEventsSingleViewImpl() = default;
-    LevelTurretSpawnEventsSingleViewImpl(State* state, size_type offset, size_type count)
+    using View = LevelTurretSpawnEventsView_locations;
+    using ConstView = LevelTurretSpawnEventsConstView_locations;
+    LevelTurretSpawnEventsView_locationsImpl() = default;
+    LevelTurretSpawnEventsView_locationsImpl(State* state, size_type offset, size_type count)
         : state_{state}
         , offset_{offset}
         , count_{count} {}
     template <bool Enabled = Const>
-    LevelTurretSpawnEventsSingleViewImpl(LevelTurretSpawnEventsSingleViewImpl<false> const& other)
+    LevelTurretSpawnEventsView_locationsImpl(
+        LevelTurretSpawnEventsView_locationsImpl<false> const& other)
+        requires Enabled
+        : state_{other.state_}
+        , offset_{other.offset_}
+        , count_{other.count_} {}
+    auto xs() const { return make_column_view(Layout::columns.LocationsXsColumn); }
+    auto ys() const { return make_column_view(Layout::columns.LocationsYsColumn); }
+    auto zs() const { return make_column_view(Layout::columns.LocationsZsColumn); }
+    template <typename Func>
+    void each_column(Func&& func) const {
+        func(xs());
+        func(ys());
+        func(zs());
+    }
+    auto resolve() const -> std::
+        conditional_t<Const, ::ioj::Vectors3fResolvedConstView, ::ioj::Vectors3fResolvedView> {
+        return {(make_column_view(Layout::columns.LocationsXsColumn).data()),
+                (make_column_view(Layout::columns.LocationsYsColumn).data()),
+                (make_column_view(Layout::columns.LocationsZsColumn).data()),
+                count_};
+    }
+  private:
+    template <typename T>
+    auto make_column_view(ioj::native_soa::ColumnLayout<T> const& layout) const {
+        return ioj::soa_storage_detail::column_view<std::span<Element<T>>>(
+            state_, offset_, count_, layout);
+    }
+    friend ioj::soa_storage_detail::CompactViewOperations;
+    template <bool>
+    friend struct LevelTurretSpawnEventsView_locationsImpl;
+    State* state_{};
+    size_type offset_{};
+    size_type count_{};
+};
+struct LevelTurretSpawnEventsConstView_locations : LevelTurretSpawnEventsView_locationsImpl<true> {
+    using Base = LevelTurretSpawnEventsView_locationsImpl<true>;
+    using Base::Base;
+    using equivalent_type = Vector3f;
+    auto operator[](std::uint32_t index) const -> equivalent_type {
+        assert(index < num());
+        return equivalent_type{xs()[index], ys()[index], zs()[index]};
+    }
+};
+static_assert(
+    ioj::soa_storage_detail::validate_compact_view<LevelTurretSpawnEventsConstView_locations>());
+struct LevelTurretSpawnEventsView_locations : LevelTurretSpawnEventsView_locationsImpl<false> {
+    using Base = LevelTurretSpawnEventsView_locationsImpl<false>;
+    using Base::Base;
+    void set(size_type index, float const new_xs, float const new_ys, float const new_zs) const {
+        assert(index < num());
+        this->xs()[index] = new_xs;
+        this->ys()[index] = new_ys;
+        this->zs()[index] = new_zs;
+    }
+    void set(size_type index, Vector3f const value) const {
+        set(index, (value.x()), (value.y()), (value.z()));
+    }
+    using equivalent_type = Vector3f;
+    auto operator[](std::uint32_t index) const -> equivalent_type {
+        assert(index < num());
+        return equivalent_type{xs()[index], ys()[index], zs()[index]};
+    }
+};
+static_assert(
+    ioj::soa_storage_detail::validate_compact_view<LevelTurretSpawnEventsView_locations>());
+struct LevelTurretSpawnEventsView_rotations;
+struct LevelTurretSpawnEventsConstView_rotations;
+template <bool Const>
+struct LevelTurretSpawnEventsView_rotationsImpl : ioj::soa_storage_detail::CompactViewOperations {
+    using soa_schema = Rotators3fSchema;
+    using size_type = std::uint32_t;
+    using Layout = LevelTurretSpawnEventsLayout;
+    using Storage = ioj::native_soa::StorageState;
+    using State = std::conditional_t<Const, Storage const, Storage>;
+    template <typename T>
+    using Element = std::conditional_t<Const, T const, T>;
+    using View = LevelTurretSpawnEventsView_rotations;
+    using ConstView = LevelTurretSpawnEventsConstView_rotations;
+    LevelTurretSpawnEventsView_rotationsImpl() = default;
+    LevelTurretSpawnEventsView_rotationsImpl(State* state, size_type offset, size_type count)
+        : state_{state}
+        , offset_{offset}
+        , count_{count} {}
+    template <bool Enabled = Const>
+    LevelTurretSpawnEventsView_rotationsImpl(
+        LevelTurretSpawnEventsView_rotationsImpl<false> const& other)
+        requires Enabled
+        : state_{other.state_}
+        , offset_{other.offset_}
+        , count_{other.count_} {}
+    auto pitches() const { return make_column_view(Layout::columns.RotationsPitchesColumn); }
+    auto yaws() const { return make_column_view(Layout::columns.RotationsYawsColumn); }
+    auto rolls() const { return make_column_view(Layout::columns.RotationsRollsColumn); }
+    template <typename Func>
+    void each_column(Func&& func) const {
+        func(pitches());
+        func(yaws());
+        func(rolls());
+    }
+    auto resolve() const -> std::
+        conditional_t<Const, ::ioj::Rotators3fResolvedConstView, ::ioj::Rotators3fResolvedView> {
+        return {(make_column_view(Layout::columns.RotationsPitchesColumn).data()),
+                (make_column_view(Layout::columns.RotationsYawsColumn).data()),
+                (make_column_view(Layout::columns.RotationsRollsColumn).data()),
+                count_};
+    }
+  private:
+    template <typename T>
+    auto make_column_view(ioj::native_soa::ColumnLayout<T> const& layout) const {
+        return ioj::soa_storage_detail::column_view<std::span<Element<T>>>(
+            state_, offset_, count_, layout);
+    }
+    friend ioj::soa_storage_detail::CompactViewOperations;
+    template <bool>
+    friend struct LevelTurretSpawnEventsView_rotationsImpl;
+    State* state_{};
+    size_type offset_{};
+    size_type count_{};
+};
+struct LevelTurretSpawnEventsConstView_rotations : LevelTurretSpawnEventsView_rotationsImpl<true> {
+    using Base = LevelTurretSpawnEventsView_rotationsImpl<true>;
+    using Base::Base;
+    using equivalent_type = Rotator3f;
+    auto operator[](std::uint32_t index) const -> equivalent_type {
+        assert(index < num());
+        return equivalent_type{pitches()[index], yaws()[index], rolls()[index]};
+    }
+};
+static_assert(
+    ioj::soa_storage_detail::validate_compact_view<LevelTurretSpawnEventsConstView_rotations>());
+struct LevelTurretSpawnEventsView_rotations : LevelTurretSpawnEventsView_rotationsImpl<false> {
+    using Base = LevelTurretSpawnEventsView_rotationsImpl<false>;
+    using Base::Base;
+    void set(size_type index,
+             float const new_pitches,
+             float const new_yaws,
+             float const new_rolls) const {
+        assert(index < num());
+        this->pitches()[index] = new_pitches;
+        this->yaws()[index] = new_yaws;
+        this->rolls()[index] = new_rolls;
+    }
+    void set(size_type index, Rotator3f const value) const {
+        set(index, (value.pitch), (value.yaw), (value.roll));
+    }
+    using equivalent_type = Rotator3f;
+    auto operator[](std::uint32_t index) const -> equivalent_type {
+        assert(index < num());
+        return equivalent_type{pitches()[index], yaws()[index], rolls()[index]};
+    }
+};
+static_assert(
+    ioj::soa_storage_detail::validate_compact_view<LevelTurretSpawnEventsView_rotations>());
+template <bool Const>
+struct LevelTurretSpawnEventsViewImpl : ioj::soa_storage_detail::CompactViewOperations {
+    using soa_schema = LevelTurretSpawnEventsSchema;
+    using size_type = std::uint32_t;
+    using Layout = LevelTurretSpawnEventsLayout;
+    using Storage = ioj::native_soa::StorageState;
+    using State = std::conditional_t<Const, Storage const, Storage>;
+    template <typename T>
+    using Element = std::conditional_t<Const, T const, T>;
+    using View = LevelTurretSpawnEventsView;
+    using ConstView = LevelTurretSpawnEventsConstView;
+    LevelTurretSpawnEventsViewImpl() = default;
+    LevelTurretSpawnEventsViewImpl(State* state, size_type offset, size_type count)
+        : state_{state}
+        , offset_{offset}
+        , count_{count} {}
+    template <bool Enabled = Const>
+    LevelTurretSpawnEventsViewImpl(LevelTurretSpawnEventsViewImpl<false> const& other)
         requires Enabled
         : state_{other.state_}
         , offset_{other.offset_}
         , count_{other.count_} {}
     auto entity_indices() const { return make_column_view(Layout::columns.EntityIndicesColumn); }
-    auto view_locations() const {
-        using ioj::soa_storage_detail::three_column_view;
-        return three_column_view<ioj::Vector3SoAView<Element<float>>>(
-            state_,
-            offset_,
-            count_,
-            Layout::columns.LocationsXsColumn,
-            Layout::columns.LocationsYsColumn,
-            Layout::columns.LocationsZsColumn);
+    auto view_locations() const -> std::conditional_t<Const,
+                                                      LevelTurretSpawnEventsConstView_locations,
+                                                      LevelTurretSpawnEventsView_locations> {
+        return {state_, offset_, count_};
     }
-    auto view_rotations() const {
-        using ioj::soa_storage_detail::three_column_view;
-        return three_column_view<std::conditional_t<Const,
-                                                    ioj::native_soa::RotatorSoAConstView<float>,
-                                                    ioj::native_soa::RotatorSoAView<float>>>(
-            state_,
-            offset_,
-            count_,
-            Layout::columns.RotationsPitchesColumn,
-            Layout::columns.RotationsYawsColumn,
-            Layout::columns.RotationsRollsColumn);
+    auto view_rotations() const -> std::conditional_t<Const,
+                                                      LevelTurretSpawnEventsConstView_rotations,
+                                                      LevelTurretSpawnEventsView_rotations> {
+        return {state_, offset_, count_};
     }
     auto teams() const { return make_column_view(Layout::columns.TeamsColumn); }
     auto healths() const { return make_column_view(Layout::columns.HealthsColumn); }
@@ -577,8 +532,8 @@ struct LevelTurretSpawnEventsSingleViewImpl : ioj::soa_storage_detail::CompactVi
         func(laser_damages());
     }
     auto resolve() const -> std::conditional_t<Const,
-                                               LevelTurretSpawnEventsSingleResolvedConstView,
-                                               LevelTurretSpawnEventsSingleResolvedView> {
+                                               LevelTurretSpawnEventsResolvedConstView,
+                                               LevelTurretSpawnEventsResolvedView> {
         return {(make_column_view(Layout::columns.EntityIndicesColumn).data()),
                 (make_column_view(Layout::columns.LocationsXsColumn).data()),
                 (make_column_view(Layout::columns.LocationsYsColumn).data()),
@@ -599,19 +554,18 @@ struct LevelTurretSpawnEventsSingleViewImpl : ioj::soa_storage_detail::CompactVi
     }
     friend ioj::soa_storage_detail::CompactViewOperations;
     template <bool>
-    friend struct LevelTurretSpawnEventsSingleViewImpl;
+    friend struct LevelTurretSpawnEventsViewImpl;
     State* state_{};
     size_type offset_{};
     size_type count_{};
 };
-struct LevelTurretSpawnEventsSingleConstView : LevelTurretSpawnEventsSingleViewImpl<true> {
-    using Base = LevelTurretSpawnEventsSingleViewImpl<true>;
+struct LevelTurretSpawnEventsConstView : LevelTurretSpawnEventsViewImpl<true> {
+    using Base = LevelTurretSpawnEventsViewImpl<true>;
     using Base::Base;
 };
-static_assert(
-    ioj::soa_storage_detail::validate_compact_view<LevelTurretSpawnEventsSingleConstView>());
-struct LevelTurretSpawnEventsSingleView : LevelTurretSpawnEventsSingleViewImpl<false> {
-    using Base = LevelTurretSpawnEventsSingleViewImpl<false>;
+static_assert(ioj::soa_storage_detail::validate_compact_view<LevelTurretSpawnEventsConstView>());
+struct LevelTurretSpawnEventsView : LevelTurretSpawnEventsViewImpl<false> {
+    using Base = LevelTurretSpawnEventsViewImpl<false>;
     using Base::Base;
     void set(size_type index,
              ioj::sim::LevelEntityIndex const new_entity_indices,
@@ -636,8 +590,23 @@ struct LevelTurretSpawnEventsSingleView : LevelTurretSpawnEventsSingleViewImpl<f
         this->healths()[index] = new_healths;
         this->laser_damages()[index] = new_laser_damages;
     }
+    void set(size_type index,
+             ioj::sim::LevelEntityIndex const new_entity_indices,
+             Vector3f const new_locations,
+             Rotator3f const new_rotations,
+             ::ioj::Team const new_teams,
+             Health const new_healths,
+             std::int32_t const new_laser_damages) const {
+        assert(index < num());
+        this->entity_indices()[index] = new_entity_indices;
+        this->view_locations().set(index, new_locations);
+        this->view_rotations().set(index, new_rotations);
+        this->teams()[index] = new_teams;
+        this->healths()[index] = new_healths;
+        this->laser_damages()[index] = new_laser_damages;
+    }
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<LevelTurretSpawnEventsSingleView>());
+static_assert(ioj::soa_storage_detail::validate_compact_view<LevelTurretSpawnEventsView>());
 // Columns:
 // entity_indices: ioj::sim::LevelEntityIndex
 // locations_xs: float
@@ -654,7 +623,7 @@ struct LevelTurretSpawnEvents
     , ioj::native_soa::StorageOperations {
     using soa_schema = LevelTurretSpawnEventsSchema;
     using Operations = ioj::native_soa::StorageOperations;
-    using Layout = LevelTurretSpawnEventsSingleLayout;
+    using Layout = LevelTurretSpawnEventsLayout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
 
@@ -667,8 +636,8 @@ struct LevelTurretSpawnEvents
         return Layout::layout_bytes(blocks);
     }
 
-    using View = LevelTurretSpawnEventsSingleView;
-    using ConstView = LevelTurretSpawnEventsSingleConstView;
+    using View = LevelTurretSpawnEventsView;
+    using ConstView = LevelTurretSpawnEventsConstView;
 
     /* **************************************** */
     // Lifetime
@@ -860,7 +829,7 @@ struct LevelTurretSpawnEvents
     auto healths(this auto& self) { return self.get_view().healths(); }
     auto laser_damages(this auto& self) { return self.get_view().laser_damages(); }
     void set(size_type index,
-             ioj::sim::LevelEntityIndex const new_entity_indices,
+             LevelEntityIndex const new_entity_indices,
              float const new_locations_xs,
              float const new_locations_ys,
              float const new_locations_zs,
@@ -882,7 +851,7 @@ struct LevelTurretSpawnEvents
         get_view().healths()[index] = new_healths;
         get_view().laser_damages()[index] = new_laser_damages;
     }
-    size_type add(ioj::sim::LevelEntityIndex const new_entity_indices,
+    size_type add(LevelEntityIndex const new_entity_indices,
                   float const new_locations_xs,
                   float const new_locations_ys,
                   float const new_locations_zs,
@@ -906,6 +875,52 @@ struct LevelTurretSpawnEvents
             new_healths,
             new_laser_damages);
         return index;
+    }
+    void set(size_type index,
+             LevelEntityIndex const new_entity_indices,
+             Vector3f const new_locations,
+             Rotator3f const new_rotations,
+             ::ioj::Team const new_teams,
+             Health const new_healths,
+             std::int32_t const new_laser_damages) {
+        assert(index < num());
+        get_view().entity_indices()[index] = new_entity_indices;
+        get_view().view_locations().set(index, new_locations);
+        get_view().view_rotations().set(index, new_rotations);
+        get_view().teams()[index] = new_teams;
+        get_view().healths()[index] = new_healths;
+        get_view().laser_damages()[index] = new_laser_damages;
+    }
+    size_type add(LevelEntityIndex const new_entity_indices,
+                  Vector3f const new_locations,
+                  Rotator3f const new_rotations,
+                  ::ioj::Team const new_teams,
+                  Health const new_healths,
+                  std::int32_t const new_laser_damages) {
+        auto const index{num()};
+        add_uninitialised(1);
+        set(index,
+            new_entity_indices,
+            new_locations,
+            new_rotations,
+            new_teams,
+            new_healths,
+            new_laser_damages);
+        return index;
+    }
+    void apply_permutation(std::span<size_type> indices) {
+        assert(indices.size() == num_);
+        auto const columns{get_data()};
+        ioj::apply_permutation(std::span{columns.entity_indices, num_}, indices);
+        ioj::apply_permutation(std::span{columns.locations_xs, num_}, indices);
+        ioj::apply_permutation(std::span{columns.locations_ys, num_}, indices);
+        ioj::apply_permutation(std::span{columns.locations_zs, num_}, indices);
+        ioj::apply_permutation(std::span{columns.rotations_pitches, num_}, indices);
+        ioj::apply_permutation(std::span{columns.rotations_yaws, num_}, indices);
+        ioj::apply_permutation(std::span{columns.rotations_rolls, num_}, indices);
+        ioj::apply_permutation(std::span{columns.teams, num_}, indices);
+        ioj::apply_permutation(std::span{columns.healths, num_}, indices);
+        ioj::apply_permutation(std::span{columns.laser_damages, num_}, indices);
     }
   private:
     std::pmr::memory_resource* resource_{};

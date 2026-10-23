@@ -41,7 +41,7 @@ inline constexpr float no_trace_hit{std::numeric_limits<float>::infinity()};
 [[nodiscard]] auto is_cell_coord_in_bounds(GridGeometry geometry, CellCoord coordinate) noexcept
     -> bool;
 void are_spheres_in_bounds(GridGeometry geometry,
-                           Vectors3fConstView centres,
+                           Vectors3fResolvedConstView centres,
                            float radius,
                            std::span<SphereInBoundsResult> results) noexcept;
 

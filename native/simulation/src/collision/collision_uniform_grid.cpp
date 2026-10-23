@@ -78,7 +78,7 @@ auto CollisionUniformGrid::is_cell_coord_in_bounds(collision::CellCoord const mi
     return is_cell_coord_in_bounds(min_coord) && is_cell_coord_in_bounds(max_coord);
 }
 void CollisionUniformGrid::are_spheres_in_bounds(
-    Vectors3fConstView const centres,
+    Vectors3fResolvedConstView const centres,
     float const radius,
     std::span<SphereInBoundsResult> const out_results) const {
     [[maybe_unused]] auto const count{centres.num()};
@@ -163,7 +163,7 @@ void CollisionUniformGrid::rebuild_entity_grid(EntityAABBs const& entity_aabbs,
 
     auto const append_batch{[&](EntityType const type,
                                 std::span<EntityId const> const ids,
-                                Vectors3fConstView const locations,
+                                Vectors3fResolvedConstView const locations,
                                 HealthConstView const healths,
                                 auto orientation_at) {
         auto& rows{storage.entity_row_to_aabb_row[type]};
@@ -204,26 +204,26 @@ void CollisionUniformGrid::rebuild_entity_grid(EntityAABBs const& entity_aabbs,
                 to_float(player->get_physical_state().transform.location),
                 to_quaternion(to_float(player->get_physical_state().transform.rotator()))));
     }
-    auto const capital_rotations{capitals.view_rotations()};
+    auto const capital_rotations{capitals.view_rotations().resolve()};
     append_batch(EntityType::CapitalShip,
                  capitals.entity_ids(),
-                 capitals.view_locations(),
+                 capitals.view_locations().resolve(),
                  level.get_capitals().get_healths(),
                  [capital_rotations](std::uint32_t row) {
                      return to_quaternion(rotation_at(capital_rotations, row));
                  });
-    auto const turret_rotations{turrets.view_rotations()};
+    auto const turret_rotations{turrets.view_rotations().resolve()};
     append_batch(EntityType::Turret,
                  turrets.entity_ids(),
-                 turrets.view_locations(),
+                 turrets.view_locations().resolve(),
                  level.get_turrets().get_healths(),
                  [turret_rotations](std::uint32_t row) {
                      return to_quaternion(rotation_at(turret_rotations, row));
                  });
-    auto const fighter_directions{fighters.view_aim_directions()};
+    auto const fighter_directions{fighters.view_aim_directions().resolve()};
     append_batch(EntityType::Fighter,
                  fighters.entity_ids(),
-                 fighters.view_locations(),
+                 fighters.view_locations().resolve(),
                  level.get_fighters().get_healths(),
                  [fighter_directions](std::uint32_t row) {
                      return to_quaternion(direction_to_rotation(fighter_directions[row]));
@@ -231,7 +231,7 @@ void CollisionUniformGrid::rebuild_entity_grid(EntityAABBs const& entity_aabbs,
     auto const spinner_yaws{spinners.yaws()};
     append_batch(EntityType::TubeSpinner,
                  spinners.entity_ids(),
-                 spinners.view_locations(),
+                 spinners.view_locations().resolve(),
                  {},
                  [spinner_yaws](std::uint32_t row) {
                      return to_quaternion(Rotator3f{.yaw = spinner_yaws[row]});
@@ -658,7 +658,7 @@ void CollisionUniformGrid::trace_aabbs_impl(LineTraceBatch const traces,
         };
     }
 
-    auto const hit_locations{hits.view_locations()};
+    auto const hit_locations{hits.view_locations().resolve()};
     auto const hit_flags{hits.hits()};
     auto const hit_entities{hits.entities()};
     auto const hit_static_indices{hits.static_geometry_indices()};

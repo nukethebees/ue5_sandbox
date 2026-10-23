@@ -10,7 +10,7 @@ namespace ioj::sim {
 
 namespace level_telemetry_block_history_detail {
 auto capacity_for_bytes(std::size_t const bytes) -> std::uint32_t {
-    using Layout = telemetry::HistoryRowsSingleLayout;
+    using Layout = telemetry::HistoryRowsLayout;
     auto low{std::size_t{0}};
     auto high{static_cast<std::size_t>(Layout::max_capacity / Layout::capacity_granularity)};
     while (low < high) {
@@ -44,7 +44,7 @@ LevelTelemetryBlockHistory::LevelTelemetryBlockHistory(GameMemory& memory,
                                          logical_payload_bytes_per_row()}
     , rows_per_block_{
           level_telemetry_block_history_detail::capacity_for_bytes(config.block_bytes)} {
-    using Layout = telemetry::HistoryRowsSingleLayout;
+    using Layout = telemetry::HistoryRowsLayout;
     if (rows_per_block_ < Layout::capacity_granularity) {
         fatal_error(
             std::format("Telemetry block budget of {} bytes cannot hold the minimum {} rows",
@@ -64,20 +64,20 @@ void LevelTelemetryBlockHistory::reset() {
     row_count_ = 0;
 }
 
-auto LevelTelemetryBlockHistory::append_uninitialized() -> telemetry::HistoryRowsSingleView {
+auto LevelTelemetryBlockHistory::append_uninitialized() -> telemetry::HistoryRowsView {
     auto& block{acquire_or_reuse_next_block()};
     auto const row{block.storage.num_++};
     ++row_count_;
     return {&block.storage, row, 1};
 }
 
-auto LevelTelemetryBlockHistory::last_view() -> telemetry::HistoryRowsSingleView {
+auto LevelTelemetryBlockHistory::last_view() -> telemetry::HistoryRowsView {
     assert(row_count_ > 0 && used_block_count_ > 0);
     auto& storage{blocks_[used_block_count_ - 1].storage};
     return {&storage, storage.num_ - 1, 1};
 }
 
-auto LevelTelemetryBlockHistory::last_const_view() const -> telemetry::HistoryRowsSingleConstView {
+auto LevelTelemetryBlockHistory::last_const_view() const -> telemetry::HistoryRowsConstView {
     assert(row_count_ > 0 && used_block_count_ > 0);
     auto const& storage{blocks_[used_block_count_ - 1].storage};
     return {&storage, storage.num_ - 1, 1};
@@ -89,7 +89,7 @@ auto LevelTelemetryBlockHistory::block_data(std::uint32_t const index) const -> 
 }
 
 auto LevelTelemetryBlockHistory::block_view(std::uint32_t const index) const
-    -> telemetry::HistoryRowsSingleConstView {
+    -> telemetry::HistoryRowsConstView {
     assert(index < used_block_count_);
     auto const& storage{blocks_[index].storage};
     return {&storage, 0, storage.num_};
@@ -126,7 +126,7 @@ auto LevelTelemetryBlockHistory::acquire_or_reuse_next_block() -> Block& {
     }
 
     if (used_block_count_ == static_cast<std::uint32_t>(blocks_.size())) {
-        using Layout = telemetry::HistoryRowsSingleLayout;
+        using Layout = telemetry::HistoryRowsLayout;
         blocks_.emplace_back(
             memory_.acquire_block(layout_bytes_per_block_, Layout::allocation_alignment),
             rows_per_block_);

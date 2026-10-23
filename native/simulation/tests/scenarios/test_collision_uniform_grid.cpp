@@ -126,8 +126,8 @@ auto make_line_traces(std::span<Vector3f const> const starts, std::span<Vector3f
     auto const count{static_cast<std::int32_t>(starts.size())};
     traces.set_num(count);
     auto const columns{traces.get_view()};
-    auto const trace_starts{columns.view_starts()};
-    auto const trace_ends{columns.view_ends()};
+    auto const trace_starts{columns.view_starts().resolve()};
+    auto const trace_ends{columns.view_ends().resolve()};
     for (std::int32_t i{}; i < count; ++i) {
         set_vector(trace_starts, i, starts[i]);
         set_vector(trace_ends, i, ends[i]);

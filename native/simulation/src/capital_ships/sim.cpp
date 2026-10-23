@@ -108,7 +108,7 @@ void Sim::resolve_damage_events(ResolutionInputs const inputs) {
     sim::resolve_damage_events(inputs.combat_events.events_for(EntityType::CapitalShip),
                                entity_tables_.lookups.for_type(EntityType::CapitalShip),
                                entities.entity_ids(),
-                               entities.view_locations().get_const_view(),
+                               entities.view_locations().get_const_view().resolve(),
                                healths,
                                local_indices_to_remove,
                                entity_death_info,
@@ -213,8 +213,8 @@ auto Sim::register_ships(LevelCapitalSpawnEvents::ConstView const spawn_data)
     std::vector<EntityId> new_ids{new_entity_ids.begin(), new_entity_ids.end()};
     entity_tables_.health.initialise_rows<EntityType::CapitalShip>(first_new_index, spawn_healths);
     auto const entities{this->entities.get_const_view()};
-    auto const locations{entities.view_locations()};
-    auto const rotations{entities.view_rotations()};
+    auto const locations{entities.view_locations().resolve()};
+    auto const rotations{entities.view_rotations().resolve()};
     auto const teams{entities.teams()};
     auto const entity_ids{entities.entity_ids()};
     for (std::uint32_t i{}; i < n_to_add; ++i) {
@@ -236,15 +236,15 @@ void Sim::spawn_ships(LevelCapitalSpawnEvents::ConstView const spawn_data) {
 
     entities.add_defaulted(n_to_add);
     auto const appended{entities.right(n_to_add)};
-    auto const appended_locations{appended.view_locations()};
-    auto const appended_rotations{appended.view_rotations()};
+    auto const appended_locations{appended.view_locations().resolve()};
+    auto const appended_rotations{appended.view_rotations().resolve()};
     auto const appended_fighter_spawn_timers{appended.fighter_spawn_timers()};
     auto const appended_fighter_spawn_cooldowns{appended.fighter_spawn_cooldowns()};
     auto const appended_teams{appended.teams()};
     auto const appended_target_ids{appended.target_ids()};
 
-    auto const spawn_data_locations{spawn_data.view_locations()};
-    auto const spawn_data_rotations{spawn_data.view_rotations()};
+    auto const spawn_data_locations{spawn_data.view_locations().resolve()};
+    auto const spawn_data_rotations{spawn_data.view_rotations().resolve()};
     auto const spawn_data_initial_fighter_spawn_delays{spawn_data.initial_fighter_spawn_delays()};
     auto const spawn_data_fighter_spawn_cooldowns{spawn_data.fighter_spawn_cooldowns()};
     auto const spawn_data_teams{spawn_data.teams()};
@@ -295,13 +295,13 @@ void Sim::queue_fighter_spawns(FrameMemoryResource* const scratch_resource) {
     FighterSpawnQueue fighter_spawn_wave{*scratch_resource};
     assert(std::in_range<std::uint32_t>(relative_transforms.size()));
     fighter_spawn_wave.reserve(static_cast<std::uint32_t>(relative_transforms.size()));
-    auto const locations{entities.view_locations()};
+    auto const locations{entities.view_locations().resolve()};
     auto const teams{entities.teams()};
     auto const entity_ids{entities.entity_ids()};
     auto const spawn_timers{entities.fighter_spawn_timers()};
     auto const spawn_cooldowns{entities.fighter_spawn_cooldowns()};
 
-    auto const rotations{entities.view_rotations()};
+    auto const rotations{entities.view_rotations().resolve()};
 
     for (auto const capital_index : ships_ready_to_spawn_fighters_indices) {
         fighter_spawn_wave.reset();

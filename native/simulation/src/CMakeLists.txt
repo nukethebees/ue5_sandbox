@@ -40,7 +40,7 @@ target_sources(native-simulation PRIVATE
   ../include/ioj/sim/fighters/fighter_task_format.h
   ../include/ioj/sim/fixed_tick_loop.h
   ../include/ioj/sim/fixed_tick.h
-  ../include/ioj/sim/collision/frame_range_query_results.h
+  ../include/ioj/sim/collision/range_query_results.h
   ../include/ioj/sim/entities/entity_tables.h
   ../include/ioj/sim/entities/health_table.h
   ../include/ioj/sim/index_span.h

@@ -10,16 +10,17 @@
 #include "ioj/sim/entities/entity_life_state.h"
 #include "ioj/sim/entities/entity_type.h"
 #include "ioj/sim/sim_tick.h"
+#include "ioj/soa_permutation.h"
 
 #include <cassert>
+#include <cstdint>
 #include <memory_resource>
 
 namespace ioj::sim {
-struct EntityHistoryColumnsSchema;
-
-struct EntityHistoryColumnsSingleView;
-struct EntityHistoryColumnsSingleConstView;
-struct EntityHistoryColumnsSingleLayoutColumns {
+struct EntityHistorySchema;
+struct EntityHistoryView;
+struct EntityHistoryConstView;
+struct EntityHistoryLayoutColumns {
     template <typename T>
     using ColLayout = ioj::native_soa::ColumnLayout<T>;
 
@@ -34,7 +35,7 @@ struct EntityHistoryColumnsSingleLayoutColumns {
     ColLayout<SimTick> DeathTicksColumn;
     ColLayout<Vector3f> DeathLocationsColumn;
 
-    constexpr EntityHistoryColumnsSingleLayoutColumns() noexcept
+    constexpr EntityHistoryLayoutColumns() noexcept
         : EntityIdsColumn{LayoutStart}
         , EntityTypesColumn{EntityIdsColumn}
         , TeamsColumn{EntityTypesColumn}
@@ -43,12 +44,10 @@ struct EntityHistoryColumnsSingleLayoutColumns {
         , LifeStateColumn{KilledByColumn}
         , DeathTicksColumn{LifeStateColumn}
         , DeathLocationsColumn{DeathTicksColumn} {}
-    EntityHistoryColumnsSingleLayoutColumns(EntityHistoryColumnsSingleLayoutColumns const&) =
-        delete;
-    auto operator=(EntityHistoryColumnsSingleLayoutColumns const&)
-        -> EntityHistoryColumnsSingleLayoutColumns& = delete;
+    EntityHistoryLayoutColumns(EntityHistoryLayoutColumns const&) = delete;
+    auto operator=(EntityHistoryLayoutColumns const&) -> EntityHistoryLayoutColumns& = delete;
 };
-struct EntityHistoryColumnsSingleLayout {
+struct EntityHistoryLayout {
     using size_type = std::uint32_t;
     using byte_size_type = std::size_t;
 
@@ -56,7 +55,7 @@ struct EntityHistoryColumnsSingleLayout {
         ioj::native_soa::LayoutPolicy::capacity_granularity};
     static constexpr byte_size_type column_gap{ioj::native_soa::LayoutPolicy::column_gap};
 
-    static constexpr EntityHistoryColumnsSingleLayoutColumns columns{};
+    static constexpr EntityHistoryLayoutColumns columns{};
 
     static constexpr byte_size_type allocation_alignment{
         columns.DeathLocationsColumn.allocation_alignment};
@@ -73,26 +72,26 @@ struct EntityHistoryColumnsSingleLayout {
     static_assert(max_capacity >= capacity_granularity);
 };
 
-struct EntityHistoryColumnsSingleResolvedView;
-struct EntityHistoryColumnsSingleResolvedConstView;
+struct EntityHistoryResolvedView;
+struct EntityHistoryResolvedConstView;
 template <bool Const>
-struct EntityHistoryColumnsSingleResolvedViewImpl {
+struct EntityHistoryResolvedViewImpl {
     using size_type = std::uint32_t;
-    using View = EntityHistoryColumnsSingleResolvedView;
-    using ConstView = EntityHistoryColumnsSingleResolvedConstView;
-    using soa_schema = EntityHistoryColumnsSchema;
+    using View = EntityHistoryResolvedView;
+    using ConstView = EntityHistoryResolvedConstView;
+    using soa_schema = ::ioj::sim::EntityHistorySchema;
     template <typename T>
     using Element = std::conditional_t<Const, T const, T>;
-    EntityHistoryColumnsSingleResolvedViewImpl() = default;
-    EntityHistoryColumnsSingleResolvedViewImpl(Element<EntityId>* entity_ids,
-                                               Element<ioj::sim::EntityType>* entity_types,
-                                               Element<::ioj::Team>* teams,
-                                               Element<std::uint32_t>* kills,
-                                               Element<EntityId>* killed_by,
-                                               Element<LifeState>* life_state,
-                                               Element<SimTick>* death_ticks,
-                                               Element<Vector3f>* death_locations,
-                                               size_type count)
+    EntityHistoryResolvedViewImpl() = default;
+    EntityHistoryResolvedViewImpl(Element<EntityId>* entity_ids,
+                                  Element<ioj::sim::EntityType>* entity_types,
+                                  Element<::ioj::Team>* teams,
+                                  Element<std::uint32_t>* kills,
+                                  Element<EntityId>* killed_by,
+                                  Element<LifeState>* life_state,
+                                  Element<SimTick>* death_ticks,
+                                  Element<Vector3f>* death_locations,
+                                  size_type count)
         : entity_ids_{entity_ids}
         , entity_types_{entity_types}
         , teams_{teams}
@@ -112,16 +111,15 @@ struct EntityHistoryColumnsSingleResolvedViewImpl {
                                                           death_ticks_,
                                                           death_locations_);
     }
-    EntityHistoryColumnsSingleResolvedViewImpl(
-        std::span<Element<EntityId>> entity_ids,
-        std::span<Element<ioj::sim::EntityType>> entity_types,
-        std::span<Element<::ioj::Team>> teams,
-        std::span<Element<std::uint32_t>> kills,
-        std::span<Element<EntityId>> killed_by,
-        std::span<Element<LifeState>> life_state,
-        std::span<Element<SimTick>> death_ticks,
-        std::span<Element<Vector3f>> death_locations)
-        : EntityHistoryColumnsSingleResolvedViewImpl{
+    EntityHistoryResolvedViewImpl(std::span<Element<EntityId>> entity_ids,
+                                  std::span<Element<ioj::sim::EntityType>> entity_types,
+                                  std::span<Element<::ioj::Team>> teams,
+                                  std::span<Element<std::uint32_t>> kills,
+                                  std::span<Element<EntityId>> killed_by,
+                                  std::span<Element<LifeState>> life_state,
+                                  std::span<Element<SimTick>> death_ticks,
+                                  std::span<Element<Vector3f>> death_locations)
+        : EntityHistoryResolvedViewImpl{
               entity_ids.data(),
               entity_types.data(),
               teams.data(),
@@ -141,8 +139,7 @@ struct EntityHistoryColumnsSingleResolvedViewImpl {
         assert(death_locations.size() == count_);
     }
     template <bool Enabled = Const>
-    EntityHistoryColumnsSingleResolvedViewImpl(
-        EntityHistoryColumnsSingleResolvedViewImpl<false> const& other)
+    EntityHistoryResolvedViewImpl(EntityHistoryResolvedViewImpl<false> const& other)
         requires Enabled
         : entity_ids_{other.entity_ids_}
         , entity_types_{other.entity_types_}
@@ -219,7 +216,7 @@ struct EntityHistoryColumnsSingleResolvedViewImpl {
     }
   private:
     template <bool>
-    friend struct EntityHistoryColumnsSingleResolvedViewImpl;
+    friend struct EntityHistoryResolvedViewImpl;
     Element<EntityId>* entity_ids_{};
     Element<ioj::sim::EntityType>* entity_types_{};
     Element<::ioj::Team>* teams_{};
@@ -230,13 +227,12 @@ struct EntityHistoryColumnsSingleResolvedViewImpl {
     Element<Vector3f>* death_locations_{};
     size_type count_{};
 };
-struct EntityHistoryColumnsSingleResolvedConstView
-    : EntityHistoryColumnsSingleResolvedViewImpl<true> {
-    using Base = EntityHistoryColumnsSingleResolvedViewImpl<true>;
+struct EntityHistoryResolvedConstView : EntityHistoryResolvedViewImpl<true> {
+    using Base = EntityHistoryResolvedViewImpl<true>;
     using Base::Base;
 };
-struct EntityHistoryColumnsSingleResolvedView : EntityHistoryColumnsSingleResolvedViewImpl<false> {
-    using Base = EntityHistoryColumnsSingleResolvedViewImpl<false>;
+struct EntityHistoryResolvedView : EntityHistoryResolvedViewImpl<false> {
+    using Base = EntityHistoryResolvedViewImpl<false>;
     using Base::Base;
     void set(size_type index,
              EntityId const new_entity_ids,
@@ -259,23 +255,23 @@ struct EntityHistoryColumnsSingleResolvedView : EntityHistoryColumnsSingleResolv
     }
 };
 template <bool Const>
-struct EntityHistoryColumnsSingleViewImpl : ioj::soa_storage_detail::CompactViewOperations {
-    using soa_schema = EntityHistoryColumnsSchema;
+struct EntityHistoryViewImpl : ioj::soa_storage_detail::CompactViewOperations {
+    using soa_schema = EntityHistorySchema;
     using size_type = std::uint32_t;
-    using Layout = EntityHistoryColumnsSingleLayout;
+    using Layout = EntityHistoryLayout;
     using Storage = ioj::native_soa::StorageState;
     using State = std::conditional_t<Const, Storage const, Storage>;
     template <typename T>
     using Element = std::conditional_t<Const, T const, T>;
-    using View = EntityHistoryColumnsSingleView;
-    using ConstView = EntityHistoryColumnsSingleConstView;
-    EntityHistoryColumnsSingleViewImpl() = default;
-    EntityHistoryColumnsSingleViewImpl(State* state, size_type offset, size_type count)
+    using View = EntityHistoryView;
+    using ConstView = EntityHistoryConstView;
+    EntityHistoryViewImpl() = default;
+    EntityHistoryViewImpl(State* state, size_type offset, size_type count)
         : state_{state}
         , offset_{offset}
         , count_{count} {}
     template <bool Enabled = Const>
-    EntityHistoryColumnsSingleViewImpl(EntityHistoryColumnsSingleViewImpl<false> const& other)
+    EntityHistoryViewImpl(EntityHistoryViewImpl<false> const& other)
         requires Enabled
         : state_{other.state_}
         , offset_{other.offset_}
@@ -299,9 +295,8 @@ struct EntityHistoryColumnsSingleViewImpl : ioj::soa_storage_detail::CompactView
         func(death_ticks());
         func(death_locations());
     }
-    auto resolve() const -> std::conditional_t<Const,
-                                               EntityHistoryColumnsSingleResolvedConstView,
-                                               EntityHistoryColumnsSingleResolvedView> {
+    auto resolve() const
+        -> std::conditional_t<Const, EntityHistoryResolvedConstView, EntityHistoryResolvedView> {
         return {(make_column_view(Layout::columns.EntityIdsColumn).data()),
                 (make_column_view(Layout::columns.EntityTypesColumn).data()),
                 (make_column_view(Layout::columns.TeamsColumn).data()),
@@ -320,19 +315,18 @@ struct EntityHistoryColumnsSingleViewImpl : ioj::soa_storage_detail::CompactView
     }
     friend ioj::soa_storage_detail::CompactViewOperations;
     template <bool>
-    friend struct EntityHistoryColumnsSingleViewImpl;
+    friend struct EntityHistoryViewImpl;
     State* state_{};
     size_type offset_{};
     size_type count_{};
 };
-struct EntityHistoryColumnsSingleConstView : EntityHistoryColumnsSingleViewImpl<true> {
-    using Base = EntityHistoryColumnsSingleViewImpl<true>;
+struct EntityHistoryConstView : EntityHistoryViewImpl<true> {
+    using Base = EntityHistoryViewImpl<true>;
     using Base::Base;
 };
-static_assert(
-    ioj::soa_storage_detail::validate_compact_view<EntityHistoryColumnsSingleConstView>());
-struct EntityHistoryColumnsSingleView : EntityHistoryColumnsSingleViewImpl<false> {
-    using Base = EntityHistoryColumnsSingleViewImpl<false>;
+static_assert(ioj::soa_storage_detail::validate_compact_view<EntityHistoryConstView>());
+struct EntityHistoryView : EntityHistoryViewImpl<false> {
+    using Base = EntityHistoryViewImpl<false>;
     using Base::Base;
     void set(size_type index,
              EntityId const new_entity_ids,
@@ -354,7 +348,7 @@ struct EntityHistoryColumnsSingleView : EntityHistoryColumnsSingleViewImpl<false
         this->death_locations()[index] = new_death_locations;
     }
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<EntityHistoryColumnsSingleView>());
+static_assert(ioj::soa_storage_detail::validate_compact_view<EntityHistoryView>());
 // Columns:
 // entity_ids: EntityId
 // entity_types: ioj::sim::EntityType
@@ -367,9 +361,9 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<EntityHistoryColumn
 struct EntityHistory
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {
-    using soa_schema = EntityHistoryColumnsSchema;
+    using soa_schema = EntityHistorySchema;
     using Operations = ioj::native_soa::StorageOperations;
-    using Layout = EntityHistoryColumnsSingleLayout;
+    using Layout = EntityHistoryLayout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
 
@@ -382,8 +376,8 @@ struct EntityHistory
         return Layout::layout_bytes(blocks);
     }
 
-    using View = EntityHistoryColumnsSingleView;
-    using ConstView = EntityHistoryColumnsSingleConstView;
+    using View = EntityHistoryView;
+    using ConstView = EntityHistoryConstView;
 
     /* **************************************** */
     // Lifetime
@@ -564,7 +558,7 @@ struct EntityHistory
     auto death_locations(this auto& self) { return self.get_view().death_locations(); }
     void set(size_type index,
              EntityId const new_entity_ids,
-             ioj::sim::EntityType const new_entity_types,
+             EntityType const new_entity_types,
              ::ioj::Team const new_teams,
              std::uint32_t const new_kills,
              EntityId const new_killed_by,
@@ -582,7 +576,7 @@ struct EntityHistory
         get_view().death_locations()[index] = new_death_locations;
     }
     size_type add(EntityId const new_entity_ids,
-                  ioj::sim::EntityType const new_entity_types,
+                  EntityType const new_entity_types,
                   ::ioj::Team const new_teams,
                   std::uint32_t const new_kills,
                   EntityId const new_killed_by,
@@ -601,6 +595,18 @@ struct EntityHistory
             new_death_ticks,
             new_death_locations);
         return index;
+    }
+    void apply_permutation(std::span<size_type> indices) {
+        assert(indices.size() == num_);
+        auto const columns{get_data()};
+        ioj::apply_permutation(std::span{columns.entity_ids, num_}, indices);
+        ioj::apply_permutation(std::span{columns.entity_types, num_}, indices);
+        ioj::apply_permutation(std::span{columns.teams, num_}, indices);
+        ioj::apply_permutation(std::span{columns.kills, num_}, indices);
+        ioj::apply_permutation(std::span{columns.killed_by, num_}, indices);
+        ioj::apply_permutation(std::span{columns.life_state, num_}, indices);
+        ioj::apply_permutation(std::span{columns.death_ticks, num_}, indices);
+        ioj::apply_permutation(std::span{columns.death_locations, num_}, indices);
     }
   private:
     std::pmr::memory_resource* resource_{};

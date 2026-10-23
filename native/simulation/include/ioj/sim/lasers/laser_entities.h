@@ -6,23 +6,21 @@
 #include "ioj/math_types.h"
 #include "ioj/native_soa/storage.h"
 #include "ioj/rotator_types.h"
+#include "ioj/rotators3f.h"
 #include "ioj/sim/entities/entity_id.h"
 #include "ioj/sim/lasers/laser_source.h"
-#include "ioj/vector_soa_view.h"
+#include "ioj/soa_permutation.h"
+#include "ioj/vectors3f.h"
 
 #include <cassert>
+#include <cstdint>
 #include <memory_resource>
 
 namespace ioj::sim::lasers {
-struct Vectors3fSchema;
-
-struct Rotators3fSchema;
-
-struct EntitiesSchema;
-
-struct EntitiesSingleView;
-struct EntitiesSingleConstView;
-struct EntitiesSingleLayoutColumns {
+struct LaserEntitiesSchema;
+struct LaserEntitiesView;
+struct LaserEntitiesConstView;
+struct LaserEntitiesLayoutColumns {
     template <typename T>
     using ColLayout = ioj::native_soa::ColumnLayout<T>;
 
@@ -45,7 +43,7 @@ struct EntitiesSingleLayoutColumns {
     ColLayout<float> InitialLifetimesColumn;
     ColLayout<float> SpawnTimesColumn;
 
-    constexpr EntitiesSingleLayoutColumns() noexcept
+    constexpr LaserEntitiesLayoutColumns() noexcept
         : ActiveColumn{LayoutStart}
         , SourcesColumn{ActiveColumn}
         , LocationsXsColumn{SourcesColumn}
@@ -62,10 +60,10 @@ struct EntitiesSingleLayoutColumns {
         , InstigatorIdsColumn{LifetimesRemainingColumn}
         , InitialLifetimesColumn{InstigatorIdsColumn}
         , SpawnTimesColumn{InitialLifetimesColumn} {}
-    EntitiesSingleLayoutColumns(EntitiesSingleLayoutColumns const&) = delete;
-    auto operator=(EntitiesSingleLayoutColumns const&) -> EntitiesSingleLayoutColumns& = delete;
+    LaserEntitiesLayoutColumns(LaserEntitiesLayoutColumns const&) = delete;
+    auto operator=(LaserEntitiesLayoutColumns const&) -> LaserEntitiesLayoutColumns& = delete;
 };
-struct EntitiesSingleLayout {
+struct LaserEntitiesLayout {
     using size_type = std::uint32_t;
     using byte_size_type = std::size_t;
 
@@ -73,7 +71,7 @@ struct EntitiesSingleLayout {
         ioj::native_soa::LayoutPolicy::capacity_granularity};
     static constexpr byte_size_type column_gap{ioj::native_soa::LayoutPolicy::column_gap};
 
-    static constexpr EntitiesSingleLayoutColumns columns{};
+    static constexpr LaserEntitiesLayoutColumns columns{};
 
     static constexpr byte_size_type allocation_alignment{
         columns.SpawnTimesColumn.allocation_alignment};
@@ -89,374 +87,34 @@ struct EntitiesSingleLayout {
     }
     static_assert(max_capacity >= capacity_granularity);
 };
-
-struct EntitiesSingleResolvedView_locations;
-struct EntitiesSingleResolvedConstView_locations;
+struct LaserEntitiesResolvedView;
+struct LaserEntitiesResolvedConstView;
 template <bool Const>
-struct EntitiesSingleResolvedView_locationsImpl {
+struct LaserEntitiesResolvedViewImpl {
     using size_type = std::uint32_t;
-    using View = EntitiesSingleResolvedView_locations;
-    using ConstView = EntitiesSingleResolvedConstView_locations;
-    using soa_schema = Vectors3fSchema;
+    using View = LaserEntitiesResolvedView;
+    using ConstView = LaserEntitiesResolvedConstView;
+    using soa_schema = ::ioj::sim::lasers::LaserEntitiesSchema;
     template <typename T>
     using Element = std::conditional_t<Const, T const, T>;
-    EntitiesSingleResolvedView_locationsImpl() = default;
-    EntitiesSingleResolvedView_locationsImpl(Element<float>* locations_xs,
-                                             Element<float>* locations_ys,
-                                             Element<float>* locations_zs,
-                                             size_type count)
-        : locations_xs_{locations_xs}
-        , locations_ys_{locations_ys}
-        , locations_zs_{locations_zs}
-        , count_{count} {
-        ioj::soa_storage_detail::validate_column_pointers(
-            count_, locations_xs_, locations_ys_, locations_zs_);
-    }
-    EntitiesSingleResolvedView_locationsImpl(std::span<Element<float>> locations_xs,
-                                             std::span<Element<float>> locations_ys,
-                                             std::span<Element<float>> locations_zs)
-        : EntitiesSingleResolvedView_locationsImpl{
-              locations_xs.data(),
-              locations_ys.data(),
-              locations_zs.data(),
-              ioj::soa_storage_detail::checked_row_count(locations_xs.size())} {
-        assert(locations_xs.size() == count_);
-        assert(locations_ys.size() == count_);
-        assert(locations_zs.size() == count_);
-    }
-    template <bool Enabled = Const>
-    EntitiesSingleResolvedView_locationsImpl(
-        EntitiesSingleResolvedView_locationsImpl<false> const& other)
-        requires Enabled
-        : locations_xs_{other.locations_xs_}
-        , locations_ys_{other.locations_ys_}
-        , locations_zs_{other.locations_zs_}
-        , count_{other.count_} {}
-    auto num() const noexcept -> size_type { return count_; }
-    auto is_empty() const noexcept -> bool { return count_ == 0; }
-    auto get_view(this auto const& self) { return self; }
-    auto get_const_view(this auto const& self) {
-        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
-        return Result{self.locations_xs_, self.locations_ys_, self.locations_zs_, self.count_};
-    }
-    auto resolve(this auto const& self) { return self; }
-    void validate() const {}
-    auto slice(this auto const& self, size_type offset, size_type count) {
-        assert(offset <= self.count_ && count <= self.count_ - offset);
-        using Result = std::remove_cvref_t<decltype(self)>;
-        return Result{self.locations_xs_ == nullptr ? nullptr : self.locations_xs_ + offset,
-                      self.locations_ys_ == nullptr ? nullptr : self.locations_ys_ + offset,
-                      self.locations_zs_ == nullptr ? nullptr : self.locations_zs_ + offset,
-                      count};
-    }
-    auto get_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count);
-    }
-    auto get_const_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count).get_const_view();
-    }
-    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
-    auto right(this auto const& self, size_type count) {
-        assert(count <= self.num());
-        return self.slice(self.num() - count, count);
-    }
-    auto xs() const -> std::span<Element<float>> { return {locations_xs_, count_}; }
-    auto ys() const -> std::span<Element<float>> { return {locations_ys_, count_}; }
-    auto zs() const -> std::span<Element<float>> { return {locations_zs_, count_}; }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        func(std::span<Element<float>>{locations_xs_, count_});
-        func(std::span<Element<float>>{locations_ys_, count_});
-        func(std::span<Element<float>>{locations_zs_, count_});
-    }
-  private:
-    template <bool>
-    friend struct EntitiesSingleResolvedView_locationsImpl;
-    Element<float>* locations_xs_{};
-    Element<float>* locations_ys_{};
-    Element<float>* locations_zs_{};
-    size_type count_{};
-};
-struct EntitiesSingleResolvedConstView_locations : EntitiesSingleResolvedView_locationsImpl<true> {
-    using Base = EntitiesSingleResolvedView_locationsImpl<true>;
-    using Base::Base;
-    using equivalent_type = Vector3f;
-    auto operator[](std::uint32_t index) const -> equivalent_type {
-        assert(index < num());
-        return equivalent_type{xs()[index], ys()[index], zs()[index]};
-    }
-};
-struct EntitiesSingleResolvedView_locations : EntitiesSingleResolvedView_locationsImpl<false> {
-    using Base = EntitiesSingleResolvedView_locationsImpl<false>;
-    using Base::Base;
-    void set(size_type index, float const new_xs, float const new_ys, float const new_zs) const {
-        assert(index < num());
-        this->xs()[index] = new_xs;
-        this->ys()[index] = new_ys;
-        this->zs()[index] = new_zs;
-    }
-    using equivalent_type = Vector3f;
-    auto operator[](std::uint32_t index) const -> equivalent_type {
-        assert(index < num());
-        return equivalent_type{xs()[index], ys()[index], zs()[index]};
-    }
-};
-struct EntitiesSingleResolvedView_rotations;
-struct EntitiesSingleResolvedConstView_rotations;
-template <bool Const>
-struct EntitiesSingleResolvedView_rotationsImpl {
-    using size_type = std::uint32_t;
-    using View = EntitiesSingleResolvedView_rotations;
-    using ConstView = EntitiesSingleResolvedConstView_rotations;
-    using soa_schema = Rotators3fSchema;
-    template <typename T>
-    using Element = std::conditional_t<Const, T const, T>;
-    EntitiesSingleResolvedView_rotationsImpl() = default;
-    EntitiesSingleResolvedView_rotationsImpl(Element<float>* rotations_pitches,
-                                             Element<float>* rotations_yaws,
-                                             Element<float>* rotations_rolls,
-                                             size_type count)
-        : rotations_pitches_{rotations_pitches}
-        , rotations_yaws_{rotations_yaws}
-        , rotations_rolls_{rotations_rolls}
-        , count_{count} {
-        ioj::soa_storage_detail::validate_column_pointers(
-            count_, rotations_pitches_, rotations_yaws_, rotations_rolls_);
-    }
-    EntitiesSingleResolvedView_rotationsImpl(std::span<Element<float>> rotations_pitches,
-                                             std::span<Element<float>> rotations_yaws,
-                                             std::span<Element<float>> rotations_rolls)
-        : EntitiesSingleResolvedView_rotationsImpl{
-              rotations_pitches.data(),
-              rotations_yaws.data(),
-              rotations_rolls.data(),
-              ioj::soa_storage_detail::checked_row_count(rotations_pitches.size())} {
-        assert(rotations_pitches.size() == count_);
-        assert(rotations_yaws.size() == count_);
-        assert(rotations_rolls.size() == count_);
-    }
-    template <bool Enabled = Const>
-    EntitiesSingleResolvedView_rotationsImpl(
-        EntitiesSingleResolvedView_rotationsImpl<false> const& other)
-        requires Enabled
-        : rotations_pitches_{other.rotations_pitches_}
-        , rotations_yaws_{other.rotations_yaws_}
-        , rotations_rolls_{other.rotations_rolls_}
-        , count_{other.count_} {}
-    auto num() const noexcept -> size_type { return count_; }
-    auto is_empty() const noexcept -> bool { return count_ == 0; }
-    auto get_view(this auto const& self) { return self; }
-    auto get_const_view(this auto const& self) {
-        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
-        return Result{
-            self.rotations_pitches_, self.rotations_yaws_, self.rotations_rolls_, self.count_};
-    }
-    auto resolve(this auto const& self) { return self; }
-    void validate() const {}
-    auto slice(this auto const& self, size_type offset, size_type count) {
-        assert(offset <= self.count_ && count <= self.count_ - offset);
-        using Result = std::remove_cvref_t<decltype(self)>;
-        return Result{self.rotations_pitches_ == nullptr ? nullptr
-                                                         : self.rotations_pitches_ + offset,
-                      self.rotations_yaws_ == nullptr ? nullptr : self.rotations_yaws_ + offset,
-                      self.rotations_rolls_ == nullptr ? nullptr : self.rotations_rolls_ + offset,
-                      count};
-    }
-    auto get_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count);
-    }
-    auto get_const_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count).get_const_view();
-    }
-    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
-    auto right(this auto const& self, size_type count) {
-        assert(count <= self.num());
-        return self.slice(self.num() - count, count);
-    }
-    auto pitches() const -> std::span<Element<float>> { return {rotations_pitches_, count_}; }
-    auto yaws() const -> std::span<Element<float>> { return {rotations_yaws_, count_}; }
-    auto rolls() const -> std::span<Element<float>> { return {rotations_rolls_, count_}; }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        func(std::span<Element<float>>{rotations_pitches_, count_});
-        func(std::span<Element<float>>{rotations_yaws_, count_});
-        func(std::span<Element<float>>{rotations_rolls_, count_});
-    }
-  private:
-    template <bool>
-    friend struct EntitiesSingleResolvedView_rotationsImpl;
-    Element<float>* rotations_pitches_{};
-    Element<float>* rotations_yaws_{};
-    Element<float>* rotations_rolls_{};
-    size_type count_{};
-};
-struct EntitiesSingleResolvedConstView_rotations : EntitiesSingleResolvedView_rotationsImpl<true> {
-    using Base = EntitiesSingleResolvedView_rotationsImpl<true>;
-    using Base::Base;
-    using equivalent_type = Rotator3f;
-    auto operator[](std::uint32_t index) const -> equivalent_type {
-        assert(index < num());
-        return equivalent_type{pitches()[index], yaws()[index], rolls()[index]};
-    }
-};
-struct EntitiesSingleResolvedView_rotations : EntitiesSingleResolvedView_rotationsImpl<false> {
-    using Base = EntitiesSingleResolvedView_rotationsImpl<false>;
-    using Base::Base;
-    void set(size_type index,
-             float const new_pitches,
-             float const new_yaws,
-             float const new_rolls) const {
-        assert(index < num());
-        this->pitches()[index] = new_pitches;
-        this->yaws()[index] = new_yaws;
-        this->rolls()[index] = new_rolls;
-    }
-    using equivalent_type = Rotator3f;
-    auto operator[](std::uint32_t index) const -> equivalent_type {
-        assert(index < num());
-        return equivalent_type{pitches()[index], yaws()[index], rolls()[index]};
-    }
-};
-struct EntitiesSingleResolvedView_velocities;
-struct EntitiesSingleResolvedConstView_velocities;
-template <bool Const>
-struct EntitiesSingleResolvedView_velocitiesImpl {
-    using size_type = std::uint32_t;
-    using View = EntitiesSingleResolvedView_velocities;
-    using ConstView = EntitiesSingleResolvedConstView_velocities;
-    using soa_schema = Vectors3fSchema;
-    template <typename T>
-    using Element = std::conditional_t<Const, T const, T>;
-    EntitiesSingleResolvedView_velocitiesImpl() = default;
-    EntitiesSingleResolvedView_velocitiesImpl(Element<float>* velocities_xs,
-                                              Element<float>* velocities_ys,
-                                              Element<float>* velocities_zs,
-                                              size_type count)
-        : velocities_xs_{velocities_xs}
-        , velocities_ys_{velocities_ys}
-        , velocities_zs_{velocities_zs}
-        , count_{count} {
-        ioj::soa_storage_detail::validate_column_pointers(
-            count_, velocities_xs_, velocities_ys_, velocities_zs_);
-    }
-    EntitiesSingleResolvedView_velocitiesImpl(std::span<Element<float>> velocities_xs,
-                                              std::span<Element<float>> velocities_ys,
-                                              std::span<Element<float>> velocities_zs)
-        : EntitiesSingleResolvedView_velocitiesImpl{
-              velocities_xs.data(),
-              velocities_ys.data(),
-              velocities_zs.data(),
-              ioj::soa_storage_detail::checked_row_count(velocities_xs.size())} {
-        assert(velocities_xs.size() == count_);
-        assert(velocities_ys.size() == count_);
-        assert(velocities_zs.size() == count_);
-    }
-    template <bool Enabled = Const>
-    EntitiesSingleResolvedView_velocitiesImpl(
-        EntitiesSingleResolvedView_velocitiesImpl<false> const& other)
-        requires Enabled
-        : velocities_xs_{other.velocities_xs_}
-        , velocities_ys_{other.velocities_ys_}
-        , velocities_zs_{other.velocities_zs_}
-        , count_{other.count_} {}
-    auto num() const noexcept -> size_type { return count_; }
-    auto is_empty() const noexcept -> bool { return count_ == 0; }
-    auto get_view(this auto const& self) { return self; }
-    auto get_const_view(this auto const& self) {
-        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
-        return Result{self.velocities_xs_, self.velocities_ys_, self.velocities_zs_, self.count_};
-    }
-    auto resolve(this auto const& self) { return self; }
-    void validate() const {}
-    auto slice(this auto const& self, size_type offset, size_type count) {
-        assert(offset <= self.count_ && count <= self.count_ - offset);
-        using Result = std::remove_cvref_t<decltype(self)>;
-        return Result{self.velocities_xs_ == nullptr ? nullptr : self.velocities_xs_ + offset,
-                      self.velocities_ys_ == nullptr ? nullptr : self.velocities_ys_ + offset,
-                      self.velocities_zs_ == nullptr ? nullptr : self.velocities_zs_ + offset,
-                      count};
-    }
-    auto get_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count);
-    }
-    auto get_const_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count).get_const_view();
-    }
-    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
-    auto right(this auto const& self, size_type count) {
-        assert(count <= self.num());
-        return self.slice(self.num() - count, count);
-    }
-    auto xs() const -> std::span<Element<float>> { return {velocities_xs_, count_}; }
-    auto ys() const -> std::span<Element<float>> { return {velocities_ys_, count_}; }
-    auto zs() const -> std::span<Element<float>> { return {velocities_zs_, count_}; }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        func(std::span<Element<float>>{velocities_xs_, count_});
-        func(std::span<Element<float>>{velocities_ys_, count_});
-        func(std::span<Element<float>>{velocities_zs_, count_});
-    }
-  private:
-    template <bool>
-    friend struct EntitiesSingleResolvedView_velocitiesImpl;
-    Element<float>* velocities_xs_{};
-    Element<float>* velocities_ys_{};
-    Element<float>* velocities_zs_{};
-    size_type count_{};
-};
-struct EntitiesSingleResolvedConstView_velocities
-    : EntitiesSingleResolvedView_velocitiesImpl<true> {
-    using Base = EntitiesSingleResolvedView_velocitiesImpl<true>;
-    using Base::Base;
-    using equivalent_type = Vector3f;
-    auto operator[](std::uint32_t index) const -> equivalent_type {
-        assert(index < num());
-        return equivalent_type{xs()[index], ys()[index], zs()[index]};
-    }
-};
-struct EntitiesSingleResolvedView_velocities : EntitiesSingleResolvedView_velocitiesImpl<false> {
-    using Base = EntitiesSingleResolvedView_velocitiesImpl<false>;
-    using Base::Base;
-    void set(size_type index, float const new_xs, float const new_ys, float const new_zs) const {
-        assert(index < num());
-        this->xs()[index] = new_xs;
-        this->ys()[index] = new_ys;
-        this->zs()[index] = new_zs;
-    }
-    using equivalent_type = Vector3f;
-    auto operator[](std::uint32_t index) const -> equivalent_type {
-        assert(index < num());
-        return equivalent_type{xs()[index], ys()[index], zs()[index]};
-    }
-};
-struct EntitiesSingleResolvedView;
-struct EntitiesSingleResolvedConstView;
-template <bool Const>
-struct EntitiesSingleResolvedViewImpl {
-    using size_type = std::uint32_t;
-    using View = EntitiesSingleResolvedView;
-    using ConstView = EntitiesSingleResolvedConstView;
-    using soa_schema = EntitiesSchema;
-    template <typename T>
-    using Element = std::conditional_t<Const, T const, T>;
-    EntitiesSingleResolvedViewImpl() = default;
-    EntitiesSingleResolvedViewImpl(Element<std::uint8_t>* active,
-                                   Element<ioj::sim::LaserSource>* sources,
-                                   Element<float>* locations_xs,
-                                   Element<float>* locations_ys,
-                                   Element<float>* locations_zs,
-                                   Element<float>* rotations_pitches,
-                                   Element<float>* rotations_yaws,
-                                   Element<float>* rotations_rolls,
-                                   Element<float>* velocities_xs,
-                                   Element<float>* velocities_ys,
-                                   Element<float>* velocities_zs,
-                                   Element<std::int32_t>* damages,
-                                   Element<float>* lifetimes_remaining,
-                                   Element<EntityId>* instigator_ids,
-                                   Element<float>* initial_lifetimes,
-                                   Element<float>* spawn_times,
-                                   size_type count)
+    LaserEntitiesResolvedViewImpl() = default;
+    LaserEntitiesResolvedViewImpl(Element<std::uint8_t>* active,
+                                  Element<ioj::sim::LaserSource>* sources,
+                                  Element<float>* locations_xs,
+                                  Element<float>* locations_ys,
+                                  Element<float>* locations_zs,
+                                  Element<float>* rotations_pitches,
+                                  Element<float>* rotations_yaws,
+                                  Element<float>* rotations_rolls,
+                                  Element<float>* velocities_xs,
+                                  Element<float>* velocities_ys,
+                                  Element<float>* velocities_zs,
+                                  Element<std::int32_t>* damages,
+                                  Element<float>* lifetimes_remaining,
+                                  Element<EntityId>* instigator_ids,
+                                  Element<float>* initial_lifetimes,
+                                  Element<float>* spawn_times,
+                                  size_type count)
         : active_{active}
         , sources_{sources}
         , locations_xs_{locations_xs}
@@ -492,40 +150,39 @@ struct EntitiesSingleResolvedViewImpl {
                                                           initial_lifetimes_,
                                                           spawn_times_);
     }
-    EntitiesSingleResolvedViewImpl(std::span<Element<std::uint8_t>> active,
-                                   std::span<Element<ioj::sim::LaserSource>> sources,
-                                   std::span<Element<float>> locations_xs,
-                                   std::span<Element<float>> locations_ys,
-                                   std::span<Element<float>> locations_zs,
-                                   std::span<Element<float>> rotations_pitches,
-                                   std::span<Element<float>> rotations_yaws,
-                                   std::span<Element<float>> rotations_rolls,
-                                   std::span<Element<float>> velocities_xs,
-                                   std::span<Element<float>> velocities_ys,
-                                   std::span<Element<float>> velocities_zs,
-                                   std::span<Element<std::int32_t>> damages,
-                                   std::span<Element<float>> lifetimes_remaining,
-                                   std::span<Element<EntityId>> instigator_ids,
-                                   std::span<Element<float>> initial_lifetimes,
-                                   std::span<Element<float>> spawn_times)
-        : EntitiesSingleResolvedViewImpl{
-              active.data(),
-              sources.data(),
-              locations_xs.data(),
-              locations_ys.data(),
-              locations_zs.data(),
-              rotations_pitches.data(),
-              rotations_yaws.data(),
-              rotations_rolls.data(),
-              velocities_xs.data(),
-              velocities_ys.data(),
-              velocities_zs.data(),
-              damages.data(),
-              lifetimes_remaining.data(),
-              instigator_ids.data(),
-              initial_lifetimes.data(),
-              spawn_times.data(),
-              ioj::soa_storage_detail::checked_row_count(active.size())} {
+    LaserEntitiesResolvedViewImpl(std::span<Element<std::uint8_t>> active,
+                                  std::span<Element<ioj::sim::LaserSource>> sources,
+                                  std::span<Element<float>> locations_xs,
+                                  std::span<Element<float>> locations_ys,
+                                  std::span<Element<float>> locations_zs,
+                                  std::span<Element<float>> rotations_pitches,
+                                  std::span<Element<float>> rotations_yaws,
+                                  std::span<Element<float>> rotations_rolls,
+                                  std::span<Element<float>> velocities_xs,
+                                  std::span<Element<float>> velocities_ys,
+                                  std::span<Element<float>> velocities_zs,
+                                  std::span<Element<std::int32_t>> damages,
+                                  std::span<Element<float>> lifetimes_remaining,
+                                  std::span<Element<EntityId>> instigator_ids,
+                                  std::span<Element<float>> initial_lifetimes,
+                                  std::span<Element<float>> spawn_times)
+        : LaserEntitiesResolvedViewImpl{active.data(),
+                                        sources.data(),
+                                        locations_xs.data(),
+                                        locations_ys.data(),
+                                        locations_zs.data(),
+                                        rotations_pitches.data(),
+                                        rotations_yaws.data(),
+                                        rotations_rolls.data(),
+                                        velocities_xs.data(),
+                                        velocities_ys.data(),
+                                        velocities_zs.data(),
+                                        damages.data(),
+                                        lifetimes_remaining.data(),
+                                        instigator_ids.data(),
+                                        initial_lifetimes.data(),
+                                        spawn_times.data(),
+                                        ioj::soa_storage_detail::checked_row_count(active.size())} {
         assert(active.size() == count_);
         assert(sources.size() == count_);
         assert(locations_xs.size() == count_);
@@ -544,7 +201,7 @@ struct EntitiesSingleResolvedViewImpl {
         assert(spawn_times.size() == count_);
     }
     template <bool Enabled = Const>
-    EntitiesSingleResolvedViewImpl(EntitiesSingleResolvedViewImpl<false> const& other)
+    LaserEntitiesResolvedViewImpl(LaserEntitiesResolvedViewImpl<false> const& other)
         requires Enabled
         : active_{other.active_}
         , sources_{other.sources_}
@@ -623,19 +280,16 @@ struct EntitiesSingleResolvedViewImpl {
     }
     auto active() const -> std::span<Element<std::uint8_t>> { return {active_, count_}; }
     auto sources() const -> std::span<Element<ioj::sim::LaserSource>> { return {sources_, count_}; }
-    auto view_locations() const -> std::conditional_t<Const,
-                                                      EntitiesSingleResolvedConstView_locations,
-                                                      EntitiesSingleResolvedView_locations> {
+    auto view_locations() const -> std::
+        conditional_t<Const, ::ioj::Vectors3fResolvedConstView, ::ioj::Vectors3fResolvedView> {
         return {locations_xs_, locations_ys_, locations_zs_, count_};
     }
-    auto view_rotations() const -> std::conditional_t<Const,
-                                                      EntitiesSingleResolvedConstView_rotations,
-                                                      EntitiesSingleResolvedView_rotations> {
+    auto view_rotations() const -> std::
+        conditional_t<Const, ::ioj::Rotators3fResolvedConstView, ::ioj::Rotators3fResolvedView> {
         return {rotations_pitches_, rotations_yaws_, rotations_rolls_, count_};
     }
-    auto view_velocities() const -> std::conditional_t<Const,
-                                                       EntitiesSingleResolvedConstView_velocities,
-                                                       EntitiesSingleResolvedView_velocities> {
+    auto view_velocities() const -> std::
+        conditional_t<Const, ::ioj::Vectors3fResolvedConstView, ::ioj::Vectors3fResolvedView> {
         return {velocities_xs_, velocities_ys_, velocities_zs_, count_};
     }
     auto damages() const -> std::span<Element<std::int32_t>> { return {damages_, count_}; }
@@ -670,7 +324,7 @@ struct EntitiesSingleResolvedViewImpl {
     }
   private:
     template <bool>
-    friend struct EntitiesSingleResolvedViewImpl;
+    friend struct LaserEntitiesResolvedViewImpl;
     Element<std::uint8_t>* active_{};
     Element<ioj::sim::LaserSource>* sources_{};
     Element<float>* locations_xs_{};
@@ -689,12 +343,12 @@ struct EntitiesSingleResolvedViewImpl {
     Element<float>* spawn_times_{};
     size_type count_{};
 };
-struct EntitiesSingleResolvedConstView : EntitiesSingleResolvedViewImpl<true> {
-    using Base = EntitiesSingleResolvedViewImpl<true>;
+struct LaserEntitiesResolvedConstView : LaserEntitiesResolvedViewImpl<true> {
+    using Base = LaserEntitiesResolvedViewImpl<true>;
     using Base::Base;
 };
-struct EntitiesSingleResolvedView : EntitiesSingleResolvedViewImpl<false> {
-    using Base = EntitiesSingleResolvedViewImpl<false>;
+struct LaserEntitiesResolvedView : LaserEntitiesResolvedViewImpl<false> {
+    using Base = LaserEntitiesResolvedViewImpl<false>;
     using Base::Base;
     void set(size_type index,
              std::uint8_t const new_active,
@@ -731,63 +385,314 @@ struct EntitiesSingleResolvedView : EntitiesSingleResolvedViewImpl<false> {
         this->initial_lifetimes()[index] = new_initial_lifetimes;
         this->spawn_times()[index] = new_spawn_times;
     }
+    void set(size_type index,
+             std::uint8_t const new_active,
+             ioj::sim::LaserSource const new_sources,
+             Vector3f const new_locations,
+             Rotator3f const new_rotations,
+             Vector3f const new_velocities,
+             std::int32_t const new_damages,
+             float const new_lifetimes_remaining,
+             EntityId const new_instigator_ids,
+             float const new_initial_lifetimes,
+             float const new_spawn_times) const {
+        assert(index < num());
+        this->active()[index] = new_active;
+        this->sources()[index] = new_sources;
+        this->view_locations().set(index, new_locations);
+        this->view_rotations().set(index, new_rotations);
+        this->view_velocities().set(index, new_velocities);
+        this->damages()[index] = new_damages;
+        this->lifetimes_remaining()[index] = new_lifetimes_remaining;
+        this->instigator_ids()[index] = new_instigator_ids;
+        this->initial_lifetimes()[index] = new_initial_lifetimes;
+        this->spawn_times()[index] = new_spawn_times;
+    }
 };
+struct LaserEntitiesView_locations;
+struct LaserEntitiesConstView_locations;
 template <bool Const>
-struct EntitiesSingleViewImpl : ioj::soa_storage_detail::CompactViewOperations {
-    using soa_schema = EntitiesSchema;
+struct LaserEntitiesView_locationsImpl : ioj::soa_storage_detail::CompactViewOperations {
+    using soa_schema = Vectors3fSchema;
     using size_type = std::uint32_t;
-    using Layout = EntitiesSingleLayout;
+    using Layout = LaserEntitiesLayout;
     using Storage = ioj::native_soa::StorageState;
     using State = std::conditional_t<Const, Storage const, Storage>;
     template <typename T>
     using Element = std::conditional_t<Const, T const, T>;
-    using View = EntitiesSingleView;
-    using ConstView = EntitiesSingleConstView;
-    EntitiesSingleViewImpl() = default;
-    EntitiesSingleViewImpl(State* state, size_type offset, size_type count)
+    using View = LaserEntitiesView_locations;
+    using ConstView = LaserEntitiesConstView_locations;
+    LaserEntitiesView_locationsImpl() = default;
+    LaserEntitiesView_locationsImpl(State* state, size_type offset, size_type count)
         : state_{state}
         , offset_{offset}
         , count_{count} {}
     template <bool Enabled = Const>
-    EntitiesSingleViewImpl(EntitiesSingleViewImpl<false> const& other)
+    LaserEntitiesView_locationsImpl(LaserEntitiesView_locationsImpl<false> const& other)
+        requires Enabled
+        : state_{other.state_}
+        , offset_{other.offset_}
+        , count_{other.count_} {}
+    auto xs() const { return make_column_view(Layout::columns.LocationsXsColumn); }
+    auto ys() const { return make_column_view(Layout::columns.LocationsYsColumn); }
+    auto zs() const { return make_column_view(Layout::columns.LocationsZsColumn); }
+    template <typename Func>
+    void each_column(Func&& func) const {
+        func(xs());
+        func(ys());
+        func(zs());
+    }
+    auto resolve() const -> std::
+        conditional_t<Const, ::ioj::Vectors3fResolvedConstView, ::ioj::Vectors3fResolvedView> {
+        return {(make_column_view(Layout::columns.LocationsXsColumn).data()),
+                (make_column_view(Layout::columns.LocationsYsColumn).data()),
+                (make_column_view(Layout::columns.LocationsZsColumn).data()),
+                count_};
+    }
+  private:
+    template <typename T>
+    auto make_column_view(ioj::native_soa::ColumnLayout<T> const& layout) const {
+        return ioj::soa_storage_detail::column_view<std::span<Element<T>>>(
+            state_, offset_, count_, layout);
+    }
+    friend ioj::soa_storage_detail::CompactViewOperations;
+    template <bool>
+    friend struct LaserEntitiesView_locationsImpl;
+    State* state_{};
+    size_type offset_{};
+    size_type count_{};
+};
+struct LaserEntitiesConstView_locations : LaserEntitiesView_locationsImpl<true> {
+    using Base = LaserEntitiesView_locationsImpl<true>;
+    using Base::Base;
+    using equivalent_type = Vector3f;
+    auto operator[](std::uint32_t index) const -> equivalent_type {
+        assert(index < num());
+        return equivalent_type{xs()[index], ys()[index], zs()[index]};
+    }
+};
+static_assert(ioj::soa_storage_detail::validate_compact_view<LaserEntitiesConstView_locations>());
+struct LaserEntitiesView_locations : LaserEntitiesView_locationsImpl<false> {
+    using Base = LaserEntitiesView_locationsImpl<false>;
+    using Base::Base;
+    void set(size_type index, float const new_xs, float const new_ys, float const new_zs) const {
+        assert(index < num());
+        this->xs()[index] = new_xs;
+        this->ys()[index] = new_ys;
+        this->zs()[index] = new_zs;
+    }
+    void set(size_type index, Vector3f const value) const {
+        set(index, (value.x()), (value.y()), (value.z()));
+    }
+    using equivalent_type = Vector3f;
+    auto operator[](std::uint32_t index) const -> equivalent_type {
+        assert(index < num());
+        return equivalent_type{xs()[index], ys()[index], zs()[index]};
+    }
+};
+static_assert(ioj::soa_storage_detail::validate_compact_view<LaserEntitiesView_locations>());
+struct LaserEntitiesView_rotations;
+struct LaserEntitiesConstView_rotations;
+template <bool Const>
+struct LaserEntitiesView_rotationsImpl : ioj::soa_storage_detail::CompactViewOperations {
+    using soa_schema = Rotators3fSchema;
+    using size_type = std::uint32_t;
+    using Layout = LaserEntitiesLayout;
+    using Storage = ioj::native_soa::StorageState;
+    using State = std::conditional_t<Const, Storage const, Storage>;
+    template <typename T>
+    using Element = std::conditional_t<Const, T const, T>;
+    using View = LaserEntitiesView_rotations;
+    using ConstView = LaserEntitiesConstView_rotations;
+    LaserEntitiesView_rotationsImpl() = default;
+    LaserEntitiesView_rotationsImpl(State* state, size_type offset, size_type count)
+        : state_{state}
+        , offset_{offset}
+        , count_{count} {}
+    template <bool Enabled = Const>
+    LaserEntitiesView_rotationsImpl(LaserEntitiesView_rotationsImpl<false> const& other)
+        requires Enabled
+        : state_{other.state_}
+        , offset_{other.offset_}
+        , count_{other.count_} {}
+    auto pitches() const { return make_column_view(Layout::columns.RotationsPitchesColumn); }
+    auto yaws() const { return make_column_view(Layout::columns.RotationsYawsColumn); }
+    auto rolls() const { return make_column_view(Layout::columns.RotationsRollsColumn); }
+    template <typename Func>
+    void each_column(Func&& func) const {
+        func(pitches());
+        func(yaws());
+        func(rolls());
+    }
+    auto resolve() const -> std::
+        conditional_t<Const, ::ioj::Rotators3fResolvedConstView, ::ioj::Rotators3fResolvedView> {
+        return {(make_column_view(Layout::columns.RotationsPitchesColumn).data()),
+                (make_column_view(Layout::columns.RotationsYawsColumn).data()),
+                (make_column_view(Layout::columns.RotationsRollsColumn).data()),
+                count_};
+    }
+  private:
+    template <typename T>
+    auto make_column_view(ioj::native_soa::ColumnLayout<T> const& layout) const {
+        return ioj::soa_storage_detail::column_view<std::span<Element<T>>>(
+            state_, offset_, count_, layout);
+    }
+    friend ioj::soa_storage_detail::CompactViewOperations;
+    template <bool>
+    friend struct LaserEntitiesView_rotationsImpl;
+    State* state_{};
+    size_type offset_{};
+    size_type count_{};
+};
+struct LaserEntitiesConstView_rotations : LaserEntitiesView_rotationsImpl<true> {
+    using Base = LaserEntitiesView_rotationsImpl<true>;
+    using Base::Base;
+    using equivalent_type = Rotator3f;
+    auto operator[](std::uint32_t index) const -> equivalent_type {
+        assert(index < num());
+        return equivalent_type{pitches()[index], yaws()[index], rolls()[index]};
+    }
+};
+static_assert(ioj::soa_storage_detail::validate_compact_view<LaserEntitiesConstView_rotations>());
+struct LaserEntitiesView_rotations : LaserEntitiesView_rotationsImpl<false> {
+    using Base = LaserEntitiesView_rotationsImpl<false>;
+    using Base::Base;
+    void set(size_type index,
+             float const new_pitches,
+             float const new_yaws,
+             float const new_rolls) const {
+        assert(index < num());
+        this->pitches()[index] = new_pitches;
+        this->yaws()[index] = new_yaws;
+        this->rolls()[index] = new_rolls;
+    }
+    void set(size_type index, Rotator3f const value) const {
+        set(index, (value.pitch), (value.yaw), (value.roll));
+    }
+    using equivalent_type = Rotator3f;
+    auto operator[](std::uint32_t index) const -> equivalent_type {
+        assert(index < num());
+        return equivalent_type{pitches()[index], yaws()[index], rolls()[index]};
+    }
+};
+static_assert(ioj::soa_storage_detail::validate_compact_view<LaserEntitiesView_rotations>());
+struct LaserEntitiesView_velocities;
+struct LaserEntitiesConstView_velocities;
+template <bool Const>
+struct LaserEntitiesView_velocitiesImpl : ioj::soa_storage_detail::CompactViewOperations {
+    using soa_schema = Vectors3fSchema;
+    using size_type = std::uint32_t;
+    using Layout = LaserEntitiesLayout;
+    using Storage = ioj::native_soa::StorageState;
+    using State = std::conditional_t<Const, Storage const, Storage>;
+    template <typename T>
+    using Element = std::conditional_t<Const, T const, T>;
+    using View = LaserEntitiesView_velocities;
+    using ConstView = LaserEntitiesConstView_velocities;
+    LaserEntitiesView_velocitiesImpl() = default;
+    LaserEntitiesView_velocitiesImpl(State* state, size_type offset, size_type count)
+        : state_{state}
+        , offset_{offset}
+        , count_{count} {}
+    template <bool Enabled = Const>
+    LaserEntitiesView_velocitiesImpl(LaserEntitiesView_velocitiesImpl<false> const& other)
+        requires Enabled
+        : state_{other.state_}
+        , offset_{other.offset_}
+        , count_{other.count_} {}
+    auto xs() const { return make_column_view(Layout::columns.VelocitiesXsColumn); }
+    auto ys() const { return make_column_view(Layout::columns.VelocitiesYsColumn); }
+    auto zs() const { return make_column_view(Layout::columns.VelocitiesZsColumn); }
+    template <typename Func>
+    void each_column(Func&& func) const {
+        func(xs());
+        func(ys());
+        func(zs());
+    }
+    auto resolve() const -> std::
+        conditional_t<Const, ::ioj::Vectors3fResolvedConstView, ::ioj::Vectors3fResolvedView> {
+        return {(make_column_view(Layout::columns.VelocitiesXsColumn).data()),
+                (make_column_view(Layout::columns.VelocitiesYsColumn).data()),
+                (make_column_view(Layout::columns.VelocitiesZsColumn).data()),
+                count_};
+    }
+  private:
+    template <typename T>
+    auto make_column_view(ioj::native_soa::ColumnLayout<T> const& layout) const {
+        return ioj::soa_storage_detail::column_view<std::span<Element<T>>>(
+            state_, offset_, count_, layout);
+    }
+    friend ioj::soa_storage_detail::CompactViewOperations;
+    template <bool>
+    friend struct LaserEntitiesView_velocitiesImpl;
+    State* state_{};
+    size_type offset_{};
+    size_type count_{};
+};
+struct LaserEntitiesConstView_velocities : LaserEntitiesView_velocitiesImpl<true> {
+    using Base = LaserEntitiesView_velocitiesImpl<true>;
+    using Base::Base;
+    using equivalent_type = Vector3f;
+    auto operator[](std::uint32_t index) const -> equivalent_type {
+        assert(index < num());
+        return equivalent_type{xs()[index], ys()[index], zs()[index]};
+    }
+};
+static_assert(ioj::soa_storage_detail::validate_compact_view<LaserEntitiesConstView_velocities>());
+struct LaserEntitiesView_velocities : LaserEntitiesView_velocitiesImpl<false> {
+    using Base = LaserEntitiesView_velocitiesImpl<false>;
+    using Base::Base;
+    void set(size_type index, float const new_xs, float const new_ys, float const new_zs) const {
+        assert(index < num());
+        this->xs()[index] = new_xs;
+        this->ys()[index] = new_ys;
+        this->zs()[index] = new_zs;
+    }
+    void set(size_type index, Vector3f const value) const {
+        set(index, (value.x()), (value.y()), (value.z()));
+    }
+    using equivalent_type = Vector3f;
+    auto operator[](std::uint32_t index) const -> equivalent_type {
+        assert(index < num());
+        return equivalent_type{xs()[index], ys()[index], zs()[index]};
+    }
+};
+static_assert(ioj::soa_storage_detail::validate_compact_view<LaserEntitiesView_velocities>());
+template <bool Const>
+struct LaserEntitiesViewImpl : ioj::soa_storage_detail::CompactViewOperations {
+    using soa_schema = LaserEntitiesSchema;
+    using size_type = std::uint32_t;
+    using Layout = LaserEntitiesLayout;
+    using Storage = ioj::native_soa::StorageState;
+    using State = std::conditional_t<Const, Storage const, Storage>;
+    template <typename T>
+    using Element = std::conditional_t<Const, T const, T>;
+    using View = LaserEntitiesView;
+    using ConstView = LaserEntitiesConstView;
+    LaserEntitiesViewImpl() = default;
+    LaserEntitiesViewImpl(State* state, size_type offset, size_type count)
+        : state_{state}
+        , offset_{offset}
+        , count_{count} {}
+    template <bool Enabled = Const>
+    LaserEntitiesViewImpl(LaserEntitiesViewImpl<false> const& other)
         requires Enabled
         : state_{other.state_}
         , offset_{other.offset_}
         , count_{other.count_} {}
     auto active() const { return make_column_view(Layout::columns.ActiveColumn); }
     auto sources() const { return make_column_view(Layout::columns.SourcesColumn); }
-    auto view_locations() const {
-        using ioj::soa_storage_detail::three_column_view;
-        return three_column_view<ioj::Vector3SoAView<Element<float>>>(
-            state_,
-            offset_,
-            count_,
-            Layout::columns.LocationsXsColumn,
-            Layout::columns.LocationsYsColumn,
-            Layout::columns.LocationsZsColumn);
+    auto view_locations() const -> std::
+        conditional_t<Const, LaserEntitiesConstView_locations, LaserEntitiesView_locations> {
+        return {state_, offset_, count_};
     }
-    auto view_rotations() const {
-        using ioj::soa_storage_detail::three_column_view;
-        return three_column_view<
-            std::conditional_t<Const,
-                               ioj::native_soa::RotatorSoAConstView<float, Rotator3f>,
-                               ioj::native_soa::RotatorSoAView<float, Rotator3f>>>(
-            state_,
-            offset_,
-            count_,
-            Layout::columns.RotationsPitchesColumn,
-            Layout::columns.RotationsYawsColumn,
-            Layout::columns.RotationsRollsColumn);
+    auto view_rotations() const -> std::
+        conditional_t<Const, LaserEntitiesConstView_rotations, LaserEntitiesView_rotations> {
+        return {state_, offset_, count_};
     }
-    auto view_velocities() const {
-        using ioj::soa_storage_detail::three_column_view;
-        return three_column_view<ioj::Vector3SoAView<Element<float>>>(
-            state_,
-            offset_,
-            count_,
-            Layout::columns.VelocitiesXsColumn,
-            Layout::columns.VelocitiesYsColumn,
-            Layout::columns.VelocitiesZsColumn);
+    auto view_velocities() const -> std::
+        conditional_t<Const, LaserEntitiesConstView_velocities, LaserEntitiesView_velocities> {
+        return {state_, offset_, count_};
     }
     auto damages() const { return make_column_view(Layout::columns.DamagesColumn); }
     auto lifetimes_remaining() const {
@@ -821,7 +726,7 @@ struct EntitiesSingleViewImpl : ioj::soa_storage_detail::CompactViewOperations {
         func(spawn_times());
     }
     auto resolve() const
-        -> std::conditional_t<Const, EntitiesSingleResolvedConstView, EntitiesSingleResolvedView> {
+        -> std::conditional_t<Const, LaserEntitiesResolvedConstView, LaserEntitiesResolvedView> {
         return {(make_column_view(Layout::columns.ActiveColumn).data()),
                 (make_column_view(Layout::columns.SourcesColumn).data()),
                 (make_column_view(Layout::columns.LocationsXsColumn).data()),
@@ -848,18 +753,18 @@ struct EntitiesSingleViewImpl : ioj::soa_storage_detail::CompactViewOperations {
     }
     friend ioj::soa_storage_detail::CompactViewOperations;
     template <bool>
-    friend struct EntitiesSingleViewImpl;
+    friend struct LaserEntitiesViewImpl;
     State* state_{};
     size_type offset_{};
     size_type count_{};
 };
-struct EntitiesSingleConstView : EntitiesSingleViewImpl<true> {
-    using Base = EntitiesSingleViewImpl<true>;
+struct LaserEntitiesConstView : LaserEntitiesViewImpl<true> {
+    using Base = LaserEntitiesViewImpl<true>;
     using Base::Base;
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<EntitiesSingleConstView>());
-struct EntitiesSingleView : EntitiesSingleViewImpl<false> {
-    using Base = EntitiesSingleViewImpl<false>;
+static_assert(ioj::soa_storage_detail::validate_compact_view<LaserEntitiesConstView>());
+struct LaserEntitiesView : LaserEntitiesViewImpl<false> {
+    using Base = LaserEntitiesViewImpl<false>;
     using Base::Base;
     void set(size_type index,
              std::uint8_t const new_active,
@@ -896,8 +801,31 @@ struct EntitiesSingleView : EntitiesSingleViewImpl<false> {
         this->initial_lifetimes()[index] = new_initial_lifetimes;
         this->spawn_times()[index] = new_spawn_times;
     }
+    void set(size_type index,
+             std::uint8_t const new_active,
+             ioj::sim::LaserSource const new_sources,
+             Vector3f const new_locations,
+             Rotator3f const new_rotations,
+             Vector3f const new_velocities,
+             std::int32_t const new_damages,
+             float const new_lifetimes_remaining,
+             EntityId const new_instigator_ids,
+             float const new_initial_lifetimes,
+             float const new_spawn_times) const {
+        assert(index < num());
+        this->active()[index] = new_active;
+        this->sources()[index] = new_sources;
+        this->view_locations().set(index, new_locations);
+        this->view_rotations().set(index, new_rotations);
+        this->view_velocities().set(index, new_velocities);
+        this->damages()[index] = new_damages;
+        this->lifetimes_remaining()[index] = new_lifetimes_remaining;
+        this->instigator_ids()[index] = new_instigator_ids;
+        this->initial_lifetimes()[index] = new_initial_lifetimes;
+        this->spawn_times()[index] = new_spawn_times;
+    }
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<EntitiesSingleView>());
+static_assert(ioj::soa_storage_detail::validate_compact_view<LaserEntitiesView>());
 // Columns:
 // active: std::uint8_t
 // sources: ioj::sim::LaserSource
@@ -918,9 +846,9 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<EntitiesSingleView>
 struct LaserEntities
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {
-    using soa_schema = EntitiesSchema;
+    using soa_schema = LaserEntitiesSchema;
     using Operations = ioj::native_soa::StorageOperations;
-    using Layout = EntitiesSingleLayout;
+    using Layout = LaserEntitiesLayout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
 
@@ -933,8 +861,8 @@ struct LaserEntities
         return Layout::layout_bytes(blocks);
     }
 
-    using View = EntitiesSingleView;
-    using ConstView = EntitiesSingleConstView;
+    using View = LaserEntitiesView;
+    using ConstView = LaserEntitiesConstView;
 
     /* **************************************** */
     // Lifetime
@@ -1168,7 +1096,7 @@ struct LaserEntities
     auto spawn_times(this auto& self) { return self.get_view().spawn_times(); }
     void set(size_type index,
              std::uint8_t const new_active,
-             ioj::sim::LaserSource const new_sources,
+             LaserSource const new_sources,
              float const new_locations_xs,
              float const new_locations_ys,
              float const new_locations_zs,
@@ -1202,7 +1130,7 @@ struct LaserEntities
         get_view().spawn_times()[index] = new_spawn_times;
     }
     size_type add(std::uint8_t const new_active,
-                  ioj::sim::LaserSource const new_sources,
+                  LaserSource const new_sources,
                   float const new_locations_xs,
                   float const new_locations_ys,
                   float const new_locations_zs,
@@ -1237,6 +1165,74 @@ struct LaserEntities
             new_initial_lifetimes,
             new_spawn_times);
         return index;
+    }
+    void set(size_type index,
+             std::uint8_t const new_active,
+             LaserSource const new_sources,
+             Vector3f const new_locations,
+             Rotator3f const new_rotations,
+             Vector3f const new_velocities,
+             std::int32_t const new_damages,
+             float const new_lifetimes_remaining,
+             EntityId const new_instigator_ids,
+             float const new_initial_lifetimes,
+             float const new_spawn_times) {
+        assert(index < num());
+        get_view().active()[index] = new_active;
+        get_view().sources()[index] = new_sources;
+        get_view().view_locations().set(index, new_locations);
+        get_view().view_rotations().set(index, new_rotations);
+        get_view().view_velocities().set(index, new_velocities);
+        get_view().damages()[index] = new_damages;
+        get_view().lifetimes_remaining()[index] = new_lifetimes_remaining;
+        get_view().instigator_ids()[index] = new_instigator_ids;
+        get_view().initial_lifetimes()[index] = new_initial_lifetimes;
+        get_view().spawn_times()[index] = new_spawn_times;
+    }
+    size_type add(std::uint8_t const new_active,
+                  LaserSource const new_sources,
+                  Vector3f const new_locations,
+                  Rotator3f const new_rotations,
+                  Vector3f const new_velocities,
+                  std::int32_t const new_damages,
+                  float const new_lifetimes_remaining,
+                  EntityId const new_instigator_ids,
+                  float const new_initial_lifetimes,
+                  float const new_spawn_times) {
+        auto const index{num()};
+        add_uninitialised(1);
+        set(index,
+            new_active,
+            new_sources,
+            new_locations,
+            new_rotations,
+            new_velocities,
+            new_damages,
+            new_lifetimes_remaining,
+            new_instigator_ids,
+            new_initial_lifetimes,
+            new_spawn_times);
+        return index;
+    }
+    void apply_permutation(std::span<size_type> indices) {
+        assert(indices.size() == num_);
+        auto const columns{get_data()};
+        ioj::apply_permutation(std::span{columns.active, num_}, indices);
+        ioj::apply_permutation(std::span{columns.sources, num_}, indices);
+        ioj::apply_permutation(std::span{columns.locations_xs, num_}, indices);
+        ioj::apply_permutation(std::span{columns.locations_ys, num_}, indices);
+        ioj::apply_permutation(std::span{columns.locations_zs, num_}, indices);
+        ioj::apply_permutation(std::span{columns.rotations_pitches, num_}, indices);
+        ioj::apply_permutation(std::span{columns.rotations_yaws, num_}, indices);
+        ioj::apply_permutation(std::span{columns.rotations_rolls, num_}, indices);
+        ioj::apply_permutation(std::span{columns.velocities_xs, num_}, indices);
+        ioj::apply_permutation(std::span{columns.velocities_ys, num_}, indices);
+        ioj::apply_permutation(std::span{columns.velocities_zs, num_}, indices);
+        ioj::apply_permutation(std::span{columns.damages, num_}, indices);
+        ioj::apply_permutation(std::span{columns.lifetimes_remaining, num_}, indices);
+        ioj::apply_permutation(std::span{columns.instigator_ids, num_}, indices);
+        ioj::apply_permutation(std::span{columns.initial_lifetimes, num_}, indices);
+        ioj::apply_permutation(std::span{columns.spawn_times, num_}, indices);
     }
   private:
     std::pmr::memory_resource* resource_{};

@@ -25,8 +25,8 @@ enum class QueryMode : std::uint8_t {
 };
 
 struct TraceRequest {
-    ioj::Vectors3fConstView start_locations{};
-    ioj::Vectors3fConstView end_locations{};
+    ioj::Vectors3fResolvedConstView start_locations{};
+    ioj::Vectors3fResolvedConstView end_locations{};
     ioj::Vector3f scalar_start{};
     ioj::Vector3f scalar_end{};
     std::span<ioj::sim::EntityId const> targets{};
@@ -70,8 +70,8 @@ auto trace_impl(ioj::sim::collision::CollisionUniformGrid const& uniform_grid,
         if constexpr (Mode == QueryMode::TargetLineOfSight || Mode == QueryMode::ClosestHit) {
             traces.set_num(count);
             auto const trace_columns{traces.get_view()};
-            auto const starts{trace_columns.view_starts()};
-            auto const ends{trace_columns.view_ends()};
+            auto const starts{trace_columns.view_starts().resolve()};
+            auto const ends{trace_columns.view_ends().resolve()};
             for (std::uint32_t i{}; i < count; ++i) {
                 ioj::set_vector(starts, i, request.scalar_start);
                 auto const end{Mode == QueryMode::TargetLineOfSight ? request.end_locations[i]
@@ -98,7 +98,7 @@ auto trace_impl(ioj::sim::collision::CollisionUniformGrid const& uniform_grid,
 
     if constexpr (Mode == QueryMode::ClosestHit) {
         return {
-            .location = hits.view_locations()[0],
+            .location = hits.view_locations().resolve()[0],
             .entity = hit_entities[0],
             .static_geometry_index = hits.static_geometry_indices()[0],
             .hit = hit_flags[0] != 0,
@@ -143,7 +143,7 @@ namespace {
 template <typename IncludeEntity>
 auto collect_entities_in_range(collision::CollisionUniformGrid const& grid,
                                EntityTables const& agents,
-                               EnumArray<EntityType, Vectors3fConstView> const& locations,
+                               EnumArray<EntityType, Vectors3fResolvedConstView> const& locations,
                                FrameMemoryResource* const scratch_resource,
                                Vector3f const origin,
                                float const radius,
@@ -247,8 +247,8 @@ void SpatialQueryManager::initialise(collision::GridGeometry const grid_geometry
 /* **************************************** */
 // Batched line queries
 /* **************************************** */
-void SpatialQueryManager::trace_line_of_sight(Vectors3fConstView const start_locations,
-                                              Vectors3fConstView const end_locations,
+void SpatialQueryManager::trace_line_of_sight(Vectors3fResolvedConstView const start_locations,
+                                              Vectors3fResolvedConstView const end_locations,
                                               std::span<EntityId> const out_entity_ids,
                                               FrameMemoryResource* const scratch_resource) const {
     SANDBOX_PROFILE_SCOPE("SpatialQueryManager::trace_line_of_sight");
@@ -262,7 +262,7 @@ void SpatialQueryManager::trace_line_of_sight(Vectors3fConstView const start_loc
 
 void SpatialQueryManager::has_line_of_sight_to_targets(
     Vector3f const& start_location,
-    Vectors3fConstView const end_locations,
+    Vectors3fResolvedConstView const end_locations,
     std::span<EntityId const> const targets,
     std::span<LineQueryResult> const has_los,
     FrameMemoryResource* const scratch_resource) const {
@@ -276,8 +276,8 @@ void SpatialQueryManager::has_line_of_sight_to_targets(
                                               .out_flags = has_los});
 }
 
-void SpatialQueryManager::have_clear_lines(Vectors3fConstView const start_locations,
-                                           Vectors3fConstView const end_locations,
+void SpatialQueryManager::have_clear_lines(Vectors3fResolvedConstView const start_locations,
+                                           Vectors3fResolvedConstView const end_locations,
                                            std::span<LineQueryResult> const clear_lines,
                                            FrameMemoryResource* const scratch_resource,
                                            std::span<EntityId const> const ignored_entities) const {
@@ -290,8 +290,8 @@ void SpatialQueryManager::have_clear_lines(Vectors3fConstView const start_locati
 }
 
 void SpatialQueryManager::trace_closest_lines(
-    Vectors3fConstView const start_locations,
-    Vectors3fConstView const end_locations,
+    Vectors3fResolvedConstView const start_locations,
+    Vectors3fResolvedConstView const end_locations,
     TraceHits::View const out_hits,
     std::span<EntityId const> const ignored_entities) const {
     SANDBOX_PROFILE_SCOPE("SpatialQueryManager::trace_closest_lines");
@@ -306,8 +306,8 @@ void SpatialQueryManager::trace_closest_lines(
 }
 
 void SpatialQueryManager::sweep_closest_aabbs(
-    Vectors3fConstView const start_locations,
-    Vectors3fConstView const end_locations,
+    Vectors3fResolvedConstView const start_locations,
+    Vectors3fResolvedConstView const end_locations,
     Vector3f const moving_half_extent,
     TraceHits::View const out_hits,
     std::span<EntityId const> const ignored_entities,
@@ -418,7 +418,7 @@ auto SpatialQueryManager::get_any_non_team_entity(Team const team,
 }
 
 void SpatialQueryManager::are_spheres_in_bounds(
-    Vectors3fConstView const centres,
+    Vectors3fResolvedConstView const centres,
     float const radius,
     std::span<collision::SphereInBoundsResult> const out_results) const {
     collision_system_.uniform_grid_.are_spheres_in_bounds(centres, radius, out_results);
@@ -434,7 +434,7 @@ auto SpatialQueryManager::get_entity_type_radii() const noexcept -> EntityTypeRa
 }
 
 void SpatialQueryManager::copy_entity_locations(std::span<EntityId const> const ids,
-                                                Vectors3fView const output,
+                                                Vectors3fResolvedView const output,
                                                 FrameMemoryResource* const scratch_resource) const {
     auto const count{output.num()};
     assert(ids.size() == count);
@@ -460,8 +460,8 @@ void SpatialQueryManager::copy_entity_locations(std::span<EntityId const> const 
     }
 }
 void SpatialQueryManager::copy_entity_motion(std::span<EntityId const> const ids,
-                                             Vectors3fView const output_locations,
-                                             Vectors3fView const output_velocities,
+                                             Vectors3fResolvedView const output_locations,
+                                             Vectors3fResolvedView const output_velocities,
                                              std::span<EntityInstanceHandle> const handles,
                                              FrameMemoryResource* const scratch_resource) const {
     auto const count{output_locations.num()};
@@ -508,11 +508,15 @@ void SpatialQueryManager::refresh_spatial_index(LevelReadAccess const& level) {
     SANDBOX_PROFILE_SCOPE("SpatialQueryManager::refresh_spatial_index");
     locations_ = {};
     velocities_ = {};
-    locations_[EntityType::CapitalShip] = level.get_capitals().get_entities().view_locations();
-    locations_[EntityType::Fighter] = level.get_fighters().get_entities().view_locations();
-    locations_[EntityType::Turret] = level.get_turrets().get_entities().view_locations();
-    locations_[EntityType::TubeSpinner] = level.get_spinners().get_entities().view_locations();
-    velocities_[EntityType::Fighter] = level.get_fighters().get_entities().view_velocities();
+    locations_[EntityType::CapitalShip] =
+        level.get_capitals().get_entities().view_locations().resolve();
+    locations_[EntityType::Fighter] =
+        level.get_fighters().get_entities().view_locations().resolve();
+    locations_[EntityType::Turret] = level.get_turrets().get_entities().view_locations().resolve();
+    locations_[EntityType::TubeSpinner] =
+        level.get_spinners().get_entities().view_locations().resolve();
+    velocities_[EntityType::Fighter] =
+        level.get_fighters().get_entities().view_velocities().resolve();
     if (auto const* player{level.get_player()}) {
         auto const& physical{player->get_physical_state()};
         player_spatial_.location = to_float(physical.transform.location);

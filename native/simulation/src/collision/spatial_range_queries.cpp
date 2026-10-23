@@ -1,7 +1,7 @@
 #include <ioj/column_math.h>
 #include <ioj/frame_memory_resource.h>
 #include <ioj/parallel_for.h>
-#include <ioj/sim/collision/frame_range_query_results.h>
+#include <ioj/sim/collision/range_query_results.h>
 #include <ioj/sim/collision/spatial_query_manager.h>
 #include <ioj/sim/entities/entity_tables.h>
 #include <ioj/sim/entities/team_checks.h>
@@ -55,7 +55,7 @@ struct MatchSource {
 struct ScanSources {
     EntityTypeSizes offsets;
     EnumArray<EntityType, std::span<EntityInstanceHandle const>> handles;
-    EnumArray<EntityType, Vectors3fConstView> locations;
+    EnumArray<EntityType, Vectors3fResolvedConstView> locations;
 };
 
 void collect_request_matches(collision::CollisionUniformGrid const& grid,
@@ -142,10 +142,10 @@ namespace ioj::sim {
 namespace tbb = oneapi::tbb;
 
 void SpatialQueryManager::collect_non_team_entities_in_range(
-    Vectors3fConstView const origins,
+    Vectors3fResolvedConstView const origins,
     std::span<Team const> const teams,
     float const radius,
-    FrameRangeQueryResults& out_results,
+    RangeQueryResults& out_results,
     FrameMemoryResource* const scratch_resource) const {
     using namespace range_query;
 
@@ -258,8 +258,11 @@ void SpatialQueryManager::collect_non_team_entities_in_range(
             match_count += range.count;
         }
 
-        out_results.set_num_matches(match_count);
-        auto const directions{out_results.directions.get_view()};
+        out_results.matches.set_num(match_count);
+        auto const result_columns{out_results.matches.get_view().resolve()};
+        auto const entities{result_columns.entities()};
+        auto const distances{result_columns.distances()};
+        auto const directions{result_columns.view_directions()};
 
         // Copy worker matches into the caller's contiguous result arrays.
         arena.execute([&] {
@@ -274,8 +277,8 @@ void SpatialQueryManager::collect_non_team_entities_in_range(
                     for (MatchIndex match_index{}; match_index < count; ++match_index) {
                         auto const& match{matches[source.offset + match_index]};
                         auto const output_index{range.offset + match_index};
-                        out_results.entities[output_index] = match.entity;
-                        out_results.distances[output_index] = match.distance;
+                        entities[output_index] = match.entity;
+                        distances[output_index] = match.distance;
                         set_vector(directions, output_index, match.direction);
                     }
                 }

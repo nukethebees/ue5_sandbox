@@ -1,6 +1,6 @@
 #include "support/collision_agent_storage.h"
 #include <ioj/frame_memory_resource.h>
-#include <ioj/sim/collision/frame_range_query_results.h>
+#include <ioj/sim/collision/range_query_results.h>
 #include <ioj/sim/collision/spatial_query_manager.h>
 #include <ioj/sim/testing/entity_observations.h>
 #include <ioj/vector_normalization.h>
@@ -31,18 +31,19 @@ class BulkRangeQueries : public ::testing::Test {
         teams.add(team);
     }
 
-    void query(float const radius, FrameRangeQueryResults& output) {
+    void query(float const radius, RangeQueryResults& output) {
         queries.collect_non_team_entities_in_range(
-            origins.get_const_view(), teams.view(), radius, output, &memory);
+            origins.get_const_view().resolve(), teams.view(), radius, output, &memory);
     }
 
-    void expect_scalar_matches(float const radius, FrameRangeQueryResults& output) {
+    void expect_scalar_matches(float const radius, RangeQueryResults& output) {
         query(radius, output);
         ASSERT_EQ(output.ranges.num(), origins.num());
-        ASSERT_EQ(output.entities.num(), output.distances.num());
-        ASSERT_EQ(output.entities.num(), output.directions.num());
-        auto const locations{origins.get_const_view()};
-        auto const directions{output.directions.get_const_view()};
+        auto const locations{origins.get_const_view().resolve()};
+        auto const matches{output.matches.get_const_view().resolve()};
+        auto const entities{matches.entities()};
+        auto const distances{matches.distances()};
+        auto const directions{matches.view_directions()};
         std::array<EntityId, 512> reference;
         alignas(FrameMemoryResource::backing_alignment) std::array<std::byte, 64 * 1024>
             reference_backing{};
@@ -55,7 +56,7 @@ class BulkRangeQueries : public ::testing::Test {
             SCOPED_TRACE(index);
             auto const range{output.ranges[index]};
             ASSERT_EQ(range.offset, offset);
-            ASSERT_LE(range.end(), output.entities.num());
+            ASSERT_LE(range.end(), output.matches.num());
             offset = range.end();
             auto const count{queries.collect_non_team_entities_in_range(
                 locations[index], teams[index], radius, reference, &reference_memory)};
@@ -64,12 +65,12 @@ class BulkRangeQueries : public ::testing::Test {
             std::vector<EntityId> actual;
             auto const end{range.end()};
             for (auto match{range.offset}; match < end; ++match) {
-                auto const id{output.entities[match]};
+                auto const id{entities[match]};
                 actual.push_back(id);
                 auto const state{observe_entity(owners, id)};
                 ASSERT_TRUE(state);
                 auto const delta{state->location - locations[index]};
-                EXPECT_FLOAT_EQ(output.distances[match], size(delta));
+                EXPECT_FLOAT_EQ(distances[match], size(delta));
                 auto const direction{native_math::safe_normal(delta, 1.e-8f)};
                 EXPECT_FLOAT_EQ(directions[match].x(), direction.x());
                 EXPECT_FLOAT_EQ(directions[match].y(), direction.y());
@@ -80,7 +81,7 @@ class BulkRangeQueries : public ::testing::Test {
             EXPECT_TRUE(std::ranges::equal(actual, expected));
             EXPECT_EQ(std::ranges::adjacent_find(actual), actual.end());
         }
-        EXPECT_EQ(offset, output.entities.num());
+        EXPECT_EQ(offset, output.matches.num());
     }
 
     CollisionAgentStorage owners;
@@ -89,7 +90,7 @@ class BulkRangeQueries : public ::testing::Test {
     alignas(FrameMemoryResource::backing_alignment) std::array<std::byte, 1024 * 1024> backing{};
     FrameMemoryResource memory{backing};
     FrameScratchScope scope{memory};
-    FrameVectors3f origins{&memory};
+    Vectors3f origins{memory};
     FrameArray<Team> teams{&memory};
 };
 
@@ -116,7 +117,7 @@ TEST_F(BulkRangeQueries, OverlappingAndDisjointRequestsMatchScalarQueriesInInput
                 static_cast<Team>(index % enum_count<Team>()));
     }
     request({{2000.f, 0.f, 0.f}}, Team::White);
-    FrameRangeQueryResults output{&memory};
+    RangeQueryResults output{memory};
     expect_scalar_matches(175.f, output);
 }
 
@@ -129,13 +130,13 @@ TEST_F(BulkRangeQueries, DenseMulticellMembershipIsUniqueAndHasNo128ResultLimit)
     rebuild();
     request({}, Team::Blue);
     request({{1.f, 0.f, 0.f}}, Team::Blue);
-    FrameRangeQueryResults output{&memory};
+    RangeQueryResults output{memory};
     expect_scalar_matches(20.f, output);
     ASSERT_EQ(output.ranges[0].count, count);
     ASSERT_EQ(output.ranges[1].count, count);
-    EXPECT_TRUE(memory.owns(output.entities.data()));
-    EXPECT_TRUE(memory.owns(output.distances.data()));
-    EXPECT_TRUE(memory.owns(output.directions.get_const_view().xs().data()));
+    EXPECT_TRUE(memory.owns(output.matches.entities().data()));
+    EXPECT_TRUE(memory.owns(output.matches.distances().data()));
+    EXPECT_TRUE(memory.owns(output.matches.view_directions().xs().data()));
     EXPECT_TRUE(memory.owns(output.ranges.data()));
 }
 
@@ -146,10 +147,10 @@ TEST_F(BulkRangeQueries, InclusiveNegativeAndZeroRadiusPreserveDirectionSemantic
     owners.spawn(EntityType::Fighter, {{5.01f, 0.f, 0.f}}, {}, 100, Team::Red);
     rebuild();
     request({}, Team::Blue);
-    FrameRangeQueryResults output{&memory};
+    RangeQueryResults output{memory};
     expect_scalar_matches(-5.f, output);
     EXPECT_EQ(output.ranges[0].count, 3u);
-    FrameRangeQueryResults zero_radius_output{&memory};
+    RangeQueryResults zero_radius_output{memory};
     expect_scalar_matches(0.f, zero_radius_output);
     EXPECT_EQ(zero_radius_output.ranges[0].count, 1u);
 }
@@ -158,45 +159,43 @@ TEST_F(BulkRangeQueries, EmptyRequestsAndEmptyResultsUseIndependentOutput) {
     auto const id{owners.spawn(EntityType::Fighter, {}, {}, 100, Team::Red)};
     rebuild();
     request({}, Team::Blue);
-    FrameRangeQueryResults output{&memory};
+    RangeQueryResults output{memory};
     expect_scalar_matches(10.f, output);
-    ASSERT_EQ(output.entities.num(), 1u);
-    EXPECT_EQ(output.entities[0], id);
+    ASSERT_EQ(output.matches.num(), 1u);
+    EXPECT_EQ(output.matches.entities()[0], id);
 
     teams[0] = Team::Red;
-    FrameRangeQueryResults same_team_output{&memory};
+    RangeQueryResults same_team_output{memory};
     expect_scalar_matches(10.f, same_team_output);
-    EXPECT_TRUE(same_team_output.entities.is_empty());
+    EXPECT_TRUE(same_team_output.matches.is_empty());
     EXPECT_EQ(same_team_output.ranges[0].count, 0u);
 
-    origins.clear();
+    origins.reset();
     teams.clear();
     request({{2000.f, 0.f, 0.f}}, Team::Blue);
-    FrameRangeQueryResults outside_grid_output{&memory};
+    RangeQueryResults outside_grid_output{memory};
     expect_scalar_matches(10.f, outside_grid_output);
-    EXPECT_TRUE(outside_grid_output.entities.is_empty());
+    EXPECT_TRUE(outside_grid_output.matches.is_empty());
     EXPECT_EQ(outside_grid_output.ranges[0].offset, 0u);
 
-    origins.clear();
+    origins.reset();
     teams.clear();
-    FrameRangeQueryResults empty_output{&memory};
+    RangeQueryResults empty_output{memory};
     query(10.f, empty_output);
     EXPECT_TRUE(empty_output.ranges.is_empty());
-    EXPECT_TRUE(empty_output.entities.is_empty());
-    EXPECT_TRUE(empty_output.distances.is_empty());
-    EXPECT_TRUE(empty_output.directions.is_empty());
+    EXPECT_TRUE(empty_output.matches.is_empty());
 
     // Preserve earlier results while subsequent queries use the same scratch epoch.
-    ASSERT_EQ(output.entities.num(), 1u);
-    EXPECT_EQ(output.entities[0], id);
+    ASSERT_EQ(output.matches.num(), 1u);
+    EXPECT_EQ(output.matches.entities()[0], id);
 }
 
 TEST_F(BulkRangeQueries, EmptyGridHasOneEmptyRangePerRequest) {
     rebuild();
     request({}, Team::Blue);
     request({{200.f, 0.f, 0.f}}, Team::Red);
-    FrameRangeQueryResults output{&memory};
+    RangeQueryResults output{memory};
     expect_scalar_matches(10.f, output);
-    EXPECT_TRUE(output.entities.is_empty());
+    EXPECT_TRUE(output.matches.is_empty());
 }
 } // namespace ioj::sim::tests
