@@ -164,6 +164,17 @@ struct FighterOrderQueueSingleResolvedConstView : FighterOrderQueueSingleResolve
 struct FighterOrderQueueSingleResolvedView : FighterOrderQueueSingleResolvedViewImpl<false> {
     using Base = FighterOrderQueueSingleResolvedViewImpl<false>;
     using Base::Base;
+    void set(size_type index,
+             EntityId const new_entity_ids,
+             FighterOrder const new_orders,
+             FighterTask const new_tasks,
+             EntityId const new_targets) const {
+        assert(index < num());
+        this->entity_ids()[index] = new_entity_ids;
+        this->orders()[index] = new_orders;
+        this->tasks()[index] = new_tasks;
+        this->targets()[index] = new_targets;
+    }
 };
 template <bool Const>
 struct FighterOrderQueueSingleViewImpl : ioj::soa_storage_detail::CompactViewOperations {
@@ -228,6 +239,17 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<FighterOrderQueueSi
 struct FighterOrderQueueSingleView : FighterOrderQueueSingleViewImpl<false> {
     using Base = FighterOrderQueueSingleViewImpl<false>;
     using Base::Base;
+    void set(size_type index,
+             EntityId const new_entity_ids,
+             FighterOrder const new_orders,
+             FighterTask const new_tasks,
+             EntityId const new_targets) const {
+        assert(index < num());
+        this->entity_ids()[index] = new_entity_ids;
+        this->orders()[index] = new_orders;
+        this->tasks()[index] = new_tasks;
+        this->targets()[index] = new_targets;
+    }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<FighterOrderQueueSingleView>());
 // Columns:
@@ -399,6 +421,21 @@ struct FighterOrderQueue
         transfer_columns<false>(destination, source, num_);
     }
   public:
+    auto entity_ids(this auto& self) { return self.get_view().entity_ids(); }
+    auto orders(this auto& self) { return self.get_view().orders(); }
+    auto tasks(this auto& self) { return self.get_view().tasks(); }
+    auto targets(this auto& self) { return self.get_view().targets(); }
+    void set(size_type index,
+             EntityId const new_entity_ids,
+             FighterOrder const new_orders,
+             FighterTask const new_tasks,
+             EntityId const new_targets) {
+        assert(index < num());
+        get_view().entity_ids()[index] = new_entity_ids;
+        get_view().orders()[index] = new_orders;
+        get_view().tasks()[index] = new_tasks;
+        get_view().targets()[index] = new_targets;
+    }
     void add(EntityId const entity_id,
              FighterOrder const order,
              FighterTask const task,

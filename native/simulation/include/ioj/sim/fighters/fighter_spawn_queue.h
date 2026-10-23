@@ -171,6 +171,12 @@ struct FighterSpawnQueueSingleResolvedView_locations
     : FighterSpawnQueueSingleResolvedView_locationsImpl<false> {
     using Base = FighterSpawnQueueSingleResolvedView_locationsImpl<false>;
     using Base::Base;
+    void set(size_type index, float const new_xs, float const new_ys, float const new_zs) const {
+        assert(index < num());
+        this->xs()[index] = new_xs;
+        this->ys()[index] = new_ys;
+        this->zs()[index] = new_zs;
+    }
 };
 struct FighterSpawnQueueSingleResolvedView_rotations;
 struct FighterSpawnQueueSingleResolvedConstView_rotations;
@@ -270,6 +276,15 @@ struct FighterSpawnQueueSingleResolvedView_rotations
     : FighterSpawnQueueSingleResolvedView_rotationsImpl<false> {
     using Base = FighterSpawnQueueSingleResolvedView_rotationsImpl<false>;
     using Base::Base;
+    void set(size_type index,
+             float const new_pitches,
+             float const new_yaws,
+             float const new_rolls) const {
+        assert(index < num());
+        this->pitches()[index] = new_pitches;
+        this->yaws()[index] = new_yaws;
+        this->rolls()[index] = new_rolls;
+    }
 };
 struct FighterSpawnQueueSingleResolvedView;
 struct FighterSpawnQueueSingleResolvedConstView;
@@ -449,6 +464,27 @@ struct FighterSpawnQueueSingleResolvedConstView : FighterSpawnQueueSingleResolve
 struct FighterSpawnQueueSingleResolvedView : FighterSpawnQueueSingleResolvedViewImpl<false> {
     using Base = FighterSpawnQueueSingleResolvedViewImpl<false>;
     using Base::Base;
+    void set(size_type index,
+             float const new_locations_xs,
+             float const new_locations_ys,
+             float const new_locations_zs,
+             float const new_rotations_pitches,
+             float const new_rotations_yaws,
+             float const new_rotations_rolls,
+             ::ioj::Team const new_teams,
+             EntityId const new_parents,
+             EntityId const new_targets) const {
+        assert(index < num());
+        this->view_locations().xs()[index] = new_locations_xs;
+        this->view_locations().ys()[index] = new_locations_ys;
+        this->view_locations().zs()[index] = new_locations_zs;
+        this->view_rotations().pitches()[index] = new_rotations_pitches;
+        this->view_rotations().yaws()[index] = new_rotations_yaws;
+        this->view_rotations().rolls()[index] = new_rotations_rolls;
+        this->teams()[index] = new_teams;
+        this->parents()[index] = new_parents;
+        this->targets()[index] = new_targets;
+    }
 };
 template <bool Const>
 struct FighterSpawnQueueSingleViewImpl : ioj::soa_storage_detail::CompactViewOperations {
@@ -546,6 +582,27 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<FighterSpawnQueueSi
 struct FighterSpawnQueueSingleView : FighterSpawnQueueSingleViewImpl<false> {
     using Base = FighterSpawnQueueSingleViewImpl<false>;
     using Base::Base;
+    void set(size_type index,
+             float const new_locations_xs,
+             float const new_locations_ys,
+             float const new_locations_zs,
+             float const new_rotations_pitches,
+             float const new_rotations_yaws,
+             float const new_rotations_rolls,
+             ::ioj::Team const new_teams,
+             EntityId const new_parents,
+             EntityId const new_targets) const {
+        assert(index < num());
+        this->view_locations().xs()[index] = new_locations_xs;
+        this->view_locations().ys()[index] = new_locations_ys;
+        this->view_locations().zs()[index] = new_locations_zs;
+        this->view_rotations().pitches()[index] = new_rotations_pitches;
+        this->view_rotations().yaws()[index] = new_rotations_yaws;
+        this->view_rotations().rolls()[index] = new_rotations_rolls;
+        this->teams()[index] = new_teams;
+        this->parents()[index] = new_parents;
+        this->targets()[index] = new_targets;
+    }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<FighterSpawnQueueSingleView>());
 // Columns:
@@ -757,5 +814,54 @@ struct FighterSpawnQueue
         transfer_columns<false>(destination, source, num_);
     }
   public:
+    auto view_locations(this auto& self) { return self.get_view().view_locations(); }
+    auto view_rotations(this auto& self) { return self.get_view().view_rotations(); }
+    auto teams(this auto& self) { return self.get_view().teams(); }
+    auto parents(this auto& self) { return self.get_view().parents(); }
+    auto targets(this auto& self) { return self.get_view().targets(); }
+    void set(size_type index,
+             float const new_locations_xs,
+             float const new_locations_ys,
+             float const new_locations_zs,
+             float const new_rotations_pitches,
+             float const new_rotations_yaws,
+             float const new_rotations_rolls,
+             ::ioj::Team const new_teams,
+             EntityId const new_parents,
+             EntityId const new_targets) {
+        assert(index < num());
+        get_view().view_locations().xs()[index] = new_locations_xs;
+        get_view().view_locations().ys()[index] = new_locations_ys;
+        get_view().view_locations().zs()[index] = new_locations_zs;
+        get_view().view_rotations().pitches()[index] = new_rotations_pitches;
+        get_view().view_rotations().yaws()[index] = new_rotations_yaws;
+        get_view().view_rotations().rolls()[index] = new_rotations_rolls;
+        get_view().teams()[index] = new_teams;
+        get_view().parents()[index] = new_parents;
+        get_view().targets()[index] = new_targets;
+    }
+    size_type add(float const new_locations_xs,
+                  float const new_locations_ys,
+                  float const new_locations_zs,
+                  float const new_rotations_pitches,
+                  float const new_rotations_yaws,
+                  float const new_rotations_rolls,
+                  ::ioj::Team const new_teams,
+                  EntityId const new_parents,
+                  EntityId const new_targets) {
+        auto const index{num()};
+        add_uninitialised(1);
+        set(index,
+            new_locations_xs,
+            new_locations_ys,
+            new_locations_zs,
+            new_rotations_pitches,
+            new_rotations_yaws,
+            new_rotations_rolls,
+            new_teams,
+            new_parents,
+            new_targets);
+        return index;
+    }
 };
 } // namespace ioj::sim

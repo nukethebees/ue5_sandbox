@@ -164,6 +164,17 @@ struct EntityDeathInfoSingleResolvedConstView : EntityDeathInfoSingleResolvedVie
 struct EntityDeathInfoSingleResolvedView : EntityDeathInfoSingleResolvedViewImpl<false> {
     using Base = EntityDeathInfoSingleResolvedViewImpl<false>;
     using Base::Base;
+    void set(size_type index,
+             DeathReason const new_reasons,
+             EntityId const new_victims,
+             EntityId const new_killers,
+             Vector3f const new_locations) const {
+        assert(index < num());
+        this->reasons()[index] = new_reasons;
+        this->victims()[index] = new_victims;
+        this->killers()[index] = new_killers;
+        this->locations()[index] = new_locations;
+    }
 };
 template <bool Const>
 struct EntityDeathInfoSingleViewImpl : ioj::soa_storage_detail::CompactViewOperations {
@@ -228,6 +239,17 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<EntityDeathInfoSing
 struct EntityDeathInfoSingleView : EntityDeathInfoSingleViewImpl<false> {
     using Base = EntityDeathInfoSingleViewImpl<false>;
     using Base::Base;
+    void set(size_type index,
+             DeathReason const new_reasons,
+             EntityId const new_victims,
+             EntityId const new_killers,
+             Vector3f const new_locations) const {
+        assert(index < num());
+        this->reasons()[index] = new_reasons;
+        this->victims()[index] = new_victims;
+        this->killers()[index] = new_killers;
+        this->locations()[index] = new_locations;
+    }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<EntityDeathInfoSingleView>());
 // Columns:
@@ -399,5 +421,29 @@ struct EntityDeathInfo
         transfer_columns<false>(destination, source, num_);
     }
   public:
+    auto reasons(this auto& self) { return self.get_view().reasons(); }
+    auto victims(this auto& self) { return self.get_view().victims(); }
+    auto killers(this auto& self) { return self.get_view().killers(); }
+    auto locations(this auto& self) { return self.get_view().locations(); }
+    void set(size_type index,
+             DeathReason const new_reasons,
+             EntityId const new_victims,
+             EntityId const new_killers,
+             Vector3f const new_locations) {
+        assert(index < num());
+        get_view().reasons()[index] = new_reasons;
+        get_view().victims()[index] = new_victims;
+        get_view().killers()[index] = new_killers;
+        get_view().locations()[index] = new_locations;
+    }
+    size_type add(DeathReason const new_reasons,
+                  EntityId const new_victims,
+                  EntityId const new_killers,
+                  Vector3f const new_locations) {
+        auto const index{num()};
+        add_uninitialised(1);
+        set(index, new_reasons, new_victims, new_killers, new_locations);
+        return index;
+    }
 };
 } // namespace ioj::sim

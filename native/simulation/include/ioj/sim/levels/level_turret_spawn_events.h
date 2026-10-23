@@ -175,6 +175,12 @@ struct LevelTurretSpawnEventsSingleResolvedView_locations
     : LevelTurretSpawnEventsSingleResolvedView_locationsImpl<false> {
     using Base = LevelTurretSpawnEventsSingleResolvedView_locationsImpl<false>;
     using Base::Base;
+    void set(size_type index, float const new_xs, float const new_ys, float const new_zs) const {
+        assert(index < num());
+        this->xs()[index] = new_xs;
+        this->ys()[index] = new_ys;
+        this->zs()[index] = new_zs;
+    }
 };
 struct LevelTurretSpawnEventsSingleResolvedView_rotations;
 struct LevelTurretSpawnEventsSingleResolvedConstView_rotations;
@@ -275,6 +281,15 @@ struct LevelTurretSpawnEventsSingleResolvedView_rotations
     : LevelTurretSpawnEventsSingleResolvedView_rotationsImpl<false> {
     using Base = LevelTurretSpawnEventsSingleResolvedView_rotationsImpl<false>;
     using Base::Base;
+    void set(size_type index,
+             float const new_pitches,
+             float const new_yaws,
+             float const new_rolls) const {
+        assert(index < num());
+        this->pitches()[index] = new_pitches;
+        this->yaws()[index] = new_yaws;
+        this->rolls()[index] = new_rolls;
+    }
 };
 struct LevelTurretSpawnEventsSingleResolvedView;
 struct LevelTurretSpawnEventsSingleResolvedConstView;
@@ -474,6 +489,29 @@ struct LevelTurretSpawnEventsSingleResolvedView
     : LevelTurretSpawnEventsSingleResolvedViewImpl<false> {
     using Base = LevelTurretSpawnEventsSingleResolvedViewImpl<false>;
     using Base::Base;
+    void set(size_type index,
+             ioj::sim::LevelEntityIndex const new_entity_indices,
+             float const new_locations_xs,
+             float const new_locations_ys,
+             float const new_locations_zs,
+             float const new_rotations_pitches,
+             float const new_rotations_yaws,
+             float const new_rotations_rolls,
+             ::ioj::Team const new_teams,
+             Health const new_healths,
+             std::int32_t const new_laser_damages) const {
+        assert(index < num());
+        this->entity_indices()[index] = new_entity_indices;
+        this->view_locations().xs()[index] = new_locations_xs;
+        this->view_locations().ys()[index] = new_locations_ys;
+        this->view_locations().zs()[index] = new_locations_zs;
+        this->view_rotations().pitches()[index] = new_rotations_pitches;
+        this->view_rotations().yaws()[index] = new_rotations_yaws;
+        this->view_rotations().rolls()[index] = new_rotations_rolls;
+        this->teams()[index] = new_teams;
+        this->healths()[index] = new_healths;
+        this->laser_damages()[index] = new_laser_damages;
+    }
 };
 template <bool Const>
 struct LevelTurretSpawnEventsSingleViewImpl : ioj::soa_storage_detail::CompactViewOperations {
@@ -575,6 +613,29 @@ static_assert(
 struct LevelTurretSpawnEventsSingleView : LevelTurretSpawnEventsSingleViewImpl<false> {
     using Base = LevelTurretSpawnEventsSingleViewImpl<false>;
     using Base::Base;
+    void set(size_type index,
+             ioj::sim::LevelEntityIndex const new_entity_indices,
+             float const new_locations_xs,
+             float const new_locations_ys,
+             float const new_locations_zs,
+             float const new_rotations_pitches,
+             float const new_rotations_yaws,
+             float const new_rotations_rolls,
+             ::ioj::Team const new_teams,
+             Health const new_healths,
+             std::int32_t const new_laser_damages) const {
+        assert(index < num());
+        this->entity_indices()[index] = new_entity_indices;
+        this->view_locations().xs()[index] = new_locations_xs;
+        this->view_locations().ys()[index] = new_locations_ys;
+        this->view_locations().zs()[index] = new_locations_zs;
+        this->view_rotations().pitches()[index] = new_rotations_pitches;
+        this->view_rotations().yaws()[index] = new_rotations_yaws;
+        this->view_rotations().rolls()[index] = new_rotations_rolls;
+        this->teams()[index] = new_teams;
+        this->healths()[index] = new_healths;
+        this->laser_damages()[index] = new_laser_damages;
+    }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<LevelTurretSpawnEventsSingleView>());
 // Columns:
@@ -793,5 +854,59 @@ struct LevelTurretSpawnEvents
         transfer_columns<false>(destination, source, num_);
     }
   public:
+    auto entity_indices(this auto& self) { return self.get_view().entity_indices(); }
+    auto view_locations(this auto& self) { return self.get_view().view_locations(); }
+    auto view_rotations(this auto& self) { return self.get_view().view_rotations(); }
+    auto teams(this auto& self) { return self.get_view().teams(); }
+    auto healths(this auto& self) { return self.get_view().healths(); }
+    auto laser_damages(this auto& self) { return self.get_view().laser_damages(); }
+    void set(size_type index,
+             ioj::sim::LevelEntityIndex const new_entity_indices,
+             float const new_locations_xs,
+             float const new_locations_ys,
+             float const new_locations_zs,
+             float const new_rotations_pitches,
+             float const new_rotations_yaws,
+             float const new_rotations_rolls,
+             ::ioj::Team const new_teams,
+             Health const new_healths,
+             std::int32_t const new_laser_damages) {
+        assert(index < num());
+        get_view().entity_indices()[index] = new_entity_indices;
+        get_view().view_locations().xs()[index] = new_locations_xs;
+        get_view().view_locations().ys()[index] = new_locations_ys;
+        get_view().view_locations().zs()[index] = new_locations_zs;
+        get_view().view_rotations().pitches()[index] = new_rotations_pitches;
+        get_view().view_rotations().yaws()[index] = new_rotations_yaws;
+        get_view().view_rotations().rolls()[index] = new_rotations_rolls;
+        get_view().teams()[index] = new_teams;
+        get_view().healths()[index] = new_healths;
+        get_view().laser_damages()[index] = new_laser_damages;
+    }
+    size_type add(ioj::sim::LevelEntityIndex const new_entity_indices,
+                  float const new_locations_xs,
+                  float const new_locations_ys,
+                  float const new_locations_zs,
+                  float const new_rotations_pitches,
+                  float const new_rotations_yaws,
+                  float const new_rotations_rolls,
+                  ::ioj::Team const new_teams,
+                  Health const new_healths,
+                  std::int32_t const new_laser_damages) {
+        auto const index{num()};
+        add_uninitialised(1);
+        set(index,
+            new_entity_indices,
+            new_locations_xs,
+            new_locations_ys,
+            new_locations_zs,
+            new_rotations_pitches,
+            new_rotations_yaws,
+            new_rotations_rolls,
+            new_teams,
+            new_healths,
+            new_laser_damages);
+        return index;
+    }
 };
 } // namespace ioj::sim

@@ -156,6 +156,15 @@ struct DirectDamageEventsSingleResolvedConstView : DirectDamageEventsSingleResol
 struct DirectDamageEventsSingleResolvedView : DirectDamageEventsSingleResolvedViewImpl<false> {
     using Base = DirectDamageEventsSingleResolvedViewImpl<false>;
     using Base::Base;
+    void set(size_type index,
+             EntityId const new_damaged_entities,
+             std::int32_t const new_damage_amounts,
+             EntityId const new_instigators) const {
+        assert(index < num());
+        this->damaged_entities()[index] = new_damaged_entities;
+        this->damage_amounts()[index] = new_damage_amounts;
+        this->instigators()[index] = new_instigators;
+    }
 };
 template <bool Const>
 struct DirectDamageEventsSingleViewImpl : ioj::soa_storage_detail::CompactViewOperations {
@@ -219,6 +228,15 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<DirectDamageEventsS
 struct DirectDamageEventsSingleView : DirectDamageEventsSingleViewImpl<false> {
     using Base = DirectDamageEventsSingleViewImpl<false>;
     using Base::Base;
+    void set(size_type index,
+             EntityId const new_damaged_entities,
+             std::int32_t const new_damage_amounts,
+             EntityId const new_instigators) const {
+        assert(index < num());
+        this->damaged_entities()[index] = new_damaged_entities;
+        this->damage_amounts()[index] = new_damage_amounts;
+        this->instigators()[index] = new_instigators;
+    }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<DirectDamageEventsSingleView>());
 // Columns:
@@ -384,6 +402,18 @@ struct DirectDamageEvents
         transfer_columns<false>(destination, source, num_);
     }
   public:
+    auto damaged_entities(this auto& self) { return self.get_view().damaged_entities(); }
+    auto damage_amounts(this auto& self) { return self.get_view().damage_amounts(); }
+    auto instigators(this auto& self) { return self.get_view().instigators(); }
+    void set(size_type index,
+             EntityId const new_damaged_entities,
+             std::int32_t const new_damage_amounts,
+             EntityId const new_instigators) {
+        assert(index < num());
+        get_view().damaged_entities()[index] = new_damaged_entities;
+        get_view().damage_amounts()[index] = new_damage_amounts;
+        get_view().instigators()[index] = new_instigators;
+    }
     void add(EntityId const damaged_entity,
              std::int32_t const damage_amount,
              EntityId const instigator) {

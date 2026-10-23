@@ -162,6 +162,12 @@ struct LineTracesSingleResolvedConstView_starts : LineTracesSingleResolvedView_s
 struct LineTracesSingleResolvedView_starts : LineTracesSingleResolvedView_startsImpl<false> {
     using Base = LineTracesSingleResolvedView_startsImpl<false>;
     using Base::Base;
+    void set(size_type index, float const new_xs, float const new_ys, float const new_zs) const {
+        assert(index < num());
+        this->xs()[index] = new_xs;
+        this->ys()[index] = new_ys;
+        this->zs()[index] = new_zs;
+    }
     using equivalent_type = Vector3f;
     auto operator[](std::uint32_t index) const -> equivalent_type {
         return equivalent_type{xs()[index], ys()[index], zs()[index]};
@@ -263,6 +269,12 @@ struct LineTracesSingleResolvedConstView_ends : LineTracesSingleResolvedView_end
 struct LineTracesSingleResolvedView_ends : LineTracesSingleResolvedView_endsImpl<false> {
     using Base = LineTracesSingleResolvedView_endsImpl<false>;
     using Base::Base;
+    void set(size_type index, float const new_xs, float const new_ys, float const new_zs) const {
+        assert(index < num());
+        this->xs()[index] = new_xs;
+        this->ys()[index] = new_ys;
+        this->zs()[index] = new_zs;
+    }
     using equivalent_type = Vector3f;
     auto operator[](std::uint32_t index) const -> equivalent_type {
         return equivalent_type{xs()[index], ys()[index], zs()[index]};
@@ -401,6 +413,21 @@ struct LineTracesSingleResolvedConstView : LineTracesSingleResolvedViewImpl<true
 struct LineTracesSingleResolvedView : LineTracesSingleResolvedViewImpl<false> {
     using Base = LineTracesSingleResolvedViewImpl<false>;
     using Base::Base;
+    void set(size_type index,
+             float const new_starts_xs,
+             float const new_starts_ys,
+             float const new_starts_zs,
+             float const new_ends_xs,
+             float const new_ends_ys,
+             float const new_ends_zs) const {
+        assert(index < num());
+        this->view_starts().xs()[index] = new_starts_xs;
+        this->view_starts().ys()[index] = new_starts_ys;
+        this->view_starts().zs()[index] = new_starts_zs;
+        this->view_ends().xs()[index] = new_ends_xs;
+        this->view_ends().ys()[index] = new_ends_ys;
+        this->view_ends().zs()[index] = new_ends_zs;
+    }
 };
 template <bool Const>
 struct LineTracesSingleViewImpl : ioj::soa_storage_detail::CompactViewOperations {
@@ -485,6 +512,21 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<LineTracesSingleCon
 struct LineTracesSingleView : LineTracesSingleViewImpl<false> {
     using Base = LineTracesSingleViewImpl<false>;
     using Base::Base;
+    void set(size_type index,
+             float const new_starts_xs,
+             float const new_starts_ys,
+             float const new_starts_zs,
+             float const new_ends_xs,
+             float const new_ends_ys,
+             float const new_ends_zs) const {
+        assert(index < num());
+        this->view_starts().xs()[index] = new_starts_xs;
+        this->view_starts().ys()[index] = new_starts_ys;
+        this->view_starts().zs()[index] = new_starts_zs;
+        this->view_ends().xs()[index] = new_ends_xs;
+        this->view_ends().ys()[index] = new_ends_ys;
+        this->view_ends().zs()[index] = new_ends_zs;
+    }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<LineTracesSingleView>());
 // Columns:
@@ -675,5 +717,39 @@ struct LineTraces
         transfer_columns<false>(destination, source, num_);
     }
   public:
+    auto view_starts(this auto& self) { return self.get_view().view_starts(); }
+    auto view_ends(this auto& self) { return self.get_view().view_ends(); }
+    void set(size_type index,
+             float const new_starts_xs,
+             float const new_starts_ys,
+             float const new_starts_zs,
+             float const new_ends_xs,
+             float const new_ends_ys,
+             float const new_ends_zs) {
+        assert(index < num());
+        get_view().view_starts().xs()[index] = new_starts_xs;
+        get_view().view_starts().ys()[index] = new_starts_ys;
+        get_view().view_starts().zs()[index] = new_starts_zs;
+        get_view().view_ends().xs()[index] = new_ends_xs;
+        get_view().view_ends().ys()[index] = new_ends_ys;
+        get_view().view_ends().zs()[index] = new_ends_zs;
+    }
+    size_type add(float const new_starts_xs,
+                  float const new_starts_ys,
+                  float const new_starts_zs,
+                  float const new_ends_xs,
+                  float const new_ends_ys,
+                  float const new_ends_zs) {
+        auto const index{num()};
+        add_uninitialised(1);
+        set(index,
+            new_starts_xs,
+            new_starts_ys,
+            new_starts_zs,
+            new_ends_xs,
+            new_ends_ys,
+            new_ends_zs);
+        return index;
+    }
 };
 } // namespace ioj::sim

@@ -188,6 +188,12 @@ struct EntitiesSingleResolvedConstView_locations : EntitiesSingleResolvedView_lo
 struct EntitiesSingleResolvedView_locations : EntitiesSingleResolvedView_locationsImpl<false> {
     using Base = EntitiesSingleResolvedView_locationsImpl<false>;
     using Base::Base;
+    void set(size_type index, float const new_xs, float const new_ys, float const new_zs) const {
+        assert(index < num());
+        this->xs()[index] = new_xs;
+        this->ys()[index] = new_ys;
+        this->zs()[index] = new_zs;
+    }
     using equivalent_type = Vector3f;
     auto operator[](std::uint32_t index) const -> equivalent_type {
         return equivalent_type{xs()[index], ys()[index], zs()[index]};
@@ -293,6 +299,15 @@ struct EntitiesSingleResolvedConstView_rotations : EntitiesSingleResolvedView_ro
 struct EntitiesSingleResolvedView_rotations : EntitiesSingleResolvedView_rotationsImpl<false> {
     using Base = EntitiesSingleResolvedView_rotationsImpl<false>;
     using Base::Base;
+    void set(size_type index,
+             float const new_pitches,
+             float const new_yaws,
+             float const new_rolls) const {
+        assert(index < num());
+        this->pitches()[index] = new_pitches;
+        this->yaws()[index] = new_yaws;
+        this->rolls()[index] = new_rolls;
+    }
     using equivalent_type = Rotator3f;
     auto operator[](std::uint32_t index) const -> equivalent_type {
         return equivalent_type{pitches()[index], yaws()[index], rolls()[index]};
@@ -397,6 +412,12 @@ struct EntitiesSingleResolvedConstView_velocities
 struct EntitiesSingleResolvedView_velocities : EntitiesSingleResolvedView_velocitiesImpl<false> {
     using Base = EntitiesSingleResolvedView_velocitiesImpl<false>;
     using Base::Base;
+    void set(size_type index, float const new_xs, float const new_ys, float const new_zs) const {
+        assert(index < num());
+        this->xs()[index] = new_xs;
+        this->ys()[index] = new_ys;
+        this->zs()[index] = new_zs;
+    }
     using equivalent_type = Vector3f;
     auto operator[](std::uint32_t index) const -> equivalent_type {
         return equivalent_type{xs()[index], ys()[index], zs()[index]};
@@ -669,6 +690,41 @@ struct EntitiesSingleResolvedConstView : EntitiesSingleResolvedViewImpl<true> {
 struct EntitiesSingleResolvedView : EntitiesSingleResolvedViewImpl<false> {
     using Base = EntitiesSingleResolvedViewImpl<false>;
     using Base::Base;
+    void set(size_type index,
+             std::uint8_t const new_active,
+             ioj::sim::LaserSource const new_sources,
+             float const new_locations_xs,
+             float const new_locations_ys,
+             float const new_locations_zs,
+             float const new_rotations_pitches,
+             float const new_rotations_yaws,
+             float const new_rotations_rolls,
+             float const new_velocities_xs,
+             float const new_velocities_ys,
+             float const new_velocities_zs,
+             std::int32_t const new_damages,
+             float const new_lifetimes_remaining,
+             EntityId const new_instigator_ids,
+             float const new_initial_lifetimes,
+             float const new_spawn_times) const {
+        assert(index < num());
+        this->active()[index] = new_active;
+        this->sources()[index] = new_sources;
+        this->view_locations().xs()[index] = new_locations_xs;
+        this->view_locations().ys()[index] = new_locations_ys;
+        this->view_locations().zs()[index] = new_locations_zs;
+        this->view_rotations().pitches()[index] = new_rotations_pitches;
+        this->view_rotations().yaws()[index] = new_rotations_yaws;
+        this->view_rotations().rolls()[index] = new_rotations_rolls;
+        this->view_velocities().xs()[index] = new_velocities_xs;
+        this->view_velocities().ys()[index] = new_velocities_ys;
+        this->view_velocities().zs()[index] = new_velocities_zs;
+        this->damages()[index] = new_damages;
+        this->lifetimes_remaining()[index] = new_lifetimes_remaining;
+        this->instigator_ids()[index] = new_instigator_ids;
+        this->initial_lifetimes()[index] = new_initial_lifetimes;
+        this->spawn_times()[index] = new_spawn_times;
+    }
 };
 template <bool Const>
 struct EntitiesSingleViewImpl : ioj::soa_storage_detail::CompactViewOperations {
@@ -799,6 +855,41 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<EntitiesSingleConst
 struct EntitiesSingleView : EntitiesSingleViewImpl<false> {
     using Base = EntitiesSingleViewImpl<false>;
     using Base::Base;
+    void set(size_type index,
+             std::uint8_t const new_active,
+             ioj::sim::LaserSource const new_sources,
+             float const new_locations_xs,
+             float const new_locations_ys,
+             float const new_locations_zs,
+             float const new_rotations_pitches,
+             float const new_rotations_yaws,
+             float const new_rotations_rolls,
+             float const new_velocities_xs,
+             float const new_velocities_ys,
+             float const new_velocities_zs,
+             std::int32_t const new_damages,
+             float const new_lifetimes_remaining,
+             EntityId const new_instigator_ids,
+             float const new_initial_lifetimes,
+             float const new_spawn_times) const {
+        assert(index < num());
+        this->active()[index] = new_active;
+        this->sources()[index] = new_sources;
+        this->view_locations().xs()[index] = new_locations_xs;
+        this->view_locations().ys()[index] = new_locations_ys;
+        this->view_locations().zs()[index] = new_locations_zs;
+        this->view_rotations().pitches()[index] = new_rotations_pitches;
+        this->view_rotations().yaws()[index] = new_rotations_yaws;
+        this->view_rotations().rolls()[index] = new_rotations_rolls;
+        this->view_velocities().xs()[index] = new_velocities_xs;
+        this->view_velocities().ys()[index] = new_velocities_ys;
+        this->view_velocities().zs()[index] = new_velocities_zs;
+        this->damages()[index] = new_damages;
+        this->lifetimes_remaining()[index] = new_lifetimes_remaining;
+        this->instigator_ids()[index] = new_instigator_ids;
+        this->initial_lifetimes()[index] = new_initial_lifetimes;
+        this->spawn_times()[index] = new_spawn_times;
+    }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<EntitiesSingleView>());
 // Columns:
@@ -1060,5 +1151,87 @@ struct LaserEntities
         transfer_columns<false>(destination, source, num_);
     }
   public:
+    auto active(this auto& self) { return self.get_view().active(); }
+    auto sources(this auto& self) { return self.get_view().sources(); }
+    auto view_locations(this auto& self) { return self.get_view().view_locations(); }
+    auto view_rotations(this auto& self) { return self.get_view().view_rotations(); }
+    auto view_velocities(this auto& self) { return self.get_view().view_velocities(); }
+    auto damages(this auto& self) { return self.get_view().damages(); }
+    auto lifetimes_remaining(this auto& self) { return self.get_view().lifetimes_remaining(); }
+    auto instigator_ids(this auto& self) { return self.get_view().instigator_ids(); }
+    auto initial_lifetimes(this auto& self) { return self.get_view().initial_lifetimes(); }
+    auto spawn_times(this auto& self) { return self.get_view().spawn_times(); }
+    void set(size_type index,
+             std::uint8_t const new_active,
+             ioj::sim::LaserSource const new_sources,
+             float const new_locations_xs,
+             float const new_locations_ys,
+             float const new_locations_zs,
+             float const new_rotations_pitches,
+             float const new_rotations_yaws,
+             float const new_rotations_rolls,
+             float const new_velocities_xs,
+             float const new_velocities_ys,
+             float const new_velocities_zs,
+             std::int32_t const new_damages,
+             float const new_lifetimes_remaining,
+             EntityId const new_instigator_ids,
+             float const new_initial_lifetimes,
+             float const new_spawn_times) {
+        assert(index < num());
+        get_view().active()[index] = new_active;
+        get_view().sources()[index] = new_sources;
+        get_view().view_locations().xs()[index] = new_locations_xs;
+        get_view().view_locations().ys()[index] = new_locations_ys;
+        get_view().view_locations().zs()[index] = new_locations_zs;
+        get_view().view_rotations().pitches()[index] = new_rotations_pitches;
+        get_view().view_rotations().yaws()[index] = new_rotations_yaws;
+        get_view().view_rotations().rolls()[index] = new_rotations_rolls;
+        get_view().view_velocities().xs()[index] = new_velocities_xs;
+        get_view().view_velocities().ys()[index] = new_velocities_ys;
+        get_view().view_velocities().zs()[index] = new_velocities_zs;
+        get_view().damages()[index] = new_damages;
+        get_view().lifetimes_remaining()[index] = new_lifetimes_remaining;
+        get_view().instigator_ids()[index] = new_instigator_ids;
+        get_view().initial_lifetimes()[index] = new_initial_lifetimes;
+        get_view().spawn_times()[index] = new_spawn_times;
+    }
+    size_type add(std::uint8_t const new_active,
+                  ioj::sim::LaserSource const new_sources,
+                  float const new_locations_xs,
+                  float const new_locations_ys,
+                  float const new_locations_zs,
+                  float const new_rotations_pitches,
+                  float const new_rotations_yaws,
+                  float const new_rotations_rolls,
+                  float const new_velocities_xs,
+                  float const new_velocities_ys,
+                  float const new_velocities_zs,
+                  std::int32_t const new_damages,
+                  float const new_lifetimes_remaining,
+                  EntityId const new_instigator_ids,
+                  float const new_initial_lifetimes,
+                  float const new_spawn_times) {
+        auto const index{num()};
+        add_uninitialised(1);
+        set(index,
+            new_active,
+            new_sources,
+            new_locations_xs,
+            new_locations_ys,
+            new_locations_zs,
+            new_rotations_pitches,
+            new_rotations_yaws,
+            new_rotations_rolls,
+            new_velocities_xs,
+            new_velocities_ys,
+            new_velocities_zs,
+            new_damages,
+            new_lifetimes_remaining,
+            new_instigator_ids,
+            new_initial_lifetimes,
+            new_spawn_times);
+        return index;
+    }
 };
 } // namespace ioj::sim::lasers

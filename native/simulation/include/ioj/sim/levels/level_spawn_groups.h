@@ -154,6 +154,15 @@ struct LevelSpawnGroupsSingleResolvedConstView : LevelSpawnGroupsSingleResolvedV
 struct LevelSpawnGroupsSingleResolvedView : LevelSpawnGroupsSingleResolvedViewImpl<false> {
     using Base = LevelSpawnGroupsSingleResolvedViewImpl<false>;
     using Base::Base;
+    void set(size_type index,
+             ioj::sim::EntityType const new_types,
+             std::int32_t const new_offsets,
+             LevelEventCount const new_counts) const {
+        assert(index < num());
+        this->types()[index] = new_types;
+        this->offsets()[index] = new_offsets;
+        this->counts()[index] = new_counts;
+    }
 };
 template <bool Const>
 struct LevelSpawnGroupsSingleViewImpl : ioj::soa_storage_detail::CompactViewOperations {
@@ -215,6 +224,15 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<LevelSpawnGroupsSin
 struct LevelSpawnGroupsSingleView : LevelSpawnGroupsSingleViewImpl<false> {
     using Base = LevelSpawnGroupsSingleViewImpl<false>;
     using Base::Base;
+    void set(size_type index,
+             ioj::sim::EntityType const new_types,
+             std::int32_t const new_offsets,
+             LevelEventCount const new_counts) const {
+        assert(index < num());
+        this->types()[index] = new_types;
+        this->offsets()[index] = new_offsets;
+        this->counts()[index] = new_counts;
+    }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<LevelSpawnGroupsSingleView>());
 // Columns:
@@ -380,5 +398,25 @@ struct LevelSpawnGroups
         transfer_columns<false>(destination, source, num_);
     }
   public:
+    auto types(this auto& self) { return self.get_view().types(); }
+    auto offsets(this auto& self) { return self.get_view().offsets(); }
+    auto counts(this auto& self) { return self.get_view().counts(); }
+    void set(size_type index,
+             ioj::sim::EntityType const new_types,
+             std::int32_t const new_offsets,
+             LevelEventCount const new_counts) {
+        assert(index < num());
+        get_view().types()[index] = new_types;
+        get_view().offsets()[index] = new_offsets;
+        get_view().counts()[index] = new_counts;
+    }
+    size_type add(ioj::sim::EntityType const new_types,
+                  std::int32_t const new_offsets,
+                  LevelEventCount const new_counts) {
+        auto const index{num()};
+        add_uninitialised(1);
+        set(index, new_types, new_offsets, new_counts);
+        return index;
+    }
 };
 } // namespace ioj::sim

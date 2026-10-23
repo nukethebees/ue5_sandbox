@@ -263,6 +263,32 @@ TEST(NativeSoa, ResolvedViewsAcceptIndependentSpansAndServeAsAppendSources) {
                  "");
 }
 
+TEST(NativeSoa, ScalarInsertionAndAssignmentPreserveNestedColumnsAcrossGrowth) {
+    ApiOwner owner;
+    EXPECT_EQ(owner.add(1.0f, ApiMask{}, 2.0f, 3.0f), 0U);
+    EXPECT_EQ(owner.values()[0], 1.0f);
+    EXPECT_EQ(owner.view_positions()[0].y, 3.0f);
+    owner.set_num(owner.capacity());
+    auto const first{owner.num()};
+    EXPECT_EQ(owner.add(owner.values()[0],
+                        owner.masks()[0],
+                        owner.view_positions().xs()[0],
+                        owner.view_positions().ys()[0]),
+              first);
+    EXPECT_EQ(owner.values()[first], 1.0f);
+    EXPECT_EQ(owner.view_positions()[first].x, 2.0f);
+    EXPECT_EQ(owner.view_positions()[first].y, 3.0f);
+
+    auto rows{owner.get_view().resolve()};
+    rows.set(first, 4.0f, ApiMask{}, 5.0f, 6.0f);
+    EXPECT_EQ(owner.values()[first], 4.0f);
+    EXPECT_EQ(owner.view_positions()[first].y, 6.0f);
+    owner.get_view().set(first, 7.0f, ApiMask{}, 8.0f, 9.0f);
+    EXPECT_EQ(owner.values()[first], 7.0f);
+    EXPECT_EQ(owner.view_positions()[first].x, 8.0f);
+    static_assert(std::is_same_v<decltype(std::as_const(owner).values()), std::span<float const>>);
+}
+
 TEST(NativeSoa, EmptyResolvedViewsCanBeSlicedAndConverted) {
     ApiOwner owner;
     auto const resolved{owner.get_view().resolve()};

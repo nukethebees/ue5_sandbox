@@ -199,6 +199,12 @@ struct TurretEntityDataSingleResolvedView_locations
     : TurretEntityDataSingleResolvedView_locationsImpl<false> {
     using Base = TurretEntityDataSingleResolvedView_locationsImpl<false>;
     using Base::Base;
+    void set(size_type index, float const new_xs, float const new_ys, float const new_zs) const {
+        assert(index < num());
+        this->xs()[index] = new_xs;
+        this->ys()[index] = new_ys;
+        this->zs()[index] = new_zs;
+    }
 };
 struct TurretEntityDataSingleResolvedView_fire_point_locations;
 struct TurretEntityDataSingleResolvedConstView_fire_point_locations;
@@ -305,6 +311,12 @@ struct TurretEntityDataSingleResolvedView_fire_point_locations
     : TurretEntityDataSingleResolvedView_fire_point_locationsImpl<false> {
     using Base = TurretEntityDataSingleResolvedView_fire_point_locationsImpl<false>;
     using Base::Base;
+    void set(size_type index, float const new_xs, float const new_ys, float const new_zs) const {
+        assert(index < num());
+        this->xs()[index] = new_xs;
+        this->ys()[index] = new_ys;
+        this->zs()[index] = new_zs;
+    }
 };
 struct TurretEntityDataSingleResolvedView_rotations;
 struct TurretEntityDataSingleResolvedConstView_rotations;
@@ -404,6 +416,15 @@ struct TurretEntityDataSingleResolvedView_rotations
     : TurretEntityDataSingleResolvedView_rotationsImpl<false> {
     using Base = TurretEntityDataSingleResolvedView_rotationsImpl<false>;
     using Base::Base;
+    void set(size_type index,
+             float const new_pitches,
+             float const new_yaws,
+             float const new_rolls) const {
+        assert(index < num());
+        this->pitches()[index] = new_pitches;
+        this->yaws()[index] = new_yaws;
+        this->rolls()[index] = new_rolls;
+    }
 };
 struct TurretEntityDataSingleResolvedView_target_locations;
 struct TurretEntityDataSingleResolvedConstView_target_locations;
@@ -506,6 +527,12 @@ struct TurretEntityDataSingleResolvedView_target_locations
     : TurretEntityDataSingleResolvedView_target_locationsImpl<false> {
     using Base = TurretEntityDataSingleResolvedView_target_locationsImpl<false>;
     using Base::Base;
+    void set(size_type index, float const new_xs, float const new_ys, float const new_zs) const {
+        assert(index < num());
+        this->xs()[index] = new_xs;
+        this->ys()[index] = new_ys;
+        this->zs()[index] = new_zs;
+    }
 };
 struct TurretEntityDataSingleResolvedView_target_velocities;
 struct TurretEntityDataSingleResolvedConstView_target_velocities;
@@ -608,6 +635,12 @@ struct TurretEntityDataSingleResolvedView_target_velocities
     : TurretEntityDataSingleResolvedView_target_velocitiesImpl<false> {
     using Base = TurretEntityDataSingleResolvedView_target_velocitiesImpl<false>;
     using Base::Base;
+    void set(size_type index, float const new_xs, float const new_ys, float const new_zs) const {
+        assert(index < num());
+        this->xs()[index] = new_xs;
+        this->ys()[index] = new_ys;
+        this->zs()[index] = new_zs;
+    }
 };
 struct TurretEntityDataSingleResolvedView;
 struct TurretEntityDataSingleResolvedConstView;
@@ -986,6 +1019,56 @@ struct TurretEntityDataSingleResolvedConstView : TurretEntityDataSingleResolvedV
 struct TurretEntityDataSingleResolvedView : TurretEntityDataSingleResolvedViewImpl<false> {
     using Base = TurretEntityDataSingleResolvedViewImpl<false>;
     using Base::Base;
+    void set(size_type index,
+             EntityId const new_entity_ids,
+             std::uint32_t const new_integral_biases,
+             float const new_locations_xs,
+             float const new_locations_ys,
+             float const new_locations_zs,
+             float const new_fire_point_locations_xs,
+             float const new_fire_point_locations_ys,
+             float const new_fire_point_locations_zs,
+             float const new_rotations_pitches,
+             float const new_rotations_yaws,
+             float const new_rotations_rolls,
+             ::ioj::Team const new_teams,
+             std::int16_t const new_laser_cooldowns,
+             std::int32_t const new_laser_damages,
+             std::int16_t const new_target_refresh_countdowns_periods,
+             std::int16_t const new_target_refresh_countdowns_remaining_ticks,
+             EntityId const new_target_ids,
+             float const new_target_locations_xs,
+             float const new_target_locations_ys,
+             float const new_target_locations_zs,
+             float const new_target_velocities_xs,
+             float const new_target_velocities_ys,
+             float const new_target_velocities_zs) const {
+        assert(index < num());
+        this->entity_ids()[index] = new_entity_ids;
+        this->integral_biases()[index] = new_integral_biases;
+        this->view_locations().xs()[index] = new_locations_xs;
+        this->view_locations().ys()[index] = new_locations_ys;
+        this->view_locations().zs()[index] = new_locations_zs;
+        this->view_fire_point_locations().xs()[index] = new_fire_point_locations_xs;
+        this->view_fire_point_locations().ys()[index] = new_fire_point_locations_ys;
+        this->view_fire_point_locations().zs()[index] = new_fire_point_locations_zs;
+        this->view_rotations().pitches()[index] = new_rotations_pitches;
+        this->view_rotations().yaws()[index] = new_rotations_yaws;
+        this->view_rotations().rolls()[index] = new_rotations_rolls;
+        this->teams()[index] = new_teams;
+        this->laser_cooldowns()[index] = new_laser_cooldowns;
+        this->laser_damages()[index] = new_laser_damages;
+        this->target_refresh_countdowns_periods()[index] = new_target_refresh_countdowns_periods;
+        this->target_refresh_countdowns_remaining_ticks()[index] =
+            new_target_refresh_countdowns_remaining_ticks;
+        this->target_ids()[index] = new_target_ids;
+        this->view_target_locations().xs()[index] = new_target_locations_xs;
+        this->view_target_locations().ys()[index] = new_target_locations_ys;
+        this->view_target_locations().zs()[index] = new_target_locations_zs;
+        this->view_target_velocities().xs()[index] = new_target_velocities_xs;
+        this->view_target_velocities().ys()[index] = new_target_velocities_ys;
+        this->view_target_velocities().zs()[index] = new_target_velocities_zs;
+    }
 };
 template <bool Const>
 struct TurretEntityDataSingleViewImpl : ioj::soa_storage_detail::CompactViewOperations {
@@ -1154,6 +1237,56 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<TurretEntityDataSin
 struct TurretEntityDataSingleView : TurretEntityDataSingleViewImpl<false> {
     using Base = TurretEntityDataSingleViewImpl<false>;
     using Base::Base;
+    void set(size_type index,
+             EntityId const new_entity_ids,
+             std::uint32_t const new_integral_biases,
+             float const new_locations_xs,
+             float const new_locations_ys,
+             float const new_locations_zs,
+             float const new_fire_point_locations_xs,
+             float const new_fire_point_locations_ys,
+             float const new_fire_point_locations_zs,
+             float const new_rotations_pitches,
+             float const new_rotations_yaws,
+             float const new_rotations_rolls,
+             ::ioj::Team const new_teams,
+             std::int16_t const new_laser_cooldowns,
+             std::int32_t const new_laser_damages,
+             std::int16_t const new_target_refresh_countdowns_periods,
+             std::int16_t const new_target_refresh_countdowns_remaining_ticks,
+             EntityId const new_target_ids,
+             float const new_target_locations_xs,
+             float const new_target_locations_ys,
+             float const new_target_locations_zs,
+             float const new_target_velocities_xs,
+             float const new_target_velocities_ys,
+             float const new_target_velocities_zs) const {
+        assert(index < num());
+        this->entity_ids()[index] = new_entity_ids;
+        this->integral_biases()[index] = new_integral_biases;
+        this->view_locations().xs()[index] = new_locations_xs;
+        this->view_locations().ys()[index] = new_locations_ys;
+        this->view_locations().zs()[index] = new_locations_zs;
+        this->view_fire_point_locations().xs()[index] = new_fire_point_locations_xs;
+        this->view_fire_point_locations().ys()[index] = new_fire_point_locations_ys;
+        this->view_fire_point_locations().zs()[index] = new_fire_point_locations_zs;
+        this->view_rotations().pitches()[index] = new_rotations_pitches;
+        this->view_rotations().yaws()[index] = new_rotations_yaws;
+        this->view_rotations().rolls()[index] = new_rotations_rolls;
+        this->teams()[index] = new_teams;
+        this->laser_cooldowns()[index] = new_laser_cooldowns;
+        this->laser_damages()[index] = new_laser_damages;
+        this->target_refresh_countdowns_periods()[index] = new_target_refresh_countdowns_periods;
+        this->target_refresh_countdowns_remaining_ticks()[index] =
+            new_target_refresh_countdowns_remaining_ticks;
+        this->target_ids()[index] = new_target_ids;
+        this->view_target_locations().xs()[index] = new_target_locations_xs;
+        this->view_target_locations().ys()[index] = new_target_locations_ys;
+        this->view_target_locations().zs()[index] = new_target_locations_zs;
+        this->view_target_velocities().xs()[index] = new_target_velocities_xs;
+        this->view_target_velocities().ys()[index] = new_target_velocities_ys;
+        this->view_target_velocities().zs()[index] = new_target_velocities_zs;
+    }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<TurretEntityDataSingleView>());
 // Columns:
@@ -1469,5 +1602,128 @@ struct TurretEntityData
         transfer_columns<false>(destination, source, num_);
     }
   public:
+    auto entity_ids(this auto& self) { return self.get_view().entity_ids(); }
+    auto integral_biases(this auto& self) { return self.get_view().integral_biases(); }
+    auto view_locations(this auto& self) { return self.get_view().view_locations(); }
+    auto view_fire_point_locations(this auto& self) {
+        return self.get_view().view_fire_point_locations();
+    }
+    auto view_rotations(this auto& self) { return self.get_view().view_rotations(); }
+    auto teams(this auto& self) { return self.get_view().teams(); }
+    auto laser_cooldowns(this auto& self) { return self.get_view().laser_cooldowns(); }
+    auto laser_damages(this auto& self) { return self.get_view().laser_damages(); }
+    auto target_refresh_countdowns_periods(this auto& self) {
+        return self.get_view().target_refresh_countdowns_periods();
+    }
+    auto target_refresh_countdowns_remaining_ticks(this auto& self) {
+        return self.get_view().target_refresh_countdowns_remaining_ticks();
+    }
+    auto target_ids(this auto& self) { return self.get_view().target_ids(); }
+    auto view_target_locations(this auto& self) { return self.get_view().view_target_locations(); }
+    auto view_target_velocities(this auto& self) {
+        return self.get_view().view_target_velocities();
+    }
+    void set(size_type index,
+             EntityId const new_entity_ids,
+             std::uint32_t const new_integral_biases,
+             float const new_locations_xs,
+             float const new_locations_ys,
+             float const new_locations_zs,
+             float const new_fire_point_locations_xs,
+             float const new_fire_point_locations_ys,
+             float const new_fire_point_locations_zs,
+             float const new_rotations_pitches,
+             float const new_rotations_yaws,
+             float const new_rotations_rolls,
+             ::ioj::Team const new_teams,
+             std::int16_t const new_laser_cooldowns,
+             std::int32_t const new_laser_damages,
+             std::int16_t const new_target_refresh_countdowns_periods,
+             std::int16_t const new_target_refresh_countdowns_remaining_ticks,
+             EntityId const new_target_ids,
+             float const new_target_locations_xs,
+             float const new_target_locations_ys,
+             float const new_target_locations_zs,
+             float const new_target_velocities_xs,
+             float const new_target_velocities_ys,
+             float const new_target_velocities_zs) {
+        assert(index < num());
+        get_view().entity_ids()[index] = new_entity_ids;
+        get_view().integral_biases()[index] = new_integral_biases;
+        get_view().view_locations().xs()[index] = new_locations_xs;
+        get_view().view_locations().ys()[index] = new_locations_ys;
+        get_view().view_locations().zs()[index] = new_locations_zs;
+        get_view().view_fire_point_locations().xs()[index] = new_fire_point_locations_xs;
+        get_view().view_fire_point_locations().ys()[index] = new_fire_point_locations_ys;
+        get_view().view_fire_point_locations().zs()[index] = new_fire_point_locations_zs;
+        get_view().view_rotations().pitches()[index] = new_rotations_pitches;
+        get_view().view_rotations().yaws()[index] = new_rotations_yaws;
+        get_view().view_rotations().rolls()[index] = new_rotations_rolls;
+        get_view().teams()[index] = new_teams;
+        get_view().laser_cooldowns()[index] = new_laser_cooldowns;
+        get_view().laser_damages()[index] = new_laser_damages;
+        get_view().target_refresh_countdowns_periods()[index] =
+            new_target_refresh_countdowns_periods;
+        get_view().target_refresh_countdowns_remaining_ticks()[index] =
+            new_target_refresh_countdowns_remaining_ticks;
+        get_view().target_ids()[index] = new_target_ids;
+        get_view().view_target_locations().xs()[index] = new_target_locations_xs;
+        get_view().view_target_locations().ys()[index] = new_target_locations_ys;
+        get_view().view_target_locations().zs()[index] = new_target_locations_zs;
+        get_view().view_target_velocities().xs()[index] = new_target_velocities_xs;
+        get_view().view_target_velocities().ys()[index] = new_target_velocities_ys;
+        get_view().view_target_velocities().zs()[index] = new_target_velocities_zs;
+    }
+    size_type add(EntityId const new_entity_ids,
+                  std::uint32_t const new_integral_biases,
+                  float const new_locations_xs,
+                  float const new_locations_ys,
+                  float const new_locations_zs,
+                  float const new_fire_point_locations_xs,
+                  float const new_fire_point_locations_ys,
+                  float const new_fire_point_locations_zs,
+                  float const new_rotations_pitches,
+                  float const new_rotations_yaws,
+                  float const new_rotations_rolls,
+                  ::ioj::Team const new_teams,
+                  std::int16_t const new_laser_cooldowns,
+                  std::int32_t const new_laser_damages,
+                  std::int16_t const new_target_refresh_countdowns_periods,
+                  std::int16_t const new_target_refresh_countdowns_remaining_ticks,
+                  EntityId const new_target_ids,
+                  float const new_target_locations_xs,
+                  float const new_target_locations_ys,
+                  float const new_target_locations_zs,
+                  float const new_target_velocities_xs,
+                  float const new_target_velocities_ys,
+                  float const new_target_velocities_zs) {
+        auto const index{num()};
+        add_uninitialised(1);
+        set(index,
+            new_entity_ids,
+            new_integral_biases,
+            new_locations_xs,
+            new_locations_ys,
+            new_locations_zs,
+            new_fire_point_locations_xs,
+            new_fire_point_locations_ys,
+            new_fire_point_locations_zs,
+            new_rotations_pitches,
+            new_rotations_yaws,
+            new_rotations_rolls,
+            new_teams,
+            new_laser_cooldowns,
+            new_laser_damages,
+            new_target_refresh_countdowns_periods,
+            new_target_refresh_countdowns_remaining_ticks,
+            new_target_ids,
+            new_target_locations_xs,
+            new_target_locations_ys,
+            new_target_locations_zs,
+            new_target_velocities_xs,
+            new_target_velocities_ys,
+            new_target_velocities_zs);
+        return index;
+    }
 };
 } // namespace ioj::sim

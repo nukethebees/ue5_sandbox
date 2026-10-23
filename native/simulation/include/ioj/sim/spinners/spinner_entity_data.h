@@ -166,6 +166,12 @@ struct SpinnerEntityDataSingleResolvedView_locations
     : SpinnerEntityDataSingleResolvedView_locationsImpl<false> {
     using Base = SpinnerEntityDataSingleResolvedView_locationsImpl<false>;
     using Base::Base;
+    void set(size_type index, float const new_xs, float const new_ys, float const new_zs) const {
+        assert(index < num());
+        this->xs()[index] = new_xs;
+        this->ys()[index] = new_ys;
+        this->zs()[index] = new_zs;
+    }
 };
 struct SpinnerEntityDataSingleResolvedView;
 struct SpinnerEntityDataSingleResolvedConstView;
@@ -324,6 +330,23 @@ struct SpinnerEntityDataSingleResolvedConstView : SpinnerEntityDataSingleResolve
 struct SpinnerEntityDataSingleResolvedView : SpinnerEntityDataSingleResolvedViewImpl<false> {
     using Base = SpinnerEntityDataSingleResolvedViewImpl<false>;
     using Base::Base;
+    void set(size_type index,
+             EntityId const new_entity_ids,
+             float const new_locations_xs,
+             float const new_locations_ys,
+             float const new_locations_zs,
+             float const new_yaws,
+             std::int16_t const new_laser_cooldowns,
+             std::int32_t const new_next_fire_point_indices) const {
+        assert(index < num());
+        this->entity_ids()[index] = new_entity_ids;
+        this->view_locations().xs()[index] = new_locations_xs;
+        this->view_locations().ys()[index] = new_locations_ys;
+        this->view_locations().zs()[index] = new_locations_zs;
+        this->yaws()[index] = new_yaws;
+        this->laser_cooldowns()[index] = new_laser_cooldowns;
+        this->next_fire_point_indices()[index] = new_next_fire_point_indices;
+    }
 };
 template <bool Const>
 struct SpinnerEntityDataSingleViewImpl : ioj::soa_storage_detail::CompactViewOperations {
@@ -407,6 +430,23 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<SpinnerEntityDataSi
 struct SpinnerEntityDataSingleView : SpinnerEntityDataSingleViewImpl<false> {
     using Base = SpinnerEntityDataSingleViewImpl<false>;
     using Base::Base;
+    void set(size_type index,
+             EntityId const new_entity_ids,
+             float const new_locations_xs,
+             float const new_locations_ys,
+             float const new_locations_zs,
+             float const new_yaws,
+             std::int16_t const new_laser_cooldowns,
+             std::int32_t const new_next_fire_point_indices) const {
+        assert(index < num());
+        this->entity_ids()[index] = new_entity_ids;
+        this->view_locations().xs()[index] = new_locations_xs;
+        this->view_locations().ys()[index] = new_locations_ys;
+        this->view_locations().zs()[index] = new_locations_zs;
+        this->yaws()[index] = new_yaws;
+        this->laser_cooldowns()[index] = new_laser_cooldowns;
+        this->next_fire_point_indices()[index] = new_next_fire_point_indices;
+    }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<SpinnerEntityDataSingleView>());
 // Columns:
@@ -603,5 +643,48 @@ struct SpinnerEntityData
         transfer_columns<false>(destination, source, num_);
     }
   public:
+    auto entity_ids(this auto& self) { return self.get_view().entity_ids(); }
+    auto view_locations(this auto& self) { return self.get_view().view_locations(); }
+    auto yaws(this auto& self) { return self.get_view().yaws(); }
+    auto laser_cooldowns(this auto& self) { return self.get_view().laser_cooldowns(); }
+    auto next_fire_point_indices(this auto& self) {
+        return self.get_view().next_fire_point_indices();
+    }
+    void set(size_type index,
+             EntityId const new_entity_ids,
+             float const new_locations_xs,
+             float const new_locations_ys,
+             float const new_locations_zs,
+             float const new_yaws,
+             std::int16_t const new_laser_cooldowns,
+             std::int32_t const new_next_fire_point_indices) {
+        assert(index < num());
+        get_view().entity_ids()[index] = new_entity_ids;
+        get_view().view_locations().xs()[index] = new_locations_xs;
+        get_view().view_locations().ys()[index] = new_locations_ys;
+        get_view().view_locations().zs()[index] = new_locations_zs;
+        get_view().yaws()[index] = new_yaws;
+        get_view().laser_cooldowns()[index] = new_laser_cooldowns;
+        get_view().next_fire_point_indices()[index] = new_next_fire_point_indices;
+    }
+    size_type add(EntityId const new_entity_ids,
+                  float const new_locations_xs,
+                  float const new_locations_ys,
+                  float const new_locations_zs,
+                  float const new_yaws,
+                  std::int16_t const new_laser_cooldowns,
+                  std::int32_t const new_next_fire_point_indices) {
+        auto const index{num()};
+        add_uninitialised(1);
+        set(index,
+            new_entity_ids,
+            new_locations_xs,
+            new_locations_ys,
+            new_locations_zs,
+            new_yaws,
+            new_laser_cooldowns,
+            new_next_fire_point_indices);
+        return index;
+    }
 };
 } // namespace ioj::sim

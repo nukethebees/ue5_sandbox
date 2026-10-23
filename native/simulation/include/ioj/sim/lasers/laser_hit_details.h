@@ -164,6 +164,12 @@ struct LaserHitDetailsSingleResolvedView_locations
     : LaserHitDetailsSingleResolvedView_locationsImpl<false> {
     using Base = LaserHitDetailsSingleResolvedView_locationsImpl<false>;
     using Base::Base;
+    void set(size_type index, float const new_xs, float const new_ys, float const new_zs) const {
+        assert(index < num());
+        this->xs()[index] = new_xs;
+        this->ys()[index] = new_ys;
+        this->zs()[index] = new_zs;
+    }
 };
 struct LaserHitDetailsSingleResolvedView_emission_directions;
 struct LaserHitDetailsSingleResolvedConstView_emission_directions;
@@ -270,6 +276,12 @@ struct LaserHitDetailsSingleResolvedView_emission_directions
     : LaserHitDetailsSingleResolvedView_emission_directionsImpl<false> {
     using Base = LaserHitDetailsSingleResolvedView_emission_directionsImpl<false>;
     using Base::Base;
+    void set(size_type index, float const new_xs, float const new_ys, float const new_zs) const {
+        assert(index < num());
+        this->xs()[index] = new_xs;
+        this->ys()[index] = new_ys;
+        this->zs()[index] = new_zs;
+    }
 };
 struct LaserHitDetailsSingleResolvedView;
 struct LaserHitDetailsSingleResolvedConstView;
@@ -427,6 +439,23 @@ struct LaserHitDetailsSingleResolvedConstView : LaserHitDetailsSingleResolvedVie
 struct LaserHitDetailsSingleResolvedView : LaserHitDetailsSingleResolvedViewImpl<false> {
     using Base = LaserHitDetailsSingleResolvedViewImpl<false>;
     using Base::Base;
+    void set(size_type index,
+             float const new_locations_xs,
+             float const new_locations_ys,
+             float const new_locations_zs,
+             float const new_emission_directions_xs,
+             float const new_emission_directions_ys,
+             float const new_emission_directions_zs,
+             ioj::sim::LaserSource const new_sources) const {
+        assert(index < num());
+        this->view_locations().xs()[index] = new_locations_xs;
+        this->view_locations().ys()[index] = new_locations_ys;
+        this->view_locations().zs()[index] = new_locations_zs;
+        this->view_emission_directions().xs()[index] = new_emission_directions_xs;
+        this->view_emission_directions().ys()[index] = new_emission_directions_ys;
+        this->view_emission_directions().zs()[index] = new_emission_directions_zs;
+        this->sources()[index] = new_sources;
+    }
 };
 template <bool Const>
 struct LaserHitDetailsSingleViewImpl : ioj::soa_storage_detail::CompactViewOperations {
@@ -516,6 +545,23 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<LaserHitDetailsSing
 struct LaserHitDetailsSingleView : LaserHitDetailsSingleViewImpl<false> {
     using Base = LaserHitDetailsSingleViewImpl<false>;
     using Base::Base;
+    void set(size_type index,
+             float const new_locations_xs,
+             float const new_locations_ys,
+             float const new_locations_zs,
+             float const new_emission_directions_xs,
+             float const new_emission_directions_ys,
+             float const new_emission_directions_zs,
+             ioj::sim::LaserSource const new_sources) const {
+        assert(index < num());
+        this->view_locations().xs()[index] = new_locations_xs;
+        this->view_locations().ys()[index] = new_locations_ys;
+        this->view_locations().zs()[index] = new_locations_zs;
+        this->view_emission_directions().xs()[index] = new_emission_directions_xs;
+        this->view_emission_directions().ys()[index] = new_emission_directions_ys;
+        this->view_emission_directions().zs()[index] = new_emission_directions_zs;
+        this->sources()[index] = new_sources;
+    }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<LaserHitDetailsSingleView>());
 // Columns:
@@ -713,5 +759,46 @@ struct LaserHitDetails
         transfer_columns<false>(destination, source, num_);
     }
   public:
+    auto view_locations(this auto& self) { return self.get_view().view_locations(); }
+    auto view_emission_directions(this auto& self) {
+        return self.get_view().view_emission_directions();
+    }
+    auto sources(this auto& self) { return self.get_view().sources(); }
+    void set(size_type index,
+             float const new_locations_xs,
+             float const new_locations_ys,
+             float const new_locations_zs,
+             float const new_emission_directions_xs,
+             float const new_emission_directions_ys,
+             float const new_emission_directions_zs,
+             ioj::sim::LaserSource const new_sources) {
+        assert(index < num());
+        get_view().view_locations().xs()[index] = new_locations_xs;
+        get_view().view_locations().ys()[index] = new_locations_ys;
+        get_view().view_locations().zs()[index] = new_locations_zs;
+        get_view().view_emission_directions().xs()[index] = new_emission_directions_xs;
+        get_view().view_emission_directions().ys()[index] = new_emission_directions_ys;
+        get_view().view_emission_directions().zs()[index] = new_emission_directions_zs;
+        get_view().sources()[index] = new_sources;
+    }
+    size_type add(float const new_locations_xs,
+                  float const new_locations_ys,
+                  float const new_locations_zs,
+                  float const new_emission_directions_xs,
+                  float const new_emission_directions_ys,
+                  float const new_emission_directions_zs,
+                  ioj::sim::LaserSource const new_sources) {
+        auto const index{num()};
+        add_uninitialised(1);
+        set(index,
+            new_locations_xs,
+            new_locations_ys,
+            new_locations_zs,
+            new_emission_directions_xs,
+            new_emission_directions_ys,
+            new_emission_directions_zs,
+            new_sources);
+        return index;
+    }
 };
 } // namespace ioj::sim

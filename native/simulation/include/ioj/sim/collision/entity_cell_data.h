@@ -299,6 +299,35 @@ struct EntityCellDataColumnsSingleResolvedView
     : EntityCellDataColumnsSingleResolvedViewImpl<false> {
     using Base = EntityCellDataColumnsSingleResolvedViewImpl<false>;
     using Base::Base;
+    void set(size_type index,
+             float const new_min_point_xs,
+             float const new_min_point_ys,
+             float const new_min_point_zs,
+             float const new_max_point_xs,
+             float const new_max_point_ys,
+             float const new_max_point_zs,
+             std::int32_t const new_min_cell_xs,
+             std::int32_t const new_min_cell_ys,
+             std::int32_t const new_min_cell_zs,
+             std::int32_t const new_max_cell_xs,
+             std::int32_t const new_max_cell_ys,
+             std::int32_t const new_max_cell_zs,
+             EntityId const new_entity_ids) const {
+        assert(index < num());
+        this->min_point_xs()[index] = new_min_point_xs;
+        this->min_point_ys()[index] = new_min_point_ys;
+        this->min_point_zs()[index] = new_min_point_zs;
+        this->max_point_xs()[index] = new_max_point_xs;
+        this->max_point_ys()[index] = new_max_point_ys;
+        this->max_point_zs()[index] = new_max_point_zs;
+        this->min_cell_xs()[index] = new_min_cell_xs;
+        this->min_cell_ys()[index] = new_min_cell_ys;
+        this->min_cell_zs()[index] = new_min_cell_zs;
+        this->max_cell_xs()[index] = new_max_cell_xs;
+        this->max_cell_ys()[index] = new_max_cell_ys;
+        this->max_cell_zs()[index] = new_max_cell_zs;
+        this->entity_ids()[index] = new_entity_ids;
+    }
 };
 template <bool Const>
 struct EntityCellDataColumnsSingleViewImpl : ioj::soa_storage_detail::CompactViewOperations {
@@ -391,6 +420,35 @@ static_assert(
 struct EntityCellDataColumnsSingleView : EntityCellDataColumnsSingleViewImpl<false> {
     using Base = EntityCellDataColumnsSingleViewImpl<false>;
     using Base::Base;
+    void set(size_type index,
+             float const new_min_point_xs,
+             float const new_min_point_ys,
+             float const new_min_point_zs,
+             float const new_max_point_xs,
+             float const new_max_point_ys,
+             float const new_max_point_zs,
+             std::int32_t const new_min_cell_xs,
+             std::int32_t const new_min_cell_ys,
+             std::int32_t const new_min_cell_zs,
+             std::int32_t const new_max_cell_xs,
+             std::int32_t const new_max_cell_ys,
+             std::int32_t const new_max_cell_zs,
+             EntityId const new_entity_ids) const {
+        assert(index < num());
+        this->min_point_xs()[index] = new_min_point_xs;
+        this->min_point_ys()[index] = new_min_point_ys;
+        this->min_point_zs()[index] = new_min_point_zs;
+        this->max_point_xs()[index] = new_max_point_xs;
+        this->max_point_ys()[index] = new_max_point_ys;
+        this->max_point_zs()[index] = new_max_point_zs;
+        this->min_cell_xs()[index] = new_min_cell_xs;
+        this->min_cell_ys()[index] = new_min_cell_ys;
+        this->min_cell_zs()[index] = new_min_cell_zs;
+        this->max_cell_xs()[index] = new_max_cell_xs;
+        this->max_cell_ys()[index] = new_max_cell_ys;
+        this->max_cell_zs()[index] = new_max_cell_zs;
+        this->entity_ids()[index] = new_entity_ids;
+    }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<EntityCellDataColumnsSingleView>());
 // Columns:
@@ -628,5 +686,78 @@ struct EntityCellData
         transfer_columns<false>(destination, source, num_);
     }
   public:
+    auto min_point_xs(this auto& self) { return self.get_view().min_point_xs(); }
+    auto min_point_ys(this auto& self) { return self.get_view().min_point_ys(); }
+    auto min_point_zs(this auto& self) { return self.get_view().min_point_zs(); }
+    auto max_point_xs(this auto& self) { return self.get_view().max_point_xs(); }
+    auto max_point_ys(this auto& self) { return self.get_view().max_point_ys(); }
+    auto max_point_zs(this auto& self) { return self.get_view().max_point_zs(); }
+    auto min_cell_xs(this auto& self) { return self.get_view().min_cell_xs(); }
+    auto min_cell_ys(this auto& self) { return self.get_view().min_cell_ys(); }
+    auto min_cell_zs(this auto& self) { return self.get_view().min_cell_zs(); }
+    auto max_cell_xs(this auto& self) { return self.get_view().max_cell_xs(); }
+    auto max_cell_ys(this auto& self) { return self.get_view().max_cell_ys(); }
+    auto max_cell_zs(this auto& self) { return self.get_view().max_cell_zs(); }
+    auto entity_ids(this auto& self) { return self.get_view().entity_ids(); }
+    void set(size_type index,
+             float const new_min_point_xs,
+             float const new_min_point_ys,
+             float const new_min_point_zs,
+             float const new_max_point_xs,
+             float const new_max_point_ys,
+             float const new_max_point_zs,
+             std::int32_t const new_min_cell_xs,
+             std::int32_t const new_min_cell_ys,
+             std::int32_t const new_min_cell_zs,
+             std::int32_t const new_max_cell_xs,
+             std::int32_t const new_max_cell_ys,
+             std::int32_t const new_max_cell_zs,
+             EntityId const new_entity_ids) {
+        assert(index < num());
+        get_view().min_point_xs()[index] = new_min_point_xs;
+        get_view().min_point_ys()[index] = new_min_point_ys;
+        get_view().min_point_zs()[index] = new_min_point_zs;
+        get_view().max_point_xs()[index] = new_max_point_xs;
+        get_view().max_point_ys()[index] = new_max_point_ys;
+        get_view().max_point_zs()[index] = new_max_point_zs;
+        get_view().min_cell_xs()[index] = new_min_cell_xs;
+        get_view().min_cell_ys()[index] = new_min_cell_ys;
+        get_view().min_cell_zs()[index] = new_min_cell_zs;
+        get_view().max_cell_xs()[index] = new_max_cell_xs;
+        get_view().max_cell_ys()[index] = new_max_cell_ys;
+        get_view().max_cell_zs()[index] = new_max_cell_zs;
+        get_view().entity_ids()[index] = new_entity_ids;
+    }
+    size_type add(float const new_min_point_xs,
+                  float const new_min_point_ys,
+                  float const new_min_point_zs,
+                  float const new_max_point_xs,
+                  float const new_max_point_ys,
+                  float const new_max_point_zs,
+                  std::int32_t const new_min_cell_xs,
+                  std::int32_t const new_min_cell_ys,
+                  std::int32_t const new_min_cell_zs,
+                  std::int32_t const new_max_cell_xs,
+                  std::int32_t const new_max_cell_ys,
+                  std::int32_t const new_max_cell_zs,
+                  EntityId const new_entity_ids) {
+        auto const index{num()};
+        add_uninitialised(1);
+        set(index,
+            new_min_point_xs,
+            new_min_point_ys,
+            new_min_point_zs,
+            new_max_point_xs,
+            new_max_point_ys,
+            new_max_point_zs,
+            new_min_cell_xs,
+            new_min_cell_ys,
+            new_min_cell_zs,
+            new_max_cell_xs,
+            new_max_cell_ys,
+            new_max_cell_zs,
+            new_entity_ids);
+        return index;
+    }
 };
 } // namespace ioj::sim::collision

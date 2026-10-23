@@ -265,6 +265,12 @@ struct FighterEntityDataSingleResolvedView_locations
     : FighterEntityDataSingleResolvedView_locationsImpl<false> {
     using Base = FighterEntityDataSingleResolvedView_locationsImpl<false>;
     using Base::Base;
+    void set(size_type index, float const new_xs, float const new_ys, float const new_zs) const {
+        assert(index < num());
+        this->xs()[index] = new_xs;
+        this->ys()[index] = new_ys;
+        this->zs()[index] = new_zs;
+    }
 };
 struct FighterEntityDataSingleResolvedView_desired_move_locations;
 struct FighterEntityDataSingleResolvedConstView_desired_move_locations;
@@ -373,6 +379,12 @@ struct FighterEntityDataSingleResolvedView_desired_move_locations
     : FighterEntityDataSingleResolvedView_desired_move_locationsImpl<false> {
     using Base = FighterEntityDataSingleResolvedView_desired_move_locationsImpl<false>;
     using Base::Base;
+    void set(size_type index, float const new_xs, float const new_ys, float const new_zs) const {
+        assert(index < num());
+        this->xs()[index] = new_xs;
+        this->ys()[index] = new_ys;
+        this->zs()[index] = new_zs;
+    }
 };
 struct FighterEntityDataSingleResolvedView_aim_directions;
 struct FighterEntityDataSingleResolvedConstView_aim_directions;
@@ -473,6 +485,12 @@ struct FighterEntityDataSingleResolvedView_aim_directions
     : FighterEntityDataSingleResolvedView_aim_directionsImpl<false> {
     using Base = FighterEntityDataSingleResolvedView_aim_directionsImpl<false>;
     using Base::Base;
+    void set(size_type index, float const new_xs, float const new_ys, float const new_zs) const {
+        assert(index < num());
+        this->xs()[index] = new_xs;
+        this->ys()[index] = new_ys;
+        this->zs()[index] = new_zs;
+    }
 };
 struct FighterEntityDataSingleResolvedView_planned_aim_directions;
 struct FighterEntityDataSingleResolvedConstView_planned_aim_directions;
@@ -581,6 +599,12 @@ struct FighterEntityDataSingleResolvedView_planned_aim_directions
     : FighterEntityDataSingleResolvedView_planned_aim_directionsImpl<false> {
     using Base = FighterEntityDataSingleResolvedView_planned_aim_directionsImpl<false>;
     using Base::Base;
+    void set(size_type index, float const new_xs, float const new_ys, float const new_zs) const {
+        assert(index < num());
+        this->xs()[index] = new_xs;
+        this->ys()[index] = new_ys;
+        this->zs()[index] = new_zs;
+    }
 };
 struct FighterEntityDataSingleResolvedView_desired_aiming_directions;
 struct FighterEntityDataSingleResolvedConstView_desired_aiming_directions;
@@ -691,6 +715,12 @@ struct FighterEntityDataSingleResolvedView_desired_aiming_directions
     : FighterEntityDataSingleResolvedView_desired_aiming_directionsImpl<false> {
     using Base = FighterEntityDataSingleResolvedView_desired_aiming_directionsImpl<false>;
     using Base::Base;
+    void set(size_type index, float const new_xs, float const new_ys, float const new_zs) const {
+        assert(index < num());
+        this->xs()[index] = new_xs;
+        this->ys()[index] = new_ys;
+        this->zs()[index] = new_zs;
+    }
 };
 struct FighterEntityDataSingleResolvedView_movement_directions;
 struct FighterEntityDataSingleResolvedConstView_movement_directions;
@@ -797,6 +827,12 @@ struct FighterEntityDataSingleResolvedView_movement_directions
     : FighterEntityDataSingleResolvedView_movement_directionsImpl<false> {
     using Base = FighterEntityDataSingleResolvedView_movement_directionsImpl<false>;
     using Base::Base;
+    void set(size_type index, float const new_xs, float const new_ys, float const new_zs) const {
+        assert(index < num());
+        this->xs()[index] = new_xs;
+        this->ys()[index] = new_ys;
+        this->zs()[index] = new_zs;
+    }
 };
 struct FighterEntityDataSingleResolvedView_velocities;
 struct FighterEntityDataSingleResolvedConstView_velocities;
@@ -894,6 +930,12 @@ struct FighterEntityDataSingleResolvedView_velocities
     : FighterEntityDataSingleResolvedView_velocitiesImpl<false> {
     using Base = FighterEntityDataSingleResolvedView_velocitiesImpl<false>;
     using Base::Base;
+    void set(size_type index, float const new_xs, float const new_ys, float const new_zs) const {
+        assert(index < num());
+        this->xs()[index] = new_xs;
+        this->ys()[index] = new_ys;
+        this->zs()[index] = new_zs;
+    }
 };
 struct FighterEntityDataSingleResolvedView_separation_steering;
 struct FighterEntityDataSingleResolvedConstView_separation_steering;
@@ -1000,6 +1042,12 @@ struct FighterEntityDataSingleResolvedView_separation_steering
     : FighterEntityDataSingleResolvedView_separation_steeringImpl<false> {
     using Base = FighterEntityDataSingleResolvedView_separation_steeringImpl<false>;
     using Base::Base;
+    void set(size_type index, float const new_xs, float const new_ys, float const new_zs) const {
+        assert(index < num());
+        this->xs()[index] = new_xs;
+        this->ys()[index] = new_ys;
+        this->zs()[index] = new_zs;
+    }
 };
 struct FighterEntityDataSingleResolvedView_target_locations;
 struct FighterEntityDataSingleResolvedConstView_target_locations;
@@ -1102,6 +1150,12 @@ struct FighterEntityDataSingleResolvedView_target_locations
     : FighterEntityDataSingleResolvedView_target_locationsImpl<false> {
     using Base = FighterEntityDataSingleResolvedView_target_locationsImpl<false>;
     using Base::Base;
+    void set(size_type index, float const new_xs, float const new_ys, float const new_zs) const {
+        assert(index < num());
+        this->xs()[index] = new_xs;
+        this->ys()[index] = new_ys;
+        this->zs()[index] = new_zs;
+    }
 };
 struct FighterEntityDataSingleResolvedView_target_velocities;
 struct FighterEntityDataSingleResolvedConstView_target_velocities;
@@ -1204,6 +1258,12 @@ struct FighterEntityDataSingleResolvedView_target_velocities
     : FighterEntityDataSingleResolvedView_target_velocitiesImpl<false> {
     using Base = FighterEntityDataSingleResolvedView_target_velocitiesImpl<false>;
     using Base::Base;
+    void set(size_type index, float const new_xs, float const new_ys, float const new_zs) const {
+        assert(index < num());
+        this->xs()[index] = new_xs;
+        this->ys()[index] = new_ys;
+        this->zs()[index] = new_zs;
+    }
 };
 struct FighterEntityDataSingleResolvedView_target_directions;
 struct FighterEntityDataSingleResolvedConstView_target_directions;
@@ -1306,6 +1366,12 @@ struct FighterEntityDataSingleResolvedView_target_directions
     : FighterEntityDataSingleResolvedView_target_directionsImpl<false> {
     using Base = FighterEntityDataSingleResolvedView_target_directionsImpl<false>;
     using Base::Base;
+    void set(size_type index, float const new_xs, float const new_ys, float const new_zs) const {
+        assert(index < num());
+        this->xs()[index] = new_xs;
+        this->ys()[index] = new_ys;
+        this->zs()[index] = new_zs;
+    }
 };
 struct FighterEntityDataSingleResolvedView;
 struct FighterEntityDataSingleResolvedConstView;
@@ -2141,6 +2207,121 @@ struct FighterEntityDataSingleResolvedConstView : FighterEntityDataSingleResolve
 struct FighterEntityDataSingleResolvedView : FighterEntityDataSingleResolvedViewImpl<false> {
     using Base = FighterEntityDataSingleResolvedViewImpl<false>;
     using Base::Base;
+    void set(size_type index,
+             EntityId const new_entity_ids,
+             std::uint32_t const new_integral_biases,
+             float const new_float_biases,
+             FighterTask const new_tasks,
+             float const new_locations_xs,
+             float const new_locations_ys,
+             float const new_locations_zs,
+             float const new_desired_move_locations_xs,
+             float const new_desired_move_locations_ys,
+             float const new_desired_move_locations_zs,
+             float const new_aim_directions_xs,
+             float const new_aim_directions_ys,
+             float const new_aim_directions_zs,
+             float const new_planned_aim_directions_xs,
+             float const new_planned_aim_directions_ys,
+             float const new_planned_aim_directions_zs,
+             float const new_desired_aiming_directions_xs,
+             float const new_desired_aiming_directions_ys,
+             float const new_desired_aiming_directions_zs,
+             float const new_movement_directions_xs,
+             float const new_movement_directions_ys,
+             float const new_movement_directions_zs,
+             float const new_velocities_xs,
+             float const new_velocities_ys,
+             float const new_velocities_zs,
+             float const new_move_distances,
+             float const new_speeds,
+             ::ioj::Team const new_teams,
+             EntityId const new_parent_ids,
+             std::int8_t const new_awareness_scan_countdowns,
+             std::int16_t const new_navigation_update_countdowns_remaining_ticks,
+             std::int16_t const new_navigation_update_countdowns_periods,
+             float const new_separation_steering_xs,
+             float const new_separation_steering_ys,
+             float const new_separation_steering_zs,
+             ioj::sim::fighters::NavigationRiskCode const new_navigation_risk_tiers,
+             ioj::sim::fighters::NavigationScanCount const new_navigation_lower_risk_scan_counts,
+             ioj::sim::fighters::AvoidanceChoice const new_avoidance_choice_indices,
+             ioj::sim::fighters::NavigationScanCount const new_avoidance_clear_scan_counts,
+             std::int16_t const new_attack_reposition_countdowns,
+             std::int16_t const new_attack_cooldowns,
+             EntityId const new_target_ids,
+             float const new_target_locations_xs,
+             float const new_target_locations_ys,
+             float const new_target_locations_zs,
+             float const new_target_velocities_xs,
+             float const new_target_velocities_ys,
+             float const new_target_velocities_zs,
+             float const new_target_directions_xs,
+             float const new_target_directions_ys,
+             float const new_target_directions_zs,
+             float const new_intercept_times,
+             float const new_target_distance_sq,
+             float const new_target_distances,
+             float const new_target_radii) const {
+        assert(index < num());
+        this->entity_ids()[index] = new_entity_ids;
+        this->integral_biases()[index] = new_integral_biases;
+        this->float_biases()[index] = new_float_biases;
+        this->tasks()[index] = new_tasks;
+        this->view_locations().xs()[index] = new_locations_xs;
+        this->view_locations().ys()[index] = new_locations_ys;
+        this->view_locations().zs()[index] = new_locations_zs;
+        this->view_desired_move_locations().xs()[index] = new_desired_move_locations_xs;
+        this->view_desired_move_locations().ys()[index] = new_desired_move_locations_ys;
+        this->view_desired_move_locations().zs()[index] = new_desired_move_locations_zs;
+        this->view_aim_directions().xs()[index] = new_aim_directions_xs;
+        this->view_aim_directions().ys()[index] = new_aim_directions_ys;
+        this->view_aim_directions().zs()[index] = new_aim_directions_zs;
+        this->view_planned_aim_directions().xs()[index] = new_planned_aim_directions_xs;
+        this->view_planned_aim_directions().ys()[index] = new_planned_aim_directions_ys;
+        this->view_planned_aim_directions().zs()[index] = new_planned_aim_directions_zs;
+        this->view_desired_aiming_directions().xs()[index] = new_desired_aiming_directions_xs;
+        this->view_desired_aiming_directions().ys()[index] = new_desired_aiming_directions_ys;
+        this->view_desired_aiming_directions().zs()[index] = new_desired_aiming_directions_zs;
+        this->view_movement_directions().xs()[index] = new_movement_directions_xs;
+        this->view_movement_directions().ys()[index] = new_movement_directions_ys;
+        this->view_movement_directions().zs()[index] = new_movement_directions_zs;
+        this->view_velocities().xs()[index] = new_velocities_xs;
+        this->view_velocities().ys()[index] = new_velocities_ys;
+        this->view_velocities().zs()[index] = new_velocities_zs;
+        this->move_distances()[index] = new_move_distances;
+        this->speeds()[index] = new_speeds;
+        this->teams()[index] = new_teams;
+        this->parent_ids()[index] = new_parent_ids;
+        this->awareness_scan_countdowns()[index] = new_awareness_scan_countdowns;
+        this->navigation_update_countdowns_remaining_ticks()[index] =
+            new_navigation_update_countdowns_remaining_ticks;
+        this->navigation_update_countdowns_periods()[index] =
+            new_navigation_update_countdowns_periods;
+        this->view_separation_steering().xs()[index] = new_separation_steering_xs;
+        this->view_separation_steering().ys()[index] = new_separation_steering_ys;
+        this->view_separation_steering().zs()[index] = new_separation_steering_zs;
+        this->navigation_risk_tiers()[index] = new_navigation_risk_tiers;
+        this->navigation_lower_risk_scan_counts()[index] = new_navigation_lower_risk_scan_counts;
+        this->avoidance_choice_indices()[index] = new_avoidance_choice_indices;
+        this->avoidance_clear_scan_counts()[index] = new_avoidance_clear_scan_counts;
+        this->attack_reposition_countdowns()[index] = new_attack_reposition_countdowns;
+        this->attack_cooldowns()[index] = new_attack_cooldowns;
+        this->target_ids()[index] = new_target_ids;
+        this->view_target_locations().xs()[index] = new_target_locations_xs;
+        this->view_target_locations().ys()[index] = new_target_locations_ys;
+        this->view_target_locations().zs()[index] = new_target_locations_zs;
+        this->view_target_velocities().xs()[index] = new_target_velocities_xs;
+        this->view_target_velocities().ys()[index] = new_target_velocities_ys;
+        this->view_target_velocities().zs()[index] = new_target_velocities_zs;
+        this->view_target_directions().xs()[index] = new_target_directions_xs;
+        this->view_target_directions().ys()[index] = new_target_directions_ys;
+        this->view_target_directions().zs()[index] = new_target_directions_zs;
+        this->intercept_times()[index] = new_intercept_times;
+        this->target_distance_sq()[index] = new_target_distance_sq;
+        this->target_distances()[index] = new_target_distances;
+        this->target_radii()[index] = new_target_radii;
+    }
 };
 template <bool Const>
 struct FighterEntityDataSingleViewImpl : ioj::soa_storage_detail::CompactViewOperations {
@@ -2469,6 +2650,121 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<FighterEntityDataSi
 struct FighterEntityDataSingleView : FighterEntityDataSingleViewImpl<false> {
     using Base = FighterEntityDataSingleViewImpl<false>;
     using Base::Base;
+    void set(size_type index,
+             EntityId const new_entity_ids,
+             std::uint32_t const new_integral_biases,
+             float const new_float_biases,
+             FighterTask const new_tasks,
+             float const new_locations_xs,
+             float const new_locations_ys,
+             float const new_locations_zs,
+             float const new_desired_move_locations_xs,
+             float const new_desired_move_locations_ys,
+             float const new_desired_move_locations_zs,
+             float const new_aim_directions_xs,
+             float const new_aim_directions_ys,
+             float const new_aim_directions_zs,
+             float const new_planned_aim_directions_xs,
+             float const new_planned_aim_directions_ys,
+             float const new_planned_aim_directions_zs,
+             float const new_desired_aiming_directions_xs,
+             float const new_desired_aiming_directions_ys,
+             float const new_desired_aiming_directions_zs,
+             float const new_movement_directions_xs,
+             float const new_movement_directions_ys,
+             float const new_movement_directions_zs,
+             float const new_velocities_xs,
+             float const new_velocities_ys,
+             float const new_velocities_zs,
+             float const new_move_distances,
+             float const new_speeds,
+             ::ioj::Team const new_teams,
+             EntityId const new_parent_ids,
+             std::int8_t const new_awareness_scan_countdowns,
+             std::int16_t const new_navigation_update_countdowns_remaining_ticks,
+             std::int16_t const new_navigation_update_countdowns_periods,
+             float const new_separation_steering_xs,
+             float const new_separation_steering_ys,
+             float const new_separation_steering_zs,
+             ioj::sim::fighters::NavigationRiskCode const new_navigation_risk_tiers,
+             ioj::sim::fighters::NavigationScanCount const new_navigation_lower_risk_scan_counts,
+             ioj::sim::fighters::AvoidanceChoice const new_avoidance_choice_indices,
+             ioj::sim::fighters::NavigationScanCount const new_avoidance_clear_scan_counts,
+             std::int16_t const new_attack_reposition_countdowns,
+             std::int16_t const new_attack_cooldowns,
+             EntityId const new_target_ids,
+             float const new_target_locations_xs,
+             float const new_target_locations_ys,
+             float const new_target_locations_zs,
+             float const new_target_velocities_xs,
+             float const new_target_velocities_ys,
+             float const new_target_velocities_zs,
+             float const new_target_directions_xs,
+             float const new_target_directions_ys,
+             float const new_target_directions_zs,
+             float const new_intercept_times,
+             float const new_target_distance_sq,
+             float const new_target_distances,
+             float const new_target_radii) const {
+        assert(index < num());
+        this->entity_ids()[index] = new_entity_ids;
+        this->integral_biases()[index] = new_integral_biases;
+        this->float_biases()[index] = new_float_biases;
+        this->tasks()[index] = new_tasks;
+        this->view_locations().xs()[index] = new_locations_xs;
+        this->view_locations().ys()[index] = new_locations_ys;
+        this->view_locations().zs()[index] = new_locations_zs;
+        this->view_desired_move_locations().xs()[index] = new_desired_move_locations_xs;
+        this->view_desired_move_locations().ys()[index] = new_desired_move_locations_ys;
+        this->view_desired_move_locations().zs()[index] = new_desired_move_locations_zs;
+        this->view_aim_directions().xs()[index] = new_aim_directions_xs;
+        this->view_aim_directions().ys()[index] = new_aim_directions_ys;
+        this->view_aim_directions().zs()[index] = new_aim_directions_zs;
+        this->view_planned_aim_directions().xs()[index] = new_planned_aim_directions_xs;
+        this->view_planned_aim_directions().ys()[index] = new_planned_aim_directions_ys;
+        this->view_planned_aim_directions().zs()[index] = new_planned_aim_directions_zs;
+        this->view_desired_aiming_directions().xs()[index] = new_desired_aiming_directions_xs;
+        this->view_desired_aiming_directions().ys()[index] = new_desired_aiming_directions_ys;
+        this->view_desired_aiming_directions().zs()[index] = new_desired_aiming_directions_zs;
+        this->view_movement_directions().xs()[index] = new_movement_directions_xs;
+        this->view_movement_directions().ys()[index] = new_movement_directions_ys;
+        this->view_movement_directions().zs()[index] = new_movement_directions_zs;
+        this->view_velocities().xs()[index] = new_velocities_xs;
+        this->view_velocities().ys()[index] = new_velocities_ys;
+        this->view_velocities().zs()[index] = new_velocities_zs;
+        this->move_distances()[index] = new_move_distances;
+        this->speeds()[index] = new_speeds;
+        this->teams()[index] = new_teams;
+        this->parent_ids()[index] = new_parent_ids;
+        this->awareness_scan_countdowns()[index] = new_awareness_scan_countdowns;
+        this->navigation_update_countdowns_remaining_ticks()[index] =
+            new_navigation_update_countdowns_remaining_ticks;
+        this->navigation_update_countdowns_periods()[index] =
+            new_navigation_update_countdowns_periods;
+        this->view_separation_steering().xs()[index] = new_separation_steering_xs;
+        this->view_separation_steering().ys()[index] = new_separation_steering_ys;
+        this->view_separation_steering().zs()[index] = new_separation_steering_zs;
+        this->navigation_risk_tiers()[index] = new_navigation_risk_tiers;
+        this->navigation_lower_risk_scan_counts()[index] = new_navigation_lower_risk_scan_counts;
+        this->avoidance_choice_indices()[index] = new_avoidance_choice_indices;
+        this->avoidance_clear_scan_counts()[index] = new_avoidance_clear_scan_counts;
+        this->attack_reposition_countdowns()[index] = new_attack_reposition_countdowns;
+        this->attack_cooldowns()[index] = new_attack_cooldowns;
+        this->target_ids()[index] = new_target_ids;
+        this->view_target_locations().xs()[index] = new_target_locations_xs;
+        this->view_target_locations().ys()[index] = new_target_locations_ys;
+        this->view_target_locations().zs()[index] = new_target_locations_zs;
+        this->view_target_velocities().xs()[index] = new_target_velocities_xs;
+        this->view_target_velocities().ys()[index] = new_target_velocities_ys;
+        this->view_target_velocities().zs()[index] = new_target_velocities_zs;
+        this->view_target_directions().xs()[index] = new_target_directions_xs;
+        this->view_target_directions().ys()[index] = new_target_directions_ys;
+        this->view_target_directions().zs()[index] = new_target_directions_zs;
+        this->intercept_times()[index] = new_intercept_times;
+        this->target_distance_sq()[index] = new_target_distance_sq;
+        this->target_distances()[index] = new_target_distances;
+        this->target_radii()[index] = new_target_radii;
+    }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<FighterEntityDataSingleView>());
 // Columns:
@@ -3016,5 +3312,298 @@ struct FighterEntityData
         transfer_columns<false>(destination, source, num_);
     }
   public:
+    auto entity_ids(this auto& self) { return self.get_view().entity_ids(); }
+    auto integral_biases(this auto& self) { return self.get_view().integral_biases(); }
+    auto float_biases(this auto& self) { return self.get_view().float_biases(); }
+    auto tasks(this auto& self) { return self.get_view().tasks(); }
+    auto view_locations(this auto& self) { return self.get_view().view_locations(); }
+    auto view_desired_move_locations(this auto& self) {
+        return self.get_view().view_desired_move_locations();
+    }
+    auto view_aim_directions(this auto& self) { return self.get_view().view_aim_directions(); }
+    auto view_planned_aim_directions(this auto& self) {
+        return self.get_view().view_planned_aim_directions();
+    }
+    auto view_desired_aiming_directions(this auto& self) {
+        return self.get_view().view_desired_aiming_directions();
+    }
+    auto view_movement_directions(this auto& self) {
+        return self.get_view().view_movement_directions();
+    }
+    auto view_velocities(this auto& self) { return self.get_view().view_velocities(); }
+    auto move_distances(this auto& self) { return self.get_view().move_distances(); }
+    auto speeds(this auto& self) { return self.get_view().speeds(); }
+    auto teams(this auto& self) { return self.get_view().teams(); }
+    auto parent_ids(this auto& self) { return self.get_view().parent_ids(); }
+    auto awareness_scan_countdowns(this auto& self) {
+        return self.get_view().awareness_scan_countdowns();
+    }
+    auto navigation_update_countdowns_remaining_ticks(this auto& self) {
+        return self.get_view().navigation_update_countdowns_remaining_ticks();
+    }
+    auto navigation_update_countdowns_periods(this auto& self) {
+        return self.get_view().navigation_update_countdowns_periods();
+    }
+    auto view_separation_steering(this auto& self) {
+        return self.get_view().view_separation_steering();
+    }
+    auto navigation_risk_tiers(this auto& self) { return self.get_view().navigation_risk_tiers(); }
+    auto navigation_lower_risk_scan_counts(this auto& self) {
+        return self.get_view().navigation_lower_risk_scan_counts();
+    }
+    auto avoidance_choice_indices(this auto& self) {
+        return self.get_view().avoidance_choice_indices();
+    }
+    auto avoidance_clear_scan_counts(this auto& self) {
+        return self.get_view().avoidance_clear_scan_counts();
+    }
+    auto attack_reposition_countdowns(this auto& self) {
+        return self.get_view().attack_reposition_countdowns();
+    }
+    auto attack_cooldowns(this auto& self) { return self.get_view().attack_cooldowns(); }
+    auto target_ids(this auto& self) { return self.get_view().target_ids(); }
+    auto view_target_locations(this auto& self) { return self.get_view().view_target_locations(); }
+    auto view_target_velocities(this auto& self) {
+        return self.get_view().view_target_velocities();
+    }
+    auto view_target_directions(this auto& self) {
+        return self.get_view().view_target_directions();
+    }
+    auto intercept_times(this auto& self) { return self.get_view().intercept_times(); }
+    auto target_distance_sq(this auto& self) { return self.get_view().target_distance_sq(); }
+    auto target_distances(this auto& self) { return self.get_view().target_distances(); }
+    auto target_radii(this auto& self) { return self.get_view().target_radii(); }
+    void set(size_type index,
+             EntityId const new_entity_ids,
+             std::uint32_t const new_integral_biases,
+             float const new_float_biases,
+             FighterTask const new_tasks,
+             float const new_locations_xs,
+             float const new_locations_ys,
+             float const new_locations_zs,
+             float const new_desired_move_locations_xs,
+             float const new_desired_move_locations_ys,
+             float const new_desired_move_locations_zs,
+             float const new_aim_directions_xs,
+             float const new_aim_directions_ys,
+             float const new_aim_directions_zs,
+             float const new_planned_aim_directions_xs,
+             float const new_planned_aim_directions_ys,
+             float const new_planned_aim_directions_zs,
+             float const new_desired_aiming_directions_xs,
+             float const new_desired_aiming_directions_ys,
+             float const new_desired_aiming_directions_zs,
+             float const new_movement_directions_xs,
+             float const new_movement_directions_ys,
+             float const new_movement_directions_zs,
+             float const new_velocities_xs,
+             float const new_velocities_ys,
+             float const new_velocities_zs,
+             float const new_move_distances,
+             float const new_speeds,
+             ::ioj::Team const new_teams,
+             EntityId const new_parent_ids,
+             std::int8_t const new_awareness_scan_countdowns,
+             std::int16_t const new_navigation_update_countdowns_remaining_ticks,
+             std::int16_t const new_navigation_update_countdowns_periods,
+             float const new_separation_steering_xs,
+             float const new_separation_steering_ys,
+             float const new_separation_steering_zs,
+             ioj::sim::fighters::NavigationRiskCode const new_navigation_risk_tiers,
+             ioj::sim::fighters::NavigationScanCount const new_navigation_lower_risk_scan_counts,
+             ioj::sim::fighters::AvoidanceChoice const new_avoidance_choice_indices,
+             ioj::sim::fighters::NavigationScanCount const new_avoidance_clear_scan_counts,
+             std::int16_t const new_attack_reposition_countdowns,
+             std::int16_t const new_attack_cooldowns,
+             EntityId const new_target_ids,
+             float const new_target_locations_xs,
+             float const new_target_locations_ys,
+             float const new_target_locations_zs,
+             float const new_target_velocities_xs,
+             float const new_target_velocities_ys,
+             float const new_target_velocities_zs,
+             float const new_target_directions_xs,
+             float const new_target_directions_ys,
+             float const new_target_directions_zs,
+             float const new_intercept_times,
+             float const new_target_distance_sq,
+             float const new_target_distances,
+             float const new_target_radii) {
+        assert(index < num());
+        get_view().entity_ids()[index] = new_entity_ids;
+        get_view().integral_biases()[index] = new_integral_biases;
+        get_view().float_biases()[index] = new_float_biases;
+        get_view().tasks()[index] = new_tasks;
+        get_view().view_locations().xs()[index] = new_locations_xs;
+        get_view().view_locations().ys()[index] = new_locations_ys;
+        get_view().view_locations().zs()[index] = new_locations_zs;
+        get_view().view_desired_move_locations().xs()[index] = new_desired_move_locations_xs;
+        get_view().view_desired_move_locations().ys()[index] = new_desired_move_locations_ys;
+        get_view().view_desired_move_locations().zs()[index] = new_desired_move_locations_zs;
+        get_view().view_aim_directions().xs()[index] = new_aim_directions_xs;
+        get_view().view_aim_directions().ys()[index] = new_aim_directions_ys;
+        get_view().view_aim_directions().zs()[index] = new_aim_directions_zs;
+        get_view().view_planned_aim_directions().xs()[index] = new_planned_aim_directions_xs;
+        get_view().view_planned_aim_directions().ys()[index] = new_planned_aim_directions_ys;
+        get_view().view_planned_aim_directions().zs()[index] = new_planned_aim_directions_zs;
+        get_view().view_desired_aiming_directions().xs()[index] = new_desired_aiming_directions_xs;
+        get_view().view_desired_aiming_directions().ys()[index] = new_desired_aiming_directions_ys;
+        get_view().view_desired_aiming_directions().zs()[index] = new_desired_aiming_directions_zs;
+        get_view().view_movement_directions().xs()[index] = new_movement_directions_xs;
+        get_view().view_movement_directions().ys()[index] = new_movement_directions_ys;
+        get_view().view_movement_directions().zs()[index] = new_movement_directions_zs;
+        get_view().view_velocities().xs()[index] = new_velocities_xs;
+        get_view().view_velocities().ys()[index] = new_velocities_ys;
+        get_view().view_velocities().zs()[index] = new_velocities_zs;
+        get_view().move_distances()[index] = new_move_distances;
+        get_view().speeds()[index] = new_speeds;
+        get_view().teams()[index] = new_teams;
+        get_view().parent_ids()[index] = new_parent_ids;
+        get_view().awareness_scan_countdowns()[index] = new_awareness_scan_countdowns;
+        get_view().navigation_update_countdowns_remaining_ticks()[index] =
+            new_navigation_update_countdowns_remaining_ticks;
+        get_view().navigation_update_countdowns_periods()[index] =
+            new_navigation_update_countdowns_periods;
+        get_view().view_separation_steering().xs()[index] = new_separation_steering_xs;
+        get_view().view_separation_steering().ys()[index] = new_separation_steering_ys;
+        get_view().view_separation_steering().zs()[index] = new_separation_steering_zs;
+        get_view().navigation_risk_tiers()[index] = new_navigation_risk_tiers;
+        get_view().navigation_lower_risk_scan_counts()[index] =
+            new_navigation_lower_risk_scan_counts;
+        get_view().avoidance_choice_indices()[index] = new_avoidance_choice_indices;
+        get_view().avoidance_clear_scan_counts()[index] = new_avoidance_clear_scan_counts;
+        get_view().attack_reposition_countdowns()[index] = new_attack_reposition_countdowns;
+        get_view().attack_cooldowns()[index] = new_attack_cooldowns;
+        get_view().target_ids()[index] = new_target_ids;
+        get_view().view_target_locations().xs()[index] = new_target_locations_xs;
+        get_view().view_target_locations().ys()[index] = new_target_locations_ys;
+        get_view().view_target_locations().zs()[index] = new_target_locations_zs;
+        get_view().view_target_velocities().xs()[index] = new_target_velocities_xs;
+        get_view().view_target_velocities().ys()[index] = new_target_velocities_ys;
+        get_view().view_target_velocities().zs()[index] = new_target_velocities_zs;
+        get_view().view_target_directions().xs()[index] = new_target_directions_xs;
+        get_view().view_target_directions().ys()[index] = new_target_directions_ys;
+        get_view().view_target_directions().zs()[index] = new_target_directions_zs;
+        get_view().intercept_times()[index] = new_intercept_times;
+        get_view().target_distance_sq()[index] = new_target_distance_sq;
+        get_view().target_distances()[index] = new_target_distances;
+        get_view().target_radii()[index] = new_target_radii;
+    }
+    size_type
+        add(EntityId const new_entity_ids,
+            std::uint32_t const new_integral_biases,
+            float const new_float_biases,
+            FighterTask const new_tasks,
+            float const new_locations_xs,
+            float const new_locations_ys,
+            float const new_locations_zs,
+            float const new_desired_move_locations_xs,
+            float const new_desired_move_locations_ys,
+            float const new_desired_move_locations_zs,
+            float const new_aim_directions_xs,
+            float const new_aim_directions_ys,
+            float const new_aim_directions_zs,
+            float const new_planned_aim_directions_xs,
+            float const new_planned_aim_directions_ys,
+            float const new_planned_aim_directions_zs,
+            float const new_desired_aiming_directions_xs,
+            float const new_desired_aiming_directions_ys,
+            float const new_desired_aiming_directions_zs,
+            float const new_movement_directions_xs,
+            float const new_movement_directions_ys,
+            float const new_movement_directions_zs,
+            float const new_velocities_xs,
+            float const new_velocities_ys,
+            float const new_velocities_zs,
+            float const new_move_distances,
+            float const new_speeds,
+            ::ioj::Team const new_teams,
+            EntityId const new_parent_ids,
+            std::int8_t const new_awareness_scan_countdowns,
+            std::int16_t const new_navigation_update_countdowns_remaining_ticks,
+            std::int16_t const new_navigation_update_countdowns_periods,
+            float const new_separation_steering_xs,
+            float const new_separation_steering_ys,
+            float const new_separation_steering_zs,
+            ioj::sim::fighters::NavigationRiskCode const new_navigation_risk_tiers,
+            ioj::sim::fighters::NavigationScanCount const new_navigation_lower_risk_scan_counts,
+            ioj::sim::fighters::AvoidanceChoice const new_avoidance_choice_indices,
+            ioj::sim::fighters::NavigationScanCount const new_avoidance_clear_scan_counts,
+            std::int16_t const new_attack_reposition_countdowns,
+            std::int16_t const new_attack_cooldowns,
+            EntityId const new_target_ids,
+            float const new_target_locations_xs,
+            float const new_target_locations_ys,
+            float const new_target_locations_zs,
+            float const new_target_velocities_xs,
+            float const new_target_velocities_ys,
+            float const new_target_velocities_zs,
+            float const new_target_directions_xs,
+            float const new_target_directions_ys,
+            float const new_target_directions_zs,
+            float const new_intercept_times,
+            float const new_target_distance_sq,
+            float const new_target_distances,
+            float const new_target_radii) {
+        auto const index{num()};
+        add_uninitialised(1);
+        set(index,
+            new_entity_ids,
+            new_integral_biases,
+            new_float_biases,
+            new_tasks,
+            new_locations_xs,
+            new_locations_ys,
+            new_locations_zs,
+            new_desired_move_locations_xs,
+            new_desired_move_locations_ys,
+            new_desired_move_locations_zs,
+            new_aim_directions_xs,
+            new_aim_directions_ys,
+            new_aim_directions_zs,
+            new_planned_aim_directions_xs,
+            new_planned_aim_directions_ys,
+            new_planned_aim_directions_zs,
+            new_desired_aiming_directions_xs,
+            new_desired_aiming_directions_ys,
+            new_desired_aiming_directions_zs,
+            new_movement_directions_xs,
+            new_movement_directions_ys,
+            new_movement_directions_zs,
+            new_velocities_xs,
+            new_velocities_ys,
+            new_velocities_zs,
+            new_move_distances,
+            new_speeds,
+            new_teams,
+            new_parent_ids,
+            new_awareness_scan_countdowns,
+            new_navigation_update_countdowns_remaining_ticks,
+            new_navigation_update_countdowns_periods,
+            new_separation_steering_xs,
+            new_separation_steering_ys,
+            new_separation_steering_zs,
+            new_navigation_risk_tiers,
+            new_navigation_lower_risk_scan_counts,
+            new_avoidance_choice_indices,
+            new_avoidance_clear_scan_counts,
+            new_attack_reposition_countdowns,
+            new_attack_cooldowns,
+            new_target_ids,
+            new_target_locations_xs,
+            new_target_locations_ys,
+            new_target_locations_zs,
+            new_target_velocities_xs,
+            new_target_velocities_ys,
+            new_target_velocities_zs,
+            new_target_directions_xs,
+            new_target_directions_ys,
+            new_target_directions_zs,
+            new_intercept_times,
+            new_target_distance_sq,
+            new_target_distances,
+            new_target_radii);
+        return index;
+    }
 };
 } // namespace ioj::sim

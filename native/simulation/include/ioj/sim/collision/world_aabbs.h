@@ -191,6 +191,21 @@ struct WorldAABBsColumnsSingleResolvedConstView : WorldAABBsColumnsSingleResolve
 struct WorldAABBsColumnsSingleResolvedView : WorldAABBsColumnsSingleResolvedViewImpl<false> {
     using Base = WorldAABBsColumnsSingleResolvedViewImpl<false>;
     using Base::Base;
+    void set(size_type index,
+             float const new_min_xs,
+             float const new_min_ys,
+             float const new_min_zs,
+             float const new_max_xs,
+             float const new_max_ys,
+             float const new_max_zs) const {
+        assert(index < num());
+        this->min_xs()[index] = new_min_xs;
+        this->min_ys()[index] = new_min_ys;
+        this->min_zs()[index] = new_min_zs;
+        this->max_xs()[index] = new_max_xs;
+        this->max_ys()[index] = new_max_ys;
+        this->max_zs()[index] = new_max_zs;
+    }
 };
 template <bool Const>
 struct WorldAABBsColumnsSingleViewImpl : ioj::soa_storage_detail::CompactViewOperations {
@@ -261,6 +276,21 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<WorldAABBsColumnsSi
 struct WorldAABBsColumnsSingleView : WorldAABBsColumnsSingleViewImpl<false> {
     using Base = WorldAABBsColumnsSingleViewImpl<false>;
     using Base::Base;
+    void set(size_type index,
+             float const new_min_xs,
+             float const new_min_ys,
+             float const new_min_zs,
+             float const new_max_xs,
+             float const new_max_ys,
+             float const new_max_zs) const {
+        assert(index < num());
+        this->min_xs()[index] = new_min_xs;
+        this->min_ys()[index] = new_min_ys;
+        this->min_zs()[index] = new_min_zs;
+        this->max_xs()[index] = new_max_xs;
+        this->max_ys()[index] = new_max_ys;
+        this->max_zs()[index] = new_max_zs;
+    }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<WorldAABBsColumnsSingleView>());
 // Columns:
@@ -449,5 +479,37 @@ struct WorldAABBs
         transfer_columns<false>(destination, source, num_);
     }
   public:
+    auto min_xs(this auto& self) { return self.get_view().min_xs(); }
+    auto min_ys(this auto& self) { return self.get_view().min_ys(); }
+    auto min_zs(this auto& self) { return self.get_view().min_zs(); }
+    auto max_xs(this auto& self) { return self.get_view().max_xs(); }
+    auto max_ys(this auto& self) { return self.get_view().max_ys(); }
+    auto max_zs(this auto& self) { return self.get_view().max_zs(); }
+    void set(size_type index,
+             float const new_min_xs,
+             float const new_min_ys,
+             float const new_min_zs,
+             float const new_max_xs,
+             float const new_max_ys,
+             float const new_max_zs) {
+        assert(index < num());
+        get_view().min_xs()[index] = new_min_xs;
+        get_view().min_ys()[index] = new_min_ys;
+        get_view().min_zs()[index] = new_min_zs;
+        get_view().max_xs()[index] = new_max_xs;
+        get_view().max_ys()[index] = new_max_ys;
+        get_view().max_zs()[index] = new_max_zs;
+    }
+    size_type add(float const new_min_xs,
+                  float const new_min_ys,
+                  float const new_min_zs,
+                  float const new_max_xs,
+                  float const new_max_ys,
+                  float const new_max_zs) {
+        auto const index{num()};
+        add_uninitialised(1);
+        set(index, new_min_xs, new_min_ys, new_min_zs, new_max_xs, new_max_ys, new_max_zs);
+        return index;
+    }
 };
 } // namespace ioj::sim::collision

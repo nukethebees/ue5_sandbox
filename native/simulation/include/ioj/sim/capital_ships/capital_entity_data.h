@@ -178,6 +178,12 @@ struct CapitalEntityDataSingleResolvedView_locations
     : CapitalEntityDataSingleResolvedView_locationsImpl<false> {
     using Base = CapitalEntityDataSingleResolvedView_locationsImpl<false>;
     using Base::Base;
+    void set(size_type index, float const new_xs, float const new_ys, float const new_zs) const {
+        assert(index < num());
+        this->xs()[index] = new_xs;
+        this->ys()[index] = new_ys;
+        this->zs()[index] = new_zs;
+    }
 };
 struct CapitalEntityDataSingleResolvedView_rotations;
 struct CapitalEntityDataSingleResolvedConstView_rotations;
@@ -277,6 +283,15 @@ struct CapitalEntityDataSingleResolvedView_rotations
     : CapitalEntityDataSingleResolvedView_rotationsImpl<false> {
     using Base = CapitalEntityDataSingleResolvedView_rotationsImpl<false>;
     using Base::Base;
+    void set(size_type index,
+             float const new_pitches,
+             float const new_yaws,
+             float const new_rolls) const {
+        assert(index < num());
+        this->pitches()[index] = new_pitches;
+        this->yaws()[index] = new_yaws;
+        this->rolls()[index] = new_rolls;
+    }
 };
 struct CapitalEntityDataSingleResolvedView;
 struct CapitalEntityDataSingleResolvedConstView;
@@ -500,6 +515,33 @@ struct CapitalEntityDataSingleResolvedConstView : CapitalEntityDataSingleResolve
 struct CapitalEntityDataSingleResolvedView : CapitalEntityDataSingleResolvedViewImpl<false> {
     using Base = CapitalEntityDataSingleResolvedViewImpl<false>;
     using Base::Base;
+    void set(size_type index,
+             EntityId const new_entity_ids,
+             float const new_locations_xs,
+             float const new_locations_ys,
+             float const new_locations_zs,
+             float const new_rotations_pitches,
+             float const new_rotations_yaws,
+             float const new_rotations_rolls,
+             float const new_fighter_spawn_timers,
+             float const new_fighter_spawn_cooldowns,
+             ::ioj::Team const new_teams,
+             ioj::sim::IndexSpan const new_fighter_id_spans,
+             EntityId const new_target_ids) const {
+        assert(index < num());
+        this->entity_ids()[index] = new_entity_ids;
+        this->view_locations().xs()[index] = new_locations_xs;
+        this->view_locations().ys()[index] = new_locations_ys;
+        this->view_locations().zs()[index] = new_locations_zs;
+        this->view_rotations().pitches()[index] = new_rotations_pitches;
+        this->view_rotations().yaws()[index] = new_rotations_yaws;
+        this->view_rotations().rolls()[index] = new_rotations_rolls;
+        this->fighter_spawn_timers()[index] = new_fighter_spawn_timers;
+        this->fighter_spawn_cooldowns()[index] = new_fighter_spawn_cooldowns;
+        this->teams()[index] = new_teams;
+        this->fighter_id_spans()[index] = new_fighter_id_spans;
+        this->target_ids()[index] = new_target_ids;
+    }
 };
 template <bool Const>
 struct CapitalEntityDataSingleViewImpl : ioj::soa_storage_detail::CompactViewOperations {
@@ -610,6 +652,33 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<CapitalEntityDataSi
 struct CapitalEntityDataSingleView : CapitalEntityDataSingleViewImpl<false> {
     using Base = CapitalEntityDataSingleViewImpl<false>;
     using Base::Base;
+    void set(size_type index,
+             EntityId const new_entity_ids,
+             float const new_locations_xs,
+             float const new_locations_ys,
+             float const new_locations_zs,
+             float const new_rotations_pitches,
+             float const new_rotations_yaws,
+             float const new_rotations_rolls,
+             float const new_fighter_spawn_timers,
+             float const new_fighter_spawn_cooldowns,
+             ::ioj::Team const new_teams,
+             ioj::sim::IndexSpan const new_fighter_id_spans,
+             EntityId const new_target_ids) const {
+        assert(index < num());
+        this->entity_ids()[index] = new_entity_ids;
+        this->view_locations().xs()[index] = new_locations_xs;
+        this->view_locations().ys()[index] = new_locations_ys;
+        this->view_locations().zs()[index] = new_locations_zs;
+        this->view_rotations().pitches()[index] = new_rotations_pitches;
+        this->view_rotations().yaws()[index] = new_rotations_yaws;
+        this->view_rotations().rolls()[index] = new_rotations_rolls;
+        this->fighter_spawn_timers()[index] = new_fighter_spawn_timers;
+        this->fighter_spawn_cooldowns()[index] = new_fighter_spawn_cooldowns;
+        this->teams()[index] = new_teams;
+        this->fighter_id_spans()[index] = new_fighter_id_spans;
+        this->target_ids()[index] = new_target_ids;
+    }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<CapitalEntityDataSingleView>());
 // Columns:
@@ -842,5 +911,71 @@ struct CapitalEntityData
         transfer_columns<false>(destination, source, num_);
     }
   public:
+    auto entity_ids(this auto& self) { return self.get_view().entity_ids(); }
+    auto view_locations(this auto& self) { return self.get_view().view_locations(); }
+    auto view_rotations(this auto& self) { return self.get_view().view_rotations(); }
+    auto fighter_spawn_timers(this auto& self) { return self.get_view().fighter_spawn_timers(); }
+    auto fighter_spawn_cooldowns(this auto& self) {
+        return self.get_view().fighter_spawn_cooldowns();
+    }
+    auto teams(this auto& self) { return self.get_view().teams(); }
+    auto fighter_id_spans(this auto& self) { return self.get_view().fighter_id_spans(); }
+    auto target_ids(this auto& self) { return self.get_view().target_ids(); }
+    void set(size_type index,
+             EntityId const new_entity_ids,
+             float const new_locations_xs,
+             float const new_locations_ys,
+             float const new_locations_zs,
+             float const new_rotations_pitches,
+             float const new_rotations_yaws,
+             float const new_rotations_rolls,
+             float const new_fighter_spawn_timers,
+             float const new_fighter_spawn_cooldowns,
+             ::ioj::Team const new_teams,
+             ioj::sim::IndexSpan const new_fighter_id_spans,
+             EntityId const new_target_ids) {
+        assert(index < num());
+        get_view().entity_ids()[index] = new_entity_ids;
+        get_view().view_locations().xs()[index] = new_locations_xs;
+        get_view().view_locations().ys()[index] = new_locations_ys;
+        get_view().view_locations().zs()[index] = new_locations_zs;
+        get_view().view_rotations().pitches()[index] = new_rotations_pitches;
+        get_view().view_rotations().yaws()[index] = new_rotations_yaws;
+        get_view().view_rotations().rolls()[index] = new_rotations_rolls;
+        get_view().fighter_spawn_timers()[index] = new_fighter_spawn_timers;
+        get_view().fighter_spawn_cooldowns()[index] = new_fighter_spawn_cooldowns;
+        get_view().teams()[index] = new_teams;
+        get_view().fighter_id_spans()[index] = new_fighter_id_spans;
+        get_view().target_ids()[index] = new_target_ids;
+    }
+    size_type add(EntityId const new_entity_ids,
+                  float const new_locations_xs,
+                  float const new_locations_ys,
+                  float const new_locations_zs,
+                  float const new_rotations_pitches,
+                  float const new_rotations_yaws,
+                  float const new_rotations_rolls,
+                  float const new_fighter_spawn_timers,
+                  float const new_fighter_spawn_cooldowns,
+                  ::ioj::Team const new_teams,
+                  ioj::sim::IndexSpan const new_fighter_id_spans,
+                  EntityId const new_target_ids) {
+        auto const index{num()};
+        add_uninitialised(1);
+        set(index,
+            new_entity_ids,
+            new_locations_xs,
+            new_locations_ys,
+            new_locations_zs,
+            new_rotations_pitches,
+            new_rotations_yaws,
+            new_rotations_rolls,
+            new_fighter_spawn_timers,
+            new_fighter_spawn_cooldowns,
+            new_teams,
+            new_fighter_id_spans,
+            new_target_ids);
+        return index;
+    }
 };
 } // namespace ioj::sim

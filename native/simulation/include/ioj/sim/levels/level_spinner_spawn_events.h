@@ -165,6 +165,12 @@ struct LevelSpinnerSpawnEventsSingleResolvedView_locations
     : LevelSpinnerSpawnEventsSingleResolvedView_locationsImpl<false> {
     using Base = LevelSpinnerSpawnEventsSingleResolvedView_locationsImpl<false>;
     using Base::Base;
+    void set(size_type index, float const new_xs, float const new_ys, float const new_zs) const {
+        assert(index < num());
+        this->xs()[index] = new_xs;
+        this->ys()[index] = new_ys;
+        this->zs()[index] = new_zs;
+    }
 };
 struct LevelSpinnerSpawnEventsSingleResolvedView;
 struct LevelSpinnerSpawnEventsSingleResolvedConstView;
@@ -314,6 +320,21 @@ struct LevelSpinnerSpawnEventsSingleResolvedView
     : LevelSpinnerSpawnEventsSingleResolvedViewImpl<false> {
     using Base = LevelSpinnerSpawnEventsSingleResolvedViewImpl<false>;
     using Base::Base;
+    void set(size_type index,
+             ioj::sim::LevelEntityIndex const new_entity_indices,
+             float const new_locations_xs,
+             float const new_locations_ys,
+             float const new_locations_zs,
+             float const new_yaws,
+             std::int32_t const new_initial_fire_point_indices) const {
+        assert(index < num());
+        this->entity_indices()[index] = new_entity_indices;
+        this->view_locations().xs()[index] = new_locations_xs;
+        this->view_locations().ys()[index] = new_locations_ys;
+        this->view_locations().zs()[index] = new_locations_zs;
+        this->yaws()[index] = new_yaws;
+        this->initial_fire_point_indices()[index] = new_initial_fire_point_indices;
+    }
 };
 template <bool Const>
 struct LevelSpinnerSpawnEventsSingleViewImpl : ioj::soa_storage_detail::CompactViewOperations {
@@ -395,6 +416,21 @@ static_assert(
 struct LevelSpinnerSpawnEventsSingleView : LevelSpinnerSpawnEventsSingleViewImpl<false> {
     using Base = LevelSpinnerSpawnEventsSingleViewImpl<false>;
     using Base::Base;
+    void set(size_type index,
+             ioj::sim::LevelEntityIndex const new_entity_indices,
+             float const new_locations_xs,
+             float const new_locations_ys,
+             float const new_locations_zs,
+             float const new_yaws,
+             std::int32_t const new_initial_fire_point_indices) const {
+        assert(index < num());
+        this->entity_indices()[index] = new_entity_indices;
+        this->view_locations().xs()[index] = new_locations_xs;
+        this->view_locations().ys()[index] = new_locations_ys;
+        this->view_locations().zs()[index] = new_locations_zs;
+        this->yaws()[index] = new_yaws;
+        this->initial_fire_point_indices()[index] = new_initial_fire_point_indices;
+    }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<LevelSpinnerSpawnEventsSingleView>());
 // Columns:
@@ -584,5 +620,43 @@ struct LevelSpinnerSpawnEvents
         transfer_columns<false>(destination, source, num_);
     }
   public:
+    auto entity_indices(this auto& self) { return self.get_view().entity_indices(); }
+    auto view_locations(this auto& self) { return self.get_view().view_locations(); }
+    auto yaws(this auto& self) { return self.get_view().yaws(); }
+    auto initial_fire_point_indices(this auto& self) {
+        return self.get_view().initial_fire_point_indices();
+    }
+    void set(size_type index,
+             ioj::sim::LevelEntityIndex const new_entity_indices,
+             float const new_locations_xs,
+             float const new_locations_ys,
+             float const new_locations_zs,
+             float const new_yaws,
+             std::int32_t const new_initial_fire_point_indices) {
+        assert(index < num());
+        get_view().entity_indices()[index] = new_entity_indices;
+        get_view().view_locations().xs()[index] = new_locations_xs;
+        get_view().view_locations().ys()[index] = new_locations_ys;
+        get_view().view_locations().zs()[index] = new_locations_zs;
+        get_view().yaws()[index] = new_yaws;
+        get_view().initial_fire_point_indices()[index] = new_initial_fire_point_indices;
+    }
+    size_type add(ioj::sim::LevelEntityIndex const new_entity_indices,
+                  float const new_locations_xs,
+                  float const new_locations_ys,
+                  float const new_locations_zs,
+                  float const new_yaws,
+                  std::int32_t const new_initial_fire_point_indices) {
+        auto const index{num()};
+        add_uninitialised(1);
+        set(index,
+            new_entity_indices,
+            new_locations_xs,
+            new_locations_ys,
+            new_locations_zs,
+            new_yaws,
+            new_initial_fire_point_indices);
+        return index;
+    }
 };
 } // namespace ioj::sim

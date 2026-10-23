@@ -238,6 +238,25 @@ struct EntityHistoryColumnsSingleResolvedConstView
 struct EntityHistoryColumnsSingleResolvedView : EntityHistoryColumnsSingleResolvedViewImpl<false> {
     using Base = EntityHistoryColumnsSingleResolvedViewImpl<false>;
     using Base::Base;
+    void set(size_type index,
+             EntityId const new_entity_ids,
+             ioj::sim::EntityType const new_entity_types,
+             ::ioj::Team const new_teams,
+             std::uint32_t const new_kills,
+             EntityId const new_killed_by,
+             LifeState const new_life_state,
+             SimTick const new_death_ticks,
+             Vector3f const new_death_locations) const {
+        assert(index < num());
+        this->entity_ids()[index] = new_entity_ids;
+        this->entity_types()[index] = new_entity_types;
+        this->teams()[index] = new_teams;
+        this->kills()[index] = new_kills;
+        this->killed_by()[index] = new_killed_by;
+        this->life_state()[index] = new_life_state;
+        this->death_ticks()[index] = new_death_ticks;
+        this->death_locations()[index] = new_death_locations;
+    }
 };
 template <bool Const>
 struct EntityHistoryColumnsSingleViewImpl : ioj::soa_storage_detail::CompactViewOperations {
@@ -315,6 +334,25 @@ static_assert(
 struct EntityHistoryColumnsSingleView : EntityHistoryColumnsSingleViewImpl<false> {
     using Base = EntityHistoryColumnsSingleViewImpl<false>;
     using Base::Base;
+    void set(size_type index,
+             EntityId const new_entity_ids,
+             ioj::sim::EntityType const new_entity_types,
+             ::ioj::Team const new_teams,
+             std::uint32_t const new_kills,
+             EntityId const new_killed_by,
+             LifeState const new_life_state,
+             SimTick const new_death_ticks,
+             Vector3f const new_death_locations) const {
+        assert(index < num());
+        this->entity_ids()[index] = new_entity_ids;
+        this->entity_types()[index] = new_entity_types;
+        this->teams()[index] = new_teams;
+        this->kills()[index] = new_kills;
+        this->killed_by()[index] = new_killed_by;
+        this->life_state()[index] = new_life_state;
+        this->death_ticks()[index] = new_death_ticks;
+        this->death_locations()[index] = new_death_locations;
+    }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<EntityHistoryColumnsSingleView>());
 // Columns:
@@ -517,5 +555,53 @@ struct EntityHistory
         transfer_columns<false>(destination, source, num_);
     }
   public:
+    auto entity_ids(this auto& self) { return self.get_view().entity_ids(); }
+    auto entity_types(this auto& self) { return self.get_view().entity_types(); }
+    auto teams(this auto& self) { return self.get_view().teams(); }
+    auto kills(this auto& self) { return self.get_view().kills(); }
+    auto killed_by(this auto& self) { return self.get_view().killed_by(); }
+    auto life_state(this auto& self) { return self.get_view().life_state(); }
+    auto death_ticks(this auto& self) { return self.get_view().death_ticks(); }
+    auto death_locations(this auto& self) { return self.get_view().death_locations(); }
+    void set(size_type index,
+             EntityId const new_entity_ids,
+             ioj::sim::EntityType const new_entity_types,
+             ::ioj::Team const new_teams,
+             std::uint32_t const new_kills,
+             EntityId const new_killed_by,
+             LifeState const new_life_state,
+             SimTick const new_death_ticks,
+             Vector3f const new_death_locations) {
+        assert(index < num());
+        get_view().entity_ids()[index] = new_entity_ids;
+        get_view().entity_types()[index] = new_entity_types;
+        get_view().teams()[index] = new_teams;
+        get_view().kills()[index] = new_kills;
+        get_view().killed_by()[index] = new_killed_by;
+        get_view().life_state()[index] = new_life_state;
+        get_view().death_ticks()[index] = new_death_ticks;
+        get_view().death_locations()[index] = new_death_locations;
+    }
+    size_type add(EntityId const new_entity_ids,
+                  ioj::sim::EntityType const new_entity_types,
+                  ::ioj::Team const new_teams,
+                  std::uint32_t const new_kills,
+                  EntityId const new_killed_by,
+                  LifeState const new_life_state,
+                  SimTick const new_death_ticks,
+                  Vector3f const new_death_locations) {
+        auto const index{num()};
+        add_uninitialised(1);
+        set(index,
+            new_entity_ids,
+            new_entity_types,
+            new_teams,
+            new_kills,
+            new_killed_by,
+            new_life_state,
+            new_death_ticks,
+            new_death_locations);
+        return index;
+    }
 };
 } // namespace ioj::sim

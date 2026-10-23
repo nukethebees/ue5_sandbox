@@ -167,6 +167,12 @@ struct TraceHitsSingleResolvedConstView_locations
 struct TraceHitsSingleResolvedView_locations : TraceHitsSingleResolvedView_locationsImpl<false> {
     using Base = TraceHitsSingleResolvedView_locationsImpl<false>;
     using Base::Base;
+    void set(size_type index, float const new_xs, float const new_ys, float const new_zs) const {
+        assert(index < num());
+        this->xs()[index] = new_xs;
+        this->ys()[index] = new_ys;
+        this->zs()[index] = new_zs;
+    }
     using equivalent_type = Vector3f;
     auto operator[](std::uint32_t index) const -> equivalent_type {
         return equivalent_type{xs()[index], ys()[index], zs()[index]};
@@ -316,6 +322,21 @@ struct TraceHitsSingleResolvedConstView : TraceHitsSingleResolvedViewImpl<true> 
 struct TraceHitsSingleResolvedView : TraceHitsSingleResolvedViewImpl<false> {
     using Base = TraceHitsSingleResolvedViewImpl<false>;
     using Base::Base;
+    void set(size_type index,
+             float const new_locations_xs,
+             float const new_locations_ys,
+             float const new_locations_zs,
+             EntityId const new_entities,
+             ioj::sim::collision::StaticGeometryIndex const new_static_geometry_indices,
+             ioj::sim::TraceHit const new_hits) const {
+        assert(index < num());
+        this->view_locations().xs()[index] = new_locations_xs;
+        this->view_locations().ys()[index] = new_locations_ys;
+        this->view_locations().zs()[index] = new_locations_zs;
+        this->entities()[index] = new_entities;
+        this->static_geometry_indices()[index] = new_static_geometry_indices;
+        this->hits()[index] = new_hits;
+    }
 };
 template <bool Const>
 struct TraceHitsSingleViewImpl : ioj::soa_storage_detail::CompactViewOperations {
@@ -395,6 +416,21 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<TraceHitsSingleCons
 struct TraceHitsSingleView : TraceHitsSingleViewImpl<false> {
     using Base = TraceHitsSingleViewImpl<false>;
     using Base::Base;
+    void set(size_type index,
+             float const new_locations_xs,
+             float const new_locations_ys,
+             float const new_locations_zs,
+             EntityId const new_entities,
+             ioj::sim::collision::StaticGeometryIndex const new_static_geometry_indices,
+             ioj::sim::TraceHit const new_hits) const {
+        assert(index < num());
+        this->view_locations().xs()[index] = new_locations_xs;
+        this->view_locations().ys()[index] = new_locations_ys;
+        this->view_locations().zs()[index] = new_locations_zs;
+        this->entities()[index] = new_entities;
+        this->static_geometry_indices()[index] = new_static_geometry_indices;
+        this->hits()[index] = new_hits;
+    }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<TraceHitsSingleView>());
 // Columns:
@@ -584,5 +620,43 @@ struct TraceHits
         transfer_columns<false>(destination, source, num_);
     }
   public:
+    auto view_locations(this auto& self) { return self.get_view().view_locations(); }
+    auto entities(this auto& self) { return self.get_view().entities(); }
+    auto static_geometry_indices(this auto& self) {
+        return self.get_view().static_geometry_indices();
+    }
+    auto hits(this auto& self) { return self.get_view().hits(); }
+    void set(size_type index,
+             float const new_locations_xs,
+             float const new_locations_ys,
+             float const new_locations_zs,
+             EntityId const new_entities,
+             ioj::sim::collision::StaticGeometryIndex const new_static_geometry_indices,
+             ioj::sim::TraceHit const new_hits) {
+        assert(index < num());
+        get_view().view_locations().xs()[index] = new_locations_xs;
+        get_view().view_locations().ys()[index] = new_locations_ys;
+        get_view().view_locations().zs()[index] = new_locations_zs;
+        get_view().entities()[index] = new_entities;
+        get_view().static_geometry_indices()[index] = new_static_geometry_indices;
+        get_view().hits()[index] = new_hits;
+    }
+    size_type add(float const new_locations_xs,
+                  float const new_locations_ys,
+                  float const new_locations_zs,
+                  EntityId const new_entities,
+                  ioj::sim::collision::StaticGeometryIndex const new_static_geometry_indices,
+                  ioj::sim::TraceHit const new_hits) {
+        auto const index{num()};
+        add_uninitialised(1);
+        set(index,
+            new_locations_xs,
+            new_locations_ys,
+            new_locations_zs,
+            new_entities,
+            new_static_geometry_indices,
+            new_hits);
+        return index;
+    }
 };
 } // namespace ioj::sim

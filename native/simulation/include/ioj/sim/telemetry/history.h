@@ -352,6 +352,29 @@ struct HistoryRowsSingleResolvedConstView : HistoryRowsSingleResolvedViewImpl<tr
 struct HistoryRowsSingleResolvedView : HistoryRowsSingleResolvedViewImpl<false> {
     using Base = HistoryRowsSingleResolvedViewImpl<false>;
     using Base::Base;
+    void set(size_type index,
+             SimTick const new_completed_ticks,
+             HistoryFieldMask const new_validity_masks,
+             std::int32_t const new_active_entities,
+             ioj::sim::telemetry::EntityTypeCounts const new_active_entities_by_type,
+             ioj::sim::telemetry::EntityCounts const new_active_entities_by_team_and_type,
+             std::int32_t const new_spawned_entities,
+             std::int32_t const new_destroyed_entities,
+             std::int32_t const new_kills,
+             std::int32_t const new_active_lasers,
+             std::int32_t const new_lasers_fired) const {
+        assert(index < num());
+        this->completed_ticks()[index] = new_completed_ticks;
+        this->validity_masks()[index] = new_validity_masks;
+        this->active_entities()[index] = new_active_entities;
+        this->active_entities_by_type()[index] = new_active_entities_by_type;
+        this->active_entities_by_team_and_type()[index] = new_active_entities_by_team_and_type;
+        this->spawned_entities()[index] = new_spawned_entities;
+        this->destroyed_entities()[index] = new_destroyed_entities;
+        this->kills()[index] = new_kills;
+        this->active_lasers()[index] = new_active_lasers;
+        this->lasers_fired()[index] = new_lasers_fired;
+    }
 };
 template <bool Const>
 struct HistoryRowsSingleViewImpl : ioj::soa_storage_detail::CompactViewOperations {
@@ -441,6 +464,29 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<HistoryRowsSingleCo
 struct HistoryRowsSingleView : HistoryRowsSingleViewImpl<false> {
     using Base = HistoryRowsSingleViewImpl<false>;
     using Base::Base;
+    void set(size_type index,
+             SimTick const new_completed_ticks,
+             HistoryFieldMask const new_validity_masks,
+             std::int32_t const new_active_entities,
+             ioj::sim::telemetry::EntityTypeCounts const new_active_entities_by_type,
+             ioj::sim::telemetry::EntityCounts const new_active_entities_by_team_and_type,
+             std::int32_t const new_spawned_entities,
+             std::int32_t const new_destroyed_entities,
+             std::int32_t const new_kills,
+             std::int32_t const new_active_lasers,
+             std::int32_t const new_lasers_fired) const {
+        assert(index < num());
+        this->completed_ticks()[index] = new_completed_ticks;
+        this->validity_masks()[index] = new_validity_masks;
+        this->active_entities()[index] = new_active_entities;
+        this->active_entities_by_type()[index] = new_active_entities_by_type;
+        this->active_entities_by_team_and_type()[index] = new_active_entities_by_team_and_type;
+        this->spawned_entities()[index] = new_spawned_entities;
+        this->destroyed_entities()[index] = new_destroyed_entities;
+        this->kills()[index] = new_kills;
+        this->active_lasers()[index] = new_active_lasers;
+        this->lasers_fired()[index] = new_lasers_fired;
+    }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<HistoryRowsSingleView>());
 // Columns:
@@ -658,5 +704,67 @@ struct HistoryRows
         transfer_columns<false>(destination, source, num_);
     }
   public:
+    auto completed_ticks(this auto& self) { return self.get_view().completed_ticks(); }
+    auto validity_masks(this auto& self) { return self.get_view().validity_masks(); }
+    auto active_entities(this auto& self) { return self.get_view().active_entities(); }
+    auto active_entities_by_type(this auto& self) {
+        return self.get_view().active_entities_by_type();
+    }
+    auto active_entities_by_team_and_type(this auto& self) {
+        return self.get_view().active_entities_by_team_and_type();
+    }
+    auto spawned_entities(this auto& self) { return self.get_view().spawned_entities(); }
+    auto destroyed_entities(this auto& self) { return self.get_view().destroyed_entities(); }
+    auto kills(this auto& self) { return self.get_view().kills(); }
+    auto active_lasers(this auto& self) { return self.get_view().active_lasers(); }
+    auto lasers_fired(this auto& self) { return self.get_view().lasers_fired(); }
+    void set(size_type index,
+             SimTick const new_completed_ticks,
+             HistoryFieldMask const new_validity_masks,
+             std::int32_t const new_active_entities,
+             ioj::sim::telemetry::EntityTypeCounts const new_active_entities_by_type,
+             ioj::sim::telemetry::EntityCounts const new_active_entities_by_team_and_type,
+             std::int32_t const new_spawned_entities,
+             std::int32_t const new_destroyed_entities,
+             std::int32_t const new_kills,
+             std::int32_t const new_active_lasers,
+             std::int32_t const new_lasers_fired) {
+        assert(index < num());
+        get_view().completed_ticks()[index] = new_completed_ticks;
+        get_view().validity_masks()[index] = new_validity_masks;
+        get_view().active_entities()[index] = new_active_entities;
+        get_view().active_entities_by_type()[index] = new_active_entities_by_type;
+        get_view().active_entities_by_team_and_type()[index] = new_active_entities_by_team_and_type;
+        get_view().spawned_entities()[index] = new_spawned_entities;
+        get_view().destroyed_entities()[index] = new_destroyed_entities;
+        get_view().kills()[index] = new_kills;
+        get_view().active_lasers()[index] = new_active_lasers;
+        get_view().lasers_fired()[index] = new_lasers_fired;
+    }
+    size_type add(SimTick const new_completed_ticks,
+                  HistoryFieldMask const new_validity_masks,
+                  std::int32_t const new_active_entities,
+                  ioj::sim::telemetry::EntityTypeCounts const new_active_entities_by_type,
+                  ioj::sim::telemetry::EntityCounts const new_active_entities_by_team_and_type,
+                  std::int32_t const new_spawned_entities,
+                  std::int32_t const new_destroyed_entities,
+                  std::int32_t const new_kills,
+                  std::int32_t const new_active_lasers,
+                  std::int32_t const new_lasers_fired) {
+        auto const index{num()};
+        add_uninitialised(1);
+        set(index,
+            new_completed_ticks,
+            new_validity_masks,
+            new_active_entities,
+            new_active_entities_by_type,
+            new_active_entities_by_team_and_type,
+            new_spawned_entities,
+            new_destroyed_entities,
+            new_kills,
+            new_active_lasers,
+            new_lasers_fired);
+        return index;
+    }
 };
 } // namespace ioj::sim::telemetry
