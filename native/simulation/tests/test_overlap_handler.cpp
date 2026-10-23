@@ -37,7 +37,7 @@ TEST(OverlapHandler, QueuesEnvironmentalDamageForEachSupportedOverlapParticipant
         columns.static_geometry_indices()[index] = 7;
     }
 
-    OverlapHandler handler{{.damage_per_overlap_detection = 37}};
+    OverlapHandler handler{Positive<Health>::make(37)};
     handler.handle({entity_overlaps.get_const_view(), static_overlaps.get_const_view()},
                    owners.combat_events);
 
@@ -100,7 +100,8 @@ TEST(OverlapHandler, FiltersUnsupportedRecipientsAndDefersRetirementChecksToDama
     alignas(FrameMemoryResource::backing_alignment) std::array<std::byte, 4096> backing;
     FrameMemoryResource memory{backing};
     FrameScratchScope scope{memory};
-    OverlapHandler handler{{}};
+    OverlapHandler handler{
+        Positive<Health>::make(OverlapResponseConfig{}.damage_per_overlap_detection)};
     handler.handle({first_pairs.get_const_view(), {}}, owners.combat_events);
     owners.combat_events.prepare(owners.entity_tables.lookups, &memory);
 

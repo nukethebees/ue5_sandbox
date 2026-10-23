@@ -159,7 +159,6 @@ void Sim::begin_play() {
     awareness_cleaner_ = 0;
     reposition_cleaner_ = 0;
     attack_cleaner_ = 0;
-    assert(collision_radius_ > 0.f);
     assert(config.fire_point_distance >= 0.f);
 
     awareness_restart_ticks_ =

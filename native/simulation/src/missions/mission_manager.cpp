@@ -116,7 +116,7 @@ void MissionManager::initialise_level_mission(LevelMissionInitialisationData con
     }
 
     if (data.time_limit_seconds.has_value()) {
-        set_target_time(data.time_limit_seconds.value());
+        set_target_time(PositiveFinite<float>::make(data.time_limit_seconds.value()));
     }
 
     if (data.mode == levels::LevelMissionMode::KillEnemies ||
@@ -171,7 +171,7 @@ void MissionManager::consume_level_events(LevelMissionEventGroups::ConstView con
             }
             case LevelMissionEventType::IncreaseKillTarget: {
                 for (auto const increase : values) {
-                    increase_kill_target(increase);
+                    increase_kill_target(NonNegative<std::int32_t>::make(increase));
                     if (!level_initialisation_applied_) {
                         kill_target_increase_before_level_initialisation_ += increase;
                     }
@@ -216,9 +216,8 @@ void MissionManager::set_mission_mode(MissionMode const new_mode) {
     assert(mission_state == MissionState::NotStarted);
     mission_mode = new_mode;
 }
-void MissionManager::set_target_time(float const new_target_time) {
+void MissionManager::set_target_time(PositiveFinite<float> const new_target_time) {
     assert(mission_state == MissionState::NotStarted);
-    assert(new_target_time > 0.f);
     target_time = new_target_time;
 }
 void MissionManager::set_kill_target(std::int32_t const new_kill_target) {
@@ -269,16 +268,14 @@ void MissionManager::add_entity_required_to_kill(EntityId id) {
     entity_ids_required_to_kill.push_back(id);
 }
 
-void MissionManager::increase_kill_target(std::int32_t const increase) {
-    assert(increase >= 0);
+void MissionManager::increase_kill_target(NonNegative<std::int32_t> const increase) {
     assert(mission_state == MissionState::NotStarted || mission_state == MissionState::Running);
     kill_target += increase;
     resolved_kill_target += increase;
 }
 
-void MissionManager::set_pending_objective_events(std::int32_t const count) {
+void MissionManager::set_pending_objective_events(NonNegative<std::int32_t> const count) {
     assert(mission_state == MissionState::NotStarted);
-    assert(count >= 0);
     pending_objective_events_ = count;
 }
 

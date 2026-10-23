@@ -50,7 +50,6 @@ auto validate_settings(SimulationSettings const& settings)
         }
     };
 
-    positive(settings.player.thrust_energy_max, "player-ship.thrust-energy-max");
     positive(settings.player_initial.health, "player-ship.health");
     nonnegative(settings.lasers.n_preallocated_instances,
                 "laser-projectiles.n-preallocated-instances");

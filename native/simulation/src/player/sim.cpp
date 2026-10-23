@@ -245,7 +245,7 @@ void Sim::update_boost_brake(float const dt, PlayerSimulationState& state) {
     resources.thrust_change_rate = energy_change * config.thrust_energy_max;
     resources.thrust_energy += dt * resources.thrust_change_rate;
     resources.thrust_energy =
-        std::clamp(resources.thrust_energy, 0.f, config.thrust_energy_max);
+        std::clamp<float>(resources.thrust_energy, 0.f, config.thrust_energy_max);
     if (resources.thrust_energy <= 0.f) {
         refresh_effective_action(state);
     }
@@ -618,7 +618,6 @@ auto Sim::energy_is_full() const -> bool {
 }
 
 auto Sim::get_energy() const -> float {
-    assert(config.thrust_energy_max > 0.f);
     return state_.resources.thrust_energy / config.thrust_energy_max;
 }
 

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <ioj/constrained_numbers.h>
 #include <ioj/sim/collision/collision_system.h>
 #include <ioj/sim/collision/overlap_response_config.h>
 #include <ioj/sim/direct_damage_events.h>
@@ -11,7 +12,7 @@ namespace ioj::sim {
 class CombatEvents;
 
 struct OverlapHandler {
-    explicit OverlapHandler(OverlapResponseConfig const& config) noexcept;
+    explicit OverlapHandler(Positive<Health> damage_per_overlap_detection) noexcept;
 
     void handle(collision::DetectedOverlapsView overlaps, CombatEvents& events);
   private:

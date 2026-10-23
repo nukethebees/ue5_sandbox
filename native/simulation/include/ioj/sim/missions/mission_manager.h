@@ -69,15 +69,15 @@ struct MissionManager {
     // Mission configuration and objectives
     /* **************************************** */
     void set_mission_mode(MissionMode new_mode);
-    void set_target_time(float new_target_time);
+    void set_target_time(PositiveFinite<float> new_target_time);
     void set_kill_target(std::int32_t new_kill_target);
     void set_save_mission_results(bool should_save) noexcept;
     void set_level_identity(std::string const& level_id, std::string display_name);
     void add_hero_entity(EntityId id);
     void add_entity_that_must_survive(EntityId id);
     void add_entity_required_to_kill(EntityId id);
-    void increase_kill_target(std::int32_t increase);
-    void set_pending_objective_events(std::int32_t count);
+    void increase_kill_target(NonNegative<std::int32_t> increase);
+    void set_pending_objective_events(NonNegative<std::int32_t> count);
     void objective_event_dispatched();
 
     /* **************************************** */

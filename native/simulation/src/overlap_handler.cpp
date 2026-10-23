@@ -2,13 +2,9 @@
 
 #include <ioj/sim/combat_events.h>
 
-#include <cassert>
-
 namespace ioj::sim {
-OverlapHandler::OverlapHandler(OverlapResponseConfig const& config) noexcept
-    : damage_per_overlap_detection_{config.damage_per_overlap_detection} {
-    assert(damage_per_overlap_detection_ > 0);
-}
+OverlapHandler::OverlapHandler(Positive<Health> const damage_per_overlap_detection) noexcept
+    : damage_per_overlap_detection_{damage_per_overlap_detection} {}
 
 void OverlapHandler::handle(collision::DetectedOverlapsView const overlaps, CombatEvents& events) {
     overlaps.entity_entity_overlaps.validate();

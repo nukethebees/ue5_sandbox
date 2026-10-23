@@ -58,7 +58,8 @@ void LevelEventManager::initialise(CompiledLevelEvents data, EntityId const play
     }
     assert(spawn_group_count == schedule_.spawn_groups.num());
     assert(mission_group_count == schedule_.mission_events.groups.num());
-    mission_manager_.set_pending_objective_events(mission_tick_count);
+    mission_manager_.set_pending_objective_events(
+        NonNegative<std::int32_t>::make(mission_tick_count));
 }
 
 void LevelEventManager::execute_tick(SimTick const tick) {

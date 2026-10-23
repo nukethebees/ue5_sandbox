@@ -65,7 +65,8 @@ LevelSim::LevelSim(GameMemory& game_memory, LevelSimInitData data)
     , frame_memory_{std::span<std::byte>{frame_memory_block_.data(),
                                          frame_memory_block_.size_bytes()}}
     , query_manager_{entity_tables_, &game_memory.memory_resource()}
-    , overlap_handler_{data.collision.overlap_response}
+    , overlap_handler_{Positive<Health>::make(
+          data.collision.overlap_response.damage_per_overlap_detection)}
     , lasers_simulation_{clock_, combat_events_}
     , fighters_simulation_{clock_, entity_ledger_, entity_tables_}
     , capital_ships_simulation_{entity_ledger_, entity_tables_, fighters_simulation_}
@@ -146,7 +147,8 @@ void LevelSim::configure_subsystems(LevelSimInitData const& data) {
     fighters_simulation_.set_config(
         data.fighters,
         {.participating_teams = teams,
-         .collision_radius = query_manager_.get_entity_type_radius(EntityType::Fighter)});
+         .collision_radius = PositiveFinite<float>::make(
+             query_manager_.get_entity_type_radius(EntityType::Fighter))});
     turrets_simulation_.set_config(data.turrets);
     spinners_simulation_.set_config(data.spinners);
 }

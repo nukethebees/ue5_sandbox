@@ -36,7 +36,7 @@ class PhaseInterface;
 
 struct FighterLevelData {
     std::span<Team const> participating_teams;
-    float collision_radius{};
+    PositiveFinite<float> collision_radius;
 };
 
 struct Sim {
