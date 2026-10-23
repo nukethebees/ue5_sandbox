@@ -148,8 +148,8 @@ TEST(SingleAllocationSoa, PartialAppendSurvivesCloningAndSourceRoundTrip) {
 TEST(SingleAllocationSoa, RejectsInvalidPartialAppendDeclarations) {
     for (auto const function :
          {"(function append int (parameter value float) :append-columns ())",
-          "(function append int (parameter a float) (parameter b float) :append-columns (values "
-          "values))",
+          ("(function append int (parameter a float) (parameter b float) :append-columns (values "
+           "values))"),
           "(function append int (parameter value float) :append-columns (missing))",
           "(function append int (parameter value float) :append-columns (nested))",
           "(function append int :const true :append-columns ())",
@@ -157,8 +157,8 @@ TEST(SingleAllocationSoa, RejectsInvalidPartialAppendDeclarations) {
           "(function append int :constexpr true :append-columns ())",
           "(function append int :body (\"return 0;\") :append-columns ())",
           "(function append void :append-columns ())",
-          "(function append int (parameter value (type-ref float :suffix \" const&\")) "
-          ":append-columns (values))",
+          ("(function append int (parameter value (type-ref float :suffix \" const&\")) "
+           ":append-columns (values))"),
           "(view-function append int :append-columns ())"}) {
         SCOPED_TRACE(function);
         EXPECT_THROW(

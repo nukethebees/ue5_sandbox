@@ -55,8 +55,8 @@
 namespace lispb::codegen {
 
 namespace environment_detail {
-auto components(Strings& strings, std::string name) -> std::vector<StringId> {
-    // Own the spelling while interning components, which can move the string buffer.
+auto components(Strings& strings, std::string const& name) -> std::vector<StringId> {
+    // Borrow an owned spelling because interning can move the Strings buffer.
     std::vector<StringId> result;
     std::string_view remaining{name};
     if (remaining.starts_with("::")) {

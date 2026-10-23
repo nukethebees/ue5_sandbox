@@ -375,7 +375,7 @@ void aggregate_layout(AnalysisContext& context,
                  FactOrigin::derived);
         context.storage.types.physical()[id.value] = fact;
     }
-    context.storage.types.aggregate()[id.value] = std::move(result);
+    context.storage.types.aggregate()[id.value] = result;
 }
 
 auto physical_inputs(AnalysisContext& context,

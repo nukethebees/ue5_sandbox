@@ -87,12 +87,12 @@ auto Environments::named(EnvironmentId parent,
         return existing.introduced_scope;
     }
 
-    auto const environment{append(parent, kind)};
+    auto const introduced_scope{append(parent, kind)};
     if (declaration.is_null()) {
-        declaration = CppDeclarationId{environment};
+        declaration = CppDeclarationId{introduced_scope};
     }
-    declare(parent, name, declaration, environment);
-    return environment;
+    declare(parent, name, declaration, introduced_scope);
+    return introduced_scope;
 }
 void Environments::import_symbols(EnvironmentId destination, EnvironmentId source) {
     assert(destination != source);

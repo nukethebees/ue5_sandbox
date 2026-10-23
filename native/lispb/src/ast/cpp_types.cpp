@@ -335,7 +335,7 @@ auto CppTypes::reference(CppTypeId const type) -> CppTypeId {
         return type;
     }
     std::string const name{spelling(type)};
-    if (name.find("::") == std::string::npos || name.starts_with("::") || name.ends_with("::")) {
+    if (!name.contains("::") || name.starts_with("::") || name.ends_with("::")) {
         return type;
     }
     bool component_start{true};

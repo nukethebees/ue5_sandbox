@@ -123,8 +123,8 @@ auto compact_row_api(LoweringContext& context, DeclarationHandle schema, SoaRece
     assignments.add(ir.raw("assert(index < num());"));
     auto collect = [&](auto&& self,
                        DeclarationHandle current,
-                       std::vector<std::string> path,
-                       std::string value) -> void {
+                       std::vector<std::string> const& path,
+                       std::string const& value) -> void {
         for (auto member : declarations.items(soas.members[soas.index(current)])) {
             auto const row{members.index(member)};
             auto column{path};
@@ -196,7 +196,7 @@ auto compact_row_api(LoweringContext& context, DeclarationHandle schema, SoaRece
     NodeListBuilder logical_assignments{ir};
     logical_assignments.add(ir.raw("assert(index < num());"));
     auto collect_logical =
-        [&](auto&& self, DeclarationHandle current, std::vector<std::string> path) -> void {
+        [&](auto&& self, DeclarationHandle current, std::vector<std::string> const& path) -> void {
         for (auto const member : declarations.items(soas.members[soas.index(current)])) {
             auto const row{members.index(member)};
             auto column{path};

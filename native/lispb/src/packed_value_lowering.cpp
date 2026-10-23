@@ -89,7 +89,7 @@ auto packed_field_accessor(LoweringContext& context, schema::PackedSegmentId con
     -> std::string {
     auto const& field_definitions{context.semantic.definitions().packed_fields};
     auto const row{field_definitions.index(field)};
-    auto const name{context.text(field_definitions.name[row])};
+    auto name{context.text(field_definitions.name[row])};
     auto const kind{field_definitions.kind[row]};
     if (kind == PackedFieldKind::linear_quantized || kind == PackedFieldKind::mini_float) {
         return name + "_encoded";

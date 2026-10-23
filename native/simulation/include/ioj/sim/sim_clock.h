@@ -4,6 +4,7 @@
 #include <ioj/sim/sim_time.h>
 #include <ioj/sim/simulation_phase.h>
 
+#include <cassert>
 #include <utility>
 
 namespace ioj::sim {

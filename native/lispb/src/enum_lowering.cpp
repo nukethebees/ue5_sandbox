@@ -58,7 +58,7 @@ auto qualified_enum_name(LoweringContext& context,
     auto const& settings_store{context.declarations.module_settings_store};
     auto const namespace_name{settings_store.namespace_name[settings_store.index(settings)]};
     auto const& enums{context.declarations.enums};
-    auto const name{context.text(enums.name[enums.index(schema)])};
+    auto name{context.text(enums.name[enums.index(schema)])};
     if (namespace_name) {
         return context.text(*namespace_name) + "::" + name;
     }

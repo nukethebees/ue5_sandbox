@@ -236,7 +236,7 @@ auto valid_facade_module(CompilerTestContext& context) -> lispb::codegen::Module
 }
 
 auto normal_module(CompilerTestContext& context,
-                   std::vector<DeclarationHandle> declarations,
+                   std::vector<DeclarationHandle> const& declarations,
                    std::optional<std::string_view> source = std::nullopt)
     -> lispb::codegen::ModuleHandle {
     auto& strings{context.storage.strings};

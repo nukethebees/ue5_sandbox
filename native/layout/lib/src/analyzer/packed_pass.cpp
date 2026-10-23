@@ -327,6 +327,6 @@ void
     }
 
     result.fields.count = fields.num() - result.fields.begin;
-    context.storage.types.packed()[id.value] = std::move(result);
+    context.storage.types.packed()[id.value] = result;
 }
 }

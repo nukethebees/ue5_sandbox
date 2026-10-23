@@ -101,7 +101,7 @@ void analyze_enum_backing(AnalysisContext& context, AnalysisId id) {
         }
     }
 
-    context.storage.types.enum_backing()[id.value] = std::move(result);
+    context.storage.types.enum_backing()[id.value] = result;
 }
 
 void relationship_check(AnalysisContext& context,

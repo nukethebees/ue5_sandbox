@@ -39,7 +39,7 @@ auto parameter_type(Document const& document,
                     std::size_t const index,
                     bool const raw) -> std::string {
     auto const& expanded{document.expanded_variants};
-    auto const type{standard_type(expanded.type(id))};
+    auto type{standard_type(expanded.type(id))};
     if (expanded.storage(id)[index] == StorageKind::scalar) {
         return type;
     }
