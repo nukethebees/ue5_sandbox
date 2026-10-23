@@ -43,7 +43,7 @@ auto Data::add_bucket() -> std::int32_t {
     return static_cast<std::int32_t>(buckets_.size() - 1);
 }
 
-auto Data::set_positions(std::int32_t const index, PositionsConstView const positions) -> bool {
+auto Data::set_positions(std::int32_t const index, positions::ConstView const positions) -> bool {
     if (index < 0 || static_cast<std::size_t>(index) >= buckets_.size()) {
         return false;
     }

@@ -8,7 +8,7 @@
 namespace ioj::sim {
 // Describe input columns independently of their owners so queries can use existing arrays.
 struct LineTraceBatch {
-    LineTraceBatch(Vectors3fResolvedConstView starts, Vectors3fResolvedConstView ends)
+    LineTraceBatch(vectors3f::ResolvedConstView starts, vectors3f::ResolvedConstView ends)
         : starts{starts}
         , ends{ends} {}
     LineTraceBatch(LineTraces::ConstView traces)
@@ -18,7 +18,7 @@ struct LineTraceBatch {
     auto num() const noexcept -> std::uint32_t { return starts.num(); }
     void validate() const { assert(starts.num() == ends.num()); }
 
-    Vectors3fResolvedConstView starts;
-    Vectors3fResolvedConstView ends;
+    vectors3f::ResolvedConstView starts;
+    vectors3f::ResolvedConstView ends;
 };
 }

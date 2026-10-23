@@ -24,7 +24,7 @@ class Data {
     [[nodiscard]] auto set_range(float range) noexcept -> bool;
     void set_buckets(std::vector<Positions> buckets);
     [[nodiscard]] auto add_bucket() -> std::int32_t;
-    [[nodiscard]] auto set_positions(std::int32_t index, PositionsConstView positions) -> bool;
+    [[nodiscard]] auto set_positions(std::int32_t index, positions::ConstView positions) -> bool;
     [[nodiscard]] auto clear_positions(std::int32_t index) -> bool;
     void clear_positions();
     void clear_buckets();

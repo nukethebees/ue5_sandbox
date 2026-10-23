@@ -34,9 +34,9 @@ void expect_intercept_geometry(InterceptCase const& test_case, float const inter
 }
 
 using BatchSolver = void (*)(float*,
-                             ioj::Vectors3fResolvedConstView,
-                             ioj::Vectors3fResolvedConstView,
-                             ioj::Vectors3fResolvedConstView,
+                             ioj::vectors3f::ResolvedConstView,
+                             ioj::vectors3f::ResolvedConstView,
+                             ioj::vectors3f::ResolvedConstView,
                              float) noexcept;
 }
 
@@ -88,11 +88,11 @@ TEST(NativeCoreProjectileIntercept, BatchImplementationsMatchExpectedResults) {
     std::array<float, 5> const expected{2.0f, 1.0f, 2.0f, 0.0f, 0.0f};
 
     auto const count{static_cast<std::int32_t>(expected.size())};
-    auto const shooters{ioj::Vectors3fResolvedConstView{
+    auto const shooters{ioj::vectors3f::ResolvedConstView{
         shooter_x.data(), shooter_y.data(), shooter_z.data(), count}};
     auto const targets{
-        ioj::Vectors3fResolvedConstView{target_x.data(), target_y.data(), target_z.data(), count}};
-    auto const velocities{ioj::Vectors3fResolvedConstView{
+        ioj::vectors3f::ResolvedConstView{target_x.data(), target_y.data(), target_z.data(), count}};
+    auto const velocities{ioj::vectors3f::ResolvedConstView{
         velocity_x.data(), velocity_y.data(), velocity_z.data(), count}};
     constexpr BatchSolver solvers[]{
         ioj::detail::solve_intercept_times_aos::solve_intercept_times,

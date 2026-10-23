@@ -7,7 +7,7 @@ namespace ioj::sim::tests {
 TEST(NativeSimulation, LevelTelemetryBlockHistoryTest) {
     // Appending one row at a time exercises block growth and reuse; row views must be refreshed.
     // NOLINTBEGIN(ioj-loop-view-accessor-call)
-    using Layout = telemetry::HistoryRowsLayout;
+    using Layout = telemetry::history_rows::Layout;
     using Field = telemetry::HistoryField;
     using FieldMask = telemetry::HistoryFieldMask;
     constexpr auto active_entities_mask{[] {

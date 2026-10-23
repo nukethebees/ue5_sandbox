@@ -19,15 +19,15 @@ class LevelTelemetryBlockHistory {
     auto operator=(LevelTelemetryBlockHistory&&) -> LevelTelemetryBlockHistory& = delete;
 
     void reset();
-    auto append_uninitialized() -> telemetry::HistoryRowsView;
-    auto last_view() -> telemetry::HistoryRowsView;
-    auto last_const_view() const -> telemetry::HistoryRowsConstView;
+    auto append_uninitialized() -> telemetry::history_rows::View;
+    auto last_view() -> telemetry::history_rows::View;
+    auto last_const_view() const -> telemetry::history_rows::ConstView;
 
     template <typename Func>
     void for_each_block(Func&& func) const {
         for (std::uint32_t index{}; index < used_block_count_; ++index) {
             auto const& block{blocks_[index]};
-            func(telemetry::HistoryRowsConstView{&block.storage, 0, block.storage.num_});
+            func(telemetry::history_rows::ConstView{&block.storage, 0, block.storage.num_});
         }
     }
 
@@ -39,7 +39,7 @@ class LevelTelemetryBlockHistory {
     auto retained_block_count() const noexcept -> std::uint32_t {
         return static_cast<std::uint32_t>(blocks_.size());
     }
-    auto block_view(std::uint32_t index) const -> telemetry::HistoryRowsConstView;
+    auto block_view(std::uint32_t index) const -> telemetry::history_rows::ConstView;
     auto block_data(std::uint32_t index) const -> std::byte const*;
     auto get_stats() const noexcept -> LevelTelemetryBlockHistoryStats;
   private:

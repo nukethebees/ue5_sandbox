@@ -22,7 +22,7 @@ void sort_and_deduplicate_removal_indices(std::vector<std::uint32_t>& local_indi
 void resolve_damage_events(DirectDamageEvents::ConstView damage_events,
                            EntityLookupTable const& lookup,
                            [[maybe_unused]] std::span<EntityId const> entity_ids,
-                           Vectors3fResolvedConstView const locations,
+                           vectors3f::ResolvedConstView const locations,
                            HealthView const healths,
                            std::vector<std::uint32_t>& local_indices_to_remove,
                            EntityDeathInfo& entity_death_info,

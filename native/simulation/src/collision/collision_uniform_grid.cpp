@@ -78,7 +78,7 @@ auto CollisionUniformGrid::is_cell_coord_in_bounds(collision::CellCoord const mi
     return is_cell_coord_in_bounds(min_coord) && is_cell_coord_in_bounds(max_coord);
 }
 void CollisionUniformGrid::are_spheres_in_bounds(
-    Vectors3fResolvedConstView const centres,
+    vectors3f::ResolvedConstView const centres,
     float const radius,
     std::span<SphereInBoundsResult> const out_results) const {
     [[maybe_unused]] auto const count{centres.num()};
@@ -163,7 +163,7 @@ void CollisionUniformGrid::rebuild_entity_grid(EntityAABBs const& entity_aabbs,
 
     auto const append_batch{[&](EntityType const type,
                                 std::span<EntityId const> const ids,
-                                Vectors3fResolvedConstView const locations,
+                                vectors3f::ResolvedConstView const locations,
                                 HealthConstView const healths,
                                 auto orientation_at) {
         auto& rows{storage.entity_row_to_aabb_row[type]};

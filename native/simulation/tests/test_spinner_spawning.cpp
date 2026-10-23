@@ -13,7 +13,7 @@
 namespace ioj::sim::spinners {
 struct SpinnerSpawnTestAccess {
     static void spawn(Sim& simulation,
-                      Vectors3fResolvedConstView locations,
+                      vectors3f::ResolvedConstView locations,
                       std::span<float const> yaws,
                       std::span<std::int32_t const> fire_points) {
         simulation.spawn_instances(locations, yaws, fire_points);

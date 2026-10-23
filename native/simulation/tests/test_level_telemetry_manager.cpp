@@ -172,7 +172,7 @@ TEST(LevelTelemetryManager, RecordsAndReusesHistory) {
         entity_ledger,
         lasers,
         game_memory,
-        {.block_bytes = telemetry::HistoryRowsLayout::layout_bytes(1)},
+        {.block_bytes = telemetry::history_rows::Layout::layout_bytes(1)},
     };
     clock.initialise({});
     boundary_manager.initialise();

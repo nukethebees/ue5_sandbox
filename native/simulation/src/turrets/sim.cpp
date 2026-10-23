@@ -317,7 +317,7 @@ void Sim::perform_search_on_slice(std::uint32_t const begin,
             has_line_of_sight.set_num_uninitialised(target_count);
             // Each turret produces a differently sized candidate batch.
             // NOLINTBEGIN(ioj-loop-view-construction,ioj-loop-view-accessor-call)
-            Vectors3fResolvedView const candidate_locations_view{
+            vectors3f::ResolvedView const candidate_locations_view{
                 std::span{candidate_xs}.first(count),
                 std::span{candidate_ys}.first(count),
                 std::span{candidate_zs}.first(count)};

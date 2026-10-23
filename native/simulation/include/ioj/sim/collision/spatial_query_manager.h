@@ -53,27 +53,27 @@ struct SpatialQueryManager {
     /* **************************************** */
     // Batched line queries
     /* **************************************** */
-    void trace_line_of_sight(Vectors3fResolvedConstView start_locations,
-                             Vectors3fResolvedConstView end_locations,
+    void trace_line_of_sight(vectors3f::ResolvedConstView start_locations,
+                             vectors3f::ResolvedConstView end_locations,
                              std::span<EntityId> out_entity_ids,
                              FrameMemoryResource* scratch_resource) const;
     void has_line_of_sight_to_targets(Vector3f const& start_location,
-                                      Vectors3fResolvedConstView end_locations,
+                                      vectors3f::ResolvedConstView end_locations,
                                       std::span<EntityId const> targets,
                                       std::span<LineQueryResult> has_los,
                                       FrameMemoryResource* scratch_resource) const;
-    void have_clear_lines(Vectors3fResolvedConstView start_locations,
-                          Vectors3fResolvedConstView end_locations,
+    void have_clear_lines(vectors3f::ResolvedConstView start_locations,
+                          vectors3f::ResolvedConstView end_locations,
                           std::span<LineQueryResult> clear_lines,
                           FrameMemoryResource* scratch_resource,
                           std::span<EntityId const> ignored_entities = {}) const;
-    void trace_closest_lines(Vectors3fResolvedConstView start_locations,
-                             Vectors3fResolvedConstView end_locations,
+    void trace_closest_lines(vectors3f::ResolvedConstView start_locations,
+                             vectors3f::ResolvedConstView end_locations,
                              TraceHits::View out_hits,
                              std::span<EntityId const> ignored_entities = {}) const;
     void sweep_closest_aabbs(
-        Vectors3fResolvedConstView start_locations,
-        Vectors3fResolvedConstView end_locations,
+        vectors3f::ResolvedConstView start_locations,
+        vectors3f::ResolvedConstView end_locations,
         Vector3f moving_half_extent,
         TraceHits::View out_hits,
         std::span<EntityId const> ignored_entities = {},
@@ -86,7 +86,7 @@ struct SpatialQueryManager {
     // Replace caller-owned results in request order; candidate order within each range is
     // unspecified. Range tests use inclusive centre distance and abs(radius). Directions point from
     // each origin to its candidate, with zero for squared distances below 1.e-8.
-    void collect_non_team_entities_in_range(Vectors3fResolvedConstView origins,
+    void collect_non_team_entities_in_range(vectors3f::ResolvedConstView origins,
                                             std::span<Team const> teams,
                                             float radius,
                                             RangeQueryResults& out_results,
@@ -122,17 +122,17 @@ struct SpatialQueryManager {
                                            FrameMemoryResource* scratch_resource) const
         -> std::uint32_t;
     auto get_any_non_team_entity(Team const team, EntityType const entity_type) const -> EntityId;
-    void are_spheres_in_bounds(Vectors3fResolvedConstView centres,
+    void are_spheres_in_bounds(vectors3f::ResolvedConstView centres,
                                float radius,
                                std::span<collision::SphereInBoundsResult> out_results) const;
     auto get_entity_type_radius(EntityType entity_type) const noexcept -> float;
     auto get_entity_type_radii() const noexcept -> EntityTypeRadii const&;
     void copy_entity_locations(std::span<EntityId const> ids,
-                               Vectors3fResolvedView output,
+                               vectors3f::ResolvedView output,
                                FrameMemoryResource* scratch_resource) const;
     void copy_entity_motion(std::span<EntityId const> ids,
-                            Vectors3fResolvedView locations,
-                            Vectors3fResolvedView velocities,
+                            vectors3f::ResolvedView locations,
+                            vectors3f::ResolvedView velocities,
                             std::span<EntityInstanceHandle> handles,
                             FrameMemoryResource* scratch_resource) const;
 
@@ -161,8 +161,8 @@ struct SpatialQueryManager {
 
     collision::CollisionSystem collision_system_;
     EntityTypeRadii entity_radii_{};
-    EnumArray<EntityType, Vectors3fResolvedConstView> locations_;
-    EnumArray<EntityType, Vectors3fResolvedConstView> velocities_;
+    EnumArray<EntityType, vectors3f::ResolvedConstView> locations_;
+    EnumArray<EntityType, vectors3f::ResolvedConstView> velocities_;
     PlayerSpatialData player_spatial_;
 };
 }

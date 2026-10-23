@@ -15,17 +15,17 @@ auto solve_intercept_time(Vector3f shooter_position,
 
 namespace ioj::detail::solve_intercept_times_aos {
 void solve_intercept_times(float* out_intercept_times,
-                           Vectors3fResolvedConstView shooter_positions,
-                           Vectors3fResolvedConstView target_positions,
-                           Vectors3fResolvedConstView target_velocities,
+                           vectors3f::ResolvedConstView shooter_positions,
+                           vectors3f::ResolvedConstView target_positions,
+                           vectors3f::ResolvedConstView target_velocities,
                            float projectile_speed) noexcept;
 }
 
 namespace ioj::detail::solve_intercept_times_struct_loop {
 void solve_intercept_times(float* out_intercept_times,
-                           Vectors3fResolvedConstView shooter_positions,
-                           Vectors3fResolvedConstView target_positions,
-                           Vectors3fResolvedConstView target_velocities,
+                           vectors3f::ResolvedConstView shooter_positions,
+                           vectors3f::ResolvedConstView target_positions,
+                           vectors3f::ResolvedConstView target_velocities,
                            float projectile_speed) noexcept;
 }
 

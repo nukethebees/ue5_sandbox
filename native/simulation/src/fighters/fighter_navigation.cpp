@@ -296,7 +296,7 @@ auto choose_navigation_alternative(Vector3f const fighter_location,
                                    std::span<std::int8_t const> const choices,
                                    std::span<collision::SphereInBoundsResult const> const in_world,
                                    std::span<TraceHit const> const hits,
-                                   Vectors3fResolvedConstView const hit_locations,
+                                   vectors3f::ResolvedConstView const hit_locations,
                                    std::int8_t const stop_choice) noexcept -> std::int8_t {
     assert(choices.size() == in_world.size());
     assert(choices.size() == hits.size());

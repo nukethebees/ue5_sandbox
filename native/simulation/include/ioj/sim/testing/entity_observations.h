@@ -19,8 +19,8 @@ struct EntityObservation {
 // Inspect current storage without extending a published frame handle's lifetime.
 inline auto observe_entity_columns(EntityId const id,
                                    std::span<EntityId const> ids,
-                                   Vectors3fResolvedConstView locations,
-                                   Vectors3fResolvedConstView velocities,
+                                   vectors3f::ResolvedConstView locations,
+                                   vectors3f::ResolvedConstView velocities,
                                    HealthConstView healths,
                                    std::span<Team const> teams)
     -> std::optional<EntityObservation> {
