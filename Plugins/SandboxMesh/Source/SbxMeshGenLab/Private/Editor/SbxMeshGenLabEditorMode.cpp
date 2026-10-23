@@ -358,8 +358,7 @@ auto USbxMeshGenLabEditorMode::InputDelta(FEditorViewportClient* const viewport_
             set_part_world_transform(part_index, transform);
         }
         rebuild_resolved_parts();
-        get_settings()->load_transform(
-            session_state_->parts[selected_part_index_].to_part(NAME_None).transform);
+        get_settings()->load_transform(session_state_->parts[selected_part_index_].to_transform());
     }
 
     mark_recipe_dirty();
@@ -633,7 +632,7 @@ void USbxMeshGenLabEditorMode::select_parts(TArray<int32> const& part_indices,
     auto* const settings{get_settings()};
     auto const asset_name{settings->asset_name};
     settings->load_request(parts_[part_index].mesh);
-    settings->load_transform(session_state_->parts[part_index].to_part(NAME_None).transform);
+    settings->load_transform(session_state_->parts[part_index].to_transform());
     settings->group_connectors.Reset();
     settings->active_connector_index = 0;
     settings->asset_name = asset_name;
@@ -772,7 +771,9 @@ void USbxMeshGenLabEditorMode::duplicate_part() {
         return;
     }
 
-    apply_settings(false);
+    if (!apply_settings(false)) {
+        return;
+    }
     FScopedTransaction const transaction{
         LOCTEXT("DuplicateAssemblyPartsTransaction", "Duplicate Mesh Parts")};
     session_state_->Modify();
@@ -1366,7 +1367,7 @@ void USbxMeshGenLabEditorMode::new_assembly() {
     session_state_ = NewObject<USbxMeshAssemblySessionState>(this, NAME_None, RF_Transactional);
     session_state_->on_undo().AddUObject(this,
                                          &USbxMeshGenLabEditorMode::restore_session_after_undo);
-    auto const part{FSbxMeshAssemblyPart{settings->to_request(), settings->to_transform()}};
+    auto const part{FSbxMeshAssemblyPart{settings->to_request().value(), settings->to_transform()}};
     auto recipe_part{FSbxMeshAssemblyRecipePart::from_part(part)};
     recipe_part.name = TEXT("Part 1");
     session_state_->parts = {MoveTemp(recipe_part)};
@@ -1400,7 +1401,9 @@ void USbxMeshGenLabEditorMode::save_recipe_as() {
 }
 
 void USbxMeshGenLabEditorMode::save_recipe_with_name(FName const recipe_name) {
-    apply_settings(false);
+    if (!apply_settings(false)) {
+        return;
+    }
 
     auto* const settings{get_settings()};
     auto parts{parts_};
@@ -1481,7 +1484,9 @@ void USbxMeshGenLabEditorMode::load_recipe() {
 }
 
 void USbxMeshGenLabEditorMode::export_recipe_json() {
-    apply_settings(false);
+    if (!apply_settings(false)) {
+        return;
+    }
 
     auto* const desktop_platform{FDesktopPlatformModule::Get()};
     if (desktop_platform == nullptr) {
@@ -1630,9 +1635,9 @@ void USbxMeshGenLabEditorMode::apply_settings() {
     apply_settings(true);
 }
 
-void USbxMeshGenLabEditorMode::apply_settings(bool const mark_dirty) {
+auto USbxMeshGenLabEditorMode::apply_settings(bool const mark_dirty) -> bool {
     if (!parts_.IsValidIndex(selected_part_index_)) {
-        return;
+        return true;
     }
     auto const selected_id{selected_group_index_ != INDEX_NONE
                                ? session_state_->groups[selected_group_index_].id
@@ -1641,15 +1646,22 @@ void USbxMeshGenLabEditorMode::apply_settings(bool const mark_dirty) {
         status_ = LOCTEXT("LockedEditRejected", "Unlock the node before editing it.");
         select_node(selected_id);
         notify_session_changed();
-        return;
+        return true;
     }
 
     auto* const settings{get_settings()};
     if (settings->part_scale.GetMin() < 0.001) {
         status_ = LOCTEXT("InvalidNodeScale", "All transform scale values must be at least 0.001.");
         notify_session_changed();
-        return;
+        return false;
     }
+    auto request{settings->to_request()};
+    if (selected_group_index_ == INDEX_NONE && !request) {
+        status_ = FText::FromString(request.error());
+        notify_session_changed();
+        return false;
+    }
+
     TUniquePtr<FScopedTransaction> transaction;
     if (mark_dirty) {
         transaction = MakeUnique<FScopedTransaction>(
@@ -1673,7 +1685,7 @@ void USbxMeshGenLabEditorMode::apply_settings(bool const mark_dirty) {
         auto const visible{recipe_part.visible};
         auto const locked{recipe_part.locked};
         recipe_part = FSbxMeshAssemblyRecipePart::from_part(
-            {settings->to_request(), settings->to_transform()}, part_id, parent_id);
+            {std::move(*request), settings->to_transform()}, part_id, parent_id);
         recipe_part.name = name;
         recipe_part.visible = visible;
         recipe_part.locked = locked;
@@ -1700,10 +1712,13 @@ void USbxMeshGenLabEditorMode::apply_settings(bool const mark_dirty) {
                                 FText::AsNumber(selected_part_index_ + 1));
     }
     notify_session_changed();
+    return validation_error.IsEmpty();
 }
 
 void USbxMeshGenLabEditorMode::save_generated_mesh() {
-    apply_settings(false);
+    if (!apply_settings(false)) {
+        return;
+    }
 
     auto parts{parts_};
     auto* const settings{get_settings()};
@@ -2126,10 +2141,10 @@ auto USbxMeshGenLabEditorMode::get_node_world_transform(FGuid const id) const ->
 
         auto const* const part_index{part_index_by_id_.Find(node_id)};
         check(part_index != nullptr);
-        auto const part{session_state_->parts[*part_index].to_part(NAME_None)};
-        transform *= FTransform{SandboxMesh::to_unreal(part.transform.rotation),
-                                SandboxMesh::to_unreal(part.transform.translation),
-                                SandboxMesh::to_unreal(part.transform.scale)};
+        auto const part_transform{session_state_->parts[*part_index].to_transform()};
+        transform *= FTransform{SandboxMesh::to_unreal(part_transform.rotation),
+                                SandboxMesh::to_unreal(part_transform.translation),
+                                SandboxMesh::to_unreal(part_transform.scale)};
         node_id = session_state_->parts[*part_index].parent_id;
     }
     return transform;

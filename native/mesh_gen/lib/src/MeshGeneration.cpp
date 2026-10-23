@@ -140,39 +140,28 @@ auto validate_request(GenerationRequest const& request) -> std::string {
             }
             break;
         case Shape::cylinder:
-            if (request.cylinder.radius <= 0.0f || request.cylinder.height <= 0.0f ||
-                request.cylinder.radial_segments < 3) {
+            if (request.cylinder.radial_segments < 3) {
                 return "Cylinder radius and height must be positive, with at least 3 segments.";
             }
             break;
         case Shape::sphere:
-            if (request.sphere.radius <= 0.0f || request.sphere.longitude_segments < 3 ||
-                request.sphere.latitude_segments < 2) {
+            if (request.sphere.longitude_segments < 3 || request.sphere.latitude_segments < 2) {
                 return "Sphere radius must be positive, with at least 3 longitude and 2 latitude "
                        "segments.";
             }
             break;
         case Shape::cone:
-            if (request.cone.radius <= 0.0f || request.cone.height <= 0.0f ||
-                request.cone.radial_segments < 3) {
+            if (request.cone.radial_segments < 3) {
                 return "Cone radius and height must be positive, with at least 3 segments.";
             }
             break;
         case Shape::hex_tile:
-            if (request.hex_tile.outer_radius <= 0.0f || request.hex_tile.depth <= 0.0f ||
-                request.hex_tile.bevel_width <= 0.0f) {
-                return "Hex-tile radius, depth, and bevel width must be positive.";
-            }
             if (request.hex_tile.bevel_width >= request.hex_tile.outer_radius ||
                 request.hex_tile.bevel_width >= request.hex_tile.depth * 0.5f) {
                 return "Hex-tile bevel width must be less than its radius and half-depth.";
             }
             break;
         case Shape::hex_frame:
-            if (request.hex_frame.outer_radius <= 0.0f ||
-                request.hex_frame.wall_thickness <= 0.0f || request.hex_frame.depth <= 0.0f) {
-                return "Hex-frame radius, wall thickness, and depth must be positive.";
-            }
             if (request.hex_frame.wall_thickness >= request.hex_frame.outer_radius) {
                 return "Hex-frame wall thickness must be less than its outer radius.";
             }
@@ -182,20 +171,12 @@ auto validate_request(GenerationRequest const& request) -> std::string {
             }
             break;
         case Shape::honeycomb_panel:
-            if (request.honeycomb_panel.rows < 1 || request.honeycomb_panel.columns < 1 ||
-                request.honeycomb_panel.cell_radius <= 0.0f ||
-                request.honeycomb_panel.wall_thickness <= 0.0f ||
-                request.honeycomb_panel.depth <= 0.0f) {
-                return "Honeycomb rows and columns must be at least 1; radius, wall thickness, "
-                       "and depth must be positive.";
-            }
             if (request.honeycomb_panel.wall_thickness >= request.honeycomb_panel.cell_radius) {
                 return "Honeycomb wall thickness must be less than its cell radius.";
             }
             break;
         case Shape::beveled_box:
-            if (minimum_component(request.beveled_box.dimensions) <= 0.0f ||
-                request.beveled_box.bevel_width <= 0.0f) {
+            if (minimum_component(request.beveled_box.dimensions) <= 0.0f) {
                 return "Beveled-box dimensions and bevel width must be positive.";
             }
             if (request.beveled_box.bevel_width >=
@@ -204,8 +185,7 @@ auto validate_request(GenerationRequest const& request) -> std::string {
             }
             break;
         case Shape::wedge:
-            if (minimum_component(request.wedge.dimensions) <= 0.0f ||
-                request.wedge.top_length <= 0.0f) {
+            if (minimum_component(request.wedge.dimensions) <= 0.0f) {
                 return "Wedge dimensions and top length must be positive.";
             }
             if (request.wedge.top_length > request.wedge.dimensions.x() ||
@@ -298,8 +278,8 @@ auto describe_request(GenerationRequest const& request) -> std::string {
         case Shape::honeycomb_panel:
             write("honeycomb_panel;rows={};columns={};cell_radius={};wall_thickness={};"
                   "depth={};pointy_top={}",
-                  request.honeycomb_panel.rows,
-                  request.honeycomb_panel.columns,
+                  request.honeycomb_panel.rows.get(),
+                  request.honeycomb_panel.columns.get(),
                   format_number(request.honeycomb_panel.cell_radius),
                   format_number(request.honeycomb_panel.wall_thickness),
                   format_number(request.honeycomb_panel.depth),

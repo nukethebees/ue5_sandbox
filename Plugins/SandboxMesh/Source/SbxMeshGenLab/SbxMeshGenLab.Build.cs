@@ -48,6 +48,7 @@ public class SbxMeshGenLab : ModuleRules
         {
             "Core",
             "CoreUObject",
+            "SandboxCore",
         });
 
         PrivateDependencyModuleNames.AddRange(new string[]

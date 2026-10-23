@@ -15,5 +15,11 @@
             "Type": "Editor",
             "LoadingPhase": "Default"
         }
+    ],
+    "Plugins": [
+        {
+            "Name": "SandboxCore",
+            "Enabled": true
+        }
     ]
 }

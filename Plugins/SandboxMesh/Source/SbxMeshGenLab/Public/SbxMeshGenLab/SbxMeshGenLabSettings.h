@@ -6,6 +6,8 @@
 
 #include "UObject/Object.h"
 
+#include <expected>
+
 #include "SbxMeshGenLabSettings.generated.h"
 
 UENUM()
@@ -268,7 +270,8 @@ class SBXMESHGENLAB_API USbxMeshGenLabSettings final : public UObject {
               meta = (EditCondition = "shape == ESbxMeshShape::HoneycombPanel", EditConditionHides))
     bool honeycomb_pointy_top{false};
 
-    [[nodiscard]] auto to_request() const -> FSbxMeshGenerationRequest;
+    // Return an error describing invalid input for the selected shape.
+    [[nodiscard]] auto to_request() const -> std::expected<FSbxMeshGenerationRequest, FString>;
     [[nodiscard]] auto to_transform() const -> FSbxMeshTransform;
     void load_request(FSbxMeshGenerationRequest const& request);
     void load_transform(FSbxMeshTransform const& transform);

@@ -1,28 +1,10 @@
 #include "SbxMeshGenLab/SbxMeshGenLabSettings.h"
 
-#include "SbxMeshGenLab/NativeMeshTypes.h"
+#include "MeshRequestInput.h"
 
-auto USbxMeshGenLabSettings::to_request() const -> FSbxMeshGenerationRequest {
-    auto request{SandboxMesh::make_default_mesh_request(shape)};
-    request.asset_name = TCHAR_TO_UTF8(*asset_name.ToString());
-    request.material_role = SandboxMesh::to_native(material_role);
-    request.box.dimensions = SandboxMesh::to_native(box_dimensions);
-    request.beveled_box = {SandboxMesh::to_native(beveled_box_dimensions), beveled_box_bevel_width};
-    request.wedge = {SandboxMesh::to_native(wedge_dimensions), wedge_top_length, wedge_top_offset};
-    request.cylinder = {cylinder_radius, cylinder_height, cylinder_radial_segments};
-    request.sphere = {sphere_radius, sphere_longitude_segments, sphere_latitude_segments};
-    request.cone = {cone_radius, cone_height, cone_radial_segments};
-    request.hex_tile = {
-        hex_tile_outer_radius, hex_tile_depth, hex_tile_bevel_width, hex_tile_pointy_top};
-    request.hex_frame = {
-        hex_frame_outer_radius, hex_frame_wall_thickness, hex_frame_depth, hex_frame_pointy_top};
-    request.honeycomb_panel = {honeycomb_rows,
-                               honeycomb_columns,
-                               honeycomb_cell_radius,
-                               honeycomb_wall_thickness,
-                               honeycomb_depth,
-                               honeycomb_pointy_top};
-    return request;
+auto USbxMeshGenLabSettings::to_request() const
+    -> std::expected<FSbxMeshGenerationRequest, FString> {
+    return SandboxMesh::try_make_mesh_request(*this, asset_name);
 }
 
 auto USbxMeshGenLabSettings::to_transform() const -> FSbxMeshTransform {

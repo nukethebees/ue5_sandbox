@@ -35,7 +35,7 @@ class SBXMESHGENLAB_API USbxMeshGenLabWidget final : public UEditorUtilityWidget
     auto remove_part() -> FReply;
     auto save_generated_mesh() -> FReply;
     auto focus_preview() -> FReply;
-    void sync_selected_part_from_settings();
+    auto sync_selected_part_from_settings() -> bool;
     void refresh_shape_selector();
     void refresh_parts_list();
     void update_preview();

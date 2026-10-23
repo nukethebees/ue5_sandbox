@@ -125,19 +125,50 @@ TEST_P(PrimitiveGenerators, ProducesExpectedGeometryDeterministically) {
 
 PrimitiveCase const primitive_cases[]{
     {"Box", Shape::box, [] { return generate_box(); }, 24, 36},
-    {"Cylinder", Shape::cylinder, [] { return generate_cylinder({30.0f, 80.0f, 12}); }, 52, 144},
-    {"Cone", Shape::cone, [] { return generate_cone({30.0f, 80.0f, 12}); }, 38, 72},
-    {"Sphere", Shape::sphere, [] { return generate_sphere({30.0f, 12, 6}); }, 91, 360},
+    {"Cylinder",
+     Shape::cylinder,
+     [] {
+         return generate_cylinder(
+             {ioj::PositiveFinite<float>{30.0f}, ioj::PositiveFinite<float>{80.0f}, 12});
+     },
+     52,
+     144},
+    {"Cone",
+     Shape::cone,
+     [] {
+         return generate_cone(
+             {ioj::PositiveFinite<float>{30.0f}, ioj::PositiveFinite<float>{80.0f}, 12});
+     },
+     38,
+     72},
+    {"Sphere",
+     Shape::sphere,
+     [] { return generate_sphere({ioj::PositiveFinite<float>{30.0f}, 12, 6}); },
+     91,
+     360},
     {"HexTile", Shape::hex_tile, [] { return generate_hex_tile(); }, 108, 144},
     {"HexFrame", Shape::hex_frame, [] { return generate_hex_frame(); }, 96, 144},
     {"HoneycombCell",
      Shape::honeycomb_panel,
-     [] { return generate_honeycomb_panel({1, 1, 40.0f, 6.0f, 10.0f, false}); },
+     [] {
+         return generate_honeycomb_panel({ioj::Positive<std::int32_t>{1},
+                                          ioj::Positive<std::int32_t>{1},
+                                          ioj::PositiveFinite<float>{40.0f},
+                                          ioj::PositiveFinite<float>{6.0f},
+                                          ioj::PositiveFinite<float>{10.0f},
+                                          false});
+     },
      144,
      216},
     {"HoneycombPanel",
      Shape::honeycomb_panel,
-     [] { return generate_honeycomb_panel({2, 2, 40.0f, 6.0f, 10.0f}); },
+     [] {
+         return generate_honeycomb_panel({ioj::Positive<std::int32_t>{2},
+                                          ioj::Positive<std::int32_t>{2},
+                                          ioj::PositiveFinite<float>{40.0f},
+                                          ioj::PositiveFinite<float>{6.0f},
+                                          ioj::PositiveFinite<float>{10.0f}});
+     },
      19 * 24,
      19 * 36},
     {"BeveledBox", Shape::beveled_box, [] { return generate_beveled_box(); }, 120, 204},
@@ -154,20 +185,29 @@ TEST(PrimitiveBounds, HonorRequestedBoundsAndOrientation) {
     EXPECT_TRUE(nearly_equal(box_bounds.minimum, {-60.0f, -40.0f, -20.0f}));
     EXPECT_TRUE(nearly_equal(box_bounds.maximum, {60.0f, 40.0f, 20.0f}));
 
-    auto const cylinder_bounds{bounds_of(generate_cylinder({30.0f, 80.0f, 12}))};
+    auto const cylinder_bounds{bounds_of(generate_cylinder(
+        {ioj::PositiveFinite<float>{30.0f}, ioj::PositiveFinite<float>{80.0f}, 12}))};
     EXPECT_TRUE(nearly_equal(cylinder_bounds.minimum, {-30.0f, -30.0f, -40.0f}));
     EXPECT_TRUE(nearly_equal(cylinder_bounds.maximum, {30.0f, 30.0f, 40.0f}));
 
-    auto const sphere_bounds{bounds_of(generate_sphere({30.0f, 12, 6}))};
+    auto const sphere_bounds{
+        bounds_of(generate_sphere({ioj::PositiveFinite<float>{30.0f}, 12, 6}))};
     EXPECT_TRUE(nearly_equal(sphere_bounds.minimum, {-30.0f, -30.0f, -30.0f}));
     EXPECT_TRUE(nearly_equal(sphere_bounds.maximum, {30.0f, 30.0f, 30.0f}));
 
-    auto const beveled_bounds{bounds_of(generate_beveled_box({{120.0f, 80.0f, 40.0f}, 5.0f}))};
+    auto const beveled_bounds{bounds_of(
+        generate_beveled_box({{120.0f, 80.0f, 40.0f}, ioj::PositiveFinite<float>{5.0f}}))};
     EXPECT_TRUE(nearly_equal(beveled_bounds.minimum, {-60.0f, -40.0f, -20.0f}));
     EXPECT_TRUE(nearly_equal(beveled_bounds.maximum, {60.0f, 40.0f, 20.0f}));
 
-    auto const flat_hex_bounds{bounds_of(generate_hex_frame({40.0f, 6.0f, 12.0f, false}))};
-    auto const pointy_hex_bounds{bounds_of(generate_hex_frame({40.0f, 6.0f, 12.0f, true}))};
+    auto const flat_hex_bounds{bounds_of(generate_hex_frame({ioj::PositiveFinite<float>{40.0f},
+                                                             ioj::PositiveFinite<float>{6.0f},
+                                                             ioj::PositiveFinite<float>{12.0f},
+                                                             false}))};
+    auto const pointy_hex_bounds{bounds_of(generate_hex_frame({ioj::PositiveFinite<float>{40.0f},
+                                                               ioj::PositiveFinite<float>{6.0f},
+                                                               ioj::PositiveFinite<float>{12.0f},
+                                                               true}))};
     EXPECT_TRUE(nearly_equal(flat_hex_bounds.maximum.x(), 40.0f));
     EXPECT_TRUE(nearly_equal(pointy_hex_bounds.maximum.y(), 40.0f));
     EXPECT_TRUE(nearly_equal(flat_hex_bounds.maximum.x(), pointy_hex_bounds.maximum.y()));
@@ -175,7 +215,12 @@ TEST(PrimitiveBounds, HonorRequestedBoundsAndOrientation) {
 }
 
 TEST(HoneycombGenerator, SharesInternalEdgesAndLeavesCentersOpen) {
-    auto const panel{generate_honeycomb_panel({2, 2, 40.0f, 6.0f, 12.0f, false})};
+    auto const panel{generate_honeycomb_panel({ioj::Positive<std::int32_t>{2},
+                                               ioj::Positive<std::int32_t>{2},
+                                               ioj::PositiveFinite<float>{40.0f},
+                                               ioj::PositiveFinite<float>{6.0f},
+                                               ioj::PositiveFinite<float>{12.0f},
+                                               false})};
     EXPECT_EQ(panel.positions.size(), 19 * 24);
     EXPECT_EQ(panel.indices.size(), 19 * 36);
     auto const panel_bounds{bounds_of(panel)};
@@ -183,7 +228,12 @@ TEST(HoneycombGenerator, SharesInternalEdgesAndLeavesCentersOpen) {
     EXPECT_TRUE(nearly_equal(panel_bounds.maximum.z(), 6.0f));
 
     auto minimum_radius{std::numeric_limits<float>::max()};
-    for (auto const position : generate_honeycomb_panel({1, 1, 40.0f, 6.0f, 12.0f}).positions) {
+    for (auto const position : generate_honeycomb_panel({ioj::Positive<std::int32_t>{1},
+                                                         ioj::Positive<std::int32_t>{1},
+                                                         ioj::PositiveFinite<float>{40.0f},
+                                                         ioj::PositiveFinite<float>{6.0f},
+                                                         ioj::PositiveFinite<float>{12.0f}})
+                                   .positions) {
         minimum_radius = std::min(
             minimum_radius, std::sqrt(position.x() * position.x() + position.y() * position.y()));
     }

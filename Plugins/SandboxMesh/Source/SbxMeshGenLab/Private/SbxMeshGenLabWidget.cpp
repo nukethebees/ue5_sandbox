@@ -134,7 +134,7 @@ auto USbxMeshGenLabWidget::RebuildWidget() -> TSharedRef<SWidget> {
 
     parts_.Reset();
     selected_part_ = MakeShared<FSbxMeshAssemblyPart>();
-    selected_part_->mesh = settings_->to_request();
+    selected_part_->mesh = settings_->to_request().value();
     selected_part_->transform = settings_->to_transform();
     parts_.Add(selected_part_);
 
@@ -363,7 +363,9 @@ auto USbxMeshGenLabWidget::remove_part() -> FReply {
 }
 
 auto USbxMeshGenLabWidget::save_generated_mesh() -> FReply {
-    sync_selected_part_from_settings();
+    if (!sync_selected_part_from_settings()) {
+        return FReply::Handled();
+    }
     TArray<FSbxMeshAssemblyPart> parts;
     parts.Reserve(parts_.Num());
     for (auto const& part : parts_) {
@@ -402,7 +404,11 @@ auto USbxMeshGenLabWidget::focus_preview() -> FReply {
 }
 
 void USbxMeshGenLabWidget::update_preview() {
-    sync_selected_part_from_settings();
+    if (!sync_selected_part_from_settings()) {
+        set_preview_mesh(nullptr);
+        preview_mesh_ = nullptr;
+        return;
+    }
     TArray<FSbxMeshAssemblyPart> parts;
     parts.Reserve(parts_.Num());
     for (auto const& part : parts_) {
@@ -436,13 +442,20 @@ void USbxMeshGenLabWidget::update_preview() {
         FText::AsNumber(static_cast<int64>(mesh_data.indices.size() / 3))));
 }
 
-void USbxMeshGenLabWidget::sync_selected_part_from_settings() {
+auto USbxMeshGenLabWidget::sync_selected_part_from_settings() -> bool {
     if (!selected_part_.IsValid() || settings_ == nullptr) {
-        return;
+        return false;
     }
 
-    selected_part_->mesh = settings_->to_request();
+    auto request{settings_->to_request()};
+    if (!request) {
+        status_text_->SetText(FText::FromString(request.error()));
+        return false;
+    }
+
+    selected_part_->mesh = std::move(*request);
     selected_part_->transform = settings_->to_transform();
+    return true;
 }
 
 void USbxMeshGenLabWidget::refresh_shape_selector() {

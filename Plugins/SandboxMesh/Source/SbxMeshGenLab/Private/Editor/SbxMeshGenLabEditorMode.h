@@ -171,7 +171,7 @@ class SBXMESHGENLAB_API USbxMeshGenLabEditorMode final
     void set_group_world_transform(int32 group_index, FTransform const& transform);
     [[nodiscard]] auto get_descendant_part_indices(FGuid group_id) const -> TArray<int32>;
     [[nodiscard]] auto get_descendant_group_indices(FGuid group_id) const -> TArray<int32>;
-    void apply_settings(bool mark_dirty);
+    auto apply_settings(bool mark_dirty) -> bool;
     void save_recipe_with_name(FName recipe_name);
     auto replace_session_from_recipe(TArray<FSbxMeshAssemblyRecipePart> recipe_parts,
                                      TArray<FSbxMeshAssemblyRecipeGroup> recipe_groups,

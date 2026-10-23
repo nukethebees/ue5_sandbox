@@ -1,6 +1,6 @@
 #include "SbxMeshGenLab/MeshAssemblyRecipe.h"
 
-#include "SbxMeshGenLab/NativeMeshTypes.h"
+#include "MeshRequestInput.h"
 
 auto FSbxMeshAssemblyRecipePart::from_part(FSbxMeshAssemblyPart const& part,
                                            FGuid const id,
@@ -48,33 +48,18 @@ auto FSbxMeshAssemblyRecipePart::from_part(FSbxMeshAssemblyPart const& part,
 }
 
 auto FSbxMeshAssemblyRecipePart::to_part(FName const output_asset_name) const
-    -> FSbxMeshAssemblyPart {
-    auto request{SandboxMesh::make_default_mesh_request(shape)};
-    request.asset_name = TCHAR_TO_UTF8(*output_asset_name.ToString());
-    request.material_role = SandboxMesh::to_native(material_role);
-    request.box.dimensions = SandboxMesh::to_native(box_dimensions);
-    request.beveled_box = {SandboxMesh::to_native(beveled_box_dimensions), beveled_box_bevel_width};
-    request.wedge = {SandboxMesh::to_native(wedge_dimensions), wedge_top_length, wedge_top_offset};
-    request.cylinder = {cylinder_radius, cylinder_height, cylinder_radial_segments};
-    request.sphere = {sphere_radius, sphere_longitude_segments, sphere_latitude_segments};
-    request.cone = {cone_radius, cone_height, cone_radial_segments};
-    request.hex_tile = {
-        hex_tile_outer_radius, hex_tile_depth, hex_tile_bevel_width, hex_tile_pointy_top};
-    request.hex_frame = {
-        hex_frame_outer_radius, hex_frame_wall_thickness, hex_frame_depth, hex_frame_pointy_top};
-    request.honeycomb_panel = {honeycomb_rows,
-                               honeycomb_columns,
-                               honeycomb_cell_radius,
-                               honeycomb_wall_thickness,
-                               honeycomb_depth,
-                               honeycomb_pointy_top};
+    -> std::expected<FSbxMeshAssemblyPart, FString> {
+    auto request{SandboxMesh::try_make_mesh_request(*this, output_asset_name)};
+    if (!request) {
+        return std::unexpected{request.error()};
+    }
+    return FSbxMeshAssemblyPart{std::move(*request), to_transform(), visible, locked};
+}
 
-    return {request,
-            {SandboxMesh::to_native(translation),
-             SandboxMesh::to_native(rotation),
-             SandboxMesh::to_native(scale)},
-            visible,
-            locked};
+auto FSbxMeshAssemblyRecipePart::to_transform() const -> FSbxMeshTransform {
+    return {SandboxMesh::to_native(translation),
+            SandboxMesh::to_native(rotation),
+            SandboxMesh::to_native(scale)};
 }
 
 auto FSbxMeshAssemblyRecipeGroup::to_transform() const -> FTransform {
@@ -116,10 +101,10 @@ auto get_node_local_transform(FGuid const id,
         return false;
     }
 
-    auto const part{parts[*part_index].to_part(NAME_None)};
-    transform = FTransform{SandboxMesh::to_unreal(part.transform.rotation),
-                           SandboxMesh::to_unreal(part.transform.translation),
-                           SandboxMesh::to_unreal(part.transform.scale)};
+    auto const part_transform{parts[*part_index].to_transform()};
+    transform = FTransform{SandboxMesh::to_unreal(part_transform.rotation),
+                           SandboxMesh::to_unreal(part_transform.translation),
+                           SandboxMesh::to_unreal(part_transform.scale)};
     parent_id = parts[*part_index].parent_id;
     visible = parts[*part_index].visible;
     locked = parts[*part_index].locked;
@@ -245,6 +230,10 @@ auto validate_mesh_assembly_hierarchy(TArray<FSbxMeshAssemblyRecipePart> const& 
         if (node_ids.Contains(part.id)) {
             return TEXT("Assembly node IDs must be unique.");
         }
+        auto const validated_part{part.to_part(NAME_None)};
+        if (!validated_part) {
+            return FString::Printf(TEXT("Part %d: %s"), part_index + 1, *validated_part.error());
+        }
         node_ids.Add(part.id);
         part_indices.Add(part.id, part_index);
     }
@@ -328,7 +317,7 @@ auto resolve_mesh_assembly_hierarchy(TArray<FSbxMeshAssemblyRecipePart> const& p
     TArray<FSbxMeshAssemblyPart> resolved_parts;
     resolved_parts.Reserve(parts.Num());
     for (auto const& recipe_part : parts) {
-        auto part{recipe_part.to_part(output_asset_name)};
+        auto part{recipe_part.to_part(output_asset_name).value()};
         auto const& transform{transforms.FindChecked(recipe_part.id)};
         part.transform = {SandboxMesh::to_native(transform.GetLocation()),
                           SandboxMesh::to_native(transform.Rotator()),

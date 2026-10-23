@@ -4,6 +4,8 @@
 
 #include "UObject/Object.h"
 
+#include <expected>
+
 #include "MeshAssemblyRecipe.generated.h"
 
 USTRUCT()
@@ -130,7 +132,10 @@ struct SBXMESHGENLAB_API FSbxMeshAssemblyRecipePart {
     [[nodiscard]] static auto from_part(FSbxMeshAssemblyPart const& part,
                                         FGuid id = FGuid::NewGuid(),
                                         FGuid parent_id = {}) -> FSbxMeshAssemblyRecipePart;
-    [[nodiscard]] auto to_part(FName output_asset_name) const -> FSbxMeshAssemblyPart;
+    // Return an error describing invalid input for this part's shape.
+    [[nodiscard]] auto to_part(FName output_asset_name) const
+        -> std::expected<FSbxMeshAssemblyPart, FString>;
+    [[nodiscard]] auto to_transform() const -> FSbxMeshTransform;
 };
 
 USTRUCT()
@@ -193,6 +198,7 @@ namespace SandboxMesh {
 [[nodiscard]] SBXMESHGENLAB_API auto
     validate_mesh_assembly_hierarchy(TArray<FSbxMeshAssemblyRecipePart> const& parts,
                                      TArray<FSbxMeshAssemblyRecipeGroup> const& groups) -> FString;
+// Require validate_mesh_assembly_hierarchy(parts, groups) to succeed.
 [[nodiscard]] SBXMESHGENLAB_API auto
     resolve_mesh_assembly_hierarchy(TArray<FSbxMeshAssemblyRecipePart> const& parts,
                                     TArray<FSbxMeshAssemblyRecipeGroup> const& groups,

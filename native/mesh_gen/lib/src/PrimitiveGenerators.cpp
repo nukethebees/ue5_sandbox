@@ -149,7 +149,10 @@ void add_beveled_box_face(MeshData& mesh_data,
 }
 
 void add_cylinder_side(MeshData& mesh_data, CylinderParameters const& parameters) {
-    auto const half_height{parameters.height * 0.5f};
+    float const height{parameters.height};
+    float const radius{parameters.radius};
+
+    auto const half_height{height * 0.5f};
     for (std::int32_t segment_index{}; segment_index <= parameters.radial_segments;
          ++segment_index) {
         auto const fraction{static_cast<float>(segment_index) /
@@ -159,10 +162,8 @@ void add_cylinder_side(MeshData& mesh_data, CylinderParameters const& parameters
         auto const sine{std::sin(angle)};
         Vec3f const normal{cosine, sine, 0.0f};
 
-        mesh_data.positions.push_back(
-            {parameters.radius * cosine, parameters.radius * sine, -half_height});
-        mesh_data.positions.push_back(
-            {parameters.radius * cosine, parameters.radius * sine, half_height});
+        mesh_data.positions.push_back({radius * cosine, radius * sine, -half_height});
+        mesh_data.positions.push_back({radius * cosine, radius * sine, half_height});
         mesh_data.normals.insert(mesh_data.normals.end(), {normal, normal});
         mesh_data.uvs.insert(mesh_data.uvs.end(), {{fraction, 1.0f}, {fraction, 0.0f}});
     }
@@ -182,6 +183,8 @@ void add_cylinder_cap(MeshData& mesh_data,
                       CylinderParameters const& parameters,
                       float const z,
                       Vec3f const normal) {
+    float const radius{parameters.radius};
+
     auto const center_index{static_cast<std::uint32_t>(mesh_data.positions.size())};
     mesh_data.positions.push_back({0.0f, 0.0f, z});
     mesh_data.normals.push_back(normal);
@@ -194,7 +197,7 @@ void add_cylinder_cap(MeshData& mesh_data,
         auto const angle{two_pi * fraction};
         auto const cosine{std::cos(angle)};
         auto const sine{std::sin(angle)};
-        mesh_data.positions.push_back({parameters.radius * cosine, parameters.radius * sine, z});
+        mesh_data.positions.push_back({radius * cosine, radius * sine, z});
         mesh_data.normals.push_back(normal);
         mesh_data.uvs.push_back({0.5f + cosine * 0.5f, 0.5f + sine * 0.5f});
     }
@@ -214,21 +217,24 @@ void add_cylinder_cap(MeshData& mesh_data,
 }
 
 [[nodiscard]] auto cone_side_normal(ConeParameters const& parameters, float const angle) -> Vec3f {
-    return normalize({parameters.height * std::cos(angle),
-                      parameters.height * std::sin(angle),
-                      parameters.radius});
+    float const height{parameters.height};
+    float const radius{parameters.radius};
+
+    return normalize({height * std::cos(angle), height * std::sin(angle), radius});
 }
 
 void add_cone_side(MeshData& mesh_data, ConeParameters const& parameters) {
-    auto const half_height{parameters.height * 0.5f};
+    float const height{parameters.height};
+    float const radius{parameters.radius};
+
+    auto const half_height{height * 0.5f};
     for (std::int32_t segment_index{}; segment_index <= parameters.radial_segments;
          ++segment_index) {
         auto const fraction{static_cast<float>(segment_index) /
                             static_cast<float>(parameters.radial_segments)};
         auto const angle{two_pi * fraction};
-        mesh_data.positions.push_back({parameters.radius * std::cos(angle),
-                                       parameters.radius * std::sin(angle),
-                                       -half_height});
+        mesh_data.positions.push_back(
+            {radius * std::cos(angle), radius * std::sin(angle), -half_height});
         mesh_data.normals.push_back(cone_side_normal(parameters, angle));
         mesh_data.uvs.push_back({fraction, 1.0f});
     }
@@ -253,7 +259,10 @@ void add_cone_side(MeshData& mesh_data, ConeParameters const& parameters) {
 }
 
 void add_cone_base(MeshData& mesh_data, ConeParameters const& parameters) {
-    auto const half_height{parameters.height * 0.5f};
+    float const height{parameters.height};
+    float const radius{parameters.radius};
+
+    auto const half_height{height * 0.5f};
     auto const center_index{static_cast<std::uint32_t>(mesh_data.positions.size())};
     mesh_data.positions.push_back({0.0f, 0.0f, -half_height});
     mesh_data.normals.push_back(-z_axis);
@@ -266,8 +275,7 @@ void add_cone_base(MeshData& mesh_data, ConeParameters const& parameters) {
         auto const angle{two_pi * fraction};
         auto const cosine{std::cos(angle)};
         auto const sine{std::sin(angle)};
-        mesh_data.positions.push_back(
-            {parameters.radius * cosine, parameters.radius * sine, -half_height});
+        mesh_data.positions.push_back({radius * cosine, radius * sine, -half_height});
         mesh_data.normals.push_back(-z_axis);
         mesh_data.uvs.push_back({0.5f + cosine * 0.5f, 0.5f + sine * 0.5f});
     }
@@ -437,9 +445,10 @@ auto generate_box(BoxParameters const& parameters) -> MeshData {
 }
 
 auto generate_beveled_box(BeveledBoxParameters const& parameters) -> MeshData {
+    float const bevel_width{parameters.bevel_width};
+
     assert(minimum_component(parameters.dimensions) > 0.0f);
-    assert(parameters.bevel_width > 0.0f);
-    assert(parameters.bevel_width < minimum_component(parameters.dimensions) * 0.5f);
+    assert(bevel_width < minimum_component(parameters.dimensions) * 0.5f);
 
     MeshData mesh_data;
     mesh_data.positions.reserve(120);
@@ -451,7 +460,7 @@ auto generate_beveled_box(BeveledBoxParameters const& parameters) -> MeshData {
     auto const x{half_dimensions.x()};
     auto const y{half_dimensions.y()};
     auto const z{half_dimensions.z()};
-    auto const bevel{parameters.bevel_width};
+    auto const bevel{bevel_width};
 
     add_beveled_box_face(mesh_data, {x, 0.0f, 0.0f}, x_axis, y_axis, z_axis, y, z, bevel);
     add_beveled_box_face(mesh_data, {-x, 0.0f, 0.0f}, -x_axis, -y_axis, z_axis, y, z, bevel);
@@ -513,11 +522,11 @@ auto generate_beveled_box(BeveledBoxParameters const& parameters) -> MeshData {
 }
 
 auto generate_wedge(WedgeParameters const& parameters) -> MeshData {
+    float const top_length{parameters.top_length};
+
     assert(minimum_component(parameters.dimensions) > 0.0f);
-    assert(parameters.top_length > 0.0f);
-    assert(parameters.top_length <= parameters.dimensions.x());
-    assert(std::abs(parameters.top_offset) + parameters.top_length * 0.5f <=
-           parameters.dimensions.x() * 0.5f);
+    assert(top_length <= parameters.dimensions.x());
+    assert(std::abs(parameters.top_offset) + top_length * 0.5f <= parameters.dimensions.x() * 0.5f);
 
     MeshData mesh_data;
     mesh_data.positions.reserve(24);
@@ -526,7 +535,7 @@ auto generate_wedge(WedgeParameters const& parameters) -> MeshData {
     mesh_data.indices.reserve(36);
 
     auto const half_dimensions{parameters.dimensions * 0.5f};
-    auto const top_half_length{parameters.top_length * 0.5f};
+    auto const top_half_length{top_length * 0.5f};
     auto const bottom_left_x{-half_dimensions.x()};
     auto const bottom_right_x{half_dimensions.x()};
     auto const top_left_x{parameters.top_offset - top_half_length};
@@ -568,8 +577,8 @@ auto generate_wedge(WedgeParameters const& parameters) -> MeshData {
 }
 
 auto generate_cylinder(CylinderParameters const& parameters) -> MeshData {
-    assert(parameters.radius > 0.0f);
-    assert(parameters.height > 0.0f);
+    float const height{parameters.height};
+
     assert(parameters.radial_segments >= 3);
 
     MeshData mesh_data;
@@ -580,15 +589,13 @@ auto generate_cylinder(CylinderParameters const& parameters) -> MeshData {
     mesh_data.uvs.reserve(static_cast<std::size_t>(vertex_count));
     mesh_data.indices.reserve(static_cast<std::size_t>(index_count));
     add_cylinder_side(mesh_data, parameters);
-    auto const half_height{parameters.height * 0.5f};
+    auto const half_height{height * 0.5f};
     add_cylinder_cap(mesh_data, parameters, half_height, z_axis);
     add_cylinder_cap(mesh_data, parameters, -half_height, -z_axis);
     return mesh_data;
 }
 
 auto generate_cone(ConeParameters const& parameters) -> MeshData {
-    assert(parameters.radius > 0.0f);
-    assert(parameters.height > 0.0f);
     assert(parameters.radial_segments >= 3);
 
     MeshData mesh_data;
@@ -604,7 +611,8 @@ auto generate_cone(ConeParameters const& parameters) -> MeshData {
 }
 
 auto generate_sphere(SphereParameters const& parameters) -> MeshData {
-    assert(parameters.radius > 0.0f);
+    float const radius{parameters.radius};
+
     assert(parameters.longitude_segments >= 3);
     assert(parameters.latitude_segments >= 2);
 
@@ -633,7 +641,7 @@ auto generate_sphere(SphereParameters const& parameters) -> MeshData {
             auto const normal{normalize({radial_distance * std::cos(longitude_angle),
                                          radial_distance * std::sin(longitude_angle),
                                          z})};
-            mesh_data.positions.push_back(normal * parameters.radius);
+            mesh_data.positions.push_back(normal * radius);
             mesh_data.normals.push_back(normal);
             mesh_data.uvs.push_back({u, v});
         }
@@ -665,11 +673,12 @@ auto generate_sphere(SphereParameters const& parameters) -> MeshData {
 }
 
 auto generate_hex_tile(HexTileParameters const& parameters) -> MeshData {
-    assert(parameters.outer_radius > 0.0f);
-    assert(parameters.depth > 0.0f);
-    assert(parameters.bevel_width > 0.0f);
-    assert(parameters.bevel_width < parameters.outer_radius);
-    assert(parameters.bevel_width < parameters.depth * 0.5f);
+    float const bevel_width{parameters.bevel_width};
+    float const outer_radius{parameters.outer_radius};
+    float const depth{parameters.depth};
+
+    assert(bevel_width < outer_radius);
+    assert(bevel_width < depth * 0.5f);
 
     constexpr std::int32_t face_triangle_count{hex_side_count * 2};
     constexpr std::int32_t surface_quad_count{hex_side_count * 3};
@@ -681,13 +690,13 @@ auto generate_hex_tile(HexTileParameters const& parameters) -> MeshData {
     mesh_data.indices.reserve(
         static_cast<std::size_t>(face_triangle_count * 3 + surface_quad_count * 6));
 
-    auto const half_depth{parameters.depth * 0.5f};
-    auto const face_radius{parameters.outer_radius - parameters.bevel_width};
-    auto const wall_half_depth{half_depth - parameters.bevel_width};
+    auto const half_depth{depth * 0.5f};
+    auto const face_radius{outer_radius - bevel_width};
+    auto const wall_half_depth{half_depth - bevel_width};
     auto const angle_offset{parameters.pointy_top ? pi * 0.5f : 0.0f};
     auto const top_face{make_ring(face_radius, half_depth, angle_offset)};
-    auto const top_wall{make_ring(parameters.outer_radius, wall_half_depth, angle_offset)};
-    auto const bottom_wall{make_ring(parameters.outer_radius, -wall_half_depth, angle_offset)};
+    auto const top_wall{make_ring(outer_radius, wall_half_depth, angle_offset)};
+    auto const bottom_wall{make_ring(outer_radius, -wall_half_depth, angle_offset)};
     auto const bottom_face{make_ring(face_radius, -half_depth, angle_offset)};
     Vec3f const top_center{0.0f, 0.0f, half_depth};
     Vec3f const bottom_center{0.0f, 0.0f, -half_depth};
@@ -696,18 +705,14 @@ auto generate_hex_tile(HexTileParameters const& parameters) -> MeshData {
         auto const next_index{(side_index + 1) % hex_side_count};
         auto const current{static_cast<std::size_t>(side_index)};
         auto const next{static_cast<std::size_t>(next_index)};
-        add_hex_tile_triangle(mesh_data,
-                              top_center,
-                              top_face[current],
-                              top_face[next],
-                              z_axis,
-                              parameters.outer_radius);
+        add_hex_tile_triangle(
+            mesh_data, top_center, top_face[current], top_face[next], z_axis, outer_radius);
         add_hex_tile_triangle(mesh_data,
                               bottom_center,
                               bottom_face[next],
                               bottom_face[current],
                               -z_axis,
-                              parameters.outer_radius);
+                              outer_radius);
         append_quad(mesh_data,
                     top_face[current],
                     top_wall[current],
@@ -734,10 +739,11 @@ auto generate_hex_tile(HexTileParameters const& parameters) -> MeshData {
 }
 
 auto generate_hex_frame(HexFrameParameters const& parameters) -> MeshData {
-    assert(parameters.outer_radius > 0.0f);
-    assert(parameters.wall_thickness > 0.0f);
-    assert(parameters.wall_thickness < parameters.outer_radius);
-    assert(parameters.depth > 0.0f);
+    float const wall_thickness{parameters.wall_thickness};
+    float const outer_radius{parameters.outer_radius};
+    float const depth{parameters.depth};
+
+    assert(wall_thickness < outer_radius);
 
     MeshData mesh_data;
     constexpr std::int32_t surface_count{4};
@@ -747,11 +753,11 @@ auto generate_hex_frame(HexFrameParameters const& parameters) -> MeshData {
     mesh_data.uvs.reserve(static_cast<std::size_t>(quad_count * 4));
     mesh_data.indices.reserve(static_cast<std::size_t>(quad_count * 6));
 
-    auto const inner_radius{parameters.outer_radius - parameters.wall_thickness};
-    auto const half_depth{parameters.depth * 0.5f};
+    auto const inner_radius{outer_radius - wall_thickness};
+    auto const half_depth{depth * 0.5f};
     auto const angle_offset{parameters.pointy_top ? pi * 0.5f : 0.0f};
-    auto const outer_front{make_ring(parameters.outer_radius, half_depth, angle_offset)};
-    auto const outer_back{make_ring(parameters.outer_radius, -half_depth, angle_offset)};
+    auto const outer_front{make_ring(outer_radius, half_depth, angle_offset)};
+    auto const outer_back{make_ring(outer_radius, -half_depth, angle_offset)};
     auto const inner_front{make_ring(inner_radius, half_depth, angle_offset)};
     auto const inner_back{make_ring(inner_radius, -half_depth, angle_offset)};
 
@@ -834,21 +840,21 @@ auto generate_hex_frame(HexFrameParameters const& parameters) -> MeshData {
 }
 
 auto generate_honeycomb_panel(HoneycombPanelParameters const& parameters) -> MeshData {
-    assert(parameters.rows > 0);
-    assert(parameters.columns > 0);
-    assert(parameters.cell_radius > 0.0f);
-    assert(parameters.wall_thickness > 0.0f);
-    assert(parameters.wall_thickness < parameters.cell_radius);
-    assert(parameters.depth > 0.0f);
+    float const wall_thickness{parameters.wall_thickness};
+    float const cell_radius{parameters.cell_radius};
+    std::int32_t const rows{parameters.rows};
+    std::int32_t const columns{parameters.columns};
+    float const depth{parameters.depth};
+
+    assert(wall_thickness < cell_radius);
 
     std::vector<Vec2f> centers;
-    centers.reserve(static_cast<std::size_t>(parameters.rows * parameters.columns));
+    centers.reserve(static_cast<std::size_t>(rows * columns));
     Vec2f minimum{std::numeric_limits<float>::max(), std::numeric_limits<float>::max()};
     Vec2f maximum{std::numeric_limits<float>::lowest(), std::numeric_limits<float>::lowest()};
-    for (std::int32_t row{}; row < parameters.rows; ++row) {
-        for (std::int32_t column{}; column < parameters.columns; ++column) {
-            auto const center{
-                make_cell_center(row, column, parameters.cell_radius, parameters.pointy_top)};
+    for (std::int32_t row{}; row < rows; ++row) {
+        for (std::int32_t column{}; column < columns; ++column) {
+            auto const center{make_cell_center(row, column, cell_radius, parameters.pointy_top)};
             centers.push_back(center);
             minimum.x() = std::min(minimum.x(), center.x());
             minimum.y() = std::min(minimum.y(), center.y());
@@ -858,7 +864,7 @@ auto generate_honeycomb_panel(HoneycombPanelParameters const& parameters) -> Mes
     }
     auto const panel_center{(minimum + maximum) * 0.5f};
 
-    auto const maximum_edge_count{parameters.rows * parameters.columns * hex_side_count};
+    auto const maximum_edge_count{rows * columns * hex_side_count};
     constexpr std::int32_t faces_per_segment{6};
     MeshData mesh_data;
     mesh_data.positions.reserve(
@@ -876,8 +882,7 @@ auto generate_honeycomb_panel(HoneycombPanelParameters const& parameters) -> Mes
             auto const angle{angle_offset + two_pi * static_cast<float>(side_index) /
                                                 static_cast<float>(hex_side_count)};
             corners[static_cast<std::size_t>(side_index)] =
-                cell_center + Vec2f{parameters.cell_radius * std::cos(angle),
-                                    parameters.cell_radius * std::sin(angle)};
+                cell_center + Vec2f{cell_radius * std::cos(angle), cell_radius * std::sin(angle)};
         }
 
         for (std::int32_t side_index{}; side_index < hex_side_count; ++side_index) {
@@ -889,7 +894,7 @@ auto generate_honeycomb_panel(HoneycombPanelParameters const& parameters) -> Mes
                 continue;
             }
             generated_edges.insert(edge_key);
-            add_wall_segment(mesh_data, start, end, parameters.wall_thickness, parameters.depth);
+            add_wall_segment(mesh_data, start, end, wall_thickness, depth);
         }
     }
     return mesh_data;
