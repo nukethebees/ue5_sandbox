@@ -7,9 +7,9 @@
 #include "ioj/layout/analysis/analysis_id.hpp"
 #include "ioj/layout/analysis/enum_backing.hpp"
 #include "ioj/layout/analysis/packed_layout.hpp"
+#include "ioj/layout/analysis/physical_facts.hpp"
 #include "ioj/layout/analysis/scenario_id.hpp"
 #include "ioj/layout/analysis/soa_layout.hpp"
-#include "ioj/layout/type_facts.hpp"
 #include "ioj/native_soa/storage.h"
 #include "ioj/native_soa/vector_storage_ops.h"
 
@@ -30,7 +30,7 @@ struct TypeAnalysisTableConstView {
     using size_type = std::uint32_t;
     std::span<lispb::schema::TypeId const> schema_type;
     std::span<ioj::layout::ScenarioId const> scenario;
-    std::span<std::optional<ioj::layout::TypeFacts> const> physical;
+    std::span<std::optional<ioj::layout::PhysicalFacts> const> physical;
     std::span<std::optional<ioj::layout::EnumBacking> const> enum_backing;
     std::span<std::optional<ioj::layout::AggregateLayout> const> aggregate;
     std::span<std::optional<ioj::layout::PackedLayout> const> packed;
@@ -93,7 +93,7 @@ struct TypeAnalysisTableView {
     using size_type = std::uint32_t;
     std::span<lispb::schema::TypeId> schema_type;
     std::span<ioj::layout::ScenarioId> scenario;
-    std::span<std::optional<ioj::layout::TypeFacts>> physical;
+    std::span<std::optional<ioj::layout::PhysicalFacts>> physical;
     std::span<std::optional<ioj::layout::EnumBacking>> enum_backing;
     std::span<std::optional<ioj::layout::AggregateLayout>> aggregate;
     std::span<std::optional<ioj::layout::PackedLayout>> packed;
@@ -151,7 +151,7 @@ struct TypeAnalysisTableView {
     void set(size_type const index,
              lispb::schema::TypeId const new_schema_type,
              ioj::layout::ScenarioId const new_scenario,
-             std::optional<ioj::layout::TypeFacts> const new_physical,
+             std::optional<ioj::layout::PhysicalFacts> const new_physical,
              std::optional<ioj::layout::EnumBacking> const new_enum_backing,
              std::optional<ioj::layout::AggregateLayout> const new_aggregate,
              std::optional<ioj::layout::PackedLayout> const new_packed,
@@ -172,7 +172,7 @@ struct TypeAnalysisTable {
     using size_type = std::uint32_t;
     ioj::native_soa::Vector<lispb::schema::TypeId> schema_type;
     ioj::native_soa::Vector<ioj::layout::ScenarioId> scenario;
-    ioj::native_soa::Vector<std::optional<ioj::layout::TypeFacts>> physical;
+    ioj::native_soa::Vector<std::optional<ioj::layout::PhysicalFacts>> physical;
     ioj::native_soa::Vector<std::optional<ioj::layout::EnumBacking>> enum_backing;
     ioj::native_soa::Vector<std::optional<ioj::layout::AggregateLayout>> aggregate;
     ioj::native_soa::Vector<std::optional<ioj::layout::PackedLayout>> packed;
@@ -215,7 +215,7 @@ struct TypeAnalysisTable {
     void set(size_type const index,
              lispb::schema::TypeId const new_schema_type,
              ioj::layout::ScenarioId const new_scenario,
-             std::optional<ioj::layout::TypeFacts> const new_physical,
+             std::optional<ioj::layout::PhysicalFacts> const new_physical,
              std::optional<ioj::layout::EnumBacking> const new_enum_backing,
              std::optional<ioj::layout::AggregateLayout> const new_aggregate,
              std::optional<ioj::layout::PackedLayout> const new_packed,
@@ -231,7 +231,7 @@ struct TypeAnalysisTable {
     }
     auto add(lispb::schema::TypeId const new_schema_type,
              ioj::layout::ScenarioId const new_scenario,
-             std::optional<ioj::layout::TypeFacts> const new_physical,
+             std::optional<ioj::layout::PhysicalFacts> const new_physical,
              std::optional<ioj::layout::EnumBacking> const new_enum_backing,
              std::optional<ioj::layout::AggregateLayout> const new_aggregate,
              std::optional<ioj::layout::PackedLayout> const new_packed,

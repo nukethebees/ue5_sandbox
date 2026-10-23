@@ -148,7 +148,8 @@ TEST(PhysicalFacts, PointerPolicyRetainsManualEvidence) {
     Analyzer::analyze(context, requests);
     ASSERT_TRUE(storage.components.element_facts.front());
     EXPECT_EQ(storage.components.element_facts.front()->origin, FactOrigin::manual_assumption);
-    EXPECT_TRUE(storage.components.element_facts.front()->provenance.contains(pointer.provenance));
+    EXPECT_TRUE(storage.strings.view(storage.components.element_facts.front()->provenance)
+                    .contains(pointer.provenance));
 }
 
 TEST(PhysicalFacts, SuppliedFactsCannotSilentlyReplaceGeneratedLayout) {

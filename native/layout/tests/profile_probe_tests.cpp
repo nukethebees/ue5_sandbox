@@ -166,10 +166,10 @@ type "void*" 8 8 non-integer unknown "generic target representation" compiler-pr
     AnalysisContext context{document, storage};
     Analyzer::analyze(context, requests);
     auto const exact{storage.components.element_facts[0]};
-    TypeFacts const expected{.size_bytes = 16,
-                             .alignment_bytes = 8,
-                             .provenance = "exact target measurement",
-                             .origin = FactOrigin::compiler_probe};
+    PhysicalFacts const expected{.size_bytes = 16,
+                                 .alignment_bytes = 8,
+                                 .provenance = storage.strings.intern("exact target measurement"),
+                                 .origin = FactOrigin::compiler_probe};
     EXPECT_EQ(exact, expected);
     EXPECT_FALSE(storage.components.element_facts[1]);
     profile->set_object_pointer_representation("void*");

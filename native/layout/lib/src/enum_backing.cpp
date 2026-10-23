@@ -14,7 +14,7 @@ namespace ioj::layout::analysis_detail {
 
 auto enum_domain_fits_backing(EnumCodeValue const minimum,
                               EnumCodeValue const maximum,
-                              TypeFacts const& facts,
+                              PhysicalFacts const& facts,
                               std::uint64_t const backing_bits) -> std::optional<bool> {
     if (!facts.integer_signed.has_value()) {
         return std::nullopt;

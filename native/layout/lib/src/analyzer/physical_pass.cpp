@@ -29,8 +29,17 @@
 
 namespace ioj::layout::analysis_detail {
 
+auto retain_facts(AnalysisContext& context, TypeFacts const& facts) -> PhysicalFacts {
+    return {.size_bytes = facts.size_bytes,
+            .alignment_bytes = facts.alignment_bytes,
+            .integer_signed = facts.integer_signed,
+            .unsigned_value_bits = facts.unsigned_value_bits,
+            .provenance = context.storage.strings.intern(facts.provenance),
+            .origin = facts.origin};
+}
+
 auto lookup_physical(AnalysisContext& context, AbiProfile const& abi, std::string_view spelling)
-    -> std::optional<TypeFacts> {
+    -> std::optional<PhysicalFacts> {
     auto facts{abi.find(lispb::codegen::native_spelling(std::string{spelling}))};
     if (!facts) {
         context.report({DiagnosticSeverity::warning,
@@ -42,7 +51,7 @@ auto lookup_physical(AnalysisContext& context, AbiProfile const& abi, std::strin
              "Physical size and alignment must be nonzero for '" + std::string{spelling} + "'."});
         facts.reset();
     }
-    return facts;
+    return facts.transform([&](auto const& value) { return retain_facts(context, value); });
 }
 
 auto physical_use(AnalysisContext& context,
@@ -52,7 +61,7 @@ auto physical_use(AnalysisContext& context,
                   lispb::codegen::CppTypeId cpp_type,
                   lispb::codegen::PhysicalTypeForm form,
                   lispb::StringId object_spelling,
-                  bool names_semantic_type) -> std::optional<TypeFacts> {
+                  bool names_semantic_type) -> std::optional<PhysicalFacts> {
     using Form = lispb::codegen::PhysicalTypeForm;
     auto const& types{context.types};
     if (form == Form::unsupported) {
@@ -75,8 +84,10 @@ auto physical_use(AnalysisContext& context,
                 if (facts->origin != FactOrigin::manual_assumption) {
                     facts->origin = FactOrigin::target_abi;
                 }
-                facts->provenance = "Object-pointer ABI policy for '" + abi.name() + "' using " +
-                                  *abi.object_pointer_representation() + ": " + facts->provenance;
+                auto const provenance{"Object-pointer ABI policy for '" + abi.name() + "' using " +
+                                      *abi.object_pointer_representation() + ": " +
+                                      std::string{context.storage.strings.view(facts->provenance)}};
+                facts->provenance = context.storage.strings.intern(provenance);
                 return facts;
             }
         }
@@ -91,7 +102,7 @@ auto physical_use(AnalysisContext& context,
 auto physical_occurrence(AnalysisContext& context,
                          ScenarioId scenario,
                          AbiProfile const& abi,
-                         lispb::schema::ResolvedOccurrenceId use) -> std::optional<TypeFacts> {
+                         lispb::schema::ResolvedOccurrenceId use) -> std::optional<PhysicalFacts> {
     auto const& occurrences{context.types.occurrences()};
     auto const row{occurrences.index(use)};
     return physical_use(context,
@@ -108,7 +119,7 @@ auto physical_spelling(AnalysisContext& context,
                        ScenarioId scenario,
                        AbiProfile const& abi,
                        std::string_view spelling,
-                       lispb::codegen::ModuleHandle module) -> std::optional<TypeFacts> {
+                       lispb::codegen::ModuleHandle module) -> std::optional<PhysicalFacts> {
     auto const& types{context.types};
     auto const cpp{types.cpp_types().intern(spelling)};
     auto const physical{lispb::codegen::classify_physical_type_use(types.cpp_types(), cpp)};
@@ -341,12 +352,13 @@ void aggregate_layout(AnalysisContext& context,
         result.alignment_bytes.reset();
     }
     if (result.size_bytes && result.alignment_bytes) {
-        TypeFacts facts;
+        PhysicalFacts facts;
         facts.size_bytes = *result.size_bytes;
         facts.alignment_bytes = *result.alignment_bytes;
         facts.origin = FactOrigin::derived;
-        facts.provenance = "Derived from LispB '" + std::string{spelling} + "' using profile '" +
-                           abi.name() + "'.";
+        facts.provenance =
+            context.storage.strings.intern("Derived from LispB '" + std::string{spelling} +
+                                           "' using profile '" + abi.name() + "'.");
         context.storage.types.physical[id.value] = std::move(facts);
     }
     context.storage.types.aggregate[id.value] = std::move(result);
@@ -461,7 +473,9 @@ void derive_leaf(AnalysisContext& context,
         case Kind::soa: {
             auto const spelling{types.strings().view(types.cpp_spelling(type))};
             if (!spelling.empty()) {
-                facts = abi.find(std::string{spelling});
+                facts = abi.find(std::string{spelling}).transform([&](auto const& value) {
+                    return retain_facts(context, value);
+                });
             }
             break;
         }

@@ -1,5 +1,5 @@
 #pragma once
-#include <ioj/layout/type_facts.hpp>
+#include <ioj/layout/analysis/physical_facts.hpp>
 
 #include <lispb/indices.h>
 
@@ -8,7 +8,7 @@
 namespace ioj::layout {
 struct EnumBacking {
     lispb::IdentifierId backing_type{};
-    std::optional<TypeFacts> backing_facts{};
+    std::optional<PhysicalFacts> backing_facts{};
     std::optional<std::uint64_t> backing_bits{};
     std::optional<bool> backing_can_represent_domain{};
     std::optional<std::uint64_t> unused_backing_codes{};
