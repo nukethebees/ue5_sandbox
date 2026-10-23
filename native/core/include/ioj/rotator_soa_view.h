@@ -2,6 +2,7 @@
 
 #include <array>
 #include <cassert>
+#include <concepts>
 #include <cstdint>
 #include <type_traits>
 #include <utility>
@@ -10,9 +11,10 @@ namespace ioj::soa_storage_detail {
 
 template <typename T,
           template <typename> typename Span,
-          typename Size = std::uint32_t,
+          std::integral Size = std::uint32_t,
           typename Value = std::array<std::remove_const_t<T>, 3>>
 class RotatorSoAView {
+    static_assert(!std::same_as<Size, bool>);
   public:
     using size_type = Size;
     using View = RotatorSoAView<std::remove_const_t<T>, Span, Size, Value>;
@@ -90,7 +92,7 @@ class RotatorSoAView {
         return slice(count_ - count, count);
     }
   private:
-    template <typename, template <typename> typename, typename, typename>
+    template <typename, template <typename> typename, std::integral, typename>
     friend class RotatorSoAView;
     T* pitches_{};
     T* yaws_{};

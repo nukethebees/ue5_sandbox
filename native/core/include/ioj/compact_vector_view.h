@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cassert>
+#include <concepts>
 #include <cstddef>
 #include <cstdint>
 #include <limits>
@@ -12,9 +13,10 @@ namespace ioj::soa_storage_detail {
 template <typename T,
           int Dimensions,
           template <typename> typename Span,
-          typename Size = std::uint32_t>
+          std::integral Size = std::uint32_t>
 class VectorView {
     static_assert(Dimensions == 2 || Dimensions == 3);
+    static_assert(!std::same_as<Size, bool>);
     static_assert(std::is_arithmetic_v<T> && !std::is_volatile_v<T>);
     using Byte = std::conditional_t<std::is_const_v<T>, std::byte const, std::byte>;
   public:
@@ -101,7 +103,7 @@ class VectorView {
         return slice(count_ - count, count);
     }
   private:
-    template <typename, int, template <typename> typename, typename>
+    template <typename, int, template <typename> typename, std::integral>
     friend class VectorView;
     auto column(std::size_t index) const -> Span<T> {
         auto* pointer{data_ ? reinterpret_cast<T*>(data_ + index * byte_stride()) : nullptr};
