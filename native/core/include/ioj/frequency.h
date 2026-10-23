@@ -3,7 +3,8 @@
 #include <ioj/duration.h>
 #include <ioj/require.h>
 
-#include <cmath>
+#include <cstdlib>
+#include <limits>
 #include <optional>
 #include <source_location>
 
@@ -12,8 +13,15 @@ class Frequency {
   public:
     static constexpr double min_hz{1e-300};
 
-    [[nodiscard]] static auto valid(double const hz) noexcept -> bool {
-        return std::isfinite(hz) && hz >= min_hz;
+    explicit consteval Frequency(double const hz) noexcept
+        : hz_{hz} {
+        if (!valid(hz)) {
+            std::abort();
+        }
+    }
+
+    [[nodiscard]] static constexpr auto valid(double const hz) noexcept -> bool {
+        return hz >= min_hz && hz <= std::numeric_limits<double>::max();
     }
 
     // Require a finite frequency of at least min_hz.
@@ -22,21 +30,24 @@ class Frequency {
              std::source_location const location = std::source_location::current()) noexcept
         -> Frequency {
         require(valid(hz), "Frequency must be finite and at least 1e-300 Hz", location);
-        return Frequency{hz};
+        return Frequency{hz, Validated{}};
     }
 
     // Return nullopt for an invalid frequency.
-    [[nodiscard]] static auto try_make(double const hz) noexcept -> std::optional<Frequency> {
+    [[nodiscard]] static constexpr auto try_make(double const hz) noexcept
+        -> std::optional<Frequency> {
         if (!valid(hz)) {
             return std::nullopt;
         }
-        return Frequency{hz};
+        return Frequency{hz, Validated{}};
     }
 
-    [[nodiscard]] auto get_hz() const noexcept -> double { return hz_; }
+    [[nodiscard]] constexpr auto get_hz() const noexcept -> double { return hz_; }
     [[nodiscard]] auto period() const noexcept -> Duration { return Duration::make(1.0 / hz_); }
   private:
-    explicit Frequency(double const hz) noexcept
+    struct Validated {};
+
+    explicit constexpr Frequency(double const hz, Validated) noexcept
         : hz_{hz} {}
 
     double hz_;
