@@ -12,11 +12,11 @@ void Environments::clear() {
     parents_.clear();
     kinds_.clear();
     symbols_.clear();
-    complete_.clear();
+    bindings_complete_.clear();
     parents_.emplace_back();
     kinds_.push_back(EnvironmentKind::global);
     symbols_.emplace_back();
-    complete_.push_back(true);
+    bindings_complete_.push_back(true);
 }
 
 auto Environments::index(EnvironmentId environment) const -> std::size_t {
@@ -34,7 +34,7 @@ auto Environments::append(EnvironmentId parent, EnvironmentKind kind) -> Environ
     parents_.push_back(parent);
     kinds_.push_back(kind);
     symbols_.emplace_back();
-    complete_.push_back(true);
+    bindings_complete_.push_back(true);
     return result;
 }
 auto Environments::parent(EnvironmentId environment) const -> EnvironmentId {
@@ -47,7 +47,7 @@ auto Environments::symbols(EnvironmentId environment) const -> SymbolTable const
     return symbols_[index(environment)];
 }
 void Environments::mark_unknown(EnvironmentId environment) {
-    complete_[index(environment)] = false;
+    bindings_complete_[index(environment)] = false;
 }
 
 auto Environments::declare(EnvironmentId environment,
@@ -89,7 +89,7 @@ auto Environments::named(EnvironmentId parent,
 
     auto const environment{append(parent, kind)};
     if (declaration.is_null()) {
-        declaration = CppDeclarationId::from(environment);
+        declaration = CppDeclarationId{environment};
     }
     declare(parent, name, declaration, environment);
     return environment;
@@ -103,7 +103,7 @@ void Environments::import_symbols(EnvironmentId destination, EnvironmentId sourc
             entry->second.ambiguous = true;
         }
     }
-    if (!complete_[index(source)]) {
+    if (!bindings_complete_[index(source)]) {
         mark_unknown(destination);
     }
 }
@@ -112,8 +112,8 @@ auto Environments::lookup_local(EnvironmentId environment, IdentifierId name) co
     -> SymbolLookup {
     auto const symbol{find_local(environment, name)};
     if (symbol.declaration.is_null()) {
-        return {.status =
-                    complete_[index(environment)] ? LookupStatus::missing : LookupStatus::unknown};
+        return {.status = bindings_complete_[index(environment)] ? LookupStatus::missing
+                                                                 : LookupStatus::unknown};
     }
     if (symbol.ambiguous) {
         return {.status = LookupStatus::unknown};
@@ -172,16 +172,6 @@ auto Environments::find_environment(EnvironmentId environment,
         result = find_local(result.introduced_scope, name[component]);
     }
     return result.introduced_scope;
-}
-
-EnvironmentGuard::EnvironmentGuard(EnvironmentId& current, EnvironmentId next)
-    : current_{current}
-    , previous_{current} {
-    assert(!next.is_null());
-    current_ = next;
-}
-EnvironmentGuard::~EnvironmentGuard() {
-    current_ = previous_;
 }
 
 }

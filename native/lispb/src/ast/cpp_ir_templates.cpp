@@ -107,7 +107,7 @@ void CppIR::append_template(std::string& output,
                                 : value_template_parameters_.name[index]};
             if (name.value != 0) {
                 context.state->environments.declare(
-                    context.state->current, name, CppDeclarationId::from(parameter));
+                    context.state->current, name, CppDeclarationId{parameter});
             }
         }
     }

@@ -1,8 +1,9 @@
 #pragma once
 
-#include <codegen/ast/cpp_declaration_id.h>
 #include <codegen/ast/environment_id.h>
 #include <codegen/ast/environment_kind.h>
+#include <codegen/ast/environment_symbol.h>
+#include <codegen/ast/symbol_lookup.h>
 #include <lispb/indices.h>
 
 #include <cstddef>
@@ -11,25 +12,6 @@
 #include <vector>
 
 namespace lispb::codegen {
-
-struct EnvironmentSymbol {
-    CppDeclarationId declaration;
-    // Distinguish declarations when an IR node is reused in another environment.
-    EnvironmentId declaring_scope;
-    EnvironmentId introduced_scope;
-    bool ambiguous{};
-
-    auto same_declaration(EnvironmentSymbol const& other) const -> bool {
-        return declaration == other.declaration && declaring_scope == other.declaring_scope;
-    }
-};
-
-enum class LookupStatus { found, missing, unknown };
-
-struct SymbolLookup {
-    LookupStatus status{LookupStatus::missing};
-    EnvironmentSymbol symbol;
-};
 
 class Environments {
   public:
@@ -80,19 +62,7 @@ class Environments {
     std::vector<EnvironmentId> parents_;
     std::vector<EnvironmentKind> kinds_;
     std::vector<SymbolTable> symbols_;
-    std::vector<bool> complete_;
-};
-
-// Select one environment for a lexical emission region, then restore its caller's environment.
-class EnvironmentGuard {
-  public:
-    EnvironmentGuard(EnvironmentId& current, EnvironmentId next);
-    ~EnvironmentGuard();
-    EnvironmentGuard(EnvironmentGuard const&) = delete;
-    auto operator=(EnvironmentGuard const&) -> EnvironmentGuard& = delete;
-  private:
-    EnvironmentId& current_;
-    EnvironmentId previous_;
+    std::vector<bool> bindings_complete_;
 };
 
 }

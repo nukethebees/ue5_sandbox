@@ -4,6 +4,7 @@
 #include <codegen/ast/access_indentation.h>
 #include <codegen/ast/cpp_ir.h>
 #include <codegen/ast/cpp_types.h>
+#include <codegen/ast/environment_guard.h>
 #include <codegen/ast/expr.h>
 #include <codegen/ast/expr_kind.h>
 #include <codegen/ast/function_body_layout.h>
@@ -132,8 +133,7 @@ auto CppIR::signature(std::uint32_t index,
         if (parameter_name.value != 0) {
             output += ' ';
             output += strings.view(parameter_name);
-            state.environments.declare(
-                state.current, parameter_name, CppDeclarationId::from(parameter));
+            state.environments.declare(state.current, parameter_name, CppDeclarationId{parameter});
         }
         if (auto const value{parameters_.default_value[parameter_references_[p].value]};
             value && (declaration || header)) {
@@ -422,7 +422,7 @@ void CppIR::append_node(std::string& output, NodeId node, RenderContext const& c
             text(variable_declaration_stmt_nodes_.name[i]);
             state.environments.declare(state.current,
                                        strings.intern(variable_declaration_stmt_nodes_.name[i]),
-                                       CppDeclarationId::from(node));
+                                       CppDeclarationId{node});
             if (auto const initializer{variable_declaration_stmt_nodes_.initializer[i]}) {
                 initialize(*initializer);
             } else {

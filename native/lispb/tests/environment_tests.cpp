@@ -1,3 +1,4 @@
+#include <codegen/ast/environment_guard.h>
 #include <codegen/ast/environments.h>
 #include <lispb/strings.h>
 
@@ -18,11 +19,11 @@ TEST(Environments, ResolvesDeclarationsThroughIntroducedScopesAndParents) {
     auto const namespace_scope{
         environments.named(environments.global(), EnvironmentKind::namespace_, a)};
     auto const record{
-        CppDeclarationId::from(NodeId{(static_cast<std::uint32_t>(NodeKind::struct_) << 24) | 7})};
+        CppDeclarationId{NodeId{(static_cast<std::uint32_t>(NodeKind::struct_) << 24) | 7}}};
     auto const record_scope{
         environments.named(namespace_scope, EnvironmentKind::record, foo, record)};
-    auto const alias{CppDeclarationId::from(
-        NodeId{(static_cast<std::uint32_t>(NodeKind::using_declaration) << 24) | 7})};
+    auto const alias{CppDeclarationId{
+        NodeId{(static_cast<std::uint32_t>(NodeKind::using_declaration) << 24) | 7}}};
     environments.declare(record_scope, value, alias);
     auto const block{environments.append(record_scope, EnvironmentKind::block)};
 
@@ -44,10 +45,10 @@ TEST(Environments, StopsAtHidingDeclarationsAndUnknownOrAmbiguousScopes) {
     auto const a{strings.intern("a")};
     auto const token{strings.intern("Token")};
     auto const outer{environments.named(environments.global(), EnvironmentKind::namespace_, a)};
-    auto const target{CppDeclarationId::make(CppDeclarationKind::external, 1)};
+    auto const target{CppDeclarationId{FunctionId{1}}};
     environments.declare(outer, token, target);
     auto const block{environments.append(outer, EnvironmentKind::block)};
-    environments.declare(block, a, CppDeclarationId::make(CppDeclarationKind::parameter, 1));
+    environments.declare(block, a, CppDeclarationId{FunctionParameterId{1}});
 
     EXPECT_EQ(environments.lookup(block, std::array{a, token}).status, LookupStatus::missing);
     EXPECT_EQ(environments.lookup(block, std::array{token}).symbol.declaration, target);
@@ -55,7 +56,7 @@ TEST(Environments, StopsAtHidingDeclarationsAndUnknownOrAmbiguousScopes) {
     EXPECT_EQ(environments.lookup(block, std::array{token}).status, LookupStatus::unknown);
 
     auto const anonymous{environments.append(outer, EnvironmentKind::namespace_)};
-    environments.declare(anonymous, token, CppDeclarationId::make(CppDeclarationKind::external, 2));
+    environments.declare(anonymous, token, CppDeclarationId{FunctionId{2}});
     environments.import_symbols(outer, anonymous);
     EXPECT_EQ(environments.lookup(outer, std::array{token}).status, LookupStatus::unknown);
 }

@@ -75,7 +75,7 @@ void CppIR::collect_template_parameters(RenderState& state,
                             ? type_template_parameters_.name[parameter.index()]
                             : value_template_parameters_.name[parameter.index()]};
         if (name.value != 0) {
-            state.environments.declare(environment, name, CppDeclarationId::from(parameter));
+            state.environments.declare(environment, name, CppDeclarationId{parameter});
         }
     }
 }
@@ -102,7 +102,7 @@ void CppIR::collect_environment(RenderState& state,
                 environments.mark_unknown(environment);
             }
         };
-        auto const declaration{CppDeclarationId::from(node)};
+        auto const declaration{CppDeclarationId{node}};
         switch (node.kind()) {
             case NodeKind::namespace_: {
                 std::string const name{strings.view(namespace_nodes_.name[i])};
@@ -182,7 +182,7 @@ void CppIR::collect_environment(RenderState& state,
             case NodeKind::function:
                 if (!function_nodes_.owner[i]) {
                     add_expr(functions_.name[function_nodes_.function[i].value],
-                             CppDeclarationId::from(function_nodes_.function[i]));
+                             CppDeclarationId{function_nodes_.function[i]});
                 }
                 break;
             case NodeKind::raw:

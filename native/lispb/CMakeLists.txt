@@ -198,7 +198,10 @@ target_sources(codegen-lib PRIVATE
   src/lowering/packed_field_layouts.cpp
   src/ast/cpp_ir.cpp
   src/ast/cpp_ir_environments.cpp
+  src/ast/cpp_declaration_id.cpp
+  src/ast/environment_guard.cpp
   src/ast/environments.cpp
+  src/ast/render_state.cpp
   src/ast/cpp_files.cpp
   src/ast/modules.cpp
   src/ast/cpp_ir_templates.cpp
