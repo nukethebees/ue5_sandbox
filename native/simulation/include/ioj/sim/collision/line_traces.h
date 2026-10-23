@@ -211,30 +211,20 @@ struct LineTracesResolvedView : LineTracesResolvedViewImpl<false> {
 struct LineTracesView_starts;
 struct LineTracesConstView_starts;
 template <bool Const>
-struct LineTracesView_startsImpl : ioj::soa_storage_detail::CompactViewOperations {
+struct LineTracesView_startsImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = Vectors3fSchema;
-    using size_type = std::uint32_t;
+    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
+    using Base::Base;
     using Layout = LineTracesLayout;
-    using Storage = ioj::native_soa::StorageState;
-    using State = std::conditional_t<Const, Storage const, Storage>;
-    template <typename T>
-    using Element = std::conditional_t<Const, T const, T>;
     using View = LineTracesView_starts;
     using ConstView = LineTracesConstView_starts;
-    LineTracesView_startsImpl() = default;
-    LineTracesView_startsImpl(State* state, size_type offset, size_type count)
-        : state_{state}
-        , offset_{offset}
-        , count_{count} {}
     template <bool Enabled = Const>
     LineTracesView_startsImpl(LineTracesView_startsImpl<false> const& other)
         requires Enabled
-        : state_{other.state_}
-        , offset_{other.offset_}
-        , count_{other.count_} {}
-    auto xs() const { return make_column_view(Layout::columns.StartsXsColumn); }
-    auto ys() const { return make_column_view(Layout::columns.StartsYsColumn); }
-    auto zs() const { return make_column_view(Layout::columns.StartsZsColumn); }
+        : Base{other} {}
+    auto xs() const { return this->column(Layout::columns.StartsXsColumn); }
+    auto ys() const { return this->column(Layout::columns.StartsYsColumn); }
+    auto zs() const { return this->column(Layout::columns.StartsZsColumn); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(xs());
@@ -243,23 +233,11 @@ struct LineTracesView_startsImpl : ioj::soa_storage_detail::CompactViewOperation
     }
     auto resolve() const -> std::
         conditional_t<Const, ::ioj::Vectors3fResolvedConstView, ::ioj::Vectors3fResolvedView> {
-        return {(make_column_view(Layout::columns.StartsXsColumn).data()),
-                (make_column_view(Layout::columns.StartsYsColumn).data()),
-                (make_column_view(Layout::columns.StartsZsColumn).data()),
-                count_};
+        return {(this->column(Layout::columns.StartsXsColumn).data()),
+                (this->column(Layout::columns.StartsYsColumn).data()),
+                (this->column(Layout::columns.StartsZsColumn).data()),
+                this->count_};
     }
-  private:
-    template <typename T>
-    auto make_column_view(ioj::native_soa::ColumnLayout<T> const& layout) const {
-        return ioj::soa_storage_detail::column_view<std::span<Element<T>>>(
-            state_, offset_, count_, layout);
-    }
-    friend ioj::soa_storage_detail::CompactViewOperations;
-    template <bool>
-    friend struct LineTracesView_startsImpl;
-    State* state_{};
-    size_type offset_{};
-    size_type count_{};
 };
 struct LineTracesConstView_starts : LineTracesView_startsImpl<true> {
     using Base = LineTracesView_startsImpl<true>;
@@ -293,30 +271,20 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<LineTracesView_star
 struct LineTracesView_ends;
 struct LineTracesConstView_ends;
 template <bool Const>
-struct LineTracesView_endsImpl : ioj::soa_storage_detail::CompactViewOperations {
+struct LineTracesView_endsImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = Vectors3fSchema;
-    using size_type = std::uint32_t;
+    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
+    using Base::Base;
     using Layout = LineTracesLayout;
-    using Storage = ioj::native_soa::StorageState;
-    using State = std::conditional_t<Const, Storage const, Storage>;
-    template <typename T>
-    using Element = std::conditional_t<Const, T const, T>;
     using View = LineTracesView_ends;
     using ConstView = LineTracesConstView_ends;
-    LineTracesView_endsImpl() = default;
-    LineTracesView_endsImpl(State* state, size_type offset, size_type count)
-        : state_{state}
-        , offset_{offset}
-        , count_{count} {}
     template <bool Enabled = Const>
     LineTracesView_endsImpl(LineTracesView_endsImpl<false> const& other)
         requires Enabled
-        : state_{other.state_}
-        , offset_{other.offset_}
-        , count_{other.count_} {}
-    auto xs() const { return make_column_view(Layout::columns.EndsXsColumn); }
-    auto ys() const { return make_column_view(Layout::columns.EndsYsColumn); }
-    auto zs() const { return make_column_view(Layout::columns.EndsZsColumn); }
+        : Base{other} {}
+    auto xs() const { return this->column(Layout::columns.EndsXsColumn); }
+    auto ys() const { return this->column(Layout::columns.EndsYsColumn); }
+    auto zs() const { return this->column(Layout::columns.EndsZsColumn); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(xs());
@@ -325,23 +293,11 @@ struct LineTracesView_endsImpl : ioj::soa_storage_detail::CompactViewOperations 
     }
     auto resolve() const -> std::
         conditional_t<Const, ::ioj::Vectors3fResolvedConstView, ::ioj::Vectors3fResolvedView> {
-        return {(make_column_view(Layout::columns.EndsXsColumn).data()),
-                (make_column_view(Layout::columns.EndsYsColumn).data()),
-                (make_column_view(Layout::columns.EndsZsColumn).data()),
-                count_};
+        return {(this->column(Layout::columns.EndsXsColumn).data()),
+                (this->column(Layout::columns.EndsYsColumn).data()),
+                (this->column(Layout::columns.EndsZsColumn).data()),
+                this->count_};
     }
-  private:
-    template <typename T>
-    auto make_column_view(ioj::native_soa::ColumnLayout<T> const& layout) const {
-        return ioj::soa_storage_detail::column_view<std::span<Element<T>>>(
-            state_, offset_, count_, layout);
-    }
-    friend ioj::soa_storage_detail::CompactViewOperations;
-    template <bool>
-    friend struct LineTracesView_endsImpl;
-    State* state_{};
-    size_type offset_{};
-    size_type count_{};
 };
 struct LineTracesConstView_ends : LineTracesView_endsImpl<true> {
     using Base = LineTracesView_endsImpl<true>;
@@ -373,34 +329,24 @@ struct LineTracesView_ends : LineTracesView_endsImpl<false> {
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<LineTracesView_ends>());
 template <bool Const>
-struct LineTracesViewImpl : ioj::soa_storage_detail::CompactViewOperations {
+struct LineTracesViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = LineTracesSchema;
-    using size_type = std::uint32_t;
+    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
+    using Base::Base;
     using Layout = LineTracesLayout;
-    using Storage = ioj::native_soa::StorageState;
-    using State = std::conditional_t<Const, Storage const, Storage>;
-    template <typename T>
-    using Element = std::conditional_t<Const, T const, T>;
     using View = LineTracesView;
     using ConstView = LineTracesConstView;
-    LineTracesViewImpl() = default;
-    LineTracesViewImpl(State* state, size_type offset, size_type count)
-        : state_{state}
-        , offset_{offset}
-        , count_{count} {}
     template <bool Enabled = Const>
     LineTracesViewImpl(LineTracesViewImpl<false> const& other)
         requires Enabled
-        : state_{other.state_}
-        , offset_{other.offset_}
-        , count_{other.count_} {}
+        : Base{other} {}
     auto view_starts() const
         -> std::conditional_t<Const, LineTracesConstView_starts, LineTracesView_starts> {
-        return {state_, offset_, count_};
+        return {this->state_, this->offset_, this->count_};
     }
     auto view_ends() const
         -> std::conditional_t<Const, LineTracesConstView_ends, LineTracesView_ends> {
-        return {state_, offset_, count_};
+        return {this->state_, this->offset_, this->count_};
     }
     template <typename Func>
     void each_column(Func&& func) const {
@@ -415,26 +361,14 @@ struct LineTracesViewImpl : ioj::soa_storage_detail::CompactViewOperations {
     }
     auto resolve() const
         -> std::conditional_t<Const, LineTracesResolvedConstView, LineTracesResolvedView> {
-        return {(make_column_view(Layout::columns.StartsXsColumn).data()),
-                (make_column_view(Layout::columns.StartsYsColumn).data()),
-                (make_column_view(Layout::columns.StartsZsColumn).data()),
-                (make_column_view(Layout::columns.EndsXsColumn).data()),
-                (make_column_view(Layout::columns.EndsYsColumn).data()),
-                (make_column_view(Layout::columns.EndsZsColumn).data()),
-                count_};
+        return {(this->column(Layout::columns.StartsXsColumn).data()),
+                (this->column(Layout::columns.StartsYsColumn).data()),
+                (this->column(Layout::columns.StartsZsColumn).data()),
+                (this->column(Layout::columns.EndsXsColumn).data()),
+                (this->column(Layout::columns.EndsYsColumn).data()),
+                (this->column(Layout::columns.EndsZsColumn).data()),
+                this->count_};
     }
-  private:
-    template <typename T>
-    auto make_column_view(ioj::native_soa::ColumnLayout<T> const& layout) const {
-        return ioj::soa_storage_detail::column_view<std::span<Element<T>>>(
-            state_, offset_, count_, layout);
-    }
-    friend ioj::soa_storage_detail::CompactViewOperations;
-    template <bool>
-    friend struct LineTracesViewImpl;
-    State* state_{};
-    size_type offset_{};
-    size_type count_{};
 };
 struct LineTracesConstView : LineTracesViewImpl<true> {
     using Base = LineTracesViewImpl<true>;

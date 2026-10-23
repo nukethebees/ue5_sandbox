@@ -826,6 +826,18 @@ TEST(NativeSoa, ColumnViewContracts) {
 
 TEST(NativeSoa, CompactViewsAndBulkAppend) {
     using Owner = SingleRows;
+    using Positions = decltype(std::declval<Owner::View>().view_positions());
+    using ConstPositions = decltype(std::declval<Owner::ConstView>().view_positions());
+    using Velocities = decltype(std::declval<Owner::View>().view_velocities());
+    static_assert(sizeof(Positions) == 16);
+    static_assert(std::is_trivially_copyable_v<Positions>);
+    static_assert(std::is_convertible_v<Positions, ConstPositions>);
+    static_assert(!std::is_convertible_v<ConstPositions, Positions>);
+    static_assert(!std::is_convertible_v<Velocities, ConstPositions>);
+    static_assert(!std::is_convertible_v<Owner::View, ConstPositions>);
+    static_assert(std::is_same_v<decltype(std::declval<Positions>().xs()), std::span<float>>);
+    static_assert(
+        std::is_same_v<decltype(std::declval<ConstPositions>().xs()), std::span<float const>>);
     static_assert(soa_storage_detail::validate_compact_view<Owner::View>());
     static_assert(soa_storage_detail::validate_compact_view<Owner::ConstView>());
     static_assert(std::is_same_v<decltype(std::declval<Owner::View>().view_positions().resolve()),
@@ -844,6 +856,10 @@ TEST(NativeSoa, CompactViewsAndBulkAppend) {
     source.reserve(1024);
     view = source.get_view();
     auto const slice{view.slice(1, 64)};
+    ConstPositions const_positions = slice.view_positions();
+    const_positions.validate();
+    EXPECT_EQ(const_positions.xs().data(), view.view_positions().xs().data() + 1);
+    EXPECT_EQ(const_positions.num(), 64);
     EXPECT_EQ(slice.values()[63], 64);
     EXPECT_EQ(view.view_positions().xs()[1], 1.f);
     Owner::ConstView const_view{slice};

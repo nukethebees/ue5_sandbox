@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <limits>
 #include <memory>
+#include <span>
 #include <type_traits>
 
 namespace ioj::soa_storage_detail {
@@ -65,8 +66,42 @@ inline void validate_view([[maybe_unused]] StorageState const* state,
                  : offset == 0 && count == 0);
 }
 
-// Keep the borrowed state in each named generated view; share only its operations.
-struct CompactViewOperations {
+inline auto view_capacity_blocks(StorageState const* state) -> std::size_t {
+    return state ? static_cast<std::size_t>(state->capacity_ /
+                                            single_allocation_layout::capacity_granularity)
+                 : 0;
+}
+
+template <typename T, typename State>
+auto view_column_data_unchecked(State* state, std::uint32_t offset, std::size_t byte_offset)
+    -> std::conditional_t<std::is_const_v<State>, T const, T>* {
+    using Element = std::conditional_t<std::is_const_v<State>, T const, T>;
+    return std::launder(reinterpret_cast<Element*>(state->data_ + byte_offset)) + offset;
+}
+
+template <typename T, typename State>
+auto view_column_data(State* state, std::uint32_t offset, std::size_t byte_offset)
+    -> std::conditional_t<std::is_const_v<State>, T const, T>* {
+    if (!state || !state->data_) {
+        return nullptr;
+    }
+    return view_column_data_unchecked<T>(state, offset, byte_offset);
+}
+
+template <bool Const>
+struct CompactViewBase {
+    using size_type = std::uint32_t;
+    using Storage = StorageState;
+    using State = std::conditional_t<Const, Storage const, Storage>;
+    template <typename T>
+    using Element = std::conditional_t<Const, T const, T>;
+
+    CompactViewBase() = default;
+    CompactViewBase(State* state, size_type offset, size_type count)
+        : state_{state}
+        , offset_{offset}
+        , count_{count} {}
+
     void validate(this auto const& self) { validate_view(self.state_, self.offset_, self.count_); }
     auto num(this auto const& self) noexcept { return self.count_; }
     auto is_empty(this auto const& self) noexcept -> bool { return self.count_ == 0; }
@@ -103,36 +138,27 @@ struct CompactViewOperations {
         assert(count <= self.count_);
         return self.slice(self.count_ - count, count);
     }
-};
+  protected:
+    template <bool>
+    friend struct CompactViewBase;
 
-inline auto view_capacity_blocks(StorageState const* state) -> std::size_t {
-    return state ? static_cast<std::size_t>(state->capacity_ /
-                                            single_allocation_layout::capacity_granularity)
-                 : 0;
-}
+    template <bool Enabled = Const>
+        requires Enabled
+    CompactViewBase(CompactViewBase<false> const& other)
+        : state_{other.state_}
+        , offset_{other.offset_}
+        , count_{other.count_} {}
 
-template <typename T, typename State>
-auto view_column_data_unchecked(State* state, std::uint32_t offset, std::size_t byte_offset)
-    -> std::conditional_t<std::is_const_v<State>, T const, T>* {
-    using Element = std::conditional_t<std::is_const_v<State>, T const, T>;
-    return std::launder(reinterpret_cast<Element*>(state->data_ + byte_offset)) + offset;
-}
-
-template <typename T, typename State>
-auto view_column_data(State* state, std::uint32_t offset, std::size_t byte_offset)
-    -> std::conditional_t<std::is_const_v<State>, T const, T>* {
-    if (!state || !state->data_) {
-        return nullptr;
+    template <typename T>
+    auto column(single_allocation_layout::ColumnLayout<T> const& layout) const
+        -> std::span<Element<T>> {
+        return {view_column_data<T>(state_, offset_, layout.offset(view_capacity_blocks(state_))),
+                count_};
     }
-    return view_column_data_unchecked<T>(state, offset, byte_offset);
-}
 
-template <typename View, typename State, typename T>
-auto column_view(State* state,
-                 std::uint32_t offset,
-                 std::uint32_t count,
-                 single_allocation_layout::ColumnLayout<T> const& column) -> View {
-    return {view_column_data<T>(state, offset, column.offset(view_capacity_blocks(state))), count};
-}
+    State* state_{};
+    size_type offset_{};
+    size_type count_{};
+};
 
 } // namespace ioj::soa_storage_detail

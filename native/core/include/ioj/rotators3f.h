@@ -168,30 +168,20 @@ struct Rotators3fResolvedView : Rotators3fResolvedViewImpl<false> {
     }
 };
 template <bool Const>
-struct Rotators3fViewImpl : ioj::soa_storage_detail::CompactViewOperations {
+struct Rotators3fViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = Rotators3fSchema;
-    using size_type = std::uint32_t;
+    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
+    using Base::Base;
     using Layout = Rotators3fLayout;
-    using Storage = ioj::native_soa::StorageState;
-    using State = std::conditional_t<Const, Storage const, Storage>;
-    template <typename T>
-    using Element = std::conditional_t<Const, T const, T>;
     using View = Rotators3fView;
     using ConstView = Rotators3fConstView;
-    Rotators3fViewImpl() = default;
-    Rotators3fViewImpl(State* state, size_type offset, size_type count)
-        : state_{state}
-        , offset_{offset}
-        , count_{count} {}
     template <bool Enabled = Const>
     Rotators3fViewImpl(Rotators3fViewImpl<false> const& other)
         requires Enabled
-        : state_{other.state_}
-        , offset_{other.offset_}
-        , count_{other.count_} {}
-    auto pitches() const { return make_column_view(Layout::columns.PitchesColumn); }
-    auto yaws() const { return make_column_view(Layout::columns.YawsColumn); }
-    auto rolls() const { return make_column_view(Layout::columns.RollsColumn); }
+        : Base{other} {}
+    auto pitches() const { return this->column(Layout::columns.PitchesColumn); }
+    auto yaws() const { return this->column(Layout::columns.YawsColumn); }
+    auto rolls() const { return this->column(Layout::columns.RollsColumn); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(pitches());
@@ -200,23 +190,11 @@ struct Rotators3fViewImpl : ioj::soa_storage_detail::CompactViewOperations {
     }
     auto resolve() const
         -> std::conditional_t<Const, Rotators3fResolvedConstView, Rotators3fResolvedView> {
-        return {(make_column_view(Layout::columns.PitchesColumn).data()),
-                (make_column_view(Layout::columns.YawsColumn).data()),
-                (make_column_view(Layout::columns.RollsColumn).data()),
-                count_};
+        return {(this->column(Layout::columns.PitchesColumn).data()),
+                (this->column(Layout::columns.YawsColumn).data()),
+                (this->column(Layout::columns.RollsColumn).data()),
+                this->count_};
     }
-  private:
-    template <typename T>
-    auto make_column_view(ioj::native_soa::ColumnLayout<T> const& layout) const {
-        return ioj::soa_storage_detail::column_view<std::span<Element<T>>>(
-            state_, offset_, count_, layout);
-    }
-    friend ioj::soa_storage_detail::CompactViewOperations;
-    template <bool>
-    friend struct Rotators3fViewImpl;
-    State* state_{};
-    size_type offset_{};
-    size_type count_{};
 };
 struct Rotators3fConstView : Rotators3fViewImpl<true> {
     using Base = Rotators3fViewImpl<true>;

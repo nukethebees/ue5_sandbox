@@ -174,31 +174,21 @@ struct EntityDeathInfoResolvedView : EntityDeathInfoResolvedViewImpl<false> {
     }
 };
 template <bool Const>
-struct EntityDeathInfoViewImpl : ioj::soa_storage_detail::CompactViewOperations {
+struct EntityDeathInfoViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = EntityDeathInfoSchema;
-    using size_type = std::uint32_t;
+    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
+    using Base::Base;
     using Layout = EntityDeathInfoLayout;
-    using Storage = ioj::native_soa::StorageState;
-    using State = std::conditional_t<Const, Storage const, Storage>;
-    template <typename T>
-    using Element = std::conditional_t<Const, T const, T>;
     using View = EntityDeathInfoView;
     using ConstView = EntityDeathInfoConstView;
-    EntityDeathInfoViewImpl() = default;
-    EntityDeathInfoViewImpl(State* state, size_type offset, size_type count)
-        : state_{state}
-        , offset_{offset}
-        , count_{count} {}
     template <bool Enabled = Const>
     EntityDeathInfoViewImpl(EntityDeathInfoViewImpl<false> const& other)
         requires Enabled
-        : state_{other.state_}
-        , offset_{other.offset_}
-        , count_{other.count_} {}
-    auto reasons() const { return make_column_view(Layout::columns.ReasonsColumn); }
-    auto victims() const { return make_column_view(Layout::columns.VictimsColumn); }
-    auto killers() const { return make_column_view(Layout::columns.KillersColumn); }
-    auto locations() const { return make_column_view(Layout::columns.LocationsColumn); }
+        : Base{other} {}
+    auto reasons() const { return this->column(Layout::columns.ReasonsColumn); }
+    auto victims() const { return this->column(Layout::columns.VictimsColumn); }
+    auto killers() const { return this->column(Layout::columns.KillersColumn); }
+    auto locations() const { return this->column(Layout::columns.LocationsColumn); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(reasons());
@@ -208,24 +198,12 @@ struct EntityDeathInfoViewImpl : ioj::soa_storage_detail::CompactViewOperations 
     }
     auto resolve() const -> std::
         conditional_t<Const, EntityDeathInfoResolvedConstView, EntityDeathInfoResolvedView> {
-        return {(make_column_view(Layout::columns.ReasonsColumn).data()),
-                (make_column_view(Layout::columns.VictimsColumn).data()),
-                (make_column_view(Layout::columns.KillersColumn).data()),
-                (make_column_view(Layout::columns.LocationsColumn).data()),
-                count_};
+        return {(this->column(Layout::columns.ReasonsColumn).data()),
+                (this->column(Layout::columns.VictimsColumn).data()),
+                (this->column(Layout::columns.KillersColumn).data()),
+                (this->column(Layout::columns.LocationsColumn).data()),
+                this->count_};
     }
-  private:
-    template <typename T>
-    auto make_column_view(ioj::native_soa::ColumnLayout<T> const& layout) const {
-        return ioj::soa_storage_detail::column_view<std::span<Element<T>>>(
-            state_, offset_, count_, layout);
-    }
-    friend ioj::soa_storage_detail::CompactViewOperations;
-    template <bool>
-    friend struct EntityDeathInfoViewImpl;
-    State* state_{};
-    size_type offset_{};
-    size_type count_{};
 };
 struct EntityDeathInfoConstView : EntityDeathInfoViewImpl<true> {
     using Base = EntityDeathInfoViewImpl<true>;

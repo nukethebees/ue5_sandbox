@@ -419,50 +419,40 @@ struct WorkloadTableResolvedView : WorkloadTableResolvedViewImpl<false> {
     }
 };
 template <bool Const>
-struct WorkloadTableViewImpl : ioj::soa_storage_detail::CompactViewOperations {
+struct WorkloadTableViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = WorkloadTableSchema;
-    using size_type = std::uint32_t;
+    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
+    using Base::Base;
     using Layout = WorkloadTableLayout;
-    using Storage = ioj::native_soa::StorageState;
-    using State = std::conditional_t<Const, Storage const, Storage>;
-    template <typename T>
-    using Element = std::conditional_t<Const, T const, T>;
     using View = WorkloadTableView;
     using ConstView = WorkloadTableConstView;
-    WorkloadTableViewImpl() = default;
-    WorkloadTableViewImpl(State* state, size_type offset, size_type count)
-        : state_{state}
-        , offset_{offset}
-        , count_{count} {}
     template <bool Enabled = Const>
     WorkloadTableViewImpl(WorkloadTableViewImpl<false> const& other)
         requires Enabled
-        : state_{other.state_}
-        , offset_{other.offset_}
-        , count_{other.count_} {}
-    auto analysis() const { return make_column_view(Layout::columns.AnalysisColumn); }
-    auto selections() const { return make_column_view(Layout::columns.SelectionsColumn); }
-    auto element_count() const { return make_column_view(Layout::columns.ElementCountColumn); }
-    auto multiplicity() const { return make_column_view(Layout::columns.MultiplicityColumn); }
-    auto bytes() const { return make_column_view(Layout::columns.BytesColumn); }
-    auto bits() const { return make_column_view(Layout::columns.BitsColumn); }
-    auto cache() const { return make_column_view(Layout::columns.CacheColumn); }
-    auto pages() const { return make_column_view(Layout::columns.PagesColumn); }
-    auto cache_capacity() const { return make_column_view(Layout::columns.CacheCapacityColumn); }
-    auto packed_waste() const { return make_column_view(Layout::columns.PackedWasteColumn); }
-    auto footprint_exact() const { return make_column_view(Layout::columns.FootprintExactColumn); }
-    auto storage_bytes() const { return make_column_view(Layout::columns.StorageBytesColumn); }
+        : Base{other} {}
+    auto analysis() const { return this->column(Layout::columns.AnalysisColumn); }
+    auto selections() const { return this->column(Layout::columns.SelectionsColumn); }
+    auto element_count() const { return this->column(Layout::columns.ElementCountColumn); }
+    auto multiplicity() const { return this->column(Layout::columns.MultiplicityColumn); }
+    auto bytes() const { return this->column(Layout::columns.BytesColumn); }
+    auto bits() const { return this->column(Layout::columns.BitsColumn); }
+    auto cache() const { return this->column(Layout::columns.CacheColumn); }
+    auto pages() const { return this->column(Layout::columns.PagesColumn); }
+    auto cache_capacity() const { return this->column(Layout::columns.CacheCapacityColumn); }
+    auto packed_waste() const { return this->column(Layout::columns.PackedWasteColumn); }
+    auto footprint_exact() const { return this->column(Layout::columns.FootprintExactColumn); }
+    auto storage_bytes() const { return this->column(Layout::columns.StorageBytesColumn); }
     auto full_logical_payload_bytes() const {
-        return make_column_view(Layout::columns.FullLogicalPayloadBytesColumn);
+        return this->column(Layout::columns.FullLogicalPayloadBytesColumn);
     }
     auto unselected_payload_bytes() const {
-        return make_column_view(Layout::columns.UnselectedPayloadBytesColumn);
+        return this->column(Layout::columns.UnselectedPayloadBytesColumn);
     }
     auto allocated_payload_bytes() const {
-        return make_column_view(Layout::columns.AllocatedPayloadBytesColumn);
+        return this->column(Layout::columns.AllocatedPayloadBytesColumn);
     }
     auto capacity_slack_bytes() const {
-        return make_column_view(Layout::columns.CapacitySlackBytesColumn);
+        return this->column(Layout::columns.CapacitySlackBytesColumn);
     }
     template <typename Func>
     void each_column(Func&& func) const {
@@ -485,36 +475,24 @@ struct WorkloadTableViewImpl : ioj::soa_storage_detail::CompactViewOperations {
     }
     auto resolve() const
         -> std::conditional_t<Const, WorkloadTableResolvedConstView, WorkloadTableResolvedView> {
-        return {(make_column_view(Layout::columns.AnalysisColumn).data()),
-                (make_column_view(Layout::columns.SelectionsColumn).data()),
-                (make_column_view(Layout::columns.ElementCountColumn).data()),
-                (make_column_view(Layout::columns.MultiplicityColumn).data()),
-                (make_column_view(Layout::columns.BytesColumn).data()),
-                (make_column_view(Layout::columns.BitsColumn).data()),
-                (make_column_view(Layout::columns.CacheColumn).data()),
-                (make_column_view(Layout::columns.PagesColumn).data()),
-                (make_column_view(Layout::columns.CacheCapacityColumn).data()),
-                (make_column_view(Layout::columns.PackedWasteColumn).data()),
-                (make_column_view(Layout::columns.FootprintExactColumn).data()),
-                (make_column_view(Layout::columns.StorageBytesColumn).data()),
-                (make_column_view(Layout::columns.FullLogicalPayloadBytesColumn).data()),
-                (make_column_view(Layout::columns.UnselectedPayloadBytesColumn).data()),
-                (make_column_view(Layout::columns.AllocatedPayloadBytesColumn).data()),
-                (make_column_view(Layout::columns.CapacitySlackBytesColumn).data()),
-                count_};
+        return {(this->column(Layout::columns.AnalysisColumn).data()),
+                (this->column(Layout::columns.SelectionsColumn).data()),
+                (this->column(Layout::columns.ElementCountColumn).data()),
+                (this->column(Layout::columns.MultiplicityColumn).data()),
+                (this->column(Layout::columns.BytesColumn).data()),
+                (this->column(Layout::columns.BitsColumn).data()),
+                (this->column(Layout::columns.CacheColumn).data()),
+                (this->column(Layout::columns.PagesColumn).data()),
+                (this->column(Layout::columns.CacheCapacityColumn).data()),
+                (this->column(Layout::columns.PackedWasteColumn).data()),
+                (this->column(Layout::columns.FootprintExactColumn).data()),
+                (this->column(Layout::columns.StorageBytesColumn).data()),
+                (this->column(Layout::columns.FullLogicalPayloadBytesColumn).data()),
+                (this->column(Layout::columns.UnselectedPayloadBytesColumn).data()),
+                (this->column(Layout::columns.AllocatedPayloadBytesColumn).data()),
+                (this->column(Layout::columns.CapacitySlackBytesColumn).data()),
+                this->count_};
     }
-  private:
-    template <typename T>
-    auto make_column_view(ioj::native_soa::ColumnLayout<T> const& layout) const {
-        return ioj::soa_storage_detail::column_view<std::span<Element<T>>>(
-            state_, offset_, count_, layout);
-    }
-    friend ioj::soa_storage_detail::CompactViewOperations;
-    template <bool>
-    friend struct WorkloadTableViewImpl;
-    State* state_{};
-    size_type offset_{};
-    size_type count_{};
 };
 struct WorkloadTableConstView : WorkloadTableViewImpl<true> {
     using Base = WorkloadTableViewImpl<true>;

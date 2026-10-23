@@ -41,10 +41,8 @@ TEST(SingleAllocationSoa, OrdinarySchemasGenerateNativeOwnersAndViews) {
     EXPECT_NE(output.find("ColLayout<sub::Token> NestedTypesColumn"), std::string::npos);
     EXPECT_NE(output.find("ColLayout<other::Token> ForeignTypesColumn"), std::string::npos);
     EXPECT_NE(output.find("ColLayout<example::ColLayout> ShadowedTypesColumn"), std::string::npos);
-    EXPECT_EQ(output.find("using Base::count_;"), std::string::npos);
-    EXPECT_EQ(output.find("this->count_"), std::string::npos);
-    EXPECT_EQ(output.find("CompactViewState"), std::string::npos);
-    EXPECT_NE(output.find("State* state_{};"), std::string::npos);
+    EXPECT_NE(output.find("CompactViewBase<Const>"), std::string::npos);
+    EXPECT_EQ(output.find("State* state_{};"), std::string::npos);
     EXPECT_NE(output.find("transfer_n<Overlapping>(dst, src, count);"), std::string::npos);
     EXPECT_NE(output.find("transfer(destination.nested_xs, source.nested_xs);"), std::string::npos);
     EXPECT_EQ(output.find("TArray"), std::string::npos);

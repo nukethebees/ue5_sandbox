@@ -306,42 +306,32 @@ struct ScalarTableResolvedView : ScalarTableResolvedViewImpl<false> {
     }
 };
 template <bool Const>
-struct ScalarTableViewImpl : ioj::soa_storage_detail::CompactViewOperations {
+struct ScalarTableViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = ScalarTableSchema;
-    using size_type = std::uint32_t;
+    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
+    using Base::Base;
     using Layout = ScalarTableLayout;
-    using Storage = ioj::native_soa::StorageState;
-    using State = std::conditional_t<Const, Storage const, Storage>;
-    template <typename T>
-    using Element = std::conditional_t<Const, T const, T>;
     using View = ScalarTableView;
     using ConstView = ScalarTableConstView;
-    ScalarTableViewImpl() = default;
-    ScalarTableViewImpl(State* state, size_type offset, size_type count)
-        : state_{state}
-        , offset_{offset}
-        , count_{count} {}
     template <bool Enabled = Const>
     ScalarTableViewImpl(ScalarTableViewImpl<false> const& other)
         requires Enabled
-        : state_{other.state_}
-        , offset_{other.offset_}
-        , count_{other.count_} {}
-    auto type() const { return make_column_view(Layout::columns.TypeColumn); }
-    auto integer_domain() const { return make_column_view(Layout::columns.IntegerDomainColumn); }
-    auto enum_domain() const { return make_column_view(Layout::columns.EnumDomainColumn); }
+        : Base{other} {}
+    auto type() const { return this->column(Layout::columns.TypeColumn); }
+    auto integer_domain() const { return this->column(Layout::columns.IntegerDomainColumn); }
+    auto enum_domain() const { return this->column(Layout::columns.EnumDomainColumn); }
     auto optional_sentinel_encoding() const {
-        return make_column_view(Layout::columns.OptionalSentinelEncodingColumn);
+        return this->column(Layout::columns.OptionalSentinelEncodingColumn);
     }
     auto optional_presence_encoding() const {
-        return make_column_view(Layout::columns.OptionalPresenceEncodingColumn);
+        return this->column(Layout::columns.OptionalPresenceEncodingColumn);
     }
     auto quantized_encoding() const {
-        return make_column_view(Layout::columns.QuantizedEncodingColumn);
+        return this->column(Layout::columns.QuantizedEncodingColumn);
     }
-    auto fixed_encoding() const { return make_column_view(Layout::columns.FixedEncodingColumn); }
-    auto float_encoding() const { return make_column_view(Layout::columns.FloatEncodingColumn); }
-    auto varint_encoding() const { return make_column_view(Layout::columns.VarintEncodingColumn); }
+    auto fixed_encoding() const { return this->column(Layout::columns.FixedEncodingColumn); }
+    auto float_encoding() const { return this->column(Layout::columns.FloatEncodingColumn); }
+    auto varint_encoding() const { return this->column(Layout::columns.VarintEncodingColumn); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(type());
@@ -356,29 +346,17 @@ struct ScalarTableViewImpl : ioj::soa_storage_detail::CompactViewOperations {
     }
     auto resolve() const
         -> std::conditional_t<Const, ScalarTableResolvedConstView, ScalarTableResolvedView> {
-        return {(make_column_view(Layout::columns.TypeColumn).data()),
-                (make_column_view(Layout::columns.IntegerDomainColumn).data()),
-                (make_column_view(Layout::columns.EnumDomainColumn).data()),
-                (make_column_view(Layout::columns.OptionalSentinelEncodingColumn).data()),
-                (make_column_view(Layout::columns.OptionalPresenceEncodingColumn).data()),
-                (make_column_view(Layout::columns.QuantizedEncodingColumn).data()),
-                (make_column_view(Layout::columns.FixedEncodingColumn).data()),
-                (make_column_view(Layout::columns.FloatEncodingColumn).data()),
-                (make_column_view(Layout::columns.VarintEncodingColumn).data()),
-                count_};
+        return {(this->column(Layout::columns.TypeColumn).data()),
+                (this->column(Layout::columns.IntegerDomainColumn).data()),
+                (this->column(Layout::columns.EnumDomainColumn).data()),
+                (this->column(Layout::columns.OptionalSentinelEncodingColumn).data()),
+                (this->column(Layout::columns.OptionalPresenceEncodingColumn).data()),
+                (this->column(Layout::columns.QuantizedEncodingColumn).data()),
+                (this->column(Layout::columns.FixedEncodingColumn).data()),
+                (this->column(Layout::columns.FloatEncodingColumn).data()),
+                (this->column(Layout::columns.VarintEncodingColumn).data()),
+                this->count_};
     }
-  private:
-    template <typename T>
-    auto make_column_view(ioj::native_soa::ColumnLayout<T> const& layout) const {
-        return ioj::soa_storage_detail::column_view<std::span<Element<T>>>(
-            state_, offset_, count_, layout);
-    }
-    friend ioj::soa_storage_detail::CompactViewOperations;
-    template <bool>
-    friend struct ScalarTableViewImpl;
-    State* state_{};
-    size_type offset_{};
-    size_type count_{};
 };
 struct ScalarTableConstView : ScalarTableViewImpl<true> {
     using Base = ScalarTableViewImpl<true>;

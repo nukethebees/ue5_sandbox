@@ -413,30 +413,20 @@ struct LaserEntitiesResolvedView : LaserEntitiesResolvedViewImpl<false> {
 struct LaserEntitiesView_locations;
 struct LaserEntitiesConstView_locations;
 template <bool Const>
-struct LaserEntitiesView_locationsImpl : ioj::soa_storage_detail::CompactViewOperations {
+struct LaserEntitiesView_locationsImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = Vectors3fSchema;
-    using size_type = std::uint32_t;
+    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
+    using Base::Base;
     using Layout = LaserEntitiesLayout;
-    using Storage = ioj::native_soa::StorageState;
-    using State = std::conditional_t<Const, Storage const, Storage>;
-    template <typename T>
-    using Element = std::conditional_t<Const, T const, T>;
     using View = LaserEntitiesView_locations;
     using ConstView = LaserEntitiesConstView_locations;
-    LaserEntitiesView_locationsImpl() = default;
-    LaserEntitiesView_locationsImpl(State* state, size_type offset, size_type count)
-        : state_{state}
-        , offset_{offset}
-        , count_{count} {}
     template <bool Enabled = Const>
     LaserEntitiesView_locationsImpl(LaserEntitiesView_locationsImpl<false> const& other)
         requires Enabled
-        : state_{other.state_}
-        , offset_{other.offset_}
-        , count_{other.count_} {}
-    auto xs() const { return make_column_view(Layout::columns.LocationsXsColumn); }
-    auto ys() const { return make_column_view(Layout::columns.LocationsYsColumn); }
-    auto zs() const { return make_column_view(Layout::columns.LocationsZsColumn); }
+        : Base{other} {}
+    auto xs() const { return this->column(Layout::columns.LocationsXsColumn); }
+    auto ys() const { return this->column(Layout::columns.LocationsYsColumn); }
+    auto zs() const { return this->column(Layout::columns.LocationsZsColumn); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(xs());
@@ -445,23 +435,11 @@ struct LaserEntitiesView_locationsImpl : ioj::soa_storage_detail::CompactViewOpe
     }
     auto resolve() const -> std::
         conditional_t<Const, ::ioj::Vectors3fResolvedConstView, ::ioj::Vectors3fResolvedView> {
-        return {(make_column_view(Layout::columns.LocationsXsColumn).data()),
-                (make_column_view(Layout::columns.LocationsYsColumn).data()),
-                (make_column_view(Layout::columns.LocationsZsColumn).data()),
-                count_};
+        return {(this->column(Layout::columns.LocationsXsColumn).data()),
+                (this->column(Layout::columns.LocationsYsColumn).data()),
+                (this->column(Layout::columns.LocationsZsColumn).data()),
+                this->count_};
     }
-  private:
-    template <typename T>
-    auto make_column_view(ioj::native_soa::ColumnLayout<T> const& layout) const {
-        return ioj::soa_storage_detail::column_view<std::span<Element<T>>>(
-            state_, offset_, count_, layout);
-    }
-    friend ioj::soa_storage_detail::CompactViewOperations;
-    template <bool>
-    friend struct LaserEntitiesView_locationsImpl;
-    State* state_{};
-    size_type offset_{};
-    size_type count_{};
 };
 struct LaserEntitiesConstView_locations : LaserEntitiesView_locationsImpl<true> {
     using Base = LaserEntitiesView_locationsImpl<true>;
@@ -495,30 +473,20 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<LaserEntitiesView_l
 struct LaserEntitiesView_rotations;
 struct LaserEntitiesConstView_rotations;
 template <bool Const>
-struct LaserEntitiesView_rotationsImpl : ioj::soa_storage_detail::CompactViewOperations {
+struct LaserEntitiesView_rotationsImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = Rotators3fSchema;
-    using size_type = std::uint32_t;
+    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
+    using Base::Base;
     using Layout = LaserEntitiesLayout;
-    using Storage = ioj::native_soa::StorageState;
-    using State = std::conditional_t<Const, Storage const, Storage>;
-    template <typename T>
-    using Element = std::conditional_t<Const, T const, T>;
     using View = LaserEntitiesView_rotations;
     using ConstView = LaserEntitiesConstView_rotations;
-    LaserEntitiesView_rotationsImpl() = default;
-    LaserEntitiesView_rotationsImpl(State* state, size_type offset, size_type count)
-        : state_{state}
-        , offset_{offset}
-        , count_{count} {}
     template <bool Enabled = Const>
     LaserEntitiesView_rotationsImpl(LaserEntitiesView_rotationsImpl<false> const& other)
         requires Enabled
-        : state_{other.state_}
-        , offset_{other.offset_}
-        , count_{other.count_} {}
-    auto pitches() const { return make_column_view(Layout::columns.RotationsPitchesColumn); }
-    auto yaws() const { return make_column_view(Layout::columns.RotationsYawsColumn); }
-    auto rolls() const { return make_column_view(Layout::columns.RotationsRollsColumn); }
+        : Base{other} {}
+    auto pitches() const { return this->column(Layout::columns.RotationsPitchesColumn); }
+    auto yaws() const { return this->column(Layout::columns.RotationsYawsColumn); }
+    auto rolls() const { return this->column(Layout::columns.RotationsRollsColumn); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(pitches());
@@ -527,23 +495,11 @@ struct LaserEntitiesView_rotationsImpl : ioj::soa_storage_detail::CompactViewOpe
     }
     auto resolve() const -> std::
         conditional_t<Const, ::ioj::Rotators3fResolvedConstView, ::ioj::Rotators3fResolvedView> {
-        return {(make_column_view(Layout::columns.RotationsPitchesColumn).data()),
-                (make_column_view(Layout::columns.RotationsYawsColumn).data()),
-                (make_column_view(Layout::columns.RotationsRollsColumn).data()),
-                count_};
+        return {(this->column(Layout::columns.RotationsPitchesColumn).data()),
+                (this->column(Layout::columns.RotationsYawsColumn).data()),
+                (this->column(Layout::columns.RotationsRollsColumn).data()),
+                this->count_};
     }
-  private:
-    template <typename T>
-    auto make_column_view(ioj::native_soa::ColumnLayout<T> const& layout) const {
-        return ioj::soa_storage_detail::column_view<std::span<Element<T>>>(
-            state_, offset_, count_, layout);
-    }
-    friend ioj::soa_storage_detail::CompactViewOperations;
-    template <bool>
-    friend struct LaserEntitiesView_rotationsImpl;
-    State* state_{};
-    size_type offset_{};
-    size_type count_{};
 };
 struct LaserEntitiesConstView_rotations : LaserEntitiesView_rotationsImpl<true> {
     using Base = LaserEntitiesView_rotationsImpl<true>;
@@ -580,30 +536,20 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<LaserEntitiesView_r
 struct LaserEntitiesView_velocities;
 struct LaserEntitiesConstView_velocities;
 template <bool Const>
-struct LaserEntitiesView_velocitiesImpl : ioj::soa_storage_detail::CompactViewOperations {
+struct LaserEntitiesView_velocitiesImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = Vectors3fSchema;
-    using size_type = std::uint32_t;
+    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
+    using Base::Base;
     using Layout = LaserEntitiesLayout;
-    using Storage = ioj::native_soa::StorageState;
-    using State = std::conditional_t<Const, Storage const, Storage>;
-    template <typename T>
-    using Element = std::conditional_t<Const, T const, T>;
     using View = LaserEntitiesView_velocities;
     using ConstView = LaserEntitiesConstView_velocities;
-    LaserEntitiesView_velocitiesImpl() = default;
-    LaserEntitiesView_velocitiesImpl(State* state, size_type offset, size_type count)
-        : state_{state}
-        , offset_{offset}
-        , count_{count} {}
     template <bool Enabled = Const>
     LaserEntitiesView_velocitiesImpl(LaserEntitiesView_velocitiesImpl<false> const& other)
         requires Enabled
-        : state_{other.state_}
-        , offset_{other.offset_}
-        , count_{other.count_} {}
-    auto xs() const { return make_column_view(Layout::columns.VelocitiesXsColumn); }
-    auto ys() const { return make_column_view(Layout::columns.VelocitiesYsColumn); }
-    auto zs() const { return make_column_view(Layout::columns.VelocitiesZsColumn); }
+        : Base{other} {}
+    auto xs() const { return this->column(Layout::columns.VelocitiesXsColumn); }
+    auto ys() const { return this->column(Layout::columns.VelocitiesYsColumn); }
+    auto zs() const { return this->column(Layout::columns.VelocitiesZsColumn); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(xs());
@@ -612,23 +558,11 @@ struct LaserEntitiesView_velocitiesImpl : ioj::soa_storage_detail::CompactViewOp
     }
     auto resolve() const -> std::
         conditional_t<Const, ::ioj::Vectors3fResolvedConstView, ::ioj::Vectors3fResolvedView> {
-        return {(make_column_view(Layout::columns.VelocitiesXsColumn).data()),
-                (make_column_view(Layout::columns.VelocitiesYsColumn).data()),
-                (make_column_view(Layout::columns.VelocitiesZsColumn).data()),
-                count_};
+        return {(this->column(Layout::columns.VelocitiesXsColumn).data()),
+                (this->column(Layout::columns.VelocitiesYsColumn).data()),
+                (this->column(Layout::columns.VelocitiesZsColumn).data()),
+                this->count_};
     }
-  private:
-    template <typename T>
-    auto make_column_view(ioj::native_soa::ColumnLayout<T> const& layout) const {
-        return ioj::soa_storage_detail::column_view<std::span<Element<T>>>(
-            state_, offset_, count_, layout);
-    }
-    friend ioj::soa_storage_detail::CompactViewOperations;
-    template <bool>
-    friend struct LaserEntitiesView_velocitiesImpl;
-    State* state_{};
-    size_type offset_{};
-    size_type count_{};
 };
 struct LaserEntitiesConstView_velocities : LaserEntitiesView_velocitiesImpl<true> {
     using Base = LaserEntitiesView_velocitiesImpl<true>;
@@ -660,50 +594,38 @@ struct LaserEntitiesView_velocities : LaserEntitiesView_velocitiesImpl<false> {
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<LaserEntitiesView_velocities>());
 template <bool Const>
-struct LaserEntitiesViewImpl : ioj::soa_storage_detail::CompactViewOperations {
+struct LaserEntitiesViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = LaserEntitiesSchema;
-    using size_type = std::uint32_t;
+    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
+    using Base::Base;
     using Layout = LaserEntitiesLayout;
-    using Storage = ioj::native_soa::StorageState;
-    using State = std::conditional_t<Const, Storage const, Storage>;
-    template <typename T>
-    using Element = std::conditional_t<Const, T const, T>;
     using View = LaserEntitiesView;
     using ConstView = LaserEntitiesConstView;
-    LaserEntitiesViewImpl() = default;
-    LaserEntitiesViewImpl(State* state, size_type offset, size_type count)
-        : state_{state}
-        , offset_{offset}
-        , count_{count} {}
     template <bool Enabled = Const>
     LaserEntitiesViewImpl(LaserEntitiesViewImpl<false> const& other)
         requires Enabled
-        : state_{other.state_}
-        , offset_{other.offset_}
-        , count_{other.count_} {}
-    auto active() const { return make_column_view(Layout::columns.ActiveColumn); }
-    auto sources() const { return make_column_view(Layout::columns.SourcesColumn); }
+        : Base{other} {}
+    auto active() const { return this->column(Layout::columns.ActiveColumn); }
+    auto sources() const { return this->column(Layout::columns.SourcesColumn); }
     auto view_locations() const -> std::
         conditional_t<Const, LaserEntitiesConstView_locations, LaserEntitiesView_locations> {
-        return {state_, offset_, count_};
+        return {this->state_, this->offset_, this->count_};
     }
     auto view_rotations() const -> std::
         conditional_t<Const, LaserEntitiesConstView_rotations, LaserEntitiesView_rotations> {
-        return {state_, offset_, count_};
+        return {this->state_, this->offset_, this->count_};
     }
     auto view_velocities() const -> std::
         conditional_t<Const, LaserEntitiesConstView_velocities, LaserEntitiesView_velocities> {
-        return {state_, offset_, count_};
+        return {this->state_, this->offset_, this->count_};
     }
-    auto damages() const { return make_column_view(Layout::columns.DamagesColumn); }
+    auto damages() const { return this->column(Layout::columns.DamagesColumn); }
     auto lifetimes_remaining() const {
-        return make_column_view(Layout::columns.LifetimesRemainingColumn);
+        return this->column(Layout::columns.LifetimesRemainingColumn);
     }
-    auto instigator_ids() const { return make_column_view(Layout::columns.InstigatorIdsColumn); }
-    auto initial_lifetimes() const {
-        return make_column_view(Layout::columns.InitialLifetimesColumn);
-    }
-    auto spawn_times() const { return make_column_view(Layout::columns.SpawnTimesColumn); }
+    auto instigator_ids() const { return this->column(Layout::columns.InstigatorIdsColumn); }
+    auto initial_lifetimes() const { return this->column(Layout::columns.InitialLifetimesColumn); }
+    auto spawn_times() const { return this->column(Layout::columns.SpawnTimesColumn); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(active());
@@ -728,36 +650,24 @@ struct LaserEntitiesViewImpl : ioj::soa_storage_detail::CompactViewOperations {
     }
     auto resolve() const
         -> std::conditional_t<Const, LaserEntitiesResolvedConstView, LaserEntitiesResolvedView> {
-        return {(make_column_view(Layout::columns.ActiveColumn).data()),
-                (make_column_view(Layout::columns.SourcesColumn).data()),
-                (make_column_view(Layout::columns.LocationsXsColumn).data()),
-                (make_column_view(Layout::columns.LocationsYsColumn).data()),
-                (make_column_view(Layout::columns.LocationsZsColumn).data()),
-                (make_column_view(Layout::columns.RotationsPitchesColumn).data()),
-                (make_column_view(Layout::columns.RotationsYawsColumn).data()),
-                (make_column_view(Layout::columns.RotationsRollsColumn).data()),
-                (make_column_view(Layout::columns.VelocitiesXsColumn).data()),
-                (make_column_view(Layout::columns.VelocitiesYsColumn).data()),
-                (make_column_view(Layout::columns.VelocitiesZsColumn).data()),
-                (make_column_view(Layout::columns.DamagesColumn).data()),
-                (make_column_view(Layout::columns.LifetimesRemainingColumn).data()),
-                (make_column_view(Layout::columns.InstigatorIdsColumn).data()),
-                (make_column_view(Layout::columns.InitialLifetimesColumn).data()),
-                (make_column_view(Layout::columns.SpawnTimesColumn).data()),
-                count_};
+        return {(this->column(Layout::columns.ActiveColumn).data()),
+                (this->column(Layout::columns.SourcesColumn).data()),
+                (this->column(Layout::columns.LocationsXsColumn).data()),
+                (this->column(Layout::columns.LocationsYsColumn).data()),
+                (this->column(Layout::columns.LocationsZsColumn).data()),
+                (this->column(Layout::columns.RotationsPitchesColumn).data()),
+                (this->column(Layout::columns.RotationsYawsColumn).data()),
+                (this->column(Layout::columns.RotationsRollsColumn).data()),
+                (this->column(Layout::columns.VelocitiesXsColumn).data()),
+                (this->column(Layout::columns.VelocitiesYsColumn).data()),
+                (this->column(Layout::columns.VelocitiesZsColumn).data()),
+                (this->column(Layout::columns.DamagesColumn).data()),
+                (this->column(Layout::columns.LifetimesRemainingColumn).data()),
+                (this->column(Layout::columns.InstigatorIdsColumn).data()),
+                (this->column(Layout::columns.InitialLifetimesColumn).data()),
+                (this->column(Layout::columns.SpawnTimesColumn).data()),
+                this->count_};
     }
-  private:
-    template <typename T>
-    auto make_column_view(ioj::native_soa::ColumnLayout<T> const& layout) const {
-        return ioj::soa_storage_detail::column_view<std::span<Element<T>>>(
-            state_, offset_, count_, layout);
-    }
-    friend ioj::soa_storage_detail::CompactViewOperations;
-    template <bool>
-    friend struct LaserEntitiesViewImpl;
-    State* state_{};
-    size_type offset_{};
-    size_type count_{};
 };
 struct LaserEntitiesConstView : LaserEntitiesViewImpl<true> {
     using Base = LaserEntitiesViewImpl<true>;

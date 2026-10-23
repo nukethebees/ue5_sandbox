@@ -243,34 +243,24 @@ struct TypeAnalysisTableResolvedView : TypeAnalysisTableResolvedViewImpl<false> 
     }
 };
 template <bool Const>
-struct TypeAnalysisTableViewImpl : ioj::soa_storage_detail::CompactViewOperations {
+struct TypeAnalysisTableViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = TypeAnalysisTableSchema;
-    using size_type = std::uint32_t;
+    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
+    using Base::Base;
     using Layout = TypeAnalysisTableLayout;
-    using Storage = ioj::native_soa::StorageState;
-    using State = std::conditional_t<Const, Storage const, Storage>;
-    template <typename T>
-    using Element = std::conditional_t<Const, T const, T>;
     using View = TypeAnalysisTableView;
     using ConstView = TypeAnalysisTableConstView;
-    TypeAnalysisTableViewImpl() = default;
-    TypeAnalysisTableViewImpl(State* state, size_type offset, size_type count)
-        : state_{state}
-        , offset_{offset}
-        , count_{count} {}
     template <bool Enabled = Const>
     TypeAnalysisTableViewImpl(TypeAnalysisTableViewImpl<false> const& other)
         requires Enabled
-        : state_{other.state_}
-        , offset_{other.offset_}
-        , count_{other.count_} {}
-    auto schema_type() const { return make_column_view(Layout::columns.SchemaTypeColumn); }
-    auto scenario() const { return make_column_view(Layout::columns.ScenarioColumn); }
-    auto physical() const { return make_column_view(Layout::columns.PhysicalColumn); }
-    auto enum_backing() const { return make_column_view(Layout::columns.EnumBackingColumn); }
-    auto aggregate() const { return make_column_view(Layout::columns.AggregateColumn); }
-    auto packed() const { return make_column_view(Layout::columns.PackedColumn); }
-    auto soa() const { return make_column_view(Layout::columns.SoaColumn); }
+        : Base{other} {}
+    auto schema_type() const { return this->column(Layout::columns.SchemaTypeColumn); }
+    auto scenario() const { return this->column(Layout::columns.ScenarioColumn); }
+    auto physical() const { return this->column(Layout::columns.PhysicalColumn); }
+    auto enum_backing() const { return this->column(Layout::columns.EnumBackingColumn); }
+    auto aggregate() const { return this->column(Layout::columns.AggregateColumn); }
+    auto packed() const { return this->column(Layout::columns.PackedColumn); }
+    auto soa() const { return this->column(Layout::columns.SoaColumn); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(schema_type());
@@ -283,27 +273,15 @@ struct TypeAnalysisTableViewImpl : ioj::soa_storage_detail::CompactViewOperation
     }
     auto resolve() const -> std::
         conditional_t<Const, TypeAnalysisTableResolvedConstView, TypeAnalysisTableResolvedView> {
-        return {(make_column_view(Layout::columns.SchemaTypeColumn).data()),
-                (make_column_view(Layout::columns.ScenarioColumn).data()),
-                (make_column_view(Layout::columns.PhysicalColumn).data()),
-                (make_column_view(Layout::columns.EnumBackingColumn).data()),
-                (make_column_view(Layout::columns.AggregateColumn).data()),
-                (make_column_view(Layout::columns.PackedColumn).data()),
-                (make_column_view(Layout::columns.SoaColumn).data()),
-                count_};
+        return {(this->column(Layout::columns.SchemaTypeColumn).data()),
+                (this->column(Layout::columns.ScenarioColumn).data()),
+                (this->column(Layout::columns.PhysicalColumn).data()),
+                (this->column(Layout::columns.EnumBackingColumn).data()),
+                (this->column(Layout::columns.AggregateColumn).data()),
+                (this->column(Layout::columns.PackedColumn).data()),
+                (this->column(Layout::columns.SoaColumn).data()),
+                this->count_};
     }
-  private:
-    template <typename T>
-    auto make_column_view(ioj::native_soa::ColumnLayout<T> const& layout) const {
-        return ioj::soa_storage_detail::column_view<std::span<Element<T>>>(
-            state_, offset_, count_, layout);
-    }
-    friend ioj::soa_storage_detail::CompactViewOperations;
-    template <bool>
-    friend struct TypeAnalysisTableViewImpl;
-    State* state_{};
-    size_type offset_{};
-    size_type count_{};
 };
 struct TypeAnalysisTableConstView : TypeAnalysisTableViewImpl<true> {
     using Base = TypeAnalysisTableViewImpl<true>;

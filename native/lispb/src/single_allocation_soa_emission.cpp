@@ -51,7 +51,7 @@ void describe_compact_scope(LoweringContext& context, RecordId record, Declarati
     std::vector<StringId> names;
     for (auto const name : {"StorageState",
                             "StorageOperations",
-                            "CompactViewOperations",
+                            "CompactViewBase",
                             "Operations",
                             "Layout",
                             "size_type",
@@ -966,27 +966,13 @@ auto compact_view_node(LoweringContext& context, SingleAllocationViewId view) ->
     auto& ir{context.ir};
     auto const model{view_store.model[view_store_index]};
     auto const name{context.text(view_store.view_name[view_store_index]) + "Impl"};
-    auto const default_constructor{ir.constructor(ir.strings.intern(name))};
-    ir.set_function_defaulted(default_constructor);
-    auto constructor = [&](std::initializer_list<FunctionParameterId> parameters,
-                           std::initializer_list<MemberInitializerId> initializers) {
-        auto const function{ir.constructor(ir.strings.intern(name))};
-        ir.set_function_parameters(function, parameters);
-        ir.set_function_body(function, {}, initializers);
-        return function;
-    };
-    auto const state_constructor{
-        constructor({ir.parameter("State*", "state"),
-                     ir.parameter("size_type", "offset"),
-                     ir.parameter("size_type", "count")},
-                    {ir.member_initializer(ir.strings.intern("state_"), ir.store_text("state")),
-                     ir.member_initializer(ir.strings.intern("offset_"), ir.store_text("offset")),
-                     ir.member_initializer(ir.strings.intern("count_"), ir.store_text("count"))})};
-    auto const conversion_constructor{constructor(
-        {ir.parameter(name + "<false> const&", "other")},
-        {ir.member_initializer(ir.strings.intern("state_"), ir.store_text("other.state_")),
-         ir.member_initializer(ir.strings.intern("offset_"), ir.store_text("other.offset_")),
-         ir.member_initializer(ir.strings.intern("count_"), ir.store_text("other.count_"))})};
+    auto const conversion_constructor{ir.constructor(ir.strings.intern(name))};
+    ir.set_function_parameters(conversion_constructor,
+                               {ir.parameter(name + "<false> const&", "other")});
+    ir.set_function_body(
+        conversion_constructor,
+        {},
+        {ir.member_initializer(ir.strings.intern("Base"), ir.store_text("other"))});
     ir.set_function_template(
         conversion_constructor,
         ir.template_declaration({ir.value_template_parameter(
@@ -1001,26 +987,18 @@ auto compact_view_node(LoweringContext& context, SingleAllocationViewId view) ->
                  context.text(context.declarations.soas.name[context.declarations.soas.index(
                      view_store.schema[view_store_index])]) +
                  "Schema")),
-         ir.using_declaration(ir.strings.intern("size_type"), ir.types.intern("std::uint32_t")),
+         ir.using_declaration(ir.strings.intern("Base"),
+                              ir.types.intern("ioj::soa_storage_detail::CompactViewBase<Const>")),
+         ir.raw("using Base::Base;"),
          ir.using_declaration(
              ir.strings.intern("Layout"),
              ir.types.intern(context.text(model_store.layout_name[model_store.index(model)]))),
-         ir.using_declaration(ir.strings.intern("Storage"),
-                              ir.types.intern(std::string{"ioj::native_soa::StorageState"})),
-         ir.using_declaration(ir.strings.intern("State"),
-                              ir.types.intern("std::conditional_t<Const, Storage const, Storage>")),
-         ir.using_declaration(
-             ir.strings.intern("Element"),
-             ir.types.intern("std::conditional_t<Const, T const, T>"),
-             ir.template_declaration({ir.type_template_parameter(ir.strings.intern("T"))})),
          ir.using_declaration(
              ir.strings.intern("View"),
              ir.types.intern(context.text(view_store.view_name[view_store_index]))),
          ir.using_declaration(
              ir.strings.intern("ConstView"),
              ir.types.intern(context.text(view_store.const_view_name[view_store_index]))),
-         ir.declaration(default_constructor),
-         inline_function(context, state_constructor),
          inline_function(context, conversion_constructor)}));
     auto accessor = [&](std::string_view function_name,
                         std::initializer_list<NodeId> body,
@@ -1045,8 +1023,9 @@ auto compact_view_node(LoweringContext& context, SingleAllocationViewId view) ->
             SoaMemberKind::nested) {
             auto const nested{nested_view(context, view, member)};
             accessor("view_" + member_name,
-                     {ir.return_stmt(ir.init_list(
-                         {ir.named("state_"), ir.named("offset_"), ir.named("count_")}))},
+                     {ir.return_stmt(ir.init_list({ir.named("this->state_"),
+                                                   ir.named("this->offset_"),
+                                                   ir.named("this->count_")}))},
                      ir.types.intern(
                          "std::conditional_t<Const, " +
                          context.text(view_store.const_view_name[view_store.index(nested)]) + ", " +
@@ -1056,7 +1035,7 @@ auto compact_view_node(LoweringContext& context, SingleAllocationViewId view) ->
             accessor(
                 member_name,
                 {ir.return_stmt(ir.call(
-                    ir.named("make_column_view",
+                    ir.named("this->column",
                              ir.types.dependencies(column_store.type[column_store.index(column)])),
                     {ir.named("Layout::columns." +
                               context.text(
@@ -1096,53 +1075,20 @@ auto compact_view_node(LoweringContext& context, SingleAllocationViewId view) ->
         std::vector<Expr> pointers;
         for (auto const column : view_columns(context, view)) {
             pointers.push_back(ir.raw_expr(
-                "make_column_view(Layout::columns." +
+                "this->column(Layout::columns." +
                 context.text(column_store.layout_identifier[column_store.index(column)]) +
                 ").data()"));
         }
-        pointers.push_back(ir.named("count_"));
+        pointers.push_back(ir.named("this->count_"));
         auto const resolved{"std::conditional_t<Const, " + resolved_view_name(context, view, true) +
                             ", " + resolved_view_name(context, view, false) + ">"};
         accessor("resolve", {ir.return_stmt(ir.init_list(pointers))}, ir.types.intern(resolved));
     }
-    auto const make_column_view{make_function(
-        ir,
-        "make_column_view",
-        "auto",
-        {ir.parameter(std::string{"ioj::native_soa::ColumnLayout<T> const&"}, "layout")},
-        {ir.return_stmt(ir.call(
-            ir.named("ioj::soa_storage_detail::column_view<" + std::string{"std::span"} +
-                     "<Element<T>>>"),
-            {ir.named("state_"), ir.named("offset_"), ir.named("count_"), ir.named("layout")}))},
-        FunctionReceiver::const_)};
-    ir.set_function_template(
-        make_column_view,
-        ir.template_declaration({ir.type_template_parameter(ir.strings.intern("T"))}));
-    children.new_lines(1)
-        .add(ir.access(Access::private_))
-        .new_lines(1)
-        .add(compact_function(context, make_column_view))
-        .new_lines(1)
-        .add(ir.friend_type(ir.types.intern("ioj::soa_storage_detail::CompactViewOperations")))
-        .new_lines(1)
-        .add(ir.friend_declaration(
-            ir.strings.intern(name),
-            RecordKind::struct_,
-            ir.template_declaration({ir.value_template_parameter(ir.types.intern("bool"), {})})))
-        .new_lines(1)
-        .append(adjacent(
-            context,
-            {ir.instance_member(
-                 ir.types.intern("State*"), ir.strings.intern("state_"), ir.init_list({})),
-             ir.instance_member(
-                 ir.types.intern("size_type"), ir.strings.intern("offset_"), ir.init_list({})),
-             ir.instance_member(
-                 ir.types.intern("size_type"), ir.strings.intern("count_"), ir.init_list({}))}));
     auto const created_record{
         ir.record(ir.strings.intern(name), children.build(), RecordKind::struct_)};
     describe_compact_scope(context, created_record, view_store.schema[view_store_index]);
     ir.set_record_bases(created_record,
-                        {ir.types.intern("ioj::soa_storage_detail::CompactViewOperations")});
+                        {ir.types.intern("ioj::soa_storage_detail::CompactViewBase<Const>")});
     ir.set_record_template(created_record,
                            ir.template_declaration({ir.value_template_parameter(
                                ir.types.intern("bool"), ir.strings.intern("Const"))}));

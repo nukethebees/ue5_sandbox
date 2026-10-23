@@ -173,31 +173,21 @@ struct FighterOrderQueueResolvedView : FighterOrderQueueResolvedViewImpl<false> 
     }
 };
 template <bool Const>
-struct FighterOrderQueueViewImpl : ioj::soa_storage_detail::CompactViewOperations {
+struct FighterOrderQueueViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = FighterOrderQueueSchema;
-    using size_type = std::uint32_t;
+    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
+    using Base::Base;
     using Layout = FighterOrderQueueLayout;
-    using Storage = ioj::native_soa::StorageState;
-    using State = std::conditional_t<Const, Storage const, Storage>;
-    template <typename T>
-    using Element = std::conditional_t<Const, T const, T>;
     using View = FighterOrderQueueView;
     using ConstView = FighterOrderQueueConstView;
-    FighterOrderQueueViewImpl() = default;
-    FighterOrderQueueViewImpl(State* state, size_type offset, size_type count)
-        : state_{state}
-        , offset_{offset}
-        , count_{count} {}
     template <bool Enabled = Const>
     FighterOrderQueueViewImpl(FighterOrderQueueViewImpl<false> const& other)
         requires Enabled
-        : state_{other.state_}
-        , offset_{other.offset_}
-        , count_{other.count_} {}
-    auto entity_ids() const { return make_column_view(Layout::columns.EntityIdsColumn); }
-    auto orders() const { return make_column_view(Layout::columns.OrdersColumn); }
-    auto tasks() const { return make_column_view(Layout::columns.TasksColumn); }
-    auto targets() const { return make_column_view(Layout::columns.TargetsColumn); }
+        : Base{other} {}
+    auto entity_ids() const { return this->column(Layout::columns.EntityIdsColumn); }
+    auto orders() const { return this->column(Layout::columns.OrdersColumn); }
+    auto tasks() const { return this->column(Layout::columns.TasksColumn); }
+    auto targets() const { return this->column(Layout::columns.TargetsColumn); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(entity_ids());
@@ -207,24 +197,12 @@ struct FighterOrderQueueViewImpl : ioj::soa_storage_detail::CompactViewOperation
     }
     auto resolve() const -> std::
         conditional_t<Const, FighterOrderQueueResolvedConstView, FighterOrderQueueResolvedView> {
-        return {(make_column_view(Layout::columns.EntityIdsColumn).data()),
-                (make_column_view(Layout::columns.OrdersColumn).data()),
-                (make_column_view(Layout::columns.TasksColumn).data()),
-                (make_column_view(Layout::columns.TargetsColumn).data()),
-                count_};
+        return {(this->column(Layout::columns.EntityIdsColumn).data()),
+                (this->column(Layout::columns.OrdersColumn).data()),
+                (this->column(Layout::columns.TasksColumn).data()),
+                (this->column(Layout::columns.TargetsColumn).data()),
+                this->count_};
     }
-  private:
-    template <typename T>
-    auto make_column_view(ioj::native_soa::ColumnLayout<T> const& layout) const {
-        return ioj::soa_storage_detail::column_view<std::span<Element<T>>>(
-            state_, offset_, count_, layout);
-    }
-    friend ioj::soa_storage_detail::CompactViewOperations;
-    template <bool>
-    friend struct FighterOrderQueueViewImpl;
-    State* state_{};
-    size_type offset_{};
-    size_type count_{};
 };
 struct FighterOrderQueueConstView : FighterOrderQueueViewImpl<true> {
     using Base = FighterOrderQueueViewImpl<true>;

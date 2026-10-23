@@ -560,75 +560,65 @@ struct PackedFieldTableResolvedView : PackedFieldTableResolvedViewImpl<false> {
     }
 };
 template <bool Const>
-struct PackedFieldTableViewImpl : ioj::soa_storage_detail::CompactViewOperations {
+struct PackedFieldTableViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = PackedFieldTableSchema;
-    using size_type = std::uint32_t;
+    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
+    using Base::Base;
     using Layout = PackedFieldTableLayout;
-    using Storage = ioj::native_soa::StorageState;
-    using State = std::conditional_t<Const, Storage const, Storage>;
-    template <typename T>
-    using Element = std::conditional_t<Const, T const, T>;
     using View = PackedFieldTableView;
     using ConstView = PackedFieldTableConstView;
-    PackedFieldTableViewImpl() = default;
-    PackedFieldTableViewImpl(State* state, size_type offset, size_type count)
-        : state_{state}
-        , offset_{offset}
-        , count_{count} {}
     template <bool Enabled = Const>
     PackedFieldTableViewImpl(PackedFieldTableViewImpl<false> const& other)
         requires Enabled
-        : state_{other.state_}
-        , offset_{other.offset_}
-        , count_{other.count_} {}
-    auto parent() const { return make_column_view(Layout::columns.ParentColumn); }
-    auto segment() const { return make_column_view(Layout::columns.SegmentColumn); }
-    auto name() const { return make_column_view(Layout::columns.NameColumn); }
-    auto semantic_type() const { return make_column_view(Layout::columns.SemanticTypeColumn); }
-    auto logical_type() const { return make_column_view(Layout::columns.LogicalTypeColumn); }
-    auto kind() const { return make_column_view(Layout::columns.KindColumn); }
-    auto reserved() const { return make_column_view(Layout::columns.ReservedColumn); }
-    auto schema_bit_width() const { return make_column_view(Layout::columns.SchemaBitWidthColumn); }
+        : Base{other} {}
+    auto parent() const { return this->column(Layout::columns.ParentColumn); }
+    auto segment() const { return this->column(Layout::columns.SegmentColumn); }
+    auto name() const { return this->column(Layout::columns.NameColumn); }
+    auto semantic_type() const { return this->column(Layout::columns.SemanticTypeColumn); }
+    auto logical_type() const { return this->column(Layout::columns.LogicalTypeColumn); }
+    auto kind() const { return this->column(Layout::columns.KindColumn); }
+    auto reserved() const { return this->column(Layout::columns.ReservedColumn); }
+    auto schema_bit_width() const { return this->column(Layout::columns.SchemaBitWidthColumn); }
     auto schema_bit_width_auto() const {
-        return make_column_view(Layout::columns.SchemaBitWidthAutoColumn);
+        return this->column(Layout::columns.SchemaBitWidthAutoColumn);
     }
-    auto bit_width() const { return make_column_view(Layout::columns.BitWidthColumn); }
-    auto overridden() const { return make_column_view(Layout::columns.OverriddenColumn); }
+    auto bit_width() const { return this->column(Layout::columns.BitWidthColumn); }
+    auto overridden() const { return this->column(Layout::columns.OverriddenColumn); }
     auto least_significant_bit() const {
-        return make_column_view(Layout::columns.LeastSignificantBitColumn);
+        return this->column(Layout::columns.LeastSignificantBitColumn);
     }
     auto most_significant_bit() const {
-        return make_column_view(Layout::columns.MostSignificantBitColumn);
+        return this->column(Layout::columns.MostSignificantBitColumn);
     }
     auto maximum_unsigned_value() const {
-        return make_column_view(Layout::columns.MaximumUnsignedValueColumn);
+        return this->column(Layout::columns.MaximumUnsignedValueColumn);
     }
     auto minimum_signed_value() const {
-        return make_column_view(Layout::columns.MinimumSignedValueColumn);
+        return this->column(Layout::columns.MinimumSignedValueColumn);
     }
     auto maximum_signed_value() const {
-        return make_column_view(Layout::columns.MaximumSignedValueColumn);
+        return this->column(Layout::columns.MaximumSignedValueColumn);
     }
     auto minimum_semantic_value() const {
-        return make_column_view(Layout::columns.MinimumSemanticValueColumn);
+        return this->column(Layout::columns.MinimumSemanticValueColumn);
     }
     auto maximum_semantic_value() const {
-        return make_column_view(Layout::columns.MaximumSemanticValueColumn);
+        return this->column(Layout::columns.MaximumSemanticValueColumn);
     }
     auto semantic_value_count() const {
-        return make_column_view(Layout::columns.SemanticValueCountColumn);
+        return this->column(Layout::columns.SemanticValueCountColumn);
     }
     auto sentinel_code_count() const {
-        return make_column_view(Layout::columns.SentinelCodeCountColumn);
+        return this->column(Layout::columns.SentinelCodeCountColumn);
     }
     auto required_code_count() const {
-        return make_column_view(Layout::columns.RequiredCodeCountColumn);
+        return this->column(Layout::columns.RequiredCodeCountColumn);
     }
     auto minimum_required_bits() const {
-        return make_column_view(Layout::columns.MinimumRequiredBitsColumn);
+        return this->column(Layout::columns.MinimumRequiredBitsColumn);
     }
-    auto unused_codes() const { return make_column_view(Layout::columns.UnusedCodesColumn); }
-    auto codes() const { return make_column_view(Layout::columns.CodesColumn); }
+    auto unused_codes() const { return this->column(Layout::columns.UnusedCodesColumn); }
+    auto codes() const { return this->column(Layout::columns.CodesColumn); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(parent());
@@ -658,44 +648,32 @@ struct PackedFieldTableViewImpl : ioj::soa_storage_detail::CompactViewOperations
     }
     auto resolve() const -> std::
         conditional_t<Const, PackedFieldTableResolvedConstView, PackedFieldTableResolvedView> {
-        return {(make_column_view(Layout::columns.ParentColumn).data()),
-                (make_column_view(Layout::columns.SegmentColumn).data()),
-                (make_column_view(Layout::columns.NameColumn).data()),
-                (make_column_view(Layout::columns.SemanticTypeColumn).data()),
-                (make_column_view(Layout::columns.LogicalTypeColumn).data()),
-                (make_column_view(Layout::columns.KindColumn).data()),
-                (make_column_view(Layout::columns.ReservedColumn).data()),
-                (make_column_view(Layout::columns.SchemaBitWidthColumn).data()),
-                (make_column_view(Layout::columns.SchemaBitWidthAutoColumn).data()),
-                (make_column_view(Layout::columns.BitWidthColumn).data()),
-                (make_column_view(Layout::columns.OverriddenColumn).data()),
-                (make_column_view(Layout::columns.LeastSignificantBitColumn).data()),
-                (make_column_view(Layout::columns.MostSignificantBitColumn).data()),
-                (make_column_view(Layout::columns.MaximumUnsignedValueColumn).data()),
-                (make_column_view(Layout::columns.MinimumSignedValueColumn).data()),
-                (make_column_view(Layout::columns.MaximumSignedValueColumn).data()),
-                (make_column_view(Layout::columns.MinimumSemanticValueColumn).data()),
-                (make_column_view(Layout::columns.MaximumSemanticValueColumn).data()),
-                (make_column_view(Layout::columns.SemanticValueCountColumn).data()),
-                (make_column_view(Layout::columns.SentinelCodeCountColumn).data()),
-                (make_column_view(Layout::columns.RequiredCodeCountColumn).data()),
-                (make_column_view(Layout::columns.MinimumRequiredBitsColumn).data()),
-                (make_column_view(Layout::columns.UnusedCodesColumn).data()),
-                (make_column_view(Layout::columns.CodesColumn).data()),
-                count_};
+        return {(this->column(Layout::columns.ParentColumn).data()),
+                (this->column(Layout::columns.SegmentColumn).data()),
+                (this->column(Layout::columns.NameColumn).data()),
+                (this->column(Layout::columns.SemanticTypeColumn).data()),
+                (this->column(Layout::columns.LogicalTypeColumn).data()),
+                (this->column(Layout::columns.KindColumn).data()),
+                (this->column(Layout::columns.ReservedColumn).data()),
+                (this->column(Layout::columns.SchemaBitWidthColumn).data()),
+                (this->column(Layout::columns.SchemaBitWidthAutoColumn).data()),
+                (this->column(Layout::columns.BitWidthColumn).data()),
+                (this->column(Layout::columns.OverriddenColumn).data()),
+                (this->column(Layout::columns.LeastSignificantBitColumn).data()),
+                (this->column(Layout::columns.MostSignificantBitColumn).data()),
+                (this->column(Layout::columns.MaximumUnsignedValueColumn).data()),
+                (this->column(Layout::columns.MinimumSignedValueColumn).data()),
+                (this->column(Layout::columns.MaximumSignedValueColumn).data()),
+                (this->column(Layout::columns.MinimumSemanticValueColumn).data()),
+                (this->column(Layout::columns.MaximumSemanticValueColumn).data()),
+                (this->column(Layout::columns.SemanticValueCountColumn).data()),
+                (this->column(Layout::columns.SentinelCodeCountColumn).data()),
+                (this->column(Layout::columns.RequiredCodeCountColumn).data()),
+                (this->column(Layout::columns.MinimumRequiredBitsColumn).data()),
+                (this->column(Layout::columns.UnusedCodesColumn).data()),
+                (this->column(Layout::columns.CodesColumn).data()),
+                this->count_};
     }
-  private:
-    template <typename T>
-    auto make_column_view(ioj::native_soa::ColumnLayout<T> const& layout) const {
-        return ioj::soa_storage_detail::column_view<std::span<Element<T>>>(
-            state_, offset_, count_, layout);
-    }
-    friend ioj::soa_storage_detail::CompactViewOperations;
-    template <bool>
-    friend struct PackedFieldTableViewImpl;
-    State* state_{};
-    size_type offset_{};
-    size_type count_{};
 };
 struct PackedFieldTableConstView : PackedFieldTableViewImpl<true> {
     using Base = PackedFieldTableViewImpl<true>;

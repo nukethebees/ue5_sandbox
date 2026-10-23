@@ -251,37 +251,27 @@ struct DistributionEntryTableResolvedView : DistributionEntryTableResolvedViewIm
     }
 };
 template <bool Const>
-struct DistributionEntryTableViewImpl : ioj::soa_storage_detail::CompactViewOperations {
+struct DistributionEntryTableViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = DistributionEntryTableSchema;
-    using size_type = std::uint32_t;
+    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
+    using Base::Base;
     using Layout = DistributionEntryTableLayout;
-    using Storage = ioj::native_soa::StorageState;
-    using State = std::conditional_t<Const, Storage const, Storage>;
-    template <typename T>
-    using Element = std::conditional_t<Const, T const, T>;
     using View = DistributionEntryTableView;
     using ConstView = DistributionEntryTableConstView;
-    DistributionEntryTableViewImpl() = default;
-    DistributionEntryTableViewImpl(State* state, size_type offset, size_type count)
-        : state_{state}
-        , offset_{offset}
-        , count_{count} {}
     template <bool Enabled = Const>
     DistributionEntryTableViewImpl(DistributionEntryTableViewImpl<false> const& other)
         requires Enabled
-        : state_{other.state_}
-        , offset_{other.offset_}
-        , count_{other.count_} {}
-    auto component() const { return make_column_view(Layout::columns.ComponentColumn); }
-    auto value() const { return make_column_view(Layout::columns.ValueColumn); }
-    auto weight() const { return make_column_view(Layout::columns.WeightColumn); }
-    auto extent_bytes() const { return make_column_view(Layout::columns.ExtentBytesColumn); }
-    auto slack_bytes() const { return make_column_view(Layout::columns.SlackBytesColumn); }
+        : Base{other} {}
+    auto component() const { return this->column(Layout::columns.ComponentColumn); }
+    auto value() const { return this->column(Layout::columns.ValueColumn); }
+    auto weight() const { return this->column(Layout::columns.WeightColumn); }
+    auto extent_bytes() const { return this->column(Layout::columns.ExtentBytesColumn); }
+    auto slack_bytes() const { return this->column(Layout::columns.SlackBytesColumn); }
     auto weighted_extent_bytes() const {
-        return make_column_view(Layout::columns.WeightedExtentBytesColumn);
+        return this->column(Layout::columns.WeightedExtentBytesColumn);
     }
     auto weighted_slack_bytes() const {
-        return make_column_view(Layout::columns.WeightedSlackBytesColumn);
+        return this->column(Layout::columns.WeightedSlackBytesColumn);
     }
     template <typename Func>
     void each_column(Func&& func) const {
@@ -296,27 +286,15 @@ struct DistributionEntryTableViewImpl : ioj::soa_storage_detail::CompactViewOper
     auto resolve() const -> std::conditional_t<Const,
                                                DistributionEntryTableResolvedConstView,
                                                DistributionEntryTableResolvedView> {
-        return {(make_column_view(Layout::columns.ComponentColumn).data()),
-                (make_column_view(Layout::columns.ValueColumn).data()),
-                (make_column_view(Layout::columns.WeightColumn).data()),
-                (make_column_view(Layout::columns.ExtentBytesColumn).data()),
-                (make_column_view(Layout::columns.SlackBytesColumn).data()),
-                (make_column_view(Layout::columns.WeightedExtentBytesColumn).data()),
-                (make_column_view(Layout::columns.WeightedSlackBytesColumn).data()),
-                count_};
+        return {(this->column(Layout::columns.ComponentColumn).data()),
+                (this->column(Layout::columns.ValueColumn).data()),
+                (this->column(Layout::columns.WeightColumn).data()),
+                (this->column(Layout::columns.ExtentBytesColumn).data()),
+                (this->column(Layout::columns.SlackBytesColumn).data()),
+                (this->column(Layout::columns.WeightedExtentBytesColumn).data()),
+                (this->column(Layout::columns.WeightedSlackBytesColumn).data()),
+                this->count_};
     }
-  private:
-    template <typename T>
-    auto make_column_view(ioj::native_soa::ColumnLayout<T> const& layout) const {
-        return ioj::soa_storage_detail::column_view<std::span<Element<T>>>(
-            state_, offset_, count_, layout);
-    }
-    friend ioj::soa_storage_detail::CompactViewOperations;
-    template <bool>
-    friend struct DistributionEntryTableViewImpl;
-    State* state_{};
-    size_type offset_{};
-    size_type count_{};
 };
 struct DistributionEntryTableConstView : DistributionEntryTableViewImpl<true> {
     using Base = DistributionEntryTableViewImpl<true>;

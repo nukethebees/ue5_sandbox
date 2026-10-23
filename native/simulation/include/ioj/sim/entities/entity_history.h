@@ -256,35 +256,25 @@ struct EntityHistoryResolvedView : EntityHistoryResolvedViewImpl<false> {
     }
 };
 template <bool Const>
-struct EntityHistoryViewImpl : ioj::soa_storage_detail::CompactViewOperations {
+struct EntityHistoryViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = EntityHistorySchema;
-    using size_type = std::uint32_t;
+    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
+    using Base::Base;
     using Layout = EntityHistoryLayout;
-    using Storage = ioj::native_soa::StorageState;
-    using State = std::conditional_t<Const, Storage const, Storage>;
-    template <typename T>
-    using Element = std::conditional_t<Const, T const, T>;
     using View = EntityHistoryView;
     using ConstView = EntityHistoryConstView;
-    EntityHistoryViewImpl() = default;
-    EntityHistoryViewImpl(State* state, size_type offset, size_type count)
-        : state_{state}
-        , offset_{offset}
-        , count_{count} {}
     template <bool Enabled = Const>
     EntityHistoryViewImpl(EntityHistoryViewImpl<false> const& other)
         requires Enabled
-        : state_{other.state_}
-        , offset_{other.offset_}
-        , count_{other.count_} {}
-    auto entity_ids() const { return make_column_view(Layout::columns.EntityIdsColumn); }
-    auto entity_types() const { return make_column_view(Layout::columns.EntityTypesColumn); }
-    auto teams() const { return make_column_view(Layout::columns.TeamsColumn); }
-    auto kills() const { return make_column_view(Layout::columns.KillsColumn); }
-    auto killed_by() const { return make_column_view(Layout::columns.KilledByColumn); }
-    auto life_state() const { return make_column_view(Layout::columns.LifeStateColumn); }
-    auto death_ticks() const { return make_column_view(Layout::columns.DeathTicksColumn); }
-    auto death_locations() const { return make_column_view(Layout::columns.DeathLocationsColumn); }
+        : Base{other} {}
+    auto entity_ids() const { return this->column(Layout::columns.EntityIdsColumn); }
+    auto entity_types() const { return this->column(Layout::columns.EntityTypesColumn); }
+    auto teams() const { return this->column(Layout::columns.TeamsColumn); }
+    auto kills() const { return this->column(Layout::columns.KillsColumn); }
+    auto killed_by() const { return this->column(Layout::columns.KilledByColumn); }
+    auto life_state() const { return this->column(Layout::columns.LifeStateColumn); }
+    auto death_ticks() const { return this->column(Layout::columns.DeathTicksColumn); }
+    auto death_locations() const { return this->column(Layout::columns.DeathLocationsColumn); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(entity_ids());
@@ -298,28 +288,16 @@ struct EntityHistoryViewImpl : ioj::soa_storage_detail::CompactViewOperations {
     }
     auto resolve() const
         -> std::conditional_t<Const, EntityHistoryResolvedConstView, EntityHistoryResolvedView> {
-        return {(make_column_view(Layout::columns.EntityIdsColumn).data()),
-                (make_column_view(Layout::columns.EntityTypesColumn).data()),
-                (make_column_view(Layout::columns.TeamsColumn).data()),
-                (make_column_view(Layout::columns.KillsColumn).data()),
-                (make_column_view(Layout::columns.KilledByColumn).data()),
-                (make_column_view(Layout::columns.LifeStateColumn).data()),
-                (make_column_view(Layout::columns.DeathTicksColumn).data()),
-                (make_column_view(Layout::columns.DeathLocationsColumn).data()),
-                count_};
+        return {(this->column(Layout::columns.EntityIdsColumn).data()),
+                (this->column(Layout::columns.EntityTypesColumn).data()),
+                (this->column(Layout::columns.TeamsColumn).data()),
+                (this->column(Layout::columns.KillsColumn).data()),
+                (this->column(Layout::columns.KilledByColumn).data()),
+                (this->column(Layout::columns.LifeStateColumn).data()),
+                (this->column(Layout::columns.DeathTicksColumn).data()),
+                (this->column(Layout::columns.DeathLocationsColumn).data()),
+                this->count_};
     }
-  private:
-    template <typename T>
-    auto make_column_view(ioj::native_soa::ColumnLayout<T> const& layout) const {
-        return ioj::soa_storage_detail::column_view<std::span<Element<T>>>(
-            state_, offset_, count_, layout);
-    }
-    friend ioj::soa_storage_detail::CompactViewOperations;
-    template <bool>
-    friend struct EntityHistoryViewImpl;
-    State* state_{};
-    size_type offset_{};
-    size_type count_{};
 };
 struct EntityHistoryConstView : EntityHistoryViewImpl<true> {
     using Base = EntityHistoryViewImpl<true>;

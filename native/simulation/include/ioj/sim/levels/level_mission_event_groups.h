@@ -159,30 +159,20 @@ struct LevelMissionEventGroupsResolvedView : LevelMissionEventGroupsResolvedView
     }
 };
 template <bool Const>
-struct LevelMissionEventGroupsViewImpl : ioj::soa_storage_detail::CompactViewOperations {
+struct LevelMissionEventGroupsViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = LevelMissionEventGroupsSchema;
-    using size_type = std::uint32_t;
+    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
+    using Base::Base;
     using Layout = LevelMissionEventGroupsLayout;
-    using Storage = ioj::native_soa::StorageState;
-    using State = std::conditional_t<Const, Storage const, Storage>;
-    template <typename T>
-    using Element = std::conditional_t<Const, T const, T>;
     using View = LevelMissionEventGroupsView;
     using ConstView = LevelMissionEventGroupsConstView;
-    LevelMissionEventGroupsViewImpl() = default;
-    LevelMissionEventGroupsViewImpl(State* state, size_type offset, size_type count)
-        : state_{state}
-        , offset_{offset}
-        , count_{count} {}
     template <bool Enabled = Const>
     LevelMissionEventGroupsViewImpl(LevelMissionEventGroupsViewImpl<false> const& other)
         requires Enabled
-        : state_{other.state_}
-        , offset_{other.offset_}
-        , count_{other.count_} {}
-    auto types() const { return make_column_view(Layout::columns.TypesColumn); }
-    auto offsets() const { return make_column_view(Layout::columns.OffsetsColumn); }
-    auto counts() const { return make_column_view(Layout::columns.CountsColumn); }
+        : Base{other} {}
+    auto types() const { return this->column(Layout::columns.TypesColumn); }
+    auto offsets() const { return this->column(Layout::columns.OffsetsColumn); }
+    auto counts() const { return this->column(Layout::columns.CountsColumn); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(types());
@@ -192,23 +182,11 @@ struct LevelMissionEventGroupsViewImpl : ioj::soa_storage_detail::CompactViewOpe
     auto resolve() const -> std::conditional_t<Const,
                                                LevelMissionEventGroupsResolvedConstView,
                                                LevelMissionEventGroupsResolvedView> {
-        return {(make_column_view(Layout::columns.TypesColumn).data()),
-                (make_column_view(Layout::columns.OffsetsColumn).data()),
-                (make_column_view(Layout::columns.CountsColumn).data()),
-                count_};
+        return {(this->column(Layout::columns.TypesColumn).data()),
+                (this->column(Layout::columns.OffsetsColumn).data()),
+                (this->column(Layout::columns.CountsColumn).data()),
+                this->count_};
     }
-  private:
-    template <typename T>
-    auto make_column_view(ioj::native_soa::ColumnLayout<T> const& layout) const {
-        return ioj::soa_storage_detail::column_view<std::span<Element<T>>>(
-            state_, offset_, count_, layout);
-    }
-    friend ioj::soa_storage_detail::CompactViewOperations;
-    template <bool>
-    friend struct LevelMissionEventGroupsViewImpl;
-    State* state_{};
-    size_type offset_{};
-    size_type count_{};
 };
 struct LevelMissionEventGroupsConstView : LevelMissionEventGroupsViewImpl<true> {
     using Base = LevelMissionEventGroupsViewImpl<true>;

@@ -552,30 +552,20 @@ struct TurretEntityDataResolvedView : TurretEntityDataResolvedViewImpl<false> {
 struct TurretEntityDataView_locations;
 struct TurretEntityDataConstView_locations;
 template <bool Const>
-struct TurretEntityDataView_locationsImpl : ioj::soa_storage_detail::CompactViewOperations {
+struct TurretEntityDataView_locationsImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = Vectors3fSchema;
-    using size_type = std::uint32_t;
+    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
+    using Base::Base;
     using Layout = TurretEntityDataLayout;
-    using Storage = ioj::native_soa::StorageState;
-    using State = std::conditional_t<Const, Storage const, Storage>;
-    template <typename T>
-    using Element = std::conditional_t<Const, T const, T>;
     using View = TurretEntityDataView_locations;
     using ConstView = TurretEntityDataConstView_locations;
-    TurretEntityDataView_locationsImpl() = default;
-    TurretEntityDataView_locationsImpl(State* state, size_type offset, size_type count)
-        : state_{state}
-        , offset_{offset}
-        , count_{count} {}
     template <bool Enabled = Const>
     TurretEntityDataView_locationsImpl(TurretEntityDataView_locationsImpl<false> const& other)
         requires Enabled
-        : state_{other.state_}
-        , offset_{other.offset_}
-        , count_{other.count_} {}
-    auto xs() const { return make_column_view(Layout::columns.LocationsXsColumn); }
-    auto ys() const { return make_column_view(Layout::columns.LocationsYsColumn); }
-    auto zs() const { return make_column_view(Layout::columns.LocationsZsColumn); }
+        : Base{other} {}
+    auto xs() const { return this->column(Layout::columns.LocationsXsColumn); }
+    auto ys() const { return this->column(Layout::columns.LocationsYsColumn); }
+    auto zs() const { return this->column(Layout::columns.LocationsZsColumn); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(xs());
@@ -584,23 +574,11 @@ struct TurretEntityDataView_locationsImpl : ioj::soa_storage_detail::CompactView
     }
     auto resolve() const -> std::
         conditional_t<Const, ::ioj::Vectors3fResolvedConstView, ::ioj::Vectors3fResolvedView> {
-        return {(make_column_view(Layout::columns.LocationsXsColumn).data()),
-                (make_column_view(Layout::columns.LocationsYsColumn).data()),
-                (make_column_view(Layout::columns.LocationsZsColumn).data()),
-                count_};
+        return {(this->column(Layout::columns.LocationsXsColumn).data()),
+                (this->column(Layout::columns.LocationsYsColumn).data()),
+                (this->column(Layout::columns.LocationsZsColumn).data()),
+                this->count_};
     }
-  private:
-    template <typename T>
-    auto make_column_view(ioj::native_soa::ColumnLayout<T> const& layout) const {
-        return ioj::soa_storage_detail::column_view<std::span<Element<T>>>(
-            state_, offset_, count_, layout);
-    }
-    friend ioj::soa_storage_detail::CompactViewOperations;
-    template <bool>
-    friend struct TurretEntityDataView_locationsImpl;
-    State* state_{};
-    size_type offset_{};
-    size_type count_{};
 };
 struct TurretEntityDataConstView_locations : TurretEntityDataView_locationsImpl<true> {
     using Base = TurretEntityDataView_locationsImpl<true>;
@@ -636,31 +614,21 @@ struct TurretEntityDataView_fire_point_locations;
 struct TurretEntityDataConstView_fire_point_locations;
 template <bool Const>
 struct TurretEntityDataView_fire_point_locationsImpl
-    : ioj::soa_storage_detail::CompactViewOperations {
+    : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = Vectors3fSchema;
-    using size_type = std::uint32_t;
+    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
+    using Base::Base;
     using Layout = TurretEntityDataLayout;
-    using Storage = ioj::native_soa::StorageState;
-    using State = std::conditional_t<Const, Storage const, Storage>;
-    template <typename T>
-    using Element = std::conditional_t<Const, T const, T>;
     using View = TurretEntityDataView_fire_point_locations;
     using ConstView = TurretEntityDataConstView_fire_point_locations;
-    TurretEntityDataView_fire_point_locationsImpl() = default;
-    TurretEntityDataView_fire_point_locationsImpl(State* state, size_type offset, size_type count)
-        : state_{state}
-        , offset_{offset}
-        , count_{count} {}
     template <bool Enabled = Const>
     TurretEntityDataView_fire_point_locationsImpl(
         TurretEntityDataView_fire_point_locationsImpl<false> const& other)
         requires Enabled
-        : state_{other.state_}
-        , offset_{other.offset_}
-        , count_{other.count_} {}
-    auto xs() const { return make_column_view(Layout::columns.FirePointLocationsXsColumn); }
-    auto ys() const { return make_column_view(Layout::columns.FirePointLocationsYsColumn); }
-    auto zs() const { return make_column_view(Layout::columns.FirePointLocationsZsColumn); }
+        : Base{other} {}
+    auto xs() const { return this->column(Layout::columns.FirePointLocationsXsColumn); }
+    auto ys() const { return this->column(Layout::columns.FirePointLocationsYsColumn); }
+    auto zs() const { return this->column(Layout::columns.FirePointLocationsZsColumn); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(xs());
@@ -669,23 +637,11 @@ struct TurretEntityDataView_fire_point_locationsImpl
     }
     auto resolve() const -> std::
         conditional_t<Const, ::ioj::Vectors3fResolvedConstView, ::ioj::Vectors3fResolvedView> {
-        return {(make_column_view(Layout::columns.FirePointLocationsXsColumn).data()),
-                (make_column_view(Layout::columns.FirePointLocationsYsColumn).data()),
-                (make_column_view(Layout::columns.FirePointLocationsZsColumn).data()),
-                count_};
+        return {(this->column(Layout::columns.FirePointLocationsXsColumn).data()),
+                (this->column(Layout::columns.FirePointLocationsYsColumn).data()),
+                (this->column(Layout::columns.FirePointLocationsZsColumn).data()),
+                this->count_};
     }
-  private:
-    template <typename T>
-    auto make_column_view(ioj::native_soa::ColumnLayout<T> const& layout) const {
-        return ioj::soa_storage_detail::column_view<std::span<Element<T>>>(
-            state_, offset_, count_, layout);
-    }
-    friend ioj::soa_storage_detail::CompactViewOperations;
-    template <bool>
-    friend struct TurretEntityDataView_fire_point_locationsImpl;
-    State* state_{};
-    size_type offset_{};
-    size_type count_{};
 };
 struct TurretEntityDataConstView_fire_point_locations
     : TurretEntityDataView_fire_point_locationsImpl<true> {
@@ -723,30 +679,20 @@ static_assert(
 struct TurretEntityDataView_rotations;
 struct TurretEntityDataConstView_rotations;
 template <bool Const>
-struct TurretEntityDataView_rotationsImpl : ioj::soa_storage_detail::CompactViewOperations {
+struct TurretEntityDataView_rotationsImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = Rotators3fSchema;
-    using size_type = std::uint32_t;
+    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
+    using Base::Base;
     using Layout = TurretEntityDataLayout;
-    using Storage = ioj::native_soa::StorageState;
-    using State = std::conditional_t<Const, Storage const, Storage>;
-    template <typename T>
-    using Element = std::conditional_t<Const, T const, T>;
     using View = TurretEntityDataView_rotations;
     using ConstView = TurretEntityDataConstView_rotations;
-    TurretEntityDataView_rotationsImpl() = default;
-    TurretEntityDataView_rotationsImpl(State* state, size_type offset, size_type count)
-        : state_{state}
-        , offset_{offset}
-        , count_{count} {}
     template <bool Enabled = Const>
     TurretEntityDataView_rotationsImpl(TurretEntityDataView_rotationsImpl<false> const& other)
         requires Enabled
-        : state_{other.state_}
-        , offset_{other.offset_}
-        , count_{other.count_} {}
-    auto pitches() const { return make_column_view(Layout::columns.RotationsPitchesColumn); }
-    auto yaws() const { return make_column_view(Layout::columns.RotationsYawsColumn); }
-    auto rolls() const { return make_column_view(Layout::columns.RotationsRollsColumn); }
+        : Base{other} {}
+    auto pitches() const { return this->column(Layout::columns.RotationsPitchesColumn); }
+    auto yaws() const { return this->column(Layout::columns.RotationsYawsColumn); }
+    auto rolls() const { return this->column(Layout::columns.RotationsRollsColumn); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(pitches());
@@ -755,23 +701,11 @@ struct TurretEntityDataView_rotationsImpl : ioj::soa_storage_detail::CompactView
     }
     auto resolve() const -> std::
         conditional_t<Const, ::ioj::Rotators3fResolvedConstView, ::ioj::Rotators3fResolvedView> {
-        return {(make_column_view(Layout::columns.RotationsPitchesColumn).data()),
-                (make_column_view(Layout::columns.RotationsYawsColumn).data()),
-                (make_column_view(Layout::columns.RotationsRollsColumn).data()),
-                count_};
+        return {(this->column(Layout::columns.RotationsPitchesColumn).data()),
+                (this->column(Layout::columns.RotationsYawsColumn).data()),
+                (this->column(Layout::columns.RotationsRollsColumn).data()),
+                this->count_};
     }
-  private:
-    template <typename T>
-    auto make_column_view(ioj::native_soa::ColumnLayout<T> const& layout) const {
-        return ioj::soa_storage_detail::column_view<std::span<Element<T>>>(
-            state_, offset_, count_, layout);
-    }
-    friend ioj::soa_storage_detail::CompactViewOperations;
-    template <bool>
-    friend struct TurretEntityDataView_rotationsImpl;
-    State* state_{};
-    size_type offset_{};
-    size_type count_{};
 };
 struct TurretEntityDataConstView_rotations : TurretEntityDataView_rotationsImpl<true> {
     using Base = TurretEntityDataView_rotationsImpl<true>;
@@ -809,31 +743,21 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<TurretEntityDataVie
 struct TurretEntityDataView_target_locations;
 struct TurretEntityDataConstView_target_locations;
 template <bool Const>
-struct TurretEntityDataView_target_locationsImpl : ioj::soa_storage_detail::CompactViewOperations {
+struct TurretEntityDataView_target_locationsImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = Vectors3fSchema;
-    using size_type = std::uint32_t;
+    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
+    using Base::Base;
     using Layout = TurretEntityDataLayout;
-    using Storage = ioj::native_soa::StorageState;
-    using State = std::conditional_t<Const, Storage const, Storage>;
-    template <typename T>
-    using Element = std::conditional_t<Const, T const, T>;
     using View = TurretEntityDataView_target_locations;
     using ConstView = TurretEntityDataConstView_target_locations;
-    TurretEntityDataView_target_locationsImpl() = default;
-    TurretEntityDataView_target_locationsImpl(State* state, size_type offset, size_type count)
-        : state_{state}
-        , offset_{offset}
-        , count_{count} {}
     template <bool Enabled = Const>
     TurretEntityDataView_target_locationsImpl(
         TurretEntityDataView_target_locationsImpl<false> const& other)
         requires Enabled
-        : state_{other.state_}
-        , offset_{other.offset_}
-        , count_{other.count_} {}
-    auto xs() const { return make_column_view(Layout::columns.TargetLocationsXsColumn); }
-    auto ys() const { return make_column_view(Layout::columns.TargetLocationsYsColumn); }
-    auto zs() const { return make_column_view(Layout::columns.TargetLocationsZsColumn); }
+        : Base{other} {}
+    auto xs() const { return this->column(Layout::columns.TargetLocationsXsColumn); }
+    auto ys() const { return this->column(Layout::columns.TargetLocationsYsColumn); }
+    auto zs() const { return this->column(Layout::columns.TargetLocationsZsColumn); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(xs());
@@ -842,23 +766,11 @@ struct TurretEntityDataView_target_locationsImpl : ioj::soa_storage_detail::Comp
     }
     auto resolve() const -> std::
         conditional_t<Const, ::ioj::Vectors3fResolvedConstView, ::ioj::Vectors3fResolvedView> {
-        return {(make_column_view(Layout::columns.TargetLocationsXsColumn).data()),
-                (make_column_view(Layout::columns.TargetLocationsYsColumn).data()),
-                (make_column_view(Layout::columns.TargetLocationsZsColumn).data()),
-                count_};
+        return {(this->column(Layout::columns.TargetLocationsXsColumn).data()),
+                (this->column(Layout::columns.TargetLocationsYsColumn).data()),
+                (this->column(Layout::columns.TargetLocationsZsColumn).data()),
+                this->count_};
     }
-  private:
-    template <typename T>
-    auto make_column_view(ioj::native_soa::ColumnLayout<T> const& layout) const {
-        return ioj::soa_storage_detail::column_view<std::span<Element<T>>>(
-            state_, offset_, count_, layout);
-    }
-    friend ioj::soa_storage_detail::CompactViewOperations;
-    template <bool>
-    friend struct TurretEntityDataView_target_locationsImpl;
-    State* state_{};
-    size_type offset_{};
-    size_type count_{};
 };
 struct TurretEntityDataConstView_target_locations
     : TurretEntityDataView_target_locationsImpl<true> {
@@ -895,31 +807,22 @@ static_assert(
 struct TurretEntityDataView_target_velocities;
 struct TurretEntityDataConstView_target_velocities;
 template <bool Const>
-struct TurretEntityDataView_target_velocitiesImpl : ioj::soa_storage_detail::CompactViewOperations {
+struct TurretEntityDataView_target_velocitiesImpl
+    : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = Vectors3fSchema;
-    using size_type = std::uint32_t;
+    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
+    using Base::Base;
     using Layout = TurretEntityDataLayout;
-    using Storage = ioj::native_soa::StorageState;
-    using State = std::conditional_t<Const, Storage const, Storage>;
-    template <typename T>
-    using Element = std::conditional_t<Const, T const, T>;
     using View = TurretEntityDataView_target_velocities;
     using ConstView = TurretEntityDataConstView_target_velocities;
-    TurretEntityDataView_target_velocitiesImpl() = default;
-    TurretEntityDataView_target_velocitiesImpl(State* state, size_type offset, size_type count)
-        : state_{state}
-        , offset_{offset}
-        , count_{count} {}
     template <bool Enabled = Const>
     TurretEntityDataView_target_velocitiesImpl(
         TurretEntityDataView_target_velocitiesImpl<false> const& other)
         requires Enabled
-        : state_{other.state_}
-        , offset_{other.offset_}
-        , count_{other.count_} {}
-    auto xs() const { return make_column_view(Layout::columns.TargetVelocitiesXsColumn); }
-    auto ys() const { return make_column_view(Layout::columns.TargetVelocitiesYsColumn); }
-    auto zs() const { return make_column_view(Layout::columns.TargetVelocitiesZsColumn); }
+        : Base{other} {}
+    auto xs() const { return this->column(Layout::columns.TargetVelocitiesXsColumn); }
+    auto ys() const { return this->column(Layout::columns.TargetVelocitiesYsColumn); }
+    auto zs() const { return this->column(Layout::columns.TargetVelocitiesZsColumn); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(xs());
@@ -928,23 +831,11 @@ struct TurretEntityDataView_target_velocitiesImpl : ioj::soa_storage_detail::Com
     }
     auto resolve() const -> std::
         conditional_t<Const, ::ioj::Vectors3fResolvedConstView, ::ioj::Vectors3fResolvedView> {
-        return {(make_column_view(Layout::columns.TargetVelocitiesXsColumn).data()),
-                (make_column_view(Layout::columns.TargetVelocitiesYsColumn).data()),
-                (make_column_view(Layout::columns.TargetVelocitiesZsColumn).data()),
-                count_};
+        return {(this->column(Layout::columns.TargetVelocitiesXsColumn).data()),
+                (this->column(Layout::columns.TargetVelocitiesYsColumn).data()),
+                (this->column(Layout::columns.TargetVelocitiesZsColumn).data()),
+                this->count_};
     }
-  private:
-    template <typename T>
-    auto make_column_view(ioj::native_soa::ColumnLayout<T> const& layout) const {
-        return ioj::soa_storage_detail::column_view<std::span<Element<T>>>(
-            state_, offset_, count_, layout);
-    }
-    friend ioj::soa_storage_detail::CompactViewOperations;
-    template <bool>
-    friend struct TurretEntityDataView_target_velocitiesImpl;
-    State* state_{};
-    size_type offset_{};
-    size_type count_{};
 };
 struct TurretEntityDataConstView_target_velocities
     : TurretEntityDataView_target_velocitiesImpl<true> {
@@ -979,64 +870,54 @@ struct TurretEntityDataView_target_velocities : TurretEntityDataView_target_velo
 static_assert(
     ioj::soa_storage_detail::validate_compact_view<TurretEntityDataView_target_velocities>());
 template <bool Const>
-struct TurretEntityDataViewImpl : ioj::soa_storage_detail::CompactViewOperations {
+struct TurretEntityDataViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = TurretEntityDataSchema;
-    using size_type = std::uint32_t;
+    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
+    using Base::Base;
     using Layout = TurretEntityDataLayout;
-    using Storage = ioj::native_soa::StorageState;
-    using State = std::conditional_t<Const, Storage const, Storage>;
-    template <typename T>
-    using Element = std::conditional_t<Const, T const, T>;
     using View = TurretEntityDataView;
     using ConstView = TurretEntityDataConstView;
-    TurretEntityDataViewImpl() = default;
-    TurretEntityDataViewImpl(State* state, size_type offset, size_type count)
-        : state_{state}
-        , offset_{offset}
-        , count_{count} {}
     template <bool Enabled = Const>
     TurretEntityDataViewImpl(TurretEntityDataViewImpl<false> const& other)
         requires Enabled
-        : state_{other.state_}
-        , offset_{other.offset_}
-        , count_{other.count_} {}
-    auto entity_ids() const { return make_column_view(Layout::columns.EntityIdsColumn); }
-    auto integral_biases() const { return make_column_view(Layout::columns.IntegralBiasesColumn); }
+        : Base{other} {}
+    auto entity_ids() const { return this->column(Layout::columns.EntityIdsColumn); }
+    auto integral_biases() const { return this->column(Layout::columns.IntegralBiasesColumn); }
     auto view_locations() const -> std::
         conditional_t<Const, TurretEntityDataConstView_locations, TurretEntityDataView_locations> {
-        return {state_, offset_, count_};
+        return {this->state_, this->offset_, this->count_};
     }
     auto view_fire_point_locations() const
         -> std::conditional_t<Const,
                               TurretEntityDataConstView_fire_point_locations,
                               TurretEntityDataView_fire_point_locations> {
-        return {state_, offset_, count_};
+        return {this->state_, this->offset_, this->count_};
     }
     auto view_rotations() const -> std::
         conditional_t<Const, TurretEntityDataConstView_rotations, TurretEntityDataView_rotations> {
-        return {state_, offset_, count_};
+        return {this->state_, this->offset_, this->count_};
     }
-    auto teams() const { return make_column_view(Layout::columns.TeamsColumn); }
-    auto laser_cooldowns() const { return make_column_view(Layout::columns.LaserCooldownsColumn); }
-    auto laser_damages() const { return make_column_view(Layout::columns.LaserDamagesColumn); }
+    auto teams() const { return this->column(Layout::columns.TeamsColumn); }
+    auto laser_cooldowns() const { return this->column(Layout::columns.LaserCooldownsColumn); }
+    auto laser_damages() const { return this->column(Layout::columns.LaserDamagesColumn); }
     auto target_refresh_countdowns_periods() const {
-        return make_column_view(Layout::columns.TargetRefreshCountdownsPeriodsColumn);
+        return this->column(Layout::columns.TargetRefreshCountdownsPeriodsColumn);
     }
     auto target_refresh_countdowns_remaining_ticks() const {
-        return make_column_view(Layout::columns.TargetRefreshCountdownsRemainingTicksColumn);
+        return this->column(Layout::columns.TargetRefreshCountdownsRemainingTicksColumn);
     }
-    auto target_ids() const { return make_column_view(Layout::columns.TargetIdsColumn); }
+    auto target_ids() const { return this->column(Layout::columns.TargetIdsColumn); }
     auto view_target_locations() const
         -> std::conditional_t<Const,
                               TurretEntityDataConstView_target_locations,
                               TurretEntityDataView_target_locations> {
-        return {state_, offset_, count_};
+        return {this->state_, this->offset_, this->count_};
     }
     auto view_target_velocities() const
         -> std::conditional_t<Const,
                               TurretEntityDataConstView_target_velocities,
                               TurretEntityDataView_target_velocities> {
-        return {state_, offset_, count_};
+        return {this->state_, this->offset_, this->count_};
     }
     template <typename Func>
     void each_column(Func&& func) const {
@@ -1071,44 +952,31 @@ struct TurretEntityDataViewImpl : ioj::soa_storage_detail::CompactViewOperations
     }
     auto resolve() const -> std::
         conditional_t<Const, TurretEntityDataResolvedConstView, TurretEntityDataResolvedView> {
-        return {
-            (make_column_view(Layout::columns.EntityIdsColumn).data()),
-            (make_column_view(Layout::columns.IntegralBiasesColumn).data()),
-            (make_column_view(Layout::columns.LocationsXsColumn).data()),
-            (make_column_view(Layout::columns.LocationsYsColumn).data()),
-            (make_column_view(Layout::columns.LocationsZsColumn).data()),
-            (make_column_view(Layout::columns.FirePointLocationsXsColumn).data()),
-            (make_column_view(Layout::columns.FirePointLocationsYsColumn).data()),
-            (make_column_view(Layout::columns.FirePointLocationsZsColumn).data()),
-            (make_column_view(Layout::columns.RotationsPitchesColumn).data()),
-            (make_column_view(Layout::columns.RotationsYawsColumn).data()),
-            (make_column_view(Layout::columns.RotationsRollsColumn).data()),
-            (make_column_view(Layout::columns.TeamsColumn).data()),
-            (make_column_view(Layout::columns.LaserCooldownsColumn).data()),
-            (make_column_view(Layout::columns.LaserDamagesColumn).data()),
-            (make_column_view(Layout::columns.TargetRefreshCountdownsPeriodsColumn).data()),
-            (make_column_view(Layout::columns.TargetRefreshCountdownsRemainingTicksColumn).data()),
-            (make_column_view(Layout::columns.TargetIdsColumn).data()),
-            (make_column_view(Layout::columns.TargetLocationsXsColumn).data()),
-            (make_column_view(Layout::columns.TargetLocationsYsColumn).data()),
-            (make_column_view(Layout::columns.TargetLocationsZsColumn).data()),
-            (make_column_view(Layout::columns.TargetVelocitiesXsColumn).data()),
-            (make_column_view(Layout::columns.TargetVelocitiesYsColumn).data()),
-            (make_column_view(Layout::columns.TargetVelocitiesZsColumn).data()),
-            count_};
+        return {(this->column(Layout::columns.EntityIdsColumn).data()),
+                (this->column(Layout::columns.IntegralBiasesColumn).data()),
+                (this->column(Layout::columns.LocationsXsColumn).data()),
+                (this->column(Layout::columns.LocationsYsColumn).data()),
+                (this->column(Layout::columns.LocationsZsColumn).data()),
+                (this->column(Layout::columns.FirePointLocationsXsColumn).data()),
+                (this->column(Layout::columns.FirePointLocationsYsColumn).data()),
+                (this->column(Layout::columns.FirePointLocationsZsColumn).data()),
+                (this->column(Layout::columns.RotationsPitchesColumn).data()),
+                (this->column(Layout::columns.RotationsYawsColumn).data()),
+                (this->column(Layout::columns.RotationsRollsColumn).data()),
+                (this->column(Layout::columns.TeamsColumn).data()),
+                (this->column(Layout::columns.LaserCooldownsColumn).data()),
+                (this->column(Layout::columns.LaserDamagesColumn).data()),
+                (this->column(Layout::columns.TargetRefreshCountdownsPeriodsColumn).data()),
+                (this->column(Layout::columns.TargetRefreshCountdownsRemainingTicksColumn).data()),
+                (this->column(Layout::columns.TargetIdsColumn).data()),
+                (this->column(Layout::columns.TargetLocationsXsColumn).data()),
+                (this->column(Layout::columns.TargetLocationsYsColumn).data()),
+                (this->column(Layout::columns.TargetLocationsZsColumn).data()),
+                (this->column(Layout::columns.TargetVelocitiesXsColumn).data()),
+                (this->column(Layout::columns.TargetVelocitiesYsColumn).data()),
+                (this->column(Layout::columns.TargetVelocitiesZsColumn).data()),
+                this->count_};
     }
-  private:
-    template <typename T>
-    auto make_column_view(ioj::native_soa::ColumnLayout<T> const& layout) const {
-        return ioj::soa_storage_detail::column_view<std::span<Element<T>>>(
-            state_, offset_, count_, layout);
-    }
-    friend ioj::soa_storage_detail::CompactViewOperations;
-    template <bool>
-    friend struct TurretEntityDataViewImpl;
-    State* state_{};
-    size_type offset_{};
-    size_type count_{};
 };
 struct TurretEntityDataConstView : TurretEntityDataViewImpl<true> {
     using Base = TurretEntityDataViewImpl<true>;

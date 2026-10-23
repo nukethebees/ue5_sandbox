@@ -135,29 +135,19 @@ struct PositionsResolvedView : PositionsResolvedViewImpl<false> {
     }
 };
 template <bool Const>
-struct PositionsViewImpl : ioj::soa_storage_detail::CompactViewOperations {
+struct PositionsViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = PositionsSchema;
-    using size_type = std::uint32_t;
+    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
+    using Base::Base;
     using Layout = PositionsLayout;
-    using Storage = ioj::native_soa::StorageState;
-    using State = std::conditional_t<Const, Storage const, Storage>;
-    template <typename T>
-    using Element = std::conditional_t<Const, T const, T>;
     using View = PositionsView;
     using ConstView = PositionsConstView;
-    PositionsViewImpl() = default;
-    PositionsViewImpl(State* state, size_type offset, size_type count)
-        : state_{state}
-        , offset_{offset}
-        , count_{count} {}
     template <bool Enabled = Const>
     PositionsViewImpl(PositionsViewImpl<false> const& other)
         requires Enabled
-        : state_{other.state_}
-        , offset_{other.offset_}
-        , count_{other.count_} {}
-    auto xs() const { return make_column_view(Layout::columns.XsColumn); }
-    auto ys() const { return make_column_view(Layout::columns.YsColumn); }
+        : Base{other} {}
+    auto xs() const { return this->column(Layout::columns.XsColumn); }
+    auto ys() const { return this->column(Layout::columns.YsColumn); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(xs());
@@ -165,22 +155,10 @@ struct PositionsViewImpl : ioj::soa_storage_detail::CompactViewOperations {
     }
     auto resolve() const
         -> std::conditional_t<Const, PositionsResolvedConstView, PositionsResolvedView> {
-        return {(make_column_view(Layout::columns.XsColumn).data()),
-                (make_column_view(Layout::columns.YsColumn).data()),
-                count_};
+        return {(this->column(Layout::columns.XsColumn).data()),
+                (this->column(Layout::columns.YsColumn).data()),
+                this->count_};
     }
-  private:
-    template <typename T>
-    auto make_column_view(ioj::native_soa::ColumnLayout<T> const& layout) const {
-        return ioj::soa_storage_detail::column_view<std::span<Element<T>>>(
-            state_, offset_, count_, layout);
-    }
-    friend ioj::soa_storage_detail::CompactViewOperations;
-    template <bool>
-    friend struct PositionsViewImpl;
-    State* state_{};
-    size_type offset_{};
-    size_type count_{};
 };
 struct PositionsConstView : PositionsViewImpl<true> {
     using Base = PositionsViewImpl<true>;

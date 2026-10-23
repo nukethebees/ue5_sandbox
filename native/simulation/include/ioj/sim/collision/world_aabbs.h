@@ -201,33 +201,23 @@ struct WorldAABBsResolvedView : WorldAABBsResolvedViewImpl<false> {
     }
 };
 template <bool Const>
-struct WorldAABBsViewImpl : ioj::soa_storage_detail::CompactViewOperations {
+struct WorldAABBsViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = WorldAABBsSchema;
-    using size_type = std::uint32_t;
+    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
+    using Base::Base;
     using Layout = WorldAABBsLayout;
-    using Storage = ioj::native_soa::StorageState;
-    using State = std::conditional_t<Const, Storage const, Storage>;
-    template <typename T>
-    using Element = std::conditional_t<Const, T const, T>;
     using View = WorldAABBsView;
     using ConstView = WorldAABBsConstView;
-    WorldAABBsViewImpl() = default;
-    WorldAABBsViewImpl(State* state, size_type offset, size_type count)
-        : state_{state}
-        , offset_{offset}
-        , count_{count} {}
     template <bool Enabled = Const>
     WorldAABBsViewImpl(WorldAABBsViewImpl<false> const& other)
         requires Enabled
-        : state_{other.state_}
-        , offset_{other.offset_}
-        , count_{other.count_} {}
-    auto min_xs() const { return make_column_view(Layout::columns.MinXsColumn); }
-    auto min_ys() const { return make_column_view(Layout::columns.MinYsColumn); }
-    auto min_zs() const { return make_column_view(Layout::columns.MinZsColumn); }
-    auto max_xs() const { return make_column_view(Layout::columns.MaxXsColumn); }
-    auto max_ys() const { return make_column_view(Layout::columns.MaxYsColumn); }
-    auto max_zs() const { return make_column_view(Layout::columns.MaxZsColumn); }
+        : Base{other} {}
+    auto min_xs() const { return this->column(Layout::columns.MinXsColumn); }
+    auto min_ys() const { return this->column(Layout::columns.MinYsColumn); }
+    auto min_zs() const { return this->column(Layout::columns.MinZsColumn); }
+    auto max_xs() const { return this->column(Layout::columns.MaxXsColumn); }
+    auto max_ys() const { return this->column(Layout::columns.MaxYsColumn); }
+    auto max_zs() const { return this->column(Layout::columns.MaxZsColumn); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(min_xs());
@@ -239,26 +229,14 @@ struct WorldAABBsViewImpl : ioj::soa_storage_detail::CompactViewOperations {
     }
     auto resolve() const
         -> std::conditional_t<Const, WorldAABBsResolvedConstView, WorldAABBsResolvedView> {
-        return {(make_column_view(Layout::columns.MinXsColumn).data()),
-                (make_column_view(Layout::columns.MinYsColumn).data()),
-                (make_column_view(Layout::columns.MinZsColumn).data()),
-                (make_column_view(Layout::columns.MaxXsColumn).data()),
-                (make_column_view(Layout::columns.MaxYsColumn).data()),
-                (make_column_view(Layout::columns.MaxZsColumn).data()),
-                count_};
+        return {(this->column(Layout::columns.MinXsColumn).data()),
+                (this->column(Layout::columns.MinYsColumn).data()),
+                (this->column(Layout::columns.MinZsColumn).data()),
+                (this->column(Layout::columns.MaxXsColumn).data()),
+                (this->column(Layout::columns.MaxYsColumn).data()),
+                (this->column(Layout::columns.MaxZsColumn).data()),
+                this->count_};
     }
-  private:
-    template <typename T>
-    auto make_column_view(ioj::native_soa::ColumnLayout<T> const& layout) const {
-        return ioj::soa_storage_detail::column_view<std::span<Element<T>>>(
-            state_, offset_, count_, layout);
-    }
-    friend ioj::soa_storage_detail::CompactViewOperations;
-    template <bool>
-    friend struct WorldAABBsViewImpl;
-    State* state_{};
-    size_type offset_{};
-    size_type count_{};
 };
 struct WorldAABBsConstView : WorldAABBsViewImpl<true> {
     using Base = WorldAABBsViewImpl<true>;

@@ -255,30 +255,20 @@ struct SpinnerEntityDataResolvedView : SpinnerEntityDataResolvedViewImpl<false> 
 struct SpinnerEntityDataView_locations;
 struct SpinnerEntityDataConstView_locations;
 template <bool Const>
-struct SpinnerEntityDataView_locationsImpl : ioj::soa_storage_detail::CompactViewOperations {
+struct SpinnerEntityDataView_locationsImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = Vectors3fSchema;
-    using size_type = std::uint32_t;
+    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
+    using Base::Base;
     using Layout = SpinnerEntityDataLayout;
-    using Storage = ioj::native_soa::StorageState;
-    using State = std::conditional_t<Const, Storage const, Storage>;
-    template <typename T>
-    using Element = std::conditional_t<Const, T const, T>;
     using View = SpinnerEntityDataView_locations;
     using ConstView = SpinnerEntityDataConstView_locations;
-    SpinnerEntityDataView_locationsImpl() = default;
-    SpinnerEntityDataView_locationsImpl(State* state, size_type offset, size_type count)
-        : state_{state}
-        , offset_{offset}
-        , count_{count} {}
     template <bool Enabled = Const>
     SpinnerEntityDataView_locationsImpl(SpinnerEntityDataView_locationsImpl<false> const& other)
         requires Enabled
-        : state_{other.state_}
-        , offset_{other.offset_}
-        , count_{other.count_} {}
-    auto xs() const { return make_column_view(Layout::columns.LocationsXsColumn); }
-    auto ys() const { return make_column_view(Layout::columns.LocationsYsColumn); }
-    auto zs() const { return make_column_view(Layout::columns.LocationsZsColumn); }
+        : Base{other} {}
+    auto xs() const { return this->column(Layout::columns.LocationsXsColumn); }
+    auto ys() const { return this->column(Layout::columns.LocationsYsColumn); }
+    auto zs() const { return this->column(Layout::columns.LocationsZsColumn); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(xs());
@@ -287,23 +277,11 @@ struct SpinnerEntityDataView_locationsImpl : ioj::soa_storage_detail::CompactVie
     }
     auto resolve() const -> std::
         conditional_t<Const, ::ioj::Vectors3fResolvedConstView, ::ioj::Vectors3fResolvedView> {
-        return {(make_column_view(Layout::columns.LocationsXsColumn).data()),
-                (make_column_view(Layout::columns.LocationsYsColumn).data()),
-                (make_column_view(Layout::columns.LocationsZsColumn).data()),
-                count_};
+        return {(this->column(Layout::columns.LocationsXsColumn).data()),
+                (this->column(Layout::columns.LocationsYsColumn).data()),
+                (this->column(Layout::columns.LocationsZsColumn).data()),
+                this->count_};
     }
-  private:
-    template <typename T>
-    auto make_column_view(ioj::native_soa::ColumnLayout<T> const& layout) const {
-        return ioj::soa_storage_detail::column_view<std::span<Element<T>>>(
-            state_, offset_, count_, layout);
-    }
-    friend ioj::soa_storage_detail::CompactViewOperations;
-    template <bool>
-    friend struct SpinnerEntityDataView_locationsImpl;
-    State* state_{};
-    size_type offset_{};
-    size_type count_{};
 };
 struct SpinnerEntityDataConstView_locations : SpinnerEntityDataView_locationsImpl<true> {
     using Base = SpinnerEntityDataView_locationsImpl<true>;
@@ -336,37 +314,27 @@ struct SpinnerEntityDataView_locations : SpinnerEntityDataView_locationsImpl<fal
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<SpinnerEntityDataView_locations>());
 template <bool Const>
-struct SpinnerEntityDataViewImpl : ioj::soa_storage_detail::CompactViewOperations {
+struct SpinnerEntityDataViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = SpinnerEntityDataSchema;
-    using size_type = std::uint32_t;
+    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
+    using Base::Base;
     using Layout = SpinnerEntityDataLayout;
-    using Storage = ioj::native_soa::StorageState;
-    using State = std::conditional_t<Const, Storage const, Storage>;
-    template <typename T>
-    using Element = std::conditional_t<Const, T const, T>;
     using View = SpinnerEntityDataView;
     using ConstView = SpinnerEntityDataConstView;
-    SpinnerEntityDataViewImpl() = default;
-    SpinnerEntityDataViewImpl(State* state, size_type offset, size_type count)
-        : state_{state}
-        , offset_{offset}
-        , count_{count} {}
     template <bool Enabled = Const>
     SpinnerEntityDataViewImpl(SpinnerEntityDataViewImpl<false> const& other)
         requires Enabled
-        : state_{other.state_}
-        , offset_{other.offset_}
-        , count_{other.count_} {}
-    auto entity_ids() const { return make_column_view(Layout::columns.EntityIdsColumn); }
+        : Base{other} {}
+    auto entity_ids() const { return this->column(Layout::columns.EntityIdsColumn); }
     auto view_locations() const -> std::conditional_t<Const,
                                                       SpinnerEntityDataConstView_locations,
                                                       SpinnerEntityDataView_locations> {
-        return {state_, offset_, count_};
+        return {this->state_, this->offset_, this->count_};
     }
-    auto yaws() const { return make_column_view(Layout::columns.YawsColumn); }
-    auto laser_cooldowns() const { return make_column_view(Layout::columns.LaserCooldownsColumn); }
+    auto yaws() const { return this->column(Layout::columns.YawsColumn); }
+    auto laser_cooldowns() const { return this->column(Layout::columns.LaserCooldownsColumn); }
     auto next_fire_point_indices() const {
-        return make_column_view(Layout::columns.NextFirePointIndicesColumn);
+        return this->column(Layout::columns.NextFirePointIndicesColumn);
     }
     template <typename Func>
     void each_column(Func&& func) const {
@@ -381,27 +349,15 @@ struct SpinnerEntityDataViewImpl : ioj::soa_storage_detail::CompactViewOperation
     }
     auto resolve() const -> std::
         conditional_t<Const, SpinnerEntityDataResolvedConstView, SpinnerEntityDataResolvedView> {
-        return {(make_column_view(Layout::columns.EntityIdsColumn).data()),
-                (make_column_view(Layout::columns.LocationsXsColumn).data()),
-                (make_column_view(Layout::columns.LocationsYsColumn).data()),
-                (make_column_view(Layout::columns.LocationsZsColumn).data()),
-                (make_column_view(Layout::columns.YawsColumn).data()),
-                (make_column_view(Layout::columns.LaserCooldownsColumn).data()),
-                (make_column_view(Layout::columns.NextFirePointIndicesColumn).data()),
-                count_};
+        return {(this->column(Layout::columns.EntityIdsColumn).data()),
+                (this->column(Layout::columns.LocationsXsColumn).data()),
+                (this->column(Layout::columns.LocationsYsColumn).data()),
+                (this->column(Layout::columns.LocationsZsColumn).data()),
+                (this->column(Layout::columns.YawsColumn).data()),
+                (this->column(Layout::columns.LaserCooldownsColumn).data()),
+                (this->column(Layout::columns.NextFirePointIndicesColumn).data()),
+                this->count_};
     }
-  private:
-    template <typename T>
-    auto make_column_view(ioj::native_soa::ColumnLayout<T> const& layout) const {
-        return ioj::soa_storage_detail::column_view<std::span<Element<T>>>(
-            state_, offset_, count_, layout);
-    }
-    friend ioj::soa_storage_detail::CompactViewOperations;
-    template <bool>
-    friend struct SpinnerEntityDataViewImpl;
-    State* state_{};
-    size_type offset_{};
-    size_type count_{};
 };
 struct SpinnerEntityDataConstView : SpinnerEntityDataViewImpl<true> {
     using Base = SpinnerEntityDataViewImpl<true>;

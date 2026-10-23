@@ -165,30 +165,20 @@ struct Vectors3fResolvedView : Vectors3fResolvedViewImpl<false> {
     }
 };
 template <bool Const>
-struct Vectors3fViewImpl : ioj::soa_storage_detail::CompactViewOperations {
+struct Vectors3fViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = Vectors3fSchema;
-    using size_type = std::uint32_t;
+    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
+    using Base::Base;
     using Layout = Vectors3fLayout;
-    using Storage = ioj::native_soa::StorageState;
-    using State = std::conditional_t<Const, Storage const, Storage>;
-    template <typename T>
-    using Element = std::conditional_t<Const, T const, T>;
     using View = Vectors3fView;
     using ConstView = Vectors3fConstView;
-    Vectors3fViewImpl() = default;
-    Vectors3fViewImpl(State* state, size_type offset, size_type count)
-        : state_{state}
-        , offset_{offset}
-        , count_{count} {}
     template <bool Enabled = Const>
     Vectors3fViewImpl(Vectors3fViewImpl<false> const& other)
         requires Enabled
-        : state_{other.state_}
-        , offset_{other.offset_}
-        , count_{other.count_} {}
-    auto xs() const { return make_column_view(Layout::columns.XsColumn); }
-    auto ys() const { return make_column_view(Layout::columns.YsColumn); }
-    auto zs() const { return make_column_view(Layout::columns.ZsColumn); }
+        : Base{other} {}
+    auto xs() const { return this->column(Layout::columns.XsColumn); }
+    auto ys() const { return this->column(Layout::columns.YsColumn); }
+    auto zs() const { return this->column(Layout::columns.ZsColumn); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(xs());
@@ -197,23 +187,11 @@ struct Vectors3fViewImpl : ioj::soa_storage_detail::CompactViewOperations {
     }
     auto resolve() const
         -> std::conditional_t<Const, Vectors3fResolvedConstView, Vectors3fResolvedView> {
-        return {(make_column_view(Layout::columns.XsColumn).data()),
-                (make_column_view(Layout::columns.YsColumn).data()),
-                (make_column_view(Layout::columns.ZsColumn).data()),
-                count_};
+        return {(this->column(Layout::columns.XsColumn).data()),
+                (this->column(Layout::columns.YsColumn).data()),
+                (this->column(Layout::columns.ZsColumn).data()),
+                this->count_};
     }
-  private:
-    template <typename T>
-    auto make_column_view(ioj::native_soa::ColumnLayout<T> const& layout) const {
-        return ioj::soa_storage_detail::column_view<std::span<Element<T>>>(
-            state_, offset_, count_, layout);
-    }
-    friend ioj::soa_storage_detail::CompactViewOperations;
-    template <bool>
-    friend struct Vectors3fViewImpl;
-    State* state_{};
-    size_type offset_{};
-    size_type count_{};
 };
 struct Vectors3fConstView : Vectors3fViewImpl<true> {
     using Base = Vectors3fViewImpl<true>;

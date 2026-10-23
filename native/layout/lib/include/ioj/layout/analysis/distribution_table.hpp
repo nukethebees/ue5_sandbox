@@ -310,48 +310,34 @@ struct DistributionTableResolvedView : DistributionTableResolvedViewImpl<false> 
     }
 };
 template <bool Const>
-struct DistributionTableViewImpl : ioj::soa_storage_detail::CompactViewOperations {
+struct DistributionTableViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = DistributionTableSchema;
-    using size_type = std::uint32_t;
+    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
+    using Base::Base;
     using Layout = DistributionTableLayout;
-    using Storage = ioj::native_soa::StorageState;
-    using State = std::conditional_t<Const, Storage const, Storage>;
-    template <typename T>
-    using Element = std::conditional_t<Const, T const, T>;
     using View = DistributionTableView;
     using ConstView = DistributionTableConstView;
-    DistributionTableViewImpl() = default;
-    DistributionTableViewImpl(State* state, size_type offset, size_type count)
-        : state_{state}
-        , offset_{offset}
-        , count_{count} {}
     template <bool Enabled = Const>
     DistributionTableViewImpl(DistributionTableViewImpl<false> const& other)
         requires Enabled
-        : state_{other.state_}
-        , offset_{other.offset_}
-        , count_{other.count_} {}
-    auto analysis() const { return make_column_view(Layout::columns.AnalysisColumn); }
-    auto entries() const { return make_column_view(Layout::columns.EntriesColumn); }
-    auto element_count() const { return make_column_view(Layout::columns.ElementCountColumn); }
-    auto total_weight() const { return make_column_view(Layout::columns.TotalWeightColumn); }
-    auto total_extent_bytes() const {
-        return make_column_view(Layout::columns.TotalExtentBytesColumn);
-    }
-    auto total_slack_bytes() const {
-        return make_column_view(Layout::columns.TotalSlackBytesColumn);
-    }
+        : Base{other} {}
+    auto analysis() const { return this->column(Layout::columns.AnalysisColumn); }
+    auto entries() const { return this->column(Layout::columns.EntriesColumn); }
+    auto element_count() const { return this->column(Layout::columns.ElementCountColumn); }
+    auto total_weight() const { return this->column(Layout::columns.TotalWeightColumn); }
+    auto total_extent_bytes() const { return this->column(Layout::columns.TotalExtentBytesColumn); }
+    auto total_slack_bytes() const { return this->column(Layout::columns.TotalSlackBytesColumn); }
     auto expected_extent_bytes() const {
-        return make_column_view(Layout::columns.ExpectedExtentBytesColumn);
+        return this->column(Layout::columns.ExpectedExtentBytesColumn);
     }
     auto expected_slack_bytes() const {
-        return make_column_view(Layout::columns.ExpectedSlackBytesColumn);
+        return this->column(Layout::columns.ExpectedSlackBytesColumn);
     }
     auto expected_selected_extent_bytes() const {
-        return make_column_view(Layout::columns.ExpectedSelectedExtentBytesColumn);
+        return this->column(Layout::columns.ExpectedSelectedExtentBytesColumn);
     }
     auto expected_selected_slack_bytes() const {
-        return make_column_view(Layout::columns.ExpectedSelectedSlackBytesColumn);
+        return this->column(Layout::columns.ExpectedSelectedSlackBytesColumn);
     }
     template <typename Func>
     void each_column(Func&& func) const {
@@ -368,30 +354,18 @@ struct DistributionTableViewImpl : ioj::soa_storage_detail::CompactViewOperation
     }
     auto resolve() const -> std::
         conditional_t<Const, DistributionTableResolvedConstView, DistributionTableResolvedView> {
-        return {(make_column_view(Layout::columns.AnalysisColumn).data()),
-                (make_column_view(Layout::columns.EntriesColumn).data()),
-                (make_column_view(Layout::columns.ElementCountColumn).data()),
-                (make_column_view(Layout::columns.TotalWeightColumn).data()),
-                (make_column_view(Layout::columns.TotalExtentBytesColumn).data()),
-                (make_column_view(Layout::columns.TotalSlackBytesColumn).data()),
-                (make_column_view(Layout::columns.ExpectedExtentBytesColumn).data()),
-                (make_column_view(Layout::columns.ExpectedSlackBytesColumn).data()),
-                (make_column_view(Layout::columns.ExpectedSelectedExtentBytesColumn).data()),
-                (make_column_view(Layout::columns.ExpectedSelectedSlackBytesColumn).data()),
-                count_};
+        return {(this->column(Layout::columns.AnalysisColumn).data()),
+                (this->column(Layout::columns.EntriesColumn).data()),
+                (this->column(Layout::columns.ElementCountColumn).data()),
+                (this->column(Layout::columns.TotalWeightColumn).data()),
+                (this->column(Layout::columns.TotalExtentBytesColumn).data()),
+                (this->column(Layout::columns.TotalSlackBytesColumn).data()),
+                (this->column(Layout::columns.ExpectedExtentBytesColumn).data()),
+                (this->column(Layout::columns.ExpectedSlackBytesColumn).data()),
+                (this->column(Layout::columns.ExpectedSelectedExtentBytesColumn).data()),
+                (this->column(Layout::columns.ExpectedSelectedSlackBytesColumn).data()),
+                this->count_};
     }
-  private:
-    template <typename T>
-    auto make_column_view(ioj::native_soa::ColumnLayout<T> const& layout) const {
-        return ioj::soa_storage_detail::column_view<std::span<Element<T>>>(
-            state_, offset_, count_, layout);
-    }
-    friend ioj::soa_storage_detail::CompactViewOperations;
-    template <bool>
-    friend struct DistributionTableViewImpl;
-    State* state_{};
-    size_type offset_{};
-    size_type count_{};
 };
 struct DistributionTableConstView : DistributionTableViewImpl<true> {
     using Base = DistributionTableViewImpl<true>;

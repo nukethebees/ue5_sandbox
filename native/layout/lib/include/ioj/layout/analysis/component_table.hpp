@@ -303,39 +303,29 @@ struct ComponentTableResolvedView : ComponentTableResolvedViewImpl<false> {
     }
 };
 template <bool Const>
-struct ComponentTableViewImpl : ioj::soa_storage_detail::CompactViewOperations {
+struct ComponentTableViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = ComponentTableSchema;
-    using size_type = std::uint32_t;
+    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
+    using Base::Base;
     using Layout = ComponentTableLayout;
-    using Storage = ioj::native_soa::StorageState;
-    using State = std::conditional_t<Const, Storage const, Storage>;
-    template <typename T>
-    using Element = std::conditional_t<Const, T const, T>;
     using View = ComponentTableView;
     using ConstView = ComponentTableConstView;
-    ComponentTableViewImpl() = default;
-    ComponentTableViewImpl(State* state, size_type offset, size_type count)
-        : state_{state}
-        , offset_{offset}
-        , count_{count} {}
     template <bool Enabled = Const>
     ComponentTableViewImpl(ComponentTableViewImpl<false> const& other)
         requires Enabled
-        : state_{other.state_}
-        , offset_{other.offset_}
-        , count_{other.count_} {}
-    auto parent() const { return make_column_view(Layout::columns.ParentColumn); }
-    auto name() const { return make_column_view(Layout::columns.NameColumn); }
-    auto tag() const { return make_column_view(Layout::columns.TagColumn); }
-    auto semantic_type() const { return make_column_view(Layout::columns.SemanticTypeColumn); }
-    auto element_count() const { return make_column_view(Layout::columns.ElementCountColumn); }
-    auto element_facts() const { return make_column_view(Layout::columns.ElementFactsColumn); }
-    auto offset_bytes() const { return make_column_view(Layout::columns.OffsetBytesColumn); }
-    auto extent_bytes() const { return make_column_view(Layout::columns.ExtentBytesColumn); }
+        : Base{other} {}
+    auto parent() const { return this->column(Layout::columns.ParentColumn); }
+    auto name() const { return this->column(Layout::columns.NameColumn); }
+    auto tag() const { return this->column(Layout::columns.TagColumn); }
+    auto semantic_type() const { return this->column(Layout::columns.SemanticTypeColumn); }
+    auto element_count() const { return this->column(Layout::columns.ElementCountColumn); }
+    auto element_facts() const { return this->column(Layout::columns.ElementFactsColumn); }
+    auto offset_bytes() const { return this->column(Layout::columns.OffsetBytesColumn); }
+    auto extent_bytes() const { return this->column(Layout::columns.ExtentBytesColumn); }
     auto padding_before_bytes() const {
-        return make_column_view(Layout::columns.PaddingBeforeBytesColumn);
+        return this->column(Layout::columns.PaddingBeforeBytesColumn);
     }
-    auto slack_bytes() const { return make_column_view(Layout::columns.SlackBytesColumn); }
+    auto slack_bytes() const { return this->column(Layout::columns.SlackBytesColumn); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(parent());
@@ -351,30 +341,18 @@ struct ComponentTableViewImpl : ioj::soa_storage_detail::CompactViewOperations {
     }
     auto resolve() const
         -> std::conditional_t<Const, ComponentTableResolvedConstView, ComponentTableResolvedView> {
-        return {(make_column_view(Layout::columns.ParentColumn).data()),
-                (make_column_view(Layout::columns.NameColumn).data()),
-                (make_column_view(Layout::columns.TagColumn).data()),
-                (make_column_view(Layout::columns.SemanticTypeColumn).data()),
-                (make_column_view(Layout::columns.ElementCountColumn).data()),
-                (make_column_view(Layout::columns.ElementFactsColumn).data()),
-                (make_column_view(Layout::columns.OffsetBytesColumn).data()),
-                (make_column_view(Layout::columns.ExtentBytesColumn).data()),
-                (make_column_view(Layout::columns.PaddingBeforeBytesColumn).data()),
-                (make_column_view(Layout::columns.SlackBytesColumn).data()),
-                count_};
+        return {(this->column(Layout::columns.ParentColumn).data()),
+                (this->column(Layout::columns.NameColumn).data()),
+                (this->column(Layout::columns.TagColumn).data()),
+                (this->column(Layout::columns.SemanticTypeColumn).data()),
+                (this->column(Layout::columns.ElementCountColumn).data()),
+                (this->column(Layout::columns.ElementFactsColumn).data()),
+                (this->column(Layout::columns.OffsetBytesColumn).data()),
+                (this->column(Layout::columns.ExtentBytesColumn).data()),
+                (this->column(Layout::columns.PaddingBeforeBytesColumn).data()),
+                (this->column(Layout::columns.SlackBytesColumn).data()),
+                this->count_};
     }
-  private:
-    template <typename T>
-    auto make_column_view(ioj::native_soa::ColumnLayout<T> const& layout) const {
-        return ioj::soa_storage_detail::column_view<std::span<Element<T>>>(
-            state_, offset_, count_, layout);
-    }
-    friend ioj::soa_storage_detail::CompactViewOperations;
-    template <bool>
-    friend struct ComponentTableViewImpl;
-    State* state_{};
-    size_type offset_{};
-    size_type count_{};
 };
 struct ComponentTableConstView : ComponentTableViewImpl<true> {
     using Base = ComponentTableViewImpl<true>;

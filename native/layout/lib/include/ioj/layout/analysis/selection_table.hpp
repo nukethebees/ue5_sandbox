@@ -237,35 +237,25 @@ struct SelectionTableResolvedView : SelectionTableResolvedViewImpl<false> {
     }
 };
 template <bool Const>
-struct SelectionTableViewImpl : ioj::soa_storage_detail::CompactViewOperations {
+struct SelectionTableViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = SelectionTableSchema;
-    using size_type = std::uint32_t;
+    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
+    using Base::Base;
     using Layout = SelectionTableLayout;
-    using Storage = ioj::native_soa::StorageState;
-    using State = std::conditional_t<Const, Storage const, Storage>;
-    template <typename T>
-    using Element = std::conditional_t<Const, T const, T>;
     using View = SelectionTableView;
     using ConstView = SelectionTableConstView;
-    SelectionTableViewImpl() = default;
-    SelectionTableViewImpl(State* state, size_type offset, size_type count)
-        : state_{state}
-        , offset_{offset}
-        , count_{count} {}
     template <bool Enabled = Const>
     SelectionTableViewImpl(SelectionTableViewImpl<false> const& other)
         requires Enabled
-        : state_{other.state_}
-        , offset_{other.offset_}
-        , count_{other.count_} {}
-    auto source() const { return make_column_view(Layout::columns.SourceColumn); }
-    auto operation() const { return make_column_view(Layout::columns.OperationColumn); }
-    auto bytes() const { return make_column_view(Layout::columns.BytesColumn); }
-    auto bits() const { return make_column_view(Layout::columns.BitsColumn); }
-    auto cache() const { return make_column_view(Layout::columns.CacheColumn); }
-    auto pages() const { return make_column_view(Layout::columns.PagesColumn); }
+        : Base{other} {}
+    auto source() const { return this->column(Layout::columns.SourceColumn); }
+    auto operation() const { return this->column(Layout::columns.OperationColumn); }
+    auto bytes() const { return this->column(Layout::columns.BytesColumn); }
+    auto bits() const { return this->column(Layout::columns.BitsColumn); }
+    auto cache() const { return this->column(Layout::columns.CacheColumn); }
+    auto pages() const { return this->column(Layout::columns.PagesColumn); }
     auto capacity_slack_bytes() const {
-        return make_column_view(Layout::columns.CapacitySlackBytesColumn);
+        return this->column(Layout::columns.CapacitySlackBytesColumn);
     }
     template <typename Func>
     void each_column(Func&& func) const {
@@ -279,27 +269,15 @@ struct SelectionTableViewImpl : ioj::soa_storage_detail::CompactViewOperations {
     }
     auto resolve() const
         -> std::conditional_t<Const, SelectionTableResolvedConstView, SelectionTableResolvedView> {
-        return {(make_column_view(Layout::columns.SourceColumn).data()),
-                (make_column_view(Layout::columns.OperationColumn).data()),
-                (make_column_view(Layout::columns.BytesColumn).data()),
-                (make_column_view(Layout::columns.BitsColumn).data()),
-                (make_column_view(Layout::columns.CacheColumn).data()),
-                (make_column_view(Layout::columns.PagesColumn).data()),
-                (make_column_view(Layout::columns.CapacitySlackBytesColumn).data()),
-                count_};
+        return {(this->column(Layout::columns.SourceColumn).data()),
+                (this->column(Layout::columns.OperationColumn).data()),
+                (this->column(Layout::columns.BytesColumn).data()),
+                (this->column(Layout::columns.BitsColumn).data()),
+                (this->column(Layout::columns.CacheColumn).data()),
+                (this->column(Layout::columns.PagesColumn).data()),
+                (this->column(Layout::columns.CapacitySlackBytesColumn).data()),
+                this->count_};
     }
-  private:
-    template <typename T>
-    auto make_column_view(ioj::native_soa::ColumnLayout<T> const& layout) const {
-        return ioj::soa_storage_detail::column_view<std::span<Element<T>>>(
-            state_, offset_, count_, layout);
-    }
-    friend ioj::soa_storage_detail::CompactViewOperations;
-    template <bool>
-    friend struct SelectionTableViewImpl;
-    State* state_{};
-    size_type offset_{};
-    size_type count_{};
 };
 struct SelectionTableConstView : SelectionTableViewImpl<true> {
     using Base = SelectionTableViewImpl<true>;

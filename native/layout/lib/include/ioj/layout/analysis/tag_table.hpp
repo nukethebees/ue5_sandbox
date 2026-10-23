@@ -175,31 +175,21 @@ struct TagTableResolvedView : TagTableResolvedViewImpl<false> {
     }
 };
 template <bool Const>
-struct TagTableViewImpl : ioj::soa_storage_detail::CompactViewOperations {
+struct TagTableViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = TagTableSchema;
-    using size_type = std::uint32_t;
+    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
+    using Base::Base;
     using Layout = TagTableLayout;
-    using Storage = ioj::native_soa::StorageState;
-    using State = std::conditional_t<Const, Storage const, Storage>;
-    template <typename T>
-    using Element = std::conditional_t<Const, T const, T>;
     using View = TagTableView;
     using ConstView = TagTableConstView;
-    TagTableViewImpl() = default;
-    TagTableViewImpl(State* state, size_type offset, size_type count)
-        : state_{state}
-        , offset_{offset}
-        , count_{count} {}
     template <bool Enabled = Const>
     TagTableViewImpl(TagTableViewImpl<false> const& other)
         requires Enabled
-        : state_{other.state_}
-        , offset_{other.offset_}
-        , count_{other.count_} {}
-    auto name() const { return make_column_view(Layout::columns.NameColumn); }
-    auto mapped() const { return make_column_view(Layout::columns.MappedColumn); }
-    auto sentinel() const { return make_column_view(Layout::columns.SentinelColumn); }
-    auto count_sentinel() const { return make_column_view(Layout::columns.CountSentinelColumn); }
+        : Base{other} {}
+    auto name() const { return this->column(Layout::columns.NameColumn); }
+    auto mapped() const { return this->column(Layout::columns.MappedColumn); }
+    auto sentinel() const { return this->column(Layout::columns.SentinelColumn); }
+    auto count_sentinel() const { return this->column(Layout::columns.CountSentinelColumn); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(name());
@@ -209,24 +199,12 @@ struct TagTableViewImpl : ioj::soa_storage_detail::CompactViewOperations {
     }
     auto resolve() const
         -> std::conditional_t<Const, TagTableResolvedConstView, TagTableResolvedView> {
-        return {(make_column_view(Layout::columns.NameColumn).data()),
-                (make_column_view(Layout::columns.MappedColumn).data()),
-                (make_column_view(Layout::columns.SentinelColumn).data()),
-                (make_column_view(Layout::columns.CountSentinelColumn).data()),
-                count_};
+        return {(this->column(Layout::columns.NameColumn).data()),
+                (this->column(Layout::columns.MappedColumn).data()),
+                (this->column(Layout::columns.SentinelColumn).data()),
+                (this->column(Layout::columns.CountSentinelColumn).data()),
+                this->count_};
     }
-  private:
-    template <typename T>
-    auto make_column_view(ioj::native_soa::ColumnLayout<T> const& layout) const {
-        return ioj::soa_storage_detail::column_view<std::span<Element<T>>>(
-            state_, offset_, count_, layout);
-    }
-    friend ioj::soa_storage_detail::CompactViewOperations;
-    template <bool>
-    friend struct TagTableViewImpl;
-    State* state_{};
-    size_type offset_{};
-    size_type count_{};
 };
 struct TagTableConstView : TagTableViewImpl<true> {
     using Base = TagTableViewImpl<true>;

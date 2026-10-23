@@ -285,30 +285,20 @@ struct FighterSpawnQueueResolvedView : FighterSpawnQueueResolvedViewImpl<false> 
 struct FighterSpawnQueueView_locations;
 struct FighterSpawnQueueConstView_locations;
 template <bool Const>
-struct FighterSpawnQueueView_locationsImpl : ioj::soa_storage_detail::CompactViewOperations {
+struct FighterSpawnQueueView_locationsImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = Vectors3fSchema;
-    using size_type = std::uint32_t;
+    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
+    using Base::Base;
     using Layout = FighterSpawnQueueLayout;
-    using Storage = ioj::native_soa::StorageState;
-    using State = std::conditional_t<Const, Storage const, Storage>;
-    template <typename T>
-    using Element = std::conditional_t<Const, T const, T>;
     using View = FighterSpawnQueueView_locations;
     using ConstView = FighterSpawnQueueConstView_locations;
-    FighterSpawnQueueView_locationsImpl() = default;
-    FighterSpawnQueueView_locationsImpl(State* state, size_type offset, size_type count)
-        : state_{state}
-        , offset_{offset}
-        , count_{count} {}
     template <bool Enabled = Const>
     FighterSpawnQueueView_locationsImpl(FighterSpawnQueueView_locationsImpl<false> const& other)
         requires Enabled
-        : state_{other.state_}
-        , offset_{other.offset_}
-        , count_{other.count_} {}
-    auto xs() const { return make_column_view(Layout::columns.LocationsXsColumn); }
-    auto ys() const { return make_column_view(Layout::columns.LocationsYsColumn); }
-    auto zs() const { return make_column_view(Layout::columns.LocationsZsColumn); }
+        : Base{other} {}
+    auto xs() const { return this->column(Layout::columns.LocationsXsColumn); }
+    auto ys() const { return this->column(Layout::columns.LocationsYsColumn); }
+    auto zs() const { return this->column(Layout::columns.LocationsZsColumn); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(xs());
@@ -317,23 +307,11 @@ struct FighterSpawnQueueView_locationsImpl : ioj::soa_storage_detail::CompactVie
     }
     auto resolve() const -> std::
         conditional_t<Const, ::ioj::Vectors3fResolvedConstView, ::ioj::Vectors3fResolvedView> {
-        return {(make_column_view(Layout::columns.LocationsXsColumn).data()),
-                (make_column_view(Layout::columns.LocationsYsColumn).data()),
-                (make_column_view(Layout::columns.LocationsZsColumn).data()),
-                count_};
+        return {(this->column(Layout::columns.LocationsXsColumn).data()),
+                (this->column(Layout::columns.LocationsYsColumn).data()),
+                (this->column(Layout::columns.LocationsZsColumn).data()),
+                this->count_};
     }
-  private:
-    template <typename T>
-    auto make_column_view(ioj::native_soa::ColumnLayout<T> const& layout) const {
-        return ioj::soa_storage_detail::column_view<std::span<Element<T>>>(
-            state_, offset_, count_, layout);
-    }
-    friend ioj::soa_storage_detail::CompactViewOperations;
-    template <bool>
-    friend struct FighterSpawnQueueView_locationsImpl;
-    State* state_{};
-    size_type offset_{};
-    size_type count_{};
 };
 struct FighterSpawnQueueConstView_locations : FighterSpawnQueueView_locationsImpl<true> {
     using Base = FighterSpawnQueueView_locationsImpl<true>;
@@ -368,30 +346,20 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<FighterSpawnQueueVi
 struct FighterSpawnQueueView_rotations;
 struct FighterSpawnQueueConstView_rotations;
 template <bool Const>
-struct FighterSpawnQueueView_rotationsImpl : ioj::soa_storage_detail::CompactViewOperations {
+struct FighterSpawnQueueView_rotationsImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = Rotators3fSchema;
-    using size_type = std::uint32_t;
+    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
+    using Base::Base;
     using Layout = FighterSpawnQueueLayout;
-    using Storage = ioj::native_soa::StorageState;
-    using State = std::conditional_t<Const, Storage const, Storage>;
-    template <typename T>
-    using Element = std::conditional_t<Const, T const, T>;
     using View = FighterSpawnQueueView_rotations;
     using ConstView = FighterSpawnQueueConstView_rotations;
-    FighterSpawnQueueView_rotationsImpl() = default;
-    FighterSpawnQueueView_rotationsImpl(State* state, size_type offset, size_type count)
-        : state_{state}
-        , offset_{offset}
-        , count_{count} {}
     template <bool Enabled = Const>
     FighterSpawnQueueView_rotationsImpl(FighterSpawnQueueView_rotationsImpl<false> const& other)
         requires Enabled
-        : state_{other.state_}
-        , offset_{other.offset_}
-        , count_{other.count_} {}
-    auto pitches() const { return make_column_view(Layout::columns.RotationsPitchesColumn); }
-    auto yaws() const { return make_column_view(Layout::columns.RotationsYawsColumn); }
-    auto rolls() const { return make_column_view(Layout::columns.RotationsRollsColumn); }
+        : Base{other} {}
+    auto pitches() const { return this->column(Layout::columns.RotationsPitchesColumn); }
+    auto yaws() const { return this->column(Layout::columns.RotationsYawsColumn); }
+    auto rolls() const { return this->column(Layout::columns.RotationsRollsColumn); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(pitches());
@@ -400,23 +368,11 @@ struct FighterSpawnQueueView_rotationsImpl : ioj::soa_storage_detail::CompactVie
     }
     auto resolve() const -> std::
         conditional_t<Const, ::ioj::Rotators3fResolvedConstView, ::ioj::Rotators3fResolvedView> {
-        return {(make_column_view(Layout::columns.RotationsPitchesColumn).data()),
-                (make_column_view(Layout::columns.RotationsYawsColumn).data()),
-                (make_column_view(Layout::columns.RotationsRollsColumn).data()),
-                count_};
+        return {(this->column(Layout::columns.RotationsPitchesColumn).data()),
+                (this->column(Layout::columns.RotationsYawsColumn).data()),
+                (this->column(Layout::columns.RotationsRollsColumn).data()),
+                this->count_};
     }
-  private:
-    template <typename T>
-    auto make_column_view(ioj::native_soa::ColumnLayout<T> const& layout) const {
-        return ioj::soa_storage_detail::column_view<std::span<Element<T>>>(
-            state_, offset_, count_, layout);
-    }
-    friend ioj::soa_storage_detail::CompactViewOperations;
-    template <bool>
-    friend struct FighterSpawnQueueView_rotationsImpl;
-    State* state_{};
-    size_type offset_{};
-    size_type count_{};
 };
 struct FighterSpawnQueueConstView_rotations : FighterSpawnQueueView_rotationsImpl<true> {
     using Base = FighterSpawnQueueView_rotationsImpl<true>;
@@ -452,40 +408,30 @@ struct FighterSpawnQueueView_rotations : FighterSpawnQueueView_rotationsImpl<fal
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<FighterSpawnQueueView_rotations>());
 template <bool Const>
-struct FighterSpawnQueueViewImpl : ioj::soa_storage_detail::CompactViewOperations {
+struct FighterSpawnQueueViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = FighterSpawnQueueSchema;
-    using size_type = std::uint32_t;
+    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
+    using Base::Base;
     using Layout = FighterSpawnQueueLayout;
-    using Storage = ioj::native_soa::StorageState;
-    using State = std::conditional_t<Const, Storage const, Storage>;
-    template <typename T>
-    using Element = std::conditional_t<Const, T const, T>;
     using View = FighterSpawnQueueView;
     using ConstView = FighterSpawnQueueConstView;
-    FighterSpawnQueueViewImpl() = default;
-    FighterSpawnQueueViewImpl(State* state, size_type offset, size_type count)
-        : state_{state}
-        , offset_{offset}
-        , count_{count} {}
     template <bool Enabled = Const>
     FighterSpawnQueueViewImpl(FighterSpawnQueueViewImpl<false> const& other)
         requires Enabled
-        : state_{other.state_}
-        , offset_{other.offset_}
-        , count_{other.count_} {}
+        : Base{other} {}
     auto view_locations() const -> std::conditional_t<Const,
                                                       FighterSpawnQueueConstView_locations,
                                                       FighterSpawnQueueView_locations> {
-        return {state_, offset_, count_};
+        return {this->state_, this->offset_, this->count_};
     }
     auto view_rotations() const -> std::conditional_t<Const,
                                                       FighterSpawnQueueConstView_rotations,
                                                       FighterSpawnQueueView_rotations> {
-        return {state_, offset_, count_};
+        return {this->state_, this->offset_, this->count_};
     }
-    auto teams() const { return make_column_view(Layout::columns.TeamsColumn); }
-    auto parents() const { return make_column_view(Layout::columns.ParentsColumn); }
-    auto targets() const { return make_column_view(Layout::columns.TargetsColumn); }
+    auto teams() const { return this->column(Layout::columns.TeamsColumn); }
+    auto parents() const { return this->column(Layout::columns.ParentsColumn); }
+    auto targets() const { return this->column(Layout::columns.TargetsColumn); }
     template <typename Func>
     void each_column(Func&& func) const {
         auto const& locations_view{view_locations()};
@@ -502,29 +448,17 @@ struct FighterSpawnQueueViewImpl : ioj::soa_storage_detail::CompactViewOperation
     }
     auto resolve() const -> std::
         conditional_t<Const, FighterSpawnQueueResolvedConstView, FighterSpawnQueueResolvedView> {
-        return {(make_column_view(Layout::columns.LocationsXsColumn).data()),
-                (make_column_view(Layout::columns.LocationsYsColumn).data()),
-                (make_column_view(Layout::columns.LocationsZsColumn).data()),
-                (make_column_view(Layout::columns.RotationsPitchesColumn).data()),
-                (make_column_view(Layout::columns.RotationsYawsColumn).data()),
-                (make_column_view(Layout::columns.RotationsRollsColumn).data()),
-                (make_column_view(Layout::columns.TeamsColumn).data()),
-                (make_column_view(Layout::columns.ParentsColumn).data()),
-                (make_column_view(Layout::columns.TargetsColumn).data()),
-                count_};
+        return {(this->column(Layout::columns.LocationsXsColumn).data()),
+                (this->column(Layout::columns.LocationsYsColumn).data()),
+                (this->column(Layout::columns.LocationsZsColumn).data()),
+                (this->column(Layout::columns.RotationsPitchesColumn).data()),
+                (this->column(Layout::columns.RotationsYawsColumn).data()),
+                (this->column(Layout::columns.RotationsRollsColumn).data()),
+                (this->column(Layout::columns.TeamsColumn).data()),
+                (this->column(Layout::columns.ParentsColumn).data()),
+                (this->column(Layout::columns.TargetsColumn).data()),
+                this->count_};
     }
-  private:
-    template <typename T>
-    auto make_column_view(ioj::native_soa::ColumnLayout<T> const& layout) const {
-        return ioj::soa_storage_detail::column_view<std::span<Element<T>>>(
-            state_, offset_, count_, layout);
-    }
-    friend ioj::soa_storage_detail::CompactViewOperations;
-    template <bool>
-    friend struct FighterSpawnQueueViewImpl;
-    State* state_{};
-    size_type offset_{};
-    size_type count_{};
 };
 struct FighterSpawnQueueConstView : FighterSpawnQueueViewImpl<true> {
     using Base = FighterSpawnQueueViewImpl<true>;

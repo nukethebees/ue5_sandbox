@@ -239,31 +239,21 @@ struct LevelSpinnerSpawnEventsResolvedView : LevelSpinnerSpawnEventsResolvedView
 struct LevelSpinnerSpawnEventsView_locations;
 struct LevelSpinnerSpawnEventsConstView_locations;
 template <bool Const>
-struct LevelSpinnerSpawnEventsView_locationsImpl : ioj::soa_storage_detail::CompactViewOperations {
+struct LevelSpinnerSpawnEventsView_locationsImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = Vectors3fSchema;
-    using size_type = std::uint32_t;
+    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
+    using Base::Base;
     using Layout = LevelSpinnerSpawnEventsLayout;
-    using Storage = ioj::native_soa::StorageState;
-    using State = std::conditional_t<Const, Storage const, Storage>;
-    template <typename T>
-    using Element = std::conditional_t<Const, T const, T>;
     using View = LevelSpinnerSpawnEventsView_locations;
     using ConstView = LevelSpinnerSpawnEventsConstView_locations;
-    LevelSpinnerSpawnEventsView_locationsImpl() = default;
-    LevelSpinnerSpawnEventsView_locationsImpl(State* state, size_type offset, size_type count)
-        : state_{state}
-        , offset_{offset}
-        , count_{count} {}
     template <bool Enabled = Const>
     LevelSpinnerSpawnEventsView_locationsImpl(
         LevelSpinnerSpawnEventsView_locationsImpl<false> const& other)
         requires Enabled
-        : state_{other.state_}
-        , offset_{other.offset_}
-        , count_{other.count_} {}
-    auto xs() const { return make_column_view(Layout::columns.LocationsXsColumn); }
-    auto ys() const { return make_column_view(Layout::columns.LocationsYsColumn); }
-    auto zs() const { return make_column_view(Layout::columns.LocationsZsColumn); }
+        : Base{other} {}
+    auto xs() const { return this->column(Layout::columns.LocationsXsColumn); }
+    auto ys() const { return this->column(Layout::columns.LocationsYsColumn); }
+    auto zs() const { return this->column(Layout::columns.LocationsZsColumn); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(xs());
@@ -272,23 +262,11 @@ struct LevelSpinnerSpawnEventsView_locationsImpl : ioj::soa_storage_detail::Comp
     }
     auto resolve() const -> std::
         conditional_t<Const, ::ioj::Vectors3fResolvedConstView, ::ioj::Vectors3fResolvedView> {
-        return {(make_column_view(Layout::columns.LocationsXsColumn).data()),
-                (make_column_view(Layout::columns.LocationsYsColumn).data()),
-                (make_column_view(Layout::columns.LocationsZsColumn).data()),
-                count_};
+        return {(this->column(Layout::columns.LocationsXsColumn).data()),
+                (this->column(Layout::columns.LocationsYsColumn).data()),
+                (this->column(Layout::columns.LocationsZsColumn).data()),
+                this->count_};
     }
-  private:
-    template <typename T>
-    auto make_column_view(ioj::native_soa::ColumnLayout<T> const& layout) const {
-        return ioj::soa_storage_detail::column_view<std::span<Element<T>>>(
-            state_, offset_, count_, layout);
-    }
-    friend ioj::soa_storage_detail::CompactViewOperations;
-    template <bool>
-    friend struct LevelSpinnerSpawnEventsView_locationsImpl;
-    State* state_{};
-    size_type offset_{};
-    size_type count_{};
 };
 struct LevelSpinnerSpawnEventsConstView_locations
     : LevelSpinnerSpawnEventsView_locationsImpl<true> {
@@ -323,36 +301,26 @@ struct LevelSpinnerSpawnEventsView_locations : LevelSpinnerSpawnEventsView_locat
 static_assert(
     ioj::soa_storage_detail::validate_compact_view<LevelSpinnerSpawnEventsView_locations>());
 template <bool Const>
-struct LevelSpinnerSpawnEventsViewImpl : ioj::soa_storage_detail::CompactViewOperations {
+struct LevelSpinnerSpawnEventsViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = LevelSpinnerSpawnEventsSchema;
-    using size_type = std::uint32_t;
+    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
+    using Base::Base;
     using Layout = LevelSpinnerSpawnEventsLayout;
-    using Storage = ioj::native_soa::StorageState;
-    using State = std::conditional_t<Const, Storage const, Storage>;
-    template <typename T>
-    using Element = std::conditional_t<Const, T const, T>;
     using View = LevelSpinnerSpawnEventsView;
     using ConstView = LevelSpinnerSpawnEventsConstView;
-    LevelSpinnerSpawnEventsViewImpl() = default;
-    LevelSpinnerSpawnEventsViewImpl(State* state, size_type offset, size_type count)
-        : state_{state}
-        , offset_{offset}
-        , count_{count} {}
     template <bool Enabled = Const>
     LevelSpinnerSpawnEventsViewImpl(LevelSpinnerSpawnEventsViewImpl<false> const& other)
         requires Enabled
-        : state_{other.state_}
-        , offset_{other.offset_}
-        , count_{other.count_} {}
-    auto entity_indices() const { return make_column_view(Layout::columns.EntityIndicesColumn); }
+        : Base{other} {}
+    auto entity_indices() const { return this->column(Layout::columns.EntityIndicesColumn); }
     auto view_locations() const -> std::conditional_t<Const,
                                                       LevelSpinnerSpawnEventsConstView_locations,
                                                       LevelSpinnerSpawnEventsView_locations> {
-        return {state_, offset_, count_};
+        return {this->state_, this->offset_, this->count_};
     }
-    auto yaws() const { return make_column_view(Layout::columns.YawsColumn); }
+    auto yaws() const { return this->column(Layout::columns.YawsColumn); }
     auto initial_fire_point_indices() const {
-        return make_column_view(Layout::columns.InitialFirePointIndicesColumn);
+        return this->column(Layout::columns.InitialFirePointIndicesColumn);
     }
     template <typename Func>
     void each_column(Func&& func) const {
@@ -367,26 +335,14 @@ struct LevelSpinnerSpawnEventsViewImpl : ioj::soa_storage_detail::CompactViewOpe
     auto resolve() const -> std::conditional_t<Const,
                                                LevelSpinnerSpawnEventsResolvedConstView,
                                                LevelSpinnerSpawnEventsResolvedView> {
-        return {(make_column_view(Layout::columns.EntityIndicesColumn).data()),
-                (make_column_view(Layout::columns.LocationsXsColumn).data()),
-                (make_column_view(Layout::columns.LocationsYsColumn).data()),
-                (make_column_view(Layout::columns.LocationsZsColumn).data()),
-                (make_column_view(Layout::columns.YawsColumn).data()),
-                (make_column_view(Layout::columns.InitialFirePointIndicesColumn).data()),
-                count_};
+        return {(this->column(Layout::columns.EntityIndicesColumn).data()),
+                (this->column(Layout::columns.LocationsXsColumn).data()),
+                (this->column(Layout::columns.LocationsYsColumn).data()),
+                (this->column(Layout::columns.LocationsZsColumn).data()),
+                (this->column(Layout::columns.YawsColumn).data()),
+                (this->column(Layout::columns.InitialFirePointIndicesColumn).data()),
+                this->count_};
     }
-  private:
-    template <typename T>
-    auto make_column_view(ioj::native_soa::ColumnLayout<T> const& layout) const {
-        return ioj::soa_storage_detail::column_view<std::span<Element<T>>>(
-            state_, offset_, count_, layout);
-    }
-    friend ioj::soa_storage_detail::CompactViewOperations;
-    template <bool>
-    friend struct LevelSpinnerSpawnEventsViewImpl;
-    State* state_{};
-    size_type offset_{};
-    size_type count_{};
 };
 struct LevelSpinnerSpawnEventsConstView : LevelSpinnerSpawnEventsViewImpl<true> {
     using Base = LevelSpinnerSpawnEventsViewImpl<true>;

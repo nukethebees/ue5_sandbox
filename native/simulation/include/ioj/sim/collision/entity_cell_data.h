@@ -327,40 +327,30 @@ struct EntityCellDataResolvedView : EntityCellDataResolvedViewImpl<false> {
     }
 };
 template <bool Const>
-struct EntityCellDataViewImpl : ioj::soa_storage_detail::CompactViewOperations {
+struct EntityCellDataViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = EntityCellDataSchema;
-    using size_type = std::uint32_t;
+    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
+    using Base::Base;
     using Layout = EntityCellDataLayout;
-    using Storage = ioj::native_soa::StorageState;
-    using State = std::conditional_t<Const, Storage const, Storage>;
-    template <typename T>
-    using Element = std::conditional_t<Const, T const, T>;
     using View = EntityCellDataView;
     using ConstView = EntityCellDataConstView;
-    EntityCellDataViewImpl() = default;
-    EntityCellDataViewImpl(State* state, size_type offset, size_type count)
-        : state_{state}
-        , offset_{offset}
-        , count_{count} {}
     template <bool Enabled = Const>
     EntityCellDataViewImpl(EntityCellDataViewImpl<false> const& other)
         requires Enabled
-        : state_{other.state_}
-        , offset_{other.offset_}
-        , count_{other.count_} {}
-    auto min_point_xs() const { return make_column_view(Layout::columns.MinPointXsColumn); }
-    auto min_point_ys() const { return make_column_view(Layout::columns.MinPointYsColumn); }
-    auto min_point_zs() const { return make_column_view(Layout::columns.MinPointZsColumn); }
-    auto max_point_xs() const { return make_column_view(Layout::columns.MaxPointXsColumn); }
-    auto max_point_ys() const { return make_column_view(Layout::columns.MaxPointYsColumn); }
-    auto max_point_zs() const { return make_column_view(Layout::columns.MaxPointZsColumn); }
-    auto min_cell_xs() const { return make_column_view(Layout::columns.MinCellXsColumn); }
-    auto min_cell_ys() const { return make_column_view(Layout::columns.MinCellYsColumn); }
-    auto min_cell_zs() const { return make_column_view(Layout::columns.MinCellZsColumn); }
-    auto max_cell_xs() const { return make_column_view(Layout::columns.MaxCellXsColumn); }
-    auto max_cell_ys() const { return make_column_view(Layout::columns.MaxCellYsColumn); }
-    auto max_cell_zs() const { return make_column_view(Layout::columns.MaxCellZsColumn); }
-    auto entity_ids() const { return make_column_view(Layout::columns.EntityIdsColumn); }
+        : Base{other} {}
+    auto min_point_xs() const { return this->column(Layout::columns.MinPointXsColumn); }
+    auto min_point_ys() const { return this->column(Layout::columns.MinPointYsColumn); }
+    auto min_point_zs() const { return this->column(Layout::columns.MinPointZsColumn); }
+    auto max_point_xs() const { return this->column(Layout::columns.MaxPointXsColumn); }
+    auto max_point_ys() const { return this->column(Layout::columns.MaxPointYsColumn); }
+    auto max_point_zs() const { return this->column(Layout::columns.MaxPointZsColumn); }
+    auto min_cell_xs() const { return this->column(Layout::columns.MinCellXsColumn); }
+    auto min_cell_ys() const { return this->column(Layout::columns.MinCellYsColumn); }
+    auto min_cell_zs() const { return this->column(Layout::columns.MinCellZsColumn); }
+    auto max_cell_xs() const { return this->column(Layout::columns.MaxCellXsColumn); }
+    auto max_cell_ys() const { return this->column(Layout::columns.MaxCellYsColumn); }
+    auto max_cell_zs() const { return this->column(Layout::columns.MaxCellZsColumn); }
+    auto entity_ids() const { return this->column(Layout::columns.EntityIdsColumn); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(min_point_xs());
@@ -379,33 +369,21 @@ struct EntityCellDataViewImpl : ioj::soa_storage_detail::CompactViewOperations {
     }
     auto resolve() const
         -> std::conditional_t<Const, EntityCellDataResolvedConstView, EntityCellDataResolvedView> {
-        return {(make_column_view(Layout::columns.MinPointXsColumn).data()),
-                (make_column_view(Layout::columns.MinPointYsColumn).data()),
-                (make_column_view(Layout::columns.MinPointZsColumn).data()),
-                (make_column_view(Layout::columns.MaxPointXsColumn).data()),
-                (make_column_view(Layout::columns.MaxPointYsColumn).data()),
-                (make_column_view(Layout::columns.MaxPointZsColumn).data()),
-                (make_column_view(Layout::columns.MinCellXsColumn).data()),
-                (make_column_view(Layout::columns.MinCellYsColumn).data()),
-                (make_column_view(Layout::columns.MinCellZsColumn).data()),
-                (make_column_view(Layout::columns.MaxCellXsColumn).data()),
-                (make_column_view(Layout::columns.MaxCellYsColumn).data()),
-                (make_column_view(Layout::columns.MaxCellZsColumn).data()),
-                (make_column_view(Layout::columns.EntityIdsColumn).data()),
-                count_};
+        return {(this->column(Layout::columns.MinPointXsColumn).data()),
+                (this->column(Layout::columns.MinPointYsColumn).data()),
+                (this->column(Layout::columns.MinPointZsColumn).data()),
+                (this->column(Layout::columns.MaxPointXsColumn).data()),
+                (this->column(Layout::columns.MaxPointYsColumn).data()),
+                (this->column(Layout::columns.MaxPointZsColumn).data()),
+                (this->column(Layout::columns.MinCellXsColumn).data()),
+                (this->column(Layout::columns.MinCellYsColumn).data()),
+                (this->column(Layout::columns.MinCellZsColumn).data()),
+                (this->column(Layout::columns.MaxCellXsColumn).data()),
+                (this->column(Layout::columns.MaxCellYsColumn).data()),
+                (this->column(Layout::columns.MaxCellZsColumn).data()),
+                (this->column(Layout::columns.EntityIdsColumn).data()),
+                this->count_};
     }
-  private:
-    template <typename T>
-    auto make_column_view(ioj::native_soa::ColumnLayout<T> const& layout) const {
-        return ioj::soa_storage_detail::column_view<std::span<Element<T>>>(
-            state_, offset_, count_, layout);
-    }
-    friend ioj::soa_storage_detail::CompactViewOperations;
-    template <bool>
-    friend struct EntityCellDataViewImpl;
-    State* state_{};
-    size_type offset_{};
-    size_type count_{};
 };
 struct EntityCellDataConstView : EntityCellDataViewImpl<true> {
     using Base = EntityCellDataViewImpl<true>;

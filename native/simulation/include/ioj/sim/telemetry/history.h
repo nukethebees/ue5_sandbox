@@ -377,45 +377,33 @@ struct HistoryRowsResolvedView : HistoryRowsResolvedViewImpl<false> {
     }
 };
 template <bool Const>
-struct HistoryRowsViewImpl : ioj::soa_storage_detail::CompactViewOperations {
+struct HistoryRowsViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = HistoryRowsSchema;
-    using size_type = std::uint32_t;
+    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
+    using Base::Base;
     using Layout = HistoryRowsLayout;
-    using Storage = ioj::native_soa::StorageState;
-    using State = std::conditional_t<Const, Storage const, Storage>;
-    template <typename T>
-    using Element = std::conditional_t<Const, T const, T>;
     using View = HistoryRowsView;
     using ConstView = HistoryRowsConstView;
-    HistoryRowsViewImpl() = default;
-    HistoryRowsViewImpl(State* state, size_type offset, size_type count)
-        : state_{state}
-        , offset_{offset}
-        , count_{count} {}
     template <bool Enabled = Const>
     HistoryRowsViewImpl(HistoryRowsViewImpl<false> const& other)
         requires Enabled
-        : state_{other.state_}
-        , offset_{other.offset_}
-        , count_{other.count_} {}
-    auto completed_ticks() const { return make_column_view(Layout::columns.CompletedTicksColumn); }
-    auto validity_masks() const { return make_column_view(Layout::columns.ValidityMasksColumn); }
-    auto active_entities() const { return make_column_view(Layout::columns.ActiveEntitiesColumn); }
+        : Base{other} {}
+    auto completed_ticks() const { return this->column(Layout::columns.CompletedTicksColumn); }
+    auto validity_masks() const { return this->column(Layout::columns.ValidityMasksColumn); }
+    auto active_entities() const { return this->column(Layout::columns.ActiveEntitiesColumn); }
     auto active_entities_by_type() const {
-        return make_column_view(Layout::columns.ActiveEntitiesByTypeColumn);
+        return this->column(Layout::columns.ActiveEntitiesByTypeColumn);
     }
     auto active_entities_by_team_and_type() const {
-        return make_column_view(Layout::columns.ActiveEntitiesByTeamAndTypeColumn);
+        return this->column(Layout::columns.ActiveEntitiesByTeamAndTypeColumn);
     }
-    auto spawned_entities() const {
-        return make_column_view(Layout::columns.SpawnedEntitiesColumn);
-    }
+    auto spawned_entities() const { return this->column(Layout::columns.SpawnedEntitiesColumn); }
     auto destroyed_entities() const {
-        return make_column_view(Layout::columns.DestroyedEntitiesColumn);
+        return this->column(Layout::columns.DestroyedEntitiesColumn);
     }
-    auto kills() const { return make_column_view(Layout::columns.KillsColumn); }
-    auto active_lasers() const { return make_column_view(Layout::columns.ActiveLasersColumn); }
-    auto lasers_fired() const { return make_column_view(Layout::columns.LasersFiredColumn); }
+    auto kills() const { return this->column(Layout::columns.KillsColumn); }
+    auto active_lasers() const { return this->column(Layout::columns.ActiveLasersColumn); }
+    auto lasers_fired() const { return this->column(Layout::columns.LasersFiredColumn); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(completed_ticks());
@@ -431,30 +419,18 @@ struct HistoryRowsViewImpl : ioj::soa_storage_detail::CompactViewOperations {
     }
     auto resolve() const
         -> std::conditional_t<Const, HistoryRowsResolvedConstView, HistoryRowsResolvedView> {
-        return {(make_column_view(Layout::columns.CompletedTicksColumn).data()),
-                (make_column_view(Layout::columns.ValidityMasksColumn).data()),
-                (make_column_view(Layout::columns.ActiveEntitiesColumn).data()),
-                (make_column_view(Layout::columns.ActiveEntitiesByTypeColumn).data()),
-                (make_column_view(Layout::columns.ActiveEntitiesByTeamAndTypeColumn).data()),
-                (make_column_view(Layout::columns.SpawnedEntitiesColumn).data()),
-                (make_column_view(Layout::columns.DestroyedEntitiesColumn).data()),
-                (make_column_view(Layout::columns.KillsColumn).data()),
-                (make_column_view(Layout::columns.ActiveLasersColumn).data()),
-                (make_column_view(Layout::columns.LasersFiredColumn).data()),
-                count_};
+        return {(this->column(Layout::columns.CompletedTicksColumn).data()),
+                (this->column(Layout::columns.ValidityMasksColumn).data()),
+                (this->column(Layout::columns.ActiveEntitiesColumn).data()),
+                (this->column(Layout::columns.ActiveEntitiesByTypeColumn).data()),
+                (this->column(Layout::columns.ActiveEntitiesByTeamAndTypeColumn).data()),
+                (this->column(Layout::columns.SpawnedEntitiesColumn).data()),
+                (this->column(Layout::columns.DestroyedEntitiesColumn).data()),
+                (this->column(Layout::columns.KillsColumn).data()),
+                (this->column(Layout::columns.ActiveLasersColumn).data()),
+                (this->column(Layout::columns.LasersFiredColumn).data()),
+                this->count_};
     }
-  private:
-    template <typename T>
-    auto make_column_view(ioj::native_soa::ColumnLayout<T> const& layout) const {
-        return ioj::soa_storage_detail::column_view<std::span<Element<T>>>(
-            state_, offset_, count_, layout);
-    }
-    friend ioj::soa_storage_detail::CompactViewOperations;
-    template <bool>
-    friend struct HistoryRowsViewImpl;
-    State* state_{};
-    size_type offset_{};
-    size_type count_{};
 };
 struct HistoryRowsConstView : HistoryRowsViewImpl<true> {
     using Base = HistoryRowsViewImpl<true>;

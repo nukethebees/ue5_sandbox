@@ -239,30 +239,20 @@ struct TraceHitsResolvedView : TraceHitsResolvedViewImpl<false> {
 struct TraceHitsView_locations;
 struct TraceHitsConstView_locations;
 template <bool Const>
-struct TraceHitsView_locationsImpl : ioj::soa_storage_detail::CompactViewOperations {
+struct TraceHitsView_locationsImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = Vectors3fSchema;
-    using size_type = std::uint32_t;
+    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
+    using Base::Base;
     using Layout = TraceHitsLayout;
-    using Storage = ioj::native_soa::StorageState;
-    using State = std::conditional_t<Const, Storage const, Storage>;
-    template <typename T>
-    using Element = std::conditional_t<Const, T const, T>;
     using View = TraceHitsView_locations;
     using ConstView = TraceHitsConstView_locations;
-    TraceHitsView_locationsImpl() = default;
-    TraceHitsView_locationsImpl(State* state, size_type offset, size_type count)
-        : state_{state}
-        , offset_{offset}
-        , count_{count} {}
     template <bool Enabled = Const>
     TraceHitsView_locationsImpl(TraceHitsView_locationsImpl<false> const& other)
         requires Enabled
-        : state_{other.state_}
-        , offset_{other.offset_}
-        , count_{other.count_} {}
-    auto xs() const { return make_column_view(Layout::columns.LocationsXsColumn); }
-    auto ys() const { return make_column_view(Layout::columns.LocationsYsColumn); }
-    auto zs() const { return make_column_view(Layout::columns.LocationsZsColumn); }
+        : Base{other} {}
+    auto xs() const { return this->column(Layout::columns.LocationsXsColumn); }
+    auto ys() const { return this->column(Layout::columns.LocationsYsColumn); }
+    auto zs() const { return this->column(Layout::columns.LocationsZsColumn); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(xs());
@@ -271,23 +261,11 @@ struct TraceHitsView_locationsImpl : ioj::soa_storage_detail::CompactViewOperati
     }
     auto resolve() const -> std::
         conditional_t<Const, ::ioj::Vectors3fResolvedConstView, ::ioj::Vectors3fResolvedView> {
-        return {(make_column_view(Layout::columns.LocationsXsColumn).data()),
-                (make_column_view(Layout::columns.LocationsYsColumn).data()),
-                (make_column_view(Layout::columns.LocationsZsColumn).data()),
-                count_};
+        return {(this->column(Layout::columns.LocationsXsColumn).data()),
+                (this->column(Layout::columns.LocationsYsColumn).data()),
+                (this->column(Layout::columns.LocationsZsColumn).data()),
+                this->count_};
     }
-  private:
-    template <typename T>
-    auto make_column_view(ioj::native_soa::ColumnLayout<T> const& layout) const {
-        return ioj::soa_storage_detail::column_view<std::span<Element<T>>>(
-            state_, offset_, count_, layout);
-    }
-    friend ioj::soa_storage_detail::CompactViewOperations;
-    template <bool>
-    friend struct TraceHitsView_locationsImpl;
-    State* state_{};
-    size_type offset_{};
-    size_type count_{};
 };
 struct TraceHitsConstView_locations : TraceHitsView_locationsImpl<true> {
     using Base = TraceHitsView_locationsImpl<true>;
@@ -319,36 +297,26 @@ struct TraceHitsView_locations : TraceHitsView_locationsImpl<false> {
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<TraceHitsView_locations>());
 template <bool Const>
-struct TraceHitsViewImpl : ioj::soa_storage_detail::CompactViewOperations {
+struct TraceHitsViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = TraceHitsSchema;
-    using size_type = std::uint32_t;
+    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
+    using Base::Base;
     using Layout = TraceHitsLayout;
-    using Storage = ioj::native_soa::StorageState;
-    using State = std::conditional_t<Const, Storage const, Storage>;
-    template <typename T>
-    using Element = std::conditional_t<Const, T const, T>;
     using View = TraceHitsView;
     using ConstView = TraceHitsConstView;
-    TraceHitsViewImpl() = default;
-    TraceHitsViewImpl(State* state, size_type offset, size_type count)
-        : state_{state}
-        , offset_{offset}
-        , count_{count} {}
     template <bool Enabled = Const>
     TraceHitsViewImpl(TraceHitsViewImpl<false> const& other)
         requires Enabled
-        : state_{other.state_}
-        , offset_{other.offset_}
-        , count_{other.count_} {}
+        : Base{other} {}
     auto view_locations() const
         -> std::conditional_t<Const, TraceHitsConstView_locations, TraceHitsView_locations> {
-        return {state_, offset_, count_};
+        return {this->state_, this->offset_, this->count_};
     }
-    auto entities() const { return make_column_view(Layout::columns.EntitiesColumn); }
+    auto entities() const { return this->column(Layout::columns.EntitiesColumn); }
     auto static_geometry_indices() const {
-        return make_column_view(Layout::columns.StaticGeometryIndicesColumn);
+        return this->column(Layout::columns.StaticGeometryIndicesColumn);
     }
-    auto hits() const { return make_column_view(Layout::columns.HitsColumn); }
+    auto hits() const { return this->column(Layout::columns.HitsColumn); }
     template <typename Func>
     void each_column(Func&& func) const {
         auto const& locations_view{view_locations()};
@@ -361,26 +329,14 @@ struct TraceHitsViewImpl : ioj::soa_storage_detail::CompactViewOperations {
     }
     auto resolve() const
         -> std::conditional_t<Const, TraceHitsResolvedConstView, TraceHitsResolvedView> {
-        return {(make_column_view(Layout::columns.LocationsXsColumn).data()),
-                (make_column_view(Layout::columns.LocationsYsColumn).data()),
-                (make_column_view(Layout::columns.LocationsZsColumn).data()),
-                (make_column_view(Layout::columns.EntitiesColumn).data()),
-                (make_column_view(Layout::columns.StaticGeometryIndicesColumn).data()),
-                (make_column_view(Layout::columns.HitsColumn).data()),
-                count_};
+        return {(this->column(Layout::columns.LocationsXsColumn).data()),
+                (this->column(Layout::columns.LocationsYsColumn).data()),
+                (this->column(Layout::columns.LocationsZsColumn).data()),
+                (this->column(Layout::columns.EntitiesColumn).data()),
+                (this->column(Layout::columns.StaticGeometryIndicesColumn).data()),
+                (this->column(Layout::columns.HitsColumn).data()),
+                this->count_};
     }
-  private:
-    template <typename T>
-    auto make_column_view(ioj::native_soa::ColumnLayout<T> const& layout) const {
-        return ioj::soa_storage_detail::column_view<std::span<Element<T>>>(
-            state_, offset_, count_, layout);
-    }
-    friend ioj::soa_storage_detail::CompactViewOperations;
-    template <bool>
-    friend struct TraceHitsViewImpl;
-    State* state_{};
-    size_type offset_{};
-    size_type count_{};
 };
 struct TraceHitsConstView : TraceHitsViewImpl<true> {
     using Base = TraceHitsViewImpl<true>;

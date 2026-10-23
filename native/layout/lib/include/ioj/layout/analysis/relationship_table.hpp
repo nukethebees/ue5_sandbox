@@ -185,31 +185,21 @@ struct RelationshipTableResolvedView : RelationshipTableResolvedViewImpl<false> 
     }
 };
 template <bool Const>
-struct RelationshipTableViewImpl : ioj::soa_storage_detail::CompactViewOperations {
+struct RelationshipTableViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = RelationshipTableSchema;
-    using size_type = std::uint32_t;
+    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
+    using Base::Base;
     using Layout = RelationshipTableLayout;
-    using Storage = ioj::native_soa::StorageState;
-    using State = std::conditional_t<Const, Storage const, Storage>;
-    template <typename T>
-    using Element = std::conditional_t<Const, T const, T>;
     using View = RelationshipTableView;
     using ConstView = RelationshipTableConstView;
-    RelationshipTableViewImpl() = default;
-    RelationshipTableViewImpl(State* state, size_type offset, size_type count)
-        : state_{state}
-        , offset_{offset}
-        , count_{count} {}
     template <bool Enabled = Const>
     RelationshipTableViewImpl(RelationshipTableViewImpl<false> const& other)
         requires Enabled
-        : state_{other.state_}
-        , offset_{other.offset_}
-        , count_{other.count_} {}
-    auto owner() const { return make_column_view(Layout::columns.OwnerColumn); }
-    auto field() const { return make_column_view(Layout::columns.FieldColumn); }
-    auto relationship() const { return make_column_view(Layout::columns.RelationshipColumn); }
-    auto metrics() const { return make_column_view(Layout::columns.MetricsColumn); }
+        : Base{other} {}
+    auto owner() const { return this->column(Layout::columns.OwnerColumn); }
+    auto field() const { return this->column(Layout::columns.FieldColumn); }
+    auto relationship() const { return this->column(Layout::columns.RelationshipColumn); }
+    auto metrics() const { return this->column(Layout::columns.MetricsColumn); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(owner());
@@ -219,24 +209,12 @@ struct RelationshipTableViewImpl : ioj::soa_storage_detail::CompactViewOperation
     }
     auto resolve() const -> std::
         conditional_t<Const, RelationshipTableResolvedConstView, RelationshipTableResolvedView> {
-        return {(make_column_view(Layout::columns.OwnerColumn).data()),
-                (make_column_view(Layout::columns.FieldColumn).data()),
-                (make_column_view(Layout::columns.RelationshipColumn).data()),
-                (make_column_view(Layout::columns.MetricsColumn).data()),
-                count_};
+        return {(this->column(Layout::columns.OwnerColumn).data()),
+                (this->column(Layout::columns.FieldColumn).data()),
+                (this->column(Layout::columns.RelationshipColumn).data()),
+                (this->column(Layout::columns.MetricsColumn).data()),
+                this->count_};
     }
-  private:
-    template <typename T>
-    auto make_column_view(ioj::native_soa::ColumnLayout<T> const& layout) const {
-        return ioj::soa_storage_detail::column_view<std::span<Element<T>>>(
-            state_, offset_, count_, layout);
-    }
-    friend ioj::soa_storage_detail::CompactViewOperations;
-    template <bool>
-    friend struct RelationshipTableViewImpl;
-    State* state_{};
-    size_type offset_{};
-    size_type count_{};
 };
 struct RelationshipTableConstView : RelationshipTableViewImpl<true> {
     using Base = RelationshipTableViewImpl<true>;

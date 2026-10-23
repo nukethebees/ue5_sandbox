@@ -151,29 +151,19 @@ struct EntityEntityOverlapsResolvedView : EntityEntityOverlapsResolvedViewImpl<f
     }
 };
 template <bool Const>
-struct EntityEntityOverlapsViewImpl : ioj::soa_storage_detail::CompactViewOperations {
+struct EntityEntityOverlapsViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = EntityEntityOverlapsSchema;
-    using size_type = std::uint32_t;
+    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
+    using Base::Base;
     using Layout = EntityEntityOverlapsLayout;
-    using Storage = ioj::native_soa::StorageState;
-    using State = std::conditional_t<Const, Storage const, Storage>;
-    template <typename T>
-    using Element = std::conditional_t<Const, T const, T>;
     using View = EntityEntityOverlapsView;
     using ConstView = EntityEntityOverlapsConstView;
-    EntityEntityOverlapsViewImpl() = default;
-    EntityEntityOverlapsViewImpl(State* state, size_type offset, size_type count)
-        : state_{state}
-        , offset_{offset}
-        , count_{count} {}
     template <bool Enabled = Const>
     EntityEntityOverlapsViewImpl(EntityEntityOverlapsViewImpl<false> const& other)
         requires Enabled
-        : state_{other.state_}
-        , offset_{other.offset_}
-        , count_{other.count_} {}
-    auto first_entities() const { return make_column_view(Layout::columns.FirstEntitiesColumn); }
-    auto second_entities() const { return make_column_view(Layout::columns.SecondEntitiesColumn); }
+        : Base{other} {}
+    auto first_entities() const { return this->column(Layout::columns.FirstEntitiesColumn); }
+    auto second_entities() const { return this->column(Layout::columns.SecondEntitiesColumn); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(first_entities());
@@ -182,22 +172,10 @@ struct EntityEntityOverlapsViewImpl : ioj::soa_storage_detail::CompactViewOperat
     auto resolve() const -> std::conditional_t<Const,
                                                EntityEntityOverlapsResolvedConstView,
                                                EntityEntityOverlapsResolvedView> {
-        return {(make_column_view(Layout::columns.FirstEntitiesColumn).data()),
-                (make_column_view(Layout::columns.SecondEntitiesColumn).data()),
-                count_};
+        return {(this->column(Layout::columns.FirstEntitiesColumn).data()),
+                (this->column(Layout::columns.SecondEntitiesColumn).data()),
+                this->count_};
     }
-  private:
-    template <typename T>
-    auto make_column_view(ioj::native_soa::ColumnLayout<T> const& layout) const {
-        return ioj::soa_storage_detail::column_view<std::span<Element<T>>>(
-            state_, offset_, count_, layout);
-    }
-    friend ioj::soa_storage_detail::CompactViewOperations;
-    template <bool>
-    friend struct EntityEntityOverlapsViewImpl;
-    State* state_{};
-    size_type offset_{};
-    size_type count_{};
 };
 struct EntityEntityOverlapsConstView : EntityEntityOverlapsViewImpl<true> {
     using Base = EntityEntityOverlapsViewImpl<true>;
@@ -539,30 +517,20 @@ struct EntityStaticOverlapsResolvedView : EntityStaticOverlapsResolvedViewImpl<f
     }
 };
 template <bool Const>
-struct EntityStaticOverlapsViewImpl : ioj::soa_storage_detail::CompactViewOperations {
+struct EntityStaticOverlapsViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = EntityStaticOverlapsSchema;
-    using size_type = std::uint32_t;
+    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
+    using Base::Base;
     using Layout = EntityStaticOverlapsLayout;
-    using Storage = ioj::native_soa::StorageState;
-    using State = std::conditional_t<Const, Storage const, Storage>;
-    template <typename T>
-    using Element = std::conditional_t<Const, T const, T>;
     using View = EntityStaticOverlapsView;
     using ConstView = EntityStaticOverlapsConstView;
-    EntityStaticOverlapsViewImpl() = default;
-    EntityStaticOverlapsViewImpl(State* state, size_type offset, size_type count)
-        : state_{state}
-        , offset_{offset}
-        , count_{count} {}
     template <bool Enabled = Const>
     EntityStaticOverlapsViewImpl(EntityStaticOverlapsViewImpl<false> const& other)
         requires Enabled
-        : state_{other.state_}
-        , offset_{other.offset_}
-        , count_{other.count_} {}
-    auto entities() const { return make_column_view(Layout::columns.EntitiesColumn); }
+        : Base{other} {}
+    auto entities() const { return this->column(Layout::columns.EntitiesColumn); }
     auto static_geometry_indices() const {
-        return make_column_view(Layout::columns.StaticGeometryIndicesColumn);
+        return this->column(Layout::columns.StaticGeometryIndicesColumn);
     }
     template <typename Func>
     void each_column(Func&& func) const {
@@ -572,22 +540,10 @@ struct EntityStaticOverlapsViewImpl : ioj::soa_storage_detail::CompactViewOperat
     auto resolve() const -> std::conditional_t<Const,
                                                EntityStaticOverlapsResolvedConstView,
                                                EntityStaticOverlapsResolvedView> {
-        return {(make_column_view(Layout::columns.EntitiesColumn).data()),
-                (make_column_view(Layout::columns.StaticGeometryIndicesColumn).data()),
-                count_};
+        return {(this->column(Layout::columns.EntitiesColumn).data()),
+                (this->column(Layout::columns.StaticGeometryIndicesColumn).data()),
+                this->count_};
     }
-  private:
-    template <typename T>
-    auto make_column_view(ioj::native_soa::ColumnLayout<T> const& layout) const {
-        return ioj::soa_storage_detail::column_view<std::span<Element<T>>>(
-            state_, offset_, count_, layout);
-    }
-    friend ioj::soa_storage_detail::CompactViewOperations;
-    template <bool>
-    friend struct EntityStaticOverlapsViewImpl;
-    State* state_{};
-    size_type offset_{};
-    size_type count_{};
 };
 struct EntityStaticOverlapsConstView : EntityStaticOverlapsViewImpl<true> {
     using Base = EntityStaticOverlapsViewImpl<true>;

@@ -399,54 +399,42 @@ struct SoaColumnTableResolvedView : SoaColumnTableResolvedViewImpl<false> {
     }
 };
 template <bool Const>
-struct SoaColumnTableViewImpl : ioj::soa_storage_detail::CompactViewOperations {
+struct SoaColumnTableViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = SoaColumnTableSchema;
-    using size_type = std::uint32_t;
+    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
+    using Base::Base;
     using Layout = SoaColumnTableLayout;
-    using Storage = ioj::native_soa::StorageState;
-    using State = std::conditional_t<Const, Storage const, Storage>;
-    template <typename T>
-    using Element = std::conditional_t<Const, T const, T>;
     using View = SoaColumnTableView;
     using ConstView = SoaColumnTableConstView;
-    SoaColumnTableViewImpl() = default;
-    SoaColumnTableViewImpl(State* state, size_type offset, size_type count)
-        : state_{state}
-        , offset_{offset}
-        , count_{count} {}
     template <bool Enabled = Const>
     SoaColumnTableViewImpl(SoaColumnTableViewImpl<false> const& other)
         requires Enabled
-        : state_{other.state_}
-        , offset_{other.offset_}
-        , count_{other.count_} {}
-    auto parent() const { return make_column_view(Layout::columns.ParentColumn); }
-    auto name() const { return make_column_view(Layout::columns.NameColumn); }
-    auto semantic_type() const { return make_column_view(Layout::columns.SemanticTypeColumn); }
-    auto schema_type() const { return make_column_view(Layout::columns.SchemaTypeColumn); }
-    auto physical_type() const { return make_column_view(Layout::columns.PhysicalTypeColumn); }
-    auto overridden() const { return make_column_view(Layout::columns.OverriddenColumn); }
-    auto type_facts() const { return make_column_view(Layout::columns.TypeFactsColumn); }
-    auto total_bytes() const { return make_column_view(Layout::columns.TotalBytesColumn); }
+        : Base{other} {}
+    auto parent() const { return this->column(Layout::columns.ParentColumn); }
+    auto name() const { return this->column(Layout::columns.NameColumn); }
+    auto semantic_type() const { return this->column(Layout::columns.SemanticTypeColumn); }
+    auto schema_type() const { return this->column(Layout::columns.SchemaTypeColumn); }
+    auto physical_type() const { return this->column(Layout::columns.PhysicalTypeColumn); }
+    auto overridden() const { return this->column(Layout::columns.OverriddenColumn); }
+    auto type_facts() const { return this->column(Layout::columns.TypeFactsColumn); }
+    auto total_bytes() const { return this->column(Layout::columns.TotalBytesColumn); }
     auto allocation_offset_bytes() const {
-        return make_column_view(Layout::columns.AllocationOffsetBytesColumn);
+        return this->column(Layout::columns.AllocationOffsetBytesColumn);
     }
     auto padding_before_bytes() const {
-        return make_column_view(Layout::columns.PaddingBeforeBytesColumn);
+        return this->column(Layout::columns.PaddingBeforeBytesColumn);
     }
     auto minimum_cache_lines() const {
-        return make_column_view(Layout::columns.MinimumCacheLinesColumn);
+        return this->column(Layout::columns.MinimumCacheLinesColumn);
     }
     auto elements_per_cache_line() const {
-        return make_column_view(Layout::columns.ElementsPerCacheLineColumn);
+        return this->column(Layout::columns.ElementsPerCacheLineColumn);
     }
-    auto minimum_pages() const { return make_column_view(Layout::columns.MinimumPagesColumn); }
+    auto minimum_pages() const { return this->column(Layout::columns.MinimumPagesColumn); }
     auto complete_elements_per_page() const {
-        return make_column_view(Layout::columns.CompleteElementsPerPageColumn);
+        return this->column(Layout::columns.CompleteElementsPerPageColumn);
     }
-    auto cache_line_tiling() const {
-        return make_column_view(Layout::columns.CacheLineTilingColumn);
-    }
+    auto cache_line_tiling() const { return this->column(Layout::columns.CacheLineTilingColumn); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(parent());
@@ -467,35 +455,23 @@ struct SoaColumnTableViewImpl : ioj::soa_storage_detail::CompactViewOperations {
     }
     auto resolve() const
         -> std::conditional_t<Const, SoaColumnTableResolvedConstView, SoaColumnTableResolvedView> {
-        return {(make_column_view(Layout::columns.ParentColumn).data()),
-                (make_column_view(Layout::columns.NameColumn).data()),
-                (make_column_view(Layout::columns.SemanticTypeColumn).data()),
-                (make_column_view(Layout::columns.SchemaTypeColumn).data()),
-                (make_column_view(Layout::columns.PhysicalTypeColumn).data()),
-                (make_column_view(Layout::columns.OverriddenColumn).data()),
-                (make_column_view(Layout::columns.TypeFactsColumn).data()),
-                (make_column_view(Layout::columns.TotalBytesColumn).data()),
-                (make_column_view(Layout::columns.AllocationOffsetBytesColumn).data()),
-                (make_column_view(Layout::columns.PaddingBeforeBytesColumn).data()),
-                (make_column_view(Layout::columns.MinimumCacheLinesColumn).data()),
-                (make_column_view(Layout::columns.ElementsPerCacheLineColumn).data()),
-                (make_column_view(Layout::columns.MinimumPagesColumn).data()),
-                (make_column_view(Layout::columns.CompleteElementsPerPageColumn).data()),
-                (make_column_view(Layout::columns.CacheLineTilingColumn).data()),
-                count_};
+        return {(this->column(Layout::columns.ParentColumn).data()),
+                (this->column(Layout::columns.NameColumn).data()),
+                (this->column(Layout::columns.SemanticTypeColumn).data()),
+                (this->column(Layout::columns.SchemaTypeColumn).data()),
+                (this->column(Layout::columns.PhysicalTypeColumn).data()),
+                (this->column(Layout::columns.OverriddenColumn).data()),
+                (this->column(Layout::columns.TypeFactsColumn).data()),
+                (this->column(Layout::columns.TotalBytesColumn).data()),
+                (this->column(Layout::columns.AllocationOffsetBytesColumn).data()),
+                (this->column(Layout::columns.PaddingBeforeBytesColumn).data()),
+                (this->column(Layout::columns.MinimumCacheLinesColumn).data()),
+                (this->column(Layout::columns.ElementsPerCacheLineColumn).data()),
+                (this->column(Layout::columns.MinimumPagesColumn).data()),
+                (this->column(Layout::columns.CompleteElementsPerPageColumn).data()),
+                (this->column(Layout::columns.CacheLineTilingColumn).data()),
+                this->count_};
     }
-  private:
-    template <typename T>
-    auto make_column_view(ioj::native_soa::ColumnLayout<T> const& layout) const {
-        return ioj::soa_storage_detail::column_view<std::span<Element<T>>>(
-            state_, offset_, count_, layout);
-    }
-    friend ioj::soa_storage_detail::CompactViewOperations;
-    template <bool>
-    friend struct SoaColumnTableViewImpl;
-    State* state_{};
-    size_type offset_{};
-    size_type count_{};
 };
 struct SoaColumnTableConstView : SoaColumnTableViewImpl<true> {
     using Base = SoaColumnTableViewImpl<true>;

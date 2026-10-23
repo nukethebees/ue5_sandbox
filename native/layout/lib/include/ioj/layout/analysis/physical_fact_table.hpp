@@ -227,35 +227,25 @@ struct PhysicalFactTableResolvedView : PhysicalFactTableResolvedViewImpl<false> 
     }
 };
 template <bool Const>
-struct PhysicalFactTableViewImpl : ioj::soa_storage_detail::CompactViewOperations {
+struct PhysicalFactTableViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = PhysicalFactTableSchema;
-    using size_type = std::uint32_t;
+    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
+    using Base::Base;
     using Layout = PhysicalFactTableLayout;
-    using Storage = ioj::native_soa::StorageState;
-    using State = std::conditional_t<Const, Storage const, Storage>;
-    template <typename T>
-    using Element = std::conditional_t<Const, T const, T>;
     using View = PhysicalFactTableView;
     using ConstView = PhysicalFactTableConstView;
-    PhysicalFactTableViewImpl() = default;
-    PhysicalFactTableViewImpl(State* state, size_type offset, size_type count)
-        : state_{state}
-        , offset_{offset}
-        , count_{count} {}
     template <bool Enabled = Const>
     PhysicalFactTableViewImpl(PhysicalFactTableViewImpl<false> const& other)
         requires Enabled
-        : state_{other.state_}
-        , offset_{other.offset_}
-        , count_{other.count_} {}
-    auto size_bytes() const { return make_column_view(Layout::columns.SizeBytesColumn); }
-    auto alignment_bytes() const { return make_column_view(Layout::columns.AlignmentBytesColumn); }
-    auto signedness() const { return make_column_view(Layout::columns.SignednessColumn); }
+        : Base{other} {}
+    auto size_bytes() const { return this->column(Layout::columns.SizeBytesColumn); }
+    auto alignment_bytes() const { return this->column(Layout::columns.AlignmentBytesColumn); }
+    auto signedness() const { return this->column(Layout::columns.SignednessColumn); }
     auto unsigned_value_bits() const {
-        return make_column_view(Layout::columns.UnsignedValueBitsColumn);
+        return this->column(Layout::columns.UnsignedValueBitsColumn);
     }
-    auto provenance() const { return make_column_view(Layout::columns.ProvenanceColumn); }
-    auto origin() const { return make_column_view(Layout::columns.OriginColumn); }
+    auto provenance() const { return this->column(Layout::columns.ProvenanceColumn); }
+    auto origin() const { return this->column(Layout::columns.OriginColumn); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(size_bytes());
@@ -267,26 +257,14 @@ struct PhysicalFactTableViewImpl : ioj::soa_storage_detail::CompactViewOperation
     }
     auto resolve() const -> std::
         conditional_t<Const, PhysicalFactTableResolvedConstView, PhysicalFactTableResolvedView> {
-        return {(make_column_view(Layout::columns.SizeBytesColumn).data()),
-                (make_column_view(Layout::columns.AlignmentBytesColumn).data()),
-                (make_column_view(Layout::columns.SignednessColumn).data()),
-                (make_column_view(Layout::columns.UnsignedValueBitsColumn).data()),
-                (make_column_view(Layout::columns.ProvenanceColumn).data()),
-                (make_column_view(Layout::columns.OriginColumn).data()),
-                count_};
+        return {(this->column(Layout::columns.SizeBytesColumn).data()),
+                (this->column(Layout::columns.AlignmentBytesColumn).data()),
+                (this->column(Layout::columns.SignednessColumn).data()),
+                (this->column(Layout::columns.UnsignedValueBitsColumn).data()),
+                (this->column(Layout::columns.ProvenanceColumn).data()),
+                (this->column(Layout::columns.OriginColumn).data()),
+                this->count_};
     }
-  private:
-    template <typename T>
-    auto make_column_view(ioj::native_soa::ColumnLayout<T> const& layout) const {
-        return ioj::soa_storage_detail::column_view<std::span<Element<T>>>(
-            state_, offset_, count_, layout);
-    }
-    friend ioj::soa_storage_detail::CompactViewOperations;
-    template <bool>
-    friend struct PhysicalFactTableViewImpl;
-    State* state_{};
-    size_type offset_{};
-    size_type count_{};
 };
 struct PhysicalFactTableConstView : PhysicalFactTableViewImpl<true> {
     using Base = PhysicalFactTableViewImpl<true>;
