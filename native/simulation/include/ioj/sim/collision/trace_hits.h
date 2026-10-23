@@ -18,8 +18,13 @@
 
 namespace ioj::sim {
 struct TraceHitsSchema;
+struct TraceHitsResolvedView;
+struct TraceHitsResolvedConstView;
 struct TraceHitsView;
 struct TraceHitsConstView;
+struct TraceHitsView_locations;
+struct TraceHitsConstView_locations;
+
 struct TraceHitsLayoutColumns {
     template <typename T>
     using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
@@ -41,9 +46,9 @@ struct TraceHitsLayoutColumns {
     TraceHitsLayoutColumns(TraceHitsLayoutColumns const&) = delete;
     auto operator=(TraceHitsLayoutColumns const&) -> TraceHitsLayoutColumns& = delete;
 };
+
 struct TraceHitsLayout : ioj::single_allocation_layout::Layout<TraceHitsLayoutColumns> {};
-struct TraceHitsResolvedView;
-struct TraceHitsResolvedConstView;
+
 template <bool Const>
 struct TraceHitsResolvedViewImpl {
     using size_type = std::uint32_t;
@@ -179,10 +184,12 @@ struct TraceHitsResolvedViewImpl {
     Element<ioj::sim::TraceHit>* hits_{};
     size_type count_{};
 };
+
 struct TraceHitsResolvedConstView : TraceHitsResolvedViewImpl<true> {
     using Base = TraceHitsResolvedViewImpl<true>;
     using Base::Base;
 };
+
 struct TraceHitsResolvedView : TraceHitsResolvedViewImpl<false> {
     using Base = TraceHitsResolvedViewImpl<false>;
     using Base::Base;
@@ -213,8 +220,7 @@ struct TraceHitsResolvedView : TraceHitsResolvedViewImpl<false> {
         this->hits()[index] = new_hits;
     }
 };
-struct TraceHitsView_locations;
-struct TraceHitsConstView_locations;
+
 template <bool Const>
 struct TraceHitsView_locationsImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = Vectors3fSchema;
@@ -244,6 +250,7 @@ struct TraceHitsView_locationsImpl : ioj::soa_storage_detail::CompactViewBase<Co
                 this->count_};
     }
 };
+
 struct TraceHitsConstView_locations : TraceHitsView_locationsImpl<true> {
     using Base = TraceHitsView_locationsImpl<true>;
     using Base::Base;
@@ -254,6 +261,7 @@ struct TraceHitsConstView_locations : TraceHitsView_locationsImpl<true> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<TraceHitsConstView_locations>());
+
 struct TraceHitsView_locations : TraceHitsView_locationsImpl<false> {
     using Base = TraceHitsView_locationsImpl<false>;
     using Base::Base;
@@ -273,6 +281,7 @@ struct TraceHitsView_locations : TraceHitsView_locationsImpl<false> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<TraceHitsView_locations>());
+
 template <bool Const>
 struct TraceHitsViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = TraceHitsSchema;
@@ -315,11 +324,13 @@ struct TraceHitsViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
                 this->count_};
     }
 };
+
 struct TraceHitsConstView : TraceHitsViewImpl<true> {
     using Base = TraceHitsViewImpl<true>;
     using Base::Base;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<TraceHitsConstView>());
+
 struct TraceHitsView : TraceHitsViewImpl<false> {
     using Base = TraceHitsViewImpl<false>;
     using Base::Base;
@@ -351,6 +362,7 @@ struct TraceHitsView : TraceHitsViewImpl<false> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<TraceHitsView>());
+
 // Columns:
 // locations_xs: float
 // locations_ys: float

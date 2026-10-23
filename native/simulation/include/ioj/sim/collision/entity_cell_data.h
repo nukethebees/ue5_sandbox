@@ -14,8 +14,11 @@
 
 namespace ioj::sim::collision {
 struct EntityCellDataSchema;
+struct EntityCellDataResolvedView;
+struct EntityCellDataResolvedConstView;
 struct EntityCellDataView;
 struct EntityCellDataConstView;
+
 struct EntityCellDataLayoutColumns {
     template <typename T>
     using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
@@ -55,10 +58,9 @@ struct EntityCellDataLayoutColumns {
     EntityCellDataLayoutColumns(EntityCellDataLayoutColumns const&) = delete;
     auto operator=(EntityCellDataLayoutColumns const&) -> EntityCellDataLayoutColumns& = delete;
 };
+
 struct EntityCellDataLayout : ioj::single_allocation_layout::Layout<EntityCellDataLayoutColumns> {};
 
-struct EntityCellDataResolvedView;
-struct EntityCellDataResolvedConstView;
 template <bool Const>
 struct EntityCellDataResolvedViewImpl {
     using size_type = std::uint32_t;
@@ -269,10 +271,12 @@ struct EntityCellDataResolvedViewImpl {
     Element<EntityId>* entity_ids_{};
     size_type count_{};
 };
+
 struct EntityCellDataResolvedConstView : EntityCellDataResolvedViewImpl<true> {
     using Base = EntityCellDataResolvedViewImpl<true>;
     using Base::Base;
 };
+
 struct EntityCellDataResolvedView : EntityCellDataResolvedViewImpl<false> {
     using Base = EntityCellDataResolvedViewImpl<false>;
     using Base::Base;
@@ -306,6 +310,7 @@ struct EntityCellDataResolvedView : EntityCellDataResolvedViewImpl<false> {
         this->entity_ids()[index] = new_entity_ids;
     }
 };
+
 template <bool Const>
 struct EntityCellDataViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = EntityCellDataSchema;
@@ -365,11 +370,13 @@ struct EntityCellDataViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> 
                 this->count_};
     }
 };
+
 struct EntityCellDataConstView : EntityCellDataViewImpl<true> {
     using Base = EntityCellDataViewImpl<true>;
     using Base::Base;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<EntityCellDataConstView>());
+
 struct EntityCellDataView : EntityCellDataViewImpl<false> {
     using Base = EntityCellDataViewImpl<false>;
     using Base::Base;
@@ -404,6 +411,7 @@ struct EntityCellDataView : EntityCellDataViewImpl<false> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<EntityCellDataView>());
+
 // Columns:
 // min_point_xs: float
 // min_point_ys: float

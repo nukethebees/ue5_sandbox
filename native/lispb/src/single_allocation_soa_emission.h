@@ -23,7 +23,8 @@ auto emit_single_allocation_layout(LoweringContext& context, SingleAllocationMod
     -> Nodes;
 auto emit_single_allocation_views(LoweringContext& context,
                                   SingleAllocationModelId model,
-                                  NodeListBuilder& source) -> Nodes;
+                                  NodeListBuilder& source,
+                                  NodeListBuilder& declarations) -> Nodes;
 auto emit_single_allocation_container(LoweringContext& context,
                                       SingleAllocationModelId model,
                                       NodeListBuilder& source) -> NodeId;

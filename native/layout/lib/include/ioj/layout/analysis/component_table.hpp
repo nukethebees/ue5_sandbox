@@ -20,8 +20,11 @@
 
 namespace ioj::layout {
 struct ComponentTableSchema;
+struct ComponentTableResolvedView;
+struct ComponentTableResolvedConstView;
 struct ComponentTableView;
 struct ComponentTableConstView;
+
 struct ComponentTableLayoutColumns {
     template <typename T>
     using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
@@ -55,10 +58,9 @@ struct ComponentTableLayoutColumns {
     ComponentTableLayoutColumns(ComponentTableLayoutColumns const&) = delete;
     auto operator=(ComponentTableLayoutColumns const&) -> ComponentTableLayoutColumns& = delete;
 };
+
 struct ComponentTableLayout : ioj::single_allocation_layout::Layout<ComponentTableLayoutColumns> {};
 
-struct ComponentTableResolvedView;
-struct ComponentTableResolvedConstView;
 template <bool Const>
 struct ComponentTableResolvedViewImpl {
     using size_type = std::uint32_t;
@@ -251,10 +253,12 @@ struct ComponentTableResolvedViewImpl {
     Element<std::optional<std::uint64_t>>* slack_bytes_{};
     size_type count_{};
 };
+
 struct ComponentTableResolvedConstView : ComponentTableResolvedViewImpl<true> {
     using Base = ComponentTableResolvedViewImpl<true>;
     using Base::Base;
 };
+
 struct ComponentTableResolvedView : ComponentTableResolvedViewImpl<false> {
     using Base = ComponentTableResolvedViewImpl<false>;
     using Base::Base;
@@ -282,6 +286,7 @@ struct ComponentTableResolvedView : ComponentTableResolvedViewImpl<false> {
         this->slack_bytes()[index] = new_slack_bytes;
     }
 };
+
 template <bool Const>
 struct ComponentTableViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = ComponentTableSchema;
@@ -334,11 +339,13 @@ struct ComponentTableViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> 
                 this->count_};
     }
 };
+
 struct ComponentTableConstView : ComponentTableViewImpl<true> {
     using Base = ComponentTableViewImpl<true>;
     using Base::Base;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<ComponentTableConstView>());
+
 struct ComponentTableView : ComponentTableViewImpl<false> {
     using Base = ComponentTableViewImpl<false>;
     using Base::Base;
@@ -367,6 +374,7 @@ struct ComponentTableView : ComponentTableViewImpl<false> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<ComponentTableView>());
+
 // Columns:
 // parent: ioj::layout::AnalysisId
 // name: std::string_view

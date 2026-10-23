@@ -18,8 +18,15 @@
 
 namespace ioj::sim {
 struct FighterSpawnQueueSchema;
+struct FighterSpawnQueueResolvedView;
+struct FighterSpawnQueueResolvedConstView;
 struct FighterSpawnQueueView;
 struct FighterSpawnQueueConstView;
+struct FighterSpawnQueueView_locations;
+struct FighterSpawnQueueConstView_locations;
+struct FighterSpawnQueueView_rotations;
+struct FighterSpawnQueueConstView_rotations;
+
 struct FighterSpawnQueueLayoutColumns {
     template <typename T>
     using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
@@ -44,10 +51,10 @@ struct FighterSpawnQueueLayoutColumns {
     auto operator=(FighterSpawnQueueLayoutColumns const&)
         -> FighterSpawnQueueLayoutColumns& = delete;
 };
+
 struct FighterSpawnQueueLayout
     : ioj::single_allocation_layout::Layout<FighterSpawnQueueLayoutColumns> {};
-struct FighterSpawnQueueResolvedView;
-struct FighterSpawnQueueResolvedConstView;
+
 template <bool Const>
 struct FighterSpawnQueueResolvedViewImpl {
     using size_type = std::uint32_t;
@@ -213,10 +220,12 @@ struct FighterSpawnQueueResolvedViewImpl {
     Element<EntityId>* targets_{};
     size_type count_{};
 };
+
 struct FighterSpawnQueueResolvedConstView : FighterSpawnQueueResolvedViewImpl<true> {
     using Base = FighterSpawnQueueResolvedViewImpl<true>;
     using Base::Base;
 };
+
 struct FighterSpawnQueueResolvedView : FighterSpawnQueueResolvedViewImpl<false> {
     using Base = FighterSpawnQueueResolvedViewImpl<false>;
     using Base::Base;
@@ -255,8 +264,7 @@ struct FighterSpawnQueueResolvedView : FighterSpawnQueueResolvedViewImpl<false> 
         this->targets()[index] = new_targets;
     }
 };
-struct FighterSpawnQueueView_locations;
-struct FighterSpawnQueueConstView_locations;
+
 template <bool Const>
 struct FighterSpawnQueueView_locationsImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = Vectors3fSchema;
@@ -286,6 +294,7 @@ struct FighterSpawnQueueView_locationsImpl : ioj::soa_storage_detail::CompactVie
                 this->count_};
     }
 };
+
 struct FighterSpawnQueueConstView_locations : FighterSpawnQueueView_locationsImpl<true> {
     using Base = FighterSpawnQueueView_locationsImpl<true>;
     using Base::Base;
@@ -297,6 +306,7 @@ struct FighterSpawnQueueConstView_locations : FighterSpawnQueueView_locationsImp
 };
 static_assert(
     ioj::soa_storage_detail::validate_compact_view<FighterSpawnQueueConstView_locations>());
+
 struct FighterSpawnQueueView_locations : FighterSpawnQueueView_locationsImpl<false> {
     using Base = FighterSpawnQueueView_locationsImpl<false>;
     using Base::Base;
@@ -316,8 +326,7 @@ struct FighterSpawnQueueView_locations : FighterSpawnQueueView_locationsImpl<fal
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<FighterSpawnQueueView_locations>());
-struct FighterSpawnQueueView_rotations;
-struct FighterSpawnQueueConstView_rotations;
+
 template <bool Const>
 struct FighterSpawnQueueView_rotationsImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = Rotators3fSchema;
@@ -347,6 +356,7 @@ struct FighterSpawnQueueView_rotationsImpl : ioj::soa_storage_detail::CompactVie
                 this->count_};
     }
 };
+
 struct FighterSpawnQueueConstView_rotations : FighterSpawnQueueView_rotationsImpl<true> {
     using Base = FighterSpawnQueueView_rotationsImpl<true>;
     using Base::Base;
@@ -358,6 +368,7 @@ struct FighterSpawnQueueConstView_rotations : FighterSpawnQueueView_rotationsImp
 };
 static_assert(
     ioj::soa_storage_detail::validate_compact_view<FighterSpawnQueueConstView_rotations>());
+
 struct FighterSpawnQueueView_rotations : FighterSpawnQueueView_rotationsImpl<false> {
     using Base = FighterSpawnQueueView_rotationsImpl<false>;
     using Base::Base;
@@ -380,6 +391,7 @@ struct FighterSpawnQueueView_rotations : FighterSpawnQueueView_rotationsImpl<fal
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<FighterSpawnQueueView_rotations>());
+
 template <bool Const>
 struct FighterSpawnQueueViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = FighterSpawnQueueSchema;
@@ -433,11 +445,13 @@ struct FighterSpawnQueueViewImpl : ioj::soa_storage_detail::CompactViewBase<Cons
                 this->count_};
     }
 };
+
 struct FighterSpawnQueueConstView : FighterSpawnQueueViewImpl<true> {
     using Base = FighterSpawnQueueViewImpl<true>;
     using Base::Base;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<FighterSpawnQueueConstView>());
+
 struct FighterSpawnQueueView : FighterSpawnQueueViewImpl<false> {
     using Base = FighterSpawnQueueViewImpl<false>;
     using Base::Base;
@@ -477,6 +491,7 @@ struct FighterSpawnQueueView : FighterSpawnQueueViewImpl<false> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<FighterSpawnQueueView>());
+
 // Columns:
 // locations_xs: float
 // locations_ys: float

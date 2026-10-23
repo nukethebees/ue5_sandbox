@@ -17,8 +17,11 @@
 
 namespace ioj::layout {
 struct DistributionTableSchema;
+struct DistributionTableResolvedView;
+struct DistributionTableResolvedConstView;
 struct DistributionTableView;
 struct DistributionTableConstView;
+
 struct DistributionTableLayoutColumns {
     template <typename T>
     using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
@@ -53,11 +56,10 @@ struct DistributionTableLayoutColumns {
     auto operator=(DistributionTableLayoutColumns const&)
         -> DistributionTableLayoutColumns& = delete;
 };
+
 struct DistributionTableLayout
     : ioj::single_allocation_layout::Layout<DistributionTableLayoutColumns> {};
 
-struct DistributionTableResolvedView;
-struct DistributionTableResolvedConstView;
 template <bool Const>
 struct DistributionTableResolvedViewImpl {
     using size_type = std::uint32_t;
@@ -259,10 +261,12 @@ struct DistributionTableResolvedViewImpl {
     Element<std::optional<long double>>* expected_selected_slack_bytes_{};
     size_type count_{};
 };
+
 struct DistributionTableResolvedConstView : DistributionTableResolvedViewImpl<true> {
     using Base = DistributionTableResolvedViewImpl<true>;
     using Base::Base;
 };
+
 struct DistributionTableResolvedView : DistributionTableResolvedViewImpl<false> {
     using Base = DistributionTableResolvedViewImpl<false>;
     using Base::Base;
@@ -290,6 +294,7 @@ struct DistributionTableResolvedView : DistributionTableResolvedViewImpl<false> 
         this->expected_selected_slack_bytes()[index] = new_expected_selected_slack_bytes;
     }
 };
+
 template <bool Const>
 struct DistributionTableViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = DistributionTableSchema;
@@ -348,11 +353,13 @@ struct DistributionTableViewImpl : ioj::soa_storage_detail::CompactViewBase<Cons
                 this->count_};
     }
 };
+
 struct DistributionTableConstView : DistributionTableViewImpl<true> {
     using Base = DistributionTableViewImpl<true>;
     using Base::Base;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<DistributionTableConstView>());
+
 struct DistributionTableView : DistributionTableViewImpl<false> {
     using Base = DistributionTableViewImpl<false>;
     using Base::Base;
@@ -381,6 +388,7 @@ struct DistributionTableView : DistributionTableViewImpl<false> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<DistributionTableView>());
+
 // Columns:
 // analysis: ioj::layout::AnalysisId
 // entries: ioj::layout::RowRange

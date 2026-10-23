@@ -13,8 +13,11 @@
 
 namespace ioj {
 struct Vectors3fSchema;
+struct Vectors3fResolvedView;
+struct Vectors3fResolvedConstView;
 struct Vectors3fView;
 struct Vectors3fConstView;
+
 struct Vectors3fLayoutColumns {
     template <typename T>
     using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
@@ -34,10 +37,9 @@ struct Vectors3fLayoutColumns {
     Vectors3fLayoutColumns(Vectors3fLayoutColumns const&) = delete;
     auto operator=(Vectors3fLayoutColumns const&) -> Vectors3fLayoutColumns& = delete;
 };
+
 struct Vectors3fLayout : ioj::single_allocation_layout::Layout<Vectors3fLayoutColumns> {};
 
-struct Vectors3fResolvedView;
-struct Vectors3fResolvedConstView;
 template <bool Const>
 struct Vectors3fResolvedViewImpl {
     using size_type = std::uint32_t;
@@ -118,6 +120,7 @@ struct Vectors3fResolvedViewImpl {
     Element<float>* zs_{};
     size_type count_{};
 };
+
 struct Vectors3fResolvedConstView : Vectors3fResolvedViewImpl<true> {
     using Base = Vectors3fResolvedViewImpl<true>;
     using Base::Base;
@@ -127,6 +130,7 @@ struct Vectors3fResolvedConstView : Vectors3fResolvedViewImpl<true> {
         return equivalent_type{xs()[index], ys()[index], zs()[index]};
     }
 };
+
 struct Vectors3fResolvedView : Vectors3fResolvedViewImpl<false> {
     using Base = Vectors3fResolvedViewImpl<false>;
     using Base::Base;
@@ -145,6 +149,7 @@ struct Vectors3fResolvedView : Vectors3fResolvedViewImpl<false> {
         return equivalent_type{xs()[index], ys()[index], zs()[index]};
     }
 };
+
 template <bool Const>
 struct Vectors3fViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = Vectors3fSchema;
@@ -174,6 +179,7 @@ struct Vectors3fViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
                 this->count_};
     }
 };
+
 struct Vectors3fConstView : Vectors3fViewImpl<true> {
     using Base = Vectors3fViewImpl<true>;
     using Base::Base;
@@ -184,6 +190,7 @@ struct Vectors3fConstView : Vectors3fViewImpl<true> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<Vectors3fConstView>());
+
 struct Vectors3fView : Vectors3fViewImpl<false> {
     using Base = Vectors3fViewImpl<false>;
     using Base::Base;
@@ -203,6 +210,7 @@ struct Vectors3fView : Vectors3fViewImpl<false> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<Vectors3fView>());
+
 // Columns:
 // xs: float
 // ys: float

@@ -15,8 +15,11 @@
 
 namespace ioj::layout {
 struct TagTableSchema;
+struct TagTableResolvedView;
+struct TagTableResolvedConstView;
 struct TagTableView;
 struct TagTableConstView;
+
 struct TagTableLayoutColumns {
     template <typename T>
     using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
@@ -38,10 +41,9 @@ struct TagTableLayoutColumns {
     TagTableLayoutColumns(TagTableLayoutColumns const&) = delete;
     auto operator=(TagTableLayoutColumns const&) -> TagTableLayoutColumns& = delete;
 };
+
 struct TagTableLayout : ioj::single_allocation_layout::Layout<TagTableLayoutColumns> {};
 
-struct TagTableResolvedView;
-struct TagTableResolvedConstView;
 template <bool Const>
 struct TagTableResolvedViewImpl {
     using size_type = std::uint32_t;
@@ -135,10 +137,12 @@ struct TagTableResolvedViewImpl {
     Element<std::uint8_t>* count_sentinel_{};
     size_type count_{};
 };
+
 struct TagTableResolvedConstView : TagTableResolvedViewImpl<true> {
     using Base = TagTableResolvedViewImpl<true>;
     using Base::Base;
 };
+
 struct TagTableResolvedView : TagTableResolvedViewImpl<false> {
     using Base = TagTableResolvedViewImpl<false>;
     using Base::Base;
@@ -154,6 +158,7 @@ struct TagTableResolvedView : TagTableResolvedViewImpl<false> {
         this->count_sentinel()[index] = new_count_sentinel;
     }
 };
+
 template <bool Const>
 struct TagTableViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = TagTableSchema;
@@ -186,11 +191,13 @@ struct TagTableViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
                 this->count_};
     }
 };
+
 struct TagTableConstView : TagTableViewImpl<true> {
     using Base = TagTableViewImpl<true>;
     using Base::Base;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<TagTableConstView>());
+
 struct TagTableView : TagTableViewImpl<false> {
     using Base = TagTableViewImpl<false>;
     using Base::Base;
@@ -207,6 +214,7 @@ struct TagTableView : TagTableViewImpl<false> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<TagTableView>());
+
 // Columns:
 // name: std::string_view
 // mapped: std::uint8_t

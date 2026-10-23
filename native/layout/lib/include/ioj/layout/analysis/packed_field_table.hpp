@@ -24,8 +24,11 @@
 
 namespace ioj::layout {
 struct PackedFieldTableSchema;
+struct PackedFieldTableResolvedView;
+struct PackedFieldTableResolvedConstView;
 struct PackedFieldTableView;
 struct PackedFieldTableConstView;
+
 struct PackedFieldTableLayoutColumns {
     template <typename T>
     using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
@@ -87,11 +90,10 @@ struct PackedFieldTableLayoutColumns {
     PackedFieldTableLayoutColumns(PackedFieldTableLayoutColumns const&) = delete;
     auto operator=(PackedFieldTableLayoutColumns const&) -> PackedFieldTableLayoutColumns& = delete;
 };
+
 struct PackedFieldTableLayout
     : ioj::single_allocation_layout::Layout<PackedFieldTableLayoutColumns> {};
 
-struct PackedFieldTableResolvedView;
-struct PackedFieldTableResolvedConstView;
 template <bool Const>
 struct PackedFieldTableResolvedViewImpl {
     using size_type = std::uint32_t;
@@ -482,10 +484,12 @@ struct PackedFieldTableResolvedViewImpl {
     Element<ioj::layout::RowRange>* codes_{};
     size_type count_{};
 };
+
 struct PackedFieldTableResolvedConstView : PackedFieldTableResolvedViewImpl<true> {
     using Base = PackedFieldTableResolvedViewImpl<true>;
     using Base::Base;
 };
+
 struct PackedFieldTableResolvedView : PackedFieldTableResolvedViewImpl<false> {
     using Base = PackedFieldTableResolvedViewImpl<false>;
     using Base::Base;
@@ -541,6 +545,7 @@ struct PackedFieldTableResolvedView : PackedFieldTableResolvedViewImpl<false> {
         this->codes()[index] = new_codes;
     }
 };
+
 template <bool Const>
 struct PackedFieldTableViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = PackedFieldTableSchema;
@@ -657,11 +662,13 @@ struct PackedFieldTableViewImpl : ioj::soa_storage_detail::CompactViewBase<Const
                 this->count_};
     }
 };
+
 struct PackedFieldTableConstView : PackedFieldTableViewImpl<true> {
     using Base = PackedFieldTableViewImpl<true>;
     using Base::Base;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<PackedFieldTableConstView>());
+
 struct PackedFieldTableView : PackedFieldTableViewImpl<false> {
     using Base = PackedFieldTableViewImpl<false>;
     using Base::Base;
@@ -718,6 +725,7 @@ struct PackedFieldTableView : PackedFieldTableViewImpl<false> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<PackedFieldTableView>());
+
 // Columns:
 // parent: ioj::layout::AnalysisId
 // segment: lispb::schema::PackedSegmentId

@@ -585,7 +585,8 @@ auto view_columns(LoweringContext& context, SingleAllocationViewId view)
 
 auto emit_resolved_views(LoweringContext& context,
                          SingleAllocationViewId view,
-                         NodeListBuilder& source) -> Nodes {
+                         NodeListBuilder& source,
+                         NodeListBuilder& declarations) -> Nodes {
     if (uses_canonical_resolved_view(context, view)) {
         return {};
     }
@@ -602,18 +603,20 @@ auto emit_resolved_views(LoweringContext& context,
     auto const const_name{resolved_view_name(context, view, true)};
     auto const implementation{mutable_name + "Impl"};
     NodeListBuilder result{ir};
+    declarations.add(ir.forward_declaration(ir.strings.intern(mutable_name)))
+        .new_lines(1)
+        .add(ir.forward_declaration(ir.strings.intern(const_name)))
+        .new_lines(1);
 
     for (auto const member : context.declarations.items(
              context.declarations.soas.members[context.declarations.soas.index(schema)])) {
         if (members.kind[members.index(member)] == SoaMemberKind::nested) {
-            result.append(emit_resolved_views(context, nested_view(context, view, member), source))
-                .new_lines(1);
+            result
+                .append(emit_resolved_views(
+                    context, nested_view(context, view, member), source, declarations))
+                .new_lines(2);
         }
     }
-    result.add(ir.forward_declaration(ir.strings.intern(mutable_name)))
-        .new_lines(1)
-        .add(ir.forward_declaration(ir.strings.intern(const_name)))
-        .new_lines(1);
 
     auto pointer_name = [&](SingleAllocationColumnId column) {
         return context.text(columns.flattened_identifier[columns.index(column)]) + "_";
@@ -796,7 +799,7 @@ auto emit_resolved_views(LoweringContext& context,
     ir.set_record_template(record,
                            ir.template_declaration({ir.value_template_parameter(
                                ir.types.intern("bool"), ir.strings.intern("Const"))}));
-    result.add(record).new_lines(1);
+    result.add(record).new_lines(2);
     for (bool const is_const : {true, false}) {
         auto const name{is_const ? const_name : mutable_name};
         auto const base{implementation + (is_const ? "<true>" : "<false>")};
@@ -813,7 +816,7 @@ auto emit_resolved_views(LoweringContext& context,
         source.append(api.source).new_lines(1);
         auto const type{ir.record(ir.strings.intern(name), wrapper.build(), RecordKind::struct_)};
         ir.set_record_bases(type, {ir.types.intern(base)});
-        result.add(type).new_lines(1);
+        result.add(type).new_lines(2);
     }
     return result.build();
 }
@@ -1039,11 +1042,11 @@ auto emit_single_allocation_layout(LoweringContext& context, SingleAllocationMod
     ir.set_record_bases(layout,
                         {ir.types.intern("ioj::single_allocation_layout::Layout<" +
                                          context.text(models.layout_name[row]) + "Columns>")});
-    return adjacent(context,
-                    {ir.forward_declaration(models.view_name[row]),
-                     ir.forward_declaration(models.const_view_name[row]),
-                     emit_single_allocation_column_group(context, models.schema[row]),
-                     layout});
+    NodeListBuilder result{ir};
+    result.add(emit_single_allocation_column_group(context, models.schema[row]))
+        .new_lines(2)
+        .add(layout);
+    return result.build();
 }
 
 auto storage_implementation_nodes(LoweringContext& context, SingleAllocationModelId model)
@@ -1085,8 +1088,10 @@ auto storage_implementation_nodes(LoweringContext& context, SingleAllocationMode
 }
 
 namespace {
-auto emit_views(LoweringContext& context, SingleAllocationViewId view, NodeListBuilder& source)
-    -> Nodes {
+auto emit_views(LoweringContext& context,
+                SingleAllocationViewId view,
+                NodeListBuilder& source,
+                NodeListBuilder& declarations) -> Nodes {
     auto& view_store{context.ir.lowering.single_allocation_views};
     auto const view_store_index{view_store.index(view)};
     auto& ir{context.ir};
@@ -1121,6 +1126,10 @@ auto emit_views(LoweringContext& context, SingleAllocationViewId view, NodeListB
         return created_record;
     };
     NodeListBuilder result{ir};
+    declarations.add(ir.forward_declaration(view_store.view_name[view_store_index]))
+        .new_lines(1)
+        .add(ir.forward_declaration(view_store.const_view_name[view_store_index]))
+        .new_lines(1);
     for (auto const member_id : context.declarations.items(
              context.declarations.soas
                  .members[context.declarations.soas.index(view_store.schema[view_store_index])])) {
@@ -1128,21 +1137,16 @@ auto emit_views(LoweringContext& context, SingleAllocationViewId view, NodeListB
         if (context.declarations.soa_members.kind[context.declarations.soa_members.index(member)] ==
             SoaMemberKind::nested) {
             auto const nested{nested_view(context, view, member)};
-            result.add(ir.forward_declaration(view_store.view_name[view_store.index(nested)]))
-                .new_lines(1)
-                .add(ir.forward_declaration(view_store.const_view_name[view_store.index(nested)]))
-                .new_lines(1)
-                .append(emit_views(context, nested, source))
-                .new_lines(1);
+            result.append(emit_views(context, nested, source, declarations)).new_lines(2);
         }
     }
     result.add(compact_view_node(context, view))
-        .new_lines(1)
+        .new_lines(2)
         .add(wrapper(true))
         .new_lines(1)
         .append(view_validation_nodes(context,
                                       context.text(view_store.const_view_name[view_store_index])))
-        .new_lines(1)
+        .new_lines(2)
         .add(wrapper(false))
         .new_lines(1)
         .append(
@@ -1153,7 +1157,8 @@ auto emit_views(LoweringContext& context, SingleAllocationViewId view, NodeListB
 
 auto emit_single_allocation_views(LoweringContext& context,
                                   SingleAllocationModelId model,
-                                  NodeListBuilder& source) -> Nodes {
+                                  NodeListBuilder& source,
+                                  NodeListBuilder& declarations) -> Nodes {
     auto& storage{context.ir.lowering};
     auto& views{storage.single_allocation_views};
     auto const& models{storage.single_allocation_models};
@@ -1165,8 +1170,8 @@ auto emit_single_allocation_views(LoweringContext& context,
     views.view_name[row] = models.view_name[model_row];
     views.const_view_name[row] = models.const_view_name[model_row];
     NodeListBuilder result{context.ir};
-    result.append(emit_resolved_views(context, view, source)).new_lines(1);
-    result.append(emit_views(context, view, source));
+    result.append(emit_resolved_views(context, view, source, declarations)).new_lines(2);
+    result.append(emit_views(context, view, source, declarations));
     return result.build();
 }
 

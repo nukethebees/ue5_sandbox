@@ -14,8 +14,15 @@
 
 namespace ioj::sim {
 struct LineTracesSchema;
+struct LineTracesResolvedView;
+struct LineTracesResolvedConstView;
 struct LineTracesView;
 struct LineTracesConstView;
+struct LineTracesView_starts;
+struct LineTracesConstView_starts;
+struct LineTracesView_ends;
+struct LineTracesConstView_ends;
+
 struct LineTracesLayoutColumns {
     template <typename T>
     using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
@@ -33,9 +40,9 @@ struct LineTracesLayoutColumns {
     LineTracesLayoutColumns(LineTracesLayoutColumns const&) = delete;
     auto operator=(LineTracesLayoutColumns const&) -> LineTracesLayoutColumns& = delete;
 };
+
 struct LineTracesLayout : ioj::single_allocation_layout::Layout<LineTracesLayoutColumns> {};
-struct LineTracesResolvedView;
-struct LineTracesResolvedConstView;
+
 template <bool Const>
 struct LineTracesResolvedViewImpl {
     using size_type = std::uint32_t;
@@ -153,10 +160,12 @@ struct LineTracesResolvedViewImpl {
     Element<float>* ends_zs_{};
     size_type count_{};
 };
+
 struct LineTracesResolvedConstView : LineTracesResolvedViewImpl<true> {
     using Base = LineTracesResolvedViewImpl<true>;
     using Base::Base;
 };
+
 struct LineTracesResolvedView : LineTracesResolvedViewImpl<false> {
     using Base = LineTracesResolvedViewImpl<false>;
     using Base::Base;
@@ -181,8 +190,7 @@ struct LineTracesResolvedView : LineTracesResolvedViewImpl<false> {
         this->view_ends().set(index, new_ends);
     }
 };
-struct LineTracesView_starts;
-struct LineTracesConstView_starts;
+
 template <bool Const>
 struct LineTracesView_startsImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = Vectors3fSchema;
@@ -212,6 +220,7 @@ struct LineTracesView_startsImpl : ioj::soa_storage_detail::CompactViewBase<Cons
                 this->count_};
     }
 };
+
 struct LineTracesConstView_starts : LineTracesView_startsImpl<true> {
     using Base = LineTracesView_startsImpl<true>;
     using Base::Base;
@@ -222,6 +231,7 @@ struct LineTracesConstView_starts : LineTracesView_startsImpl<true> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<LineTracesConstView_starts>());
+
 struct LineTracesView_starts : LineTracesView_startsImpl<false> {
     using Base = LineTracesView_startsImpl<false>;
     using Base::Base;
@@ -241,8 +251,7 @@ struct LineTracesView_starts : LineTracesView_startsImpl<false> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<LineTracesView_starts>());
-struct LineTracesView_ends;
-struct LineTracesConstView_ends;
+
 template <bool Const>
 struct LineTracesView_endsImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = Vectors3fSchema;
@@ -272,6 +281,7 @@ struct LineTracesView_endsImpl : ioj::soa_storage_detail::CompactViewBase<Const>
                 this->count_};
     }
 };
+
 struct LineTracesConstView_ends : LineTracesView_endsImpl<true> {
     using Base = LineTracesView_endsImpl<true>;
     using Base::Base;
@@ -282,6 +292,7 @@ struct LineTracesConstView_ends : LineTracesView_endsImpl<true> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<LineTracesConstView_ends>());
+
 struct LineTracesView_ends : LineTracesView_endsImpl<false> {
     using Base = LineTracesView_endsImpl<false>;
     using Base::Base;
@@ -301,6 +312,7 @@ struct LineTracesView_ends : LineTracesView_endsImpl<false> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<LineTracesView_ends>());
+
 template <bool Const>
 struct LineTracesViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = LineTracesSchema;
@@ -343,11 +355,13 @@ struct LineTracesViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
                 this->count_};
     }
 };
+
 struct LineTracesConstView : LineTracesViewImpl<true> {
     using Base = LineTracesViewImpl<true>;
     using Base::Base;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<LineTracesConstView>());
+
 struct LineTracesView : LineTracesViewImpl<false> {
     using Base = LineTracesViewImpl<false>;
     using Base::Base;
@@ -373,6 +387,7 @@ struct LineTracesView : LineTracesViewImpl<false> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<LineTracesView>());
+
 // Columns:
 // starts_xs: float
 // starts_ys: float

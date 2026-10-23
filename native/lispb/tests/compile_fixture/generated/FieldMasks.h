@@ -57,6 +57,7 @@ struct FFieldMask8 {
 };
 static_assert(sizeof(FFieldMask8) == sizeof(FFieldMask8::storage_type));
 static_assert(std::is_trivially_copyable_v<FFieldMask8>);
+
 struct FMaskRows8LayoutColumns {
     template <typename T>
     using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
@@ -124,6 +125,7 @@ struct FFieldMask9 {
 };
 static_assert(sizeof(FFieldMask9) == sizeof(FFieldMask9::storage_type));
 static_assert(std::is_trivially_copyable_v<FFieldMask9>);
+
 struct FMaskRows9LayoutColumns {
     template <typename T>
     using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
@@ -192,6 +194,7 @@ struct FFieldMask16 {
 };
 static_assert(sizeof(FFieldMask16) == sizeof(FFieldMask16::storage_type));
 static_assert(std::is_trivially_copyable_v<FFieldMask16>);
+
 struct FMaskRows16LayoutColumns {
     template <typename T>
     using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
@@ -258,6 +261,7 @@ struct FFieldMask17 {
 };
 static_assert(sizeof(FFieldMask17) == sizeof(FFieldMask17::storage_type));
 static_assert(std::is_trivially_copyable_v<FFieldMask17>);
+
 struct FMaskRows17LayoutColumns {
     template <typename T>
     using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
@@ -324,6 +328,7 @@ struct FFieldMask32 {
 };
 static_assert(sizeof(FFieldMask32) == sizeof(FFieldMask32::storage_type));
 static_assert(std::is_trivially_copyable_v<FFieldMask32>);
+
 struct FMaskRows32LayoutColumns {
     template <typename T>
     using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
@@ -390,6 +395,7 @@ struct FFieldMask33 {
 };
 static_assert(sizeof(FFieldMask33) == sizeof(FFieldMask33::storage_type));
 static_assert(std::is_trivially_copyable_v<FFieldMask33>);
+
 struct FMaskRows33LayoutColumns {
     template <typename T>
     using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;

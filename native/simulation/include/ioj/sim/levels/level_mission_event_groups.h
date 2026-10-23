@@ -14,8 +14,11 @@
 
 namespace ioj::sim {
 struct LevelMissionEventGroupsSchema;
+struct LevelMissionEventGroupsResolvedView;
+struct LevelMissionEventGroupsResolvedConstView;
 struct LevelMissionEventGroupsView;
 struct LevelMissionEventGroupsConstView;
+
 struct LevelMissionEventGroupsLayoutColumns {
     template <typename T>
     using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
@@ -36,11 +39,10 @@ struct LevelMissionEventGroupsLayoutColumns {
     auto operator=(LevelMissionEventGroupsLayoutColumns const&)
         -> LevelMissionEventGroupsLayoutColumns& = delete;
 };
+
 struct LevelMissionEventGroupsLayout
     : ioj::single_allocation_layout::Layout<LevelMissionEventGroupsLayoutColumns> {};
 
-struct LevelMissionEventGroupsResolvedView;
-struct LevelMissionEventGroupsResolvedConstView;
 template <bool Const>
 struct LevelMissionEventGroupsResolvedViewImpl {
     using size_type = std::uint32_t;
@@ -123,10 +125,12 @@ struct LevelMissionEventGroupsResolvedViewImpl {
     Element<LevelEventCount>* counts_{};
     size_type count_{};
 };
+
 struct LevelMissionEventGroupsResolvedConstView : LevelMissionEventGroupsResolvedViewImpl<true> {
     using Base = LevelMissionEventGroupsResolvedViewImpl<true>;
     using Base::Base;
 };
+
 struct LevelMissionEventGroupsResolvedView : LevelMissionEventGroupsResolvedViewImpl<false> {
     using Base = LevelMissionEventGroupsResolvedViewImpl<false>;
     using Base::Base;
@@ -140,6 +144,7 @@ struct LevelMissionEventGroupsResolvedView : LevelMissionEventGroupsResolvedView
         this->counts()[index] = new_counts;
     }
 };
+
 template <bool Const>
 struct LevelMissionEventGroupsViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = LevelMissionEventGroupsSchema;
@@ -170,11 +175,13 @@ struct LevelMissionEventGroupsViewImpl : ioj::soa_storage_detail::CompactViewBas
                 this->count_};
     }
 };
+
 struct LevelMissionEventGroupsConstView : LevelMissionEventGroupsViewImpl<true> {
     using Base = LevelMissionEventGroupsViewImpl<true>;
     using Base::Base;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<LevelMissionEventGroupsConstView>());
+
 struct LevelMissionEventGroupsView : LevelMissionEventGroupsViewImpl<false> {
     using Base = LevelMissionEventGroupsViewImpl<false>;
     using Base::Base;
@@ -189,6 +196,7 @@ struct LevelMissionEventGroupsView : LevelMissionEventGroupsViewImpl<false> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<LevelMissionEventGroupsView>());
+
 // Columns:
 // types: LevelMissionEventType
 // offsets: std::int32_t

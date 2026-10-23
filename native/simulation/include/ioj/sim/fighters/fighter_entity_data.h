@@ -19,8 +19,33 @@
 
 namespace ioj::sim {
 struct FighterEntityDataSchema;
+struct FighterEntityDataResolvedView;
+struct FighterEntityDataResolvedConstView;
 struct FighterEntityDataView;
 struct FighterEntityDataConstView;
+struct FighterEntityDataView_locations;
+struct FighterEntityDataConstView_locations;
+struct FighterEntityDataView_desired_move_locations;
+struct FighterEntityDataConstView_desired_move_locations;
+struct FighterEntityDataView_aim_directions;
+struct FighterEntityDataConstView_aim_directions;
+struct FighterEntityDataView_planned_aim_directions;
+struct FighterEntityDataConstView_planned_aim_directions;
+struct FighterEntityDataView_desired_aiming_directions;
+struct FighterEntityDataConstView_desired_aiming_directions;
+struct FighterEntityDataView_movement_directions;
+struct FighterEntityDataConstView_movement_directions;
+struct FighterEntityDataView_velocities;
+struct FighterEntityDataConstView_velocities;
+struct FighterEntityDataView_separation_steering;
+struct FighterEntityDataConstView_separation_steering;
+struct FighterEntityDataView_target_locations;
+struct FighterEntityDataConstView_target_locations;
+struct FighterEntityDataView_target_velocities;
+struct FighterEntityDataConstView_target_velocities;
+struct FighterEntityDataView_target_directions;
+struct FighterEntityDataConstView_target_directions;
+
 struct FighterEntityDataLayoutColumns {
     template <typename T>
     using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
@@ -101,10 +126,10 @@ struct FighterEntityDataLayoutColumns {
     auto operator=(FighterEntityDataLayoutColumns const&)
         -> FighterEntityDataLayoutColumns& = delete;
 };
+
 struct FighterEntityDataLayout
     : ioj::single_allocation_layout::Layout<FighterEntityDataLayoutColumns> {};
-struct FighterEntityDataResolvedView;
-struct FighterEntityDataResolvedConstView;
+
 template <bool Const>
 struct FighterEntityDataResolvedViewImpl {
     using size_type = std::uint32_t;
@@ -908,10 +933,12 @@ struct FighterEntityDataResolvedViewImpl {
     Element<float>* target_radii_{};
     size_type count_{};
 };
+
 struct FighterEntityDataResolvedConstView : FighterEntityDataResolvedViewImpl<true> {
     using Base = FighterEntityDataResolvedViewImpl<true>;
     using Base::Base;
 };
+
 struct FighterEntityDataResolvedView : FighterEntityDataResolvedViewImpl<false> {
     using Base = FighterEntityDataResolvedViewImpl<false>;
     using Base::Base;
@@ -1102,8 +1129,7 @@ struct FighterEntityDataResolvedView : FighterEntityDataResolvedViewImpl<false> 
         this->target_radii()[index] = new_target_radii;
     }
 };
-struct FighterEntityDataView_locations;
-struct FighterEntityDataConstView_locations;
+
 template <bool Const>
 struct FighterEntityDataView_locationsImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = Vectors3fSchema;
@@ -1133,6 +1159,7 @@ struct FighterEntityDataView_locationsImpl : ioj::soa_storage_detail::CompactVie
                 this->count_};
     }
 };
+
 struct FighterEntityDataConstView_locations : FighterEntityDataView_locationsImpl<true> {
     using Base = FighterEntityDataView_locationsImpl<true>;
     using Base::Base;
@@ -1144,6 +1171,7 @@ struct FighterEntityDataConstView_locations : FighterEntityDataView_locationsImp
 };
 static_assert(
     ioj::soa_storage_detail::validate_compact_view<FighterEntityDataConstView_locations>());
+
 struct FighterEntityDataView_locations : FighterEntityDataView_locationsImpl<false> {
     using Base = FighterEntityDataView_locationsImpl<false>;
     using Base::Base;
@@ -1163,8 +1191,7 @@ struct FighterEntityDataView_locations : FighterEntityDataView_locationsImpl<fal
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<FighterEntityDataView_locations>());
-struct FighterEntityDataView_desired_move_locations;
-struct FighterEntityDataConstView_desired_move_locations;
+
 template <bool Const>
 struct FighterEntityDataView_desired_move_locationsImpl
     : ioj::soa_storage_detail::CompactViewBase<Const> {
@@ -1196,6 +1223,7 @@ struct FighterEntityDataView_desired_move_locationsImpl
                 this->count_};
     }
 };
+
 struct FighterEntityDataConstView_desired_move_locations
     : FighterEntityDataView_desired_move_locationsImpl<true> {
     using Base = FighterEntityDataView_desired_move_locationsImpl<true>;
@@ -1208,6 +1236,7 @@ struct FighterEntityDataConstView_desired_move_locations
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<
               FighterEntityDataConstView_desired_move_locations>());
+
 struct FighterEntityDataView_desired_move_locations
     : FighterEntityDataView_desired_move_locationsImpl<false> {
     using Base = FighterEntityDataView_desired_move_locationsImpl<false>;
@@ -1229,8 +1258,7 @@ struct FighterEntityDataView_desired_move_locations
 };
 static_assert(
     ioj::soa_storage_detail::validate_compact_view<FighterEntityDataView_desired_move_locations>());
-struct FighterEntityDataView_aim_directions;
-struct FighterEntityDataConstView_aim_directions;
+
 template <bool Const>
 struct FighterEntityDataView_aim_directionsImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = Vectors3fSchema;
@@ -1261,6 +1289,7 @@ struct FighterEntityDataView_aim_directionsImpl : ioj::soa_storage_detail::Compa
                 this->count_};
     }
 };
+
 struct FighterEntityDataConstView_aim_directions : FighterEntityDataView_aim_directionsImpl<true> {
     using Base = FighterEntityDataView_aim_directionsImpl<true>;
     using Base::Base;
@@ -1272,6 +1301,7 @@ struct FighterEntityDataConstView_aim_directions : FighterEntityDataView_aim_dir
 };
 static_assert(
     ioj::soa_storage_detail::validate_compact_view<FighterEntityDataConstView_aim_directions>());
+
 struct FighterEntityDataView_aim_directions : FighterEntityDataView_aim_directionsImpl<false> {
     using Base = FighterEntityDataView_aim_directionsImpl<false>;
     using Base::Base;
@@ -1292,8 +1322,7 @@ struct FighterEntityDataView_aim_directions : FighterEntityDataView_aim_directio
 };
 static_assert(
     ioj::soa_storage_detail::validate_compact_view<FighterEntityDataView_aim_directions>());
-struct FighterEntityDataView_planned_aim_directions;
-struct FighterEntityDataConstView_planned_aim_directions;
+
 template <bool Const>
 struct FighterEntityDataView_planned_aim_directionsImpl
     : ioj::soa_storage_detail::CompactViewBase<Const> {
@@ -1325,6 +1354,7 @@ struct FighterEntityDataView_planned_aim_directionsImpl
                 this->count_};
     }
 };
+
 struct FighterEntityDataConstView_planned_aim_directions
     : FighterEntityDataView_planned_aim_directionsImpl<true> {
     using Base = FighterEntityDataView_planned_aim_directionsImpl<true>;
@@ -1337,6 +1367,7 @@ struct FighterEntityDataConstView_planned_aim_directions
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<
               FighterEntityDataConstView_planned_aim_directions>());
+
 struct FighterEntityDataView_planned_aim_directions
     : FighterEntityDataView_planned_aim_directionsImpl<false> {
     using Base = FighterEntityDataView_planned_aim_directionsImpl<false>;
@@ -1358,8 +1389,7 @@ struct FighterEntityDataView_planned_aim_directions
 };
 static_assert(
     ioj::soa_storage_detail::validate_compact_view<FighterEntityDataView_planned_aim_directions>());
-struct FighterEntityDataView_desired_aiming_directions;
-struct FighterEntityDataConstView_desired_aiming_directions;
+
 template <bool Const>
 struct FighterEntityDataView_desired_aiming_directionsImpl
     : ioj::soa_storage_detail::CompactViewBase<Const> {
@@ -1391,6 +1421,7 @@ struct FighterEntityDataView_desired_aiming_directionsImpl
                 this->count_};
     }
 };
+
 struct FighterEntityDataConstView_desired_aiming_directions
     : FighterEntityDataView_desired_aiming_directionsImpl<true> {
     using Base = FighterEntityDataView_desired_aiming_directionsImpl<true>;
@@ -1403,6 +1434,7 @@ struct FighterEntityDataConstView_desired_aiming_directions
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<
               FighterEntityDataConstView_desired_aiming_directions>());
+
 struct FighterEntityDataView_desired_aiming_directions
     : FighterEntityDataView_desired_aiming_directionsImpl<false> {
     using Base = FighterEntityDataView_desired_aiming_directionsImpl<false>;
@@ -1424,8 +1456,7 @@ struct FighterEntityDataView_desired_aiming_directions
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<
               FighterEntityDataView_desired_aiming_directions>());
-struct FighterEntityDataView_movement_directions;
-struct FighterEntityDataConstView_movement_directions;
+
 template <bool Const>
 struct FighterEntityDataView_movement_directionsImpl
     : ioj::soa_storage_detail::CompactViewBase<Const> {
@@ -1457,6 +1488,7 @@ struct FighterEntityDataView_movement_directionsImpl
                 this->count_};
     }
 };
+
 struct FighterEntityDataConstView_movement_directions
     : FighterEntityDataView_movement_directionsImpl<true> {
     using Base = FighterEntityDataView_movement_directionsImpl<true>;
@@ -1469,6 +1501,7 @@ struct FighterEntityDataConstView_movement_directions
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<
               FighterEntityDataConstView_movement_directions>());
+
 struct FighterEntityDataView_movement_directions
     : FighterEntityDataView_movement_directionsImpl<false> {
     using Base = FighterEntityDataView_movement_directionsImpl<false>;
@@ -1490,8 +1523,7 @@ struct FighterEntityDataView_movement_directions
 };
 static_assert(
     ioj::soa_storage_detail::validate_compact_view<FighterEntityDataView_movement_directions>());
-struct FighterEntityDataView_velocities;
-struct FighterEntityDataConstView_velocities;
+
 template <bool Const>
 struct FighterEntityDataView_velocitiesImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = Vectors3fSchema;
@@ -1521,6 +1553,7 @@ struct FighterEntityDataView_velocitiesImpl : ioj::soa_storage_detail::CompactVi
                 this->count_};
     }
 };
+
 struct FighterEntityDataConstView_velocities : FighterEntityDataView_velocitiesImpl<true> {
     using Base = FighterEntityDataView_velocitiesImpl<true>;
     using Base::Base;
@@ -1532,6 +1565,7 @@ struct FighterEntityDataConstView_velocities : FighterEntityDataView_velocitiesI
 };
 static_assert(
     ioj::soa_storage_detail::validate_compact_view<FighterEntityDataConstView_velocities>());
+
 struct FighterEntityDataView_velocities : FighterEntityDataView_velocitiesImpl<false> {
     using Base = FighterEntityDataView_velocitiesImpl<false>;
     using Base::Base;
@@ -1551,8 +1585,7 @@ struct FighterEntityDataView_velocities : FighterEntityDataView_velocitiesImpl<f
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<FighterEntityDataView_velocities>());
-struct FighterEntityDataView_separation_steering;
-struct FighterEntityDataConstView_separation_steering;
+
 template <bool Const>
 struct FighterEntityDataView_separation_steeringImpl
     : ioj::soa_storage_detail::CompactViewBase<Const> {
@@ -1584,6 +1617,7 @@ struct FighterEntityDataView_separation_steeringImpl
                 this->count_};
     }
 };
+
 struct FighterEntityDataConstView_separation_steering
     : FighterEntityDataView_separation_steeringImpl<true> {
     using Base = FighterEntityDataView_separation_steeringImpl<true>;
@@ -1596,6 +1630,7 @@ struct FighterEntityDataConstView_separation_steering
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<
               FighterEntityDataConstView_separation_steering>());
+
 struct FighterEntityDataView_separation_steering
     : FighterEntityDataView_separation_steeringImpl<false> {
     using Base = FighterEntityDataView_separation_steeringImpl<false>;
@@ -1617,8 +1652,7 @@ struct FighterEntityDataView_separation_steering
 };
 static_assert(
     ioj::soa_storage_detail::validate_compact_view<FighterEntityDataView_separation_steering>());
-struct FighterEntityDataView_target_locations;
-struct FighterEntityDataConstView_target_locations;
+
 template <bool Const>
 struct FighterEntityDataView_target_locationsImpl
     : ioj::soa_storage_detail::CompactViewBase<Const> {
@@ -1650,6 +1684,7 @@ struct FighterEntityDataView_target_locationsImpl
                 this->count_};
     }
 };
+
 struct FighterEntityDataConstView_target_locations
     : FighterEntityDataView_target_locationsImpl<true> {
     using Base = FighterEntityDataView_target_locationsImpl<true>;
@@ -1662,6 +1697,7 @@ struct FighterEntityDataConstView_target_locations
 };
 static_assert(
     ioj::soa_storage_detail::validate_compact_view<FighterEntityDataConstView_target_locations>());
+
 struct FighterEntityDataView_target_locations : FighterEntityDataView_target_locationsImpl<false> {
     using Base = FighterEntityDataView_target_locationsImpl<false>;
     using Base::Base;
@@ -1682,8 +1718,7 @@ struct FighterEntityDataView_target_locations : FighterEntityDataView_target_loc
 };
 static_assert(
     ioj::soa_storage_detail::validate_compact_view<FighterEntityDataView_target_locations>());
-struct FighterEntityDataView_target_velocities;
-struct FighterEntityDataConstView_target_velocities;
+
 template <bool Const>
 struct FighterEntityDataView_target_velocitiesImpl
     : ioj::soa_storage_detail::CompactViewBase<Const> {
@@ -1715,6 +1750,7 @@ struct FighterEntityDataView_target_velocitiesImpl
                 this->count_};
     }
 };
+
 struct FighterEntityDataConstView_target_velocities
     : FighterEntityDataView_target_velocitiesImpl<true> {
     using Base = FighterEntityDataView_target_velocitiesImpl<true>;
@@ -1727,6 +1763,7 @@ struct FighterEntityDataConstView_target_velocities
 };
 static_assert(
     ioj::soa_storage_detail::validate_compact_view<FighterEntityDataConstView_target_velocities>());
+
 struct FighterEntityDataView_target_velocities
     : FighterEntityDataView_target_velocitiesImpl<false> {
     using Base = FighterEntityDataView_target_velocitiesImpl<false>;
@@ -1748,8 +1785,7 @@ struct FighterEntityDataView_target_velocities
 };
 static_assert(
     ioj::soa_storage_detail::validate_compact_view<FighterEntityDataView_target_velocities>());
-struct FighterEntityDataView_target_directions;
-struct FighterEntityDataConstView_target_directions;
+
 template <bool Const>
 struct FighterEntityDataView_target_directionsImpl
     : ioj::soa_storage_detail::CompactViewBase<Const> {
@@ -1781,6 +1817,7 @@ struct FighterEntityDataView_target_directionsImpl
                 this->count_};
     }
 };
+
 struct FighterEntityDataConstView_target_directions
     : FighterEntityDataView_target_directionsImpl<true> {
     using Base = FighterEntityDataView_target_directionsImpl<true>;
@@ -1793,6 +1830,7 @@ struct FighterEntityDataConstView_target_directions
 };
 static_assert(
     ioj::soa_storage_detail::validate_compact_view<FighterEntityDataConstView_target_directions>());
+
 struct FighterEntityDataView_target_directions
     : FighterEntityDataView_target_directionsImpl<false> {
     using Base = FighterEntityDataView_target_directionsImpl<false>;
@@ -1814,6 +1852,7 @@ struct FighterEntityDataView_target_directions
 };
 static_assert(
     ioj::soa_storage_detail::validate_compact_view<FighterEntityDataView_target_directions>());
+
 template <bool Const>
 struct FighterEntityDataViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = FighterEntityDataSchema;
@@ -2057,11 +2096,13 @@ struct FighterEntityDataViewImpl : ioj::soa_storage_detail::CompactViewBase<Cons
                 this->count_};
     }
 };
+
 struct FighterEntityDataConstView : FighterEntityDataViewImpl<true> {
     using Base = FighterEntityDataViewImpl<true>;
     using Base::Base;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<FighterEntityDataConstView>());
+
 struct FighterEntityDataView : FighterEntityDataViewImpl<false> {
     using Base = FighterEntityDataViewImpl<false>;
     using Base::Base;
@@ -2253,6 +2294,7 @@ struct FighterEntityDataView : FighterEntityDataViewImpl<false> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<FighterEntityDataView>());
+
 // Columns:
 // entity_ids: EntityId
 // integral_biases: std::uint32_t

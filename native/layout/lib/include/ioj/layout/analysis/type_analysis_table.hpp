@@ -22,8 +22,11 @@
 
 namespace ioj::layout {
 struct TypeAnalysisTableSchema;
+struct TypeAnalysisTableResolvedView;
+struct TypeAnalysisTableResolvedConstView;
 struct TypeAnalysisTableView;
 struct TypeAnalysisTableConstView;
+
 struct TypeAnalysisTableLayoutColumns {
     template <typename T>
     using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
@@ -52,11 +55,10 @@ struct TypeAnalysisTableLayoutColumns {
     auto operator=(TypeAnalysisTableLayoutColumns const&)
         -> TypeAnalysisTableLayoutColumns& = delete;
 };
+
 struct TypeAnalysisTableLayout
     : ioj::single_allocation_layout::Layout<TypeAnalysisTableLayoutColumns> {};
 
-struct TypeAnalysisTableResolvedView;
-struct TypeAnalysisTableResolvedConstView;
 template <bool Const>
 struct TypeAnalysisTableResolvedViewImpl {
     using size_type = std::uint32_t;
@@ -199,10 +201,12 @@ struct TypeAnalysisTableResolvedViewImpl {
     Element<std::optional<ioj::layout::SoaLayout>>* soa_{};
     size_type count_{};
 };
+
 struct TypeAnalysisTableResolvedConstView : TypeAnalysisTableResolvedViewImpl<true> {
     using Base = TypeAnalysisTableResolvedViewImpl<true>;
     using Base::Base;
 };
+
 struct TypeAnalysisTableResolvedView : TypeAnalysisTableResolvedViewImpl<false> {
     using Base = TypeAnalysisTableResolvedViewImpl<false>;
     using Base::Base;
@@ -224,6 +228,7 @@ struct TypeAnalysisTableResolvedView : TypeAnalysisTableResolvedViewImpl<false> 
         this->soa()[index] = new_soa;
     }
 };
+
 template <bool Const>
 struct TypeAnalysisTableViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = TypeAnalysisTableSchema;
@@ -265,11 +270,13 @@ struct TypeAnalysisTableViewImpl : ioj::soa_storage_detail::CompactViewBase<Cons
                 this->count_};
     }
 };
+
 struct TypeAnalysisTableConstView : TypeAnalysisTableViewImpl<true> {
     using Base = TypeAnalysisTableViewImpl<true>;
     using Base::Base;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<TypeAnalysisTableConstView>());
+
 struct TypeAnalysisTableView : TypeAnalysisTableViewImpl<false> {
     using Base = TypeAnalysisTableViewImpl<false>;
     using Base::Base;
@@ -292,6 +299,7 @@ struct TypeAnalysisTableView : TypeAnalysisTableViewImpl<false> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<TypeAnalysisTableView>());
+
 // Columns:
 // schema_type: lispb::schema::TypeId
 // scenario: ioj::layout::ScenarioId

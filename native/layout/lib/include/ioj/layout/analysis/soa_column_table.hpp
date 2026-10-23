@@ -22,8 +22,11 @@
 
 namespace ioj::layout {
 struct SoaColumnTableSchema;
+struct SoaColumnTableResolvedView;
+struct SoaColumnTableResolvedConstView;
 struct SoaColumnTableView;
 struct SoaColumnTableConstView;
+
 struct SoaColumnTableLayoutColumns {
     template <typename T>
     using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
@@ -67,10 +70,9 @@ struct SoaColumnTableLayoutColumns {
     SoaColumnTableLayoutColumns(SoaColumnTableLayoutColumns const&) = delete;
     auto operator=(SoaColumnTableLayoutColumns const&) -> SoaColumnTableLayoutColumns& = delete;
 };
+
 struct SoaColumnTableLayout : ioj::single_allocation_layout::Layout<SoaColumnTableLayoutColumns> {};
 
-struct SoaColumnTableResolvedView;
-struct SoaColumnTableResolvedConstView;
 template <bool Const>
 struct SoaColumnTableResolvedViewImpl {
     using size_type = std::uint32_t;
@@ -337,10 +339,12 @@ struct SoaColumnTableResolvedViewImpl {
     Element<std::optional<ioj::layout::CacheLineTiling>>* cache_line_tiling_{};
     size_type count_{};
 };
+
 struct SoaColumnTableResolvedConstView : SoaColumnTableResolvedViewImpl<true> {
     using Base = SoaColumnTableResolvedViewImpl<true>;
     using Base::Base;
 };
+
 struct SoaColumnTableResolvedView : SoaColumnTableResolvedViewImpl<false> {
     using Base = SoaColumnTableResolvedViewImpl<false>;
     using Base::Base;
@@ -378,6 +382,7 @@ struct SoaColumnTableResolvedView : SoaColumnTableResolvedViewImpl<false> {
         this->cache_line_tiling()[index] = new_cache_line_tiling;
     }
 };
+
 template <bool Const>
 struct SoaColumnTableViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = SoaColumnTableSchema;
@@ -453,11 +458,13 @@ struct SoaColumnTableViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> 
                 this->count_};
     }
 };
+
 struct SoaColumnTableConstView : SoaColumnTableViewImpl<true> {
     using Base = SoaColumnTableViewImpl<true>;
     using Base::Base;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<SoaColumnTableConstView>());
+
 struct SoaColumnTableView : SoaColumnTableViewImpl<false> {
     using Base = SoaColumnTableViewImpl<false>;
     using Base::Base;
@@ -496,6 +503,7 @@ struct SoaColumnTableView : SoaColumnTableViewImpl<false> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<SoaColumnTableView>());
+
 // Columns:
 // parent: ioj::layout::AnalysisId
 // name: std::string_view

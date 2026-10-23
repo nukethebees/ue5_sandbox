@@ -20,9 +20,12 @@ auto lower_single_allocation(LoweringContext& context, DeclarationHandle schema)
     auto model{build_single_allocation_model(context, schema)};
     NodeListBuilder result{ir};
     NodeListBuilder source{ir};
+    NodeListBuilder declarations{ir};
+    auto const views{emit_single_allocation_views(context, model, source, declarations)};
 
+    result.append(declarations.build()).new_lines(2);
     result.append(emit_single_allocation_layout(context, model)).new_lines(2);
-    result.append(emit_single_allocation_views(context, model, source)).new_lines(1);
+    result.append(views).new_lines(2);
     result.add(ir.line_comment("Columns:")).new_lines(1);
     for (auto const column :
          ir.lowering.items(ir.lowering.single_allocation_models

@@ -17,8 +17,11 @@
 
 namespace ioj::layout {
 struct DistributionEntryTableSchema;
+struct DistributionEntryTableResolvedView;
+struct DistributionEntryTableResolvedConstView;
 struct DistributionEntryTableView;
 struct DistributionEntryTableConstView;
+
 struct DistributionEntryTableLayoutColumns {
     template <typename T>
     using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
@@ -47,11 +50,10 @@ struct DistributionEntryTableLayoutColumns {
     auto operator=(DistributionEntryTableLayoutColumns const&)
         -> DistributionEntryTableLayoutColumns& = delete;
 };
+
 struct DistributionEntryTableLayout
     : ioj::single_allocation_layout::Layout<DistributionEntryTableLayoutColumns> {};
 
-struct DistributionEntryTableResolvedView;
-struct DistributionEntryTableResolvedConstView;
 template <bool Const>
 struct DistributionEntryTableResolvedViewImpl {
     using size_type = std::uint32_t;
@@ -206,10 +208,12 @@ struct DistributionEntryTableResolvedViewImpl {
     Element<std::optional<std::uint64_t>>* weighted_slack_bytes_{};
     size_type count_{};
 };
+
 struct DistributionEntryTableResolvedConstView : DistributionEntryTableResolvedViewImpl<true> {
     using Base = DistributionEntryTableResolvedViewImpl<true>;
     using Base::Base;
 };
+
 struct DistributionEntryTableResolvedView : DistributionEntryTableResolvedViewImpl<false> {
     using Base = DistributionEntryTableResolvedViewImpl<false>;
     using Base::Base;
@@ -231,6 +235,7 @@ struct DistributionEntryTableResolvedView : DistributionEntryTableResolvedViewIm
         this->weighted_slack_bytes()[index] = new_weighted_slack_bytes;
     }
 };
+
 template <bool Const>
 struct DistributionEntryTableViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = DistributionEntryTableSchema;
@@ -277,11 +282,13 @@ struct DistributionEntryTableViewImpl : ioj::soa_storage_detail::CompactViewBase
                 this->count_};
     }
 };
+
 struct DistributionEntryTableConstView : DistributionEntryTableViewImpl<true> {
     using Base = DistributionEntryTableViewImpl<true>;
     using Base::Base;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<DistributionEntryTableConstView>());
+
 struct DistributionEntryTableView : DistributionEntryTableViewImpl<false> {
     using Base = DistributionEntryTableViewImpl<false>;
     using Base::Base;
@@ -304,6 +311,7 @@ struct DistributionEntryTableView : DistributionEntryTableViewImpl<false> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<DistributionEntryTableView>());
+
 // Columns:
 // component: std::optional<std::size_t>
 // value: std::optional<lispb::codegen::PackedIntegerValue>

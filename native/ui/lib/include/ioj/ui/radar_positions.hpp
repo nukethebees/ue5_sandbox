@@ -12,8 +12,11 @@
 
 namespace ioj::ui::radar_2d {
 struct PositionsSchema;
+struct PositionsResolvedView;
+struct PositionsResolvedConstView;
 struct PositionsView;
 struct PositionsConstView;
+
 struct PositionsLayoutColumns {
     template <typename T>
     using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
@@ -31,10 +34,9 @@ struct PositionsLayoutColumns {
     PositionsLayoutColumns(PositionsLayoutColumns const&) = delete;
     auto operator=(PositionsLayoutColumns const&) -> PositionsLayoutColumns& = delete;
 };
+
 struct PositionsLayout : ioj::single_allocation_layout::Layout<PositionsLayoutColumns> {};
 
-struct PositionsResolvedView;
-struct PositionsResolvedConstView;
 template <bool Const>
 struct PositionsResolvedViewImpl {
     using size_type = std::uint32_t;
@@ -102,10 +104,12 @@ struct PositionsResolvedViewImpl {
     Element<float>* ys_{};
     size_type count_{};
 };
+
 struct PositionsResolvedConstView : PositionsResolvedViewImpl<true> {
     using Base = PositionsResolvedViewImpl<true>;
     using Base::Base;
 };
+
 struct PositionsResolvedView : PositionsResolvedViewImpl<false> {
     using Base = PositionsResolvedViewImpl<false>;
     using Base::Base;
@@ -115,6 +119,7 @@ struct PositionsResolvedView : PositionsResolvedViewImpl<false> {
         this->ys()[index] = new_ys;
     }
 };
+
 template <bool Const>
 struct PositionsViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = PositionsSchema;
@@ -141,11 +146,13 @@ struct PositionsViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
                 this->count_};
     }
 };
+
 struct PositionsConstView : PositionsViewImpl<true> {
     using Base = PositionsViewImpl<true>;
     using Base::Base;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<PositionsConstView>());
+
 struct PositionsView : PositionsViewImpl<false> {
     using Base = PositionsViewImpl<false>;
     using Base::Base;
@@ -156,6 +163,7 @@ struct PositionsView : PositionsViewImpl<false> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<PositionsView>());
+
 // Columns:
 // xs: float
 // ys: float

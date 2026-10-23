@@ -24,8 +24,11 @@
 
 namespace ioj::layout {
 struct ScalarTableSchema;
+struct ScalarTableResolvedView;
+struct ScalarTableResolvedConstView;
 struct ScalarTableView;
 struct ScalarTableConstView;
+
 struct ScalarTableLayoutColumns {
     template <typename T>
     using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
@@ -57,10 +60,9 @@ struct ScalarTableLayoutColumns {
     ScalarTableLayoutColumns(ScalarTableLayoutColumns const&) = delete;
     auto operator=(ScalarTableLayoutColumns const&) -> ScalarTableLayoutColumns& = delete;
 };
+
 struct ScalarTableLayout : ioj::single_allocation_layout::Layout<ScalarTableLayoutColumns> {};
 
-struct ScalarTableResolvedView;
-struct ScalarTableResolvedConstView;
 template <bool Const>
 struct ScalarTableResolvedViewImpl {
     using size_type = std::uint32_t;
@@ -255,10 +257,12 @@ struct ScalarTableResolvedViewImpl {
     Element<std::optional<ioj::layout::VarintEncoding>>* varint_encoding_{};
     size_type count_{};
 };
+
 struct ScalarTableResolvedConstView : ScalarTableResolvedViewImpl<true> {
     using Base = ScalarTableResolvedViewImpl<true>;
     using Base::Base;
 };
+
 struct ScalarTableResolvedView : ScalarTableResolvedViewImpl<false> {
     using Base = ScalarTableResolvedViewImpl<false>;
     using Base::Base;
@@ -285,6 +289,7 @@ struct ScalarTableResolvedView : ScalarTableResolvedViewImpl<false> {
         this->varint_encoding()[index] = new_varint_encoding;
     }
 };
+
 template <bool Const>
 struct ScalarTableViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = ScalarTableSchema;
@@ -338,11 +343,13 @@ struct ScalarTableViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
                 this->count_};
     }
 };
+
 struct ScalarTableConstView : ScalarTableViewImpl<true> {
     using Base = ScalarTableViewImpl<true>;
     using Base::Base;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<ScalarTableConstView>());
+
 struct ScalarTableView : ScalarTableViewImpl<false> {
     using Base = ScalarTableViewImpl<false>;
     using Base::Base;
@@ -370,6 +377,7 @@ struct ScalarTableView : ScalarTableViewImpl<false> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<ScalarTableView>());
+
 // Columns:
 // type: lispb::schema::TypeId
 // integer_domain: std::optional<ioj::layout::IntegerDomain>

@@ -19,8 +19,11 @@
 
 namespace ioj::sim {
 struct EntityHistorySchema;
+struct EntityHistoryResolvedView;
+struct EntityHistoryResolvedConstView;
 struct EntityHistoryView;
 struct EntityHistoryConstView;
+
 struct EntityHistoryLayoutColumns {
     template <typename T>
     using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
@@ -50,10 +53,9 @@ struct EntityHistoryLayoutColumns {
     EntityHistoryLayoutColumns(EntityHistoryLayoutColumns const&) = delete;
     auto operator=(EntityHistoryLayoutColumns const&) -> EntityHistoryLayoutColumns& = delete;
 };
+
 struct EntityHistoryLayout : ioj::single_allocation_layout::Layout<EntityHistoryLayoutColumns> {};
 
-struct EntityHistoryResolvedView;
-struct EntityHistoryResolvedConstView;
 template <bool Const>
 struct EntityHistoryResolvedViewImpl {
     using size_type = std::uint32_t;
@@ -208,10 +210,12 @@ struct EntityHistoryResolvedViewImpl {
     Element<Vector3f>* death_locations_{};
     size_type count_{};
 };
+
 struct EntityHistoryResolvedConstView : EntityHistoryResolvedViewImpl<true> {
     using Base = EntityHistoryResolvedViewImpl<true>;
     using Base::Base;
 };
+
 struct EntityHistoryResolvedView : EntityHistoryResolvedViewImpl<false> {
     using Base = EntityHistoryResolvedViewImpl<false>;
     using Base::Base;
@@ -235,6 +239,7 @@ struct EntityHistoryResolvedView : EntityHistoryResolvedViewImpl<false> {
         this->death_locations()[index] = new_death_locations;
     }
 };
+
 template <bool Const>
 struct EntityHistoryViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = EntityHistorySchema;
@@ -279,11 +284,13 @@ struct EntityHistoryViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
                 this->count_};
     }
 };
+
 struct EntityHistoryConstView : EntityHistoryViewImpl<true> {
     using Base = EntityHistoryViewImpl<true>;
     using Base::Base;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<EntityHistoryConstView>());
+
 struct EntityHistoryView : EntityHistoryViewImpl<false> {
     using Base = EntityHistoryViewImpl<false>;
     using Base::Base;
@@ -308,6 +315,7 @@ struct EntityHistoryView : EntityHistoryViewImpl<false> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<EntityHistoryView>());
+
 // Columns:
 // entity_ids: EntityId
 // entity_types: ioj::sim::EntityType

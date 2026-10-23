@@ -18,8 +18,11 @@
 
 namespace ioj::layout {
 struct PhysicalFactTableSchema;
+struct PhysicalFactTableResolvedView;
+struct PhysicalFactTableResolvedConstView;
 struct PhysicalFactTableView;
 struct PhysicalFactTableConstView;
+
 struct PhysicalFactTableLayoutColumns {
     template <typename T>
     using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
@@ -46,11 +49,10 @@ struct PhysicalFactTableLayoutColumns {
     auto operator=(PhysicalFactTableLayoutColumns const&)
         -> PhysicalFactTableLayoutColumns& = delete;
 };
+
 struct PhysicalFactTableLayout
     : ioj::single_allocation_layout::Layout<PhysicalFactTableLayoutColumns> {};
 
-struct PhysicalFactTableResolvedView;
-struct PhysicalFactTableResolvedConstView;
 template <bool Const>
 struct PhysicalFactTableResolvedViewImpl {
     using size_type = std::uint32_t;
@@ -185,10 +187,12 @@ struct PhysicalFactTableResolvedViewImpl {
     Element<ioj::layout::FactOrigin>* origin_{};
     size_type count_{};
 };
+
 struct PhysicalFactTableResolvedConstView : PhysicalFactTableResolvedViewImpl<true> {
     using Base = PhysicalFactTableResolvedViewImpl<true>;
     using Base::Base;
 };
+
 struct PhysicalFactTableResolvedView : PhysicalFactTableResolvedViewImpl<false> {
     using Base = PhysicalFactTableResolvedViewImpl<false>;
     using Base::Base;
@@ -208,6 +212,7 @@ struct PhysicalFactTableResolvedView : PhysicalFactTableResolvedViewImpl<false> 
         this->origin()[index] = new_origin;
     }
 };
+
 template <bool Const>
 struct PhysicalFactTableViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = PhysicalFactTableSchema;
@@ -248,11 +253,13 @@ struct PhysicalFactTableViewImpl : ioj::soa_storage_detail::CompactViewBase<Cons
                 this->count_};
     }
 };
+
 struct PhysicalFactTableConstView : PhysicalFactTableViewImpl<true> {
     using Base = PhysicalFactTableViewImpl<true>;
     using Base::Base;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<PhysicalFactTableConstView>());
+
 struct PhysicalFactTableView : PhysicalFactTableViewImpl<false> {
     using Base = PhysicalFactTableViewImpl<false>;
     using Base::Base;
@@ -273,6 +280,7 @@ struct PhysicalFactTableView : PhysicalFactTableViewImpl<false> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<PhysicalFactTableView>());
+
 // Columns:
 // size_bytes: std::uint64_t
 // alignment_bytes: std::uint64_t

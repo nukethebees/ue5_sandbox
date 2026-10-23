@@ -18,8 +18,11 @@
 
 namespace ioj::layout {
 struct SelectionTableSchema;
+struct SelectionTableResolvedView;
+struct SelectionTableResolvedConstView;
 struct SelectionTableView;
 struct SelectionTableConstView;
+
 struct SelectionTableLayoutColumns {
     template <typename T>
     using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
@@ -47,10 +50,9 @@ struct SelectionTableLayoutColumns {
     SelectionTableLayoutColumns(SelectionTableLayoutColumns const&) = delete;
     auto operator=(SelectionTableLayoutColumns const&) -> SelectionTableLayoutColumns& = delete;
 };
+
 struct SelectionTableLayout : ioj::single_allocation_layout::Layout<SelectionTableLayoutColumns> {};
 
-struct SelectionTableResolvedView;
-struct SelectionTableResolvedConstView;
 template <bool Const>
 struct SelectionTableResolvedViewImpl {
     using size_type = std::uint32_t;
@@ -191,10 +193,12 @@ struct SelectionTableResolvedViewImpl {
     Element<std::optional<std::uint64_t>>* capacity_slack_bytes_{};
     size_type count_{};
 };
+
 struct SelectionTableResolvedConstView : SelectionTableResolvedViewImpl<true> {
     using Base = SelectionTableResolvedViewImpl<true>;
     using Base::Base;
 };
+
 struct SelectionTableResolvedView : SelectionTableResolvedViewImpl<false> {
     using Base = SelectionTableResolvedViewImpl<false>;
     using Base::Base;
@@ -216,6 +220,7 @@ struct SelectionTableResolvedView : SelectionTableResolvedViewImpl<false> {
         this->capacity_slack_bytes()[index] = new_capacity_slack_bytes;
     }
 };
+
 template <bool Const>
 struct SelectionTableViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = SelectionTableSchema;
@@ -259,11 +264,13 @@ struct SelectionTableViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> 
                 this->count_};
     }
 };
+
 struct SelectionTableConstView : SelectionTableViewImpl<true> {
     using Base = SelectionTableViewImpl<true>;
     using Base::Base;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<SelectionTableConstView>());
+
 struct SelectionTableView : SelectionTableViewImpl<false> {
     using Base = SelectionTableViewImpl<false>;
     using Base::Base;
@@ -286,6 +293,7 @@ struct SelectionTableView : SelectionTableViewImpl<false> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<SelectionTableView>());
+
 // Columns:
 // source: std::size_t
 // operation: ioj::layout::AccessOperation

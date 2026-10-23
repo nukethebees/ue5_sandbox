@@ -13,8 +13,11 @@
 
 namespace codegen_compile_fixture {
 struct SingleRestrictionRowsSchema;
+struct SingleRestrictionRowsResolvedView;
+struct SingleRestrictionRowsResolvedConstView;
 struct SingleRestrictionRowsView;
 struct SingleRestrictionRowsConstView;
+
 struct SingleRestrictionRowsLayoutColumns {
     template <typename T>
     using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
@@ -31,11 +34,10 @@ struct SingleRestrictionRowsLayoutColumns {
     auto operator=(SingleRestrictionRowsLayoutColumns const&)
         -> SingleRestrictionRowsLayoutColumns& = delete;
 };
+
 struct SingleRestrictionRowsLayout
     : ioj::single_allocation_layout::Layout<SingleRestrictionRowsLayoutColumns> {};
 
-struct SingleRestrictionRowsResolvedView;
-struct SingleRestrictionRowsResolvedConstView;
 template <bool Const>
 struct SingleRestrictionRowsResolvedViewImpl {
     using size_type = std::uint32_t;
@@ -96,10 +98,12 @@ struct SingleRestrictionRowsResolvedViewImpl {
     Element<RestrictedLeaf>* restricted_{};
     size_type count_{};
 };
+
 struct SingleRestrictionRowsResolvedConstView : SingleRestrictionRowsResolvedViewImpl<true> {
     using Base = SingleRestrictionRowsResolvedViewImpl<true>;
     using Base::Base;
 };
+
 struct SingleRestrictionRowsResolvedView : SingleRestrictionRowsResolvedViewImpl<false> {
     using Base = SingleRestrictionRowsResolvedViewImpl<false>;
     using Base::Base;
@@ -108,6 +112,7 @@ struct SingleRestrictionRowsResolvedView : SingleRestrictionRowsResolvedViewImpl
         this->restricted()[index] = new_restricted;
     }
 };
+
 template <bool Const>
 struct SingleRestrictionRowsViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = SingleRestrictionRowsSchema;
@@ -131,11 +136,13 @@ struct SingleRestrictionRowsViewImpl : ioj::soa_storage_detail::CompactViewBase<
         return {this->column(Layout::columns.RestrictedColumn).data(), this->count_};
     }
 };
+
 struct SingleRestrictionRowsConstView : SingleRestrictionRowsViewImpl<true> {
     using Base = SingleRestrictionRowsViewImpl<true>;
     using Base::Base;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<SingleRestrictionRowsConstView>());
+
 struct SingleRestrictionRowsView : SingleRestrictionRowsViewImpl<false> {
     using Base = SingleRestrictionRowsViewImpl<false>;
     using Base::Base;
@@ -145,6 +152,7 @@ struct SingleRestrictionRowsView : SingleRestrictionRowsViewImpl<false> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<SingleRestrictionRowsView>());
+
 // Columns:
 // restricted: RestrictedLeaf
 struct SingleRestrictionRows

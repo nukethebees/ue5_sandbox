@@ -181,10 +181,13 @@ auto lower_soa_declaration(LoweringContext& context, DeclarationHandle schema)
     auto const row{soas.index(schema)};
     NodeListBuilder header{ir};
     header.add(ir.forward_declaration(ir.strings.intern(context.text(soas.name[row]) + "Schema")))
-        .new_lines(2);
-    header.append(field_mask_nodes(context, schema)).new_lines(1);
+        .new_lines(1);
+    auto const masks{field_mask_nodes(context, schema)};
+    if (!masks.empty()) {
+        header.new_lines(2).append(masks).new_lines(2);
+    }
     if (soas.layout_only[row]) {
-        header.add(emit_single_allocation_column_group(context, schema));
+        header.new_lines(2).add(emit_single_allocation_column_group(context, schema));
         return {.header = header.build(), .format_generated = true};
     }
     auto lowered{lower_single_allocation(context, schema)};

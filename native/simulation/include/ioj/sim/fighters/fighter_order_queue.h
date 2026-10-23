@@ -14,8 +14,11 @@
 
 namespace ioj::sim {
 struct FighterOrderQueueSchema;
+struct FighterOrderQueueResolvedView;
+struct FighterOrderQueueResolvedConstView;
 struct FighterOrderQueueView;
 struct FighterOrderQueueConstView;
+
 struct FighterOrderQueueLayoutColumns {
     template <typename T>
     using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
@@ -38,11 +41,10 @@ struct FighterOrderQueueLayoutColumns {
     auto operator=(FighterOrderQueueLayoutColumns const&)
         -> FighterOrderQueueLayoutColumns& = delete;
 };
+
 struct FighterOrderQueueLayout
     : ioj::single_allocation_layout::Layout<FighterOrderQueueLayoutColumns> {};
 
-struct FighterOrderQueueResolvedView;
-struct FighterOrderQueueResolvedConstView;
 template <bool Const>
 struct FighterOrderQueueResolvedViewImpl {
     using size_type = std::uint32_t;
@@ -134,10 +136,12 @@ struct FighterOrderQueueResolvedViewImpl {
     Element<EntityId>* targets_{};
     size_type count_{};
 };
+
 struct FighterOrderQueueResolvedConstView : FighterOrderQueueResolvedViewImpl<true> {
     using Base = FighterOrderQueueResolvedViewImpl<true>;
     using Base::Base;
 };
+
 struct FighterOrderQueueResolvedView : FighterOrderQueueResolvedViewImpl<false> {
     using Base = FighterOrderQueueResolvedViewImpl<false>;
     using Base::Base;
@@ -153,6 +157,7 @@ struct FighterOrderQueueResolvedView : FighterOrderQueueResolvedViewImpl<false> 
         this->targets()[index] = new_targets;
     }
 };
+
 template <bool Const>
 struct FighterOrderQueueViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = FighterOrderQueueSchema;
@@ -185,11 +190,13 @@ struct FighterOrderQueueViewImpl : ioj::soa_storage_detail::CompactViewBase<Cons
                 this->count_};
     }
 };
+
 struct FighterOrderQueueConstView : FighterOrderQueueViewImpl<true> {
     using Base = FighterOrderQueueViewImpl<true>;
     using Base::Base;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<FighterOrderQueueConstView>());
+
 struct FighterOrderQueueView : FighterOrderQueueViewImpl<false> {
     using Base = FighterOrderQueueViewImpl<false>;
     using Base::Base;
@@ -206,6 +213,7 @@ struct FighterOrderQueueView : FighterOrderQueueViewImpl<false> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<FighterOrderQueueView>());
+
 // Columns:
 // entity_ids: EntityId
 // orders: FighterOrder

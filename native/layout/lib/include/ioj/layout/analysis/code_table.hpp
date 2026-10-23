@@ -19,8 +19,11 @@
 
 namespace ioj::layout {
 struct CodeTableSchema;
+struct CodeTableResolvedView;
+struct CodeTableResolvedConstView;
 struct CodeTableView;
 struct CodeTableConstView;
+
 struct CodeTableLayoutColumns {
     template <typename T>
     using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
@@ -44,10 +47,9 @@ struct CodeTableLayoutColumns {
     CodeTableLayoutColumns(CodeTableLayoutColumns const&) = delete;
     auto operator=(CodeTableLayoutColumns const&) -> CodeTableLayoutColumns& = delete;
 };
+
 struct CodeTableLayout : ioj::single_allocation_layout::Layout<CodeTableLayoutColumns> {};
 
-struct CodeTableResolvedView;
-struct CodeTableResolvedConstView;
 template <bool Const>
 struct CodeTableResolvedViewImpl {
     using size_type = std::uint32_t;
@@ -163,10 +165,12 @@ struct CodeTableResolvedViewImpl {
     Element<std::optional<lispb::codegen::PackedIntegerValue>>* integer_value_{};
     size_type count_{};
 };
+
 struct CodeTableResolvedConstView : CodeTableResolvedViewImpl<true> {
     using Base = CodeTableResolvedViewImpl<true>;
     using Base::Base;
 };
+
 struct CodeTableResolvedView : CodeTableResolvedViewImpl<false> {
     using Base = CodeTableResolvedViewImpl<false>;
     using Base::Base;
@@ -184,6 +188,7 @@ struct CodeTableResolvedView : CodeTableResolvedViewImpl<false> {
         this->integer_value()[index] = new_integer_value;
     }
 };
+
 template <bool Const>
 struct CodeTableViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = CodeTableSchema;
@@ -219,11 +224,13 @@ struct CodeTableViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
                 this->count_};
     }
 };
+
 struct CodeTableConstView : CodeTableViewImpl<true> {
     using Base = CodeTableViewImpl<true>;
     using Base::Base;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<CodeTableConstView>());
+
 struct CodeTableView : CodeTableViewImpl<false> {
     using Base = CodeTableViewImpl<false>;
     using Base::Base;
@@ -242,6 +249,7 @@ struct CodeTableView : CodeTableViewImpl<false> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<CodeTableView>());
+
 // Columns:
 // name: std::string_view
 // sentinel: std::uint8_t

@@ -15,8 +15,11 @@
 
 namespace ioj::sim {
 struct EntityDeathInfoSchema;
+struct EntityDeathInfoResolvedView;
+struct EntityDeathInfoResolvedConstView;
 struct EntityDeathInfoView;
 struct EntityDeathInfoConstView;
+
 struct EntityDeathInfoLayoutColumns {
     template <typename T>
     using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
@@ -38,11 +41,10 @@ struct EntityDeathInfoLayoutColumns {
     EntityDeathInfoLayoutColumns(EntityDeathInfoLayoutColumns const&) = delete;
     auto operator=(EntityDeathInfoLayoutColumns const&) -> EntityDeathInfoLayoutColumns& = delete;
 };
+
 struct EntityDeathInfoLayout
     : ioj::single_allocation_layout::Layout<EntityDeathInfoLayoutColumns> {};
 
-struct EntityDeathInfoResolvedView;
-struct EntityDeathInfoResolvedConstView;
 template <bool Const>
 struct EntityDeathInfoResolvedViewImpl {
     using size_type = std::uint32_t;
@@ -135,10 +137,12 @@ struct EntityDeathInfoResolvedViewImpl {
     Element<Vector3f>* locations_{};
     size_type count_{};
 };
+
 struct EntityDeathInfoResolvedConstView : EntityDeathInfoResolvedViewImpl<true> {
     using Base = EntityDeathInfoResolvedViewImpl<true>;
     using Base::Base;
 };
+
 struct EntityDeathInfoResolvedView : EntityDeathInfoResolvedViewImpl<false> {
     using Base = EntityDeathInfoResolvedViewImpl<false>;
     using Base::Base;
@@ -154,6 +158,7 @@ struct EntityDeathInfoResolvedView : EntityDeathInfoResolvedViewImpl<false> {
         this->locations()[index] = new_locations;
     }
 };
+
 template <bool Const>
 struct EntityDeathInfoViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = EntityDeathInfoSchema;
@@ -186,11 +191,13 @@ struct EntityDeathInfoViewImpl : ioj::soa_storage_detail::CompactViewBase<Const>
                 this->count_};
     }
 };
+
 struct EntityDeathInfoConstView : EntityDeathInfoViewImpl<true> {
     using Base = EntityDeathInfoViewImpl<true>;
     using Base::Base;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<EntityDeathInfoConstView>());
+
 struct EntityDeathInfoView : EntityDeathInfoViewImpl<false> {
     using Base = EntityDeathInfoViewImpl<false>;
     using Base::Base;
@@ -207,6 +214,7 @@ struct EntityDeathInfoView : EntityDeathInfoViewImpl<false> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<EntityDeathInfoView>());
+
 // Columns:
 // reasons: DeathReason
 // victims: EntityId

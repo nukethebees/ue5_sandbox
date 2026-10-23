@@ -84,8 +84,12 @@ struct HistoryFieldMask {
 };
 static_assert(sizeof(HistoryFieldMask) == sizeof(HistoryFieldMask::storage_type));
 static_assert(std::is_trivially_copyable_v<HistoryFieldMask>);
+
+struct HistoryRowsResolvedView;
+struct HistoryRowsResolvedConstView;
 struct HistoryRowsView;
 struct HistoryRowsConstView;
+
 struct HistoryRowsLayoutColumns {
     template <typename T>
     using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
@@ -119,10 +123,9 @@ struct HistoryRowsLayoutColumns {
     HistoryRowsLayoutColumns(HistoryRowsLayoutColumns const&) = delete;
     auto operator=(HistoryRowsLayoutColumns const&) -> HistoryRowsLayoutColumns& = delete;
 };
+
 struct HistoryRowsLayout : ioj::single_allocation_layout::Layout<HistoryRowsLayoutColumns> {};
 
-struct HistoryRowsResolvedView;
-struct HistoryRowsResolvedConstView;
 template <bool Const>
 struct HistoryRowsResolvedViewImpl {
     using size_type = std::uint32_t;
@@ -325,10 +328,12 @@ struct HistoryRowsResolvedViewImpl {
     Element<std::int32_t>* lasers_fired_{};
     size_type count_{};
 };
+
 struct HistoryRowsResolvedConstView : HistoryRowsResolvedViewImpl<true> {
     using Base = HistoryRowsResolvedViewImpl<true>;
     using Base::Base;
 };
+
 struct HistoryRowsResolvedView : HistoryRowsResolvedViewImpl<false> {
     using Base = HistoryRowsResolvedViewImpl<false>;
     using Base::Base;
@@ -356,6 +361,7 @@ struct HistoryRowsResolvedView : HistoryRowsResolvedViewImpl<false> {
         this->lasers_fired()[index] = new_lasers_fired;
     }
 };
+
 template <bool Const>
 struct HistoryRowsViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     using soa_schema = HistoryRowsSchema;
@@ -412,11 +418,13 @@ struct HistoryRowsViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
                 this->count_};
     }
 };
+
 struct HistoryRowsConstView : HistoryRowsViewImpl<true> {
     using Base = HistoryRowsViewImpl<true>;
     using Base::Base;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<HistoryRowsConstView>());
+
 struct HistoryRowsView : HistoryRowsViewImpl<false> {
     using Base = HistoryRowsViewImpl<false>;
     using Base::Base;
@@ -445,6 +453,7 @@ struct HistoryRowsView : HistoryRowsViewImpl<false> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<HistoryRowsView>());
+
 // Columns:
 // completed_ticks: SimTick
 // validity_masks: HistoryFieldMask
