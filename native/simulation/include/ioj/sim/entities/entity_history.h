@@ -389,9 +389,11 @@ struct EntityHistory
     // Lifetime
     /* **************************************** */
     EntityHistory() noexcept
-        : EntityHistory{*std::pmr::get_default_resource()} {}
-    explicit EntityHistory(std::pmr::memory_resource& resource) noexcept
-        : resource_{&resource} {}
+        : EntityHistory{std::pmr::get_default_resource()} {}
+    explicit EntityHistory(std::pmr::memory_resource* resource) noexcept
+        : resource_{resource} {
+        assert(resource != nullptr);
+    }
     auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~EntityHistory() { Operations::release_storage(*this); }
     EntityHistory(EntityHistory const&) = delete;
@@ -443,7 +445,6 @@ struct EntityHistory
         return self.get_data() + offset;
     }
   private:
-    std::pmr::memory_resource* resource_{};
     friend Operations;
     friend ::ioj::soa_storage_detail::StorageRequirements;
     /* **************************************** */
@@ -603,5 +604,7 @@ struct EntityHistory
             new_death_locations);
         return index;
     }
+  private:
+    std::pmr::memory_resource* resource_{};
 };
 } // namespace ioj::sim

@@ -325,9 +325,11 @@ struct WorldAABBs
     // Lifetime
     /* **************************************** */
     WorldAABBs() noexcept
-        : WorldAABBs{*std::pmr::get_default_resource()} {}
-    explicit WorldAABBs(std::pmr::memory_resource& resource) noexcept
-        : resource_{&resource} {}
+        : WorldAABBs{std::pmr::get_default_resource()} {}
+    explicit WorldAABBs(std::pmr::memory_resource* resource) noexcept
+        : resource_{resource} {
+        assert(resource != nullptr);
+    }
     auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~WorldAABBs() { Operations::release_storage(*this); }
     WorldAABBs(WorldAABBs const&) = delete;
@@ -375,7 +377,6 @@ struct WorldAABBs
         return self.get_data() + offset;
     }
   private:
-    std::pmr::memory_resource* resource_{};
     friend Operations;
     friend ::ioj::soa_storage_detail::StorageRequirements;
     /* **************************************** */
@@ -511,5 +512,7 @@ struct WorldAABBs
         set(index, new_min_xs, new_min_ys, new_min_zs, new_max_xs, new_max_ys, new_max_zs);
         return index;
     }
+  private:
+    std::pmr::memory_resource* resource_{};
 };
 } // namespace ioj::sim::collision

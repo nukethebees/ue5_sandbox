@@ -525,9 +525,11 @@ struct HistoryRows
     // Lifetime
     /* **************************************** */
     HistoryRows() noexcept
-        : HistoryRows{*std::pmr::get_default_resource()} {}
-    explicit HistoryRows(std::pmr::memory_resource& resource) noexcept
-        : resource_{&resource} {}
+        : HistoryRows{std::pmr::get_default_resource()} {}
+    explicit HistoryRows(std::pmr::memory_resource* resource) noexcept
+        : resource_{resource} {
+        assert(resource != nullptr);
+    }
     auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~HistoryRows() { Operations::release_storage(*this); }
     HistoryRows(HistoryRows const&) = delete;
@@ -583,7 +585,6 @@ struct HistoryRows
         return self.get_data() + offset;
     }
   private:
-    std::pmr::memory_resource* resource_{};
     friend Operations;
     friend ::ioj::soa_storage_detail::StorageRequirements;
     /* **************************************** */
@@ -766,5 +767,7 @@ struct HistoryRows
             new_lasers_fired);
         return index;
     }
+  private:
+    std::pmr::memory_resource* resource_{};
 };
 } // namespace ioj::sim::telemetry

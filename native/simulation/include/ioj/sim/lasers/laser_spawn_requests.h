@@ -903,9 +903,11 @@ struct LaserSpawnRequests
     // Lifetime
     /* **************************************** */
     LaserSpawnRequests() noexcept
-        : LaserSpawnRequests{*std::pmr::get_default_resource()} {}
-    explicit LaserSpawnRequests(std::pmr::memory_resource& resource) noexcept
-        : resource_{&resource} {}
+        : LaserSpawnRequests{std::pmr::get_default_resource()} {}
+    explicit LaserSpawnRequests(std::pmr::memory_resource* resource) noexcept
+        : resource_{resource} {
+        assert(resource != nullptr);
+    }
     auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~LaserSpawnRequests() { Operations::release_storage(*this); }
     LaserSpawnRequests(LaserSpawnRequests const&) = delete;
@@ -969,7 +971,6 @@ struct LaserSpawnRequests
         return self.get_data() + offset;
     }
   private:
-    std::pmr::memory_resource* resource_{};
     friend Operations;
     friend ::ioj::soa_storage_detail::StorageRequirements;
     /* **************************************** */
@@ -1180,5 +1181,7 @@ struct LaserSpawnRequests
             new_sources);
         return index;
     }
+  private:
+    std::pmr::memory_resource* resource_{};
 };
 } // namespace ioj::sim::lasers

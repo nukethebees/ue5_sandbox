@@ -597,9 +597,11 @@ struct LaserHitDetails
     // Lifetime
     /* **************************************** */
     LaserHitDetails() noexcept
-        : LaserHitDetails{*std::pmr::get_default_resource()} {}
-    explicit LaserHitDetails(std::pmr::memory_resource& resource) noexcept
-        : resource_{&resource} {}
+        : LaserHitDetails{std::pmr::get_default_resource()} {}
+    explicit LaserHitDetails(std::pmr::memory_resource* resource) noexcept
+        : resource_{resource} {
+        assert(resource != nullptr);
+    }
     auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~LaserHitDetails() { Operations::release_storage(*this); }
     LaserHitDetails(LaserHitDetails const&) = delete;
@@ -649,7 +651,6 @@ struct LaserHitDetails
         return self.get_data() + offset;
     }
   private:
-    std::pmr::memory_resource* resource_{};
     friend Operations;
     friend ::ioj::soa_storage_detail::StorageRequirements;
     /* **************************************** */
@@ -800,5 +801,7 @@ struct LaserHitDetails
             new_sources);
         return index;
     }
+  private:
+    std::pmr::memory_resource* resource_{};
 };
 } // namespace ioj::sim

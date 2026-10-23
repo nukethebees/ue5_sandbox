@@ -282,9 +282,11 @@ struct EntityDeathInfo
     // Lifetime
     /* **************************************** */
     EntityDeathInfo() noexcept
-        : EntityDeathInfo{*std::pmr::get_default_resource()} {}
-    explicit EntityDeathInfo(std::pmr::memory_resource& resource) noexcept
-        : resource_{&resource} {}
+        : EntityDeathInfo{std::pmr::get_default_resource()} {}
+    explicit EntityDeathInfo(std::pmr::memory_resource* resource) noexcept
+        : resource_{resource} {
+        assert(resource != nullptr);
+    }
     auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~EntityDeathInfo() { Operations::release_storage(*this); }
     EntityDeathInfo(EntityDeathInfo const&) = delete;
@@ -325,7 +327,6 @@ struct EntityDeathInfo
         return self.get_data() + offset;
     }
   private:
-    std::pmr::memory_resource* resource_{};
     friend Operations;
     friend ::ioj::soa_storage_detail::StorageRequirements;
     /* **************************************** */
@@ -445,5 +446,7 @@ struct EntityDeathInfo
         set(index, new_reasons, new_victims, new_killers, new_locations);
         return index;
     }
+  private:
+    std::pmr::memory_resource* resource_{};
 };
 } // namespace ioj::sim

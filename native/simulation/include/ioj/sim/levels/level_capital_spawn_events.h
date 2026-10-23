@@ -731,9 +731,11 @@ struct LevelCapitalSpawnEvents
     // Lifetime
     /* **************************************** */
     LevelCapitalSpawnEvents() noexcept
-        : LevelCapitalSpawnEvents{*std::pmr::get_default_resource()} {}
-    explicit LevelCapitalSpawnEvents(std::pmr::memory_resource& resource) noexcept
-        : resource_{&resource} {}
+        : LevelCapitalSpawnEvents{std::pmr::get_default_resource()} {}
+    explicit LevelCapitalSpawnEvents(std::pmr::memory_resource* resource) noexcept
+        : resource_{resource} {
+        assert(resource != nullptr);
+    }
     auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~LevelCapitalSpawnEvents() { Operations::release_storage(*this); }
     LevelCapitalSpawnEvents(LevelCapitalSpawnEvents const&) = delete;
@@ -793,7 +795,6 @@ struct LevelCapitalSpawnEvents
         return self.get_data() + offset;
     }
   private:
-    std::pmr::memory_resource* resource_{};
     friend Operations;
     friend ::ioj::soa_storage_detail::StorageRequirements;
     /* **************************************** */
@@ -991,5 +992,7 @@ struct LevelCapitalSpawnEvents
             new_fighter_spawn_cooldowns);
         return index;
     }
+  private:
+    std::pmr::memory_resource* resource_{};
 };
 } // namespace ioj::sim

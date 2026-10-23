@@ -38,8 +38,8 @@ class AABBOverlapEventStorage {
   public:
     explicit AABBOverlapEventStorage(
         std::pmr::memory_resource* resource = std::pmr::get_default_resource())
-        : entity_entity_overlaps_{*resource}
-        , entity_static_overlaps_{*resource}
+        : entity_entity_overlaps_{resource}
+        , entity_static_overlaps_{resource}
         , batches_{resource} {}
 
     void reset() noexcept;

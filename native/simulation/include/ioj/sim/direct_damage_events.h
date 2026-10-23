@@ -268,9 +268,11 @@ struct DirectDamageEvents
     // Lifetime
     /* **************************************** */
     DirectDamageEvents() noexcept
-        : DirectDamageEvents{*std::pmr::get_default_resource()} {}
-    explicit DirectDamageEvents(std::pmr::memory_resource& resource) noexcept
-        : resource_{&resource} {}
+        : DirectDamageEvents{std::pmr::get_default_resource()} {}
+    explicit DirectDamageEvents(std::pmr::memory_resource* resource) noexcept
+        : resource_{resource} {
+        assert(resource != nullptr);
+    }
     auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~DirectDamageEvents() { Operations::release_storage(*this); }
     DirectDamageEvents(DirectDamageEvents const&) = delete;
@@ -310,7 +312,6 @@ struct DirectDamageEvents
         return self.get_data() + offset;
     }
   private:
-    std::pmr::memory_resource* resource_{};
     friend Operations;
     friend ::ioj::soa_storage_detail::StorageRequirements;
     /* **************************************** */
@@ -424,5 +425,7 @@ struct DirectDamageEvents
         events.damage_amounts()[index] = damage_amount;
         events.instigators()[index] = instigator;
     }
+  private:
+    std::pmr::memory_resource* resource_{};
 };
 } // namespace ioj::sim

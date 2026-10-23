@@ -719,9 +719,11 @@ struct CapitalEntityData
     // Lifetime
     /* **************************************** */
     CapitalEntityData() noexcept
-        : CapitalEntityData{*std::pmr::get_default_resource()} {}
-    explicit CapitalEntityData(std::pmr::memory_resource& resource) noexcept
-        : resource_{&resource} {}
+        : CapitalEntityData{std::pmr::get_default_resource()} {}
+    explicit CapitalEntityData(std::pmr::memory_resource* resource) noexcept
+        : resource_{resource} {
+        assert(resource != nullptr);
+    }
     auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~CapitalEntityData() { Operations::release_storage(*this); }
     CapitalEntityData(CapitalEntityData const&) = delete;
@@ -781,7 +783,6 @@ struct CapitalEntityData
         return self.get_data() + offset;
     }
   private:
-    std::pmr::memory_resource* resource_{};
     friend Operations;
     friend ::ioj::soa_storage_detail::StorageRequirements;
     /* **************************************** */
@@ -977,5 +978,7 @@ struct CapitalEntityData
             new_target_ids);
         return index;
     }
+  private:
+    std::pmr::memory_resource* resource_{};
 };
 } // namespace ioj::sim

@@ -490,9 +490,11 @@ struct EntityCellData
     // Lifetime
     /* **************************************** */
     EntityCellData() noexcept
-        : EntityCellData{*std::pmr::get_default_resource()} {}
-    explicit EntityCellData(std::pmr::memory_resource& resource) noexcept
-        : resource_{&resource} {}
+        : EntityCellData{std::pmr::get_default_resource()} {}
+    explicit EntityCellData(std::pmr::memory_resource* resource) noexcept
+        : resource_{resource} {
+        assert(resource != nullptr);
+    }
     auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~EntityCellData() { Operations::release_storage(*this); }
     EntityCellData(EntityCellData const&) = delete;
@@ -554,7 +556,6 @@ struct EntityCellData
         return self.get_data() + offset;
     }
   private:
-    std::pmr::memory_resource* resource_{};
     friend Operations;
     friend ::ioj::soa_storage_detail::StorageRequirements;
     /* **************************************** */
@@ -759,5 +760,7 @@ struct EntityCellData
             new_entity_ids);
         return index;
     }
+  private:
+    std::pmr::memory_resource* resource_{};
 };
 } // namespace ioj::sim::collision

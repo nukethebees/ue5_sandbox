@@ -2668,7 +2668,7 @@ TEST(SourceLoader, SingleOnlyLogicalApiIsPreserved) {
               1U);
     auto const output{files.render(manifest).front().content};
     EXPECT_NE(output.find("struct API Owner"), std::string::npos);
-    EXPECT_NE(output.find("std::pmr::memory_resource& resource"), std::string::npos);
+    EXPECT_NE(output.find("std::pmr::memory_resource* resource"), std::string::npos);
     EXPECT_NE(output.find("return this->values()[0];"), std::string::npos);
     EXPECT_EQ(output.find("struct Rows {"), std::string::npos);
     EXPECT_NE(output.find("void noop() {"), std::string::npos);

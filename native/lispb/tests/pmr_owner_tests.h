@@ -15,7 +15,7 @@ void verify_pmr_owner(FirstValue first_value) {
     static_assert(std::is_nothrow_move_constructible_v<Owner>);
     static_assert(!std::is_nothrow_move_assignable_v<Owner>);
     static_assert(!std::is_copy_constructible_v<Owner>);
-    static_assert(!std::is_convertible_v<std::pmr::memory_resource&, Owner>);
+    static_assert(!std::is_convertible_v<std::pmr::memory_resource*, Owner>);
 
     AllocationState first_state;
     AllocationState second_state;
@@ -45,7 +45,7 @@ void verify_pmr_owner(FirstValue first_value) {
     CountingResource equivalent{first_state};
     first.set_equal_resource(equivalent);
     {
-        Owner source{first};
+        Owner source{&first};
         source.set_num(2);
         first_value(source) = 73;
         auto* const original{&first_value(source)};
@@ -58,7 +58,7 @@ void verify_pmr_owner(FirstValue first_value) {
         EXPECT_EQ(source.get_memory_resource(), &first);
         EXPECT_EQ(first_state.allocations, allocations);
 
-        Owner destination{equivalent};
+        Owner destination{&equivalent};
         destination.set_num(1);
         auto const before_move{first_state.allocations};
         destination = std::move(moved);
@@ -80,11 +80,11 @@ void verify_pmr_owner(FirstValue first_value) {
     EXPECT_EQ(first_state.allocations, first_state.frees);
 
     for (auto const reserve : {0u, 64u, 256u}) {
-        Owner source{first};
+        Owner source{&first};
         source.set_num(128);
         first_value(source) = 91;
         auto* const source_data{&first_value(source)};
-        Owner destination{second};
+        Owner destination{&second};
         destination.reserve(reserve);
         if (reserve > 0) {
             destination.set_num(1);
@@ -121,7 +121,7 @@ void verify_pmr_owner(FirstValue first_value) {
         first_value(source) = 12;
         EXPECT_EQ(first_value(destination), 91);
 
-        Owner empty{first};
+        Owner empty{&first};
         auto const destination_capacity{destination.capacity()};
         destination = std::move(empty);
         EXPECT_EQ(destination.num(), 0);

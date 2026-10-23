@@ -482,9 +482,11 @@ struct SpinnerEntityData
     // Lifetime
     /* **************************************** */
     SpinnerEntityData() noexcept
-        : SpinnerEntityData{*std::pmr::get_default_resource()} {}
-    explicit SpinnerEntityData(std::pmr::memory_resource& resource) noexcept
-        : resource_{&resource} {}
+        : SpinnerEntityData{std::pmr::get_default_resource()} {}
+    explicit SpinnerEntityData(std::pmr::memory_resource* resource) noexcept
+        : resource_{resource} {
+        assert(resource != nullptr);
+    }
     auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~SpinnerEntityData() { Operations::release_storage(*this); }
     SpinnerEntityData(SpinnerEntityData const&) = delete;
@@ -534,7 +536,6 @@ struct SpinnerEntityData
         return self.get_data() + offset;
     }
   private:
-    std::pmr::memory_resource* resource_{};
     friend Operations;
     friend ::ioj::soa_storage_detail::StorageRequirements;
     /* **************************************** */
@@ -686,5 +687,7 @@ struct SpinnerEntityData
             new_next_fire_point_indices);
         return index;
     }
+  private:
+    std::pmr::memory_resource* resource_{};
 };
 } // namespace ioj::sim

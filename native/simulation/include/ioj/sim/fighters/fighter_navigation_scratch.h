@@ -15,7 +15,7 @@ struct NavigationScratch {
         , line_of_sight_starts{scratch_resource}
         , line_of_sight_ends{scratch_resource}
         , line_of_sight_results{scratch_resource}
-        , trace_hits{*scratch_resource}
+        , trace_hits{scratch_resource}
         , blocked_fighter_indices{scratch_resource}
         , trace_fighter_indices{scratch_resource}
         , trace_choice_indices{scratch_resource}

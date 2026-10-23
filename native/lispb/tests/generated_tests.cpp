@@ -280,7 +280,7 @@ TEST(GeneratedSingleAllocationSoa, Ownership) {
     static_assert(!std::is_nothrow_move_assignable_v<Owner>);
     static_assert(!std::is_copy_assignable_v<Owner>);
     {
-        Owner source{resource};
+        Owner source{&resource};
         source.reserve(0);
         source.add_defaulted(0);
         check(allocations.allocations == 0);
@@ -299,7 +299,7 @@ TEST(GeneratedSingleAllocationSoa, Ownership) {
         // NOLINTNEXTLINE(bugprone-use-after-move): Verify the defined moved-from state.
         check(source.num() == 0 && source.capacity() == 0 && source.allocated_bytes() == 0);
         check(allocations.allocations == 2 && allocations.frees == 1);
-        Owner destination{resource};
+        Owner destination{&resource};
         destination.reserve(17);
         check(allocations.allocations == 3);
         destination = std::move(moved);

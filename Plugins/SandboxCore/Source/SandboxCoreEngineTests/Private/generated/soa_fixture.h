@@ -341,9 +341,11 @@ struct SingleRows
     // Lifetime
     /* **************************************** */
     SingleRows() noexcept
-        : SingleRows{*std::pmr::get_default_resource()} {}
-    explicit SingleRows(std::pmr::memory_resource& resource) noexcept
-        : resource_{&resource} {}
+        : SingleRows{std::pmr::get_default_resource()} {}
+    explicit SingleRows(std::pmr::memory_resource* resource) noexcept
+        : resource_{resource} {
+        assert(resource != nullptr);
+    }
     auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~SingleRows() { Operations::release_storage(*this); }
     SingleRows(SingleRows const&) = delete;
@@ -384,7 +386,6 @@ struct SingleRows
         return self.get_data() + offset;
     }
   private:
-    std::pmr::memory_resource* resource_{};
     friend Operations;
     friend ::ioj::soa_storage_detail::StorageRequirements;
     /* **************************************** */
@@ -481,6 +482,8 @@ struct SingleRows
         transfer_columns<false>(destination, source, num_);
     }
   public:
+  private:
+    std::pmr::memory_resource* resource_{};
 };
 
 struct ApiPair {
@@ -632,6 +635,7 @@ struct ApiConstView_positions : ApiView_positionsImpl<true> {
     float x_at(std::int32_t index) const { return this->xs()[index]; }
     using equivalent_type = ApiPair;
     auto operator[](std::int32_t index) const -> equivalent_type {
+        assert(index < num());
         return equivalent_type{xs()[index], ys()[index]};
     }
 };
@@ -649,6 +653,7 @@ struct ApiView_positions : ApiView_positionsImpl<false> {
     }
     using equivalent_type = ApiPair;
     auto operator[](std::int32_t index) const -> equivalent_type {
+        assert(index < num());
         return equivalent_type{xs()[index], ys()[index]};
     }
 };
@@ -748,9 +753,11 @@ struct SANDBOXCOREENGINETESTS_API ApiOwner
     // Lifetime
     /* **************************************** */
     ApiOwner() noexcept
-        : ApiOwner{*std::pmr::get_default_resource()} {}
-    explicit ApiOwner(std::pmr::memory_resource& resource) noexcept
-        : resource_{&resource} {}
+        : ApiOwner{std::pmr::get_default_resource()} {}
+    explicit ApiOwner(std::pmr::memory_resource* resource) noexcept
+        : resource_{resource} {
+        assert(resource != nullptr);
+    }
     auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~ApiOwner() { Operations::release_storage(*this); }
     ApiOwner(ApiOwner const&) = delete;
@@ -789,7 +796,6 @@ struct SANDBOXCOREENGINETESTS_API ApiOwner
         return self.get_data() + offset;
     }
   private:
-    std::pmr::memory_resource* resource_{};
     friend Operations;
     friend ::ioj::soa_storage_detail::StorageRequirements;
     /* **************************************** */
@@ -889,6 +895,8 @@ struct SANDBOXCOREENGINETESTS_API ApiOwner
     using Value = float;
     float first_value() const { return get_view().values()[0]; }
     Value total() const;
+  private:
+    std::pmr::memory_resource* resource_{};
 };
 
 struct EquivalentRowsSchema;
@@ -983,6 +991,7 @@ struct EquivalentRowsSingleConstView : EquivalentRowsSingleViewImpl<true> {
     using Base::Base;
     using equivalent_type = ApiPair;
     auto operator[](std::int32_t index) const -> equivalent_type {
+        assert(index < num());
         return equivalent_type{xs()[index], ys()[index]};
     }
 };
@@ -992,6 +1001,7 @@ struct EquivalentRowsSingleView : EquivalentRowsSingleViewImpl<false> {
     using Base::Base;
     using equivalent_type = ApiPair;
     auto operator[](std::int32_t index) const -> equivalent_type {
+        assert(index < num());
         return equivalent_type{xs()[index], ys()[index]};
     }
 };
@@ -1024,9 +1034,11 @@ struct EquivalentOwner
     // Lifetime
     /* **************************************** */
     EquivalentOwner() noexcept
-        : EquivalentOwner{*std::pmr::get_default_resource()} {}
-    explicit EquivalentOwner(std::pmr::memory_resource& resource) noexcept
-        : resource_{&resource} {}
+        : EquivalentOwner{std::pmr::get_default_resource()} {}
+    explicit EquivalentOwner(std::pmr::memory_resource* resource) noexcept
+        : resource_{resource} {
+        assert(resource != nullptr);
+    }
     auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~EquivalentOwner() { Operations::release_storage(*this); }
     EquivalentOwner(EquivalentOwner const&) = delete;
@@ -1065,7 +1077,6 @@ struct EquivalentOwner
         return self.get_data() + offset;
     }
   private:
-    std::pmr::memory_resource* resource_{};
     friend Operations;
     friend ::ioj::soa_storage_detail::StorageRequirements;
     /* **************************************** */
@@ -1153,7 +1164,12 @@ struct EquivalentOwner
     }
   public:
     using equivalent_type = ApiPair;
-    auto operator[](std::int32_t index) const -> equivalent_type { return get_const_view()[index]; }
+    auto operator[](std::int32_t index) const -> equivalent_type {
+        assert(index < num());
+        return get_const_view()[index];
+    }
+  private:
+    std::pmr::memory_resource* resource_{};
 };
 
 struct ApiReference {

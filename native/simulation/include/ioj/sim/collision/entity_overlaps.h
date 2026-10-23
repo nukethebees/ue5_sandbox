@@ -249,9 +249,11 @@ struct EntityEntityOverlaps
     // Lifetime
     /* **************************************** */
     EntityEntityOverlaps() noexcept
-        : EntityEntityOverlaps{*std::pmr::get_default_resource()} {}
-    explicit EntityEntityOverlaps(std::pmr::memory_resource& resource) noexcept
-        : resource_{&resource} {}
+        : EntityEntityOverlaps{std::pmr::get_default_resource()} {}
+    explicit EntityEntityOverlaps(std::pmr::memory_resource* resource) noexcept
+        : resource_{resource} {
+        assert(resource != nullptr);
+    }
     auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~EntityEntityOverlaps() { Operations::release_storage(*this); }
     EntityEntityOverlaps(EntityEntityOverlaps const&) = delete;
@@ -290,7 +292,6 @@ struct EntityEntityOverlaps
         return self.get_data() + offset;
     }
   private:
-    std::pmr::memory_resource* resource_{};
     friend Operations;
     friend ::ioj::soa_storage_detail::StorageRequirements;
     /* **************************************** */
@@ -392,6 +393,8 @@ struct EntityEntityOverlaps
         set(index, new_first_entities, new_second_entities);
         return index;
     }
+  private:
+    std::pmr::memory_resource* resource_{};
 };
 
 struct EntityStaticOverlapsSchema;
@@ -638,9 +641,11 @@ struct EntityStaticOverlaps
     // Lifetime
     /* **************************************** */
     EntityStaticOverlaps() noexcept
-        : EntityStaticOverlaps{*std::pmr::get_default_resource()} {}
-    explicit EntityStaticOverlaps(std::pmr::memory_resource& resource) noexcept
-        : resource_{&resource} {}
+        : EntityStaticOverlaps{std::pmr::get_default_resource()} {}
+    explicit EntityStaticOverlaps(std::pmr::memory_resource* resource) noexcept
+        : resource_{resource} {
+        assert(resource != nullptr);
+    }
     auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~EntityStaticOverlaps() { Operations::release_storage(*this); }
     EntityStaticOverlaps(EntityStaticOverlaps const&) = delete;
@@ -679,7 +684,6 @@ struct EntityStaticOverlaps
         return self.get_data() + offset;
     }
   private:
-    std::pmr::memory_resource* resource_{};
     friend Operations;
     friend ::ioj::soa_storage_detail::StorageRequirements;
     /* **************************************** */
@@ -784,5 +788,7 @@ struct EntityStaticOverlaps
         set(index, new_entities, new_static_geometry_indices);
         return index;
     }
+  private:
+    std::pmr::memory_resource* resource_{};
 };
 } // namespace ioj::sim::collision

@@ -940,9 +940,11 @@ struct LaserEntities
     // Lifetime
     /* **************************************** */
     LaserEntities() noexcept
-        : LaserEntities{*std::pmr::get_default_resource()} {}
-    explicit LaserEntities(std::pmr::memory_resource& resource) noexcept
-        : resource_{&resource} {}
+        : LaserEntities{std::pmr::get_default_resource()} {}
+    explicit LaserEntities(std::pmr::memory_resource* resource) noexcept
+        : resource_{resource} {
+        assert(resource != nullptr);
+    }
     auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~LaserEntities() { Operations::release_storage(*this); }
     LaserEntities(LaserEntities const&) = delete;
@@ -1010,7 +1012,6 @@ struct LaserEntities
         return self.get_data() + offset;
     }
   private:
-    std::pmr::memory_resource* resource_{};
     friend Operations;
     friend ::ioj::soa_storage_detail::StorageRequirements;
     /* **************************************** */
@@ -1239,5 +1240,7 @@ struct LaserEntities
             new_spawn_times);
         return index;
     }
+  private:
+    std::pmr::memory_resource* resource_{};
 };
 } // namespace ioj::sim::lasers

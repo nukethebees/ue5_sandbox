@@ -282,9 +282,11 @@ struct FighterOrderQueue
     // Lifetime
     /* **************************************** */
     FighterOrderQueue() noexcept
-        : FighterOrderQueue{*std::pmr::get_default_resource()} {}
-    explicit FighterOrderQueue(std::pmr::memory_resource& resource) noexcept
-        : resource_{&resource} {}
+        : FighterOrderQueue{std::pmr::get_default_resource()} {}
+    explicit FighterOrderQueue(std::pmr::memory_resource* resource) noexcept
+        : resource_{resource} {
+        assert(resource != nullptr);
+    }
     auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~FighterOrderQueue() { Operations::release_storage(*this); }
     FighterOrderQueue(FighterOrderQueue const&) = delete;
@@ -325,7 +327,6 @@ struct FighterOrderQueue
         return self.get_data() + offset;
     }
   private:
-    std::pmr::memory_resource* resource_{};
     friend Operations;
     friend ::ioj::soa_storage_detail::StorageRequirements;
     /* **************************************** */
@@ -448,5 +449,7 @@ struct FighterOrderQueue
         queue.tasks()[index] = task;
         queue.targets()[index] = target;
     }
+  private:
+    std::pmr::memory_resource* resource_{};
 };
 } // namespace ioj::sim

@@ -59,8 +59,8 @@ auto trace_impl(ioj::sim::collision::CollisionUniformGrid const& uniform_grid,
         std::ranges::fill(request.out_flags, ioj::sim::LineQueryResult{});
     }
 
-    ioj::sim::LineTraces traces{*scratch_resource};
-    ioj::sim::TraceHits trace_hits{*scratch_resource};
+    ioj::sim::LineTraces traces{scratch_resource};
+    ioj::sim::TraceHits trace_hits{scratch_resource};
     trace_hits.set_num(count);
     auto const hits{trace_hits.get_view()};
     auto const hit_flags{hits.hits()};

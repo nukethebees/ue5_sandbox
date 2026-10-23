@@ -209,7 +209,7 @@ void Sim::handle_collisions(ActionInputs const inputs) {
     }
 
     FrameVectors3f end_storage{scratch_resource};
-    TraceHits hit_storage{*scratch_resource};
+    TraceHits hit_storage{scratch_resource};
     end_storage.set_num(n);
     hit_storage.set_num(n);
     auto const trace_ends{end_storage.get_view()};
@@ -245,7 +245,7 @@ void Sim::handle_collisions(ActionInputs const inputs) {
 
     FrameArray<std::uint32_t> to_remove{scratch_resource};
     FrameHitDetails hit_details{scratch_resource};
-    DirectDamageEvents collision_damage_events{*scratch_resource};
+    DirectDamageEvents collision_damage_events{scratch_resource};
     auto const trace_hits{hit_storage.get_const_view()};
     auto const hit_flags{trace_hits.hits()};
     auto const hit_entities{trace_hits.entities()};

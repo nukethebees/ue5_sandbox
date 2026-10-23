@@ -267,9 +267,11 @@ struct LevelMissionEventGroups
     // Lifetime
     /* **************************************** */
     LevelMissionEventGroups() noexcept
-        : LevelMissionEventGroups{*std::pmr::get_default_resource()} {}
-    explicit LevelMissionEventGroups(std::pmr::memory_resource& resource) noexcept
-        : resource_{&resource} {}
+        : LevelMissionEventGroups{std::pmr::get_default_resource()} {}
+    explicit LevelMissionEventGroups(std::pmr::memory_resource* resource) noexcept
+        : resource_{resource} {
+        assert(resource != nullptr);
+    }
     auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~LevelMissionEventGroups() { Operations::release_storage(*this); }
     LevelMissionEventGroups(LevelMissionEventGroups const&) = delete;
@@ -309,7 +311,6 @@ struct LevelMissionEventGroups
         return self.get_data() + offset;
     }
   private:
-    std::pmr::memory_resource* resource_{};
     friend Operations;
     friend ::ioj::soa_storage_detail::StorageRequirements;
     /* **************************************** */
@@ -421,5 +422,7 @@ struct LevelMissionEventGroups
         set(index, new_types, new_offsets, new_counts);
         return index;
     }
+  private:
+    std::pmr::memory_resource* resource_{};
 };
 } // namespace ioj::sim

@@ -467,9 +467,11 @@ struct TraceHits
     // Lifetime
     /* **************************************** */
     TraceHits() noexcept
-        : TraceHits{*std::pmr::get_default_resource()} {}
-    explicit TraceHits(std::pmr::memory_resource& resource) noexcept
-        : resource_{&resource} {}
+        : TraceHits{std::pmr::get_default_resource()} {}
+    explicit TraceHits(std::pmr::memory_resource* resource) noexcept
+        : resource_{resource} {
+        assert(resource != nullptr);
+    }
     auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~TraceHits() { Operations::release_storage(*this); }
     TraceHits(TraceHits const&) = delete;
@@ -517,7 +519,6 @@ struct TraceHits
         return self.get_data() + offset;
     }
   private:
-    std::pmr::memory_resource* resource_{};
     friend Operations;
     friend ::ioj::soa_storage_detail::StorageRequirements;
     /* **************************************** */
@@ -660,5 +661,7 @@ struct TraceHits
             new_hits);
         return index;
     }
+  private:
+    std::pmr::memory_resource* resource_{};
 };
 } // namespace ioj::sim

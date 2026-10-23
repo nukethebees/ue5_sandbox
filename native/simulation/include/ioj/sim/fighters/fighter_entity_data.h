@@ -2848,9 +2848,11 @@ struct FighterEntityData
     // Lifetime
     /* **************************************** */
     FighterEntityData() noexcept
-        : FighterEntityData{*std::pmr::get_default_resource()} {}
-    explicit FighterEntityData(std::pmr::memory_resource& resource) noexcept
-        : resource_{&resource} {}
+        : FighterEntityData{std::pmr::get_default_resource()} {}
+    explicit FighterEntityData(std::pmr::memory_resource* resource) noexcept
+        : resource_{resource} {
+        assert(resource != nullptr);
+    }
     auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~FighterEntityData() { Operations::release_storage(*this); }
     FighterEntityData(FighterEntityData const&) = delete;
@@ -2996,7 +2998,6 @@ struct FighterEntityData
         return self.get_data() + offset;
     }
   private:
-    std::pmr::memory_resource* resource_{};
     friend Operations;
     friend ::ioj::soa_storage_detail::StorageRequirements;
     /* **************************************** */
@@ -3605,5 +3606,7 @@ struct FighterEntityData
             new_target_radii);
         return index;
     }
+  private:
+    std::pmr::memory_resource* resource_{};
 };
 } // namespace ioj::sim

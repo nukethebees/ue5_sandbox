@@ -674,9 +674,11 @@ struct LevelTurretSpawnEvents
     // Lifetime
     /* **************************************** */
     LevelTurretSpawnEvents() noexcept
-        : LevelTurretSpawnEvents{*std::pmr::get_default_resource()} {}
-    explicit LevelTurretSpawnEvents(std::pmr::memory_resource& resource) noexcept
-        : resource_{&resource} {}
+        : LevelTurretSpawnEvents{std::pmr::get_default_resource()} {}
+    explicit LevelTurretSpawnEvents(std::pmr::memory_resource* resource) noexcept
+        : resource_{resource} {
+        assert(resource != nullptr);
+    }
     auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~LevelTurretSpawnEvents() { Operations::release_storage(*this); }
     LevelTurretSpawnEvents(LevelTurretSpawnEvents const&) = delete;
@@ -732,7 +734,6 @@ struct LevelTurretSpawnEvents
         return self.get_data() + offset;
     }
   private:
-    std::pmr::memory_resource* resource_{};
     friend Operations;
     friend ::ioj::soa_storage_detail::StorageRequirements;
     /* **************************************** */
@@ -908,5 +909,7 @@ struct LevelTurretSpawnEvents
             new_laser_damages);
         return index;
     }
+  private:
+    std::pmr::memory_resource* resource_{};
 };
 } // namespace ioj::sim

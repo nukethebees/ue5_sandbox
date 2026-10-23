@@ -264,9 +264,11 @@ struct LevelSpawnGroups
     // Lifetime
     /* **************************************** */
     LevelSpawnGroups() noexcept
-        : LevelSpawnGroups{*std::pmr::get_default_resource()} {}
-    explicit LevelSpawnGroups(std::pmr::memory_resource& resource) noexcept
-        : resource_{&resource} {}
+        : LevelSpawnGroups{std::pmr::get_default_resource()} {}
+    explicit LevelSpawnGroups(std::pmr::memory_resource* resource) noexcept
+        : resource_{resource} {
+        assert(resource != nullptr);
+    }
     auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~LevelSpawnGroups() { Operations::release_storage(*this); }
     LevelSpawnGroups(LevelSpawnGroups const&) = delete;
@@ -306,7 +308,6 @@ struct LevelSpawnGroups
         return self.get_data() + offset;
     }
   private:
-    std::pmr::memory_resource* resource_{};
     friend Operations;
     friend ::ioj::soa_storage_detail::StorageRequirements;
     /* **************************************** */
@@ -418,5 +419,7 @@ struct LevelSpawnGroups
         set(index, new_types, new_offsets, new_counts);
         return index;
     }
+  private:
+    std::pmr::memory_resource* resource_{};
 };
 } // namespace ioj::sim

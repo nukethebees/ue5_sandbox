@@ -1338,9 +1338,11 @@ struct TurretEntityData
     // Lifetime
     /* **************************************** */
     TurretEntityData() noexcept
-        : TurretEntityData{*std::pmr::get_default_resource()} {}
-    explicit TurretEntityData(std::pmr::memory_resource& resource) noexcept
-        : resource_{&resource} {}
+        : TurretEntityData{std::pmr::get_default_resource()} {}
+    explicit TurretEntityData(std::pmr::memory_resource* resource) noexcept
+        : resource_{resource} {
+        assert(resource != nullptr);
+    }
     auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~TurretEntityData() { Operations::release_storage(*this); }
     TurretEntityData(TurretEntityData const&) = delete;
@@ -1422,7 +1424,6 @@ struct TurretEntityData
         return self.get_data() + offset;
     }
   private:
-    std::pmr::memory_resource* resource_{};
     friend Operations;
     friend ::ioj::soa_storage_detail::StorageRequirements;
     /* **************************************** */
@@ -1725,5 +1726,7 @@ struct TurretEntityData
             new_target_velocities_zs);
         return index;
     }
+  private:
+    std::pmr::memory_resource* resource_{};
 };
 } // namespace ioj::sim
