@@ -8,6 +8,7 @@
 #include "ioj/sim/collision/collision_types.h"
 #include "ioj/sim/collision/query_result_types.h"
 #include "ioj/sim/entities/entity_id.h"
+#include "ioj/single_allocation/layout.h"
 #include "ioj/soa_permutation.h"
 #include "ioj/vectors3f.h"
 #include <ioj/sim/collision/line_trace_result.h>
@@ -21,50 +22,26 @@ struct TraceHitsView;
 struct TraceHitsConstView;
 struct TraceHitsLayoutColumns {
     template <typename T>
-    using ColLayout = ioj::native_soa::ColumnLayout<T>;
-
-    ioj::native_soa::ColumnLayoutStart LayoutStart{};
-
-    ColLayout<float> LocationsXsColumn;
-    ColLayout<float> LocationsYsColumn;
-    ColLayout<float> LocationsZsColumn;
+    using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
+    ::ioj::Vectors3fLayoutColumns Locations;
     ColLayout<EntityId> EntitiesColumn;
     ColLayout<collision::StaticGeometryIndex> StaticGeometryIndicesColumn;
     ColLayout<TraceHit> HitsColumn;
 
-    constexpr TraceHitsLayoutColumns() noexcept
-        : LocationsXsColumn{LayoutStart}
-        , LocationsYsColumn{LocationsXsColumn}
-        , LocationsZsColumn{LocationsYsColumn}
-        , EntitiesColumn{LocationsZsColumn}
+    constexpr explicit TraceHitsLayoutColumns(
+        ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
+        : Locations{previous}
+        , EntitiesColumn{Locations.last_column()}
         , StaticGeometryIndicesColumn{EntitiesColumn}
         , HitsColumn{StaticGeometryIndicesColumn} {}
+    constexpr auto last_column() const noexcept
+        -> ioj::single_allocation_layout::ColumnLayoutBase const& {
+        return HitsColumn;
+    }
     TraceHitsLayoutColumns(TraceHitsLayoutColumns const&) = delete;
     auto operator=(TraceHitsLayoutColumns const&) -> TraceHitsLayoutColumns& = delete;
 };
-struct TraceHitsLayout {
-    using size_type = std::uint32_t;
-    using byte_size_type = std::size_t;
-
-    static constexpr size_type capacity_granularity{
-        ioj::native_soa::LayoutPolicy::capacity_granularity};
-    static constexpr byte_size_type column_gap{ioj::native_soa::LayoutPolicy::column_gap};
-
-    static constexpr TraceHitsLayoutColumns columns{};
-
-    static constexpr byte_size_type allocation_alignment{columns.HitsColumn.allocation_alignment};
-
-    // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
-    // capacity.
-    static constexpr byte_size_type capacity_block_bound{
-        ioj::native_soa::capacity_block_bound(columns.HitsColumn)};
-    static constexpr size_type max_capacity{
-        ioj::native_soa::maximum_capacity(capacity_block_bound)};
-    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return blocks == 0 ? 0 : columns.HitsColumn.data_end(blocks);
-    }
-    static_assert(max_capacity >= capacity_granularity);
-};
+struct TraceHitsLayout : ioj::single_allocation_layout::Layout<TraceHitsLayoutColumns> {};
 struct TraceHitsResolvedView;
 struct TraceHitsResolvedConstView;
 template <bool Const>
@@ -250,9 +227,9 @@ struct TraceHitsView_locationsImpl : ioj::soa_storage_detail::CompactViewBase<Co
     TraceHitsView_locationsImpl(TraceHitsView_locationsImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto xs() const { return this->column(Layout::columns.LocationsXsColumn); }
-    auto ys() const { return this->column(Layout::columns.LocationsYsColumn); }
-    auto zs() const { return this->column(Layout::columns.LocationsZsColumn); }
+    auto xs() const { return this->column(Layout::columns.Locations.XsColumn); }
+    auto ys() const { return this->column(Layout::columns.Locations.YsColumn); }
+    auto zs() const { return this->column(Layout::columns.Locations.ZsColumn); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(xs());
@@ -261,9 +238,9 @@ struct TraceHitsView_locationsImpl : ioj::soa_storage_detail::CompactViewBase<Co
     }
     auto resolve() const -> std::
         conditional_t<Const, ::ioj::Vectors3fResolvedConstView, ::ioj::Vectors3fResolvedView> {
-        return {(this->column(Layout::columns.LocationsXsColumn).data()),
-                (this->column(Layout::columns.LocationsYsColumn).data()),
-                (this->column(Layout::columns.LocationsZsColumn).data()),
+        return {this->column(Layout::columns.Locations.XsColumn).data(),
+                this->column(Layout::columns.Locations.YsColumn).data(),
+                this->column(Layout::columns.Locations.ZsColumn).data(),
                 this->count_};
     }
 };
@@ -329,12 +306,12 @@ struct TraceHitsViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     }
     auto resolve() const
         -> std::conditional_t<Const, TraceHitsResolvedConstView, TraceHitsResolvedView> {
-        return {(this->column(Layout::columns.LocationsXsColumn).data()),
-                (this->column(Layout::columns.LocationsYsColumn).data()),
-                (this->column(Layout::columns.LocationsZsColumn).data()),
-                (this->column(Layout::columns.EntitiesColumn).data()),
-                (this->column(Layout::columns.StaticGeometryIndicesColumn).data()),
-                (this->column(Layout::columns.HitsColumn).data()),
+        return {this->column(Layout::columns.Locations.XsColumn).data(),
+                this->column(Layout::columns.Locations.YsColumn).data(),
+                this->column(Layout::columns.Locations.ZsColumn).data(),
+                this->column(Layout::columns.EntitiesColumn).data(),
+                this->column(Layout::columns.StaticGeometryIndicesColumn).data(),
+                this->column(Layout::columns.HitsColumn).data(),
                 this->count_};
     }
 };
@@ -465,9 +442,9 @@ struct TraceHits
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
         ioj::native_soa::LayoutCursor cursor{blocks};
-        return {cursor.column_pointer(data, Layout::columns.LocationsXsColumn),
-                cursor.column_pointer(data, Layout::columns.LocationsYsColumn),
-                cursor.column_pointer(data, Layout::columns.LocationsZsColumn),
+        return {cursor.column_pointer(data, Layout::columns.Locations.XsColumn),
+                cursor.column_pointer(data, Layout::columns.Locations.YsColumn),
+                cursor.column_pointer(data, Layout::columns.Locations.ZsColumn),
                 cursor.column_pointer(data, Layout::columns.EntitiesColumn),
                 cursor.column_pointer(data, Layout::columns.StaticGeometryIndicesColumn),
                 cursor.column_pointer(data, Layout::columns.HitsColumn)};

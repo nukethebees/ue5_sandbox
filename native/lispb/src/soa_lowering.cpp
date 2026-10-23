@@ -3,6 +3,7 @@
 #include "lowering.h"
 #include "lowering_context.h"
 #include "lowering_utils.h"
+#include "single_allocation_soa_emission.h"
 #include "soa_internal.h"
 #include <ioj/format_writer.h>
 
@@ -183,6 +184,7 @@ auto lower_soa_declaration(LoweringContext& context, DeclarationHandle schema)
         .new_lines(2);
     header.append(field_mask_nodes(context, schema)).new_lines(1);
     if (soas.layout_only[row]) {
+        header.add(emit_single_allocation_column_group(context, schema));
         return {.header = header.build(), .format_generated = true};
     }
     auto lowered{lower_single_allocation(context, schema)};

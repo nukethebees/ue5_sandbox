@@ -16,6 +16,9 @@ namespace lispb::codegen::detail {
 
 struct LoweringContext;
 
+auto emit_single_allocation_column_group(LoweringContext& context, DeclarationHandle schema)
+    -> NodeId;
+
 auto emit_single_allocation_layout(LoweringContext& context, SingleAllocationModelId model)
     -> Nodes;
 auto emit_single_allocation_views(LoweringContext& context,

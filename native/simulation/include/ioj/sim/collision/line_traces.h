@@ -5,6 +5,7 @@
 
 #include "ioj/math_types.h"
 #include "ioj/native_soa/storage.h"
+#include "ioj/single_allocation/layout.h"
 #include "ioj/soa_permutation.h"
 #include "ioj/vectors3f.h"
 
@@ -17,50 +18,22 @@ struct LineTracesView;
 struct LineTracesConstView;
 struct LineTracesLayoutColumns {
     template <typename T>
-    using ColLayout = ioj::native_soa::ColumnLayout<T>;
+    using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
+    ::ioj::Vectors3fLayoutColumns Starts;
+    ::ioj::Vectors3fLayoutColumns Ends;
 
-    ioj::native_soa::ColumnLayoutStart LayoutStart{};
-
-    ColLayout<float> StartsXsColumn;
-    ColLayout<float> StartsYsColumn;
-    ColLayout<float> StartsZsColumn;
-    ColLayout<float> EndsXsColumn;
-    ColLayout<float> EndsYsColumn;
-    ColLayout<float> EndsZsColumn;
-
-    constexpr LineTracesLayoutColumns() noexcept
-        : StartsXsColumn{LayoutStart}
-        , StartsYsColumn{StartsXsColumn}
-        , StartsZsColumn{StartsYsColumn}
-        , EndsXsColumn{StartsZsColumn}
-        , EndsYsColumn{EndsXsColumn}
-        , EndsZsColumn{EndsYsColumn} {}
+    constexpr explicit LineTracesLayoutColumns(
+        ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
+        : Starts{previous}
+        , Ends{Starts.last_column()} {}
+    constexpr auto last_column() const noexcept
+        -> ioj::single_allocation_layout::ColumnLayoutBase const& {
+        return Ends.last_column();
+    }
     LineTracesLayoutColumns(LineTracesLayoutColumns const&) = delete;
     auto operator=(LineTracesLayoutColumns const&) -> LineTracesLayoutColumns& = delete;
 };
-struct LineTracesLayout {
-    using size_type = std::uint32_t;
-    using byte_size_type = std::size_t;
-
-    static constexpr size_type capacity_granularity{
-        ioj::native_soa::LayoutPolicy::capacity_granularity};
-    static constexpr byte_size_type column_gap{ioj::native_soa::LayoutPolicy::column_gap};
-
-    static constexpr LineTracesLayoutColumns columns{};
-
-    static constexpr byte_size_type allocation_alignment{columns.EndsZsColumn.allocation_alignment};
-
-    // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
-    // capacity.
-    static constexpr byte_size_type capacity_block_bound{
-        ioj::native_soa::capacity_block_bound(columns.EndsZsColumn)};
-    static constexpr size_type max_capacity{
-        ioj::native_soa::maximum_capacity(capacity_block_bound)};
-    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return blocks == 0 ? 0 : columns.EndsZsColumn.data_end(blocks);
-    }
-    static_assert(max_capacity >= capacity_granularity);
-};
+struct LineTracesLayout : ioj::single_allocation_layout::Layout<LineTracesLayoutColumns> {};
 struct LineTracesResolvedView;
 struct LineTracesResolvedConstView;
 template <bool Const>
@@ -222,9 +195,9 @@ struct LineTracesView_startsImpl : ioj::soa_storage_detail::CompactViewBase<Cons
     LineTracesView_startsImpl(LineTracesView_startsImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto xs() const { return this->column(Layout::columns.StartsXsColumn); }
-    auto ys() const { return this->column(Layout::columns.StartsYsColumn); }
-    auto zs() const { return this->column(Layout::columns.StartsZsColumn); }
+    auto xs() const { return this->column(Layout::columns.Starts.XsColumn); }
+    auto ys() const { return this->column(Layout::columns.Starts.YsColumn); }
+    auto zs() const { return this->column(Layout::columns.Starts.ZsColumn); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(xs());
@@ -233,9 +206,9 @@ struct LineTracesView_startsImpl : ioj::soa_storage_detail::CompactViewBase<Cons
     }
     auto resolve() const -> std::
         conditional_t<Const, ::ioj::Vectors3fResolvedConstView, ::ioj::Vectors3fResolvedView> {
-        return {(this->column(Layout::columns.StartsXsColumn).data()),
-                (this->column(Layout::columns.StartsYsColumn).data()),
-                (this->column(Layout::columns.StartsZsColumn).data()),
+        return {this->column(Layout::columns.Starts.XsColumn).data(),
+                this->column(Layout::columns.Starts.YsColumn).data(),
+                this->column(Layout::columns.Starts.ZsColumn).data(),
                 this->count_};
     }
 };
@@ -282,9 +255,9 @@ struct LineTracesView_endsImpl : ioj::soa_storage_detail::CompactViewBase<Const>
     LineTracesView_endsImpl(LineTracesView_endsImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto xs() const { return this->column(Layout::columns.EndsXsColumn); }
-    auto ys() const { return this->column(Layout::columns.EndsYsColumn); }
-    auto zs() const { return this->column(Layout::columns.EndsZsColumn); }
+    auto xs() const { return this->column(Layout::columns.Ends.XsColumn); }
+    auto ys() const { return this->column(Layout::columns.Ends.YsColumn); }
+    auto zs() const { return this->column(Layout::columns.Ends.ZsColumn); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(xs());
@@ -293,9 +266,9 @@ struct LineTracesView_endsImpl : ioj::soa_storage_detail::CompactViewBase<Const>
     }
     auto resolve() const -> std::
         conditional_t<Const, ::ioj::Vectors3fResolvedConstView, ::ioj::Vectors3fResolvedView> {
-        return {(this->column(Layout::columns.EndsXsColumn).data()),
-                (this->column(Layout::columns.EndsYsColumn).data()),
-                (this->column(Layout::columns.EndsZsColumn).data()),
+        return {this->column(Layout::columns.Ends.XsColumn).data(),
+                this->column(Layout::columns.Ends.YsColumn).data(),
+                this->column(Layout::columns.Ends.ZsColumn).data(),
                 this->count_};
     }
 };
@@ -361,12 +334,12 @@ struct LineTracesViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     }
     auto resolve() const
         -> std::conditional_t<Const, LineTracesResolvedConstView, LineTracesResolvedView> {
-        return {(this->column(Layout::columns.StartsXsColumn).data()),
-                (this->column(Layout::columns.StartsYsColumn).data()),
-                (this->column(Layout::columns.StartsZsColumn).data()),
-                (this->column(Layout::columns.EndsXsColumn).data()),
-                (this->column(Layout::columns.EndsYsColumn).data()),
-                (this->column(Layout::columns.EndsZsColumn).data()),
+        return {this->column(Layout::columns.Starts.XsColumn).data(),
+                this->column(Layout::columns.Starts.YsColumn).data(),
+                this->column(Layout::columns.Starts.ZsColumn).data(),
+                this->column(Layout::columns.Ends.XsColumn).data(),
+                this->column(Layout::columns.Ends.YsColumn).data(),
+                this->column(Layout::columns.Ends.ZsColumn).data(),
                 this->count_};
     }
 };
@@ -491,12 +464,12 @@ struct LineTraces
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
         ioj::native_soa::LayoutCursor cursor{blocks};
-        return {cursor.column_pointer(data, Layout::columns.StartsXsColumn),
-                cursor.column_pointer(data, Layout::columns.StartsYsColumn),
-                cursor.column_pointer(data, Layout::columns.StartsZsColumn),
-                cursor.column_pointer(data, Layout::columns.EndsXsColumn),
-                cursor.column_pointer(data, Layout::columns.EndsYsColumn),
-                cursor.column_pointer(data, Layout::columns.EndsZsColumn)};
+        return {cursor.column_pointer(data, Layout::columns.Starts.XsColumn),
+                cursor.column_pointer(data, Layout::columns.Starts.YsColumn),
+                cursor.column_pointer(data, Layout::columns.Starts.ZsColumn),
+                cursor.column_pointer(data, Layout::columns.Ends.XsColumn),
+                cursor.column_pointer(data, Layout::columns.Ends.YsColumn),
+                cursor.column_pointer(data, Layout::columns.Ends.ZsColumn)};
     }
     auto capacity_blocks() const noexcept -> byte_size_type {
         return static_cast<byte_size_type>(capacity_ / capacity_granularity);

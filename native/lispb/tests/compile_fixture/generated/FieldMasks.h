@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include "ioj/single_allocation/layout.h"
+
 #include <cstdint>
 #include <type_traits>
 
@@ -55,6 +57,23 @@ struct FFieldMask8 {
 };
 static_assert(sizeof(FFieldMask8) == sizeof(FFieldMask8::storage_type));
 static_assert(std::is_trivially_copyable_v<FFieldMask8>);
+struct FMaskRows8LayoutColumns {
+    template <typename T>
+    using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
+    ColLayout<FFieldMask8> MasksColumn;
+    ColLayout<std::int32_t> ValuesColumn;
+
+    constexpr explicit FMaskRows8LayoutColumns(
+        ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
+        : MasksColumn{previous}
+        , ValuesColumn{MasksColumn} {}
+    constexpr auto last_column() const noexcept
+        -> ioj::single_allocation_layout::ColumnLayoutBase const& {
+        return ValuesColumn;
+    }
+    FMaskRows8LayoutColumns(FMaskRows8LayoutColumns const&) = delete;
+    auto operator=(FMaskRows8LayoutColumns const&) -> FMaskRows8LayoutColumns& = delete;
+};
 
 struct FMaskRows9Schema;
 
@@ -105,6 +124,25 @@ struct FFieldMask9 {
 };
 static_assert(sizeof(FFieldMask9) == sizeof(FFieldMask9::storage_type));
 static_assert(std::is_trivially_copyable_v<FFieldMask9>);
+struct FMaskRows9LayoutColumns {
+    template <typename T>
+    using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
+    ColLayout<FFieldMask9> MasksColumn;
+    ColLayout<std::int32_t> ValuesColumn;
+    ColLayout<std::int32_t> TailColumn;
+
+    constexpr explicit FMaskRows9LayoutColumns(
+        ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
+        : MasksColumn{previous}
+        , ValuesColumn{MasksColumn}
+        , TailColumn{ValuesColumn} {}
+    constexpr auto last_column() const noexcept
+        -> ioj::single_allocation_layout::ColumnLayoutBase const& {
+        return TailColumn;
+    }
+    FMaskRows9LayoutColumns(FMaskRows9LayoutColumns const&) = delete;
+    auto operator=(FMaskRows9LayoutColumns const&) -> FMaskRows9LayoutColumns& = delete;
+};
 
 struct FMaskRows16Schema;
 
@@ -154,6 +192,23 @@ struct FFieldMask16 {
 };
 static_assert(sizeof(FFieldMask16) == sizeof(FFieldMask16::storage_type));
 static_assert(std::is_trivially_copyable_v<FFieldMask16>);
+struct FMaskRows16LayoutColumns {
+    template <typename T>
+    using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
+    ColLayout<FFieldMask16> MasksColumn;
+    ColLayout<std::int32_t> ValuesColumn;
+
+    constexpr explicit FMaskRows16LayoutColumns(
+        ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
+        : MasksColumn{previous}
+        , ValuesColumn{MasksColumn} {}
+    constexpr auto last_column() const noexcept
+        -> ioj::single_allocation_layout::ColumnLayoutBase const& {
+        return ValuesColumn;
+    }
+    FMaskRows16LayoutColumns(FMaskRows16LayoutColumns const&) = delete;
+    auto operator=(FMaskRows16LayoutColumns const&) -> FMaskRows16LayoutColumns& = delete;
+};
 
 struct FMaskRows17Schema;
 
@@ -203,6 +258,23 @@ struct FFieldMask17 {
 };
 static_assert(sizeof(FFieldMask17) == sizeof(FFieldMask17::storage_type));
 static_assert(std::is_trivially_copyable_v<FFieldMask17>);
+struct FMaskRows17LayoutColumns {
+    template <typename T>
+    using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
+    ColLayout<FFieldMask17> MasksColumn;
+    ColLayout<std::int32_t> ValuesColumn;
+
+    constexpr explicit FMaskRows17LayoutColumns(
+        ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
+        : MasksColumn{previous}
+        , ValuesColumn{MasksColumn} {}
+    constexpr auto last_column() const noexcept
+        -> ioj::single_allocation_layout::ColumnLayoutBase const& {
+        return ValuesColumn;
+    }
+    FMaskRows17LayoutColumns(FMaskRows17LayoutColumns const&) = delete;
+    auto operator=(FMaskRows17LayoutColumns const&) -> FMaskRows17LayoutColumns& = delete;
+};
 
 struct FMaskRows32Schema;
 
@@ -252,6 +324,23 @@ struct FFieldMask32 {
 };
 static_assert(sizeof(FFieldMask32) == sizeof(FFieldMask32::storage_type));
 static_assert(std::is_trivially_copyable_v<FFieldMask32>);
+struct FMaskRows32LayoutColumns {
+    template <typename T>
+    using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
+    ColLayout<FFieldMask32> MasksColumn;
+    ColLayout<std::int32_t> ValuesColumn;
+
+    constexpr explicit FMaskRows32LayoutColumns(
+        ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
+        : MasksColumn{previous}
+        , ValuesColumn{MasksColumn} {}
+    constexpr auto last_column() const noexcept
+        -> ioj::single_allocation_layout::ColumnLayoutBase const& {
+        return ValuesColumn;
+    }
+    FMaskRows32LayoutColumns(FMaskRows32LayoutColumns const&) = delete;
+    auto operator=(FMaskRows32LayoutColumns const&) -> FMaskRows32LayoutColumns& = delete;
+};
 
 struct FMaskRows33Schema;
 
@@ -301,5 +390,21 @@ struct FFieldMask33 {
 };
 static_assert(sizeof(FFieldMask33) == sizeof(FFieldMask33::storage_type));
 static_assert(std::is_trivially_copyable_v<FFieldMask33>);
+struct FMaskRows33LayoutColumns {
+    template <typename T>
+    using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
+    ColLayout<FFieldMask33> MasksColumn;
+    ColLayout<std::int32_t> ValuesColumn;
 
+    constexpr explicit FMaskRows33LayoutColumns(
+        ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
+        : MasksColumn{previous}
+        , ValuesColumn{MasksColumn} {}
+    constexpr auto last_column() const noexcept
+        -> ioj::single_allocation_layout::ColumnLayoutBase const& {
+        return ValuesColumn;
+    }
+    FMaskRows33LayoutColumns(FMaskRows33LayoutColumns const&) = delete;
+    auto operator=(FMaskRows33LayoutColumns const&) -> FMaskRows33LayoutColumns& = delete;
+};
 } // namespace codegen_compile_fixture

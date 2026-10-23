@@ -6,6 +6,7 @@
 #include "ioj/native_soa/storage.h"
 #include "ioj/sim/entities/entity_id.h"
 #include "ioj/sim/fighters/fighter_task_format.h"
+#include "ioj/single_allocation/layout.h"
 #include "ioj/soa_permutation.h"
 
 #include <cassert>
@@ -17,48 +18,28 @@ struct FighterOrderQueueView;
 struct FighterOrderQueueConstView;
 struct FighterOrderQueueLayoutColumns {
     template <typename T>
-    using ColLayout = ioj::native_soa::ColumnLayout<T>;
-
-    ioj::native_soa::ColumnLayoutStart LayoutStart{};
-
+    using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
     ColLayout<EntityId> EntityIdsColumn;
     ColLayout<FighterOrder> OrdersColumn;
     ColLayout<FighterTask> TasksColumn;
     ColLayout<EntityId> TargetsColumn;
 
-    constexpr FighterOrderQueueLayoutColumns() noexcept
-        : EntityIdsColumn{LayoutStart}
+    constexpr explicit FighterOrderQueueLayoutColumns(
+        ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
+        : EntityIdsColumn{previous}
         , OrdersColumn{EntityIdsColumn}
         , TasksColumn{OrdersColumn}
         , TargetsColumn{TasksColumn} {}
+    constexpr auto last_column() const noexcept
+        -> ioj::single_allocation_layout::ColumnLayoutBase const& {
+        return TargetsColumn;
+    }
     FighterOrderQueueLayoutColumns(FighterOrderQueueLayoutColumns const&) = delete;
     auto operator=(FighterOrderQueueLayoutColumns const&)
         -> FighterOrderQueueLayoutColumns& = delete;
 };
-struct FighterOrderQueueLayout {
-    using size_type = std::uint32_t;
-    using byte_size_type = std::size_t;
-
-    static constexpr size_type capacity_granularity{
-        ioj::native_soa::LayoutPolicy::capacity_granularity};
-    static constexpr byte_size_type column_gap{ioj::native_soa::LayoutPolicy::column_gap};
-
-    static constexpr FighterOrderQueueLayoutColumns columns{};
-
-    static constexpr byte_size_type allocation_alignment{
-        columns.TargetsColumn.allocation_alignment};
-
-    // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
-    // capacity.
-    static constexpr byte_size_type capacity_block_bound{
-        ioj::native_soa::capacity_block_bound(columns.TargetsColumn)};
-    static constexpr size_type max_capacity{
-        ioj::native_soa::maximum_capacity(capacity_block_bound)};
-    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return blocks == 0 ? 0 : columns.TargetsColumn.data_end(blocks);
-    }
-    static_assert(max_capacity >= capacity_granularity);
-};
+struct FighterOrderQueueLayout
+    : ioj::single_allocation_layout::Layout<FighterOrderQueueLayoutColumns> {};
 
 struct FighterOrderQueueResolvedView;
 struct FighterOrderQueueResolvedConstView;
@@ -197,10 +178,10 @@ struct FighterOrderQueueViewImpl : ioj::soa_storage_detail::CompactViewBase<Cons
     }
     auto resolve() const -> std::
         conditional_t<Const, FighterOrderQueueResolvedConstView, FighterOrderQueueResolvedView> {
-        return {(this->column(Layout::columns.EntityIdsColumn).data()),
-                (this->column(Layout::columns.OrdersColumn).data()),
-                (this->column(Layout::columns.TasksColumn).data()),
-                (this->column(Layout::columns.TargetsColumn).data()),
+        return {this->column(Layout::columns.EntityIdsColumn).data(),
+                this->column(Layout::columns.OrdersColumn).data(),
+                this->column(Layout::columns.TasksColumn).data(),
+                this->column(Layout::columns.TargetsColumn).data(),
                 this->count_};
     }
 };

@@ -10,6 +10,7 @@
 #include "ioj/rotators3f.h"
 #include "ioj/sim/entities/health.h"
 #include "ioj/sim/levels/level_entity_index.h"
+#include "ioj/single_allocation/layout.h"
 #include "ioj/soa_permutation.h"
 #include "ioj/vectors3f.h"
 
@@ -23,60 +24,32 @@ struct LevelTurretSpawnEventsView;
 struct LevelTurretSpawnEventsConstView;
 struct LevelTurretSpawnEventsLayoutColumns {
     template <typename T>
-    using ColLayout = ioj::native_soa::ColumnLayout<T>;
-
-    ioj::native_soa::ColumnLayoutStart LayoutStart{};
-
+    using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
     ColLayout<LevelEntityIndex> EntityIndicesColumn;
-    ColLayout<float> LocationsXsColumn;
-    ColLayout<float> LocationsYsColumn;
-    ColLayout<float> LocationsZsColumn;
-    ColLayout<float> RotationsPitchesColumn;
-    ColLayout<float> RotationsYawsColumn;
-    ColLayout<float> RotationsRollsColumn;
+    ::ioj::Vectors3fLayoutColumns Locations;
+    ::ioj::Rotators3fLayoutColumns Rotations;
     ColLayout<::ioj::Team> TeamsColumn;
     ColLayout<Health> HealthsColumn;
     ColLayout<std::int32_t> LaserDamagesColumn;
 
-    constexpr LevelTurretSpawnEventsLayoutColumns() noexcept
-        : EntityIndicesColumn{LayoutStart}
-        , LocationsXsColumn{EntityIndicesColumn}
-        , LocationsYsColumn{LocationsXsColumn}
-        , LocationsZsColumn{LocationsYsColumn}
-        , RotationsPitchesColumn{LocationsZsColumn}
-        , RotationsYawsColumn{RotationsPitchesColumn}
-        , RotationsRollsColumn{RotationsYawsColumn}
-        , TeamsColumn{RotationsRollsColumn}
+    constexpr explicit LevelTurretSpawnEventsLayoutColumns(
+        ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
+        : EntityIndicesColumn{previous}
+        , Locations{EntityIndicesColumn}
+        , Rotations{Locations.last_column()}
+        , TeamsColumn{Rotations.last_column()}
         , HealthsColumn{TeamsColumn}
         , LaserDamagesColumn{HealthsColumn} {}
+    constexpr auto last_column() const noexcept
+        -> ioj::single_allocation_layout::ColumnLayoutBase const& {
+        return LaserDamagesColumn;
+    }
     LevelTurretSpawnEventsLayoutColumns(LevelTurretSpawnEventsLayoutColumns const&) = delete;
     auto operator=(LevelTurretSpawnEventsLayoutColumns const&)
         -> LevelTurretSpawnEventsLayoutColumns& = delete;
 };
-struct LevelTurretSpawnEventsLayout {
-    using size_type = std::uint32_t;
-    using byte_size_type = std::size_t;
-
-    static constexpr size_type capacity_granularity{
-        ioj::native_soa::LayoutPolicy::capacity_granularity};
-    static constexpr byte_size_type column_gap{ioj::native_soa::LayoutPolicy::column_gap};
-
-    static constexpr LevelTurretSpawnEventsLayoutColumns columns{};
-
-    static constexpr byte_size_type allocation_alignment{
-        columns.LaserDamagesColumn.allocation_alignment};
-
-    // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
-    // capacity.
-    static constexpr byte_size_type capacity_block_bound{
-        ioj::native_soa::capacity_block_bound(columns.LaserDamagesColumn)};
-    static constexpr size_type max_capacity{
-        ioj::native_soa::maximum_capacity(capacity_block_bound)};
-    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return blocks == 0 ? 0 : columns.LaserDamagesColumn.data_end(blocks);
-    }
-    static_assert(max_capacity >= capacity_granularity);
-};
+struct LevelTurretSpawnEventsLayout
+    : ioj::single_allocation_layout::Layout<LevelTurretSpawnEventsLayoutColumns> {};
 struct LevelTurretSpawnEventsResolvedView;
 struct LevelTurretSpawnEventsResolvedConstView;
 template <bool Const>
@@ -323,9 +296,9 @@ struct LevelTurretSpawnEventsView_locationsImpl : ioj::soa_storage_detail::Compa
         LevelTurretSpawnEventsView_locationsImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto xs() const { return this->column(Layout::columns.LocationsXsColumn); }
-    auto ys() const { return this->column(Layout::columns.LocationsYsColumn); }
-    auto zs() const { return this->column(Layout::columns.LocationsZsColumn); }
+    auto xs() const { return this->column(Layout::columns.Locations.XsColumn); }
+    auto ys() const { return this->column(Layout::columns.Locations.YsColumn); }
+    auto zs() const { return this->column(Layout::columns.Locations.ZsColumn); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(xs());
@@ -334,9 +307,9 @@ struct LevelTurretSpawnEventsView_locationsImpl : ioj::soa_storage_detail::Compa
     }
     auto resolve() const -> std::
         conditional_t<Const, ::ioj::Vectors3fResolvedConstView, ::ioj::Vectors3fResolvedView> {
-        return {(this->column(Layout::columns.LocationsXsColumn).data()),
-                (this->column(Layout::columns.LocationsYsColumn).data()),
-                (this->column(Layout::columns.LocationsZsColumn).data()),
+        return {this->column(Layout::columns.Locations.XsColumn).data(),
+                this->column(Layout::columns.Locations.YsColumn).data(),
+                this->column(Layout::columns.Locations.ZsColumn).data(),
                 this->count_};
     }
 };
@@ -386,9 +359,9 @@ struct LevelTurretSpawnEventsView_rotationsImpl : ioj::soa_storage_detail::Compa
         LevelTurretSpawnEventsView_rotationsImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto pitches() const { return this->column(Layout::columns.RotationsPitchesColumn); }
-    auto yaws() const { return this->column(Layout::columns.RotationsYawsColumn); }
-    auto rolls() const { return this->column(Layout::columns.RotationsRollsColumn); }
+    auto pitches() const { return this->column(Layout::columns.Rotations.PitchesColumn); }
+    auto yaws() const { return this->column(Layout::columns.Rotations.YawsColumn); }
+    auto rolls() const { return this->column(Layout::columns.Rotations.RollsColumn); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(pitches());
@@ -397,9 +370,9 @@ struct LevelTurretSpawnEventsView_rotationsImpl : ioj::soa_storage_detail::Compa
     }
     auto resolve() const -> std::
         conditional_t<Const, ::ioj::Rotators3fResolvedConstView, ::ioj::Rotators3fResolvedView> {
-        return {(this->column(Layout::columns.RotationsPitchesColumn).data()),
-                (this->column(Layout::columns.RotationsYawsColumn).data()),
-                (this->column(Layout::columns.RotationsRollsColumn).data()),
+        return {this->column(Layout::columns.Rotations.PitchesColumn).data(),
+                this->column(Layout::columns.Rotations.YawsColumn).data(),
+                this->column(Layout::columns.Rotations.RollsColumn).data(),
                 this->count_};
     }
 };
@@ -481,16 +454,16 @@ struct LevelTurretSpawnEventsViewImpl : ioj::soa_storage_detail::CompactViewBase
     auto resolve() const -> std::conditional_t<Const,
                                                LevelTurretSpawnEventsResolvedConstView,
                                                LevelTurretSpawnEventsResolvedView> {
-        return {(this->column(Layout::columns.EntityIndicesColumn).data()),
-                (this->column(Layout::columns.LocationsXsColumn).data()),
-                (this->column(Layout::columns.LocationsYsColumn).data()),
-                (this->column(Layout::columns.LocationsZsColumn).data()),
-                (this->column(Layout::columns.RotationsPitchesColumn).data()),
-                (this->column(Layout::columns.RotationsYawsColumn).data()),
-                (this->column(Layout::columns.RotationsRollsColumn).data()),
-                (this->column(Layout::columns.TeamsColumn).data()),
-                (this->column(Layout::columns.HealthsColumn).data()),
-                (this->column(Layout::columns.LaserDamagesColumn).data()),
+        return {this->column(Layout::columns.EntityIndicesColumn).data(),
+                this->column(Layout::columns.Locations.XsColumn).data(),
+                this->column(Layout::columns.Locations.YsColumn).data(),
+                this->column(Layout::columns.Locations.ZsColumn).data(),
+                this->column(Layout::columns.Rotations.PitchesColumn).data(),
+                this->column(Layout::columns.Rotations.YawsColumn).data(),
+                this->column(Layout::columns.Rotations.RollsColumn).data(),
+                this->column(Layout::columns.TeamsColumn).data(),
+                this->column(Layout::columns.HealthsColumn).data(),
+                this->column(Layout::columns.LaserDamagesColumn).data(),
                 this->count_};
     }
 };
@@ -646,12 +619,12 @@ struct LevelTurretSpawnEvents
         -> DataPointers<Byte> {
         ioj::native_soa::LayoutCursor cursor{blocks};
         return {cursor.column_pointer(data, Layout::columns.EntityIndicesColumn),
-                cursor.column_pointer(data, Layout::columns.LocationsXsColumn),
-                cursor.column_pointer(data, Layout::columns.LocationsYsColumn),
-                cursor.column_pointer(data, Layout::columns.LocationsZsColumn),
-                cursor.column_pointer(data, Layout::columns.RotationsPitchesColumn),
-                cursor.column_pointer(data, Layout::columns.RotationsYawsColumn),
-                cursor.column_pointer(data, Layout::columns.RotationsRollsColumn),
+                cursor.column_pointer(data, Layout::columns.Locations.XsColumn),
+                cursor.column_pointer(data, Layout::columns.Locations.YsColumn),
+                cursor.column_pointer(data, Layout::columns.Locations.ZsColumn),
+                cursor.column_pointer(data, Layout::columns.Rotations.PitchesColumn),
+                cursor.column_pointer(data, Layout::columns.Rotations.YawsColumn),
+                cursor.column_pointer(data, Layout::columns.Rotations.RollsColumn),
                 cursor.column_pointer(data, Layout::columns.TeamsColumn),
                 cursor.column_pointer(data, Layout::columns.HealthsColumn),
                 cursor.column_pointer(data, Layout::columns.LaserDamagesColumn)};

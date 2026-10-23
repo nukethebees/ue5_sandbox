@@ -778,6 +778,50 @@ void check_layout_limits() {
     }
 }
 
+TEST(NativeSoa, ComposedLayoutsPreserveEveryPhysicalColumn) {
+    using namespace single_allocation_layout;
+    static_assert(!std::is_copy_constructible_v<SingleAlignmentRowsLayoutColumns>);
+    static_assert(!std::is_move_constructible_v<SingleAlignmentRowsLayoutColumns>);
+    ColumnLayoutStart const start{};
+    ColumnLayout<std::uint8_t> const prefix{start};
+    SingleAlignmentRowsLayoutColumns const first{prefix};
+    SingleAlignmentRowsLayoutColumns const second{first.last_column()};
+    ColumnLayout<float> const suffix{second.last_column()};
+
+    for (std::size_t const blocks : {0, 1, 2, 3, 16, 1024}) {
+        std::size_t next{};
+        std::size_t count{};
+        std::size_t alignment{1};
+        auto check = [&](auto const& column) {
+            using T = typename std::remove_cvref_t<decltype(column)>::value_type;
+            auto const column_alignment{std::max(std::size_t{64}, alignof(T))};
+            auto const expected{((next + column_alignment - 1) / column_alignment) *
+                                column_alignment};
+            EXPECT_EQ(column.offset(blocks), expected);
+            EXPECT_EQ(column.alignment, column_alignment);
+            EXPECT_EQ(column.column_count, ++count);
+            alignment = std::max(alignment, column_alignment);
+            EXPECT_EQ(column.allocation_alignment, alignment);
+            next = expected + blocks * 64 * sizeof(T) + 192;
+            EXPECT_EQ(column.data_end(blocks), next - 192);
+        };
+        auto check_group = [&](auto const& group) {
+            check(group.BytesColumn);
+            check(group.OddColumn);
+            check(group.Aligned32Column);
+            check(group.Nested.XsColumn);
+            check(group.Nested.YsColumn);
+            check(group.Nested.ZsColumn);
+            check(group.Aligned64Column);
+            check(group.Aligned256Column);
+        };
+        check(prefix);
+        check_group(first);
+        check_group(second);
+        check(suffix);
+    }
+}
+
 TEST(NativeSoa, GeneratedLayoutLimits) {
     check_layout_limits<SingleRows>();
     check_layout_limits<SingleAlignmentRows>();

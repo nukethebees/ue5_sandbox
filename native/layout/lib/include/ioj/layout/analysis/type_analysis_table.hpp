@@ -11,6 +11,7 @@
 #include "ioj/layout/analysis/scenario_id.hpp"
 #include "ioj/layout/analysis/soa_layout.hpp"
 #include "ioj/native_soa/storage.h"
+#include "ioj/single_allocation/layout.h"
 #include "ioj/soa_permutation.h"
 
 #include "lispb/schema/indices.h"
@@ -25,10 +26,7 @@ struct TypeAnalysisTableView;
 struct TypeAnalysisTableConstView;
 struct TypeAnalysisTableLayoutColumns {
     template <typename T>
-    using ColLayout = ioj::native_soa::ColumnLayout<T>;
-
-    ioj::native_soa::ColumnLayoutStart LayoutStart{};
-
+    using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
     ColLayout<lispb::schema::TypeId> SchemaTypeColumn;
     ColLayout<ScenarioId> ScenarioColumn;
     ColLayout<std::optional<ioj::layout::PhysicalFactId>> PhysicalColumn;
@@ -37,41 +35,25 @@ struct TypeAnalysisTableLayoutColumns {
     ColLayout<std::optional<ioj::layout::PackedLayout>> PackedColumn;
     ColLayout<std::optional<ioj::layout::SoaLayout>> SoaColumn;
 
-    constexpr TypeAnalysisTableLayoutColumns() noexcept
-        : SchemaTypeColumn{LayoutStart}
+    constexpr explicit TypeAnalysisTableLayoutColumns(
+        ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
+        : SchemaTypeColumn{previous}
         , ScenarioColumn{SchemaTypeColumn}
         , PhysicalColumn{ScenarioColumn}
         , EnumBackingColumn{PhysicalColumn}
         , AggregateColumn{EnumBackingColumn}
         , PackedColumn{AggregateColumn}
         , SoaColumn{PackedColumn} {}
+    constexpr auto last_column() const noexcept
+        -> ioj::single_allocation_layout::ColumnLayoutBase const& {
+        return SoaColumn;
+    }
     TypeAnalysisTableLayoutColumns(TypeAnalysisTableLayoutColumns const&) = delete;
     auto operator=(TypeAnalysisTableLayoutColumns const&)
         -> TypeAnalysisTableLayoutColumns& = delete;
 };
-struct TypeAnalysisTableLayout {
-    using size_type = std::uint32_t;
-    using byte_size_type = std::size_t;
-
-    static constexpr size_type capacity_granularity{
-        ioj::native_soa::LayoutPolicy::capacity_granularity};
-    static constexpr byte_size_type column_gap{ioj::native_soa::LayoutPolicy::column_gap};
-
-    static constexpr TypeAnalysisTableLayoutColumns columns{};
-
-    static constexpr byte_size_type allocation_alignment{columns.SoaColumn.allocation_alignment};
-
-    // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
-    // capacity.
-    static constexpr byte_size_type capacity_block_bound{
-        ioj::native_soa::capacity_block_bound(columns.SoaColumn)};
-    static constexpr size_type max_capacity{
-        ioj::native_soa::maximum_capacity(capacity_block_bound)};
-    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return blocks == 0 ? 0 : columns.SoaColumn.data_end(blocks);
-    }
-    static_assert(max_capacity >= capacity_granularity);
-};
+struct TypeAnalysisTableLayout
+    : ioj::single_allocation_layout::Layout<TypeAnalysisTableLayoutColumns> {};
 
 struct TypeAnalysisTableResolvedView;
 struct TypeAnalysisTableResolvedConstView;
@@ -273,13 +255,13 @@ struct TypeAnalysisTableViewImpl : ioj::soa_storage_detail::CompactViewBase<Cons
     }
     auto resolve() const -> std::
         conditional_t<Const, TypeAnalysisTableResolvedConstView, TypeAnalysisTableResolvedView> {
-        return {(this->column(Layout::columns.SchemaTypeColumn).data()),
-                (this->column(Layout::columns.ScenarioColumn).data()),
-                (this->column(Layout::columns.PhysicalColumn).data()),
-                (this->column(Layout::columns.EnumBackingColumn).data()),
-                (this->column(Layout::columns.AggregateColumn).data()),
-                (this->column(Layout::columns.PackedColumn).data()),
-                (this->column(Layout::columns.SoaColumn).data()),
+        return {this->column(Layout::columns.SchemaTypeColumn).data(),
+                this->column(Layout::columns.ScenarioColumn).data(),
+                this->column(Layout::columns.PhysicalColumn).data(),
+                this->column(Layout::columns.EnumBackingColumn).data(),
+                this->column(Layout::columns.AggregateColumn).data(),
+                this->column(Layout::columns.PackedColumn).data(),
+                this->column(Layout::columns.SoaColumn).data(),
                 this->count_};
     }
 };

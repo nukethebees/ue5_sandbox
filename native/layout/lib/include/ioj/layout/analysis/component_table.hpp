@@ -6,6 +6,7 @@
 #include "ioj/layout/analysis/analysis_id.hpp"
 #include "ioj/layout/analysis/physical_fact_id.hpp"
 #include "ioj/native_soa/storage.h"
+#include "ioj/single_allocation/layout.h"
 #include "ioj/soa_permutation.h"
 
 #include "lispb/schema/indices.h"
@@ -23,10 +24,7 @@ struct ComponentTableView;
 struct ComponentTableConstView;
 struct ComponentTableLayoutColumns {
     template <typename T>
-    using ColLayout = ioj::native_soa::ColumnLayout<T>;
-
-    ioj::native_soa::ColumnLayoutStart LayoutStart{};
-
+    using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
     ColLayout<AnalysisId> ParentColumn;
     ColLayout<std::string_view> NameColumn;
     ColLayout<std::string_view> TagColumn;
@@ -38,8 +36,9 @@ struct ComponentTableLayoutColumns {
     ColLayout<std::optional<std::uint64_t>> PaddingBeforeBytesColumn;
     ColLayout<std::optional<std::uint64_t>> SlackBytesColumn;
 
-    constexpr ComponentTableLayoutColumns() noexcept
-        : ParentColumn{LayoutStart}
+    constexpr explicit ComponentTableLayoutColumns(
+        ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
+        : ParentColumn{previous}
         , NameColumn{ParentColumn}
         , TagColumn{NameColumn}
         , SemanticTypeColumn{TagColumn}
@@ -49,33 +48,14 @@ struct ComponentTableLayoutColumns {
         , ExtentBytesColumn{OffsetBytesColumn}
         , PaddingBeforeBytesColumn{ExtentBytesColumn}
         , SlackBytesColumn{PaddingBeforeBytesColumn} {}
+    constexpr auto last_column() const noexcept
+        -> ioj::single_allocation_layout::ColumnLayoutBase const& {
+        return SlackBytesColumn;
+    }
     ComponentTableLayoutColumns(ComponentTableLayoutColumns const&) = delete;
     auto operator=(ComponentTableLayoutColumns const&) -> ComponentTableLayoutColumns& = delete;
 };
-struct ComponentTableLayout {
-    using size_type = std::uint32_t;
-    using byte_size_type = std::size_t;
-
-    static constexpr size_type capacity_granularity{
-        ioj::native_soa::LayoutPolicy::capacity_granularity};
-    static constexpr byte_size_type column_gap{ioj::native_soa::LayoutPolicy::column_gap};
-
-    static constexpr ComponentTableLayoutColumns columns{};
-
-    static constexpr byte_size_type allocation_alignment{
-        columns.SlackBytesColumn.allocation_alignment};
-
-    // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
-    // capacity.
-    static constexpr byte_size_type capacity_block_bound{
-        ioj::native_soa::capacity_block_bound(columns.SlackBytesColumn)};
-    static constexpr size_type max_capacity{
-        ioj::native_soa::maximum_capacity(capacity_block_bound)};
-    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return blocks == 0 ? 0 : columns.SlackBytesColumn.data_end(blocks);
-    }
-    static_assert(max_capacity >= capacity_granularity);
-};
+struct ComponentTableLayout : ioj::single_allocation_layout::Layout<ComponentTableLayoutColumns> {};
 
 struct ComponentTableResolvedView;
 struct ComponentTableResolvedConstView;
@@ -341,16 +321,16 @@ struct ComponentTableViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> 
     }
     auto resolve() const
         -> std::conditional_t<Const, ComponentTableResolvedConstView, ComponentTableResolvedView> {
-        return {(this->column(Layout::columns.ParentColumn).data()),
-                (this->column(Layout::columns.NameColumn).data()),
-                (this->column(Layout::columns.TagColumn).data()),
-                (this->column(Layout::columns.SemanticTypeColumn).data()),
-                (this->column(Layout::columns.ElementCountColumn).data()),
-                (this->column(Layout::columns.ElementFactsColumn).data()),
-                (this->column(Layout::columns.OffsetBytesColumn).data()),
-                (this->column(Layout::columns.ExtentBytesColumn).data()),
-                (this->column(Layout::columns.PaddingBeforeBytesColumn).data()),
-                (this->column(Layout::columns.SlackBytesColumn).data()),
+        return {this->column(Layout::columns.ParentColumn).data(),
+                this->column(Layout::columns.NameColumn).data(),
+                this->column(Layout::columns.TagColumn).data(),
+                this->column(Layout::columns.SemanticTypeColumn).data(),
+                this->column(Layout::columns.ElementCountColumn).data(),
+                this->column(Layout::columns.ElementFactsColumn).data(),
+                this->column(Layout::columns.OffsetBytesColumn).data(),
+                this->column(Layout::columns.ExtentBytesColumn).data(),
+                this->column(Layout::columns.PaddingBeforeBytesColumn).data(),
+                this->column(Layout::columns.SlackBytesColumn).data(),
                 this->count_};
     }
 };

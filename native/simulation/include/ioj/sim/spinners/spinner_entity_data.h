@@ -6,6 +6,7 @@
 #include "ioj/math_types.h"
 #include "ioj/native_soa/storage.h"
 #include "ioj/sim/entities/entity_id.h"
+#include "ioj/single_allocation/layout.h"
 #include "ioj/soa_permutation.h"
 #include "ioj/vectors3f.h"
 
@@ -19,54 +20,30 @@ struct SpinnerEntityDataView;
 struct SpinnerEntityDataConstView;
 struct SpinnerEntityDataLayoutColumns {
     template <typename T>
-    using ColLayout = ioj::native_soa::ColumnLayout<T>;
-
-    ioj::native_soa::ColumnLayoutStart LayoutStart{};
-
+    using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
     ColLayout<EntityId> EntityIdsColumn;
-    ColLayout<float> LocationsXsColumn;
-    ColLayout<float> LocationsYsColumn;
-    ColLayout<float> LocationsZsColumn;
+    ::ioj::Vectors3fLayoutColumns Locations;
     ColLayout<float> YawsColumn;
     ColLayout<std::int16_t> LaserCooldownsColumn;
     ColLayout<std::int32_t> NextFirePointIndicesColumn;
 
-    constexpr SpinnerEntityDataLayoutColumns() noexcept
-        : EntityIdsColumn{LayoutStart}
-        , LocationsXsColumn{EntityIdsColumn}
-        , LocationsYsColumn{LocationsXsColumn}
-        , LocationsZsColumn{LocationsYsColumn}
-        , YawsColumn{LocationsZsColumn}
+    constexpr explicit SpinnerEntityDataLayoutColumns(
+        ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
+        : EntityIdsColumn{previous}
+        , Locations{EntityIdsColumn}
+        , YawsColumn{Locations.last_column()}
         , LaserCooldownsColumn{YawsColumn}
         , NextFirePointIndicesColumn{LaserCooldownsColumn} {}
+    constexpr auto last_column() const noexcept
+        -> ioj::single_allocation_layout::ColumnLayoutBase const& {
+        return NextFirePointIndicesColumn;
+    }
     SpinnerEntityDataLayoutColumns(SpinnerEntityDataLayoutColumns const&) = delete;
     auto operator=(SpinnerEntityDataLayoutColumns const&)
         -> SpinnerEntityDataLayoutColumns& = delete;
 };
-struct SpinnerEntityDataLayout {
-    using size_type = std::uint32_t;
-    using byte_size_type = std::size_t;
-
-    static constexpr size_type capacity_granularity{
-        ioj::native_soa::LayoutPolicy::capacity_granularity};
-    static constexpr byte_size_type column_gap{ioj::native_soa::LayoutPolicy::column_gap};
-
-    static constexpr SpinnerEntityDataLayoutColumns columns{};
-
-    static constexpr byte_size_type allocation_alignment{
-        columns.NextFirePointIndicesColumn.allocation_alignment};
-
-    // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
-    // capacity.
-    static constexpr byte_size_type capacity_block_bound{
-        ioj::native_soa::capacity_block_bound(columns.NextFirePointIndicesColumn)};
-    static constexpr size_type max_capacity{
-        ioj::native_soa::maximum_capacity(capacity_block_bound)};
-    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return blocks == 0 ? 0 : columns.NextFirePointIndicesColumn.data_end(blocks);
-    }
-    static_assert(max_capacity >= capacity_granularity);
-};
+struct SpinnerEntityDataLayout
+    : ioj::single_allocation_layout::Layout<SpinnerEntityDataLayoutColumns> {};
 struct SpinnerEntityDataResolvedView;
 struct SpinnerEntityDataResolvedConstView;
 template <bool Const>
@@ -266,9 +243,9 @@ struct SpinnerEntityDataView_locationsImpl : ioj::soa_storage_detail::CompactVie
     SpinnerEntityDataView_locationsImpl(SpinnerEntityDataView_locationsImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto xs() const { return this->column(Layout::columns.LocationsXsColumn); }
-    auto ys() const { return this->column(Layout::columns.LocationsYsColumn); }
-    auto zs() const { return this->column(Layout::columns.LocationsZsColumn); }
+    auto xs() const { return this->column(Layout::columns.Locations.XsColumn); }
+    auto ys() const { return this->column(Layout::columns.Locations.YsColumn); }
+    auto zs() const { return this->column(Layout::columns.Locations.ZsColumn); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(xs());
@@ -277,9 +254,9 @@ struct SpinnerEntityDataView_locationsImpl : ioj::soa_storage_detail::CompactVie
     }
     auto resolve() const -> std::
         conditional_t<Const, ::ioj::Vectors3fResolvedConstView, ::ioj::Vectors3fResolvedView> {
-        return {(this->column(Layout::columns.LocationsXsColumn).data()),
-                (this->column(Layout::columns.LocationsYsColumn).data()),
-                (this->column(Layout::columns.LocationsZsColumn).data()),
+        return {this->column(Layout::columns.Locations.XsColumn).data(),
+                this->column(Layout::columns.Locations.YsColumn).data(),
+                this->column(Layout::columns.Locations.ZsColumn).data(),
                 this->count_};
     }
 };
@@ -349,13 +326,13 @@ struct SpinnerEntityDataViewImpl : ioj::soa_storage_detail::CompactViewBase<Cons
     }
     auto resolve() const -> std::
         conditional_t<Const, SpinnerEntityDataResolvedConstView, SpinnerEntityDataResolvedView> {
-        return {(this->column(Layout::columns.EntityIdsColumn).data()),
-                (this->column(Layout::columns.LocationsXsColumn).data()),
-                (this->column(Layout::columns.LocationsYsColumn).data()),
-                (this->column(Layout::columns.LocationsZsColumn).data()),
-                (this->column(Layout::columns.YawsColumn).data()),
-                (this->column(Layout::columns.LaserCooldownsColumn).data()),
-                (this->column(Layout::columns.NextFirePointIndicesColumn).data()),
+        return {this->column(Layout::columns.EntityIdsColumn).data(),
+                this->column(Layout::columns.Locations.XsColumn).data(),
+                this->column(Layout::columns.Locations.YsColumn).data(),
+                this->column(Layout::columns.Locations.ZsColumn).data(),
+                this->column(Layout::columns.YawsColumn).data(),
+                this->column(Layout::columns.LaserCooldownsColumn).data(),
+                this->column(Layout::columns.NextFirePointIndicesColumn).data(),
                 this->count_};
     }
 };
@@ -494,9 +471,9 @@ struct SpinnerEntityData
         -> DataPointers<Byte> {
         ioj::native_soa::LayoutCursor cursor{blocks};
         return {cursor.column_pointer(data, Layout::columns.EntityIdsColumn),
-                cursor.column_pointer(data, Layout::columns.LocationsXsColumn),
-                cursor.column_pointer(data, Layout::columns.LocationsYsColumn),
-                cursor.column_pointer(data, Layout::columns.LocationsZsColumn),
+                cursor.column_pointer(data, Layout::columns.Locations.XsColumn),
+                cursor.column_pointer(data, Layout::columns.Locations.YsColumn),
+                cursor.column_pointer(data, Layout::columns.Locations.ZsColumn),
                 cursor.column_pointer(data, Layout::columns.YawsColumn),
                 cursor.column_pointer(data, Layout::columns.LaserCooldownsColumn),
                 cursor.column_pointer(data, Layout::columns.NextFirePointIndicesColumn)};

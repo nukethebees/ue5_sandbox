@@ -29,14 +29,6 @@
 #include <vector>
 
 namespace lispb::codegen::detail {
-namespace {
-
-auto layout_column_name(std::string_view const identifier) -> std::string {
-    return title_case_identifier(identifier) + "Column";
-}
-
-} // namespace
-
 auto build_single_allocation_model(LoweringContext& context, DeclarationHandle schema)
     -> SingleAllocationModelId {
     auto& ir{context.ir};
@@ -77,8 +69,7 @@ auto build_single_allocation_model(LoweringContext& context, DeclarationHandle s
         type_graph.definitions()
             .soas.equivalent_constructor[type_graph.definitions().soas.index(root_type)]
             .value_or(StringId{}));
-    std::set<std::string> layout_names{"ColLayout",
-                                       context.text(models.layout_name[row]) + "Columns"};
+    std::set<std::string> flattened_names;
     auto collect_columns =
         [&](auto&& self, schema::TypeDefinitionId const& current, LoweringPathId prefix) -> void {
         for (auto const member_id : type_graph.definitions().soas.columns_of(current)) {
@@ -103,14 +94,11 @@ auto build_single_allocation_model(LoweringContext& context, DeclarationHandle s
                     type_graph.definitions()
                         .soas.equivalent_constructor[type_graph.definitions().soas.index(nested)]
                         .value_or(StringId{}));
-                if (!context.declarations.soas
-                         .layout_only[context.declarations.soas.index(nested_schema)]) {
-                    auto const cpp_type{type_graph.occurrences()
-                                            .cpp_type[type_graph.occurrences().index(occurrence)]};
-                    auto const nested_dependencies{ir.types.dependencies(cpp_type)};
-                    dependencies.insert(
-                        dependencies.end(), nested_dependencies.begin(), nested_dependencies.end());
-                }
+                auto const cpp_type{
+                    type_graph.occurrences().cpp_type[type_graph.occurrences().index(occurrence)]};
+                auto const nested_dependencies{ir.types.dependencies(cpp_type)};
+                dependencies.insert(
+                    dependencies.end(), nested_dependencies.begin(), nested_dependencies.end());
                 self(self, nested, path);
                 continue;
             }
@@ -118,15 +106,13 @@ auto build_single_allocation_model(LoweringContext& context, DeclarationHandle s
                 type_graph.definitions().soa_columns.semantic_type
                     [type_graph.definitions().soa_columns.index(member)])]};
             auto const flattened{context.path_text(path, "_")};
-            auto const layout_identifier{layout_column_name(flattened)};
-            if (!layout_names.insert(layout_identifier).second) {
+            if (!flattened_names.insert(flattened).second) {
                 throw std::invalid_argument{"Single-allocation column name collision: " +
-                                            layout_identifier};
+                                            flattened};
             }
             auto const column{columns.append()};
             auto const column_row{columns.index(column)};
             columns.flattened_identifier[column_row] = ir.strings.intern(flattened);
-            columns.layout_identifier[column_row] = ir.strings.intern(layout_identifier);
             columns.type[column_row] = type;
             columns.member_path[column_row] = path;
             storage.column_lookup.emplace(std::pair{result, path}, column);

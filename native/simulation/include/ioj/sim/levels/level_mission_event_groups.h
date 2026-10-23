@@ -5,6 +5,7 @@
 
 #include "ioj/native_soa/storage.h"
 #include "ioj/sim/levels/level_event_types.h"
+#include "ioj/single_allocation/layout.h"
 #include "ioj/soa_permutation.h"
 
 #include <cassert>
@@ -17,45 +18,26 @@ struct LevelMissionEventGroupsView;
 struct LevelMissionEventGroupsConstView;
 struct LevelMissionEventGroupsLayoutColumns {
     template <typename T>
-    using ColLayout = ioj::native_soa::ColumnLayout<T>;
-
-    ioj::native_soa::ColumnLayoutStart LayoutStart{};
-
+    using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
     ColLayout<LevelMissionEventType> TypesColumn;
     ColLayout<std::int32_t> OffsetsColumn;
     ColLayout<LevelEventCount> CountsColumn;
 
-    constexpr LevelMissionEventGroupsLayoutColumns() noexcept
-        : TypesColumn{LayoutStart}
+    constexpr explicit LevelMissionEventGroupsLayoutColumns(
+        ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
+        : TypesColumn{previous}
         , OffsetsColumn{TypesColumn}
         , CountsColumn{OffsetsColumn} {}
+    constexpr auto last_column() const noexcept
+        -> ioj::single_allocation_layout::ColumnLayoutBase const& {
+        return CountsColumn;
+    }
     LevelMissionEventGroupsLayoutColumns(LevelMissionEventGroupsLayoutColumns const&) = delete;
     auto operator=(LevelMissionEventGroupsLayoutColumns const&)
         -> LevelMissionEventGroupsLayoutColumns& = delete;
 };
-struct LevelMissionEventGroupsLayout {
-    using size_type = std::uint32_t;
-    using byte_size_type = std::size_t;
-
-    static constexpr size_type capacity_granularity{
-        ioj::native_soa::LayoutPolicy::capacity_granularity};
-    static constexpr byte_size_type column_gap{ioj::native_soa::LayoutPolicy::column_gap};
-
-    static constexpr LevelMissionEventGroupsLayoutColumns columns{};
-
-    static constexpr byte_size_type allocation_alignment{columns.CountsColumn.allocation_alignment};
-
-    // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
-    // capacity.
-    static constexpr byte_size_type capacity_block_bound{
-        ioj::native_soa::capacity_block_bound(columns.CountsColumn)};
-    static constexpr size_type max_capacity{
-        ioj::native_soa::maximum_capacity(capacity_block_bound)};
-    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return blocks == 0 ? 0 : columns.CountsColumn.data_end(blocks);
-    }
-    static_assert(max_capacity >= capacity_granularity);
-};
+struct LevelMissionEventGroupsLayout
+    : ioj::single_allocation_layout::Layout<LevelMissionEventGroupsLayoutColumns> {};
 
 struct LevelMissionEventGroupsResolvedView;
 struct LevelMissionEventGroupsResolvedConstView;
@@ -182,9 +164,9 @@ struct LevelMissionEventGroupsViewImpl : ioj::soa_storage_detail::CompactViewBas
     auto resolve() const -> std::conditional_t<Const,
                                                LevelMissionEventGroupsResolvedConstView,
                                                LevelMissionEventGroupsResolvedView> {
-        return {(this->column(Layout::columns.TypesColumn).data()),
-                (this->column(Layout::columns.OffsetsColumn).data()),
-                (this->column(Layout::columns.CountsColumn).data()),
+        return {this->column(Layout::columns.TypesColumn).data(),
+                this->column(Layout::columns.OffsetsColumn).data(),
+                this->column(Layout::columns.CountsColumn).data(),
                 this->count_};
     }
 };

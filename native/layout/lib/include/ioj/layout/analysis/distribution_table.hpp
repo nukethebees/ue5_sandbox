@@ -7,6 +7,7 @@
 #include "ioj/layout/analysis/distribution_id.hpp"
 #include "ioj/layout/analysis/row_range.hpp"
 #include "ioj/native_soa/storage.h"
+#include "ioj/single_allocation/layout.h"
 #include "ioj/soa_permutation.h"
 
 #include <cassert>
@@ -20,10 +21,7 @@ struct DistributionTableView;
 struct DistributionTableConstView;
 struct DistributionTableLayoutColumns {
     template <typename T>
-    using ColLayout = ioj::native_soa::ColumnLayout<T>;
-
-    ioj::native_soa::ColumnLayoutStart LayoutStart{};
-
+    using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
     ColLayout<AnalysisId> AnalysisColumn;
     ColLayout<RowRange> EntriesColumn;
     ColLayout<std::uint64_t> ElementCountColumn;
@@ -35,8 +33,9 @@ struct DistributionTableLayoutColumns {
     ColLayout<std::optional<long double>> ExpectedSelectedExtentBytesColumn;
     ColLayout<std::optional<long double>> ExpectedSelectedSlackBytesColumn;
 
-    constexpr DistributionTableLayoutColumns() noexcept
-        : AnalysisColumn{LayoutStart}
+    constexpr explicit DistributionTableLayoutColumns(
+        ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
+        : AnalysisColumn{previous}
         , EntriesColumn{AnalysisColumn}
         , ElementCountColumn{EntriesColumn}
         , TotalWeightColumn{ElementCountColumn}
@@ -46,34 +45,16 @@ struct DistributionTableLayoutColumns {
         , ExpectedSlackBytesColumn{ExpectedExtentBytesColumn}
         , ExpectedSelectedExtentBytesColumn{ExpectedSlackBytesColumn}
         , ExpectedSelectedSlackBytesColumn{ExpectedSelectedExtentBytesColumn} {}
+    constexpr auto last_column() const noexcept
+        -> ioj::single_allocation_layout::ColumnLayoutBase const& {
+        return ExpectedSelectedSlackBytesColumn;
+    }
     DistributionTableLayoutColumns(DistributionTableLayoutColumns const&) = delete;
     auto operator=(DistributionTableLayoutColumns const&)
         -> DistributionTableLayoutColumns& = delete;
 };
-struct DistributionTableLayout {
-    using size_type = std::uint32_t;
-    using byte_size_type = std::size_t;
-
-    static constexpr size_type capacity_granularity{
-        ioj::native_soa::LayoutPolicy::capacity_granularity};
-    static constexpr byte_size_type column_gap{ioj::native_soa::LayoutPolicy::column_gap};
-
-    static constexpr DistributionTableLayoutColumns columns{};
-
-    static constexpr byte_size_type allocation_alignment{
-        columns.ExpectedSelectedSlackBytesColumn.allocation_alignment};
-
-    // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
-    // capacity.
-    static constexpr byte_size_type capacity_block_bound{
-        ioj::native_soa::capacity_block_bound(columns.ExpectedSelectedSlackBytesColumn)};
-    static constexpr size_type max_capacity{
-        ioj::native_soa::maximum_capacity(capacity_block_bound)};
-    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return blocks == 0 ? 0 : columns.ExpectedSelectedSlackBytesColumn.data_end(blocks);
-    }
-    static_assert(max_capacity >= capacity_granularity);
-};
+struct DistributionTableLayout
+    : ioj::single_allocation_layout::Layout<DistributionTableLayoutColumns> {};
 
 struct DistributionTableResolvedView;
 struct DistributionTableResolvedConstView;
@@ -354,16 +335,16 @@ struct DistributionTableViewImpl : ioj::soa_storage_detail::CompactViewBase<Cons
     }
     auto resolve() const -> std::
         conditional_t<Const, DistributionTableResolvedConstView, DistributionTableResolvedView> {
-        return {(this->column(Layout::columns.AnalysisColumn).data()),
-                (this->column(Layout::columns.EntriesColumn).data()),
-                (this->column(Layout::columns.ElementCountColumn).data()),
-                (this->column(Layout::columns.TotalWeightColumn).data()),
-                (this->column(Layout::columns.TotalExtentBytesColumn).data()),
-                (this->column(Layout::columns.TotalSlackBytesColumn).data()),
-                (this->column(Layout::columns.ExpectedExtentBytesColumn).data()),
-                (this->column(Layout::columns.ExpectedSlackBytesColumn).data()),
-                (this->column(Layout::columns.ExpectedSelectedExtentBytesColumn).data()),
-                (this->column(Layout::columns.ExpectedSelectedSlackBytesColumn).data()),
+        return {this->column(Layout::columns.AnalysisColumn).data(),
+                this->column(Layout::columns.EntriesColumn).data(),
+                this->column(Layout::columns.ElementCountColumn).data(),
+                this->column(Layout::columns.TotalWeightColumn).data(),
+                this->column(Layout::columns.TotalExtentBytesColumn).data(),
+                this->column(Layout::columns.TotalSlackBytesColumn).data(),
+                this->column(Layout::columns.ExpectedExtentBytesColumn).data(),
+                this->column(Layout::columns.ExpectedSlackBytesColumn).data(),
+                this->column(Layout::columns.ExpectedSelectedExtentBytesColumn).data(),
+                this->column(Layout::columns.ExpectedSelectedSlackBytesColumn).data(),
                 this->count_};
     }
 };

@@ -6,6 +6,7 @@
 #include "ioj/layout/analysis/analysis_id.hpp"
 #include "ioj/layout/analysis/relationship_metrics.hpp"
 #include "ioj/native_soa/storage.h"
+#include "ioj/single_allocation/layout.h"
 #include "ioj/soa_permutation.h"
 
 #include "lispb/schema/indices.h"
@@ -21,48 +22,28 @@ struct RelationshipTableView;
 struct RelationshipTableConstView;
 struct RelationshipTableLayoutColumns {
     template <typename T>
-    using ColLayout = ioj::native_soa::ColumnLayout<T>;
-
-    ioj::native_soa::ColumnLayoutStart LayoutStart{};
-
+    using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
     ColLayout<AnalysisId> OwnerColumn;
     ColLayout<std::optional<std::size_t>> FieldColumn;
     ColLayout<lispb::schema::RelationshipId> RelationshipColumn;
     ColLayout<std::optional<ioj::layout::RelationshipMetrics>> MetricsColumn;
 
-    constexpr RelationshipTableLayoutColumns() noexcept
-        : OwnerColumn{LayoutStart}
+    constexpr explicit RelationshipTableLayoutColumns(
+        ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
+        : OwnerColumn{previous}
         , FieldColumn{OwnerColumn}
         , RelationshipColumn{FieldColumn}
         , MetricsColumn{RelationshipColumn} {}
+    constexpr auto last_column() const noexcept
+        -> ioj::single_allocation_layout::ColumnLayoutBase const& {
+        return MetricsColumn;
+    }
     RelationshipTableLayoutColumns(RelationshipTableLayoutColumns const&) = delete;
     auto operator=(RelationshipTableLayoutColumns const&)
         -> RelationshipTableLayoutColumns& = delete;
 };
-struct RelationshipTableLayout {
-    using size_type = std::uint32_t;
-    using byte_size_type = std::size_t;
-
-    static constexpr size_type capacity_granularity{
-        ioj::native_soa::LayoutPolicy::capacity_granularity};
-    static constexpr byte_size_type column_gap{ioj::native_soa::LayoutPolicy::column_gap};
-
-    static constexpr RelationshipTableLayoutColumns columns{};
-
-    static constexpr byte_size_type allocation_alignment{
-        columns.MetricsColumn.allocation_alignment};
-
-    // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
-    // capacity.
-    static constexpr byte_size_type capacity_block_bound{
-        ioj::native_soa::capacity_block_bound(columns.MetricsColumn)};
-    static constexpr size_type max_capacity{
-        ioj::native_soa::maximum_capacity(capacity_block_bound)};
-    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return blocks == 0 ? 0 : columns.MetricsColumn.data_end(blocks);
-    }
-    static_assert(max_capacity >= capacity_granularity);
-};
+struct RelationshipTableLayout
+    : ioj::single_allocation_layout::Layout<RelationshipTableLayoutColumns> {};
 
 struct RelationshipTableResolvedView;
 struct RelationshipTableResolvedConstView;
@@ -209,10 +190,10 @@ struct RelationshipTableViewImpl : ioj::soa_storage_detail::CompactViewBase<Cons
     }
     auto resolve() const -> std::
         conditional_t<Const, RelationshipTableResolvedConstView, RelationshipTableResolvedView> {
-        return {(this->column(Layout::columns.OwnerColumn).data()),
-                (this->column(Layout::columns.FieldColumn).data()),
-                (this->column(Layout::columns.RelationshipColumn).data()),
-                (this->column(Layout::columns.MetricsColumn).data()),
+        return {this->column(Layout::columns.OwnerColumn).data(),
+                this->column(Layout::columns.FieldColumn).data(),
+                this->column(Layout::columns.RelationshipColumn).data(),
+                this->column(Layout::columns.MetricsColumn).data(),
                 this->count_};
     }
 };

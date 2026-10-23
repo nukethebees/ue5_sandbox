@@ -4,6 +4,7 @@
 #pragma once
 
 #include "ioj/native_soa/storage.h"
+#include "ioj/single_allocation/layout.h"
 #include "ioj/soa_permutation.h"
 
 #include <cassert>
@@ -18,47 +19,26 @@ struct TagTableView;
 struct TagTableConstView;
 struct TagTableLayoutColumns {
     template <typename T>
-    using ColLayout = ioj::native_soa::ColumnLayout<T>;
-
-    ioj::native_soa::ColumnLayoutStart LayoutStart{};
-
+    using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
     ColLayout<std::string_view> NameColumn;
     ColLayout<std::uint8_t> MappedColumn;
     ColLayout<std::uint8_t> SentinelColumn;
     ColLayout<std::uint8_t> CountSentinelColumn;
 
-    constexpr TagTableLayoutColumns() noexcept
-        : NameColumn{LayoutStart}
+    constexpr explicit TagTableLayoutColumns(
+        ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
+        : NameColumn{previous}
         , MappedColumn{NameColumn}
         , SentinelColumn{MappedColumn}
         , CountSentinelColumn{SentinelColumn} {}
+    constexpr auto last_column() const noexcept
+        -> ioj::single_allocation_layout::ColumnLayoutBase const& {
+        return CountSentinelColumn;
+    }
     TagTableLayoutColumns(TagTableLayoutColumns const&) = delete;
     auto operator=(TagTableLayoutColumns const&) -> TagTableLayoutColumns& = delete;
 };
-struct TagTableLayout {
-    using size_type = std::uint32_t;
-    using byte_size_type = std::size_t;
-
-    static constexpr size_type capacity_granularity{
-        ioj::native_soa::LayoutPolicy::capacity_granularity};
-    static constexpr byte_size_type column_gap{ioj::native_soa::LayoutPolicy::column_gap};
-
-    static constexpr TagTableLayoutColumns columns{};
-
-    static constexpr byte_size_type allocation_alignment{
-        columns.CountSentinelColumn.allocation_alignment};
-
-    // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
-    // capacity.
-    static constexpr byte_size_type capacity_block_bound{
-        ioj::native_soa::capacity_block_bound(columns.CountSentinelColumn)};
-    static constexpr size_type max_capacity{
-        ioj::native_soa::maximum_capacity(capacity_block_bound)};
-    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return blocks == 0 ? 0 : columns.CountSentinelColumn.data_end(blocks);
-    }
-    static_assert(max_capacity >= capacity_granularity);
-};
+struct TagTableLayout : ioj::single_allocation_layout::Layout<TagTableLayoutColumns> {};
 
 struct TagTableResolvedView;
 struct TagTableResolvedConstView;
@@ -199,10 +179,10 @@ struct TagTableViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     }
     auto resolve() const
         -> std::conditional_t<Const, TagTableResolvedConstView, TagTableResolvedView> {
-        return {(this->column(Layout::columns.NameColumn).data()),
-                (this->column(Layout::columns.MappedColumn).data()),
-                (this->column(Layout::columns.SentinelColumn).data()),
-                (this->column(Layout::columns.CountSentinelColumn).data()),
+        return {this->column(Layout::columns.NameColumn).data(),
+                this->column(Layout::columns.MappedColumn).data(),
+                this->column(Layout::columns.SentinelColumn).data(),
+                this->column(Layout::columns.CountSentinelColumn).data(),
                 this->count_};
     }
 };

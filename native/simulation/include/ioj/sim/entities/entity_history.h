@@ -10,6 +10,7 @@
 #include "ioj/sim/entities/entity_life_state.h"
 #include "ioj/sim/entities/entity_type.h"
 #include "ioj/sim/sim_tick.h"
+#include "ioj/single_allocation/layout.h"
 #include "ioj/soa_permutation.h"
 
 #include <cassert>
@@ -22,10 +23,7 @@ struct EntityHistoryView;
 struct EntityHistoryConstView;
 struct EntityHistoryLayoutColumns {
     template <typename T>
-    using ColLayout = ioj::native_soa::ColumnLayout<T>;
-
-    ioj::native_soa::ColumnLayoutStart LayoutStart{};
-
+    using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
     ColLayout<EntityId> EntityIdsColumn;
     ColLayout<EntityType> EntityTypesColumn;
     ColLayout<::ioj::Team> TeamsColumn;
@@ -35,8 +33,9 @@ struct EntityHistoryLayoutColumns {
     ColLayout<SimTick> DeathTicksColumn;
     ColLayout<Vector3f> DeathLocationsColumn;
 
-    constexpr EntityHistoryLayoutColumns() noexcept
-        : EntityIdsColumn{LayoutStart}
+    constexpr explicit EntityHistoryLayoutColumns(
+        ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
+        : EntityIdsColumn{previous}
         , EntityTypesColumn{EntityIdsColumn}
         , TeamsColumn{EntityTypesColumn}
         , KillsColumn{TeamsColumn}
@@ -44,33 +43,14 @@ struct EntityHistoryLayoutColumns {
         , LifeStateColumn{KilledByColumn}
         , DeathTicksColumn{LifeStateColumn}
         , DeathLocationsColumn{DeathTicksColumn} {}
+    constexpr auto last_column() const noexcept
+        -> ioj::single_allocation_layout::ColumnLayoutBase const& {
+        return DeathLocationsColumn;
+    }
     EntityHistoryLayoutColumns(EntityHistoryLayoutColumns const&) = delete;
     auto operator=(EntityHistoryLayoutColumns const&) -> EntityHistoryLayoutColumns& = delete;
 };
-struct EntityHistoryLayout {
-    using size_type = std::uint32_t;
-    using byte_size_type = std::size_t;
-
-    static constexpr size_type capacity_granularity{
-        ioj::native_soa::LayoutPolicy::capacity_granularity};
-    static constexpr byte_size_type column_gap{ioj::native_soa::LayoutPolicy::column_gap};
-
-    static constexpr EntityHistoryLayoutColumns columns{};
-
-    static constexpr byte_size_type allocation_alignment{
-        columns.DeathLocationsColumn.allocation_alignment};
-
-    // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
-    // capacity.
-    static constexpr byte_size_type capacity_block_bound{
-        ioj::native_soa::capacity_block_bound(columns.DeathLocationsColumn)};
-    static constexpr size_type max_capacity{
-        ioj::native_soa::maximum_capacity(capacity_block_bound)};
-    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return blocks == 0 ? 0 : columns.DeathLocationsColumn.data_end(blocks);
-    }
-    static_assert(max_capacity >= capacity_granularity);
-};
+struct EntityHistoryLayout : ioj::single_allocation_layout::Layout<EntityHistoryLayoutColumns> {};
 
 struct EntityHistoryResolvedView;
 struct EntityHistoryResolvedConstView;
@@ -288,14 +268,14 @@ struct EntityHistoryViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     }
     auto resolve() const
         -> std::conditional_t<Const, EntityHistoryResolvedConstView, EntityHistoryResolvedView> {
-        return {(this->column(Layout::columns.EntityIdsColumn).data()),
-                (this->column(Layout::columns.EntityTypesColumn).data()),
-                (this->column(Layout::columns.TeamsColumn).data()),
-                (this->column(Layout::columns.KillsColumn).data()),
-                (this->column(Layout::columns.KilledByColumn).data()),
-                (this->column(Layout::columns.LifeStateColumn).data()),
-                (this->column(Layout::columns.DeathTicksColumn).data()),
-                (this->column(Layout::columns.DeathLocationsColumn).data()),
+        return {this->column(Layout::columns.EntityIdsColumn).data(),
+                this->column(Layout::columns.EntityTypesColumn).data(),
+                this->column(Layout::columns.TeamsColumn).data(),
+                this->column(Layout::columns.KillsColumn).data(),
+                this->column(Layout::columns.KilledByColumn).data(),
+                this->column(Layout::columns.LifeStateColumn).data(),
+                this->column(Layout::columns.DeathTicksColumn).data(),
+                this->column(Layout::columns.DeathLocationsColumn).data(),
                 this->count_};
     }
 };

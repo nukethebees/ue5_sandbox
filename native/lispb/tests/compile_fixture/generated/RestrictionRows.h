@@ -5,6 +5,7 @@
 
 #include "compile_fixture/restricted_leaf.hpp"
 #include "ioj/native_soa/storage.h"
+#include "ioj/single_allocation/layout.h"
 #include "ioj/soa_permutation.h"
 
 #include <cassert>
@@ -16,42 +17,22 @@ struct SingleRestrictionRowsView;
 struct SingleRestrictionRowsConstView;
 struct SingleRestrictionRowsLayoutColumns {
     template <typename T>
-    using ColLayout = ioj::native_soa::ColumnLayout<T>;
-
-    ioj::native_soa::ColumnLayoutStart LayoutStart{};
-
+    using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
     ColLayout<RestrictedLeaf> RestrictedColumn;
 
-    constexpr SingleRestrictionRowsLayoutColumns() noexcept
-        : RestrictedColumn{LayoutStart} {}
+    constexpr explicit SingleRestrictionRowsLayoutColumns(
+        ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
+        : RestrictedColumn{previous} {}
+    constexpr auto last_column() const noexcept
+        -> ioj::single_allocation_layout::ColumnLayoutBase const& {
+        return RestrictedColumn;
+    }
     SingleRestrictionRowsLayoutColumns(SingleRestrictionRowsLayoutColumns const&) = delete;
     auto operator=(SingleRestrictionRowsLayoutColumns const&)
         -> SingleRestrictionRowsLayoutColumns& = delete;
 };
-struct SingleRestrictionRowsLayout {
-    using size_type = std::uint32_t;
-    using byte_size_type = std::size_t;
-
-    static constexpr size_type capacity_granularity{
-        ioj::native_soa::LayoutPolicy::capacity_granularity};
-    static constexpr byte_size_type column_gap{ioj::native_soa::LayoutPolicy::column_gap};
-
-    static constexpr SingleRestrictionRowsLayoutColumns columns{};
-
-    static constexpr byte_size_type allocation_alignment{
-        columns.RestrictedColumn.allocation_alignment};
-
-    // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
-    // capacity.
-    static constexpr byte_size_type capacity_block_bound{
-        ioj::native_soa::capacity_block_bound(columns.RestrictedColumn)};
-    static constexpr size_type max_capacity{
-        ioj::native_soa::maximum_capacity(capacity_block_bound)};
-    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return blocks == 0 ? 0 : columns.RestrictedColumn.data_end(blocks);
-    }
-    static_assert(max_capacity >= capacity_granularity);
-};
+struct SingleRestrictionRowsLayout
+    : ioj::single_allocation_layout::Layout<SingleRestrictionRowsLayoutColumns> {};
 
 struct SingleRestrictionRowsResolvedView;
 struct SingleRestrictionRowsResolvedConstView;
@@ -147,7 +128,7 @@ struct SingleRestrictionRowsViewImpl : ioj::soa_storage_detail::CompactViewBase<
     auto resolve() const -> std::conditional_t<Const,
                                                SingleRestrictionRowsResolvedConstView,
                                                SingleRestrictionRowsResolvedView> {
-        return {(this->column(Layout::columns.RestrictedColumn).data()), this->count_};
+        return {this->column(Layout::columns.RestrictedColumn).data(), this->count_};
     }
 };
 struct SingleRestrictionRowsConstView : SingleRestrictionRowsViewImpl<true> {

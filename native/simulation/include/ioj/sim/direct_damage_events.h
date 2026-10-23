@@ -5,6 +5,7 @@
 
 #include "ioj/native_soa/storage.h"
 #include "ioj/sim/entities/entity_id.h"
+#include "ioj/single_allocation/layout.h"
 #include "ioj/soa_permutation.h"
 
 #include <cassert>
@@ -17,46 +18,26 @@ struct DirectDamageEventsView;
 struct DirectDamageEventsConstView;
 struct DirectDamageEventsLayoutColumns {
     template <typename T>
-    using ColLayout = ioj::native_soa::ColumnLayout<T>;
-
-    ioj::native_soa::ColumnLayoutStart LayoutStart{};
-
+    using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
     ColLayout<EntityId> DamagedEntitiesColumn;
     ColLayout<std::int32_t> DamageAmountsColumn;
     ColLayout<EntityId> InstigatorsColumn;
 
-    constexpr DirectDamageEventsLayoutColumns() noexcept
-        : DamagedEntitiesColumn{LayoutStart}
+    constexpr explicit DirectDamageEventsLayoutColumns(
+        ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
+        : DamagedEntitiesColumn{previous}
         , DamageAmountsColumn{DamagedEntitiesColumn}
         , InstigatorsColumn{DamageAmountsColumn} {}
+    constexpr auto last_column() const noexcept
+        -> ioj::single_allocation_layout::ColumnLayoutBase const& {
+        return InstigatorsColumn;
+    }
     DirectDamageEventsLayoutColumns(DirectDamageEventsLayoutColumns const&) = delete;
     auto operator=(DirectDamageEventsLayoutColumns const&)
         -> DirectDamageEventsLayoutColumns& = delete;
 };
-struct DirectDamageEventsLayout {
-    using size_type = std::uint32_t;
-    using byte_size_type = std::size_t;
-
-    static constexpr size_type capacity_granularity{
-        ioj::native_soa::LayoutPolicy::capacity_granularity};
-    static constexpr byte_size_type column_gap{ioj::native_soa::LayoutPolicy::column_gap};
-
-    static constexpr DirectDamageEventsLayoutColumns columns{};
-
-    static constexpr byte_size_type allocation_alignment{
-        columns.InstigatorsColumn.allocation_alignment};
-
-    // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
-    // capacity.
-    static constexpr byte_size_type capacity_block_bound{
-        ioj::native_soa::capacity_block_bound(columns.InstigatorsColumn)};
-    static constexpr size_type max_capacity{
-        ioj::native_soa::maximum_capacity(capacity_block_bound)};
-    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return blocks == 0 ? 0 : columns.InstigatorsColumn.data_end(blocks);
-    }
-    static_assert(max_capacity >= capacity_granularity);
-};
+struct DirectDamageEventsLayout
+    : ioj::single_allocation_layout::Layout<DirectDamageEventsLayoutColumns> {};
 
 struct DirectDamageEventsResolvedView;
 struct DirectDamageEventsResolvedConstView;
@@ -187,9 +168,9 @@ struct DirectDamageEventsViewImpl : ioj::soa_storage_detail::CompactViewBase<Con
     }
     auto resolve() const -> std::
         conditional_t<Const, DirectDamageEventsResolvedConstView, DirectDamageEventsResolvedView> {
-        return {(this->column(Layout::columns.DamagedEntitiesColumn).data()),
-                (this->column(Layout::columns.DamageAmountsColumn).data()),
-                (this->column(Layout::columns.InstigatorsColumn).data()),
+        return {this->column(Layout::columns.DamagedEntitiesColumn).data(),
+                this->column(Layout::columns.DamageAmountsColumn).data(),
+                this->column(Layout::columns.InstigatorsColumn).data(),
                 this->count_};
     }
 };

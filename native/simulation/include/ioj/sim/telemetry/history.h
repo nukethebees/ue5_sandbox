@@ -6,6 +6,7 @@
 #include "ioj/native_soa/storage.h"
 #include "ioj/sim/entities/entity_telemetry.h"
 #include "ioj/sim/sim_tick.h"
+#include "ioj/single_allocation/layout.h"
 #include "ioj/soa_permutation.h"
 
 #include <cassert>
@@ -87,10 +88,7 @@ struct HistoryRowsView;
 struct HistoryRowsConstView;
 struct HistoryRowsLayoutColumns {
     template <typename T>
-    using ColLayout = ioj::native_soa::ColumnLayout<T>;
-
-    ioj::native_soa::ColumnLayoutStart LayoutStart{};
-
+    using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
     ColLayout<SimTick> CompletedTicksColumn;
     ColLayout<HistoryFieldMask> ValidityMasksColumn;
     ColLayout<std::int32_t> ActiveEntitiesColumn;
@@ -102,8 +100,9 @@ struct HistoryRowsLayoutColumns {
     ColLayout<std::int32_t> ActiveLasersColumn;
     ColLayout<std::int32_t> LasersFiredColumn;
 
-    constexpr HistoryRowsLayoutColumns() noexcept
-        : CompletedTicksColumn{LayoutStart}
+    constexpr explicit HistoryRowsLayoutColumns(
+        ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
+        : CompletedTicksColumn{previous}
         , ValidityMasksColumn{CompletedTicksColumn}
         , ActiveEntitiesColumn{ValidityMasksColumn}
         , ActiveEntitiesByTypeColumn{ActiveEntitiesColumn}
@@ -113,33 +112,14 @@ struct HistoryRowsLayoutColumns {
         , KillsColumn{DestroyedEntitiesColumn}
         , ActiveLasersColumn{KillsColumn}
         , LasersFiredColumn{ActiveLasersColumn} {}
+    constexpr auto last_column() const noexcept
+        -> ioj::single_allocation_layout::ColumnLayoutBase const& {
+        return LasersFiredColumn;
+    }
     HistoryRowsLayoutColumns(HistoryRowsLayoutColumns const&) = delete;
     auto operator=(HistoryRowsLayoutColumns const&) -> HistoryRowsLayoutColumns& = delete;
 };
-struct HistoryRowsLayout {
-    using size_type = std::uint32_t;
-    using byte_size_type = std::size_t;
-
-    static constexpr size_type capacity_granularity{
-        ioj::native_soa::LayoutPolicy::capacity_granularity};
-    static constexpr byte_size_type column_gap{ioj::native_soa::LayoutPolicy::column_gap};
-
-    static constexpr HistoryRowsLayoutColumns columns{};
-
-    static constexpr byte_size_type allocation_alignment{
-        columns.LasersFiredColumn.allocation_alignment};
-
-    // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
-    // capacity.
-    static constexpr byte_size_type capacity_block_bound{
-        ioj::native_soa::capacity_block_bound(columns.LasersFiredColumn)};
-    static constexpr size_type max_capacity{
-        ioj::native_soa::maximum_capacity(capacity_block_bound)};
-    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return blocks == 0 ? 0 : columns.LasersFiredColumn.data_end(blocks);
-    }
-    static_assert(max_capacity >= capacity_granularity);
-};
+struct HistoryRowsLayout : ioj::single_allocation_layout::Layout<HistoryRowsLayoutColumns> {};
 
 struct HistoryRowsResolvedView;
 struct HistoryRowsResolvedConstView;
@@ -419,16 +399,16 @@ struct HistoryRowsViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     }
     auto resolve() const
         -> std::conditional_t<Const, HistoryRowsResolvedConstView, HistoryRowsResolvedView> {
-        return {(this->column(Layout::columns.CompletedTicksColumn).data()),
-                (this->column(Layout::columns.ValidityMasksColumn).data()),
-                (this->column(Layout::columns.ActiveEntitiesColumn).data()),
-                (this->column(Layout::columns.ActiveEntitiesByTypeColumn).data()),
-                (this->column(Layout::columns.ActiveEntitiesByTeamAndTypeColumn).data()),
-                (this->column(Layout::columns.SpawnedEntitiesColumn).data()),
-                (this->column(Layout::columns.DestroyedEntitiesColumn).data()),
-                (this->column(Layout::columns.KillsColumn).data()),
-                (this->column(Layout::columns.ActiveLasersColumn).data()),
-                (this->column(Layout::columns.LasersFiredColumn).data()),
+        return {this->column(Layout::columns.CompletedTicksColumn).data(),
+                this->column(Layout::columns.ValidityMasksColumn).data(),
+                this->column(Layout::columns.ActiveEntitiesColumn).data(),
+                this->column(Layout::columns.ActiveEntitiesByTypeColumn).data(),
+                this->column(Layout::columns.ActiveEntitiesByTeamAndTypeColumn).data(),
+                this->column(Layout::columns.SpawnedEntitiesColumn).data(),
+                this->column(Layout::columns.DestroyedEntitiesColumn).data(),
+                this->column(Layout::columns.KillsColumn).data(),
+                this->column(Layout::columns.ActiveLasersColumn).data(),
+                this->column(Layout::columns.LasersFiredColumn).data(),
                 this->count_};
     }
 };

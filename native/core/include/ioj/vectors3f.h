@@ -5,6 +5,7 @@
 
 #include "ioj/math_types.h"
 #include "ioj/native_soa/storage.h"
+#include "ioj/single_allocation/layout.h"
 #include "ioj/soa_permutation.h"
 
 #include <cassert>
@@ -16,44 +17,24 @@ struct Vectors3fView;
 struct Vectors3fConstView;
 struct Vectors3fLayoutColumns {
     template <typename T>
-    using ColLayout = ioj::native_soa::ColumnLayout<T>;
-
-    ioj::native_soa::ColumnLayoutStart LayoutStart{};
-
+    using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
     ColLayout<float> XsColumn;
     ColLayout<float> YsColumn;
     ColLayout<float> ZsColumn;
 
-    constexpr Vectors3fLayoutColumns() noexcept
-        : XsColumn{LayoutStart}
+    constexpr explicit Vectors3fLayoutColumns(
+        ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
+        : XsColumn{previous}
         , YsColumn{XsColumn}
         , ZsColumn{YsColumn} {}
+    constexpr auto last_column() const noexcept
+        -> ioj::single_allocation_layout::ColumnLayoutBase const& {
+        return ZsColumn;
+    }
     Vectors3fLayoutColumns(Vectors3fLayoutColumns const&) = delete;
     auto operator=(Vectors3fLayoutColumns const&) -> Vectors3fLayoutColumns& = delete;
 };
-struct Vectors3fLayout {
-    using size_type = std::uint32_t;
-    using byte_size_type = std::size_t;
-
-    static constexpr size_type capacity_granularity{
-        ioj::native_soa::LayoutPolicy::capacity_granularity};
-    static constexpr byte_size_type column_gap{ioj::native_soa::LayoutPolicy::column_gap};
-
-    static constexpr Vectors3fLayoutColumns columns{};
-
-    static constexpr byte_size_type allocation_alignment{columns.ZsColumn.allocation_alignment};
-
-    // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
-    // capacity.
-    static constexpr byte_size_type capacity_block_bound{
-        ioj::native_soa::capacity_block_bound(columns.ZsColumn)};
-    static constexpr size_type max_capacity{
-        ioj::native_soa::maximum_capacity(capacity_block_bound)};
-    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return blocks == 0 ? 0 : columns.ZsColumn.data_end(blocks);
-    }
-    static_assert(max_capacity >= capacity_granularity);
-};
+struct Vectors3fLayout : ioj::single_allocation_layout::Layout<Vectors3fLayoutColumns> {};
 
 struct Vectors3fResolvedView;
 struct Vectors3fResolvedConstView;
@@ -187,9 +168,9 @@ struct Vectors3fViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     }
     auto resolve() const
         -> std::conditional_t<Const, Vectors3fResolvedConstView, Vectors3fResolvedView> {
-        return {(this->column(Layout::columns.XsColumn).data()),
-                (this->column(Layout::columns.YsColumn).data()),
-                (this->column(Layout::columns.ZsColumn).data()),
+        return {this->column(Layout::columns.XsColumn).data(),
+                this->column(Layout::columns.YsColumn).data(),
+                this->column(Layout::columns.ZsColumn).data(),
                 this->count_};
     }
 };

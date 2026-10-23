@@ -6,6 +6,7 @@
 #include "ioj/layout/analysis/analysis_id.hpp"
 #include "ioj/layout/analysis/row_range.hpp"
 #include "ioj/native_soa/storage.h"
+#include "ioj/single_allocation/layout.h"
 #include "ioj/soa_permutation.h"
 
 #include "codegen/schema/packed_field_kind.h"
@@ -27,10 +28,7 @@ struct PackedFieldTableView;
 struct PackedFieldTableConstView;
 struct PackedFieldTableLayoutColumns {
     template <typename T>
-    using ColLayout = ioj::native_soa::ColumnLayout<T>;
-
-    ioj::native_soa::ColumnLayoutStart LayoutStart{};
-
+    using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
     ColLayout<AnalysisId> ParentColumn;
     ColLayout<lispb::schema::PackedSegmentId> SegmentColumn;
     ColLayout<std::string_view> NameColumn;
@@ -56,8 +54,9 @@ struct PackedFieldTableLayoutColumns {
     ColLayout<std::optional<std::uint64_t>> UnusedCodesColumn;
     ColLayout<RowRange> CodesColumn;
 
-    constexpr PackedFieldTableLayoutColumns() noexcept
-        : ParentColumn{LayoutStart}
+    constexpr explicit PackedFieldTableLayoutColumns(
+        ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
+        : ParentColumn{previous}
         , SegmentColumn{ParentColumn}
         , NameColumn{SegmentColumn}
         , SemanticTypeColumn{NameColumn}
@@ -81,32 +80,15 @@ struct PackedFieldTableLayoutColumns {
         , MinimumRequiredBitsColumn{RequiredCodeCountColumn}
         , UnusedCodesColumn{MinimumRequiredBitsColumn}
         , CodesColumn{UnusedCodesColumn} {}
+    constexpr auto last_column() const noexcept
+        -> ioj::single_allocation_layout::ColumnLayoutBase const& {
+        return CodesColumn;
+    }
     PackedFieldTableLayoutColumns(PackedFieldTableLayoutColumns const&) = delete;
     auto operator=(PackedFieldTableLayoutColumns const&) -> PackedFieldTableLayoutColumns& = delete;
 };
-struct PackedFieldTableLayout {
-    using size_type = std::uint32_t;
-    using byte_size_type = std::size_t;
-
-    static constexpr size_type capacity_granularity{
-        ioj::native_soa::LayoutPolicy::capacity_granularity};
-    static constexpr byte_size_type column_gap{ioj::native_soa::LayoutPolicy::column_gap};
-
-    static constexpr PackedFieldTableLayoutColumns columns{};
-
-    static constexpr byte_size_type allocation_alignment{columns.CodesColumn.allocation_alignment};
-
-    // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
-    // capacity.
-    static constexpr byte_size_type capacity_block_bound{
-        ioj::native_soa::capacity_block_bound(columns.CodesColumn)};
-    static constexpr size_type max_capacity{
-        ioj::native_soa::maximum_capacity(capacity_block_bound)};
-    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return blocks == 0 ? 0 : columns.CodesColumn.data_end(blocks);
-    }
-    static_assert(max_capacity >= capacity_granularity);
-};
+struct PackedFieldTableLayout
+    : ioj::single_allocation_layout::Layout<PackedFieldTableLayoutColumns> {};
 
 struct PackedFieldTableResolvedView;
 struct PackedFieldTableResolvedConstView;
@@ -648,30 +630,30 @@ struct PackedFieldTableViewImpl : ioj::soa_storage_detail::CompactViewBase<Const
     }
     auto resolve() const -> std::
         conditional_t<Const, PackedFieldTableResolvedConstView, PackedFieldTableResolvedView> {
-        return {(this->column(Layout::columns.ParentColumn).data()),
-                (this->column(Layout::columns.SegmentColumn).data()),
-                (this->column(Layout::columns.NameColumn).data()),
-                (this->column(Layout::columns.SemanticTypeColumn).data()),
-                (this->column(Layout::columns.LogicalTypeColumn).data()),
-                (this->column(Layout::columns.KindColumn).data()),
-                (this->column(Layout::columns.ReservedColumn).data()),
-                (this->column(Layout::columns.SchemaBitWidthColumn).data()),
-                (this->column(Layout::columns.SchemaBitWidthAutoColumn).data()),
-                (this->column(Layout::columns.BitWidthColumn).data()),
-                (this->column(Layout::columns.OverriddenColumn).data()),
-                (this->column(Layout::columns.LeastSignificantBitColumn).data()),
-                (this->column(Layout::columns.MostSignificantBitColumn).data()),
-                (this->column(Layout::columns.MaximumUnsignedValueColumn).data()),
-                (this->column(Layout::columns.MinimumSignedValueColumn).data()),
-                (this->column(Layout::columns.MaximumSignedValueColumn).data()),
-                (this->column(Layout::columns.MinimumSemanticValueColumn).data()),
-                (this->column(Layout::columns.MaximumSemanticValueColumn).data()),
-                (this->column(Layout::columns.SemanticValueCountColumn).data()),
-                (this->column(Layout::columns.SentinelCodeCountColumn).data()),
-                (this->column(Layout::columns.RequiredCodeCountColumn).data()),
-                (this->column(Layout::columns.MinimumRequiredBitsColumn).data()),
-                (this->column(Layout::columns.UnusedCodesColumn).data()),
-                (this->column(Layout::columns.CodesColumn).data()),
+        return {this->column(Layout::columns.ParentColumn).data(),
+                this->column(Layout::columns.SegmentColumn).data(),
+                this->column(Layout::columns.NameColumn).data(),
+                this->column(Layout::columns.SemanticTypeColumn).data(),
+                this->column(Layout::columns.LogicalTypeColumn).data(),
+                this->column(Layout::columns.KindColumn).data(),
+                this->column(Layout::columns.ReservedColumn).data(),
+                this->column(Layout::columns.SchemaBitWidthColumn).data(),
+                this->column(Layout::columns.SchemaBitWidthAutoColumn).data(),
+                this->column(Layout::columns.BitWidthColumn).data(),
+                this->column(Layout::columns.OverriddenColumn).data(),
+                this->column(Layout::columns.LeastSignificantBitColumn).data(),
+                this->column(Layout::columns.MostSignificantBitColumn).data(),
+                this->column(Layout::columns.MaximumUnsignedValueColumn).data(),
+                this->column(Layout::columns.MinimumSignedValueColumn).data(),
+                this->column(Layout::columns.MaximumSignedValueColumn).data(),
+                this->column(Layout::columns.MinimumSemanticValueColumn).data(),
+                this->column(Layout::columns.MaximumSemanticValueColumn).data(),
+                this->column(Layout::columns.SemanticValueCountColumn).data(),
+                this->column(Layout::columns.SentinelCodeCountColumn).data(),
+                this->column(Layout::columns.RequiredCodeCountColumn).data(),
+                this->column(Layout::columns.MinimumRequiredBitsColumn).data(),
+                this->column(Layout::columns.UnusedCodesColumn).data(),
+                this->column(Layout::columns.CodesColumn).data(),
                 this->count_};
     }
 };

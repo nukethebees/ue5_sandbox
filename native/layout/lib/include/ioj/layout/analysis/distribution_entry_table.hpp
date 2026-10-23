@@ -4,6 +4,7 @@
 #pragma once
 
 #include "ioj/native_soa/storage.h"
+#include "ioj/single_allocation/layout.h"
 #include "ioj/soa_permutation.h"
 
 #include "codegen/schema/packed_integer_value.h"
@@ -20,10 +21,7 @@ struct DistributionEntryTableView;
 struct DistributionEntryTableConstView;
 struct DistributionEntryTableLayoutColumns {
     template <typename T>
-    using ColLayout = ioj::native_soa::ColumnLayout<T>;
-
-    ioj::native_soa::ColumnLayoutStart LayoutStart{};
-
+    using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
     ColLayout<std::optional<std::size_t>> ComponentColumn;
     ColLayout<std::optional<lispb::codegen::PackedIntegerValue>> ValueColumn;
     ColLayout<std::uint64_t> WeightColumn;
@@ -32,42 +30,25 @@ struct DistributionEntryTableLayoutColumns {
     ColLayout<std::optional<std::uint64_t>> WeightedExtentBytesColumn;
     ColLayout<std::optional<std::uint64_t>> WeightedSlackBytesColumn;
 
-    constexpr DistributionEntryTableLayoutColumns() noexcept
-        : ComponentColumn{LayoutStart}
+    constexpr explicit DistributionEntryTableLayoutColumns(
+        ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
+        : ComponentColumn{previous}
         , ValueColumn{ComponentColumn}
         , WeightColumn{ValueColumn}
         , ExtentBytesColumn{WeightColumn}
         , SlackBytesColumn{ExtentBytesColumn}
         , WeightedExtentBytesColumn{SlackBytesColumn}
         , WeightedSlackBytesColumn{WeightedExtentBytesColumn} {}
+    constexpr auto last_column() const noexcept
+        -> ioj::single_allocation_layout::ColumnLayoutBase const& {
+        return WeightedSlackBytesColumn;
+    }
     DistributionEntryTableLayoutColumns(DistributionEntryTableLayoutColumns const&) = delete;
     auto operator=(DistributionEntryTableLayoutColumns const&)
         -> DistributionEntryTableLayoutColumns& = delete;
 };
-struct DistributionEntryTableLayout {
-    using size_type = std::uint32_t;
-    using byte_size_type = std::size_t;
-
-    static constexpr size_type capacity_granularity{
-        ioj::native_soa::LayoutPolicy::capacity_granularity};
-    static constexpr byte_size_type column_gap{ioj::native_soa::LayoutPolicy::column_gap};
-
-    static constexpr DistributionEntryTableLayoutColumns columns{};
-
-    static constexpr byte_size_type allocation_alignment{
-        columns.WeightedSlackBytesColumn.allocation_alignment};
-
-    // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
-    // capacity.
-    static constexpr byte_size_type capacity_block_bound{
-        ioj::native_soa::capacity_block_bound(columns.WeightedSlackBytesColumn)};
-    static constexpr size_type max_capacity{
-        ioj::native_soa::maximum_capacity(capacity_block_bound)};
-    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return blocks == 0 ? 0 : columns.WeightedSlackBytesColumn.data_end(blocks);
-    }
-    static_assert(max_capacity >= capacity_granularity);
-};
+struct DistributionEntryTableLayout
+    : ioj::single_allocation_layout::Layout<DistributionEntryTableLayoutColumns> {};
 
 struct DistributionEntryTableResolvedView;
 struct DistributionEntryTableResolvedConstView;
@@ -286,13 +267,13 @@ struct DistributionEntryTableViewImpl : ioj::soa_storage_detail::CompactViewBase
     auto resolve() const -> std::conditional_t<Const,
                                                DistributionEntryTableResolvedConstView,
                                                DistributionEntryTableResolvedView> {
-        return {(this->column(Layout::columns.ComponentColumn).data()),
-                (this->column(Layout::columns.ValueColumn).data()),
-                (this->column(Layout::columns.WeightColumn).data()),
-                (this->column(Layout::columns.ExtentBytesColumn).data()),
-                (this->column(Layout::columns.SlackBytesColumn).data()),
-                (this->column(Layout::columns.WeightedExtentBytesColumn).data()),
-                (this->column(Layout::columns.WeightedSlackBytesColumn).data()),
+        return {this->column(Layout::columns.ComponentColumn).data(),
+                this->column(Layout::columns.ValueColumn).data(),
+                this->column(Layout::columns.WeightColumn).data(),
+                this->column(Layout::columns.ExtentBytesColumn).data(),
+                this->column(Layout::columns.SlackBytesColumn).data(),
+                this->column(Layout::columns.WeightedExtentBytesColumn).data(),
+                this->column(Layout::columns.WeightedSlackBytesColumn).data(),
                 this->count_};
     }
 };

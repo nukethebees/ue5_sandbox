@@ -5,6 +5,7 @@
 
 #include "ioj/math_types.h"
 #include "ioj/native_soa/storage.h"
+#include "ioj/single_allocation/layout.h"
 #include "ioj/soa_permutation.h"
 #include "native_soa/aligned256.h"
 #include "native_soa/aligned32.h"
@@ -65,40 +66,20 @@ struct PointerAView;
 struct PointerAConstView;
 struct PointerALayoutColumns {
     template <typename T>
-    using ColLayout = ioj::native_soa::ColumnLayout<T>;
-
-    ioj::native_soa::ColumnLayoutStart LayoutStart{};
-
+    using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
     ColLayout<PointerB*> OthersColumn;
 
-    constexpr PointerALayoutColumns() noexcept
-        : OthersColumn{LayoutStart} {}
+    constexpr explicit PointerALayoutColumns(
+        ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
+        : OthersColumn{previous} {}
+    constexpr auto last_column() const noexcept
+        -> ioj::single_allocation_layout::ColumnLayoutBase const& {
+        return OthersColumn;
+    }
     PointerALayoutColumns(PointerALayoutColumns const&) = delete;
     auto operator=(PointerALayoutColumns const&) -> PointerALayoutColumns& = delete;
 };
-struct PointerALayout {
-    using size_type = std::uint32_t;
-    using byte_size_type = std::size_t;
-
-    static constexpr size_type capacity_granularity{
-        ioj::native_soa::LayoutPolicy::capacity_granularity};
-    static constexpr byte_size_type column_gap{ioj::native_soa::LayoutPolicy::column_gap};
-
-    static constexpr PointerALayoutColumns columns{};
-
-    static constexpr byte_size_type allocation_alignment{columns.OthersColumn.allocation_alignment};
-
-    // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
-    // capacity.
-    static constexpr byte_size_type capacity_block_bound{
-        ioj::native_soa::capacity_block_bound(columns.OthersColumn)};
-    static constexpr size_type max_capacity{
-        ioj::native_soa::maximum_capacity(capacity_block_bound)};
-    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return blocks == 0 ? 0 : columns.OthersColumn.data_end(blocks);
-    }
-    static_assert(max_capacity >= capacity_granularity);
-};
+struct PointerALayout : ioj::single_allocation_layout::Layout<PointerALayoutColumns> {};
 
 struct PointerAResolvedView;
 struct PointerAResolvedConstView;
@@ -193,7 +174,7 @@ struct PointerAViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     }
     auto resolve() const
         -> std::conditional_t<Const, PointerAResolvedConstView, PointerAResolvedView> {
-        return {(this->column(Layout::columns.OthersColumn).data()), this->count_};
+        return {this->column(Layout::columns.OthersColumn).data(), this->count_};
     }
 };
 struct PointerAConstView : PointerAViewImpl<true> {
@@ -383,40 +364,20 @@ struct PointerBView;
 struct PointerBConstView;
 struct PointerBLayoutColumns {
     template <typename T>
-    using ColLayout = ioj::native_soa::ColumnLayout<T>;
-
-    ioj::native_soa::ColumnLayoutStart LayoutStart{};
-
+    using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
     ColLayout<PointerA*> OthersColumn;
 
-    constexpr PointerBLayoutColumns() noexcept
-        : OthersColumn{LayoutStart} {}
+    constexpr explicit PointerBLayoutColumns(
+        ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
+        : OthersColumn{previous} {}
+    constexpr auto last_column() const noexcept
+        -> ioj::single_allocation_layout::ColumnLayoutBase const& {
+        return OthersColumn;
+    }
     PointerBLayoutColumns(PointerBLayoutColumns const&) = delete;
     auto operator=(PointerBLayoutColumns const&) -> PointerBLayoutColumns& = delete;
 };
-struct PointerBLayout {
-    using size_type = std::uint32_t;
-    using byte_size_type = std::size_t;
-
-    static constexpr size_type capacity_granularity{
-        ioj::native_soa::LayoutPolicy::capacity_granularity};
-    static constexpr byte_size_type column_gap{ioj::native_soa::LayoutPolicy::column_gap};
-
-    static constexpr PointerBLayoutColumns columns{};
-
-    static constexpr byte_size_type allocation_alignment{columns.OthersColumn.allocation_alignment};
-
-    // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
-    // capacity.
-    static constexpr byte_size_type capacity_block_bound{
-        ioj::native_soa::capacity_block_bound(columns.OthersColumn)};
-    static constexpr size_type max_capacity{
-        ioj::native_soa::maximum_capacity(capacity_block_bound)};
-    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return blocks == 0 ? 0 : columns.OthersColumn.data_end(blocks);
-    }
-    static_assert(max_capacity >= capacity_granularity);
-};
+struct PointerBLayout : ioj::single_allocation_layout::Layout<PointerBLayoutColumns> {};
 
 struct PointerBResolvedView;
 struct PointerBResolvedConstView;
@@ -511,7 +472,7 @@ struct PointerBViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     }
     auto resolve() const
         -> std::conditional_t<Const, PointerBResolvedConstView, PointerBResolvedView> {
-        return {(this->column(Layout::columns.OthersColumn).data()), this->count_};
+        return {this->column(Layout::columns.OthersColumn).data(), this->count_};
     }
 };
 struct PointerBConstView : PointerBViewImpl<true> {
@@ -701,40 +662,20 @@ struct ReverseBView;
 struct ReverseBConstView;
 struct ReverseBLayoutColumns {
     template <typename T>
-    using ColLayout = ioj::native_soa::ColumnLayout<T>;
-
-    ioj::native_soa::ColumnLayoutStart LayoutStart{};
-
+    using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
     ColLayout<ReverseA*> OthersColumn;
 
-    constexpr ReverseBLayoutColumns() noexcept
-        : OthersColumn{LayoutStart} {}
+    constexpr explicit ReverseBLayoutColumns(
+        ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
+        : OthersColumn{previous} {}
+    constexpr auto last_column() const noexcept
+        -> ioj::single_allocation_layout::ColumnLayoutBase const& {
+        return OthersColumn;
+    }
     ReverseBLayoutColumns(ReverseBLayoutColumns const&) = delete;
     auto operator=(ReverseBLayoutColumns const&) -> ReverseBLayoutColumns& = delete;
 };
-struct ReverseBLayout {
-    using size_type = std::uint32_t;
-    using byte_size_type = std::size_t;
-
-    static constexpr size_type capacity_granularity{
-        ioj::native_soa::LayoutPolicy::capacity_granularity};
-    static constexpr byte_size_type column_gap{ioj::native_soa::LayoutPolicy::column_gap};
-
-    static constexpr ReverseBLayoutColumns columns{};
-
-    static constexpr byte_size_type allocation_alignment{columns.OthersColumn.allocation_alignment};
-
-    // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
-    // capacity.
-    static constexpr byte_size_type capacity_block_bound{
-        ioj::native_soa::capacity_block_bound(columns.OthersColumn)};
-    static constexpr size_type max_capacity{
-        ioj::native_soa::maximum_capacity(capacity_block_bound)};
-    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return blocks == 0 ? 0 : columns.OthersColumn.data_end(blocks);
-    }
-    static_assert(max_capacity >= capacity_granularity);
-};
+struct ReverseBLayout : ioj::single_allocation_layout::Layout<ReverseBLayoutColumns> {};
 
 struct ReverseBResolvedView;
 struct ReverseBResolvedConstView;
@@ -829,7 +770,7 @@ struct ReverseBViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     }
     auto resolve() const
         -> std::conditional_t<Const, ReverseBResolvedConstView, ReverseBResolvedView> {
-        return {(this->column(Layout::columns.OthersColumn).data()), this->count_};
+        return {this->column(Layout::columns.OthersColumn).data(), this->count_};
     }
 };
 struct ReverseBConstView : ReverseBViewImpl<true> {
@@ -1019,40 +960,20 @@ struct ReverseAView;
 struct ReverseAConstView;
 struct ReverseALayoutColumns {
     template <typename T>
-    using ColLayout = ioj::native_soa::ColumnLayout<T>;
-
-    ioj::native_soa::ColumnLayoutStart LayoutStart{};
-
+    using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
     ColLayout<ReverseB*> OthersColumn;
 
-    constexpr ReverseALayoutColumns() noexcept
-        : OthersColumn{LayoutStart} {}
+    constexpr explicit ReverseALayoutColumns(
+        ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
+        : OthersColumn{previous} {}
+    constexpr auto last_column() const noexcept
+        -> ioj::single_allocation_layout::ColumnLayoutBase const& {
+        return OthersColumn;
+    }
     ReverseALayoutColumns(ReverseALayoutColumns const&) = delete;
     auto operator=(ReverseALayoutColumns const&) -> ReverseALayoutColumns& = delete;
 };
-struct ReverseALayout {
-    using size_type = std::uint32_t;
-    using byte_size_type = std::size_t;
-
-    static constexpr size_type capacity_granularity{
-        ioj::native_soa::LayoutPolicy::capacity_granularity};
-    static constexpr byte_size_type column_gap{ioj::native_soa::LayoutPolicy::column_gap};
-
-    static constexpr ReverseALayoutColumns columns{};
-
-    static constexpr byte_size_type allocation_alignment{columns.OthersColumn.allocation_alignment};
-
-    // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
-    // capacity.
-    static constexpr byte_size_type capacity_block_bound{
-        ioj::native_soa::capacity_block_bound(columns.OthersColumn)};
-    static constexpr size_type max_capacity{
-        ioj::native_soa::maximum_capacity(capacity_block_bound)};
-    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return blocks == 0 ? 0 : columns.OthersColumn.data_end(blocks);
-    }
-    static_assert(max_capacity >= capacity_granularity);
-};
+struct ReverseALayout : ioj::single_allocation_layout::Layout<ReverseALayoutColumns> {};
 
 struct ReverseAResolvedView;
 struct ReverseAResolvedConstView;
@@ -1147,7 +1068,7 @@ struct ReverseAViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     }
     auto resolve() const
         -> std::conditional_t<Const, ReverseAResolvedConstView, ReverseAResolvedView> {
-        return {(this->column(Layout::columns.OthersColumn).data()), this->count_};
+        return {this->column(Layout::columns.OthersColumn).data(), this->count_};
     }
 };
 struct ReverseAConstView : ReverseAViewImpl<true> {
@@ -1341,41 +1262,20 @@ struct MixedRowsView;
 struct MixedRowsConstView;
 struct MixedRowsLayoutColumns {
     template <typename T>
-    using ColLayout = ioj::native_soa::ColumnLayout<T>;
-
-    ioj::native_soa::ColumnLayoutStart LayoutStart{};
-
+    using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
     ColLayout<MixedRecord*> RecordsColumn;
 
-    constexpr MixedRowsLayoutColumns() noexcept
-        : RecordsColumn{LayoutStart} {}
+    constexpr explicit MixedRowsLayoutColumns(
+        ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
+        : RecordsColumn{previous} {}
+    constexpr auto last_column() const noexcept
+        -> ioj::single_allocation_layout::ColumnLayoutBase const& {
+        return RecordsColumn;
+    }
     MixedRowsLayoutColumns(MixedRowsLayoutColumns const&) = delete;
     auto operator=(MixedRowsLayoutColumns const&) -> MixedRowsLayoutColumns& = delete;
 };
-struct MixedRowsLayout {
-    using size_type = std::uint32_t;
-    using byte_size_type = std::size_t;
-
-    static constexpr size_type capacity_granularity{
-        ioj::native_soa::LayoutPolicy::capacity_granularity};
-    static constexpr byte_size_type column_gap{ioj::native_soa::LayoutPolicy::column_gap};
-
-    static constexpr MixedRowsLayoutColumns columns{};
-
-    static constexpr byte_size_type allocation_alignment{
-        columns.RecordsColumn.allocation_alignment};
-
-    // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
-    // capacity.
-    static constexpr byte_size_type capacity_block_bound{
-        ioj::native_soa::capacity_block_bound(columns.RecordsColumn)};
-    static constexpr size_type max_capacity{
-        ioj::native_soa::maximum_capacity(capacity_block_bound)};
-    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return blocks == 0 ? 0 : columns.RecordsColumn.data_end(blocks);
-    }
-    static_assert(max_capacity >= capacity_granularity);
-};
+struct MixedRowsLayout : ioj::single_allocation_layout::Layout<MixedRowsLayoutColumns> {};
 
 struct MixedRowsResolvedView;
 struct MixedRowsResolvedConstView;
@@ -1470,7 +1370,7 @@ struct MixedRowsViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     }
     auto resolve() const
         -> std::conditional_t<Const, MixedRowsResolvedConstView, MixedRowsResolvedView> {
-        return {(this->column(Layout::columns.RecordsColumn).data()), this->count_};
+        return {this->column(Layout::columns.RecordsColumn).data(), this->count_};
     }
 };
 struct MixedRowsConstView : MixedRowsViewImpl<true> {
@@ -1670,43 +1570,22 @@ struct PairRowsView;
 struct PairRowsConstView;
 struct PairRowsLayoutColumns {
     template <typename T>
-    using ColLayout = ioj::native_soa::ColumnLayout<T>;
-
-    ioj::native_soa::ColumnLayoutStart LayoutStart{};
-
+    using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
     ColLayout<Pair> PairsColumn;
     ColLayout<Node*> PointersColumn;
 
-    constexpr PairRowsLayoutColumns() noexcept
-        : PairsColumn{LayoutStart}
+    constexpr explicit PairRowsLayoutColumns(
+        ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
+        : PairsColumn{previous}
         , PointersColumn{PairsColumn} {}
+    constexpr auto last_column() const noexcept
+        -> ioj::single_allocation_layout::ColumnLayoutBase const& {
+        return PointersColumn;
+    }
     PairRowsLayoutColumns(PairRowsLayoutColumns const&) = delete;
     auto operator=(PairRowsLayoutColumns const&) -> PairRowsLayoutColumns& = delete;
 };
-struct PairRowsLayout {
-    using size_type = std::uint32_t;
-    using byte_size_type = std::size_t;
-
-    static constexpr size_type capacity_granularity{
-        ioj::native_soa::LayoutPolicy::capacity_granularity};
-    static constexpr byte_size_type column_gap{ioj::native_soa::LayoutPolicy::column_gap};
-
-    static constexpr PairRowsLayoutColumns columns{};
-
-    static constexpr byte_size_type allocation_alignment{
-        columns.PointersColumn.allocation_alignment};
-
-    // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
-    // capacity.
-    static constexpr byte_size_type capacity_block_bound{
-        ioj::native_soa::capacity_block_bound(columns.PointersColumn)};
-    static constexpr size_type max_capacity{
-        ioj::native_soa::maximum_capacity(capacity_block_bound)};
-    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return blocks == 0 ? 0 : columns.PointersColumn.data_end(blocks);
-    }
-    static_assert(max_capacity >= capacity_granularity);
-};
+struct PairRowsLayout : ioj::single_allocation_layout::Layout<PairRowsLayoutColumns> {};
 
 struct PairRowsResolvedView;
 struct PairRowsResolvedConstView;
@@ -1812,8 +1691,8 @@ struct PairRowsViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     }
     auto resolve() const
         -> std::conditional_t<Const, PairRowsResolvedConstView, PairRowsResolvedView> {
-        return {(this->column(Layout::columns.PairsColumn).data()),
-                (this->column(Layout::columns.PointersColumn).data()),
+        return {this->column(Layout::columns.PairsColumn).data(),
+                this->column(Layout::columns.PointersColumn).data(),
                 this->count_};
     }
 };
@@ -2013,44 +1892,24 @@ struct VectorsView;
 struct VectorsConstView;
 struct VectorsLayoutColumns {
     template <typename T>
-    using ColLayout = ioj::native_soa::ColumnLayout<T>;
-
-    ioj::native_soa::ColumnLayoutStart LayoutStart{};
-
+    using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
     ColLayout<float> XsColumn;
     ColLayout<float> YsColumn;
     ColLayout<float> ZsColumn;
 
-    constexpr VectorsLayoutColumns() noexcept
-        : XsColumn{LayoutStart}
+    constexpr explicit VectorsLayoutColumns(
+        ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
+        : XsColumn{previous}
         , YsColumn{XsColumn}
         , ZsColumn{YsColumn} {}
+    constexpr auto last_column() const noexcept
+        -> ioj::single_allocation_layout::ColumnLayoutBase const& {
+        return ZsColumn;
+    }
     VectorsLayoutColumns(VectorsLayoutColumns const&) = delete;
     auto operator=(VectorsLayoutColumns const&) -> VectorsLayoutColumns& = delete;
 };
-struct VectorsLayout {
-    using size_type = std::uint32_t;
-    using byte_size_type = std::size_t;
-
-    static constexpr size_type capacity_granularity{
-        ioj::native_soa::LayoutPolicy::capacity_granularity};
-    static constexpr byte_size_type column_gap{ioj::native_soa::LayoutPolicy::column_gap};
-
-    static constexpr VectorsLayoutColumns columns{};
-
-    static constexpr byte_size_type allocation_alignment{columns.ZsColumn.allocation_alignment};
-
-    // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
-    // capacity.
-    static constexpr byte_size_type capacity_block_bound{
-        ioj::native_soa::capacity_block_bound(columns.ZsColumn)};
-    static constexpr size_type max_capacity{
-        ioj::native_soa::maximum_capacity(capacity_block_bound)};
-    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return blocks == 0 ? 0 : columns.ZsColumn.data_end(blocks);
-    }
-    static_assert(max_capacity >= capacity_granularity);
-};
+struct VectorsLayout : ioj::single_allocation_layout::Layout<VectorsLayoutColumns> {};
 
 struct VectorsResolvedView;
 struct VectorsResolvedConstView;
@@ -2171,9 +2030,9 @@ struct VectorsViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     }
     auto resolve() const
         -> std::conditional_t<Const, VectorsResolvedConstView, VectorsResolvedView> {
-        return {(this->column(Layout::columns.XsColumn).data()),
-                (this->column(Layout::columns.YsColumn).data()),
-                (this->column(Layout::columns.ZsColumn).data()),
+        return {this->column(Layout::columns.XsColumn).data(),
+                this->column(Layout::columns.YsColumn).data(),
+                this->column(Layout::columns.ZsColumn).data(),
                 this->count_};
     }
 };
@@ -2382,53 +2241,24 @@ struct SingleRowsView;
 struct SingleRowsConstView;
 struct SingleRowsLayoutColumns {
     template <typename T>
-    using ColLayout = ioj::native_soa::ColumnLayout<T>;
-
-    ioj::native_soa::ColumnLayoutStart LayoutStart{};
-
+    using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
     ColLayout<std::int32_t> ValuesColumn;
-    ColLayout<float> PositionsXsColumn;
-    ColLayout<float> PositionsYsColumn;
-    ColLayout<float> PositionsZsColumn;
-    ColLayout<float> VelocitiesXsColumn;
-    ColLayout<float> VelocitiesYsColumn;
-    ColLayout<float> VelocitiesZsColumn;
+    ::ioj::native_soa_fixture::VectorsLayoutColumns Positions;
+    ::ioj::native_soa_fixture::VectorsLayoutColumns Velocities;
 
-    constexpr SingleRowsLayoutColumns() noexcept
-        : ValuesColumn{LayoutStart}
-        , PositionsXsColumn{ValuesColumn}
-        , PositionsYsColumn{PositionsXsColumn}
-        , PositionsZsColumn{PositionsYsColumn}
-        , VelocitiesXsColumn{PositionsZsColumn}
-        , VelocitiesYsColumn{VelocitiesXsColumn}
-        , VelocitiesZsColumn{VelocitiesYsColumn} {}
+    constexpr explicit SingleRowsLayoutColumns(
+        ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
+        : ValuesColumn{previous}
+        , Positions{ValuesColumn}
+        , Velocities{Positions.last_column()} {}
+    constexpr auto last_column() const noexcept
+        -> ioj::single_allocation_layout::ColumnLayoutBase const& {
+        return Velocities.last_column();
+    }
     SingleRowsLayoutColumns(SingleRowsLayoutColumns const&) = delete;
     auto operator=(SingleRowsLayoutColumns const&) -> SingleRowsLayoutColumns& = delete;
 };
-struct SingleRowsLayout {
-    using size_type = std::uint32_t;
-    using byte_size_type = std::size_t;
-
-    static constexpr size_type capacity_granularity{
-        ioj::native_soa::LayoutPolicy::capacity_granularity};
-    static constexpr byte_size_type column_gap{ioj::native_soa::LayoutPolicy::column_gap};
-
-    static constexpr SingleRowsLayoutColumns columns{};
-
-    static constexpr byte_size_type allocation_alignment{
-        columns.VelocitiesZsColumn.allocation_alignment};
-
-    // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
-    // capacity.
-    static constexpr byte_size_type capacity_block_bound{
-        ioj::native_soa::capacity_block_bound(columns.VelocitiesZsColumn)};
-    static constexpr size_type max_capacity{
-        ioj::native_soa::maximum_capacity(capacity_block_bound)};
-    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return blocks == 0 ? 0 : columns.VelocitiesZsColumn.data_end(blocks);
-    }
-    static_assert(max_capacity >= capacity_granularity);
-};
+struct SingleRowsLayout : ioj::single_allocation_layout::Layout<SingleRowsLayoutColumns> {};
 struct SingleRowsResolvedView;
 struct SingleRowsResolvedConstView;
 template <bool Const>
@@ -2613,9 +2443,9 @@ struct SingleRowsView_positionsImpl : ioj::soa_storage_detail::CompactViewBase<C
     SingleRowsView_positionsImpl(SingleRowsView_positionsImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto xs() const { return this->column(Layout::columns.PositionsXsColumn); }
-    auto ys() const { return this->column(Layout::columns.PositionsYsColumn); }
-    auto zs() const { return this->column(Layout::columns.PositionsZsColumn); }
+    auto xs() const { return this->column(Layout::columns.Positions.XsColumn); }
+    auto ys() const { return this->column(Layout::columns.Positions.YsColumn); }
+    auto zs() const { return this->column(Layout::columns.Positions.ZsColumn); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(xs());
@@ -2625,9 +2455,9 @@ struct SingleRowsView_positionsImpl : ioj::soa_storage_detail::CompactViewBase<C
     auto resolve() const -> std::conditional_t<Const,
                                                ::ioj::native_soa_fixture::VectorsResolvedConstView,
                                                ::ioj::native_soa_fixture::VectorsResolvedView> {
-        return {(this->column(Layout::columns.PositionsXsColumn).data()),
-                (this->column(Layout::columns.PositionsYsColumn).data()),
-                (this->column(Layout::columns.PositionsZsColumn).data()),
+        return {this->column(Layout::columns.Positions.XsColumn).data(),
+                this->column(Layout::columns.Positions.YsColumn).data(),
+                this->column(Layout::columns.Positions.ZsColumn).data(),
                 this->count_};
     }
 };
@@ -2661,9 +2491,9 @@ struct SingleRowsView_velocitiesImpl : ioj::soa_storage_detail::CompactViewBase<
     SingleRowsView_velocitiesImpl(SingleRowsView_velocitiesImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto xs() const { return this->column(Layout::columns.VelocitiesXsColumn); }
-    auto ys() const { return this->column(Layout::columns.VelocitiesYsColumn); }
-    auto zs() const { return this->column(Layout::columns.VelocitiesZsColumn); }
+    auto xs() const { return this->column(Layout::columns.Velocities.XsColumn); }
+    auto ys() const { return this->column(Layout::columns.Velocities.YsColumn); }
+    auto zs() const { return this->column(Layout::columns.Velocities.ZsColumn); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(xs());
@@ -2673,9 +2503,9 @@ struct SingleRowsView_velocitiesImpl : ioj::soa_storage_detail::CompactViewBase<
     auto resolve() const -> std::conditional_t<Const,
                                                ::ioj::native_soa_fixture::VectorsResolvedConstView,
                                                ::ioj::native_soa_fixture::VectorsResolvedView> {
-        return {(this->column(Layout::columns.VelocitiesXsColumn).data()),
-                (this->column(Layout::columns.VelocitiesYsColumn).data()),
-                (this->column(Layout::columns.VelocitiesZsColumn).data()),
+        return {this->column(Layout::columns.Velocities.XsColumn).data(),
+                this->column(Layout::columns.Velocities.YsColumn).data(),
+                this->column(Layout::columns.Velocities.ZsColumn).data(),
                 this->count_};
     }
 };
@@ -2730,13 +2560,13 @@ struct SingleRowsViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     }
     auto resolve() const
         -> std::conditional_t<Const, SingleRowsResolvedConstView, SingleRowsResolvedView> {
-        return {(this->column(Layout::columns.ValuesColumn).data()),
-                (this->column(Layout::columns.PositionsXsColumn).data()),
-                (this->column(Layout::columns.PositionsYsColumn).data()),
-                (this->column(Layout::columns.PositionsZsColumn).data()),
-                (this->column(Layout::columns.VelocitiesXsColumn).data()),
-                (this->column(Layout::columns.VelocitiesYsColumn).data()),
-                (this->column(Layout::columns.VelocitiesZsColumn).data()),
+        return {this->column(Layout::columns.ValuesColumn).data(),
+                this->column(Layout::columns.Positions.XsColumn).data(),
+                this->column(Layout::columns.Positions.YsColumn).data(),
+                this->column(Layout::columns.Positions.ZsColumn).data(),
+                this->column(Layout::columns.Velocities.XsColumn).data(),
+                this->column(Layout::columns.Velocities.YsColumn).data(),
+                this->column(Layout::columns.Velocities.ZsColumn).data(),
                 this->count_};
     }
 };
@@ -2862,12 +2692,12 @@ struct SingleRows
         -> DataPointers<Byte> {
         ioj::native_soa::LayoutCursor cursor{blocks};
         return {cursor.column_pointer(data, Layout::columns.ValuesColumn),
-                cursor.column_pointer(data, Layout::columns.PositionsXsColumn),
-                cursor.column_pointer(data, Layout::columns.PositionsYsColumn),
-                cursor.column_pointer(data, Layout::columns.PositionsZsColumn),
-                cursor.column_pointer(data, Layout::columns.VelocitiesXsColumn),
-                cursor.column_pointer(data, Layout::columns.VelocitiesYsColumn),
-                cursor.column_pointer(data, Layout::columns.VelocitiesZsColumn)};
+                cursor.column_pointer(data, Layout::columns.Positions.XsColumn),
+                cursor.column_pointer(data, Layout::columns.Positions.YsColumn),
+                cursor.column_pointer(data, Layout::columns.Positions.ZsColumn),
+                cursor.column_pointer(data, Layout::columns.Velocities.XsColumn),
+                cursor.column_pointer(data, Layout::columns.Velocities.YsColumn),
+                cursor.column_pointer(data, Layout::columns.Velocities.ZsColumn)};
     }
     auto capacity_blocks() const noexcept -> byte_size_type {
         return static_cast<byte_size_type>(capacity_ / capacity_granularity);
@@ -3020,56 +2850,32 @@ struct SingleAlignmentRowsView;
 struct SingleAlignmentRowsConstView;
 struct SingleAlignmentRowsLayoutColumns {
     template <typename T>
-    using ColLayout = ioj::native_soa::ColumnLayout<T>;
-
-    ioj::native_soa::ColumnLayoutStart LayoutStart{};
-
+    using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
     ColLayout<std::uint8_t> BytesColumn;
     ColLayout<OddBytes> OddColumn;
     ColLayout<Aligned32> Aligned32Column;
-    ColLayout<float> NestedXsColumn;
-    ColLayout<float> NestedYsColumn;
-    ColLayout<float> NestedZsColumn;
+    ::ioj::native_soa_fixture::VectorsLayoutColumns Nested;
     ColLayout<Aligned64> Aligned64Column;
     ColLayout<Aligned256> Aligned256Column;
 
-    constexpr SingleAlignmentRowsLayoutColumns() noexcept
-        : BytesColumn{LayoutStart}
+    constexpr explicit SingleAlignmentRowsLayoutColumns(
+        ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
+        : BytesColumn{previous}
         , OddColumn{BytesColumn}
         , Aligned32Column{OddColumn}
-        , NestedXsColumn{Aligned32Column}
-        , NestedYsColumn{NestedXsColumn}
-        , NestedZsColumn{NestedYsColumn}
-        , Aligned64Column{NestedZsColumn}
+        , Nested{Aligned32Column}
+        , Aligned64Column{Nested.last_column()}
         , Aligned256Column{Aligned64Column} {}
+    constexpr auto last_column() const noexcept
+        -> ioj::single_allocation_layout::ColumnLayoutBase const& {
+        return Aligned256Column;
+    }
     SingleAlignmentRowsLayoutColumns(SingleAlignmentRowsLayoutColumns const&) = delete;
     auto operator=(SingleAlignmentRowsLayoutColumns const&)
         -> SingleAlignmentRowsLayoutColumns& = delete;
 };
-struct SingleAlignmentRowsLayout {
-    using size_type = std::uint32_t;
-    using byte_size_type = std::size_t;
-
-    static constexpr size_type capacity_granularity{
-        ioj::native_soa::LayoutPolicy::capacity_granularity};
-    static constexpr byte_size_type column_gap{ioj::native_soa::LayoutPolicy::column_gap};
-
-    static constexpr SingleAlignmentRowsLayoutColumns columns{};
-
-    static constexpr byte_size_type allocation_alignment{
-        columns.Aligned256Column.allocation_alignment};
-
-    // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
-    // capacity.
-    static constexpr byte_size_type capacity_block_bound{
-        ioj::native_soa::capacity_block_bound(columns.Aligned256Column)};
-    static constexpr size_type max_capacity{
-        ioj::native_soa::maximum_capacity(capacity_block_bound)};
-    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return blocks == 0 ? 0 : columns.Aligned256Column.data_end(blocks);
-    }
-    static_assert(max_capacity >= capacity_granularity);
-};
+struct SingleAlignmentRowsLayout
+    : ioj::single_allocation_layout::Layout<SingleAlignmentRowsLayoutColumns> {};
 struct SingleAlignmentRowsResolvedView;
 struct SingleAlignmentRowsResolvedConstView;
 template <bool Const>
@@ -3259,9 +3065,9 @@ struct SingleAlignmentRowsView_nestedImpl : ioj::soa_storage_detail::CompactView
     SingleAlignmentRowsView_nestedImpl(SingleAlignmentRowsView_nestedImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto xs() const { return this->column(Layout::columns.NestedXsColumn); }
-    auto ys() const { return this->column(Layout::columns.NestedYsColumn); }
-    auto zs() const { return this->column(Layout::columns.NestedZsColumn); }
+    auto xs() const { return this->column(Layout::columns.Nested.XsColumn); }
+    auto ys() const { return this->column(Layout::columns.Nested.YsColumn); }
+    auto zs() const { return this->column(Layout::columns.Nested.ZsColumn); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(xs());
@@ -3271,9 +3077,9 @@ struct SingleAlignmentRowsView_nestedImpl : ioj::soa_storage_detail::CompactView
     auto resolve() const -> std::conditional_t<Const,
                                                ::ioj::native_soa_fixture::VectorsResolvedConstView,
                                                ::ioj::native_soa_fixture::VectorsResolvedView> {
-        return {(this->column(Layout::columns.NestedXsColumn).data()),
-                (this->column(Layout::columns.NestedYsColumn).data()),
-                (this->column(Layout::columns.NestedZsColumn).data()),
+        return {this->column(Layout::columns.Nested.XsColumn).data(),
+                this->column(Layout::columns.Nested.YsColumn).data(),
+                this->column(Layout::columns.Nested.ZsColumn).data(),
                 this->count_};
     }
 };
@@ -3330,14 +3136,14 @@ struct SingleAlignmentRowsViewImpl : ioj::soa_storage_detail::CompactViewBase<Co
     auto resolve() const -> std::conditional_t<Const,
                                                SingleAlignmentRowsResolvedConstView,
                                                SingleAlignmentRowsResolvedView> {
-        return {(this->column(Layout::columns.BytesColumn).data()),
-                (this->column(Layout::columns.OddColumn).data()),
-                (this->column(Layout::columns.Aligned32Column).data()),
-                (this->column(Layout::columns.NestedXsColumn).data()),
-                (this->column(Layout::columns.NestedYsColumn).data()),
-                (this->column(Layout::columns.NestedZsColumn).data()),
-                (this->column(Layout::columns.Aligned64Column).data()),
-                (this->column(Layout::columns.Aligned256Column).data()),
+        return {this->column(Layout::columns.BytesColumn).data(),
+                this->column(Layout::columns.OddColumn).data(),
+                this->column(Layout::columns.Aligned32Column).data(),
+                this->column(Layout::columns.Nested.XsColumn).data(),
+                this->column(Layout::columns.Nested.YsColumn).data(),
+                this->column(Layout::columns.Nested.ZsColumn).data(),
+                this->column(Layout::columns.Aligned64Column).data(),
+                this->column(Layout::columns.Aligned256Column).data(),
                 this->count_};
     }
 };
@@ -3470,9 +3276,9 @@ struct SingleAlignmentRows
         return {cursor.column_pointer(data, Layout::columns.BytesColumn),
                 cursor.column_pointer(data, Layout::columns.OddColumn),
                 cursor.column_pointer(data, Layout::columns.Aligned32Column),
-                cursor.column_pointer(data, Layout::columns.NestedXsColumn),
-                cursor.column_pointer(data, Layout::columns.NestedYsColumn),
-                cursor.column_pointer(data, Layout::columns.NestedZsColumn),
+                cursor.column_pointer(data, Layout::columns.Nested.XsColumn),
+                cursor.column_pointer(data, Layout::columns.Nested.YsColumn),
+                cursor.column_pointer(data, Layout::columns.Nested.ZsColumn),
                 cursor.column_pointer(data, Layout::columns.Aligned64Column),
                 cursor.column_pointer(data, Layout::columns.Aligned256Column)};
     }
@@ -3639,6 +3445,23 @@ struct ApiPair {
 };
 
 struct ApiCoordinatesSchema;
+struct ApiCoordinatesLayoutColumns {
+    template <typename T>
+    using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
+    ColLayout<float> XsColumn;
+    ColLayout<float> YsColumn;
+
+    constexpr explicit ApiCoordinatesLayoutColumns(
+        ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
+        : XsColumn{previous}
+        , YsColumn{XsColumn} {}
+    constexpr auto last_column() const noexcept
+        -> ioj::single_allocation_layout::ColumnLayoutBase const& {
+        return YsColumn;
+    }
+    ApiCoordinatesLayoutColumns(ApiCoordinatesLayoutColumns const&) = delete;
+    auto operator=(ApiCoordinatesLayoutColumns const&) -> ApiCoordinatesLayoutColumns& = delete;
+};
 
 struct ApiOwnerSchema;
 
@@ -3687,47 +3510,24 @@ struct ApiView;
 struct ApiConstView;
 struct ApiOwnerLayoutColumns {
     template <typename T>
-    using ColLayout = ioj::native_soa::ColumnLayout<T>;
-
-    ioj::native_soa::ColumnLayoutStart LayoutStart{};
-
+    using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
     ColLayout<float> ValuesColumn;
     ColLayout<ApiMask> MasksColumn;
-    ColLayout<float> PositionsXsColumn;
-    ColLayout<float> PositionsYsColumn;
+    ::ioj::native_soa_fixture::ApiCoordinatesLayoutColumns Positions;
 
-    constexpr ApiOwnerLayoutColumns() noexcept
-        : ValuesColumn{LayoutStart}
+    constexpr explicit ApiOwnerLayoutColumns(
+        ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
+        : ValuesColumn{previous}
         , MasksColumn{ValuesColumn}
-        , PositionsXsColumn{MasksColumn}
-        , PositionsYsColumn{PositionsXsColumn} {}
+        , Positions{MasksColumn} {}
+    constexpr auto last_column() const noexcept
+        -> ioj::single_allocation_layout::ColumnLayoutBase const& {
+        return Positions.last_column();
+    }
     ApiOwnerLayoutColumns(ApiOwnerLayoutColumns const&) = delete;
     auto operator=(ApiOwnerLayoutColumns const&) -> ApiOwnerLayoutColumns& = delete;
 };
-struct ApiOwnerLayout {
-    using size_type = std::uint32_t;
-    using byte_size_type = std::size_t;
-
-    static constexpr size_type capacity_granularity{
-        ioj::native_soa::LayoutPolicy::capacity_granularity};
-    static constexpr byte_size_type column_gap{ioj::native_soa::LayoutPolicy::column_gap};
-
-    static constexpr ApiOwnerLayoutColumns columns{};
-
-    static constexpr byte_size_type allocation_alignment{
-        columns.PositionsYsColumn.allocation_alignment};
-
-    // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
-    // capacity.
-    static constexpr byte_size_type capacity_block_bound{
-        ioj::native_soa::capacity_block_bound(columns.PositionsYsColumn)};
-    static constexpr size_type max_capacity{
-        ioj::native_soa::maximum_capacity(capacity_block_bound)};
-    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return blocks == 0 ? 0 : columns.PositionsYsColumn.data_end(blocks);
-    }
-    static_assert(max_capacity >= capacity_granularity);
-};
+struct ApiOwnerLayout : ioj::single_allocation_layout::Layout<ApiOwnerLayoutColumns> {};
 
 struct ApiResolvedView_positions;
 struct ApiResolvedConstView_positions;
@@ -3982,8 +3782,8 @@ struct ApiView_positionsImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     ApiView_positionsImpl(ApiView_positionsImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto xs() const { return this->column(Layout::columns.PositionsXsColumn); }
-    auto ys() const { return this->column(Layout::columns.PositionsYsColumn); }
+    auto xs() const { return this->column(Layout::columns.Positions.XsColumn); }
+    auto ys() const { return this->column(Layout::columns.Positions.YsColumn); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(xs());
@@ -3991,8 +3791,8 @@ struct ApiView_positionsImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     }
     auto resolve() const
         -> std::conditional_t<Const, ApiResolvedConstView_positions, ApiResolvedView_positions> {
-        return {(this->column(Layout::columns.PositionsXsColumn).data()),
-                (this->column(Layout::columns.PositionsYsColumn).data()),
+        return {this->column(Layout::columns.Positions.XsColumn).data(),
+                this->column(Layout::columns.Positions.YsColumn).data(),
                 this->count_};
     }
 };
@@ -4058,10 +3858,10 @@ struct ApiViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
         func(positions_view.ys());
     }
     auto resolve() const -> std::conditional_t<Const, ApiResolvedConstView, ApiResolvedView> {
-        return {(this->column(Layout::columns.ValuesColumn).data()),
-                (this->column(Layout::columns.MasksColumn).data()),
-                (this->column(Layout::columns.PositionsXsColumn).data()),
-                (this->column(Layout::columns.PositionsYsColumn).data()),
+        return {this->column(Layout::columns.ValuesColumn).data(),
+                this->column(Layout::columns.MasksColumn).data(),
+                this->column(Layout::columns.Positions.XsColumn).data(),
+                this->column(Layout::columns.Positions.YsColumn).data(),
                 this->count_};
     }
 };
@@ -4185,8 +3985,8 @@ struct NATIVE_SOA_FIXTURE_API ApiOwner
         ioj::native_soa::LayoutCursor cursor{blocks};
         return {cursor.column_pointer(data, Layout::columns.ValuesColumn),
                 cursor.column_pointer(data, Layout::columns.MasksColumn),
-                cursor.column_pointer(data, Layout::columns.PositionsXsColumn),
-                cursor.column_pointer(data, Layout::columns.PositionsYsColumn)};
+                cursor.column_pointer(data, Layout::columns.Positions.XsColumn),
+                cursor.column_pointer(data, Layout::columns.Positions.YsColumn)};
     }
     auto capacity_blocks() const noexcept -> byte_size_type {
         return static_cast<byte_size_type>(capacity_ / capacity_granularity);
@@ -4335,42 +4135,23 @@ struct EquivalentOwnerView;
 struct EquivalentOwnerConstView;
 struct EquivalentOwnerLayoutColumns {
     template <typename T>
-    using ColLayout = ioj::native_soa::ColumnLayout<T>;
-
-    ioj::native_soa::ColumnLayoutStart LayoutStart{};
-
+    using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
     ColLayout<float> XsColumn;
     ColLayout<float> YsColumn;
 
-    constexpr EquivalentOwnerLayoutColumns() noexcept
-        : XsColumn{LayoutStart}
+    constexpr explicit EquivalentOwnerLayoutColumns(
+        ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
+        : XsColumn{previous}
         , YsColumn{XsColumn} {}
+    constexpr auto last_column() const noexcept
+        -> ioj::single_allocation_layout::ColumnLayoutBase const& {
+        return YsColumn;
+    }
     EquivalentOwnerLayoutColumns(EquivalentOwnerLayoutColumns const&) = delete;
     auto operator=(EquivalentOwnerLayoutColumns const&) -> EquivalentOwnerLayoutColumns& = delete;
 };
-struct EquivalentOwnerLayout {
-    using size_type = std::uint32_t;
-    using byte_size_type = std::size_t;
-
-    static constexpr size_type capacity_granularity{
-        ioj::native_soa::LayoutPolicy::capacity_granularity};
-    static constexpr byte_size_type column_gap{ioj::native_soa::LayoutPolicy::column_gap};
-
-    static constexpr EquivalentOwnerLayoutColumns columns{};
-
-    static constexpr byte_size_type allocation_alignment{columns.YsColumn.allocation_alignment};
-
-    // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
-    // capacity.
-    static constexpr byte_size_type capacity_block_bound{
-        ioj::native_soa::capacity_block_bound(columns.YsColumn)};
-    static constexpr size_type max_capacity{
-        ioj::native_soa::maximum_capacity(capacity_block_bound)};
-    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return blocks == 0 ? 0 : columns.YsColumn.data_end(blocks);
-    }
-    static_assert(max_capacity >= capacity_granularity);
-};
+struct EquivalentOwnerLayout
+    : ioj::single_allocation_layout::Layout<EquivalentOwnerLayoutColumns> {};
 
 struct EquivalentOwnerResolvedView;
 struct EquivalentOwnerResolvedConstView;
@@ -4486,8 +4267,8 @@ struct EquivalentOwnerViewImpl : ioj::soa_storage_detail::CompactViewBase<Const>
     }
     auto resolve() const -> std::
         conditional_t<Const, EquivalentOwnerResolvedConstView, EquivalentOwnerResolvedView> {
-        return {(this->column(Layout::columns.XsColumn).data()),
-                (this->column(Layout::columns.YsColumn).data()),
+        return {this->column(Layout::columns.XsColumn).data(),
+                this->column(Layout::columns.YsColumn).data(),
                 this->count_};
     }
 };
@@ -4711,44 +4492,24 @@ struct AccessorOwnerView;
 struct AccessorOwnerConstView;
 struct AccessorOwnerLayoutColumns {
     template <typename T>
-    using ColLayout = ioj::native_soa::ColumnLayout<T>;
-
-    ioj::native_soa::ColumnLayoutStart LayoutStart{};
-
+    using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
     ColLayout<float> HorizontalColumn;
     ColLayout<float> VerticalColumn;
     ColLayout<float> DepthColumn;
 
-    constexpr AccessorOwnerLayoutColumns() noexcept
-        : HorizontalColumn{LayoutStart}
+    constexpr explicit AccessorOwnerLayoutColumns(
+        ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
+        : HorizontalColumn{previous}
         , VerticalColumn{HorizontalColumn}
         , DepthColumn{VerticalColumn} {}
+    constexpr auto last_column() const noexcept
+        -> ioj::single_allocation_layout::ColumnLayoutBase const& {
+        return DepthColumn;
+    }
     AccessorOwnerLayoutColumns(AccessorOwnerLayoutColumns const&) = delete;
     auto operator=(AccessorOwnerLayoutColumns const&) -> AccessorOwnerLayoutColumns& = delete;
 };
-struct AccessorOwnerLayout {
-    using size_type = std::uint32_t;
-    using byte_size_type = std::size_t;
-
-    static constexpr size_type capacity_granularity{
-        ioj::native_soa::LayoutPolicy::capacity_granularity};
-    static constexpr byte_size_type column_gap{ioj::native_soa::LayoutPolicy::column_gap};
-
-    static constexpr AccessorOwnerLayoutColumns columns{};
-
-    static constexpr byte_size_type allocation_alignment{columns.DepthColumn.allocation_alignment};
-
-    // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
-    // capacity.
-    static constexpr byte_size_type capacity_block_bound{
-        ioj::native_soa::capacity_block_bound(columns.DepthColumn)};
-    static constexpr size_type max_capacity{
-        ioj::native_soa::maximum_capacity(capacity_block_bound)};
-    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return blocks == 0 ? 0 : columns.DepthColumn.data_end(blocks);
-    }
-    static_assert(max_capacity >= capacity_granularity);
-};
+struct AccessorOwnerLayout : ioj::single_allocation_layout::Layout<AccessorOwnerLayoutColumns> {};
 
 struct AccessorOwnerResolvedView;
 struct AccessorOwnerResolvedConstView;
@@ -4886,9 +4647,9 @@ struct AccessorOwnerViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     }
     auto resolve() const
         -> std::conditional_t<Const, AccessorOwnerResolvedConstView, AccessorOwnerResolvedView> {
-        return {(this->column(Layout::columns.HorizontalColumn).data()),
-                (this->column(Layout::columns.VerticalColumn).data()),
-                (this->column(Layout::columns.DepthColumn).data()),
+        return {this->column(Layout::columns.HorizontalColumn).data(),
+                this->column(Layout::columns.VerticalColumn).data(),
+                this->column(Layout::columns.DepthColumn).data(),
                 this->count_};
     }
 };

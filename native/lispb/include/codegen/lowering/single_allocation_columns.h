@@ -11,7 +11,6 @@ struct SingleAllocationColumns {
     auto index(SingleAllocationColumnId id) const -> std::uint32_t;
     void clear();
     std::vector<StringId> flattened_identifier;
-    std::vector<StringId> layout_identifier;
     std::vector<CppTypeId> type;
     std::vector<LoweringPathId> member_path;
 };

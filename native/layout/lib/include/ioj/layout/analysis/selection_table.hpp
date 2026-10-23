@@ -7,6 +7,7 @@
 #include "ioj/layout/analysis/region_footprint.hpp"
 #include "ioj/layout/analyzer/access_operation.hpp"
 #include "ioj/native_soa/storage.h"
+#include "ioj/single_allocation/layout.h"
 #include "ioj/soa_permutation.h"
 
 #include <cassert>
@@ -21,10 +22,7 @@ struct SelectionTableView;
 struct SelectionTableConstView;
 struct SelectionTableLayoutColumns {
     template <typename T>
-    using ColLayout = ioj::native_soa::ColumnLayout<T>;
-
-    ioj::native_soa::ColumnLayoutStart LayoutStart{};
-
+    using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
     ColLayout<std::size_t> SourceColumn;
     ColLayout<AccessOperation> OperationColumn;
     ColLayout<PayloadFootprint> BytesColumn;
@@ -33,41 +31,23 @@ struct SelectionTableLayoutColumns {
     ColLayout<RegionFootprint> PagesColumn;
     ColLayout<std::optional<std::uint64_t>> CapacitySlackBytesColumn;
 
-    constexpr SelectionTableLayoutColumns() noexcept
-        : SourceColumn{LayoutStart}
+    constexpr explicit SelectionTableLayoutColumns(
+        ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
+        : SourceColumn{previous}
         , OperationColumn{SourceColumn}
         , BytesColumn{OperationColumn}
         , BitsColumn{BytesColumn}
         , CacheColumn{BitsColumn}
         , PagesColumn{CacheColumn}
         , CapacitySlackBytesColumn{PagesColumn} {}
+    constexpr auto last_column() const noexcept
+        -> ioj::single_allocation_layout::ColumnLayoutBase const& {
+        return CapacitySlackBytesColumn;
+    }
     SelectionTableLayoutColumns(SelectionTableLayoutColumns const&) = delete;
     auto operator=(SelectionTableLayoutColumns const&) -> SelectionTableLayoutColumns& = delete;
 };
-struct SelectionTableLayout {
-    using size_type = std::uint32_t;
-    using byte_size_type = std::size_t;
-
-    static constexpr size_type capacity_granularity{
-        ioj::native_soa::LayoutPolicy::capacity_granularity};
-    static constexpr byte_size_type column_gap{ioj::native_soa::LayoutPolicy::column_gap};
-
-    static constexpr SelectionTableLayoutColumns columns{};
-
-    static constexpr byte_size_type allocation_alignment{
-        columns.CapacitySlackBytesColumn.allocation_alignment};
-
-    // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
-    // capacity.
-    static constexpr byte_size_type capacity_block_bound{
-        ioj::native_soa::capacity_block_bound(columns.CapacitySlackBytesColumn)};
-    static constexpr size_type max_capacity{
-        ioj::native_soa::maximum_capacity(capacity_block_bound)};
-    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return blocks == 0 ? 0 : columns.CapacitySlackBytesColumn.data_end(blocks);
-    }
-    static_assert(max_capacity >= capacity_granularity);
-};
+struct SelectionTableLayout : ioj::single_allocation_layout::Layout<SelectionTableLayoutColumns> {};
 
 struct SelectionTableResolvedView;
 struct SelectionTableResolvedConstView;
@@ -269,13 +249,13 @@ struct SelectionTableViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> 
     }
     auto resolve() const
         -> std::conditional_t<Const, SelectionTableResolvedConstView, SelectionTableResolvedView> {
-        return {(this->column(Layout::columns.SourceColumn).data()),
-                (this->column(Layout::columns.OperationColumn).data()),
-                (this->column(Layout::columns.BytesColumn).data()),
-                (this->column(Layout::columns.BitsColumn).data()),
-                (this->column(Layout::columns.CacheColumn).data()),
-                (this->column(Layout::columns.PagesColumn).data()),
-                (this->column(Layout::columns.CapacitySlackBytesColumn).data()),
+        return {this->column(Layout::columns.SourceColumn).data(),
+                this->column(Layout::columns.OperationColumn).data(),
+                this->column(Layout::columns.BytesColumn).data(),
+                this->column(Layout::columns.BitsColumn).data(),
+                this->column(Layout::columns.CacheColumn).data(),
+                this->column(Layout::columns.PagesColumn).data(),
+                this->column(Layout::columns.CapacitySlackBytesColumn).data(),
                 this->count_};
     }
 };

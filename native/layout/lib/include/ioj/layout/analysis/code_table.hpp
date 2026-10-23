@@ -5,6 +5,7 @@
 
 #include "ioj/layout/analyzer/enum_code_value.hpp"
 #include "ioj/native_soa/storage.h"
+#include "ioj/single_allocation/layout.h"
 #include "ioj/soa_permutation.h"
 
 #include "codegen/schema/packed_integer_value.h"
@@ -22,49 +23,28 @@ struct CodeTableView;
 struct CodeTableConstView;
 struct CodeTableLayoutColumns {
     template <typename T>
-    using ColLayout = ioj::native_soa::ColumnLayout<T>;
-
-    ioj::native_soa::ColumnLayoutStart LayoutStart{};
-
+    using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
     ColLayout<std::string_view> NameColumn;
     ColLayout<std::uint8_t> SentinelColumn;
     ColLayout<std::uint8_t> CountSentinelColumn;
     ColLayout<std::optional<ioj::layout::EnumCodeValue>> CodeColumn;
     ColLayout<std::optional<lispb::codegen::PackedIntegerValue>> IntegerValueColumn;
 
-    constexpr CodeTableLayoutColumns() noexcept
-        : NameColumn{LayoutStart}
+    constexpr explicit CodeTableLayoutColumns(
+        ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
+        : NameColumn{previous}
         , SentinelColumn{NameColumn}
         , CountSentinelColumn{SentinelColumn}
         , CodeColumn{CountSentinelColumn}
         , IntegerValueColumn{CodeColumn} {}
+    constexpr auto last_column() const noexcept
+        -> ioj::single_allocation_layout::ColumnLayoutBase const& {
+        return IntegerValueColumn;
+    }
     CodeTableLayoutColumns(CodeTableLayoutColumns const&) = delete;
     auto operator=(CodeTableLayoutColumns const&) -> CodeTableLayoutColumns& = delete;
 };
-struct CodeTableLayout {
-    using size_type = std::uint32_t;
-    using byte_size_type = std::size_t;
-
-    static constexpr size_type capacity_granularity{
-        ioj::native_soa::LayoutPolicy::capacity_granularity};
-    static constexpr byte_size_type column_gap{ioj::native_soa::LayoutPolicy::column_gap};
-
-    static constexpr CodeTableLayoutColumns columns{};
-
-    static constexpr byte_size_type allocation_alignment{
-        columns.IntegerValueColumn.allocation_alignment};
-
-    // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
-    // capacity.
-    static constexpr byte_size_type capacity_block_bound{
-        ioj::native_soa::capacity_block_bound(columns.IntegerValueColumn)};
-    static constexpr size_type max_capacity{
-        ioj::native_soa::maximum_capacity(capacity_block_bound)};
-    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return blocks == 0 ? 0 : columns.IntegerValueColumn.data_end(blocks);
-    }
-    static_assert(max_capacity >= capacity_granularity);
-};
+struct CodeTableLayout : ioj::single_allocation_layout::Layout<CodeTableLayoutColumns> {};
 
 struct CodeTableResolvedView;
 struct CodeTableResolvedConstView;
@@ -231,11 +211,11 @@ struct CodeTableViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     }
     auto resolve() const
         -> std::conditional_t<Const, CodeTableResolvedConstView, CodeTableResolvedView> {
-        return {(this->column(Layout::columns.NameColumn).data()),
-                (this->column(Layout::columns.SentinelColumn).data()),
-                (this->column(Layout::columns.CountSentinelColumn).data()),
-                (this->column(Layout::columns.CodeColumn).data()),
-                (this->column(Layout::columns.IntegerValueColumn).data()),
+        return {this->column(Layout::columns.NameColumn).data(),
+                this->column(Layout::columns.SentinelColumn).data(),
+                this->column(Layout::columns.CountSentinelColumn).data(),
+                this->column(Layout::columns.CodeColumn).data(),
+                this->column(Layout::columns.IntegerValueColumn).data(),
                 this->count_};
     }
 };

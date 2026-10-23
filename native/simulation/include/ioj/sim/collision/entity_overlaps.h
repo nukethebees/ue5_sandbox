@@ -6,6 +6,7 @@
 #include "ioj/native_soa/storage.h"
 #include "ioj/sim/collision/collision_types.h"
 #include "ioj/sim/entities/entity_id.h"
+#include "ioj/single_allocation/layout.h"
 #include "ioj/soa_permutation.h"
 
 #include <cassert>
@@ -17,44 +18,24 @@ struct EntityEntityOverlapsView;
 struct EntityEntityOverlapsConstView;
 struct EntityEntityOverlapsLayoutColumns {
     template <typename T>
-    using ColLayout = ioj::native_soa::ColumnLayout<T>;
-
-    ioj::native_soa::ColumnLayoutStart LayoutStart{};
-
+    using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
     ColLayout<EntityId> FirstEntitiesColumn;
     ColLayout<EntityId> SecondEntitiesColumn;
 
-    constexpr EntityEntityOverlapsLayoutColumns() noexcept
-        : FirstEntitiesColumn{LayoutStart}
+    constexpr explicit EntityEntityOverlapsLayoutColumns(
+        ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
+        : FirstEntitiesColumn{previous}
         , SecondEntitiesColumn{FirstEntitiesColumn} {}
+    constexpr auto last_column() const noexcept
+        -> ioj::single_allocation_layout::ColumnLayoutBase const& {
+        return SecondEntitiesColumn;
+    }
     EntityEntityOverlapsLayoutColumns(EntityEntityOverlapsLayoutColumns const&) = delete;
     auto operator=(EntityEntityOverlapsLayoutColumns const&)
         -> EntityEntityOverlapsLayoutColumns& = delete;
 };
-struct EntityEntityOverlapsLayout {
-    using size_type = std::uint32_t;
-    using byte_size_type = std::size_t;
-
-    static constexpr size_type capacity_granularity{
-        ioj::native_soa::LayoutPolicy::capacity_granularity};
-    static constexpr byte_size_type column_gap{ioj::native_soa::LayoutPolicy::column_gap};
-
-    static constexpr EntityEntityOverlapsLayoutColumns columns{};
-
-    static constexpr byte_size_type allocation_alignment{
-        columns.SecondEntitiesColumn.allocation_alignment};
-
-    // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
-    // capacity.
-    static constexpr byte_size_type capacity_block_bound{
-        ioj::native_soa::capacity_block_bound(columns.SecondEntitiesColumn)};
-    static constexpr size_type max_capacity{
-        ioj::native_soa::maximum_capacity(capacity_block_bound)};
-    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return blocks == 0 ? 0 : columns.SecondEntitiesColumn.data_end(blocks);
-    }
-    static_assert(max_capacity >= capacity_granularity);
-};
+struct EntityEntityOverlapsLayout
+    : ioj::single_allocation_layout::Layout<EntityEntityOverlapsLayoutColumns> {};
 
 struct EntityEntityOverlapsResolvedView;
 struct EntityEntityOverlapsResolvedConstView;
@@ -172,8 +153,8 @@ struct EntityEntityOverlapsViewImpl : ioj::soa_storage_detail::CompactViewBase<C
     auto resolve() const -> std::conditional_t<Const,
                                                EntityEntityOverlapsResolvedConstView,
                                                EntityEntityOverlapsResolvedView> {
-        return {(this->column(Layout::columns.FirstEntitiesColumn).data()),
-                (this->column(Layout::columns.SecondEntitiesColumn).data()),
+        return {this->column(Layout::columns.FirstEntitiesColumn).data(),
+                this->column(Layout::columns.SecondEntitiesColumn).data(),
                 this->count_};
     }
 };
@@ -379,44 +360,24 @@ struct EntityStaticOverlapsView;
 struct EntityStaticOverlapsConstView;
 struct EntityStaticOverlapsLayoutColumns {
     template <typename T>
-    using ColLayout = ioj::native_soa::ColumnLayout<T>;
-
-    ioj::native_soa::ColumnLayoutStart LayoutStart{};
-
+    using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
     ColLayout<EntityId> EntitiesColumn;
     ColLayout<StaticGeometryIndex> StaticGeometryIndicesColumn;
 
-    constexpr EntityStaticOverlapsLayoutColumns() noexcept
-        : EntitiesColumn{LayoutStart}
+    constexpr explicit EntityStaticOverlapsLayoutColumns(
+        ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
+        : EntitiesColumn{previous}
         , StaticGeometryIndicesColumn{EntitiesColumn} {}
+    constexpr auto last_column() const noexcept
+        -> ioj::single_allocation_layout::ColumnLayoutBase const& {
+        return StaticGeometryIndicesColumn;
+    }
     EntityStaticOverlapsLayoutColumns(EntityStaticOverlapsLayoutColumns const&) = delete;
     auto operator=(EntityStaticOverlapsLayoutColumns const&)
         -> EntityStaticOverlapsLayoutColumns& = delete;
 };
-struct EntityStaticOverlapsLayout {
-    using size_type = std::uint32_t;
-    using byte_size_type = std::size_t;
-
-    static constexpr size_type capacity_granularity{
-        ioj::native_soa::LayoutPolicy::capacity_granularity};
-    static constexpr byte_size_type column_gap{ioj::native_soa::LayoutPolicy::column_gap};
-
-    static constexpr EntityStaticOverlapsLayoutColumns columns{};
-
-    static constexpr byte_size_type allocation_alignment{
-        columns.StaticGeometryIndicesColumn.allocation_alignment};
-
-    // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
-    // capacity.
-    static constexpr byte_size_type capacity_block_bound{
-        ioj::native_soa::capacity_block_bound(columns.StaticGeometryIndicesColumn)};
-    static constexpr size_type max_capacity{
-        ioj::native_soa::maximum_capacity(capacity_block_bound)};
-    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return blocks == 0 ? 0 : columns.StaticGeometryIndicesColumn.data_end(blocks);
-    }
-    static_assert(max_capacity >= capacity_granularity);
-};
+struct EntityStaticOverlapsLayout
+    : ioj::single_allocation_layout::Layout<EntityStaticOverlapsLayoutColumns> {};
 
 struct EntityStaticOverlapsResolvedView;
 struct EntityStaticOverlapsResolvedConstView;
@@ -540,8 +501,8 @@ struct EntityStaticOverlapsViewImpl : ioj::soa_storage_detail::CompactViewBase<C
     auto resolve() const -> std::conditional_t<Const,
                                                EntityStaticOverlapsResolvedConstView,
                                                EntityStaticOverlapsResolvedView> {
-        return {(this->column(Layout::columns.EntitiesColumn).data()),
-                (this->column(Layout::columns.StaticGeometryIndicesColumn).data()),
+        return {this->column(Layout::columns.EntitiesColumn).data(),
+                this->column(Layout::columns.StaticGeometryIndicesColumn).data(),
                 this->count_};
     }
 };

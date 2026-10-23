@@ -9,6 +9,7 @@
 #include "ioj/sim/entities/entity_id.h"
 #include "ioj/sim/fighters/fighter_navigation_types.h"
 #include "ioj/sim/fighters/fighter_task_format.h"
+#include "ioj/single_allocation/layout.h"
 #include "ioj/soa_permutation.h"
 #include "ioj/vectors3f.h"
 
@@ -22,35 +23,18 @@ struct FighterEntityDataView;
 struct FighterEntityDataConstView;
 struct FighterEntityDataLayoutColumns {
     template <typename T>
-    using ColLayout = ioj::native_soa::ColumnLayout<T>;
-
-    ioj::native_soa::ColumnLayoutStart LayoutStart{};
-
+    using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
     ColLayout<EntityId> EntityIdsColumn;
     ColLayout<std::uint32_t> IntegralBiasesColumn;
     ColLayout<float> FloatBiasesColumn;
     ColLayout<FighterTask> TasksColumn;
-    ColLayout<float> LocationsXsColumn;
-    ColLayout<float> LocationsYsColumn;
-    ColLayout<float> LocationsZsColumn;
-    ColLayout<float> DesiredMoveLocationsXsColumn;
-    ColLayout<float> DesiredMoveLocationsYsColumn;
-    ColLayout<float> DesiredMoveLocationsZsColumn;
-    ColLayout<float> AimDirectionsXsColumn;
-    ColLayout<float> AimDirectionsYsColumn;
-    ColLayout<float> AimDirectionsZsColumn;
-    ColLayout<float> PlannedAimDirectionsXsColumn;
-    ColLayout<float> PlannedAimDirectionsYsColumn;
-    ColLayout<float> PlannedAimDirectionsZsColumn;
-    ColLayout<float> DesiredAimingDirectionsXsColumn;
-    ColLayout<float> DesiredAimingDirectionsYsColumn;
-    ColLayout<float> DesiredAimingDirectionsZsColumn;
-    ColLayout<float> MovementDirectionsXsColumn;
-    ColLayout<float> MovementDirectionsYsColumn;
-    ColLayout<float> MovementDirectionsZsColumn;
-    ColLayout<float> VelocitiesXsColumn;
-    ColLayout<float> VelocitiesYsColumn;
-    ColLayout<float> VelocitiesZsColumn;
+    ::ioj::Vectors3fLayoutColumns Locations;
+    ::ioj::Vectors3fLayoutColumns DesiredMoveLocations;
+    ::ioj::Vectors3fLayoutColumns AimDirections;
+    ::ioj::Vectors3fLayoutColumns PlannedAimDirections;
+    ::ioj::Vectors3fLayoutColumns DesiredAimingDirections;
+    ::ioj::Vectors3fLayoutColumns MovementDirections;
+    ::ioj::Vectors3fLayoutColumns Velocities;
     ColLayout<float> MoveDistancesColumn;
     ColLayout<float> SpeedsColumn;
     ColLayout<::ioj::Team> TeamsColumn;
@@ -58,9 +42,7 @@ struct FighterEntityDataLayoutColumns {
     ColLayout<std::int8_t> AwarenessScanCountdownsColumn;
     ColLayout<std::int16_t> NavigationUpdateCountdownsRemainingTicksColumn;
     ColLayout<std::int16_t> NavigationUpdateCountdownsPeriodsColumn;
-    ColLayout<float> SeparationSteeringXsColumn;
-    ColLayout<float> SeparationSteeringYsColumn;
-    ColLayout<float> SeparationSteeringZsColumn;
+    ::ioj::Vectors3fLayoutColumns SeparationSteering;
     ColLayout<fighters::NavigationRiskCode> NavigationRiskTiersColumn;
     ColLayout<fighters::NavigationScanCount> NavigationLowerRiskScanCountsColumn;
     ColLayout<fighters::AvoidanceChoice> AvoidanceChoiceIndicesColumn;
@@ -68,104 +50,59 @@ struct FighterEntityDataLayoutColumns {
     ColLayout<std::int16_t> AttackRepositionCountdownsColumn;
     ColLayout<std::int16_t> AttackCooldownsColumn;
     ColLayout<EntityId> TargetIdsColumn;
-    ColLayout<float> TargetLocationsXsColumn;
-    ColLayout<float> TargetLocationsYsColumn;
-    ColLayout<float> TargetLocationsZsColumn;
-    ColLayout<float> TargetVelocitiesXsColumn;
-    ColLayout<float> TargetVelocitiesYsColumn;
-    ColLayout<float> TargetVelocitiesZsColumn;
-    ColLayout<float> TargetDirectionsXsColumn;
-    ColLayout<float> TargetDirectionsYsColumn;
-    ColLayout<float> TargetDirectionsZsColumn;
+    ::ioj::Vectors3fLayoutColumns TargetLocations;
+    ::ioj::Vectors3fLayoutColumns TargetVelocities;
+    ::ioj::Vectors3fLayoutColumns TargetDirections;
     ColLayout<float> InterceptTimesColumn;
     ColLayout<float> TargetDistanceSqColumn;
     ColLayout<float> TargetDistancesColumn;
     ColLayout<float> TargetRadiiColumn;
 
-    constexpr FighterEntityDataLayoutColumns() noexcept
-        : EntityIdsColumn{LayoutStart}
+    constexpr explicit FighterEntityDataLayoutColumns(
+        ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
+        : EntityIdsColumn{previous}
         , IntegralBiasesColumn{EntityIdsColumn}
         , FloatBiasesColumn{IntegralBiasesColumn}
         , TasksColumn{FloatBiasesColumn}
-        , LocationsXsColumn{TasksColumn}
-        , LocationsYsColumn{LocationsXsColumn}
-        , LocationsZsColumn{LocationsYsColumn}
-        , DesiredMoveLocationsXsColumn{LocationsZsColumn}
-        , DesiredMoveLocationsYsColumn{DesiredMoveLocationsXsColumn}
-        , DesiredMoveLocationsZsColumn{DesiredMoveLocationsYsColumn}
-        , AimDirectionsXsColumn{DesiredMoveLocationsZsColumn}
-        , AimDirectionsYsColumn{AimDirectionsXsColumn}
-        , AimDirectionsZsColumn{AimDirectionsYsColumn}
-        , PlannedAimDirectionsXsColumn{AimDirectionsZsColumn}
-        , PlannedAimDirectionsYsColumn{PlannedAimDirectionsXsColumn}
-        , PlannedAimDirectionsZsColumn{PlannedAimDirectionsYsColumn}
-        , DesiredAimingDirectionsXsColumn{PlannedAimDirectionsZsColumn}
-        , DesiredAimingDirectionsYsColumn{DesiredAimingDirectionsXsColumn}
-        , DesiredAimingDirectionsZsColumn{DesiredAimingDirectionsYsColumn}
-        , MovementDirectionsXsColumn{DesiredAimingDirectionsZsColumn}
-        , MovementDirectionsYsColumn{MovementDirectionsXsColumn}
-        , MovementDirectionsZsColumn{MovementDirectionsYsColumn}
-        , VelocitiesXsColumn{MovementDirectionsZsColumn}
-        , VelocitiesYsColumn{VelocitiesXsColumn}
-        , VelocitiesZsColumn{VelocitiesYsColumn}
-        , MoveDistancesColumn{VelocitiesZsColumn}
+        , Locations{TasksColumn}
+        , DesiredMoveLocations{Locations.last_column()}
+        , AimDirections{DesiredMoveLocations.last_column()}
+        , PlannedAimDirections{AimDirections.last_column()}
+        , DesiredAimingDirections{PlannedAimDirections.last_column()}
+        , MovementDirections{DesiredAimingDirections.last_column()}
+        , Velocities{MovementDirections.last_column()}
+        , MoveDistancesColumn{Velocities.last_column()}
         , SpeedsColumn{MoveDistancesColumn}
         , TeamsColumn{SpeedsColumn}
         , ParentIdsColumn{TeamsColumn}
         , AwarenessScanCountdownsColumn{ParentIdsColumn}
         , NavigationUpdateCountdownsRemainingTicksColumn{AwarenessScanCountdownsColumn}
         , NavigationUpdateCountdownsPeriodsColumn{NavigationUpdateCountdownsRemainingTicksColumn}
-        , SeparationSteeringXsColumn{NavigationUpdateCountdownsPeriodsColumn}
-        , SeparationSteeringYsColumn{SeparationSteeringXsColumn}
-        , SeparationSteeringZsColumn{SeparationSteeringYsColumn}
-        , NavigationRiskTiersColumn{SeparationSteeringZsColumn}
+        , SeparationSteering{NavigationUpdateCountdownsPeriodsColumn}
+        , NavigationRiskTiersColumn{SeparationSteering.last_column()}
         , NavigationLowerRiskScanCountsColumn{NavigationRiskTiersColumn}
         , AvoidanceChoiceIndicesColumn{NavigationLowerRiskScanCountsColumn}
         , AvoidanceClearScanCountsColumn{AvoidanceChoiceIndicesColumn}
         , AttackRepositionCountdownsColumn{AvoidanceClearScanCountsColumn}
         , AttackCooldownsColumn{AttackRepositionCountdownsColumn}
         , TargetIdsColumn{AttackCooldownsColumn}
-        , TargetLocationsXsColumn{TargetIdsColumn}
-        , TargetLocationsYsColumn{TargetLocationsXsColumn}
-        , TargetLocationsZsColumn{TargetLocationsYsColumn}
-        , TargetVelocitiesXsColumn{TargetLocationsZsColumn}
-        , TargetVelocitiesYsColumn{TargetVelocitiesXsColumn}
-        , TargetVelocitiesZsColumn{TargetVelocitiesYsColumn}
-        , TargetDirectionsXsColumn{TargetVelocitiesZsColumn}
-        , TargetDirectionsYsColumn{TargetDirectionsXsColumn}
-        , TargetDirectionsZsColumn{TargetDirectionsYsColumn}
-        , InterceptTimesColumn{TargetDirectionsZsColumn}
+        , TargetLocations{TargetIdsColumn}
+        , TargetVelocities{TargetLocations.last_column()}
+        , TargetDirections{TargetVelocities.last_column()}
+        , InterceptTimesColumn{TargetDirections.last_column()}
         , TargetDistanceSqColumn{InterceptTimesColumn}
         , TargetDistancesColumn{TargetDistanceSqColumn}
         , TargetRadiiColumn{TargetDistancesColumn} {}
+    constexpr auto last_column() const noexcept
+        -> ioj::single_allocation_layout::ColumnLayoutBase const& {
+        return TargetRadiiColumn;
+    }
     FighterEntityDataLayoutColumns(FighterEntityDataLayoutColumns const&) = delete;
     auto operator=(FighterEntityDataLayoutColumns const&)
         -> FighterEntityDataLayoutColumns& = delete;
 };
-struct FighterEntityDataLayout {
-    using size_type = std::uint32_t;
-    using byte_size_type = std::size_t;
-
-    static constexpr size_type capacity_granularity{
-        ioj::native_soa::LayoutPolicy::capacity_granularity};
-    static constexpr byte_size_type column_gap{ioj::native_soa::LayoutPolicy::column_gap};
-
-    static constexpr FighterEntityDataLayoutColumns columns{};
-
-    static constexpr byte_size_type allocation_alignment{
-        columns.TargetRadiiColumn.allocation_alignment};
-
-    // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
-    // capacity.
-    static constexpr byte_size_type capacity_block_bound{
-        ioj::native_soa::capacity_block_bound(columns.TargetRadiiColumn)};
-    static constexpr size_type max_capacity{
-        ioj::native_soa::maximum_capacity(capacity_block_bound)};
-    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return blocks == 0 ? 0 : columns.TargetRadiiColumn.data_end(blocks);
-    }
-    static_assert(max_capacity >= capacity_granularity);
-};
+struct FighterEntityDataLayout
+    : ioj::single_allocation_layout::Layout<FighterEntityDataLayoutColumns> {};
 struct FighterEntityDataResolvedView;
 struct FighterEntityDataResolvedConstView;
 template <bool Const>
@@ -1179,9 +1116,9 @@ struct FighterEntityDataView_locationsImpl : ioj::soa_storage_detail::CompactVie
     FighterEntityDataView_locationsImpl(FighterEntityDataView_locationsImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto xs() const { return this->column(Layout::columns.LocationsXsColumn); }
-    auto ys() const { return this->column(Layout::columns.LocationsYsColumn); }
-    auto zs() const { return this->column(Layout::columns.LocationsZsColumn); }
+    auto xs() const { return this->column(Layout::columns.Locations.XsColumn); }
+    auto ys() const { return this->column(Layout::columns.Locations.YsColumn); }
+    auto zs() const { return this->column(Layout::columns.Locations.ZsColumn); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(xs());
@@ -1190,9 +1127,9 @@ struct FighterEntityDataView_locationsImpl : ioj::soa_storage_detail::CompactVie
     }
     auto resolve() const -> std::
         conditional_t<Const, ::ioj::Vectors3fResolvedConstView, ::ioj::Vectors3fResolvedView> {
-        return {(this->column(Layout::columns.LocationsXsColumn).data()),
-                (this->column(Layout::columns.LocationsYsColumn).data()),
-                (this->column(Layout::columns.LocationsZsColumn).data()),
+        return {this->column(Layout::columns.Locations.XsColumn).data(),
+                this->column(Layout::columns.Locations.YsColumn).data(),
+                this->column(Layout::columns.Locations.ZsColumn).data(),
                 this->count_};
     }
 };
@@ -1242,9 +1179,9 @@ struct FighterEntityDataView_desired_move_locationsImpl
         FighterEntityDataView_desired_move_locationsImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto xs() const { return this->column(Layout::columns.DesiredMoveLocationsXsColumn); }
-    auto ys() const { return this->column(Layout::columns.DesiredMoveLocationsYsColumn); }
-    auto zs() const { return this->column(Layout::columns.DesiredMoveLocationsZsColumn); }
+    auto xs() const { return this->column(Layout::columns.DesiredMoveLocations.XsColumn); }
+    auto ys() const { return this->column(Layout::columns.DesiredMoveLocations.YsColumn); }
+    auto zs() const { return this->column(Layout::columns.DesiredMoveLocations.ZsColumn); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(xs());
@@ -1253,9 +1190,9 @@ struct FighterEntityDataView_desired_move_locationsImpl
     }
     auto resolve() const -> std::
         conditional_t<Const, ::ioj::Vectors3fResolvedConstView, ::ioj::Vectors3fResolvedView> {
-        return {(this->column(Layout::columns.DesiredMoveLocationsXsColumn).data()),
-                (this->column(Layout::columns.DesiredMoveLocationsYsColumn).data()),
-                (this->column(Layout::columns.DesiredMoveLocationsZsColumn).data()),
+        return {this->column(Layout::columns.DesiredMoveLocations.XsColumn).data(),
+                this->column(Layout::columns.DesiredMoveLocations.YsColumn).data(),
+                this->column(Layout::columns.DesiredMoveLocations.ZsColumn).data(),
                 this->count_};
     }
 };
@@ -1307,9 +1244,9 @@ struct FighterEntityDataView_aim_directionsImpl : ioj::soa_storage_detail::Compa
         FighterEntityDataView_aim_directionsImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto xs() const { return this->column(Layout::columns.AimDirectionsXsColumn); }
-    auto ys() const { return this->column(Layout::columns.AimDirectionsYsColumn); }
-    auto zs() const { return this->column(Layout::columns.AimDirectionsZsColumn); }
+    auto xs() const { return this->column(Layout::columns.AimDirections.XsColumn); }
+    auto ys() const { return this->column(Layout::columns.AimDirections.YsColumn); }
+    auto zs() const { return this->column(Layout::columns.AimDirections.ZsColumn); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(xs());
@@ -1318,9 +1255,9 @@ struct FighterEntityDataView_aim_directionsImpl : ioj::soa_storage_detail::Compa
     }
     auto resolve() const -> std::
         conditional_t<Const, ::ioj::Vectors3fResolvedConstView, ::ioj::Vectors3fResolvedView> {
-        return {(this->column(Layout::columns.AimDirectionsXsColumn).data()),
-                (this->column(Layout::columns.AimDirectionsYsColumn).data()),
-                (this->column(Layout::columns.AimDirectionsZsColumn).data()),
+        return {this->column(Layout::columns.AimDirections.XsColumn).data(),
+                this->column(Layout::columns.AimDirections.YsColumn).data(),
+                this->column(Layout::columns.AimDirections.ZsColumn).data(),
                 this->count_};
     }
 };
@@ -1371,9 +1308,9 @@ struct FighterEntityDataView_planned_aim_directionsImpl
         FighterEntityDataView_planned_aim_directionsImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto xs() const { return this->column(Layout::columns.PlannedAimDirectionsXsColumn); }
-    auto ys() const { return this->column(Layout::columns.PlannedAimDirectionsYsColumn); }
-    auto zs() const { return this->column(Layout::columns.PlannedAimDirectionsZsColumn); }
+    auto xs() const { return this->column(Layout::columns.PlannedAimDirections.XsColumn); }
+    auto ys() const { return this->column(Layout::columns.PlannedAimDirections.YsColumn); }
+    auto zs() const { return this->column(Layout::columns.PlannedAimDirections.ZsColumn); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(xs());
@@ -1382,9 +1319,9 @@ struct FighterEntityDataView_planned_aim_directionsImpl
     }
     auto resolve() const -> std::
         conditional_t<Const, ::ioj::Vectors3fResolvedConstView, ::ioj::Vectors3fResolvedView> {
-        return {(this->column(Layout::columns.PlannedAimDirectionsXsColumn).data()),
-                (this->column(Layout::columns.PlannedAimDirectionsYsColumn).data()),
-                (this->column(Layout::columns.PlannedAimDirectionsZsColumn).data()),
+        return {this->column(Layout::columns.PlannedAimDirections.XsColumn).data(),
+                this->column(Layout::columns.PlannedAimDirections.YsColumn).data(),
+                this->column(Layout::columns.PlannedAimDirections.ZsColumn).data(),
                 this->count_};
     }
 };
@@ -1437,9 +1374,9 @@ struct FighterEntityDataView_desired_aiming_directionsImpl
         FighterEntityDataView_desired_aiming_directionsImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto xs() const { return this->column(Layout::columns.DesiredAimingDirectionsXsColumn); }
-    auto ys() const { return this->column(Layout::columns.DesiredAimingDirectionsYsColumn); }
-    auto zs() const { return this->column(Layout::columns.DesiredAimingDirectionsZsColumn); }
+    auto xs() const { return this->column(Layout::columns.DesiredAimingDirections.XsColumn); }
+    auto ys() const { return this->column(Layout::columns.DesiredAimingDirections.YsColumn); }
+    auto zs() const { return this->column(Layout::columns.DesiredAimingDirections.ZsColumn); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(xs());
@@ -1448,9 +1385,9 @@ struct FighterEntityDataView_desired_aiming_directionsImpl
     }
     auto resolve() const -> std::
         conditional_t<Const, ::ioj::Vectors3fResolvedConstView, ::ioj::Vectors3fResolvedView> {
-        return {(this->column(Layout::columns.DesiredAimingDirectionsXsColumn).data()),
-                (this->column(Layout::columns.DesiredAimingDirectionsYsColumn).data()),
-                (this->column(Layout::columns.DesiredAimingDirectionsZsColumn).data()),
+        return {this->column(Layout::columns.DesiredAimingDirections.XsColumn).data(),
+                this->column(Layout::columns.DesiredAimingDirections.YsColumn).data(),
+                this->column(Layout::columns.DesiredAimingDirections.ZsColumn).data(),
                 this->count_};
     }
 };
@@ -1503,9 +1440,9 @@ struct FighterEntityDataView_movement_directionsImpl
         FighterEntityDataView_movement_directionsImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto xs() const { return this->column(Layout::columns.MovementDirectionsXsColumn); }
-    auto ys() const { return this->column(Layout::columns.MovementDirectionsYsColumn); }
-    auto zs() const { return this->column(Layout::columns.MovementDirectionsZsColumn); }
+    auto xs() const { return this->column(Layout::columns.MovementDirections.XsColumn); }
+    auto ys() const { return this->column(Layout::columns.MovementDirections.YsColumn); }
+    auto zs() const { return this->column(Layout::columns.MovementDirections.ZsColumn); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(xs());
@@ -1514,9 +1451,9 @@ struct FighterEntityDataView_movement_directionsImpl
     }
     auto resolve() const -> std::
         conditional_t<Const, ::ioj::Vectors3fResolvedConstView, ::ioj::Vectors3fResolvedView> {
-        return {(this->column(Layout::columns.MovementDirectionsXsColumn).data()),
-                (this->column(Layout::columns.MovementDirectionsYsColumn).data()),
-                (this->column(Layout::columns.MovementDirectionsZsColumn).data()),
+        return {this->column(Layout::columns.MovementDirections.XsColumn).data(),
+                this->column(Layout::columns.MovementDirections.YsColumn).data(),
+                this->column(Layout::columns.MovementDirections.ZsColumn).data(),
                 this->count_};
     }
 };
@@ -1567,9 +1504,9 @@ struct FighterEntityDataView_velocitiesImpl : ioj::soa_storage_detail::CompactVi
     FighterEntityDataView_velocitiesImpl(FighterEntityDataView_velocitiesImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto xs() const { return this->column(Layout::columns.VelocitiesXsColumn); }
-    auto ys() const { return this->column(Layout::columns.VelocitiesYsColumn); }
-    auto zs() const { return this->column(Layout::columns.VelocitiesZsColumn); }
+    auto xs() const { return this->column(Layout::columns.Velocities.XsColumn); }
+    auto ys() const { return this->column(Layout::columns.Velocities.YsColumn); }
+    auto zs() const { return this->column(Layout::columns.Velocities.ZsColumn); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(xs());
@@ -1578,9 +1515,9 @@ struct FighterEntityDataView_velocitiesImpl : ioj::soa_storage_detail::CompactVi
     }
     auto resolve() const -> std::
         conditional_t<Const, ::ioj::Vectors3fResolvedConstView, ::ioj::Vectors3fResolvedView> {
-        return {(this->column(Layout::columns.VelocitiesXsColumn).data()),
-                (this->column(Layout::columns.VelocitiesYsColumn).data()),
-                (this->column(Layout::columns.VelocitiesZsColumn).data()),
+        return {this->column(Layout::columns.Velocities.XsColumn).data(),
+                this->column(Layout::columns.Velocities.YsColumn).data(),
+                this->column(Layout::columns.Velocities.ZsColumn).data(),
                 this->count_};
     }
 };
@@ -1630,9 +1567,9 @@ struct FighterEntityDataView_separation_steeringImpl
         FighterEntityDataView_separation_steeringImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto xs() const { return this->column(Layout::columns.SeparationSteeringXsColumn); }
-    auto ys() const { return this->column(Layout::columns.SeparationSteeringYsColumn); }
-    auto zs() const { return this->column(Layout::columns.SeparationSteeringZsColumn); }
+    auto xs() const { return this->column(Layout::columns.SeparationSteering.XsColumn); }
+    auto ys() const { return this->column(Layout::columns.SeparationSteering.YsColumn); }
+    auto zs() const { return this->column(Layout::columns.SeparationSteering.ZsColumn); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(xs());
@@ -1641,9 +1578,9 @@ struct FighterEntityDataView_separation_steeringImpl
     }
     auto resolve() const -> std::
         conditional_t<Const, ::ioj::Vectors3fResolvedConstView, ::ioj::Vectors3fResolvedView> {
-        return {(this->column(Layout::columns.SeparationSteeringXsColumn).data()),
-                (this->column(Layout::columns.SeparationSteeringYsColumn).data()),
-                (this->column(Layout::columns.SeparationSteeringZsColumn).data()),
+        return {this->column(Layout::columns.SeparationSteering.XsColumn).data(),
+                this->column(Layout::columns.SeparationSteering.YsColumn).data(),
+                this->column(Layout::columns.SeparationSteering.ZsColumn).data(),
                 this->count_};
     }
 };
@@ -1696,9 +1633,9 @@ struct FighterEntityDataView_target_locationsImpl
         FighterEntityDataView_target_locationsImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto xs() const { return this->column(Layout::columns.TargetLocationsXsColumn); }
-    auto ys() const { return this->column(Layout::columns.TargetLocationsYsColumn); }
-    auto zs() const { return this->column(Layout::columns.TargetLocationsZsColumn); }
+    auto xs() const { return this->column(Layout::columns.TargetLocations.XsColumn); }
+    auto ys() const { return this->column(Layout::columns.TargetLocations.YsColumn); }
+    auto zs() const { return this->column(Layout::columns.TargetLocations.ZsColumn); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(xs());
@@ -1707,9 +1644,9 @@ struct FighterEntityDataView_target_locationsImpl
     }
     auto resolve() const -> std::
         conditional_t<Const, ::ioj::Vectors3fResolvedConstView, ::ioj::Vectors3fResolvedView> {
-        return {(this->column(Layout::columns.TargetLocationsXsColumn).data()),
-                (this->column(Layout::columns.TargetLocationsYsColumn).data()),
-                (this->column(Layout::columns.TargetLocationsZsColumn).data()),
+        return {this->column(Layout::columns.TargetLocations.XsColumn).data(),
+                this->column(Layout::columns.TargetLocations.YsColumn).data(),
+                this->column(Layout::columns.TargetLocations.ZsColumn).data(),
                 this->count_};
     }
 };
@@ -1761,9 +1698,9 @@ struct FighterEntityDataView_target_velocitiesImpl
         FighterEntityDataView_target_velocitiesImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto xs() const { return this->column(Layout::columns.TargetVelocitiesXsColumn); }
-    auto ys() const { return this->column(Layout::columns.TargetVelocitiesYsColumn); }
-    auto zs() const { return this->column(Layout::columns.TargetVelocitiesZsColumn); }
+    auto xs() const { return this->column(Layout::columns.TargetVelocities.XsColumn); }
+    auto ys() const { return this->column(Layout::columns.TargetVelocities.YsColumn); }
+    auto zs() const { return this->column(Layout::columns.TargetVelocities.ZsColumn); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(xs());
@@ -1772,9 +1709,9 @@ struct FighterEntityDataView_target_velocitiesImpl
     }
     auto resolve() const -> std::
         conditional_t<Const, ::ioj::Vectors3fResolvedConstView, ::ioj::Vectors3fResolvedView> {
-        return {(this->column(Layout::columns.TargetVelocitiesXsColumn).data()),
-                (this->column(Layout::columns.TargetVelocitiesYsColumn).data()),
-                (this->column(Layout::columns.TargetVelocitiesZsColumn).data()),
+        return {this->column(Layout::columns.TargetVelocities.XsColumn).data(),
+                this->column(Layout::columns.TargetVelocities.YsColumn).data(),
+                this->column(Layout::columns.TargetVelocities.ZsColumn).data(),
                 this->count_};
     }
 };
@@ -1827,9 +1764,9 @@ struct FighterEntityDataView_target_directionsImpl
         FighterEntityDataView_target_directionsImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto xs() const { return this->column(Layout::columns.TargetDirectionsXsColumn); }
-    auto ys() const { return this->column(Layout::columns.TargetDirectionsYsColumn); }
-    auto zs() const { return this->column(Layout::columns.TargetDirectionsZsColumn); }
+    auto xs() const { return this->column(Layout::columns.TargetDirections.XsColumn); }
+    auto ys() const { return this->column(Layout::columns.TargetDirections.YsColumn); }
+    auto zs() const { return this->column(Layout::columns.TargetDirections.ZsColumn); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(xs());
@@ -1838,9 +1775,9 @@ struct FighterEntityDataView_target_directionsImpl
     }
     auto resolve() const -> std::
         conditional_t<Const, ::ioj::Vectors3fResolvedConstView, ::ioj::Vectors3fResolvedView> {
-        return {(this->column(Layout::columns.TargetDirectionsXsColumn).data()),
-                (this->column(Layout::columns.TargetDirectionsYsColumn).data()),
-                (this->column(Layout::columns.TargetDirectionsZsColumn).data()),
+        return {this->column(Layout::columns.TargetDirections.XsColumn).data(),
+                this->column(Layout::columns.TargetDirections.YsColumn).data(),
+                this->column(Layout::columns.TargetDirections.ZsColumn).data(),
                 this->count_};
     }
 };
@@ -2062,63 +1999,62 @@ struct FighterEntityDataViewImpl : ioj::soa_storage_detail::CompactViewBase<Cons
     }
     auto resolve() const -> std::
         conditional_t<Const, FighterEntityDataResolvedConstView, FighterEntityDataResolvedView> {
-        return {
-            (this->column(Layout::columns.EntityIdsColumn).data()),
-            (this->column(Layout::columns.IntegralBiasesColumn).data()),
-            (this->column(Layout::columns.FloatBiasesColumn).data()),
-            (this->column(Layout::columns.TasksColumn).data()),
-            (this->column(Layout::columns.LocationsXsColumn).data()),
-            (this->column(Layout::columns.LocationsYsColumn).data()),
-            (this->column(Layout::columns.LocationsZsColumn).data()),
-            (this->column(Layout::columns.DesiredMoveLocationsXsColumn).data()),
-            (this->column(Layout::columns.DesiredMoveLocationsYsColumn).data()),
-            (this->column(Layout::columns.DesiredMoveLocationsZsColumn).data()),
-            (this->column(Layout::columns.AimDirectionsXsColumn).data()),
-            (this->column(Layout::columns.AimDirectionsYsColumn).data()),
-            (this->column(Layout::columns.AimDirectionsZsColumn).data()),
-            (this->column(Layout::columns.PlannedAimDirectionsXsColumn).data()),
-            (this->column(Layout::columns.PlannedAimDirectionsYsColumn).data()),
-            (this->column(Layout::columns.PlannedAimDirectionsZsColumn).data()),
-            (this->column(Layout::columns.DesiredAimingDirectionsXsColumn).data()),
-            (this->column(Layout::columns.DesiredAimingDirectionsYsColumn).data()),
-            (this->column(Layout::columns.DesiredAimingDirectionsZsColumn).data()),
-            (this->column(Layout::columns.MovementDirectionsXsColumn).data()),
-            (this->column(Layout::columns.MovementDirectionsYsColumn).data()),
-            (this->column(Layout::columns.MovementDirectionsZsColumn).data()),
-            (this->column(Layout::columns.VelocitiesXsColumn).data()),
-            (this->column(Layout::columns.VelocitiesYsColumn).data()),
-            (this->column(Layout::columns.VelocitiesZsColumn).data()),
-            (this->column(Layout::columns.MoveDistancesColumn).data()),
-            (this->column(Layout::columns.SpeedsColumn).data()),
-            (this->column(Layout::columns.TeamsColumn).data()),
-            (this->column(Layout::columns.ParentIdsColumn).data()),
-            (this->column(Layout::columns.AwarenessScanCountdownsColumn).data()),
-            (this->column(Layout::columns.NavigationUpdateCountdownsRemainingTicksColumn).data()),
-            (this->column(Layout::columns.NavigationUpdateCountdownsPeriodsColumn).data()),
-            (this->column(Layout::columns.SeparationSteeringXsColumn).data()),
-            (this->column(Layout::columns.SeparationSteeringYsColumn).data()),
-            (this->column(Layout::columns.SeparationSteeringZsColumn).data()),
-            (this->column(Layout::columns.NavigationRiskTiersColumn).data()),
-            (this->column(Layout::columns.NavigationLowerRiskScanCountsColumn).data()),
-            (this->column(Layout::columns.AvoidanceChoiceIndicesColumn).data()),
-            (this->column(Layout::columns.AvoidanceClearScanCountsColumn).data()),
-            (this->column(Layout::columns.AttackRepositionCountdownsColumn).data()),
-            (this->column(Layout::columns.AttackCooldownsColumn).data()),
-            (this->column(Layout::columns.TargetIdsColumn).data()),
-            (this->column(Layout::columns.TargetLocationsXsColumn).data()),
-            (this->column(Layout::columns.TargetLocationsYsColumn).data()),
-            (this->column(Layout::columns.TargetLocationsZsColumn).data()),
-            (this->column(Layout::columns.TargetVelocitiesXsColumn).data()),
-            (this->column(Layout::columns.TargetVelocitiesYsColumn).data()),
-            (this->column(Layout::columns.TargetVelocitiesZsColumn).data()),
-            (this->column(Layout::columns.TargetDirectionsXsColumn).data()),
-            (this->column(Layout::columns.TargetDirectionsYsColumn).data()),
-            (this->column(Layout::columns.TargetDirectionsZsColumn).data()),
-            (this->column(Layout::columns.InterceptTimesColumn).data()),
-            (this->column(Layout::columns.TargetDistanceSqColumn).data()),
-            (this->column(Layout::columns.TargetDistancesColumn).data()),
-            (this->column(Layout::columns.TargetRadiiColumn).data()),
-            this->count_};
+        return {this->column(Layout::columns.EntityIdsColumn).data(),
+                this->column(Layout::columns.IntegralBiasesColumn).data(),
+                this->column(Layout::columns.FloatBiasesColumn).data(),
+                this->column(Layout::columns.TasksColumn).data(),
+                this->column(Layout::columns.Locations.XsColumn).data(),
+                this->column(Layout::columns.Locations.YsColumn).data(),
+                this->column(Layout::columns.Locations.ZsColumn).data(),
+                this->column(Layout::columns.DesiredMoveLocations.XsColumn).data(),
+                this->column(Layout::columns.DesiredMoveLocations.YsColumn).data(),
+                this->column(Layout::columns.DesiredMoveLocations.ZsColumn).data(),
+                this->column(Layout::columns.AimDirections.XsColumn).data(),
+                this->column(Layout::columns.AimDirections.YsColumn).data(),
+                this->column(Layout::columns.AimDirections.ZsColumn).data(),
+                this->column(Layout::columns.PlannedAimDirections.XsColumn).data(),
+                this->column(Layout::columns.PlannedAimDirections.YsColumn).data(),
+                this->column(Layout::columns.PlannedAimDirections.ZsColumn).data(),
+                this->column(Layout::columns.DesiredAimingDirections.XsColumn).data(),
+                this->column(Layout::columns.DesiredAimingDirections.YsColumn).data(),
+                this->column(Layout::columns.DesiredAimingDirections.ZsColumn).data(),
+                this->column(Layout::columns.MovementDirections.XsColumn).data(),
+                this->column(Layout::columns.MovementDirections.YsColumn).data(),
+                this->column(Layout::columns.MovementDirections.ZsColumn).data(),
+                this->column(Layout::columns.Velocities.XsColumn).data(),
+                this->column(Layout::columns.Velocities.YsColumn).data(),
+                this->column(Layout::columns.Velocities.ZsColumn).data(),
+                this->column(Layout::columns.MoveDistancesColumn).data(),
+                this->column(Layout::columns.SpeedsColumn).data(),
+                this->column(Layout::columns.TeamsColumn).data(),
+                this->column(Layout::columns.ParentIdsColumn).data(),
+                this->column(Layout::columns.AwarenessScanCountdownsColumn).data(),
+                this->column(Layout::columns.NavigationUpdateCountdownsRemainingTicksColumn).data(),
+                this->column(Layout::columns.NavigationUpdateCountdownsPeriodsColumn).data(),
+                this->column(Layout::columns.SeparationSteering.XsColumn).data(),
+                this->column(Layout::columns.SeparationSteering.YsColumn).data(),
+                this->column(Layout::columns.SeparationSteering.ZsColumn).data(),
+                this->column(Layout::columns.NavigationRiskTiersColumn).data(),
+                this->column(Layout::columns.NavigationLowerRiskScanCountsColumn).data(),
+                this->column(Layout::columns.AvoidanceChoiceIndicesColumn).data(),
+                this->column(Layout::columns.AvoidanceClearScanCountsColumn).data(),
+                this->column(Layout::columns.AttackRepositionCountdownsColumn).data(),
+                this->column(Layout::columns.AttackCooldownsColumn).data(),
+                this->column(Layout::columns.TargetIdsColumn).data(),
+                this->column(Layout::columns.TargetLocations.XsColumn).data(),
+                this->column(Layout::columns.TargetLocations.YsColumn).data(),
+                this->column(Layout::columns.TargetLocations.ZsColumn).data(),
+                this->column(Layout::columns.TargetVelocities.XsColumn).data(),
+                this->column(Layout::columns.TargetVelocities.YsColumn).data(),
+                this->column(Layout::columns.TargetVelocities.ZsColumn).data(),
+                this->column(Layout::columns.TargetDirections.XsColumn).data(),
+                this->column(Layout::columns.TargetDirections.YsColumn).data(),
+                this->column(Layout::columns.TargetDirections.ZsColumn).data(),
+                this->column(Layout::columns.InterceptTimesColumn).data(),
+                this->column(Layout::columns.TargetDistanceSqColumn).data(),
+                this->column(Layout::columns.TargetDistancesColumn).data(),
+                this->column(Layout::columns.TargetRadiiColumn).data(),
+                this->count_};
     }
 };
 struct FighterEntityDataConstView : FighterEntityDataViewImpl<true> {
@@ -2560,27 +2496,27 @@ struct FighterEntityData
             cursor.column_pointer(data, Layout::columns.IntegralBiasesColumn),
             cursor.column_pointer(data, Layout::columns.FloatBiasesColumn),
             cursor.column_pointer(data, Layout::columns.TasksColumn),
-            cursor.column_pointer(data, Layout::columns.LocationsXsColumn),
-            cursor.column_pointer(data, Layout::columns.LocationsYsColumn),
-            cursor.column_pointer(data, Layout::columns.LocationsZsColumn),
-            cursor.column_pointer(data, Layout::columns.DesiredMoveLocationsXsColumn),
-            cursor.column_pointer(data, Layout::columns.DesiredMoveLocationsYsColumn),
-            cursor.column_pointer(data, Layout::columns.DesiredMoveLocationsZsColumn),
-            cursor.column_pointer(data, Layout::columns.AimDirectionsXsColumn),
-            cursor.column_pointer(data, Layout::columns.AimDirectionsYsColumn),
-            cursor.column_pointer(data, Layout::columns.AimDirectionsZsColumn),
-            cursor.column_pointer(data, Layout::columns.PlannedAimDirectionsXsColumn),
-            cursor.column_pointer(data, Layout::columns.PlannedAimDirectionsYsColumn),
-            cursor.column_pointer(data, Layout::columns.PlannedAimDirectionsZsColumn),
-            cursor.column_pointer(data, Layout::columns.DesiredAimingDirectionsXsColumn),
-            cursor.column_pointer(data, Layout::columns.DesiredAimingDirectionsYsColumn),
-            cursor.column_pointer(data, Layout::columns.DesiredAimingDirectionsZsColumn),
-            cursor.column_pointer(data, Layout::columns.MovementDirectionsXsColumn),
-            cursor.column_pointer(data, Layout::columns.MovementDirectionsYsColumn),
-            cursor.column_pointer(data, Layout::columns.MovementDirectionsZsColumn),
-            cursor.column_pointer(data, Layout::columns.VelocitiesXsColumn),
-            cursor.column_pointer(data, Layout::columns.VelocitiesYsColumn),
-            cursor.column_pointer(data, Layout::columns.VelocitiesZsColumn),
+            cursor.column_pointer(data, Layout::columns.Locations.XsColumn),
+            cursor.column_pointer(data, Layout::columns.Locations.YsColumn),
+            cursor.column_pointer(data, Layout::columns.Locations.ZsColumn),
+            cursor.column_pointer(data, Layout::columns.DesiredMoveLocations.XsColumn),
+            cursor.column_pointer(data, Layout::columns.DesiredMoveLocations.YsColumn),
+            cursor.column_pointer(data, Layout::columns.DesiredMoveLocations.ZsColumn),
+            cursor.column_pointer(data, Layout::columns.AimDirections.XsColumn),
+            cursor.column_pointer(data, Layout::columns.AimDirections.YsColumn),
+            cursor.column_pointer(data, Layout::columns.AimDirections.ZsColumn),
+            cursor.column_pointer(data, Layout::columns.PlannedAimDirections.XsColumn),
+            cursor.column_pointer(data, Layout::columns.PlannedAimDirections.YsColumn),
+            cursor.column_pointer(data, Layout::columns.PlannedAimDirections.ZsColumn),
+            cursor.column_pointer(data, Layout::columns.DesiredAimingDirections.XsColumn),
+            cursor.column_pointer(data, Layout::columns.DesiredAimingDirections.YsColumn),
+            cursor.column_pointer(data, Layout::columns.DesiredAimingDirections.ZsColumn),
+            cursor.column_pointer(data, Layout::columns.MovementDirections.XsColumn),
+            cursor.column_pointer(data, Layout::columns.MovementDirections.YsColumn),
+            cursor.column_pointer(data, Layout::columns.MovementDirections.ZsColumn),
+            cursor.column_pointer(data, Layout::columns.Velocities.XsColumn),
+            cursor.column_pointer(data, Layout::columns.Velocities.YsColumn),
+            cursor.column_pointer(data, Layout::columns.Velocities.ZsColumn),
             cursor.column_pointer(data, Layout::columns.MoveDistancesColumn),
             cursor.column_pointer(data, Layout::columns.SpeedsColumn),
             cursor.column_pointer(data, Layout::columns.TeamsColumn),
@@ -2589,9 +2525,9 @@ struct FighterEntityData
             cursor.column_pointer(data,
                                   Layout::columns.NavigationUpdateCountdownsRemainingTicksColumn),
             cursor.column_pointer(data, Layout::columns.NavigationUpdateCountdownsPeriodsColumn),
-            cursor.column_pointer(data, Layout::columns.SeparationSteeringXsColumn),
-            cursor.column_pointer(data, Layout::columns.SeparationSteeringYsColumn),
-            cursor.column_pointer(data, Layout::columns.SeparationSteeringZsColumn),
+            cursor.column_pointer(data, Layout::columns.SeparationSteering.XsColumn),
+            cursor.column_pointer(data, Layout::columns.SeparationSteering.YsColumn),
+            cursor.column_pointer(data, Layout::columns.SeparationSteering.ZsColumn),
             cursor.column_pointer(data, Layout::columns.NavigationRiskTiersColumn),
             cursor.column_pointer(data, Layout::columns.NavigationLowerRiskScanCountsColumn),
             cursor.column_pointer(data, Layout::columns.AvoidanceChoiceIndicesColumn),
@@ -2599,15 +2535,15 @@ struct FighterEntityData
             cursor.column_pointer(data, Layout::columns.AttackRepositionCountdownsColumn),
             cursor.column_pointer(data, Layout::columns.AttackCooldownsColumn),
             cursor.column_pointer(data, Layout::columns.TargetIdsColumn),
-            cursor.column_pointer(data, Layout::columns.TargetLocationsXsColumn),
-            cursor.column_pointer(data, Layout::columns.TargetLocationsYsColumn),
-            cursor.column_pointer(data, Layout::columns.TargetLocationsZsColumn),
-            cursor.column_pointer(data, Layout::columns.TargetVelocitiesXsColumn),
-            cursor.column_pointer(data, Layout::columns.TargetVelocitiesYsColumn),
-            cursor.column_pointer(data, Layout::columns.TargetVelocitiesZsColumn),
-            cursor.column_pointer(data, Layout::columns.TargetDirectionsXsColumn),
-            cursor.column_pointer(data, Layout::columns.TargetDirectionsYsColumn),
-            cursor.column_pointer(data, Layout::columns.TargetDirectionsZsColumn),
+            cursor.column_pointer(data, Layout::columns.TargetLocations.XsColumn),
+            cursor.column_pointer(data, Layout::columns.TargetLocations.YsColumn),
+            cursor.column_pointer(data, Layout::columns.TargetLocations.ZsColumn),
+            cursor.column_pointer(data, Layout::columns.TargetVelocities.XsColumn),
+            cursor.column_pointer(data, Layout::columns.TargetVelocities.YsColumn),
+            cursor.column_pointer(data, Layout::columns.TargetVelocities.ZsColumn),
+            cursor.column_pointer(data, Layout::columns.TargetDirections.XsColumn),
+            cursor.column_pointer(data, Layout::columns.TargetDirections.YsColumn),
+            cursor.column_pointer(data, Layout::columns.TargetDirections.ZsColumn),
             cursor.column_pointer(data, Layout::columns.InterceptTimesColumn),
             cursor.column_pointer(data, Layout::columns.TargetDistanceSqColumn),
             cursor.column_pointer(data, Layout::columns.TargetDistancesColumn),

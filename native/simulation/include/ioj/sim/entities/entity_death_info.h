@@ -7,6 +7,7 @@
 #include "ioj/native_soa/storage.h"
 #include "ioj/sim/entities/entity_id.h"
 #include "ioj/sim/entities/entity_life_state.h"
+#include "ioj/single_allocation/layout.h"
 #include "ioj/soa_permutation.h"
 
 #include <cassert>
@@ -18,47 +19,27 @@ struct EntityDeathInfoView;
 struct EntityDeathInfoConstView;
 struct EntityDeathInfoLayoutColumns {
     template <typename T>
-    using ColLayout = ioj::native_soa::ColumnLayout<T>;
-
-    ioj::native_soa::ColumnLayoutStart LayoutStart{};
-
+    using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
     ColLayout<DeathReason> ReasonsColumn;
     ColLayout<EntityId> VictimsColumn;
     ColLayout<EntityId> KillersColumn;
     ColLayout<Vector3f> LocationsColumn;
 
-    constexpr EntityDeathInfoLayoutColumns() noexcept
-        : ReasonsColumn{LayoutStart}
+    constexpr explicit EntityDeathInfoLayoutColumns(
+        ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
+        : ReasonsColumn{previous}
         , VictimsColumn{ReasonsColumn}
         , KillersColumn{VictimsColumn}
         , LocationsColumn{KillersColumn} {}
+    constexpr auto last_column() const noexcept
+        -> ioj::single_allocation_layout::ColumnLayoutBase const& {
+        return LocationsColumn;
+    }
     EntityDeathInfoLayoutColumns(EntityDeathInfoLayoutColumns const&) = delete;
     auto operator=(EntityDeathInfoLayoutColumns const&) -> EntityDeathInfoLayoutColumns& = delete;
 };
-struct EntityDeathInfoLayout {
-    using size_type = std::uint32_t;
-    using byte_size_type = std::size_t;
-
-    static constexpr size_type capacity_granularity{
-        ioj::native_soa::LayoutPolicy::capacity_granularity};
-    static constexpr byte_size_type column_gap{ioj::native_soa::LayoutPolicy::column_gap};
-
-    static constexpr EntityDeathInfoLayoutColumns columns{};
-
-    static constexpr byte_size_type allocation_alignment{
-        columns.LocationsColumn.allocation_alignment};
-
-    // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
-    // capacity.
-    static constexpr byte_size_type capacity_block_bound{
-        ioj::native_soa::capacity_block_bound(columns.LocationsColumn)};
-    static constexpr size_type max_capacity{
-        ioj::native_soa::maximum_capacity(capacity_block_bound)};
-    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return blocks == 0 ? 0 : columns.LocationsColumn.data_end(blocks);
-    }
-    static_assert(max_capacity >= capacity_granularity);
-};
+struct EntityDeathInfoLayout
+    : ioj::single_allocation_layout::Layout<EntityDeathInfoLayoutColumns> {};
 
 struct EntityDeathInfoResolvedView;
 struct EntityDeathInfoResolvedConstView;
@@ -198,10 +179,10 @@ struct EntityDeathInfoViewImpl : ioj::soa_storage_detail::CompactViewBase<Const>
     }
     auto resolve() const -> std::
         conditional_t<Const, EntityDeathInfoResolvedConstView, EntityDeathInfoResolvedView> {
-        return {(this->column(Layout::columns.ReasonsColumn).data()),
-                (this->column(Layout::columns.VictimsColumn).data()),
-                (this->column(Layout::columns.KillersColumn).data()),
-                (this->column(Layout::columns.LocationsColumn).data()),
+        return {this->column(Layout::columns.ReasonsColumn).data(),
+                this->column(Layout::columns.VictimsColumn).data(),
+                this->column(Layout::columns.KillersColumn).data(),
+                this->column(Layout::columns.LocationsColumn).data(),
                 this->count_};
     }
 };

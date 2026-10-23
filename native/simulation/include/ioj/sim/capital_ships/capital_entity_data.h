@@ -10,6 +10,7 @@
 #include "ioj/rotators3f.h"
 #include "ioj/sim/entities/entity_id.h"
 #include "ioj/sim/index_span.h"
+#include "ioj/single_allocation/layout.h"
 #include "ioj/soa_permutation.h"
 #include "ioj/vectors3f.h"
 
@@ -22,64 +23,36 @@ struct CapitalEntityDataView;
 struct CapitalEntityDataConstView;
 struct CapitalEntityDataLayoutColumns {
     template <typename T>
-    using ColLayout = ioj::native_soa::ColumnLayout<T>;
-
-    ioj::native_soa::ColumnLayoutStart LayoutStart{};
-
+    using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
     ColLayout<EntityId> EntityIdsColumn;
-    ColLayout<float> LocationsXsColumn;
-    ColLayout<float> LocationsYsColumn;
-    ColLayout<float> LocationsZsColumn;
-    ColLayout<float> RotationsPitchesColumn;
-    ColLayout<float> RotationsYawsColumn;
-    ColLayout<float> RotationsRollsColumn;
+    ::ioj::Vectors3fLayoutColumns Locations;
+    ::ioj::Rotators3fLayoutColumns Rotations;
     ColLayout<float> FighterSpawnTimersColumn;
     ColLayout<float> FighterSpawnCooldownsColumn;
     ColLayout<::ioj::Team> TeamsColumn;
     ColLayout<IndexSpan> FighterIdSpansColumn;
     ColLayout<EntityId> TargetIdsColumn;
 
-    constexpr CapitalEntityDataLayoutColumns() noexcept
-        : EntityIdsColumn{LayoutStart}
-        , LocationsXsColumn{EntityIdsColumn}
-        , LocationsYsColumn{LocationsXsColumn}
-        , LocationsZsColumn{LocationsYsColumn}
-        , RotationsPitchesColumn{LocationsZsColumn}
-        , RotationsYawsColumn{RotationsPitchesColumn}
-        , RotationsRollsColumn{RotationsYawsColumn}
-        , FighterSpawnTimersColumn{RotationsRollsColumn}
+    constexpr explicit CapitalEntityDataLayoutColumns(
+        ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
+        : EntityIdsColumn{previous}
+        , Locations{EntityIdsColumn}
+        , Rotations{Locations.last_column()}
+        , FighterSpawnTimersColumn{Rotations.last_column()}
         , FighterSpawnCooldownsColumn{FighterSpawnTimersColumn}
         , TeamsColumn{FighterSpawnCooldownsColumn}
         , FighterIdSpansColumn{TeamsColumn}
         , TargetIdsColumn{FighterIdSpansColumn} {}
+    constexpr auto last_column() const noexcept
+        -> ioj::single_allocation_layout::ColumnLayoutBase const& {
+        return TargetIdsColumn;
+    }
     CapitalEntityDataLayoutColumns(CapitalEntityDataLayoutColumns const&) = delete;
     auto operator=(CapitalEntityDataLayoutColumns const&)
         -> CapitalEntityDataLayoutColumns& = delete;
 };
-struct CapitalEntityDataLayout {
-    using size_type = std::uint32_t;
-    using byte_size_type = std::size_t;
-
-    static constexpr size_type capacity_granularity{
-        ioj::native_soa::LayoutPolicy::capacity_granularity};
-    static constexpr byte_size_type column_gap{ioj::native_soa::LayoutPolicy::column_gap};
-
-    static constexpr CapitalEntityDataLayoutColumns columns{};
-
-    static constexpr byte_size_type allocation_alignment{
-        columns.TargetIdsColumn.allocation_alignment};
-
-    // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
-    // capacity.
-    static constexpr byte_size_type capacity_block_bound{
-        ioj::native_soa::capacity_block_bound(columns.TargetIdsColumn)};
-    static constexpr size_type max_capacity{
-        ioj::native_soa::maximum_capacity(capacity_block_bound)};
-    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return blocks == 0 ? 0 : columns.TargetIdsColumn.data_end(blocks);
-    }
-    static_assert(max_capacity >= capacity_granularity);
-};
+struct CapitalEntityDataLayout
+    : ioj::single_allocation_layout::Layout<CapitalEntityDataLayoutColumns> {};
 struct CapitalEntityDataResolvedView;
 struct CapitalEntityDataResolvedConstView;
 template <bool Const>
@@ -358,9 +331,9 @@ struct CapitalEntityDataView_locationsImpl : ioj::soa_storage_detail::CompactVie
     CapitalEntityDataView_locationsImpl(CapitalEntityDataView_locationsImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto xs() const { return this->column(Layout::columns.LocationsXsColumn); }
-    auto ys() const { return this->column(Layout::columns.LocationsYsColumn); }
-    auto zs() const { return this->column(Layout::columns.LocationsZsColumn); }
+    auto xs() const { return this->column(Layout::columns.Locations.XsColumn); }
+    auto ys() const { return this->column(Layout::columns.Locations.YsColumn); }
+    auto zs() const { return this->column(Layout::columns.Locations.ZsColumn); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(xs());
@@ -369,9 +342,9 @@ struct CapitalEntityDataView_locationsImpl : ioj::soa_storage_detail::CompactVie
     }
     auto resolve() const -> std::
         conditional_t<Const, ::ioj::Vectors3fResolvedConstView, ::ioj::Vectors3fResolvedView> {
-        return {(this->column(Layout::columns.LocationsXsColumn).data()),
-                (this->column(Layout::columns.LocationsYsColumn).data()),
-                (this->column(Layout::columns.LocationsZsColumn).data()),
+        return {this->column(Layout::columns.Locations.XsColumn).data(),
+                this->column(Layout::columns.Locations.YsColumn).data(),
+                this->column(Layout::columns.Locations.ZsColumn).data(),
                 this->count_};
     }
 };
@@ -419,9 +392,9 @@ struct CapitalEntityDataView_rotationsImpl : ioj::soa_storage_detail::CompactVie
     CapitalEntityDataView_rotationsImpl(CapitalEntityDataView_rotationsImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto pitches() const { return this->column(Layout::columns.RotationsPitchesColumn); }
-    auto yaws() const { return this->column(Layout::columns.RotationsYawsColumn); }
-    auto rolls() const { return this->column(Layout::columns.RotationsRollsColumn); }
+    auto pitches() const { return this->column(Layout::columns.Rotations.PitchesColumn); }
+    auto yaws() const { return this->column(Layout::columns.Rotations.YawsColumn); }
+    auto rolls() const { return this->column(Layout::columns.Rotations.RollsColumn); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(pitches());
@@ -430,9 +403,9 @@ struct CapitalEntityDataView_rotationsImpl : ioj::soa_storage_detail::CompactVie
     }
     auto resolve() const -> std::
         conditional_t<Const, ::ioj::Rotators3fResolvedConstView, ::ioj::Rotators3fResolvedView> {
-        return {(this->column(Layout::columns.RotationsPitchesColumn).data()),
-                (this->column(Layout::columns.RotationsYawsColumn).data()),
-                (this->column(Layout::columns.RotationsRollsColumn).data()),
+        return {this->column(Layout::columns.Rotations.PitchesColumn).data(),
+                this->column(Layout::columns.Rotations.YawsColumn).data(),
+                this->column(Layout::columns.Rotations.RollsColumn).data(),
                 this->count_};
     }
 };
@@ -520,18 +493,18 @@ struct CapitalEntityDataViewImpl : ioj::soa_storage_detail::CompactViewBase<Cons
     }
     auto resolve() const -> std::
         conditional_t<Const, CapitalEntityDataResolvedConstView, CapitalEntityDataResolvedView> {
-        return {(this->column(Layout::columns.EntityIdsColumn).data()),
-                (this->column(Layout::columns.LocationsXsColumn).data()),
-                (this->column(Layout::columns.LocationsYsColumn).data()),
-                (this->column(Layout::columns.LocationsZsColumn).data()),
-                (this->column(Layout::columns.RotationsPitchesColumn).data()),
-                (this->column(Layout::columns.RotationsYawsColumn).data()),
-                (this->column(Layout::columns.RotationsRollsColumn).data()),
-                (this->column(Layout::columns.FighterSpawnTimersColumn).data()),
-                (this->column(Layout::columns.FighterSpawnCooldownsColumn).data()),
-                (this->column(Layout::columns.TeamsColumn).data()),
-                (this->column(Layout::columns.FighterIdSpansColumn).data()),
-                (this->column(Layout::columns.TargetIdsColumn).data()),
+        return {this->column(Layout::columns.EntityIdsColumn).data(),
+                this->column(Layout::columns.Locations.XsColumn).data(),
+                this->column(Layout::columns.Locations.YsColumn).data(),
+                this->column(Layout::columns.Locations.ZsColumn).data(),
+                this->column(Layout::columns.Rotations.PitchesColumn).data(),
+                this->column(Layout::columns.Rotations.YawsColumn).data(),
+                this->column(Layout::columns.Rotations.RollsColumn).data(),
+                this->column(Layout::columns.FighterSpawnTimersColumn).data(),
+                this->column(Layout::columns.FighterSpawnCooldownsColumn).data(),
+                this->column(Layout::columns.TeamsColumn).data(),
+                this->column(Layout::columns.FighterIdSpansColumn).data(),
+                this->column(Layout::columns.TargetIdsColumn).data(),
                 this->count_};
     }
 };
@@ -701,12 +674,12 @@ struct CapitalEntityData
         -> DataPointers<Byte> {
         ioj::native_soa::LayoutCursor cursor{blocks};
         return {cursor.column_pointer(data, Layout::columns.EntityIdsColumn),
-                cursor.column_pointer(data, Layout::columns.LocationsXsColumn),
-                cursor.column_pointer(data, Layout::columns.LocationsYsColumn),
-                cursor.column_pointer(data, Layout::columns.LocationsZsColumn),
-                cursor.column_pointer(data, Layout::columns.RotationsPitchesColumn),
-                cursor.column_pointer(data, Layout::columns.RotationsYawsColumn),
-                cursor.column_pointer(data, Layout::columns.RotationsRollsColumn),
+                cursor.column_pointer(data, Layout::columns.Locations.XsColumn),
+                cursor.column_pointer(data, Layout::columns.Locations.YsColumn),
+                cursor.column_pointer(data, Layout::columns.Locations.ZsColumn),
+                cursor.column_pointer(data, Layout::columns.Rotations.PitchesColumn),
+                cursor.column_pointer(data, Layout::columns.Rotations.YawsColumn),
+                cursor.column_pointer(data, Layout::columns.Rotations.RollsColumn),
                 cursor.column_pointer(data, Layout::columns.FighterSpawnTimersColumn),
                 cursor.column_pointer(data, Layout::columns.FighterSpawnCooldownsColumn),
                 cursor.column_pointer(data, Layout::columns.TeamsColumn),

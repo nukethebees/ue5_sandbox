@@ -177,6 +177,26 @@ constexpr auto maximum_capacity(std::size_t const block_bytes) noexcept -> std::
     return static_cast<std::uint32_t>(blocks * capacity_granularity);
 }
 
+template <typename Columns>
+struct Layout {
+    using size_type = std::uint32_t;
+    using byte_size_type = std::size_t;
+
+    static constexpr auto capacity_granularity{LayoutPolicy::capacity_granularity};
+    static constexpr auto column_gap{LayoutPolicy::column_gap};
+    static constexpr ColumnLayoutStart start{};
+    static constexpr Columns columns{start};
+    static constexpr auto allocation_alignment{columns.last_column().allocation_alignment};
+    static constexpr auto capacity_block_bound{
+        single_allocation_layout::capacity_block_bound(columns.last_column())};
+    static constexpr auto max_capacity{maximum_capacity(capacity_block_bound)};
+
+    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
+        return blocks == 0 ? 0 : columns.last_column().data_end(blocks);
+    }
+    static_assert(max_capacity >= capacity_granularity);
+};
+
 constexpr auto try_round_capacity(std::int64_t const required,
                                   std::uint32_t const maximum,
                                   std::uint32_t& result) noexcept -> bool {

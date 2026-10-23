@@ -4,6 +4,7 @@
 #pragma once
 
 #include "ioj/native_soa/storage.h"
+#include "ioj/single_allocation/layout.h"
 #include "ioj/soa_permutation.h"
 
 #include <cassert>
@@ -15,10 +16,7 @@ struct WorldAABBsView;
 struct WorldAABBsConstView;
 struct WorldAABBsLayoutColumns {
     template <typename T>
-    using ColLayout = ioj::native_soa::ColumnLayout<T>;
-
-    ioj::native_soa::ColumnLayoutStart LayoutStart{};
-
+    using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
     ColLayout<float> MinXsColumn;
     ColLayout<float> MinYsColumn;
     ColLayout<float> MinZsColumn;
@@ -26,39 +24,22 @@ struct WorldAABBsLayoutColumns {
     ColLayout<float> MaxYsColumn;
     ColLayout<float> MaxZsColumn;
 
-    constexpr WorldAABBsLayoutColumns() noexcept
-        : MinXsColumn{LayoutStart}
+    constexpr explicit WorldAABBsLayoutColumns(
+        ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
+        : MinXsColumn{previous}
         , MinYsColumn{MinXsColumn}
         , MinZsColumn{MinYsColumn}
         , MaxXsColumn{MinZsColumn}
         , MaxYsColumn{MaxXsColumn}
         , MaxZsColumn{MaxYsColumn} {}
+    constexpr auto last_column() const noexcept
+        -> ioj::single_allocation_layout::ColumnLayoutBase const& {
+        return MaxZsColumn;
+    }
     WorldAABBsLayoutColumns(WorldAABBsLayoutColumns const&) = delete;
     auto operator=(WorldAABBsLayoutColumns const&) -> WorldAABBsLayoutColumns& = delete;
 };
-struct WorldAABBsLayout {
-    using size_type = std::uint32_t;
-    using byte_size_type = std::size_t;
-
-    static constexpr size_type capacity_granularity{
-        ioj::native_soa::LayoutPolicy::capacity_granularity};
-    static constexpr byte_size_type column_gap{ioj::native_soa::LayoutPolicy::column_gap};
-
-    static constexpr WorldAABBsLayoutColumns columns{};
-
-    static constexpr byte_size_type allocation_alignment{columns.MaxZsColumn.allocation_alignment};
-
-    // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
-    // capacity.
-    static constexpr byte_size_type capacity_block_bound{
-        ioj::native_soa::capacity_block_bound(columns.MaxZsColumn)};
-    static constexpr size_type max_capacity{
-        ioj::native_soa::maximum_capacity(capacity_block_bound)};
-    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return blocks == 0 ? 0 : columns.MaxZsColumn.data_end(blocks);
-    }
-    static_assert(max_capacity >= capacity_granularity);
-};
+struct WorldAABBsLayout : ioj::single_allocation_layout::Layout<WorldAABBsLayoutColumns> {};
 
 struct WorldAABBsResolvedView;
 struct WorldAABBsResolvedConstView;
@@ -229,12 +210,12 @@ struct WorldAABBsViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     }
     auto resolve() const
         -> std::conditional_t<Const, WorldAABBsResolvedConstView, WorldAABBsResolvedView> {
-        return {(this->column(Layout::columns.MinXsColumn).data()),
-                (this->column(Layout::columns.MinYsColumn).data()),
-                (this->column(Layout::columns.MinZsColumn).data()),
-                (this->column(Layout::columns.MaxXsColumn).data()),
-                (this->column(Layout::columns.MaxYsColumn).data()),
-                (this->column(Layout::columns.MaxZsColumn).data()),
+        return {this->column(Layout::columns.MinXsColumn).data(),
+                this->column(Layout::columns.MinYsColumn).data(),
+                this->column(Layout::columns.MinZsColumn).data(),
+                this->column(Layout::columns.MaxXsColumn).data(),
+                this->column(Layout::columns.MaxYsColumn).data(),
+                this->column(Layout::columns.MaxZsColumn).data(),
                 this->count_};
     }
 };

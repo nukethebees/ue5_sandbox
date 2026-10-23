@@ -6,6 +6,7 @@
 #include "ioj/math_types.h"
 #include "ioj/native_soa/storage.h"
 #include "ioj/sim/entities/entity_id.h"
+#include "ioj/single_allocation/layout.h"
 #include "ioj/soa_permutation.h"
 #include "ioj/vectors3f.h"
 
@@ -18,50 +19,26 @@ struct RangeQueryMatchesView;
 struct RangeQueryMatchesConstView;
 struct RangeQueryMatchesLayoutColumns {
     template <typename T>
-    using ColLayout = ioj::native_soa::ColumnLayout<T>;
-
-    ioj::native_soa::ColumnLayoutStart LayoutStart{};
-
+    using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
     ColLayout<EntityId> EntitiesColumn;
     ColLayout<float> DistancesColumn;
-    ColLayout<float> DirectionsXsColumn;
-    ColLayout<float> DirectionsYsColumn;
-    ColLayout<float> DirectionsZsColumn;
+    ::ioj::Vectors3fLayoutColumns Directions;
 
-    constexpr RangeQueryMatchesLayoutColumns() noexcept
-        : EntitiesColumn{LayoutStart}
+    constexpr explicit RangeQueryMatchesLayoutColumns(
+        ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
+        : EntitiesColumn{previous}
         , DistancesColumn{EntitiesColumn}
-        , DirectionsXsColumn{DistancesColumn}
-        , DirectionsYsColumn{DirectionsXsColumn}
-        , DirectionsZsColumn{DirectionsYsColumn} {}
+        , Directions{DistancesColumn} {}
+    constexpr auto last_column() const noexcept
+        -> ioj::single_allocation_layout::ColumnLayoutBase const& {
+        return Directions.last_column();
+    }
     RangeQueryMatchesLayoutColumns(RangeQueryMatchesLayoutColumns const&) = delete;
     auto operator=(RangeQueryMatchesLayoutColumns const&)
         -> RangeQueryMatchesLayoutColumns& = delete;
 };
-struct RangeQueryMatchesLayout {
-    using size_type = std::uint32_t;
-    using byte_size_type = std::size_t;
-
-    static constexpr size_type capacity_granularity{
-        ioj::native_soa::LayoutPolicy::capacity_granularity};
-    static constexpr byte_size_type column_gap{ioj::native_soa::LayoutPolicy::column_gap};
-
-    static constexpr RangeQueryMatchesLayoutColumns columns{};
-
-    static constexpr byte_size_type allocation_alignment{
-        columns.DirectionsZsColumn.allocation_alignment};
-
-    // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
-    // capacity.
-    static constexpr byte_size_type capacity_block_bound{
-        ioj::native_soa::capacity_block_bound(columns.DirectionsZsColumn)};
-    static constexpr size_type max_capacity{
-        ioj::native_soa::maximum_capacity(capacity_block_bound)};
-    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return blocks == 0 ? 0 : columns.DirectionsZsColumn.data_end(blocks);
-    }
-    static_assert(max_capacity >= capacity_granularity);
-};
+struct RangeQueryMatchesLayout
+    : ioj::single_allocation_layout::Layout<RangeQueryMatchesLayoutColumns> {};
 struct RangeQueryMatchesResolvedView;
 struct RangeQueryMatchesResolvedConstView;
 template <bool Const>
@@ -215,9 +192,9 @@ struct RangeQueryMatchesView_directionsImpl : ioj::soa_storage_detail::CompactVi
     RangeQueryMatchesView_directionsImpl(RangeQueryMatchesView_directionsImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto xs() const { return this->column(Layout::columns.DirectionsXsColumn); }
-    auto ys() const { return this->column(Layout::columns.DirectionsYsColumn); }
-    auto zs() const { return this->column(Layout::columns.DirectionsZsColumn); }
+    auto xs() const { return this->column(Layout::columns.Directions.XsColumn); }
+    auto ys() const { return this->column(Layout::columns.Directions.YsColumn); }
+    auto zs() const { return this->column(Layout::columns.Directions.ZsColumn); }
     template <typename Func>
     void each_column(Func&& func) const {
         func(xs());
@@ -226,9 +203,9 @@ struct RangeQueryMatchesView_directionsImpl : ioj::soa_storage_detail::CompactVi
     }
     auto resolve() const -> std::
         conditional_t<Const, ::ioj::Vectors3fResolvedConstView, ::ioj::Vectors3fResolvedView> {
-        return {(this->column(Layout::columns.DirectionsXsColumn).data()),
-                (this->column(Layout::columns.DirectionsYsColumn).data()),
-                (this->column(Layout::columns.DirectionsZsColumn).data()),
+        return {this->column(Layout::columns.Directions.XsColumn).data(),
+                this->column(Layout::columns.Directions.YsColumn).data(),
+                this->column(Layout::columns.Directions.ZsColumn).data(),
                 this->count_};
     }
 };
@@ -292,11 +269,11 @@ struct RangeQueryMatchesViewImpl : ioj::soa_storage_detail::CompactViewBase<Cons
     }
     auto resolve() const -> std::
         conditional_t<Const, RangeQueryMatchesResolvedConstView, RangeQueryMatchesResolvedView> {
-        return {(this->column(Layout::columns.EntitiesColumn).data()),
-                (this->column(Layout::columns.DistancesColumn).data()),
-                (this->column(Layout::columns.DirectionsXsColumn).data()),
-                (this->column(Layout::columns.DirectionsYsColumn).data()),
-                (this->column(Layout::columns.DirectionsZsColumn).data()),
+        return {this->column(Layout::columns.EntitiesColumn).data(),
+                this->column(Layout::columns.DistancesColumn).data(),
+                this->column(Layout::columns.Directions.XsColumn).data(),
+                this->column(Layout::columns.Directions.YsColumn).data(),
+                this->column(Layout::columns.Directions.ZsColumn).data(),
                 this->count_};
     }
 };
@@ -422,9 +399,9 @@ struct RangeQueryMatches
         ioj::native_soa::LayoutCursor cursor{blocks};
         return {cursor.column_pointer(data, Layout::columns.EntitiesColumn),
                 cursor.column_pointer(data, Layout::columns.DistancesColumn),
-                cursor.column_pointer(data, Layout::columns.DirectionsXsColumn),
-                cursor.column_pointer(data, Layout::columns.DirectionsYsColumn),
-                cursor.column_pointer(data, Layout::columns.DirectionsZsColumn)};
+                cursor.column_pointer(data, Layout::columns.Directions.XsColumn),
+                cursor.column_pointer(data, Layout::columns.Directions.YsColumn),
+                cursor.column_pointer(data, Layout::columns.Directions.ZsColumn)};
     }
     auto capacity_blocks() const noexcept -> byte_size_type {
         return static_cast<byte_size_type>(capacity_ / capacity_granularity);

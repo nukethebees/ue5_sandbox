@@ -12,6 +12,7 @@
 #include "ioj/layout/analysis/quantized_encoding.hpp"
 #include "ioj/layout/analysis/varint_encoding.hpp"
 #include "ioj/native_soa/storage.h"
+#include "ioj/single_allocation/layout.h"
 #include "ioj/soa_permutation.h"
 
 #include "lispb/schema/indices.h"
@@ -27,10 +28,7 @@ struct ScalarTableView;
 struct ScalarTableConstView;
 struct ScalarTableLayoutColumns {
     template <typename T>
-    using ColLayout = ioj::native_soa::ColumnLayout<T>;
-
-    ioj::native_soa::ColumnLayoutStart LayoutStart{};
-
+    using ColLayout = ioj::single_allocation_layout::ColumnLayout<T>;
     ColLayout<lispb::schema::TypeId> TypeColumn;
     ColLayout<std::optional<ioj::layout::IntegerDomain>> IntegerDomainColumn;
     ColLayout<std::optional<ioj::layout::EnumDomain>> EnumDomainColumn;
@@ -41,8 +39,9 @@ struct ScalarTableLayoutColumns {
     ColLayout<std::optional<ioj::layout::FloatEncoding>> FloatEncodingColumn;
     ColLayout<std::optional<ioj::layout::VarintEncoding>> VarintEncodingColumn;
 
-    constexpr ScalarTableLayoutColumns() noexcept
-        : TypeColumn{LayoutStart}
+    constexpr explicit ScalarTableLayoutColumns(
+        ioj::single_allocation_layout::ColumnLayoutBase const& previous) noexcept
+        : TypeColumn{previous}
         , IntegerDomainColumn{TypeColumn}
         , EnumDomainColumn{IntegerDomainColumn}
         , OptionalSentinelEncodingColumn{EnumDomainColumn}
@@ -51,33 +50,14 @@ struct ScalarTableLayoutColumns {
         , FixedEncodingColumn{QuantizedEncodingColumn}
         , FloatEncodingColumn{FixedEncodingColumn}
         , VarintEncodingColumn{FloatEncodingColumn} {}
+    constexpr auto last_column() const noexcept
+        -> ioj::single_allocation_layout::ColumnLayoutBase const& {
+        return VarintEncodingColumn;
+    }
     ScalarTableLayoutColumns(ScalarTableLayoutColumns const&) = delete;
     auto operator=(ScalarTableLayoutColumns const&) -> ScalarTableLayoutColumns& = delete;
 };
-struct ScalarTableLayout {
-    using size_type = std::uint32_t;
-    using byte_size_type = std::size_t;
-
-    static constexpr size_type capacity_granularity{
-        ioj::native_soa::LayoutPolicy::capacity_granularity};
-    static constexpr byte_size_type column_gap{ioj::native_soa::LayoutPolicy::column_gap};
-
-    static constexpr ScalarTableLayoutColumns columns{};
-
-    static constexpr byte_size_type allocation_alignment{
-        columns.VarintEncodingColumn.allocation_alignment};
-
-    // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
-    // capacity.
-    static constexpr byte_size_type capacity_block_bound{
-        ioj::native_soa::capacity_block_bound(columns.VarintEncodingColumn)};
-    static constexpr size_type max_capacity{
-        ioj::native_soa::maximum_capacity(capacity_block_bound)};
-    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return blocks == 0 ? 0 : columns.VarintEncodingColumn.data_end(blocks);
-    }
-    static_assert(max_capacity >= capacity_granularity);
-};
+struct ScalarTableLayout : ioj::single_allocation_layout::Layout<ScalarTableLayoutColumns> {};
 
 struct ScalarTableResolvedView;
 struct ScalarTableResolvedConstView;
@@ -346,15 +326,15 @@ struct ScalarTableViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     }
     auto resolve() const
         -> std::conditional_t<Const, ScalarTableResolvedConstView, ScalarTableResolvedView> {
-        return {(this->column(Layout::columns.TypeColumn).data()),
-                (this->column(Layout::columns.IntegerDomainColumn).data()),
-                (this->column(Layout::columns.EnumDomainColumn).data()),
-                (this->column(Layout::columns.OptionalSentinelEncodingColumn).data()),
-                (this->column(Layout::columns.OptionalPresenceEncodingColumn).data()),
-                (this->column(Layout::columns.QuantizedEncodingColumn).data()),
-                (this->column(Layout::columns.FixedEncodingColumn).data()),
-                (this->column(Layout::columns.FloatEncodingColumn).data()),
-                (this->column(Layout::columns.VarintEncodingColumn).data()),
+        return {this->column(Layout::columns.TypeColumn).data(),
+                this->column(Layout::columns.IntegerDomainColumn).data(),
+                this->column(Layout::columns.EnumDomainColumn).data(),
+                this->column(Layout::columns.OptionalSentinelEncodingColumn).data(),
+                this->column(Layout::columns.OptionalPresenceEncodingColumn).data(),
+                this->column(Layout::columns.QuantizedEncodingColumn).data(),
+                this->column(Layout::columns.FixedEncodingColumn).data(),
+                this->column(Layout::columns.FloatEncodingColumn).data(),
+                this->column(Layout::columns.VarintEncodingColumn).data(),
                 this->count_};
     }
 };
