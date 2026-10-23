@@ -96,7 +96,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
                      Element<std::int32_t>* max_cell_ys,
                      Element<std::int32_t>* max_cell_zs,
                      Element<EntityId>* entity_ids,
-                     size_type count)
+                     size_type column_count)
         : min_point_xs_{min_point_xs}
         , min_point_ys_{min_point_ys}
         , min_point_zs_{min_point_zs}
@@ -110,8 +110,8 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         , max_cell_ys_{max_cell_ys}
         , max_cell_zs_{max_cell_zs}
         , entity_ids_{entity_ids}
-        , count_{count} {
-        ioj::soa_storage_detail::validate_column_pointers(count_,
+        , column_count_{column_count} {
+        ioj::soa_storage_detail::validate_column_pointers(column_count_,
                                                           min_point_xs_,
                                                           min_point_ys_,
                                                           min_point_zs_,
@@ -153,7 +153,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
                            max_cell_zs.data(),
                            entity_ids.data(),
                            ioj::soa_storage_detail::checked_row_count(min_point_xs.size())} {
-        ioj::soa_storage_detail::validate_column_sizes(count_,
+        ioj::soa_storage_detail::validate_column_sizes(column_count_,
                                                        min_point_xs,
                                                        min_point_ys,
                                                        min_point_zs,
@@ -176,7 +176,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         auto const& [... source] = other;
         ((destination = source), ...);
     }
-    auto num() const noexcept -> size_type { return count_; }
+    auto num() const noexcept -> size_type { return column_count_; }
     auto resolve(this auto const& self) { return self; }
     auto slice(this auto const& self, size_type offset, size_type count) {
         auto const& [... pointers, source_count] = static_cast<ResolvedViewImpl const&>(self);
@@ -184,19 +184,19 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         using Result = std::remove_cvref_t<decltype(self)>;
         return Result{(pointers ? pointers + offset : nullptr)..., count};
     }
-    auto min_point_xs() const { return std::span{min_point_xs_, count_}; }
-    auto min_point_ys() const { return std::span{min_point_ys_, count_}; }
-    auto min_point_zs() const { return std::span{min_point_zs_, count_}; }
-    auto max_point_xs() const { return std::span{max_point_xs_, count_}; }
-    auto max_point_ys() const { return std::span{max_point_ys_, count_}; }
-    auto max_point_zs() const { return std::span{max_point_zs_, count_}; }
-    auto min_cell_xs() const { return std::span{min_cell_xs_, count_}; }
-    auto min_cell_ys() const { return std::span{min_cell_ys_, count_}; }
-    auto min_cell_zs() const { return std::span{min_cell_zs_, count_}; }
-    auto max_cell_xs() const { return std::span{max_cell_xs_, count_}; }
-    auto max_cell_ys() const { return std::span{max_cell_ys_, count_}; }
-    auto max_cell_zs() const { return std::span{max_cell_zs_, count_}; }
-    auto entity_ids() const { return std::span{entity_ids_, count_}; }
+    auto min_point_xs() const { return std::span{min_point_xs_, column_count_}; }
+    auto min_point_ys() const { return std::span{min_point_ys_, column_count_}; }
+    auto min_point_zs() const { return std::span{min_point_zs_, column_count_}; }
+    auto max_point_xs() const { return std::span{max_point_xs_, column_count_}; }
+    auto max_point_ys() const { return std::span{max_point_ys_, column_count_}; }
+    auto max_point_zs() const { return std::span{max_point_zs_, column_count_}; }
+    auto min_cell_xs() const { return std::span{min_cell_xs_, column_count_}; }
+    auto min_cell_ys() const { return std::span{min_cell_ys_, column_count_}; }
+    auto min_cell_zs() const { return std::span{min_cell_zs_, column_count_}; }
+    auto max_cell_xs() const { return std::span{max_cell_xs_, column_count_}; }
+    auto max_cell_ys() const { return std::span{max_cell_ys_, column_count_}; }
+    auto max_cell_zs() const { return std::span{max_cell_zs_, column_count_}; }
+    auto entity_ids() const { return std::span{entity_ids_, column_count_}; }
   private:
     template <bool>
     friend struct ResolvedViewImpl;
@@ -213,7 +213,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     Element<std::int32_t>* max_cell_ys_{};
     Element<std::int32_t>* max_cell_zs_{};
     Element<EntityId>* entity_ids_{};
-    size_type count_{};
+    size_type column_count_{};
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;

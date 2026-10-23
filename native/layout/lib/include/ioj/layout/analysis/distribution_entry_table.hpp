@@ -76,7 +76,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
                      Element<std::optional<std::uint64_t>>* slack_bytes,
                      Element<std::optional<std::uint64_t>>* weighted_extent_bytes,
                      Element<std::optional<std::uint64_t>>* weighted_slack_bytes,
-                     size_type count)
+                     size_type column_count)
         : component_{component}
         , value_{value}
         , weight_{weight}
@@ -84,8 +84,8 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         , slack_bytes_{slack_bytes}
         , weighted_extent_bytes_{weighted_extent_bytes}
         , weighted_slack_bytes_{weighted_slack_bytes}
-        , count_{count} {
-        ioj::soa_storage_detail::validate_column_pointers(count_,
+        , column_count_{column_count} {
+        ioj::soa_storage_detail::validate_column_pointers(column_count_,
                                                           component_,
                                                           value_,
                                                           weight_,
@@ -109,7 +109,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
                            weighted_extent_bytes.data(),
                            weighted_slack_bytes.data(),
                            ioj::soa_storage_detail::checked_row_count(component.size())} {
-        ioj::soa_storage_detail::validate_column_sizes(count_,
+        ioj::soa_storage_detail::validate_column_sizes(column_count_,
                                                        component,
                                                        value,
                                                        weight,
@@ -126,7 +126,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         auto const& [... source] = other;
         ((destination = source), ...);
     }
-    auto num() const noexcept -> size_type { return count_; }
+    auto num() const noexcept -> size_type { return column_count_; }
     auto resolve(this auto const& self) { return self; }
     auto slice(this auto const& self, size_type offset, size_type count) {
         auto const& [... pointers, source_count] = static_cast<ResolvedViewImpl const&>(self);
@@ -134,13 +134,13 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         using Result = std::remove_cvref_t<decltype(self)>;
         return Result{(pointers ? pointers + offset : nullptr)..., count};
     }
-    auto component() const { return std::span{component_, count_}; }
-    auto value() const { return std::span{value_, count_}; }
-    auto weight() const { return std::span{weight_, count_}; }
-    auto extent_bytes() const { return std::span{extent_bytes_, count_}; }
-    auto slack_bytes() const { return std::span{slack_bytes_, count_}; }
-    auto weighted_extent_bytes() const { return std::span{weighted_extent_bytes_, count_}; }
-    auto weighted_slack_bytes() const { return std::span{weighted_slack_bytes_, count_}; }
+    auto component() const { return std::span{component_, column_count_}; }
+    auto value() const { return std::span{value_, column_count_}; }
+    auto weight() const { return std::span{weight_, column_count_}; }
+    auto extent_bytes() const { return std::span{extent_bytes_, column_count_}; }
+    auto slack_bytes() const { return std::span{slack_bytes_, column_count_}; }
+    auto weighted_extent_bytes() const { return std::span{weighted_extent_bytes_, column_count_}; }
+    auto weighted_slack_bytes() const { return std::span{weighted_slack_bytes_, column_count_}; }
   private:
     template <bool>
     friend struct ResolvedViewImpl;
@@ -151,7 +151,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     Element<std::optional<std::uint64_t>>* slack_bytes_{};
     Element<std::optional<std::uint64_t>>* weighted_extent_bytes_{};
     Element<std::optional<std::uint64_t>>* weighted_slack_bytes_{};
-    size_type count_{};
+    size_type column_count_{};
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;

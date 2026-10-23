@@ -55,14 +55,14 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
                      Element<EntityId>* victims,
                      Element<EntityId>* killers,
                      Element<Vector3f>* locations,
-                     size_type count)
+                     size_type column_count)
         : reasons_{reasons}
         , victims_{victims}
         , killers_{killers}
         , locations_{locations}
-        , count_{count} {
+        , column_count_{column_count} {
         ioj::soa_storage_detail::validate_column_pointers(
-            count_, reasons_, victims_, killers_, locations_);
+            column_count_, reasons_, victims_, killers_, locations_);
     }
     ResolvedViewImpl(std::span<Element<DeathReason>> reasons,
                      std::span<Element<EntityId>> victims,
@@ -74,7 +74,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
                            locations.data(),
                            ioj::soa_storage_detail::checked_row_count(reasons.size())} {
         ioj::soa_storage_detail::validate_column_sizes(
-            count_, reasons, victims, killers, locations);
+            column_count_, reasons, victims, killers, locations);
     }
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
@@ -84,7 +84,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         auto const& [... source] = other;
         ((destination = source), ...);
     }
-    auto num() const noexcept -> size_type { return count_; }
+    auto num() const noexcept -> size_type { return column_count_; }
     auto resolve(this auto const& self) { return self; }
     auto slice(this auto const& self, size_type offset, size_type count) {
         auto const& [... pointers, source_count] = static_cast<ResolvedViewImpl const&>(self);
@@ -92,10 +92,10 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         using Result = std::remove_cvref_t<decltype(self)>;
         return Result{(pointers ? pointers + offset : nullptr)..., count};
     }
-    auto reasons() const { return std::span{reasons_, count_}; }
-    auto victims() const { return std::span{victims_, count_}; }
-    auto killers() const { return std::span{killers_, count_}; }
-    auto locations() const { return std::span{locations_, count_}; }
+    auto reasons() const { return std::span{reasons_, column_count_}; }
+    auto victims() const { return std::span{victims_, column_count_}; }
+    auto killers() const { return std::span{killers_, column_count_}; }
+    auto locations() const { return std::span{locations_, column_count_}; }
   private:
     template <bool>
     friend struct ResolvedViewImpl;
@@ -103,7 +103,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     Element<EntityId>* victims_{};
     Element<EntityId>* killers_{};
     Element<Vector3f>* locations_{};
-    size_type count_{};
+    size_type column_count_{};
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;

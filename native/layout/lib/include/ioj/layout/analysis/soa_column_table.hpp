@@ -112,7 +112,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
                      Element<std::optional<std::uint64_t>>* minimum_pages,
                      Element<std::optional<std::uint64_t>>* complete_elements_per_page,
                      Element<std::optional<ioj::layout::CacheLineTiling>>* cache_line_tiling,
-                     size_type count)
+                     size_type column_count)
         : parent_{parent}
         , name_{name}
         , semantic_type_{semantic_type}
@@ -128,8 +128,8 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         , minimum_pages_{minimum_pages}
         , complete_elements_per_page_{complete_elements_per_page}
         , cache_line_tiling_{cache_line_tiling}
-        , count_{count} {
-        ioj::soa_storage_detail::validate_column_pointers(count_,
+        , column_count_{column_count} {
+        ioj::soa_storage_detail::validate_column_pointers(column_count_,
                                                           parent_,
                                                           name_,
                                                           semantic_type_,
@@ -178,7 +178,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
                            complete_elements_per_page.data(),
                            cache_line_tiling.data(),
                            ioj::soa_storage_detail::checked_row_count(parent.size())} {
-        ioj::soa_storage_detail::validate_column_sizes(count_,
+        ioj::soa_storage_detail::validate_column_sizes(column_count_,
                                                        parent,
                                                        name,
                                                        semantic_type,
@@ -203,7 +203,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         auto const& [... source] = other;
         ((destination = source), ...);
     }
-    auto num() const noexcept -> size_type { return count_; }
+    auto num() const noexcept -> size_type { return column_count_; }
     auto resolve(this auto const& self) { return self; }
     auto slice(this auto const& self, size_type offset, size_type count) {
         auto const& [... pointers, source_count] = static_cast<ResolvedViewImpl const&>(self);
@@ -211,23 +211,27 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         using Result = std::remove_cvref_t<decltype(self)>;
         return Result{(pointers ? pointers + offset : nullptr)..., count};
     }
-    auto parent() const { return std::span{parent_, count_}; }
-    auto name() const { return std::span{name_, count_}; }
-    auto semantic_type() const { return std::span{semantic_type_, count_}; }
-    auto schema_type() const { return std::span{schema_type_, count_}; }
-    auto physical_type() const { return std::span{physical_type_, count_}; }
-    auto overridden() const { return std::span{overridden_, count_}; }
-    auto type_facts() const { return std::span{type_facts_, count_}; }
-    auto total_bytes() const { return std::span{total_bytes_, count_}; }
-    auto allocation_offset_bytes() const { return std::span{allocation_offset_bytes_, count_}; }
-    auto padding_before_bytes() const { return std::span{padding_before_bytes_, count_}; }
-    auto minimum_cache_lines() const { return std::span{minimum_cache_lines_, count_}; }
-    auto elements_per_cache_line() const { return std::span{elements_per_cache_line_, count_}; }
-    auto minimum_pages() const { return std::span{minimum_pages_, count_}; }
-    auto complete_elements_per_page() const {
-        return std::span{complete_elements_per_page_, count_};
+    auto parent() const { return std::span{parent_, column_count_}; }
+    auto name() const { return std::span{name_, column_count_}; }
+    auto semantic_type() const { return std::span{semantic_type_, column_count_}; }
+    auto schema_type() const { return std::span{schema_type_, column_count_}; }
+    auto physical_type() const { return std::span{physical_type_, column_count_}; }
+    auto overridden() const { return std::span{overridden_, column_count_}; }
+    auto type_facts() const { return std::span{type_facts_, column_count_}; }
+    auto total_bytes() const { return std::span{total_bytes_, column_count_}; }
+    auto allocation_offset_bytes() const {
+        return std::span{allocation_offset_bytes_, column_count_};
     }
-    auto cache_line_tiling() const { return std::span{cache_line_tiling_, count_}; }
+    auto padding_before_bytes() const { return std::span{padding_before_bytes_, column_count_}; }
+    auto minimum_cache_lines() const { return std::span{minimum_cache_lines_, column_count_}; }
+    auto elements_per_cache_line() const {
+        return std::span{elements_per_cache_line_, column_count_};
+    }
+    auto minimum_pages() const { return std::span{minimum_pages_, column_count_}; }
+    auto complete_elements_per_page() const {
+        return std::span{complete_elements_per_page_, column_count_};
+    }
+    auto cache_line_tiling() const { return std::span{cache_line_tiling_, column_count_}; }
   private:
     template <bool>
     friend struct ResolvedViewImpl;
@@ -246,7 +250,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     Element<std::optional<std::uint64_t>>* minimum_pages_{};
     Element<std::optional<std::uint64_t>>* complete_elements_per_page_{};
     Element<std::optional<ioj::layout::CacheLineTiling>>* cache_line_tiling_{};
-    size_type count_{};
+    size_type column_count_{};
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;

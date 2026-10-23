@@ -18,6 +18,25 @@
 namespace ioj::native_soa_tests {
 using namespace native_soa_fixture;
 
+TEST(NativeSoa, CountColumnDoesNotCollideWithViewRowCount) {
+    Counts owner;
+    owner.add(17U);
+    owner.add(29U);
+    auto const view{owner.get_view()};
+    auto const resolved{view.resolve()};
+    EXPECT_EQ(resolved.num(), 2U);
+    EXPECT_EQ(resolved.count()[0], 17U);
+
+    counts::ResolvedView pointers{owner.count().data(), owner.num()};
+    counts::ResolvedView spans{owner.count()};
+    counts::ResolvedConstView const_view{resolved};
+    EXPECT_EQ(pointers.count().data(), spans.count().data());
+    EXPECT_EQ(const_view.slice(1, 1).count()[0], 29U);
+    EXPECT_EQ(view.slice(1, 1).resolve().num(), 1U);
+    spans.set(0, 41U);
+    EXPECT_EQ(owner.count()[0], 41U);
+}
+
 TEST(NativeSoa, PmrResourcesAndMoves) {
     pmr_test_support::verify_pmr_owner<SingleRows>(
         [](SingleRows& owner) -> auto& { return owner.get_view().values()[0]; });

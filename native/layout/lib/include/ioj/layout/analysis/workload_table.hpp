@@ -115,7 +115,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
                      Element<std::optional<std::uint64_t>>* unselected_payload_bytes,
                      Element<std::optional<std::uint64_t>>* allocated_payload_bytes,
                      Element<std::optional<std::uint64_t>>* capacity_slack_bytes,
-                     size_type count)
+                     size_type column_count)
         : analysis_{analysis}
         , selections_{selections}
         , element_count_{element_count}
@@ -132,8 +132,8 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         , unselected_payload_bytes_{unselected_payload_bytes}
         , allocated_payload_bytes_{allocated_payload_bytes}
         , capacity_slack_bytes_{capacity_slack_bytes}
-        , count_{count} {
-        ioj::soa_storage_detail::validate_column_pointers(count_,
+        , column_count_{column_count} {
+        ioj::soa_storage_detail::validate_column_pointers(column_count_,
                                                           analysis_,
                                                           selections_,
                                                           element_count_,
@@ -184,7 +184,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
                            allocated_payload_bytes.data(),
                            capacity_slack_bytes.data(),
                            ioj::soa_storage_detail::checked_row_count(analysis.size())} {
-        ioj::soa_storage_detail::validate_column_sizes(count_,
+        ioj::soa_storage_detail::validate_column_sizes(column_count_,
                                                        analysis,
                                                        selections,
                                                        element_count,
@@ -210,7 +210,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         auto const& [... source] = other;
         ((destination = source), ...);
     }
-    auto num() const noexcept -> size_type { return count_; }
+    auto num() const noexcept -> size_type { return column_count_; }
     auto resolve(this auto const& self) { return self; }
     auto slice(this auto const& self, size_type offset, size_type count) {
         auto const& [... pointers, source_count] = static_cast<ResolvedViewImpl const&>(self);
@@ -218,24 +218,28 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         using Result = std::remove_cvref_t<decltype(self)>;
         return Result{(pointers ? pointers + offset : nullptr)..., count};
     }
-    auto analysis() const { return std::span{analysis_, count_}; }
-    auto selections() const { return std::span{selections_, count_}; }
-    auto element_count() const { return std::span{element_count_, count_}; }
-    auto multiplicity() const { return std::span{multiplicity_, count_}; }
-    auto bytes() const { return std::span{bytes_, count_}; }
-    auto bits() const { return std::span{bits_, count_}; }
-    auto cache() const { return std::span{cache_, count_}; }
-    auto pages() const { return std::span{pages_, count_}; }
-    auto cache_capacity() const { return std::span{cache_capacity_, count_}; }
-    auto packed_waste() const { return std::span{packed_waste_, count_}; }
-    auto footprint_exact() const { return std::span{footprint_exact_, count_}; }
-    auto storage_bytes() const { return std::span{storage_bytes_, count_}; }
+    auto analysis() const { return std::span{analysis_, column_count_}; }
+    auto selections() const { return std::span{selections_, column_count_}; }
+    auto element_count() const { return std::span{element_count_, column_count_}; }
+    auto multiplicity() const { return std::span{multiplicity_, column_count_}; }
+    auto bytes() const { return std::span{bytes_, column_count_}; }
+    auto bits() const { return std::span{bits_, column_count_}; }
+    auto cache() const { return std::span{cache_, column_count_}; }
+    auto pages() const { return std::span{pages_, column_count_}; }
+    auto cache_capacity() const { return std::span{cache_capacity_, column_count_}; }
+    auto packed_waste() const { return std::span{packed_waste_, column_count_}; }
+    auto footprint_exact() const { return std::span{footprint_exact_, column_count_}; }
+    auto storage_bytes() const { return std::span{storage_bytes_, column_count_}; }
     auto full_logical_payload_bytes() const {
-        return std::span{full_logical_payload_bytes_, count_};
+        return std::span{full_logical_payload_bytes_, column_count_};
     }
-    auto unselected_payload_bytes() const { return std::span{unselected_payload_bytes_, count_}; }
-    auto allocated_payload_bytes() const { return std::span{allocated_payload_bytes_, count_}; }
-    auto capacity_slack_bytes() const { return std::span{capacity_slack_bytes_, count_}; }
+    auto unselected_payload_bytes() const {
+        return std::span{unselected_payload_bytes_, column_count_};
+    }
+    auto allocated_payload_bytes() const {
+        return std::span{allocated_payload_bytes_, column_count_};
+    }
+    auto capacity_slack_bytes() const { return std::span{capacity_slack_bytes_, column_count_}; }
   private:
     template <bool>
     friend struct ResolvedViewImpl;
@@ -255,7 +259,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     Element<std::optional<std::uint64_t>>* unselected_payload_bytes_{};
     Element<std::optional<std::uint64_t>>* allocated_payload_bytes_{};
     Element<std::optional<std::uint64_t>>* capacity_slack_bytes_{};
-    size_type count_{};
+    size_type column_count_{};
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;

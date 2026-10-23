@@ -67,15 +67,15 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
                      Element<float>* locations_zs,
                      Element<float>* yaws,
                      Element<std::int32_t>* initial_fire_point_indices,
-                     size_type count)
+                     size_type column_count)
         : entity_indices_{entity_indices}
         , locations_xs_{locations_xs}
         , locations_ys_{locations_ys}
         , locations_zs_{locations_zs}
         , yaws_{yaws}
         , initial_fire_point_indices_{initial_fire_point_indices}
-        , count_{count} {
-        ioj::soa_storage_detail::validate_column_pointers(count_,
+        , column_count_{column_count} {
+        ioj::soa_storage_detail::validate_column_pointers(column_count_,
                                                           entity_indices_,
                                                           locations_xs_,
                                                           locations_ys_,
@@ -96,7 +96,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
                            yaws.data(),
                            initial_fire_point_indices.data(),
                            ioj::soa_storage_detail::checked_row_count(entity_indices.size())} {
-        ioj::soa_storage_detail::validate_column_sizes(count_,
+        ioj::soa_storage_detail::validate_column_sizes(column_count_,
                                                        entity_indices,
                                                        locations_xs,
                                                        locations_ys,
@@ -112,7 +112,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         auto const& [... source] = other;
         ((destination = source), ...);
     }
-    auto num() const noexcept -> size_type { return count_; }
+    auto num() const noexcept -> size_type { return column_count_; }
     auto resolve(this auto const& self) { return self; }
     auto slice(this auto const& self, size_type offset, size_type count) {
         auto const& [... pointers, source_count] = static_cast<ResolvedViewImpl const&>(self);
@@ -120,14 +120,14 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         using Result = std::remove_cvref_t<decltype(self)>;
         return Result{(pointers ? pointers + offset : nullptr)..., count};
     }
-    auto entity_indices() const { return std::span{entity_indices_, count_}; }
+    auto entity_indices() const { return std::span{entity_indices_, column_count_}; }
     auto view_locations() const -> std::
         conditional_t<Const, ::ioj::vectors3f::ResolvedConstView, ::ioj::vectors3f::ResolvedView> {
-        return {locations_xs_, locations_ys_, locations_zs_, count_};
+        return {locations_xs_, locations_ys_, locations_zs_, column_count_};
     }
-    auto yaws() const { return std::span{yaws_, count_}; }
+    auto yaws() const { return std::span{yaws_, column_count_}; }
     auto initial_fire_point_indices() const {
-        return std::span{initial_fire_point_indices_, count_};
+        return std::span{initial_fire_point_indices_, column_count_};
     }
   private:
     template <bool>
@@ -138,7 +138,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     Element<float>* locations_zs_{};
     Element<float>* yaws_{};
     Element<std::int32_t>* initial_fire_point_indices_{};
-    size_type count_{};
+    size_type column_count_{};
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;

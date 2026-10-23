@@ -92,7 +92,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
                      Element<::ioj::Team>* teams,
                      Element<Health>* healths,
                      Element<std::int32_t>* laser_damages,
-                     size_type count)
+                     size_type column_count)
         : entity_indices_{entity_indices}
         , locations_xs_{locations_xs}
         , locations_ys_{locations_ys}
@@ -103,8 +103,8 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         , teams_{teams}
         , healths_{healths}
         , laser_damages_{laser_damages}
-        , count_{count} {
-        ioj::soa_storage_detail::validate_column_pointers(count_,
+        , column_count_{column_count} {
+        ioj::soa_storage_detail::validate_column_pointers(column_count_,
                                                           entity_indices_,
                                                           locations_xs_,
                                                           locations_ys_,
@@ -137,7 +137,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
                            healths.data(),
                            laser_damages.data(),
                            ioj::soa_storage_detail::checked_row_count(entity_indices.size())} {
-        ioj::soa_storage_detail::validate_column_sizes(count_,
+        ioj::soa_storage_detail::validate_column_sizes(column_count_,
                                                        entity_indices,
                                                        locations_xs,
                                                        locations_ys,
@@ -157,7 +157,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         auto const& [... source] = other;
         ((destination = source), ...);
     }
-    auto num() const noexcept -> size_type { return count_; }
+    auto num() const noexcept -> size_type { return column_count_; }
     auto resolve(this auto const& self) { return self; }
     auto slice(this auto const& self, size_type offset, size_type count) {
         auto const& [... pointers, source_count] = static_cast<ResolvedViewImpl const&>(self);
@@ -165,19 +165,19 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         using Result = std::remove_cvref_t<decltype(self)>;
         return Result{(pointers ? pointers + offset : nullptr)..., count};
     }
-    auto entity_indices() const { return std::span{entity_indices_, count_}; }
+    auto entity_indices() const { return std::span{entity_indices_, column_count_}; }
     auto view_locations() const -> std::
         conditional_t<Const, ::ioj::vectors3f::ResolvedConstView, ::ioj::vectors3f::ResolvedView> {
-        return {locations_xs_, locations_ys_, locations_zs_, count_};
+        return {locations_xs_, locations_ys_, locations_zs_, column_count_};
     }
     auto view_rotations() const -> std::conditional_t<Const,
                                                       ::ioj::rotators3f::ResolvedConstView,
                                                       ::ioj::rotators3f::ResolvedView> {
-        return {rotations_pitches_, rotations_yaws_, rotations_rolls_, count_};
+        return {rotations_pitches_, rotations_yaws_, rotations_rolls_, column_count_};
     }
-    auto teams() const { return std::span{teams_, count_}; }
-    auto healths() const { return std::span{healths_, count_}; }
-    auto laser_damages() const { return std::span{laser_damages_, count_}; }
+    auto teams() const { return std::span{teams_, column_count_}; }
+    auto healths() const { return std::span{healths_, column_count_}; }
+    auto laser_damages() const { return std::span{laser_damages_, column_count_}; }
   private:
     template <bool>
     friend struct ResolvedViewImpl;
@@ -191,7 +191,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     Element<::ioj::Team>* teams_{};
     Element<Health>* healths_{};
     Element<std::int32_t>* laser_damages_{};
-    size_type count_{};
+    size_type column_count_{};
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;

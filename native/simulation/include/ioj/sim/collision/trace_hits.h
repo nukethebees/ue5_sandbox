@@ -69,15 +69,15 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
                      Element<EntityId>* entities,
                      Element<ioj::sim::collision::StaticGeometryIndex>* static_geometry_indices,
                      Element<ioj::sim::TraceHit>* hits,
-                     size_type count)
+                     size_type column_count)
         : locations_xs_{locations_xs}
         , locations_ys_{locations_ys}
         , locations_zs_{locations_zs}
         , entities_{entities}
         , static_geometry_indices_{static_geometry_indices}
         , hits_{hits}
-        , count_{count} {
-        ioj::soa_storage_detail::validate_column_pointers(count_,
+        , column_count_{column_count} {
+        ioj::soa_storage_detail::validate_column_pointers(column_count_,
                                                           locations_xs_,
                                                           locations_ys_,
                                                           locations_zs_,
@@ -99,7 +99,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
                            static_geometry_indices.data(),
                            hits.data(),
                            ioj::soa_storage_detail::checked_row_count(locations_xs.size())} {
-        ioj::soa_storage_detail::validate_column_sizes(count_,
+        ioj::soa_storage_detail::validate_column_sizes(column_count_,
                                                        locations_xs,
                                                        locations_ys,
                                                        locations_zs,
@@ -115,7 +115,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         auto const& [... source] = other;
         ((destination = source), ...);
     }
-    auto num() const noexcept -> size_type { return count_; }
+    auto num() const noexcept -> size_type { return column_count_; }
     auto resolve(this auto const& self) { return self; }
     auto slice(this auto const& self, size_type offset, size_type count) {
         auto const& [... pointers, source_count] = static_cast<ResolvedViewImpl const&>(self);
@@ -125,11 +125,13 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     }
     auto view_locations() const -> std::
         conditional_t<Const, ::ioj::vectors3f::ResolvedConstView, ::ioj::vectors3f::ResolvedView> {
-        return {locations_xs_, locations_ys_, locations_zs_, count_};
+        return {locations_xs_, locations_ys_, locations_zs_, column_count_};
     }
-    auto entities() const { return std::span{entities_, count_}; }
-    auto static_geometry_indices() const { return std::span{static_geometry_indices_, count_}; }
-    auto hits() const { return std::span{hits_, count_}; }
+    auto entities() const { return std::span{entities_, column_count_}; }
+    auto static_geometry_indices() const {
+        return std::span{static_geometry_indices_, column_count_};
+    }
+    auto hits() const { return std::span{hits_, column_count_}; }
   private:
     template <bool>
     friend struct ResolvedViewImpl;
@@ -139,7 +141,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     Element<EntityId>* entities_{};
     Element<ioj::sim::collision::StaticGeometryIndex>* static_geometry_indices_{};
     Element<ioj::sim::TraceHit>* hits_{};
-    size_type count_{};
+    size_type column_count_{};
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;

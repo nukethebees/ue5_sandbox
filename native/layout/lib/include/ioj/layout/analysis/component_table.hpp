@@ -90,7 +90,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
                      Element<std::optional<std::uint64_t>>* extent_bytes,
                      Element<std::optional<std::uint64_t>>* padding_before_bytes,
                      Element<std::optional<std::uint64_t>>* slack_bytes,
-                     size_type count)
+                     size_type column_count)
         : parent_{parent}
         , name_{name}
         , tag_{tag}
@@ -101,8 +101,8 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         , extent_bytes_{extent_bytes}
         , padding_before_bytes_{padding_before_bytes}
         , slack_bytes_{slack_bytes}
-        , count_{count} {
-        ioj::soa_storage_detail::validate_column_pointers(count_,
+        , column_count_{column_count} {
+        ioj::soa_storage_detail::validate_column_pointers(column_count_,
                                                           parent_,
                                                           name_,
                                                           tag_,
@@ -135,7 +135,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
                            padding_before_bytes.data(),
                            slack_bytes.data(),
                            ioj::soa_storage_detail::checked_row_count(parent.size())} {
-        ioj::soa_storage_detail::validate_column_sizes(count_,
+        ioj::soa_storage_detail::validate_column_sizes(column_count_,
                                                        parent,
                                                        name,
                                                        tag,
@@ -155,7 +155,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         auto const& [... source] = other;
         ((destination = source), ...);
     }
-    auto num() const noexcept -> size_type { return count_; }
+    auto num() const noexcept -> size_type { return column_count_; }
     auto resolve(this auto const& self) { return self; }
     auto slice(this auto const& self, size_type offset, size_type count) {
         auto const& [... pointers, source_count] = static_cast<ResolvedViewImpl const&>(self);
@@ -163,16 +163,16 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         using Result = std::remove_cvref_t<decltype(self)>;
         return Result{(pointers ? pointers + offset : nullptr)..., count};
     }
-    auto parent() const { return std::span{parent_, count_}; }
-    auto name() const { return std::span{name_, count_}; }
-    auto tag() const { return std::span{tag_, count_}; }
-    auto semantic_type() const { return std::span{semantic_type_, count_}; }
-    auto element_count() const { return std::span{element_count_, count_}; }
-    auto element_facts() const { return std::span{element_facts_, count_}; }
-    auto offset_bytes() const { return std::span{offset_bytes_, count_}; }
-    auto extent_bytes() const { return std::span{extent_bytes_, count_}; }
-    auto padding_before_bytes() const { return std::span{padding_before_bytes_, count_}; }
-    auto slack_bytes() const { return std::span{slack_bytes_, count_}; }
+    auto parent() const { return std::span{parent_, column_count_}; }
+    auto name() const { return std::span{name_, column_count_}; }
+    auto tag() const { return std::span{tag_, column_count_}; }
+    auto semantic_type() const { return std::span{semantic_type_, column_count_}; }
+    auto element_count() const { return std::span{element_count_, column_count_}; }
+    auto element_facts() const { return std::span{element_facts_, column_count_}; }
+    auto offset_bytes() const { return std::span{offset_bytes_, column_count_}; }
+    auto extent_bytes() const { return std::span{extent_bytes_, column_count_}; }
+    auto padding_before_bytes() const { return std::span{padding_before_bytes_, column_count_}; }
+    auto slack_bytes() const { return std::span{slack_bytes_, column_count_}; }
   private:
     template <bool>
     friend struct ResolvedViewImpl;
@@ -186,7 +186,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     Element<std::optional<std::uint64_t>>* extent_bytes_{};
     Element<std::optional<std::uint64_t>>* padding_before_bytes_{};
     Element<std::optional<std::uint64_t>>* slack_bytes_{};
-    size_type count_{};
+    size_type column_count_{};
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;

@@ -65,16 +65,16 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
                      Element<float>* ends_xs,
                      Element<float>* ends_ys,
                      Element<float>* ends_zs,
-                     size_type count)
+                     size_type column_count)
         : starts_xs_{starts_xs}
         , starts_ys_{starts_ys}
         , starts_zs_{starts_zs}
         , ends_xs_{ends_xs}
         , ends_ys_{ends_ys}
         , ends_zs_{ends_zs}
-        , count_{count} {
+        , column_count_{column_count} {
         ioj::soa_storage_detail::validate_column_pointers(
-            count_, starts_xs_, starts_ys_, starts_zs_, ends_xs_, ends_ys_, ends_zs_);
+            column_count_, starts_xs_, starts_ys_, starts_zs_, ends_xs_, ends_ys_, ends_zs_);
     }
     ResolvedViewImpl(std::span<Element<float>> starts_xs,
                      std::span<Element<float>> starts_ys,
@@ -90,7 +90,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
                            ends_zs.data(),
                            ioj::soa_storage_detail::checked_row_count(starts_xs.size())} {
         ioj::soa_storage_detail::validate_column_sizes(
-            count_, starts_xs, starts_ys, starts_zs, ends_xs, ends_ys, ends_zs);
+            column_count_, starts_xs, starts_ys, starts_zs, ends_xs, ends_ys, ends_zs);
     }
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
@@ -100,7 +100,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         auto const& [... source] = other;
         ((destination = source), ...);
     }
-    auto num() const noexcept -> size_type { return count_; }
+    auto num() const noexcept -> size_type { return column_count_; }
     auto resolve(this auto const& self) { return self; }
     auto slice(this auto const& self, size_type offset, size_type count) {
         auto const& [... pointers, source_count] = static_cast<ResolvedViewImpl const&>(self);
@@ -110,11 +110,11 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     }
     auto view_starts() const -> std::
         conditional_t<Const, ::ioj::vectors3f::ResolvedConstView, ::ioj::vectors3f::ResolvedView> {
-        return {starts_xs_, starts_ys_, starts_zs_, count_};
+        return {starts_xs_, starts_ys_, starts_zs_, column_count_};
     }
     auto view_ends() const -> std::
         conditional_t<Const, ::ioj::vectors3f::ResolvedConstView, ::ioj::vectors3f::ResolvedView> {
-        return {ends_xs_, ends_ys_, ends_zs_, count_};
+        return {ends_xs_, ends_ys_, ends_zs_, column_count_};
     }
   private:
     template <bool>
@@ -125,7 +125,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     Element<float>* ends_xs_{};
     Element<float>* ends_ys_{};
     Element<float>* ends_zs_{};
-    size_type count_{};
+    size_type column_count_{};
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;

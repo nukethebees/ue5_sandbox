@@ -281,7 +281,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         Element<float>* target_distance_sq,
         Element<float>* target_distances,
         Element<float>* target_radii,
-        size_type count)
+        size_type column_count)
         : entity_ids_{entity_ids}
         , integral_biases_{integral_biases}
         , float_biases_{float_biases}
@@ -337,9 +337,9 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         , target_distance_sq_{target_distance_sq}
         , target_distances_{target_distances}
         , target_radii_{target_radii}
-        , count_{count} {
+        , column_count_{column_count} {
         ioj::soa_storage_detail::validate_column_pointers(
-            count_,
+            column_count_,
             entity_ids_,
             integral_biases_,
             float_biases_,
@@ -509,7 +509,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
                            target_distances.data(),
                            target_radii.data(),
                            ioj::soa_storage_detail::checked_row_count(entity_ids.size())} {
-        ioj::soa_storage_detail::validate_column_sizes(count_,
+        ioj::soa_storage_detail::validate_column_sizes(column_count_,
                                                        entity_ids,
                                                        integral_biases,
                                                        float_biases,
@@ -574,7 +574,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         auto const& [... source] = other;
         ((destination = source), ...);
     }
-    auto num() const noexcept -> size_type { return count_; }
+    auto num() const noexcept -> size_type { return column_count_; }
     auto resolve(this auto const& self) { return self; }
     auto slice(this auto const& self, size_type offset, size_type count) {
         auto const& [... pointers, source_count] = static_cast<ResolvedViewImpl const&>(self);
@@ -582,91 +582,101 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         using Result = std::remove_cvref_t<decltype(self)>;
         return Result{(pointers ? pointers + offset : nullptr)..., count};
     }
-    auto entity_ids() const { return std::span{entity_ids_, count_}; }
-    auto integral_biases() const { return std::span{integral_biases_, count_}; }
-    auto float_biases() const { return std::span{float_biases_, count_}; }
-    auto tasks() const { return std::span{tasks_, count_}; }
+    auto entity_ids() const { return std::span{entity_ids_, column_count_}; }
+    auto integral_biases() const { return std::span{integral_biases_, column_count_}; }
+    auto float_biases() const { return std::span{float_biases_, column_count_}; }
+    auto tasks() const { return std::span{tasks_, column_count_}; }
     auto view_locations() const -> std::
         conditional_t<Const, ::ioj::vectors3f::ResolvedConstView, ::ioj::vectors3f::ResolvedView> {
-        return {locations_xs_, locations_ys_, locations_zs_, count_};
+        return {locations_xs_, locations_ys_, locations_zs_, column_count_};
     }
     auto view_desired_move_locations() const -> std::
         conditional_t<Const, ::ioj::vectors3f::ResolvedConstView, ::ioj::vectors3f::ResolvedView> {
         return {desired_move_locations_xs_,
                 desired_move_locations_ys_,
                 desired_move_locations_zs_,
-                count_};
+                column_count_};
     }
     auto view_aim_directions() const -> std::
         conditional_t<Const, ::ioj::vectors3f::ResolvedConstView, ::ioj::vectors3f::ResolvedView> {
-        return {aim_directions_xs_, aim_directions_ys_, aim_directions_zs_, count_};
+        return {aim_directions_xs_, aim_directions_ys_, aim_directions_zs_, column_count_};
     }
     auto view_planned_aim_directions() const -> std::
         conditional_t<Const, ::ioj::vectors3f::ResolvedConstView, ::ioj::vectors3f::ResolvedView> {
         return {planned_aim_directions_xs_,
                 planned_aim_directions_ys_,
                 planned_aim_directions_zs_,
-                count_};
+                column_count_};
     }
     auto view_desired_aiming_directions() const -> std::
         conditional_t<Const, ::ioj::vectors3f::ResolvedConstView, ::ioj::vectors3f::ResolvedView> {
         return {desired_aiming_directions_xs_,
                 desired_aiming_directions_ys_,
                 desired_aiming_directions_zs_,
-                count_};
+                column_count_};
     }
     auto view_movement_directions() const -> std::
         conditional_t<Const, ::ioj::vectors3f::ResolvedConstView, ::ioj::vectors3f::ResolvedView> {
-        return {movement_directions_xs_, movement_directions_ys_, movement_directions_zs_, count_};
+        return {movement_directions_xs_,
+                movement_directions_ys_,
+                movement_directions_zs_,
+                column_count_};
     }
     auto view_velocities() const -> std::
         conditional_t<Const, ::ioj::vectors3f::ResolvedConstView, ::ioj::vectors3f::ResolvedView> {
-        return {velocities_xs_, velocities_ys_, velocities_zs_, count_};
+        return {velocities_xs_, velocities_ys_, velocities_zs_, column_count_};
     }
-    auto move_distances() const { return std::span{move_distances_, count_}; }
-    auto speeds() const { return std::span{speeds_, count_}; }
-    auto teams() const { return std::span{teams_, count_}; }
-    auto parent_ids() const { return std::span{parent_ids_, count_}; }
-    auto awareness_scan_countdowns() const { return std::span{awareness_scan_countdowns_, count_}; }
+    auto move_distances() const { return std::span{move_distances_, column_count_}; }
+    auto speeds() const { return std::span{speeds_, column_count_}; }
+    auto teams() const { return std::span{teams_, column_count_}; }
+    auto parent_ids() const { return std::span{parent_ids_, column_count_}; }
+    auto awareness_scan_countdowns() const {
+        return std::span{awareness_scan_countdowns_, column_count_};
+    }
     auto navigation_update_countdowns_remaining_ticks() const {
-        return std::span{navigation_update_countdowns_remaining_ticks_, count_};
+        return std::span{navigation_update_countdowns_remaining_ticks_, column_count_};
     }
     auto navigation_update_countdowns_periods() const {
-        return std::span{navigation_update_countdowns_periods_, count_};
+        return std::span{navigation_update_countdowns_periods_, column_count_};
     }
     auto view_separation_steering() const -> std::
         conditional_t<Const, ::ioj::vectors3f::ResolvedConstView, ::ioj::vectors3f::ResolvedView> {
-        return {separation_steering_xs_, separation_steering_ys_, separation_steering_zs_, count_};
+        return {separation_steering_xs_,
+                separation_steering_ys_,
+                separation_steering_zs_,
+                column_count_};
     }
-    auto navigation_risk_tiers() const { return std::span{navigation_risk_tiers_, count_}; }
+    auto navigation_risk_tiers() const { return std::span{navigation_risk_tiers_, column_count_}; }
     auto navigation_lower_risk_scan_counts() const {
-        return std::span{navigation_lower_risk_scan_counts_, count_};
+        return std::span{navigation_lower_risk_scan_counts_, column_count_};
     }
-    auto avoidance_choice_indices() const { return std::span{avoidance_choice_indices_, count_}; }
+    auto avoidance_choice_indices() const {
+        return std::span{avoidance_choice_indices_, column_count_};
+    }
     auto avoidance_clear_scan_counts() const {
-        return std::span{avoidance_clear_scan_counts_, count_};
+        return std::span{avoidance_clear_scan_counts_, column_count_};
     }
     auto attack_reposition_countdowns() const {
-        return std::span{attack_reposition_countdowns_, count_};
+        return std::span{attack_reposition_countdowns_, column_count_};
     }
-    auto attack_cooldowns() const { return std::span{attack_cooldowns_, count_}; }
-    auto target_ids() const { return std::span{target_ids_, count_}; }
+    auto attack_cooldowns() const { return std::span{attack_cooldowns_, column_count_}; }
+    auto target_ids() const { return std::span{target_ids_, column_count_}; }
     auto view_target_locations() const -> std::
         conditional_t<Const, ::ioj::vectors3f::ResolvedConstView, ::ioj::vectors3f::ResolvedView> {
-        return {target_locations_xs_, target_locations_ys_, target_locations_zs_, count_};
+        return {target_locations_xs_, target_locations_ys_, target_locations_zs_, column_count_};
     }
     auto view_target_velocities() const -> std::
         conditional_t<Const, ::ioj::vectors3f::ResolvedConstView, ::ioj::vectors3f::ResolvedView> {
-        return {target_velocities_xs_, target_velocities_ys_, target_velocities_zs_, count_};
+        return {target_velocities_xs_, target_velocities_ys_, target_velocities_zs_, column_count_};
     }
     auto view_target_directions() const -> std::
         conditional_t<Const, ::ioj::vectors3f::ResolvedConstView, ::ioj::vectors3f::ResolvedView> {
-        return {target_directions_xs_, target_directions_ys_, target_directions_zs_, count_};
+        return {target_directions_xs_, target_directions_ys_, target_directions_zs_, column_count_};
     }
-    auto intercept_times() const { return std::span{intercept_times_, count_}; }
-    auto target_distance_sq() const { return std::span{target_distance_sq_, count_}; }
-    auto target_distances() const { return std::span{target_distances_, count_}; }
-    auto target_radii() const { return std::span{target_radii_, count_}; }
+    auto intercept_times() const { return std::span{intercept_times_, column_count_}; }
+    auto target_distance_sq() const { return std::span{target_distance_sq_, column_count_}; }
+    auto target_distances() const { return std::span{target_distances_, column_count_}; }
+    auto target_radii() const { return std::span{target_radii_, column_count_}; }
   private:
     template <bool>
     friend struct ResolvedViewImpl;
@@ -725,7 +735,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     Element<float>* target_distance_sq_{};
     Element<float>* target_distances_{};
     Element<float>* target_radii_{};
-    size_type count_{};
+    size_type column_count_{};
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;

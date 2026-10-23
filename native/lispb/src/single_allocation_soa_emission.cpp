@@ -460,9 +460,9 @@ auto emit_resolved_views(LoweringContext& context,
     std::vector<FunctionParameterId> spans;
     std::vector<MemberInitializerId> initializers;
     std::vector<std::string> span_arguments;
-    std::vector<Expr> size_validation_arguments{ir.named("count_")};
+    std::vector<Expr> size_validation_arguments{ir.named("column_count_")};
     NodeListBuilder validation{ir};
-    std::vector<Expr> validation_arguments{ir.named("count_")};
+    std::vector<Expr> validation_arguments{ir.named("column_count_")};
     for (auto const column : selected) {
         auto const name{context.text(columns.flattened_identifier[columns.index(column)])};
         pointers.push_back(ir.parameter(element_type(column) + "*", name));
@@ -475,9 +475,9 @@ auto emit_resolved_views(LoweringContext& context,
     }
     validation.add(ir.expr_stmt(ir.call(
         ir.named("ioj::soa_storage_detail::validate_column_pointers"), validation_arguments)));
-    pointers.push_back(ir.parameter("size_type", "count"));
+    pointers.push_back(ir.parameter("size_type", "column_count"));
     initializers.push_back(
-        ir.member_initializer(ir.strings.intern("count_"), ir.store_text("count")));
+        ir.member_initializer(ir.strings.intern("column_count_"), ir.store_text("column_count")));
     auto const pointer_constructor{ir.constructor(ir.strings.intern(implementation))};
     ir.set_function_parameters(pointer_constructor, pointers);
     ir.set_function_body(pointer_constructor, validation.build(), initializers);
@@ -511,7 +511,7 @@ auto emit_resolved_views(LoweringContext& context,
                                  "((destination = source), ...);")});
     children.add(inline_function(context, conversion)).new_lines(1);
 
-    children.add(ir.raw("auto num() const noexcept -> size_type { return count_; }\n"
+    children.add(ir.raw("auto num() const noexcept -> size_type { return column_count_; }\n"
                         "auto resolve(this auto const& self) { return self; }"));
 
     children.new_lines(1).add(
@@ -532,7 +532,7 @@ auto emit_resolved_views(LoweringContext& context,
             for (auto const column : member_columns(context, model, members.name[member_row])) {
                 arguments.push_back(pointer_name(column));
             }
-            arguments.push_back("count_");
+            arguments.push_back("column_count_");
             children.new_lines(1).add(ir.raw("auto view_" + name + "() const -> " +
                                              shared_view_type(context, nested, true) +
                                              " { return {" + join(arguments, ", ") + "}; }"));
@@ -540,7 +540,7 @@ auto emit_resolved_views(LoweringContext& context,
             auto const path{storage.paths.append({}, members.name[member_row])};
             auto const column{column_for(context, model, path)};
             children.new_lines(1).add(ir.raw("auto " + name + "() const { return std::span{" +
-                                             pointer_name(column) + ", count_}; }"));
+                                             pointer_name(column) + ", column_count_}; }"));
         }
     }
     children.new_lines(1)
@@ -559,7 +559,7 @@ auto emit_resolved_views(LoweringContext& context,
             .new_lines(1);
     }
     children.add(ir.instance_member(
-        ir.types.intern("size_type"), ir.strings.intern("count_"), ir.init_list({})));
+        ir.types.intern("size_type"), ir.strings.intern("column_count_"), ir.init_list({})));
     auto const record{
         ir.record(ir.strings.intern(implementation), children.build(), RecordKind::struct_)};
     describe_compact_scope(context, record, schema);

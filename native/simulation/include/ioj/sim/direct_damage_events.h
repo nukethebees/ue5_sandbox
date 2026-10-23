@@ -51,13 +51,13 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     ResolvedViewImpl(Element<EntityId>* damaged_entities,
                      Element<std::int32_t>* damage_amounts,
                      Element<EntityId>* instigators,
-                     size_type count)
+                     size_type column_count)
         : damaged_entities_{damaged_entities}
         , damage_amounts_{damage_amounts}
         , instigators_{instigators}
-        , count_{count} {
+        , column_count_{column_count} {
         ioj::soa_storage_detail::validate_column_pointers(
-            count_, damaged_entities_, damage_amounts_, instigators_);
+            column_count_, damaged_entities_, damage_amounts_, instigators_);
     }
     ResolvedViewImpl(std::span<Element<EntityId>> damaged_entities,
                      std::span<Element<std::int32_t>> damage_amounts,
@@ -67,7 +67,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
                            instigators.data(),
                            ioj::soa_storage_detail::checked_row_count(damaged_entities.size())} {
         ioj::soa_storage_detail::validate_column_sizes(
-            count_, damaged_entities, damage_amounts, instigators);
+            column_count_, damaged_entities, damage_amounts, instigators);
     }
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
@@ -77,7 +77,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         auto const& [... source] = other;
         ((destination = source), ...);
     }
-    auto num() const noexcept -> size_type { return count_; }
+    auto num() const noexcept -> size_type { return column_count_; }
     auto resolve(this auto const& self) { return self; }
     auto slice(this auto const& self, size_type offset, size_type count) {
         auto const& [... pointers, source_count] = static_cast<ResolvedViewImpl const&>(self);
@@ -85,16 +85,16 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         using Result = std::remove_cvref_t<decltype(self)>;
         return Result{(pointers ? pointers + offset : nullptr)..., count};
     }
-    auto damaged_entities() const { return std::span{damaged_entities_, count_}; }
-    auto damage_amounts() const { return std::span{damage_amounts_, count_}; }
-    auto instigators() const { return std::span{instigators_, count_}; }
+    auto damaged_entities() const { return std::span{damaged_entities_, column_count_}; }
+    auto damage_amounts() const { return std::span{damage_amounts_, column_count_}; }
+    auto instigators() const { return std::span{instigators_, column_count_}; }
   private:
     template <bool>
     friend struct ResolvedViewImpl;
     Element<EntityId>* damaged_entities_{};
     Element<std::int32_t>* damage_amounts_{};
     Element<EntityId>* instigators_{};
-    size_type count_{};
+    size_type column_count_{};
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;

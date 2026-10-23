@@ -168,6 +168,15 @@ TEST(SingleAllocationSoa, RejectsInvalidPartialAppendDeclarations) {
 
 TEST(SingleAllocationSoa, RejectsGeneratedNameCollisions) {
     EXPECT_THROW(render(changed("small array", "validate array")), std::invalid_argument);
+    EXPECT_THROW(render("(struct Counts (member column_count array std::uint32_t))"),
+                 std::invalid_argument);
+    for (auto const options : {"", ":layout-only true"}) {
+        SCOPED_TRACE(options);
+        EXPECT_THROW(render(std::string{"(struct Counts (member count array std::uint32_t))"
+                                        "(struct Rows "} +
+                            options + " (member column nested Counts))"),
+                     std::invalid_argument);
+    }
     EXPECT_THROW(render(schemas() + "(struct rows (member value array float))"),
                  std::invalid_argument);
     EXPECT_THROW(render("(struct FooBar (member value array float))"

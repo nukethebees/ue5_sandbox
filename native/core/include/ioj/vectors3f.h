@@ -47,12 +47,15 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     template <typename T>
     using Element = std::conditional_t<Const, T const, T>;
     ResolvedViewImpl() = default;
-    ResolvedViewImpl(Element<float>* xs, Element<float>* ys, Element<float>* zs, size_type count)
+    ResolvedViewImpl(Element<float>* xs,
+                     Element<float>* ys,
+                     Element<float>* zs,
+                     size_type column_count)
         : xs_{xs}
         , ys_{ys}
         , zs_{zs}
-        , count_{count} {
-        ioj::soa_storage_detail::validate_column_pointers(count_, xs_, ys_, zs_);
+        , column_count_{column_count} {
+        ioj::soa_storage_detail::validate_column_pointers(column_count_, xs_, ys_, zs_);
     }
     ResolvedViewImpl(std::span<Element<float>> xs,
                      std::span<Element<float>> ys,
@@ -61,7 +64,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
                            ys.data(),
                            zs.data(),
                            ioj::soa_storage_detail::checked_row_count(xs.size())} {
-        ioj::soa_storage_detail::validate_column_sizes(count_, xs, ys, zs);
+        ioj::soa_storage_detail::validate_column_sizes(column_count_, xs, ys, zs);
     }
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
@@ -71,7 +74,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         auto const& [... source] = other;
         ((destination = source), ...);
     }
-    auto num() const noexcept -> size_type { return count_; }
+    auto num() const noexcept -> size_type { return column_count_; }
     auto resolve(this auto const& self) { return self; }
     auto slice(this auto const& self, size_type offset, size_type count) {
         auto const& [... pointers, source_count] = static_cast<ResolvedViewImpl const&>(self);
@@ -79,16 +82,16 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         using Result = std::remove_cvref_t<decltype(self)>;
         return Result{(pointers ? pointers + offset : nullptr)..., count};
     }
-    auto xs() const { return std::span{xs_, count_}; }
-    auto ys() const { return std::span{ys_, count_}; }
-    auto zs() const { return std::span{zs_, count_}; }
+    auto xs() const { return std::span{xs_, column_count_}; }
+    auto ys() const { return std::span{ys_, column_count_}; }
+    auto zs() const { return std::span{zs_, column_count_}; }
   private:
     template <bool>
     friend struct ResolvedViewImpl;
     Element<float>* xs_{};
     Element<float>* ys_{};
     Element<float>* zs_{};
-    size_type count_{};
+    size_type column_count_{};
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;

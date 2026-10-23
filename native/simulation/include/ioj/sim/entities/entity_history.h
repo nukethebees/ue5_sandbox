@@ -81,7 +81,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
                      Element<LifeState>* life_state,
                      Element<SimTick>* death_ticks,
                      Element<Vector3f>* death_locations,
-                     size_type count)
+                     size_type column_count)
         : entity_ids_{entity_ids}
         , entity_types_{entity_types}
         , teams_{teams}
@@ -90,8 +90,8 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         , life_state_{life_state}
         , death_ticks_{death_ticks}
         , death_locations_{death_locations}
-        , count_{count} {
-        ioj::soa_storage_detail::validate_column_pointers(count_,
+        , column_count_{column_count} {
+        ioj::soa_storage_detail::validate_column_pointers(column_count_,
                                                           entity_ids_,
                                                           entity_types_,
                                                           teams_,
@@ -118,7 +118,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
                            death_ticks.data(),
                            death_locations.data(),
                            ioj::soa_storage_detail::checked_row_count(entity_ids.size())} {
-        ioj::soa_storage_detail::validate_column_sizes(count_,
+        ioj::soa_storage_detail::validate_column_sizes(column_count_,
                                                        entity_ids,
                                                        entity_types,
                                                        teams,
@@ -136,7 +136,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         auto const& [... source] = other;
         ((destination = source), ...);
     }
-    auto num() const noexcept -> size_type { return count_; }
+    auto num() const noexcept -> size_type { return column_count_; }
     auto resolve(this auto const& self) { return self; }
     auto slice(this auto const& self, size_type offset, size_type count) {
         auto const& [... pointers, source_count] = static_cast<ResolvedViewImpl const&>(self);
@@ -144,14 +144,14 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         using Result = std::remove_cvref_t<decltype(self)>;
         return Result{(pointers ? pointers + offset : nullptr)..., count};
     }
-    auto entity_ids() const { return std::span{entity_ids_, count_}; }
-    auto entity_types() const { return std::span{entity_types_, count_}; }
-    auto teams() const { return std::span{teams_, count_}; }
-    auto kills() const { return std::span{kills_, count_}; }
-    auto killed_by() const { return std::span{killed_by_, count_}; }
-    auto life_state() const { return std::span{life_state_, count_}; }
-    auto death_ticks() const { return std::span{death_ticks_, count_}; }
-    auto death_locations() const { return std::span{death_locations_, count_}; }
+    auto entity_ids() const { return std::span{entity_ids_, column_count_}; }
+    auto entity_types() const { return std::span{entity_types_, column_count_}; }
+    auto teams() const { return std::span{teams_, column_count_}; }
+    auto kills() const { return std::span{kills_, column_count_}; }
+    auto killed_by() const { return std::span{killed_by_, column_count_}; }
+    auto life_state() const { return std::span{life_state_, column_count_}; }
+    auto death_ticks() const { return std::span{death_ticks_, column_count_}; }
+    auto death_locations() const { return std::span{death_locations_, column_count_}; }
   private:
     template <bool>
     friend struct ResolvedViewImpl;
@@ -163,7 +163,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     Element<LifeState>* life_state_{};
     Element<SimTick>* death_ticks_{};
     Element<Vector3f>* death_locations_{};
-    size_type count_{};
+    size_type column_count_{};
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;

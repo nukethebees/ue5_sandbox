@@ -70,15 +70,15 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
                      Element<std::uint8_t>* count_sentinel,
                      Element<std::optional<ioj::layout::EnumCodeValue>>* code,
                      Element<std::optional<lispb::codegen::PackedIntegerValue>>* integer_value,
-                     size_type count)
+                     size_type column_count)
         : name_{name}
         , sentinel_{sentinel}
         , count_sentinel_{count_sentinel}
         , code_{code}
         , integer_value_{integer_value}
-        , count_{count} {
+        , column_count_{column_count} {
         ioj::soa_storage_detail::validate_column_pointers(
-            count_, name_, sentinel_, count_sentinel_, code_, integer_value_);
+            column_count_, name_, sentinel_, count_sentinel_, code_, integer_value_);
     }
     ResolvedViewImpl(
         std::span<Element<std::string_view>> name,
@@ -93,7 +93,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
                            integer_value.data(),
                            ioj::soa_storage_detail::checked_row_count(name.size())} {
         ioj::soa_storage_detail::validate_column_sizes(
-            count_, name, sentinel, count_sentinel, code, integer_value);
+            column_count_, name, sentinel, count_sentinel, code, integer_value);
     }
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
@@ -103,7 +103,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         auto const& [... source] = other;
         ((destination = source), ...);
     }
-    auto num() const noexcept -> size_type { return count_; }
+    auto num() const noexcept -> size_type { return column_count_; }
     auto resolve(this auto const& self) { return self; }
     auto slice(this auto const& self, size_type offset, size_type count) {
         auto const& [... pointers, source_count] = static_cast<ResolvedViewImpl const&>(self);
@@ -111,11 +111,11 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         using Result = std::remove_cvref_t<decltype(self)>;
         return Result{(pointers ? pointers + offset : nullptr)..., count};
     }
-    auto name() const { return std::span{name_, count_}; }
-    auto sentinel() const { return std::span{sentinel_, count_}; }
-    auto count_sentinel() const { return std::span{count_sentinel_, count_}; }
-    auto code() const { return std::span{code_, count_}; }
-    auto integer_value() const { return std::span{integer_value_, count_}; }
+    auto name() const { return std::span{name_, column_count_}; }
+    auto sentinel() const { return std::span{sentinel_, column_count_}; }
+    auto count_sentinel() const { return std::span{count_sentinel_, column_count_}; }
+    auto code() const { return std::span{code_, column_count_}; }
+    auto integer_value() const { return std::span{integer_value_, column_count_}; }
   private:
     template <bool>
     friend struct ResolvedViewImpl;
@@ -124,7 +124,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     Element<std::uint8_t>* count_sentinel_{};
     Element<std::optional<ioj::layout::EnumCodeValue>>* code_{};
     Element<std::optional<lispb::codegen::PackedIntegerValue>>* integer_value_{};
-    size_type count_{};
+    size_type column_count_{};
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;

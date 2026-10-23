@@ -152,7 +152,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         Element<std::optional<std::uint32_t>>* minimum_required_bits,
         Element<std::optional<std::uint64_t>>* unused_codes,
         Element<ioj::layout::RowRange>* codes,
-        size_type count)
+        size_type column_count)
         : parent_{parent}
         , segment_{segment}
         , name_{name}
@@ -177,8 +177,8 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         , minimum_required_bits_{minimum_required_bits}
         , unused_codes_{unused_codes}
         , codes_{codes}
-        , count_{count} {
-        ioj::soa_storage_detail::validate_column_pointers(count_,
+        , column_count_{column_count} {
+        ioj::soa_storage_detail::validate_column_pointers(column_count_,
                                                           parent_,
                                                           segment_,
                                                           name_,
@@ -255,7 +255,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
                            unused_codes.data(),
                            codes.data(),
                            ioj::soa_storage_detail::checked_row_count(parent.size())} {
-        ioj::soa_storage_detail::validate_column_sizes(count_,
+        ioj::soa_storage_detail::validate_column_sizes(column_count_,
                                                        parent,
                                                        segment,
                                                        name,
@@ -289,7 +289,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         auto const& [... source] = other;
         ((destination = source), ...);
     }
-    auto num() const noexcept -> size_type { return count_; }
+    auto num() const noexcept -> size_type { return column_count_; }
     auto resolve(this auto const& self) { return self; }
     auto slice(this auto const& self, size_type offset, size_type count) {
         auto const& [... pointers, source_count] = static_cast<ResolvedViewImpl const&>(self);
@@ -297,30 +297,36 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         using Result = std::remove_cvref_t<decltype(self)>;
         return Result{(pointers ? pointers + offset : nullptr)..., count};
     }
-    auto parent() const { return std::span{parent_, count_}; }
-    auto segment() const { return std::span{segment_, count_}; }
-    auto name() const { return std::span{name_, count_}; }
-    auto semantic_type() const { return std::span{semantic_type_, count_}; }
-    auto logical_type() const { return std::span{logical_type_, count_}; }
-    auto kind() const { return std::span{kind_, count_}; }
-    auto reserved() const { return std::span{reserved_, count_}; }
-    auto schema_bit_width() const { return std::span{schema_bit_width_, count_}; }
-    auto schema_bit_width_auto() const { return std::span{schema_bit_width_auto_, count_}; }
-    auto bit_width() const { return std::span{bit_width_, count_}; }
-    auto overridden() const { return std::span{overridden_, count_}; }
-    auto least_significant_bit() const { return std::span{least_significant_bit_, count_}; }
-    auto most_significant_bit() const { return std::span{most_significant_bit_, count_}; }
-    auto maximum_unsigned_value() const { return std::span{maximum_unsigned_value_, count_}; }
-    auto minimum_signed_value() const { return std::span{minimum_signed_value_, count_}; }
-    auto maximum_signed_value() const { return std::span{maximum_signed_value_, count_}; }
-    auto minimum_semantic_value() const { return std::span{minimum_semantic_value_, count_}; }
-    auto maximum_semantic_value() const { return std::span{maximum_semantic_value_, count_}; }
-    auto semantic_value_count() const { return std::span{semantic_value_count_, count_}; }
-    auto sentinel_code_count() const { return std::span{sentinel_code_count_, count_}; }
-    auto required_code_count() const { return std::span{required_code_count_, count_}; }
-    auto minimum_required_bits() const { return std::span{minimum_required_bits_, count_}; }
-    auto unused_codes() const { return std::span{unused_codes_, count_}; }
-    auto codes() const { return std::span{codes_, count_}; }
+    auto parent() const { return std::span{parent_, column_count_}; }
+    auto segment() const { return std::span{segment_, column_count_}; }
+    auto name() const { return std::span{name_, column_count_}; }
+    auto semantic_type() const { return std::span{semantic_type_, column_count_}; }
+    auto logical_type() const { return std::span{logical_type_, column_count_}; }
+    auto kind() const { return std::span{kind_, column_count_}; }
+    auto reserved() const { return std::span{reserved_, column_count_}; }
+    auto schema_bit_width() const { return std::span{schema_bit_width_, column_count_}; }
+    auto schema_bit_width_auto() const { return std::span{schema_bit_width_auto_, column_count_}; }
+    auto bit_width() const { return std::span{bit_width_, column_count_}; }
+    auto overridden() const { return std::span{overridden_, column_count_}; }
+    auto least_significant_bit() const { return std::span{least_significant_bit_, column_count_}; }
+    auto most_significant_bit() const { return std::span{most_significant_bit_, column_count_}; }
+    auto maximum_unsigned_value() const {
+        return std::span{maximum_unsigned_value_, column_count_};
+    }
+    auto minimum_signed_value() const { return std::span{minimum_signed_value_, column_count_}; }
+    auto maximum_signed_value() const { return std::span{maximum_signed_value_, column_count_}; }
+    auto minimum_semantic_value() const {
+        return std::span{minimum_semantic_value_, column_count_};
+    }
+    auto maximum_semantic_value() const {
+        return std::span{maximum_semantic_value_, column_count_};
+    }
+    auto semantic_value_count() const { return std::span{semantic_value_count_, column_count_}; }
+    auto sentinel_code_count() const { return std::span{sentinel_code_count_, column_count_}; }
+    auto required_code_count() const { return std::span{required_code_count_, column_count_}; }
+    auto minimum_required_bits() const { return std::span{minimum_required_bits_, column_count_}; }
+    auto unused_codes() const { return std::span{unused_codes_, column_count_}; }
+    auto codes() const { return std::span{codes_, column_count_}; }
   private:
     template <bool>
     friend struct ResolvedViewImpl;
@@ -348,7 +354,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     Element<std::optional<std::uint32_t>>* minimum_required_bits_{};
     Element<std::optional<std::uint64_t>>* unused_codes_{};
     Element<ioj::layout::RowRange>* codes_{};
-    size_type count_{};
+    size_type column_count_{};
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;

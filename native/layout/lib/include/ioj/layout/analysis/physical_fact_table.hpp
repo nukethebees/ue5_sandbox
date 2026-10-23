@@ -72,15 +72,15 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
                      Element<std::optional<std::uint32_t>>* unsigned_value_bits,
                      Element<lispb::StringId>* provenance,
                      Element<ioj::layout::FactOrigin>* origin,
-                     size_type count)
+                     size_type column_count)
         : size_bytes_{size_bytes}
         , alignment_bytes_{alignment_bytes}
         , signedness_{signedness}
         , unsigned_value_bits_{unsigned_value_bits}
         , provenance_{provenance}
         , origin_{origin}
-        , count_{count} {
-        ioj::soa_storage_detail::validate_column_pointers(count_,
+        , column_count_{column_count} {
+        ioj::soa_storage_detail::validate_column_pointers(column_count_,
                                                           size_bytes_,
                                                           alignment_bytes_,
                                                           signedness_,
@@ -101,7 +101,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
                            provenance.data(),
                            origin.data(),
                            ioj::soa_storage_detail::checked_row_count(size_bytes.size())} {
-        ioj::soa_storage_detail::validate_column_sizes(count_,
+        ioj::soa_storage_detail::validate_column_sizes(column_count_,
                                                        size_bytes,
                                                        alignment_bytes,
                                                        signedness,
@@ -117,7 +117,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         auto const& [... source] = other;
         ((destination = source), ...);
     }
-    auto num() const noexcept -> size_type { return count_; }
+    auto num() const noexcept -> size_type { return column_count_; }
     auto resolve(this auto const& self) { return self; }
     auto slice(this auto const& self, size_type offset, size_type count) {
         auto const& [... pointers, source_count] = static_cast<ResolvedViewImpl const&>(self);
@@ -125,12 +125,12 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         using Result = std::remove_cvref_t<decltype(self)>;
         return Result{(pointers ? pointers + offset : nullptr)..., count};
     }
-    auto size_bytes() const { return std::span{size_bytes_, count_}; }
-    auto alignment_bytes() const { return std::span{alignment_bytes_, count_}; }
-    auto signedness() const { return std::span{signedness_, count_}; }
-    auto unsigned_value_bits() const { return std::span{unsigned_value_bits_, count_}; }
-    auto provenance() const { return std::span{provenance_, count_}; }
-    auto origin() const { return std::span{origin_, count_}; }
+    auto size_bytes() const { return std::span{size_bytes_, column_count_}; }
+    auto alignment_bytes() const { return std::span{alignment_bytes_, column_count_}; }
+    auto signedness() const { return std::span{signedness_, column_count_}; }
+    auto unsigned_value_bits() const { return std::span{unsigned_value_bits_, column_count_}; }
+    auto provenance() const { return std::span{provenance_, column_count_}; }
+    auto origin() const { return std::span{origin_, column_count_}; }
   private:
     template <bool>
     friend struct ResolvedViewImpl;
@@ -140,7 +140,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     Element<std::optional<std::uint32_t>>* unsigned_value_bits_{};
     Element<lispb::StringId>* provenance_{};
     Element<ioj::layout::FactOrigin>* origin_{};
-    size_type count_{};
+    size_type column_count_{};
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;

@@ -53,12 +53,12 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     ResolvedViewImpl(Element<LevelMissionEventType>* types,
                      Element<std::int32_t>* offsets,
                      Element<LevelEventCount>* counts,
-                     size_type count)
+                     size_type column_count)
         : types_{types}
         , offsets_{offsets}
         , counts_{counts}
-        , count_{count} {
-        ioj::soa_storage_detail::validate_column_pointers(count_, types_, offsets_, counts_);
+        , column_count_{column_count} {
+        ioj::soa_storage_detail::validate_column_pointers(column_count_, types_, offsets_, counts_);
     }
     ResolvedViewImpl(std::span<Element<LevelMissionEventType>> types,
                      std::span<Element<std::int32_t>> offsets,
@@ -67,7 +67,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
                            offsets.data(),
                            counts.data(),
                            ioj::soa_storage_detail::checked_row_count(types.size())} {
-        ioj::soa_storage_detail::validate_column_sizes(count_, types, offsets, counts);
+        ioj::soa_storage_detail::validate_column_sizes(column_count_, types, offsets, counts);
     }
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
@@ -77,7 +77,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         auto const& [... source] = other;
         ((destination = source), ...);
     }
-    auto num() const noexcept -> size_type { return count_; }
+    auto num() const noexcept -> size_type { return column_count_; }
     auto resolve(this auto const& self) { return self; }
     auto slice(this auto const& self, size_type offset, size_type count) {
         auto const& [... pointers, source_count] = static_cast<ResolvedViewImpl const&>(self);
@@ -85,16 +85,16 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         using Result = std::remove_cvref_t<decltype(self)>;
         return Result{(pointers ? pointers + offset : nullptr)..., count};
     }
-    auto types() const { return std::span{types_, count_}; }
-    auto offsets() const { return std::span{offsets_, count_}; }
-    auto counts() const { return std::span{counts_, count_}; }
+    auto types() const { return std::span{types_, column_count_}; }
+    auto offsets() const { return std::span{offsets_, column_count_}; }
+    auto counts() const { return std::span{counts_, column_count_}; }
   private:
     template <bool>
     friend struct ResolvedViewImpl;
     Element<LevelMissionEventType>* types_{};
     Element<std::int32_t>* offsets_{};
     Element<LevelEventCount>* counts_{};
-    size_type count_{};
+    size_type column_count_{};
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;

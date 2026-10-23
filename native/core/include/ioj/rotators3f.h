@@ -50,12 +50,12 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     ResolvedViewImpl(Element<float>* pitches,
                      Element<float>* yaws,
                      Element<float>* rolls,
-                     size_type count)
+                     size_type column_count)
         : pitches_{pitches}
         , yaws_{yaws}
         , rolls_{rolls}
-        , count_{count} {
-        ioj::soa_storage_detail::validate_column_pointers(count_, pitches_, yaws_, rolls_);
+        , column_count_{column_count} {
+        ioj::soa_storage_detail::validate_column_pointers(column_count_, pitches_, yaws_, rolls_);
     }
     ResolvedViewImpl(std::span<Element<float>> pitches,
                      std::span<Element<float>> yaws,
@@ -64,7 +64,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
                            yaws.data(),
                            rolls.data(),
                            ioj::soa_storage_detail::checked_row_count(pitches.size())} {
-        ioj::soa_storage_detail::validate_column_sizes(count_, pitches, yaws, rolls);
+        ioj::soa_storage_detail::validate_column_sizes(column_count_, pitches, yaws, rolls);
     }
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
@@ -74,7 +74,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         auto const& [... source] = other;
         ((destination = source), ...);
     }
-    auto num() const noexcept -> size_type { return count_; }
+    auto num() const noexcept -> size_type { return column_count_; }
     auto resolve(this auto const& self) { return self; }
     auto slice(this auto const& self, size_type offset, size_type count) {
         auto const& [... pointers, source_count] = static_cast<ResolvedViewImpl const&>(self);
@@ -82,16 +82,16 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         using Result = std::remove_cvref_t<decltype(self)>;
         return Result{(pointers ? pointers + offset : nullptr)..., count};
     }
-    auto pitches() const { return std::span{pitches_, count_}; }
-    auto yaws() const { return std::span{yaws_, count_}; }
-    auto rolls() const { return std::span{rolls_, count_}; }
+    auto pitches() const { return std::span{pitches_, column_count_}; }
+    auto yaws() const { return std::span{yaws_, column_count_}; }
+    auto rolls() const { return std::span{rolls_, column_count_}; }
   private:
     template <bool>
     friend struct ResolvedViewImpl;
     Element<float>* pitches_{};
     Element<float>* yaws_{};
     Element<float>* rolls_{};
-    size_type count_{};
+    size_type column_count_{};
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;

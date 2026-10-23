@@ -61,15 +61,15 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
                      Element<float>* directions_xs,
                      Element<float>* directions_ys,
                      Element<float>* directions_zs,
-                     size_type count)
+                     size_type column_count)
         : entities_{entities}
         , distances_{distances}
         , directions_xs_{directions_xs}
         , directions_ys_{directions_ys}
         , directions_zs_{directions_zs}
-        , count_{count} {
+        , column_count_{column_count} {
         ioj::soa_storage_detail::validate_column_pointers(
-            count_, entities_, distances_, directions_xs_, directions_ys_, directions_zs_);
+            column_count_, entities_, distances_, directions_xs_, directions_ys_, directions_zs_);
     }
     ResolvedViewImpl(std::span<Element<EntityId>> entities,
                      std::span<Element<float>> distances,
@@ -83,7 +83,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
                            directions_zs.data(),
                            ioj::soa_storage_detail::checked_row_count(entities.size())} {
         ioj::soa_storage_detail::validate_column_sizes(
-            count_, entities, distances, directions_xs, directions_ys, directions_zs);
+            column_count_, entities, distances, directions_xs, directions_ys, directions_zs);
     }
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
@@ -93,7 +93,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         auto const& [... source] = other;
         ((destination = source), ...);
     }
-    auto num() const noexcept -> size_type { return count_; }
+    auto num() const noexcept -> size_type { return column_count_; }
     auto resolve(this auto const& self) { return self; }
     auto slice(this auto const& self, size_type offset, size_type count) {
         auto const& [... pointers, source_count] = static_cast<ResolvedViewImpl const&>(self);
@@ -101,11 +101,11 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         using Result = std::remove_cvref_t<decltype(self)>;
         return Result{(pointers ? pointers + offset : nullptr)..., count};
     }
-    auto entities() const { return std::span{entities_, count_}; }
-    auto distances() const { return std::span{distances_, count_}; }
+    auto entities() const { return std::span{entities_, column_count_}; }
+    auto distances() const { return std::span{distances_, column_count_}; }
     auto view_directions() const -> std::
         conditional_t<Const, ::ioj::vectors3f::ResolvedConstView, ::ioj::vectors3f::ResolvedView> {
-        return {directions_xs_, directions_ys_, directions_zs_, count_};
+        return {directions_xs_, directions_ys_, directions_zs_, column_count_};
     }
   private:
     template <bool>
@@ -115,7 +115,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     Element<float>* directions_xs_{};
     Element<float>* directions_ys_{};
     Element<float>* directions_zs_{};
-    size_type count_{};
+    size_type column_count_{};
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;

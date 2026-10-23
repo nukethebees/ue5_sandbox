@@ -116,7 +116,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
                      Element<EntityId>* instigator_ids,
                      Element<float>* initial_lifetimes,
                      Element<float>* spawn_times,
-                     size_type count)
+                     size_type column_count)
         : active_{active}
         , sources_{sources}
         , locations_xs_{locations_xs}
@@ -133,8 +133,8 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         , instigator_ids_{instigator_ids}
         , initial_lifetimes_{initial_lifetimes}
         , spawn_times_{spawn_times}
-        , count_{count} {
-        ioj::soa_storage_detail::validate_column_pointers(count_,
+        , column_count_{column_count} {
+        ioj::soa_storage_detail::validate_column_pointers(column_count_,
                                                           active_,
                                                           sources_,
                                                           locations_xs_,
@@ -185,7 +185,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
                            initial_lifetimes.data(),
                            spawn_times.data(),
                            ioj::soa_storage_detail::checked_row_count(active.size())} {
-        ioj::soa_storage_detail::validate_column_sizes(count_,
+        ioj::soa_storage_detail::validate_column_sizes(column_count_,
                                                        active,
                                                        sources,
                                                        locations_xs,
@@ -211,7 +211,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         auto const& [... source] = other;
         ((destination = source), ...);
     }
-    auto num() const noexcept -> size_type { return count_; }
+    auto num() const noexcept -> size_type { return column_count_; }
     auto resolve(this auto const& self) { return self; }
     auto slice(this auto const& self, size_type offset, size_type count) {
         auto const& [... pointers, source_count] = static_cast<ResolvedViewImpl const&>(self);
@@ -219,26 +219,26 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         using Result = std::remove_cvref_t<decltype(self)>;
         return Result{(pointers ? pointers + offset : nullptr)..., count};
     }
-    auto active() const { return std::span{active_, count_}; }
-    auto sources() const { return std::span{sources_, count_}; }
+    auto active() const { return std::span{active_, column_count_}; }
+    auto sources() const { return std::span{sources_, column_count_}; }
     auto view_locations() const -> std::
         conditional_t<Const, ::ioj::vectors3f::ResolvedConstView, ::ioj::vectors3f::ResolvedView> {
-        return {locations_xs_, locations_ys_, locations_zs_, count_};
+        return {locations_xs_, locations_ys_, locations_zs_, column_count_};
     }
     auto view_rotations() const -> std::conditional_t<Const,
                                                       ::ioj::rotators3f::ResolvedConstView,
                                                       ::ioj::rotators3f::ResolvedView> {
-        return {rotations_pitches_, rotations_yaws_, rotations_rolls_, count_};
+        return {rotations_pitches_, rotations_yaws_, rotations_rolls_, column_count_};
     }
     auto view_velocities() const -> std::
         conditional_t<Const, ::ioj::vectors3f::ResolvedConstView, ::ioj::vectors3f::ResolvedView> {
-        return {velocities_xs_, velocities_ys_, velocities_zs_, count_};
+        return {velocities_xs_, velocities_ys_, velocities_zs_, column_count_};
     }
-    auto damages() const { return std::span{damages_, count_}; }
-    auto lifetimes_remaining() const { return std::span{lifetimes_remaining_, count_}; }
-    auto instigator_ids() const { return std::span{instigator_ids_, count_}; }
-    auto initial_lifetimes() const { return std::span{initial_lifetimes_, count_}; }
-    auto spawn_times() const { return std::span{spawn_times_, count_}; }
+    auto damages() const { return std::span{damages_, column_count_}; }
+    auto lifetimes_remaining() const { return std::span{lifetimes_remaining_, column_count_}; }
+    auto instigator_ids() const { return std::span{instigator_ids_, column_count_}; }
+    auto initial_lifetimes() const { return std::span{initial_lifetimes_, column_count_}; }
+    auto spawn_times() const { return std::span{spawn_times_, column_count_}; }
   private:
     template <bool>
     friend struct ResolvedViewImpl;
@@ -258,7 +258,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     Element<EntityId>* instigator_ids_{};
     Element<float>* initial_lifetimes_{};
     Element<float>* spawn_times_{};
-    size_type count_{};
+    size_type column_count_{};
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;

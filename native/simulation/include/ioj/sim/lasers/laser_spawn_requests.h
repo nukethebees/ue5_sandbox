@@ -108,7 +108,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
                      Element<float>* max_distances,
                      Element<EntityId>* instigator_ids,
                      Element<ioj::sim::LaserSource>* sources,
-                     size_type count)
+                     size_type column_count)
         : locations_xs_{locations_xs}
         , locations_ys_{locations_ys}
         , locations_zs_{locations_zs}
@@ -123,8 +123,8 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         , max_distances_{max_distances}
         , instigator_ids_{instigator_ids}
         , sources_{sources}
-        , count_{count} {
-        ioj::soa_storage_detail::validate_column_pointers(count_,
+        , column_count_{column_count} {
+        ioj::soa_storage_detail::validate_column_pointers(column_count_,
                                                           locations_xs_,
                                                           locations_ys_,
                                                           locations_zs_,
@@ -169,7 +169,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
                            instigator_ids.data(),
                            sources.data(),
                            ioj::soa_storage_detail::checked_row_count(locations_xs.size())} {
-        ioj::soa_storage_detail::validate_column_sizes(count_,
+        ioj::soa_storage_detail::validate_column_sizes(column_count_,
                                                        locations_xs,
                                                        locations_ys,
                                                        locations_zs,
@@ -193,7 +193,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         auto const& [... source] = other;
         ((destination = source), ...);
     }
-    auto num() const noexcept -> size_type { return count_; }
+    auto num() const noexcept -> size_type { return column_count_; }
     auto resolve(this auto const& self) { return self; }
     auto slice(this auto const& self, size_type offset, size_type count) {
         auto const& [... pointers, source_count] = static_cast<ResolvedViewImpl const&>(self);
@@ -203,22 +203,22 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     }
     auto view_locations() const -> std::
         conditional_t<Const, ::ioj::vectors3f::ResolvedConstView, ::ioj::vectors3f::ResolvedView> {
-        return {locations_xs_, locations_ys_, locations_zs_, count_};
+        return {locations_xs_, locations_ys_, locations_zs_, column_count_};
     }
     auto view_rotations() const -> std::conditional_t<Const,
                                                       ::ioj::rotators3f::ResolvedConstView,
                                                       ::ioj::rotators3f::ResolvedView> {
-        return {rotations_pitches_, rotations_yaws_, rotations_rolls_, count_};
+        return {rotations_pitches_, rotations_yaws_, rotations_rolls_, column_count_};
     }
     auto view_base_velocities() const -> std::
         conditional_t<Const, ::ioj::vectors3f::ResolvedConstView, ::ioj::vectors3f::ResolvedView> {
-        return {base_velocities_xs_, base_velocities_ys_, base_velocities_zs_, count_};
+        return {base_velocities_xs_, base_velocities_ys_, base_velocities_zs_, column_count_};
     }
-    auto damages() const { return std::span{damages_, count_}; }
-    auto speeds() const { return std::span{speeds_, count_}; }
-    auto max_distances() const { return std::span{max_distances_, count_}; }
-    auto instigator_ids() const { return std::span{instigator_ids_, count_}; }
-    auto sources() const { return std::span{sources_, count_}; }
+    auto damages() const { return std::span{damages_, column_count_}; }
+    auto speeds() const { return std::span{speeds_, column_count_}; }
+    auto max_distances() const { return std::span{max_distances_, column_count_}; }
+    auto instigator_ids() const { return std::span{instigator_ids_, column_count_}; }
+    auto sources() const { return std::span{sources_, column_count_}; }
   private:
     template <bool>
     friend struct ResolvedViewImpl;
@@ -236,7 +236,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     Element<float>* max_distances_{};
     Element<EntityId>* instigator_ids_{};
     Element<ioj::sim::LaserSource>* sources_{};
-    size_type count_{};
+    size_type column_count_{};
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;

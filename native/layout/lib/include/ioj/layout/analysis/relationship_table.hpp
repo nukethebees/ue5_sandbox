@@ -62,14 +62,14 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
                      Element<std::optional<std::size_t>>* field,
                      Element<lispb::schema::RelationshipId>* relationship,
                      Element<std::optional<ioj::layout::RelationshipMetrics>>* metrics,
-                     size_type count)
+                     size_type column_count)
         : owner_{owner}
         , field_{field}
         , relationship_{relationship}
         , metrics_{metrics}
-        , count_{count} {
+        , column_count_{column_count} {
         ioj::soa_storage_detail::validate_column_pointers(
-            count_, owner_, field_, relationship_, metrics_);
+            column_count_, owner_, field_, relationship_, metrics_);
     }
     ResolvedViewImpl(std::span<Element<ioj::layout::AnalysisId>> owner,
                      std::span<Element<std::optional<std::size_t>>> field,
@@ -80,7 +80,8 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
                            relationship.data(),
                            metrics.data(),
                            ioj::soa_storage_detail::checked_row_count(owner.size())} {
-        ioj::soa_storage_detail::validate_column_sizes(count_, owner, field, relationship, metrics);
+        ioj::soa_storage_detail::validate_column_sizes(
+            column_count_, owner, field, relationship, metrics);
     }
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
@@ -90,7 +91,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         auto const& [... source] = other;
         ((destination = source), ...);
     }
-    auto num() const noexcept -> size_type { return count_; }
+    auto num() const noexcept -> size_type { return column_count_; }
     auto resolve(this auto const& self) { return self; }
     auto slice(this auto const& self, size_type offset, size_type count) {
         auto const& [... pointers, source_count] = static_cast<ResolvedViewImpl const&>(self);
@@ -98,10 +99,10 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         using Result = std::remove_cvref_t<decltype(self)>;
         return Result{(pointers ? pointers + offset : nullptr)..., count};
     }
-    auto owner() const { return std::span{owner_, count_}; }
-    auto field() const { return std::span{field_, count_}; }
-    auto relationship() const { return std::span{relationship_, count_}; }
-    auto metrics() const { return std::span{metrics_, count_}; }
+    auto owner() const { return std::span{owner_, column_count_}; }
+    auto field() const { return std::span{field_, column_count_}; }
+    auto relationship() const { return std::span{relationship_, column_count_}; }
+    auto metrics() const { return std::span{metrics_, column_count_}; }
   private:
     template <bool>
     friend struct ResolvedViewImpl;
@@ -109,7 +110,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     Element<std::optional<std::size_t>>* field_{};
     Element<lispb::schema::RelationshipId>* relationship_{};
     Element<std::optional<ioj::layout::RelationshipMetrics>>* metrics_{};
-    size_type count_{};
+    size_type column_count_{};
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;

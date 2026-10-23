@@ -80,7 +80,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
                      Element<std::optional<ioj::layout::AggregateLayout>>* aggregate,
                      Element<std::optional<ioj::layout::PackedLayout>>* packed,
                      Element<std::optional<ioj::layout::SoaLayout>>* soa,
-                     size_type count)
+                     size_type column_count)
         : schema_type_{schema_type}
         , scenario_{scenario}
         , physical_{physical}
@@ -88,9 +88,15 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         , aggregate_{aggregate}
         , packed_{packed}
         , soa_{soa}
-        , count_{count} {
-        ioj::soa_storage_detail::validate_column_pointers(
-            count_, schema_type_, scenario_, physical_, enum_backing_, aggregate_, packed_, soa_);
+        , column_count_{column_count} {
+        ioj::soa_storage_detail::validate_column_pointers(column_count_,
+                                                          schema_type_,
+                                                          scenario_,
+                                                          physical_,
+                                                          enum_backing_,
+                                                          aggregate_,
+                                                          packed_,
+                                                          soa_);
     }
     ResolvedViewImpl(std::span<Element<lispb::schema::TypeId>> schema_type,
                      std::span<Element<ioj::layout::ScenarioId>> scenario,
@@ -108,7 +114,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
                            soa.data(),
                            ioj::soa_storage_detail::checked_row_count(schema_type.size())} {
         ioj::soa_storage_detail::validate_column_sizes(
-            count_, schema_type, scenario, physical, enum_backing, aggregate, packed, soa);
+            column_count_, schema_type, scenario, physical, enum_backing, aggregate, packed, soa);
     }
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
@@ -118,7 +124,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         auto const& [... source] = other;
         ((destination = source), ...);
     }
-    auto num() const noexcept -> size_type { return count_; }
+    auto num() const noexcept -> size_type { return column_count_; }
     auto resolve(this auto const& self) { return self; }
     auto slice(this auto const& self, size_type offset, size_type count) {
         auto const& [... pointers, source_count] = static_cast<ResolvedViewImpl const&>(self);
@@ -126,13 +132,13 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         using Result = std::remove_cvref_t<decltype(self)>;
         return Result{(pointers ? pointers + offset : nullptr)..., count};
     }
-    auto schema_type() const { return std::span{schema_type_, count_}; }
-    auto scenario() const { return std::span{scenario_, count_}; }
-    auto physical() const { return std::span{physical_, count_}; }
-    auto enum_backing() const { return std::span{enum_backing_, count_}; }
-    auto aggregate() const { return std::span{aggregate_, count_}; }
-    auto packed() const { return std::span{packed_, count_}; }
-    auto soa() const { return std::span{soa_, count_}; }
+    auto schema_type() const { return std::span{schema_type_, column_count_}; }
+    auto scenario() const { return std::span{scenario_, column_count_}; }
+    auto physical() const { return std::span{physical_, column_count_}; }
+    auto enum_backing() const { return std::span{enum_backing_, column_count_}; }
+    auto aggregate() const { return std::span{aggregate_, column_count_}; }
+    auto packed() const { return std::span{packed_, column_count_}; }
+    auto soa() const { return std::span{soa_, column_count_}; }
   private:
     template <bool>
     friend struct ResolvedViewImpl;
@@ -143,7 +149,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     Element<std::optional<ioj::layout::AggregateLayout>>* aggregate_{};
     Element<std::optional<ioj::layout::PackedLayout>>* packed_{};
     Element<std::optional<ioj::layout::SoaLayout>>* soa_{};
-    size_type count_{};
+    size_type column_count_{};
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;

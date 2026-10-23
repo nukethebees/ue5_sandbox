@@ -56,14 +56,14 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
                      Element<std::uint8_t>* mapped,
                      Element<std::uint8_t>* sentinel,
                      Element<std::uint8_t>* count_sentinel,
-                     size_type count)
+                     size_type column_count)
         : name_{name}
         , mapped_{mapped}
         , sentinel_{sentinel}
         , count_sentinel_{count_sentinel}
-        , count_{count} {
+        , column_count_{column_count} {
         ioj::soa_storage_detail::validate_column_pointers(
-            count_, name_, mapped_, sentinel_, count_sentinel_);
+            column_count_, name_, mapped_, sentinel_, count_sentinel_);
     }
     ResolvedViewImpl(std::span<Element<std::string_view>> name,
                      std::span<Element<std::uint8_t>> mapped,
@@ -75,7 +75,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
                            count_sentinel.data(),
                            ioj::soa_storage_detail::checked_row_count(name.size())} {
         ioj::soa_storage_detail::validate_column_sizes(
-            count_, name, mapped, sentinel, count_sentinel);
+            column_count_, name, mapped, sentinel, count_sentinel);
     }
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
@@ -85,7 +85,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         auto const& [... source] = other;
         ((destination = source), ...);
     }
-    auto num() const noexcept -> size_type { return count_; }
+    auto num() const noexcept -> size_type { return column_count_; }
     auto resolve(this auto const& self) { return self; }
     auto slice(this auto const& self, size_type offset, size_type count) {
         auto const& [... pointers, source_count] = static_cast<ResolvedViewImpl const&>(self);
@@ -93,10 +93,10 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         using Result = std::remove_cvref_t<decltype(self)>;
         return Result{(pointers ? pointers + offset : nullptr)..., count};
     }
-    auto name() const { return std::span{name_, count_}; }
-    auto mapped() const { return std::span{mapped_, count_}; }
-    auto sentinel() const { return std::span{sentinel_, count_}; }
-    auto count_sentinel() const { return std::span{count_sentinel_, count_}; }
+    auto name() const { return std::span{name_, column_count_}; }
+    auto mapped() const { return std::span{mapped_, column_count_}; }
+    auto sentinel() const { return std::span{sentinel_, column_count_}; }
+    auto count_sentinel() const { return std::span{count_sentinel_, column_count_}; }
   private:
     template <bool>
     friend struct ResolvedViewImpl;
@@ -104,7 +104,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     Element<std::uint8_t>* mapped_{};
     Element<std::uint8_t>* sentinel_{};
     Element<std::uint8_t>* count_sentinel_{};
-    size_type count_{};
+    size_type column_count_{};
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;

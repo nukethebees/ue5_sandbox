@@ -294,6 +294,7 @@ class Validator {
             "each_column",
             "soa_schema",
             "resolved_view_type",
+            "column_count",
         };
         return names.contains(value);
     }
@@ -2835,9 +2836,6 @@ class Validator {
                 false);
         }
         for (auto const& root : schemas) {
-            if (declarations_.soas.layout_only[declarations_.soas.index(root)]) {
-                continue;
-            }
             std::set<std::string> flattened_names;
             auto visit = [&](auto&& self,
                              lispb::codegen::DeclarationHandle schema,
@@ -2854,7 +2852,8 @@ class Validator {
                             : prefix + "_" +
                                   text(declarations_.soa_members
                                            .name[declarations_.soa_members.index(member)])};
-                    if (flattened.contains("__") || flattened.back() == '_') {
+                    if (flattened == "column_count" || flattened.contains("__") ||
+                        flattened.back() == '_') {
                         throw std::invalid_argument{
                             "Single-allocation leaf would generate reserved identifiers: " +
                             flattened};

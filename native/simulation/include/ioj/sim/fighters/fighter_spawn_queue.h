@@ -79,7 +79,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
                      Element<::ioj::Team>* teams,
                      Element<EntityId>* parents,
                      Element<EntityId>* targets,
-                     size_type count)
+                     size_type column_count)
         : locations_xs_{locations_xs}
         , locations_ys_{locations_ys}
         , locations_zs_{locations_zs}
@@ -89,8 +89,8 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         , teams_{teams}
         , parents_{parents}
         , targets_{targets}
-        , count_{count} {
-        ioj::soa_storage_detail::validate_column_pointers(count_,
+        , column_count_{column_count} {
+        ioj::soa_storage_detail::validate_column_pointers(column_count_,
                                                           locations_xs_,
                                                           locations_ys_,
                                                           locations_zs_,
@@ -120,7 +120,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
                            parents.data(),
                            targets.data(),
                            ioj::soa_storage_detail::checked_row_count(locations_xs.size())} {
-        ioj::soa_storage_detail::validate_column_sizes(count_,
+        ioj::soa_storage_detail::validate_column_sizes(column_count_,
                                                        locations_xs,
                                                        locations_ys,
                                                        locations_zs,
@@ -139,7 +139,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         auto const& [... source] = other;
         ((destination = source), ...);
     }
-    auto num() const noexcept -> size_type { return count_; }
+    auto num() const noexcept -> size_type { return column_count_; }
     auto resolve(this auto const& self) { return self; }
     auto slice(this auto const& self, size_type offset, size_type count) {
         auto const& [... pointers, source_count] = static_cast<ResolvedViewImpl const&>(self);
@@ -149,16 +149,16 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     }
     auto view_locations() const -> std::
         conditional_t<Const, ::ioj::vectors3f::ResolvedConstView, ::ioj::vectors3f::ResolvedView> {
-        return {locations_xs_, locations_ys_, locations_zs_, count_};
+        return {locations_xs_, locations_ys_, locations_zs_, column_count_};
     }
     auto view_rotations() const -> std::conditional_t<Const,
                                                       ::ioj::rotators3f::ResolvedConstView,
                                                       ::ioj::rotators3f::ResolvedView> {
-        return {rotations_pitches_, rotations_yaws_, rotations_rolls_, count_};
+        return {rotations_pitches_, rotations_yaws_, rotations_rolls_, column_count_};
     }
-    auto teams() const { return std::span{teams_, count_}; }
-    auto parents() const { return std::span{parents_, count_}; }
-    auto targets() const { return std::span{targets_, count_}; }
+    auto teams() const { return std::span{teams_, column_count_}; }
+    auto parents() const { return std::span{parents_, column_count_}; }
+    auto targets() const { return std::span{targets_, column_count_}; }
   private:
     template <bool>
     friend struct ResolvedViewImpl;
@@ -171,7 +171,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     Element<::ioj::Team>* teams_{};
     Element<EntityId>* parents_{};
     Element<EntityId>* targets_{};
-    size_type count_{};
+    size_type column_count_{};
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;

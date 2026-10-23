@@ -76,7 +76,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
                      Element<ioj::layout::RegionFootprint>* cache,
                      Element<ioj::layout::RegionFootprint>* pages,
                      Element<std::optional<std::uint64_t>>* capacity_slack_bytes,
-                     size_type count)
+                     size_type column_count)
         : source_{source}
         , operation_{operation}
         , bytes_{bytes}
@@ -84,9 +84,15 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         , cache_{cache}
         , pages_{pages}
         , capacity_slack_bytes_{capacity_slack_bytes}
-        , count_{count} {
-        ioj::soa_storage_detail::validate_column_pointers(
-            count_, source_, operation_, bytes_, bits_, cache_, pages_, capacity_slack_bytes_);
+        , column_count_{column_count} {
+        ioj::soa_storage_detail::validate_column_pointers(column_count_,
+                                                          source_,
+                                                          operation_,
+                                                          bytes_,
+                                                          bits_,
+                                                          cache_,
+                                                          pages_,
+                                                          capacity_slack_bytes_);
     }
     ResolvedViewImpl(std::span<Element<std::size_t>> source,
                      std::span<Element<ioj::layout::AccessOperation>> operation,
@@ -104,7 +110,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
                            capacity_slack_bytes.data(),
                            ioj::soa_storage_detail::checked_row_count(source.size())} {
         ioj::soa_storage_detail::validate_column_sizes(
-            count_, source, operation, bytes, bits, cache, pages, capacity_slack_bytes);
+            column_count_, source, operation, bytes, bits, cache, pages, capacity_slack_bytes);
     }
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
@@ -114,7 +120,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         auto const& [... source] = other;
         ((destination = source), ...);
     }
-    auto num() const noexcept -> size_type { return count_; }
+    auto num() const noexcept -> size_type { return column_count_; }
     auto resolve(this auto const& self) { return self; }
     auto slice(this auto const& self, size_type offset, size_type count) {
         auto const& [... pointers, source_count] = static_cast<ResolvedViewImpl const&>(self);
@@ -122,13 +128,13 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         using Result = std::remove_cvref_t<decltype(self)>;
         return Result{(pointers ? pointers + offset : nullptr)..., count};
     }
-    auto source() const { return std::span{source_, count_}; }
-    auto operation() const { return std::span{operation_, count_}; }
-    auto bytes() const { return std::span{bytes_, count_}; }
-    auto bits() const { return std::span{bits_, count_}; }
-    auto cache() const { return std::span{cache_, count_}; }
-    auto pages() const { return std::span{pages_, count_}; }
-    auto capacity_slack_bytes() const { return std::span{capacity_slack_bytes_, count_}; }
+    auto source() const { return std::span{source_, column_count_}; }
+    auto operation() const { return std::span{operation_, column_count_}; }
+    auto bytes() const { return std::span{bytes_, column_count_}; }
+    auto bits() const { return std::span{bits_, column_count_}; }
+    auto cache() const { return std::span{cache_, column_count_}; }
+    auto pages() const { return std::span{pages_, column_count_}; }
+    auto capacity_slack_bytes() const { return std::span{capacity_slack_bytes_, column_count_}; }
   private:
     template <bool>
     friend struct ResolvedViewImpl;
@@ -139,7 +145,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     Element<ioj::layout::RegionFootprint>* cache_{};
     Element<ioj::layout::RegionFootprint>* pages_{};
     Element<std::optional<std::uint64_t>>* capacity_slack_bytes_{};
-    size_type count_{};
+    size_type column_count_{};
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;

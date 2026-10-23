@@ -4,6 +4,8 @@
   :header-include "native_soa/types.hpp"
   :prelude #cpp{#define NATIVE_SOA_FIXTURE_API}cpp#
   :namespace ioj::native_soa_fixture
+  (struct Counts
+    (member count array std::uint32_t))
   (record Pair
     (member x float)
     (member y float))

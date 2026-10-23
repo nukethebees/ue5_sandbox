@@ -124,7 +124,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
                      Element<std::int32_t>* kills,
                      Element<std::int32_t>* active_lasers,
                      Element<std::int32_t>* lasers_fired,
-                     size_type count)
+                     size_type column_count)
         : completed_ticks_{completed_ticks}
         , validity_masks_{validity_masks}
         , active_entities_{active_entities}
@@ -135,8 +135,8 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         , kills_{kills}
         , active_lasers_{active_lasers}
         , lasers_fired_{lasers_fired}
-        , count_{count} {
-        ioj::soa_storage_detail::validate_column_pointers(count_,
+        , column_count_{column_count} {
+        ioj::soa_storage_detail::validate_column_pointers(column_count_,
                                                           completed_ticks_,
                                                           validity_masks_,
                                                           active_entities_,
@@ -170,7 +170,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
                            active_lasers.data(),
                            lasers_fired.data(),
                            ioj::soa_storage_detail::checked_row_count(completed_ticks.size())} {
-        ioj::soa_storage_detail::validate_column_sizes(count_,
+        ioj::soa_storage_detail::validate_column_sizes(column_count_,
                                                        completed_ticks,
                                                        validity_masks,
                                                        active_entities,
@@ -190,7 +190,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         auto const& [... source] = other;
         ((destination = source), ...);
     }
-    auto num() const noexcept -> size_type { return count_; }
+    auto num() const noexcept -> size_type { return column_count_; }
     auto resolve(this auto const& self) { return self; }
     auto slice(this auto const& self, size_type offset, size_type count) {
         auto const& [... pointers, source_count] = static_cast<ResolvedViewImpl const&>(self);
@@ -198,18 +198,20 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         using Result = std::remove_cvref_t<decltype(self)>;
         return Result{(pointers ? pointers + offset : nullptr)..., count};
     }
-    auto completed_ticks() const { return std::span{completed_ticks_, count_}; }
-    auto validity_masks() const { return std::span{validity_masks_, count_}; }
-    auto active_entities() const { return std::span{active_entities_, count_}; }
-    auto active_entities_by_type() const { return std::span{active_entities_by_type_, count_}; }
-    auto active_entities_by_team_and_type() const {
-        return std::span{active_entities_by_team_and_type_, count_};
+    auto completed_ticks() const { return std::span{completed_ticks_, column_count_}; }
+    auto validity_masks() const { return std::span{validity_masks_, column_count_}; }
+    auto active_entities() const { return std::span{active_entities_, column_count_}; }
+    auto active_entities_by_type() const {
+        return std::span{active_entities_by_type_, column_count_};
     }
-    auto spawned_entities() const { return std::span{spawned_entities_, count_}; }
-    auto destroyed_entities() const { return std::span{destroyed_entities_, count_}; }
-    auto kills() const { return std::span{kills_, count_}; }
-    auto active_lasers() const { return std::span{active_lasers_, count_}; }
-    auto lasers_fired() const { return std::span{lasers_fired_, count_}; }
+    auto active_entities_by_team_and_type() const {
+        return std::span{active_entities_by_team_and_type_, column_count_};
+    }
+    auto spawned_entities() const { return std::span{spawned_entities_, column_count_}; }
+    auto destroyed_entities() const { return std::span{destroyed_entities_, column_count_}; }
+    auto kills() const { return std::span{kills_, column_count_}; }
+    auto active_lasers() const { return std::span{active_lasers_, column_count_}; }
+    auto lasers_fired() const { return std::span{lasers_fired_, column_count_}; }
   private:
     template <bool>
     friend struct ResolvedViewImpl;
@@ -223,7 +225,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     Element<std::int32_t>* kills_{};
     Element<std::int32_t>* active_lasers_{};
     Element<std::int32_t>* lasers_fired_{};
-    size_type count_{};
+    size_type column_count_{};
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;

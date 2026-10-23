@@ -49,19 +49,20 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     ResolvedViewImpl() = default;
     ResolvedViewImpl(Element<EntityId>* first_entities,
                      Element<EntityId>* second_entities,
-                     size_type count)
+                     size_type column_count)
         : first_entities_{first_entities}
         , second_entities_{second_entities}
-        , count_{count} {
+        , column_count_{column_count} {
         ioj::soa_storage_detail::validate_column_pointers(
-            count_, first_entities_, second_entities_);
+            column_count_, first_entities_, second_entities_);
     }
     ResolvedViewImpl(std::span<Element<EntityId>> first_entities,
                      std::span<Element<EntityId>> second_entities)
         : ResolvedViewImpl{first_entities.data(),
                            second_entities.data(),
                            ioj::soa_storage_detail::checked_row_count(first_entities.size())} {
-        ioj::soa_storage_detail::validate_column_sizes(count_, first_entities, second_entities);
+        ioj::soa_storage_detail::validate_column_sizes(
+            column_count_, first_entities, second_entities);
     }
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
@@ -71,7 +72,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         auto const& [... source] = other;
         ((destination = source), ...);
     }
-    auto num() const noexcept -> size_type { return count_; }
+    auto num() const noexcept -> size_type { return column_count_; }
     auto resolve(this auto const& self) { return self; }
     auto slice(this auto const& self, size_type offset, size_type count) {
         auto const& [... pointers, source_count] = static_cast<ResolvedViewImpl const&>(self);
@@ -79,14 +80,14 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         using Result = std::remove_cvref_t<decltype(self)>;
         return Result{(pointers ? pointers + offset : nullptr)..., count};
     }
-    auto first_entities() const { return std::span{first_entities_, count_}; }
-    auto second_entities() const { return std::span{second_entities_, count_}; }
+    auto first_entities() const { return std::span{first_entities_, column_count_}; }
+    auto second_entities() const { return std::span{second_entities_, column_count_}; }
   private:
     template <bool>
     friend struct ResolvedViewImpl;
     Element<EntityId>* first_entities_{};
     Element<EntityId>* second_entities_{};
-    size_type count_{};
+    size_type column_count_{};
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;
@@ -296,12 +297,12 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     ResolvedViewImpl() = default;
     ResolvedViewImpl(Element<EntityId>* entities,
                      Element<ioj::sim::collision::StaticGeometryIndex>* static_geometry_indices,
-                     size_type count)
+                     size_type column_count)
         : entities_{entities}
         , static_geometry_indices_{static_geometry_indices}
-        , count_{count} {
+        , column_count_{column_count} {
         ioj::soa_storage_detail::validate_column_pointers(
-            count_, entities_, static_geometry_indices_);
+            column_count_, entities_, static_geometry_indices_);
     }
     ResolvedViewImpl(
         std::span<Element<EntityId>> entities,
@@ -309,7 +310,8 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         : ResolvedViewImpl{entities.data(),
                            static_geometry_indices.data(),
                            ioj::soa_storage_detail::checked_row_count(entities.size())} {
-        ioj::soa_storage_detail::validate_column_sizes(count_, entities, static_geometry_indices);
+        ioj::soa_storage_detail::validate_column_sizes(
+            column_count_, entities, static_geometry_indices);
     }
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
@@ -319,7 +321,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         auto const& [... source] = other;
         ((destination = source), ...);
     }
-    auto num() const noexcept -> size_type { return count_; }
+    auto num() const noexcept -> size_type { return column_count_; }
     auto resolve(this auto const& self) { return self; }
     auto slice(this auto const& self, size_type offset, size_type count) {
         auto const& [... pointers, source_count] = static_cast<ResolvedViewImpl const&>(self);
@@ -327,14 +329,16 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         using Result = std::remove_cvref_t<decltype(self)>;
         return Result{(pointers ? pointers + offset : nullptr)..., count};
     }
-    auto entities() const { return std::span{entities_, count_}; }
-    auto static_geometry_indices() const { return std::span{static_geometry_indices_, count_}; }
+    auto entities() const { return std::span{entities_, column_count_}; }
+    auto static_geometry_indices() const {
+        return std::span{static_geometry_indices_, column_count_};
+    }
   private:
     template <bool>
     friend struct ResolvedViewImpl;
     Element<EntityId>* entities_{};
     Element<ioj::sim::collision::StaticGeometryIndex>* static_geometry_indices_{};
-    size_type count_{};
+    size_type column_count_{};
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;

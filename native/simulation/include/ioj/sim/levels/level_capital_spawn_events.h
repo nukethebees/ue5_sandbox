@@ -99,7 +99,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
                      Element<Health>* healths,
                      Element<float>* initial_fighter_spawn_delays,
                      Element<float>* fighter_spawn_cooldowns,
-                     size_type count)
+                     size_type column_count)
         : entity_indices_{entity_indices}
         , target_entity_indices_{target_entity_indices}
         , locations_xs_{locations_xs}
@@ -112,8 +112,8 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         , healths_{healths}
         , initial_fighter_spawn_delays_{initial_fighter_spawn_delays}
         , fighter_spawn_cooldowns_{fighter_spawn_cooldowns}
-        , count_{count} {
-        ioj::soa_storage_detail::validate_column_pointers(count_,
+        , column_count_{column_count} {
+        ioj::soa_storage_detail::validate_column_pointers(column_count_,
                                                           entity_indices_,
                                                           target_entity_indices_,
                                                           locations_xs_,
@@ -152,7 +152,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
                            initial_fighter_spawn_delays.data(),
                            fighter_spawn_cooldowns.data(),
                            ioj::soa_storage_detail::checked_row_count(entity_indices.size())} {
-        ioj::soa_storage_detail::validate_column_sizes(count_,
+        ioj::soa_storage_detail::validate_column_sizes(column_count_,
                                                        entity_indices,
                                                        target_entity_indices,
                                                        locations_xs,
@@ -174,7 +174,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         auto const& [... source] = other;
         ((destination = source), ...);
     }
-    auto num() const noexcept -> size_type { return count_; }
+    auto num() const noexcept -> size_type { return column_count_; }
     auto resolve(this auto const& self) { return self; }
     auto slice(this auto const& self, size_type offset, size_type count) {
         auto const& [... pointers, source_count] = static_cast<ResolvedViewImpl const&>(self);
@@ -182,23 +182,25 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         using Result = std::remove_cvref_t<decltype(self)>;
         return Result{(pointers ? pointers + offset : nullptr)..., count};
     }
-    auto entity_indices() const { return std::span{entity_indices_, count_}; }
-    auto target_entity_indices() const { return std::span{target_entity_indices_, count_}; }
+    auto entity_indices() const { return std::span{entity_indices_, column_count_}; }
+    auto target_entity_indices() const { return std::span{target_entity_indices_, column_count_}; }
     auto view_locations() const -> std::
         conditional_t<Const, ::ioj::vectors3f::ResolvedConstView, ::ioj::vectors3f::ResolvedView> {
-        return {locations_xs_, locations_ys_, locations_zs_, count_};
+        return {locations_xs_, locations_ys_, locations_zs_, column_count_};
     }
     auto view_rotations() const -> std::conditional_t<Const,
                                                       ::ioj::rotators3f::ResolvedConstView,
                                                       ::ioj::rotators3f::ResolvedView> {
-        return {rotations_pitches_, rotations_yaws_, rotations_rolls_, count_};
+        return {rotations_pitches_, rotations_yaws_, rotations_rolls_, column_count_};
     }
-    auto teams() const { return std::span{teams_, count_}; }
-    auto healths() const { return std::span{healths_, count_}; }
+    auto teams() const { return std::span{teams_, column_count_}; }
+    auto healths() const { return std::span{healths_, column_count_}; }
     auto initial_fighter_spawn_delays() const {
-        return std::span{initial_fighter_spawn_delays_, count_};
+        return std::span{initial_fighter_spawn_delays_, column_count_};
     }
-    auto fighter_spawn_cooldowns() const { return std::span{fighter_spawn_cooldowns_, count_}; }
+    auto fighter_spawn_cooldowns() const {
+        return std::span{fighter_spawn_cooldowns_, column_count_};
+    }
   private:
     template <bool>
     friend struct ResolvedViewImpl;
@@ -214,7 +216,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     Element<Health>* healths_{};
     Element<float>* initial_fighter_spawn_delays_{};
     Element<float>* fighter_spawn_cooldowns_{};
-    size_type count_{};
+    size_type column_count_{};
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;

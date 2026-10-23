@@ -92,7 +92,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         Element<std::optional<ioj::layout::FixedEncoding>>* fixed_encoding,
         Element<std::optional<ioj::layout::FloatEncoding>>* float_encoding,
         Element<std::optional<ioj::layout::VarintEncoding>>* varint_encoding,
-        size_type count)
+        size_type column_count)
         : type_{type}
         , integer_domain_{integer_domain}
         , enum_domain_{enum_domain}
@@ -102,8 +102,8 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         , fixed_encoding_{fixed_encoding}
         , float_encoding_{float_encoding}
         , varint_encoding_{varint_encoding}
-        , count_{count} {
-        ioj::soa_storage_detail::validate_column_pointers(count_,
+        , column_count_{column_count} {
+        ioj::soa_storage_detail::validate_column_pointers(column_count_,
                                                           type_,
                                                           integer_domain_,
                                                           enum_domain_,
@@ -136,7 +136,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
                            float_encoding.data(),
                            varint_encoding.data(),
                            ioj::soa_storage_detail::checked_row_count(type.size())} {
-        ioj::soa_storage_detail::validate_column_sizes(count_,
+        ioj::soa_storage_detail::validate_column_sizes(column_count_,
                                                        type,
                                                        integer_domain,
                                                        enum_domain,
@@ -155,7 +155,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         auto const& [... source] = other;
         ((destination = source), ...);
     }
-    auto num() const noexcept -> size_type { return count_; }
+    auto num() const noexcept -> size_type { return column_count_; }
     auto resolve(this auto const& self) { return self; }
     auto slice(this auto const& self, size_type offset, size_type count) {
         auto const& [... pointers, source_count] = static_cast<ResolvedViewImpl const&>(self);
@@ -163,19 +163,19 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         using Result = std::remove_cvref_t<decltype(self)>;
         return Result{(pointers ? pointers + offset : nullptr)..., count};
     }
-    auto type() const { return std::span{type_, count_}; }
-    auto integer_domain() const { return std::span{integer_domain_, count_}; }
-    auto enum_domain() const { return std::span{enum_domain_, count_}; }
+    auto type() const { return std::span{type_, column_count_}; }
+    auto integer_domain() const { return std::span{integer_domain_, column_count_}; }
+    auto enum_domain() const { return std::span{enum_domain_, column_count_}; }
     auto optional_sentinel_encoding() const {
-        return std::span{optional_sentinel_encoding_, count_};
+        return std::span{optional_sentinel_encoding_, column_count_};
     }
     auto optional_presence_encoding() const {
-        return std::span{optional_presence_encoding_, count_};
+        return std::span{optional_presence_encoding_, column_count_};
     }
-    auto quantized_encoding() const { return std::span{quantized_encoding_, count_}; }
-    auto fixed_encoding() const { return std::span{fixed_encoding_, count_}; }
-    auto float_encoding() const { return std::span{float_encoding_, count_}; }
-    auto varint_encoding() const { return std::span{varint_encoding_, count_}; }
+    auto quantized_encoding() const { return std::span{quantized_encoding_, column_count_}; }
+    auto fixed_encoding() const { return std::span{fixed_encoding_, column_count_}; }
+    auto float_encoding() const { return std::span{float_encoding_, column_count_}; }
+    auto varint_encoding() const { return std::span{varint_encoding_, column_count_}; }
   private:
     template <bool>
     friend struct ResolvedViewImpl;
@@ -188,7 +188,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     Element<std::optional<ioj::layout::FixedEncoding>>* fixed_encoding_{};
     Element<std::optional<ioj::layout::FloatEncoding>>* float_encoding_{};
     Element<std::optional<ioj::layout::VarintEncoding>>* varint_encoding_{};
-    size_type count_{};
+    size_type column_count_{};
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;

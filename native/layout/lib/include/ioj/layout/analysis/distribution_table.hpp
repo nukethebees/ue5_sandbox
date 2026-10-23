@@ -87,7 +87,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
                      Element<std::optional<long double>>* expected_slack_bytes,
                      Element<std::optional<long double>>* expected_selected_extent_bytes,
                      Element<std::optional<long double>>* expected_selected_slack_bytes,
-                     size_type count)
+                     size_type column_count)
         : analysis_{analysis}
         , entries_{entries}
         , element_count_{element_count}
@@ -98,8 +98,8 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         , expected_slack_bytes_{expected_slack_bytes}
         , expected_selected_extent_bytes_{expected_selected_extent_bytes}
         , expected_selected_slack_bytes_{expected_selected_slack_bytes}
-        , count_{count} {
-        ioj::soa_storage_detail::validate_column_pointers(count_,
+        , column_count_{column_count} {
+        ioj::soa_storage_detail::validate_column_pointers(column_count_,
                                                           analysis_,
                                                           entries_,
                                                           element_count_,
@@ -132,7 +132,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
                            expected_selected_extent_bytes.data(),
                            expected_selected_slack_bytes.data(),
                            ioj::soa_storage_detail::checked_row_count(analysis.size())} {
-        ioj::soa_storage_detail::validate_column_sizes(count_,
+        ioj::soa_storage_detail::validate_column_sizes(column_count_,
                                                        analysis,
                                                        entries,
                                                        element_count,
@@ -152,7 +152,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         auto const& [... source] = other;
         ((destination = source), ...);
     }
-    auto num() const noexcept -> size_type { return count_; }
+    auto num() const noexcept -> size_type { return column_count_; }
     auto resolve(this auto const& self) { return self; }
     auto slice(this auto const& self, size_type offset, size_type count) {
         auto const& [... pointers, source_count] = static_cast<ResolvedViewImpl const&>(self);
@@ -160,19 +160,19 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
         using Result = std::remove_cvref_t<decltype(self)>;
         return Result{(pointers ? pointers + offset : nullptr)..., count};
     }
-    auto analysis() const { return std::span{analysis_, count_}; }
-    auto entries() const { return std::span{entries_, count_}; }
-    auto element_count() const { return std::span{element_count_, count_}; }
-    auto total_weight() const { return std::span{total_weight_, count_}; }
-    auto total_extent_bytes() const { return std::span{total_extent_bytes_, count_}; }
-    auto total_slack_bytes() const { return std::span{total_slack_bytes_, count_}; }
-    auto expected_extent_bytes() const { return std::span{expected_extent_bytes_, count_}; }
-    auto expected_slack_bytes() const { return std::span{expected_slack_bytes_, count_}; }
+    auto analysis() const { return std::span{analysis_, column_count_}; }
+    auto entries() const { return std::span{entries_, column_count_}; }
+    auto element_count() const { return std::span{element_count_, column_count_}; }
+    auto total_weight() const { return std::span{total_weight_, column_count_}; }
+    auto total_extent_bytes() const { return std::span{total_extent_bytes_, column_count_}; }
+    auto total_slack_bytes() const { return std::span{total_slack_bytes_, column_count_}; }
+    auto expected_extent_bytes() const { return std::span{expected_extent_bytes_, column_count_}; }
+    auto expected_slack_bytes() const { return std::span{expected_slack_bytes_, column_count_}; }
     auto expected_selected_extent_bytes() const {
-        return std::span{expected_selected_extent_bytes_, count_};
+        return std::span{expected_selected_extent_bytes_, column_count_};
     }
     auto expected_selected_slack_bytes() const {
-        return std::span{expected_selected_slack_bytes_, count_};
+        return std::span{expected_selected_slack_bytes_, column_count_};
     }
   private:
     template <bool>
@@ -187,7 +187,7 @@ struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     Element<std::optional<long double>>* expected_slack_bytes_{};
     Element<std::optional<long double>>* expected_selected_extent_bytes_{};
     Element<std::optional<long double>>* expected_selected_slack_bytes_{};
-    size_type count_{};
+    size_type column_count_{};
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;
