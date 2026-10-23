@@ -118,8 +118,10 @@ TEST(RecordLowering, SoaPointerCyclesRetainSemanticEdgesInEitherSourceOrder) {
         }
         auto const output{render_test_manifest(context, manifest).front().content};
         EXPECT_LT(output.find("namespace example::inner"), output.find("struct A;"));
-        EXPECT_LT(output.find("struct A;"), output.find("struct BView"));
-        EXPECT_LT(output.find("struct B;"), output.find("struct AView"));
+        auto const view_definition{output.find("struct ViewImpl")};
+        ASSERT_NE(view_definition, std::string::npos);
+        EXPECT_LT(output.find("struct A;"), view_definition);
+        EXPECT_LT(output.find("struct B;"), view_definition);
         EXPECT_EQ(output.find("struct A;", output.find("struct A;") + 1), std::string::npos);
         std::ranges::reverse(declarations);
     }

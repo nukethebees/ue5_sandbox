@@ -560,8 +560,7 @@ void FHUDManager::update_entity_overlay(FRegisteredHud& registration,
         registration.soft_target, registration.fading_soft_target, soft_target.id};
     TOptional<FVector> positions[3];
     for (auto const& batch : batches) {
-        auto const locations{::ioj::Vectors3fConstView{
-            batch.locations.xs(), batch.locations.ys(), batch.locations.zs()}};
+        auto const locations{batch.locations};
         auto const count{batch.num()};
         for (uint32 row{}; row < count; ++row) {
             if (!::ioj::sim::is_alive(batch.health(row))) {

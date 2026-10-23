@@ -1176,7 +1176,7 @@ TEST(SourceLoader, NormalModuleRejectsCrossKindGeneratedCppNameCollision) {
     files.write_root(R"(
 (module mixed
   :header "Mixed.h"
-  (enum FDataView uint8
+  (enum f_data uint8
     (value One))
   (struct FData
     (member items array int32)))
@@ -2362,7 +2362,7 @@ TEST(SourceLoader, OrdinarySoaPreservesLogicalApi) {
     auto& soas{store.soas};
     files.write_root(R"(
 (module api :header "Api.h" :source "Api.cpp"
-  (struct Rows :view-name Values :const-view-name ConstValues
+  (struct Rows
     :export-specifier API :using-declarations ("Value = float")
     :equivalent-type ValueRow
     (member values array float)
@@ -2386,12 +2386,14 @@ TEST(SourceLoader, OrdinarySoaPreservesLogicalApi) {
     EXPECT_NE(output.find("void noop() {"), std::string::npos);
 }
 
-TEST(SourceLoader, RejectsRemovedSingleAllocationAllocatorSyntax) {
+TEST(SourceLoader, RejectsRemovedSoaOptions) {
     TemporaryManifest files;
     for (auto const declaration : {"(struct Rows :single-allocation-allocator Allocator (member "
                                    "ids array int))",
                                    "(struct Rows (member ids array int) (single-allocation Owner "
-                                   "(variant Pool Allocator)))"}) {
+                                   "(variant Pool Allocator)))",
+                                   "(struct Rows :view-name Values (member ids array int))",
+                                   "(struct Rows :const-view-name ConstValues (member ids array int))"}) {
         files.write_root(std::string{"(module api :header \"Api.h\" "} + declaration + ")");
         EXPECT_THROW(files.load(), lispb::codegen::sexpr::SourceError);
     }

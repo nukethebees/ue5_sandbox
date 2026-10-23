@@ -4885,7 +4885,7 @@ TEST(Validation, RejectsCollidingGeneratedSoaTypeNames) {
     auto second{declarations.soas.clone(
         declarations.items(normal_modules.declarations[normal_modules.index(module)]).front())};
     declarations.soas.name[declarations.soas.index(second)] =
-        context.storage.strings.intern("FDataView");
+        context.storage.strings.intern("F_Data");
     normal_modules.declarations[normal_modules.index(module)] = [&] {
         auto const original_items{
             declarations.items(normal_modules.declarations[normal_modules.index(module)])};
@@ -4898,7 +4898,7 @@ TEST(Validation, RejectsCollidingGeneratedSoaTypeNames) {
                  std::invalid_argument);
 }
 
-TEST(Validation, RejectsEmptyOptionalSoaViewNames) {
+TEST(Validation, RejectsReservedSoaNamespaceNames) {
     CompilerTestContext context;
     auto& declarations{context.storage.declarations};
     auto& normal_modules{declarations.normal_modules};
@@ -4909,8 +4909,8 @@ TEST(Validation, RejectsEmptyOptionalSoaViewNames) {
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{declarations.soas.clone(rows_1.front())};
-            declarations.soas.view_name[declarations.soas.index(row_0)] =
-                context.storage.strings.intern("");
+            declarations.soas.name[declarations.soas.index(row_0)] =
+                context.storage.strings.intern("Class");
             return row_0;
         }();
         return declarations.range(rows_1);
@@ -6032,7 +6032,7 @@ TEST(Validation, NormalModuleReservesGeneratedNamesAcrossDeclarationKinds) {
          [&] {
              auto const new_enums{enums.append()};
              auto const new_enums_row{enums.index(new_enums)};
-             enums.name[new_enums_row] = strings.intern("FooView");
+             enums.name[new_enums_row] = strings.intern("foo");
              enums.underlying_type[new_enums_row] = make_test_type_ref(context, "uint8");
              enums.values[new_enums_row] = declarations.range<lispb::codegen::EnumeratorId>({[&] {
                  auto const new_enumerators{enumerators.append()};
@@ -6051,7 +6051,7 @@ TEST(Validation, NormalModuleReservesGeneratedNamesAcrossDeclarationKinds) {
          [&] {
              auto const new_records{records.append()};
              auto const new_records_row{records.index(new_records)};
-             records.name[new_records_row] = strings.intern("FooConstView");
+             records.name[new_records_row] = strings.intern("foo");
              records.members[new_records_row] =
                  declarations.range<lispb::codegen::RecordMemberId>({[&] {
                      auto const new_record_members{record_members.append()};
@@ -6087,7 +6087,7 @@ TEST(Validation, NormalModuleReservesGeneratedNamesAcrossDeclarationKinds) {
          [&] {
              auto const new_enums{enums.append()};
              auto const new_enums_row{enums.index(new_enums)};
-             enums.name[new_enums_row] = strings.intern("DataView");
+             enums.name[new_enums_row] = strings.intern("data");
              enums.underlying_type[new_enums_row] = make_test_type_ref(context, "uint8");
              enums.values[new_enums_row] = declarations.range<lispb::codegen::EnumeratorId>({[&] {
                  auto const new_enumerators{enumerators.append()};

@@ -12,7 +12,6 @@
 namespace ioj::presentation {
 using ::ioj::Team;
 using ::ioj::Vector3f;
-using ::ioj::Vectors3fConstView;
 using ::ioj::sim::EntityId;
 using ::ioj::sim::EntityType;
 using ::ioj::sim::Health;
@@ -22,8 +21,8 @@ using ::ioj::sim::HealthConstView;
 struct AgentDisplayBatch {
     EntityType type{};
     std::span<EntityId const> ids;
-    Vectors3fConstView locations;
-    Vectors3fConstView velocities;
+    vectors3f::ConstView locations;
+    vectors3f::ConstView velocities;
     HealthConstView healths;
     std::span<Team const> teams;
 

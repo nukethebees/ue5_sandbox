@@ -49,7 +49,7 @@ class SANDBOXUI_API SRadar2D
     [[nodiscard]] auto add_style(FRadar2DContactStyle style) -> int32;
     [[nodiscard]] bool set_style(int32 style_index, FRadar2DContactStyle style);
     [[nodiscard]] bool set_positions(int32 style_index,
-                                     ioj::ui::radar_2d::PositionsConstView positions);
+                                     ioj::ui::radar_2d::positions::ConstView positions);
     [[nodiscard]] bool clear_positions(int32 style_index);
     void clear_positions();
     void clear_styles();

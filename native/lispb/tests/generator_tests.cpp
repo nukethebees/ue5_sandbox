@@ -57,7 +57,8 @@ TEST(Generator, LowersDynamicSoaIntoNativeOwnerAndViews) {
     ASSERT_EQ(files.size(), 2);
     auto const& header{files.front().content};
     auto const& source{files.back().content};
-    EXPECT_NE(header.find("struct EXAMPLE_API FDataConstView"), std::string::npos);
+    EXPECT_NE(header.find("namespace f_data"), std::string::npos);
+    EXPECT_NE(header.find("struct EXAMPLE_API ConstView"), std::string::npos);
     EXPECT_NE(header.find("std::span<"), std::string::npos);
     EXPECT_NE(header.find("std::pmr::memory_resource&"), std::string::npos);
     EXPECT_NE(header.find("#include \"Project/Handle.h\""), std::string::npos);

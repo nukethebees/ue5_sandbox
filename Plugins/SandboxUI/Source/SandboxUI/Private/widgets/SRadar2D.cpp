@@ -100,7 +100,7 @@ bool SRadar2D::set_style(int32 const style_index, FRadar2DContactStyle style) {
 }
 
 bool SRadar2D::set_positions(int32 const style_index,
-                             ioj::ui::radar_2d::PositionsConstView const positions) {
+                             ioj::ui::radar_2d::positions::ConstView const positions) {
     check_invariants();
     if (!data_->native.set_positions(style_index, positions)) {
         return false;
