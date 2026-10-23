@@ -67,6 +67,7 @@ The default scope is `native`. Named scopes and exclusions live in `.clang-tidy-
 nested `.clang-tidy` policy still applies. `--jobs N` forwards LLVM's worker count (zero means
 automatic). LLVM_ROOT/bin is exclusive when set; otherwise PATH supplies the tools. Full-native
 and LispB analysis use checked-in generated inputs without building fixtures. Logs stay in the analysis tree.
+Use `--checks=-clang-analyzer-*` to omit static-analyzer checks for one run without changing policy.
 
 ## Unreal operations and benchmarks
 

@@ -18,6 +18,9 @@ struct Arguments {
     build_dir: PathBuf,
     #[arg(long, short = 'j', default_value_t = 0)]
     jobs: u32,
+    /// Append clang-tidy check globs to the repository policy for this run.
+    #[arg(long, allow_hyphen_values = true)]
+    checks: Option<String>,
 }
 
 fn llvm_tool(names: &[&str]) -> Result<PathBuf, String> {
@@ -130,6 +133,7 @@ pub fn run(arguments: &[OsString]) -> Result<i32, String> {
     println!("Analyzing {} (log: {})", args.scope, log_path.display());
     let log = Mutex::new(File::create(log_path).map_err(|error| error.to_string())?);
     let mut child = Command::new("python")
+        .arg("-u")
         .arg(runner)
         .args(["-quiet", "-clang-tidy-binary"])
         .arg(clang_tidy)
@@ -137,6 +141,7 @@ pub fn run(arguments: &[OsString]) -> Result<i32, String> {
         .arg(build)
         .arg("-j")
         .arg(args.jobs.to_string())
+        .args(args.checks.map(|checks| format!("-checks={checks}")))
         .arg(filter)
         // Let run-clang-tidy inspect the native policy before per-file nested policies.
         .current_dir(root.join("native"))

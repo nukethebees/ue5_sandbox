@@ -75,6 +75,10 @@ For a comprehensive whole-native audit:
 coj tidy --scope native --build-dir out/build/win-x64-clangcl-debug/clang-tidy
 ```
 
+To run the enabled tidy checks without the path-sensitive static analyzer, append
+`--checks=-clang-analyzer-*`. This changes only that invocation; the repository policy remains
+unchanged. Runner output streams as each translation unit finishes.
+
 Scope and exclusion policy lives in `.clang-tidy-scopes.json`; nested `.clang-tidy` files remain authoritative.
 Findings are not fatal and fixes are not applied automatically; inspect diagnostics before
 considering validation complete. Output is saved in the shared build tree as `clang-tidy.log`

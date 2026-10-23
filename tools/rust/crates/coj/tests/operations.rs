@@ -102,8 +102,10 @@ fn tidy_passes_policy_and_workers_without_building_checked_in_fixtures() {
     fs::write(
         llvm.join("bin/run-clang-tidy.py"),
         r#"
-import pathlib,sys,re
+import pathlib,sys,re,os
 args=sys.argv[1:]
+checks=os.environ['EXPECTED_CHECKS']
+assert [a for a in args if a.startswith('-checks=')]==(['-checks='+checks] if checks else [])
 build=pathlib.Path(args[args.index('-p')+1])
 assert args[args.index('-j')+1]=='3'
 assert pathlib.Path.cwd().name=='native'
@@ -115,19 +117,23 @@ raise SystemExit(23)
 "#,
     )
     .unwrap();
-    let output = repo
-        .tool()
-        .args(["tidy", "--scope", "lispb", "--jobs", "3", "--build-dir"])
-        .arg(&build)
-        .env("LLVM_ROOT", &llvm)
-        .output()
-        .unwrap();
-    assert_eq!(output.status.code(), Some(23), "{output:?}");
-    assert!(
-        fs::read_to_string(build.join("clang-tidy-lispb.log"))
-            .unwrap()
-            .contains("runner log")
-    );
+    for checks in [None, Some("-clang-analyzer-*")] {
+        let output = repo
+            .tool()
+            .args(["tidy", "--scope", "lispb", "--jobs", "3", "--build-dir"])
+            .arg(&build)
+            .args(checks.map(|value| format!("--checks={value}")))
+            .env("EXPECTED_CHECKS", checks.unwrap_or_default())
+            .env("LLVM_ROOT", &llvm)
+            .output()
+            .unwrap();
+        assert_eq!(output.status.code(), Some(23), "{output:?}");
+        assert!(
+            fs::read_to_string(build.join("clang-tidy-lispb.log"))
+                .unwrap()
+                .contains("runner log")
+        );
+    }
     assert!(!build.join("editor.stamp").exists());
 }
 
