@@ -3495,6 +3495,13 @@ struct NATIVE_SOA_FIXTURE_API ApiOwner
         return index;
     }
     using Value = float;
+    auto append_value(float row) {
+        auto const row_{this->num()};
+        this->add_defaulted(1);
+        this->get_view().values()[row_] = row;
+        return row_;
+    }
+    std::uint32_t append_empty();
     [[nodiscard]] static constexpr int schema_version() { return 7; }
     template <typename T>
     [[nodiscard]] static constexpr T identity(T value)

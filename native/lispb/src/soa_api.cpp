@@ -314,6 +314,8 @@ auto lower_soa_api(LoweringContext& parent_context,
     auto append = [&](SchemaRange<FunctionSchemaId> const functions) {
         for (auto const function_id : context.declarations.items(functions)) {
             auto const function{function_id};
+            auto const& function_schemas{context.declarations.functions};
+            auto const row{function_schemas.index(function)};
             auto const body{expand_columns(
                 context,
                 join_lines(context,
@@ -322,6 +324,41 @@ auto lower_soa_api(LoweringContext& parent_context,
                 schema,
                 receiver)};
             auto spec{lower_schema_function(context, function, body)};
+            if (auto const appended{function_schemas.append_columns[row]}) {
+                auto const columns{context.declarations.items(*appended)};
+                auto const parameters{context.declarations.items(function_schemas.parameters[row])};
+                auto const& parameter_schemas{context.declarations.parameters};
+                std::string index_name{"row"};
+                while (std::ranges::any_of(parameters, [&](auto parameter) {
+                    return context.text(
+                               parameter_schemas.name[parameter_schemas.index(parameter)]) ==
+                           index_name;
+                })) {
+                    index_name += '_';
+                }
+                auto const index{ir.named(index_name)};
+                NodeListBuilder append_body{ir};
+                append_body
+                    .add(ir.variable("auto const", index_name, ir.call(ir.named("this->num"))))
+                    .add(ir.expr_stmt(ir.call(ir.named("this->add_defaulted"), {ir.literal("1")})));
+                auto const count{columns.size()};
+                for (std::size_t column{}; column < count; ++column) {
+                    append_body.add(ir.assignment(
+                        ir.subscript(ir.call(ir.member_access(ir.call(ir.named("this->get_view")),
+                                                              context.text(columns[column]))),
+                                     index),
+                        ir.named(
+                            parameter_schemas.name[parameter_schemas.index(parameters[column])])));
+                }
+                auto const return_type{ir.function_return_type(spec)};
+                auto const spelling{ir.types.spelling(return_type)};
+                append_body.add(ir.return_stmt(spelling == "auto" || spelling == "decltype(auto)"
+                                                   ? index
+                                                   : ir.init_list({index}, return_type)));
+                ir.set_function_body(spec, append_body.build());
+                ir.function_flags(spec).set_define_in_header(
+                    !function_schemas.definition_in_source[row]);
+            }
             if (context.declarations.functions
                     .definition_in_source[context.declarations.functions.index(function)]) {
                 auto const id{spec};

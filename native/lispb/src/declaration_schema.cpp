@@ -104,7 +104,8 @@ auto traverse_references(Store& store, DeclarationHandle declaration, Visitor co
                 auto location{role(category, columns.name[row], index)};
                 auto kind{TypeReferenceKind::ordinary};
                 if constexpr (requires { columns.body_lines; }) {
-                    kind = columns.body_lines[row].empty() || columns.definition_in_source[row]
+                    kind = (columns.body_lines[row].empty() && !columns.append_columns[row]) ||
+                                   columns.definition_in_source[row]
                              ? TypeReferenceKind::function_declaration
                              : TypeReferenceKind::function_definition;
                 }

@@ -75,7 +75,9 @@ class SchemaParser {
                        std::string_view const purpose) -> std::vector<TypeRefId>;
     auto parse_parameter_passing(sexpr::FormId const form) -> ParameterPassing;
     auto parse_parameter(Declarations& declarations, sexpr::FormId const form) -> ParameterId;
-    auto parse_function(Declarations& declarations, sexpr::FormId const form) -> FunctionSchemaId;
+    auto parse_function(Declarations& declarations,
+                        sexpr::FormId const form,
+                        bool soa_owner = false) -> FunctionSchemaId;
     auto parse_member(Declarations& declarations, sexpr::FormId const form) -> SoaMemberId;
     auto parse_soa(Declarations& declarations, sexpr::FormId const form) -> DeclarationHandle;
     auto parse_module_settings(Declarations& declarations, sexpr::Fields const& fields)

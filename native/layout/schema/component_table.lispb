@@ -16,7 +16,5 @@
     (member padding_before_bytes array @optional_uint64_t)
     (member slack_bytes array @optional_uint64_t)
     (function append @size_t :definition-in-source true
-      :body #cpp{auto const row{num()};
-add_defaulted(1);
-return row;}cpp#)
+      :append-columns ())
   ))

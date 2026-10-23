@@ -21,7 +21,5 @@
     (member complete_elements_per_page array @optional_uint64_t)
     (member cache_line_tiling array @optional_cache_line_tiling)
     (function append @size_t :definition-in-source true
-      :body #cpp{auto const row{num()};
-add_defaulted(1);
-return row;}cpp#)
+      :append-columns ())
   ))

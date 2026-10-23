@@ -15,9 +15,5 @@
     (function append @size_t :definition-in-source true
       (parameter selected_source @size_t)
       (parameter selected_operation @access_operation)
-      :body #cpp{auto const row{num()};
-add_defaulted(1);
-source()[row] = selected_source;
-operation()[row] = selected_operation;
-return row;}cpp#)
+      :append-columns (source operation))
   ))

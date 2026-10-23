@@ -11,11 +11,11 @@ namespace ioj::layout {
 
 auto SelectionTable::append(std::size_t selected_source,
                             ioj::layout::AccessOperation selected_operation) -> std::size_t {
-    auto const row{num()};
-    add_defaulted(1);
-    source()[row] = selected_source;
-    operation()[row] = selected_operation;
-    return row;
+    auto const row{this->num()};
+    this->add_defaulted(1);
+    this->get_view().source()[row] = selected_source;
+    this->get_view().operation()[row] = selected_operation;
+    return std::size_t{row};
 }
 
 } // namespace ioj::layout

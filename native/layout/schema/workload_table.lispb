@@ -26,11 +26,5 @@
       (parameter selected @row_range)
       (parameter count @uint64_t)
       (parameter repeat @uint64_t)
-      :body #cpp{auto const row{num()};
-add_defaulted(1);
-analysis()[row] = owner;
-selections()[row] = selected;
-element_count()[row] = count;
-multiplicity()[row] = repeat;
-return WorkloadId{row};}cpp#)
+      :append-columns (analysis selections element_count multiplicity))
   ))

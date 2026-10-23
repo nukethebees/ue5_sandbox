@@ -70,6 +70,10 @@ for (std::uint32_t i{}; i < count; ++i) { xs[i] += amount; }}cpp#))
     (member values array float :mask-field true)
     (member masks array ApiMask)
     (member positions nested ApiCoordinates)
+    (function append_value auto
+      (parameter row float) :append-columns (values))
+    (function append_empty std::uint32_t :definition-in-source true
+      :append-columns ())
     (function schema_version int :static true :constexpr true :nodiscard true
       :body ("return 7;"))
     (function identity T :static true :constexpr true :nodiscard true

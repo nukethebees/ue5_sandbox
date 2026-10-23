@@ -475,7 +475,35 @@ class Validator {
     void validate_function(lispb::codegen::FunctionSchemaId const& function,
                            TypeRegistry const& types,
                            std::string const& context,
-                           std::set<std::string>& signatures) {
+                           std::set<std::string>& signatures,
+                           bool const soa_owner = false) {
+        auto const& functions{declarations_.functions};
+        auto const row{functions.index(function)};
+        if (auto const columns{functions.append_columns[row]}) {
+            if (!soa_owner || functions.is_static[row] || functions.is_const[row] ||
+                functions.is_constexpr[row] || !functions.body_lines[row].empty()) {
+                throw std::invalid_argument{context + " append-columns requires a mutable owner "
+                                                      "function without a body or constexpr"};
+            }
+            if (columns->size() != functions.parameters[row].size()) {
+                throw std::invalid_argument{context +
+                                            " append-columns requires one column per parameter"};
+            }
+            require_unique_names(*columns, context + " append columns");
+            for (auto const parameter : declarations_.items(functions.parameters[row])) {
+                auto const type{
+                    declarations_.parameters.type[declarations_.parameters.index(parameter)]};
+                auto const occurrence{graph_.resolved(module_, type)};
+                auto const& occurrences{graph_.occurrences()};
+                auto const form{occurrences.physical_form[occurrences.index(occurrence)]};
+                if (form == PhysicalTypeForm::lvalue_reference ||
+                    form == PhysicalTypeForm::rvalue_reference) {
+                    throw std::invalid_argument{
+                        context +
+                        " append-columns parameters must be passed by value before growth"};
+                }
+            }
+        }
         if (declarations_.functions.is_constexpr[declarations_.functions.index(function)] &&
             (declarations_.functions.body_lines[declarations_.functions.index(function)].empty() ||
              declarations_.functions
@@ -539,6 +567,11 @@ class Validator {
         auto const result{graph_.resolved(module_, effective_return)};
         auto const& occurrences{graph_.occurrences()};
         auto const occurrence_row{occurrences.index(result)};
+        if (functions.append_columns[row] &&
+            types.cpp_types.strings().view(occurrences.object_spelling[occurrence_row]) == "void") {
+            throw std::invalid_argument{context +
+                                        " append-columns must return a row index or row ID"};
+        }
         if (declarations_.functions.is_nodiscard[declarations_.functions.index(function)] &&
             occurrences.physical_form[occurrence_row] == PhysicalTypeForm::value &&
             types.cpp_types.strings().view(occurrences.object_spelling[occurrence_row]) == "void") {
@@ -2719,7 +2752,8 @@ class Validator {
             }
             auto validate_functions = [&](SchemaRange<FunctionSchemaId> functions,
                                           std::set<std::string>& function_signatures,
-                                          bool const read_only) {
+                                          bool const read_only,
+                                          bool const owner = false) {
                 for (auto const function_id : declarations_.items(functions)) {
                     auto const function{function_id};
                     auto const context{
@@ -2728,7 +2762,25 @@ class Validator {
                         text(
                             declarations_.functions.name[declarations_.functions.index(function)]) +
                         "'"};
-                    validate_function(function, types, context, function_signatures);
+                    validate_function(function, types, context, function_signatures, owner);
+                    if (auto const columns{
+                            declarations_.functions
+                                .append_columns[declarations_.functions.index(function)]}) {
+                        auto const& members{declarations_.soa_members};
+                        auto const declared{declarations_.items(
+                            declarations_.soas.members[declarations_.soas.index(schema)])};
+                        for (auto const column : declarations_.items(*columns)) {
+                            auto const found{std::ranges::find(declared, column, [&](auto member) {
+                                return members.name[members.index(member)];
+                            })};
+                            if (found == declared.end() ||
+                                members.kind[members.index(*found)] != SoaMemberKind::array) {
+                                throw std::invalid_argument{
+                                    context + " append column must name a direct array member: " +
+                                    text(column)};
+                            }
+                        }
+                    }
                     if (read_only &&
                         !declarations_.functions
                              .is_const[declarations_.functions.index(function)] &&
@@ -2782,7 +2834,8 @@ class Validator {
             std::set<std::string> view_signatures;
             validate_functions(declarations_.soas.functions[declarations_.soas.index(schema)],
                                owner_signatures,
-                               false);
+                               false,
+                               true);
             validate_functions(
                 declarations_.soas.const_view_functions[declarations_.soas.index(schema)],
                 view_signatures,

@@ -16,6 +16,7 @@ auto FunctionSchemas::append() -> FunctionSchemaId {
     return_type.push_back({});
     parameters.push_back({});
     body_lines.push_back({});
+    append_columns.push_back({});
     dependencies.push_back({});
     trailing_return_type.push_back({});
     is_const.push_back(false);
@@ -37,6 +38,7 @@ auto FunctionSchemas::clone(FunctionSchemaId id) -> FunctionSchemaId {
     return_type[destination] = return_type[source_index];
     parameters[destination] = parameters[source_index];
     body_lines[destination] = body_lines[source_index];
+    append_columns[destination] = append_columns[source_index];
     dependencies[destination] = dependencies[source_index];
     trailing_return_type[destination] = trailing_return_type[source_index];
     is_const[destination] = is_const[source_index];
@@ -55,6 +57,7 @@ void FunctionSchemas::clear() {
     return_type.clear();
     parameters.clear();
     body_lines.clear();
+    append_columns.clear();
     dependencies.clear();
     trailing_return_type.clear();
     is_const.clear();

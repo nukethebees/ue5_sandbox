@@ -16,10 +16,7 @@
     (member varint_encoding array @optional_varint_encoding)
     (function append @size_t :definition-in-source true
       (parameter value @type_id)
-      :body #cpp{auto const row{num()};
-add_defaulted(1);
-type()[row] = value;
-return row;}cpp#)
+      :append-columns (type))
     (function find @size_t :const true :definition-in-source true
       (parameter value @type_id)
       :body #cpp{auto const types{type()};

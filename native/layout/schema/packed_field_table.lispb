@@ -30,7 +30,5 @@
     (member unused_codes array @optional_uint64_t)
     (member codes array @row_range)
     (function append @size_t :definition-in-source true
-      :body #cpp{auto const row{num()};
-add_defaulted(1);
-return row;}cpp#)
+      :append-columns ())
   ))

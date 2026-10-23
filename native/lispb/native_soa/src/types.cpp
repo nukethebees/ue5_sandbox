@@ -3,6 +3,8 @@
 
 #include "native_soa/types.hpp"
 
+#include <cstdint>
+
 namespace ioj::native_soa_fixture {
 
 auto ApiResolvedConstView::first_x() const -> float {
@@ -18,6 +20,12 @@ auto ApiConstView::first_x() const -> float {
 
 auto ApiView::first_x() const -> float {
     return this->view_positions().xs()[0];
+}
+
+auto ApiOwner::append_empty() -> std::uint32_t {
+    auto const row{this->num()};
+    this->add_defaulted(1);
+    return std::uint32_t{row};
 }
 
 auto ApiOwner::total() const -> Value {

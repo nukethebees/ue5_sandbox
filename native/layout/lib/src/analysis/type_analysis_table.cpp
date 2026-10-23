@@ -12,11 +12,11 @@ namespace ioj::layout {
 
 auto TypeAnalysisTable::append(lispb::schema::TypeId type, ioj::layout::ScenarioId scenario_id)
     -> ioj::layout::AnalysisId {
-    auto const row{num()};
-    add_defaulted(1);
-    schema_type()[row] = type;
-    scenario()[row] = scenario_id;
-    return AnalysisId{row};
+    auto const row{this->num()};
+    this->add_defaulted(1);
+    this->get_view().schema_type()[row] = type;
+    this->get_view().scenario()[row] = scenario_id;
+    return ioj::layout::AnalysisId{row};
 }
 
 auto TypeAnalysisTable::find(lispb::schema::TypeId type, ioj::layout::ScenarioId scenario_id) const

@@ -238,6 +238,9 @@ auto CanonicalRenderer::build_function(codegen::FunctionSchemaId const function,
     auto result{ir_.form(
         kind, {ir_.atom(functions.name[index]), build_type_ref(functions.return_type[index])})};
     result.list_field("body", items(functions.body_lines[index]), string);
+    result.optional_field("append-columns", functions.append_columns[index], [this](auto columns) {
+        return ir_.list(items(columns), [this](auto column) { return ir_.atom(column); });
+    });
     result.list_field("dependencies", items(functions.dependencies[index]), string);
     result.optional_field("trailing-return-type",
                           functions.trailing_return_type[index],

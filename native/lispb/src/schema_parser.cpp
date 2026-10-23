@@ -267,10 +267,12 @@ auto SchemaParser::parse_parameter(Declarations& declarations, sexpr::FormId con
     return record_id;
 }
 
-auto SchemaParser::parse_function(Declarations& declarations, sexpr::FormId const form)
-    -> FunctionSchemaId {
+auto SchemaParser::parse_function(Declarations& declarations,
+                                  sexpr::FormId const form,
+                                  bool soa_owner) -> FunctionSchemaId {
     Fields const fields{parser_, form, syntax_.head(form), 2};
     fields.validate({"body",
+                     "append-columns",
                      "dependencies",
                      "trailing-return-type",
                      "const",
@@ -303,6 +305,9 @@ auto SchemaParser::parse_function(Declarations& declarations, sexpr::FormId cons
     if (fields.optional("body").has_value() && body_lines.empty()) {
         body_lines.emplace_back();
     }
+    if (fields.optional("append-columns") && !soa_owner) {
+        parser_.fail(form, "append-columns requires an owning SOA function");
+    }
     auto& records{declarations.functions};
     auto const record_id{records.append()};
     auto const record_index{records.index(record_id)};
@@ -310,6 +315,10 @@ auto SchemaParser::parse_function(Declarations& declarations, sexpr::FormId cons
     records.return_type[record_index] = parse_type_ref(declarations, fields.positional(1));
     records.parameters[record_index] = declarations.range(parameters);
     records.body_lines[record_index] = declarations.range(body_lines);
+    if (fields.optional("append-columns")) {
+        records.append_columns[record_index] =
+            declarations.range(identifier_list_or(fields, "append-columns"));
+    }
     records.dependencies[record_index] =
         declarations.range(identifier_list_or(fields, "dependencies"));
     records.trailing_return_type[record_index] = trailing_return_type;
@@ -424,7 +433,7 @@ auto SchemaParser::parse_soa(Declarations& declarations, sexpr::FormId const for
         if (head == "member") {
             members.push_back(parse_member(declarations, declaration));
         } else if (head == "function") {
-            functions.push_back(parse_function(declarations, declaration));
+            functions.push_back(parse_function(declarations, declaration, true));
         } else if (head == "view-function") {
             const_view_functions.push_back(parse_function(declarations, declaration));
         } else if (head == "mutable-view-function") {

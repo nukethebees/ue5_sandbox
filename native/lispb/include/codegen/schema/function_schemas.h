@@ -20,6 +20,7 @@ struct FunctionSchemas {
     std::vector<TypeRefId> return_type;
     std::vector<SchemaRange<ParameterId>> parameters;
     std::vector<SchemaRange<StringId>> body_lines;
+    std::vector<std::optional<SchemaRange<StringId>>> append_columns;
     std::vector<SchemaRange<StringId>> dependencies;
     std::vector<std::optional<TypeRefId>> trailing_return_type;
     std::vector<std::uint8_t> is_const;

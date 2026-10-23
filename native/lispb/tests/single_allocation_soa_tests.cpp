@@ -7,6 +7,7 @@
 #include <codegen/schema/schema_version.h>
 #include <lispb/compiler_storage.h>
 #include <lispb/indices.h>
+#include <lispb/schema/source_renderer.h>
 #include <lispb/strings.h>
 
 #include <gtest/gtest.h>
@@ -102,6 +103,64 @@ auto changed(std::string_view from, std::string_view to) -> std::string {
 
 TEST(SingleAllocationSoa, RejectsEmptySchema) {
     EXPECT_THROW(render("(struct Rows)"), std::invalid_argument);
+}
+
+TEST(SingleAllocationSoa, PartialAppendSurvivesCloningAndSourceRoundTrip) {
+    CompilerTestContext context;
+    auto manifest{parse_test_manifest(context, R"(
+        (module test :header "Test.h"
+          (struct Rows
+            (member values array float)
+            (function append std::uint32_t (parameter value float) :append-columns (values))
+            (function append_empty std::uint32_t :append-columns ()))))")};
+    auto& declarations{manifest.declarations};
+    auto& functions{declarations.functions};
+    auto const original{
+        lispb::schema::render_module_source(declarations, manifest.modules.front())};
+    auto& soas{declarations.soas};
+    auto const methods{declarations.items(soas.functions.front())};
+    std::vector<lispb::codegen::FunctionSchemaId> clones;
+    for (auto const method : methods) {
+        clones.push_back(functions.clone(method));
+    }
+    soas.functions.front() = declarations.range(clones);
+    EXPECT_EQ(lispb::schema::render_module_source(declarations, manifest.modules.front()),
+              original);
+    CompilerTestContext reparsed;
+    auto const round_trip{parse_test_manifest(reparsed, original)};
+    EXPECT_EQ(
+        lispb::schema::render_module_source(round_trip.declarations, round_trip.modules.front()),
+        original);
+    auto const& options{round_trip.declarations.functions.append_columns};
+    ASSERT_EQ(options.size(), 2U);
+    ASSERT_TRUE(options[0]);
+    ASSERT_TRUE(options[1]);
+    EXPECT_EQ(options[0]->size(), 1U);
+    EXPECT_TRUE(options[1]->empty());
+}
+
+TEST(SingleAllocationSoa, RejectsInvalidPartialAppendDeclarations) {
+    for (auto const function :
+         {"(function append int (parameter value float) :append-columns ())",
+          "(function append int (parameter a float) (parameter b float) :append-columns (values "
+          "values))",
+          "(function append int (parameter value float) :append-columns (missing))",
+          "(function append int (parameter value float) :append-columns (nested))",
+          "(function append int :const true :append-columns ())",
+          "(function append int :static true :append-columns ())",
+          "(function append int :constexpr true :append-columns ())",
+          "(function append int :body (\"return 0;\") :append-columns ())",
+          "(function append void :append-columns ())",
+          "(function append int (parameter value (type-ref float :suffix \" const&\")) "
+          ":append-columns (values))",
+          "(view-function append int :append-columns ())"}) {
+        SCOPED_TRACE(function);
+        EXPECT_THROW(
+            render(std::string{"(struct Child (member xs array float)) (struct Rows (member values "
+                               "array float) (member nested nested Child) "} +
+                   function + ")"),
+            std::exception);
+    }
 }
 
 TEST(SingleAllocationSoa, RejectsGeneratedNameCollisions) {

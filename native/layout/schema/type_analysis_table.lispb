@@ -15,11 +15,7 @@
     (function append @analysis_id :definition-in-source true
       (parameter type @type_id)
       (parameter scenario_id @scenario_id)
-      :body #cpp{auto const row{num()};
-add_defaulted(1);
-schema_type()[row] = type;
-scenario()[row] = scenario_id;
-return AnalysisId{row};}cpp#)
+      :append-columns (schema_type scenario))
     (function find @analysis_id :const true :definition-in-source true
       (parameter type @type_id)
       (parameter scenario_id @scenario_id)

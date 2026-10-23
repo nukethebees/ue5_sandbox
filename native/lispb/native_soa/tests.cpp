@@ -200,6 +200,28 @@ TEST(NativeSoa, LogicalApiSurvivesCompactOnlyStorageAndNestedLayouts) {
     EXPECT_EQ(equivalent.get_const_view()[0].y, 8.0f);
 }
 
+TEST(NativeSoa, PartialAppendDefaultsUnspecifiedColumnsAcrossGrowthAndReuse) {
+    ApiOwner owner;
+    EXPECT_EQ(owner.append_value(17.0f), 0U);
+    owner.set_num(owner.capacity());
+    auto const row{owner.num()};
+    EXPECT_EQ(owner.append_value(owner.values()[0]), row);
+    EXPECT_EQ(owner.values()[row], 17.0f);
+    EXPECT_FALSE(owner.masks()[row].has(ApiField::Values));
+    EXPECT_EQ(owner.view_positions()[row].x, 0.0f);
+    EXPECT_EQ(owner.view_positions()[row].y, 0.0f);
+
+    owner.masks()[0].set(ApiField::Values);
+    owner.view_positions().set(0, ApiPair{3.0f, 4.0f});
+    owner.reset();
+    EXPECT_EQ(owner.append_empty(), 0U);
+    EXPECT_EQ(owner.num(), 1U);
+    EXPECT_EQ(owner.values()[0], 0.0f);
+    EXPECT_FALSE(owner.masks()[0].has(ApiField::Values));
+    EXPECT_EQ(owner.view_positions()[0].x, 0.0f);
+    EXPECT_EQ(owner.view_positions()[0].y, 0.0f);
+}
+
 TEST(NativeSoa, NestedEquivalentValuesSupportOwnerAndMutableViewRowOperations) {
     ApiOwner owner;
     EXPECT_EQ(owner.add(1.0f, ApiMask{}, ApiPair{2.0f, 3.0f}), 0U);

@@ -8,9 +8,9 @@
 namespace ioj::layout {
 
 auto CodeTable::append() -> std::size_t {
-    auto const row{num()};
-    add_defaulted(1);
-    return row;
+    auto const row{this->num()};
+    this->add_defaulted(1);
+    return std::size_t{row};
 }
 
 } // namespace ioj::layout

@@ -363,6 +363,21 @@ receivers. Read-only view functions are const. Bodies emit inline unless
 and is forbidden for templates. Bodyless functions declare handwritten implementations. Const
 qualification on a mutable view does not make its pointees const.
 
+An owner function can use `:append-columns (column ...)` instead of a C++ body. Each column names
+a direct array member and receives the corresponding by-value parameter. The new row is default
+initialized, including unlisted and nested columns, and its index is returned as the declared row
+index or ID type. An empty list appends a fully defaulted row. For example:
+
+```lisp
+(function append WorkloadId
+  (parameter owner AnalysisId)
+  (parameter count std::uint64_t)
+  :append-columns (analysis element_count))
+```
+
+The usual `:definition-in-source` option applies. Passing arguments by value preserves inputs
+borrowed from the owner when growth reallocates its storage.
+
 Authored bodies remain raw C++. `$column(values)` and `$column(positions.xs)` expand through logical
 column accessors. Expansion is textual, including inside comments and literals; other identifiers
 remain unchanged. Custom functions and using declarations must be valid for their declared receiver.

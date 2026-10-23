@@ -10,10 +10,10 @@
 namespace ioj::layout {
 
 auto ScalarTable::append(lispb::schema::TypeId value) -> std::size_t {
-    auto const row{num()};
-    add_defaulted(1);
-    type()[row] = value;
-    return row;
+    auto const row{this->num()};
+    this->add_defaulted(1);
+    this->get_view().type()[row] = value;
+    return std::size_t{row};
 }
 
 auto ScalarTable::find(lispb::schema::TypeId value) const -> std::size_t {
