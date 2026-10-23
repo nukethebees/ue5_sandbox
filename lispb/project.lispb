@@ -27,7 +27,7 @@
       "native/layout/schema/tag_table.lispb"
       "native/layout/schema/type_analysis_table.lispb"
       "native/layout/schema/workload_table.lispb")
-    :output-root (project-path "native/layout/generated"))
+    :output-root (project-path "native/layout/lib"))
 
   (cpp-schema sandbox-code
     :types "lispb/schema/types.lispb"

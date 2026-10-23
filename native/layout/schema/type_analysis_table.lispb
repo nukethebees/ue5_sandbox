@@ -1,6 +1,6 @@
 (module type_analysis_table
-  :header "ioj/layout/analysis/type_analysis_table.hpp"
-  :source "ioj/layout/analysis/type_analysis_table.cpp"
+  :header "include/ioj/layout/analysis/type_analysis_table.hpp"
+  :source "src/analysis/type_analysis_table.cpp"
   :header-include "ioj/layout/analysis/type_analysis_table.hpp"
   :backend standard-library
   :namespace ioj::layout

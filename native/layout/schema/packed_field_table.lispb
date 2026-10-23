@@ -1,6 +1,6 @@
 (module packed_field_table
-  :header "ioj/layout/analysis/packed_field_table.hpp"
-  :source "ioj/layout/analysis/packed_field_table.cpp"
+  :header "include/ioj/layout/analysis/packed_field_table.hpp"
+  :source "src/analysis/packed_field_table.cpp"
   :header-include "ioj/layout/analysis/packed_field_table.hpp"
   :backend standard-library
   :namespace ioj::layout

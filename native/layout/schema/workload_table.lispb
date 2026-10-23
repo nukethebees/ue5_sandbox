@@ -1,6 +1,6 @@
 (module workload_table
-  :header "ioj/layout/analysis/workload_table.hpp"
-  :source "ioj/layout/analysis/workload_table.cpp"
+  :header "include/ioj/layout/analysis/workload_table.hpp"
+  :source "src/analysis/workload_table.cpp"
   :header-include "ioj/layout/analysis/workload_table.hpp"
   :backend standard-library
   :namespace ioj::layout

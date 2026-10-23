@@ -1,6 +1,6 @@
 (module component_table
-  :header "ioj/layout/analysis/component_table.hpp"
-  :source "ioj/layout/analysis/component_table.cpp"
+  :header "include/ioj/layout/analysis/component_table.hpp"
+  :source "src/analysis/component_table.cpp"
   :header-include "ioj/layout/analysis/component_table.hpp"
   :backend standard-library
   :namespace ioj::layout

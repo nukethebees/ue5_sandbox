@@ -1,6 +1,6 @@
 (module relationship_table
-  :header "ioj/layout/analysis/relationship_table.hpp"
-  :source "ioj/layout/analysis/relationship_table.cpp"
+  :header "include/ioj/layout/analysis/relationship_table.hpp"
+  :source "src/analysis/relationship_table.cpp"
   :header-include "ioj/layout/analysis/relationship_table.hpp"
   :backend standard-library
   :namespace ioj::layout

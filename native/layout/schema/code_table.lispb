@@ -1,6 +1,6 @@
 (module code_table
-  :header "ioj/layout/analysis/code_table.hpp"
-  :source "ioj/layout/analysis/code_table.cpp"
+  :header "include/ioj/layout/analysis/code_table.hpp"
+  :source "src/analysis/code_table.cpp"
   :header-include "ioj/layout/analysis/code_table.hpp"
   :backend standard-library
   :namespace ioj::layout

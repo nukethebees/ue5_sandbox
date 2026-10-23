@@ -1,6 +1,6 @@
 (module selection_table
-  :header "ioj/layout/analysis/selection_table.hpp"
-  :source "ioj/layout/analysis/selection_table.cpp"
+  :header "include/ioj/layout/analysis/selection_table.hpp"
+  :source "src/analysis/selection_table.cpp"
   :header-include "ioj/layout/analysis/selection_table.hpp"
   :backend standard-library
   :namespace ioj::layout

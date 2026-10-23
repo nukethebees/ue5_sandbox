@@ -1,6 +1,6 @@
 (module distribution_entry_table
-  :header "ioj/layout/analysis/distribution_entry_table.hpp"
-  :source "ioj/layout/analysis/distribution_entry_table.cpp"
+  :header "include/ioj/layout/analysis/distribution_entry_table.hpp"
+  :source "src/analysis/distribution_entry_table.cpp"
   :header-include "ioj/layout/analysis/distribution_entry_table.hpp"
   :backend standard-library
   :namespace ioj::layout

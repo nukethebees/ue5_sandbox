@@ -1,4 +1,3 @@
-set(layout_analysis_generated "${CMAKE_CURRENT_SOURCE_DIR}/../generated")
 set(layout_analysis_tables
   code_table
   component_table
@@ -16,8 +15,8 @@ set(layout_analysis_tables
 set(layout_analysis_headers)
 set(layout_analysis_sources)
 foreach(table IN LISTS layout_analysis_tables)
-  list(APPEND layout_analysis_headers "${layout_analysis_generated}/ioj/layout/analysis/${table}.hpp")
-  list(APPEND layout_analysis_sources "${layout_analysis_generated}/ioj/layout/analysis/${table}.cpp")
+  list(APPEND layout_analysis_headers "include/ioj/layout/analysis/${table}.hpp")
+  list(APPEND layout_analysis_sources "src/analysis/${table}.cpp")
 endforeach()
 
 add_custom_target(generate-layout-analysis
@@ -96,7 +95,6 @@ target_sources(native-layout
 target_include_directories(native-layout
   PUBLIC
     include
-    "${layout_analysis_generated}"
 )
 target_compile_definitions(native-layout PRIVATE
   IOJ_LAYOUT_TARGET_PLATFORM="${CMAKE_SYSTEM_NAME}"

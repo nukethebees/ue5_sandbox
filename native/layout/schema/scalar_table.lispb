@@ -1,6 +1,6 @@
 (module scalar_table
-  :header "ioj/layout/analysis/scalar_table.hpp"
-  :source "ioj/layout/analysis/scalar_table.cpp"
+  :header "include/ioj/layout/analysis/scalar_table.hpp"
+  :source "src/analysis/scalar_table.cpp"
   :header-include "ioj/layout/analysis/scalar_table.hpp"
   :backend standard-library
   :namespace ioj::layout

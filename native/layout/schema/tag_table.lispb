@@ -1,6 +1,6 @@
 (module tag_table
-  :header "ioj/layout/analysis/tag_table.hpp"
-  :source "ioj/layout/analysis/tag_table.cpp"
+  :header "include/ioj/layout/analysis/tag_table.hpp"
+  :source "src/analysis/tag_table.cpp"
   :header-include "ioj/layout/analysis/tag_table.hpp"
   :backend standard-library
   :namespace ioj::layout

@@ -1,6 +1,6 @@
 (module soa_column_table
-  :header "ioj/layout/analysis/soa_column_table.hpp"
-  :source "ioj/layout/analysis/soa_column_table.cpp"
+  :header "include/ioj/layout/analysis/soa_column_table.hpp"
+  :source "src/analysis/soa_column_table.cpp"
   :header-include "ioj/layout/analysis/soa_column_table.hpp"
   :backend standard-library
   :namespace ioj::layout
