@@ -182,6 +182,7 @@ struct EntitiesSingleResolvedConstView_locations : EntitiesSingleResolvedView_lo
     using Base::Base;
     using equivalent_type = Vector3f;
     auto operator[](std::uint32_t index) const -> equivalent_type {
+        assert(index < num());
         return equivalent_type{xs()[index], ys()[index], zs()[index]};
     }
 };
@@ -196,6 +197,7 @@ struct EntitiesSingleResolvedView_locations : EntitiesSingleResolvedView_locatio
     }
     using equivalent_type = Vector3f;
     auto operator[](std::uint32_t index) const -> equivalent_type {
+        assert(index < num());
         return equivalent_type{xs()[index], ys()[index], zs()[index]};
     }
 };
@@ -293,6 +295,7 @@ struct EntitiesSingleResolvedConstView_rotations : EntitiesSingleResolvedView_ro
     using Base::Base;
     using equivalent_type = Rotator3f;
     auto operator[](std::uint32_t index) const -> equivalent_type {
+        assert(index < num());
         return equivalent_type{pitches()[index], yaws()[index], rolls()[index]};
     }
 };
@@ -310,6 +313,7 @@ struct EntitiesSingleResolvedView_rotations : EntitiesSingleResolvedView_rotatio
     }
     using equivalent_type = Rotator3f;
     auto operator[](std::uint32_t index) const -> equivalent_type {
+        assert(index < num());
         return equivalent_type{pitches()[index], yaws()[index], rolls()[index]};
     }
 };
@@ -406,6 +410,7 @@ struct EntitiesSingleResolvedConstView_velocities
     using Base::Base;
     using equivalent_type = Vector3f;
     auto operator[](std::uint32_t index) const -> equivalent_type {
+        assert(index < num());
         return equivalent_type{xs()[index], ys()[index], zs()[index]};
     }
 };
@@ -420,6 +425,7 @@ struct EntitiesSingleResolvedView_velocities : EntitiesSingleResolvedView_veloci
     }
     using equivalent_type = Vector3f;
     auto operator[](std::uint32_t index) const -> equivalent_type {
+        assert(index < num());
         return equivalent_type{xs()[index], ys()[index], zs()[index]};
     }
 };

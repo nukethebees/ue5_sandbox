@@ -10057,5 +10057,19 @@ TEST(Validation, RejectsEmptySettingsSchema) {
     EXPECT_THROW(lower_test_manifest(context, std::move(manifest)), std::invalid_argument);
 }
 
+TEST(Validation, EquivalentMemberMappingsRequireACompleteEquivalentType) {
+    for (auto const declaration :
+         {"(struct Rows (member xs array float :equivalent-member x))",
+          "(struct Rows :equivalent-type Pair (member xs array float :equivalent-accessor true))",
+          "(struct Rows :equivalent-type Pair (member xs array float :equivalent-member x) (member "
+          "ys array float))",
+          "(struct Rows :equivalent-constructor make_pair (member xs array float))"}) {
+        CompilerTestContext context;
+        auto manifest{parse_test_manifest(
+            context, std::string{"(module test :header \"Test.h\" "} + declaration + ")")};
+        EXPECT_THROW(lower_test_manifest(context, std::move(manifest)), std::invalid_argument);
+    }
+}
+
 } // namespace
 } // namespace lispb::codegen

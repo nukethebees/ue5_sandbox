@@ -2643,11 +2643,28 @@ class Validator {
                     "' must have members"};
             }
             std::vector<std::string> member_names;
+            if (declarations_.soas.equivalent_constructor[declarations_.soas.index(schema)] &&
+                !declarations_.soas.equivalent_type[declarations_.soas.index(schema)]) {
+                throw std::invalid_argument{
+                    "SOA equivalent constructor requires an equivalent type"};
+            }
+            auto mapped_members{std::size_t{}};
             int mask_storage_member_count{};
             int mask_field_count{};
             for (auto const member_id : declarations_.items(
                      declarations_.soas.members[declarations_.soas.index(schema)])) {
                 auto const member{member_id};
+                auto const member_row{declarations_.soa_members.index(member)};
+                if (declarations_.soa_members.equivalent_member[member_row]) {
+                    ++mapped_members;
+                    if (!declarations_.soas.equivalent_type[declarations_.soas.index(schema)]) {
+                        throw std::invalid_argument{
+                            "SOA equivalent member mapping requires an equivalent type"};
+                    }
+                } else if (declarations_.soa_members.equivalent_accessor[member_row]) {
+                    throw std::invalid_argument{
+                        "SOA equivalent accessor requires a member mapping"};
+                }
                 auto const context{
                     "SOA '" + text(declarations_.soas.name[declarations_.soas.index(schema)]) +
                     "' member '" +
@@ -2796,6 +2813,10 @@ class Validator {
                 throw std::invalid_argument{
                     "SOA '" + text(declarations_.soas.name[declarations_.soas.index(schema)]) +
                     "' generated field mask must contain at least one field"};
+            }
+            if (mapped_members != 0 && mapped_members != member_names.size()) {
+                throw std::invalid_argument{
+                    "SOA equivalent member mappings must cover every column"};
             }
             require_unique_names(
                 member_names,

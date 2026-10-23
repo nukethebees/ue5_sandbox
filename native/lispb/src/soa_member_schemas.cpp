@@ -15,6 +15,8 @@ auto SoaMemberSchemas::append() -> SoaMemberId {
     name.push_back({});
     kind.push_back({});
     type.push_back({});
+    equivalent_member.push_back({});
+    equivalent_accessor.push_back(false);
     fixed_schema.push_back({});
     nested_schema.push_back({});
     mask_field.push_back(false);
@@ -29,6 +31,8 @@ auto SoaMemberSchemas::clone(SoaMemberId id) -> SoaMemberId {
     name[destination] = name[source_index];
     kind[destination] = kind[source_index];
     type[destination] = type[source_index];
+    equivalent_member[destination] = equivalent_member[source_index];
+    equivalent_accessor[destination] = equivalent_accessor[source_index];
     fixed_schema[destination] = fixed_schema[source_index];
     nested_schema[destination] = nested_schema[source_index];
     mask_field[destination] = mask_field[source_index];
@@ -40,6 +44,8 @@ void SoaMemberSchemas::clear() {
     name.clear();
     kind.clear();
     type.clear();
+    equivalent_member.clear();
+    equivalent_accessor.clear();
     fixed_schema.clear();
     nested_schema.clear();
     mask_field.clear();

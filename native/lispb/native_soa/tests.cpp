@@ -289,6 +289,28 @@ TEST(NativeSoa, ScalarInsertionAndAssignmentPreserveNestedColumnsAcrossGrowth) {
     static_assert(std::is_same_v<decltype(std::as_const(owner).values()), std::span<float const>>);
 }
 
+TEST(NativeSoa, OrdinaryColumnsMapEquivalentValuesForOwnersAndBothViews) {
+    EquivalentOwner owner;
+    EXPECT_EQ(owner.add(ApiPair{3.0f, 7.0f}), 0U);
+    EXPECT_EQ(owner[0].x, 3.0f);
+    EXPECT_EQ(owner[0].y, 7.0f);
+    owner.get_view().set(0, ApiPair{11.0f, 13.0f});
+    EXPECT_EQ(owner[0].y, 13.0f);
+    owner.get_view().resolve().set(0, ApiPair{17.0f, 19.0f});
+    EXPECT_EQ(owner[0].x, 17.0f);
+    owner.set(0, ApiPair{23.0f, 29.0f});
+    EXPECT_EQ(owner.xs()[0], 23.0f);
+    EXPECT_EQ(owner.ys()[0], 29.0f);
+    EXPECT_DEATH(owner[1], "");
+
+    AccessorOwner mapped;
+    mapped.add(Vector3f{31.0f, 37.0f, 41.0f});
+    EXPECT_EQ(mapped.horizontal()[0], 31.0f);
+    EXPECT_EQ(mapped.get_const_view().resolve()[0].y(), 37.0f);
+    mapped.get_view().resolve().set(0, Vector3f{43.0f, 47.0f, 53.0f});
+    EXPECT_EQ(mapped[0].z(), 53.0f);
+}
+
 TEST(NativeSoa, EmptyResolvedViewsCanBeSlicedAndConverted) {
     ApiOwner owner;
     auto const resolved{owner.get_view().resolve()};

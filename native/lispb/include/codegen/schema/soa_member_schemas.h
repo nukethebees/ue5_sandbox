@@ -20,6 +20,8 @@ struct SoaMemberSchemas {
     std::vector<StringId> name;
     std::vector<SoaMemberKind> kind;
     std::vector<TypeRefId> type;
+    std::vector<std::optional<StringId>> equivalent_member;
+    std::vector<std::uint8_t> equivalent_accessor;
     std::vector<std::optional<StringId>> fixed_schema;
     std::vector<std::optional<StringId>> nested_schema;
     std::vector<std::uint8_t> mask_field;

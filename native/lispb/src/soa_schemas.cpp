@@ -40,6 +40,7 @@ auto SoaSchemas::append() -> DeclarationHandle {
     mutable_view_functions.push_back({});
     using_declarations.push_back({});
     equivalent_type.push_back({});
+    equivalent_constructor.push_back({});
     copy_element_memberwise.push_back(false);
     layout_only.push_back(false);
     fixed.push_back({});
@@ -67,6 +68,7 @@ auto SoaSchemas::clone(DeclarationHandle id) -> DeclarationHandle {
     mutable_view_functions[destination] = mutable_view_functions[source_index];
     using_declarations[destination] = using_declarations[source_index];
     equivalent_type[destination] = equivalent_type[source_index];
+    equivalent_constructor[destination] = equivalent_constructor[source_index];
     copy_element_memberwise[destination] = copy_element_memberwise[source_index];
     layout_only[destination] = layout_only[source_index];
     fixed[destination] = fixed[source_index];
@@ -90,6 +92,7 @@ void SoaSchemas::clear() {
     mutable_view_functions.clear();
     using_declarations.clear();
     equivalent_type.clear();
+    equivalent_constructor.clear();
     copy_element_memberwise.clear();
     layout_only.clear();
     fixed.clear();

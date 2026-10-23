@@ -1560,6 +1560,8 @@ class TypeGraphBuilder {
                         store_.items(store_.soas.vector_components[store_.soas.index(source)]));
                     definitions.soas.layout_only[definitions.soas.index(new_soas_20)] =
                         store_.soas.layout_only[store_.soas.index(source)];
+                    definitions.soas.equivalent_constructor[definitions.soas.index(new_soas_20)] =
+                        store_.soas.equivalent_constructor[store_.soas.index(source)];
                     return new_soas_20;
                 }
                 case lispb::codegen::DeclarationKind::vector_soa: {

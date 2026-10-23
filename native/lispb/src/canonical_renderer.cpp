@@ -515,6 +515,8 @@ auto CanonicalRenderer::build_soa_member(codegen::SoaMemberId const member) -> E
                           build_type_ref(members.type[index])})};
     result.optional_field("fixed-schema", members.fixed_schema[index], atom);
     result.optional_field("nested-schema", members.nested_schema[index], atom);
+    result.optional_field("equivalent-member", members.equivalent_member[index], atom);
+    result.flag("equivalent-accessor", members.equivalent_accessor[index]);
     result.flag("mask-field", members.mask_field[index]);
     result.list_field(
         "mask-dimensions", items(members.mask_dimensions[index]), [&](auto dimension) {
@@ -544,6 +546,7 @@ auto CanonicalRenderer::build_soa(codegen::DeclarationHandle const schema) -> Ex
     }
     result.list_field("using-declarations", items(soas.using_declarations[index]), string);
     result.optional_field("equivalent-type", soas.equivalent_type[index], type_ref);
+    result.optional_field("equivalent-constructor", soas.equivalent_constructor[index], string);
     result.list_field("vector-components", items(soas.vector_components[index]), atom);
     result.flag("copy-element-memberwise", soas.copy_element_memberwise[index]);
     result.flag("layout-only", soas.layout_only[index]);

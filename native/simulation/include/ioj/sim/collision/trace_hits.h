@@ -161,6 +161,7 @@ struct TraceHitsSingleResolvedConstView_locations
     using Base::Base;
     using equivalent_type = Vector3f;
     auto operator[](std::uint32_t index) const -> equivalent_type {
+        assert(index < num());
         return equivalent_type{xs()[index], ys()[index], zs()[index]};
     }
 };
@@ -175,6 +176,7 @@ struct TraceHitsSingleResolvedView_locations : TraceHitsSingleResolvedView_locat
     }
     using equivalent_type = Vector3f;
     auto operator[](std::uint32_t index) const -> equivalent_type {
+        assert(index < num());
         return equivalent_type{xs()[index], ys()[index], zs()[index]};
     }
 };

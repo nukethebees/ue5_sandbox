@@ -2,3 +2,4 @@
 (type aligned32 :spelling "Aligned32" :header "native_soa/aligned32.h")
 (type aligned64 :spelling "Aligned64" :header "native_soa/aligned64.h")
 (type aligned256 :spelling "Aligned256" :header "native_soa/aligned256.h")
+(type vector3 :spelling "ioj::Vector3f" :header "native_soa/equivalent_vector.hpp")

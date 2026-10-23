@@ -33,6 +33,7 @@ struct SoaSchemas {
     std::vector<SchemaRange<FunctionSchemaId>> mutable_view_functions;
     std::vector<SchemaRange<StringId>> using_declarations;
     std::vector<std::optional<TypeRefId>> equivalent_type;
+    std::vector<std::optional<StringId>> equivalent_constructor;
     std::vector<std::uint8_t> copy_element_memberwise;
     std::vector<std::uint8_t> layout_only;
     std::vector<std::optional<FixedSoaId>> fixed;

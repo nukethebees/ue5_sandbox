@@ -156,6 +156,7 @@ struct LineTracesSingleResolvedConstView_starts : LineTracesSingleResolvedView_s
     using Base::Base;
     using equivalent_type = Vector3f;
     auto operator[](std::uint32_t index) const -> equivalent_type {
+        assert(index < num());
         return equivalent_type{xs()[index], ys()[index], zs()[index]};
     }
 };
@@ -170,6 +171,7 @@ struct LineTracesSingleResolvedView_starts : LineTracesSingleResolvedView_starts
     }
     using equivalent_type = Vector3f;
     auto operator[](std::uint32_t index) const -> equivalent_type {
+        assert(index < num());
         return equivalent_type{xs()[index], ys()[index], zs()[index]};
     }
 };
@@ -263,6 +265,7 @@ struct LineTracesSingleResolvedConstView_ends : LineTracesSingleResolvedView_end
     using Base::Base;
     using equivalent_type = Vector3f;
     auto operator[](std::uint32_t index) const -> equivalent_type {
+        assert(index < num());
         return equivalent_type{xs()[index], ys()[index], zs()[index]};
     }
 };
@@ -277,6 +280,7 @@ struct LineTracesSingleResolvedView_ends : LineTracesSingleResolvedView_endsImpl
     }
     using equivalent_type = Vector3f;
     auto operator[](std::uint32_t index) const -> equivalent_type {
+        assert(index < num());
         return equivalent_type{xs()[index], ys()[index], zs()[index]};
     }
 };

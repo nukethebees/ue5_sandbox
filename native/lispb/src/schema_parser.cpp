@@ -382,7 +382,12 @@ auto SchemaParser::parse_fixed(Declarations& declarations, sexpr::FormId const f
 auto SchemaParser::parse_member(Declarations& declarations, sexpr::FormId const form)
     -> SoaMemberId {
     Fields const fields{parser_, form, "member", 3};
-    fields.validate({"fixed-schema", "nested-schema", "mask-field", "mask-dimensions"},
+    fields.validate({"fixed-schema",
+                     "nested-schema",
+                     "mask-field",
+                     "mask-dimensions",
+                     "equivalent-member",
+                     "equivalent-accessor"},
                     {"relation"});
     auto const kind_name{std::string{parser_.text(fields.positional(1), "member kind")}};
     SoaMemberKind kind;
@@ -442,6 +447,8 @@ auto SchemaParser::parse_member(Declarations& declarations, sexpr::FormId const 
     records.name[record_index] = parser_.identifier(fields.positional(0), "member name");
     records.kind[record_index] = kind;
     records.type[record_index] = parse_type_ref(declarations, fields.positional(2));
+    records.equivalent_member[record_index] = optional_identifier(fields, "equivalent-member");
+    records.equivalent_accessor[record_index] = boolean_or(fields, "equivalent-accessor");
     records.fixed_schema[record_index] = optional_identifier(fields, "fixed-schema");
     records.nested_schema[record_index] = optional_identifier(fields, "nested-schema");
     records.mask_field[record_index] = boolean_or(fields, "mask-field");
@@ -467,6 +474,7 @@ auto SchemaParser::parse_soa(Declarations& declarations, sexpr::FormId const for
                      "using-declarations",
                      "array-allocator",
                      "equivalent-type",
+                     "equivalent-constructor",
                      "vector-components",
                      "copy-element-memberwise",
                      "layout-only",
@@ -543,6 +551,8 @@ auto SchemaParser::parse_soa(Declarations& declarations, sexpr::FormId const for
     records.using_declarations[record_index] =
         declarations.range(text_id_list_or(fields, "using-declarations"));
     records.equivalent_type[record_index] = equivalent_type;
+    records.equivalent_constructor[record_index] =
+        optional_text_id(fields, "equivalent-constructor");
     records.copy_element_memberwise[record_index] = boolean_or(fields, "copy-element-memberwise");
     records.layout_only[record_index] = boolean_or(fields, "layout-only");
     records.fixed[record_index] = fixed;

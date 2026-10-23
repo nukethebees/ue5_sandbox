@@ -170,16 +170,29 @@ auto compact_row_api(LoweringContext& context,
 
     std::vector<FunctionParameterId> parameters;
     std::vector<Expr> arguments{ir.named("index")};
+    std::vector<Expr> equivalent_arguments;
+    auto mapped{soas.equivalent_type[soas.index(schema)].has_value()};
     NodeListBuilder assignments{ir};
     assignments.add(ir.raw("assert(index < num());"));
-    auto collect =
-        [&](auto&& self, DeclarationHandle current, std::vector<std::string> path) -> void {
+    auto collect = [&](auto&& self,
+                       DeclarationHandle current,
+                       std::vector<std::string> path,
+                       std::string value) -> void {
         for (auto member : declarations.items(soas.members[soas.index(current)])) {
             auto const row{members.index(member)};
             auto column{path};
             column.push_back(context.text(members.name[row]));
+            auto component{value};
+            if (members.equivalent_member[row]) {
+                component += "." + context.text(*members.equivalent_member[row]);
+                if (members.equivalent_accessor[row]) {
+                    component += "()";
+                }
+            } else {
+                mapped = false;
+            }
             if (members.kind[row] == SoaMemberKind::nested) {
-                self(self, schemas.at(*members.nested_schema[row]), column);
+                self(self, schemas.at(*members.nested_schema[row]), column, component);
                 continue;
             }
             auto const type{context.resolve(members.type[row])};
@@ -189,6 +202,7 @@ auto compact_row_api(LoweringContext& context,
                                 native_spelling(std::string{ir.types.spelling(type)}) + " const"),
                 name));
             arguments.push_back(ir.named(name));
+            equivalent_arguments.push_back(ir.raw_expr(component));
             assignments.add(ir.raw(logical_column_access(context,
                                                          schema,
                                                          column,
@@ -198,7 +212,7 @@ auto compact_row_api(LoweringContext& context,
                                    "[index] = " + name + ";"));
         }
     };
-    collect(collect, schema, {});
+    collect(collect, schema, {}, "value");
     if (!custom("set")) {
         auto const setter{ir.function("set", "void")};
         auto setter_parameters{parameters};
@@ -217,6 +231,25 @@ auto compact_row_api(LoweringContext& context,
                               ir.expr_stmt(ir.call(ir.named("set"), arguments)),
                               ir.return_stmt(ir.named("index"))});
         emit(add);
+    }
+    if (mapped && !custom("set")) {
+        auto const equivalent{context.resolve(*soas.equivalent_type[soas.index(schema)])};
+        auto const value{ir.parameter(ir.types.decorate(equivalent, "", " const"), "value")};
+        auto const setter{ir.function("set", "void")};
+        ir.set_function_parameters(setter, {ir.parameter("size_type", "index"), value});
+        auto set_arguments{equivalent_arguments};
+        set_arguments.insert(set_arguments.begin(), ir.named("index"));
+        ir.set_function_body(setter, {ir.expr_stmt(ir.call(ir.named("set"), set_arguments))});
+        ir.set_function_receiver(
+            setter, mutable_view ? FunctionReceiver::const_ : FunctionReceiver::unqualified);
+        emit(setter);
+        if (owner && !custom("add")) {
+            auto const add{ir.function("add", "size_type")};
+            ir.set_function_parameters(add, {value});
+            ir.set_function_body(add,
+                                 {ir.return_stmt(ir.call(ir.named("add"), equivalent_arguments))});
+            emit(add);
+        }
     }
     return result.build();
 }
@@ -381,7 +414,9 @@ auto lower_soa_api(LoweringContext& context,
                     {ir.parameter(backend == SoaBackend::standard_library ? "std::uint32_t"
                                                                           : "std::int32_t",
                                   "index")});
-                ir.set_function_body(created_function, {ir.raw("return " + expression + ";")});
+                ir.set_function_body(
+                    created_function,
+                    {ir.raw("assert(index < num());\nreturn " + expression + ";")});
                 ir.set_function_return_type(
                     created_function, ir.types.intern("equivalent_type"), ReturnSyntax::trailing);
                 ir.set_function_receiver(created_function, FunctionReceiver::const_);

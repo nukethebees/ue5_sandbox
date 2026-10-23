@@ -180,6 +180,7 @@ struct SpawnRequestsSingleResolvedConstView_locations
     using Base::Base;
     using equivalent_type = Vector3f;
     auto operator[](std::uint32_t index) const -> equivalent_type {
+        assert(index < num());
         return equivalent_type{xs()[index], ys()[index], zs()[index]};
     }
 };
@@ -195,6 +196,7 @@ struct SpawnRequestsSingleResolvedView_locations
     }
     using equivalent_type = Vector3f;
     auto operator[](std::uint32_t index) const -> equivalent_type {
+        assert(index < num());
         return equivalent_type{xs()[index], ys()[index], zs()[index]};
     }
 };
@@ -293,6 +295,7 @@ struct SpawnRequestsSingleResolvedConstView_rotations
     using Base::Base;
     using equivalent_type = Rotator3f;
     auto operator[](std::uint32_t index) const -> equivalent_type {
+        assert(index < num());
         return equivalent_type{pitches()[index], yaws()[index], rolls()[index]};
     }
 };
@@ -311,6 +314,7 @@ struct SpawnRequestsSingleResolvedView_rotations
     }
     using equivalent_type = Rotator3f;
     auto operator[](std::uint32_t index) const -> equivalent_type {
+        assert(index < num());
         return equivalent_type{pitches()[index], yaws()[index], rolls()[index]};
     }
 };
@@ -412,6 +416,7 @@ struct SpawnRequestsSingleResolvedConstView_base_velocities
     using Base::Base;
     using equivalent_type = Vector3f;
     auto operator[](std::uint32_t index) const -> equivalent_type {
+        assert(index < num());
         return equivalent_type{xs()[index], ys()[index], zs()[index]};
     }
 };
@@ -427,6 +432,7 @@ struct SpawnRequestsSingleResolvedView_base_velocities
     }
     using equivalent_type = Vector3f;
     auto operator[](std::uint32_t index) const -> equivalent_type {
+        assert(index < num());
         return equivalent_type{xs()[index], ys()[index], zs()[index]};
     }
 };
