@@ -125,7 +125,7 @@ struct Sim {
     std::vector<EntityFrameChange> frame_changes_;
     std::vector<Vector3f> death_locations_;
     std::int32_t target_refresh_next_offset{0};
-    std::int16_t cooldown_restart_ticks_{};
+    NonNegative<std::int16_t> cooldown_restart_ticks_{};
     std::int16_t cooldown_cleaner_{};
 
     std::vector<std::uint32_t> local_indices_to_remove;

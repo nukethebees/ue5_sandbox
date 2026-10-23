@@ -38,19 +38,18 @@ auto validate_settings(SimulationSettings const& settings)
                          double const maximum = std::numeric_limits<std::int16_t>::max()) {
         positive(value, path);
         if (std::isfinite(value) && value > 0) {
-            tick_period(settings.clock.tick_rate / value, maximum, path, 1);
+            tick_period(settings.clock.tick_rate.get_hz() / value, maximum, path, 1);
         }
     };
     auto cooldown = [&](double const value, std::string_view const path) {
         nonnegative(value, path);
         if (std::isfinite(value) && value >= 0) {
-            tick_period(
-                value * settings.clock.tick_rate, std::numeric_limits<std::int16_t>::max(), path);
+            tick_period(value * settings.clock.tick_rate.get_hz(),
+                        std::numeric_limits<std::int16_t>::max(),
+                        path);
         }
     };
 
-    positive(settings.clock.tick_rate, "tick.tick-rate");
-    positive(settings.clock.time_scale, "tick.time-scale");
     positive(settings.player.thrust_energy_max, "player-ship.thrust-energy-max");
     positive(settings.player_initial.health, "player-ship.health");
     nonnegative(settings.lasers.n_preallocated_instances,

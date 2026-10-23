@@ -74,13 +74,13 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
         level_definition_ = MoveTemp(definition);
     }
     auto is_presentation_enabled() const noexcept -> bool { return presentation_enabled; }
-    void set_time_scale(time_type scale) noexcept;
+    void set_time_scale(ioj::PositiveFinite<time_type> scale) noexcept;
 
     /* **************************************** */
     // Simulation state and timing
     /* **************************************** */
-    auto frequency_to_tick_period(time_type const frequency) const noexcept -> tick_type;
-    auto duration_to_tick_period(time_type const duration) const noexcept -> tick_type;
+    auto frequency_to_tick_period(ioj::Frequency frequency) const noexcept -> tick_type;
+    auto duration_to_tick_period(ioj::Duration duration) const noexcept -> tick_type;
 
     auto get_state() const noexcept -> ioj::sim::OrchestratorState {
         return level_simulation_.IsSet() ? level_simulation_->get_state()
@@ -95,7 +95,7 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     }
     auto get_tick_period() const noexcept -> time_type {
         return level_simulation_.IsSet() ? level_simulation_->get_clock().get_tick_period()
-                                         : 1.0 / simulation_tick_loop.tick_rate;
+                                         : simulation_tick_loop.get_tick_period();
     }
     auto was_launched_paused() const noexcept -> bool { return launched_paused_; }
     auto get_benchmark_ticks_remaining() const noexcept -> TOptional<tick_type> {
@@ -103,8 +103,8 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
             !launch_options_.simulated_duration_seconds.IsSet()) {
             return NullOpt;
         }
-        auto const end_tick{
-            duration_to_tick_period(launch_options_.simulated_duration_seconds.GetValue())};
+        auto const end_tick{duration_to_tick_period(
+            ioj::Duration::make(launch_options_.simulated_duration_seconds.GetValue()))};
         auto const completed_ticks{get_completed_ticks()};
         return completed_ticks >= end_tick ? 0 : end_tick - completed_ticks;
     }
@@ -226,7 +226,7 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     FOrchestratorEndTickTestHook end_tick_test_hook;
 
     ioj::sim::FixedTickLoop simulation_tick_loop{};
-    TOptional<time_type> time_scale_override_;
+    TOptional<ioj::PositiveFinite<time_type>> time_scale_override_;
     bool settings_prepared_{};
 
     UPROPERTY(EditAnywhere,

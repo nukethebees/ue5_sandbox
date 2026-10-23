@@ -206,7 +206,7 @@ TEST(NativeSimulation, LevelTelemetryMissionCompletionTest) {
 
 TEST(NativeSimulation, LaserFrameOutputsTest) {
     auto data{make_battle()};
-    data.clock_settings.tick_rate = 10.0;
+    data.clock_settings.tick_rate = ioj::Frequency::make(10.0);
     add_mission(data);
     GameMemory simulation_memory;
     LevelSim simulation{simulation_memory, std::move(data)};
@@ -618,7 +618,7 @@ TEST(NativeSimulation, LevelTelemetryRunRecordTest) {
         << "Simulation initialization starts telemetry recording";
 
     simulation.advance(1.0);
-    simulation.set_time_scale(4.0);
+    simulation.set_time_scale(ioj::PositiveFinite<double>::make(4.0));
     simulation.advance(simulation.get_clock().get_tick_period());
     simulation.finalize_telemetry_run(LevelTelemetryRunEndReason::WorldEnd);
     EXPECT_EQ(simulation.get_state(), OrchestratorState::Running)
@@ -639,7 +639,8 @@ TEST(NativeSimulation, LevelTelemetryRunRecordTest) {
     EXPECT_DOUBLE_EQ(static_cast<double>(battle.back().completed_tick) /
                          record->tick_rate_hz.get_hz(),
                      simulation.get_clock().get_simulation_time());
-    EXPECT_DOUBLE_EQ(record->tick_rate_hz.get_hz(), simulation.get_clock().get_tick_rate());
+    EXPECT_DOUBLE_EQ(record->tick_rate_hz.get_hz(),
+                     simulation.get_clock().get_tick_rate().get_hz());
 
     auto const& series{record->tick_series};
     EXPECT_EQ(series.active_entities.num(), 1) << "An unchanged entity count is only stored once";

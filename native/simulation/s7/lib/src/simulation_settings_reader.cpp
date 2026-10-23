@@ -4,6 +4,7 @@
 #include <ioj/levels/authoring/definition_reader.h>
 #include <ioj/levels/level_definition.h>
 
+#include <optional>
 #include <utility>
 
 namespace ioj::s7 {
@@ -12,29 +13,66 @@ using sim::ShipFireRate;
 using sim::ShipLaserMode;
 using sim::SimulationSettings;
 template <typename T>
-auto assign(settings::Setting const& setting, T& target) -> bool {
-    return setting.assign(target);
+auto assign(settings::Setting const& setting, T& target) -> std::optional<levels::DiagnosticCode> {
+    if (!setting.assign(target)) {
+        return levels::DiagnosticCode::InvalidType;
+    }
+    return std::nullopt;
+}
+
+template <Numeric T>
+auto assign(settings::Setting const& setting, PositiveFinite<T>& target)
+    -> std::optional<levels::DiagnosticCode> {
+    T value{};
+    if (!setting.assign(value)) {
+        return levels::DiagnosticCode::InvalidType;
+    }
+
+    auto const constrained{PositiveFinite<T>::try_make(value)};
+    if (!constrained) {
+        return levels::DiagnosticCode::InvalidNumber;
+    }
+    target = *constrained;
+    return std::nullopt;
+}
+
+auto assign(settings::Setting const& setting, Frequency& target)
+    -> std::optional<levels::DiagnosticCode> {
+    double value{};
+    if (!setting.assign(value)) {
+        return levels::DiagnosticCode::InvalidType;
+    }
+
+    auto const frequency{Frequency::try_make(value)};
+    if (!frequency) {
+        return levels::DiagnosticCode::InvalidNumber;
+    }
+    target = *frequency;
+    return std::nullopt;
 }
 
 template <typename T, typename Parse>
-auto assign_enum(settings::Setting const& setting, T& target, Parse parse) -> bool {
+auto assign_enum(settings::Setting const& setting, T& target, Parse parse)
+    -> std::optional<levels::DiagnosticCode> {
     auto const* name{std::get_if<std::string>(&setting.value)};
     if (!name) {
-        return false;
+        return levels::DiagnosticCode::InvalidType;
     }
     auto const value{parse(*name)};
     if (!value) {
-        return false;
+        return levels::DiagnosticCode::InvalidType;
     }
     target = *value;
-    return true;
+    return std::nullopt;
 }
 
-auto assign(settings::Setting const& setting, ShipLaserMode& target) -> bool {
+auto assign(settings::Setting const& setting, ShipLaserMode& target)
+    -> std::optional<levels::DiagnosticCode> {
     return assign_enum(setting, target, sim::try_parse_serialized_ship_laser_mode);
 }
 
-auto assign(settings::Setting const& setting, ShipFireRate& target) -> bool {
+auto assign(settings::Setting const& setting, ShipFireRate& target)
+    -> std::optional<levels::DiagnosticCode> {
     return assign_enum(setting, target, sim::try_parse_serialized_ship_fire_rate);
 }
 
@@ -44,12 +82,18 @@ auto apply_settings(settings::Settings const& settings, SimulationSettings& targ
     for (auto const& setting : settings) {
         auto const field{simulation_fields::try_parse_fields_field(setting.path)};
         if (field) {
-            auto const assigned{simulation_fields::visit_fields_field(
-                target, *field, [&](auto& value) { return assign(setting, value); })};
-            if (!assigned) {
-                errors.emplace_back(levels::DiagnosticCode::InvalidType,
+            std::optional<levels::DiagnosticCode> error;
+            static_cast<void>(
+                simulation_fields::visit_fields_field(target, *field, [&](auto& value) {
+                    error = assign(setting, value);
+                    return !error;
+                }));
+            if (error) {
+                errors.emplace_back(*error,
                                     setting.path,
-                                    "Setting has an incompatible value");
+                                    *error == levels::DiagnosticCode::InvalidNumber
+                                        ? "Expected a finite positive value"
+                                        : "Setting has an incompatible value");
             }
         } else {
             auto const section{std::string_view{setting.path}.substr(0, setting.path.find('.'))};

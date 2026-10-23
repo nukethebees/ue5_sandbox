@@ -55,13 +55,9 @@ auto Sim::register_turrets(LevelTurretSpawnEvents::ConstView const spawn_data)
         return {};
     }
 
-    assert(config.target_refresh_frequency > 0.f);
-    auto const target_refresh_tick_period_unsigned{
-        simulation_clock.frequency_to_tick_period(config.target_refresh_frequency)};
-    assert(target_refresh_tick_period_unsigned > 0 &&
-           std::in_range<std::int16_t>(target_refresh_tick_period_unsigned));
-    auto const target_refresh_tick_period{
-        static_cast<std::int16_t>(target_refresh_tick_period_unsigned)};
+    std::int16_t const target_refresh_tick_period{
+        simulation_clock.frequency_to_tick_period<std::int16_t>(
+            Frequency::make(config.target_refresh_frequency))};
 
     auto const first_new_index{entities.num()};
     entities.add_defaulted(n_to_add);
@@ -152,10 +148,8 @@ void Sim::begin_play() {
     SANDBOX_PROFILE_SCOPE("turrets::Sim::begin_play");
     profiling::plot("Sandbox/TurretCount", 0);
 
-    auto const cooldown_tick_period{
-        simulation_clock.duration_to_tick_period(config.laser.fire_cooldown)};
-    assert(cooldown_tick_period >= 0 && std::in_range<std::int16_t>(cooldown_tick_period));
-    cooldown_restart_ticks_ = static_cast<std::int16_t>(cooldown_tick_period);
+    cooldown_restart_ticks_ = simulation_clock.duration_to_tick_period<std::int16_t>(
+        Duration::make(config.laser.fire_cooldown));
     cooldown_cleaner_ = 0;
 }
 void Sim::update_entity_lookup_table() {

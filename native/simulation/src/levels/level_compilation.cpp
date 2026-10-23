@@ -154,15 +154,16 @@ auto compile_level(LevelDefinition const& level,
     for (std::uint32_t index{}; index < entity_count; ++index) {
         auto const& entity{definition.entities()[static_cast<std::size_t>(index)]};
         if (entity.archetype != EntityArchetype::PlayerFighter) {
-            sources.push_back({clock.duration_to_tick_period(entity.spawn_time_seconds), index});
+            sources.push_back(
+                {clock.duration_to_tick_period(Duration::make(entity.spawn_time_seconds)), index});
         }
     }
     for (std::uint32_t index{}; index < mission_event_count; ++index) {
         auto const& event{definition.mission_events()[static_cast<std::size_t>(index)]};
         if (!event.must_survive_entity_ids.empty() || !event.required_kill_entity_ids.empty() ||
             event.kill_target_increase > 0) {
-            sources.push_back(
-                {clock.duration_to_tick_period(event.time_seconds), entity_count + index});
+            sources.push_back({clock.duration_to_tick_period(Duration::make(event.time_seconds)),
+                               entity_count + index});
         }
     }
     std::ranges::sort(sources, [](EventSource const& left, EventSource const& right) {

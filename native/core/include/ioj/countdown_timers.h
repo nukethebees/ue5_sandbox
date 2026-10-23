@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ioj/constrained_numbers.h"
 #include "ioj/container_ops.h"
 #include "ioj/countdown.h"
 #include "ioj/soa_permutation.h"
@@ -132,6 +133,7 @@ class CountdownTimers {
 class PeriodicCountdownTimers {
   public:
     using size_type = std::uint32_t;
+    using period_type = PositiveFinite<float>;
 
     void tick(float const dt) noexcept { tick_countdowns(remaining_times(), dt); }
 
@@ -161,40 +163,39 @@ class PeriodicCountdownTimers {
         return remaining_times_[to_index(index)];
     }
 
-    void add_started(float const period) {
-        assert(period > 0.f);
+    void add_started(period_type const period) {
         remaining_times_.push_back(period);
         periods_.push_back(period);
     }
 
-    void add_started(float const period, size_type const count) {
-        assert(period > 0.f);
+    void add_started(period_type const period, size_type const count) {
         auto const n{static_cast<std::size_t>(count)};
         remaining_times_.insert(remaining_times_.end(), n, period);
         periods_.insert(periods_.end(), n, period);
     }
 
-    void add_started(std::span<float const> const new_periods) {
-        remaining_times_.insert(remaining_times_.end(), new_periods.begin(), new_periods.end());
-        periods_.insert(periods_.end(), new_periods.begin(), new_periods.end());
+    void add_started(std::span<period_type const> const new_periods) {
+        for (auto const period : new_periods) {
+            add_started(period);
+        }
     }
 
-    void add_zeroed(float const period) {
-        assert(period > 0.f);
+    void add_zeroed(period_type const period) {
         remaining_times_.push_back(0.f);
         periods_.push_back(period);
     }
 
-    void add_zeroed(float const period, size_type const count) {
-        assert(period > 0.f);
+    void add_zeroed(period_type const period, size_type const count) {
         auto const n{static_cast<std::size_t>(count)};
         remaining_times_.insert(remaining_times_.end(), n, 0.f);
         periods_.insert(periods_.end(), n, period);
     }
 
-    void add_zeroed(std::span<float const> const new_periods) {
+    void add_zeroed(std::span<period_type const> const new_periods) {
         remaining_times_.insert(remaining_times_.end(), new_periods.size(), 0.f);
-        periods_.insert(periods_.end(), new_periods.begin(), new_periods.end());
+        for (auto const period : new_periods) {
+            periods_.push_back(period);
+        }
     }
 
     void reset() noexcept {
@@ -237,11 +238,13 @@ class PeriodicCountdownTimers {
     }
 
     void append(std::span<float const> const new_remaining_times,
-                std::span<float const> const new_periods) {
+                std::span<period_type const> const new_periods) {
         assert(new_remaining_times.size() == new_periods.size());
         remaining_times_.insert(
             remaining_times_.end(), new_remaining_times.begin(), new_remaining_times.end());
-        periods_.insert(periods_.end(), new_periods.begin(), new_periods.end());
+        for (auto const period : new_periods) {
+            periods_.push_back(period);
+        }
     }
 
     [[nodiscard]] auto num() const noexcept -> size_type {

@@ -52,7 +52,7 @@ struct LevelSim {
     void finish_initialisation();
     void start();
     void pause();
-    void set_time_scale(time_type scale);
+    void set_time_scale(PositiveFinite<time_type> scale);
 
     /* **************************************** */
     // Simulation
@@ -93,7 +93,9 @@ struct LevelSim {
     /* **************************************** */
     auto get_state() const noexcept -> OrchestratorState { return state_; }
     auto get_clock() const noexcept -> SimClock const& { return clock_; }
-    auto get_time_scale() const noexcept -> time_type { return clock_.get_time_scale(); }
+    auto get_time_scale() const noexcept -> PositiveFinite<time_type> {
+        return clock_.get_time_scale();
+    }
     auto has_future_authored_spawns() const noexcept -> bool {
         return event_manager_.has_future_spawns();
     }

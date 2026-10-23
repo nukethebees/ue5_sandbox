@@ -37,10 +37,8 @@ Sim::Sim(SimClock const& clock, EntityLedger& ledger, EntityTables& entity_table
 void Sim::begin_play() {
     SANDBOX_PROFILE_SCOPE("spinners::Sim::begin_play");
 
-    auto const cooldown_tick_period{
-        simulation_clock.duration_to_tick_period(config.laser.fire_cooldown)};
-    assert(cooldown_tick_period >= 0 && std::in_range<std::int16_t>(cooldown_tick_period));
-    cooldown_restart_ticks_ = static_cast<std::int16_t>(cooldown_tick_period);
+    cooldown_restart_ticks_ = simulation_clock.duration_to_tick_period<std::int16_t>(
+        Duration::make(config.laser.fire_cooldown));
     cooldown_cleaner_ = 0;
 }
 void Sim::update_entity_lookup_table() {

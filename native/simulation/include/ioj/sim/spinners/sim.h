@@ -86,7 +86,7 @@ struct Sim {
 
     float planned_yaw_delta_{};
     SpinnerSimConfig config{};
-    std::int16_t cooldown_restart_ticks_{};
+    NonNegative<std::int16_t> cooldown_restart_ticks_{};
     std::int16_t cooldown_cleaner_{};
     SimClock const& simulation_clock;
     EntityLedger& ledger_;

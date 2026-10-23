@@ -27,7 +27,7 @@ struct SpinnerSpawnTestAccess {
     static auto entities(Sim& simulation) -> Sim::EntityStorage& { return simulation.entities; }
     static void tick_cooldowns(Sim& simulation) { simulation.prepare_tick(0.f); }
     static void set_cooldown(Sim& simulation, std::int16_t const ticks) {
-        simulation.cooldown_restart_ticks_ = ticks;
+        simulation.cooldown_restart_ticks_ = NonNegative<std::int16_t>::make(ticks);
     }
     static void rotate(Sim& simulation, float const yaw_delta, lasers::Sim& laser_simulation) {
         simulation.planned_yaw_delta_ = yaw_delta;

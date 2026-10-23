@@ -68,7 +68,6 @@ LevelTelemetryManager::LevelTelemetryManager(SimClock const& clock,
 
 void LevelTelemetryManager::initialise() {
     assert(state_ == State::Uninitialised);
-    assert(clock_.get_tick_rate() > 0.0);
 
     if (metadata_.launched_utc.empty()) {
         metadata_.launched_utc = level_telemetry_detail::utc_now_iso8601();
@@ -116,7 +115,7 @@ void LevelTelemetryManager::tick() {
 auto LevelTelemetryManager::make_snapshot() const -> LevelTelemetrySnapshot {
     assert(state_ != State::Uninitialised);
     auto const completed_tick{clock_.get_completed_ticks()};
-    auto const tick_rate_hz{Frequency::make(clock_.get_tick_rate())};
+    auto const tick_rate_hz{clock_.get_tick_rate()};
     auto const& active_entity_count_data{active_entity_count_data_};
     auto const& cumulative_kill_count_data{cumulative_kill_count_data_};
     assert((!active_entity_count_data.is_empty() && !cumulative_kill_count_data.is_empty()) &&

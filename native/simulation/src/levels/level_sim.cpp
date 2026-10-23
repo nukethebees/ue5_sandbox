@@ -125,8 +125,7 @@ void LevelSim::pause() {
     assert(state_ != OrchestratorState::Uninitialised);
     state_ = OrchestratorState::Paused;
 }
-void LevelSim::set_time_scale(time_type scale) {
-    assert(scale > 0.0);
+void LevelSim::set_time_scale(PositiveFinite<time_type> const scale) {
     clock_.tick_loop.time_scale = scale;
 }
 
@@ -223,7 +222,7 @@ auto LevelSim::take_mission_result() -> std::optional<LevelMissionResult> {
     return result;
 }
 auto LevelSim::take_finalized_telemetry_run() -> std::optional<LevelTelemetryRunRecord> {
-    return level_telemetry_manager_.take_finalized_run(Frequency::make(clock_.get_tick_rate()));
+    return level_telemetry_manager_.take_finalized_run(clock_.get_tick_rate());
 }
 
 /* **************************************** */

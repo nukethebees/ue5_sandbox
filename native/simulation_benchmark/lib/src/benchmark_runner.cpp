@@ -124,20 +124,18 @@ auto json_string(std::string_view const value) -> std::string {
 }
 } // namespace
 
-auto calculate_tick_count(double const seconds, double const tick_rate_hz)
+auto calculate_tick_count(double const seconds, Frequency const tick_rate_hz)
     -> std::expected<sim::SimTick, std::string> {
-    assert(std::isfinite(tick_rate_hz) && tick_rate_hz > 0.0);
-
     if (!std::isfinite(seconds) || seconds <= 0.0) {
         return std::unexpected{"seconds must be positive and finite"};
     }
 
-    auto const ticks{std::ceil(seconds * tick_rate_hz)};
+    auto const ticks{std::ceil(seconds * tick_rate_hz.get_hz())};
     auto const maximum{static_cast<double>(std::numeric_limits<sim::SimTick>::max())};
     if (!std::isfinite(ticks) || ticks >= maximum) {
         return std::unexpected{"seconds produces a tick count that is too large"};
     }
-    return sim::duration_to_tick_period(tick_rate_hz, seconds);
+    return sim::duration_to_tick_period(tick_rate_hz, Duration::make(seconds)).get();
 }
 
 auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const profiler_ready)
@@ -218,7 +216,8 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
     auto& data{reference.data};
     sim::apply_settings(settings, data);
     reference.player.config = settings.player;
-    data.clock_settings.time_scale = static_cast<double>(options.game_speed);
+    data.clock_settings.time_scale =
+        PositiveFinite<double>::make(static_cast<double>(options.game_speed));
     data.clock_settings.accumulator = 0.0;
     if (options.fighter_stress_cap.has_value()) {
         data.fighters.max_live_fighters = *options.fighter_stress_cap;
@@ -285,7 +284,7 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
     simulation.finish_initialisation();
     auto const initial_capital_ships{simulation.get_capital_ships().get_num_instances()};
     auto const initial_turrets{simulation.get_turrets().get_num_instances()};
-    simulation.set_time_scale(1.0);
+    simulation.set_time_scale(PositiveFinite<double>::make(1.0));
     simulation.start();
 
     auto const tick_period{simulation.get_clock().get_tick_period()};
@@ -399,12 +398,12 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
         .level_id = level_components.metadata().id.value,
         .level_title = level_components.metadata().title,
         .requested_seconds = options.simulated_seconds,
-        .tick_rate_hz = simulation.get_clock().get_tick_rate(),
+        .tick_rate_hz = simulation.get_clock().get_tick_rate().get_hz(),
         .game_speed = options.game_speed,
         .requested_ticks = *requested_ticks,
         .completed_ticks = *requested_ticks,
         .advance_calls = advance_calls,
-        .completed_seconds = static_cast<double>(*requested_ticks) / tick_rate_hz,
+        .completed_seconds = static_cast<double>(*requested_ticks) / tick_rate_hz.get_hz(),
         .elapsed_seconds = elapsed,
         .total_elapsed_seconds = total_elapsed,
         .saturation_ticks = saturation_ticks,

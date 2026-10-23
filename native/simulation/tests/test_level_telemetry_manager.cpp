@@ -88,13 +88,13 @@ TEST(LevelTelemetryManager, RecordsAndReusesHistory) {
     EXPECT_EQ(telemetry_manager.get_history_stats().used_sample_count, 1);
 
     clock.completed_ticks = 2;
-    clock.tick_loop.time_scale = 4.0;
+    clock.tick_loop.time_scale = PositiveFinite<double>::make(4.0);
     telemetry_manager.tick();
     tick_series = telemetry_manager.materialize_tick_series();
     EXPECT_EQ(telemetry_manager.get_history_stats().used_sample_count, 1);
 
     clock.completed_ticks = 5;
-    clock.tick_loop.tick_rate = 4.0;
+    clock.tick_loop.tick_rate = ioj::Frequency::make(4.0);
     auto const laser_snapshot{telemetry_manager.make_snapshot()};
     EXPECT_DOUBLE_EQ(laser_snapshot.elapsed_seconds.get_seconds(), 1.25);
     EXPECT_EQ(laser_snapshot.active_lasers, 0);
@@ -152,7 +152,7 @@ TEST(LevelTelemetryManager, RecordsAndReusesHistory) {
     telemetry_manager.tick();
     EXPECT_EQ(active_count_data.num(), 2);
 
-    clock.tick_loop.tick_rate = 2.0;
+    clock.tick_loop.tick_rate = ioj::Frequency::make(2.0);
     auto const entity_snapshot{telemetry_manager.make_snapshot()};
     EXPECT_DOUBLE_EQ(entity_snapshot.elapsed_seconds.get_seconds(), 1.5);
     EXPECT_EQ(entity_snapshot.spawned_entities, 3);

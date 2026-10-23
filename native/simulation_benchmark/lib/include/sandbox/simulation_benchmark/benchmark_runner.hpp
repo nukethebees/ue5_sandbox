@@ -1,5 +1,6 @@
 #pragma once
 
+#include <ioj/frequency.h>
 #include <ioj/sim/sim_tick.h>
 
 #include <sandbox/simulation_benchmark/command_line.hpp>
@@ -72,8 +73,8 @@ struct BenchmarkResult {
     bool tracy_enabled{};
 };
 
-// The configured tick rate must be positive and finite.
-[[nodiscard]] auto calculate_tick_count(double seconds, double tick_rate_hz = 60.0)
+[[nodiscard]] auto calculate_tick_count(double seconds,
+                                        Frequency tick_rate_hz = Frequency::make(60.0))
     -> std::expected<sim::SimTick, std::string>;
 [[nodiscard]] auto run_benchmark(BenchmarkOptions const& options,
                                  ProfilerReadyCallback profiler_ready = nullptr)

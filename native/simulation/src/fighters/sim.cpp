@@ -162,17 +162,13 @@ void Sim::begin_play() {
     assert(collision_radius_ > 0.f);
     assert(config.fire_point_distance >= 0.f);
 
-    auto const awareness_scan_tick_period{
-        simulation_clock.frequency_to_tick_period(config.awareness_scan_frequency)};
-    assert(awareness_scan_tick_period >= 0 &&
-           std::in_range<std::int8_t>(awareness_scan_tick_period));
-    awareness_restart_ticks_ = static_cast<std::int8_t>(awareness_scan_tick_period);
+    awareness_restart_ticks_ =
+        NonNegative<std::int8_t>::make(simulation_clock.frequency_to_tick_period<std::int8_t>(
+            Frequency::make(config.awareness_scan_frequency)));
 
-    auto const attack_reposition_tick_period{
-        simulation_clock.frequency_to_tick_period(config.attack_reposition_frequency)};
-    assert(attack_reposition_tick_period >= 0 &&
-           std::in_range<std::int16_t>(attack_reposition_tick_period));
-    reposition_restart_ticks_ = static_cast<std::int16_t>(attack_reposition_tick_period);
+    reposition_restart_ticks_ =
+        NonNegative<std::int16_t>::make(simulation_clock.frequency_to_tick_period<std::int16_t>(
+            Frequency::make(config.attack_reposition_frequency)));
 
     std::array<float, enum_count<NavigationRiskTier>()> const frequencies{
         config.avoidance_clear_update_frequency,
@@ -182,26 +178,19 @@ void Sim::begin_play() {
     };
     auto const frequency_count{frequencies.size()};
     for (std::uint32_t i{}; static_cast<std::size_t>(i) < frequency_count; ++i) {
-        auto const period{simulation_clock.frequency_to_tick_period(frequencies[i])};
-        assert(period > 0 && std::in_range<std::int16_t>(period));
-        navigation_tick_periods[i] = static_cast<std::int16_t>(period);
+        navigation_tick_periods[i] = simulation_clock.frequency_to_tick_period<std::int16_t>(
+            Frequency::make(frequencies[i]));
     }
     auto const clear_update_interval{
         static_cast<float>(get_navigation_tick_period(NavigationRiskTier::Clear) *
                            simulation_clock.get_tick_period())};
     minimum_navigation_lookahead_time = clear_update_interval * 1.25f;
 
-    auto const fire_cooldown_tick_period{
-        simulation_clock.duration_to_tick_period(config.laser.fire_cooldown)};
-    assert(fire_cooldown_tick_period >= 0 &&
-           std::in_range<std::int16_t>(fire_cooldown_tick_period));
-    attack_restart_ticks_ = static_cast<std::int16_t>(fire_cooldown_tick_period);
+    attack_restart_ticks_ = simulation_clock.duration_to_tick_period<std::int16_t>(
+        Duration::make(config.laser.fire_cooldown));
 
-    auto const attack_retry_cooldown_tick_period{
-        simulation_clock.duration_to_tick_period(config.attack_retry_cooldown)};
-    assert(attack_retry_cooldown_tick_period >= 0 &&
-           std::in_range<std::int16_t>(attack_retry_cooldown_tick_period));
-    attack_retry_cooldown_tick_value = static_cast<std::int16_t>(attack_retry_cooldown_tick_period);
+    attack_retry_cooldown_tick_value = simulation_clock.duration_to_tick_period<std::int16_t>(
+        Duration::make(config.attack_retry_cooldown));
 
     assert(config.attack_distance_band.values_are_valid());
 }

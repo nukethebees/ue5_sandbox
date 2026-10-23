@@ -9,7 +9,7 @@
 namespace ioj::sim::tests::tick_phases {
 auto make_world() -> LevelSimInitData {
     LevelSimInitData data{};
-    data.clock_settings.tick_rate = 10.0;
+    data.clock_settings.tick_rate = ioj::Frequency::make(10.0);
     data.collision.grid_geometry = {{16, 16, 4}, {{1000.f, 1000.f, 1000.f}}};
     data.capital_ships.fighter_spawn_slots = 0;
     data.lasers.n_preallocated_instances = 8;

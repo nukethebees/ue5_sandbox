@@ -25,7 +25,7 @@ TestSimulationDriver::TestSimulationDriver(UWorld& world, ATestBatchOrchestrator
     : world{world}
     , orchestrator{orchestrator} {
     time_scale = get_space_game_level_test_time_scale();
-    orchestrator.set_time_scale(time_scale);
+    orchestrator.set_time_scale(ioj::PositiveFinite<time_type>::make(time_scale));
 }
 
 auto TestSimulationDriver::from_world(UWorld& world) -> TestSimulationDriver {
@@ -91,7 +91,7 @@ bool TestSimulationDriver::should_export_results() const {
 }
 
 void TestSimulationDriver::set_time_scale(time_type const scale) {
-    orchestrator.set_time_scale(scale);
+    orchestrator.set_time_scale(ioj::PositiveFinite<time_type>::make(scale));
 }
 
 void TestSimulationDriver::set_wait_until_tick_from_now(uint64 wait_cycles) {

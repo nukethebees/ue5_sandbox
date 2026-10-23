@@ -71,7 +71,7 @@ void FHUDManager::initialise(ioj::sim::HudSettings const& update_frequencies,
 #endif
 
     tick_loop_.initialise();
-    auto const update_tick_rate{tick_loop_.tick_rate};
+    auto const update_tick_rate{tick_loop_.tick_rate.get_hz()};
     seconds_per_tick_ = static_cast<float>(1.0 / update_tick_rate);
 
     std::array const periods{update_frequencies.player_status_update_period,
@@ -83,11 +83,12 @@ void FHUDManager::initialise(ioj::sim::HudSettings const& update_frequencies,
             UE_LOG(LogSandboxUI, Fatal, TEXT("FHUDManager::initialise: Invalid update period."));
         }
 
-        auto const tick_period{static_cast<ioj::PeriodicTickCountdown8::counter_type>(
-            FMath::CeilToInt64(periods[i] * update_tick_rate))};
-        if (!ioj::valid_periods(tick_period)) {
+        auto const tick_count{FMath::CeilToInt64(periods[i] * update_tick_rate)};
+        if (!std::in_range<ioj::PeriodicTickCountdown8::counter_type>(tick_count)) {
             UE_LOG(LogSandboxUI, Fatal, TEXT("FHUDManager::initialise: Invalid tick period."));
         }
+        auto const tick_period{ioj::PeriodicTickCountdown8::period_type::make(
+            static_cast<ioj::PeriodicTickCountdown8::counter_type>(tick_count))};
         update_timers.add_started(tick_period);
     }
 

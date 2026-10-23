@@ -244,7 +244,8 @@ void Sim::update_boost_brake(float const dt, PlayerSimulationState& state) {
     }
     resources.thrust_change_rate = energy_change * config.thrust_energy_max;
     resources.thrust_energy += dt * resources.thrust_change_rate;
-    resources.thrust_energy = std::clamp(resources.thrust_energy, 0.f, config.thrust_energy_max);
+    resources.thrust_energy =
+        std::clamp(resources.thrust_energy, 0.f, config.thrust_energy_max);
     if (resources.thrust_energy <= 0.f) {
         refresh_effective_action(state);
     }
@@ -645,10 +646,10 @@ void Sim::sample_speed() {
 void Sim::configure_speed_sampling() {
     static constexpr double sample_rate_hz{60.0};
     static constexpr double sample_window_seconds{5.0};
-    auto const sample_tick_period{simulation_clock.frequency_to_tick_period(sample_rate_hz)};
-    auto const sample_window_ticks{simulation_clock.duration_to_tick_period(sample_window_seconds)};
-    assert(std::in_range<std::int32_t>(sample_tick_period));
-    assert(sample_tick_period > 0);
+    std::int32_t const sample_tick_period{
+        simulation_clock.frequency_to_tick_period<std::int32_t>(Frequency::make(sample_rate_hz))};
+    SimTick const sample_window_ticks{
+        simulation_clock.duration_to_tick_period(Duration::make(sample_window_seconds))};
 
     auto const sample_count{(sample_window_ticks + sample_tick_period - 1) / sample_tick_period};
     assert(std::in_range<std::uint32_t>(sample_count));

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ioj/constrained_numbers.h"
 #include "ioj/container_ops.h"
 #include "ioj/countdown.h"
 #include "ioj/soa_permutation.h"
@@ -22,11 +23,10 @@ class TickCountdownView {
     using counter_type = std::remove_const_t<Counter>;
 
     TickCountdownView() = default;
-    TickCountdownView(std::span<Counter> const counters, counter_type const restart_value) noexcept
+    TickCountdownView(std::span<Counter> const counters,
+                      NonNegative<counter_type> const restart_value) noexcept
         : counters_{counters}
-        , restart_value_{restart_value} {
-        assert(restart_value_ >= 0);
-    }
+        , restart_value_{restart_value} {}
 
     [[nodiscard]] auto num() const noexcept -> std::size_t { return counters_.size(); }
 
@@ -56,22 +56,21 @@ class TickCountdownView {
         set_counter(index, restart_value_);
     }
 
-    void set_counter(std::size_t const index, counter_type const value) const noexcept
+    void set_counter(std::size_t const index, NonNegative<counter_type> const value) const noexcept
         requires (!std::is_const_v<Counter>)
     {
         assert(index < num());
-        assert(value >= 0);
         counters_[index] = value;
     }
 
     void zero_counter(std::size_t const index) const noexcept
         requires (!std::is_const_v<Counter>)
     {
-        set_counter(index, 0);
+        set_counter(index, {});
     }
   private:
     std::span<Counter> counters_;
-    counter_type restart_value_{};
+    NonNegative<counter_type> restart_value_{};
 };
 
 template <std::signed_integral Counter>
@@ -84,9 +83,8 @@ class TickCountdown {
 
     TickCountdown() = default;
 
-    TickCountdown(size_type const count, counter_type const initial_tick_value)
+    TickCountdown(size_type const count, NonNegative<counter_type> const initial_tick_value)
         : tick_value_{initial_tick_value} {
-        assert(initial_tick_value >= 0);
         counters_.resize(static_cast<std::size_t>(count), tick_value_);
     }
 
@@ -98,24 +96,13 @@ class TickCountdown {
         return get_view().is_ready(to_index(index));
     }
 
-    template <std::integral TickType>
-    [[nodiscard]] static constexpr auto tick_can_fit(TickType const value) noexcept -> bool {
-        if constexpr (std::signed_integral<TickType>) {
-            if (value < 0) {
-                return false;
-            }
-        }
-
-        return std::in_range<counter_type>(value);
-    }
-
     [[nodiscard]] auto try_consume(size_type const index) noexcept -> bool {
         return get_view().try_consume(to_index(index));
     }
 
     void consume(size_type const index) noexcept { (void)try_consume(index); }
 
-    void consume() noexcept { consume_ready_countdowns(counters(), tick_value_); }
+    void consume() noexcept { consume_ready_countdowns<counter_type>(counters(), tick_value_); }
 
     void reset() {
         counters_.clear();
@@ -152,19 +139,17 @@ class TickCountdown {
         return static_cast<size_type>(counters_.size());
     }
 
-    [[nodiscard]] auto tick_value() const noexcept -> counter_type { return tick_value_; }
-
-    template <std::integral TickType>
-    void set_tick_value(TickType const value) noexcept {
-        assert(tick_can_fit(value));
-        tick_value_ = static_cast<counter_type>(value);
+    [[nodiscard]] auto tick_value() const noexcept -> NonNegative<counter_type> {
+        return tick_value_;
     }
+
+    void set_tick_value(NonNegative<counter_type> const value) noexcept { tick_value_ = value; }
 
     void restart_counter(size_type const index) noexcept {
         get_view().restart_counter(to_index(index));
     }
 
-    void set_counter(size_type const index, counter_type const value) noexcept {
+    void set_counter(size_type const index, NonNegative<counter_type> const value) noexcept {
         get_view().set_counter(to_index(index), value);
     }
 
@@ -199,7 +184,7 @@ class TickCountdown {
     static constexpr counter_type clean_interval_{
         static_cast<counter_type>(std::numeric_limits<counter_type>::max() / 2 + 1)};
 
-    counter_type tick_value_{0};
+    NonNegative<counter_type> tick_value_{};
     counter_type cleaner_counter_{0};
     std::vector<counter_type> counters_;
 };

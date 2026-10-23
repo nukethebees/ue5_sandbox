@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ioj/constrained_numbers.h"
 #include "ioj/container_ops.h"
 #include "ioj/countdown.h"
 #include "ioj/soa_permutation.h"
@@ -60,15 +61,11 @@ class PeriodicTickCountdown {
   public:
     using size_type = std::uint32_t;
     using counter_type = Counter;
+    using period_type = Positive<counter_type>;
     using View = PeriodicTickCountdownView<counter_type>;
     using ConstView = PeriodicTickCountdownView<counter_type const>;
 
     PeriodicTickCountdown() = default;
-
-    template <std::integral PeriodType>
-    [[nodiscard]] static constexpr auto valid_period(PeriodType const period) noexcept -> bool {
-        return std::in_range<counter_type>(period) && period > 0;
-    }
 
     [[nodiscard]] auto num() const noexcept -> size_type {
         return static_cast<size_type>(remaining_ticks_.size());
@@ -98,39 +95,30 @@ class PeriodicTickCountdown {
         periods_.clear();
     }
 
-    template <std::integral PeriodType>
-    void add_started(PeriodType const period) {
-        assert(valid_period(period));
-        auto const checked_period{static_cast<counter_type>(period)};
-        remaining_ticks_.push_back(checked_period);
-        periods_.push_back(checked_period);
+    void add_started(period_type const period) {
+        remaining_ticks_.push_back(period);
+        periods_.push_back(period);
     }
 
-    void add_zeroed(counter_type const period) {
-        assert(period > 0);
+    void add_zeroed(period_type const period) {
         remaining_ticks_.push_back(0);
         periods_.push_back(period);
     }
 
-    template <std::integral PeriodType>
-    void add_started(PeriodType const period, size_type const count) {
-        assert(valid_period(period));
-        auto const checked_period{static_cast<counter_type>(period)};
+    void add_started(period_type const period, size_type const count) {
         auto const n{static_cast<std::size_t>(count)};
-        remaining_ticks_.insert(remaining_ticks_.end(), n, checked_period);
-        periods_.insert(periods_.end(), n, checked_period);
+        remaining_ticks_.insert(remaining_ticks_.end(), n, period);
+        periods_.insert(periods_.end(), n, period);
     }
 
-    void add_zeroed(counter_type const period, size_type const count) {
-        assert(period > 0);
+    void add_zeroed(period_type const period, size_type const count) {
         auto const n{static_cast<std::size_t>(count)};
         remaining_ticks_.insert(remaining_ticks_.end(), n, 0);
         periods_.insert(periods_.end(), n, period);
     }
 
-    void initialise_last(counter_type const period, size_type const count) {
+    void initialise_last(period_type const period, size_type const count) {
         assert(static_cast<std::size_t>(count) <= remaining_ticks_.size());
-        assert(period > 0);
 
         auto const first{remaining_ticks_.size() - static_cast<std::size_t>(count)};
         for (std::size_t index{first}; index < remaining_ticks_.size(); ++index) {

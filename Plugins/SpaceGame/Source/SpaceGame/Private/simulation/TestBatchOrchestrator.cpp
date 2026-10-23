@@ -567,13 +567,6 @@ auto ATestBatchOrchestrator::begin_play() -> bool {
         !effective_config->player_ship.team_visual_data) {
         config_errors.add(TEXT("player_ship.team_visual_data is null"));
     }
-    if (!FMath::IsFinite(simulation_tick_loop.tick_rate) || simulation_tick_loop.tick_rate <= 0.0) {
-        config_errors.add(TEXT("simulation tick rate must be finite and positive"));
-    }
-    if (!FMath::IsFinite(simulation_tick_loop.time_scale) ||
-        simulation_tick_loop.time_scale <= 0.0) {
-        config_errors.add(TEXT("simulation time scale must be finite and positive"));
-    }
 
     if (config_errors.has_errors()) {
         handle_level_start_failure(
@@ -728,7 +721,7 @@ void ATestBatchOrchestrator::load_authored_level() {
     level_source_ = MoveTemp(pending->level_source);
     launched_paused_ = options.launch_mode == ioj::ELevelLaunchMode::Paused;
     presentation_enabled = options.presentation_mode == ioj::ELevelPresentationMode::Visual;
-    set_time_scale(options.requested_time_scale);
+    set_time_scale(ioj::PositiveFinite<time_type>::make(options.requested_time_scale));
 
     ioj::FLevelLoader loader{*this};
     auto const result{loader.load(pending->definition, options.control_context)};
@@ -861,8 +854,7 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
     }
     persist_finalized_telemetry_run();
 }
-void ATestBatchOrchestrator::set_time_scale(time_type const scale) noexcept {
-    check(scale > time_type{0});
+void ATestBatchOrchestrator::set_time_scale(ioj::PositiveFinite<time_type> const scale) noexcept {
     time_scale_override_ = scale;
     if (level_simulation_.IsSet()) {
         level_simulation_->set_time_scale(scale);
@@ -871,25 +863,17 @@ void ATestBatchOrchestrator::set_time_scale(time_type const scale) noexcept {
 
     simulation_tick_loop.time_scale = scale;
 }
-auto ATestBatchOrchestrator::frequency_to_tick_period(time_type const frequency) const noexcept
+auto ATestBatchOrchestrator::frequency_to_tick_period(ioj::Frequency const frequency) const noexcept
     -> tick_type {
-    check(frequency > time_type{0});
-    if (level_simulation_.IsSet()) {
-        return level_simulation_->get_clock().frequency_to_tick_period(frequency);
-    }
-
-    check(simulation_tick_loop.tick_rate > time_type{0});
-    return ioj::sim::frequency_to_tick_period(simulation_tick_loop.tick_rate, frequency);
+    auto const tick_rate{level_simulation_.IsSet() ? level_simulation_->get_clock().get_tick_rate()
+                                                   : simulation_tick_loop.tick_rate};
+    return ioj::sim::frequency_to_tick_period(tick_rate, frequency);
 }
-auto ATestBatchOrchestrator::duration_to_tick_period(time_type const duration) const noexcept
+auto ATestBatchOrchestrator::duration_to_tick_period(ioj::Duration const duration) const noexcept
     -> tick_type {
-    check(duration >= time_type{0});
-    if (level_simulation_.IsSet()) {
-        return level_simulation_->get_clock().duration_to_tick_period(duration);
-    }
-
-    check(simulation_tick_loop.tick_rate > time_type{0});
-    return ioj::sim::duration_to_tick_period(simulation_tick_loop.tick_rate, duration);
+    auto const tick_rate{level_simulation_.IsSet() ? level_simulation_->get_clock().get_tick_rate()
+                                                   : simulation_tick_loop.tick_rate};
+    return ioj::sim::duration_to_tick_period(tick_rate, duration);
 }
 
 /* **************************************** */

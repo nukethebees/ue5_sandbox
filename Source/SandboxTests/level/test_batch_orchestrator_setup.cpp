@@ -104,21 +104,23 @@ void FTestBatchOrchestratorSetupScenario::simulation_clock_conversions() {
         clock.initialise(sim::FixedTickLoop{});
 
         TestRunner->TestEqual(TEXT("Tick-rate frequency has a one-tick period"),
-                              clock.frequency_to_tick_period(60.0),
+                              clock.frequency_to_tick_period(ioj::Frequency::make(60.0)).get(),
                               uint64{1});
-        TestRunner->TestEqual(
-            TEXT("Frequency periods round up"), clock.frequency_to_tick_period(24.0), uint64{3});
+        TestRunner->TestEqual(TEXT("Frequency periods round up"),
+                              clock.frequency_to_tick_period(ioj::Frequency::make(24.0)).get(),
+                              uint64{3});
         TestRunner->TestEqual(TEXT("Above-tick-rate frequency has a one-tick period"),
-                              clock.frequency_to_tick_period(120.0),
+                              clock.frequency_to_tick_period(ioj::Frequency::make(120.0)).get(),
                               uint64{1});
         TestRunner->TestEqual(TEXT("Zero duration has a zero-tick period"),
-                              clock.duration_to_tick_period(0.0),
+                              clock.duration_to_tick_period(ioj::Duration::make(0.0)).get(),
                               uint64{0});
         TestRunner->TestEqual(TEXT("One second uses the configured tick rate"),
-                              clock.duration_to_tick_period(1.0),
+                              clock.duration_to_tick_period(ioj::Duration::make(1.0)).get(),
                               uint64{60});
-        TestRunner->TestEqual(
-            TEXT("Duration periods round up"), clock.duration_to_tick_period(0.025), uint64{2});
+        TestRunner->TestEqual(TEXT("Duration periods round up"),
+                              clock.duration_to_tick_period(ioj::Duration::make(0.025)).get(),
+                              uint64{2});
     });
 }
 

@@ -239,13 +239,13 @@ struct Sim {
     std::array<std::int32_t, enum_count<Team>()> remaining_team_capacity{};
     std::int32_t per_team_limit{};
     SimClock const& simulation_clock;
-    std::int16_t attack_retry_cooldown_tick_value{0};
+    NonNegative<std::int16_t> attack_retry_cooldown_tick_value{};
     std::array<std::int16_t, enum_count<NavigationRiskTier>()> navigation_tick_periods{};
     float minimum_navigation_lookahead_time{};
 
-    std::int8_t awareness_restart_ticks_{};
-    std::int16_t reposition_restart_ticks_{};
-    std::int16_t attack_restart_ticks_{};
+    NonNegative<std::int8_t> awareness_restart_ticks_{};
+    NonNegative<std::int16_t> reposition_restart_ticks_{};
+    NonNegative<std::int16_t> attack_restart_ticks_{};
     std::int8_t awareness_cleaner_{};
     std::int16_t reposition_cleaner_{};
     std::int16_t attack_cleaner_{};

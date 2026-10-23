@@ -1,17 +1,6 @@
 #include "ioj/sim/fixed_tick.h"
 
 namespace ioj::sim {
-auto initialise_tick_loop(double const tick_rate,
-                          double const time_scale,
-                          double& accumulator) noexcept -> bool {
-    if (tick_rate <= 0.0 || time_scale <= 0.0) {
-        return false;
-    }
-
-    accumulator = 0.0;
-    return true;
-}
-
 auto tick_loop_period(double const tick_rate) noexcept -> double {
     return 1.0 / tick_rate;
 }

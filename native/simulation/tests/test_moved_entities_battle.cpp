@@ -21,7 +21,7 @@ struct FighterTransformSnapshot {
 
 auto make_long_running_battle() -> LevelSimInitData {
     LevelSimInitData data;
-    data.clock_settings.tick_rate = 60.0;
+    data.clock_settings.tick_rate = ioj::Frequency::make(60.0);
     data.collision.grid_geometry = {{96, 96, 32}, {{2000.f, 2000.f, 5000.f}}};
     data.lasers.n_preallocated_instances = 256;
     data.fighters.speed = 3000.f;

@@ -52,10 +52,10 @@ TEST(NativeCountdown, DecrementsFloatingPointTimers) {
 }
 
 TEST(NativeTickCountdown, OwnsAndMutatesNativeStorage) {
-    ioj::TickCountdown<std::int16_t> countdown{3, 5};
+    ioj::TickCountdown<std::int16_t> countdown{3, ioj::NonNegative<std::int16_t>::make(5)};
 
-    countdown.set_counter(0, 2);
-    countdown.set_counter(1, 1);
+    countdown.set_counter(0, ioj::NonNegative<std::int16_t>::make(2));
+    countdown.set_counter(1, ioj::NonNegative<std::int16_t>::make(1));
     countdown.zero_counter(2);
     countdown.tick();
 
@@ -67,7 +67,7 @@ TEST(NativeTickCountdown, OwnsAndMutatesNativeStorage) {
 }
 
 TEST(NativeTickCountdown, CleanerAndResetSemanticsArePreserved) {
-    ioj::TickCountdown<std::int8_t> countdown{1, 0};
+    ioj::TickCountdown<std::int8_t> countdown{1, ioj::NonNegative<std::int8_t>::make(0)};
 
     for (int index{}; index < 32; ++index) {
         countdown.tick();
@@ -85,10 +85,10 @@ TEST(NativeTickCountdown, CleanerAndResetSemanticsArePreserved) {
 }
 
 TEST(NativeTickCountdown, SupportsSoaRemovalAndPermutation) {
-    ioj::TickCountdown<std::int16_t> countdown{3, 6};
-    countdown.set_counter(0, 1);
-    countdown.set_counter(1, 2);
-    countdown.set_counter(2, 3);
+    ioj::TickCountdown<std::int16_t> countdown{3, ioj::NonNegative<std::int16_t>::make(6)};
+    countdown.set_counter(0, ioj::NonNegative<std::int16_t>::make(1));
+    countdown.set_counter(1, ioj::NonNegative<std::int16_t>::make(2));
+    countdown.set_counter(2, ioj::NonNegative<std::int16_t>::make(3));
 
     std::array<std::int32_t, 3> indices{2, 0, 1};
     countdown.apply_permutation(indices);
@@ -101,8 +101,8 @@ TEST(NativeTickCountdown, SupportsSoaRemovalAndPermutation) {
 
 TEST(NativePeriodicTickCountdown, UsesIndividualPeriods) {
     ioj::PeriodicTickCountdown<std::int8_t> countdown;
-    countdown.add_started(2);
-    countdown.add_started(4);
+    countdown.add_started(ioj::Positive<std::int8_t>::make(2));
+    countdown.add_started(ioj::Positive<std::int8_t>::make(4));
 
     countdown.tick();
     countdown.tick();
@@ -114,13 +114,13 @@ TEST(NativePeriodicTickCountdown, UsesIndividualPeriods) {
 
 TEST(NativePeriodicTickCountdown, PreservesPairsAcrossSoaOperations) {
     ioj::PeriodicTickCountdown<std::int16_t> source;
-    source.add_started(10);
-    source.add_started(20);
-    source.add_started(30);
+    source.add_started(ioj::Positive<std::int16_t>::make(10));
+    source.add_started(ioj::Positive<std::int16_t>::make(20));
+    source.add_started(ioj::Positive<std::int16_t>::make(30));
     source.tick(3);
 
     ioj::PeriodicTickCountdown<std::int16_t> destination;
-    destination.add_zeroed(1, 3);
+    destination.add_zeroed(ioj::Positive<std::int16_t>::make(1), 3);
     destination.copy_element(0, source, 2);
     destination.copy_elements(1, source, 0, 2);
 
@@ -170,9 +170,9 @@ TEST(NativeCountdownTimers, SortsUsingAndRestoresScratchIndices) {
 
 TEST(NativePeriodicCountdownTimers, ConsumesAndPreservesPeriods) {
     ioj::PeriodicCountdownTimers timers;
-    timers.add_started(1.f);
-    timers.add_started(0.5f);
-    timers.add_zeroed(2.f);
+    timers.add_started(ioj::PositiveFinite<float>::make(1.f));
+    timers.add_started(ioj::PositiveFinite<float>::make(0.5f));
+    timers.add_zeroed(ioj::PositiveFinite<float>::make(2.f));
 
     timers.tick(0.5f);
 

@@ -91,7 +91,7 @@ auto make_battle() -> ::ioj::sim::LevelSimInitData {
 auto make_scheduled_battle() -> ::ioj::sim::LevelSimInitData {
     auto data{make_battle()};
     data.level_events = {};
-    data.clock_settings.tick_rate = 10.0;
+    data.clock_settings.tick_rate = ioj::Frequency::make(10.0);
 
     ioj::FLevelBuilder builder;
     builder.set_metadata(
@@ -497,7 +497,7 @@ auto FLevelPresentationFrameChangesTest::RunTest(FString const&) -> bool {
               1);
 
     auto death_data{make_battle()};
-    death_data.clock_settings.tick_rate = 10.0;
+    death_data.clock_settings.tick_rate = ioj::Frequency::make(10.0);
     ::ioj::sim::GameMemory deaths_memory;
     ::ioj::sim::LevelSim deaths{deaths_memory, MoveTemp(death_data)};
     deaths.finish_initialisation();
@@ -581,7 +581,7 @@ auto FPlayerBoostFrameOutputTest::RunTest(FString const&) -> bool {
         actor->Destroy();
     };
     auto data{make_battle()};
-    data.clock_settings.tick_rate = 10.0;
+    data.clock_settings.tick_rate = ioj::Frequency::make(10.0);
     data.level_events.initialisation.player_entity_index =
         data.level_events.initialisation.entity_count++;
     data.player = actor->make_spawn_data();
@@ -661,7 +661,7 @@ auto FLaserPresentationIndexingTest::RunTest(FString const&) -> bool {
     auto const dt{simulation.get_clock().get_tick_period()};
     constexpr int32 simulated_seconds{3};
     constexpr int32 spawns_per_tick{6};
-    auto const tick_count{static_cast<int32>(simulation.get_clock().tick_loop.tick_rate) *
+    auto const tick_count{static_cast<int32>(simulation.get_clock().tick_loop.tick_rate.get_hz()) *
                           simulated_seconds};
     TArray<FExpectedMaterialData> expected_material_data;
     expected_material_data.Reserve(tick_count * spawns_per_tick);
@@ -778,7 +778,7 @@ auto FLevelTelemetryRunRecordTest::RunTest(FString const&) -> bool {
     simulation.finish_initialisation();
     simulation.start();
     simulation.advance(1.0);
-    simulation.set_time_scale(4.0);
+    simulation.set_time_scale(ioj::PositiveFinite<double>::make(4.0));
     simulation.advance(simulation.get_clock().get_tick_period());
     simulation.finalize_telemetry_run(::ioj::sim::LevelTelemetryRunEndReason::WorldEnd);
     auto record{simulation.take_finalized_telemetry_run()};
