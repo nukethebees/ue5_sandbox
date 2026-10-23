@@ -164,8 +164,9 @@ void SpatialQueryManager::collect_non_team_entities_in_range(
         return;
     }
 
-    constexpr RequestCount grain_size{64};
-    auto const concurrency{task_arena_concurrency(request_count, grain_size)};
+    constexpr Positive<RequestCount> grain_size{64};
+    auto const concurrency{
+        task_arena_concurrency(Positive<RequestCount>::make(request_count), grain_size)};
     tbb::task_arena arena{concurrency};
     FrameArray<WorkerScratch> workers{scratch_resource};
     FrameArray<MatchSource> match_sources{scratch_resource};

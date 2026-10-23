@@ -1,5 +1,7 @@
 #pragma once
 
+#include <ioj/constrained_numbers.h>
+
 #include <oneapi/tbb/blocked_range.h>
 #include <oneapi/tbb/parallel_for.h>
 #include <oneapi/tbb/task_arena.h>
@@ -15,12 +17,10 @@ namespace tbb = oneapi::tbb;
 
 using ThreadIndex = std::uint32_t;
 
-[[nodiscard]] inline auto task_arena_concurrency(std::uint32_t const work_count,
-                                                 std::uint32_t const grain_size) noexcept -> int {
-    assert(work_count > 0);
-    assert(grain_size > 0);
-
-    auto const chunk_count{(work_count - 1) / grain_size + 1};
+[[nodiscard]] inline auto task_arena_concurrency(Positive<std::uint32_t> const work_count,
+                                                 Positive<std::uint32_t> const grain_size) noexcept
+    -> int {
+    auto const chunk_count{(work_count.get() - 1) / grain_size.get() + 1};
     auto const max_concurrency{static_cast<std::uint32_t>(tbb::this_task_arena::max_concurrency())};
 
     return static_cast<int>(std::min(chunk_count, max_concurrency));
