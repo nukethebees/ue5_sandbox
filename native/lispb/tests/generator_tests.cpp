@@ -59,12 +59,12 @@ TEST(Generator, LowersDynamicSoaIntoNativeOwnerAndViews) {
     auto const& source{files.back().content};
     EXPECT_NE(header.find("namespace f_data"), std::string::npos);
     EXPECT_NE(header.find("struct EXAMPLE_API ConstView"), std::string::npos);
-    EXPECT_NE(header.find("std::span<"), std::string::npos);
+    EXPECT_NE(header.find("ResolvedViewBase<"), std::string::npos);
     EXPECT_NE(header.find("std::pmr::memory_resource&"), std::string::npos);
     EXPECT_NE(header.find("#include \"Project/Handle.h\""), std::string::npos);
     EXPECT_NE(header.find("using Operations = ioj::native_soa::StorageOperations;"),
               std::string::npos);
-    EXPECT_NE(header.find("void apply_permutation("), std::string::npos);
+    EXPECT_EQ(header.find("void apply_permutation("), std::string::npos);
     EXPECT_EQ(header.find("TArray"), std::string::npos);
     EXPECT_EQ(header.find("validate_array_sizes"), std::string::npos);
     EXPECT_NE(source.find("#include \"Project/Generated.h\""), std::string::npos);

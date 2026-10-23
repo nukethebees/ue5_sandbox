@@ -39,7 +39,11 @@ TEST(SingleAllocationSoa, OrdinarySchemasGenerateNativeOwnersAndViews) {
     EXPECT_NE(
         output.find("ColumnLayouts<std::int32_t, float, Token, sub::Token, other::Token, Base>"),
         std::string::npos);
-    EXPECT_NE(output.find("Element<example::Base>* shadowed_types"), std::string::npos);
+    EXPECT_NE(output.find("Element<Base>* shadowed_types"), std::string::npos);
+    EXPECT_NE(output.find("struct DataPointers"), std::string::npos);
+    EXPECT_NE(output.find("ResolvedViewBase<Layout::column_types, DataPointers, Const>"),
+              std::string::npos);
+    EXPECT_EQ(output.find("make_data_unchecked("), std::string::npos);
     EXPECT_NE(output.find("auto ids() const"), std::string::npos);
     EXPECT_NE(output.find("ids_column{0}"), std::string::npos);
     EXPECT_NE(output.find("nested_xs_column{1}"), std::string::npos);
@@ -215,13 +219,16 @@ TEST(SingleAllocationSoa, RejectsInvalidFlatteningAndOwnerNames) {
 }
 
 TEST(SingleAllocationSoa, RejectsModuleDeclarationsCollidingWithSharedViewTypes) {
-    CompilerTestContext context;
-    auto const manifest{parse_test_manifest(context, R"(
+    for (auto const name : {"View", "DataPointers"}) {
+        SCOPED_TRACE(name);
+        CompilerTestContext context;
+        auto const manifest{parse_test_manifest(context, std::string{R"(
         (module owner :header "Owner.h" :namespace example
           (struct Rows (member values array float)))
         (module collision :header "Collision.h" :namespace example::rows
-          (record View)))")};
-    EXPECT_THROW(render_test_manifest(context, manifest), std::invalid_argument);
+          (record )"} + name + "))")};
+        EXPECT_THROW(render_test_manifest(context, manifest), std::invalid_argument);
+    }
 }
 
 TEST(SingleAllocationSoa, FlattensMultipleLevelsAndRepeatedNestedSchemas) {

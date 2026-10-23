@@ -94,6 +94,62 @@ struct ViewOperations {
     }
 };
 
+template <typename Columns, template <typename> typename Pointers, bool Const>
+struct ResolvedViewBase;
+
+template <template <typename> typename Pointers, bool Const, typename... Ts>
+struct ResolvedViewBase<single_allocation_layout::ColumnLayouts<Ts...>, Pointers, Const>
+    : ViewOperations {
+    using size_type = std::uint32_t;
+    template <typename T>
+    using Element = std::conditional_t<Const, T const, T>;
+    using PointerStorage = Pointers<Element<std::byte>>;
+
+    ResolvedViewBase() = default;
+    ResolvedViewBase(Element<Ts>*... pointers, size_type column_count)
+        : columns_{pointers...}
+        , column_count_{column_count} {
+        validate_column_pointers(column_count_, pointers...);
+    }
+    ResolvedViewBase(std::span<Element<Ts>>... columns)
+        : ResolvedViewBase{columns.data()..., checked_row_count(columns...[0].size())} {
+        validate_column_sizes(column_count_, columns...);
+    }
+
+    auto num() const noexcept -> size_type { return column_count_; }
+    auto resolve(this auto const& self) { return self; }
+
+    template <typename Self>
+    auto slice(this Self const& self, size_type offset, size_type count) -> Self {
+        assert(offset <= self.column_count_ && count <= self.column_count_ - offset);
+        auto const& [... pointers] = self.columns_;
+        return Self{(pointers ? pointers + offset : nullptr)..., count};
+    }
+  protected:
+    template <typename, template <typename> typename, bool>
+    friend struct ResolvedViewBase;
+
+    template <bool Enabled = Const>
+        requires Enabled
+    ResolvedViewBase(
+        ResolvedViewBase<single_allocation_layout::ColumnLayouts<Ts...>, Pointers, false> const&
+            other)
+        : column_count_{other.column_count_} {
+        auto& [... destination] = columns_;
+        auto const& [... source] = other.columns_;
+        ((destination = source), ...);
+    }
+
+    template <std::size_t Index>
+    auto column() const {
+        auto const& [... pointers] = columns_;
+        return std::span{pointers...[Index], column_count_};
+    }
+
+    PointerStorage columns_{};
+    size_type column_count_{};
+};
+
 template <typename View>
 consteval auto validate_compact_view() -> bool {
     static_assert(sizeof(View) == sizeof(StorageState),

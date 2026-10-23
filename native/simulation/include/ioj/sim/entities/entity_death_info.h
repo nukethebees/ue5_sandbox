@@ -8,7 +8,6 @@
 #include "ioj/sim/entities/entity_id.h"
 #include "ioj/sim/entities/entity_life_state.h"
 #include "ioj/single_allocation/layout.h"
-#include "ioj/soa_permutation.h"
 
 #include <cassert>
 #include <memory_resource>
@@ -32,6 +31,19 @@ struct Layout
     static constexpr std::size_t locations_column{3};
 };
 
+/* **************************************** */
+// Column pointers
+/* **************************************** */
+template <typename Byte>
+struct DataPointers {
+    template <typename T>
+    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
+    Element<DeathReason>* reasons{};
+    Element<EntityId>* victims{};
+    Element<EntityId>* killers{};
+    Element<Vector3f>* locations{};
+};
+
 struct Schema {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
@@ -43,67 +55,23 @@ struct Schema {
 // Resolved views
 /* **************************************** */
 template <bool Const>
-struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
-    using size_type = std::uint32_t;
+struct ResolvedViewImpl
+    : ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const> {
+    using Base =
+        ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const>;
+    using Base::Base;
+    using Layout = ::ioj::sim::entity_death_info::Layout;
     using view_type = ::ioj::sim::entity_death_info::ResolvedView;
     using const_view_type = ::ioj::sim::entity_death_info::ResolvedConstView;
     using soa_schema = ::ioj::sim::entity_death_info::Schema;
-    template <typename T>
-    using Element = std::conditional_t<Const, T const, T>;
-    ResolvedViewImpl() = default;
-    ResolvedViewImpl(Element<DeathReason>* reasons,
-                     Element<EntityId>* victims,
-                     Element<EntityId>* killers,
-                     Element<Vector3f>* locations,
-                     size_type column_count)
-        : reasons_{reasons}
-        , victims_{victims}
-        , killers_{killers}
-        , locations_{locations}
-        , column_count_{column_count} {
-        ioj::soa_storage_detail::validate_column_pointers(
-            column_count_, reasons_, victims_, killers_, locations_);
-    }
-    ResolvedViewImpl(std::span<Element<DeathReason>> reasons,
-                     std::span<Element<EntityId>> victims,
-                     std::span<Element<EntityId>> killers,
-                     std::span<Element<Vector3f>> locations)
-        : ResolvedViewImpl{reasons.data(),
-                           victims.data(),
-                           killers.data(),
-                           locations.data(),
-                           ioj::soa_storage_detail::checked_row_count(reasons.size())} {
-        ioj::soa_storage_detail::validate_column_sizes(
-            column_count_, reasons, victims, killers, locations);
-    }
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
-    {
-        auto& [... destination] = *this;
-        auto const& [... source] = other;
-        ((destination = source), ...);
-    }
-    auto num() const noexcept -> size_type { return column_count_; }
-    auto resolve(this auto const& self) { return self; }
-    auto slice(this auto const& self, size_type offset, size_type count) {
-        auto const& [... pointers, source_count] = static_cast<ResolvedViewImpl const&>(self);
-        assert(offset <= source_count && count <= source_count - offset);
-        using Result = std::remove_cvref_t<decltype(self)>;
-        return Result{(pointers ? pointers + offset : nullptr)..., count};
-    }
-    auto reasons() const { return std::span{reasons_, column_count_}; }
-    auto victims() const { return std::span{victims_, column_count_}; }
-    auto killers() const { return std::span{killers_, column_count_}; }
-    auto locations() const { return std::span{locations_, column_count_}; }
-  private:
-    template <bool>
-    friend struct ResolvedViewImpl;
-    Element<DeathReason>* reasons_{};
-    Element<EntityId>* victims_{};
-    Element<EntityId>* killers_{};
-    Element<Vector3f>* locations_{};
-    size_type column_count_{};
+        : Base{other} {}
+    auto reasons() const { return this->template column<Layout::reasons_column>(); }
+    auto victims() const { return this->template column<Layout::victims_column>(); }
+    auto killers() const { return this->template column<Layout::killers_column>(); }
+    auto locations() const { return this->template column<Layout::locations_column>(); }
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;
@@ -221,25 +189,7 @@ struct EntityDeathInfo
     }
   protected:
     template <typename Byte>
-    struct DataPointers {
-        template <typename T>
-        using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-        Element<DeathReason>* reasons{};
-        Element<EntityId>* victims{};
-        Element<EntityId>* killers{};
-        Element<Vector3f>* locations{};
-    };
-  private:
-    friend Operations;
-    friend ::ioj::soa_storage_detail::StorageRequirements;
-    /* **************************************** */
-    // Column pointers
-    /* **************************************** */
-    template <typename Byte>
-    static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
-        -> DataPointers<Byte> {
-        return Layout::make_data<DataPointers<Byte>>(data, blocks);
-    }
+    using DataPointers = ::ioj::sim::entity_death_info::DataPointers<Byte>;
   public:
     auto reasons(this auto& self) { return self.get_view().reasons(); }
     auto victims(this auto& self) { return self.get_view().victims(); }
@@ -265,13 +215,9 @@ struct EntityDeathInfo
         set(index, new_reasons, new_victims, new_killers, new_locations);
         return index;
     }
-    void apply_permutation(std::span<size_type> indices) {
-        assert(indices.size() == num_);
-        auto const columns{get_data()};
-        auto const permute{ioj::ColumnPermutation{num_, indices}};
-        permute(columns.reasons, columns.victims, columns.killers, columns.locations);
-    }
   private:
+    friend Operations;
+    friend ::ioj::soa_storage_detail::StorageRequirements;
     std::pmr::memory_resource* resource_{};
 };
 } // namespace ioj::sim

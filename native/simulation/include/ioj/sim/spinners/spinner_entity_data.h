@@ -7,7 +7,6 @@
 #include "ioj/native_soa/storage.h"
 #include "ioj/sim/entities/entity_id.h"
 #include "ioj/single_allocation/layout.h"
-#include "ioj/soa_permutation.h"
 #include "ioj/vectors3f.h"
 
 #include <cassert>
@@ -37,6 +36,22 @@ struct Layout
     static constexpr std::size_t next_fire_point_indices_column{6};
 };
 
+/* **************************************** */
+// Column pointers
+/* **************************************** */
+template <typename Byte>
+struct DataPointers {
+    template <typename T>
+    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
+    Element<EntityId>* entity_ids{};
+    Element<float>* locations_xs{};
+    Element<float>* locations_ys{};
+    Element<float>* locations_zs{};
+    Element<float>* yaws{};
+    Element<std::int16_t>* laser_cooldowns{};
+    Element<std::int32_t>* next_fire_point_indices{};
+};
+
 struct Schema {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
@@ -55,100 +70,32 @@ struct Schema {
 // Resolved views
 /* **************************************** */
 template <bool Const>
-struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
-    using size_type = std::uint32_t;
+struct ResolvedViewImpl
+    : ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const> {
+    using Base =
+        ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const>;
+    using Base::Base;
+    using Layout = ::ioj::sim::spinner_entity_data::Layout;
     using view_type = ::ioj::sim::spinner_entity_data::ResolvedView;
     using const_view_type = ::ioj::sim::spinner_entity_data::ResolvedConstView;
     using soa_schema = ::ioj::sim::spinner_entity_data::Schema;
-    template <typename T>
-    using Element = std::conditional_t<Const, T const, T>;
-    ResolvedViewImpl() = default;
-    ResolvedViewImpl(Element<EntityId>* entity_ids,
-                     Element<float>* locations_xs,
-                     Element<float>* locations_ys,
-                     Element<float>* locations_zs,
-                     Element<float>* yaws,
-                     Element<std::int16_t>* laser_cooldowns,
-                     Element<std::int32_t>* next_fire_point_indices,
-                     size_type column_count)
-        : entity_ids_{entity_ids}
-        , locations_xs_{locations_xs}
-        , locations_ys_{locations_ys}
-        , locations_zs_{locations_zs}
-        , yaws_{yaws}
-        , laser_cooldowns_{laser_cooldowns}
-        , next_fire_point_indices_{next_fire_point_indices}
-        , column_count_{column_count} {
-        ioj::soa_storage_detail::validate_column_pointers(column_count_,
-                                                          entity_ids_,
-                                                          locations_xs_,
-                                                          locations_ys_,
-                                                          locations_zs_,
-                                                          yaws_,
-                                                          laser_cooldowns_,
-                                                          next_fire_point_indices_);
-    }
-    ResolvedViewImpl(std::span<Element<EntityId>> entity_ids,
-                     std::span<Element<float>> locations_xs,
-                     std::span<Element<float>> locations_ys,
-                     std::span<Element<float>> locations_zs,
-                     std::span<Element<float>> yaws,
-                     std::span<Element<std::int16_t>> laser_cooldowns,
-                     std::span<Element<std::int32_t>> next_fire_point_indices)
-        : ResolvedViewImpl{entity_ids.data(),
-                           locations_xs.data(),
-                           locations_ys.data(),
-                           locations_zs.data(),
-                           yaws.data(),
-                           laser_cooldowns.data(),
-                           next_fire_point_indices.data(),
-                           ioj::soa_storage_detail::checked_row_count(entity_ids.size())} {
-        ioj::soa_storage_detail::validate_column_sizes(column_count_,
-                                                       entity_ids,
-                                                       locations_xs,
-                                                       locations_ys,
-                                                       locations_zs,
-                                                       yaws,
-                                                       laser_cooldowns,
-                                                       next_fire_point_indices);
-    }
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
-    {
-        auto& [... destination] = *this;
-        auto const& [... source] = other;
-        ((destination = source), ...);
-    }
-    auto num() const noexcept -> size_type { return column_count_; }
-    auto resolve(this auto const& self) { return self; }
-    auto slice(this auto const& self, size_type offset, size_type count) {
-        auto const& [... pointers, source_count] = static_cast<ResolvedViewImpl const&>(self);
-        assert(offset <= source_count && count <= source_count - offset);
-        using Result = std::remove_cvref_t<decltype(self)>;
-        return Result{(pointers ? pointers + offset : nullptr)..., count};
-    }
-    auto entity_ids() const { return std::span{entity_ids_, column_count_}; }
+        : Base{other} {}
+    auto entity_ids() const { return this->template column<Layout::entity_ids_column>(); }
     auto view_locations() const -> std::
         conditional_t<Const, ::ioj::vectors3f::ResolvedConstView, ::ioj::vectors3f::ResolvedView> {
-        return {locations_xs_, locations_ys_, locations_zs_, column_count_};
+        return {this->columns_.locations_xs,
+                this->columns_.locations_ys,
+                this->columns_.locations_zs,
+                this->num()};
     }
-    auto yaws() const { return std::span{yaws_, column_count_}; }
-    auto laser_cooldowns() const { return std::span{laser_cooldowns_, column_count_}; }
+    auto yaws() const { return this->template column<Layout::yaws_column>(); }
+    auto laser_cooldowns() const { return this->template column<Layout::laser_cooldowns_column>(); }
     auto next_fire_point_indices() const {
-        return std::span{next_fire_point_indices_, column_count_};
+        return this->template column<Layout::next_fire_point_indices_column>();
     }
-  private:
-    template <bool>
-    friend struct ResolvedViewImpl;
-    Element<EntityId>* entity_ids_{};
-    Element<float>* locations_xs_{};
-    Element<float>* locations_ys_{};
-    Element<float>* locations_zs_{};
-    Element<float>* yaws_{};
-    Element<std::int16_t>* laser_cooldowns_{};
-    Element<std::int32_t>* next_fire_point_indices_{};
-    size_type column_count_{};
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;
@@ -322,28 +269,7 @@ struct SpinnerEntityData
     }
   protected:
     template <typename Byte>
-    struct DataPointers {
-        template <typename T>
-        using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-        Element<EntityId>* entity_ids{};
-        Element<float>* locations_xs{};
-        Element<float>* locations_ys{};
-        Element<float>* locations_zs{};
-        Element<float>* yaws{};
-        Element<std::int16_t>* laser_cooldowns{};
-        Element<std::int32_t>* next_fire_point_indices{};
-    };
-  private:
-    friend Operations;
-    friend ::ioj::soa_storage_detail::StorageRequirements;
-    /* **************************************** */
-    // Column pointers
-    /* **************************************** */
-    template <typename Byte>
-    static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
-        -> DataPointers<Byte> {
-        return Layout::make_data<DataPointers<Byte>>(data, blocks);
-    }
+    using DataPointers = ::ioj::sim::spinner_entity_data::DataPointers<Byte>;
   public:
     auto entity_ids(this auto& self) { return self.get_view().entity_ids(); }
     auto view_locations(this auto& self) { return self.get_view().view_locations(); }
@@ -416,19 +342,9 @@ struct SpinnerEntityData
             new_next_fire_point_indices);
         return index;
     }
-    void apply_permutation(std::span<size_type> indices) {
-        assert(indices.size() == num_);
-        auto const columns{get_data()};
-        auto const permute{ioj::ColumnPermutation{num_, indices}};
-        permute(columns.entity_ids,
-                columns.locations_xs,
-                columns.locations_ys,
-                columns.locations_zs,
-                columns.yaws,
-                columns.laser_cooldowns,
-                columns.next_fire_point_indices);
-    }
   private:
+    friend Operations;
+    friend ::ioj::soa_storage_detail::StorageRequirements;
     std::pmr::memory_resource* resource_{};
 };
 } // namespace ioj::sim

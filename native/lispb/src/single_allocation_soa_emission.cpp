@@ -51,6 +51,10 @@ void describe_compact_scope(LoweringContext& context, RecordId record, Declarati
                             "StorageOperations",
                             "CompactViewBase",
                             "StridedViewBase",
+                            "ResolvedViewBase",
+                            "Element",
+                            "DataPointers",
+                            "apply_permutation",
                             "Operations",
                             "Layout",
                             "size_type",
@@ -275,61 +279,6 @@ auto layout_column(LoweringContext& context, SingleAllocationColumnId column) ->
                     "_column");
 }
 
-auto column_pointer_nodes(LoweringContext& context) -> Nodes {
-    auto& ir{context.ir};
-    auto const make_data{ir.function("make_data_unchecked", "auto")};
-    ir.set_function_parameters(
-        make_data,
-        {ir.parameter("Byte* const", "data"), ir.parameter("byte_size_type const", "blocks")});
-    ir.set_function_body(
-        make_data,
-        {ir.return_stmt(
-            ir.call(ir.template_id(ir.named("Layout::make_data"),
-                                   {ir.type_reference(ir.types.intern("DataPointers<Byte>"))}),
-                    {ir.named("data"), ir.named("blocks")}))});
-    ir.set_function_return_type(
-        make_data, ir.types.intern("DataPointers<Byte>"), ReturnSyntax::trailing);
-    ir.set_function_noexcept(make_data);
-    ir.set_function_receiver(make_data, FunctionReceiver::static_);
-    ir.set_function_template(
-        make_data,
-        ir.template_declaration({ir.type_template_parameter(ir.strings.intern("Byte"))}));
-    NodeListBuilder result{ir};
-    result.add(ir.friend_type(ir.types.intern("Operations")))
-        .new_lines(1)
-        .add(ir.friend_type(ir.types.intern("::ioj::soa_storage_detail::StorageRequirements")))
-        .new_lines(1)
-        .append(section_header(context, "Column pointers"))
-        .new_lines(1)
-        .add(inline_function(context, make_data));
-    return result.build();
-}
-
-auto permutation_node(LoweringContext& context, SingleAllocationModelId model) -> NodeId {
-    auto& ir{context.ir};
-    auto const& models{ir.lowering.single_allocation_models};
-    auto const& columns{ir.lowering.single_allocation_columns};
-    NodeListBuilder body{ir};
-    body.add(ir.raw("assert(indices.size() == num_);"));
-    body.add(ir.variable("auto const", "columns", ir.call(ir.named("get_data"))));
-    std::vector<Expr> pointers;
-    for (auto const column : ir.lowering.items(models.columns[models.index(model)])) {
-        auto const name{context.text(columns.flattened_identifier[columns.index(column)])};
-        pointers.push_back(ir.member_access(ir.named("columns"), name));
-    }
-    body.add(ir.variable("auto const",
-                         "permute",
-                         ir.init_list({ir.named("num_"), ir.named("indices")},
-                                      ir.types.intern("ioj::ColumnPermutation"))));
-    body.add(ir.expr_stmt(ir.call(ir.named("permute"), pointers)));
-    auto const function{make_function(ir,
-                                      "apply_permutation",
-                                      "void",
-                                      {ir.parameter("std::span<size_type>", "indices")},
-                                      body.build())};
-    return inline_function(context, function);
-}
-
 auto member_columns(LoweringContext& context, SingleAllocationModelId model, StringId member)
     -> std::vector<SingleAllocationColumnId> {
     auto const& storage{context.ir.lowering};
@@ -379,6 +328,90 @@ auto shared_view_type(LoweringContext& context, DeclarationHandle schema, bool r
            (resolved ? "::ResolvedView>" : "::View>");
 }
 
+auto view_accessor_nodes(LoweringContext& context, SingleAllocationModelId model, bool resolved)
+    -> Nodes {
+    auto& ir{context.ir};
+    auto const& models{ir.lowering.single_allocation_models};
+    auto const& columns{ir.lowering.single_allocation_columns};
+    auto const& members{context.declarations.soa_members};
+    auto const model_row{models.index(model)};
+    auto const schema{models.schema[model_row]};
+    auto const schema_row{context.declarations.soas.index(schema)};
+    auto const selected{ir.lowering.items(models.columns[model_row])};
+    auto const strided{is_strided_schema(context, schema)};
+    NodeListBuilder children{ir};
+    auto accessor = [&](std::string_view name, Expr value, CppTypeId type = {}) {
+        auto const function{
+            make_function(ir, name, "auto", {}, {ir.return_stmt(value)}, FunctionReceiver::const_)};
+        if (type.value != 0) {
+            ir.set_function_return_type(function, type, ReturnSyntax::trailing);
+        }
+        children.new_lines(1).add(compact_function(context, function));
+    };
+    auto column_span = [&](SingleAllocationColumnId column) {
+        auto const index{std::find(selected.begin(), selected.end(), column) - selected.begin()};
+        if (resolved) {
+            return ir.call(ir.template_id(ir.named("this->template column"),
+                                          {layout_column(context, column)}));
+        }
+        if (strided) {
+            return ir.call(ir.named("this->column"), {ir.literal(std::to_string(index))});
+        }
+        return ir.call(ir.template_id(ir.named("this->template column"),
+                                      {ir.type_reference(columns.type[columns.index(column)])}),
+                       {layout_column(context, column)});
+    };
+    for (auto const member :
+         context.declarations.items(context.declarations.soas.members[schema_row])) {
+        auto const row{members.index(member)};
+        auto const name{context.text(members.name[row])};
+        if (members.kind[row] == SoaMemberKind::nested) {
+            auto const nested{context.for_declaration(schema).nested_declaration(member)};
+            auto const nested_columns{member_columns(context, model, members.name[row])};
+            auto const nested_strided{is_strided_schema(context, nested)};
+            auto const type{
+                ir.types.intern(shared_view_type(context, nested, resolved || !nested_strided))};
+            if (!resolved && nested_strided && strided) {
+                accessor("view_" + name,
+                         ir.init_list({ir.call(ir.member_access(column_span(nested_columns.front()),
+                                                                "data")),
+                                       ir.call(ir.named("this->byte_stride")),
+                                       ir.call(ir.named("this->num"))}),
+                         type);
+            } else if (!resolved && nested_strided) {
+                auto const factory{ir.template_id(
+                    ir.named("ioj::soa_storage_detail::make_strided_view"),
+                    {ir.type_reference(type), ir.type_reference(ir.types.intern("Layout"))})};
+                accessor("view_" + name,
+                         ir.call(factory,
+                                 {ir.named("this->state_"),
+                                  ir.named("this->offset_"),
+                                  ir.call(ir.named("this->num")),
+                                  layout_column(context, nested_columns[0]),
+                                  layout_column(context, nested_columns[1])}),
+                         type);
+            } else {
+                std::vector<Expr> pointers;
+                for (auto const column : nested_columns) {
+                    pointers.push_back(
+                        resolved
+                            ? ir.member_access(
+                                  ir.named("this->columns_"),
+                                  context.text(columns.flattened_identifier[columns.index(column)]))
+                            : ir.call(ir.member_access(column_span(column), "data")));
+                }
+                pointers.push_back(ir.call(ir.named("this->num")));
+                accessor("view_" + name, ir.init_list(pointers), type);
+            }
+        } else {
+            auto const column{
+                column_for(context, model, ir.lowering.paths.append({}, members.name[row]))};
+            accessor(name, column_span(column));
+        }
+    }
+    return children.build();
+}
+
 auto emit_resolved_views(LoweringContext& context,
                          SingleAllocationModelId model,
                          NodeListBuilder& source,
@@ -387,9 +420,6 @@ auto emit_resolved_views(LoweringContext& context,
     auto& storage{ir.lowering};
     auto const& models{storage.single_allocation_models};
     auto const schema{models.schema[models.index(model)]};
-    auto const& columns{storage.single_allocation_columns};
-    auto const& members{context.declarations.soa_members};
-    auto const selected{storage.items(models.columns[models.index(model)])};
     std::string const mutable_name{"ResolvedView"};
     std::string const const_name{"ResolvedConstView"};
     std::string const implementation{"ResolvedViewImpl"};
@@ -400,66 +430,21 @@ auto emit_resolved_views(LoweringContext& context,
         .new_lines(1);
     result.append(section_header(context, "Resolved views")).new_lines(1);
 
-    auto pointer_name = [&](SingleAllocationColumnId column) {
-        return context.text(columns.flattened_identifier[columns.index(column)]) + "_";
-    };
-    auto element_type = [&](SingleAllocationColumnId column) {
-        return "Element<" + std::string{ir.types.spelling(columns.type[columns.index(column)])} +
-               ">";
-    };
+    auto const scope{schema_namespace(context, schema)};
+    std::string const base{
+        "ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const>"};
     NodeListBuilder children{ir};
-    children
-        .add(ir.raw("using size_type = std::uint32_t;\nusing view_type = " +
-                    schema_namespace(context, schema) + "::" + mutable_name +
-                    ";\nusing const_view_type = " + schema_namespace(context, schema) + "::" +
-                    const_name + ";\nusing soa_schema = " + schema_namespace(context, schema) +
-                    "::Schema;\n"
-                    "template <typename T> using Element = std::conditional_t<Const, T const, T>;"))
-        .new_lines(1);
-    auto const default_constructor{ir.constructor(ir.strings.intern(implementation))};
-    ir.set_function_defaulted(default_constructor);
-    children.add(ir.declaration(default_constructor)).new_lines(1);
-
-    std::vector<FunctionParameterId> pointers;
-    std::vector<FunctionParameterId> spans;
-    std::vector<MemberInitializerId> initializers;
-    std::vector<std::string> span_arguments;
-    std::vector<Expr> size_validation_arguments{ir.named("column_count_")};
-    NodeListBuilder validation{ir};
-    std::vector<Expr> validation_arguments{ir.named("column_count_")};
-    for (auto const column : selected) {
-        auto const name{context.text(columns.flattened_identifier[columns.index(column)])};
-        pointers.push_back(ir.parameter(element_type(column) + "*", name));
-        spans.push_back(ir.parameter("std::span<" + element_type(column) + ">", name));
-        initializers.push_back(
-            ir.member_initializer(ir.strings.intern(pointer_name(column)), ir.store_text(name)));
-        span_arguments.push_back(name + ".data()");
-        size_validation_arguments.push_back(ir.named(name));
-        validation_arguments.push_back(ir.named(pointer_name(column)));
-    }
-    validation.add(ir.expr_stmt(ir.call(
-        ir.named("ioj::soa_storage_detail::validate_column_pointers"), validation_arguments)));
-    pointers.push_back(ir.parameter("size_type", "column_count"));
-    initializers.push_back(
-        ir.member_initializer(ir.strings.intern("column_count_"), ir.store_text("column_count")));
-    auto const pointer_constructor{ir.constructor(ir.strings.intern(implementation))};
-    ir.set_function_parameters(pointer_constructor, pointers);
-    ir.set_function_body(pointer_constructor, validation.build(), initializers);
-    children.add(inline_function(context, pointer_constructor)).new_lines(1);
-
-    auto const first_name{
-        context.text(columns.flattened_identifier[columns.index(selected.front())])};
-    span_arguments.push_back("ioj::soa_storage_detail::checked_row_count(" + first_name +
-                             ".size())");
-    auto const span_constructor{ir.constructor(ir.strings.intern(implementation))};
-    ir.set_function_parameters(span_constructor, spans);
-    ir.set_function_body(
-        span_constructor,
-        {ir.expr_stmt(ir.call(ir.named("ioj::soa_storage_detail::validate_column_sizes"),
-                              size_validation_arguments))},
-        {ir.member_initializer(ir.strings.intern(implementation),
-                               ir.store_text(join(span_arguments, ", ")))});
-    children.add(inline_function(context, span_constructor)).new_lines(1);
+    children.append(adjacent(
+        context,
+        {ir.using_declaration(ir.strings.intern("Base"), ir.types.intern(base)),
+         ir.raw("using Base::Base;"),
+         ir.using_declaration(ir.strings.intern("Layout"), ir.types.intern(scope + "::Layout")),
+         ir.using_declaration(ir.strings.intern("view_type"),
+                              ir.types.intern(scope + "::" + mutable_name)),
+         ir.using_declaration(ir.strings.intern("const_view_type"),
+                              ir.types.intern(scope + "::" + const_name)),
+         ir.using_declaration(ir.strings.intern("soa_schema"),
+                              ir.types.intern(scope + "::Schema"))}));
 
     auto const conversion{ir.constructor(ir.strings.intern(implementation))};
     ir.set_function_parameters(conversion,
@@ -469,65 +454,15 @@ auto emit_resolved_views(LoweringContext& context,
         ir.template_declaration({ir.value_template_parameter(
             ir.types.intern("bool"), ir.strings.intern("Enabled"), ir.named("Const"))}));
     ir.set_function_requires_clause(conversion, ir.named("Enabled"));
-    ir.set_function_body(conversion,
-                         {ir.raw("auto& [...destination] = *this;\n"
-                                 "auto const& [...source] = other;\n"
-                                 "((destination = source), ...);")});
-    children.add(inline_function(context, conversion)).new_lines(1);
+    ir.set_function_body(
+        conversion, {}, {ir.member_initializer(ir.strings.intern("Base"), ir.store_text("other"))});
+    children.new_lines(1).add(inline_function(context, conversion));
 
-    children.add(ir.raw("auto num() const noexcept -> size_type { return column_count_; }\n"
-                        "auto resolve(this auto const& self) { return self; }"));
-
-    children.new_lines(1).add(
-        ir.raw("auto slice(this auto const& self, size_type offset, size_type count) {\n"
-               "auto const& [...pointers, source_count] = "
-               "static_cast<ResolvedViewImpl const&>(self);\n"
-               "assert(offset <= source_count && count <= source_count - offset);\n"
-               "using Result = std::remove_cvref_t<decltype(self)>;\n"
-               "return Result{(pointers ? pointers + offset : nullptr)..., count};\n}"));
-
-    for (auto const member : context.declarations.items(
-             context.declarations.soas.members[context.declarations.soas.index(schema)])) {
-        auto const member_row{members.index(member)};
-        auto const name{context.text(members.name[member_row])};
-        if (members.kind[member_row] == SoaMemberKind::nested) {
-            auto const nested{context.for_declaration(schema).nested_declaration(member)};
-            std::vector<std::string> arguments;
-            for (auto const column : member_columns(context, model, members.name[member_row])) {
-                arguments.push_back(pointer_name(column));
-            }
-            arguments.push_back("column_count_");
-            children.new_lines(1).add(ir.raw("auto view_" + name + "() const -> " +
-                                             shared_view_type(context, nested, true) +
-                                             " { return {" + join(arguments, ", ") + "}; }"));
-        } else {
-            auto const path{storage.paths.append({}, members.name[member_row])};
-            auto const column{column_for(context, model, path)};
-            children.new_lines(1).add(ir.raw("auto " + name + "() const { return std::span{" +
-                                             pointer_name(column) + ", column_count_}; }"));
-        }
-    }
-    children.new_lines(1)
-        .add(ir.access(Access::private_))
-        .new_lines(1)
-        .add(ir.friend_declaration(
-            ir.strings.intern(implementation),
-            RecordKind::struct_,
-            ir.template_declaration({ir.value_template_parameter(ir.types.intern("bool"), {})})))
-        .new_lines(1);
-    for (auto const column : selected) {
-        children
-            .add(ir.instance_member(ir.types.intern(element_type(column) + "*"),
-                                    ir.strings.intern(pointer_name(column)),
-                                    ir.init_list({})))
-            .new_lines(1);
-    }
-    children.add(ir.instance_member(
-        ir.types.intern("size_type"), ir.strings.intern("column_count_"), ir.init_list({})));
+    children.append(view_accessor_nodes(context, model, true));
     auto const record{
         ir.record(ir.strings.intern(implementation), children.build(), RecordKind::struct_)};
     describe_compact_scope(context, record, schema);
-    ir.set_record_bases(record, {ir.types.intern("ioj::soa_storage_detail::ViewOperations")});
+    ir.set_record_bases(record, {ir.types.intern(base)});
     ir.set_record_template(record,
                            ir.template_declaration({ir.value_template_parameter(
                                ir.types.intern("bool"), ir.strings.intern("Const"))}));
@@ -554,7 +489,6 @@ auto compact_view_node(LoweringContext& context, SingleAllocationModelId model) 
     auto& ir{context.ir};
     auto const& models{ir.lowering.single_allocation_models};
     auto const& columns{ir.lowering.single_allocation_columns};
-    auto const& members{context.declarations.soa_members};
     auto const model_row{models.index(model)};
     auto const schema{models.schema[model_row]};
     auto const schema_row{context.declarations.soas.index(schema)};
@@ -613,65 +547,7 @@ auto compact_view_node(LoweringContext& context, SingleAllocationModelId model) 
             ir.types.intern("bool"), ir.strings.intern("Enabled"), ir.named("Const"))}));
     ir.set_function_requires_clause(conversion, ir.named("Enabled"));
     children.new_lines(1).add(inline_function(context, conversion));
-    auto accessor = [&](std::string_view name, Expr value, CppTypeId type = {}) {
-        auto const function{
-            make_function(ir, name, "auto", {}, {ir.return_stmt(value)}, FunctionReceiver::const_)};
-        if (type.value != 0) {
-            ir.set_function_return_type(function, type, ReturnSyntax::trailing);
-        }
-        children.new_lines(1).add(compact_function(context, function));
-    };
-    auto column_span = [&](SingleAllocationColumnId column) {
-        auto const index{std::find(selected.begin(), selected.end(), column) - selected.begin()};
-        if (strided) {
-            return ir.call(ir.named("this->column"), {ir.literal(std::to_string(index))});
-        }
-        return ir.call(ir.template_id(ir.named("this->template column"),
-                                      {ir.type_reference(columns.type[columns.index(column)])}),
-                       {layout_column(context, column)});
-    };
-    for (auto const member :
-         context.declarations.items(context.declarations.soas.members[schema_row])) {
-        auto const row{members.index(member)};
-        auto const name{context.text(members.name[row])};
-        if (members.kind[row] == SoaMemberKind::nested) {
-            auto const nested{context.for_declaration(schema).nested_declaration(member)};
-            auto const nested_columns{member_columns(context, model, members.name[row])};
-            auto const nested_strided{is_strided_schema(context, nested)};
-            auto const type{ir.types.intern(shared_view_type(context, nested, !nested_strided))};
-            if (nested_strided && strided) {
-                accessor("view_" + name,
-                         ir.init_list({ir.call(ir.member_access(column_span(nested_columns.front()),
-                                                                "data")),
-                                       ir.call(ir.named("this->byte_stride")),
-                                       ir.call(ir.named("this->num"))}),
-                         type);
-            } else if (nested_strided) {
-                auto const factory{ir.template_id(
-                    ir.named("ioj::soa_storage_detail::make_strided_view"),
-                    {ir.type_reference(type), ir.type_reference(ir.types.intern("Layout"))})};
-                accessor("view_" + name,
-                         ir.call(factory,
-                                 {ir.named("this->state_"),
-                                  ir.named("this->offset_"),
-                                  ir.call(ir.named("this->num")),
-                                  layout_column(context, nested_columns[0]),
-                                  layout_column(context, nested_columns[1])}),
-                         type);
-            } else {
-                std::vector<Expr> pointers;
-                for (auto const column : nested_columns) {
-                    pointers.push_back(ir.call(ir.member_access(column_span(column), "data")));
-                }
-                pointers.push_back(ir.call(ir.named("this->num")));
-                accessor("view_" + name, ir.init_list(pointers), type);
-            }
-        } else {
-            auto const column{
-                column_for(context, model, ir.lowering.paths.append({}, members.name[row]))};
-            accessor(name, column_span(column));
-        }
-    }
+    children.append(view_accessor_nodes(context, model, false));
     auto const record{
         ir.record(ir.strings.intern("ViewImpl"), children.build(), RecordKind::struct_)};
     describe_compact_scope(context, record, schema);
@@ -724,6 +600,7 @@ auto emit_single_allocation_layout(LoweringContext& context, SingleAllocationMod
     ir.set_record_bases(layout, {base});
     std::vector<StringId> inherited;
     for (auto const name : {"ColumnLayouts",
+                            "column_types",
                             "metadata",
                             "num_columns",
                             "size_type",
@@ -762,11 +639,10 @@ auto storage_implementation_nodes(LoweringContext& context, SingleAllocationMode
         .new_lines(1)
         .add(ir.access(Access::protected_))
         .new_lines(1)
-        .add(data_pointers_node(context, model))
-        .new_lines(1)
-        .add(ir.access(Access::private_))
-        .new_lines(1)
-        .append(column_pointer_nodes(context));
+        .add(ir.using_declaration(
+            ir.strings.intern("DataPointers"),
+            ir.types.intern(scope + "::DataPointers<Byte>"),
+            ir.template_declaration({ir.type_template_parameter(ir.strings.intern("Byte"))})));
 
     return children.build();
 }
@@ -784,7 +660,11 @@ auto emit_single_allocation_views(LoweringContext& context,
         .add(ir.forward_declaration(ir.strings.intern("ConstView")))
         .new_lines(1);
     NodeListBuilder result{ir};
-    result.add(schema_node(context, model))
+    result.append(section_header(context, "Column pointers"))
+        .new_lines(1)
+        .add(data_pointers_node(context, model))
+        .new_lines(2)
+        .add(schema_node(context, model))
         .new_lines(2)
         .append(emit_resolved_views(context, model, source, declarations))
         .new_lines(2)
@@ -862,10 +742,13 @@ auto emit_single_allocation_container(LoweringContext& context,
                            SoaReceiver::owner,
                            context.text(owner_name))};
     children.new_lines(1).append(std::move(api.header));
-    children.new_lines(1).add(permutation_node(context, model));
     source.append(std::move(api.source)).new_lines(2);
     children.new_lines(1)
         .add(ir.access(Access::private_))
+        .new_lines(1)
+        .add(ir.friend_type(ir.types.intern("Operations")))
+        .new_lines(1)
+        .add(ir.friend_type(ir.types.intern("::ioj::soa_storage_detail::StorageRequirements")))
         .new_lines(1)
         .add(ir.instance_member(ir.types.intern("std::pmr::memory_resource*"),
                                 ir.strings.intern("resource_"),

@@ -83,7 +83,6 @@ auto build_single_allocation_model(LoweringContext& context, DeclarationHandle s
     std::vector<TypeDependencyId> dependencies{
         ir.types.dependency("assert", "cassert"),
         ir.types.dependency("memory_resource", "memory_resource"),
-        ir.types.dependency("apply_permutation", "ioj/soa_permutation.h"),
         ir.types.dependency("single_allocation_storage", "ioj/native_soa/storage.h")};
     std::vector<SingleAllocationColumnId> column_ids;
 

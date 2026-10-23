@@ -10,7 +10,6 @@
 #include "ioj/sim/entities/entity_id.h"
 #include "ioj/sim/lasers/laser_source.h"
 #include "ioj/single_allocation/layout.h"
-#include "ioj/soa_permutation.h"
 #include "ioj/vectors3f.h"
 
 #include <cassert>
@@ -63,6 +62,31 @@ struct Layout
     static constexpr std::size_t spawn_times_column{15};
 };
 
+/* **************************************** */
+// Column pointers
+/* **************************************** */
+template <typename Byte>
+struct DataPointers {
+    template <typename T>
+    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
+    Element<std::uint8_t>* active{};
+    Element<LaserSource>* sources{};
+    Element<float>* locations_xs{};
+    Element<float>* locations_ys{};
+    Element<float>* locations_zs{};
+    Element<float>* rotations_pitches{};
+    Element<float>* rotations_yaws{};
+    Element<float>* rotations_rolls{};
+    Element<float>* velocities_xs{};
+    Element<float>* velocities_ys{};
+    Element<float>* velocities_zs{};
+    Element<std::int32_t>* damages{};
+    Element<float>* lifetimes_remaining{};
+    Element<EntityId>* instigator_ids{};
+    Element<float>* initial_lifetimes{};
+    Element<float>* spawn_times{};
+};
+
 struct Schema {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
@@ -92,173 +116,52 @@ struct Schema {
 // Resolved views
 /* **************************************** */
 template <bool Const>
-struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
-    using size_type = std::uint32_t;
+struct ResolvedViewImpl
+    : ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const> {
+    using Base =
+        ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const>;
+    using Base::Base;
+    using Layout = ::ioj::sim::lasers::laser_entities::Layout;
     using view_type = ::ioj::sim::lasers::laser_entities::ResolvedView;
     using const_view_type = ::ioj::sim::lasers::laser_entities::ResolvedConstView;
     using soa_schema = ::ioj::sim::lasers::laser_entities::Schema;
-    template <typename T>
-    using Element = std::conditional_t<Const, T const, T>;
-    ResolvedViewImpl() = default;
-    ResolvedViewImpl(Element<std::uint8_t>* active,
-                     Element<ioj::sim::LaserSource>* sources,
-                     Element<float>* locations_xs,
-                     Element<float>* locations_ys,
-                     Element<float>* locations_zs,
-                     Element<float>* rotations_pitches,
-                     Element<float>* rotations_yaws,
-                     Element<float>* rotations_rolls,
-                     Element<float>* velocities_xs,
-                     Element<float>* velocities_ys,
-                     Element<float>* velocities_zs,
-                     Element<std::int32_t>* damages,
-                     Element<float>* lifetimes_remaining,
-                     Element<EntityId>* instigator_ids,
-                     Element<float>* initial_lifetimes,
-                     Element<float>* spawn_times,
-                     size_type column_count)
-        : active_{active}
-        , sources_{sources}
-        , locations_xs_{locations_xs}
-        , locations_ys_{locations_ys}
-        , locations_zs_{locations_zs}
-        , rotations_pitches_{rotations_pitches}
-        , rotations_yaws_{rotations_yaws}
-        , rotations_rolls_{rotations_rolls}
-        , velocities_xs_{velocities_xs}
-        , velocities_ys_{velocities_ys}
-        , velocities_zs_{velocities_zs}
-        , damages_{damages}
-        , lifetimes_remaining_{lifetimes_remaining}
-        , instigator_ids_{instigator_ids}
-        , initial_lifetimes_{initial_lifetimes}
-        , spawn_times_{spawn_times}
-        , column_count_{column_count} {
-        ioj::soa_storage_detail::validate_column_pointers(column_count_,
-                                                          active_,
-                                                          sources_,
-                                                          locations_xs_,
-                                                          locations_ys_,
-                                                          locations_zs_,
-                                                          rotations_pitches_,
-                                                          rotations_yaws_,
-                                                          rotations_rolls_,
-                                                          velocities_xs_,
-                                                          velocities_ys_,
-                                                          velocities_zs_,
-                                                          damages_,
-                                                          lifetimes_remaining_,
-                                                          instigator_ids_,
-                                                          initial_lifetimes_,
-                                                          spawn_times_);
-    }
-    ResolvedViewImpl(std::span<Element<std::uint8_t>> active,
-                     std::span<Element<ioj::sim::LaserSource>> sources,
-                     std::span<Element<float>> locations_xs,
-                     std::span<Element<float>> locations_ys,
-                     std::span<Element<float>> locations_zs,
-                     std::span<Element<float>> rotations_pitches,
-                     std::span<Element<float>> rotations_yaws,
-                     std::span<Element<float>> rotations_rolls,
-                     std::span<Element<float>> velocities_xs,
-                     std::span<Element<float>> velocities_ys,
-                     std::span<Element<float>> velocities_zs,
-                     std::span<Element<std::int32_t>> damages,
-                     std::span<Element<float>> lifetimes_remaining,
-                     std::span<Element<EntityId>> instigator_ids,
-                     std::span<Element<float>> initial_lifetimes,
-                     std::span<Element<float>> spawn_times)
-        : ResolvedViewImpl{active.data(),
-                           sources.data(),
-                           locations_xs.data(),
-                           locations_ys.data(),
-                           locations_zs.data(),
-                           rotations_pitches.data(),
-                           rotations_yaws.data(),
-                           rotations_rolls.data(),
-                           velocities_xs.data(),
-                           velocities_ys.data(),
-                           velocities_zs.data(),
-                           damages.data(),
-                           lifetimes_remaining.data(),
-                           instigator_ids.data(),
-                           initial_lifetimes.data(),
-                           spawn_times.data(),
-                           ioj::soa_storage_detail::checked_row_count(active.size())} {
-        ioj::soa_storage_detail::validate_column_sizes(column_count_,
-                                                       active,
-                                                       sources,
-                                                       locations_xs,
-                                                       locations_ys,
-                                                       locations_zs,
-                                                       rotations_pitches,
-                                                       rotations_yaws,
-                                                       rotations_rolls,
-                                                       velocities_xs,
-                                                       velocities_ys,
-                                                       velocities_zs,
-                                                       damages,
-                                                       lifetimes_remaining,
-                                                       instigator_ids,
-                                                       initial_lifetimes,
-                                                       spawn_times);
-    }
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
-    {
-        auto& [... destination] = *this;
-        auto const& [... source] = other;
-        ((destination = source), ...);
-    }
-    auto num() const noexcept -> size_type { return column_count_; }
-    auto resolve(this auto const& self) { return self; }
-    auto slice(this auto const& self, size_type offset, size_type count) {
-        auto const& [... pointers, source_count] = static_cast<ResolvedViewImpl const&>(self);
-        assert(offset <= source_count && count <= source_count - offset);
-        using Result = std::remove_cvref_t<decltype(self)>;
-        return Result{(pointers ? pointers + offset : nullptr)..., count};
-    }
-    auto active() const { return std::span{active_, column_count_}; }
-    auto sources() const { return std::span{sources_, column_count_}; }
+        : Base{other} {}
+    auto active() const { return this->template column<Layout::active_column>(); }
+    auto sources() const { return this->template column<Layout::sources_column>(); }
     auto view_locations() const -> std::
         conditional_t<Const, ::ioj::vectors3f::ResolvedConstView, ::ioj::vectors3f::ResolvedView> {
-        return {locations_xs_, locations_ys_, locations_zs_, column_count_};
+        return {this->columns_.locations_xs,
+                this->columns_.locations_ys,
+                this->columns_.locations_zs,
+                this->num()};
     }
     auto view_rotations() const -> std::conditional_t<Const,
                                                       ::ioj::rotators3f::ResolvedConstView,
                                                       ::ioj::rotators3f::ResolvedView> {
-        return {rotations_pitches_, rotations_yaws_, rotations_rolls_, column_count_};
+        return {this->columns_.rotations_pitches,
+                this->columns_.rotations_yaws,
+                this->columns_.rotations_rolls,
+                this->num()};
     }
     auto view_velocities() const -> std::
         conditional_t<Const, ::ioj::vectors3f::ResolvedConstView, ::ioj::vectors3f::ResolvedView> {
-        return {velocities_xs_, velocities_ys_, velocities_zs_, column_count_};
+        return {this->columns_.velocities_xs,
+                this->columns_.velocities_ys,
+                this->columns_.velocities_zs,
+                this->num()};
     }
-    auto damages() const { return std::span{damages_, column_count_}; }
-    auto lifetimes_remaining() const { return std::span{lifetimes_remaining_, column_count_}; }
-    auto instigator_ids() const { return std::span{instigator_ids_, column_count_}; }
-    auto initial_lifetimes() const { return std::span{initial_lifetimes_, column_count_}; }
-    auto spawn_times() const { return std::span{spawn_times_, column_count_}; }
-  private:
-    template <bool>
-    friend struct ResolvedViewImpl;
-    Element<std::uint8_t>* active_{};
-    Element<ioj::sim::LaserSource>* sources_{};
-    Element<float>* locations_xs_{};
-    Element<float>* locations_ys_{};
-    Element<float>* locations_zs_{};
-    Element<float>* rotations_pitches_{};
-    Element<float>* rotations_yaws_{};
-    Element<float>* rotations_rolls_{};
-    Element<float>* velocities_xs_{};
-    Element<float>* velocities_ys_{};
-    Element<float>* velocities_zs_{};
-    Element<std::int32_t>* damages_{};
-    Element<float>* lifetimes_remaining_{};
-    Element<EntityId>* instigator_ids_{};
-    Element<float>* initial_lifetimes_{};
-    Element<float>* spawn_times_{};
-    size_type column_count_{};
+    auto damages() const { return this->template column<Layout::damages_column>(); }
+    auto lifetimes_remaining() const {
+        return this->template column<Layout::lifetimes_remaining_column>();
+    }
+    auto instigator_ids() const { return this->template column<Layout::instigator_ids_column>(); }
+    auto initial_lifetimes() const {
+        return this->template column<Layout::initial_lifetimes_column>();
+    }
+    auto spawn_times() const { return this->template column<Layout::spawn_times_column>(); }
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;
@@ -522,37 +425,7 @@ struct LaserEntities
     }
   protected:
     template <typename Byte>
-    struct DataPointers {
-        template <typename T>
-        using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-        Element<std::uint8_t>* active{};
-        Element<LaserSource>* sources{};
-        Element<float>* locations_xs{};
-        Element<float>* locations_ys{};
-        Element<float>* locations_zs{};
-        Element<float>* rotations_pitches{};
-        Element<float>* rotations_yaws{};
-        Element<float>* rotations_rolls{};
-        Element<float>* velocities_xs{};
-        Element<float>* velocities_ys{};
-        Element<float>* velocities_zs{};
-        Element<std::int32_t>* damages{};
-        Element<float>* lifetimes_remaining{};
-        Element<EntityId>* instigator_ids{};
-        Element<float>* initial_lifetimes{};
-        Element<float>* spawn_times{};
-    };
-  private:
-    friend Operations;
-    friend ::ioj::soa_storage_detail::StorageRequirements;
-    /* **************************************** */
-    // Column pointers
-    /* **************************************** */
-    template <typename Byte>
-    static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
-        -> DataPointers<Byte> {
-        return Layout::make_data<DataPointers<Byte>>(data, blocks);
-    }
+    using DataPointers = ::ioj::sim::lasers::laser_entities::DataPointers<Byte>;
   public:
     auto active(this auto& self) { return self.get_view().active(); }
     auto sources(this auto& self) { return self.get_view().sources(); }
@@ -684,28 +557,9 @@ struct LaserEntities
             new_spawn_times);
         return index;
     }
-    void apply_permutation(std::span<size_type> indices) {
-        assert(indices.size() == num_);
-        auto const columns{get_data()};
-        auto const permute{ioj::ColumnPermutation{num_, indices}};
-        permute(columns.active,
-                columns.sources,
-                columns.locations_xs,
-                columns.locations_ys,
-                columns.locations_zs,
-                columns.rotations_pitches,
-                columns.rotations_yaws,
-                columns.rotations_rolls,
-                columns.velocities_xs,
-                columns.velocities_ys,
-                columns.velocities_zs,
-                columns.damages,
-                columns.lifetimes_remaining,
-                columns.instigator_ids,
-                columns.initial_lifetimes,
-                columns.spawn_times);
-    }
   private:
+    friend Operations;
+    friend ::ioj::soa_storage_detail::StorageRequirements;
     std::pmr::memory_resource* resource_{};
 };
 } // namespace ioj::sim::lasers

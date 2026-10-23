@@ -7,7 +7,6 @@
 #include "ioj/sim/entities/entity_type.h"
 #include "ioj/sim/levels/level_event_types.h"
 #include "ioj/single_allocation/layout.h"
-#include "ioj/soa_permutation.h"
 
 #include <cassert>
 #include <cstdint>
@@ -31,6 +30,18 @@ struct Layout
     static constexpr std::size_t counts_column{2};
 };
 
+/* **************************************** */
+// Column pointers
+/* **************************************** */
+template <typename Byte>
+struct DataPointers {
+    template <typename T>
+    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
+    Element<EntityType>* types{};
+    Element<std::int32_t>* offsets{};
+    Element<LevelEventCount>* counts{};
+};
+
 struct Schema {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
@@ -42,59 +53,22 @@ struct Schema {
 // Resolved views
 /* **************************************** */
 template <bool Const>
-struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
-    using size_type = std::uint32_t;
+struct ResolvedViewImpl
+    : ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const> {
+    using Base =
+        ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const>;
+    using Base::Base;
+    using Layout = ::ioj::sim::level_spawn_groups::Layout;
     using view_type = ::ioj::sim::level_spawn_groups::ResolvedView;
     using const_view_type = ::ioj::sim::level_spawn_groups::ResolvedConstView;
     using soa_schema = ::ioj::sim::level_spawn_groups::Schema;
-    template <typename T>
-    using Element = std::conditional_t<Const, T const, T>;
-    ResolvedViewImpl() = default;
-    ResolvedViewImpl(Element<ioj::sim::EntityType>* types,
-                     Element<std::int32_t>* offsets,
-                     Element<LevelEventCount>* counts,
-                     size_type column_count)
-        : types_{types}
-        , offsets_{offsets}
-        , counts_{counts}
-        , column_count_{column_count} {
-        ioj::soa_storage_detail::validate_column_pointers(column_count_, types_, offsets_, counts_);
-    }
-    ResolvedViewImpl(std::span<Element<ioj::sim::EntityType>> types,
-                     std::span<Element<std::int32_t>> offsets,
-                     std::span<Element<LevelEventCount>> counts)
-        : ResolvedViewImpl{types.data(),
-                           offsets.data(),
-                           counts.data(),
-                           ioj::soa_storage_detail::checked_row_count(types.size())} {
-        ioj::soa_storage_detail::validate_column_sizes(column_count_, types, offsets, counts);
-    }
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
-    {
-        auto& [... destination] = *this;
-        auto const& [... source] = other;
-        ((destination = source), ...);
-    }
-    auto num() const noexcept -> size_type { return column_count_; }
-    auto resolve(this auto const& self) { return self; }
-    auto slice(this auto const& self, size_type offset, size_type count) {
-        auto const& [... pointers, source_count] = static_cast<ResolvedViewImpl const&>(self);
-        assert(offset <= source_count && count <= source_count - offset);
-        using Result = std::remove_cvref_t<decltype(self)>;
-        return Result{(pointers ? pointers + offset : nullptr)..., count};
-    }
-    auto types() const { return std::span{types_, column_count_}; }
-    auto offsets() const { return std::span{offsets_, column_count_}; }
-    auto counts() const { return std::span{counts_, column_count_}; }
-  private:
-    template <bool>
-    friend struct ResolvedViewImpl;
-    Element<ioj::sim::EntityType>* types_{};
-    Element<std::int32_t>* offsets_{};
-    Element<LevelEventCount>* counts_{};
-    size_type column_count_{};
+        : Base{other} {}
+    auto types() const { return this->template column<Layout::types_column>(); }
+    auto offsets() const { return this->template column<Layout::offsets_column>(); }
+    auto counts() const { return this->template column<Layout::counts_column>(); }
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;
@@ -206,24 +180,7 @@ struct LevelSpawnGroups
     }
   protected:
     template <typename Byte>
-    struct DataPointers {
-        template <typename T>
-        using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-        Element<EntityType>* types{};
-        Element<std::int32_t>* offsets{};
-        Element<LevelEventCount>* counts{};
-    };
-  private:
-    friend Operations;
-    friend ::ioj::soa_storage_detail::StorageRequirements;
-    /* **************************************** */
-    // Column pointers
-    /* **************************************** */
-    template <typename Byte>
-    static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
-        -> DataPointers<Byte> {
-        return Layout::make_data<DataPointers<Byte>>(data, blocks);
-    }
+    using DataPointers = ::ioj::sim::level_spawn_groups::DataPointers<Byte>;
   public:
     auto types(this auto& self) { return self.get_view().types(); }
     auto offsets(this auto& self) { return self.get_view().offsets(); }
@@ -245,13 +202,9 @@ struct LevelSpawnGroups
         set(index, new_types, new_offsets, new_counts);
         return index;
     }
-    void apply_permutation(std::span<size_type> indices) {
-        assert(indices.size() == num_);
-        auto const columns{get_data()};
-        auto const permute{ioj::ColumnPermutation{num_, indices}};
-        permute(columns.types, columns.offsets, columns.counts);
-    }
   private:
+    friend Operations;
+    friend ::ioj::soa_storage_detail::StorageRequirements;
     std::pmr::memory_resource* resource_{};
 };
 } // namespace ioj::sim

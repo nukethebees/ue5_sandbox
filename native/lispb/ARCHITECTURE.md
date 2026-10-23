@@ -307,13 +307,15 @@ transferring storage when resources compare equal and copying columns otherwise.
 and assignment are deleted.
 
 `StorageOperations` coordinates lifetime, pointer access, copying, growth and removal using
-generated, typed column pointers. Generated flat pointer structures are initialized by
+generated, typed column pointers. Each schema declares one named `DataPointers<Byte>` aggregate,
+shared by its owner and resolved views. These aggregates are initialized by
 `ColumnLayouts::make_data()` expanding the element types in physical order. Aggregate expansion
 shares pointer offsetting and default construction. One generated `Schema::with_columns()`
 maps named source accessors into physical order for source pointers and column iteration.
 It never stores independently resizable columns. One row count and capacity govern growth,
 insertion, removal, copying, and permutation; equal-column-size validation is unnecessary inside
-the owner. Shared transfers expand matching pointer aggregates in physical column order.
+the owner. Shared transfers expand matching pointer aggregates in physical column order;
+permutation expands the same aggregate into `ColumnPermutation`.
 Row indices and counts use
 `std::uint32_t`; allocation
 bytes use `std::size_t`. Span lengths are checked before conversion to the row-count type.
@@ -331,7 +333,7 @@ move path; allocation growth and non-overlapping append use the copy path.
 ## Shared schema views
 
 Each schema has one snake-case namespace containing `Layout`, `Schema`,
-`View`, `ConstView`, `ResolvedView` and `ResolvedConstView`. Owners retain their declared names
+`DataPointers`, `View`, `ConstView`, `ResolvedView` and `ResolvedConstView`. Owners retain their declared names
 and expose `View` and `ConstView` aliases. Nested accessors return the child's shared view;
 the generator does not create types for individual occurrences of a nested schema.
 
@@ -341,6 +343,12 @@ schemas, including nested homogeneous groups. The existing layout guarantees eve
 separate arrays of the same element type. Float groups occupy 16 bytes on native x64; types whose
 stride cannot safely fit the compact encoding use a `std::size_t` byte stride and occupy 24 bytes.
 Mixed nested groups use the child's resolved view. Scalar accessors return `std::span`.
+
+`ResolvedViewBase` owns the schema's pointer aggregate and one row count. The layout's existing
+type pack supplies its pointer and span constructor signatures. Pack expansion shares validation,
+mutable-to-const conversion, slicing and indexed column access without repeating physical fields.
+Named accessors remain generated to preserve owner borrowing and representation-specific nested
+view return types; compact and resolved accessors use one generator implementation.
 
 All views remain trivially copyable and inherit `ViewOperations` for borrowing and slice convenience
 functions. Schema-specific accessors and custom methods are emitted once per representation.

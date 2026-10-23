@@ -5,7 +5,6 @@
 
 #include "ioj/native_soa/storage.h"
 #include "ioj/single_allocation/layout.h"
-#include "ioj/soa_permutation.h"
 
 #include "codegen/schema/packed_integer_value.h"
 
@@ -44,6 +43,22 @@ struct Layout
     static constexpr std::size_t weighted_slack_bytes_column{6};
 };
 
+/* **************************************** */
+// Column pointers
+/* **************************************** */
+template <typename Byte>
+struct DataPointers {
+    template <typename T>
+    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
+    Element<std::optional<std::size_t>>* component{};
+    Element<std::optional<lispb::codegen::PackedIntegerValue>>* value{};
+    Element<std::uint64_t>* weight{};
+    Element<std::optional<std::uint64_t>>* extent_bytes{};
+    Element<std::optional<std::uint64_t>>* slack_bytes{};
+    Element<std::optional<std::uint64_t>>* weighted_extent_bytes{};
+    Element<std::optional<std::uint64_t>>* weighted_slack_bytes{};
+};
+
 struct Schema {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
@@ -61,97 +76,30 @@ struct Schema {
 // Resolved views
 /* **************************************** */
 template <bool Const>
-struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
-    using size_type = std::uint32_t;
+struct ResolvedViewImpl
+    : ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const> {
+    using Base =
+        ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const>;
+    using Base::Base;
+    using Layout = ::ioj::layout::distribution_entry_table::Layout;
     using view_type = ::ioj::layout::distribution_entry_table::ResolvedView;
     using const_view_type = ::ioj::layout::distribution_entry_table::ResolvedConstView;
     using soa_schema = ::ioj::layout::distribution_entry_table::Schema;
-    template <typename T>
-    using Element = std::conditional_t<Const, T const, T>;
-    ResolvedViewImpl() = default;
-    ResolvedViewImpl(Element<std::optional<std::size_t>>* component,
-                     Element<std::optional<lispb::codegen::PackedIntegerValue>>* value,
-                     Element<std::uint64_t>* weight,
-                     Element<std::optional<std::uint64_t>>* extent_bytes,
-                     Element<std::optional<std::uint64_t>>* slack_bytes,
-                     Element<std::optional<std::uint64_t>>* weighted_extent_bytes,
-                     Element<std::optional<std::uint64_t>>* weighted_slack_bytes,
-                     size_type column_count)
-        : component_{component}
-        , value_{value}
-        , weight_{weight}
-        , extent_bytes_{extent_bytes}
-        , slack_bytes_{slack_bytes}
-        , weighted_extent_bytes_{weighted_extent_bytes}
-        , weighted_slack_bytes_{weighted_slack_bytes}
-        , column_count_{column_count} {
-        ioj::soa_storage_detail::validate_column_pointers(column_count_,
-                                                          component_,
-                                                          value_,
-                                                          weight_,
-                                                          extent_bytes_,
-                                                          slack_bytes_,
-                                                          weighted_extent_bytes_,
-                                                          weighted_slack_bytes_);
-    }
-    ResolvedViewImpl(std::span<Element<std::optional<std::size_t>>> component,
-                     std::span<Element<std::optional<lispb::codegen::PackedIntegerValue>>> value,
-                     std::span<Element<std::uint64_t>> weight,
-                     std::span<Element<std::optional<std::uint64_t>>> extent_bytes,
-                     std::span<Element<std::optional<std::uint64_t>>> slack_bytes,
-                     std::span<Element<std::optional<std::uint64_t>>> weighted_extent_bytes,
-                     std::span<Element<std::optional<std::uint64_t>>> weighted_slack_bytes)
-        : ResolvedViewImpl{component.data(),
-                           value.data(),
-                           weight.data(),
-                           extent_bytes.data(),
-                           slack_bytes.data(),
-                           weighted_extent_bytes.data(),
-                           weighted_slack_bytes.data(),
-                           ioj::soa_storage_detail::checked_row_count(component.size())} {
-        ioj::soa_storage_detail::validate_column_sizes(column_count_,
-                                                       component,
-                                                       value,
-                                                       weight,
-                                                       extent_bytes,
-                                                       slack_bytes,
-                                                       weighted_extent_bytes,
-                                                       weighted_slack_bytes);
-    }
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
-    {
-        auto& [... destination] = *this;
-        auto const& [... source] = other;
-        ((destination = source), ...);
+        : Base{other} {}
+    auto component() const { return this->template column<Layout::component_column>(); }
+    auto value() const { return this->template column<Layout::value_column>(); }
+    auto weight() const { return this->template column<Layout::weight_column>(); }
+    auto extent_bytes() const { return this->template column<Layout::extent_bytes_column>(); }
+    auto slack_bytes() const { return this->template column<Layout::slack_bytes_column>(); }
+    auto weighted_extent_bytes() const {
+        return this->template column<Layout::weighted_extent_bytes_column>();
     }
-    auto num() const noexcept -> size_type { return column_count_; }
-    auto resolve(this auto const& self) { return self; }
-    auto slice(this auto const& self, size_type offset, size_type count) {
-        auto const& [... pointers, source_count] = static_cast<ResolvedViewImpl const&>(self);
-        assert(offset <= source_count && count <= source_count - offset);
-        using Result = std::remove_cvref_t<decltype(self)>;
-        return Result{(pointers ? pointers + offset : nullptr)..., count};
+    auto weighted_slack_bytes() const {
+        return this->template column<Layout::weighted_slack_bytes_column>();
     }
-    auto component() const { return std::span{component_, column_count_}; }
-    auto value() const { return std::span{value_, column_count_}; }
-    auto weight() const { return std::span{weight_, column_count_}; }
-    auto extent_bytes() const { return std::span{extent_bytes_, column_count_}; }
-    auto slack_bytes() const { return std::span{slack_bytes_, column_count_}; }
-    auto weighted_extent_bytes() const { return std::span{weighted_extent_bytes_, column_count_}; }
-    auto weighted_slack_bytes() const { return std::span{weighted_slack_bytes_, column_count_}; }
-  private:
-    template <bool>
-    friend struct ResolvedViewImpl;
-    Element<std::optional<std::size_t>>* component_{};
-    Element<std::optional<lispb::codegen::PackedIntegerValue>>* value_{};
-    Element<std::uint64_t>* weight_{};
-    Element<std::optional<std::uint64_t>>* extent_bytes_{};
-    Element<std::optional<std::uint64_t>>* slack_bytes_{};
-    Element<std::optional<std::uint64_t>>* weighted_extent_bytes_{};
-    Element<std::optional<std::uint64_t>>* weighted_slack_bytes_{};
-    size_type column_count_{};
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;
@@ -303,28 +251,7 @@ struct DistributionEntryTable
     }
   protected:
     template <typename Byte>
-    struct DataPointers {
-        template <typename T>
-        using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-        Element<std::optional<std::size_t>>* component{};
-        Element<std::optional<lispb::codegen::PackedIntegerValue>>* value{};
-        Element<std::uint64_t>* weight{};
-        Element<std::optional<std::uint64_t>>* extent_bytes{};
-        Element<std::optional<std::uint64_t>>* slack_bytes{};
-        Element<std::optional<std::uint64_t>>* weighted_extent_bytes{};
-        Element<std::optional<std::uint64_t>>* weighted_slack_bytes{};
-    };
-  private:
-    friend Operations;
-    friend ::ioj::soa_storage_detail::StorageRequirements;
-    /* **************************************** */
-    // Column pointers
-    /* **************************************** */
-    template <typename Byte>
-    static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
-        -> DataPointers<Byte> {
-        return Layout::make_data<DataPointers<Byte>>(data, blocks);
-    }
+    using DataPointers = ::ioj::layout::distribution_entry_table::DataPointers<Byte>;
   public:
     auto component(this auto& self) { return self.get_view().component(); }
     auto value(this auto& self) { return self.get_view().value(); }
@@ -369,19 +296,9 @@ struct DistributionEntryTable
             new_weighted_slack_bytes);
         return index;
     }
-    void apply_permutation(std::span<size_type> indices) {
-        assert(indices.size() == num_);
-        auto const columns{get_data()};
-        auto const permute{ioj::ColumnPermutation{num_, indices}};
-        permute(columns.component,
-                columns.value,
-                columns.weight,
-                columns.extent_bytes,
-                columns.slack_bytes,
-                columns.weighted_extent_bytes,
-                columns.weighted_slack_bytes);
-    }
   private:
+    friend Operations;
+    friend ::ioj::soa_storage_detail::StorageRequirements;
     std::pmr::memory_resource* resource_{};
 };
 } // namespace ioj::layout

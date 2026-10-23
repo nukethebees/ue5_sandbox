@@ -141,6 +141,7 @@ struct LayoutCursor {
 
 template <typename... Ts>
 struct ColumnLayouts {
+    using column_types = ColumnLayouts;
     using size_type = std::uint32_t;
     using byte_size_type = std::size_t;
     static constexpr auto num_columns{sizeof...(Ts)};

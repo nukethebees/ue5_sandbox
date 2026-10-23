@@ -269,6 +269,14 @@ TEST(NativeSoa, NestedEquivalentValuesSupportOwnerAndMutableViewRowOperations) {
 }
 
 TEST(NativeSoa, ResolvedViewsBorrowColumnsAndPreserveNestedLogicalApi) {
+    static_assert(std::is_trivially_copyable_v<api_owner::ResolvedView>);
+    static_assert(std::is_trivially_copyable_v<api_owner::ResolvedConstView>);
+    static_assert(std::is_standard_layout_v<api_owner::ResolvedView>);
+    static_assert(std::is_standard_layout_v<api_owner::ResolvedConstView>);
+    static_assert(sizeof(api_owner::ResolvedView) == 5 * sizeof(void*));
+    static_assert(sizeof(api_owner::ResolvedConstView) == sizeof(api_owner::ResolvedView));
+    static_assert(std::is_convertible_v<api_owner::ResolvedView, api_owner::ResolvedConstView>);
+    static_assert(!std::is_convertible_v<api_owner::ResolvedConstView, api_owner::ResolvedView>);
     pmr_test_support::AllocationState state;
     pmr_test_support::CountingResource resource{state};
     ApiOwner owner{resource};

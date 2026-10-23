@@ -8,7 +8,6 @@
 #include "ioj/layout/analysis/row_range.hpp"
 #include "ioj/native_soa/storage.h"
 #include "ioj/single_allocation/layout.h"
-#include "ioj/soa_permutation.h"
 
 #include <cassert>
 #include <cstdint>
@@ -49,6 +48,25 @@ struct Layout
     static constexpr std::size_t expected_selected_slack_bytes_column{9};
 };
 
+/* **************************************** */
+// Column pointers
+/* **************************************** */
+template <typename Byte>
+struct DataPointers {
+    template <typename T>
+    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
+    Element<AnalysisId>* analysis{};
+    Element<RowRange>* entries{};
+    Element<std::uint64_t>* element_count{};
+    Element<std::optional<std::uint64_t>>* total_weight{};
+    Element<std::optional<std::uint64_t>>* total_extent_bytes{};
+    Element<std::optional<std::uint64_t>>* total_slack_bytes{};
+    Element<std::optional<long double>>* expected_extent_bytes{};
+    Element<std::optional<long double>>* expected_slack_bytes{};
+    Element<std::optional<long double>>* expected_selected_extent_bytes{};
+    Element<std::optional<long double>>* expected_selected_slack_bytes{};
+};
+
 struct Schema {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
@@ -69,125 +87,41 @@ struct Schema {
 // Resolved views
 /* **************************************** */
 template <bool Const>
-struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
-    using size_type = std::uint32_t;
+struct ResolvedViewImpl
+    : ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const> {
+    using Base =
+        ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const>;
+    using Base::Base;
+    using Layout = ::ioj::layout::distribution_table::Layout;
     using view_type = ::ioj::layout::distribution_table::ResolvedView;
     using const_view_type = ::ioj::layout::distribution_table::ResolvedConstView;
     using soa_schema = ::ioj::layout::distribution_table::Schema;
-    template <typename T>
-    using Element = std::conditional_t<Const, T const, T>;
-    ResolvedViewImpl() = default;
-    ResolvedViewImpl(Element<ioj::layout::AnalysisId>* analysis,
-                     Element<ioj::layout::RowRange>* entries,
-                     Element<std::uint64_t>* element_count,
-                     Element<std::optional<std::uint64_t>>* total_weight,
-                     Element<std::optional<std::uint64_t>>* total_extent_bytes,
-                     Element<std::optional<std::uint64_t>>* total_slack_bytes,
-                     Element<std::optional<long double>>* expected_extent_bytes,
-                     Element<std::optional<long double>>* expected_slack_bytes,
-                     Element<std::optional<long double>>* expected_selected_extent_bytes,
-                     Element<std::optional<long double>>* expected_selected_slack_bytes,
-                     size_type column_count)
-        : analysis_{analysis}
-        , entries_{entries}
-        , element_count_{element_count}
-        , total_weight_{total_weight}
-        , total_extent_bytes_{total_extent_bytes}
-        , total_slack_bytes_{total_slack_bytes}
-        , expected_extent_bytes_{expected_extent_bytes}
-        , expected_slack_bytes_{expected_slack_bytes}
-        , expected_selected_extent_bytes_{expected_selected_extent_bytes}
-        , expected_selected_slack_bytes_{expected_selected_slack_bytes}
-        , column_count_{column_count} {
-        ioj::soa_storage_detail::validate_column_pointers(column_count_,
-                                                          analysis_,
-                                                          entries_,
-                                                          element_count_,
-                                                          total_weight_,
-                                                          total_extent_bytes_,
-                                                          total_slack_bytes_,
-                                                          expected_extent_bytes_,
-                                                          expected_slack_bytes_,
-                                                          expected_selected_extent_bytes_,
-                                                          expected_selected_slack_bytes_);
-    }
-    ResolvedViewImpl(std::span<Element<ioj::layout::AnalysisId>> analysis,
-                     std::span<Element<ioj::layout::RowRange>> entries,
-                     std::span<Element<std::uint64_t>> element_count,
-                     std::span<Element<std::optional<std::uint64_t>>> total_weight,
-                     std::span<Element<std::optional<std::uint64_t>>> total_extent_bytes,
-                     std::span<Element<std::optional<std::uint64_t>>> total_slack_bytes,
-                     std::span<Element<std::optional<long double>>> expected_extent_bytes,
-                     std::span<Element<std::optional<long double>>> expected_slack_bytes,
-                     std::span<Element<std::optional<long double>>> expected_selected_extent_bytes,
-                     std::span<Element<std::optional<long double>>> expected_selected_slack_bytes)
-        : ResolvedViewImpl{analysis.data(),
-                           entries.data(),
-                           element_count.data(),
-                           total_weight.data(),
-                           total_extent_bytes.data(),
-                           total_slack_bytes.data(),
-                           expected_extent_bytes.data(),
-                           expected_slack_bytes.data(),
-                           expected_selected_extent_bytes.data(),
-                           expected_selected_slack_bytes.data(),
-                           ioj::soa_storage_detail::checked_row_count(analysis.size())} {
-        ioj::soa_storage_detail::validate_column_sizes(column_count_,
-                                                       analysis,
-                                                       entries,
-                                                       element_count,
-                                                       total_weight,
-                                                       total_extent_bytes,
-                                                       total_slack_bytes,
-                                                       expected_extent_bytes,
-                                                       expected_slack_bytes,
-                                                       expected_selected_extent_bytes,
-                                                       expected_selected_slack_bytes);
-    }
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
-    {
-        auto& [... destination] = *this;
-        auto const& [... source] = other;
-        ((destination = source), ...);
+        : Base{other} {}
+    auto analysis() const { return this->template column<Layout::analysis_column>(); }
+    auto entries() const { return this->template column<Layout::entries_column>(); }
+    auto element_count() const { return this->template column<Layout::element_count_column>(); }
+    auto total_weight() const { return this->template column<Layout::total_weight_column>(); }
+    auto total_extent_bytes() const {
+        return this->template column<Layout::total_extent_bytes_column>();
     }
-    auto num() const noexcept -> size_type { return column_count_; }
-    auto resolve(this auto const& self) { return self; }
-    auto slice(this auto const& self, size_type offset, size_type count) {
-        auto const& [... pointers, source_count] = static_cast<ResolvedViewImpl const&>(self);
-        assert(offset <= source_count && count <= source_count - offset);
-        using Result = std::remove_cvref_t<decltype(self)>;
-        return Result{(pointers ? pointers + offset : nullptr)..., count};
+    auto total_slack_bytes() const {
+        return this->template column<Layout::total_slack_bytes_column>();
     }
-    auto analysis() const { return std::span{analysis_, column_count_}; }
-    auto entries() const { return std::span{entries_, column_count_}; }
-    auto element_count() const { return std::span{element_count_, column_count_}; }
-    auto total_weight() const { return std::span{total_weight_, column_count_}; }
-    auto total_extent_bytes() const { return std::span{total_extent_bytes_, column_count_}; }
-    auto total_slack_bytes() const { return std::span{total_slack_bytes_, column_count_}; }
-    auto expected_extent_bytes() const { return std::span{expected_extent_bytes_, column_count_}; }
-    auto expected_slack_bytes() const { return std::span{expected_slack_bytes_, column_count_}; }
+    auto expected_extent_bytes() const {
+        return this->template column<Layout::expected_extent_bytes_column>();
+    }
+    auto expected_slack_bytes() const {
+        return this->template column<Layout::expected_slack_bytes_column>();
+    }
     auto expected_selected_extent_bytes() const {
-        return std::span{expected_selected_extent_bytes_, column_count_};
+        return this->template column<Layout::expected_selected_extent_bytes_column>();
     }
     auto expected_selected_slack_bytes() const {
-        return std::span{expected_selected_slack_bytes_, column_count_};
+        return this->template column<Layout::expected_selected_slack_bytes_column>();
     }
-  private:
-    template <bool>
-    friend struct ResolvedViewImpl;
-    Element<ioj::layout::AnalysisId>* analysis_{};
-    Element<ioj::layout::RowRange>* entries_{};
-    Element<std::uint64_t>* element_count_{};
-    Element<std::optional<std::uint64_t>>* total_weight_{};
-    Element<std::optional<std::uint64_t>>* total_extent_bytes_{};
-    Element<std::optional<std::uint64_t>>* total_slack_bytes_{};
-    Element<std::optional<long double>>* expected_extent_bytes_{};
-    Element<std::optional<long double>>* expected_slack_bytes_{};
-    Element<std::optional<long double>>* expected_selected_extent_bytes_{};
-    Element<std::optional<long double>>* expected_selected_slack_bytes_{};
-    size_type column_count_{};
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;
@@ -364,31 +298,7 @@ struct DistributionTable
     }
   protected:
     template <typename Byte>
-    struct DataPointers {
-        template <typename T>
-        using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-        Element<AnalysisId>* analysis{};
-        Element<RowRange>* entries{};
-        Element<std::uint64_t>* element_count{};
-        Element<std::optional<std::uint64_t>>* total_weight{};
-        Element<std::optional<std::uint64_t>>* total_extent_bytes{};
-        Element<std::optional<std::uint64_t>>* total_slack_bytes{};
-        Element<std::optional<long double>>* expected_extent_bytes{};
-        Element<std::optional<long double>>* expected_slack_bytes{};
-        Element<std::optional<long double>>* expected_selected_extent_bytes{};
-        Element<std::optional<long double>>* expected_selected_slack_bytes{};
-    };
-  private:
-    friend Operations;
-    friend ::ioj::soa_storage_detail::StorageRequirements;
-    /* **************************************** */
-    // Column pointers
-    /* **************************************** */
-    template <typename Byte>
-    static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
-        -> DataPointers<Byte> {
-        return Layout::make_data<DataPointers<Byte>>(data, blocks);
-    }
+    using DataPointers = ::ioj::layout::distribution_table::DataPointers<Byte>;
   public:
     auto analysis(this auto& self) { return self.get_view().analysis(); }
     auto entries(this auto& self) { return self.get_view().entries(); }
@@ -453,22 +363,9 @@ struct DistributionTable
         return index;
     }
     DistributionId append(AnalysisId owner, RowRange samples, std::uint64_t count);
-    void apply_permutation(std::span<size_type> indices) {
-        assert(indices.size() == num_);
-        auto const columns{get_data()};
-        auto const permute{ioj::ColumnPermutation{num_, indices}};
-        permute(columns.analysis,
-                columns.entries,
-                columns.element_count,
-                columns.total_weight,
-                columns.total_extent_bytes,
-                columns.total_slack_bytes,
-                columns.expected_extent_bytes,
-                columns.expected_slack_bytes,
-                columns.expected_selected_extent_bytes,
-                columns.expected_selected_slack_bytes);
-    }
   private:
+    friend Operations;
+    friend ::ioj::soa_storage_detail::StorageRequirements;
     std::pmr::memory_resource* resource_{};
 };
 } // namespace ioj::layout

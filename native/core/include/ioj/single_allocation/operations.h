@@ -3,6 +3,7 @@
 #include <ioj/single_allocation/concepts.h>
 #include <ioj/single_allocation/removal.h>
 #include <ioj/single_allocation/view.h>
+#include <ioj/soa_permutation.h>
 
 #include <algorithm>
 #include <cassert>
@@ -60,6 +61,11 @@ struct StorageOperations {
     /* **************************************** */
     // Column access
     /* **************************************** */
+    template <typename Byte, StorageOwner Self>
+    auto make_data_unchecked(this Self const&, Byte* data, std::size_t blocks) noexcept {
+        return Self::Layout::template make_data<typename Self::template DataPointers<Byte>>(data,
+                                                                                            blocks);
+    }
     template <StorageOwner Self>
     auto get_data(this Self& self) noexcept {
         using Byte = std::conditional_t<std::is_const_v<Self>, std::byte const, std::byte>;
@@ -364,6 +370,13 @@ struct StorageOperations {
         }
         self.num_ = new_num;
         return first;
+    }
+    template <StorageOwner Self>
+        requires (!std::is_const_v<Self>)
+    void apply_permutation(this Self& self, std::span<StorageSize<Self>> indices) {
+        assert(indices.size() == self.num_);
+        auto const& [... columns] = self.get_data();
+        ColumnPermutation{self.num_, indices}(columns...);
     }
     template <typename Self, typename Compare>
     void sort(this Self& self, Compare&& compare, std::span<std::uint32_t> indices) {

@@ -7,7 +7,6 @@
 #include "ioj/sim/entities/entity_id.h"
 #include "ioj/sim/fighters/fighter_task_format.h"
 #include "ioj/single_allocation/layout.h"
-#include "ioj/soa_permutation.h"
 
 #include <cassert>
 #include <memory_resource>
@@ -31,6 +30,19 @@ struct Layout
     static constexpr std::size_t targets_column{3};
 };
 
+/* **************************************** */
+// Column pointers
+/* **************************************** */
+template <typename Byte>
+struct DataPointers {
+    template <typename T>
+    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
+    Element<EntityId>* entity_ids{};
+    Element<FighterOrder>* orders{};
+    Element<FighterTask>* tasks{};
+    Element<EntityId>* targets{};
+};
+
 struct Schema {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
@@ -42,67 +54,23 @@ struct Schema {
 // Resolved views
 /* **************************************** */
 template <bool Const>
-struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
-    using size_type = std::uint32_t;
+struct ResolvedViewImpl
+    : ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const> {
+    using Base =
+        ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const>;
+    using Base::Base;
+    using Layout = ::ioj::sim::fighter_order_queue::Layout;
     using view_type = ::ioj::sim::fighter_order_queue::ResolvedView;
     using const_view_type = ::ioj::sim::fighter_order_queue::ResolvedConstView;
     using soa_schema = ::ioj::sim::fighter_order_queue::Schema;
-    template <typename T>
-    using Element = std::conditional_t<Const, T const, T>;
-    ResolvedViewImpl() = default;
-    ResolvedViewImpl(Element<EntityId>* entity_ids,
-                     Element<FighterOrder>* orders,
-                     Element<FighterTask>* tasks,
-                     Element<EntityId>* targets,
-                     size_type column_count)
-        : entity_ids_{entity_ids}
-        , orders_{orders}
-        , tasks_{tasks}
-        , targets_{targets}
-        , column_count_{column_count} {
-        ioj::soa_storage_detail::validate_column_pointers(
-            column_count_, entity_ids_, orders_, tasks_, targets_);
-    }
-    ResolvedViewImpl(std::span<Element<EntityId>> entity_ids,
-                     std::span<Element<FighterOrder>> orders,
-                     std::span<Element<FighterTask>> tasks,
-                     std::span<Element<EntityId>> targets)
-        : ResolvedViewImpl{entity_ids.data(),
-                           orders.data(),
-                           tasks.data(),
-                           targets.data(),
-                           ioj::soa_storage_detail::checked_row_count(entity_ids.size())} {
-        ioj::soa_storage_detail::validate_column_sizes(
-            column_count_, entity_ids, orders, tasks, targets);
-    }
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
-    {
-        auto& [... destination] = *this;
-        auto const& [... source] = other;
-        ((destination = source), ...);
-    }
-    auto num() const noexcept -> size_type { return column_count_; }
-    auto resolve(this auto const& self) { return self; }
-    auto slice(this auto const& self, size_type offset, size_type count) {
-        auto const& [... pointers, source_count] = static_cast<ResolvedViewImpl const&>(self);
-        assert(offset <= source_count && count <= source_count - offset);
-        using Result = std::remove_cvref_t<decltype(self)>;
-        return Result{(pointers ? pointers + offset : nullptr)..., count};
-    }
-    auto entity_ids() const { return std::span{entity_ids_, column_count_}; }
-    auto orders() const { return std::span{orders_, column_count_}; }
-    auto tasks() const { return std::span{tasks_, column_count_}; }
-    auto targets() const { return std::span{targets_, column_count_}; }
-  private:
-    template <bool>
-    friend struct ResolvedViewImpl;
-    Element<EntityId>* entity_ids_{};
-    Element<FighterOrder>* orders_{};
-    Element<FighterTask>* tasks_{};
-    Element<EntityId>* targets_{};
-    size_type column_count_{};
+        : Base{other} {}
+    auto entity_ids() const { return this->template column<Layout::entity_ids_column>(); }
+    auto orders() const { return this->template column<Layout::orders_column>(); }
+    auto tasks() const { return this->template column<Layout::tasks_column>(); }
+    auto targets() const { return this->template column<Layout::targets_column>(); }
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;
@@ -221,25 +189,7 @@ struct FighterOrderQueue
     }
   protected:
     template <typename Byte>
-    struct DataPointers {
-        template <typename T>
-        using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-        Element<EntityId>* entity_ids{};
-        Element<FighterOrder>* orders{};
-        Element<FighterTask>* tasks{};
-        Element<EntityId>* targets{};
-    };
-  private:
-    friend Operations;
-    friend ::ioj::soa_storage_detail::StorageRequirements;
-    /* **************************************** */
-    // Column pointers
-    /* **************************************** */
-    template <typename Byte>
-    static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
-        -> DataPointers<Byte> {
-        return Layout::make_data<DataPointers<Byte>>(data, blocks);
-    }
+    using DataPointers = ::ioj::sim::fighter_order_queue::DataPointers<Byte>;
   public:
     auto entity_ids(this auto& self) { return self.get_view().entity_ids(); }
     auto orders(this auto& self) { return self.get_view().orders(); }
@@ -268,13 +218,9 @@ struct FighterOrderQueue
         queue.tasks()[index] = task;
         queue.targets()[index] = target;
     }
-    void apply_permutation(std::span<size_type> indices) {
-        assert(indices.size() == num_);
-        auto const columns{get_data()};
-        auto const permute{ioj::ColumnPermutation{num_, indices}};
-        permute(columns.entity_ids, columns.orders, columns.tasks, columns.targets);
-    }
   private:
+    friend Operations;
+    friend ::ioj::soa_storage_detail::StorageRequirements;
     std::pmr::memory_resource* resource_{};
 };
 } // namespace ioj::sim

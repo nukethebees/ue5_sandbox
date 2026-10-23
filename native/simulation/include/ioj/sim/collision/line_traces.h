@@ -6,7 +6,6 @@
 #include "ioj/math_types.h"
 #include "ioj/native_soa/storage.h"
 #include "ioj/single_allocation/layout.h"
-#include "ioj/soa_permutation.h"
 #include "ioj/vectors3f.h"
 
 #include <cassert>
@@ -33,6 +32,21 @@ struct Layout
     static constexpr std::size_t ends_zs_column{5};
 };
 
+/* **************************************** */
+// Column pointers
+/* **************************************** */
+template <typename Byte>
+struct DataPointers {
+    template <typename T>
+    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
+    Element<float>* starts_xs{};
+    Element<float>* starts_ys{};
+    Element<float>* starts_zs{};
+    Element<float>* ends_xs{};
+    Element<float>* ends_ys{};
+    Element<float>* ends_zs{};
+};
+
 struct Schema {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
@@ -51,81 +65,31 @@ struct Schema {
 // Resolved views
 /* **************************************** */
 template <bool Const>
-struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
-    using size_type = std::uint32_t;
+struct ResolvedViewImpl
+    : ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const> {
+    using Base =
+        ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const>;
+    using Base::Base;
+    using Layout = ::ioj::sim::line_traces::Layout;
     using view_type = ::ioj::sim::line_traces::ResolvedView;
     using const_view_type = ::ioj::sim::line_traces::ResolvedConstView;
     using soa_schema = ::ioj::sim::line_traces::Schema;
-    template <typename T>
-    using Element = std::conditional_t<Const, T const, T>;
-    ResolvedViewImpl() = default;
-    ResolvedViewImpl(Element<float>* starts_xs,
-                     Element<float>* starts_ys,
-                     Element<float>* starts_zs,
-                     Element<float>* ends_xs,
-                     Element<float>* ends_ys,
-                     Element<float>* ends_zs,
-                     size_type column_count)
-        : starts_xs_{starts_xs}
-        , starts_ys_{starts_ys}
-        , starts_zs_{starts_zs}
-        , ends_xs_{ends_xs}
-        , ends_ys_{ends_ys}
-        , ends_zs_{ends_zs}
-        , column_count_{column_count} {
-        ioj::soa_storage_detail::validate_column_pointers(
-            column_count_, starts_xs_, starts_ys_, starts_zs_, ends_xs_, ends_ys_, ends_zs_);
-    }
-    ResolvedViewImpl(std::span<Element<float>> starts_xs,
-                     std::span<Element<float>> starts_ys,
-                     std::span<Element<float>> starts_zs,
-                     std::span<Element<float>> ends_xs,
-                     std::span<Element<float>> ends_ys,
-                     std::span<Element<float>> ends_zs)
-        : ResolvedViewImpl{starts_xs.data(),
-                           starts_ys.data(),
-                           starts_zs.data(),
-                           ends_xs.data(),
-                           ends_ys.data(),
-                           ends_zs.data(),
-                           ioj::soa_storage_detail::checked_row_count(starts_xs.size())} {
-        ioj::soa_storage_detail::validate_column_sizes(
-            column_count_, starts_xs, starts_ys, starts_zs, ends_xs, ends_ys, ends_zs);
-    }
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
-    {
-        auto& [... destination] = *this;
-        auto const& [... source] = other;
-        ((destination = source), ...);
-    }
-    auto num() const noexcept -> size_type { return column_count_; }
-    auto resolve(this auto const& self) { return self; }
-    auto slice(this auto const& self, size_type offset, size_type count) {
-        auto const& [... pointers, source_count] = static_cast<ResolvedViewImpl const&>(self);
-        assert(offset <= source_count && count <= source_count - offset);
-        using Result = std::remove_cvref_t<decltype(self)>;
-        return Result{(pointers ? pointers + offset : nullptr)..., count};
-    }
+        : Base{other} {}
     auto view_starts() const -> std::
         conditional_t<Const, ::ioj::vectors3f::ResolvedConstView, ::ioj::vectors3f::ResolvedView> {
-        return {starts_xs_, starts_ys_, starts_zs_, column_count_};
+        return {this->columns_.starts_xs,
+                this->columns_.starts_ys,
+                this->columns_.starts_zs,
+                this->num()};
     }
     auto view_ends() const -> std::
         conditional_t<Const, ::ioj::vectors3f::ResolvedConstView, ::ioj::vectors3f::ResolvedView> {
-        return {ends_xs_, ends_ys_, ends_zs_, column_count_};
+        return {
+            this->columns_.ends_xs, this->columns_.ends_ys, this->columns_.ends_zs, this->num()};
     }
-  private:
-    template <bool>
-    friend struct ResolvedViewImpl;
-    Element<float>* starts_xs_{};
-    Element<float>* starts_ys_{};
-    Element<float>* starts_zs_{};
-    Element<float>* ends_xs_{};
-    Element<float>* ends_ys_{};
-    Element<float>* ends_zs_{};
-    size_type column_count_{};
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;
@@ -273,27 +237,7 @@ struct LineTraces
     }
   protected:
     template <typename Byte>
-    struct DataPointers {
-        template <typename T>
-        using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-        Element<float>* starts_xs{};
-        Element<float>* starts_ys{};
-        Element<float>* starts_zs{};
-        Element<float>* ends_xs{};
-        Element<float>* ends_ys{};
-        Element<float>* ends_zs{};
-    };
-  private:
-    friend Operations;
-    friend ::ioj::soa_storage_detail::StorageRequirements;
-    /* **************************************** */
-    // Column pointers
-    /* **************************************** */
-    template <typename Byte>
-    static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
-        -> DataPointers<Byte> {
-        return Layout::make_data<DataPointers<Byte>>(data, blocks);
-    }
+    using DataPointers = ::ioj::sim::line_traces::DataPointers<Byte>;
   public:
     auto view_starts(this auto& self) { return self.get_view().view_starts(); }
     auto view_ends(this auto& self) { return self.get_view().view_ends(); }
@@ -340,18 +284,9 @@ struct LineTraces
         set(index, new_starts, new_ends);
         return index;
     }
-    void apply_permutation(std::span<size_type> indices) {
-        assert(indices.size() == num_);
-        auto const columns{get_data()};
-        auto const permute{ioj::ColumnPermutation{num_, indices}};
-        permute(columns.starts_xs,
-                columns.starts_ys,
-                columns.starts_zs,
-                columns.ends_xs,
-                columns.ends_ys,
-                columns.ends_zs);
-    }
   private:
+    friend Operations;
+    friend ::ioj::soa_storage_detail::StorageRequirements;
     std::pmr::memory_resource* resource_{};
 };
 } // namespace ioj::sim

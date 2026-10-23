@@ -12,7 +12,6 @@
 #include "ioj/layout/analyzer/cache_capacity_analysis.hpp"
 #include "ioj/native_soa/storage.h"
 #include "ioj/single_allocation/layout.h"
-#include "ioj/soa_permutation.h"
 
 #include <cassert>
 #include <cstdint>
@@ -65,6 +64,31 @@ struct Layout
     static constexpr std::size_t capacity_slack_bytes_column{15};
 };
 
+/* **************************************** */
+// Column pointers
+/* **************************************** */
+template <typename Byte>
+struct DataPointers {
+    template <typename T>
+    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
+    Element<AnalysisId>* analysis{};
+    Element<RowRange>* selections{};
+    Element<std::uint64_t>* element_count{};
+    Element<std::uint64_t>* multiplicity{};
+    Element<PayloadFootprint>* bytes{};
+    Element<PayloadFootprint>* bits{};
+    Element<RegionFootprint>* cache{};
+    Element<RegionFootprint>* pages{};
+    Element<CacheCapacityAnalysis>* cache_capacity{};
+    Element<PackedAccessWaste>* packed_waste{};
+    Element<std::uint8_t>* footprint_exact{};
+    Element<std::optional<std::uint64_t>>* storage_bytes{};
+    Element<std::optional<std::uint64_t>>* full_logical_payload_bytes{};
+    Element<std::optional<std::uint64_t>>* unselected_payload_bytes{};
+    Element<std::optional<std::uint64_t>>* allocated_payload_bytes{};
+    Element<std::optional<std::uint64_t>>* capacity_slack_bytes{};
+};
+
 struct Schema {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
@@ -91,175 +115,43 @@ struct Schema {
 // Resolved views
 /* **************************************** */
 template <bool Const>
-struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
-    using size_type = std::uint32_t;
+struct ResolvedViewImpl
+    : ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const> {
+    using Base =
+        ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const>;
+    using Base::Base;
+    using Layout = ::ioj::layout::workload_table::Layout;
     using view_type = ::ioj::layout::workload_table::ResolvedView;
     using const_view_type = ::ioj::layout::workload_table::ResolvedConstView;
     using soa_schema = ::ioj::layout::workload_table::Schema;
-    template <typename T>
-    using Element = std::conditional_t<Const, T const, T>;
-    ResolvedViewImpl() = default;
-    ResolvedViewImpl(Element<ioj::layout::AnalysisId>* analysis,
-                     Element<ioj::layout::RowRange>* selections,
-                     Element<std::uint64_t>* element_count,
-                     Element<std::uint64_t>* multiplicity,
-                     Element<ioj::layout::PayloadFootprint>* bytes,
-                     Element<ioj::layout::PayloadFootprint>* bits,
-                     Element<ioj::layout::RegionFootprint>* cache,
-                     Element<ioj::layout::RegionFootprint>* pages,
-                     Element<ioj::layout::CacheCapacityAnalysis>* cache_capacity,
-                     Element<ioj::layout::PackedAccessWaste>* packed_waste,
-                     Element<std::uint8_t>* footprint_exact,
-                     Element<std::optional<std::uint64_t>>* storage_bytes,
-                     Element<std::optional<std::uint64_t>>* full_logical_payload_bytes,
-                     Element<std::optional<std::uint64_t>>* unselected_payload_bytes,
-                     Element<std::optional<std::uint64_t>>* allocated_payload_bytes,
-                     Element<std::optional<std::uint64_t>>* capacity_slack_bytes,
-                     size_type column_count)
-        : analysis_{analysis}
-        , selections_{selections}
-        , element_count_{element_count}
-        , multiplicity_{multiplicity}
-        , bytes_{bytes}
-        , bits_{bits}
-        , cache_{cache}
-        , pages_{pages}
-        , cache_capacity_{cache_capacity}
-        , packed_waste_{packed_waste}
-        , footprint_exact_{footprint_exact}
-        , storage_bytes_{storage_bytes}
-        , full_logical_payload_bytes_{full_logical_payload_bytes}
-        , unselected_payload_bytes_{unselected_payload_bytes}
-        , allocated_payload_bytes_{allocated_payload_bytes}
-        , capacity_slack_bytes_{capacity_slack_bytes}
-        , column_count_{column_count} {
-        ioj::soa_storage_detail::validate_column_pointers(column_count_,
-                                                          analysis_,
-                                                          selections_,
-                                                          element_count_,
-                                                          multiplicity_,
-                                                          bytes_,
-                                                          bits_,
-                                                          cache_,
-                                                          pages_,
-                                                          cache_capacity_,
-                                                          packed_waste_,
-                                                          footprint_exact_,
-                                                          storage_bytes_,
-                                                          full_logical_payload_bytes_,
-                                                          unselected_payload_bytes_,
-                                                          allocated_payload_bytes_,
-                                                          capacity_slack_bytes_);
-    }
-    ResolvedViewImpl(std::span<Element<ioj::layout::AnalysisId>> analysis,
-                     std::span<Element<ioj::layout::RowRange>> selections,
-                     std::span<Element<std::uint64_t>> element_count,
-                     std::span<Element<std::uint64_t>> multiplicity,
-                     std::span<Element<ioj::layout::PayloadFootprint>> bytes,
-                     std::span<Element<ioj::layout::PayloadFootprint>> bits,
-                     std::span<Element<ioj::layout::RegionFootprint>> cache,
-                     std::span<Element<ioj::layout::RegionFootprint>> pages,
-                     std::span<Element<ioj::layout::CacheCapacityAnalysis>> cache_capacity,
-                     std::span<Element<ioj::layout::PackedAccessWaste>> packed_waste,
-                     std::span<Element<std::uint8_t>> footprint_exact,
-                     std::span<Element<std::optional<std::uint64_t>>> storage_bytes,
-                     std::span<Element<std::optional<std::uint64_t>>> full_logical_payload_bytes,
-                     std::span<Element<std::optional<std::uint64_t>>> unselected_payload_bytes,
-                     std::span<Element<std::optional<std::uint64_t>>> allocated_payload_bytes,
-                     std::span<Element<std::optional<std::uint64_t>>> capacity_slack_bytes)
-        : ResolvedViewImpl{analysis.data(),
-                           selections.data(),
-                           element_count.data(),
-                           multiplicity.data(),
-                           bytes.data(),
-                           bits.data(),
-                           cache.data(),
-                           pages.data(),
-                           cache_capacity.data(),
-                           packed_waste.data(),
-                           footprint_exact.data(),
-                           storage_bytes.data(),
-                           full_logical_payload_bytes.data(),
-                           unselected_payload_bytes.data(),
-                           allocated_payload_bytes.data(),
-                           capacity_slack_bytes.data(),
-                           ioj::soa_storage_detail::checked_row_count(analysis.size())} {
-        ioj::soa_storage_detail::validate_column_sizes(column_count_,
-                                                       analysis,
-                                                       selections,
-                                                       element_count,
-                                                       multiplicity,
-                                                       bytes,
-                                                       bits,
-                                                       cache,
-                                                       pages,
-                                                       cache_capacity,
-                                                       packed_waste,
-                                                       footprint_exact,
-                                                       storage_bytes,
-                                                       full_logical_payload_bytes,
-                                                       unselected_payload_bytes,
-                                                       allocated_payload_bytes,
-                                                       capacity_slack_bytes);
-    }
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
-    {
-        auto& [... destination] = *this;
-        auto const& [... source] = other;
-        ((destination = source), ...);
-    }
-    auto num() const noexcept -> size_type { return column_count_; }
-    auto resolve(this auto const& self) { return self; }
-    auto slice(this auto const& self, size_type offset, size_type count) {
-        auto const& [... pointers, source_count] = static_cast<ResolvedViewImpl const&>(self);
-        assert(offset <= source_count && count <= source_count - offset);
-        using Result = std::remove_cvref_t<decltype(self)>;
-        return Result{(pointers ? pointers + offset : nullptr)..., count};
-    }
-    auto analysis() const { return std::span{analysis_, column_count_}; }
-    auto selections() const { return std::span{selections_, column_count_}; }
-    auto element_count() const { return std::span{element_count_, column_count_}; }
-    auto multiplicity() const { return std::span{multiplicity_, column_count_}; }
-    auto bytes() const { return std::span{bytes_, column_count_}; }
-    auto bits() const { return std::span{bits_, column_count_}; }
-    auto cache() const { return std::span{cache_, column_count_}; }
-    auto pages() const { return std::span{pages_, column_count_}; }
-    auto cache_capacity() const { return std::span{cache_capacity_, column_count_}; }
-    auto packed_waste() const { return std::span{packed_waste_, column_count_}; }
-    auto footprint_exact() const { return std::span{footprint_exact_, column_count_}; }
-    auto storage_bytes() const { return std::span{storage_bytes_, column_count_}; }
+        : Base{other} {}
+    auto analysis() const { return this->template column<Layout::analysis_column>(); }
+    auto selections() const { return this->template column<Layout::selections_column>(); }
+    auto element_count() const { return this->template column<Layout::element_count_column>(); }
+    auto multiplicity() const { return this->template column<Layout::multiplicity_column>(); }
+    auto bytes() const { return this->template column<Layout::bytes_column>(); }
+    auto bits() const { return this->template column<Layout::bits_column>(); }
+    auto cache() const { return this->template column<Layout::cache_column>(); }
+    auto pages() const { return this->template column<Layout::pages_column>(); }
+    auto cache_capacity() const { return this->template column<Layout::cache_capacity_column>(); }
+    auto packed_waste() const { return this->template column<Layout::packed_waste_column>(); }
+    auto footprint_exact() const { return this->template column<Layout::footprint_exact_column>(); }
+    auto storage_bytes() const { return this->template column<Layout::storage_bytes_column>(); }
     auto full_logical_payload_bytes() const {
-        return std::span{full_logical_payload_bytes_, column_count_};
+        return this->template column<Layout::full_logical_payload_bytes_column>();
     }
     auto unselected_payload_bytes() const {
-        return std::span{unselected_payload_bytes_, column_count_};
+        return this->template column<Layout::unselected_payload_bytes_column>();
     }
     auto allocated_payload_bytes() const {
-        return std::span{allocated_payload_bytes_, column_count_};
+        return this->template column<Layout::allocated_payload_bytes_column>();
     }
-    auto capacity_slack_bytes() const { return std::span{capacity_slack_bytes_, column_count_}; }
-  private:
-    template <bool>
-    friend struct ResolvedViewImpl;
-    Element<ioj::layout::AnalysisId>* analysis_{};
-    Element<ioj::layout::RowRange>* selections_{};
-    Element<std::uint64_t>* element_count_{};
-    Element<std::uint64_t>* multiplicity_{};
-    Element<ioj::layout::PayloadFootprint>* bytes_{};
-    Element<ioj::layout::PayloadFootprint>* bits_{};
-    Element<ioj::layout::RegionFootprint>* cache_{};
-    Element<ioj::layout::RegionFootprint>* pages_{};
-    Element<ioj::layout::CacheCapacityAnalysis>* cache_capacity_{};
-    Element<ioj::layout::PackedAccessWaste>* packed_waste_{};
-    Element<std::uint8_t>* footprint_exact_{};
-    Element<std::optional<std::uint64_t>>* storage_bytes_{};
-    Element<std::optional<std::uint64_t>>* full_logical_payload_bytes_{};
-    Element<std::optional<std::uint64_t>>* unselected_payload_bytes_{};
-    Element<std::optional<std::uint64_t>>* allocated_payload_bytes_{};
-    Element<std::optional<std::uint64_t>>* capacity_slack_bytes_{};
-    size_type column_count_{};
+    auto capacity_slack_bytes() const {
+        return this->template column<Layout::capacity_slack_bytes_column>();
+    }
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;
@@ -473,37 +365,7 @@ struct WorkloadTable
     }
   protected:
     template <typename Byte>
-    struct DataPointers {
-        template <typename T>
-        using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-        Element<AnalysisId>* analysis{};
-        Element<RowRange>* selections{};
-        Element<std::uint64_t>* element_count{};
-        Element<std::uint64_t>* multiplicity{};
-        Element<PayloadFootprint>* bytes{};
-        Element<PayloadFootprint>* bits{};
-        Element<RegionFootprint>* cache{};
-        Element<RegionFootprint>* pages{};
-        Element<CacheCapacityAnalysis>* cache_capacity{};
-        Element<PackedAccessWaste>* packed_waste{};
-        Element<std::uint8_t>* footprint_exact{};
-        Element<std::optional<std::uint64_t>>* storage_bytes{};
-        Element<std::optional<std::uint64_t>>* full_logical_payload_bytes{};
-        Element<std::optional<std::uint64_t>>* unselected_payload_bytes{};
-        Element<std::optional<std::uint64_t>>* allocated_payload_bytes{};
-        Element<std::optional<std::uint64_t>>* capacity_slack_bytes{};
-    };
-  private:
-    friend Operations;
-    friend ::ioj::soa_storage_detail::StorageRequirements;
-    /* **************************************** */
-    // Column pointers
-    /* **************************************** */
-    template <typename Byte>
-    static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
-        -> DataPointers<Byte> {
-        return Layout::make_data<DataPointers<Byte>>(data, blocks);
-    }
+    using DataPointers = ::ioj::layout::workload_table::DataPointers<Byte>;
   public:
     auto analysis(this auto& self) { return self.get_view().analysis(); }
     auto selections(this auto& self) { return self.get_view().selections(); }
@@ -601,28 +463,9 @@ struct WorkloadTable
     }
     WorkloadId
         append(AnalysisId owner, RowRange selected, std::uint64_t count, std::uint64_t repeat);
-    void apply_permutation(std::span<size_type> indices) {
-        assert(indices.size() == num_);
-        auto const columns{get_data()};
-        auto const permute{ioj::ColumnPermutation{num_, indices}};
-        permute(columns.analysis,
-                columns.selections,
-                columns.element_count,
-                columns.multiplicity,
-                columns.bytes,
-                columns.bits,
-                columns.cache,
-                columns.pages,
-                columns.cache_capacity,
-                columns.packed_waste,
-                columns.footprint_exact,
-                columns.storage_bytes,
-                columns.full_logical_payload_bytes,
-                columns.unselected_payload_bytes,
-                columns.allocated_payload_bytes,
-                columns.capacity_slack_bytes);
-    }
   private:
+    friend Operations;
+    friend ::ioj::soa_storage_detail::StorageRequirements;
     std::pmr::memory_resource* resource_{};
 };
 } // namespace ioj::layout

@@ -10,7 +10,6 @@
 #include "ioj/rotators3f.h"
 #include "ioj/sim/entities/entity_id.h"
 #include "ioj/single_allocation/layout.h"
-#include "ioj/soa_permutation.h"
 #include "ioj/vectors3f.h"
 
 #include <cassert>
@@ -41,6 +40,24 @@ struct Layout
     static constexpr std::size_t targets_column{8};
 };
 
+/* **************************************** */
+// Column pointers
+/* **************************************** */
+template <typename Byte>
+struct DataPointers {
+    template <typename T>
+    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
+    Element<float>* locations_xs{};
+    Element<float>* locations_ys{};
+    Element<float>* locations_zs{};
+    Element<float>* rotations_pitches{};
+    Element<float>* rotations_yaws{};
+    Element<float>* rotations_rolls{};
+    Element<::ioj::Team>* teams{};
+    Element<EntityId>* parents{};
+    Element<EntityId>* targets{};
+};
+
 struct Schema {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
@@ -62,116 +79,37 @@ struct Schema {
 // Resolved views
 /* **************************************** */
 template <bool Const>
-struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
-    using size_type = std::uint32_t;
+struct ResolvedViewImpl
+    : ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const> {
+    using Base =
+        ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const>;
+    using Base::Base;
+    using Layout = ::ioj::sim::fighter_spawn_queue::Layout;
     using view_type = ::ioj::sim::fighter_spawn_queue::ResolvedView;
     using const_view_type = ::ioj::sim::fighter_spawn_queue::ResolvedConstView;
     using soa_schema = ::ioj::sim::fighter_spawn_queue::Schema;
-    template <typename T>
-    using Element = std::conditional_t<Const, T const, T>;
-    ResolvedViewImpl() = default;
-    ResolvedViewImpl(Element<float>* locations_xs,
-                     Element<float>* locations_ys,
-                     Element<float>* locations_zs,
-                     Element<float>* rotations_pitches,
-                     Element<float>* rotations_yaws,
-                     Element<float>* rotations_rolls,
-                     Element<::ioj::Team>* teams,
-                     Element<EntityId>* parents,
-                     Element<EntityId>* targets,
-                     size_type column_count)
-        : locations_xs_{locations_xs}
-        , locations_ys_{locations_ys}
-        , locations_zs_{locations_zs}
-        , rotations_pitches_{rotations_pitches}
-        , rotations_yaws_{rotations_yaws}
-        , rotations_rolls_{rotations_rolls}
-        , teams_{teams}
-        , parents_{parents}
-        , targets_{targets}
-        , column_count_{column_count} {
-        ioj::soa_storage_detail::validate_column_pointers(column_count_,
-                                                          locations_xs_,
-                                                          locations_ys_,
-                                                          locations_zs_,
-                                                          rotations_pitches_,
-                                                          rotations_yaws_,
-                                                          rotations_rolls_,
-                                                          teams_,
-                                                          parents_,
-                                                          targets_);
-    }
-    ResolvedViewImpl(std::span<Element<float>> locations_xs,
-                     std::span<Element<float>> locations_ys,
-                     std::span<Element<float>> locations_zs,
-                     std::span<Element<float>> rotations_pitches,
-                     std::span<Element<float>> rotations_yaws,
-                     std::span<Element<float>> rotations_rolls,
-                     std::span<Element<::ioj::Team>> teams,
-                     std::span<Element<EntityId>> parents,
-                     std::span<Element<EntityId>> targets)
-        : ResolvedViewImpl{locations_xs.data(),
-                           locations_ys.data(),
-                           locations_zs.data(),
-                           rotations_pitches.data(),
-                           rotations_yaws.data(),
-                           rotations_rolls.data(),
-                           teams.data(),
-                           parents.data(),
-                           targets.data(),
-                           ioj::soa_storage_detail::checked_row_count(locations_xs.size())} {
-        ioj::soa_storage_detail::validate_column_sizes(column_count_,
-                                                       locations_xs,
-                                                       locations_ys,
-                                                       locations_zs,
-                                                       rotations_pitches,
-                                                       rotations_yaws,
-                                                       rotations_rolls,
-                                                       teams,
-                                                       parents,
-                                                       targets);
-    }
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
-    {
-        auto& [... destination] = *this;
-        auto const& [... source] = other;
-        ((destination = source), ...);
-    }
-    auto num() const noexcept -> size_type { return column_count_; }
-    auto resolve(this auto const& self) { return self; }
-    auto slice(this auto const& self, size_type offset, size_type count) {
-        auto const& [... pointers, source_count] = static_cast<ResolvedViewImpl const&>(self);
-        assert(offset <= source_count && count <= source_count - offset);
-        using Result = std::remove_cvref_t<decltype(self)>;
-        return Result{(pointers ? pointers + offset : nullptr)..., count};
-    }
+        : Base{other} {}
     auto view_locations() const -> std::
         conditional_t<Const, ::ioj::vectors3f::ResolvedConstView, ::ioj::vectors3f::ResolvedView> {
-        return {locations_xs_, locations_ys_, locations_zs_, column_count_};
+        return {this->columns_.locations_xs,
+                this->columns_.locations_ys,
+                this->columns_.locations_zs,
+                this->num()};
     }
     auto view_rotations() const -> std::conditional_t<Const,
                                                       ::ioj::rotators3f::ResolvedConstView,
                                                       ::ioj::rotators3f::ResolvedView> {
-        return {rotations_pitches_, rotations_yaws_, rotations_rolls_, column_count_};
+        return {this->columns_.rotations_pitches,
+                this->columns_.rotations_yaws,
+                this->columns_.rotations_rolls,
+                this->num()};
     }
-    auto teams() const { return std::span{teams_, column_count_}; }
-    auto parents() const { return std::span{parents_, column_count_}; }
-    auto targets() const { return std::span{targets_, column_count_}; }
-  private:
-    template <bool>
-    friend struct ResolvedViewImpl;
-    Element<float>* locations_xs_{};
-    Element<float>* locations_ys_{};
-    Element<float>* locations_zs_{};
-    Element<float>* rotations_pitches_{};
-    Element<float>* rotations_yaws_{};
-    Element<float>* rotations_rolls_{};
-    Element<::ioj::Team>* teams_{};
-    Element<EntityId>* parents_{};
-    Element<EntityId>* targets_{};
-    size_type column_count_{};
+    auto teams() const { return this->template column<Layout::teams_column>(); }
+    auto parents() const { return this->template column<Layout::parents_column>(); }
+    auto targets() const { return this->template column<Layout::targets_column>(); }
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;
@@ -360,30 +298,7 @@ struct FighterSpawnQueue
     }
   protected:
     template <typename Byte>
-    struct DataPointers {
-        template <typename T>
-        using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-        Element<float>* locations_xs{};
-        Element<float>* locations_ys{};
-        Element<float>* locations_zs{};
-        Element<float>* rotations_pitches{};
-        Element<float>* rotations_yaws{};
-        Element<float>* rotations_rolls{};
-        Element<::ioj::Team>* teams{};
-        Element<EntityId>* parents{};
-        Element<EntityId>* targets{};
-    };
-  private:
-    friend Operations;
-    friend ::ioj::soa_storage_detail::StorageRequirements;
-    /* **************************************** */
-    // Column pointers
-    /* **************************************** */
-    template <typename Byte>
-    static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
-        -> DataPointers<Byte> {
-        return Layout::make_data<DataPointers<Byte>>(data, blocks);
-    }
+    using DataPointers = ::ioj::sim::fighter_spawn_queue::DataPointers<Byte>;
   public:
     auto view_locations(this auto& self) { return self.get_view().view_locations(); }
     auto view_rotations(this auto& self) { return self.get_view().view_rotations(); }
@@ -457,21 +372,9 @@ struct FighterSpawnQueue
         set(index, new_locations, new_rotations, new_teams, new_parents, new_targets);
         return index;
     }
-    void apply_permutation(std::span<size_type> indices) {
-        assert(indices.size() == num_);
-        auto const columns{get_data()};
-        auto const permute{ioj::ColumnPermutation{num_, indices}};
-        permute(columns.locations_xs,
-                columns.locations_ys,
-                columns.locations_zs,
-                columns.rotations_pitches,
-                columns.rotations_yaws,
-                columns.rotations_rolls,
-                columns.teams,
-                columns.parents,
-                columns.targets);
-    }
   private:
+    friend Operations;
+    friend ::ioj::soa_storage_detail::StorageRequirements;
     std::pmr::memory_resource* resource_{};
 };
 } // namespace ioj::sim

@@ -6,7 +6,6 @@
 #include "ioj/layout/fact_origin.hpp"
 #include "ioj/native_soa/storage.h"
 #include "ioj/single_allocation/layout.h"
-#include "ioj/soa_permutation.h"
 
 #include "lispb/indices.h"
 #include "lispb/schema/enum_signedness.h"
@@ -42,6 +41,21 @@ struct Layout
     static constexpr std::size_t origin_column{5};
 };
 
+/* **************************************** */
+// Column pointers
+/* **************************************** */
+template <typename Byte>
+struct DataPointers {
+    template <typename T>
+    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
+    Element<std::uint64_t>* size_bytes{};
+    Element<std::uint64_t>* alignment_bytes{};
+    Element<lispb::schema::EnumSignedness>* signedness{};
+    Element<std::optional<std::uint32_t>>* unsigned_value_bits{};
+    Element<lispb::StringId>* provenance{};
+    Element<FactOrigin>* origin{};
+};
+
 struct Schema {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
@@ -58,89 +72,27 @@ struct Schema {
 // Resolved views
 /* **************************************** */
 template <bool Const>
-struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
-    using size_type = std::uint32_t;
+struct ResolvedViewImpl
+    : ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const> {
+    using Base =
+        ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const>;
+    using Base::Base;
+    using Layout = ::ioj::layout::physical_fact_table::Layout;
     using view_type = ::ioj::layout::physical_fact_table::ResolvedView;
     using const_view_type = ::ioj::layout::physical_fact_table::ResolvedConstView;
     using soa_schema = ::ioj::layout::physical_fact_table::Schema;
-    template <typename T>
-    using Element = std::conditional_t<Const, T const, T>;
-    ResolvedViewImpl() = default;
-    ResolvedViewImpl(Element<std::uint64_t>* size_bytes,
-                     Element<std::uint64_t>* alignment_bytes,
-                     Element<lispb::schema::EnumSignedness>* signedness,
-                     Element<std::optional<std::uint32_t>>* unsigned_value_bits,
-                     Element<lispb::StringId>* provenance,
-                     Element<ioj::layout::FactOrigin>* origin,
-                     size_type column_count)
-        : size_bytes_{size_bytes}
-        , alignment_bytes_{alignment_bytes}
-        , signedness_{signedness}
-        , unsigned_value_bits_{unsigned_value_bits}
-        , provenance_{provenance}
-        , origin_{origin}
-        , column_count_{column_count} {
-        ioj::soa_storage_detail::validate_column_pointers(column_count_,
-                                                          size_bytes_,
-                                                          alignment_bytes_,
-                                                          signedness_,
-                                                          unsigned_value_bits_,
-                                                          provenance_,
-                                                          origin_);
-    }
-    ResolvedViewImpl(std::span<Element<std::uint64_t>> size_bytes,
-                     std::span<Element<std::uint64_t>> alignment_bytes,
-                     std::span<Element<lispb::schema::EnumSignedness>> signedness,
-                     std::span<Element<std::optional<std::uint32_t>>> unsigned_value_bits,
-                     std::span<Element<lispb::StringId>> provenance,
-                     std::span<Element<ioj::layout::FactOrigin>> origin)
-        : ResolvedViewImpl{size_bytes.data(),
-                           alignment_bytes.data(),
-                           signedness.data(),
-                           unsigned_value_bits.data(),
-                           provenance.data(),
-                           origin.data(),
-                           ioj::soa_storage_detail::checked_row_count(size_bytes.size())} {
-        ioj::soa_storage_detail::validate_column_sizes(column_count_,
-                                                       size_bytes,
-                                                       alignment_bytes,
-                                                       signedness,
-                                                       unsigned_value_bits,
-                                                       provenance,
-                                                       origin);
-    }
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
-    {
-        auto& [... destination] = *this;
-        auto const& [... source] = other;
-        ((destination = source), ...);
+        : Base{other} {}
+    auto size_bytes() const { return this->template column<Layout::size_bytes_column>(); }
+    auto alignment_bytes() const { return this->template column<Layout::alignment_bytes_column>(); }
+    auto signedness() const { return this->template column<Layout::signedness_column>(); }
+    auto unsigned_value_bits() const {
+        return this->template column<Layout::unsigned_value_bits_column>();
     }
-    auto num() const noexcept -> size_type { return column_count_; }
-    auto resolve(this auto const& self) { return self; }
-    auto slice(this auto const& self, size_type offset, size_type count) {
-        auto const& [... pointers, source_count] = static_cast<ResolvedViewImpl const&>(self);
-        assert(offset <= source_count && count <= source_count - offset);
-        using Result = std::remove_cvref_t<decltype(self)>;
-        return Result{(pointers ? pointers + offset : nullptr)..., count};
-    }
-    auto size_bytes() const { return std::span{size_bytes_, column_count_}; }
-    auto alignment_bytes() const { return std::span{alignment_bytes_, column_count_}; }
-    auto signedness() const { return std::span{signedness_, column_count_}; }
-    auto unsigned_value_bits() const { return std::span{unsigned_value_bits_, column_count_}; }
-    auto provenance() const { return std::span{provenance_, column_count_}; }
-    auto origin() const { return std::span{origin_, column_count_}; }
-  private:
-    template <bool>
-    friend struct ResolvedViewImpl;
-    Element<std::uint64_t>* size_bytes_{};
-    Element<std::uint64_t>* alignment_bytes_{};
-    Element<lispb::schema::EnumSignedness>* signedness_{};
-    Element<std::optional<std::uint32_t>>* unsigned_value_bits_{};
-    Element<lispb::StringId>* provenance_{};
-    Element<ioj::layout::FactOrigin>* origin_{};
-    size_type column_count_{};
+    auto provenance() const { return this->template column<Layout::provenance_column>(); }
+    auto origin() const { return this->template column<Layout::origin_column>(); }
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;
@@ -282,27 +234,7 @@ struct PhysicalFactTable
     }
   protected:
     template <typename Byte>
-    struct DataPointers {
-        template <typename T>
-        using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-        Element<std::uint64_t>* size_bytes{};
-        Element<std::uint64_t>* alignment_bytes{};
-        Element<lispb::schema::EnumSignedness>* signedness{};
-        Element<std::optional<std::uint32_t>>* unsigned_value_bits{};
-        Element<lispb::StringId>* provenance{};
-        Element<FactOrigin>* origin{};
-    };
-  private:
-    friend Operations;
-    friend ::ioj::soa_storage_detail::StorageRequirements;
-    /* **************************************** */
-    // Column pointers
-    /* **************************************** */
-    template <typename Byte>
-    static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
-        -> DataPointers<Byte> {
-        return Layout::make_data<DataPointers<Byte>>(data, blocks);
-    }
+    using DataPointers = ::ioj::layout::physical_fact_table::DataPointers<Byte>;
   public:
     auto size_bytes(this auto& self) { return self.get_view().size_bytes(); }
     auto alignment_bytes(this auto& self) { return self.get_view().alignment_bytes(); }
@@ -342,18 +274,9 @@ struct PhysicalFactTable
             new_origin);
         return index;
     }
-    void apply_permutation(std::span<size_type> indices) {
-        assert(indices.size() == num_);
-        auto const columns{get_data()};
-        auto const permute{ioj::ColumnPermutation{num_, indices}};
-        permute(columns.size_bytes,
-                columns.alignment_bytes,
-                columns.signedness,
-                columns.unsigned_value_bits,
-                columns.provenance,
-                columns.origin);
-    }
   private:
+    friend Operations;
+    friend ::ioj::soa_storage_detail::StorageRequirements;
     std::pmr::memory_resource* resource_{};
 };
 } // namespace ioj::layout

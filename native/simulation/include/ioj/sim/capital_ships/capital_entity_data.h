@@ -11,7 +11,6 @@
 #include "ioj/sim/entities/entity_id.h"
 #include "ioj/sim/index_span.h"
 #include "ioj/single_allocation/layout.h"
-#include "ioj/soa_permutation.h"
 #include "ioj/vectors3f.h"
 
 #include <cassert>
@@ -55,6 +54,27 @@ struct Layout
     static constexpr std::size_t target_ids_column{11};
 };
 
+/* **************************************** */
+// Column pointers
+/* **************************************** */
+template <typename Byte>
+struct DataPointers {
+    template <typename T>
+    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
+    Element<EntityId>* entity_ids{};
+    Element<float>* locations_xs{};
+    Element<float>* locations_ys{};
+    Element<float>* locations_zs{};
+    Element<float>* rotations_pitches{};
+    Element<float>* rotations_yaws{};
+    Element<float>* rotations_rolls{};
+    Element<float>* fighter_spawn_timers{};
+    Element<float>* fighter_spawn_cooldowns{};
+    Element<::ioj::Team>* teams{};
+    Element<IndexSpan>* fighter_id_spans{};
+    Element<EntityId>* target_ids{};
+};
+
 struct Schema {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
@@ -79,142 +99,46 @@ struct Schema {
 // Resolved views
 /* **************************************** */
 template <bool Const>
-struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
-    using size_type = std::uint32_t;
+struct ResolvedViewImpl
+    : ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const> {
+    using Base =
+        ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const>;
+    using Base::Base;
+    using Layout = ::ioj::sim::capital_entity_data::Layout;
     using view_type = ::ioj::sim::capital_entity_data::ResolvedView;
     using const_view_type = ::ioj::sim::capital_entity_data::ResolvedConstView;
     using soa_schema = ::ioj::sim::capital_entity_data::Schema;
-    template <typename T>
-    using Element = std::conditional_t<Const, T const, T>;
-    ResolvedViewImpl() = default;
-    ResolvedViewImpl(Element<EntityId>* entity_ids,
-                     Element<float>* locations_xs,
-                     Element<float>* locations_ys,
-                     Element<float>* locations_zs,
-                     Element<float>* rotations_pitches,
-                     Element<float>* rotations_yaws,
-                     Element<float>* rotations_rolls,
-                     Element<float>* fighter_spawn_timers,
-                     Element<float>* fighter_spawn_cooldowns,
-                     Element<::ioj::Team>* teams,
-                     Element<ioj::sim::IndexSpan>* fighter_id_spans,
-                     Element<EntityId>* target_ids,
-                     size_type column_count)
-        : entity_ids_{entity_ids}
-        , locations_xs_{locations_xs}
-        , locations_ys_{locations_ys}
-        , locations_zs_{locations_zs}
-        , rotations_pitches_{rotations_pitches}
-        , rotations_yaws_{rotations_yaws}
-        , rotations_rolls_{rotations_rolls}
-        , fighter_spawn_timers_{fighter_spawn_timers}
-        , fighter_spawn_cooldowns_{fighter_spawn_cooldowns}
-        , teams_{teams}
-        , fighter_id_spans_{fighter_id_spans}
-        , target_ids_{target_ids}
-        , column_count_{column_count} {
-        ioj::soa_storage_detail::validate_column_pointers(column_count_,
-                                                          entity_ids_,
-                                                          locations_xs_,
-                                                          locations_ys_,
-                                                          locations_zs_,
-                                                          rotations_pitches_,
-                                                          rotations_yaws_,
-                                                          rotations_rolls_,
-                                                          fighter_spawn_timers_,
-                                                          fighter_spawn_cooldowns_,
-                                                          teams_,
-                                                          fighter_id_spans_,
-                                                          target_ids_);
-    }
-    ResolvedViewImpl(std::span<Element<EntityId>> entity_ids,
-                     std::span<Element<float>> locations_xs,
-                     std::span<Element<float>> locations_ys,
-                     std::span<Element<float>> locations_zs,
-                     std::span<Element<float>> rotations_pitches,
-                     std::span<Element<float>> rotations_yaws,
-                     std::span<Element<float>> rotations_rolls,
-                     std::span<Element<float>> fighter_spawn_timers,
-                     std::span<Element<float>> fighter_spawn_cooldowns,
-                     std::span<Element<::ioj::Team>> teams,
-                     std::span<Element<ioj::sim::IndexSpan>> fighter_id_spans,
-                     std::span<Element<EntityId>> target_ids)
-        : ResolvedViewImpl{entity_ids.data(),
-                           locations_xs.data(),
-                           locations_ys.data(),
-                           locations_zs.data(),
-                           rotations_pitches.data(),
-                           rotations_yaws.data(),
-                           rotations_rolls.data(),
-                           fighter_spawn_timers.data(),
-                           fighter_spawn_cooldowns.data(),
-                           teams.data(),
-                           fighter_id_spans.data(),
-                           target_ids.data(),
-                           ioj::soa_storage_detail::checked_row_count(entity_ids.size())} {
-        ioj::soa_storage_detail::validate_column_sizes(column_count_,
-                                                       entity_ids,
-                                                       locations_xs,
-                                                       locations_ys,
-                                                       locations_zs,
-                                                       rotations_pitches,
-                                                       rotations_yaws,
-                                                       rotations_rolls,
-                                                       fighter_spawn_timers,
-                                                       fighter_spawn_cooldowns,
-                                                       teams,
-                                                       fighter_id_spans,
-                                                       target_ids);
-    }
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
-    {
-        auto& [... destination] = *this;
-        auto const& [... source] = other;
-        ((destination = source), ...);
-    }
-    auto num() const noexcept -> size_type { return column_count_; }
-    auto resolve(this auto const& self) { return self; }
-    auto slice(this auto const& self, size_type offset, size_type count) {
-        auto const& [... pointers, source_count] = static_cast<ResolvedViewImpl const&>(self);
-        assert(offset <= source_count && count <= source_count - offset);
-        using Result = std::remove_cvref_t<decltype(self)>;
-        return Result{(pointers ? pointers + offset : nullptr)..., count};
-    }
-    auto entity_ids() const { return std::span{entity_ids_, column_count_}; }
+        : Base{other} {}
+    auto entity_ids() const { return this->template column<Layout::entity_ids_column>(); }
     auto view_locations() const -> std::
         conditional_t<Const, ::ioj::vectors3f::ResolvedConstView, ::ioj::vectors3f::ResolvedView> {
-        return {locations_xs_, locations_ys_, locations_zs_, column_count_};
+        return {this->columns_.locations_xs,
+                this->columns_.locations_ys,
+                this->columns_.locations_zs,
+                this->num()};
     }
     auto view_rotations() const -> std::conditional_t<Const,
                                                       ::ioj::rotators3f::ResolvedConstView,
                                                       ::ioj::rotators3f::ResolvedView> {
-        return {rotations_pitches_, rotations_yaws_, rotations_rolls_, column_count_};
+        return {this->columns_.rotations_pitches,
+                this->columns_.rotations_yaws,
+                this->columns_.rotations_rolls,
+                this->num()};
     }
-    auto fighter_spawn_timers() const { return std::span{fighter_spawn_timers_, column_count_}; }
+    auto fighter_spawn_timers() const {
+        return this->template column<Layout::fighter_spawn_timers_column>();
+    }
     auto fighter_spawn_cooldowns() const {
-        return std::span{fighter_spawn_cooldowns_, column_count_};
+        return this->template column<Layout::fighter_spawn_cooldowns_column>();
     }
-    auto teams() const { return std::span{teams_, column_count_}; }
-    auto fighter_id_spans() const { return std::span{fighter_id_spans_, column_count_}; }
-    auto target_ids() const { return std::span{target_ids_, column_count_}; }
-  private:
-    template <bool>
-    friend struct ResolvedViewImpl;
-    Element<EntityId>* entity_ids_{};
-    Element<float>* locations_xs_{};
-    Element<float>* locations_ys_{};
-    Element<float>* locations_zs_{};
-    Element<float>* rotations_pitches_{};
-    Element<float>* rotations_yaws_{};
-    Element<float>* rotations_rolls_{};
-    Element<float>* fighter_spawn_timers_{};
-    Element<float>* fighter_spawn_cooldowns_{};
-    Element<::ioj::Team>* teams_{};
-    Element<ioj::sim::IndexSpan>* fighter_id_spans_{};
-    Element<EntityId>* target_ids_{};
-    size_type column_count_{};
+    auto teams() const { return this->template column<Layout::teams_column>(); }
+    auto fighter_id_spans() const {
+        return this->template column<Layout::fighter_id_spans_column>();
+    }
+    auto target_ids() const { return this->template column<Layout::target_ids_column>(); }
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;
@@ -439,33 +363,7 @@ struct CapitalEntityData
     }
   protected:
     template <typename Byte>
-    struct DataPointers {
-        template <typename T>
-        using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-        Element<EntityId>* entity_ids{};
-        Element<float>* locations_xs{};
-        Element<float>* locations_ys{};
-        Element<float>* locations_zs{};
-        Element<float>* rotations_pitches{};
-        Element<float>* rotations_yaws{};
-        Element<float>* rotations_rolls{};
-        Element<float>* fighter_spawn_timers{};
-        Element<float>* fighter_spawn_cooldowns{};
-        Element<::ioj::Team>* teams{};
-        Element<IndexSpan>* fighter_id_spans{};
-        Element<EntityId>* target_ids{};
-    };
-  private:
-    friend Operations;
-    friend ::ioj::soa_storage_detail::StorageRequirements;
-    /* **************************************** */
-    // Column pointers
-    /* **************************************** */
-    template <typename Byte>
-    static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
-        -> DataPointers<Byte> {
-        return Layout::make_data<DataPointers<Byte>>(data, blocks);
-    }
+    using DataPointers = ::ioj::sim::capital_entity_data::DataPointers<Byte>;
   public:
     auto entity_ids(this auto& self) { return self.get_view().entity_ids(); }
     auto view_locations(this auto& self) { return self.get_view().view_locations(); }
@@ -573,24 +471,9 @@ struct CapitalEntityData
             new_target_ids);
         return index;
     }
-    void apply_permutation(std::span<size_type> indices) {
-        assert(indices.size() == num_);
-        auto const columns{get_data()};
-        auto const permute{ioj::ColumnPermutation{num_, indices}};
-        permute(columns.entity_ids,
-                columns.locations_xs,
-                columns.locations_ys,
-                columns.locations_zs,
-                columns.rotations_pitches,
-                columns.rotations_yaws,
-                columns.rotations_rolls,
-                columns.fighter_spawn_timers,
-                columns.fighter_spawn_cooldowns,
-                columns.teams,
-                columns.fighter_id_spans,
-                columns.target_ids);
-    }
   private:
+    friend Operations;
+    friend ::ioj::soa_storage_detail::StorageRequirements;
     std::pmr::memory_resource* resource_{};
 };
 } // namespace ioj::sim

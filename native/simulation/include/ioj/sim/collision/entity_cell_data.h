@@ -6,7 +6,6 @@
 #include "ioj/native_soa/storage.h"
 #include "ioj/sim/entities/entity_id.h"
 #include "ioj/single_allocation/layout.h"
-#include "ioj/soa_permutation.h"
 
 #include <cassert>
 #include <cstdint>
@@ -52,6 +51,28 @@ struct Layout
     static constexpr std::size_t entity_ids_column{12};
 };
 
+/* **************************************** */
+// Column pointers
+/* **************************************** */
+template <typename Byte>
+struct DataPointers {
+    template <typename T>
+    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
+    Element<float>* min_point_xs{};
+    Element<float>* min_point_ys{};
+    Element<float>* min_point_zs{};
+    Element<float>* max_point_xs{};
+    Element<float>* max_point_ys{};
+    Element<float>* max_point_zs{};
+    Element<std::int32_t>* min_cell_xs{};
+    Element<std::int32_t>* min_cell_ys{};
+    Element<std::int32_t>* min_cell_zs{};
+    Element<std::int32_t>* max_cell_xs{};
+    Element<std::int32_t>* max_cell_ys{};
+    Element<std::int32_t>* max_cell_zs{};
+    Element<EntityId>* entity_ids{};
+};
+
 struct Schema {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
@@ -75,145 +96,32 @@ struct Schema {
 // Resolved views
 /* **************************************** */
 template <bool Const>
-struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
-    using size_type = std::uint32_t;
+struct ResolvedViewImpl
+    : ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const> {
+    using Base =
+        ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const>;
+    using Base::Base;
+    using Layout = ::ioj::sim::collision::entity_cell_data::Layout;
     using view_type = ::ioj::sim::collision::entity_cell_data::ResolvedView;
     using const_view_type = ::ioj::sim::collision::entity_cell_data::ResolvedConstView;
     using soa_schema = ::ioj::sim::collision::entity_cell_data::Schema;
-    template <typename T>
-    using Element = std::conditional_t<Const, T const, T>;
-    ResolvedViewImpl() = default;
-    ResolvedViewImpl(Element<float>* min_point_xs,
-                     Element<float>* min_point_ys,
-                     Element<float>* min_point_zs,
-                     Element<float>* max_point_xs,
-                     Element<float>* max_point_ys,
-                     Element<float>* max_point_zs,
-                     Element<std::int32_t>* min_cell_xs,
-                     Element<std::int32_t>* min_cell_ys,
-                     Element<std::int32_t>* min_cell_zs,
-                     Element<std::int32_t>* max_cell_xs,
-                     Element<std::int32_t>* max_cell_ys,
-                     Element<std::int32_t>* max_cell_zs,
-                     Element<EntityId>* entity_ids,
-                     size_type column_count)
-        : min_point_xs_{min_point_xs}
-        , min_point_ys_{min_point_ys}
-        , min_point_zs_{min_point_zs}
-        , max_point_xs_{max_point_xs}
-        , max_point_ys_{max_point_ys}
-        , max_point_zs_{max_point_zs}
-        , min_cell_xs_{min_cell_xs}
-        , min_cell_ys_{min_cell_ys}
-        , min_cell_zs_{min_cell_zs}
-        , max_cell_xs_{max_cell_xs}
-        , max_cell_ys_{max_cell_ys}
-        , max_cell_zs_{max_cell_zs}
-        , entity_ids_{entity_ids}
-        , column_count_{column_count} {
-        ioj::soa_storage_detail::validate_column_pointers(column_count_,
-                                                          min_point_xs_,
-                                                          min_point_ys_,
-                                                          min_point_zs_,
-                                                          max_point_xs_,
-                                                          max_point_ys_,
-                                                          max_point_zs_,
-                                                          min_cell_xs_,
-                                                          min_cell_ys_,
-                                                          min_cell_zs_,
-                                                          max_cell_xs_,
-                                                          max_cell_ys_,
-                                                          max_cell_zs_,
-                                                          entity_ids_);
-    }
-    ResolvedViewImpl(std::span<Element<float>> min_point_xs,
-                     std::span<Element<float>> min_point_ys,
-                     std::span<Element<float>> min_point_zs,
-                     std::span<Element<float>> max_point_xs,
-                     std::span<Element<float>> max_point_ys,
-                     std::span<Element<float>> max_point_zs,
-                     std::span<Element<std::int32_t>> min_cell_xs,
-                     std::span<Element<std::int32_t>> min_cell_ys,
-                     std::span<Element<std::int32_t>> min_cell_zs,
-                     std::span<Element<std::int32_t>> max_cell_xs,
-                     std::span<Element<std::int32_t>> max_cell_ys,
-                     std::span<Element<std::int32_t>> max_cell_zs,
-                     std::span<Element<EntityId>> entity_ids)
-        : ResolvedViewImpl{min_point_xs.data(),
-                           min_point_ys.data(),
-                           min_point_zs.data(),
-                           max_point_xs.data(),
-                           max_point_ys.data(),
-                           max_point_zs.data(),
-                           min_cell_xs.data(),
-                           min_cell_ys.data(),
-                           min_cell_zs.data(),
-                           max_cell_xs.data(),
-                           max_cell_ys.data(),
-                           max_cell_zs.data(),
-                           entity_ids.data(),
-                           ioj::soa_storage_detail::checked_row_count(min_point_xs.size())} {
-        ioj::soa_storage_detail::validate_column_sizes(column_count_,
-                                                       min_point_xs,
-                                                       min_point_ys,
-                                                       min_point_zs,
-                                                       max_point_xs,
-                                                       max_point_ys,
-                                                       max_point_zs,
-                                                       min_cell_xs,
-                                                       min_cell_ys,
-                                                       min_cell_zs,
-                                                       max_cell_xs,
-                                                       max_cell_ys,
-                                                       max_cell_zs,
-                                                       entity_ids);
-    }
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
-    {
-        auto& [... destination] = *this;
-        auto const& [... source] = other;
-        ((destination = source), ...);
-    }
-    auto num() const noexcept -> size_type { return column_count_; }
-    auto resolve(this auto const& self) { return self; }
-    auto slice(this auto const& self, size_type offset, size_type count) {
-        auto const& [... pointers, source_count] = static_cast<ResolvedViewImpl const&>(self);
-        assert(offset <= source_count && count <= source_count - offset);
-        using Result = std::remove_cvref_t<decltype(self)>;
-        return Result{(pointers ? pointers + offset : nullptr)..., count};
-    }
-    auto min_point_xs() const { return std::span{min_point_xs_, column_count_}; }
-    auto min_point_ys() const { return std::span{min_point_ys_, column_count_}; }
-    auto min_point_zs() const { return std::span{min_point_zs_, column_count_}; }
-    auto max_point_xs() const { return std::span{max_point_xs_, column_count_}; }
-    auto max_point_ys() const { return std::span{max_point_ys_, column_count_}; }
-    auto max_point_zs() const { return std::span{max_point_zs_, column_count_}; }
-    auto min_cell_xs() const { return std::span{min_cell_xs_, column_count_}; }
-    auto min_cell_ys() const { return std::span{min_cell_ys_, column_count_}; }
-    auto min_cell_zs() const { return std::span{min_cell_zs_, column_count_}; }
-    auto max_cell_xs() const { return std::span{max_cell_xs_, column_count_}; }
-    auto max_cell_ys() const { return std::span{max_cell_ys_, column_count_}; }
-    auto max_cell_zs() const { return std::span{max_cell_zs_, column_count_}; }
-    auto entity_ids() const { return std::span{entity_ids_, column_count_}; }
-  private:
-    template <bool>
-    friend struct ResolvedViewImpl;
-    Element<float>* min_point_xs_{};
-    Element<float>* min_point_ys_{};
-    Element<float>* min_point_zs_{};
-    Element<float>* max_point_xs_{};
-    Element<float>* max_point_ys_{};
-    Element<float>* max_point_zs_{};
-    Element<std::int32_t>* min_cell_xs_{};
-    Element<std::int32_t>* min_cell_ys_{};
-    Element<std::int32_t>* min_cell_zs_{};
-    Element<std::int32_t>* max_cell_xs_{};
-    Element<std::int32_t>* max_cell_ys_{};
-    Element<std::int32_t>* max_cell_zs_{};
-    Element<EntityId>* entity_ids_{};
-    size_type column_count_{};
+        : Base{other} {}
+    auto min_point_xs() const { return this->template column<Layout::min_point_xs_column>(); }
+    auto min_point_ys() const { return this->template column<Layout::min_point_ys_column>(); }
+    auto min_point_zs() const { return this->template column<Layout::min_point_zs_column>(); }
+    auto max_point_xs() const { return this->template column<Layout::max_point_xs_column>(); }
+    auto max_point_ys() const { return this->template column<Layout::max_point_ys_column>(); }
+    auto max_point_zs() const { return this->template column<Layout::max_point_zs_column>(); }
+    auto min_cell_xs() const { return this->template column<Layout::min_cell_xs_column>(); }
+    auto min_cell_ys() const { return this->template column<Layout::min_cell_ys_column>(); }
+    auto min_cell_zs() const { return this->template column<Layout::min_cell_zs_column>(); }
+    auto max_cell_xs() const { return this->template column<Layout::max_cell_xs_column>(); }
+    auto max_cell_ys() const { return this->template column<Layout::max_cell_ys_column>(); }
+    auto max_cell_zs() const { return this->template column<Layout::max_cell_zs_column>(); }
+    auto entity_ids() const { return this->template column<Layout::entity_ids_column>(); }
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;
@@ -398,34 +306,7 @@ struct EntityCellData
     }
   protected:
     template <typename Byte>
-    struct DataPointers {
-        template <typename T>
-        using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-        Element<float>* min_point_xs{};
-        Element<float>* min_point_ys{};
-        Element<float>* min_point_zs{};
-        Element<float>* max_point_xs{};
-        Element<float>* max_point_ys{};
-        Element<float>* max_point_zs{};
-        Element<std::int32_t>* min_cell_xs{};
-        Element<std::int32_t>* min_cell_ys{};
-        Element<std::int32_t>* min_cell_zs{};
-        Element<std::int32_t>* max_cell_xs{};
-        Element<std::int32_t>* max_cell_ys{};
-        Element<std::int32_t>* max_cell_zs{};
-        Element<EntityId>* entity_ids{};
-    };
-  private:
-    friend Operations;
-    friend ::ioj::soa_storage_detail::StorageRequirements;
-    /* **************************************** */
-    // Column pointers
-    /* **************************************** */
-    template <typename Byte>
-    static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
-        -> DataPointers<Byte> {
-        return Layout::make_data<DataPointers<Byte>>(data, blocks);
-    }
+    using DataPointers = ::ioj::sim::collision::entity_cell_data::DataPointers<Byte>;
   public:
     auto min_point_xs(this auto& self) { return self.get_view().min_point_xs(); }
     auto min_point_ys(this auto& self) { return self.get_view().min_point_ys(); }
@@ -500,25 +381,9 @@ struct EntityCellData
             new_entity_ids);
         return index;
     }
-    void apply_permutation(std::span<size_type> indices) {
-        assert(indices.size() == num_);
-        auto const columns{get_data()};
-        auto const permute{ioj::ColumnPermutation{num_, indices}};
-        permute(columns.min_point_xs,
-                columns.min_point_ys,
-                columns.min_point_zs,
-                columns.max_point_xs,
-                columns.max_point_ys,
-                columns.max_point_zs,
-                columns.min_cell_xs,
-                columns.min_cell_ys,
-                columns.min_cell_zs,
-                columns.max_cell_xs,
-                columns.max_cell_ys,
-                columns.max_cell_zs,
-                columns.entity_ids);
-    }
   private:
+    friend Operations;
+    friend ::ioj::soa_storage_detail::StorageRequirements;
     std::pmr::memory_resource* resource_{};
 };
 } // namespace ioj::sim::collision

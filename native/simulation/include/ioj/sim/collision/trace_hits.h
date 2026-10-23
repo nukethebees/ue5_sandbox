@@ -9,7 +9,6 @@
 #include "ioj/sim/collision/query_result_types.h"
 #include "ioj/sim/entities/entity_id.h"
 #include "ioj/single_allocation/layout.h"
-#include "ioj/soa_permutation.h"
 #include "ioj/vectors3f.h"
 #include <ioj/sim/collision/line_trace_result.h>
 
@@ -38,6 +37,21 @@ struct Layout
     static constexpr std::size_t hits_column{5};
 };
 
+/* **************************************** */
+// Column pointers
+/* **************************************** */
+template <typename Byte>
+struct DataPointers {
+    template <typename T>
+    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
+    Element<float>* locations_xs{};
+    Element<float>* locations_ys{};
+    Element<float>* locations_zs{};
+    Element<EntityId>* entities{};
+    Element<collision::StaticGeometryIndex>* static_geometry_indices{};
+    Element<TraceHit>* hits{};
+};
+
 struct Schema {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
@@ -55,93 +69,31 @@ struct Schema {
 // Resolved views
 /* **************************************** */
 template <bool Const>
-struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
-    using size_type = std::uint32_t;
+struct ResolvedViewImpl
+    : ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const> {
+    using Base =
+        ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const>;
+    using Base::Base;
+    using Layout = ::ioj::sim::trace_hits::Layout;
     using view_type = ::ioj::sim::trace_hits::ResolvedView;
     using const_view_type = ::ioj::sim::trace_hits::ResolvedConstView;
     using soa_schema = ::ioj::sim::trace_hits::Schema;
-    template <typename T>
-    using Element = std::conditional_t<Const, T const, T>;
-    ResolvedViewImpl() = default;
-    ResolvedViewImpl(Element<float>* locations_xs,
-                     Element<float>* locations_ys,
-                     Element<float>* locations_zs,
-                     Element<EntityId>* entities,
-                     Element<ioj::sim::collision::StaticGeometryIndex>* static_geometry_indices,
-                     Element<ioj::sim::TraceHit>* hits,
-                     size_type column_count)
-        : locations_xs_{locations_xs}
-        , locations_ys_{locations_ys}
-        , locations_zs_{locations_zs}
-        , entities_{entities}
-        , static_geometry_indices_{static_geometry_indices}
-        , hits_{hits}
-        , column_count_{column_count} {
-        ioj::soa_storage_detail::validate_column_pointers(column_count_,
-                                                          locations_xs_,
-                                                          locations_ys_,
-                                                          locations_zs_,
-                                                          entities_,
-                                                          static_geometry_indices_,
-                                                          hits_);
-    }
-    ResolvedViewImpl(
-        std::span<Element<float>> locations_xs,
-        std::span<Element<float>> locations_ys,
-        std::span<Element<float>> locations_zs,
-        std::span<Element<EntityId>> entities,
-        std::span<Element<ioj::sim::collision::StaticGeometryIndex>> static_geometry_indices,
-        std::span<Element<ioj::sim::TraceHit>> hits)
-        : ResolvedViewImpl{locations_xs.data(),
-                           locations_ys.data(),
-                           locations_zs.data(),
-                           entities.data(),
-                           static_geometry_indices.data(),
-                           hits.data(),
-                           ioj::soa_storage_detail::checked_row_count(locations_xs.size())} {
-        ioj::soa_storage_detail::validate_column_sizes(column_count_,
-                                                       locations_xs,
-                                                       locations_ys,
-                                                       locations_zs,
-                                                       entities,
-                                                       static_geometry_indices,
-                                                       hits);
-    }
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
-    {
-        auto& [... destination] = *this;
-        auto const& [... source] = other;
-        ((destination = source), ...);
-    }
-    auto num() const noexcept -> size_type { return column_count_; }
-    auto resolve(this auto const& self) { return self; }
-    auto slice(this auto const& self, size_type offset, size_type count) {
-        auto const& [... pointers, source_count] = static_cast<ResolvedViewImpl const&>(self);
-        assert(offset <= source_count && count <= source_count - offset);
-        using Result = std::remove_cvref_t<decltype(self)>;
-        return Result{(pointers ? pointers + offset : nullptr)..., count};
-    }
+        : Base{other} {}
     auto view_locations() const -> std::
         conditional_t<Const, ::ioj::vectors3f::ResolvedConstView, ::ioj::vectors3f::ResolvedView> {
-        return {locations_xs_, locations_ys_, locations_zs_, column_count_};
+        return {this->columns_.locations_xs,
+                this->columns_.locations_ys,
+                this->columns_.locations_zs,
+                this->num()};
     }
-    auto entities() const { return std::span{entities_, column_count_}; }
+    auto entities() const { return this->template column<Layout::entities_column>(); }
     auto static_geometry_indices() const {
-        return std::span{static_geometry_indices_, column_count_};
+        return this->template column<Layout::static_geometry_indices_column>();
     }
-    auto hits() const { return std::span{hits_, column_count_}; }
-  private:
-    template <bool>
-    friend struct ResolvedViewImpl;
-    Element<float>* locations_xs_{};
-    Element<float>* locations_ys_{};
-    Element<float>* locations_zs_{};
-    Element<EntityId>* entities_{};
-    Element<ioj::sim::collision::StaticGeometryIndex>* static_geometry_indices_{};
-    Element<ioj::sim::TraceHit>* hits_{};
-    size_type column_count_{};
+    auto hits() const { return this->template column<Layout::hits_column>(); }
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;
@@ -303,27 +255,7 @@ struct TraceHits
     }
   protected:
     template <typename Byte>
-    struct DataPointers {
-        template <typename T>
-        using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-        Element<float>* locations_xs{};
-        Element<float>* locations_ys{};
-        Element<float>* locations_zs{};
-        Element<EntityId>* entities{};
-        Element<collision::StaticGeometryIndex>* static_geometry_indices{};
-        Element<TraceHit>* hits{};
-    };
-  private:
-    friend Operations;
-    friend ::ioj::soa_storage_detail::StorageRequirements;
-    /* **************************************** */
-    // Column pointers
-    /* **************************************** */
-    template <typename Byte>
-    static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
-        -> DataPointers<Byte> {
-        return Layout::make_data<DataPointers<Byte>>(data, blocks);
-    }
+    using DataPointers = ::ioj::sim::trace_hits::DataPointers<Byte>;
   public:
     auto view_locations(this auto& self) { return self.get_view().view_locations(); }
     auto entities(this auto& self) { return self.get_view().entities(); }
@@ -383,18 +315,9 @@ struct TraceHits
         set(index, new_locations, new_entities, new_static_geometry_indices, new_hits);
         return index;
     }
-    void apply_permutation(std::span<size_type> indices) {
-        assert(indices.size() == num_);
-        auto const columns{get_data()};
-        auto const permute{ioj::ColumnPermutation{num_, indices}};
-        permute(columns.locations_xs,
-                columns.locations_ys,
-                columns.locations_zs,
-                columns.entities,
-                columns.static_geometry_indices,
-                columns.hits);
-    }
   private:
+    friend Operations;
+    friend ::ioj::soa_storage_detail::StorageRequirements;
     std::pmr::memory_resource* resource_{};
 };
 } // namespace ioj::sim

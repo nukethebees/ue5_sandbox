@@ -8,7 +8,6 @@
 #include "ioj/layout/analyzer/access_operation.hpp"
 #include "ioj/native_soa/storage.h"
 #include "ioj/single_allocation/layout.h"
-#include "ioj/soa_permutation.h"
 
 #include <cassert>
 #include <cstddef>
@@ -44,6 +43,22 @@ struct Layout
     static constexpr std::size_t capacity_slack_bytes_column{6};
 };
 
+/* **************************************** */
+// Column pointers
+/* **************************************** */
+template <typename Byte>
+struct DataPointers {
+    template <typename T>
+    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
+    Element<std::size_t>* source{};
+    Element<AccessOperation>* operation{};
+    Element<PayloadFootprint>* bytes{};
+    Element<PayloadFootprint>* bits{};
+    Element<RegionFootprint>* cache{};
+    Element<RegionFootprint>* pages{};
+    Element<std::optional<std::uint64_t>>* capacity_slack_bytes{};
+};
+
 struct Schema {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
@@ -61,91 +76,28 @@ struct Schema {
 // Resolved views
 /* **************************************** */
 template <bool Const>
-struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
-    using size_type = std::uint32_t;
+struct ResolvedViewImpl
+    : ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const> {
+    using Base =
+        ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const>;
+    using Base::Base;
+    using Layout = ::ioj::layout::selection_table::Layout;
     using view_type = ::ioj::layout::selection_table::ResolvedView;
     using const_view_type = ::ioj::layout::selection_table::ResolvedConstView;
     using soa_schema = ::ioj::layout::selection_table::Schema;
-    template <typename T>
-    using Element = std::conditional_t<Const, T const, T>;
-    ResolvedViewImpl() = default;
-    ResolvedViewImpl(Element<std::size_t>* source,
-                     Element<ioj::layout::AccessOperation>* operation,
-                     Element<ioj::layout::PayloadFootprint>* bytes,
-                     Element<ioj::layout::PayloadFootprint>* bits,
-                     Element<ioj::layout::RegionFootprint>* cache,
-                     Element<ioj::layout::RegionFootprint>* pages,
-                     Element<std::optional<std::uint64_t>>* capacity_slack_bytes,
-                     size_type column_count)
-        : source_{source}
-        , operation_{operation}
-        , bytes_{bytes}
-        , bits_{bits}
-        , cache_{cache}
-        , pages_{pages}
-        , capacity_slack_bytes_{capacity_slack_bytes}
-        , column_count_{column_count} {
-        ioj::soa_storage_detail::validate_column_pointers(column_count_,
-                                                          source_,
-                                                          operation_,
-                                                          bytes_,
-                                                          bits_,
-                                                          cache_,
-                                                          pages_,
-                                                          capacity_slack_bytes_);
-    }
-    ResolvedViewImpl(std::span<Element<std::size_t>> source,
-                     std::span<Element<ioj::layout::AccessOperation>> operation,
-                     std::span<Element<ioj::layout::PayloadFootprint>> bytes,
-                     std::span<Element<ioj::layout::PayloadFootprint>> bits,
-                     std::span<Element<ioj::layout::RegionFootprint>> cache,
-                     std::span<Element<ioj::layout::RegionFootprint>> pages,
-                     std::span<Element<std::optional<std::uint64_t>>> capacity_slack_bytes)
-        : ResolvedViewImpl{source.data(),
-                           operation.data(),
-                           bytes.data(),
-                           bits.data(),
-                           cache.data(),
-                           pages.data(),
-                           capacity_slack_bytes.data(),
-                           ioj::soa_storage_detail::checked_row_count(source.size())} {
-        ioj::soa_storage_detail::validate_column_sizes(
-            column_count_, source, operation, bytes, bits, cache, pages, capacity_slack_bytes);
-    }
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
-    {
-        auto& [... destination] = *this;
-        auto const& [... source] = other;
-        ((destination = source), ...);
+        : Base{other} {}
+    auto source() const { return this->template column<Layout::source_column>(); }
+    auto operation() const { return this->template column<Layout::operation_column>(); }
+    auto bytes() const { return this->template column<Layout::bytes_column>(); }
+    auto bits() const { return this->template column<Layout::bits_column>(); }
+    auto cache() const { return this->template column<Layout::cache_column>(); }
+    auto pages() const { return this->template column<Layout::pages_column>(); }
+    auto capacity_slack_bytes() const {
+        return this->template column<Layout::capacity_slack_bytes_column>();
     }
-    auto num() const noexcept -> size_type { return column_count_; }
-    auto resolve(this auto const& self) { return self; }
-    auto slice(this auto const& self, size_type offset, size_type count) {
-        auto const& [... pointers, source_count] = static_cast<ResolvedViewImpl const&>(self);
-        assert(offset <= source_count && count <= source_count - offset);
-        using Result = std::remove_cvref_t<decltype(self)>;
-        return Result{(pointers ? pointers + offset : nullptr)..., count};
-    }
-    auto source() const { return std::span{source_, column_count_}; }
-    auto operation() const { return std::span{operation_, column_count_}; }
-    auto bytes() const { return std::span{bytes_, column_count_}; }
-    auto bits() const { return std::span{bits_, column_count_}; }
-    auto cache() const { return std::span{cache_, column_count_}; }
-    auto pages() const { return std::span{pages_, column_count_}; }
-    auto capacity_slack_bytes() const { return std::span{capacity_slack_bytes_, column_count_}; }
-  private:
-    template <bool>
-    friend struct ResolvedViewImpl;
-    Element<std::size_t>* source_{};
-    Element<ioj::layout::AccessOperation>* operation_{};
-    Element<ioj::layout::PayloadFootprint>* bytes_{};
-    Element<ioj::layout::PayloadFootprint>* bits_{};
-    Element<ioj::layout::RegionFootprint>* cache_{};
-    Element<ioj::layout::RegionFootprint>* pages_{};
-    Element<std::optional<std::uint64_t>>* capacity_slack_bytes_{};
-    size_type column_count_{};
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;
@@ -286,28 +238,7 @@ struct SelectionTable
     }
   protected:
     template <typename Byte>
-    struct DataPointers {
-        template <typename T>
-        using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-        Element<std::size_t>* source{};
-        Element<AccessOperation>* operation{};
-        Element<PayloadFootprint>* bytes{};
-        Element<PayloadFootprint>* bits{};
-        Element<RegionFootprint>* cache{};
-        Element<RegionFootprint>* pages{};
-        Element<std::optional<std::uint64_t>>* capacity_slack_bytes{};
-    };
-  private:
-    friend Operations;
-    friend ::ioj::soa_storage_detail::StorageRequirements;
-    /* **************************************** */
-    // Column pointers
-    /* **************************************** */
-    template <typename Byte>
-    static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
-        -> DataPointers<Byte> {
-        return Layout::make_data<DataPointers<Byte>>(data, blocks);
-    }
+    using DataPointers = ::ioj::layout::selection_table::DataPointers<Byte>;
   public:
     auto source(this auto& self) { return self.get_view().source(); }
     auto operation(this auto& self) { return self.get_view().operation(); }
@@ -353,19 +284,9 @@ struct SelectionTable
         return index;
     }
     std::size_t append(std::size_t selected_source, AccessOperation selected_operation);
-    void apply_permutation(std::span<size_type> indices) {
-        assert(indices.size() == num_);
-        auto const columns{get_data()};
-        auto const permute{ioj::ColumnPermutation{num_, indices}};
-        permute(columns.source,
-                columns.operation,
-                columns.bytes,
-                columns.bits,
-                columns.cache,
-                columns.pages,
-                columns.capacity_slack_bytes);
-    }
   private:
+    friend Operations;
+    friend ::ioj::soa_storage_detail::StorageRequirements;
     std::pmr::memory_resource* resource_{};
 };
 } // namespace ioj::layout

@@ -7,7 +7,6 @@
 #include "ioj/layout/analysis/relationship_metrics.hpp"
 #include "ioj/native_soa/storage.h"
 #include "ioj/single_allocation/layout.h"
-#include "ioj/soa_permutation.h"
 
 #include "lispb/schema/indices.h"
 
@@ -39,6 +38,19 @@ struct Layout
     static constexpr std::size_t metrics_column{3};
 };
 
+/* **************************************** */
+// Column pointers
+/* **************************************** */
+template <typename Byte>
+struct DataPointers {
+    template <typename T>
+    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
+    Element<AnalysisId>* owner{};
+    Element<std::optional<std::size_t>>* field{};
+    Element<lispb::schema::RelationshipId>* relationship{};
+    Element<std::optional<ioj::layout::RelationshipMetrics>>* metrics{};
+};
+
 struct Schema {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
@@ -50,67 +62,23 @@ struct Schema {
 // Resolved views
 /* **************************************** */
 template <bool Const>
-struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
-    using size_type = std::uint32_t;
+struct ResolvedViewImpl
+    : ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const> {
+    using Base =
+        ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const>;
+    using Base::Base;
+    using Layout = ::ioj::layout::relationship_table::Layout;
     using view_type = ::ioj::layout::relationship_table::ResolvedView;
     using const_view_type = ::ioj::layout::relationship_table::ResolvedConstView;
     using soa_schema = ::ioj::layout::relationship_table::Schema;
-    template <typename T>
-    using Element = std::conditional_t<Const, T const, T>;
-    ResolvedViewImpl() = default;
-    ResolvedViewImpl(Element<ioj::layout::AnalysisId>* owner,
-                     Element<std::optional<std::size_t>>* field,
-                     Element<lispb::schema::RelationshipId>* relationship,
-                     Element<std::optional<ioj::layout::RelationshipMetrics>>* metrics,
-                     size_type column_count)
-        : owner_{owner}
-        , field_{field}
-        , relationship_{relationship}
-        , metrics_{metrics}
-        , column_count_{column_count} {
-        ioj::soa_storage_detail::validate_column_pointers(
-            column_count_, owner_, field_, relationship_, metrics_);
-    }
-    ResolvedViewImpl(std::span<Element<ioj::layout::AnalysisId>> owner,
-                     std::span<Element<std::optional<std::size_t>>> field,
-                     std::span<Element<lispb::schema::RelationshipId>> relationship,
-                     std::span<Element<std::optional<ioj::layout::RelationshipMetrics>>> metrics)
-        : ResolvedViewImpl{owner.data(),
-                           field.data(),
-                           relationship.data(),
-                           metrics.data(),
-                           ioj::soa_storage_detail::checked_row_count(owner.size())} {
-        ioj::soa_storage_detail::validate_column_sizes(
-            column_count_, owner, field, relationship, metrics);
-    }
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
-    {
-        auto& [... destination] = *this;
-        auto const& [... source] = other;
-        ((destination = source), ...);
-    }
-    auto num() const noexcept -> size_type { return column_count_; }
-    auto resolve(this auto const& self) { return self; }
-    auto slice(this auto const& self, size_type offset, size_type count) {
-        auto const& [... pointers, source_count] = static_cast<ResolvedViewImpl const&>(self);
-        assert(offset <= source_count && count <= source_count - offset);
-        using Result = std::remove_cvref_t<decltype(self)>;
-        return Result{(pointers ? pointers + offset : nullptr)..., count};
-    }
-    auto owner() const { return std::span{owner_, column_count_}; }
-    auto field() const { return std::span{field_, column_count_}; }
-    auto relationship() const { return std::span{relationship_, column_count_}; }
-    auto metrics() const { return std::span{metrics_, column_count_}; }
-  private:
-    template <bool>
-    friend struct ResolvedViewImpl;
-    Element<ioj::layout::AnalysisId>* owner_{};
-    Element<std::optional<std::size_t>>* field_{};
-    Element<lispb::schema::RelationshipId>* relationship_{};
-    Element<std::optional<ioj::layout::RelationshipMetrics>>* metrics_{};
-    size_type column_count_{};
+        : Base{other} {}
+    auto owner() const { return this->template column<Layout::owner_column>(); }
+    auto field() const { return this->template column<Layout::field_column>(); }
+    auto relationship() const { return this->template column<Layout::relationship_column>(); }
+    auto metrics() const { return this->template column<Layout::metrics_column>(); }
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;
@@ -236,25 +204,7 @@ struct RelationshipTable
     }
   protected:
     template <typename Byte>
-    struct DataPointers {
-        template <typename T>
-        using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-        Element<AnalysisId>* owner{};
-        Element<std::optional<std::size_t>>* field{};
-        Element<lispb::schema::RelationshipId>* relationship{};
-        Element<std::optional<ioj::layout::RelationshipMetrics>>* metrics{};
-    };
-  private:
-    friend Operations;
-    friend ::ioj::soa_storage_detail::StorageRequirements;
-    /* **************************************** */
-    // Column pointers
-    /* **************************************** */
-    template <typename Byte>
-    static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
-        -> DataPointers<Byte> {
-        return Layout::make_data<DataPointers<Byte>>(data, blocks);
-    }
+    using DataPointers = ::ioj::layout::relationship_table::DataPointers<Byte>;
   public:
     auto owner(this auto& self) { return self.get_view().owner(); }
     auto field(this auto& self) { return self.get_view().field(); }
@@ -281,13 +231,9 @@ struct RelationshipTable
         return index;
     }
     std::size_t append();
-    void apply_permutation(std::span<size_type> indices) {
-        assert(indices.size() == num_);
-        auto const columns{get_data()};
-        auto const permute{ioj::ColumnPermutation{num_, indices}};
-        permute(columns.owner, columns.field, columns.relationship, columns.metrics);
-    }
   private:
+    friend Operations;
+    friend ::ioj::soa_storage_detail::StorageRequirements;
     std::pmr::memory_resource* resource_{};
 };
 } // namespace ioj::layout

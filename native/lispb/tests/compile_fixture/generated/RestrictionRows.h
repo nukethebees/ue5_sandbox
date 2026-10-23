@@ -6,7 +6,6 @@
 #include "compile_fixture/restricted_leaf.hpp"
 #include "ioj/native_soa/storage.h"
 #include "ioj/single_allocation/layout.h"
-#include "ioj/soa_permutation.h"
 
 #include <cassert>
 #include <memory_resource>
@@ -26,6 +25,16 @@ struct Layout : ioj::single_allocation_layout::ColumnLayouts<RestrictedLeaf> {
     static constexpr std::size_t restricted_column{0};
 };
 
+/* **************************************** */
+// Column pointers
+/* **************************************** */
+template <typename Byte>
+struct DataPointers {
+    template <typename T>
+    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
+    Element<RestrictedLeaf>* restricted{};
+};
+
 struct Schema {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
@@ -37,46 +46,20 @@ struct Schema {
 // Resolved views
 /* **************************************** */
 template <bool Const>
-struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
-    using size_type = std::uint32_t;
+struct ResolvedViewImpl
+    : ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const> {
+    using Base =
+        ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const>;
+    using Base::Base;
+    using Layout = ::codegen_compile_fixture::single_restriction_rows::Layout;
     using view_type = ::codegen_compile_fixture::single_restriction_rows::ResolvedView;
     using const_view_type = ::codegen_compile_fixture::single_restriction_rows::ResolvedConstView;
     using soa_schema = ::codegen_compile_fixture::single_restriction_rows::Schema;
-    template <typename T>
-    using Element = std::conditional_t<Const, T const, T>;
-    ResolvedViewImpl() = default;
-    ResolvedViewImpl(Element<RestrictedLeaf>* restricted, size_type column_count)
-        : restricted_{restricted}
-        , column_count_{column_count} {
-        ioj::soa_storage_detail::validate_column_pointers(column_count_, restricted_);
-    }
-    ResolvedViewImpl(std::span<Element<RestrictedLeaf>> restricted)
-        : ResolvedViewImpl{restricted.data(),
-                           ioj::soa_storage_detail::checked_row_count(restricted.size())} {
-        ioj::soa_storage_detail::validate_column_sizes(column_count_, restricted);
-    }
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
-    {
-        auto& [... destination] = *this;
-        auto const& [... source] = other;
-        ((destination = source), ...);
-    }
-    auto num() const noexcept -> size_type { return column_count_; }
-    auto resolve(this auto const& self) { return self; }
-    auto slice(this auto const& self, size_type offset, size_type count) {
-        auto const& [... pointers, source_count] = static_cast<ResolvedViewImpl const&>(self);
-        assert(offset <= source_count && count <= source_count - offset);
-        using Result = std::remove_cvref_t<decltype(self)>;
-        return Result{(pointers ? pointers + offset : nullptr)..., count};
-    }
-    auto restricted() const { return std::span{restricted_, column_count_}; }
-  private:
-    template <bool>
-    friend struct ResolvedViewImpl;
-    Element<RestrictedLeaf>* restricted_{};
-    size_type column_count_{};
+        : Base{other} {}
+    auto restricted() const { return this->template column<Layout::restricted_column>(); }
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;
@@ -177,22 +160,7 @@ struct SingleRestrictionRows
     }
   protected:
     template <typename Byte>
-    struct DataPointers {
-        template <typename T>
-        using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-        Element<RestrictedLeaf>* restricted{};
-    };
-  private:
-    friend Operations;
-    friend ::ioj::soa_storage_detail::StorageRequirements;
-    /* **************************************** */
-    // Column pointers
-    /* **************************************** */
-    template <typename Byte>
-    static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
-        -> DataPointers<Byte> {
-        return Layout::make_data<DataPointers<Byte>>(data, blocks);
-    }
+    using DataPointers = ::codegen_compile_fixture::single_restriction_rows::DataPointers<Byte>;
   public:
     auto restricted(this auto& self) { return self.get_view().restricted(); }
     void set(size_type index, RestrictedLeaf const new_restricted) {
@@ -205,13 +173,9 @@ struct SingleRestrictionRows
         set(index, new_restricted);
         return index;
     }
-    void apply_permutation(std::span<size_type> indices) {
-        assert(indices.size() == num_);
-        auto const columns{get_data()};
-        auto const permute{ioj::ColumnPermutation{num_, indices}};
-        permute(columns.restricted);
-    }
   private:
+    friend Operations;
+    friend ::ioj::soa_storage_detail::StorageRequirements;
     std::pmr::memory_resource* resource_{};
 };
 } // namespace codegen_compile_fixture

@@ -12,7 +12,6 @@
 #include "ioj/layout/analysis/soa_layout.hpp"
 #include "ioj/native_soa/storage.h"
 #include "ioj/single_allocation/layout.h"
-#include "ioj/soa_permutation.h"
 
 #include "lispb/schema/indices.h"
 
@@ -48,6 +47,22 @@ struct Layout
     static constexpr std::size_t soa_column{6};
 };
 
+/* **************************************** */
+// Column pointers
+/* **************************************** */
+template <typename Byte>
+struct DataPointers {
+    template <typename T>
+    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
+    Element<lispb::schema::TypeId>* schema_type{};
+    Element<ScenarioId>* scenario{};
+    Element<std::optional<ioj::layout::PhysicalFactId>>* physical{};
+    Element<std::optional<ioj::layout::EnumBacking>>* enum_backing{};
+    Element<std::optional<ioj::layout::AggregateLayout>>* aggregate{};
+    Element<std::optional<ioj::layout::PackedLayout>>* packed{};
+    Element<std::optional<ioj::layout::SoaLayout>>* soa{};
+};
+
 struct Schema {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
@@ -65,91 +80,26 @@ struct Schema {
 // Resolved views
 /* **************************************** */
 template <bool Const>
-struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
-    using size_type = std::uint32_t;
+struct ResolvedViewImpl
+    : ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const> {
+    using Base =
+        ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const>;
+    using Base::Base;
+    using Layout = ::ioj::layout::type_analysis_table::Layout;
     using view_type = ::ioj::layout::type_analysis_table::ResolvedView;
     using const_view_type = ::ioj::layout::type_analysis_table::ResolvedConstView;
     using soa_schema = ::ioj::layout::type_analysis_table::Schema;
-    template <typename T>
-    using Element = std::conditional_t<Const, T const, T>;
-    ResolvedViewImpl() = default;
-    ResolvedViewImpl(Element<lispb::schema::TypeId>* schema_type,
-                     Element<ioj::layout::ScenarioId>* scenario,
-                     Element<std::optional<ioj::layout::PhysicalFactId>>* physical,
-                     Element<std::optional<ioj::layout::EnumBacking>>* enum_backing,
-                     Element<std::optional<ioj::layout::AggregateLayout>>* aggregate,
-                     Element<std::optional<ioj::layout::PackedLayout>>* packed,
-                     Element<std::optional<ioj::layout::SoaLayout>>* soa,
-                     size_type column_count)
-        : schema_type_{schema_type}
-        , scenario_{scenario}
-        , physical_{physical}
-        , enum_backing_{enum_backing}
-        , aggregate_{aggregate}
-        , packed_{packed}
-        , soa_{soa}
-        , column_count_{column_count} {
-        ioj::soa_storage_detail::validate_column_pointers(column_count_,
-                                                          schema_type_,
-                                                          scenario_,
-                                                          physical_,
-                                                          enum_backing_,
-                                                          aggregate_,
-                                                          packed_,
-                                                          soa_);
-    }
-    ResolvedViewImpl(std::span<Element<lispb::schema::TypeId>> schema_type,
-                     std::span<Element<ioj::layout::ScenarioId>> scenario,
-                     std::span<Element<std::optional<ioj::layout::PhysicalFactId>>> physical,
-                     std::span<Element<std::optional<ioj::layout::EnumBacking>>> enum_backing,
-                     std::span<Element<std::optional<ioj::layout::AggregateLayout>>> aggregate,
-                     std::span<Element<std::optional<ioj::layout::PackedLayout>>> packed,
-                     std::span<Element<std::optional<ioj::layout::SoaLayout>>> soa)
-        : ResolvedViewImpl{schema_type.data(),
-                           scenario.data(),
-                           physical.data(),
-                           enum_backing.data(),
-                           aggregate.data(),
-                           packed.data(),
-                           soa.data(),
-                           ioj::soa_storage_detail::checked_row_count(schema_type.size())} {
-        ioj::soa_storage_detail::validate_column_sizes(
-            column_count_, schema_type, scenario, physical, enum_backing, aggregate, packed, soa);
-    }
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
-    {
-        auto& [... destination] = *this;
-        auto const& [... source] = other;
-        ((destination = source), ...);
-    }
-    auto num() const noexcept -> size_type { return column_count_; }
-    auto resolve(this auto const& self) { return self; }
-    auto slice(this auto const& self, size_type offset, size_type count) {
-        auto const& [... pointers, source_count] = static_cast<ResolvedViewImpl const&>(self);
-        assert(offset <= source_count && count <= source_count - offset);
-        using Result = std::remove_cvref_t<decltype(self)>;
-        return Result{(pointers ? pointers + offset : nullptr)..., count};
-    }
-    auto schema_type() const { return std::span{schema_type_, column_count_}; }
-    auto scenario() const { return std::span{scenario_, column_count_}; }
-    auto physical() const { return std::span{physical_, column_count_}; }
-    auto enum_backing() const { return std::span{enum_backing_, column_count_}; }
-    auto aggregate() const { return std::span{aggregate_, column_count_}; }
-    auto packed() const { return std::span{packed_, column_count_}; }
-    auto soa() const { return std::span{soa_, column_count_}; }
-  private:
-    template <bool>
-    friend struct ResolvedViewImpl;
-    Element<lispb::schema::TypeId>* schema_type_{};
-    Element<ioj::layout::ScenarioId>* scenario_{};
-    Element<std::optional<ioj::layout::PhysicalFactId>>* physical_{};
-    Element<std::optional<ioj::layout::EnumBacking>>* enum_backing_{};
-    Element<std::optional<ioj::layout::AggregateLayout>>* aggregate_{};
-    Element<std::optional<ioj::layout::PackedLayout>>* packed_{};
-    Element<std::optional<ioj::layout::SoaLayout>>* soa_{};
-    size_type column_count_{};
+        : Base{other} {}
+    auto schema_type() const { return this->template column<Layout::schema_type_column>(); }
+    auto scenario() const { return this->template column<Layout::scenario_column>(); }
+    auto physical() const { return this->template column<Layout::physical_column>(); }
+    auto enum_backing() const { return this->template column<Layout::enum_backing_column>(); }
+    auto aggregate() const { return this->template column<Layout::aggregate_column>(); }
+    auto packed() const { return this->template column<Layout::packed_column>(); }
+    auto soa() const { return this->template column<Layout::soa_column>(); }
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;
@@ -302,28 +252,7 @@ struct TypeAnalysisTable
     }
   protected:
     template <typename Byte>
-    struct DataPointers {
-        template <typename T>
-        using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-        Element<lispb::schema::TypeId>* schema_type{};
-        Element<ScenarioId>* scenario{};
-        Element<std::optional<ioj::layout::PhysicalFactId>>* physical{};
-        Element<std::optional<ioj::layout::EnumBacking>>* enum_backing{};
-        Element<std::optional<ioj::layout::AggregateLayout>>* aggregate{};
-        Element<std::optional<ioj::layout::PackedLayout>>* packed{};
-        Element<std::optional<ioj::layout::SoaLayout>>* soa{};
-    };
-  private:
-    friend Operations;
-    friend ::ioj::soa_storage_detail::StorageRequirements;
-    /* **************************************** */
-    // Column pointers
-    /* **************************************** */
-    template <typename Byte>
-    static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
-        -> DataPointers<Byte> {
-        return Layout::make_data<DataPointers<Byte>>(data, blocks);
-    }
+    using DataPointers = ::ioj::layout::type_analysis_table::DataPointers<Byte>;
   public:
     auto schema_type(this auto& self) { return self.get_view().schema_type(); }
     auto scenario(this auto& self) { return self.get_view().scenario(); }
@@ -370,19 +299,9 @@ struct TypeAnalysisTable
     }
     AnalysisId append(lispb::schema::TypeId type, ScenarioId scenario_id);
     AnalysisId find(lispb::schema::TypeId type, ScenarioId scenario_id) const;
-    void apply_permutation(std::span<size_type> indices) {
-        assert(indices.size() == num_);
-        auto const columns{get_data()};
-        auto const permute{ioj::ColumnPermutation{num_, indices}};
-        permute(columns.schema_type,
-                columns.scenario,
-                columns.physical,
-                columns.enum_backing,
-                columns.aggregate,
-                columns.packed,
-                columns.soa);
-    }
   private:
+    friend Operations;
+    friend ::ioj::soa_storage_detail::StorageRequirements;
     std::pmr::memory_resource* resource_{};
 };
 } // namespace ioj::layout

@@ -11,7 +11,6 @@
 #include "ioj/sim/entities/entity_type.h"
 #include "ioj/sim/sim_tick.h"
 #include "ioj/single_allocation/layout.h"
-#include "ioj/soa_permutation.h"
 
 #include <cassert>
 #include <cstdint>
@@ -47,6 +46,23 @@ struct Layout
     static constexpr std::size_t death_locations_column{7};
 };
 
+/* **************************************** */
+// Column pointers
+/* **************************************** */
+template <typename Byte>
+struct DataPointers {
+    template <typename T>
+    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
+    Element<EntityId>* entity_ids{};
+    Element<EntityType>* entity_types{};
+    Element<::ioj::Team>* teams{};
+    Element<std::uint32_t>* kills{};
+    Element<EntityId>* killed_by{};
+    Element<LifeState>* life_state{};
+    Element<SimTick>* death_ticks{};
+    Element<Vector3f>* death_locations{};
+};
+
 struct Schema {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
@@ -65,105 +81,27 @@ struct Schema {
 // Resolved views
 /* **************************************** */
 template <bool Const>
-struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
-    using size_type = std::uint32_t;
+struct ResolvedViewImpl
+    : ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const> {
+    using Base =
+        ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const>;
+    using Base::Base;
+    using Layout = ::ioj::sim::entity_history::Layout;
     using view_type = ::ioj::sim::entity_history::ResolvedView;
     using const_view_type = ::ioj::sim::entity_history::ResolvedConstView;
     using soa_schema = ::ioj::sim::entity_history::Schema;
-    template <typename T>
-    using Element = std::conditional_t<Const, T const, T>;
-    ResolvedViewImpl() = default;
-    ResolvedViewImpl(Element<EntityId>* entity_ids,
-                     Element<ioj::sim::EntityType>* entity_types,
-                     Element<::ioj::Team>* teams,
-                     Element<std::uint32_t>* kills,
-                     Element<EntityId>* killed_by,
-                     Element<LifeState>* life_state,
-                     Element<SimTick>* death_ticks,
-                     Element<Vector3f>* death_locations,
-                     size_type column_count)
-        : entity_ids_{entity_ids}
-        , entity_types_{entity_types}
-        , teams_{teams}
-        , kills_{kills}
-        , killed_by_{killed_by}
-        , life_state_{life_state}
-        , death_ticks_{death_ticks}
-        , death_locations_{death_locations}
-        , column_count_{column_count} {
-        ioj::soa_storage_detail::validate_column_pointers(column_count_,
-                                                          entity_ids_,
-                                                          entity_types_,
-                                                          teams_,
-                                                          kills_,
-                                                          killed_by_,
-                                                          life_state_,
-                                                          death_ticks_,
-                                                          death_locations_);
-    }
-    ResolvedViewImpl(std::span<Element<EntityId>> entity_ids,
-                     std::span<Element<ioj::sim::EntityType>> entity_types,
-                     std::span<Element<::ioj::Team>> teams,
-                     std::span<Element<std::uint32_t>> kills,
-                     std::span<Element<EntityId>> killed_by,
-                     std::span<Element<LifeState>> life_state,
-                     std::span<Element<SimTick>> death_ticks,
-                     std::span<Element<Vector3f>> death_locations)
-        : ResolvedViewImpl{entity_ids.data(),
-                           entity_types.data(),
-                           teams.data(),
-                           kills.data(),
-                           killed_by.data(),
-                           life_state.data(),
-                           death_ticks.data(),
-                           death_locations.data(),
-                           ioj::soa_storage_detail::checked_row_count(entity_ids.size())} {
-        ioj::soa_storage_detail::validate_column_sizes(column_count_,
-                                                       entity_ids,
-                                                       entity_types,
-                                                       teams,
-                                                       kills,
-                                                       killed_by,
-                                                       life_state,
-                                                       death_ticks,
-                                                       death_locations);
-    }
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
-    {
-        auto& [... destination] = *this;
-        auto const& [... source] = other;
-        ((destination = source), ...);
-    }
-    auto num() const noexcept -> size_type { return column_count_; }
-    auto resolve(this auto const& self) { return self; }
-    auto slice(this auto const& self, size_type offset, size_type count) {
-        auto const& [... pointers, source_count] = static_cast<ResolvedViewImpl const&>(self);
-        assert(offset <= source_count && count <= source_count - offset);
-        using Result = std::remove_cvref_t<decltype(self)>;
-        return Result{(pointers ? pointers + offset : nullptr)..., count};
-    }
-    auto entity_ids() const { return std::span{entity_ids_, column_count_}; }
-    auto entity_types() const { return std::span{entity_types_, column_count_}; }
-    auto teams() const { return std::span{teams_, column_count_}; }
-    auto kills() const { return std::span{kills_, column_count_}; }
-    auto killed_by() const { return std::span{killed_by_, column_count_}; }
-    auto life_state() const { return std::span{life_state_, column_count_}; }
-    auto death_ticks() const { return std::span{death_ticks_, column_count_}; }
-    auto death_locations() const { return std::span{death_locations_, column_count_}; }
-  private:
-    template <bool>
-    friend struct ResolvedViewImpl;
-    Element<EntityId>* entity_ids_{};
-    Element<ioj::sim::EntityType>* entity_types_{};
-    Element<::ioj::Team>* teams_{};
-    Element<std::uint32_t>* kills_{};
-    Element<EntityId>* killed_by_{};
-    Element<LifeState>* life_state_{};
-    Element<SimTick>* death_ticks_{};
-    Element<Vector3f>* death_locations_{};
-    size_type column_count_{};
+        : Base{other} {}
+    auto entity_ids() const { return this->template column<Layout::entity_ids_column>(); }
+    auto entity_types() const { return this->template column<Layout::entity_types_column>(); }
+    auto teams() const { return this->template column<Layout::teams_column>(); }
+    auto kills() const { return this->template column<Layout::kills_column>(); }
+    auto killed_by() const { return this->template column<Layout::killed_by_column>(); }
+    auto life_state() const { return this->template column<Layout::life_state_column>(); }
+    auto death_ticks() const { return this->template column<Layout::death_ticks_column>(); }
+    auto death_locations() const { return this->template column<Layout::death_locations_column>(); }
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;
@@ -309,29 +247,7 @@ struct EntityHistory
     }
   protected:
     template <typename Byte>
-    struct DataPointers {
-        template <typename T>
-        using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-        Element<EntityId>* entity_ids{};
-        Element<EntityType>* entity_types{};
-        Element<::ioj::Team>* teams{};
-        Element<std::uint32_t>* kills{};
-        Element<EntityId>* killed_by{};
-        Element<LifeState>* life_state{};
-        Element<SimTick>* death_ticks{};
-        Element<Vector3f>* death_locations{};
-    };
-  private:
-    friend Operations;
-    friend ::ioj::soa_storage_detail::StorageRequirements;
-    /* **************************************** */
-    // Column pointers
-    /* **************************************** */
-    template <typename Byte>
-    static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
-        -> DataPointers<Byte> {
-        return Layout::make_data<DataPointers<Byte>>(data, blocks);
-    }
+    using DataPointers = ::ioj::sim::entity_history::DataPointers<Byte>;
   public:
     auto entity_ids(this auto& self) { return self.get_view().entity_ids(); }
     auto entity_types(this auto& self) { return self.get_view().entity_types(); }
@@ -381,20 +297,9 @@ struct EntityHistory
             new_death_locations);
         return index;
     }
-    void apply_permutation(std::span<size_type> indices) {
-        assert(indices.size() == num_);
-        auto const columns{get_data()};
-        auto const permute{ioj::ColumnPermutation{num_, indices}};
-        permute(columns.entity_ids,
-                columns.entity_types,
-                columns.teams,
-                columns.kills,
-                columns.killed_by,
-                columns.life_state,
-                columns.death_ticks,
-                columns.death_locations);
-    }
   private:
+    friend Operations;
+    friend ::ioj::soa_storage_detail::StorageRequirements;
     std::pmr::memory_resource* resource_{};
 };
 } // namespace ioj::sim

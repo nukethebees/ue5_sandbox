@@ -333,6 +333,7 @@ auto soa_generated_cpp_names(Declarations const& declarations, DeclarationHandle
                             "View",
                             "ConstView",
                             "ResolvedViewImpl",
+                            "DataPointers",
                             "ResolvedView",
                             "ResolvedConstView"}) {
         result.push_back(strings.intern(scope + "::" + name));

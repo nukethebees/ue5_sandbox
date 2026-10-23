@@ -6,7 +6,6 @@
 #include "ioj/native_soa/storage.h"
 #include "ioj/rotator_types.h"
 #include "ioj/single_allocation/layout.h"
-#include "ioj/soa_permutation.h"
 
 #include <cassert>
 #include <memory_resource>
@@ -28,6 +27,18 @@ struct Layout : ioj::single_allocation_layout::ColumnLayouts<float, float, float
     static constexpr std::size_t rolls_column{2};
 };
 
+/* **************************************** */
+// Column pointers
+/* **************************************** */
+template <typename Byte>
+struct DataPointers {
+    template <typename T>
+    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
+    Element<float>* pitches{};
+    Element<float>* yaws{};
+    Element<float>* rolls{};
+};
+
 struct Schema {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
@@ -39,59 +50,22 @@ struct Schema {
 // Resolved views
 /* **************************************** */
 template <bool Const>
-struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
-    using size_type = std::uint32_t;
+struct ResolvedViewImpl
+    : ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const> {
+    using Base =
+        ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const>;
+    using Base::Base;
+    using Layout = ::ioj::rotators3f::Layout;
     using view_type = ::ioj::rotators3f::ResolvedView;
     using const_view_type = ::ioj::rotators3f::ResolvedConstView;
     using soa_schema = ::ioj::rotators3f::Schema;
-    template <typename T>
-    using Element = std::conditional_t<Const, T const, T>;
-    ResolvedViewImpl() = default;
-    ResolvedViewImpl(Element<float>* pitches,
-                     Element<float>* yaws,
-                     Element<float>* rolls,
-                     size_type column_count)
-        : pitches_{pitches}
-        , yaws_{yaws}
-        , rolls_{rolls}
-        , column_count_{column_count} {
-        ioj::soa_storage_detail::validate_column_pointers(column_count_, pitches_, yaws_, rolls_);
-    }
-    ResolvedViewImpl(std::span<Element<float>> pitches,
-                     std::span<Element<float>> yaws,
-                     std::span<Element<float>> rolls)
-        : ResolvedViewImpl{pitches.data(),
-                           yaws.data(),
-                           rolls.data(),
-                           ioj::soa_storage_detail::checked_row_count(pitches.size())} {
-        ioj::soa_storage_detail::validate_column_sizes(column_count_, pitches, yaws, rolls);
-    }
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
-    {
-        auto& [... destination] = *this;
-        auto const& [... source] = other;
-        ((destination = source), ...);
-    }
-    auto num() const noexcept -> size_type { return column_count_; }
-    auto resolve(this auto const& self) { return self; }
-    auto slice(this auto const& self, size_type offset, size_type count) {
-        auto const& [... pointers, source_count] = static_cast<ResolvedViewImpl const&>(self);
-        assert(offset <= source_count && count <= source_count - offset);
-        using Result = std::remove_cvref_t<decltype(self)>;
-        return Result{(pointers ? pointers + offset : nullptr)..., count};
-    }
-    auto pitches() const { return std::span{pitches_, column_count_}; }
-    auto yaws() const { return std::span{yaws_, column_count_}; }
-    auto rolls() const { return std::span{rolls_, column_count_}; }
-  private:
-    template <bool>
-    friend struct ResolvedViewImpl;
-    Element<float>* pitches_{};
-    Element<float>* yaws_{};
-    Element<float>* rolls_{};
-    size_type column_count_{};
+        : Base{other} {}
+    auto pitches() const { return this->template column<Layout::pitches_column>(); }
+    auto yaws() const { return this->template column<Layout::yaws_column>(); }
+    auto rolls() const { return this->template column<Layout::rolls_column>(); }
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;
@@ -234,24 +208,7 @@ struct Rotators3f
     }
   protected:
     template <typename Byte>
-    struct DataPointers {
-        template <typename T>
-        using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-        Element<float>* pitches{};
-        Element<float>* yaws{};
-        Element<float>* rolls{};
-    };
-  private:
-    friend Operations;
-    friend ::ioj::soa_storage_detail::StorageRequirements;
-    /* **************************************** */
-    // Column pointers
-    /* **************************************** */
-    template <typename Byte>
-    static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
-        -> DataPointers<Byte> {
-        return Layout::make_data<DataPointers<Byte>>(data, blocks);
-    }
+    using DataPointers = ::ioj::rotators3f::DataPointers<Byte>;
   public:
     auto pitches(this auto& self) { return self.get_view().pitches(); }
     auto yaws(this auto& self) { return self.get_view().yaws(); }
@@ -278,13 +235,9 @@ struct Rotators3f
         assert(index < num());
         return get_const_view()[index];
     }
-    void apply_permutation(std::span<size_type> indices) {
-        assert(indices.size() == num_);
-        auto const columns{get_data()};
-        auto const permute{ioj::ColumnPermutation{num_, indices}};
-        permute(columns.pitches, columns.yaws, columns.rolls);
-    }
   private:
+    friend Operations;
+    friend ::ioj::soa_storage_detail::StorageRequirements;
     std::pmr::memory_resource* resource_{};
 };
 } // namespace ioj

@@ -11,7 +11,6 @@
 #include "ioj/sim/entities/health.h"
 #include "ioj/sim/levels/level_entity_index.h"
 #include "ioj/single_allocation/layout.h"
-#include "ioj/soa_permutation.h"
 #include "ioj/vectors3f.h"
 
 #include <cassert>
@@ -52,6 +51,25 @@ struct Layout
     static constexpr std::size_t laser_damages_column{9};
 };
 
+/* **************************************** */
+// Column pointers
+/* **************************************** */
+template <typename Byte>
+struct DataPointers {
+    template <typename T>
+    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
+    Element<LevelEntityIndex>* entity_indices{};
+    Element<float>* locations_xs{};
+    Element<float>* locations_ys{};
+    Element<float>* locations_zs{};
+    Element<float>* rotations_pitches{};
+    Element<float>* rotations_yaws{};
+    Element<float>* rotations_rolls{};
+    Element<::ioj::Team>* teams{};
+    Element<Health>* healths{};
+    Element<std::int32_t>* laser_damages{};
+};
+
 struct Schema {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
@@ -74,124 +92,38 @@ struct Schema {
 // Resolved views
 /* **************************************** */
 template <bool Const>
-struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
-    using size_type = std::uint32_t;
+struct ResolvedViewImpl
+    : ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const> {
+    using Base =
+        ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const>;
+    using Base::Base;
+    using Layout = ::ioj::sim::level_turret_spawn_events::Layout;
     using view_type = ::ioj::sim::level_turret_spawn_events::ResolvedView;
     using const_view_type = ::ioj::sim::level_turret_spawn_events::ResolvedConstView;
     using soa_schema = ::ioj::sim::level_turret_spawn_events::Schema;
-    template <typename T>
-    using Element = std::conditional_t<Const, T const, T>;
-    ResolvedViewImpl() = default;
-    ResolvedViewImpl(Element<ioj::sim::LevelEntityIndex>* entity_indices,
-                     Element<float>* locations_xs,
-                     Element<float>* locations_ys,
-                     Element<float>* locations_zs,
-                     Element<float>* rotations_pitches,
-                     Element<float>* rotations_yaws,
-                     Element<float>* rotations_rolls,
-                     Element<::ioj::Team>* teams,
-                     Element<Health>* healths,
-                     Element<std::int32_t>* laser_damages,
-                     size_type column_count)
-        : entity_indices_{entity_indices}
-        , locations_xs_{locations_xs}
-        , locations_ys_{locations_ys}
-        , locations_zs_{locations_zs}
-        , rotations_pitches_{rotations_pitches}
-        , rotations_yaws_{rotations_yaws}
-        , rotations_rolls_{rotations_rolls}
-        , teams_{teams}
-        , healths_{healths}
-        , laser_damages_{laser_damages}
-        , column_count_{column_count} {
-        ioj::soa_storage_detail::validate_column_pointers(column_count_,
-                                                          entity_indices_,
-                                                          locations_xs_,
-                                                          locations_ys_,
-                                                          locations_zs_,
-                                                          rotations_pitches_,
-                                                          rotations_yaws_,
-                                                          rotations_rolls_,
-                                                          teams_,
-                                                          healths_,
-                                                          laser_damages_);
-    }
-    ResolvedViewImpl(std::span<Element<ioj::sim::LevelEntityIndex>> entity_indices,
-                     std::span<Element<float>> locations_xs,
-                     std::span<Element<float>> locations_ys,
-                     std::span<Element<float>> locations_zs,
-                     std::span<Element<float>> rotations_pitches,
-                     std::span<Element<float>> rotations_yaws,
-                     std::span<Element<float>> rotations_rolls,
-                     std::span<Element<::ioj::Team>> teams,
-                     std::span<Element<Health>> healths,
-                     std::span<Element<std::int32_t>> laser_damages)
-        : ResolvedViewImpl{entity_indices.data(),
-                           locations_xs.data(),
-                           locations_ys.data(),
-                           locations_zs.data(),
-                           rotations_pitches.data(),
-                           rotations_yaws.data(),
-                           rotations_rolls.data(),
-                           teams.data(),
-                           healths.data(),
-                           laser_damages.data(),
-                           ioj::soa_storage_detail::checked_row_count(entity_indices.size())} {
-        ioj::soa_storage_detail::validate_column_sizes(column_count_,
-                                                       entity_indices,
-                                                       locations_xs,
-                                                       locations_ys,
-                                                       locations_zs,
-                                                       rotations_pitches,
-                                                       rotations_yaws,
-                                                       rotations_rolls,
-                                                       teams,
-                                                       healths,
-                                                       laser_damages);
-    }
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
-    {
-        auto& [... destination] = *this;
-        auto const& [... source] = other;
-        ((destination = source), ...);
-    }
-    auto num() const noexcept -> size_type { return column_count_; }
-    auto resolve(this auto const& self) { return self; }
-    auto slice(this auto const& self, size_type offset, size_type count) {
-        auto const& [... pointers, source_count] = static_cast<ResolvedViewImpl const&>(self);
-        assert(offset <= source_count && count <= source_count - offset);
-        using Result = std::remove_cvref_t<decltype(self)>;
-        return Result{(pointers ? pointers + offset : nullptr)..., count};
-    }
-    auto entity_indices() const { return std::span{entity_indices_, column_count_}; }
+        : Base{other} {}
+    auto entity_indices() const { return this->template column<Layout::entity_indices_column>(); }
     auto view_locations() const -> std::
         conditional_t<Const, ::ioj::vectors3f::ResolvedConstView, ::ioj::vectors3f::ResolvedView> {
-        return {locations_xs_, locations_ys_, locations_zs_, column_count_};
+        return {this->columns_.locations_xs,
+                this->columns_.locations_ys,
+                this->columns_.locations_zs,
+                this->num()};
     }
     auto view_rotations() const -> std::conditional_t<Const,
                                                       ::ioj::rotators3f::ResolvedConstView,
                                                       ::ioj::rotators3f::ResolvedView> {
-        return {rotations_pitches_, rotations_yaws_, rotations_rolls_, column_count_};
+        return {this->columns_.rotations_pitches,
+                this->columns_.rotations_yaws,
+                this->columns_.rotations_rolls,
+                this->num()};
     }
-    auto teams() const { return std::span{teams_, column_count_}; }
-    auto healths() const { return std::span{healths_, column_count_}; }
-    auto laser_damages() const { return std::span{laser_damages_, column_count_}; }
-  private:
-    template <bool>
-    friend struct ResolvedViewImpl;
-    Element<ioj::sim::LevelEntityIndex>* entity_indices_{};
-    Element<float>* locations_xs_{};
-    Element<float>* locations_ys_{};
-    Element<float>* locations_zs_{};
-    Element<float>* rotations_pitches_{};
-    Element<float>* rotations_yaws_{};
-    Element<float>* rotations_rolls_{};
-    Element<::ioj::Team>* teams_{};
-    Element<Health>* healths_{};
-    Element<std::int32_t>* laser_damages_{};
-    size_type column_count_{};
+    auto teams() const { return this->template column<Layout::teams_column>(); }
+    auto healths() const { return this->template column<Layout::healths_column>(); }
+    auto laser_damages() const { return this->template column<Layout::laser_damages_column>(); }
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;
@@ -394,31 +326,7 @@ struct LevelTurretSpawnEvents
     }
   protected:
     template <typename Byte>
-    struct DataPointers {
-        template <typename T>
-        using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-        Element<LevelEntityIndex>* entity_indices{};
-        Element<float>* locations_xs{};
-        Element<float>* locations_ys{};
-        Element<float>* locations_zs{};
-        Element<float>* rotations_pitches{};
-        Element<float>* rotations_yaws{};
-        Element<float>* rotations_rolls{};
-        Element<::ioj::Team>* teams{};
-        Element<Health>* healths{};
-        Element<std::int32_t>* laser_damages{};
-    };
-  private:
-    friend Operations;
-    friend ::ioj::soa_storage_detail::StorageRequirements;
-    /* **************************************** */
-    // Column pointers
-    /* **************************************** */
-    template <typename Byte>
-    static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
-        -> DataPointers<Byte> {
-        return Layout::make_data<DataPointers<Byte>>(data, blocks);
-    }
+    using DataPointers = ::ioj::sim::level_turret_spawn_events::DataPointers<Byte>;
   public:
     auto entity_indices(this auto& self) { return self.get_view().entity_indices(); }
     auto view_locations(this auto& self) { return self.get_view().view_locations(); }
@@ -506,22 +414,9 @@ struct LevelTurretSpawnEvents
             new_laser_damages);
         return index;
     }
-    void apply_permutation(std::span<size_type> indices) {
-        assert(indices.size() == num_);
-        auto const columns{get_data()};
-        auto const permute{ioj::ColumnPermutation{num_, indices}};
-        permute(columns.entity_indices,
-                columns.locations_xs,
-                columns.locations_ys,
-                columns.locations_zs,
-                columns.rotations_pitches,
-                columns.rotations_yaws,
-                columns.rotations_rolls,
-                columns.teams,
-                columns.healths,
-                columns.laser_damages);
-    }
   private:
+    friend Operations;
+    friend ::ioj::soa_storage_detail::StorageRequirements;
     std::pmr::memory_resource* resource_{};
 };
 } // namespace ioj::sim

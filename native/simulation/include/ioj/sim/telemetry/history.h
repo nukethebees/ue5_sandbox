@@ -8,7 +8,6 @@
 #include "ioj/sim/entities/entity_telemetry.h"
 #include "ioj/sim/sim_tick.h"
 #include "ioj/single_allocation/layout.h"
-#include "ioj/soa_permutation.h"
 
 #include <cassert>
 #include <cstdint>
@@ -86,6 +85,25 @@ struct Layout
     static constexpr std::size_t lasers_fired_column{9};
 };
 
+/* **************************************** */
+// Column pointers
+/* **************************************** */
+template <typename Byte>
+struct DataPointers {
+    template <typename T>
+    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
+    Element<SimTick>* completed_ticks{};
+    Element<HistoryFieldMask>* validity_masks{};
+    Element<std::int32_t>* active_entities{};
+    Element<EntityTypeCounts>* active_entities_by_type{};
+    Element<EntityCounts>* active_entities_by_team_and_type{};
+    Element<std::int32_t>* spawned_entities{};
+    Element<std::int32_t>* destroyed_entities{};
+    Element<std::int32_t>* kills{};
+    Element<std::int32_t>* active_lasers{};
+    Element<std::int32_t>* lasers_fired{};
+};
+
 struct Schema {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
@@ -106,126 +124,37 @@ struct Schema {
 // Resolved views
 /* **************************************** */
 template <bool Const>
-struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
-    using size_type = std::uint32_t;
+struct ResolvedViewImpl
+    : ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const> {
+    using Base =
+        ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const>;
+    using Base::Base;
+    using Layout = ::ioj::sim::telemetry::history_rows::Layout;
     using view_type = ::ioj::sim::telemetry::history_rows::ResolvedView;
     using const_view_type = ::ioj::sim::telemetry::history_rows::ResolvedConstView;
     using soa_schema = ::ioj::sim::telemetry::history_rows::Schema;
-    template <typename T>
-    using Element = std::conditional_t<Const, T const, T>;
-    ResolvedViewImpl() = default;
-    ResolvedViewImpl(Element<SimTick>* completed_ticks,
-                     Element<HistoryFieldMask>* validity_masks,
-                     Element<std::int32_t>* active_entities,
-                     Element<ioj::sim::telemetry::EntityTypeCounts>* active_entities_by_type,
-                     Element<ioj::sim::telemetry::EntityCounts>* active_entities_by_team_and_type,
-                     Element<std::int32_t>* spawned_entities,
-                     Element<std::int32_t>* destroyed_entities,
-                     Element<std::int32_t>* kills,
-                     Element<std::int32_t>* active_lasers,
-                     Element<std::int32_t>* lasers_fired,
-                     size_type column_count)
-        : completed_ticks_{completed_ticks}
-        , validity_masks_{validity_masks}
-        , active_entities_{active_entities}
-        , active_entities_by_type_{active_entities_by_type}
-        , active_entities_by_team_and_type_{active_entities_by_team_and_type}
-        , spawned_entities_{spawned_entities}
-        , destroyed_entities_{destroyed_entities}
-        , kills_{kills}
-        , active_lasers_{active_lasers}
-        , lasers_fired_{lasers_fired}
-        , column_count_{column_count} {
-        ioj::soa_storage_detail::validate_column_pointers(column_count_,
-                                                          completed_ticks_,
-                                                          validity_masks_,
-                                                          active_entities_,
-                                                          active_entities_by_type_,
-                                                          active_entities_by_team_and_type_,
-                                                          spawned_entities_,
-                                                          destroyed_entities_,
-                                                          kills_,
-                                                          active_lasers_,
-                                                          lasers_fired_);
-    }
-    ResolvedViewImpl(
-        std::span<Element<SimTick>> completed_ticks,
-        std::span<Element<HistoryFieldMask>> validity_masks,
-        std::span<Element<std::int32_t>> active_entities,
-        std::span<Element<ioj::sim::telemetry::EntityTypeCounts>> active_entities_by_type,
-        std::span<Element<ioj::sim::telemetry::EntityCounts>> active_entities_by_team_and_type,
-        std::span<Element<std::int32_t>> spawned_entities,
-        std::span<Element<std::int32_t>> destroyed_entities,
-        std::span<Element<std::int32_t>> kills,
-        std::span<Element<std::int32_t>> active_lasers,
-        std::span<Element<std::int32_t>> lasers_fired)
-        : ResolvedViewImpl{completed_ticks.data(),
-                           validity_masks.data(),
-                           active_entities.data(),
-                           active_entities_by_type.data(),
-                           active_entities_by_team_and_type.data(),
-                           spawned_entities.data(),
-                           destroyed_entities.data(),
-                           kills.data(),
-                           active_lasers.data(),
-                           lasers_fired.data(),
-                           ioj::soa_storage_detail::checked_row_count(completed_ticks.size())} {
-        ioj::soa_storage_detail::validate_column_sizes(column_count_,
-                                                       completed_ticks,
-                                                       validity_masks,
-                                                       active_entities,
-                                                       active_entities_by_type,
-                                                       active_entities_by_team_and_type,
-                                                       spawned_entities,
-                                                       destroyed_entities,
-                                                       kills,
-                                                       active_lasers,
-                                                       lasers_fired);
-    }
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
-    {
-        auto& [... destination] = *this;
-        auto const& [... source] = other;
-        ((destination = source), ...);
-    }
-    auto num() const noexcept -> size_type { return column_count_; }
-    auto resolve(this auto const& self) { return self; }
-    auto slice(this auto const& self, size_type offset, size_type count) {
-        auto const& [... pointers, source_count] = static_cast<ResolvedViewImpl const&>(self);
-        assert(offset <= source_count && count <= source_count - offset);
-        using Result = std::remove_cvref_t<decltype(self)>;
-        return Result{(pointers ? pointers + offset : nullptr)..., count};
-    }
-    auto completed_ticks() const { return std::span{completed_ticks_, column_count_}; }
-    auto validity_masks() const { return std::span{validity_masks_, column_count_}; }
-    auto active_entities() const { return std::span{active_entities_, column_count_}; }
+        : Base{other} {}
+    auto completed_ticks() const { return this->template column<Layout::completed_ticks_column>(); }
+    auto validity_masks() const { return this->template column<Layout::validity_masks_column>(); }
+    auto active_entities() const { return this->template column<Layout::active_entities_column>(); }
     auto active_entities_by_type() const {
-        return std::span{active_entities_by_type_, column_count_};
+        return this->template column<Layout::active_entities_by_type_column>();
     }
     auto active_entities_by_team_and_type() const {
-        return std::span{active_entities_by_team_and_type_, column_count_};
+        return this->template column<Layout::active_entities_by_team_and_type_column>();
     }
-    auto spawned_entities() const { return std::span{spawned_entities_, column_count_}; }
-    auto destroyed_entities() const { return std::span{destroyed_entities_, column_count_}; }
-    auto kills() const { return std::span{kills_, column_count_}; }
-    auto active_lasers() const { return std::span{active_lasers_, column_count_}; }
-    auto lasers_fired() const { return std::span{lasers_fired_, column_count_}; }
-  private:
-    template <bool>
-    friend struct ResolvedViewImpl;
-    Element<SimTick>* completed_ticks_{};
-    Element<HistoryFieldMask>* validity_masks_{};
-    Element<std::int32_t>* active_entities_{};
-    Element<ioj::sim::telemetry::EntityTypeCounts>* active_entities_by_type_{};
-    Element<ioj::sim::telemetry::EntityCounts>* active_entities_by_team_and_type_{};
-    Element<std::int32_t>* spawned_entities_{};
-    Element<std::int32_t>* destroyed_entities_{};
-    Element<std::int32_t>* kills_{};
-    Element<std::int32_t>* active_lasers_{};
-    Element<std::int32_t>* lasers_fired_{};
-    size_type column_count_{};
+    auto spawned_entities() const {
+        return this->template column<Layout::spawned_entities_column>();
+    }
+    auto destroyed_entities() const {
+        return this->template column<Layout::destroyed_entities_column>();
+    }
+    auto kills() const { return this->template column<Layout::kills_column>(); }
+    auto active_lasers() const { return this->template column<Layout::active_lasers_column>(); }
+    auto lasers_fired() const { return this->template column<Layout::lasers_fired_column>(); }
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;
@@ -398,31 +327,7 @@ struct HistoryRows
     }
   protected:
     template <typename Byte>
-    struct DataPointers {
-        template <typename T>
-        using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-        Element<SimTick>* completed_ticks{};
-        Element<HistoryFieldMask>* validity_masks{};
-        Element<std::int32_t>* active_entities{};
-        Element<EntityTypeCounts>* active_entities_by_type{};
-        Element<EntityCounts>* active_entities_by_team_and_type{};
-        Element<std::int32_t>* spawned_entities{};
-        Element<std::int32_t>* destroyed_entities{};
-        Element<std::int32_t>* kills{};
-        Element<std::int32_t>* active_lasers{};
-        Element<std::int32_t>* lasers_fired{};
-    };
-  private:
-    friend Operations;
-    friend ::ioj::soa_storage_detail::StorageRequirements;
-    /* **************************************** */
-    // Column pointers
-    /* **************************************** */
-    template <typename Byte>
-    static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
-        -> DataPointers<Byte> {
-        return Layout::make_data<DataPointers<Byte>>(data, blocks);
-    }
+    using DataPointers = ::ioj::sim::telemetry::history_rows::DataPointers<Byte>;
   public:
     auto completed_ticks(this auto& self) { return self.get_view().completed_ticks(); }
     auto validity_masks(this auto& self) { return self.get_view().validity_masks(); }
@@ -486,22 +391,9 @@ struct HistoryRows
             new_lasers_fired);
         return index;
     }
-    void apply_permutation(std::span<size_type> indices) {
-        assert(indices.size() == num_);
-        auto const columns{get_data()};
-        auto const permute{ioj::ColumnPermutation{num_, indices}};
-        permute(columns.completed_ticks,
-                columns.validity_masks,
-                columns.active_entities,
-                columns.active_entities_by_type,
-                columns.active_entities_by_team_and_type,
-                columns.spawned_entities,
-                columns.destroyed_entities,
-                columns.kills,
-                columns.active_lasers,
-                columns.lasers_fired);
-    }
   private:
+    friend Operations;
+    friend ::ioj::soa_storage_detail::StorageRequirements;
     std::pmr::memory_resource* resource_{};
 };
 } // namespace ioj::sim::telemetry

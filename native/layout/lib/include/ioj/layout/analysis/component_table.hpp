@@ -7,7 +7,6 @@
 #include "ioj/layout/analysis/physical_fact_id.hpp"
 #include "ioj/native_soa/storage.h"
 #include "ioj/single_allocation/layout.h"
-#include "ioj/soa_permutation.h"
 
 #include "lispb/schema/indices.h"
 
@@ -52,6 +51,25 @@ struct Layout
     static constexpr std::size_t slack_bytes_column{9};
 };
 
+/* **************************************** */
+// Column pointers
+/* **************************************** */
+template <typename Byte>
+struct DataPointers {
+    template <typename T>
+    using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
+    Element<AnalysisId>* parent{};
+    Element<std::string_view>* name{};
+    Element<std::string_view>* tag{};
+    Element<lispb::schema::TypeId>* semantic_type{};
+    Element<std::uint64_t>* element_count{};
+    Element<std::optional<ioj::layout::PhysicalFactId>>* element_facts{};
+    Element<std::optional<std::uint64_t>>* offset_bytes{};
+    Element<std::optional<std::uint64_t>>* extent_bytes{};
+    Element<std::optional<std::uint64_t>>* padding_before_bytes{};
+    Element<std::optional<std::uint64_t>>* slack_bytes{};
+};
+
 struct Schema {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
@@ -72,121 +90,31 @@ struct Schema {
 // Resolved views
 /* **************************************** */
 template <bool Const>
-struct ResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
-    using size_type = std::uint32_t;
+struct ResolvedViewImpl
+    : ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const> {
+    using Base =
+        ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const>;
+    using Base::Base;
+    using Layout = ::ioj::layout::component_table::Layout;
     using view_type = ::ioj::layout::component_table::ResolvedView;
     using const_view_type = ::ioj::layout::component_table::ResolvedConstView;
     using soa_schema = ::ioj::layout::component_table::Schema;
-    template <typename T>
-    using Element = std::conditional_t<Const, T const, T>;
-    ResolvedViewImpl() = default;
-    ResolvedViewImpl(Element<ioj::layout::AnalysisId>* parent,
-                     Element<std::string_view>* name,
-                     Element<std::string_view>* tag,
-                     Element<lispb::schema::TypeId>* semantic_type,
-                     Element<std::uint64_t>* element_count,
-                     Element<std::optional<ioj::layout::PhysicalFactId>>* element_facts,
-                     Element<std::optional<std::uint64_t>>* offset_bytes,
-                     Element<std::optional<std::uint64_t>>* extent_bytes,
-                     Element<std::optional<std::uint64_t>>* padding_before_bytes,
-                     Element<std::optional<std::uint64_t>>* slack_bytes,
-                     size_type column_count)
-        : parent_{parent}
-        , name_{name}
-        , tag_{tag}
-        , semantic_type_{semantic_type}
-        , element_count_{element_count}
-        , element_facts_{element_facts}
-        , offset_bytes_{offset_bytes}
-        , extent_bytes_{extent_bytes}
-        , padding_before_bytes_{padding_before_bytes}
-        , slack_bytes_{slack_bytes}
-        , column_count_{column_count} {
-        ioj::soa_storage_detail::validate_column_pointers(column_count_,
-                                                          parent_,
-                                                          name_,
-                                                          tag_,
-                                                          semantic_type_,
-                                                          element_count_,
-                                                          element_facts_,
-                                                          offset_bytes_,
-                                                          extent_bytes_,
-                                                          padding_before_bytes_,
-                                                          slack_bytes_);
-    }
-    ResolvedViewImpl(std::span<Element<ioj::layout::AnalysisId>> parent,
-                     std::span<Element<std::string_view>> name,
-                     std::span<Element<std::string_view>> tag,
-                     std::span<Element<lispb::schema::TypeId>> semantic_type,
-                     std::span<Element<std::uint64_t>> element_count,
-                     std::span<Element<std::optional<ioj::layout::PhysicalFactId>>> element_facts,
-                     std::span<Element<std::optional<std::uint64_t>>> offset_bytes,
-                     std::span<Element<std::optional<std::uint64_t>>> extent_bytes,
-                     std::span<Element<std::optional<std::uint64_t>>> padding_before_bytes,
-                     std::span<Element<std::optional<std::uint64_t>>> slack_bytes)
-        : ResolvedViewImpl{parent.data(),
-                           name.data(),
-                           tag.data(),
-                           semantic_type.data(),
-                           element_count.data(),
-                           element_facts.data(),
-                           offset_bytes.data(),
-                           extent_bytes.data(),
-                           padding_before_bytes.data(),
-                           slack_bytes.data(),
-                           ioj::soa_storage_detail::checked_row_count(parent.size())} {
-        ioj::soa_storage_detail::validate_column_sizes(column_count_,
-                                                       parent,
-                                                       name,
-                                                       tag,
-                                                       semantic_type,
-                                                       element_count,
-                                                       element_facts,
-                                                       offset_bytes,
-                                                       extent_bytes,
-                                                       padding_before_bytes,
-                                                       slack_bytes);
-    }
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
-    {
-        auto& [... destination] = *this;
-        auto const& [... source] = other;
-        ((destination = source), ...);
+        : Base{other} {}
+    auto parent() const { return this->template column<Layout::parent_column>(); }
+    auto name() const { return this->template column<Layout::name_column>(); }
+    auto tag() const { return this->template column<Layout::tag_column>(); }
+    auto semantic_type() const { return this->template column<Layout::semantic_type_column>(); }
+    auto element_count() const { return this->template column<Layout::element_count_column>(); }
+    auto element_facts() const { return this->template column<Layout::element_facts_column>(); }
+    auto offset_bytes() const { return this->template column<Layout::offset_bytes_column>(); }
+    auto extent_bytes() const { return this->template column<Layout::extent_bytes_column>(); }
+    auto padding_before_bytes() const {
+        return this->template column<Layout::padding_before_bytes_column>();
     }
-    auto num() const noexcept -> size_type { return column_count_; }
-    auto resolve(this auto const& self) { return self; }
-    auto slice(this auto const& self, size_type offset, size_type count) {
-        auto const& [... pointers, source_count] = static_cast<ResolvedViewImpl const&>(self);
-        assert(offset <= source_count && count <= source_count - offset);
-        using Result = std::remove_cvref_t<decltype(self)>;
-        return Result{(pointers ? pointers + offset : nullptr)..., count};
-    }
-    auto parent() const { return std::span{parent_, column_count_}; }
-    auto name() const { return std::span{name_, column_count_}; }
-    auto tag() const { return std::span{tag_, column_count_}; }
-    auto semantic_type() const { return std::span{semantic_type_, column_count_}; }
-    auto element_count() const { return std::span{element_count_, column_count_}; }
-    auto element_facts() const { return std::span{element_facts_, column_count_}; }
-    auto offset_bytes() const { return std::span{offset_bytes_, column_count_}; }
-    auto extent_bytes() const { return std::span{extent_bytes_, column_count_}; }
-    auto padding_before_bytes() const { return std::span{padding_before_bytes_, column_count_}; }
-    auto slack_bytes() const { return std::span{slack_bytes_, column_count_}; }
-  private:
-    template <bool>
-    friend struct ResolvedViewImpl;
-    Element<ioj::layout::AnalysisId>* parent_{};
-    Element<std::string_view>* name_{};
-    Element<std::string_view>* tag_{};
-    Element<lispb::schema::TypeId>* semantic_type_{};
-    Element<std::uint64_t>* element_count_{};
-    Element<std::optional<ioj::layout::PhysicalFactId>>* element_facts_{};
-    Element<std::optional<std::uint64_t>>* offset_bytes_{};
-    Element<std::optional<std::uint64_t>>* extent_bytes_{};
-    Element<std::optional<std::uint64_t>>* padding_before_bytes_{};
-    Element<std::optional<std::uint64_t>>* slack_bytes_{};
-    size_type column_count_{};
+    auto slack_bytes() const { return this->template column<Layout::slack_bytes_column>(); }
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;
@@ -356,31 +284,7 @@ struct ComponentTable
     }
   protected:
     template <typename Byte>
-    struct DataPointers {
-        template <typename T>
-        using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-        Element<AnalysisId>* parent{};
-        Element<std::string_view>* name{};
-        Element<std::string_view>* tag{};
-        Element<lispb::schema::TypeId>* semantic_type{};
-        Element<std::uint64_t>* element_count{};
-        Element<std::optional<ioj::layout::PhysicalFactId>>* element_facts{};
-        Element<std::optional<std::uint64_t>>* offset_bytes{};
-        Element<std::optional<std::uint64_t>>* extent_bytes{};
-        Element<std::optional<std::uint64_t>>* padding_before_bytes{};
-        Element<std::optional<std::uint64_t>>* slack_bytes{};
-    };
-  private:
-    friend Operations;
-    friend ::ioj::soa_storage_detail::StorageRequirements;
-    /* **************************************** */
-    // Column pointers
-    /* **************************************** */
-    template <typename Byte>
-    static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
-        -> DataPointers<Byte> {
-        return Layout::make_data<DataPointers<Byte>>(data, blocks);
-    }
+    using DataPointers = ::ioj::layout::component_table::DataPointers<Byte>;
   public:
     auto parent(this auto& self) { return self.get_view().parent(); }
     auto name(this auto& self) { return self.get_view().name(); }
@@ -441,22 +345,9 @@ struct ComponentTable
         return index;
     }
     std::size_t append();
-    void apply_permutation(std::span<size_type> indices) {
-        assert(indices.size() == num_);
-        auto const columns{get_data()};
-        auto const permute{ioj::ColumnPermutation{num_, indices}};
-        permute(columns.parent,
-                columns.name,
-                columns.tag,
-                columns.semantic_type,
-                columns.element_count,
-                columns.element_facts,
-                columns.offset_bytes,
-                columns.extent_bytes,
-                columns.padding_before_bytes,
-                columns.slack_bytes);
-    }
   private:
+    friend Operations;
+    friend ::ioj::soa_storage_detail::StorageRequirements;
     std::pmr::memory_resource* resource_{};
 };
 } // namespace ioj::layout
