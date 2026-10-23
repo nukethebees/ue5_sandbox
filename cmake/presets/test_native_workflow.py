@@ -660,7 +660,7 @@ cmake_language(DEFER CALL check_simulation_policy)
 
             for report, executable in (
                 ("native-core-vector-lerp-benchmark-report", "native/core/benchmarks/native-core-benchmarks.exe"),
-                ("native-soa-production-report", "native/lispb/native_soa/native-soa-benchmarks.exe"),
+                ("native-soa-production-report", "native/lispb/benchmarks/soa/native-soa-benchmarks.exe"),
             ):
                 commands = self.run_cmake("--build", str(build_directory), "--target", report,
                                           "--", "-t", "commands").replace("\\", "/")

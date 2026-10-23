@@ -77,9 +77,9 @@
     :output-root (project-path "native/lispb/tests/compile_fixture/generated"))
 
   (cpp-schema native-soa-fixture
-    :types "native/lispb/native_soa/types.lispb"
-    :sources ("native/lispb/native_soa/fixture.lispb")
-    :output-root (project-path "native/lispb/native_soa"))
+    :types "native/lispb/tests/native_soa/schema/types.lispb"
+    :sources ("native/lispb/tests/native_soa/schema/fixture.lispb")
+    :output-root (project-path "native/lispb/tests/native_soa"))
 
   (slate slate-core-widgets
     :sources ("Plugins/SandboxUI/Source/SandboxUI/Private/widgets/CoreWidgets.lispb")

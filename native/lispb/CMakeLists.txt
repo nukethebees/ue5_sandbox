@@ -462,4 +462,5 @@ add_dependencies(check-generated-code check-generated-codegen-compile-fixture)
 
 add_subdirectory(slate)
 add_subdirectory(kernel)
-add_subdirectory(native_soa)
+add_subdirectory(tests/native_soa)
+add_subdirectory(benchmarks/soa)

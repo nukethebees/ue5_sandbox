@@ -1,4 +1,4 @@
-#include "../tests/pmr_owner_tests.h"
+#include "../pmr_owner_tests.h"
 
 #include <gtest/gtest.h>
 #include <native_soa/types.hpp>
