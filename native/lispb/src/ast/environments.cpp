@@ -13,6 +13,7 @@ void Environments::clear() {
     kinds_.clear();
     symbols_.clear();
     bindings_complete_.clear();
+    external_declaration_count_ = 0;
     parents_.emplace_back();
     kinds_.push_back(EnvironmentKind::global);
     symbols_.emplace_back();
@@ -53,15 +54,15 @@ void Environments::mark_unknown(EnvironmentId environment) {
 auto Environments::declare(EnvironmentId environment,
                            IdentifierId name,
                            CppDeclarationId declaration,
-                           EnvironmentId introduced_scope) -> EnvironmentSymbol {
+                           EnvironmentId introduced_scope) -> SymbolBinding {
     return bind(environment,
                 name,
                 {.declaration = declaration,
                  .declaring_scope = environment,
                  .introduced_scope = introduced_scope});
 }
-auto Environments::bind(EnvironmentId environment, IdentifierId name, EnvironmentSymbol symbol)
-    -> EnvironmentSymbol {
+auto Environments::bind(EnvironmentId environment, IdentifierId name, SymbolBinding symbol)
+    -> SymbolBinding {
     assert(name.value != 0 && !symbol.declaration.is_null());
     auto& table{symbols_[index(environment)]};
     auto const [entry, inserted]{table.try_emplace(name, symbol)};
@@ -72,11 +73,10 @@ auto Environments::bind(EnvironmentId environment, IdentifierId name, Environmen
     }
     return entry->second;
 }
-auto Environments::find_local(EnvironmentId environment, IdentifierId name) const
-    -> EnvironmentSymbol {
+auto Environments::find_local(EnvironmentId environment, IdentifierId name) const -> SymbolBinding {
     auto const& table{symbols(environment)};
     auto const found{table.find(name)};
-    return found == table.end() ? EnvironmentSymbol{} : found->second;
+    return found == table.end() ? SymbolBinding{} : found->second;
 }
 auto Environments::named(EnvironmentId parent,
                          EnvironmentKind kind,
@@ -140,7 +140,7 @@ auto Environments::lookup(EnvironmentId environment, std::span<IdentifierId cons
     }
     return result;
 }
-auto Environments::reference(std::span<IdentifierId const> name) -> EnvironmentSymbol {
+auto Environments::reference(std::span<IdentifierId const> name) -> SymbolBinding {
     assert(!name.empty());
     auto environment{global()};
     auto const count{name.size()};
@@ -151,13 +151,17 @@ auto Environments::reference(std::span<IdentifierId const> name) -> EnvironmentS
     if (!existing.declaration.is_null()) {
         return existing;
     }
-    named(environment, EnvironmentKind::external, name.back());
-    return find_local(environment, name.back());
+    if (external_declaration_count_ == 0x01000000U) {
+        throw std::length_error{"C++ external declaration ID capacity exceeded"};
+    }
+
+    auto const declaration{CppDeclarationId{ExternalDeclarationId{external_declaration_count_++}}};
+    return declare(environment, name.back(), declaration);
 }
 auto Environments::find_environment(EnvironmentId environment,
                                     std::span<IdentifierId const> name) const -> EnvironmentId {
     assert(!name.empty());
-    EnvironmentSymbol result;
+    SymbolBinding result;
     for (auto current{environment}; !current.is_null(); current = parent(current)) {
         result = find_local(current, name.front());
         if (!result.declaration.is_null()) {

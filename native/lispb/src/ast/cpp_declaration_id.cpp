@@ -27,4 +27,6 @@ CppDeclarationId::CppDeclarationId(TemplateParameterId parameter)
                            ? CppDeclarationKind::type_parameter
                            : CppDeclarationKind::value_parameter,
                        parameter.index()} {}
+CppDeclarationId::CppDeclarationId(ExternalDeclarationId declaration)
+    : CppDeclarationId{CppDeclarationKind::external, declaration.value} {}
 }

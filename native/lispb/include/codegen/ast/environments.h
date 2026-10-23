@@ -2,11 +2,12 @@
 
 #include <codegen/ast/environment_id.h>
 #include <codegen/ast/environment_kind.h>
-#include <codegen/ast/environment_symbol.h>
+#include <codegen/ast/symbol_binding.h>
 #include <codegen/ast/symbol_lookup.h>
 #include <lispb/indices.h>
 
 #include <cstddef>
+#include <cstdint>
 #include <span>
 #include <unordered_map>
 #include <vector>
@@ -15,7 +16,7 @@ namespace lispb::codegen {
 
 class Environments {
   public:
-    using SymbolTable = std::unordered_map<IdentifierId, EnvironmentSymbol>;
+    using SymbolTable = std::unordered_map<IdentifierId, SymbolBinding>;
 
     Environments();
     void clear();
@@ -34,10 +35,9 @@ class Environments {
     auto declare(EnvironmentId environment,
                  IdentifierId name,
                  CppDeclarationId declaration,
-                 EnvironmentId introduced_scope = {}) -> EnvironmentSymbol;
+                 EnvironmentId introduced_scope = {}) -> SymbolBinding;
     // Preserve declaration ownership for injected names and anonymous namespace imports.
-    auto bind(EnvironmentId environment, IdentifierId name, EnvironmentSymbol symbol)
-        -> EnvironmentSymbol;
+    auto bind(EnvironmentId environment, IdentifierId name, SymbolBinding symbol) -> SymbolBinding;
     auto named(EnvironmentId parent,
                EnvironmentKind kind,
                IdentifierId name,
@@ -50,19 +50,21 @@ class Environments {
         -> SymbolLookup;
     auto lookup_local(EnvironmentId environment, IdentifierId name) const -> SymbolLookup;
     // Register names supplied by includes without claiming knowledge of their contents.
-    auto reference(std::span<IdentifierId const> name) -> EnvironmentSymbol;
+    // Allocate scopes only for qualifiers; throw length_error if external IDs are exhausted.
+    auto reference(std::span<IdentifierId const> name) -> SymbolBinding;
     // Ignore unknown contents when locating an already registered owner scope.
     // Return null when no such scope exists.
     auto find_environment(EnvironmentId environment, std::span<IdentifierId const> name) const
         -> EnvironmentId;
   private:
     auto index(EnvironmentId environment) const -> std::size_t;
-    auto find_local(EnvironmentId environment, IdentifierId name) const -> EnvironmentSymbol;
+    auto find_local(EnvironmentId environment, IdentifierId name) const -> SymbolBinding;
 
     std::vector<EnvironmentId> parents_;
     std::vector<EnvironmentKind> kinds_;
     std::vector<SymbolTable> symbols_;
     std::vector<bool> bindings_complete_;
+    std::uint32_t external_declaration_count_{};
 };
 
 }

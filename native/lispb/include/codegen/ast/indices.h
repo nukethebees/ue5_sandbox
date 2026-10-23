@@ -8,6 +8,7 @@ class CppTypes;
 class CppFiles;
 struct Modules;
 struct TypeDependencyTag;
+struct ExternalDeclarationTag;
 
 namespace ir {
 struct Functions;
@@ -21,6 +22,7 @@ using CppTypeId = Index<CppTypes>;
 using CppFileId = Index<CppFiles>;
 using ModuleId = Index<Modules>;
 using TypeDependencyId = Index<TypeDependencyTag>;
+using ExternalDeclarationId = Index<ExternalDeclarationTag>;
 using FunctionId = Index<ir::Functions>;
 using FunctionParameterId = Index<ir::Parameters>;
 using MemberInitializerId = Index<ir::MemberInitializers>;

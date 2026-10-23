@@ -19,6 +19,7 @@ struct CppDeclarationId {
     explicit CppDeclarationId(FunctionId function);
     explicit CppDeclarationId(FunctionParameterId parameter);
     explicit CppDeclarationId(TemplateParameterId parameter);
+    explicit CppDeclarationId(ExternalDeclarationId declaration);
 
     std::uint32_t value{std::numeric_limits<std::uint32_t>::max()};
 

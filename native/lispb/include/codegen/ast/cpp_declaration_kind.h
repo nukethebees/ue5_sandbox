@@ -8,6 +8,7 @@ enum class CppDeclarationKind : std::uint8_t {
     parameter,
     type_parameter,
     value_parameter,
+    external,
     node_begin = 32,
 };
 }
