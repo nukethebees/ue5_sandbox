@@ -2,8 +2,42 @@
 #include <ioj/layout/abi_profile.hpp>
 #include <ioj/layout/editor_session.hpp>
 #include <ioj/layout/resolved_variant.hpp>
+#include <ioj/single_allocation/layout.h>
 
 namespace ioj::layout::analyzer_packed_tests {
+
+static_assert(single_allocation_layout::supported_leaf<lispb::IdentifierId>);
+static_assert(single_allocation_layout::supported_leaf<std::optional<OptionalSentinelEncoding>>);
+
+TEST(AnalysisStrings, RetainsInternedTextAcrossGrowthAndReanalysis) {
+    EditorSession editor;
+    auto const document{editor.from_source(R"((module game :header "Game.h"
+        (packed-value Value :storage std::uint32_t
+          (field first std::uint8_t :bits 8)
+          (field second std::uint8_t :bits 8))))")};
+    ASSERT_TRUE(document.valid());
+    AnalysisStorage storage;
+    AnalysisContext context{document, storage};
+
+    auto const run{run_analysis(context)};
+    auto const result{storage.types.packed[run.analysis.value].value()};
+    auto const name{storage.fields.logical_type[result.fields.begin]};
+    EXPECT_EQ(name, storage.fields.logical_type[result.fields.begin + 1]);
+    EXPECT_EQ(storage.strings.view(name), "std::uint8_t");
+    EXPECT_EQ(storage.strings.view(result.storage_type), "std::uint32_t");
+    EXPECT_EQ(result.storage_type, result.schema_storage_type);
+
+    static_cast<void>(storage.strings.intern(std::string(16384, 'x')));
+    EXPECT_EQ(storage.strings.view(name), "std::uint8_t");
+    EXPECT_EQ(storage.strings.view(result.storage_type), "std::uint32_t");
+
+    storage.clear();
+    EXPECT_EQ(storage.strings.byte_size(), 0);
+    EXPECT_EQ(storage.fields.num(), 0);
+    auto const next{run_analysis(context)};
+    EXPECT_EQ(storage.strings.view(storage.types.packed[next.analysis.value]->storage_type),
+              "std::uint32_t");
+}
 
 class PackedAnalysisTest : public AnalysisTest {};
 

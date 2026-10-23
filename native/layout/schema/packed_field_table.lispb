@@ -12,7 +12,7 @@
     (member segment array @packed_segment_id)
     (member name array @string_view)
     (member semantic_type array @optional_type_id)
-    (member logical_type array @string)
+    (member logical_type array @identifier_id)
     (member kind array @packed_field_kind)
     (member reserved array @uint8_t)
     (member schema_bit_width array @uint32_t)

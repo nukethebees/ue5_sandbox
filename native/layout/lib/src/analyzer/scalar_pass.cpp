@@ -174,8 +174,8 @@ auto compute_optional_sentinel_encoding(AnalysisContext& context, lispb::schema:
         .source_type =
             types.occurrences()
                 .type[types.occurrences().index(optional_sentinels.source[optional_row])],
-        .sentinel_name = std::string{types.cpp_types().strings().view(
-            optional_sentinels.sentinel_name[optional_row])},
+        .sentinel_name = context.storage.strings.intern(
+            types.cpp_types().strings().view(optional_sentinels.sentinel_name[optional_row])),
         .sentinel_value = optional_sentinels.sentinel_value[optional_row],
         .source_signedness = integer_scalars.signedness[source_row] != 0,
         .source_minimum = integer_scalars.minimum_value[source_row],

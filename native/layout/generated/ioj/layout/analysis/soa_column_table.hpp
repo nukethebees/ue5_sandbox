@@ -9,13 +9,13 @@
 #include "ioj/native_soa/storage.h"
 #include "ioj/native_soa/vector_storage_ops.h"
 
+#include "lispb/indices.h"
 #include "lispb/schema/indices.h"
 
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
 #include <optional>
-#include <string>
 #include <string_view>
 #include <utility>
 
@@ -31,8 +31,8 @@ struct SoaColumnTableConstView {
     std::span<ioj::layout::AnalysisId const> parent;
     std::span<std::string_view const> name;
     std::span<lispb::schema::TypeId const> semantic_type;
-    std::span<std::string const> schema_type;
-    std::span<std::string const> physical_type;
+    std::span<lispb::IdentifierId const> schema_type;
+    std::span<lispb::IdentifierId const> physical_type;
     std::span<std::uint8_t const> overridden;
     std::span<std::optional<ioj::layout::TypeFacts> const> type_facts;
     std::span<std::optional<std::uint64_t> const> total_bytes;
@@ -134,8 +134,8 @@ struct SoaColumnTableView {
     std::span<ioj::layout::AnalysisId> parent;
     std::span<std::string_view> name;
     std::span<lispb::schema::TypeId> semantic_type;
-    std::span<std::string> schema_type;
-    std::span<std::string> physical_type;
+    std::span<lispb::IdentifierId> schema_type;
+    std::span<lispb::IdentifierId> physical_type;
     std::span<std::uint8_t> overridden;
     std::span<std::optional<ioj::layout::TypeFacts>> type_facts;
     std::span<std::optional<std::uint64_t>> total_bytes;
@@ -233,8 +233,8 @@ struct SoaColumnTableView {
              ioj::layout::AnalysisId const new_parent,
              std::string_view const new_name,
              lispb::schema::TypeId const new_semantic_type,
-             std::string const new_schema_type,
-             std::string const new_physical_type,
+             lispb::IdentifierId const new_schema_type,
+             lispb::IdentifierId const new_physical_type,
              std::uint8_t const new_overridden,
              std::optional<ioj::layout::TypeFacts> const new_type_facts,
              std::optional<std::uint64_t> const new_total_bytes,
@@ -271,8 +271,8 @@ struct SoaColumnTable {
     ioj::native_soa::Vector<ioj::layout::AnalysisId> parent;
     ioj::native_soa::Vector<std::string_view> name;
     ioj::native_soa::Vector<lispb::schema::TypeId> semantic_type;
-    ioj::native_soa::Vector<std::string> schema_type;
-    ioj::native_soa::Vector<std::string> physical_type;
+    ioj::native_soa::Vector<lispb::IdentifierId> schema_type;
+    ioj::native_soa::Vector<lispb::IdentifierId> physical_type;
     ioj::native_soa::Vector<std::uint8_t> overridden;
     ioj::native_soa::Vector<std::optional<ioj::layout::TypeFacts>> type_facts;
     ioj::native_soa::Vector<std::optional<std::uint64_t>> total_bytes;
@@ -338,8 +338,8 @@ struct SoaColumnTable {
              ioj::layout::AnalysisId const new_parent,
              std::string_view const new_name,
              lispb::schema::TypeId const new_semantic_type,
-             std::string const new_schema_type,
-             std::string const new_physical_type,
+             lispb::IdentifierId const new_schema_type,
+             lispb::IdentifierId const new_physical_type,
              std::uint8_t const new_overridden,
              std::optional<ioj::layout::TypeFacts> const new_type_facts,
              std::optional<std::uint64_t> const new_total_bytes,
@@ -370,8 +370,8 @@ struct SoaColumnTable {
     auto add(ioj::layout::AnalysisId const new_parent,
              std::string_view const new_name,
              lispb::schema::TypeId const new_semantic_type,
-             std::string const new_schema_type,
-             std::string const new_physical_type,
+             lispb::IdentifierId const new_schema_type,
+             lispb::IdentifierId const new_physical_type,
              std::uint8_t const new_overridden,
              std::optional<ioj::layout::TypeFacts> const new_type_facts,
              std::optional<std::uint64_t> const new_total_bytes,

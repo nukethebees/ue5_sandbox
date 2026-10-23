@@ -70,7 +70,8 @@ void record_layout(layout::AnalysisStorage const& storage, layout::AggregateLayo
 }
 
 void packed_layout(layout::AnalysisStorage const& storage, layout::PackedLayout const& packed) {
-    ImGui::Text("Storage: %s", packed.storage_type.c_str());
+    auto const storage_type{storage.strings.view(packed.storage_type)};
+    ImGui::Text("Storage: %.*s", static_cast<int>(storage_type.size()), storage_type.data());
     metric("Storage bits", packed.storage_bits);
     metric("Used bits", packed.bits_used);
     metric("Unused bits", packed.unused_bits);
@@ -88,7 +89,7 @@ void packed_layout(layout::AnalysisStorage const& storage, layout::PackedLayout 
             ImGui::TableNextColumn();
             label(fields.name[row]);
             ImGui::TableNextColumn();
-            label(fields.logical_type[row]);
+            label(storage.strings.view(fields.logical_type[row]));
             ImGui::TableNextColumn();
             label(std::to_string(fields.bit_width[row]));
             ImGui::TableNextColumn();
@@ -117,7 +118,7 @@ void soa_layout(layout::AnalysisStorage const& storage, layout::SoaLayout const&
             ImGui::TableNextColumn();
             label(columns.name[row]);
             ImGui::TableNextColumn();
-            label(columns.physical_type[row]);
+            label(storage.strings.view(columns.physical_type[row]));
             ImGui::TableNextColumn();
             label(number(columns.total_bytes[row]));
             ImGui::TableNextColumn();

@@ -38,7 +38,7 @@ void analyze_enum_backing(AnalysisContext& context, AnalysisId id) {
                               enumeration)])])})
             : derived_enum_backing_type(types, enumeration).value_or("Unknown")};
     EnumBacking result;
-    result.backing_type = backing_type;
+    result.backing_type = context.storage.strings.intern(backing_type);
     result.backing_facts = context.storage.types.physical[id.value];
     if (backing_type == "Unknown") {
         context.report(

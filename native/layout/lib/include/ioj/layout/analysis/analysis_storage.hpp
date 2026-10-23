@@ -14,11 +14,15 @@
 #include <ioj/layout/analysis/type_analysis_table.hpp>
 #include <ioj/layout/analysis/workload_table.hpp>
 
+#include <lispb/strings.h>
+
 #include <vector>
 
 namespace ioj::layout {
 struct AnalysisStorage {
     void clear();
+    // Keep text IDs valid until the analysis tables are cleared.
+    lispb::Strings strings;
     std::vector<AnalysisRun> runs;
     std::vector<ElementTotals> totals;
     TypeAnalysisTable types;

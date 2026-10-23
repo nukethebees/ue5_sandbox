@@ -4,15 +4,15 @@
 
 #include <codegen/schema/packed_bit_order.h>
 #include <codegen/schema/packed_byte_order.h>
+#include <lispb/indices.h>
 
 #include <cstdint>
 #include <optional>
-#include <string>
 namespace ioj::layout {
 struct PackedLayout {
     RowRange fields{};
-    std::string schema_storage_type{};
-    std::string storage_type{};
+    lispb::IdentifierId schema_storage_type{};
+    lispb::IdentifierId storage_type{};
     bool storage_overridden{};
     std::optional<lispb::codegen::PackedByteOrder> byte_order{};
     lispb::codegen::PackedBitOrder bit_order{

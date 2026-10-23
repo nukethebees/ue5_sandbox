@@ -60,17 +60,17 @@ void
             .value_or(std::string{types.cpp_types().spelling(
                 types.occurrences()
                     .cpp_type[types.occurrences().index(packed_table.storage_type[packed_row])])})};
-    PackedLayout result{.schema_storage_type = schema_storage,
-                        .storage_type = effective_storage_type(types, type, packed, variant),
+    auto const storage_type{effective_storage_type(types, type, packed, variant)};
+    PackedLayout result{.schema_storage_type = context.storage.strings.intern(schema_storage),
+                        .storage_type = context.storage.strings.intern(storage_type),
                         .storage_overridden = variant.overrides.packed_storage_types.contains(type),
                         .byte_order = packed_table.byte_order[packed_row],
                         .bit_order = packed_table.bit_order[packed_row],
                         .invalid_raw_value = packed_table.invalid_raw_value[packed_row]};
     result.storage_facts = context.storage.types.physical[id.value];
     if (!result.storage_facts.has_value()) {
-        context.report(
-            {DiagnosticSeverity::warning,
-             "Unknown physical facts for packed storage type '" + result.storage_type + "'."});
+        context.report({DiagnosticSeverity::warning,
+                        "Unknown physical facts for packed storage type '" + storage_type + "'."});
     } else {
         result.storage_bits = checked_multiply(result.storage_facts->size_bytes, 8);
         if (!result.storage_bits.has_value()) {
@@ -79,7 +79,7 @@ void
         }
         if (!result.storage_facts->unsigned_value_bits.has_value()) {
             context.report({DiagnosticSeverity::warning,
-                            "Packed storage type '" + result.storage_type +
+                            "Packed storage type '" + storage_type +
                                 "' is not described as an unsigned integer by this ABI profile."});
         }
     }
@@ -134,11 +134,11 @@ void
                       lispb::schema::TypeId>{types.occurrences().type[types.occurrences().index(
                       packed_fields.semantic_type[schema_field_row])]}
                 : std::nullopt;
-        fields.logical_type[field_row] =
+        fields.logical_type[field_row] = context.storage.strings.intern(
             field.has_value() ? std::string{types.strings().view(types.cpp_spelling(
                                     types.occurrences().type[types.occurrences().index(
                                         packed_fields.semantic_type[schema_field_row])]))}
-                              : "Reserved bits";
+                              : "Reserved bits");
         fields.kind[field_row] = field.has_value()
                                    ? packed_fields.kind[schema_field_row]
                                    : lispb::codegen::PackedFieldKind::unsigned_integer;

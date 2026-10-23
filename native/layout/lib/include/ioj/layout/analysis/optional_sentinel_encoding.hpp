@@ -3,18 +3,17 @@
 #include <ioj/layout/analyzer/exact_code_count.hpp>
 
 #include <codegen/schema/packed_integer_value.h>
+#include <lispb/indices.h>
 #include <lispb/schema/indices.h>
 
 #include <cstdint>
 #include <optional>
-#include <string>
-#include <vector>
 
 namespace ioj::layout {
 
 struct OptionalSentinelEncoding {
     lispb::schema::TypeId source_type{};
-    std::string sentinel_name{};
+    lispb::IdentifierId sentinel_name{};
     lispb::codegen::PackedIntegerValue sentinel_value{};
     bool source_signedness{};
     lispb::codegen::PackedIntegerValue source_minimum{};

@@ -15,5 +15,6 @@ void AnalysisStorage::clear() {
     selections.reset();
     distributions.reset();
     distribution_entries.reset();
+    strings.clear();
 }
 }

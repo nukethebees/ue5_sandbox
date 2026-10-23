@@ -62,15 +62,17 @@ void analyze_soa_layout(AnalysisContext& context,
         columns.parent[row] = id;
         columns.name[row] = types.strings().view(schema.name[schema_row]);
         columns.semantic_type[row] = occurrences.type[occurrence_row];
-        columns.schema_type[row] = types.cpp_types().spelling(occurrences.cpp_type[occurrence_row]);
-        columns.physical_type[row] = effective_column_type(types, type, column, variant);
+        columns.schema_type[row] = context.storage.strings.intern(
+            types.cpp_types().spelling(occurrences.cpp_type[occurrence_row]));
+        auto const physical_type{effective_column_type(types, type, column, variant)};
+        columns.physical_type[row] = context.storage.strings.intern(physical_type);
         columns.overridden[row] =
             static_cast<std::uint8_t>(variant.overrides.soa_column_types.contains(
                 FieldOverrideId{type, schema.name[schema_row]}));
         auto const cv_qualified{
             columns.overridden[row]
                 ? lispb::codegen::classify_physical_type_use(
-                      types.cpp_types(), types.cpp_types().intern(columns.physical_type[row]))
+                      types.cpp_types(), types.cpp_types().intern(physical_type))
                       .cv_qualified
                 : occurrences.cv_qualified[occurrence_row] != 0};
         if (schema.kind[schema_row] != lispb::codegen::SoaMemberKind::array ||
@@ -82,8 +84,7 @@ void analyze_soa_layout(AnalysisContext& context,
         } else {
             columns.type_facts[row] =
                 columns.overridden[row]
-                    ? physical_spelling(
-                          context, scenario, abi, columns.physical_type[row], types.module(type))
+                    ? physical_spelling(context, scenario, abi, physical_type, types.module(type))
                     : physical_occurrence(context, scenario, abi, use);
         }
         if (!columns.type_facts[row]) {
