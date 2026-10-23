@@ -30,7 +30,6 @@ struct LevelSimTestAccess;
 }
 
 namespace ioj::sim::fighters {
-struct FrameSpawnQueue;
 class CommandInterface;
 class PhaseInterface;
 
@@ -187,7 +186,6 @@ struct Sim {
     // Spawning
     /* **************************************** */
     auto queue_spawns(FighterSpawnQueue::ConstView new_spawns) -> std::uint32_t;
-    auto queue_spawns(FrameSpawnQueue const& new_spawns) -> std::uint32_t;
     auto accept_spawn_count(std::span<Team const> teams) -> std::uint32_t;
     void reassign_pending_spawns(EntityId parent, EntityId replacement);
     void commit_spawns();

@@ -674,11 +674,9 @@ struct LevelTurretSpawnEvents
     // Lifetime
     /* **************************************** */
     LevelTurretSpawnEvents() noexcept
-        : LevelTurretSpawnEvents{std::pmr::get_default_resource()} {}
-    explicit LevelTurretSpawnEvents(std::pmr::memory_resource* resource) noexcept
-        : resource_{resource} {
-        assert(resource != nullptr);
-    }
+        : LevelTurretSpawnEvents{*std::pmr::get_default_resource()} {}
+    explicit LevelTurretSpawnEvents(std::pmr::memory_resource& resource) noexcept
+        : resource_{&resource} {}
     auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~LevelTurretSpawnEvents() { Operations::release_storage(*this); }
     LevelTurretSpawnEvents(LevelTurretSpawnEvents const&) = delete;

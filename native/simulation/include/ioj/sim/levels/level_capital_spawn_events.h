@@ -731,11 +731,9 @@ struct LevelCapitalSpawnEvents
     // Lifetime
     /* **************************************** */
     LevelCapitalSpawnEvents() noexcept
-        : LevelCapitalSpawnEvents{std::pmr::get_default_resource()} {}
-    explicit LevelCapitalSpawnEvents(std::pmr::memory_resource* resource) noexcept
-        : resource_{resource} {
-        assert(resource != nullptr);
-    }
+        : LevelCapitalSpawnEvents{*std::pmr::get_default_resource()} {}
+    explicit LevelCapitalSpawnEvents(std::pmr::memory_resource& resource) noexcept
+        : resource_{&resource} {}
     auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~LevelCapitalSpawnEvents() { Operations::release_storage(*this); }
     LevelCapitalSpawnEvents(LevelCapitalSpawnEvents const&) = delete;

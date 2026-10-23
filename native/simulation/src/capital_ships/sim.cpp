@@ -12,7 +12,7 @@
 #include <ioj/sim/entities/entity_ledger.h>
 #include <ioj/sim/entities/health.h>
 #include <ioj/sim/fighters/fighter_diagnostics.h>
-#include <ioj/sim/fighters/fighter_frame_spawn_queue.h>
+#include <ioj/sim/fighters/fighter_spawn_queue.h>
 #include <ioj/sim/fighters/sim.h>
 #include <ioj/sim/profiling.h>
 #include <ioj/sim/sim_clock.h>
@@ -292,7 +292,7 @@ void Sim::queue_fighter_spawns(FrameMemoryResource* const scratch_resource) {
     }
 
     auto const& relative_transforms{config.fighter_spawn_slots_relative_transforms};
-    fighters::FrameSpawnQueue fighter_spawn_wave{scratch_resource};
+    FighterSpawnQueue fighter_spawn_wave{*scratch_resource};
     assert(std::in_range<std::uint32_t>(relative_transforms.size()));
     fighter_spawn_wave.reserve(static_cast<std::uint32_t>(relative_transforms.size()));
     auto const locations{entities.view_locations()};
@@ -304,7 +304,7 @@ void Sim::queue_fighter_spawns(FrameMemoryResource* const scratch_resource) {
     auto const rotations{entities.view_rotations()};
 
     for (auto const capital_index : ships_ready_to_spawn_fighters_indices) {
-        fighter_spawn_wave.clear();
+        fighter_spawn_wave.reset();
         auto const base_location{vector_at(locations, capital_index)};
         auto const base_rotation{rotation_at(rotations, capital_index)};
         Transform3d const base_transform{
@@ -314,13 +314,19 @@ void Sim::queue_fighter_spawns(FrameMemoryResource* const scratch_resource) {
 
         for (auto const& relative_transform : relative_transforms) {
             auto const new_transform{relative_transform * base_transform};
-            fighter_spawn_wave.add(to_float(new_transform.location),
-                                   to_float(new_transform.rotator()),
+            auto const location{to_float(new_transform.location)};
+            auto const rotation{to_float(new_transform.rotator())};
+            fighter_spawn_wave.add(location.x(),
+                                   location.y(),
+                                   location.z(),
+                                   rotation.pitch,
+                                   rotation.yaw,
+                                   rotation.roll,
                                    teams[capital_index],
                                    entity_ids[capital_index],
                                    target_ids[capital_index]);
         }
-        fighters_interface.queue_spawns(fighter_spawn_wave);
+        fighters_interface.queue_spawns(fighter_spawn_wave.get_const_view());
         spawn_timers[capital_index] = spawn_cooldowns[capital_index];
     }
 }

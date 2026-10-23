@@ -18,7 +18,6 @@
 #include <ioj/sim/entities/entity_id_checks.h>
 #include <ioj/sim/entities/entity_ledger.h>
 #include <ioj/sim/fighters/fighter_diagnostics.h>
-#include <ioj/sim/fighters/fighter_frame_spawn_queue.h>
 #include <ioj/sim/lasers/laser_source.h>
 #include <ioj/sim/lasers/sim.h>
 #include <ioj/sim/profiling.h>
@@ -1372,13 +1371,6 @@ auto Sim::accept_spawn_count(std::span<Team const> const teams) -> std::uint32_t
     return accepted_count;
 }
 auto Sim::queue_spawns(FighterSpawnQueue::ConstView const new_spawns) -> std::uint32_t {
-    SANDBOX_PROFILE_SCOPE("fighters::Sim::queue_spawns");
-    new_spawns.validate();
-    auto const count{accept_spawn_count(new_spawns.teams())};
-    spawn_queue.append_from(new_spawns, 0, count);
-    return count;
-}
-auto Sim::queue_spawns(FrameSpawnQueue const& new_spawns) -> std::uint32_t {
     SANDBOX_PROFILE_SCOPE("fighters::Sim::queue_spawns");
     new_spawns.validate();
     auto const count{accept_spawn_count(new_spawns.teams())};

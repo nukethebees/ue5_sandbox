@@ -283,10 +283,6 @@
   :header "ioj/sim/lasers/laser_source.h"
   :pass-by value)
 
-(type frame_fighter_spawn_queue
-  :spelling "FrameSpawnQueue"
-  :header "ioj/sim/fighters/fighter_frame_spawn_queue.h")
-
 (type native_scalar_response :spelling "ioj::sim::player::ScalarResponse" :header "ioj/sim/player/scalar_response.h")
 (type native_trace_hit :spelling "ioj::sim::TraceHit" :header "ioj/sim/collision/query_result_types.h" :pass-by value)
 (type native_navigation_risk_code :spelling "ioj::sim::fighters::NavigationRiskCode" :header "ioj/sim/fighters/fighter_navigation_types.h" :pass-by value)

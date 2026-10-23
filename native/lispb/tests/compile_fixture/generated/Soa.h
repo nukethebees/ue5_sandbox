@@ -302,11 +302,9 @@ struct COMPILE_FIXTURE_API ApiOwner
     // Lifetime
     /* **************************************** */
     ApiOwner() noexcept
-        : ApiOwner{std::pmr::get_default_resource()} {}
-    explicit ApiOwner(std::pmr::memory_resource* resource) noexcept
-        : resource_{resource} {
-        assert(resource != nullptr);
-    }
+        : ApiOwner{*std::pmr::get_default_resource()} {}
+    explicit ApiOwner(std::pmr::memory_resource& resource) noexcept
+        : resource_{&resource} {}
     auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~ApiOwner() { Operations::release_storage(*this); }
     ApiOwner(ApiOwner const&) = delete;
@@ -590,11 +588,9 @@ struct EquivalentOwner
     // Lifetime
     /* **************************************** */
     EquivalentOwner() noexcept
-        : EquivalentOwner{std::pmr::get_default_resource()} {}
-    explicit EquivalentOwner(std::pmr::memory_resource* resource) noexcept
-        : resource_{resource} {
-        assert(resource != nullptr);
-    }
+        : EquivalentOwner{*std::pmr::get_default_resource()} {}
+    explicit EquivalentOwner(std::pmr::memory_resource& resource) noexcept
+        : resource_{&resource} {}
     auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~EquivalentOwner() { Operations::release_storage(*this); }
     EquivalentOwner(EquivalentOwner const&) = delete;
@@ -1408,11 +1404,9 @@ struct SingleParents
     // Lifetime
     /* **************************************** */
     SingleParents() noexcept
-        : SingleParents{std::pmr::get_default_resource()} {}
-    explicit SingleParents(std::pmr::memory_resource* resource) noexcept
-        : resource_{resource} {
-        assert(resource != nullptr);
-    }
+        : SingleParents{*std::pmr::get_default_resource()} {}
+    explicit SingleParents(std::pmr::memory_resource& resource) noexcept
+        : resource_{&resource} {}
     auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~SingleParents() { Operations::release_storage(*this); }
     SingleParents(SingleParents const&) = delete;
@@ -2661,11 +2655,9 @@ struct SingleRestrictionRows
     // Lifetime
     /* **************************************** */
     SingleRestrictionRows() noexcept
-        : SingleRestrictionRows{std::pmr::get_default_resource()} {}
-    explicit SingleRestrictionRows(std::pmr::memory_resource* resource) noexcept
-        : resource_{resource} {
-        assert(resource != nullptr);
-    }
+        : SingleRestrictionRows{*std::pmr::get_default_resource()} {}
+    explicit SingleRestrictionRows(std::pmr::memory_resource& resource) noexcept
+        : resource_{&resource} {}
     auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~SingleRestrictionRows() { Operations::release_storage(*this); }
     SingleRestrictionRows(SingleRestrictionRows const&) = delete;

@@ -2,7 +2,6 @@
 #include <ioj/column_math.h>
 #include <ioj/frame_memory_resource.h>
 #include <ioj/sim/capital_ships/capital_entity_data.h>
-#include <ioj/sim/collision/frame_hit_details.h>
 #include <ioj/sim/fighters/fighter_entity_data.h>
 #include <ioj/sim/fighters/fighter_spawn_queue.h>
 #include <ioj/sim/lasers/laser_entities.h>
@@ -140,21 +139,18 @@ TEST(NativeSimulation, LaserFrameOutputAccumulatesBatchesAndReusesStorage) {
         std::span<std::byte>{frame_block.data(), frame_block.size_bytes()}};
     FrameScratchScope scratch_scope{frame_memory};
     auto* const scratch_resource{&frame_memory};
-    lasers::FrameHitDetails first_batch{scratch_resource};
+    LaserHitDetails first_batch{*scratch_resource};
     for (std::int32_t index{}; index < 65; ++index) {
-        first_batch.add(Vector3f{static_cast<float>(index), 1.f, 2.f},
-                        Vector3f{0.f, 1.f, 0.f},
-                        {Team::Green, EntityType::Fighter});
+        first_batch.add(
+            static_cast<float>(index), 1.f, 2.f, 0.f, 1.f, 0.f, {Team::Green, EntityType::Fighter});
     }
-    lasers::FrameHitDetails second_batch{scratch_resource};
-    second_batch.add(
-        Vector3f{100.f, 3.f, 4.f}, Vector3f{1.f, 0.f, 0.f}, {Team::Red, EntityType::CapitalShip});
-    second_batch.add(
-        Vector3f{101.f, 3.f, 4.f}, Vector3f{1.f, 0.f, 0.f}, {Team::Red, EntityType::CapitalShip});
+    LaserHitDetails second_batch{*scratch_resource};
+    second_batch.add(100.f, 3.f, 4.f, 1.f, 0.f, 0.f, {Team::Red, EntityType::CapitalShip});
+    second_batch.add(101.f, 3.f, 4.f, 1.f, 0.f, 0.f, {Team::Red, EntityType::CapitalShip});
 
     lasers::FrameOutput output;
-    output.append_hits(first_batch, 7);
-    output.append_hits(second_batch, 9);
+    output.append_hits(first_batch.get_const_view(), 7);
+    output.append_hits(second_batch.get_const_view(), 9);
 
     auto const accumulated{output.hits.get_const_view()};
     EXPECT_EQ(accumulated.num(), 67) << "All laser-hit batches accumulate";
@@ -170,7 +166,7 @@ TEST(NativeSimulation, LaserFrameOutputAccumulatesBatchesAndReusesStorage) {
     EXPECT_TRUE(output.hit_ticks.empty()) << "Reset clears hit ticks";
     EXPECT_TRUE(output.hit_ordinals.empty()) << "Reset clears hit ordinals";
 
-    output.append_hits(second_batch, 11);
+    output.append_hits(second_batch.get_const_view(), 11);
     auto const reused{output.hits.get_const_view()};
     EXPECT_EQ(reused.num(), 2) << "Reset storage can be reused";
     EXPECT_EQ(reused.view_locations().xs()[0], 100.f) << "Reused storage receives new contents";

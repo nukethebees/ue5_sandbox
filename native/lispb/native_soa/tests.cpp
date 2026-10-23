@@ -20,14 +20,13 @@ using namespace native_soa_fixture;
 TEST(NativeSoa, PmrResourcesAndMoves) {
     pmr_test_support::verify_pmr_owner<SingleRows>(
         [](SingleRows& owner) -> auto& { return owner.get_view().values()[0]; });
-    EXPECT_DEATH(SingleRows{nullptr}, "");
 }
 
 TEST(NativeSoa, ResourceAlignmentAndFailurePreserveAllColumns) {
     pmr_test_support::AllocationState state;
     pmr_test_support::CountingResource resource{state};
     {
-        SingleAlignmentRows owner{&resource};
+        SingleAlignmentRows owner{resource};
         owner.set_num(1);
         owner.get_view().aligned256()[0].value = 123;
         auto const old_capacity{owner.capacity()};
@@ -55,10 +54,10 @@ TEST(NativeSoa, ResourceMovesPreserveLogicalApiOwners) {
     pmr_test_support::CountingResource first{first_state};
     pmr_test_support::CountingResource second{second_state};
     {
-        ApiOwner source{&first};
+        ApiOwner source{first};
         source.set_num(1);
         source.get_view().values()[0] = 19;
-        ApiOwner destination{&second};
+        ApiOwner destination{second};
         destination = std::move(source);
         EXPECT_EQ(destination.first_value(), 19);
         EXPECT_EQ(destination.get_memory_resource(), &second);
@@ -160,7 +159,7 @@ TEST(NativeSoa, MutuallyReferencingPointersCompileInBothOrdersAndAcrossDeclarati
 }
 
 TEST(NativeSoa, LogicalApiSurvivesCompactOnlyStorageAndNestedLayouts) {
-    ApiOwner owner{};
+    ApiOwner owner{*std::pmr::get_default_resource()};
     owner.set_num(2);
     auto view{owner.get_view()};
     view.assign_first(7.0f);
@@ -189,7 +188,7 @@ TEST(NativeSoa, LogicalApiSurvivesCompactOnlyStorageAndNestedLayouts) {
     EXPECT_EQ(owner.get_const_view().values()[2], 9.0f);
     EXPECT_EQ(owner.get_const_view().view_positions()[1].x, 6.0f);
 
-    EquivalentOwner equivalent{};
+    EquivalentOwner equivalent{*std::pmr::get_default_resource()};
     equivalent.set_num(1);
     equivalent.get_view().xs()[0] = 5.0f;
     equivalent.get_view().ys()[0] = 8.0f;
@@ -205,13 +204,13 @@ TEST(NativeSoa, BothStorageImplementationsShareLogicalFunctions) {
         EXPECT_EQ(owner.get_const_view().first(), 4.0f);
     };
     verify(DualApiRows{});
-    verify(DualCompactRows{});
+    verify(DualCompactRows{*std::pmr::get_default_resource()});
 }
 
 TEST(NativeSoa, ResolvedViewsBorrowColumnsAndPreserveNestedLogicalApi) {
     pmr_test_support::AllocationState state;
     pmr_test_support::CountingResource resource{state};
-    ApiOwner owner{&resource};
+    ApiOwner owner{resource};
     owner.set_num(3);
     auto const allocations{state.allocations};
     auto const compact{owner.get_view()};
@@ -325,7 +324,7 @@ TEST(NativeSoa, EmptyResolvedViewsCanBeSlicedAndConverted) {
 TEST(NativeSoa, ResolvedSelfAppendPreservesAliasedColumnsAcrossGrowthAndAllocationFailure) {
     pmr_test_support::AllocationState state;
     pmr_test_support::CountingResource resource{state};
-    ApiOwner owner{&resource};
+    ApiOwner owner{resource};
     owner.reserve(1);
     owner.set_num(owner.capacity());
     auto rows{owner.get_view().resolve()};
@@ -375,7 +374,7 @@ struct ApiSource {
 TEST(NativeSoa, LogicalApiAcceptsIndependentColumnsAndCompactSourcesDuringGrowth) {
     ApiSource source;
     source.mask_columns[1].set(ApiField::Values);
-    ApiOwner owner{};
+    ApiOwner owner{*std::pmr::get_default_resource()};
     owner.append_from(source);
     EXPECT_EQ(owner.total(), 24.0f);
     owner.set_num(owner.capacity());
@@ -410,7 +409,7 @@ TEST(NativeSoa, CompactSelfCopyPreservesEveryColumn) {
         SCOPED_TRACE(range.name);
         for (bool const sliced : {false, true}) {
             SCOPED_TRACE(sliced);
-            SingleRows owner{};
+            SingleRows owner{*std::pmr::get_default_resource()};
             owner.set_num(row_count);
             auto const view{owner.get_view()};
             std::uint32_t column_index{};
@@ -457,7 +456,7 @@ TEST(NativeSoa, LayoutGrowthAndMoves) {
         using Element = typename std::remove_cvref_t<decltype(column)>::value_type;
         EXPECT_EQ(reinterpret_cast<std::uintptr_t>(column.data()) % alignof(Element), 0u);
     });
-    SingleAlignmentRows owner{};
+    SingleAlignmentRows owner{*std::pmr::get_default_resource()};
     EXPECT_EQ(owner.num(), 0);
     EXPECT_EQ(owner.capacity(), 0);
     EXPECT_EQ(owner.get_view().bytes().data(), nullptr);
@@ -521,7 +520,7 @@ TEST(NativeSoa, LayoutGrowthAndMoves) {
 
 TEST(NativeSoa, MatchingSchemaAndMutations) {
     Rows baseline;
-    SingleRows single{};
+    SingleRows single{*std::pmr::get_default_resource()};
     for (int pass{}; pass < 20; ++pass) {
         baseline.add_defaulted(129);
         single.add_defaulted(129);
@@ -738,7 +737,7 @@ TEST(NativeSoa, CompactViewsAndBulkAppend) {
         std::is_same_v<decltype(std::declval<Owner::View>().view_positions()), Vector3fSoAView>);
     static_assert(std::is_same_v<decltype(std::declval<Owner::ConstView>().view_positions()),
                                  Vector3fSoAConstView>);
-    Owner source{};
+    Owner source{*std::pmr::get_default_resource()};
     source.set_num(129);
     auto view{source.get_view()};
     for (std::uint32_t row{}; row < source.num(); ++row) {
@@ -751,7 +750,7 @@ TEST(NativeSoa, CompactViewsAndBulkAppend) {
     EXPECT_EQ(view.view_positions().xs()[1], 1.f);
     Owner::ConstView const_view{slice};
     EXPECT_EQ(const_view.view_positions().xs()[0], 1.f);
-    Owner destination{};
+    Owner destination{*std::pmr::get_default_resource()};
     EXPECT_EQ(destination.append_from(source.get_const_view()), 0);
     EXPECT_EQ(destination.append_from(const_view), 129);
     EXPECT_EQ(destination.get_view().values()[192], 64);
@@ -767,14 +766,14 @@ TEST(NativeSoa, CompactViewsAndBulkAppend) {
 }
 
 TEST(NativeSoa, BulkAppendPreservesEveryAlignedLeaf) {
-    SingleAlignmentRows source{};
+    SingleAlignmentRows source{*std::pmr::get_default_resource()};
     source.set_num(129);
     source.get_view().each_column([](auto column) {
         for (std::size_t row{}; row < column.size(); ++row) {
             std::memset(&column[row], static_cast<int>(row + 1), sizeof(column[row]));
         }
     });
-    SingleAlignmentRows destination{};
+    SingleAlignmentRows destination{*std::pmr::get_default_resource()};
     destination.append_from(source.get_const_view());
     destination.append_from(destination.slice(1, 128));
     destination.get_const_view().each_column([](auto column) {
@@ -810,7 +809,7 @@ TEST(NativeSoa, IndependentColumnsAppendDirectly) {
         source.values_[row] = row + 100;
         source.xs_[row] = static_cast<float>(row);
     }
-    SingleRows destination{};
+    SingleRows destination{*std::pmr::get_default_resource()};
     destination.set_num(1);
     destination.get_view().values()[0] = -1;
     EXPECT_EQ(destination.append_from(source), 1);
@@ -831,7 +830,7 @@ TEST(NativeSoa, IndependentColumnsAppendDirectly) {
 TEST(NativeSoa, DescendingRemovalExhaustiveSubsets) {
     for (std::uint32_t count{}; count <= 10; ++count) {
         for (unsigned mask{}; mask < (1u << count); ++mask) {
-            SingleRows owner{};
+            SingleRows owner{*std::pmr::get_default_resource()};
             owner.set_num(count);
             auto view{owner.get_view()};
             std::vector<std::uint32_t> indices;

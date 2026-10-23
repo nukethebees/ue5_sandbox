@@ -33,7 +33,6 @@ target_sources(native-simulation PRIVATE
   ../include/ioj/sim/collision/entity_world_bounds.h
   ../include/ioj/sim/fighters/fighter_diagnostics.h
   ../include/ioj/sim/fighters/fighter_entity_data.h
-  ../include/ioj/sim/fighters/fighter_frame_spawn_queue.h
   ../include/ioj/sim/fighters/fighter_navigation_scratch.h
   ../include/ioj/sim/fighters/fighter_navigation.h
   ../include/ioj/sim/fighters/fighter_order_queue.h
@@ -41,7 +40,6 @@ target_sources(native-simulation PRIVATE
   ../include/ioj/sim/fighters/fighter_task_format.h
   ../include/ioj/sim/fixed_tick_loop.h
   ../include/ioj/sim/fixed_tick.h
-  ../include/ioj/sim/collision/frame_hit_details.h
   ../include/ioj/sim/collision/frame_range_query_results.h
   ../include/ioj/sim/entities/entity_tables.h
   ../include/ioj/sim/entities/health_table.h
@@ -102,10 +100,8 @@ target_sources(native-simulation PRIVATE
   deterministic_bias.cpp
   combat_statistics.cpp
   collision/entity_world_bounds.cpp
-  fighters/fighter_frame_spawn_queue.cpp
   fighters/fighter_navigation.cpp
   fixed_tick.cpp
-  collision/frame_hit_details.cpp
   lasers/laser_frame_output.cpp
   levels/level_event_types.cpp
   levels/level_read_access.cpp

@@ -282,11 +282,9 @@ struct FighterOrderQueue
     // Lifetime
     /* **************************************** */
     FighterOrderQueue() noexcept
-        : FighterOrderQueue{std::pmr::get_default_resource()} {}
-    explicit FighterOrderQueue(std::pmr::memory_resource* resource) noexcept
-        : resource_{resource} {
-        assert(resource != nullptr);
-    }
+        : FighterOrderQueue{*std::pmr::get_default_resource()} {}
+    explicit FighterOrderQueue(std::pmr::memory_resource& resource) noexcept
+        : resource_{&resource} {}
     auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~FighterOrderQueue() { Operations::release_storage(*this); }
     FighterOrderQueue(FighterOrderQueue const&) = delete;

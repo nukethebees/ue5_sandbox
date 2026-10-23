@@ -267,11 +267,9 @@ struct LevelMissionEventGroups
     // Lifetime
     /* **************************************** */
     LevelMissionEventGroups() noexcept
-        : LevelMissionEventGroups{std::pmr::get_default_resource()} {}
-    explicit LevelMissionEventGroups(std::pmr::memory_resource* resource) noexcept
-        : resource_{resource} {
-        assert(resource != nullptr);
-    }
+        : LevelMissionEventGroups{*std::pmr::get_default_resource()} {}
+    explicit LevelMissionEventGroups(std::pmr::memory_resource& resource) noexcept
+        : resource_{&resource} {}
     auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~LevelMissionEventGroups() { Operations::release_storage(*this); }
     LevelMissionEventGroups(LevelMissionEventGroups const&) = delete;

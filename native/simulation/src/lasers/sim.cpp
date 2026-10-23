@@ -5,11 +5,11 @@
 #include <ioj/frame_vectors3f.h>
 #include <ioj/generated/array_math_kernels.h>
 #include <ioj/parallel_for.h>
-#include <ioj/sim/collision/frame_hit_details.h>
 #include <ioj/sim/collision/spatial_query_manager.h>
 #include <ioj/sim/collision/trace_hits.h>
 #include <ioj/sim/combat_events.h>
 #include <ioj/sim/direct_damage_events.h>
+#include <ioj/sim/lasers/laser_hit_details.h>
 #include <ioj/sim/profiling.h>
 
 #include <algorithm>
@@ -209,7 +209,7 @@ void Sim::handle_collisions(ActionInputs const inputs) {
     }
 
     FrameVectors3f end_storage{scratch_resource};
-    TraceHits hit_storage{scratch_resource};
+    TraceHits hit_storage{*scratch_resource};
     end_storage.set_num(n);
     hit_storage.set_num(n);
     auto const trace_ends{end_storage.get_view()};
@@ -244,8 +244,8 @@ void Sim::handle_collisions(ActionInputs const inputs) {
     });
 
     FrameArray<std::uint32_t> to_remove{scratch_resource};
-    FrameHitDetails hit_details{scratch_resource};
-    DirectDamageEvents collision_damage_events{scratch_resource};
+    LaserHitDetails hit_details{*scratch_resource};
+    DirectDamageEvents collision_damage_events{*scratch_resource};
     auto const trace_hits{hit_storage.get_const_view()};
     auto const hit_flags{trace_hits.hits()};
     auto const hit_entities{trace_hits.entities()};
@@ -277,7 +277,14 @@ void Sim::handle_collisions(ActionInputs const inputs) {
         auto const emission_direction{length_squared < safe_normal_tolerance
                                           ? Vector3f{0.f, 0.f, -1.f}
                                           : velocity * (-1.f / std::sqrt(length_squared))};
-        hit_details.add(hit_locations[entity_index], emission_direction, sources[element]);
+        auto const hit_location{hit_locations[entity_index]};
+        hit_details.add(hit_location.x(),
+                        hit_location.y(),
+                        hit_location.z(),
+                        emission_direction.x(),
+                        emission_direction.y(),
+                        emission_direction.z(),
+                        sources[element]);
     }
     std::ranges::sort(to_remove.view(), std::greater{});
     combat_events.queue_damage(collision_damage_events.get_const_view());
@@ -288,7 +295,7 @@ void Sim::handle_collisions(ActionInputs const inputs) {
         pending_removals_.push_back(index);
     }
 
-    frame_output_.append_hits(hit_details, simulation_clock.get_completed_ticks());
+    frame_output_.append_hits(hit_details.get_const_view(), simulation_clock.get_completed_ticks());
 }
 void Sim::remove_instances(std::span<LaserIndex const> const indices) {
     assert(std::ranges::is_sorted(indices, std::greater{}));

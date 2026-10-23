@@ -5,7 +5,6 @@
 
 #include "ioj/sim/entities/entity_id.h"
 #include "ioj/sim/entities/health_table.h"
-#include "ioj/sim/fighters/fighter_frame_spawn_queue.h"
 #include "ioj/sim/fighters/fighter_order_queue.h"
 #include "ioj/sim/fighters/fighter_spawn_queue.h"
 #include "ioj/sim/fighters/sim.h"
@@ -21,8 +20,6 @@ class CommandInterface {
     std::int32_t queue_spawns(FighterSpawnQueue::ConstView queue) {
         return fighters.queue_spawns(queue);
     }
-
-    std::int32_t queue_spawns(FrameSpawnQueue const& queue) { return fighters.queue_spawns(queue); }
 
     void queue_orders(FighterOrderQueue const& queue) { fighters.queue_orders(queue); }
 

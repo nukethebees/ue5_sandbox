@@ -465,11 +465,9 @@ struct LevelSpinnerSpawnEvents
     // Lifetime
     /* **************************************** */
     LevelSpinnerSpawnEvents() noexcept
-        : LevelSpinnerSpawnEvents{std::pmr::get_default_resource()} {}
-    explicit LevelSpinnerSpawnEvents(std::pmr::memory_resource* resource) noexcept
-        : resource_{resource} {
-        assert(resource != nullptr);
-    }
+        : LevelSpinnerSpawnEvents{*std::pmr::get_default_resource()} {}
+    explicit LevelSpinnerSpawnEvents(std::pmr::memory_resource& resource) noexcept
+        : resource_{&resource} {}
     auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~LevelSpinnerSpawnEvents() { Operations::release_storage(*this); }
     LevelSpinnerSpawnEvents(LevelSpinnerSpawnEvents const&) = delete;

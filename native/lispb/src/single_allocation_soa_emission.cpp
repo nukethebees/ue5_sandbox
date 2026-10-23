@@ -205,16 +205,16 @@ auto storage_lifetime_nodes(LoweringContext& context, SingleAllocationModelId mo
         default_constructor,
         {},
         {ir.member_initializer(model_store.owner_name[model_store_index],
-                               ir.store_text("std::pmr::get_default_resource()"))});
+                               ir.store_text("*std::pmr::get_default_resource()"))});
     auto const resource_constructor{
         ir.constructor(model_store.owner_name[model_store_index], true)};
     ir.set_function_parameters(resource_constructor,
-                               {ir.parameter("std::pmr::memory_resource*", "resource")});
+                               {ir.parameter("std::pmr::memory_resource&", "resource")});
     ir.set_function_noexcept(resource_constructor);
     ir.set_function_body(
         resource_constructor,
-        {ir.raw("assert(resource != nullptr);")},
-        {ir.member_initializer(ir.strings.intern("resource_"), ir.store_text("resource"))});
+        {},
+        {ir.member_initializer(ir.strings.intern("resource_"), ir.store_text("&resource"))});
     auto const resource_accessor{ir.function("get_memory_resource", "auto")};
     ir.set_function_body(resource_accessor, {ir.return_stmt(ir.named("resource_"))});
     ir.set_function_return_type(

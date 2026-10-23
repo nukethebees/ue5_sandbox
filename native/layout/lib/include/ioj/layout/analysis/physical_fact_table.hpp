@@ -347,11 +347,9 @@ struct PhysicalFactTable
     // Lifetime
     /* **************************************** */
     PhysicalFactTable() noexcept
-        : PhysicalFactTable{std::pmr::get_default_resource()} {}
-    explicit PhysicalFactTable(std::pmr::memory_resource* resource) noexcept
-        : resource_{resource} {
-        assert(resource != nullptr);
-    }
+        : PhysicalFactTable{*std::pmr::get_default_resource()} {}
+    explicit PhysicalFactTable(std::pmr::memory_resource& resource) noexcept
+        : resource_{&resource} {}
     auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~PhysicalFactTable() { Operations::release_storage(*this); }
     PhysicalFactTable(PhysicalFactTable const&) = delete;

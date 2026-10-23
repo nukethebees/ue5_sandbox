@@ -565,11 +565,9 @@ struct LineTraces
     // Lifetime
     /* **************************************** */
     LineTraces() noexcept
-        : LineTraces{std::pmr::get_default_resource()} {}
-    explicit LineTraces(std::pmr::memory_resource* resource) noexcept
-        : resource_{resource} {
-        assert(resource != nullptr);
-    }
+        : LineTraces{*std::pmr::get_default_resource()} {}
+    explicit LineTraces(std::pmr::memory_resource& resource) noexcept
+        : resource_{&resource} {}
     auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~LineTraces() { Operations::release_storage(*this); }
     LineTraces(LineTraces const&) = delete;
