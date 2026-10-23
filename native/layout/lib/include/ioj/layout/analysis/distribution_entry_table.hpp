@@ -60,7 +60,7 @@ struct DistributionEntryTableLayout
 // Resolved views
 /* **************************************** */
 template <bool Const>
-struct DistributionEntryTableResolvedViewImpl {
+struct DistributionEntryTableResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     using size_type = std::uint32_t;
     using View = DistributionEntryTableResolvedView;
     using ConstView = DistributionEntryTableResolvedConstView;
@@ -133,21 +133,7 @@ struct DistributionEntryTableResolvedViewImpl {
         , weighted_slack_bytes_{other.weighted_slack_bytes_}
         , count_{other.count_} {}
     auto num() const noexcept -> size_type { return count_; }
-    auto is_empty() const noexcept -> bool { return count_ == 0; }
-    auto get_view(this auto const& self) { return self; }
-    auto get_const_view(this auto const& self) {
-        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
-        return Result{self.component_,
-                      self.value_,
-                      self.weight_,
-                      self.extent_bytes_,
-                      self.slack_bytes_,
-                      self.weighted_extent_bytes_,
-                      self.weighted_slack_bytes_,
-                      self.count_};
-    }
     auto resolve(this auto const& self) { return self; }
-    void validate() const {}
     auto slice(this auto const& self, size_type offset, size_type count) {
         assert(offset <= self.count_ && count <= self.count_ - offset);
         using Result = std::remove_cvref_t<decltype(self)>;
@@ -160,17 +146,6 @@ struct DistributionEntryTableResolvedViewImpl {
             self.weighted_extent_bytes_ == nullptr ? nullptr : self.weighted_extent_bytes_ + offset,
             self.weighted_slack_bytes_ == nullptr ? nullptr : self.weighted_slack_bytes_ + offset,
             count};
-    }
-    auto get_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count);
-    }
-    auto get_const_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count).get_const_view();
-    }
-    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
-    auto right(this auto const& self, size_type count) {
-        assert(count <= self.num());
-        return self.slice(self.num() - count, count);
     }
     auto component() const -> std::span<Element<std::optional<std::size_t>>> {
         return {component_, count_};
@@ -499,13 +474,14 @@ struct DistributionEntryTable
     void apply_permutation(std::span<size_type> indices) {
         assert(indices.size() == num_);
         auto const columns{get_data()};
-        ioj::apply_permutation(std::span{columns.component, num_}, indices);
-        ioj::apply_permutation(std::span{columns.value, num_}, indices);
-        ioj::apply_permutation(std::span{columns.weight, num_}, indices);
-        ioj::apply_permutation(std::span{columns.extent_bytes, num_}, indices);
-        ioj::apply_permutation(std::span{columns.slack_bytes, num_}, indices);
-        ioj::apply_permutation(std::span{columns.weighted_extent_bytes, num_}, indices);
-        ioj::apply_permutation(std::span{columns.weighted_slack_bytes, num_}, indices);
+        auto const permute{ioj::ColumnPermutation{num_, indices}};
+        permute(columns.component,
+                columns.value,
+                columns.weight,
+                columns.extent_bytes,
+                columns.slack_bytes,
+                columns.weighted_extent_bytes,
+                columns.weighted_slack_bytes);
     }
   private:
     std::pmr::memory_resource* resource_{};

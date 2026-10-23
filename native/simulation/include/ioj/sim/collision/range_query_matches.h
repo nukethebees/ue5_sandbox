@@ -52,7 +52,7 @@ struct RangeQueryMatchesLayout
 // Resolved views
 /* **************************************** */
 template <bool Const>
-struct RangeQueryMatchesResolvedViewImpl {
+struct RangeQueryMatchesResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     using size_type = std::uint32_t;
     using View = RangeQueryMatchesResolvedView;
     using ConstView = RangeQueryMatchesResolvedConstView;
@@ -100,19 +100,7 @@ struct RangeQueryMatchesResolvedViewImpl {
         , directions_zs_{other.directions_zs_}
         , count_{other.count_} {}
     auto num() const noexcept -> size_type { return count_; }
-    auto is_empty() const noexcept -> bool { return count_ == 0; }
-    auto get_view(this auto const& self) { return self; }
-    auto get_const_view(this auto const& self) {
-        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
-        return Result{self.entities_,
-                      self.distances_,
-                      self.directions_xs_,
-                      self.directions_ys_,
-                      self.directions_zs_,
-                      self.count_};
-    }
     auto resolve(this auto const& self) { return self; }
-    void validate() const {}
     auto slice(this auto const& self, size_type offset, size_type count) {
         assert(offset <= self.count_ && count <= self.count_ - offset);
         using Result = std::remove_cvref_t<decltype(self)>;
@@ -122,17 +110,6 @@ struct RangeQueryMatchesResolvedViewImpl {
                       self.directions_ys_ == nullptr ? nullptr : self.directions_ys_ + offset,
                       self.directions_zs_ == nullptr ? nullptr : self.directions_zs_ + offset,
                       count};
-    }
-    auto get_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count);
-    }
-    auto get_const_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count).get_const_view();
-    }
-    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
-    auto right(this auto const& self, size_type count) {
-        assert(count <= self.num());
-        return self.slice(self.num() - count, count);
     }
     auto entities() const -> std::span<Element<EntityId>> { return {entities_, count_}; }
     auto distances() const -> std::span<Element<float>> { return {distances_, count_}; }
@@ -500,11 +477,12 @@ struct RangeQueryMatches
     void apply_permutation(std::span<size_type> indices) {
         assert(indices.size() == num_);
         auto const columns{get_data()};
-        ioj::apply_permutation(std::span{columns.entities, num_}, indices);
-        ioj::apply_permutation(std::span{columns.distances, num_}, indices);
-        ioj::apply_permutation(std::span{columns.directions_xs, num_}, indices);
-        ioj::apply_permutation(std::span{columns.directions_ys, num_}, indices);
-        ioj::apply_permutation(std::span{columns.directions_zs, num_}, indices);
+        auto const permute{ioj::ColumnPermutation{num_, indices}};
+        permute(columns.entities,
+                columns.distances,
+                columns.directions_xs,
+                columns.directions_ys,
+                columns.directions_zs);
     }
   private:
     std::pmr::memory_resource* resource_{};

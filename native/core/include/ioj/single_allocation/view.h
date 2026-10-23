@@ -50,6 +50,45 @@ struct StorageState {
     std::uint32_t capacity_{};
 };
 
+// External sources may validate independent columns; generated resolved views validate on
+// construction.
+template <typename Source>
+void validate_source(Source const& source) {
+    if constexpr (requires { source.validate(); }) {
+        source.validate();
+    }
+}
+
+struct ViewOperations {
+    auto is_empty(this auto const& self) noexcept -> bool { return self.num() == 0; }
+    auto get_view(this auto const& self) { return self; }
+    template <typename Self>
+    auto get_const_view(this Self const& self) -> typename Self::ConstView {
+        return self;
+    }
+    template <typename Self>
+    auto get_view(this Self const& self,
+                  typename Self::size_type offset,
+                  typename Self::size_type count) -> Self {
+        return self.slice(offset, count);
+    }
+    template <typename Self>
+    auto get_const_view(this Self const& self,
+                        typename Self::size_type offset,
+                        typename Self::size_type count) -> typename Self::ConstView {
+        return self.slice(offset, count);
+    }
+    template <typename Self>
+    auto left(this Self const& self, typename Self::size_type count) -> Self {
+        return self.slice(0, count);
+    }
+    template <typename Self>
+    auto right(this Self const& self, typename Self::size_type count) -> Self {
+        assert(count <= self.num());
+        return self.slice(self.num() - count, count);
+    }
+};
+
 template <typename View>
 consteval auto validate_compact_view() -> bool {
     static_assert(sizeof(View) == sizeof(StorageState),
@@ -89,7 +128,7 @@ auto view_column_data(State* state, std::uint32_t offset, std::size_t byte_offse
 }
 
 template <bool Const>
-struct CompactViewBase {
+struct CompactViewBase : ViewOperations {
     using size_type = std::uint32_t;
     using Storage = StorageState;
     using State = std::conditional_t<Const, Storage const, Storage>;
@@ -104,39 +143,12 @@ struct CompactViewBase {
 
     void validate(this auto const& self) { validate_view(self.state_, self.offset_, self.count_); }
     auto num(this auto const& self) noexcept { return self.count_; }
-    auto is_empty(this auto const& self) noexcept -> bool { return self.count_ == 0; }
-    auto get_view(this auto const& self) { return self; }
-    template <typename Self>
-    auto get_const_view(this Self const& self) -> typename Self::ConstView {
-        return self;
-    }
     template <typename Self>
     auto slice(this Self const& self,
                typename Self::size_type offset,
                typename Self::size_type count) -> Self {
         assert(offset <= self.count_ && count <= self.count_ - offset);
         return Self{self.state_, self.offset_ + offset, count};
-    }
-    template <typename Self>
-    auto get_view(this Self const& self,
-                  typename Self::size_type offset,
-                  typename Self::size_type count) -> Self {
-        return self.slice(offset, count);
-    }
-    template <typename Self>
-    auto get_const_view(this Self const& self,
-                        typename Self::size_type offset,
-                        typename Self::size_type count) -> typename Self::ConstView {
-        return self.slice(offset, count);
-    }
-    template <typename Self>
-    auto left(this Self const& self, typename Self::size_type count) -> Self {
-        return self.slice(0, count);
-    }
-    template <typename Self>
-    auto right(this Self const& self, typename Self::size_type count) -> Self {
-        assert(count <= self.count_);
-        return self.slice(self.count_ - count, count);
     }
   protected:
     template <bool>

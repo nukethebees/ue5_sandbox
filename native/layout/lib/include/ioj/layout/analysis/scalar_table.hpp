@@ -69,7 +69,7 @@ struct ScalarTableLayout : ioj::single_allocation_layout::Layout<ScalarTableLayo
 // Resolved views
 /* **************************************** */
 template <bool Const>
-struct ScalarTableResolvedViewImpl {
+struct ScalarTableResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     using size_type = std::uint32_t;
     using View = ScalarTableResolvedView;
     using ConstView = ScalarTableResolvedConstView;
@@ -156,23 +156,7 @@ struct ScalarTableResolvedViewImpl {
         , varint_encoding_{other.varint_encoding_}
         , count_{other.count_} {}
     auto num() const noexcept -> size_type { return count_; }
-    auto is_empty() const noexcept -> bool { return count_ == 0; }
-    auto get_view(this auto const& self) { return self; }
-    auto get_const_view(this auto const& self) {
-        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
-        return Result{self.type_,
-                      self.integer_domain_,
-                      self.enum_domain_,
-                      self.optional_sentinel_encoding_,
-                      self.optional_presence_encoding_,
-                      self.quantized_encoding_,
-                      self.fixed_encoding_,
-                      self.float_encoding_,
-                      self.varint_encoding_,
-                      self.count_};
-    }
     auto resolve(this auto const& self) { return self; }
-    void validate() const {}
     auto slice(this auto const& self, size_type offset, size_type count) {
         assert(offset <= self.count_ && count <= self.count_ - offset);
         using Result = std::remove_cvref_t<decltype(self)>;
@@ -189,17 +173,6 @@ struct ScalarTableResolvedViewImpl {
             self.float_encoding_ == nullptr ? nullptr : self.float_encoding_ + offset,
             self.varint_encoding_ == nullptr ? nullptr : self.varint_encoding_ + offset,
             count};
-    }
-    auto get_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count);
-    }
-    auto get_const_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count).get_const_view();
-    }
-    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
-    auto right(this auto const& self, size_type count) {
-        assert(count <= self.num());
-        return self.slice(self.num() - count, count);
     }
     auto type() const -> std::span<Element<lispb::schema::TypeId>> { return {type_, count_}; }
     auto integer_domain() const -> std::span<Element<std::optional<ioj::layout::IntegerDomain>>> {
@@ -597,15 +570,16 @@ struct ScalarTable
     void apply_permutation(std::span<size_type> indices) {
         assert(indices.size() == num_);
         auto const columns{get_data()};
-        ioj::apply_permutation(std::span{columns.type, num_}, indices);
-        ioj::apply_permutation(std::span{columns.integer_domain, num_}, indices);
-        ioj::apply_permutation(std::span{columns.enum_domain, num_}, indices);
-        ioj::apply_permutation(std::span{columns.optional_sentinel_encoding, num_}, indices);
-        ioj::apply_permutation(std::span{columns.optional_presence_encoding, num_}, indices);
-        ioj::apply_permutation(std::span{columns.quantized_encoding, num_}, indices);
-        ioj::apply_permutation(std::span{columns.fixed_encoding, num_}, indices);
-        ioj::apply_permutation(std::span{columns.float_encoding, num_}, indices);
-        ioj::apply_permutation(std::span{columns.varint_encoding, num_}, indices);
+        auto const permute{ioj::ColumnPermutation{num_, indices}};
+        permute(columns.type,
+                columns.integer_domain,
+                columns.enum_domain,
+                columns.optional_sentinel_encoding,
+                columns.optional_presence_encoding,
+                columns.quantized_encoding,
+                columns.fixed_encoding,
+                columns.float_encoding,
+                columns.varint_encoding);
     }
   private:
     std::pmr::memory_resource* resource_{};

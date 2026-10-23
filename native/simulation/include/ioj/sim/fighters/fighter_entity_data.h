@@ -136,7 +136,7 @@ struct FighterEntityDataLayout
 // Resolved views
 /* **************************************** */
 template <bool Const>
-struct FighterEntityDataResolvedViewImpl {
+struct FighterEntityDataResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     using size_type = std::uint32_t;
     using View = FighterEntityDataResolvedView;
     using ConstView = FighterEntityDataResolvedConstView;
@@ -547,69 +547,7 @@ struct FighterEntityDataResolvedViewImpl {
         , target_radii_{other.target_radii_}
         , count_{other.count_} {}
     auto num() const noexcept -> size_type { return count_; }
-    auto is_empty() const noexcept -> bool { return count_ == 0; }
-    auto get_view(this auto const& self) { return self; }
-    auto get_const_view(this auto const& self) {
-        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
-        return Result{self.entity_ids_,
-                      self.integral_biases_,
-                      self.float_biases_,
-                      self.tasks_,
-                      self.locations_xs_,
-                      self.locations_ys_,
-                      self.locations_zs_,
-                      self.desired_move_locations_xs_,
-                      self.desired_move_locations_ys_,
-                      self.desired_move_locations_zs_,
-                      self.aim_directions_xs_,
-                      self.aim_directions_ys_,
-                      self.aim_directions_zs_,
-                      self.planned_aim_directions_xs_,
-                      self.planned_aim_directions_ys_,
-                      self.planned_aim_directions_zs_,
-                      self.desired_aiming_directions_xs_,
-                      self.desired_aiming_directions_ys_,
-                      self.desired_aiming_directions_zs_,
-                      self.movement_directions_xs_,
-                      self.movement_directions_ys_,
-                      self.movement_directions_zs_,
-                      self.velocities_xs_,
-                      self.velocities_ys_,
-                      self.velocities_zs_,
-                      self.move_distances_,
-                      self.speeds_,
-                      self.teams_,
-                      self.parent_ids_,
-                      self.awareness_scan_countdowns_,
-                      self.navigation_update_countdowns_remaining_ticks_,
-                      self.navigation_update_countdowns_periods_,
-                      self.separation_steering_xs_,
-                      self.separation_steering_ys_,
-                      self.separation_steering_zs_,
-                      self.navigation_risk_tiers_,
-                      self.navigation_lower_risk_scan_counts_,
-                      self.avoidance_choice_indices_,
-                      self.avoidance_clear_scan_counts_,
-                      self.attack_reposition_countdowns_,
-                      self.attack_cooldowns_,
-                      self.target_ids_,
-                      self.target_locations_xs_,
-                      self.target_locations_ys_,
-                      self.target_locations_zs_,
-                      self.target_velocities_xs_,
-                      self.target_velocities_ys_,
-                      self.target_velocities_zs_,
-                      self.target_directions_xs_,
-                      self.target_directions_ys_,
-                      self.target_directions_zs_,
-                      self.intercept_times_,
-                      self.target_distance_sq_,
-                      self.target_distances_,
-                      self.target_radii_,
-                      self.count_};
-    }
     auto resolve(this auto const& self) { return self; }
-    void validate() const {}
     auto slice(this auto const& self, size_type offset, size_type count) {
         assert(offset <= self.count_ && count <= self.count_ - offset);
         using Result = std::remove_cvref_t<decltype(self)>;
@@ -700,17 +638,6 @@ struct FighterEntityDataResolvedViewImpl {
             self.target_distances_ == nullptr ? nullptr : self.target_distances_ + offset,
             self.target_radii_ == nullptr ? nullptr : self.target_radii_ + offset,
             count};
-    }
-    auto get_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count);
-    }
-    auto get_const_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count).get_const_view();
-    }
-    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
-    auto right(this auto const& self, size_type count) {
-        assert(count <= self.num());
-        return self.slice(self.num() - count, count);
     }
     auto entity_ids() const -> std::span<Element<EntityId>> { return {entity_ids_, count_}; }
     auto integral_biases() const -> std::span<Element<std::uint32_t>> {
@@ -3237,63 +3164,62 @@ struct FighterEntityData
     void apply_permutation(std::span<size_type> indices) {
         assert(indices.size() == num_);
         auto const columns{get_data()};
-        ioj::apply_permutation(std::span{columns.entity_ids, num_}, indices);
-        ioj::apply_permutation(std::span{columns.integral_biases, num_}, indices);
-        ioj::apply_permutation(std::span{columns.float_biases, num_}, indices);
-        ioj::apply_permutation(std::span{columns.tasks, num_}, indices);
-        ioj::apply_permutation(std::span{columns.locations_xs, num_}, indices);
-        ioj::apply_permutation(std::span{columns.locations_ys, num_}, indices);
-        ioj::apply_permutation(std::span{columns.locations_zs, num_}, indices);
-        ioj::apply_permutation(std::span{columns.desired_move_locations_xs, num_}, indices);
-        ioj::apply_permutation(std::span{columns.desired_move_locations_ys, num_}, indices);
-        ioj::apply_permutation(std::span{columns.desired_move_locations_zs, num_}, indices);
-        ioj::apply_permutation(std::span{columns.aim_directions_xs, num_}, indices);
-        ioj::apply_permutation(std::span{columns.aim_directions_ys, num_}, indices);
-        ioj::apply_permutation(std::span{columns.aim_directions_zs, num_}, indices);
-        ioj::apply_permutation(std::span{columns.planned_aim_directions_xs, num_}, indices);
-        ioj::apply_permutation(std::span{columns.planned_aim_directions_ys, num_}, indices);
-        ioj::apply_permutation(std::span{columns.planned_aim_directions_zs, num_}, indices);
-        ioj::apply_permutation(std::span{columns.desired_aiming_directions_xs, num_}, indices);
-        ioj::apply_permutation(std::span{columns.desired_aiming_directions_ys, num_}, indices);
-        ioj::apply_permutation(std::span{columns.desired_aiming_directions_zs, num_}, indices);
-        ioj::apply_permutation(std::span{columns.movement_directions_xs, num_}, indices);
-        ioj::apply_permutation(std::span{columns.movement_directions_ys, num_}, indices);
-        ioj::apply_permutation(std::span{columns.movement_directions_zs, num_}, indices);
-        ioj::apply_permutation(std::span{columns.velocities_xs, num_}, indices);
-        ioj::apply_permutation(std::span{columns.velocities_ys, num_}, indices);
-        ioj::apply_permutation(std::span{columns.velocities_zs, num_}, indices);
-        ioj::apply_permutation(std::span{columns.move_distances, num_}, indices);
-        ioj::apply_permutation(std::span{columns.speeds, num_}, indices);
-        ioj::apply_permutation(std::span{columns.teams, num_}, indices);
-        ioj::apply_permutation(std::span{columns.parent_ids, num_}, indices);
-        ioj::apply_permutation(std::span{columns.awareness_scan_countdowns, num_}, indices);
-        ioj::apply_permutation(
-            std::span{columns.navigation_update_countdowns_remaining_ticks, num_}, indices);
-        ioj::apply_permutation(std::span{columns.navigation_update_countdowns_periods, num_},
-                               indices);
-        ioj::apply_permutation(std::span{columns.separation_steering_xs, num_}, indices);
-        ioj::apply_permutation(std::span{columns.separation_steering_ys, num_}, indices);
-        ioj::apply_permutation(std::span{columns.separation_steering_zs, num_}, indices);
-        ioj::apply_permutation(std::span{columns.navigation_risk_tiers, num_}, indices);
-        ioj::apply_permutation(std::span{columns.navigation_lower_risk_scan_counts, num_}, indices);
-        ioj::apply_permutation(std::span{columns.avoidance_choice_indices, num_}, indices);
-        ioj::apply_permutation(std::span{columns.avoidance_clear_scan_counts, num_}, indices);
-        ioj::apply_permutation(std::span{columns.attack_reposition_countdowns, num_}, indices);
-        ioj::apply_permutation(std::span{columns.attack_cooldowns, num_}, indices);
-        ioj::apply_permutation(std::span{columns.target_ids, num_}, indices);
-        ioj::apply_permutation(std::span{columns.target_locations_xs, num_}, indices);
-        ioj::apply_permutation(std::span{columns.target_locations_ys, num_}, indices);
-        ioj::apply_permutation(std::span{columns.target_locations_zs, num_}, indices);
-        ioj::apply_permutation(std::span{columns.target_velocities_xs, num_}, indices);
-        ioj::apply_permutation(std::span{columns.target_velocities_ys, num_}, indices);
-        ioj::apply_permutation(std::span{columns.target_velocities_zs, num_}, indices);
-        ioj::apply_permutation(std::span{columns.target_directions_xs, num_}, indices);
-        ioj::apply_permutation(std::span{columns.target_directions_ys, num_}, indices);
-        ioj::apply_permutation(std::span{columns.target_directions_zs, num_}, indices);
-        ioj::apply_permutation(std::span{columns.intercept_times, num_}, indices);
-        ioj::apply_permutation(std::span{columns.target_distance_sq, num_}, indices);
-        ioj::apply_permutation(std::span{columns.target_distances, num_}, indices);
-        ioj::apply_permutation(std::span{columns.target_radii, num_}, indices);
+        auto const permute{ioj::ColumnPermutation{num_, indices}};
+        permute(columns.entity_ids,
+                columns.integral_biases,
+                columns.float_biases,
+                columns.tasks,
+                columns.locations_xs,
+                columns.locations_ys,
+                columns.locations_zs,
+                columns.desired_move_locations_xs,
+                columns.desired_move_locations_ys,
+                columns.desired_move_locations_zs,
+                columns.aim_directions_xs,
+                columns.aim_directions_ys,
+                columns.aim_directions_zs,
+                columns.planned_aim_directions_xs,
+                columns.planned_aim_directions_ys,
+                columns.planned_aim_directions_zs,
+                columns.desired_aiming_directions_xs,
+                columns.desired_aiming_directions_ys,
+                columns.desired_aiming_directions_zs,
+                columns.movement_directions_xs,
+                columns.movement_directions_ys,
+                columns.movement_directions_zs,
+                columns.velocities_xs,
+                columns.velocities_ys,
+                columns.velocities_zs,
+                columns.move_distances,
+                columns.speeds,
+                columns.teams,
+                columns.parent_ids,
+                columns.awareness_scan_countdowns,
+                columns.navigation_update_countdowns_remaining_ticks,
+                columns.navigation_update_countdowns_periods,
+                columns.separation_steering_xs,
+                columns.separation_steering_ys,
+                columns.separation_steering_zs,
+                columns.navigation_risk_tiers,
+                columns.navigation_lower_risk_scan_counts,
+                columns.avoidance_choice_indices,
+                columns.avoidance_clear_scan_counts,
+                columns.attack_reposition_countdowns,
+                columns.attack_cooldowns,
+                columns.target_ids,
+                columns.target_locations_xs,
+                columns.target_locations_ys,
+                columns.target_locations_zs,
+                columns.target_velocities_xs,
+                columns.target_velocities_ys,
+                columns.target_velocities_zs,
+                columns.target_directions_xs,
+                columns.target_directions_ys,
+                columns.target_directions_zs,
+                columns.intercept_times,
+                columns.target_distance_sq,
+                columns.target_distances,
+                columns.target_radii);
     }
   private:
     std::pmr::memory_resource* resource_{};

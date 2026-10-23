@@ -314,17 +314,22 @@ the owner. Keep per-column construction, copying, and destruction explicit inste
 them with a variadic storage abstraction. Row indices and counts use `std::uint32_t`; allocation
 bytes use `std::size_t`. Span lengths are checked before conversion to the row-count type.
 
-Append and copy accept structural sources with a matching `soa_schema` tag, `num()`, `validate()`,
-scalar column accessors, and nested `view_member()` accessors. External sources must validate
-independently supplied column lengths and ranges. Append validates the range before growth and
-resolves source columns afterward, allowing compact self-append across reallocation. External
-source storage must remain valid during destination growth. Overlapping copy uses the per-column
+Append and copy accept owners, views, and structural sources with a matching `soa_schema` tag,
+`num()`, scalar column accessors, and nested `view_member()` accessors. External sources must
+provide `validate()` for independently supplied column lengths and ranges. Owners guarantee
+consistent columns structurally; resolved views check incoming columns in their constructors.
+Compact views retain range validation against the owner. Append validates the range and captures
+source pointers before growth, then keeps the original allocation alive until all copies finish,
+allowing owner and view self-append across reallocation. External source storage must remain valid
+during destination growth. Overlapping copy uses the per-column
 move path; allocation growth and non-overlapping append use the copy path.
 
 ## Compact and resolved views
 
 `CompactViewBase<Const>` owns the default view's state pointer, offset and count, plus construction,
-slicing and typed `std::span` column access. Named generated views retain schema accessors and one
+slicing and typed `std::span` column access. Both view representations inherit `ViewOperations`
+for emptiness, borrowing, const conversion and slice convenience functions.
+Named generated views retain schema accessors and one
 matching mutable-to-const conversion; unrelated views cannot convert through their shared base.
 Views remain trivially copyable and 16 bytes on native x64. Nested compact views refer to the same
 owner state and range, using member paths through its composed layout. Owner borrowing requires

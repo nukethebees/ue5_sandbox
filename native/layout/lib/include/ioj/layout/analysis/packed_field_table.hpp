@@ -100,7 +100,7 @@ struct PackedFieldTableLayout
 // Resolved views
 /* **************************************** */
 template <bool Const>
-struct PackedFieldTableResolvedViewImpl {
+struct PackedFieldTableResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     using size_type = std::uint32_t;
     using View = PackedFieldTableResolvedView;
     using ConstView = PackedFieldTableResolvedConstView;
@@ -293,38 +293,7 @@ struct PackedFieldTableResolvedViewImpl {
         , codes_{other.codes_}
         , count_{other.count_} {}
     auto num() const noexcept -> size_type { return count_; }
-    auto is_empty() const noexcept -> bool { return count_ == 0; }
-    auto get_view(this auto const& self) { return self; }
-    auto get_const_view(this auto const& self) {
-        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
-        return Result{self.parent_,
-                      self.segment_,
-                      self.name_,
-                      self.semantic_type_,
-                      self.logical_type_,
-                      self.kind_,
-                      self.reserved_,
-                      self.schema_bit_width_,
-                      self.schema_bit_width_auto_,
-                      self.bit_width_,
-                      self.overridden_,
-                      self.least_significant_bit_,
-                      self.most_significant_bit_,
-                      self.maximum_unsigned_value_,
-                      self.minimum_signed_value_,
-                      self.maximum_signed_value_,
-                      self.minimum_semantic_value_,
-                      self.maximum_semantic_value_,
-                      self.semantic_value_count_,
-                      self.sentinel_code_count_,
-                      self.required_code_count_,
-                      self.minimum_required_bits_,
-                      self.unused_codes_,
-                      self.codes_,
-                      self.count_};
-    }
     auto resolve(this auto const& self) { return self; }
-    void validate() const {}
     auto slice(this auto const& self, size_type offset, size_type count) {
         assert(offset <= self.count_ && count <= self.count_ - offset);
         using Result = std::remove_cvref_t<decltype(self)>;
@@ -357,17 +326,6 @@ struct PackedFieldTableResolvedViewImpl {
             self.unused_codes_ == nullptr ? nullptr : self.unused_codes_ + offset,
             self.codes_ == nullptr ? nullptr : self.codes_ + offset,
             count};
-    }
-    auto get_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count);
-    }
-    auto get_const_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count).get_const_view();
-    }
-    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
-    auto right(this auto const& self, size_type count) {
-        assert(count <= self.num());
-        return self.slice(self.num() - count, count);
     }
     auto parent() const -> std::span<Element<ioj::layout::AnalysisId>> { return {parent_, count_}; }
     auto segment() const -> std::span<Element<lispb::schema::PackedSegmentId>> {
@@ -1125,30 +1083,31 @@ struct PackedFieldTable
     void apply_permutation(std::span<size_type> indices) {
         assert(indices.size() == num_);
         auto const columns{get_data()};
-        ioj::apply_permutation(std::span{columns.parent, num_}, indices);
-        ioj::apply_permutation(std::span{columns.segment, num_}, indices);
-        ioj::apply_permutation(std::span{columns.name, num_}, indices);
-        ioj::apply_permutation(std::span{columns.semantic_type, num_}, indices);
-        ioj::apply_permutation(std::span{columns.logical_type, num_}, indices);
-        ioj::apply_permutation(std::span{columns.kind, num_}, indices);
-        ioj::apply_permutation(std::span{columns.reserved, num_}, indices);
-        ioj::apply_permutation(std::span{columns.schema_bit_width, num_}, indices);
-        ioj::apply_permutation(std::span{columns.schema_bit_width_auto, num_}, indices);
-        ioj::apply_permutation(std::span{columns.bit_width, num_}, indices);
-        ioj::apply_permutation(std::span{columns.overridden, num_}, indices);
-        ioj::apply_permutation(std::span{columns.least_significant_bit, num_}, indices);
-        ioj::apply_permutation(std::span{columns.most_significant_bit, num_}, indices);
-        ioj::apply_permutation(std::span{columns.maximum_unsigned_value, num_}, indices);
-        ioj::apply_permutation(std::span{columns.minimum_signed_value, num_}, indices);
-        ioj::apply_permutation(std::span{columns.maximum_signed_value, num_}, indices);
-        ioj::apply_permutation(std::span{columns.minimum_semantic_value, num_}, indices);
-        ioj::apply_permutation(std::span{columns.maximum_semantic_value, num_}, indices);
-        ioj::apply_permutation(std::span{columns.semantic_value_count, num_}, indices);
-        ioj::apply_permutation(std::span{columns.sentinel_code_count, num_}, indices);
-        ioj::apply_permutation(std::span{columns.required_code_count, num_}, indices);
-        ioj::apply_permutation(std::span{columns.minimum_required_bits, num_}, indices);
-        ioj::apply_permutation(std::span{columns.unused_codes, num_}, indices);
-        ioj::apply_permutation(std::span{columns.codes, num_}, indices);
+        auto const permute{ioj::ColumnPermutation{num_, indices}};
+        permute(columns.parent,
+                columns.segment,
+                columns.name,
+                columns.semantic_type,
+                columns.logical_type,
+                columns.kind,
+                columns.reserved,
+                columns.schema_bit_width,
+                columns.schema_bit_width_auto,
+                columns.bit_width,
+                columns.overridden,
+                columns.least_significant_bit,
+                columns.most_significant_bit,
+                columns.maximum_unsigned_value,
+                columns.minimum_signed_value,
+                columns.maximum_signed_value,
+                columns.minimum_semantic_value,
+                columns.maximum_semantic_value,
+                columns.semantic_value_count,
+                columns.sentinel_code_count,
+                columns.required_code_count,
+                columns.minimum_required_bits,
+                columns.unused_codes,
+                columns.codes);
     }
   private:
     std::pmr::memory_resource* resource_{};

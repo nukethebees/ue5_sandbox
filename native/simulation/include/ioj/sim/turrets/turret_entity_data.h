@@ -83,7 +83,7 @@ struct TurretEntityDataLayout
 // Resolved views
 /* **************************************** */
 template <bool Const>
-struct TurretEntityDataResolvedViewImpl {
+struct TurretEntityDataResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     using size_type = std::uint32_t;
     using View = TurretEntityDataResolvedView;
     using ConstView = TurretEntityDataResolvedConstView;
@@ -269,37 +269,7 @@ struct TurretEntityDataResolvedViewImpl {
         , target_velocities_zs_{other.target_velocities_zs_}
         , count_{other.count_} {}
     auto num() const noexcept -> size_type { return count_; }
-    auto is_empty() const noexcept -> bool { return count_ == 0; }
-    auto get_view(this auto const& self) { return self; }
-    auto get_const_view(this auto const& self) {
-        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
-        return Result{self.entity_ids_,
-                      self.integral_biases_,
-                      self.locations_xs_,
-                      self.locations_ys_,
-                      self.locations_zs_,
-                      self.fire_point_locations_xs_,
-                      self.fire_point_locations_ys_,
-                      self.fire_point_locations_zs_,
-                      self.rotations_pitches_,
-                      self.rotations_yaws_,
-                      self.rotations_rolls_,
-                      self.teams_,
-                      self.laser_cooldowns_,
-                      self.laser_damages_,
-                      self.target_refresh_countdowns_periods_,
-                      self.target_refresh_countdowns_remaining_ticks_,
-                      self.target_ids_,
-                      self.target_locations_xs_,
-                      self.target_locations_ys_,
-                      self.target_locations_zs_,
-                      self.target_velocities_xs_,
-                      self.target_velocities_ys_,
-                      self.target_velocities_zs_,
-                      self.count_};
-    }
     auto resolve(this auto const& self) { return self; }
-    void validate() const {}
     auto slice(this auto const& self, size_type offset, size_type count) {
         assert(offset <= self.count_ && count <= self.count_ - offset);
         using Result = std::remove_cvref_t<decltype(self)>;
@@ -335,17 +305,6 @@ struct TurretEntityDataResolvedViewImpl {
             self.target_velocities_ys_ == nullptr ? nullptr : self.target_velocities_ys_ + offset,
             self.target_velocities_zs_ == nullptr ? nullptr : self.target_velocities_zs_ + offset,
             count};
-    }
-    auto get_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count);
-    }
-    auto get_const_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count).get_const_view();
-    }
-    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
-    auto right(this auto const& self, size_type count) {
-        assert(count <= self.num());
-        return self.slice(self.num() - count, count);
     }
     auto entity_ids() const -> std::span<Element<EntityId>> { return {entity_ids_, count_}; }
     auto integral_biases() const -> std::span<Element<std::uint32_t>> {
@@ -1507,30 +1466,30 @@ struct TurretEntityData
     void apply_permutation(std::span<size_type> indices) {
         assert(indices.size() == num_);
         auto const columns{get_data()};
-        ioj::apply_permutation(std::span{columns.entity_ids, num_}, indices);
-        ioj::apply_permutation(std::span{columns.integral_biases, num_}, indices);
-        ioj::apply_permutation(std::span{columns.locations_xs, num_}, indices);
-        ioj::apply_permutation(std::span{columns.locations_ys, num_}, indices);
-        ioj::apply_permutation(std::span{columns.locations_zs, num_}, indices);
-        ioj::apply_permutation(std::span{columns.fire_point_locations_xs, num_}, indices);
-        ioj::apply_permutation(std::span{columns.fire_point_locations_ys, num_}, indices);
-        ioj::apply_permutation(std::span{columns.fire_point_locations_zs, num_}, indices);
-        ioj::apply_permutation(std::span{columns.rotations_pitches, num_}, indices);
-        ioj::apply_permutation(std::span{columns.rotations_yaws, num_}, indices);
-        ioj::apply_permutation(std::span{columns.rotations_rolls, num_}, indices);
-        ioj::apply_permutation(std::span{columns.teams, num_}, indices);
-        ioj::apply_permutation(std::span{columns.laser_cooldowns, num_}, indices);
-        ioj::apply_permutation(std::span{columns.laser_damages, num_}, indices);
-        ioj::apply_permutation(std::span{columns.target_refresh_countdowns_periods, num_}, indices);
-        ioj::apply_permutation(std::span{columns.target_refresh_countdowns_remaining_ticks, num_},
-                               indices);
-        ioj::apply_permutation(std::span{columns.target_ids, num_}, indices);
-        ioj::apply_permutation(std::span{columns.target_locations_xs, num_}, indices);
-        ioj::apply_permutation(std::span{columns.target_locations_ys, num_}, indices);
-        ioj::apply_permutation(std::span{columns.target_locations_zs, num_}, indices);
-        ioj::apply_permutation(std::span{columns.target_velocities_xs, num_}, indices);
-        ioj::apply_permutation(std::span{columns.target_velocities_ys, num_}, indices);
-        ioj::apply_permutation(std::span{columns.target_velocities_zs, num_}, indices);
+        auto const permute{ioj::ColumnPermutation{num_, indices}};
+        permute(columns.entity_ids,
+                columns.integral_biases,
+                columns.locations_xs,
+                columns.locations_ys,
+                columns.locations_zs,
+                columns.fire_point_locations_xs,
+                columns.fire_point_locations_ys,
+                columns.fire_point_locations_zs,
+                columns.rotations_pitches,
+                columns.rotations_yaws,
+                columns.rotations_rolls,
+                columns.teams,
+                columns.laser_cooldowns,
+                columns.laser_damages,
+                columns.target_refresh_countdowns_periods,
+                columns.target_refresh_countdowns_remaining_ticks,
+                columns.target_ids,
+                columns.target_locations_xs,
+                columns.target_locations_ys,
+                columns.target_locations_zs,
+                columns.target_velocities_xs,
+                columns.target_velocities_ys,
+                columns.target_velocities_zs);
     }
   private:
     std::pmr::memory_resource* resource_{};

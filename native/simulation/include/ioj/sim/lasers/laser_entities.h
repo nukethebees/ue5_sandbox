@@ -72,7 +72,7 @@ struct LaserEntitiesLayout : ioj::single_allocation_layout::Layout<LaserEntities
 // Resolved views
 /* **************************************** */
 template <bool Const>
-struct LaserEntitiesResolvedViewImpl {
+struct LaserEntitiesResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     using size_type = std::uint32_t;
     using View = LaserEntitiesResolvedView;
     using ConstView = LaserEntitiesResolvedConstView;
@@ -204,30 +204,7 @@ struct LaserEntitiesResolvedViewImpl {
         , spawn_times_{other.spawn_times_}
         , count_{other.count_} {}
     auto num() const noexcept -> size_type { return count_; }
-    auto is_empty() const noexcept -> bool { return count_ == 0; }
-    auto get_view(this auto const& self) { return self; }
-    auto get_const_view(this auto const& self) {
-        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
-        return Result{self.active_,
-                      self.sources_,
-                      self.locations_xs_,
-                      self.locations_ys_,
-                      self.locations_zs_,
-                      self.rotations_pitches_,
-                      self.rotations_yaws_,
-                      self.rotations_rolls_,
-                      self.velocities_xs_,
-                      self.velocities_ys_,
-                      self.velocities_zs_,
-                      self.damages_,
-                      self.lifetimes_remaining_,
-                      self.instigator_ids_,
-                      self.initial_lifetimes_,
-                      self.spawn_times_,
-                      self.count_};
-    }
     auto resolve(this auto const& self) { return self; }
-    void validate() const {}
     auto slice(this auto const& self, size_type offset, size_type count) {
         assert(offset <= self.count_ && count <= self.count_ - offset);
         using Result = std::remove_cvref_t<decltype(self)>;
@@ -249,17 +226,6 @@ struct LaserEntitiesResolvedViewImpl {
             self.initial_lifetimes_ == nullptr ? nullptr : self.initial_lifetimes_ + offset,
             self.spawn_times_ == nullptr ? nullptr : self.spawn_times_ + offset,
             count};
-    }
-    auto get_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count);
-    }
-    auto get_const_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count).get_const_view();
-    }
-    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
-    auto right(this auto const& self, size_type count) {
-        assert(count <= self.num());
-        return self.slice(self.num() - count, count);
     }
     auto active() const -> std::span<Element<std::uint8_t>> { return {active_, count_}; }
     auto sources() const -> std::span<Element<ioj::sim::LaserSource>> { return {sources_, count_}; }
@@ -1066,22 +1032,23 @@ struct LaserEntities
     void apply_permutation(std::span<size_type> indices) {
         assert(indices.size() == num_);
         auto const columns{get_data()};
-        ioj::apply_permutation(std::span{columns.active, num_}, indices);
-        ioj::apply_permutation(std::span{columns.sources, num_}, indices);
-        ioj::apply_permutation(std::span{columns.locations_xs, num_}, indices);
-        ioj::apply_permutation(std::span{columns.locations_ys, num_}, indices);
-        ioj::apply_permutation(std::span{columns.locations_zs, num_}, indices);
-        ioj::apply_permutation(std::span{columns.rotations_pitches, num_}, indices);
-        ioj::apply_permutation(std::span{columns.rotations_yaws, num_}, indices);
-        ioj::apply_permutation(std::span{columns.rotations_rolls, num_}, indices);
-        ioj::apply_permutation(std::span{columns.velocities_xs, num_}, indices);
-        ioj::apply_permutation(std::span{columns.velocities_ys, num_}, indices);
-        ioj::apply_permutation(std::span{columns.velocities_zs, num_}, indices);
-        ioj::apply_permutation(std::span{columns.damages, num_}, indices);
-        ioj::apply_permutation(std::span{columns.lifetimes_remaining, num_}, indices);
-        ioj::apply_permutation(std::span{columns.instigator_ids, num_}, indices);
-        ioj::apply_permutation(std::span{columns.initial_lifetimes, num_}, indices);
-        ioj::apply_permutation(std::span{columns.spawn_times, num_}, indices);
+        auto const permute{ioj::ColumnPermutation{num_, indices}};
+        permute(columns.active,
+                columns.sources,
+                columns.locations_xs,
+                columns.locations_ys,
+                columns.locations_zs,
+                columns.rotations_pitches,
+                columns.rotations_yaws,
+                columns.rotations_rolls,
+                columns.velocities_xs,
+                columns.velocities_ys,
+                columns.velocities_zs,
+                columns.damages,
+                columns.lifetimes_remaining,
+                columns.instigator_ids,
+                columns.initial_lifetimes,
+                columns.spawn_times);
     }
   private:
     std::pmr::memory_resource* resource_{};

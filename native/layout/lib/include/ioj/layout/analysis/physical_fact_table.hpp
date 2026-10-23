@@ -59,7 +59,7 @@ struct PhysicalFactTableLayout
 // Resolved views
 /* **************************************** */
 template <bool Const>
-struct PhysicalFactTableResolvedViewImpl {
+struct PhysicalFactTableResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     using size_type = std::uint32_t;
     using View = PhysicalFactTableResolvedView;
     using ConstView = PhysicalFactTableResolvedConstView;
@@ -123,20 +123,7 @@ struct PhysicalFactTableResolvedViewImpl {
         , origin_{other.origin_}
         , count_{other.count_} {}
     auto num() const noexcept -> size_type { return count_; }
-    auto is_empty() const noexcept -> bool { return count_ == 0; }
-    auto get_view(this auto const& self) { return self; }
-    auto get_const_view(this auto const& self) {
-        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
-        return Result{self.size_bytes_,
-                      self.alignment_bytes_,
-                      self.signedness_,
-                      self.unsigned_value_bits_,
-                      self.provenance_,
-                      self.origin_,
-                      self.count_};
-    }
     auto resolve(this auto const& self) { return self; }
-    void validate() const {}
     auto slice(this auto const& self, size_type offset, size_type count) {
         assert(offset <= self.count_ && count <= self.count_ - offset);
         using Result = std::remove_cvref_t<decltype(self)>;
@@ -148,17 +135,6 @@ struct PhysicalFactTableResolvedViewImpl {
                       self.provenance_ == nullptr ? nullptr : self.provenance_ + offset,
                       self.origin_ == nullptr ? nullptr : self.origin_ + offset,
                       count};
-    }
-    auto get_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count);
-    }
-    auto get_const_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count).get_const_view();
-    }
-    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
-    auto right(this auto const& self, size_type count) {
-        assert(count <= self.num());
-        return self.slice(self.num() - count, count);
     }
     auto size_bytes() const -> std::span<Element<std::uint64_t>> { return {size_bytes_, count_}; }
     auto alignment_bytes() const -> std::span<Element<std::uint64_t>> {
@@ -456,12 +432,13 @@ struct PhysicalFactTable
     void apply_permutation(std::span<size_type> indices) {
         assert(indices.size() == num_);
         auto const columns{get_data()};
-        ioj::apply_permutation(std::span{columns.size_bytes, num_}, indices);
-        ioj::apply_permutation(std::span{columns.alignment_bytes, num_}, indices);
-        ioj::apply_permutation(std::span{columns.signedness, num_}, indices);
-        ioj::apply_permutation(std::span{columns.unsigned_value_bits, num_}, indices);
-        ioj::apply_permutation(std::span{columns.provenance, num_}, indices);
-        ioj::apply_permutation(std::span{columns.origin, num_}, indices);
+        auto const permute{ioj::ColumnPermutation{num_, indices}};
+        permute(columns.size_bytes,
+                columns.alignment_bytes,
+                columns.signedness,
+                columns.unsigned_value_bits,
+                columns.provenance,
+                columns.origin);
     }
   private:
     std::pmr::memory_resource* resource_{};

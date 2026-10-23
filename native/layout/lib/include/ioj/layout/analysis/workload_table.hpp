@@ -80,7 +80,7 @@ struct WorkloadTableLayout : ioj::single_allocation_layout::Layout<WorkloadTable
 // Resolved views
 /* **************************************** */
 template <bool Const>
-struct WorkloadTableResolvedViewImpl {
+struct WorkloadTableResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     using size_type = std::uint32_t;
     using View = WorkloadTableResolvedView;
     using ConstView = WorkloadTableResolvedConstView;
@@ -214,30 +214,7 @@ struct WorkloadTableResolvedViewImpl {
         , capacity_slack_bytes_{other.capacity_slack_bytes_}
         , count_{other.count_} {}
     auto num() const noexcept -> size_type { return count_; }
-    auto is_empty() const noexcept -> bool { return count_ == 0; }
-    auto get_view(this auto const& self) { return self; }
-    auto get_const_view(this auto const& self) {
-        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
-        return Result{self.analysis_,
-                      self.selections_,
-                      self.element_count_,
-                      self.multiplicity_,
-                      self.bytes_,
-                      self.bits_,
-                      self.cache_,
-                      self.pages_,
-                      self.cache_capacity_,
-                      self.packed_waste_,
-                      self.footprint_exact_,
-                      self.storage_bytes_,
-                      self.full_logical_payload_bytes_,
-                      self.unselected_payload_bytes_,
-                      self.allocated_payload_bytes_,
-                      self.capacity_slack_bytes_,
-                      self.count_};
-    }
     auto resolve(this auto const& self) { return self; }
-    void validate() const {}
     auto slice(this auto const& self, size_type offset, size_type count) {
         assert(offset <= self.count_ && count <= self.count_ - offset);
         using Result = std::remove_cvref_t<decltype(self)>;
@@ -262,17 +239,6 @@ struct WorkloadTableResolvedViewImpl {
                                                      : self.allocated_payload_bytes_ + offset,
             self.capacity_slack_bytes_ == nullptr ? nullptr : self.capacity_slack_bytes_ + offset,
             count};
-    }
-    auto get_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count);
-    }
-    auto get_const_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count).get_const_view();
-    }
-    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
-    auto right(this auto const& self, size_type count) {
-        assert(count <= self.num());
-        return self.slice(self.num() - count, count);
     }
     auto analysis() const -> std::span<Element<ioj::layout::AnalysisId>> {
         return {analysis_, count_};
@@ -830,22 +796,23 @@ struct WorkloadTable
     void apply_permutation(std::span<size_type> indices) {
         assert(indices.size() == num_);
         auto const columns{get_data()};
-        ioj::apply_permutation(std::span{columns.analysis, num_}, indices);
-        ioj::apply_permutation(std::span{columns.selections, num_}, indices);
-        ioj::apply_permutation(std::span{columns.element_count, num_}, indices);
-        ioj::apply_permutation(std::span{columns.multiplicity, num_}, indices);
-        ioj::apply_permutation(std::span{columns.bytes, num_}, indices);
-        ioj::apply_permutation(std::span{columns.bits, num_}, indices);
-        ioj::apply_permutation(std::span{columns.cache, num_}, indices);
-        ioj::apply_permutation(std::span{columns.pages, num_}, indices);
-        ioj::apply_permutation(std::span{columns.cache_capacity, num_}, indices);
-        ioj::apply_permutation(std::span{columns.packed_waste, num_}, indices);
-        ioj::apply_permutation(std::span{columns.footprint_exact, num_}, indices);
-        ioj::apply_permutation(std::span{columns.storage_bytes, num_}, indices);
-        ioj::apply_permutation(std::span{columns.full_logical_payload_bytes, num_}, indices);
-        ioj::apply_permutation(std::span{columns.unselected_payload_bytes, num_}, indices);
-        ioj::apply_permutation(std::span{columns.allocated_payload_bytes, num_}, indices);
-        ioj::apply_permutation(std::span{columns.capacity_slack_bytes, num_}, indices);
+        auto const permute{ioj::ColumnPermutation{num_, indices}};
+        permute(columns.analysis,
+                columns.selections,
+                columns.element_count,
+                columns.multiplicity,
+                columns.bytes,
+                columns.bits,
+                columns.cache,
+                columns.pages,
+                columns.cache_capacity,
+                columns.packed_waste,
+                columns.footprint_exact,
+                columns.storage_bytes,
+                columns.full_logical_payload_bytes,
+                columns.unselected_payload_bytes,
+                columns.allocated_payload_bytes,
+                columns.capacity_slack_bytes);
     }
   private:
     std::pmr::memory_resource* resource_{};

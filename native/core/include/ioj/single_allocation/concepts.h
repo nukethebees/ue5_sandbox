@@ -8,6 +8,9 @@
 
 namespace ioj::soa_storage_detail {
 
+struct ViewOperations;
+struct StorageState;
+
 template <typename Owner>
 using StorageSize = typename std::remove_cvref_t<Owner>::size_type;
 
@@ -20,10 +23,13 @@ concept SameSoaSchema = std::same_as<typename std::remove_cvref_t<Left>::soa_sch
                                      typename std::remove_cvref_t<Right>::soa_schema>;
 
 template <typename Source, typename Destination, typename Size>
-concept SoaSourceFor = SameSoaSchema<Source, Destination> && requires(Source const& source) {
-    { source.num() } -> std::convertible_to<Size>;
-    source.validate();
-};
+concept SoaSourceFor = SameSoaSchema<Source, Destination> &&
+                       requires(Source const& source) {
+                           { source.num() } -> std::convertible_to<Size>;
+                       } &&
+                       (std::derived_from<std::remove_cvref_t<Source>, ViewOperations> ||
+                        std::is_base_of_v<StorageState, std::remove_cvref_t<Source>> ||
+                        requires(Source const& source) { source.validate(); });
 
 template <typename Owner>
 using StorageConstView = typename std::remove_cvref_t<Owner>::ConstView;

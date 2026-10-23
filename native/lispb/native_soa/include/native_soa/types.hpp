@@ -91,7 +91,7 @@ struct PointerALayout : ioj::single_allocation_layout::Layout<PointerALayoutColu
 // Resolved views
 /* **************************************** */
 template <bool Const>
-struct PointerAResolvedViewImpl {
+struct PointerAResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     using size_type = std::uint32_t;
     using View = PointerAResolvedView;
     using ConstView = PointerAResolvedConstView;
@@ -115,29 +115,11 @@ struct PointerAResolvedViewImpl {
         : others_{other.others_}
         , count_{other.count_} {}
     auto num() const noexcept -> size_type { return count_; }
-    auto is_empty() const noexcept -> bool { return count_ == 0; }
-    auto get_view(this auto const& self) { return self; }
-    auto get_const_view(this auto const& self) {
-        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
-        return Result{self.others_, self.count_};
-    }
     auto resolve(this auto const& self) { return self; }
-    void validate() const {}
     auto slice(this auto const& self, size_type offset, size_type count) {
         assert(offset <= self.count_ && count <= self.count_ - offset);
         using Result = std::remove_cvref_t<decltype(self)>;
         return Result{self.others_ == nullptr ? nullptr : self.others_ + offset, count};
-    }
-    auto get_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count);
-    }
-    auto get_const_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count).get_const_view();
-    }
-    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
-    auto right(this auto const& self, size_type count) {
-        assert(count <= self.num());
-        return self.slice(self.num() - count, count);
     }
     auto others() const -> std::span<Element<PointerB*>> { return {others_, count_}; }
     template <typename Func>
@@ -310,7 +292,8 @@ struct PointerA
     void apply_permutation(std::span<size_type> indices) {
         assert(indices.size() == num_);
         auto const columns{get_data()};
-        ioj::apply_permutation(std::span{columns.others, num_}, indices);
+        auto const permute{ioj::ColumnPermutation{num_, indices}};
+        permute(columns.others);
     }
   private:
     std::pmr::memory_resource* resource_{};
@@ -346,7 +329,7 @@ struct PointerBLayout : ioj::single_allocation_layout::Layout<PointerBLayoutColu
 // Resolved views
 /* **************************************** */
 template <bool Const>
-struct PointerBResolvedViewImpl {
+struct PointerBResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     using size_type = std::uint32_t;
     using View = PointerBResolvedView;
     using ConstView = PointerBResolvedConstView;
@@ -370,29 +353,11 @@ struct PointerBResolvedViewImpl {
         : others_{other.others_}
         , count_{other.count_} {}
     auto num() const noexcept -> size_type { return count_; }
-    auto is_empty() const noexcept -> bool { return count_ == 0; }
-    auto get_view(this auto const& self) { return self; }
-    auto get_const_view(this auto const& self) {
-        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
-        return Result{self.others_, self.count_};
-    }
     auto resolve(this auto const& self) { return self; }
-    void validate() const {}
     auto slice(this auto const& self, size_type offset, size_type count) {
         assert(offset <= self.count_ && count <= self.count_ - offset);
         using Result = std::remove_cvref_t<decltype(self)>;
         return Result{self.others_ == nullptr ? nullptr : self.others_ + offset, count};
-    }
-    auto get_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count);
-    }
-    auto get_const_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count).get_const_view();
-    }
-    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
-    auto right(this auto const& self, size_type count) {
-        assert(count <= self.num());
-        return self.slice(self.num() - count, count);
     }
     auto others() const -> std::span<Element<PointerA*>> { return {others_, count_}; }
     template <typename Func>
@@ -565,7 +530,8 @@ struct PointerB
     void apply_permutation(std::span<size_type> indices) {
         assert(indices.size() == num_);
         auto const columns{get_data()};
-        ioj::apply_permutation(std::span{columns.others, num_}, indices);
+        auto const permute{ioj::ColumnPermutation{num_, indices}};
+        permute(columns.others);
     }
   private:
     std::pmr::memory_resource* resource_{};
@@ -601,7 +567,7 @@ struct ReverseBLayout : ioj::single_allocation_layout::Layout<ReverseBLayoutColu
 // Resolved views
 /* **************************************** */
 template <bool Const>
-struct ReverseBResolvedViewImpl {
+struct ReverseBResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     using size_type = std::uint32_t;
     using View = ReverseBResolvedView;
     using ConstView = ReverseBResolvedConstView;
@@ -625,29 +591,11 @@ struct ReverseBResolvedViewImpl {
         : others_{other.others_}
         , count_{other.count_} {}
     auto num() const noexcept -> size_type { return count_; }
-    auto is_empty() const noexcept -> bool { return count_ == 0; }
-    auto get_view(this auto const& self) { return self; }
-    auto get_const_view(this auto const& self) {
-        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
-        return Result{self.others_, self.count_};
-    }
     auto resolve(this auto const& self) { return self; }
-    void validate() const {}
     auto slice(this auto const& self, size_type offset, size_type count) {
         assert(offset <= self.count_ && count <= self.count_ - offset);
         using Result = std::remove_cvref_t<decltype(self)>;
         return Result{self.others_ == nullptr ? nullptr : self.others_ + offset, count};
-    }
-    auto get_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count);
-    }
-    auto get_const_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count).get_const_view();
-    }
-    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
-    auto right(this auto const& self, size_type count) {
-        assert(count <= self.num());
-        return self.slice(self.num() - count, count);
     }
     auto others() const -> std::span<Element<ReverseA*>> { return {others_, count_}; }
     template <typename Func>
@@ -820,7 +768,8 @@ struct ReverseB
     void apply_permutation(std::span<size_type> indices) {
         assert(indices.size() == num_);
         auto const columns{get_data()};
-        ioj::apply_permutation(std::span{columns.others, num_}, indices);
+        auto const permute{ioj::ColumnPermutation{num_, indices}};
+        permute(columns.others);
     }
   private:
     std::pmr::memory_resource* resource_{};
@@ -856,7 +805,7 @@ struct ReverseALayout : ioj::single_allocation_layout::Layout<ReverseALayoutColu
 // Resolved views
 /* **************************************** */
 template <bool Const>
-struct ReverseAResolvedViewImpl {
+struct ReverseAResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     using size_type = std::uint32_t;
     using View = ReverseAResolvedView;
     using ConstView = ReverseAResolvedConstView;
@@ -880,29 +829,11 @@ struct ReverseAResolvedViewImpl {
         : others_{other.others_}
         , count_{other.count_} {}
     auto num() const noexcept -> size_type { return count_; }
-    auto is_empty() const noexcept -> bool { return count_ == 0; }
-    auto get_view(this auto const& self) { return self; }
-    auto get_const_view(this auto const& self) {
-        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
-        return Result{self.others_, self.count_};
-    }
     auto resolve(this auto const& self) { return self; }
-    void validate() const {}
     auto slice(this auto const& self, size_type offset, size_type count) {
         assert(offset <= self.count_ && count <= self.count_ - offset);
         using Result = std::remove_cvref_t<decltype(self)>;
         return Result{self.others_ == nullptr ? nullptr : self.others_ + offset, count};
-    }
-    auto get_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count);
-    }
-    auto get_const_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count).get_const_view();
-    }
-    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
-    auto right(this auto const& self, size_type count) {
-        assert(count <= self.num());
-        return self.slice(self.num() - count, count);
     }
     auto others() const -> std::span<Element<ReverseB*>> { return {others_, count_}; }
     template <typename Func>
@@ -1075,7 +1006,8 @@ struct ReverseA
     void apply_permutation(std::span<size_type> indices) {
         assert(indices.size() == num_);
         auto const columns{get_data()};
-        ioj::apply_permutation(std::span{columns.others, num_}, indices);
+        auto const permute{ioj::ColumnPermutation{num_, indices}};
+        permute(columns.others);
     }
   private:
     std::pmr::memory_resource* resource_{};
@@ -1115,7 +1047,7 @@ struct MixedRowsLayout : ioj::single_allocation_layout::Layout<MixedRowsLayoutCo
 // Resolved views
 /* **************************************** */
 template <bool Const>
-struct MixedRowsResolvedViewImpl {
+struct MixedRowsResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     using size_type = std::uint32_t;
     using View = MixedRowsResolvedView;
     using ConstView = MixedRowsResolvedConstView;
@@ -1139,29 +1071,11 @@ struct MixedRowsResolvedViewImpl {
         : records_{other.records_}
         , count_{other.count_} {}
     auto num() const noexcept -> size_type { return count_; }
-    auto is_empty() const noexcept -> bool { return count_ == 0; }
-    auto get_view(this auto const& self) { return self; }
-    auto get_const_view(this auto const& self) {
-        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
-        return Result{self.records_, self.count_};
-    }
     auto resolve(this auto const& self) { return self; }
-    void validate() const {}
     auto slice(this auto const& self, size_type offset, size_type count) {
         assert(offset <= self.count_ && count <= self.count_ - offset);
         using Result = std::remove_cvref_t<decltype(self)>;
         return Result{self.records_ == nullptr ? nullptr : self.records_ + offset, count};
-    }
-    auto get_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count);
-    }
-    auto get_const_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count).get_const_view();
-    }
-    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
-    auto right(this auto const& self, size_type count) {
-        assert(count <= self.num());
-        return self.slice(self.num() - count, count);
     }
     auto records() const -> std::span<Element<MixedRecord*>> { return {records_, count_}; }
     template <typename Func>
@@ -1336,7 +1250,8 @@ struct MixedRows
     void apply_permutation(std::span<size_type> indices) {
         assert(indices.size() == num_);
         auto const columns{get_data()};
-        ioj::apply_permutation(std::span{columns.records, num_}, indices);
+        auto const permute{ioj::ColumnPermutation{num_, indices}};
+        permute(columns.records);
     }
   private:
     std::pmr::memory_resource* resource_{};
@@ -1382,7 +1297,7 @@ struct PairRowsLayout : ioj::single_allocation_layout::Layout<PairRowsLayoutColu
 // Resolved views
 /* **************************************** */
 template <bool Const>
-struct PairRowsResolvedViewImpl {
+struct PairRowsResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     using size_type = std::uint32_t;
     using View = PairRowsResolvedView;
     using ConstView = PairRowsResolvedConstView;
@@ -1409,31 +1324,13 @@ struct PairRowsResolvedViewImpl {
         , pointers_{other.pointers_}
         , count_{other.count_} {}
     auto num() const noexcept -> size_type { return count_; }
-    auto is_empty() const noexcept -> bool { return count_ == 0; }
-    auto get_view(this auto const& self) { return self; }
-    auto get_const_view(this auto const& self) {
-        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
-        return Result{self.pairs_, self.pointers_, self.count_};
-    }
     auto resolve(this auto const& self) { return self; }
-    void validate() const {}
     auto slice(this auto const& self, size_type offset, size_type count) {
         assert(offset <= self.count_ && count <= self.count_ - offset);
         using Result = std::remove_cvref_t<decltype(self)>;
         return Result{self.pairs_ == nullptr ? nullptr : self.pairs_ + offset,
                       self.pointers_ == nullptr ? nullptr : self.pointers_ + offset,
                       count};
-    }
-    auto get_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count);
-    }
-    auto get_const_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count).get_const_view();
-    }
-    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
-    auto right(this auto const& self, size_type count) {
-        assert(count <= self.num());
-        return self.slice(self.num() - count, count);
     }
     auto pairs() const -> std::span<Element<Pair>> { return {pairs_, count_}; }
     auto pointers() const -> std::span<Element<Node*>> { return {pointers_, count_}; }
@@ -1622,8 +1519,8 @@ struct PairRows
     void apply_permutation(std::span<size_type> indices) {
         assert(indices.size() == num_);
         auto const columns{get_data()};
-        ioj::apply_permutation(std::span{columns.pairs, num_}, indices);
-        ioj::apply_permutation(std::span{columns.pointers, num_}, indices);
+        auto const permute{ioj::ColumnPermutation{num_, indices}};
+        permute(columns.pairs, columns.pointers);
     }
   private:
     std::pmr::memory_resource* resource_{};
@@ -1663,7 +1560,7 @@ struct VectorsLayout : ioj::single_allocation_layout::Layout<VectorsLayoutColumn
 // Resolved views
 /* **************************************** */
 template <bool Const>
-struct VectorsResolvedViewImpl {
+struct VectorsResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     using size_type = std::uint32_t;
     using View = VectorsResolvedView;
     using ConstView = VectorsResolvedConstView;
@@ -1698,14 +1595,7 @@ struct VectorsResolvedViewImpl {
         , zs_{other.zs_}
         , count_{other.count_} {}
     auto num() const noexcept -> size_type { return count_; }
-    auto is_empty() const noexcept -> bool { return count_ == 0; }
-    auto get_view(this auto const& self) { return self; }
-    auto get_const_view(this auto const& self) {
-        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
-        return Result{self.xs_, self.ys_, self.zs_, self.count_};
-    }
     auto resolve(this auto const& self) { return self; }
-    void validate() const {}
     auto slice(this auto const& self, size_type offset, size_type count) {
         assert(offset <= self.count_ && count <= self.count_ - offset);
         using Result = std::remove_cvref_t<decltype(self)>;
@@ -1713,17 +1603,6 @@ struct VectorsResolvedViewImpl {
                       self.ys_ == nullptr ? nullptr : self.ys_ + offset,
                       self.zs_ == nullptr ? nullptr : self.zs_ + offset,
                       count};
-    }
-    auto get_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count);
-    }
-    auto get_const_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count).get_const_view();
-    }
-    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
-    auto right(this auto const& self, size_type count) {
-        assert(count <= self.num());
-        return self.slice(self.num() - count, count);
     }
     auto xs() const -> std::span<Element<float>> { return {xs_, count_}; }
     auto ys() const -> std::span<Element<float>> { return {ys_, count_}; }
@@ -1927,9 +1806,8 @@ struct Vectors
     void apply_permutation(std::span<size_type> indices) {
         assert(indices.size() == num_);
         auto const columns{get_data()};
-        ioj::apply_permutation(std::span{columns.xs, num_}, indices);
-        ioj::apply_permutation(std::span{columns.ys, num_}, indices);
-        ioj::apply_permutation(std::span{columns.zs, num_}, indices);
+        auto const permute{ioj::ColumnPermutation{num_, indices}};
+        permute(columns.xs, columns.ys, columns.zs);
     }
   private:
     std::pmr::memory_resource* resource_{};
@@ -1973,7 +1851,7 @@ struct SingleRowsLayout : ioj::single_allocation_layout::Layout<SingleRowsLayout
 // Resolved views
 /* **************************************** */
 template <bool Const>
-struct SingleRowsResolvedViewImpl {
+struct SingleRowsResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     using size_type = std::uint32_t;
     using View = SingleRowsResolvedView;
     using ConstView = SingleRowsResolvedConstView;
@@ -2042,21 +1920,7 @@ struct SingleRowsResolvedViewImpl {
         , velocities_zs_{other.velocities_zs_}
         , count_{other.count_} {}
     auto num() const noexcept -> size_type { return count_; }
-    auto is_empty() const noexcept -> bool { return count_ == 0; }
-    auto get_view(this auto const& self) { return self; }
-    auto get_const_view(this auto const& self) {
-        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
-        return Result{self.values_,
-                      self.positions_xs_,
-                      self.positions_ys_,
-                      self.positions_zs_,
-                      self.velocities_xs_,
-                      self.velocities_ys_,
-                      self.velocities_zs_,
-                      self.count_};
-    }
     auto resolve(this auto const& self) { return self; }
-    void validate() const {}
     auto slice(this auto const& self, size_type offset, size_type count) {
         assert(offset <= self.count_ && count <= self.count_ - offset);
         using Result = std::remove_cvref_t<decltype(self)>;
@@ -2068,17 +1932,6 @@ struct SingleRowsResolvedViewImpl {
                       self.velocities_ys_ == nullptr ? nullptr : self.velocities_ys_ + offset,
                       self.velocities_zs_ == nullptr ? nullptr : self.velocities_zs_ + offset,
                       count};
-    }
-    auto get_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count);
-    }
-    auto get_const_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count).get_const_view();
-    }
-    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
-    auto right(this auto const& self, size_type count) {
-        assert(count <= self.num());
-        return self.slice(self.num() - count, count);
     }
     auto values() const -> std::span<Element<std::int32_t>> { return {values_, count_}; }
     auto view_positions() const
@@ -2498,13 +2351,14 @@ struct SingleRows
     void apply_permutation(std::span<size_type> indices) {
         assert(indices.size() == num_);
         auto const columns{get_data()};
-        ioj::apply_permutation(std::span{columns.values, num_}, indices);
-        ioj::apply_permutation(std::span{columns.positions_xs, num_}, indices);
-        ioj::apply_permutation(std::span{columns.positions_ys, num_}, indices);
-        ioj::apply_permutation(std::span{columns.positions_zs, num_}, indices);
-        ioj::apply_permutation(std::span{columns.velocities_xs, num_}, indices);
-        ioj::apply_permutation(std::span{columns.velocities_ys, num_}, indices);
-        ioj::apply_permutation(std::span{columns.velocities_zs, num_}, indices);
+        auto const permute{ioj::ColumnPermutation{num_, indices}};
+        permute(columns.values,
+                columns.positions_xs,
+                columns.positions_ys,
+                columns.positions_zs,
+                columns.velocities_xs,
+                columns.velocities_ys,
+                columns.velocities_zs);
     }
   private:
     std::pmr::memory_resource* resource_{};
@@ -2554,7 +2408,7 @@ struct SingleAlignmentRowsLayout
 // Resolved views
 /* **************************************** */
 template <bool Const>
-struct SingleAlignmentRowsResolvedViewImpl {
+struct SingleAlignmentRowsResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     using size_type = std::uint32_t;
     using View = SingleAlignmentRowsResolvedView;
     using ConstView = SingleAlignmentRowsResolvedConstView;
@@ -2624,22 +2478,7 @@ struct SingleAlignmentRowsResolvedViewImpl {
         , aligned256_{other.aligned256_}
         , count_{other.count_} {}
     auto num() const noexcept -> size_type { return count_; }
-    auto is_empty() const noexcept -> bool { return count_ == 0; }
-    auto get_view(this auto const& self) { return self; }
-    auto get_const_view(this auto const& self) {
-        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
-        return Result{self.bytes_,
-                      self.odd_,
-                      self.aligned32_,
-                      self.nested_xs_,
-                      self.nested_ys_,
-                      self.nested_zs_,
-                      self.aligned64_,
-                      self.aligned256_,
-                      self.count_};
-    }
     auto resolve(this auto const& self) { return self; }
-    void validate() const {}
     auto slice(this auto const& self, size_type offset, size_type count) {
         assert(offset <= self.count_ && count <= self.count_ - offset);
         using Result = std::remove_cvref_t<decltype(self)>;
@@ -2652,17 +2491,6 @@ struct SingleAlignmentRowsResolvedViewImpl {
                       self.aligned64_ == nullptr ? nullptr : self.aligned64_ + offset,
                       self.aligned256_ == nullptr ? nullptr : self.aligned256_ + offset,
                       count};
-    }
-    auto get_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count);
-    }
-    auto get_const_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count).get_const_view();
-    }
-    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
-    auto right(this auto const& self, size_type count) {
-        assert(count <= self.num());
-        return self.slice(self.num() - count, count);
     }
     auto bytes() const -> std::span<Element<std::uint8_t>> { return {bytes_, count_}; }
     auto odd() const -> std::span<Element<OddBytes>> { return {odd_, count_}; }
@@ -3052,14 +2880,15 @@ struct SingleAlignmentRows
     void apply_permutation(std::span<size_type> indices) {
         assert(indices.size() == num_);
         auto const columns{get_data()};
-        ioj::apply_permutation(std::span{columns.bytes, num_}, indices);
-        ioj::apply_permutation(std::span{columns.odd, num_}, indices);
-        ioj::apply_permutation(std::span{columns.aligned32, num_}, indices);
-        ioj::apply_permutation(std::span{columns.nested_xs, num_}, indices);
-        ioj::apply_permutation(std::span{columns.nested_ys, num_}, indices);
-        ioj::apply_permutation(std::span{columns.nested_zs, num_}, indices);
-        ioj::apply_permutation(std::span{columns.aligned64, num_}, indices);
-        ioj::apply_permutation(std::span{columns.aligned256, num_}, indices);
+        auto const permute{ioj::ColumnPermutation{num_, indices}};
+        permute(columns.bytes,
+                columns.odd,
+                columns.aligned32,
+                columns.nested_xs,
+                columns.nested_ys,
+                columns.nested_zs,
+                columns.aligned64,
+                columns.aligned256);
     }
   private:
     std::pmr::memory_resource* resource_{};
@@ -3172,7 +3001,7 @@ struct ApiOwnerLayout : ioj::single_allocation_layout::Layout<ApiOwnerLayoutColu
 // positions resolved views
 /* **************************************** */
 template <bool Const>
-struct ApiResolvedView_positionsImpl {
+struct ApiResolvedView_positionsImpl : ioj::soa_storage_detail::ViewOperations {
     using size_type = std::uint32_t;
     using View = ApiResolvedView_positions;
     using ConstView = ApiResolvedConstView_positions;
@@ -3203,31 +3032,13 @@ struct ApiResolvedView_positionsImpl {
         , positions_ys_{other.positions_ys_}
         , count_{other.count_} {}
     auto num() const noexcept -> size_type { return count_; }
-    auto is_empty() const noexcept -> bool { return count_ == 0; }
-    auto get_view(this auto const& self) { return self; }
-    auto get_const_view(this auto const& self) {
-        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
-        return Result{self.positions_xs_, self.positions_ys_, self.count_};
-    }
     auto resolve(this auto const& self) { return self; }
-    void validate() const {}
     auto slice(this auto const& self, size_type offset, size_type count) {
         assert(offset <= self.count_ && count <= self.count_ - offset);
         using Result = std::remove_cvref_t<decltype(self)>;
         return Result{self.positions_xs_ == nullptr ? nullptr : self.positions_xs_ + offset,
                       self.positions_ys_ == nullptr ? nullptr : self.positions_ys_ + offset,
                       count};
-    }
-    auto get_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count);
-    }
-    auto get_const_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count).get_const_view();
-    }
-    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
-    auto right(this auto const& self, size_type count) {
-        assert(count <= self.num());
-        return self.slice(self.num() - count, count);
     }
     auto xs() const -> std::span<Element<float>> { return {positions_xs_, count_}; }
     auto ys() const -> std::span<Element<float>> { return {positions_ys_, count_}; }
@@ -3281,7 +3092,7 @@ struct ApiResolvedView_positions : ApiResolvedView_positionsImpl<false> {
 // Resolved views
 /* **************************************** */
 template <bool Const>
-struct ApiResolvedViewImpl {
+struct ApiResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     using size_type = std::uint32_t;
     using View = ApiResolvedView;
     using ConstView = ApiResolvedConstView;
@@ -3323,15 +3134,7 @@ struct ApiResolvedViewImpl {
         , positions_ys_{other.positions_ys_}
         , count_{other.count_} {}
     auto num() const noexcept -> size_type { return count_; }
-    auto is_empty() const noexcept -> bool { return count_ == 0; }
-    auto get_view(this auto const& self) { return self; }
-    auto get_const_view(this auto const& self) {
-        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
-        return Result{
-            self.values_, self.masks_, self.positions_xs_, self.positions_ys_, self.count_};
-    }
     auto resolve(this auto const& self) { return self; }
-    void validate() const {}
     auto slice(this auto const& self, size_type offset, size_type count) {
         assert(offset <= self.count_ && count <= self.count_ - offset);
         using Result = std::remove_cvref_t<decltype(self)>;
@@ -3340,17 +3143,6 @@ struct ApiResolvedViewImpl {
                       self.positions_xs_ == nullptr ? nullptr : self.positions_xs_ + offset,
                       self.positions_ys_ == nullptr ? nullptr : self.positions_ys_ + offset,
                       count};
-    }
-    auto get_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count);
-    }
-    auto get_const_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count).get_const_view();
-    }
-    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
-    auto right(this auto const& self, size_type count) {
-        assert(count <= self.num());
-        return self.slice(self.num() - count, count);
     }
     auto values() const -> std::span<Element<float>> { return {values_, count_}; }
     auto masks() const -> std::span<Element<ApiMask>> { return {masks_, count_}; }
@@ -3715,10 +3507,8 @@ struct NATIVE_SOA_FIXTURE_API ApiOwner
     void apply_permutation(std::span<size_type> indices) {
         assert(indices.size() == num_);
         auto const columns{get_data()};
-        ioj::apply_permutation(std::span{columns.values, num_}, indices);
-        ioj::apply_permutation(std::span{columns.masks, num_}, indices);
-        ioj::apply_permutation(std::span{columns.positions_xs, num_}, indices);
-        ioj::apply_permutation(std::span{columns.positions_ys, num_}, indices);
+        auto const permute{ioj::ColumnPermutation{num_, indices}};
+        permute(columns.values, columns.masks, columns.positions_xs, columns.positions_ys);
     }
   private:
     std::pmr::memory_resource* resource_{};
@@ -3757,7 +3547,7 @@ struct EquivalentOwnerLayout
 // Resolved views
 /* **************************************** */
 template <bool Const>
-struct EquivalentOwnerResolvedViewImpl {
+struct EquivalentOwnerResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     using size_type = std::uint32_t;
     using View = EquivalentOwnerResolvedView;
     using ConstView = EquivalentOwnerResolvedConstView;
@@ -3783,31 +3573,13 @@ struct EquivalentOwnerResolvedViewImpl {
         , ys_{other.ys_}
         , count_{other.count_} {}
     auto num() const noexcept -> size_type { return count_; }
-    auto is_empty() const noexcept -> bool { return count_ == 0; }
-    auto get_view(this auto const& self) { return self; }
-    auto get_const_view(this auto const& self) {
-        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
-        return Result{self.xs_, self.ys_, self.count_};
-    }
     auto resolve(this auto const& self) { return self; }
-    void validate() const {}
     auto slice(this auto const& self, size_type offset, size_type count) {
         assert(offset <= self.count_ && count <= self.count_ - offset);
         using Result = std::remove_cvref_t<decltype(self)>;
         return Result{self.xs_ == nullptr ? nullptr : self.xs_ + offset,
                       self.ys_ == nullptr ? nullptr : self.ys_ + offset,
                       count};
-    }
-    auto get_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count);
-    }
-    auto get_const_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count).get_const_view();
-    }
-    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
-    auto right(this auto const& self, size_type count) {
-        assert(count <= self.num());
-        return self.slice(self.num() - count, count);
     }
     auto xs() const -> std::span<Element<float>> { return {xs_, count_}; }
     auto ys() const -> std::span<Element<float>> { return {ys_, count_}; }
@@ -4027,8 +3799,8 @@ struct EquivalentOwner
     void apply_permutation(std::span<size_type> indices) {
         assert(indices.size() == num_);
         auto const columns{get_data()};
-        ioj::apply_permutation(std::span{columns.xs, num_}, indices);
-        ioj::apply_permutation(std::span{columns.ys, num_}, indices);
+        auto const permute{ioj::ColumnPermutation{num_, indices}};
+        permute(columns.xs, columns.ys);
     }
   private:
     std::pmr::memory_resource* resource_{};
@@ -4072,7 +3844,7 @@ struct AccessorOwnerLayout : ioj::single_allocation_layout::Layout<AccessorOwner
 // Resolved views
 /* **************************************** */
 template <bool Const>
-struct AccessorOwnerResolvedViewImpl {
+struct AccessorOwnerResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     using size_type = std::uint32_t;
     using View = AccessorOwnerResolvedView;
     using ConstView = AccessorOwnerResolvedConstView;
@@ -4108,14 +3880,7 @@ struct AccessorOwnerResolvedViewImpl {
         , depth_{other.depth_}
         , count_{other.count_} {}
     auto num() const noexcept -> size_type { return count_; }
-    auto is_empty() const noexcept -> bool { return count_ == 0; }
-    auto get_view(this auto const& self) { return self; }
-    auto get_const_view(this auto const& self) {
-        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
-        return Result{self.horizontal_, self.vertical_, self.depth_, self.count_};
-    }
     auto resolve(this auto const& self) { return self; }
-    void validate() const {}
     auto slice(this auto const& self, size_type offset, size_type count) {
         assert(offset <= self.count_ && count <= self.count_ - offset);
         using Result = std::remove_cvref_t<decltype(self)>;
@@ -4123,17 +3888,6 @@ struct AccessorOwnerResolvedViewImpl {
                       self.vertical_ == nullptr ? nullptr : self.vertical_ + offset,
                       self.depth_ == nullptr ? nullptr : self.depth_ + offset,
                       count};
-    }
-    auto get_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count);
-    }
-    auto get_const_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count).get_const_view();
-    }
-    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
-    auto right(this auto const& self, size_type count) {
-        assert(count <= self.num());
-        return self.slice(self.num() - count, count);
     }
     auto horizontal() const -> std::span<Element<float>> { return {horizontal_, count_}; }
     auto vertical() const -> std::span<Element<float>> { return {vertical_, count_}; }
@@ -4385,9 +4139,8 @@ struct AccessorOwner
     void apply_permutation(std::span<size_type> indices) {
         assert(indices.size() == num_);
         auto const columns{get_data()};
-        ioj::apply_permutation(std::span{columns.horizontal, num_}, indices);
-        ioj::apply_permutation(std::span{columns.vertical, num_}, indices);
-        ioj::apply_permutation(std::span{columns.depth, num_}, indices);
+        auto const permute{ioj::ColumnPermutation{num_, indices}};
+        permute(columns.horizontal, columns.vertical, columns.depth);
     }
   private:
     std::pmr::memory_resource* resource_{};

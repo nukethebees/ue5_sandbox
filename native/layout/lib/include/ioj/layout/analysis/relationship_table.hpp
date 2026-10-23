@@ -55,7 +55,7 @@ struct RelationshipTableLayout
 // Resolved views
 /* **************************************** */
 template <bool Const>
-struct RelationshipTableResolvedViewImpl {
+struct RelationshipTableResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     using size_type = std::uint32_t;
     using View = RelationshipTableResolvedView;
     using ConstView = RelationshipTableResolvedConstView;
@@ -99,14 +99,7 @@ struct RelationshipTableResolvedViewImpl {
         , metrics_{other.metrics_}
         , count_{other.count_} {}
     auto num() const noexcept -> size_type { return count_; }
-    auto is_empty() const noexcept -> bool { return count_ == 0; }
-    auto get_view(this auto const& self) { return self; }
-    auto get_const_view(this auto const& self) {
-        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
-        return Result{self.owner_, self.field_, self.relationship_, self.metrics_, self.count_};
-    }
     auto resolve(this auto const& self) { return self; }
-    void validate() const {}
     auto slice(this auto const& self, size_type offset, size_type count) {
         assert(offset <= self.count_ && count <= self.count_ - offset);
         using Result = std::remove_cvref_t<decltype(self)>;
@@ -115,17 +108,6 @@ struct RelationshipTableResolvedViewImpl {
                       self.relationship_ == nullptr ? nullptr : self.relationship_ + offset,
                       self.metrics_ == nullptr ? nullptr : self.metrics_ + offset,
                       count};
-    }
-    auto get_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count);
-    }
-    auto get_const_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count).get_const_view();
-    }
-    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
-    auto right(this auto const& self, size_type count) {
-        assert(count <= self.num());
-        return self.slice(self.num() - count, count);
     }
     auto owner() const -> std::span<Element<ioj::layout::AnalysisId>> { return {owner_, count_}; }
     auto field() const -> std::span<Element<std::optional<std::size_t>>> {
@@ -371,10 +353,8 @@ struct RelationshipTable
     void apply_permutation(std::span<size_type> indices) {
         assert(indices.size() == num_);
         auto const columns{get_data()};
-        ioj::apply_permutation(std::span{columns.owner, num_}, indices);
-        ioj::apply_permutation(std::span{columns.field, num_}, indices);
-        ioj::apply_permutation(std::span{columns.relationship, num_}, indices);
-        ioj::apply_permutation(std::span{columns.metrics, num_}, indices);
+        auto const permute{ioj::ColumnPermutation{num_, indices}};
+        permute(columns.owner, columns.field, columns.relationship, columns.metrics);
     }
   private:
     std::pmr::memory_resource* resource_{};

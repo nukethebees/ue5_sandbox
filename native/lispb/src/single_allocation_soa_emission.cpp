@@ -448,14 +448,16 @@ auto permutation_node(LoweringContext& context, SingleAllocationModelId model) -
     NodeListBuilder body{ir};
     body.add(ir.raw("assert(indices.size() == num_);"));
     body.add(ir.variable("auto const", "columns", ir.call(ir.named("get_data"))));
+    std::vector<Expr> pointers;
     for (auto const column : ir.lowering.items(models.columns[models.index(model)])) {
         auto const name{context.text(columns.flattened_identifier[columns.index(column)])};
-        body.add(ir.expr_stmt(
-            ir.call(ir.named("ioj::apply_permutation"),
-                    {ir.init_list({ir.member_access(ir.named("columns"), name), ir.named("num_")},
-                                  ir.types.intern("std::span")),
-                     ir.named("indices")})));
+        pointers.push_back(ir.member_access(ir.named("columns"), name));
     }
+    body.add(ir.variable("auto const",
+                         "permute",
+                         ir.init_list({ir.named("num_"), ir.named("indices")},
+                                      ir.types.intern("ioj::ColumnPermutation"))));
+    body.add(ir.expr_stmt(ir.call(ir.named("permute"), pointers)));
     auto const function{make_function(ir,
                                       "apply_permutation",
                                       "void",
@@ -700,23 +702,8 @@ auto emit_resolved_views(LoweringContext& context,
     ir.set_function_body(conversion, {}, conversions);
     children.add(inline_function(context, conversion)).new_lines(1);
 
-    std::vector<std::string> const_arguments;
-    for (auto const column : selected) {
-        const_arguments.push_back("self." + pointer_name(column));
-    }
-    const_arguments.push_back("self.count_");
     children.add(ir.raw("auto num() const noexcept -> size_type { return count_; }\n"
-                        "auto is_empty() const noexcept -> bool { return count_ == 0; }\n"
-                        "auto get_view(this auto const& self) { return self; }\n"
-                        "auto get_const_view(this auto const& self) {\n"
-                        "using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;\n"
-                        "return Result{" +
-                        join(const_arguments, ", ") +
-                        "};\n}\n"
                         "auto resolve(this auto const& self) { return self; }"));
-    children.new_lines(1).add(compact_function(
-        context,
-        make_function(ir, "validate", "void", {}, validation.build(), FunctionReceiver::const_)));
 
     std::vector<std::string> slice_arguments;
     for (auto const column : selected) {
@@ -725,20 +712,12 @@ auto emit_resolved_views(LoweringContext& context,
                                   " + offset");
     }
     slice_arguments.push_back("count");
-    children.new_lines(1).add(ir.raw(
-        "auto slice(this auto const& self, size_type offset, size_type count) {\n"
-        "assert(offset <= self.count_ && count <= self.count_ - offset);\n"
-        "using Result = std::remove_cvref_t<decltype(self)>;\n"
-        "return Result{" +
-        join(slice_arguments, ", ") +
-        "};\n}\n"
-        "auto get_view(this auto const& self, size_type offset, size_type count) { return "
-        "self.slice(offset, count); }\n"
-        "auto get_const_view(this auto const& self, size_type offset, size_type count) { return "
-        "self.slice(offset, count).get_const_view(); }\n"
-        "auto left(this auto const& self, size_type count) { return self.slice(0, count); }\n"
-        "auto right(this auto const& self, size_type count) { assert(count <= self.num()); return "
-        "self.slice(self.num() - count, count); }"));
+    children.new_lines(1).add(
+        ir.raw("auto slice(this auto const& self, size_type offset, size_type count) {\n"
+               "assert(offset <= self.count_ && count <= self.count_ - offset);\n"
+               "using Result = std::remove_cvref_t<decltype(self)>;\n"
+               "return Result{" +
+               join(slice_arguments, ", ") + "};\n}"));
 
     for (auto const member : context.declarations.items(
              context.declarations.soas.members[context.declarations.soas.index(schema)])) {
@@ -801,6 +780,7 @@ auto emit_resolved_views(LoweringContext& context,
     auto const record{
         ir.record(ir.strings.intern(implementation), children.build(), RecordKind::struct_)};
     describe_compact_scope(context, record, schema);
+    ir.set_record_bases(record, {ir.types.intern("ioj::soa_storage_detail::ViewOperations")});
     ir.set_record_template(record,
                            ir.template_declaration({ir.value_template_parameter(
                                ir.types.intern("bool"), ir.strings.intern("Const"))}));

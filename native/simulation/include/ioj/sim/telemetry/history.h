@@ -132,7 +132,7 @@ struct HistoryRowsLayout : ioj::single_allocation_layout::Layout<HistoryRowsLayo
 // Resolved views
 /* **************************************** */
 template <bool Const>
-struct HistoryRowsResolvedViewImpl {
+struct HistoryRowsResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     using size_type = std::uint32_t;
     using View = HistoryRowsResolvedView;
     using ConstView = HistoryRowsResolvedConstView;
@@ -225,24 +225,7 @@ struct HistoryRowsResolvedViewImpl {
         , lasers_fired_{other.lasers_fired_}
         , count_{other.count_} {}
     auto num() const noexcept -> size_type { return count_; }
-    auto is_empty() const noexcept -> bool { return count_ == 0; }
-    auto get_view(this auto const& self) { return self; }
-    auto get_const_view(this auto const& self) {
-        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
-        return Result{self.completed_ticks_,
-                      self.validity_masks_,
-                      self.active_entities_,
-                      self.active_entities_by_type_,
-                      self.active_entities_by_team_and_type_,
-                      self.spawned_entities_,
-                      self.destroyed_entities_,
-                      self.kills_,
-                      self.active_lasers_,
-                      self.lasers_fired_,
-                      self.count_};
-    }
     auto resolve(this auto const& self) { return self; }
-    void validate() const {}
     auto slice(this auto const& self, size_type offset, size_type count) {
         assert(offset <= self.count_ && count <= self.count_ - offset);
         using Result = std::remove_cvref_t<decltype(self)>;
@@ -261,17 +244,6 @@ struct HistoryRowsResolvedViewImpl {
             self.active_lasers_ == nullptr ? nullptr : self.active_lasers_ + offset,
             self.lasers_fired_ == nullptr ? nullptr : self.lasers_fired_ + offset,
             count};
-    }
-    auto get_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count);
-    }
-    auto get_const_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count).get_const_view();
-    }
-    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
-    auto right(this auto const& self, size_type count) {
-        assert(count <= self.num());
-        return self.slice(self.num() - count, count);
     }
     auto completed_ticks() const -> std::span<Element<SimTick>> {
         return {completed_ticks_, count_};
@@ -682,16 +654,17 @@ struct HistoryRows
     void apply_permutation(std::span<size_type> indices) {
         assert(indices.size() == num_);
         auto const columns{get_data()};
-        ioj::apply_permutation(std::span{columns.completed_ticks, num_}, indices);
-        ioj::apply_permutation(std::span{columns.validity_masks, num_}, indices);
-        ioj::apply_permutation(std::span{columns.active_entities, num_}, indices);
-        ioj::apply_permutation(std::span{columns.active_entities_by_type, num_}, indices);
-        ioj::apply_permutation(std::span{columns.active_entities_by_team_and_type, num_}, indices);
-        ioj::apply_permutation(std::span{columns.spawned_entities, num_}, indices);
-        ioj::apply_permutation(std::span{columns.destroyed_entities, num_}, indices);
-        ioj::apply_permutation(std::span{columns.kills, num_}, indices);
-        ioj::apply_permutation(std::span{columns.active_lasers, num_}, indices);
-        ioj::apply_permutation(std::span{columns.lasers_fired, num_}, indices);
+        auto const permute{ioj::ColumnPermutation{num_, indices}};
+        permute(columns.completed_ticks,
+                columns.validity_masks,
+                columns.active_entities,
+                columns.active_entities_by_type,
+                columns.active_entities_by_team_and_type,
+                columns.spawned_entities,
+                columns.destroyed_entities,
+                columns.kills,
+                columns.active_lasers,
+                columns.lasers_fired);
     }
   private:
     std::pmr::memory_resource* resource_{};

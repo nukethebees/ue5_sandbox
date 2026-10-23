@@ -47,7 +47,7 @@ struct EntityEntityOverlapsLayout
 // Resolved views
 /* **************************************** */
 template <bool Const>
-struct EntityEntityOverlapsResolvedViewImpl {
+struct EntityEntityOverlapsResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     using size_type = std::uint32_t;
     using View = EntityEntityOverlapsResolvedView;
     using ConstView = EntityEntityOverlapsResolvedConstView;
@@ -79,31 +79,13 @@ struct EntityEntityOverlapsResolvedViewImpl {
         , second_entities_{other.second_entities_}
         , count_{other.count_} {}
     auto num() const noexcept -> size_type { return count_; }
-    auto is_empty() const noexcept -> bool { return count_ == 0; }
-    auto get_view(this auto const& self) { return self; }
-    auto get_const_view(this auto const& self) {
-        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
-        return Result{self.first_entities_, self.second_entities_, self.count_};
-    }
     auto resolve(this auto const& self) { return self; }
-    void validate() const {}
     auto slice(this auto const& self, size_type offset, size_type count) {
         assert(offset <= self.count_ && count <= self.count_ - offset);
         using Result = std::remove_cvref_t<decltype(self)>;
         return Result{self.first_entities_ == nullptr ? nullptr : self.first_entities_ + offset,
                       self.second_entities_ == nullptr ? nullptr : self.second_entities_ + offset,
                       count};
-    }
-    auto get_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count);
-    }
-    auto get_const_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count).get_const_view();
-    }
-    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
-    auto right(this auto const& self, size_type count) {
-        assert(count <= self.num());
-        return self.slice(self.num() - count, count);
     }
     auto first_entities() const -> std::span<Element<EntityId>> {
         return {first_entities_, count_};
@@ -305,8 +287,8 @@ struct EntityEntityOverlaps
     void apply_permutation(std::span<size_type> indices) {
         assert(indices.size() == num_);
         auto const columns{get_data()};
-        ioj::apply_permutation(std::span{columns.first_entities, num_}, indices);
-        ioj::apply_permutation(std::span{columns.second_entities, num_}, indices);
+        auto const permute{ioj::ColumnPermutation{num_, indices}};
+        permute(columns.first_entities, columns.second_entities);
     }
   private:
     std::pmr::memory_resource* resource_{};
@@ -346,7 +328,7 @@ struct EntityStaticOverlapsLayout
 // Resolved views
 /* **************************************** */
 template <bool Const>
-struct EntityStaticOverlapsResolvedViewImpl {
+struct EntityStaticOverlapsResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     using size_type = std::uint32_t;
     using View = EntityStaticOverlapsResolvedView;
     using ConstView = EntityStaticOverlapsResolvedConstView;
@@ -380,14 +362,7 @@ struct EntityStaticOverlapsResolvedViewImpl {
         , static_geometry_indices_{other.static_geometry_indices_}
         , count_{other.count_} {}
     auto num() const noexcept -> size_type { return count_; }
-    auto is_empty() const noexcept -> bool { return count_ == 0; }
-    auto get_view(this auto const& self) { return self; }
-    auto get_const_view(this auto const& self) {
-        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
-        return Result{self.entities_, self.static_geometry_indices_, self.count_};
-    }
     auto resolve(this auto const& self) { return self; }
-    void validate() const {}
     auto slice(this auto const& self, size_type offset, size_type count) {
         assert(offset <= self.count_ && count <= self.count_ - offset);
         using Result = std::remove_cvref_t<decltype(self)>;
@@ -396,17 +371,6 @@ struct EntityStaticOverlapsResolvedViewImpl {
                           ? nullptr
                           : self.static_geometry_indices_ + offset,
                       count};
-    }
-    auto get_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count);
-    }
-    auto get_const_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count).get_const_view();
-    }
-    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
-    auto right(this auto const& self, size_type count) {
-        assert(count <= self.num());
-        return self.slice(self.num() - count, count);
     }
     auto entities() const -> std::span<Element<EntityId>> { return {entities_, count_}; }
     auto static_geometry_indices() const
@@ -613,8 +577,8 @@ struct EntityStaticOverlaps
     void apply_permutation(std::span<size_type> indices) {
         assert(indices.size() == num_);
         auto const columns{get_data()};
-        ioj::apply_permutation(std::span{columns.entities, num_}, indices);
-        ioj::apply_permutation(std::span{columns.static_geometry_indices, num_}, indices);
+        auto const permute{ioj::ColumnPermutation{num_, indices}};
+        permute(columns.entities, columns.static_geometry_indices);
     }
   private:
     std::pmr::memory_resource* resource_{};

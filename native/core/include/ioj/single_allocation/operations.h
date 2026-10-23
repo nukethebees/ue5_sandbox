@@ -204,7 +204,7 @@ struct StorageOperations {
                        Source const& source,
                        StorageSize<Self> const offset,
                        StorageSize<Self> const count) {
-        source.validate();
+        validate_source(source);
         assert(destination <= self.num_ && count <= self.num_ - destination &&
                offset <= source.num() && count <= source.num() - offset);
         if (count > 0) {
@@ -230,7 +230,7 @@ struct StorageOperations {
                      Source const& source,
                      StorageSize<Self> const offset,
                      StorageSize<Self> const count) -> StorageSize<Self> {
-        source.validate();
+        validate_source(source);
         assert(offset <= source.num() && count <= source.num() - offset);
         auto const first{self.num_};
         assert(count <= Self::max_capacity - first);
@@ -263,7 +263,7 @@ struct StorageOperations {
         requires AppendableStorage<Self, Source>
     auto append_from(this Self& self, Source const& source, std::span<std::uint32_t const> indices)
         -> StorageSize<Self> {
-        source.validate();
+        validate_source(source);
         auto const count{checked_row_count(indices.size())};
         [[maybe_unused]] auto const source_count{source.num()};
         for ([[maybe_unused]] auto const index : indices) {

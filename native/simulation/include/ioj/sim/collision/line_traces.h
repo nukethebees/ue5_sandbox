@@ -49,7 +49,7 @@ struct LineTracesLayout : ioj::single_allocation_layout::Layout<LineTracesLayout
 // Resolved views
 /* **************************************** */
 template <bool Const>
-struct LineTracesResolvedViewImpl {
+struct LineTracesResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     using size_type = std::uint32_t;
     using View = LineTracesResolvedView;
     using ConstView = LineTracesResolvedConstView;
@@ -101,20 +101,7 @@ struct LineTracesResolvedViewImpl {
         , ends_zs_{other.ends_zs_}
         , count_{other.count_} {}
     auto num() const noexcept -> size_type { return count_; }
-    auto is_empty() const noexcept -> bool { return count_ == 0; }
-    auto get_view(this auto const& self) { return self; }
-    auto get_const_view(this auto const& self) {
-        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
-        return Result{self.starts_xs_,
-                      self.starts_ys_,
-                      self.starts_zs_,
-                      self.ends_xs_,
-                      self.ends_ys_,
-                      self.ends_zs_,
-                      self.count_};
-    }
     auto resolve(this auto const& self) { return self; }
-    void validate() const {}
     auto slice(this auto const& self, size_type offset, size_type count) {
         assert(offset <= self.count_ && count <= self.count_ - offset);
         using Result = std::remove_cvref_t<decltype(self)>;
@@ -125,17 +112,6 @@ struct LineTracesResolvedViewImpl {
                       self.ends_ys_ == nullptr ? nullptr : self.ends_ys_ + offset,
                       self.ends_zs_ == nullptr ? nullptr : self.ends_zs_ + offset,
                       count};
-    }
-    auto get_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count);
-    }
-    auto get_const_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count).get_const_view();
-    }
-    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
-    auto right(this auto const& self, size_type count) {
-        assert(count <= self.num());
-        return self.slice(self.num() - count, count);
     }
     auto view_starts() const -> std::
         conditional_t<Const, ::ioj::Vectors3fResolvedConstView, ::ioj::Vectors3fResolvedView> {
@@ -574,12 +550,13 @@ struct LineTraces
     void apply_permutation(std::span<size_type> indices) {
         assert(indices.size() == num_);
         auto const columns{get_data()};
-        ioj::apply_permutation(std::span{columns.starts_xs, num_}, indices);
-        ioj::apply_permutation(std::span{columns.starts_ys, num_}, indices);
-        ioj::apply_permutation(std::span{columns.starts_zs, num_}, indices);
-        ioj::apply_permutation(std::span{columns.ends_xs, num_}, indices);
-        ioj::apply_permutation(std::span{columns.ends_ys, num_}, indices);
-        ioj::apply_permutation(std::span{columns.ends_zs, num_}, indices);
+        auto const permute{ioj::ColumnPermutation{num_, indices}};
+        permute(columns.starts_xs,
+                columns.starts_ys,
+                columns.starts_zs,
+                columns.ends_xs,
+                columns.ends_ys,
+                columns.ends_zs);
     }
   private:
     std::pmr::memory_resource* resource_{};

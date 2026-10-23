@@ -51,7 +51,7 @@ struct FighterOrderQueueLayout
 // Resolved views
 /* **************************************** */
 template <bool Const>
-struct FighterOrderQueueResolvedViewImpl {
+struct FighterOrderQueueResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     using size_type = std::uint32_t;
     using View = FighterOrderQueueResolvedView;
     using ConstView = FighterOrderQueueResolvedConstView;
@@ -93,14 +93,7 @@ struct FighterOrderQueueResolvedViewImpl {
         , targets_{other.targets_}
         , count_{other.count_} {}
     auto num() const noexcept -> size_type { return count_; }
-    auto is_empty() const noexcept -> bool { return count_ == 0; }
-    auto get_view(this auto const& self) { return self; }
-    auto get_const_view(this auto const& self) {
-        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
-        return Result{self.entity_ids_, self.orders_, self.tasks_, self.targets_, self.count_};
-    }
     auto resolve(this auto const& self) { return self; }
-    void validate() const {}
     auto slice(this auto const& self, size_type offset, size_type count) {
         assert(offset <= self.count_ && count <= self.count_ - offset);
         using Result = std::remove_cvref_t<decltype(self)>;
@@ -109,17 +102,6 @@ struct FighterOrderQueueResolvedViewImpl {
                       self.tasks_ == nullptr ? nullptr : self.tasks_ + offset,
                       self.targets_ == nullptr ? nullptr : self.targets_ + offset,
                       count};
-    }
-    auto get_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count);
-    }
-    auto get_const_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count).get_const_view();
-    }
-    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
-    auto right(this auto const& self, size_type count) {
-        assert(count <= self.num());
-        return self.slice(self.num() - count, count);
     }
     auto entity_ids() const -> std::span<Element<EntityId>> { return {entity_ids_, count_}; }
     auto orders() const -> std::span<Element<FighterOrder>> { return {orders_, count_}; }
@@ -361,10 +343,8 @@ struct FighterOrderQueue
     void apply_permutation(std::span<size_type> indices) {
         assert(indices.size() == num_);
         auto const columns{get_data()};
-        ioj::apply_permutation(std::span{columns.entity_ids, num_}, indices);
-        ioj::apply_permutation(std::span{columns.orders, num_}, indices);
-        ioj::apply_permutation(std::span{columns.tasks, num_}, indices);
-        ioj::apply_permutation(std::span{columns.targets, num_}, indices);
+        auto const permute{ioj::ColumnPermutation{num_, indices}};
+        permute(columns.entity_ids, columns.orders, columns.tasks, columns.targets);
     }
   private:
     std::pmr::memory_resource* resource_{};

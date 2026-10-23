@@ -55,7 +55,7 @@ struct LevelSpinnerSpawnEventsLayout
 // Resolved views
 /* **************************************** */
 template <bool Const>
-struct LevelSpinnerSpawnEventsResolvedViewImpl {
+struct LevelSpinnerSpawnEventsResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     using size_type = std::uint32_t;
     using View = LevelSpinnerSpawnEventsResolvedView;
     using ConstView = LevelSpinnerSpawnEventsResolvedConstView;
@@ -120,20 +120,7 @@ struct LevelSpinnerSpawnEventsResolvedViewImpl {
         , initial_fire_point_indices_{other.initial_fire_point_indices_}
         , count_{other.count_} {}
     auto num() const noexcept -> size_type { return count_; }
-    auto is_empty() const noexcept -> bool { return count_ == 0; }
-    auto get_view(this auto const& self) { return self; }
-    auto get_const_view(this auto const& self) {
-        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
-        return Result{self.entity_indices_,
-                      self.locations_xs_,
-                      self.locations_ys_,
-                      self.locations_zs_,
-                      self.yaws_,
-                      self.initial_fire_point_indices_,
-                      self.count_};
-    }
     auto resolve(this auto const& self) { return self; }
-    void validate() const {}
     auto slice(this auto const& self, size_type offset, size_type count) {
         assert(offset <= self.count_ && count <= self.count_ - offset);
         using Result = std::remove_cvref_t<decltype(self)>;
@@ -146,17 +133,6 @@ struct LevelSpinnerSpawnEventsResolvedViewImpl {
                           ? nullptr
                           : self.initial_fire_point_indices_ + offset,
                       count};
-    }
-    auto get_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count);
-    }
-    auto get_const_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count).get_const_view();
-    }
-    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
-    auto right(this auto const& self, size_type count) {
-        assert(count <= self.num());
-        return self.slice(self.num() - count, count);
     }
     auto entity_indices() const -> std::span<Element<ioj::sim::LevelEntityIndex>> {
         return {entity_indices_, count_};
@@ -566,12 +542,13 @@ struct LevelSpinnerSpawnEvents
     void apply_permutation(std::span<size_type> indices) {
         assert(indices.size() == num_);
         auto const columns{get_data()};
-        ioj::apply_permutation(std::span{columns.entity_indices, num_}, indices);
-        ioj::apply_permutation(std::span{columns.locations_xs, num_}, indices);
-        ioj::apply_permutation(std::span{columns.locations_ys, num_}, indices);
-        ioj::apply_permutation(std::span{columns.locations_zs, num_}, indices);
-        ioj::apply_permutation(std::span{columns.yaws, num_}, indices);
-        ioj::apply_permutation(std::span{columns.initial_fire_point_indices, num_}, indices);
+        auto const permute{ioj::ColumnPermutation{num_, indices}};
+        permute(columns.entity_indices,
+                columns.locations_xs,
+                columns.locations_ys,
+                columns.locations_zs,
+                columns.yaws,
+                columns.initial_fire_point_indices);
     }
   private:
     std::pmr::memory_resource* resource_{};

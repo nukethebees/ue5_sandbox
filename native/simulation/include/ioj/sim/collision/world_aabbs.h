@@ -51,7 +51,7 @@ struct WorldAABBsLayout : ioj::single_allocation_layout::Layout<WorldAABBsLayout
 // Resolved views
 /* **************************************** */
 template <bool Const>
-struct WorldAABBsResolvedViewImpl {
+struct WorldAABBsResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     using size_type = std::uint32_t;
     using View = WorldAABBsResolvedView;
     using ConstView = WorldAABBsResolvedConstView;
@@ -103,20 +103,7 @@ struct WorldAABBsResolvedViewImpl {
         , max_zs_{other.max_zs_}
         , count_{other.count_} {}
     auto num() const noexcept -> size_type { return count_; }
-    auto is_empty() const noexcept -> bool { return count_ == 0; }
-    auto get_view(this auto const& self) { return self; }
-    auto get_const_view(this auto const& self) {
-        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
-        return Result{self.min_xs_,
-                      self.min_ys_,
-                      self.min_zs_,
-                      self.max_xs_,
-                      self.max_ys_,
-                      self.max_zs_,
-                      self.count_};
-    }
     auto resolve(this auto const& self) { return self; }
-    void validate() const {}
     auto slice(this auto const& self, size_type offset, size_type count) {
         assert(offset <= self.count_ && count <= self.count_ - offset);
         using Result = std::remove_cvref_t<decltype(self)>;
@@ -127,17 +114,6 @@ struct WorldAABBsResolvedViewImpl {
                       self.max_ys_ == nullptr ? nullptr : self.max_ys_ + offset,
                       self.max_zs_ == nullptr ? nullptr : self.max_zs_ + offset,
                       count};
-    }
-    auto get_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count);
-    }
-    auto get_const_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count).get_const_view();
-    }
-    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
-    auto right(this auto const& self, size_type count) {
-        assert(count <= self.num());
-        return self.slice(self.num() - count, count);
     }
     auto min_xs() const -> std::span<Element<float>> { return {min_xs_, count_}; }
     auto min_ys() const -> std::span<Element<float>> { return {min_ys_, count_}; }
@@ -421,12 +397,13 @@ struct WorldAABBs
     void apply_permutation(std::span<size_type> indices) {
         assert(indices.size() == num_);
         auto const columns{get_data()};
-        ioj::apply_permutation(std::span{columns.min_xs, num_}, indices);
-        ioj::apply_permutation(std::span{columns.min_ys, num_}, indices);
-        ioj::apply_permutation(std::span{columns.min_zs, num_}, indices);
-        ioj::apply_permutation(std::span{columns.max_xs, num_}, indices);
-        ioj::apply_permutation(std::span{columns.max_ys, num_}, indices);
-        ioj::apply_permutation(std::span{columns.max_zs, num_}, indices);
+        auto const permute{ioj::ColumnPermutation{num_, indices}};
+        permute(columns.min_xs,
+                columns.min_ys,
+                columns.min_zs,
+                columns.max_xs,
+                columns.max_ys,
+                columns.max_zs);
     }
   private:
     std::pmr::memory_resource* resource_{};

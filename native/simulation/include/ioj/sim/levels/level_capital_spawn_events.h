@@ -68,7 +68,7 @@ struct LevelCapitalSpawnEventsLayout
 // Resolved views
 /* **************************************** */
 template <bool Const>
-struct LevelCapitalSpawnEventsResolvedViewImpl {
+struct LevelCapitalSpawnEventsResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     using size_type = std::uint32_t;
     using View = LevelCapitalSpawnEventsResolvedView;
     using ConstView = LevelCapitalSpawnEventsResolvedConstView;
@@ -176,26 +176,7 @@ struct LevelCapitalSpawnEventsResolvedViewImpl {
         , fighter_spawn_cooldowns_{other.fighter_spawn_cooldowns_}
         , count_{other.count_} {}
     auto num() const noexcept -> size_type { return count_; }
-    auto is_empty() const noexcept -> bool { return count_ == 0; }
-    auto get_view(this auto const& self) { return self; }
-    auto get_const_view(this auto const& self) {
-        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
-        return Result{self.entity_indices_,
-                      self.target_entity_indices_,
-                      self.locations_xs_,
-                      self.locations_ys_,
-                      self.locations_zs_,
-                      self.rotations_pitches_,
-                      self.rotations_yaws_,
-                      self.rotations_rolls_,
-                      self.teams_,
-                      self.healths_,
-                      self.initial_fighter_spawn_delays_,
-                      self.fighter_spawn_cooldowns_,
-                      self.count_};
-    }
     auto resolve(this auto const& self) { return self; }
-    void validate() const {}
     auto slice(this auto const& self, size_type offset, size_type count) {
         assert(offset <= self.count_ && count <= self.count_ - offset);
         using Result = std::remove_cvref_t<decltype(self)>;
@@ -216,17 +197,6 @@ struct LevelCapitalSpawnEventsResolvedViewImpl {
             self.fighter_spawn_cooldowns_ == nullptr ? nullptr
                                                      : self.fighter_spawn_cooldowns_ + offset,
             count};
-    }
-    auto get_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count);
-    }
-    auto get_const_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count).get_const_view();
-    }
-    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
-    auto right(this auto const& self, size_type count) {
-        assert(count <= self.num());
-        return self.slice(self.num() - count, count);
     }
     auto entity_indices() const -> std::span<Element<ioj::sim::LevelEntityIndex>> {
         return {entity_indices_, count_};
@@ -886,18 +856,19 @@ struct LevelCapitalSpawnEvents
     void apply_permutation(std::span<size_type> indices) {
         assert(indices.size() == num_);
         auto const columns{get_data()};
-        ioj::apply_permutation(std::span{columns.entity_indices, num_}, indices);
-        ioj::apply_permutation(std::span{columns.target_entity_indices, num_}, indices);
-        ioj::apply_permutation(std::span{columns.locations_xs, num_}, indices);
-        ioj::apply_permutation(std::span{columns.locations_ys, num_}, indices);
-        ioj::apply_permutation(std::span{columns.locations_zs, num_}, indices);
-        ioj::apply_permutation(std::span{columns.rotations_pitches, num_}, indices);
-        ioj::apply_permutation(std::span{columns.rotations_yaws, num_}, indices);
-        ioj::apply_permutation(std::span{columns.rotations_rolls, num_}, indices);
-        ioj::apply_permutation(std::span{columns.teams, num_}, indices);
-        ioj::apply_permutation(std::span{columns.healths, num_}, indices);
-        ioj::apply_permutation(std::span{columns.initial_fighter_spawn_delays, num_}, indices);
-        ioj::apply_permutation(std::span{columns.fighter_spawn_cooldowns, num_}, indices);
+        auto const permute{ioj::ColumnPermutation{num_, indices}};
+        permute(columns.entity_indices,
+                columns.target_entity_indices,
+                columns.locations_xs,
+                columns.locations_ys,
+                columns.locations_zs,
+                columns.rotations_pitches,
+                columns.rotations_yaws,
+                columns.rotations_rolls,
+                columns.teams,
+                columns.healths,
+                columns.initial_fighter_spawn_delays,
+                columns.fighter_spawn_cooldowns);
     }
   private:
     std::pmr::memory_resource* resource_{};

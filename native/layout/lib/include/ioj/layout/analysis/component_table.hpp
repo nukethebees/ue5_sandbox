@@ -67,7 +67,7 @@ struct ComponentTableLayout : ioj::single_allocation_layout::Layout<ComponentTab
 // Resolved views
 /* **************************************** */
 template <bool Const>
-struct ComponentTableResolvedViewImpl {
+struct ComponentTableResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     using size_type = std::uint32_t;
     using View = ComponentTableResolvedView;
     using ConstView = ComponentTableResolvedConstView;
@@ -160,24 +160,7 @@ struct ComponentTableResolvedViewImpl {
         , slack_bytes_{other.slack_bytes_}
         , count_{other.count_} {}
     auto num() const noexcept -> size_type { return count_; }
-    auto is_empty() const noexcept -> bool { return count_ == 0; }
-    auto get_view(this auto const& self) { return self; }
-    auto get_const_view(this auto const& self) {
-        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
-        return Result{self.parent_,
-                      self.name_,
-                      self.tag_,
-                      self.semantic_type_,
-                      self.element_count_,
-                      self.element_facts_,
-                      self.offset_bytes_,
-                      self.extent_bytes_,
-                      self.padding_before_bytes_,
-                      self.slack_bytes_,
-                      self.count_};
-    }
     auto resolve(this auto const& self) { return self; }
-    void validate() const {}
     auto slice(this auto const& self, size_type offset, size_type count) {
         assert(offset <= self.count_ && count <= self.count_ - offset);
         using Result = std::remove_cvref_t<decltype(self)>;
@@ -193,17 +176,6 @@ struct ComponentTableResolvedViewImpl {
                                                             : self.padding_before_bytes_ + offset,
                       self.slack_bytes_ == nullptr ? nullptr : self.slack_bytes_ + offset,
                       count};
-    }
-    auto get_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count);
-    }
-    auto get_const_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count).get_const_view();
-    }
-    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
-    auto right(this auto const& self, size_type count) {
-        assert(count <= self.num());
-        return self.slice(self.num() - count, count);
     }
     auto parent() const -> std::span<Element<ioj::layout::AnalysisId>> { return {parent_, count_}; }
     auto name() const -> std::span<Element<std::string_view>> { return {name_, count_}; }
@@ -599,16 +571,17 @@ struct ComponentTable
     void apply_permutation(std::span<size_type> indices) {
         assert(indices.size() == num_);
         auto const columns{get_data()};
-        ioj::apply_permutation(std::span{columns.parent, num_}, indices);
-        ioj::apply_permutation(std::span{columns.name, num_}, indices);
-        ioj::apply_permutation(std::span{columns.tag, num_}, indices);
-        ioj::apply_permutation(std::span{columns.semantic_type, num_}, indices);
-        ioj::apply_permutation(std::span{columns.element_count, num_}, indices);
-        ioj::apply_permutation(std::span{columns.element_facts, num_}, indices);
-        ioj::apply_permutation(std::span{columns.offset_bytes, num_}, indices);
-        ioj::apply_permutation(std::span{columns.extent_bytes, num_}, indices);
-        ioj::apply_permutation(std::span{columns.padding_before_bytes, num_}, indices);
-        ioj::apply_permutation(std::span{columns.slack_bytes, num_}, indices);
+        auto const permute{ioj::ColumnPermutation{num_, indices}};
+        permute(columns.parent,
+                columns.name,
+                columns.tag,
+                columns.semantic_type,
+                columns.element_count,
+                columns.element_facts,
+                columns.offset_bytes,
+                columns.extent_bytes,
+                columns.padding_before_bytes,
+                columns.slack_bytes);
     }
   private:
     std::pmr::memory_resource* resource_{};

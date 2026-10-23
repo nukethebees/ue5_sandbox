@@ -67,7 +67,7 @@ struct EntityCellDataLayout : ioj::single_allocation_layout::Layout<EntityCellDa
 // Resolved views
 /* **************************************** */
 template <bool Const>
-struct EntityCellDataResolvedViewImpl {
+struct EntityCellDataResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     using size_type = std::uint32_t;
     using View = EntityCellDataResolvedView;
     using ConstView = EntityCellDataResolvedConstView;
@@ -179,27 +179,7 @@ struct EntityCellDataResolvedViewImpl {
         , entity_ids_{other.entity_ids_}
         , count_{other.count_} {}
     auto num() const noexcept -> size_type { return count_; }
-    auto is_empty() const noexcept -> bool { return count_ == 0; }
-    auto get_view(this auto const& self) { return self; }
-    auto get_const_view(this auto const& self) {
-        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
-        return Result{self.min_point_xs_,
-                      self.min_point_ys_,
-                      self.min_point_zs_,
-                      self.max_point_xs_,
-                      self.max_point_ys_,
-                      self.max_point_zs_,
-                      self.min_cell_xs_,
-                      self.min_cell_ys_,
-                      self.min_cell_zs_,
-                      self.max_cell_xs_,
-                      self.max_cell_ys_,
-                      self.max_cell_zs_,
-                      self.entity_ids_,
-                      self.count_};
-    }
     auto resolve(this auto const& self) { return self; }
-    void validate() const {}
     auto slice(this auto const& self, size_type offset, size_type count) {
         assert(offset <= self.count_ && count <= self.count_ - offset);
         using Result = std::remove_cvref_t<decltype(self)>;
@@ -217,17 +197,6 @@ struct EntityCellDataResolvedViewImpl {
                       self.max_cell_zs_ == nullptr ? nullptr : self.max_cell_zs_ + offset,
                       self.entity_ids_ == nullptr ? nullptr : self.entity_ids_ + offset,
                       count};
-    }
-    auto get_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count);
-    }
-    auto get_const_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count).get_const_view();
-    }
-    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
-    auto right(this auto const& self, size_type count) {
-        assert(count <= self.num());
-        return self.slice(self.num() - count, count);
     }
     auto min_point_xs() const -> std::span<Element<float>> { return {min_point_xs_, count_}; }
     auto min_point_ys() const -> std::span<Element<float>> { return {min_point_ys_, count_}; }
@@ -671,19 +640,20 @@ struct EntityCellData
     void apply_permutation(std::span<size_type> indices) {
         assert(indices.size() == num_);
         auto const columns{get_data()};
-        ioj::apply_permutation(std::span{columns.min_point_xs, num_}, indices);
-        ioj::apply_permutation(std::span{columns.min_point_ys, num_}, indices);
-        ioj::apply_permutation(std::span{columns.min_point_zs, num_}, indices);
-        ioj::apply_permutation(std::span{columns.max_point_xs, num_}, indices);
-        ioj::apply_permutation(std::span{columns.max_point_ys, num_}, indices);
-        ioj::apply_permutation(std::span{columns.max_point_zs, num_}, indices);
-        ioj::apply_permutation(std::span{columns.min_cell_xs, num_}, indices);
-        ioj::apply_permutation(std::span{columns.min_cell_ys, num_}, indices);
-        ioj::apply_permutation(std::span{columns.min_cell_zs, num_}, indices);
-        ioj::apply_permutation(std::span{columns.max_cell_xs, num_}, indices);
-        ioj::apply_permutation(std::span{columns.max_cell_ys, num_}, indices);
-        ioj::apply_permutation(std::span{columns.max_cell_zs, num_}, indices);
-        ioj::apply_permutation(std::span{columns.entity_ids, num_}, indices);
+        auto const permute{ioj::ColumnPermutation{num_, indices}};
+        permute(columns.min_point_xs,
+                columns.min_point_ys,
+                columns.min_point_zs,
+                columns.max_point_xs,
+                columns.max_point_ys,
+                columns.max_point_zs,
+                columns.min_cell_xs,
+                columns.min_cell_ys,
+                columns.min_cell_zs,
+                columns.max_cell_xs,
+                columns.max_cell_ys,
+                columns.max_cell_zs,
+                columns.entity_ids);
     }
   private:
     std::pmr::memory_resource* resource_{};

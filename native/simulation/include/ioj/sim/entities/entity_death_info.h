@@ -51,7 +51,7 @@ struct EntityDeathInfoLayout
 // Resolved views
 /* **************************************** */
 template <bool Const>
-struct EntityDeathInfoResolvedViewImpl {
+struct EntityDeathInfoResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     using size_type = std::uint32_t;
     using View = EntityDeathInfoResolvedView;
     using ConstView = EntityDeathInfoResolvedConstView;
@@ -94,14 +94,7 @@ struct EntityDeathInfoResolvedViewImpl {
         , locations_{other.locations_}
         , count_{other.count_} {}
     auto num() const noexcept -> size_type { return count_; }
-    auto is_empty() const noexcept -> bool { return count_ == 0; }
-    auto get_view(this auto const& self) { return self; }
-    auto get_const_view(this auto const& self) {
-        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
-        return Result{self.reasons_, self.victims_, self.killers_, self.locations_, self.count_};
-    }
     auto resolve(this auto const& self) { return self; }
-    void validate() const {}
     auto slice(this auto const& self, size_type offset, size_type count) {
         assert(offset <= self.count_ && count <= self.count_ - offset);
         using Result = std::remove_cvref_t<decltype(self)>;
@@ -110,17 +103,6 @@ struct EntityDeathInfoResolvedViewImpl {
                       self.killers_ == nullptr ? nullptr : self.killers_ + offset,
                       self.locations_ == nullptr ? nullptr : self.locations_ + offset,
                       count};
-    }
-    auto get_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count);
-    }
-    auto get_const_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count).get_const_view();
-    }
-    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
-    auto right(this auto const& self, size_type count) {
-        assert(count <= self.num());
-        return self.slice(self.num() - count, count);
     }
     auto reasons() const -> std::span<Element<DeathReason>> { return {reasons_, count_}; }
     auto victims() const -> std::span<Element<EntityId>> { return {victims_, count_}; }
@@ -359,10 +341,8 @@ struct EntityDeathInfo
     void apply_permutation(std::span<size_type> indices) {
         assert(indices.size() == num_);
         auto const columns{get_data()};
-        ioj::apply_permutation(std::span{columns.reasons, num_}, indices);
-        ioj::apply_permutation(std::span{columns.victims, num_}, indices);
-        ioj::apply_permutation(std::span{columns.killers, num_}, indices);
-        ioj::apply_permutation(std::span{columns.locations, num_}, indices);
+        auto const permute{ioj::ColumnPermutation{num_, indices}};
+        permute(columns.reasons, columns.victims, columns.killers, columns.locations);
     }
   private:
     std::pmr::memory_resource* resource_{};

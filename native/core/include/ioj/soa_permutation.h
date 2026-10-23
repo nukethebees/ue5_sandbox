@@ -50,4 +50,14 @@ void apply_permutation(std::span<T> const values, std::span<Index, Extent> const
         index = ~index;
     }
 }
+
+struct ColumnPermutation {
+    template <typename... T>
+    void operator()(T*... columns) const {
+        (apply_permutation(std::span{columns, count}, indices), ...);
+    }
+
+    std::uint32_t count;
+    std::span<std::uint32_t> indices;
+};
 }

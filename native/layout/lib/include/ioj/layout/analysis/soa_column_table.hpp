@@ -79,7 +79,7 @@ struct SoaColumnTableLayout : ioj::single_allocation_layout::Layout<SoaColumnTab
 // Resolved views
 /* **************************************** */
 template <bool Const>
-struct SoaColumnTableResolvedViewImpl {
+struct SoaColumnTableResolvedViewImpl : ioj::soa_storage_detail::ViewOperations {
     using size_type = std::uint32_t;
     using View = SoaColumnTableResolvedView;
     using ConstView = SoaColumnTableResolvedConstView;
@@ -207,29 +207,7 @@ struct SoaColumnTableResolvedViewImpl {
         , cache_line_tiling_{other.cache_line_tiling_}
         , count_{other.count_} {}
     auto num() const noexcept -> size_type { return count_; }
-    auto is_empty() const noexcept -> bool { return count_ == 0; }
-    auto get_view(this auto const& self) { return self; }
-    auto get_const_view(this auto const& self) {
-        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
-        return Result{self.parent_,
-                      self.name_,
-                      self.semantic_type_,
-                      self.schema_type_,
-                      self.physical_type_,
-                      self.overridden_,
-                      self.type_facts_,
-                      self.total_bytes_,
-                      self.allocation_offset_bytes_,
-                      self.padding_before_bytes_,
-                      self.minimum_cache_lines_,
-                      self.elements_per_cache_line_,
-                      self.minimum_pages_,
-                      self.complete_elements_per_page_,
-                      self.cache_line_tiling_,
-                      self.count_};
-    }
     auto resolve(this auto const& self) { return self; }
-    void validate() const {}
     auto slice(this auto const& self, size_type offset, size_type count) {
         assert(offset <= self.count_ && count <= self.count_ - offset);
         using Result = std::remove_cvref_t<decltype(self)>;
@@ -253,17 +231,6 @@ struct SoaColumnTableResolvedViewImpl {
                                                         : self.complete_elements_per_page_ + offset,
             self.cache_line_tiling_ == nullptr ? nullptr : self.cache_line_tiling_ + offset,
             count};
-    }
-    auto get_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count);
-    }
-    auto get_const_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count).get_const_view();
-    }
-    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
-    auto right(this auto const& self, size_type count) {
-        assert(count <= self.num());
-        return self.slice(self.num() - count, count);
     }
     auto parent() const -> std::span<Element<ioj::layout::AnalysisId>> { return {parent_, count_}; }
     auto name() const -> std::span<Element<std::string_view>> { return {name_, count_}; }
@@ -794,21 +761,22 @@ struct SoaColumnTable
     void apply_permutation(std::span<size_type> indices) {
         assert(indices.size() == num_);
         auto const columns{get_data()};
-        ioj::apply_permutation(std::span{columns.parent, num_}, indices);
-        ioj::apply_permutation(std::span{columns.name, num_}, indices);
-        ioj::apply_permutation(std::span{columns.semantic_type, num_}, indices);
-        ioj::apply_permutation(std::span{columns.schema_type, num_}, indices);
-        ioj::apply_permutation(std::span{columns.physical_type, num_}, indices);
-        ioj::apply_permutation(std::span{columns.overridden, num_}, indices);
-        ioj::apply_permutation(std::span{columns.type_facts, num_}, indices);
-        ioj::apply_permutation(std::span{columns.total_bytes, num_}, indices);
-        ioj::apply_permutation(std::span{columns.allocation_offset_bytes, num_}, indices);
-        ioj::apply_permutation(std::span{columns.padding_before_bytes, num_}, indices);
-        ioj::apply_permutation(std::span{columns.minimum_cache_lines, num_}, indices);
-        ioj::apply_permutation(std::span{columns.elements_per_cache_line, num_}, indices);
-        ioj::apply_permutation(std::span{columns.minimum_pages, num_}, indices);
-        ioj::apply_permutation(std::span{columns.complete_elements_per_page, num_}, indices);
-        ioj::apply_permutation(std::span{columns.cache_line_tiling, num_}, indices);
+        auto const permute{ioj::ColumnPermutation{num_, indices}};
+        permute(columns.parent,
+                columns.name,
+                columns.semantic_type,
+                columns.schema_type,
+                columns.physical_type,
+                columns.overridden,
+                columns.type_facts,
+                columns.total_bytes,
+                columns.allocation_offset_bytes,
+                columns.padding_before_bytes,
+                columns.minimum_cache_lines,
+                columns.elements_per_cache_line,
+                columns.minimum_pages,
+                columns.complete_elements_per_page,
+                columns.cache_line_tiling);
     }
   private:
     std::pmr::memory_resource* resource_{};
