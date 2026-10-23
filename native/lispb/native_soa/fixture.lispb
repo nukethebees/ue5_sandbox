@@ -117,7 +117,6 @@ return result;}cpp#)
   (record ApiReference (member owner (type-ref ApiRows :suffix "*")))
   (struct AccessorRows
     :equivalent-type @vector3
-    :equivalent-constructor "ioj::native_soa_fixture::make_vector"
     (member horizontal array float :equivalent-member x :equivalent-accessor true)
     (member vertical array float :equivalent-member y :equivalent-accessor true)
     (member depth array float :equivalent-member z :equivalent-accessor true)
