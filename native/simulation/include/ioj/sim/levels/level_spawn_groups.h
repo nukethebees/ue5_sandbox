@@ -61,6 +61,100 @@ struct LevelSpawnGroupsSingleLayout {
     static_assert(max_capacity >= capacity_granularity);
 };
 
+struct LevelSpawnGroupsSingleResolvedView;
+struct LevelSpawnGroupsSingleResolvedConstView;
+template <bool Const>
+struct LevelSpawnGroupsSingleResolvedViewImpl {
+    using size_type = std::uint32_t;
+    using View = LevelSpawnGroupsSingleResolvedView;
+    using ConstView = LevelSpawnGroupsSingleResolvedConstView;
+    using soa_schema = LevelSpawnGroupsSchema;
+    template <typename T>
+    using Element = std::conditional_t<Const, T const, T>;
+    LevelSpawnGroupsSingleResolvedViewImpl() = default;
+    LevelSpawnGroupsSingleResolvedViewImpl(Element<ioj::sim::EntityType>* types,
+                                           Element<std::int32_t>* offsets,
+                                           Element<LevelEventCount>* counts,
+                                           size_type count)
+        : types_{types}
+        , offsets_{offsets}
+        , counts_{counts}
+        , count_{count} {
+        ioj::soa_storage_detail::validate_column_pointers(count_, types_, offsets_, counts_);
+    }
+    LevelSpawnGroupsSingleResolvedViewImpl(std::span<Element<ioj::sim::EntityType>> types,
+                                           std::span<Element<std::int32_t>> offsets,
+                                           std::span<Element<LevelEventCount>> counts)
+        : LevelSpawnGroupsSingleResolvedViewImpl{
+              types.data(),
+              offsets.data(),
+              counts.data(),
+              ioj::soa_storage_detail::checked_row_count(types.size())} {
+        assert(types.size() == count_);
+        assert(offsets.size() == count_);
+        assert(counts.size() == count_);
+    }
+    template <bool Enabled = Const>
+    LevelSpawnGroupsSingleResolvedViewImpl(
+        LevelSpawnGroupsSingleResolvedViewImpl<false> const& other)
+        requires Enabled
+        : types_{other.types_}
+        , offsets_{other.offsets_}
+        , counts_{other.counts_}
+        , count_{other.count_} {}
+    auto num() const noexcept -> size_type { return count_; }
+    auto is_empty() const noexcept -> bool { return count_ == 0; }
+    auto get_view(this auto const& self) { return self; }
+    auto get_const_view(this auto const& self) {
+        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
+        return Result{self.types_, self.offsets_, self.counts_, self.count_};
+    }
+    auto resolve(this auto const& self) { return self; }
+    void validate() const {}
+    auto slice(this auto const& self, size_type offset, size_type count) {
+        assert(offset <= self.count_ && count <= self.count_ - offset);
+        using Result = std::remove_cvref_t<decltype(self)>;
+        return Result{self.types_ == nullptr ? nullptr : self.types_ + offset,
+                      self.offsets_ == nullptr ? nullptr : self.offsets_ + offset,
+                      self.counts_ == nullptr ? nullptr : self.counts_ + offset,
+                      count};
+    }
+    auto get_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count);
+    }
+    auto get_const_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count).get_const_view();
+    }
+    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
+    auto right(this auto const& self, size_type count) {
+        assert(count <= self.num());
+        return self.slice(self.num() - count, count);
+    }
+    auto types() const -> std::span<Element<ioj::sim::EntityType>> { return {types_, count_}; }
+    auto offsets() const -> std::span<Element<std::int32_t>> { return {offsets_, count_}; }
+    auto counts() const -> std::span<Element<LevelEventCount>> { return {counts_, count_}; }
+    template <typename Func>
+    void each_column(Func&& func) const {
+        func(std::span<Element<ioj::sim::EntityType>>{types_, count_});
+        func(std::span<Element<std::int32_t>>{offsets_, count_});
+        func(std::span<Element<LevelEventCount>>{counts_, count_});
+    }
+  private:
+    template <bool>
+    friend struct LevelSpawnGroupsSingleResolvedViewImpl;
+    Element<ioj::sim::EntityType>* types_{};
+    Element<std::int32_t>* offsets_{};
+    Element<LevelEventCount>* counts_{};
+    size_type count_{};
+};
+struct LevelSpawnGroupsSingleResolvedConstView : LevelSpawnGroupsSingleResolvedViewImpl<true> {
+    using Base = LevelSpawnGroupsSingleResolvedViewImpl<true>;
+    using Base::Base;
+};
+struct LevelSpawnGroupsSingleResolvedView : LevelSpawnGroupsSingleResolvedViewImpl<false> {
+    using Base = LevelSpawnGroupsSingleResolvedViewImpl<false>;
+    using Base::Base;
+};
 template <bool Const>
 struct LevelSpawnGroupsSingleViewImpl : ioj::soa_storage_detail::CompactViewOperations {
     using soa_schema = LevelSpawnGroupsSchema;
@@ -91,6 +185,14 @@ struct LevelSpawnGroupsSingleViewImpl : ioj::soa_storage_detail::CompactViewOper
         func(types());
         func(offsets());
         func(counts());
+    }
+    auto resolve() const -> std::conditional_t<Const,
+                                               LevelSpawnGroupsSingleResolvedConstView,
+                                               LevelSpawnGroupsSingleResolvedView> {
+        return {(make_column_view(Layout::columns.TypesColumn).data()),
+                (make_column_view(Layout::columns.OffsetsColumn).data()),
+                (make_column_view(Layout::columns.CountsColumn).data()),
+                count_};
     }
   private:
     template <typename T>

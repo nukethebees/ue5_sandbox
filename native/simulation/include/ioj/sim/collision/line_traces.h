@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ioj/math_types.h"
 #include "ioj/native_soa/storage.h"
 #include "ioj/vector_soa_view.h"
 
@@ -63,6 +64,344 @@ struct LineTracesSingleLayout {
     static_assert(max_capacity >= capacity_granularity);
 };
 
+struct LineTracesSingleResolvedView_starts;
+struct LineTracesSingleResolvedConstView_starts;
+template <bool Const>
+struct LineTracesSingleResolvedView_startsImpl {
+    using size_type = std::uint32_t;
+    using View = LineTracesSingleResolvedView_starts;
+    using ConstView = LineTracesSingleResolvedConstView_starts;
+    using soa_schema = Vectors3fSchema;
+    template <typename T>
+    using Element = std::conditional_t<Const, T const, T>;
+    LineTracesSingleResolvedView_startsImpl() = default;
+    LineTracesSingleResolvedView_startsImpl(Element<float>* starts_xs,
+                                            Element<float>* starts_ys,
+                                            Element<float>* starts_zs,
+                                            size_type count)
+        : starts_xs_{starts_xs}
+        , starts_ys_{starts_ys}
+        , starts_zs_{starts_zs}
+        , count_{count} {
+        ioj::soa_storage_detail::validate_column_pointers(
+            count_, starts_xs_, starts_ys_, starts_zs_);
+    }
+    LineTracesSingleResolvedView_startsImpl(std::span<Element<float>> starts_xs,
+                                            std::span<Element<float>> starts_ys,
+                                            std::span<Element<float>> starts_zs)
+        : LineTracesSingleResolvedView_startsImpl{
+              starts_xs.data(),
+              starts_ys.data(),
+              starts_zs.data(),
+              ioj::soa_storage_detail::checked_row_count(starts_xs.size())} {
+        assert(starts_xs.size() == count_);
+        assert(starts_ys.size() == count_);
+        assert(starts_zs.size() == count_);
+    }
+    template <bool Enabled = Const>
+    LineTracesSingleResolvedView_startsImpl(
+        LineTracesSingleResolvedView_startsImpl<false> const& other)
+        requires Enabled
+        : starts_xs_{other.starts_xs_}
+        , starts_ys_{other.starts_ys_}
+        , starts_zs_{other.starts_zs_}
+        , count_{other.count_} {}
+    auto num() const noexcept -> size_type { return count_; }
+    auto is_empty() const noexcept -> bool { return count_ == 0; }
+    auto get_view(this auto const& self) { return self; }
+    auto get_const_view(this auto const& self) {
+        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
+        return Result{self.starts_xs_, self.starts_ys_, self.starts_zs_, self.count_};
+    }
+    auto resolve(this auto const& self) { return self; }
+    void validate() const {}
+    auto slice(this auto const& self, size_type offset, size_type count) {
+        assert(offset <= self.count_ && count <= self.count_ - offset);
+        using Result = std::remove_cvref_t<decltype(self)>;
+        return Result{self.starts_xs_ == nullptr ? nullptr : self.starts_xs_ + offset,
+                      self.starts_ys_ == nullptr ? nullptr : self.starts_ys_ + offset,
+                      self.starts_zs_ == nullptr ? nullptr : self.starts_zs_ + offset,
+                      count};
+    }
+    auto get_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count);
+    }
+    auto get_const_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count).get_const_view();
+    }
+    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
+    auto right(this auto const& self, size_type count) {
+        assert(count <= self.num());
+        return self.slice(self.num() - count, count);
+    }
+    auto xs() const -> std::span<Element<float>> { return {starts_xs_, count_}; }
+    auto ys() const -> std::span<Element<float>> { return {starts_ys_, count_}; }
+    auto zs() const -> std::span<Element<float>> { return {starts_zs_, count_}; }
+    template <typename Func>
+    void each_column(Func&& func) const {
+        func(std::span<Element<float>>{starts_xs_, count_});
+        func(std::span<Element<float>>{starts_ys_, count_});
+        func(std::span<Element<float>>{starts_zs_, count_});
+    }
+  private:
+    template <bool>
+    friend struct LineTracesSingleResolvedView_startsImpl;
+    Element<float>* starts_xs_{};
+    Element<float>* starts_ys_{};
+    Element<float>* starts_zs_{};
+    size_type count_{};
+};
+struct LineTracesSingleResolvedConstView_starts : LineTracesSingleResolvedView_startsImpl<true> {
+    using Base = LineTracesSingleResolvedView_startsImpl<true>;
+    using Base::Base;
+    using equivalent_type = Vector3f;
+    auto operator[](std::uint32_t index) const -> equivalent_type {
+        return equivalent_type{xs()[index], ys()[index], zs()[index]};
+    }
+};
+struct LineTracesSingleResolvedView_starts : LineTracesSingleResolvedView_startsImpl<false> {
+    using Base = LineTracesSingleResolvedView_startsImpl<false>;
+    using Base::Base;
+    using equivalent_type = Vector3f;
+    auto operator[](std::uint32_t index) const -> equivalent_type {
+        return equivalent_type{xs()[index], ys()[index], zs()[index]};
+    }
+};
+struct LineTracesSingleResolvedView_ends;
+struct LineTracesSingleResolvedConstView_ends;
+template <bool Const>
+struct LineTracesSingleResolvedView_endsImpl {
+    using size_type = std::uint32_t;
+    using View = LineTracesSingleResolvedView_ends;
+    using ConstView = LineTracesSingleResolvedConstView_ends;
+    using soa_schema = Vectors3fSchema;
+    template <typename T>
+    using Element = std::conditional_t<Const, T const, T>;
+    LineTracesSingleResolvedView_endsImpl() = default;
+    LineTracesSingleResolvedView_endsImpl(Element<float>* ends_xs,
+                                          Element<float>* ends_ys,
+                                          Element<float>* ends_zs,
+                                          size_type count)
+        : ends_xs_{ends_xs}
+        , ends_ys_{ends_ys}
+        , ends_zs_{ends_zs}
+        , count_{count} {
+        ioj::soa_storage_detail::validate_column_pointers(count_, ends_xs_, ends_ys_, ends_zs_);
+    }
+    LineTracesSingleResolvedView_endsImpl(std::span<Element<float>> ends_xs,
+                                          std::span<Element<float>> ends_ys,
+                                          std::span<Element<float>> ends_zs)
+        : LineTracesSingleResolvedView_endsImpl{
+              ends_xs.data(),
+              ends_ys.data(),
+              ends_zs.data(),
+              ioj::soa_storage_detail::checked_row_count(ends_xs.size())} {
+        assert(ends_xs.size() == count_);
+        assert(ends_ys.size() == count_);
+        assert(ends_zs.size() == count_);
+    }
+    template <bool Enabled = Const>
+    LineTracesSingleResolvedView_endsImpl(LineTracesSingleResolvedView_endsImpl<false> const& other)
+        requires Enabled
+        : ends_xs_{other.ends_xs_}
+        , ends_ys_{other.ends_ys_}
+        , ends_zs_{other.ends_zs_}
+        , count_{other.count_} {}
+    auto num() const noexcept -> size_type { return count_; }
+    auto is_empty() const noexcept -> bool { return count_ == 0; }
+    auto get_view(this auto const& self) { return self; }
+    auto get_const_view(this auto const& self) {
+        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
+        return Result{self.ends_xs_, self.ends_ys_, self.ends_zs_, self.count_};
+    }
+    auto resolve(this auto const& self) { return self; }
+    void validate() const {}
+    auto slice(this auto const& self, size_type offset, size_type count) {
+        assert(offset <= self.count_ && count <= self.count_ - offset);
+        using Result = std::remove_cvref_t<decltype(self)>;
+        return Result{self.ends_xs_ == nullptr ? nullptr : self.ends_xs_ + offset,
+                      self.ends_ys_ == nullptr ? nullptr : self.ends_ys_ + offset,
+                      self.ends_zs_ == nullptr ? nullptr : self.ends_zs_ + offset,
+                      count};
+    }
+    auto get_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count);
+    }
+    auto get_const_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count).get_const_view();
+    }
+    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
+    auto right(this auto const& self, size_type count) {
+        assert(count <= self.num());
+        return self.slice(self.num() - count, count);
+    }
+    auto xs() const -> std::span<Element<float>> { return {ends_xs_, count_}; }
+    auto ys() const -> std::span<Element<float>> { return {ends_ys_, count_}; }
+    auto zs() const -> std::span<Element<float>> { return {ends_zs_, count_}; }
+    template <typename Func>
+    void each_column(Func&& func) const {
+        func(std::span<Element<float>>{ends_xs_, count_});
+        func(std::span<Element<float>>{ends_ys_, count_});
+        func(std::span<Element<float>>{ends_zs_, count_});
+    }
+  private:
+    template <bool>
+    friend struct LineTracesSingleResolvedView_endsImpl;
+    Element<float>* ends_xs_{};
+    Element<float>* ends_ys_{};
+    Element<float>* ends_zs_{};
+    size_type count_{};
+};
+struct LineTracesSingleResolvedConstView_ends : LineTracesSingleResolvedView_endsImpl<true> {
+    using Base = LineTracesSingleResolvedView_endsImpl<true>;
+    using Base::Base;
+    using equivalent_type = Vector3f;
+    auto operator[](std::uint32_t index) const -> equivalent_type {
+        return equivalent_type{xs()[index], ys()[index], zs()[index]};
+    }
+};
+struct LineTracesSingleResolvedView_ends : LineTracesSingleResolvedView_endsImpl<false> {
+    using Base = LineTracesSingleResolvedView_endsImpl<false>;
+    using Base::Base;
+    using equivalent_type = Vector3f;
+    auto operator[](std::uint32_t index) const -> equivalent_type {
+        return equivalent_type{xs()[index], ys()[index], zs()[index]};
+    }
+};
+struct LineTracesSingleResolvedView;
+struct LineTracesSingleResolvedConstView;
+template <bool Const>
+struct LineTracesSingleResolvedViewImpl {
+    using size_type = std::uint32_t;
+    using View = LineTracesSingleResolvedView;
+    using ConstView = LineTracesSingleResolvedConstView;
+    using soa_schema = LineTracesSchema;
+    template <typename T>
+    using Element = std::conditional_t<Const, T const, T>;
+    LineTracesSingleResolvedViewImpl() = default;
+    LineTracesSingleResolvedViewImpl(Element<float>* starts_xs,
+                                     Element<float>* starts_ys,
+                                     Element<float>* starts_zs,
+                                     Element<float>* ends_xs,
+                                     Element<float>* ends_ys,
+                                     Element<float>* ends_zs,
+                                     size_type count)
+        : starts_xs_{starts_xs}
+        , starts_ys_{starts_ys}
+        , starts_zs_{starts_zs}
+        , ends_xs_{ends_xs}
+        , ends_ys_{ends_ys}
+        , ends_zs_{ends_zs}
+        , count_{count} {
+        ioj::soa_storage_detail::validate_column_pointers(
+            count_, starts_xs_, starts_ys_, starts_zs_, ends_xs_, ends_ys_, ends_zs_);
+    }
+    LineTracesSingleResolvedViewImpl(std::span<Element<float>> starts_xs,
+                                     std::span<Element<float>> starts_ys,
+                                     std::span<Element<float>> starts_zs,
+                                     std::span<Element<float>> ends_xs,
+                                     std::span<Element<float>> ends_ys,
+                                     std::span<Element<float>> ends_zs)
+        : LineTracesSingleResolvedViewImpl{
+              starts_xs.data(),
+              starts_ys.data(),
+              starts_zs.data(),
+              ends_xs.data(),
+              ends_ys.data(),
+              ends_zs.data(),
+              ioj::soa_storage_detail::checked_row_count(starts_xs.size())} {
+        assert(starts_xs.size() == count_);
+        assert(starts_ys.size() == count_);
+        assert(starts_zs.size() == count_);
+        assert(ends_xs.size() == count_);
+        assert(ends_ys.size() == count_);
+        assert(ends_zs.size() == count_);
+    }
+    template <bool Enabled = Const>
+    LineTracesSingleResolvedViewImpl(LineTracesSingleResolvedViewImpl<false> const& other)
+        requires Enabled
+        : starts_xs_{other.starts_xs_}
+        , starts_ys_{other.starts_ys_}
+        , starts_zs_{other.starts_zs_}
+        , ends_xs_{other.ends_xs_}
+        , ends_ys_{other.ends_ys_}
+        , ends_zs_{other.ends_zs_}
+        , count_{other.count_} {}
+    auto num() const noexcept -> size_type { return count_; }
+    auto is_empty() const noexcept -> bool { return count_ == 0; }
+    auto get_view(this auto const& self) { return self; }
+    auto get_const_view(this auto const& self) {
+        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
+        return Result{self.starts_xs_,
+                      self.starts_ys_,
+                      self.starts_zs_,
+                      self.ends_xs_,
+                      self.ends_ys_,
+                      self.ends_zs_,
+                      self.count_};
+    }
+    auto resolve(this auto const& self) { return self; }
+    void validate() const {}
+    auto slice(this auto const& self, size_type offset, size_type count) {
+        assert(offset <= self.count_ && count <= self.count_ - offset);
+        using Result = std::remove_cvref_t<decltype(self)>;
+        return Result{self.starts_xs_ == nullptr ? nullptr : self.starts_xs_ + offset,
+                      self.starts_ys_ == nullptr ? nullptr : self.starts_ys_ + offset,
+                      self.starts_zs_ == nullptr ? nullptr : self.starts_zs_ + offset,
+                      self.ends_xs_ == nullptr ? nullptr : self.ends_xs_ + offset,
+                      self.ends_ys_ == nullptr ? nullptr : self.ends_ys_ + offset,
+                      self.ends_zs_ == nullptr ? nullptr : self.ends_zs_ + offset,
+                      count};
+    }
+    auto get_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count);
+    }
+    auto get_const_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count).get_const_view();
+    }
+    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
+    auto right(this auto const& self, size_type count) {
+        assert(count <= self.num());
+        return self.slice(self.num() - count, count);
+    }
+    auto view_starts() const -> std::conditional_t<Const,
+                                                   LineTracesSingleResolvedConstView_starts,
+                                                   LineTracesSingleResolvedView_starts> {
+        return {starts_xs_, starts_ys_, starts_zs_, count_};
+    }
+    auto view_ends() const -> std::conditional_t<Const,
+                                                 LineTracesSingleResolvedConstView_ends,
+                                                 LineTracesSingleResolvedView_ends> {
+        return {ends_xs_, ends_ys_, ends_zs_, count_};
+    }
+    template <typename Func>
+    void each_column(Func&& func) const {
+        func(std::span<Element<float>>{starts_xs_, count_});
+        func(std::span<Element<float>>{starts_ys_, count_});
+        func(std::span<Element<float>>{starts_zs_, count_});
+        func(std::span<Element<float>>{ends_xs_, count_});
+        func(std::span<Element<float>>{ends_ys_, count_});
+        func(std::span<Element<float>>{ends_zs_, count_});
+    }
+  private:
+    template <bool>
+    friend struct LineTracesSingleResolvedViewImpl;
+    Element<float>* starts_xs_{};
+    Element<float>* starts_ys_{};
+    Element<float>* starts_zs_{};
+    Element<float>* ends_xs_{};
+    Element<float>* ends_ys_{};
+    Element<float>* ends_zs_{};
+    size_type count_{};
+};
+struct LineTracesSingleResolvedConstView : LineTracesSingleResolvedViewImpl<true> {
+    using Base = LineTracesSingleResolvedViewImpl<true>;
+    using Base::Base;
+};
+struct LineTracesSingleResolvedView : LineTracesSingleResolvedViewImpl<false> {
+    using Base = LineTracesSingleResolvedViewImpl<false>;
+    using Base::Base;
+};
 template <bool Const>
 struct LineTracesSingleViewImpl : ioj::soa_storage_detail::CompactViewOperations {
     using soa_schema = LineTracesSchema;
@@ -114,6 +453,16 @@ struct LineTracesSingleViewImpl : ioj::soa_storage_detail::CompactViewOperations
         func(ends_view.xs());
         func(ends_view.ys());
         func(ends_view.zs());
+    }
+    auto resolve() const -> std::
+        conditional_t<Const, LineTracesSingleResolvedConstView, LineTracesSingleResolvedView> {
+        return {(make_column_view(Layout::columns.StartsXsColumn).data()),
+                (make_column_view(Layout::columns.StartsYsColumn).data()),
+                (make_column_view(Layout::columns.StartsZsColumn).data()),
+                (make_column_view(Layout::columns.EndsXsColumn).data()),
+                (make_column_view(Layout::columns.EndsYsColumn).data()),
+                (make_column_view(Layout::columns.EndsZsColumn).data()),
+                count_};
     }
   private:
     template <typename T>

@@ -57,6 +57,96 @@ struct EntityEntityOverlapsSingleLayout {
     static_assert(max_capacity >= capacity_granularity);
 };
 
+struct EntityEntityOverlapsSingleResolvedView;
+struct EntityEntityOverlapsSingleResolvedConstView;
+template <bool Const>
+struct EntityEntityOverlapsSingleResolvedViewImpl {
+    using size_type = std::uint32_t;
+    using View = EntityEntityOverlapsSingleResolvedView;
+    using ConstView = EntityEntityOverlapsSingleResolvedConstView;
+    using soa_schema = EntityEntityOverlapsSchema;
+    template <typename T>
+    using Element = std::conditional_t<Const, T const, T>;
+    EntityEntityOverlapsSingleResolvedViewImpl() = default;
+    EntityEntityOverlapsSingleResolvedViewImpl(Element<EntityId>* first_entities,
+                                               Element<EntityId>* second_entities,
+                                               size_type count)
+        : first_entities_{first_entities}
+        , second_entities_{second_entities}
+        , count_{count} {
+        ioj::soa_storage_detail::validate_column_pointers(
+            count_, first_entities_, second_entities_);
+    }
+    EntityEntityOverlapsSingleResolvedViewImpl(std::span<Element<EntityId>> first_entities,
+                                               std::span<Element<EntityId>> second_entities)
+        : EntityEntityOverlapsSingleResolvedViewImpl{
+              first_entities.data(),
+              second_entities.data(),
+              ioj::soa_storage_detail::checked_row_count(first_entities.size())} {
+        assert(first_entities.size() == count_);
+        assert(second_entities.size() == count_);
+    }
+    template <bool Enabled = Const>
+    EntityEntityOverlapsSingleResolvedViewImpl(
+        EntityEntityOverlapsSingleResolvedViewImpl<false> const& other)
+        requires Enabled
+        : first_entities_{other.first_entities_}
+        , second_entities_{other.second_entities_}
+        , count_{other.count_} {}
+    auto num() const noexcept -> size_type { return count_; }
+    auto is_empty() const noexcept -> bool { return count_ == 0; }
+    auto get_view(this auto const& self) { return self; }
+    auto get_const_view(this auto const& self) {
+        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
+        return Result{self.first_entities_, self.second_entities_, self.count_};
+    }
+    auto resolve(this auto const& self) { return self; }
+    void validate() const {}
+    auto slice(this auto const& self, size_type offset, size_type count) {
+        assert(offset <= self.count_ && count <= self.count_ - offset);
+        using Result = std::remove_cvref_t<decltype(self)>;
+        return Result{self.first_entities_ == nullptr ? nullptr : self.first_entities_ + offset,
+                      self.second_entities_ == nullptr ? nullptr : self.second_entities_ + offset,
+                      count};
+    }
+    auto get_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count);
+    }
+    auto get_const_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count).get_const_view();
+    }
+    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
+    auto right(this auto const& self, size_type count) {
+        assert(count <= self.num());
+        return self.slice(self.num() - count, count);
+    }
+    auto first_entities() const -> std::span<Element<EntityId>> {
+        return {first_entities_, count_};
+    }
+    auto second_entities() const -> std::span<Element<EntityId>> {
+        return {second_entities_, count_};
+    }
+    template <typename Func>
+    void each_column(Func&& func) const {
+        func(std::span<Element<EntityId>>{first_entities_, count_});
+        func(std::span<Element<EntityId>>{second_entities_, count_});
+    }
+  private:
+    template <bool>
+    friend struct EntityEntityOverlapsSingleResolvedViewImpl;
+    Element<EntityId>* first_entities_{};
+    Element<EntityId>* second_entities_{};
+    size_type count_{};
+};
+struct EntityEntityOverlapsSingleResolvedConstView
+    : EntityEntityOverlapsSingleResolvedViewImpl<true> {
+    using Base = EntityEntityOverlapsSingleResolvedViewImpl<true>;
+    using Base::Base;
+};
+struct EntityEntityOverlapsSingleResolvedView : EntityEntityOverlapsSingleResolvedViewImpl<false> {
+    using Base = EntityEntityOverlapsSingleResolvedViewImpl<false>;
+    using Base::Base;
+};
 template <bool Const>
 struct EntityEntityOverlapsSingleViewImpl : ioj::soa_storage_detail::CompactViewOperations {
     using soa_schema = EntityEntityOverlapsSchema;
@@ -85,6 +175,13 @@ struct EntityEntityOverlapsSingleViewImpl : ioj::soa_storage_detail::CompactView
     void each_column(Func&& func) const {
         func(first_entities());
         func(second_entities());
+    }
+    auto resolve() const -> std::conditional_t<Const,
+                                               EntityEntityOverlapsSingleResolvedConstView,
+                                               EntityEntityOverlapsSingleResolvedView> {
+        return {(make_column_view(Layout::columns.FirstEntitiesColumn).data()),
+                (make_column_view(Layout::columns.SecondEntitiesColumn).data()),
+                count_};
     }
   private:
     template <typename T>
@@ -314,6 +411,100 @@ struct EntityStaticOverlapsSingleLayout {
     static_assert(max_capacity >= capacity_granularity);
 };
 
+struct EntityStaticOverlapsSingleResolvedView;
+struct EntityStaticOverlapsSingleResolvedConstView;
+template <bool Const>
+struct EntityStaticOverlapsSingleResolvedViewImpl {
+    using size_type = std::uint32_t;
+    using View = EntityStaticOverlapsSingleResolvedView;
+    using ConstView = EntityStaticOverlapsSingleResolvedConstView;
+    using soa_schema = EntityStaticOverlapsSchema;
+    template <typename T>
+    using Element = std::conditional_t<Const, T const, T>;
+    EntityStaticOverlapsSingleResolvedViewImpl() = default;
+    EntityStaticOverlapsSingleResolvedViewImpl(
+        Element<EntityId>* entities,
+        Element<ioj::sim::collision::StaticGeometryIndex>* static_geometry_indices,
+        size_type count)
+        : entities_{entities}
+        , static_geometry_indices_{static_geometry_indices}
+        , count_{count} {
+        ioj::soa_storage_detail::validate_column_pointers(
+            count_, entities_, static_geometry_indices_);
+    }
+    EntityStaticOverlapsSingleResolvedViewImpl(
+        std::span<Element<EntityId>> entities,
+        std::span<Element<ioj::sim::collision::StaticGeometryIndex>> static_geometry_indices)
+        : EntityStaticOverlapsSingleResolvedViewImpl{
+              entities.data(),
+              static_geometry_indices.data(),
+              ioj::soa_storage_detail::checked_row_count(entities.size())} {
+        assert(entities.size() == count_);
+        assert(static_geometry_indices.size() == count_);
+    }
+    template <bool Enabled = Const>
+    EntityStaticOverlapsSingleResolvedViewImpl(
+        EntityStaticOverlapsSingleResolvedViewImpl<false> const& other)
+        requires Enabled
+        : entities_{other.entities_}
+        , static_geometry_indices_{other.static_geometry_indices_}
+        , count_{other.count_} {}
+    auto num() const noexcept -> size_type { return count_; }
+    auto is_empty() const noexcept -> bool { return count_ == 0; }
+    auto get_view(this auto const& self) { return self; }
+    auto get_const_view(this auto const& self) {
+        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
+        return Result{self.entities_, self.static_geometry_indices_, self.count_};
+    }
+    auto resolve(this auto const& self) { return self; }
+    void validate() const {}
+    auto slice(this auto const& self, size_type offset, size_type count) {
+        assert(offset <= self.count_ && count <= self.count_ - offset);
+        using Result = std::remove_cvref_t<decltype(self)>;
+        return Result{self.entities_ == nullptr ? nullptr : self.entities_ + offset,
+                      self.static_geometry_indices_ == nullptr
+                          ? nullptr
+                          : self.static_geometry_indices_ + offset,
+                      count};
+    }
+    auto get_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count);
+    }
+    auto get_const_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count).get_const_view();
+    }
+    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
+    auto right(this auto const& self, size_type count) {
+        assert(count <= self.num());
+        return self.slice(self.num() - count, count);
+    }
+    auto entities() const -> std::span<Element<EntityId>> { return {entities_, count_}; }
+    auto static_geometry_indices() const
+        -> std::span<Element<ioj::sim::collision::StaticGeometryIndex>> {
+        return {static_geometry_indices_, count_};
+    }
+    template <typename Func>
+    void each_column(Func&& func) const {
+        func(std::span<Element<EntityId>>{entities_, count_});
+        func(std::span<Element<ioj::sim::collision::StaticGeometryIndex>>{static_geometry_indices_,
+                                                                          count_});
+    }
+  private:
+    template <bool>
+    friend struct EntityStaticOverlapsSingleResolvedViewImpl;
+    Element<EntityId>* entities_{};
+    Element<ioj::sim::collision::StaticGeometryIndex>* static_geometry_indices_{};
+    size_type count_{};
+};
+struct EntityStaticOverlapsSingleResolvedConstView
+    : EntityStaticOverlapsSingleResolvedViewImpl<true> {
+    using Base = EntityStaticOverlapsSingleResolvedViewImpl<true>;
+    using Base::Base;
+};
+struct EntityStaticOverlapsSingleResolvedView : EntityStaticOverlapsSingleResolvedViewImpl<false> {
+    using Base = EntityStaticOverlapsSingleResolvedViewImpl<false>;
+    using Base::Base;
+};
 template <bool Const>
 struct EntityStaticOverlapsSingleViewImpl : ioj::soa_storage_detail::CompactViewOperations {
     using soa_schema = EntityStaticOverlapsSchema;
@@ -344,6 +535,13 @@ struct EntityStaticOverlapsSingleViewImpl : ioj::soa_storage_detail::CompactView
     void each_column(Func&& func) const {
         func(entities());
         func(static_geometry_indices());
+    }
+    auto resolve() const -> std::conditional_t<Const,
+                                               EntityStaticOverlapsSingleResolvedConstView,
+                                               EntityStaticOverlapsSingleResolvedView> {
+        return {(make_column_view(Layout::columns.EntitiesColumn).data()),
+                (make_column_view(Layout::columns.StaticGeometryIndicesColumn).data()),
+                count_};
     }
   private:
     template <typename T>

@@ -207,6 +207,105 @@ TEST(NativeSoa, BothStorageImplementationsShareLogicalFunctions) {
     verify(DualCompactRows{*std::pmr::get_default_resource()});
 }
 
+TEST(NativeSoa, ResolvedViewsBorrowColumnsAndPreserveNestedLogicalApi) {
+    pmr_test_support::AllocationState state;
+    pmr_test_support::CountingResource resource{state};
+    ApiOwner owner{resource};
+    owner.set_num(3);
+    auto const allocations{state.allocations};
+    auto const compact{owner.get_view()};
+    auto resolved{compact.resolve()};
+    auto positions{resolved.view_positions()};
+    resolved.assign_first(7.0f);
+    positions.xs()[1] = 4.0f;
+    positions.ys()[1] = 9.0f;
+    positions.shift_x(2.0f);
+
+    EXPECT_EQ(owner.first_value(), 7.0f);
+    EXPECT_EQ(resolved.values().data(), compact.values().data());
+    EXPECT_EQ(positions.xs().data(), compact.view_positions().xs().data());
+    EXPECT_EQ(resolved.slice(1, 1).first_x(), 6.0f);
+    EXPECT_EQ(positions.slice(1, 1)[0].y, 9.0f);
+    EXPECT_EQ(compact.view_positions().resolve().xs().data(), positions.xs().data());
+    EXPECT_EQ(resolved.right(1).num(), 1U);
+    EXPECT_EQ(state.allocations, allocations);
+
+    ApiResolvedConstView const immutable{resolved};
+    static_assert(std::is_same_v<decltype(immutable.values()), std::span<float const>>);
+    static_assert(
+        std::is_same_v<decltype(immutable.view_positions().xs()), std::span<float const>>);
+    static_assert(!CanAssignFirst<ApiResolvedConstView>);
+    EXPECT_EQ(immutable.values().data(), resolved.values().data());
+    EXPECT_EQ(resolved.get_const_view(1, 1).view_positions()[0].x, 6.0f);
+    EXPECT_EQ(owner.get_const_view().resolve().values().data(), resolved.values().data());
+}
+
+TEST(NativeSoa, ResolvedViewsAcceptIndependentSpansAndServeAsAppendSources) {
+    std::array values{3.0f, 5.0f};
+    std::array<ApiMask, 2> masks{};
+    std::array xs{7.0f, 11.0f};
+    std::array ys{13.0f, 17.0f};
+    ApiResolvedView source{std::span{values}, std::span{masks}, std::span{xs}, std::span{ys}};
+    source.view_positions().shift_x(1.0f);
+    EXPECT_EQ(xs[1], 12.0f);
+    ApiOwner owner;
+    owner.append_from(source);
+    EXPECT_EQ(owner.total(), 8.0f);
+    EXPECT_EQ(owner.get_const_view().view_positions()[1].x, 12.0f);
+
+    EXPECT_DEATH((ApiResolvedView{
+                     std::span{values}, std::span{masks}, std::span{xs}.first(1), std::span{ys}}),
+                 "");
+    EXPECT_DEATH((source.slice(1, 2)), "");
+    EXPECT_DEATH((ApiResolvedView{values.data(), masks.data(), xs.data(), nullptr, 2}), "");
+    EXPECT_DEATH(ioj::soa_storage_detail::checked_row_count(
+                     std::size_t{std::numeric_limits<std::uint32_t>::max()} + 1),
+                 "");
+}
+
+TEST(NativeSoa, EmptyResolvedViewsCanBeSlicedAndConverted) {
+    ApiOwner owner;
+    auto const resolved{owner.get_view().resolve()};
+    EXPECT_TRUE(resolved.is_empty());
+    EXPECT_TRUE(resolved.slice(0, 0).is_empty());
+    EXPECT_TRUE(resolved.get_const_view().view_positions().is_empty());
+    EXPECT_EQ(resolved.values().data(), nullptr);
+    EXPECT_EQ(resolved.view_positions().xs().data(), nullptr);
+}
+
+TEST(NativeSoa, ResolvedSelfAppendPreservesAliasedColumnsAcrossGrowthAndAllocationFailure) {
+    pmr_test_support::AllocationState state;
+    pmr_test_support::CountingResource resource{state};
+    ApiOwner owner{resource};
+    owner.reserve(1);
+    owner.set_num(owner.capacity());
+    auto rows{owner.get_view().resolve()};
+    rows.values()[0] = 3.0f;
+    rows.values()[1] = 5.0f;
+    rows.view_positions().xs()[0] = 7.0f;
+    rows.view_positions().ys()[1] = 11.0f;
+    rows.masks()[1].set(ApiField::Values);
+    auto const source{rows.get_const_view(0, 2)};
+    auto const first{owner.num()};
+    auto const allocations{state.allocations};
+
+    state.reject_allocation = true;
+    EXPECT_THROW(owner.append_from(source), std::bad_alloc);
+    EXPECT_EQ(owner.num(), first);
+    EXPECT_EQ(owner.get_view().values().data(), source.values().data());
+    EXPECT_EQ(source.values()[1], 5.0f);
+
+    state.reject_allocation = false;
+    EXPECT_EQ(owner.append_from(source), first);
+    auto const appended{owner.get_const_view().slice(first, 2).resolve()};
+    EXPECT_EQ(appended.values()[0], 3.0f);
+    EXPECT_EQ(appended.values()[1], 5.0f);
+    EXPECT_EQ(appended.view_positions()[0].x, 7.0f);
+    EXPECT_EQ(appended.view_positions()[1].y, 11.0f);
+    EXPECT_TRUE(appended.masks()[1].has(ApiField::Values));
+    EXPECT_EQ(state.allocations, allocations + 1);
+}
+
 struct ApiSource {
     using soa_schema = ApiOwner::soa_schema;
     struct Positions {

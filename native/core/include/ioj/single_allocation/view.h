@@ -5,10 +5,22 @@
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
+#include <limits>
 #include <memory>
 #include <type_traits>
 
 namespace ioj::soa_storage_detail {
+
+inline auto checked_row_count(std::size_t const count) -> std::uint32_t {
+    assert(count <= std::numeric_limits<std::uint32_t>::max());
+    return static_cast<std::uint32_t>(count);
+}
+
+template <typename... Columns>
+void validate_column_pointers([[maybe_unused]] std::uint32_t const count,
+                              [[maybe_unused]] Columns* const... columns) {
+    assert(count == 0 || ((columns != nullptr) && ...));
+}
 
 // Views borrow their owner and range. The owner must outlive them; reallocation, owner moves,
 // reset, and removal/reordering of borrowed rows invalidate them. Reacquire after invalidation.

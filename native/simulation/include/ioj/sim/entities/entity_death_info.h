@@ -61,6 +61,110 @@ struct EntityDeathInfoSingleLayout {
     static_assert(max_capacity >= capacity_granularity);
 };
 
+struct EntityDeathInfoSingleResolvedView;
+struct EntityDeathInfoSingleResolvedConstView;
+template <bool Const>
+struct EntityDeathInfoSingleResolvedViewImpl {
+    using size_type = std::uint32_t;
+    using View = EntityDeathInfoSingleResolvedView;
+    using ConstView = EntityDeathInfoSingleResolvedConstView;
+    using soa_schema = EntityDeathInfoSchema;
+    template <typename T>
+    using Element = std::conditional_t<Const, T const, T>;
+    EntityDeathInfoSingleResolvedViewImpl() = default;
+    EntityDeathInfoSingleResolvedViewImpl(Element<DeathReason>* reasons,
+                                          Element<EntityId>* victims,
+                                          Element<EntityId>* killers,
+                                          Element<Vector3f>* locations,
+                                          size_type count)
+        : reasons_{reasons}
+        , victims_{victims}
+        , killers_{killers}
+        , locations_{locations}
+        , count_{count} {
+        ioj::soa_storage_detail::validate_column_pointers(
+            count_, reasons_, victims_, killers_, locations_);
+    }
+    EntityDeathInfoSingleResolvedViewImpl(std::span<Element<DeathReason>> reasons,
+                                          std::span<Element<EntityId>> victims,
+                                          std::span<Element<EntityId>> killers,
+                                          std::span<Element<Vector3f>> locations)
+        : EntityDeathInfoSingleResolvedViewImpl{
+              reasons.data(),
+              victims.data(),
+              killers.data(),
+              locations.data(),
+              ioj::soa_storage_detail::checked_row_count(reasons.size())} {
+        assert(reasons.size() == count_);
+        assert(victims.size() == count_);
+        assert(killers.size() == count_);
+        assert(locations.size() == count_);
+    }
+    template <bool Enabled = Const>
+    EntityDeathInfoSingleResolvedViewImpl(EntityDeathInfoSingleResolvedViewImpl<false> const& other)
+        requires Enabled
+        : reasons_{other.reasons_}
+        , victims_{other.victims_}
+        , killers_{other.killers_}
+        , locations_{other.locations_}
+        , count_{other.count_} {}
+    auto num() const noexcept -> size_type { return count_; }
+    auto is_empty() const noexcept -> bool { return count_ == 0; }
+    auto get_view(this auto const& self) { return self; }
+    auto get_const_view(this auto const& self) {
+        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
+        return Result{self.reasons_, self.victims_, self.killers_, self.locations_, self.count_};
+    }
+    auto resolve(this auto const& self) { return self; }
+    void validate() const {}
+    auto slice(this auto const& self, size_type offset, size_type count) {
+        assert(offset <= self.count_ && count <= self.count_ - offset);
+        using Result = std::remove_cvref_t<decltype(self)>;
+        return Result{self.reasons_ == nullptr ? nullptr : self.reasons_ + offset,
+                      self.victims_ == nullptr ? nullptr : self.victims_ + offset,
+                      self.killers_ == nullptr ? nullptr : self.killers_ + offset,
+                      self.locations_ == nullptr ? nullptr : self.locations_ + offset,
+                      count};
+    }
+    auto get_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count);
+    }
+    auto get_const_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count).get_const_view();
+    }
+    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
+    auto right(this auto const& self, size_type count) {
+        assert(count <= self.num());
+        return self.slice(self.num() - count, count);
+    }
+    auto reasons() const -> std::span<Element<DeathReason>> { return {reasons_, count_}; }
+    auto victims() const -> std::span<Element<EntityId>> { return {victims_, count_}; }
+    auto killers() const -> std::span<Element<EntityId>> { return {killers_, count_}; }
+    auto locations() const -> std::span<Element<Vector3f>> { return {locations_, count_}; }
+    template <typename Func>
+    void each_column(Func&& func) const {
+        func(std::span<Element<DeathReason>>{reasons_, count_});
+        func(std::span<Element<EntityId>>{victims_, count_});
+        func(std::span<Element<EntityId>>{killers_, count_});
+        func(std::span<Element<Vector3f>>{locations_, count_});
+    }
+  private:
+    template <bool>
+    friend struct EntityDeathInfoSingleResolvedViewImpl;
+    Element<DeathReason>* reasons_{};
+    Element<EntityId>* victims_{};
+    Element<EntityId>* killers_{};
+    Element<Vector3f>* locations_{};
+    size_type count_{};
+};
+struct EntityDeathInfoSingleResolvedConstView : EntityDeathInfoSingleResolvedViewImpl<true> {
+    using Base = EntityDeathInfoSingleResolvedViewImpl<true>;
+    using Base::Base;
+};
+struct EntityDeathInfoSingleResolvedView : EntityDeathInfoSingleResolvedViewImpl<false> {
+    using Base = EntityDeathInfoSingleResolvedViewImpl<false>;
+    using Base::Base;
+};
 template <bool Const>
 struct EntityDeathInfoSingleViewImpl : ioj::soa_storage_detail::CompactViewOperations {
     using soa_schema = EntityDeathInfoSchema;
@@ -93,6 +197,15 @@ struct EntityDeathInfoSingleViewImpl : ioj::soa_storage_detail::CompactViewOpera
         func(victims());
         func(killers());
         func(locations());
+    }
+    auto resolve() const -> std::conditional_t<Const,
+                                               EntityDeathInfoSingleResolvedConstView,
+                                               EntityDeathInfoSingleResolvedView> {
+        return {(make_column_view(Layout::columns.ReasonsColumn).data()),
+                (make_column_view(Layout::columns.VictimsColumn).data()),
+                (make_column_view(Layout::columns.KillersColumn).data()),
+                (make_column_view(Layout::columns.LocationsColumn).data()),
+                count_};
     }
   private:
     template <typename T>

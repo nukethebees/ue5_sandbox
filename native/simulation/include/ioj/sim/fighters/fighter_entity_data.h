@@ -169,6 +169,1979 @@ struct FighterEntityDataSingleLayout {
     static_assert(max_capacity >= capacity_granularity);
 };
 
+struct FighterEntityDataSingleResolvedView_locations;
+struct FighterEntityDataSingleResolvedConstView_locations;
+template <bool Const>
+struct FighterEntityDataSingleResolvedView_locationsImpl {
+    using size_type = std::uint32_t;
+    using View = FighterEntityDataSingleResolvedView_locations;
+    using ConstView = FighterEntityDataSingleResolvedConstView_locations;
+    using soa_schema = Vectors3fSchema;
+    template <typename T>
+    using Element = std::conditional_t<Const, T const, T>;
+    FighterEntityDataSingleResolvedView_locationsImpl() = default;
+    FighterEntityDataSingleResolvedView_locationsImpl(Element<float>* locations_xs,
+                                                      Element<float>* locations_ys,
+                                                      Element<float>* locations_zs,
+                                                      size_type count)
+        : locations_xs_{locations_xs}
+        , locations_ys_{locations_ys}
+        , locations_zs_{locations_zs}
+        , count_{count} {
+        ioj::soa_storage_detail::validate_column_pointers(
+            count_, locations_xs_, locations_ys_, locations_zs_);
+    }
+    FighterEntityDataSingleResolvedView_locationsImpl(std::span<Element<float>> locations_xs,
+                                                      std::span<Element<float>> locations_ys,
+                                                      std::span<Element<float>> locations_zs)
+        : FighterEntityDataSingleResolvedView_locationsImpl{
+              locations_xs.data(),
+              locations_ys.data(),
+              locations_zs.data(),
+              ioj::soa_storage_detail::checked_row_count(locations_xs.size())} {
+        assert(locations_xs.size() == count_);
+        assert(locations_ys.size() == count_);
+        assert(locations_zs.size() == count_);
+    }
+    template <bool Enabled = Const>
+    FighterEntityDataSingleResolvedView_locationsImpl(
+        FighterEntityDataSingleResolvedView_locationsImpl<false> const& other)
+        requires Enabled
+        : locations_xs_{other.locations_xs_}
+        , locations_ys_{other.locations_ys_}
+        , locations_zs_{other.locations_zs_}
+        , count_{other.count_} {}
+    auto num() const noexcept -> size_type { return count_; }
+    auto is_empty() const noexcept -> bool { return count_ == 0; }
+    auto get_view(this auto const& self) { return self; }
+    auto get_const_view(this auto const& self) {
+        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
+        return Result{self.locations_xs_, self.locations_ys_, self.locations_zs_, self.count_};
+    }
+    auto resolve(this auto const& self) { return self; }
+    void validate() const {}
+    auto slice(this auto const& self, size_type offset, size_type count) {
+        assert(offset <= self.count_ && count <= self.count_ - offset);
+        using Result = std::remove_cvref_t<decltype(self)>;
+        return Result{self.locations_xs_ == nullptr ? nullptr : self.locations_xs_ + offset,
+                      self.locations_ys_ == nullptr ? nullptr : self.locations_ys_ + offset,
+                      self.locations_zs_ == nullptr ? nullptr : self.locations_zs_ + offset,
+                      count};
+    }
+    auto get_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count);
+    }
+    auto get_const_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count).get_const_view();
+    }
+    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
+    auto right(this auto const& self, size_type count) {
+        assert(count <= self.num());
+        return self.slice(self.num() - count, count);
+    }
+    auto xs() const -> std::span<Element<float>> { return {locations_xs_, count_}; }
+    auto ys() const -> std::span<Element<float>> { return {locations_ys_, count_}; }
+    auto zs() const -> std::span<Element<float>> { return {locations_zs_, count_}; }
+    template <typename Func>
+    void each_column(Func&& func) const {
+        func(std::span<Element<float>>{locations_xs_, count_});
+        func(std::span<Element<float>>{locations_ys_, count_});
+        func(std::span<Element<float>>{locations_zs_, count_});
+    }
+  private:
+    template <bool>
+    friend struct FighterEntityDataSingleResolvedView_locationsImpl;
+    Element<float>* locations_xs_{};
+    Element<float>* locations_ys_{};
+    Element<float>* locations_zs_{};
+    size_type count_{};
+};
+struct FighterEntityDataSingleResolvedConstView_locations
+    : FighterEntityDataSingleResolvedView_locationsImpl<true> {
+    using Base = FighterEntityDataSingleResolvedView_locationsImpl<true>;
+    using Base::Base;
+};
+struct FighterEntityDataSingleResolvedView_locations
+    : FighterEntityDataSingleResolvedView_locationsImpl<false> {
+    using Base = FighterEntityDataSingleResolvedView_locationsImpl<false>;
+    using Base::Base;
+};
+struct FighterEntityDataSingleResolvedView_desired_move_locations;
+struct FighterEntityDataSingleResolvedConstView_desired_move_locations;
+template <bool Const>
+struct FighterEntityDataSingleResolvedView_desired_move_locationsImpl {
+    using size_type = std::uint32_t;
+    using View = FighterEntityDataSingleResolvedView_desired_move_locations;
+    using ConstView = FighterEntityDataSingleResolvedConstView_desired_move_locations;
+    using soa_schema = Vectors3fSchema;
+    template <typename T>
+    using Element = std::conditional_t<Const, T const, T>;
+    FighterEntityDataSingleResolvedView_desired_move_locationsImpl() = default;
+    FighterEntityDataSingleResolvedView_desired_move_locationsImpl(
+        Element<float>* desired_move_locations_xs,
+        Element<float>* desired_move_locations_ys,
+        Element<float>* desired_move_locations_zs,
+        size_type count)
+        : desired_move_locations_xs_{desired_move_locations_xs}
+        , desired_move_locations_ys_{desired_move_locations_ys}
+        , desired_move_locations_zs_{desired_move_locations_zs}
+        , count_{count} {
+        ioj::soa_storage_detail::validate_column_pointers(count_,
+                                                          desired_move_locations_xs_,
+                                                          desired_move_locations_ys_,
+                                                          desired_move_locations_zs_);
+    }
+    FighterEntityDataSingleResolvedView_desired_move_locationsImpl(
+        std::span<Element<float>> desired_move_locations_xs,
+        std::span<Element<float>> desired_move_locations_ys,
+        std::span<Element<float>> desired_move_locations_zs)
+        : FighterEntityDataSingleResolvedView_desired_move_locationsImpl{
+              desired_move_locations_xs.data(),
+              desired_move_locations_ys.data(),
+              desired_move_locations_zs.data(),
+              ioj::soa_storage_detail::checked_row_count(desired_move_locations_xs.size())} {
+        assert(desired_move_locations_xs.size() == count_);
+        assert(desired_move_locations_ys.size() == count_);
+        assert(desired_move_locations_zs.size() == count_);
+    }
+    template <bool Enabled = Const>
+    FighterEntityDataSingleResolvedView_desired_move_locationsImpl(
+        FighterEntityDataSingleResolvedView_desired_move_locationsImpl<false> const& other)
+        requires Enabled
+        : desired_move_locations_xs_{other.desired_move_locations_xs_}
+        , desired_move_locations_ys_{other.desired_move_locations_ys_}
+        , desired_move_locations_zs_{other.desired_move_locations_zs_}
+        , count_{other.count_} {}
+    auto num() const noexcept -> size_type { return count_; }
+    auto is_empty() const noexcept -> bool { return count_ == 0; }
+    auto get_view(this auto const& self) { return self; }
+    auto get_const_view(this auto const& self) {
+        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
+        return Result{self.desired_move_locations_xs_,
+                      self.desired_move_locations_ys_,
+                      self.desired_move_locations_zs_,
+                      self.count_};
+    }
+    auto resolve(this auto const& self) { return self; }
+    void validate() const {}
+    auto slice(this auto const& self, size_type offset, size_type count) {
+        assert(offset <= self.count_ && count <= self.count_ - offset);
+        using Result = std::remove_cvref_t<decltype(self)>;
+        return Result{
+            self.desired_move_locations_xs_ == nullptr ? nullptr
+                                                       : self.desired_move_locations_xs_ + offset,
+            self.desired_move_locations_ys_ == nullptr ? nullptr
+                                                       : self.desired_move_locations_ys_ + offset,
+            self.desired_move_locations_zs_ == nullptr ? nullptr
+                                                       : self.desired_move_locations_zs_ + offset,
+            count};
+    }
+    auto get_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count);
+    }
+    auto get_const_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count).get_const_view();
+    }
+    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
+    auto right(this auto const& self, size_type count) {
+        assert(count <= self.num());
+        return self.slice(self.num() - count, count);
+    }
+    auto xs() const -> std::span<Element<float>> { return {desired_move_locations_xs_, count_}; }
+    auto ys() const -> std::span<Element<float>> { return {desired_move_locations_ys_, count_}; }
+    auto zs() const -> std::span<Element<float>> { return {desired_move_locations_zs_, count_}; }
+    template <typename Func>
+    void each_column(Func&& func) const {
+        func(std::span<Element<float>>{desired_move_locations_xs_, count_});
+        func(std::span<Element<float>>{desired_move_locations_ys_, count_});
+        func(std::span<Element<float>>{desired_move_locations_zs_, count_});
+    }
+  private:
+    template <bool>
+    friend struct FighterEntityDataSingleResolvedView_desired_move_locationsImpl;
+    Element<float>* desired_move_locations_xs_{};
+    Element<float>* desired_move_locations_ys_{};
+    Element<float>* desired_move_locations_zs_{};
+    size_type count_{};
+};
+struct FighterEntityDataSingleResolvedConstView_desired_move_locations
+    : FighterEntityDataSingleResolvedView_desired_move_locationsImpl<true> {
+    using Base = FighterEntityDataSingleResolvedView_desired_move_locationsImpl<true>;
+    using Base::Base;
+};
+struct FighterEntityDataSingleResolvedView_desired_move_locations
+    : FighterEntityDataSingleResolvedView_desired_move_locationsImpl<false> {
+    using Base = FighterEntityDataSingleResolvedView_desired_move_locationsImpl<false>;
+    using Base::Base;
+};
+struct FighterEntityDataSingleResolvedView_aim_directions;
+struct FighterEntityDataSingleResolvedConstView_aim_directions;
+template <bool Const>
+struct FighterEntityDataSingleResolvedView_aim_directionsImpl {
+    using size_type = std::uint32_t;
+    using View = FighterEntityDataSingleResolvedView_aim_directions;
+    using ConstView = FighterEntityDataSingleResolvedConstView_aim_directions;
+    using soa_schema = Vectors3fSchema;
+    template <typename T>
+    using Element = std::conditional_t<Const, T const, T>;
+    FighterEntityDataSingleResolvedView_aim_directionsImpl() = default;
+    FighterEntityDataSingleResolvedView_aim_directionsImpl(Element<float>* aim_directions_xs,
+                                                           Element<float>* aim_directions_ys,
+                                                           Element<float>* aim_directions_zs,
+                                                           size_type count)
+        : aim_directions_xs_{aim_directions_xs}
+        , aim_directions_ys_{aim_directions_ys}
+        , aim_directions_zs_{aim_directions_zs}
+        , count_{count} {
+        ioj::soa_storage_detail::validate_column_pointers(
+            count_, aim_directions_xs_, aim_directions_ys_, aim_directions_zs_);
+    }
+    FighterEntityDataSingleResolvedView_aim_directionsImpl(
+        std::span<Element<float>> aim_directions_xs,
+        std::span<Element<float>> aim_directions_ys,
+        std::span<Element<float>> aim_directions_zs)
+        : FighterEntityDataSingleResolvedView_aim_directionsImpl{
+              aim_directions_xs.data(),
+              aim_directions_ys.data(),
+              aim_directions_zs.data(),
+              ioj::soa_storage_detail::checked_row_count(aim_directions_xs.size())} {
+        assert(aim_directions_xs.size() == count_);
+        assert(aim_directions_ys.size() == count_);
+        assert(aim_directions_zs.size() == count_);
+    }
+    template <bool Enabled = Const>
+    FighterEntityDataSingleResolvedView_aim_directionsImpl(
+        FighterEntityDataSingleResolvedView_aim_directionsImpl<false> const& other)
+        requires Enabled
+        : aim_directions_xs_{other.aim_directions_xs_}
+        , aim_directions_ys_{other.aim_directions_ys_}
+        , aim_directions_zs_{other.aim_directions_zs_}
+        , count_{other.count_} {}
+    auto num() const noexcept -> size_type { return count_; }
+    auto is_empty() const noexcept -> bool { return count_ == 0; }
+    auto get_view(this auto const& self) { return self; }
+    auto get_const_view(this auto const& self) {
+        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
+        return Result{
+            self.aim_directions_xs_, self.aim_directions_ys_, self.aim_directions_zs_, self.count_};
+    }
+    auto resolve(this auto const& self) { return self; }
+    void validate() const {}
+    auto slice(this auto const& self, size_type offset, size_type count) {
+        assert(offset <= self.count_ && count <= self.count_ - offset);
+        using Result = std::remove_cvref_t<decltype(self)>;
+        return Result{
+            self.aim_directions_xs_ == nullptr ? nullptr : self.aim_directions_xs_ + offset,
+            self.aim_directions_ys_ == nullptr ? nullptr : self.aim_directions_ys_ + offset,
+            self.aim_directions_zs_ == nullptr ? nullptr : self.aim_directions_zs_ + offset,
+            count};
+    }
+    auto get_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count);
+    }
+    auto get_const_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count).get_const_view();
+    }
+    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
+    auto right(this auto const& self, size_type count) {
+        assert(count <= self.num());
+        return self.slice(self.num() - count, count);
+    }
+    auto xs() const -> std::span<Element<float>> { return {aim_directions_xs_, count_}; }
+    auto ys() const -> std::span<Element<float>> { return {aim_directions_ys_, count_}; }
+    auto zs() const -> std::span<Element<float>> { return {aim_directions_zs_, count_}; }
+    template <typename Func>
+    void each_column(Func&& func) const {
+        func(std::span<Element<float>>{aim_directions_xs_, count_});
+        func(std::span<Element<float>>{aim_directions_ys_, count_});
+        func(std::span<Element<float>>{aim_directions_zs_, count_});
+    }
+  private:
+    template <bool>
+    friend struct FighterEntityDataSingleResolvedView_aim_directionsImpl;
+    Element<float>* aim_directions_xs_{};
+    Element<float>* aim_directions_ys_{};
+    Element<float>* aim_directions_zs_{};
+    size_type count_{};
+};
+struct FighterEntityDataSingleResolvedConstView_aim_directions
+    : FighterEntityDataSingleResolvedView_aim_directionsImpl<true> {
+    using Base = FighterEntityDataSingleResolvedView_aim_directionsImpl<true>;
+    using Base::Base;
+};
+struct FighterEntityDataSingleResolvedView_aim_directions
+    : FighterEntityDataSingleResolvedView_aim_directionsImpl<false> {
+    using Base = FighterEntityDataSingleResolvedView_aim_directionsImpl<false>;
+    using Base::Base;
+};
+struct FighterEntityDataSingleResolvedView_planned_aim_directions;
+struct FighterEntityDataSingleResolvedConstView_planned_aim_directions;
+template <bool Const>
+struct FighterEntityDataSingleResolvedView_planned_aim_directionsImpl {
+    using size_type = std::uint32_t;
+    using View = FighterEntityDataSingleResolvedView_planned_aim_directions;
+    using ConstView = FighterEntityDataSingleResolvedConstView_planned_aim_directions;
+    using soa_schema = Vectors3fSchema;
+    template <typename T>
+    using Element = std::conditional_t<Const, T const, T>;
+    FighterEntityDataSingleResolvedView_planned_aim_directionsImpl() = default;
+    FighterEntityDataSingleResolvedView_planned_aim_directionsImpl(
+        Element<float>* planned_aim_directions_xs,
+        Element<float>* planned_aim_directions_ys,
+        Element<float>* planned_aim_directions_zs,
+        size_type count)
+        : planned_aim_directions_xs_{planned_aim_directions_xs}
+        , planned_aim_directions_ys_{planned_aim_directions_ys}
+        , planned_aim_directions_zs_{planned_aim_directions_zs}
+        , count_{count} {
+        ioj::soa_storage_detail::validate_column_pointers(count_,
+                                                          planned_aim_directions_xs_,
+                                                          planned_aim_directions_ys_,
+                                                          planned_aim_directions_zs_);
+    }
+    FighterEntityDataSingleResolvedView_planned_aim_directionsImpl(
+        std::span<Element<float>> planned_aim_directions_xs,
+        std::span<Element<float>> planned_aim_directions_ys,
+        std::span<Element<float>> planned_aim_directions_zs)
+        : FighterEntityDataSingleResolvedView_planned_aim_directionsImpl{
+              planned_aim_directions_xs.data(),
+              planned_aim_directions_ys.data(),
+              planned_aim_directions_zs.data(),
+              ioj::soa_storage_detail::checked_row_count(planned_aim_directions_xs.size())} {
+        assert(planned_aim_directions_xs.size() == count_);
+        assert(planned_aim_directions_ys.size() == count_);
+        assert(planned_aim_directions_zs.size() == count_);
+    }
+    template <bool Enabled = Const>
+    FighterEntityDataSingleResolvedView_planned_aim_directionsImpl(
+        FighterEntityDataSingleResolvedView_planned_aim_directionsImpl<false> const& other)
+        requires Enabled
+        : planned_aim_directions_xs_{other.planned_aim_directions_xs_}
+        , planned_aim_directions_ys_{other.planned_aim_directions_ys_}
+        , planned_aim_directions_zs_{other.planned_aim_directions_zs_}
+        , count_{other.count_} {}
+    auto num() const noexcept -> size_type { return count_; }
+    auto is_empty() const noexcept -> bool { return count_ == 0; }
+    auto get_view(this auto const& self) { return self; }
+    auto get_const_view(this auto const& self) {
+        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
+        return Result{self.planned_aim_directions_xs_,
+                      self.planned_aim_directions_ys_,
+                      self.planned_aim_directions_zs_,
+                      self.count_};
+    }
+    auto resolve(this auto const& self) { return self; }
+    void validate() const {}
+    auto slice(this auto const& self, size_type offset, size_type count) {
+        assert(offset <= self.count_ && count <= self.count_ - offset);
+        using Result = std::remove_cvref_t<decltype(self)>;
+        return Result{
+            self.planned_aim_directions_xs_ == nullptr ? nullptr
+                                                       : self.planned_aim_directions_xs_ + offset,
+            self.planned_aim_directions_ys_ == nullptr ? nullptr
+                                                       : self.planned_aim_directions_ys_ + offset,
+            self.planned_aim_directions_zs_ == nullptr ? nullptr
+                                                       : self.planned_aim_directions_zs_ + offset,
+            count};
+    }
+    auto get_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count);
+    }
+    auto get_const_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count).get_const_view();
+    }
+    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
+    auto right(this auto const& self, size_type count) {
+        assert(count <= self.num());
+        return self.slice(self.num() - count, count);
+    }
+    auto xs() const -> std::span<Element<float>> { return {planned_aim_directions_xs_, count_}; }
+    auto ys() const -> std::span<Element<float>> { return {planned_aim_directions_ys_, count_}; }
+    auto zs() const -> std::span<Element<float>> { return {planned_aim_directions_zs_, count_}; }
+    template <typename Func>
+    void each_column(Func&& func) const {
+        func(std::span<Element<float>>{planned_aim_directions_xs_, count_});
+        func(std::span<Element<float>>{planned_aim_directions_ys_, count_});
+        func(std::span<Element<float>>{planned_aim_directions_zs_, count_});
+    }
+  private:
+    template <bool>
+    friend struct FighterEntityDataSingleResolvedView_planned_aim_directionsImpl;
+    Element<float>* planned_aim_directions_xs_{};
+    Element<float>* planned_aim_directions_ys_{};
+    Element<float>* planned_aim_directions_zs_{};
+    size_type count_{};
+};
+struct FighterEntityDataSingleResolvedConstView_planned_aim_directions
+    : FighterEntityDataSingleResolvedView_planned_aim_directionsImpl<true> {
+    using Base = FighterEntityDataSingleResolvedView_planned_aim_directionsImpl<true>;
+    using Base::Base;
+};
+struct FighterEntityDataSingleResolvedView_planned_aim_directions
+    : FighterEntityDataSingleResolvedView_planned_aim_directionsImpl<false> {
+    using Base = FighterEntityDataSingleResolvedView_planned_aim_directionsImpl<false>;
+    using Base::Base;
+};
+struct FighterEntityDataSingleResolvedView_desired_aiming_directions;
+struct FighterEntityDataSingleResolvedConstView_desired_aiming_directions;
+template <bool Const>
+struct FighterEntityDataSingleResolvedView_desired_aiming_directionsImpl {
+    using size_type = std::uint32_t;
+    using View = FighterEntityDataSingleResolvedView_desired_aiming_directions;
+    using ConstView = FighterEntityDataSingleResolvedConstView_desired_aiming_directions;
+    using soa_schema = Vectors3fSchema;
+    template <typename T>
+    using Element = std::conditional_t<Const, T const, T>;
+    FighterEntityDataSingleResolvedView_desired_aiming_directionsImpl() = default;
+    FighterEntityDataSingleResolvedView_desired_aiming_directionsImpl(
+        Element<float>* desired_aiming_directions_xs,
+        Element<float>* desired_aiming_directions_ys,
+        Element<float>* desired_aiming_directions_zs,
+        size_type count)
+        : desired_aiming_directions_xs_{desired_aiming_directions_xs}
+        , desired_aiming_directions_ys_{desired_aiming_directions_ys}
+        , desired_aiming_directions_zs_{desired_aiming_directions_zs}
+        , count_{count} {
+        ioj::soa_storage_detail::validate_column_pointers(count_,
+                                                          desired_aiming_directions_xs_,
+                                                          desired_aiming_directions_ys_,
+                                                          desired_aiming_directions_zs_);
+    }
+    FighterEntityDataSingleResolvedView_desired_aiming_directionsImpl(
+        std::span<Element<float>> desired_aiming_directions_xs,
+        std::span<Element<float>> desired_aiming_directions_ys,
+        std::span<Element<float>> desired_aiming_directions_zs)
+        : FighterEntityDataSingleResolvedView_desired_aiming_directionsImpl{
+              desired_aiming_directions_xs.data(),
+              desired_aiming_directions_ys.data(),
+              desired_aiming_directions_zs.data(),
+              ioj::soa_storage_detail::checked_row_count(desired_aiming_directions_xs.size())} {
+        assert(desired_aiming_directions_xs.size() == count_);
+        assert(desired_aiming_directions_ys.size() == count_);
+        assert(desired_aiming_directions_zs.size() == count_);
+    }
+    template <bool Enabled = Const>
+    FighterEntityDataSingleResolvedView_desired_aiming_directionsImpl(
+        FighterEntityDataSingleResolvedView_desired_aiming_directionsImpl<false> const& other)
+        requires Enabled
+        : desired_aiming_directions_xs_{other.desired_aiming_directions_xs_}
+        , desired_aiming_directions_ys_{other.desired_aiming_directions_ys_}
+        , desired_aiming_directions_zs_{other.desired_aiming_directions_zs_}
+        , count_{other.count_} {}
+    auto num() const noexcept -> size_type { return count_; }
+    auto is_empty() const noexcept -> bool { return count_ == 0; }
+    auto get_view(this auto const& self) { return self; }
+    auto get_const_view(this auto const& self) {
+        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
+        return Result{self.desired_aiming_directions_xs_,
+                      self.desired_aiming_directions_ys_,
+                      self.desired_aiming_directions_zs_,
+                      self.count_};
+    }
+    auto resolve(this auto const& self) { return self; }
+    void validate() const {}
+    auto slice(this auto const& self, size_type offset, size_type count) {
+        assert(offset <= self.count_ && count <= self.count_ - offset);
+        using Result = std::remove_cvref_t<decltype(self)>;
+        return Result{self.desired_aiming_directions_xs_ == nullptr
+                          ? nullptr
+                          : self.desired_aiming_directions_xs_ + offset,
+                      self.desired_aiming_directions_ys_ == nullptr
+                          ? nullptr
+                          : self.desired_aiming_directions_ys_ + offset,
+                      self.desired_aiming_directions_zs_ == nullptr
+                          ? nullptr
+                          : self.desired_aiming_directions_zs_ + offset,
+                      count};
+    }
+    auto get_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count);
+    }
+    auto get_const_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count).get_const_view();
+    }
+    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
+    auto right(this auto const& self, size_type count) {
+        assert(count <= self.num());
+        return self.slice(self.num() - count, count);
+    }
+    auto xs() const -> std::span<Element<float>> { return {desired_aiming_directions_xs_, count_}; }
+    auto ys() const -> std::span<Element<float>> { return {desired_aiming_directions_ys_, count_}; }
+    auto zs() const -> std::span<Element<float>> { return {desired_aiming_directions_zs_, count_}; }
+    template <typename Func>
+    void each_column(Func&& func) const {
+        func(std::span<Element<float>>{desired_aiming_directions_xs_, count_});
+        func(std::span<Element<float>>{desired_aiming_directions_ys_, count_});
+        func(std::span<Element<float>>{desired_aiming_directions_zs_, count_});
+    }
+  private:
+    template <bool>
+    friend struct FighterEntityDataSingleResolvedView_desired_aiming_directionsImpl;
+    Element<float>* desired_aiming_directions_xs_{};
+    Element<float>* desired_aiming_directions_ys_{};
+    Element<float>* desired_aiming_directions_zs_{};
+    size_type count_{};
+};
+struct FighterEntityDataSingleResolvedConstView_desired_aiming_directions
+    : FighterEntityDataSingleResolvedView_desired_aiming_directionsImpl<true> {
+    using Base = FighterEntityDataSingleResolvedView_desired_aiming_directionsImpl<true>;
+    using Base::Base;
+};
+struct FighterEntityDataSingleResolvedView_desired_aiming_directions
+    : FighterEntityDataSingleResolvedView_desired_aiming_directionsImpl<false> {
+    using Base = FighterEntityDataSingleResolvedView_desired_aiming_directionsImpl<false>;
+    using Base::Base;
+};
+struct FighterEntityDataSingleResolvedView_movement_directions;
+struct FighterEntityDataSingleResolvedConstView_movement_directions;
+template <bool Const>
+struct FighterEntityDataSingleResolvedView_movement_directionsImpl {
+    using size_type = std::uint32_t;
+    using View = FighterEntityDataSingleResolvedView_movement_directions;
+    using ConstView = FighterEntityDataSingleResolvedConstView_movement_directions;
+    using soa_schema = Vectors3fSchema;
+    template <typename T>
+    using Element = std::conditional_t<Const, T const, T>;
+    FighterEntityDataSingleResolvedView_movement_directionsImpl() = default;
+    FighterEntityDataSingleResolvedView_movement_directionsImpl(
+        Element<float>* movement_directions_xs,
+        Element<float>* movement_directions_ys,
+        Element<float>* movement_directions_zs,
+        size_type count)
+        : movement_directions_xs_{movement_directions_xs}
+        , movement_directions_ys_{movement_directions_ys}
+        , movement_directions_zs_{movement_directions_zs}
+        , count_{count} {
+        ioj::soa_storage_detail::validate_column_pointers(
+            count_, movement_directions_xs_, movement_directions_ys_, movement_directions_zs_);
+    }
+    FighterEntityDataSingleResolvedView_movement_directionsImpl(
+        std::span<Element<float>> movement_directions_xs,
+        std::span<Element<float>> movement_directions_ys,
+        std::span<Element<float>> movement_directions_zs)
+        : FighterEntityDataSingleResolvedView_movement_directionsImpl{
+              movement_directions_xs.data(),
+              movement_directions_ys.data(),
+              movement_directions_zs.data(),
+              ioj::soa_storage_detail::checked_row_count(movement_directions_xs.size())} {
+        assert(movement_directions_xs.size() == count_);
+        assert(movement_directions_ys.size() == count_);
+        assert(movement_directions_zs.size() == count_);
+    }
+    template <bool Enabled = Const>
+    FighterEntityDataSingleResolvedView_movement_directionsImpl(
+        FighterEntityDataSingleResolvedView_movement_directionsImpl<false> const& other)
+        requires Enabled
+        : movement_directions_xs_{other.movement_directions_xs_}
+        , movement_directions_ys_{other.movement_directions_ys_}
+        , movement_directions_zs_{other.movement_directions_zs_}
+        , count_{other.count_} {}
+    auto num() const noexcept -> size_type { return count_; }
+    auto is_empty() const noexcept -> bool { return count_ == 0; }
+    auto get_view(this auto const& self) { return self; }
+    auto get_const_view(this auto const& self) {
+        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
+        return Result{self.movement_directions_xs_,
+                      self.movement_directions_ys_,
+                      self.movement_directions_zs_,
+                      self.count_};
+    }
+    auto resolve(this auto const& self) { return self; }
+    void validate() const {}
+    auto slice(this auto const& self, size_type offset, size_type count) {
+        assert(offset <= self.count_ && count <= self.count_ - offset);
+        using Result = std::remove_cvref_t<decltype(self)>;
+        return Result{
+            self.movement_directions_xs_ == nullptr ? nullptr
+                                                    : self.movement_directions_xs_ + offset,
+            self.movement_directions_ys_ == nullptr ? nullptr
+                                                    : self.movement_directions_ys_ + offset,
+            self.movement_directions_zs_ == nullptr ? nullptr
+                                                    : self.movement_directions_zs_ + offset,
+            count};
+    }
+    auto get_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count);
+    }
+    auto get_const_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count).get_const_view();
+    }
+    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
+    auto right(this auto const& self, size_type count) {
+        assert(count <= self.num());
+        return self.slice(self.num() - count, count);
+    }
+    auto xs() const -> std::span<Element<float>> { return {movement_directions_xs_, count_}; }
+    auto ys() const -> std::span<Element<float>> { return {movement_directions_ys_, count_}; }
+    auto zs() const -> std::span<Element<float>> { return {movement_directions_zs_, count_}; }
+    template <typename Func>
+    void each_column(Func&& func) const {
+        func(std::span<Element<float>>{movement_directions_xs_, count_});
+        func(std::span<Element<float>>{movement_directions_ys_, count_});
+        func(std::span<Element<float>>{movement_directions_zs_, count_});
+    }
+  private:
+    template <bool>
+    friend struct FighterEntityDataSingleResolvedView_movement_directionsImpl;
+    Element<float>* movement_directions_xs_{};
+    Element<float>* movement_directions_ys_{};
+    Element<float>* movement_directions_zs_{};
+    size_type count_{};
+};
+struct FighterEntityDataSingleResolvedConstView_movement_directions
+    : FighterEntityDataSingleResolvedView_movement_directionsImpl<true> {
+    using Base = FighterEntityDataSingleResolvedView_movement_directionsImpl<true>;
+    using Base::Base;
+};
+struct FighterEntityDataSingleResolvedView_movement_directions
+    : FighterEntityDataSingleResolvedView_movement_directionsImpl<false> {
+    using Base = FighterEntityDataSingleResolvedView_movement_directionsImpl<false>;
+    using Base::Base;
+};
+struct FighterEntityDataSingleResolvedView_velocities;
+struct FighterEntityDataSingleResolvedConstView_velocities;
+template <bool Const>
+struct FighterEntityDataSingleResolvedView_velocitiesImpl {
+    using size_type = std::uint32_t;
+    using View = FighterEntityDataSingleResolvedView_velocities;
+    using ConstView = FighterEntityDataSingleResolvedConstView_velocities;
+    using soa_schema = Vectors3fSchema;
+    template <typename T>
+    using Element = std::conditional_t<Const, T const, T>;
+    FighterEntityDataSingleResolvedView_velocitiesImpl() = default;
+    FighterEntityDataSingleResolvedView_velocitiesImpl(Element<float>* velocities_xs,
+                                                       Element<float>* velocities_ys,
+                                                       Element<float>* velocities_zs,
+                                                       size_type count)
+        : velocities_xs_{velocities_xs}
+        , velocities_ys_{velocities_ys}
+        , velocities_zs_{velocities_zs}
+        , count_{count} {
+        ioj::soa_storage_detail::validate_column_pointers(
+            count_, velocities_xs_, velocities_ys_, velocities_zs_);
+    }
+    FighterEntityDataSingleResolvedView_velocitiesImpl(std::span<Element<float>> velocities_xs,
+                                                       std::span<Element<float>> velocities_ys,
+                                                       std::span<Element<float>> velocities_zs)
+        : FighterEntityDataSingleResolvedView_velocitiesImpl{
+              velocities_xs.data(),
+              velocities_ys.data(),
+              velocities_zs.data(),
+              ioj::soa_storage_detail::checked_row_count(velocities_xs.size())} {
+        assert(velocities_xs.size() == count_);
+        assert(velocities_ys.size() == count_);
+        assert(velocities_zs.size() == count_);
+    }
+    template <bool Enabled = Const>
+    FighterEntityDataSingleResolvedView_velocitiesImpl(
+        FighterEntityDataSingleResolvedView_velocitiesImpl<false> const& other)
+        requires Enabled
+        : velocities_xs_{other.velocities_xs_}
+        , velocities_ys_{other.velocities_ys_}
+        , velocities_zs_{other.velocities_zs_}
+        , count_{other.count_} {}
+    auto num() const noexcept -> size_type { return count_; }
+    auto is_empty() const noexcept -> bool { return count_ == 0; }
+    auto get_view(this auto const& self) { return self; }
+    auto get_const_view(this auto const& self) {
+        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
+        return Result{self.velocities_xs_, self.velocities_ys_, self.velocities_zs_, self.count_};
+    }
+    auto resolve(this auto const& self) { return self; }
+    void validate() const {}
+    auto slice(this auto const& self, size_type offset, size_type count) {
+        assert(offset <= self.count_ && count <= self.count_ - offset);
+        using Result = std::remove_cvref_t<decltype(self)>;
+        return Result{self.velocities_xs_ == nullptr ? nullptr : self.velocities_xs_ + offset,
+                      self.velocities_ys_ == nullptr ? nullptr : self.velocities_ys_ + offset,
+                      self.velocities_zs_ == nullptr ? nullptr : self.velocities_zs_ + offset,
+                      count};
+    }
+    auto get_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count);
+    }
+    auto get_const_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count).get_const_view();
+    }
+    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
+    auto right(this auto const& self, size_type count) {
+        assert(count <= self.num());
+        return self.slice(self.num() - count, count);
+    }
+    auto xs() const -> std::span<Element<float>> { return {velocities_xs_, count_}; }
+    auto ys() const -> std::span<Element<float>> { return {velocities_ys_, count_}; }
+    auto zs() const -> std::span<Element<float>> { return {velocities_zs_, count_}; }
+    template <typename Func>
+    void each_column(Func&& func) const {
+        func(std::span<Element<float>>{velocities_xs_, count_});
+        func(std::span<Element<float>>{velocities_ys_, count_});
+        func(std::span<Element<float>>{velocities_zs_, count_});
+    }
+  private:
+    template <bool>
+    friend struct FighterEntityDataSingleResolvedView_velocitiesImpl;
+    Element<float>* velocities_xs_{};
+    Element<float>* velocities_ys_{};
+    Element<float>* velocities_zs_{};
+    size_type count_{};
+};
+struct FighterEntityDataSingleResolvedConstView_velocities
+    : FighterEntityDataSingleResolvedView_velocitiesImpl<true> {
+    using Base = FighterEntityDataSingleResolvedView_velocitiesImpl<true>;
+    using Base::Base;
+};
+struct FighterEntityDataSingleResolvedView_velocities
+    : FighterEntityDataSingleResolvedView_velocitiesImpl<false> {
+    using Base = FighterEntityDataSingleResolvedView_velocitiesImpl<false>;
+    using Base::Base;
+};
+struct FighterEntityDataSingleResolvedView_separation_steering;
+struct FighterEntityDataSingleResolvedConstView_separation_steering;
+template <bool Const>
+struct FighterEntityDataSingleResolvedView_separation_steeringImpl {
+    using size_type = std::uint32_t;
+    using View = FighterEntityDataSingleResolvedView_separation_steering;
+    using ConstView = FighterEntityDataSingleResolvedConstView_separation_steering;
+    using soa_schema = Vectors3fSchema;
+    template <typename T>
+    using Element = std::conditional_t<Const, T const, T>;
+    FighterEntityDataSingleResolvedView_separation_steeringImpl() = default;
+    FighterEntityDataSingleResolvedView_separation_steeringImpl(
+        Element<float>* separation_steering_xs,
+        Element<float>* separation_steering_ys,
+        Element<float>* separation_steering_zs,
+        size_type count)
+        : separation_steering_xs_{separation_steering_xs}
+        , separation_steering_ys_{separation_steering_ys}
+        , separation_steering_zs_{separation_steering_zs}
+        , count_{count} {
+        ioj::soa_storage_detail::validate_column_pointers(
+            count_, separation_steering_xs_, separation_steering_ys_, separation_steering_zs_);
+    }
+    FighterEntityDataSingleResolvedView_separation_steeringImpl(
+        std::span<Element<float>> separation_steering_xs,
+        std::span<Element<float>> separation_steering_ys,
+        std::span<Element<float>> separation_steering_zs)
+        : FighterEntityDataSingleResolvedView_separation_steeringImpl{
+              separation_steering_xs.data(),
+              separation_steering_ys.data(),
+              separation_steering_zs.data(),
+              ioj::soa_storage_detail::checked_row_count(separation_steering_xs.size())} {
+        assert(separation_steering_xs.size() == count_);
+        assert(separation_steering_ys.size() == count_);
+        assert(separation_steering_zs.size() == count_);
+    }
+    template <bool Enabled = Const>
+    FighterEntityDataSingleResolvedView_separation_steeringImpl(
+        FighterEntityDataSingleResolvedView_separation_steeringImpl<false> const& other)
+        requires Enabled
+        : separation_steering_xs_{other.separation_steering_xs_}
+        , separation_steering_ys_{other.separation_steering_ys_}
+        , separation_steering_zs_{other.separation_steering_zs_}
+        , count_{other.count_} {}
+    auto num() const noexcept -> size_type { return count_; }
+    auto is_empty() const noexcept -> bool { return count_ == 0; }
+    auto get_view(this auto const& self) { return self; }
+    auto get_const_view(this auto const& self) {
+        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
+        return Result{self.separation_steering_xs_,
+                      self.separation_steering_ys_,
+                      self.separation_steering_zs_,
+                      self.count_};
+    }
+    auto resolve(this auto const& self) { return self; }
+    void validate() const {}
+    auto slice(this auto const& self, size_type offset, size_type count) {
+        assert(offset <= self.count_ && count <= self.count_ - offset);
+        using Result = std::remove_cvref_t<decltype(self)>;
+        return Result{
+            self.separation_steering_xs_ == nullptr ? nullptr
+                                                    : self.separation_steering_xs_ + offset,
+            self.separation_steering_ys_ == nullptr ? nullptr
+                                                    : self.separation_steering_ys_ + offset,
+            self.separation_steering_zs_ == nullptr ? nullptr
+                                                    : self.separation_steering_zs_ + offset,
+            count};
+    }
+    auto get_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count);
+    }
+    auto get_const_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count).get_const_view();
+    }
+    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
+    auto right(this auto const& self, size_type count) {
+        assert(count <= self.num());
+        return self.slice(self.num() - count, count);
+    }
+    auto xs() const -> std::span<Element<float>> { return {separation_steering_xs_, count_}; }
+    auto ys() const -> std::span<Element<float>> { return {separation_steering_ys_, count_}; }
+    auto zs() const -> std::span<Element<float>> { return {separation_steering_zs_, count_}; }
+    template <typename Func>
+    void each_column(Func&& func) const {
+        func(std::span<Element<float>>{separation_steering_xs_, count_});
+        func(std::span<Element<float>>{separation_steering_ys_, count_});
+        func(std::span<Element<float>>{separation_steering_zs_, count_});
+    }
+  private:
+    template <bool>
+    friend struct FighterEntityDataSingleResolvedView_separation_steeringImpl;
+    Element<float>* separation_steering_xs_{};
+    Element<float>* separation_steering_ys_{};
+    Element<float>* separation_steering_zs_{};
+    size_type count_{};
+};
+struct FighterEntityDataSingleResolvedConstView_separation_steering
+    : FighterEntityDataSingleResolvedView_separation_steeringImpl<true> {
+    using Base = FighterEntityDataSingleResolvedView_separation_steeringImpl<true>;
+    using Base::Base;
+};
+struct FighterEntityDataSingleResolvedView_separation_steering
+    : FighterEntityDataSingleResolvedView_separation_steeringImpl<false> {
+    using Base = FighterEntityDataSingleResolvedView_separation_steeringImpl<false>;
+    using Base::Base;
+};
+struct FighterEntityDataSingleResolvedView_target_locations;
+struct FighterEntityDataSingleResolvedConstView_target_locations;
+template <bool Const>
+struct FighterEntityDataSingleResolvedView_target_locationsImpl {
+    using size_type = std::uint32_t;
+    using View = FighterEntityDataSingleResolvedView_target_locations;
+    using ConstView = FighterEntityDataSingleResolvedConstView_target_locations;
+    using soa_schema = Vectors3fSchema;
+    template <typename T>
+    using Element = std::conditional_t<Const, T const, T>;
+    FighterEntityDataSingleResolvedView_target_locationsImpl() = default;
+    FighterEntityDataSingleResolvedView_target_locationsImpl(Element<float>* target_locations_xs,
+                                                             Element<float>* target_locations_ys,
+                                                             Element<float>* target_locations_zs,
+                                                             size_type count)
+        : target_locations_xs_{target_locations_xs}
+        , target_locations_ys_{target_locations_ys}
+        , target_locations_zs_{target_locations_zs}
+        , count_{count} {
+        ioj::soa_storage_detail::validate_column_pointers(
+            count_, target_locations_xs_, target_locations_ys_, target_locations_zs_);
+    }
+    FighterEntityDataSingleResolvedView_target_locationsImpl(
+        std::span<Element<float>> target_locations_xs,
+        std::span<Element<float>> target_locations_ys,
+        std::span<Element<float>> target_locations_zs)
+        : FighterEntityDataSingleResolvedView_target_locationsImpl{
+              target_locations_xs.data(),
+              target_locations_ys.data(),
+              target_locations_zs.data(),
+              ioj::soa_storage_detail::checked_row_count(target_locations_xs.size())} {
+        assert(target_locations_xs.size() == count_);
+        assert(target_locations_ys.size() == count_);
+        assert(target_locations_zs.size() == count_);
+    }
+    template <bool Enabled = Const>
+    FighterEntityDataSingleResolvedView_target_locationsImpl(
+        FighterEntityDataSingleResolvedView_target_locationsImpl<false> const& other)
+        requires Enabled
+        : target_locations_xs_{other.target_locations_xs_}
+        , target_locations_ys_{other.target_locations_ys_}
+        , target_locations_zs_{other.target_locations_zs_}
+        , count_{other.count_} {}
+    auto num() const noexcept -> size_type { return count_; }
+    auto is_empty() const noexcept -> bool { return count_ == 0; }
+    auto get_view(this auto const& self) { return self; }
+    auto get_const_view(this auto const& self) {
+        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
+        return Result{self.target_locations_xs_,
+                      self.target_locations_ys_,
+                      self.target_locations_zs_,
+                      self.count_};
+    }
+    auto resolve(this auto const& self) { return self; }
+    void validate() const {}
+    auto slice(this auto const& self, size_type offset, size_type count) {
+        assert(offset <= self.count_ && count <= self.count_ - offset);
+        using Result = std::remove_cvref_t<decltype(self)>;
+        return Result{
+            self.target_locations_xs_ == nullptr ? nullptr : self.target_locations_xs_ + offset,
+            self.target_locations_ys_ == nullptr ? nullptr : self.target_locations_ys_ + offset,
+            self.target_locations_zs_ == nullptr ? nullptr : self.target_locations_zs_ + offset,
+            count};
+    }
+    auto get_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count);
+    }
+    auto get_const_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count).get_const_view();
+    }
+    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
+    auto right(this auto const& self, size_type count) {
+        assert(count <= self.num());
+        return self.slice(self.num() - count, count);
+    }
+    auto xs() const -> std::span<Element<float>> { return {target_locations_xs_, count_}; }
+    auto ys() const -> std::span<Element<float>> { return {target_locations_ys_, count_}; }
+    auto zs() const -> std::span<Element<float>> { return {target_locations_zs_, count_}; }
+    template <typename Func>
+    void each_column(Func&& func) const {
+        func(std::span<Element<float>>{target_locations_xs_, count_});
+        func(std::span<Element<float>>{target_locations_ys_, count_});
+        func(std::span<Element<float>>{target_locations_zs_, count_});
+    }
+  private:
+    template <bool>
+    friend struct FighterEntityDataSingleResolvedView_target_locationsImpl;
+    Element<float>* target_locations_xs_{};
+    Element<float>* target_locations_ys_{};
+    Element<float>* target_locations_zs_{};
+    size_type count_{};
+};
+struct FighterEntityDataSingleResolvedConstView_target_locations
+    : FighterEntityDataSingleResolvedView_target_locationsImpl<true> {
+    using Base = FighterEntityDataSingleResolvedView_target_locationsImpl<true>;
+    using Base::Base;
+};
+struct FighterEntityDataSingleResolvedView_target_locations
+    : FighterEntityDataSingleResolvedView_target_locationsImpl<false> {
+    using Base = FighterEntityDataSingleResolvedView_target_locationsImpl<false>;
+    using Base::Base;
+};
+struct FighterEntityDataSingleResolvedView_target_velocities;
+struct FighterEntityDataSingleResolvedConstView_target_velocities;
+template <bool Const>
+struct FighterEntityDataSingleResolvedView_target_velocitiesImpl {
+    using size_type = std::uint32_t;
+    using View = FighterEntityDataSingleResolvedView_target_velocities;
+    using ConstView = FighterEntityDataSingleResolvedConstView_target_velocities;
+    using soa_schema = Vectors3fSchema;
+    template <typename T>
+    using Element = std::conditional_t<Const, T const, T>;
+    FighterEntityDataSingleResolvedView_target_velocitiesImpl() = default;
+    FighterEntityDataSingleResolvedView_target_velocitiesImpl(Element<float>* target_velocities_xs,
+                                                              Element<float>* target_velocities_ys,
+                                                              Element<float>* target_velocities_zs,
+                                                              size_type count)
+        : target_velocities_xs_{target_velocities_xs}
+        , target_velocities_ys_{target_velocities_ys}
+        , target_velocities_zs_{target_velocities_zs}
+        , count_{count} {
+        ioj::soa_storage_detail::validate_column_pointers(
+            count_, target_velocities_xs_, target_velocities_ys_, target_velocities_zs_);
+    }
+    FighterEntityDataSingleResolvedView_target_velocitiesImpl(
+        std::span<Element<float>> target_velocities_xs,
+        std::span<Element<float>> target_velocities_ys,
+        std::span<Element<float>> target_velocities_zs)
+        : FighterEntityDataSingleResolvedView_target_velocitiesImpl{
+              target_velocities_xs.data(),
+              target_velocities_ys.data(),
+              target_velocities_zs.data(),
+              ioj::soa_storage_detail::checked_row_count(target_velocities_xs.size())} {
+        assert(target_velocities_xs.size() == count_);
+        assert(target_velocities_ys.size() == count_);
+        assert(target_velocities_zs.size() == count_);
+    }
+    template <bool Enabled = Const>
+    FighterEntityDataSingleResolvedView_target_velocitiesImpl(
+        FighterEntityDataSingleResolvedView_target_velocitiesImpl<false> const& other)
+        requires Enabled
+        : target_velocities_xs_{other.target_velocities_xs_}
+        , target_velocities_ys_{other.target_velocities_ys_}
+        , target_velocities_zs_{other.target_velocities_zs_}
+        , count_{other.count_} {}
+    auto num() const noexcept -> size_type { return count_; }
+    auto is_empty() const noexcept -> bool { return count_ == 0; }
+    auto get_view(this auto const& self) { return self; }
+    auto get_const_view(this auto const& self) {
+        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
+        return Result{self.target_velocities_xs_,
+                      self.target_velocities_ys_,
+                      self.target_velocities_zs_,
+                      self.count_};
+    }
+    auto resolve(this auto const& self) { return self; }
+    void validate() const {}
+    auto slice(this auto const& self, size_type offset, size_type count) {
+        assert(offset <= self.count_ && count <= self.count_ - offset);
+        using Result = std::remove_cvref_t<decltype(self)>;
+        return Result{
+            self.target_velocities_xs_ == nullptr ? nullptr : self.target_velocities_xs_ + offset,
+            self.target_velocities_ys_ == nullptr ? nullptr : self.target_velocities_ys_ + offset,
+            self.target_velocities_zs_ == nullptr ? nullptr : self.target_velocities_zs_ + offset,
+            count};
+    }
+    auto get_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count);
+    }
+    auto get_const_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count).get_const_view();
+    }
+    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
+    auto right(this auto const& self, size_type count) {
+        assert(count <= self.num());
+        return self.slice(self.num() - count, count);
+    }
+    auto xs() const -> std::span<Element<float>> { return {target_velocities_xs_, count_}; }
+    auto ys() const -> std::span<Element<float>> { return {target_velocities_ys_, count_}; }
+    auto zs() const -> std::span<Element<float>> { return {target_velocities_zs_, count_}; }
+    template <typename Func>
+    void each_column(Func&& func) const {
+        func(std::span<Element<float>>{target_velocities_xs_, count_});
+        func(std::span<Element<float>>{target_velocities_ys_, count_});
+        func(std::span<Element<float>>{target_velocities_zs_, count_});
+    }
+  private:
+    template <bool>
+    friend struct FighterEntityDataSingleResolvedView_target_velocitiesImpl;
+    Element<float>* target_velocities_xs_{};
+    Element<float>* target_velocities_ys_{};
+    Element<float>* target_velocities_zs_{};
+    size_type count_{};
+};
+struct FighterEntityDataSingleResolvedConstView_target_velocities
+    : FighterEntityDataSingleResolvedView_target_velocitiesImpl<true> {
+    using Base = FighterEntityDataSingleResolvedView_target_velocitiesImpl<true>;
+    using Base::Base;
+};
+struct FighterEntityDataSingleResolvedView_target_velocities
+    : FighterEntityDataSingleResolvedView_target_velocitiesImpl<false> {
+    using Base = FighterEntityDataSingleResolvedView_target_velocitiesImpl<false>;
+    using Base::Base;
+};
+struct FighterEntityDataSingleResolvedView_target_directions;
+struct FighterEntityDataSingleResolvedConstView_target_directions;
+template <bool Const>
+struct FighterEntityDataSingleResolvedView_target_directionsImpl {
+    using size_type = std::uint32_t;
+    using View = FighterEntityDataSingleResolvedView_target_directions;
+    using ConstView = FighterEntityDataSingleResolvedConstView_target_directions;
+    using soa_schema = Vectors3fSchema;
+    template <typename T>
+    using Element = std::conditional_t<Const, T const, T>;
+    FighterEntityDataSingleResolvedView_target_directionsImpl() = default;
+    FighterEntityDataSingleResolvedView_target_directionsImpl(Element<float>* target_directions_xs,
+                                                              Element<float>* target_directions_ys,
+                                                              Element<float>* target_directions_zs,
+                                                              size_type count)
+        : target_directions_xs_{target_directions_xs}
+        , target_directions_ys_{target_directions_ys}
+        , target_directions_zs_{target_directions_zs}
+        , count_{count} {
+        ioj::soa_storage_detail::validate_column_pointers(
+            count_, target_directions_xs_, target_directions_ys_, target_directions_zs_);
+    }
+    FighterEntityDataSingleResolvedView_target_directionsImpl(
+        std::span<Element<float>> target_directions_xs,
+        std::span<Element<float>> target_directions_ys,
+        std::span<Element<float>> target_directions_zs)
+        : FighterEntityDataSingleResolvedView_target_directionsImpl{
+              target_directions_xs.data(),
+              target_directions_ys.data(),
+              target_directions_zs.data(),
+              ioj::soa_storage_detail::checked_row_count(target_directions_xs.size())} {
+        assert(target_directions_xs.size() == count_);
+        assert(target_directions_ys.size() == count_);
+        assert(target_directions_zs.size() == count_);
+    }
+    template <bool Enabled = Const>
+    FighterEntityDataSingleResolvedView_target_directionsImpl(
+        FighterEntityDataSingleResolvedView_target_directionsImpl<false> const& other)
+        requires Enabled
+        : target_directions_xs_{other.target_directions_xs_}
+        , target_directions_ys_{other.target_directions_ys_}
+        , target_directions_zs_{other.target_directions_zs_}
+        , count_{other.count_} {}
+    auto num() const noexcept -> size_type { return count_; }
+    auto is_empty() const noexcept -> bool { return count_ == 0; }
+    auto get_view(this auto const& self) { return self; }
+    auto get_const_view(this auto const& self) {
+        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
+        return Result{self.target_directions_xs_,
+                      self.target_directions_ys_,
+                      self.target_directions_zs_,
+                      self.count_};
+    }
+    auto resolve(this auto const& self) { return self; }
+    void validate() const {}
+    auto slice(this auto const& self, size_type offset, size_type count) {
+        assert(offset <= self.count_ && count <= self.count_ - offset);
+        using Result = std::remove_cvref_t<decltype(self)>;
+        return Result{
+            self.target_directions_xs_ == nullptr ? nullptr : self.target_directions_xs_ + offset,
+            self.target_directions_ys_ == nullptr ? nullptr : self.target_directions_ys_ + offset,
+            self.target_directions_zs_ == nullptr ? nullptr : self.target_directions_zs_ + offset,
+            count};
+    }
+    auto get_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count);
+    }
+    auto get_const_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count).get_const_view();
+    }
+    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
+    auto right(this auto const& self, size_type count) {
+        assert(count <= self.num());
+        return self.slice(self.num() - count, count);
+    }
+    auto xs() const -> std::span<Element<float>> { return {target_directions_xs_, count_}; }
+    auto ys() const -> std::span<Element<float>> { return {target_directions_ys_, count_}; }
+    auto zs() const -> std::span<Element<float>> { return {target_directions_zs_, count_}; }
+    template <typename Func>
+    void each_column(Func&& func) const {
+        func(std::span<Element<float>>{target_directions_xs_, count_});
+        func(std::span<Element<float>>{target_directions_ys_, count_});
+        func(std::span<Element<float>>{target_directions_zs_, count_});
+    }
+  private:
+    template <bool>
+    friend struct FighterEntityDataSingleResolvedView_target_directionsImpl;
+    Element<float>* target_directions_xs_{};
+    Element<float>* target_directions_ys_{};
+    Element<float>* target_directions_zs_{};
+    size_type count_{};
+};
+struct FighterEntityDataSingleResolvedConstView_target_directions
+    : FighterEntityDataSingleResolvedView_target_directionsImpl<true> {
+    using Base = FighterEntityDataSingleResolvedView_target_directionsImpl<true>;
+    using Base::Base;
+};
+struct FighterEntityDataSingleResolvedView_target_directions
+    : FighterEntityDataSingleResolvedView_target_directionsImpl<false> {
+    using Base = FighterEntityDataSingleResolvedView_target_directionsImpl<false>;
+    using Base::Base;
+};
+struct FighterEntityDataSingleResolvedView;
+struct FighterEntityDataSingleResolvedConstView;
+template <bool Const>
+struct FighterEntityDataSingleResolvedViewImpl {
+    using size_type = std::uint32_t;
+    using View = FighterEntityDataSingleResolvedView;
+    using ConstView = FighterEntityDataSingleResolvedConstView;
+    using soa_schema = FighterEntityDataSchema;
+    template <typename T>
+    using Element = std::conditional_t<Const, T const, T>;
+    FighterEntityDataSingleResolvedViewImpl() = default;
+    FighterEntityDataSingleResolvedViewImpl(
+        Element<EntityId>* entity_ids,
+        Element<std::uint32_t>* integral_biases,
+        Element<float>* float_biases,
+        Element<FighterTask>* tasks,
+        Element<float>* locations_xs,
+        Element<float>* locations_ys,
+        Element<float>* locations_zs,
+        Element<float>* desired_move_locations_xs,
+        Element<float>* desired_move_locations_ys,
+        Element<float>* desired_move_locations_zs,
+        Element<float>* aim_directions_xs,
+        Element<float>* aim_directions_ys,
+        Element<float>* aim_directions_zs,
+        Element<float>* planned_aim_directions_xs,
+        Element<float>* planned_aim_directions_ys,
+        Element<float>* planned_aim_directions_zs,
+        Element<float>* desired_aiming_directions_xs,
+        Element<float>* desired_aiming_directions_ys,
+        Element<float>* desired_aiming_directions_zs,
+        Element<float>* movement_directions_xs,
+        Element<float>* movement_directions_ys,
+        Element<float>* movement_directions_zs,
+        Element<float>* velocities_xs,
+        Element<float>* velocities_ys,
+        Element<float>* velocities_zs,
+        Element<float>* move_distances,
+        Element<float>* speeds,
+        Element<::ioj::Team>* teams,
+        Element<EntityId>* parent_ids,
+        Element<std::int8_t>* awareness_scan_countdowns,
+        Element<std::int16_t>* navigation_update_countdowns_remaining_ticks,
+        Element<std::int16_t>* navigation_update_countdowns_periods,
+        Element<float>* separation_steering_xs,
+        Element<float>* separation_steering_ys,
+        Element<float>* separation_steering_zs,
+        Element<ioj::sim::fighters::NavigationRiskCode>* navigation_risk_tiers,
+        Element<ioj::sim::fighters::NavigationScanCount>* navigation_lower_risk_scan_counts,
+        Element<ioj::sim::fighters::AvoidanceChoice>* avoidance_choice_indices,
+        Element<ioj::sim::fighters::NavigationScanCount>* avoidance_clear_scan_counts,
+        Element<std::int16_t>* attack_reposition_countdowns,
+        Element<std::int16_t>* attack_cooldowns,
+        Element<EntityId>* target_ids,
+        Element<float>* target_locations_xs,
+        Element<float>* target_locations_ys,
+        Element<float>* target_locations_zs,
+        Element<float>* target_velocities_xs,
+        Element<float>* target_velocities_ys,
+        Element<float>* target_velocities_zs,
+        Element<float>* target_directions_xs,
+        Element<float>* target_directions_ys,
+        Element<float>* target_directions_zs,
+        Element<float>* intercept_times,
+        Element<float>* target_distance_sq,
+        Element<float>* target_distances,
+        Element<float>* target_radii,
+        size_type count)
+        : entity_ids_{entity_ids}
+        , integral_biases_{integral_biases}
+        , float_biases_{float_biases}
+        , tasks_{tasks}
+        , locations_xs_{locations_xs}
+        , locations_ys_{locations_ys}
+        , locations_zs_{locations_zs}
+        , desired_move_locations_xs_{desired_move_locations_xs}
+        , desired_move_locations_ys_{desired_move_locations_ys}
+        , desired_move_locations_zs_{desired_move_locations_zs}
+        , aim_directions_xs_{aim_directions_xs}
+        , aim_directions_ys_{aim_directions_ys}
+        , aim_directions_zs_{aim_directions_zs}
+        , planned_aim_directions_xs_{planned_aim_directions_xs}
+        , planned_aim_directions_ys_{planned_aim_directions_ys}
+        , planned_aim_directions_zs_{planned_aim_directions_zs}
+        , desired_aiming_directions_xs_{desired_aiming_directions_xs}
+        , desired_aiming_directions_ys_{desired_aiming_directions_ys}
+        , desired_aiming_directions_zs_{desired_aiming_directions_zs}
+        , movement_directions_xs_{movement_directions_xs}
+        , movement_directions_ys_{movement_directions_ys}
+        , movement_directions_zs_{movement_directions_zs}
+        , velocities_xs_{velocities_xs}
+        , velocities_ys_{velocities_ys}
+        , velocities_zs_{velocities_zs}
+        , move_distances_{move_distances}
+        , speeds_{speeds}
+        , teams_{teams}
+        , parent_ids_{parent_ids}
+        , awareness_scan_countdowns_{awareness_scan_countdowns}
+        , navigation_update_countdowns_remaining_ticks_{navigation_update_countdowns_remaining_ticks}
+        , navigation_update_countdowns_periods_{navigation_update_countdowns_periods}
+        , separation_steering_xs_{separation_steering_xs}
+        , separation_steering_ys_{separation_steering_ys}
+        , separation_steering_zs_{separation_steering_zs}
+        , navigation_risk_tiers_{navigation_risk_tiers}
+        , navigation_lower_risk_scan_counts_{navigation_lower_risk_scan_counts}
+        , avoidance_choice_indices_{avoidance_choice_indices}
+        , avoidance_clear_scan_counts_{avoidance_clear_scan_counts}
+        , attack_reposition_countdowns_{attack_reposition_countdowns}
+        , attack_cooldowns_{attack_cooldowns}
+        , target_ids_{target_ids}
+        , target_locations_xs_{target_locations_xs}
+        , target_locations_ys_{target_locations_ys}
+        , target_locations_zs_{target_locations_zs}
+        , target_velocities_xs_{target_velocities_xs}
+        , target_velocities_ys_{target_velocities_ys}
+        , target_velocities_zs_{target_velocities_zs}
+        , target_directions_xs_{target_directions_xs}
+        , target_directions_ys_{target_directions_ys}
+        , target_directions_zs_{target_directions_zs}
+        , intercept_times_{intercept_times}
+        , target_distance_sq_{target_distance_sq}
+        , target_distances_{target_distances}
+        , target_radii_{target_radii}
+        , count_{count} {
+        ioj::soa_storage_detail::validate_column_pointers(
+            count_,
+            entity_ids_,
+            integral_biases_,
+            float_biases_,
+            tasks_,
+            locations_xs_,
+            locations_ys_,
+            locations_zs_,
+            desired_move_locations_xs_,
+            desired_move_locations_ys_,
+            desired_move_locations_zs_,
+            aim_directions_xs_,
+            aim_directions_ys_,
+            aim_directions_zs_,
+            planned_aim_directions_xs_,
+            planned_aim_directions_ys_,
+            planned_aim_directions_zs_,
+            desired_aiming_directions_xs_,
+            desired_aiming_directions_ys_,
+            desired_aiming_directions_zs_,
+            movement_directions_xs_,
+            movement_directions_ys_,
+            movement_directions_zs_,
+            velocities_xs_,
+            velocities_ys_,
+            velocities_zs_,
+            move_distances_,
+            speeds_,
+            teams_,
+            parent_ids_,
+            awareness_scan_countdowns_,
+            navigation_update_countdowns_remaining_ticks_,
+            navigation_update_countdowns_periods_,
+            separation_steering_xs_,
+            separation_steering_ys_,
+            separation_steering_zs_,
+            navigation_risk_tiers_,
+            navigation_lower_risk_scan_counts_,
+            avoidance_choice_indices_,
+            avoidance_clear_scan_counts_,
+            attack_reposition_countdowns_,
+            attack_cooldowns_,
+            target_ids_,
+            target_locations_xs_,
+            target_locations_ys_,
+            target_locations_zs_,
+            target_velocities_xs_,
+            target_velocities_ys_,
+            target_velocities_zs_,
+            target_directions_xs_,
+            target_directions_ys_,
+            target_directions_zs_,
+            intercept_times_,
+            target_distance_sq_,
+            target_distances_,
+            target_radii_);
+    }
+    FighterEntityDataSingleResolvedViewImpl(
+        std::span<Element<EntityId>> entity_ids,
+        std::span<Element<std::uint32_t>> integral_biases,
+        std::span<Element<float>> float_biases,
+        std::span<Element<FighterTask>> tasks,
+        std::span<Element<float>> locations_xs,
+        std::span<Element<float>> locations_ys,
+        std::span<Element<float>> locations_zs,
+        std::span<Element<float>> desired_move_locations_xs,
+        std::span<Element<float>> desired_move_locations_ys,
+        std::span<Element<float>> desired_move_locations_zs,
+        std::span<Element<float>> aim_directions_xs,
+        std::span<Element<float>> aim_directions_ys,
+        std::span<Element<float>> aim_directions_zs,
+        std::span<Element<float>> planned_aim_directions_xs,
+        std::span<Element<float>> planned_aim_directions_ys,
+        std::span<Element<float>> planned_aim_directions_zs,
+        std::span<Element<float>> desired_aiming_directions_xs,
+        std::span<Element<float>> desired_aiming_directions_ys,
+        std::span<Element<float>> desired_aiming_directions_zs,
+        std::span<Element<float>> movement_directions_xs,
+        std::span<Element<float>> movement_directions_ys,
+        std::span<Element<float>> movement_directions_zs,
+        std::span<Element<float>> velocities_xs,
+        std::span<Element<float>> velocities_ys,
+        std::span<Element<float>> velocities_zs,
+        std::span<Element<float>> move_distances,
+        std::span<Element<float>> speeds,
+        std::span<Element<::ioj::Team>> teams,
+        std::span<Element<EntityId>> parent_ids,
+        std::span<Element<std::int8_t>> awareness_scan_countdowns,
+        std::span<Element<std::int16_t>> navigation_update_countdowns_remaining_ticks,
+        std::span<Element<std::int16_t>> navigation_update_countdowns_periods,
+        std::span<Element<float>> separation_steering_xs,
+        std::span<Element<float>> separation_steering_ys,
+        std::span<Element<float>> separation_steering_zs,
+        std::span<Element<ioj::sim::fighters::NavigationRiskCode>> navigation_risk_tiers,
+        std::span<Element<ioj::sim::fighters::NavigationScanCount>>
+            navigation_lower_risk_scan_counts,
+        std::span<Element<ioj::sim::fighters::AvoidanceChoice>> avoidance_choice_indices,
+        std::span<Element<ioj::sim::fighters::NavigationScanCount>> avoidance_clear_scan_counts,
+        std::span<Element<std::int16_t>> attack_reposition_countdowns,
+        std::span<Element<std::int16_t>> attack_cooldowns,
+        std::span<Element<EntityId>> target_ids,
+        std::span<Element<float>> target_locations_xs,
+        std::span<Element<float>> target_locations_ys,
+        std::span<Element<float>> target_locations_zs,
+        std::span<Element<float>> target_velocities_xs,
+        std::span<Element<float>> target_velocities_ys,
+        std::span<Element<float>> target_velocities_zs,
+        std::span<Element<float>> target_directions_xs,
+        std::span<Element<float>> target_directions_ys,
+        std::span<Element<float>> target_directions_zs,
+        std::span<Element<float>> intercept_times,
+        std::span<Element<float>> target_distance_sq,
+        std::span<Element<float>> target_distances,
+        std::span<Element<float>> target_radii)
+        : FighterEntityDataSingleResolvedViewImpl{
+              entity_ids.data(),
+              integral_biases.data(),
+              float_biases.data(),
+              tasks.data(),
+              locations_xs.data(),
+              locations_ys.data(),
+              locations_zs.data(),
+              desired_move_locations_xs.data(),
+              desired_move_locations_ys.data(),
+              desired_move_locations_zs.data(),
+              aim_directions_xs.data(),
+              aim_directions_ys.data(),
+              aim_directions_zs.data(),
+              planned_aim_directions_xs.data(),
+              planned_aim_directions_ys.data(),
+              planned_aim_directions_zs.data(),
+              desired_aiming_directions_xs.data(),
+              desired_aiming_directions_ys.data(),
+              desired_aiming_directions_zs.data(),
+              movement_directions_xs.data(),
+              movement_directions_ys.data(),
+              movement_directions_zs.data(),
+              velocities_xs.data(),
+              velocities_ys.data(),
+              velocities_zs.data(),
+              move_distances.data(),
+              speeds.data(),
+              teams.data(),
+              parent_ids.data(),
+              awareness_scan_countdowns.data(),
+              navigation_update_countdowns_remaining_ticks.data(),
+              navigation_update_countdowns_periods.data(),
+              separation_steering_xs.data(),
+              separation_steering_ys.data(),
+              separation_steering_zs.data(),
+              navigation_risk_tiers.data(),
+              navigation_lower_risk_scan_counts.data(),
+              avoidance_choice_indices.data(),
+              avoidance_clear_scan_counts.data(),
+              attack_reposition_countdowns.data(),
+              attack_cooldowns.data(),
+              target_ids.data(),
+              target_locations_xs.data(),
+              target_locations_ys.data(),
+              target_locations_zs.data(),
+              target_velocities_xs.data(),
+              target_velocities_ys.data(),
+              target_velocities_zs.data(),
+              target_directions_xs.data(),
+              target_directions_ys.data(),
+              target_directions_zs.data(),
+              intercept_times.data(),
+              target_distance_sq.data(),
+              target_distances.data(),
+              target_radii.data(),
+              ioj::soa_storage_detail::checked_row_count(entity_ids.size())} {
+        assert(entity_ids.size() == count_);
+        assert(integral_biases.size() == count_);
+        assert(float_biases.size() == count_);
+        assert(tasks.size() == count_);
+        assert(locations_xs.size() == count_);
+        assert(locations_ys.size() == count_);
+        assert(locations_zs.size() == count_);
+        assert(desired_move_locations_xs.size() == count_);
+        assert(desired_move_locations_ys.size() == count_);
+        assert(desired_move_locations_zs.size() == count_);
+        assert(aim_directions_xs.size() == count_);
+        assert(aim_directions_ys.size() == count_);
+        assert(aim_directions_zs.size() == count_);
+        assert(planned_aim_directions_xs.size() == count_);
+        assert(planned_aim_directions_ys.size() == count_);
+        assert(planned_aim_directions_zs.size() == count_);
+        assert(desired_aiming_directions_xs.size() == count_);
+        assert(desired_aiming_directions_ys.size() == count_);
+        assert(desired_aiming_directions_zs.size() == count_);
+        assert(movement_directions_xs.size() == count_);
+        assert(movement_directions_ys.size() == count_);
+        assert(movement_directions_zs.size() == count_);
+        assert(velocities_xs.size() == count_);
+        assert(velocities_ys.size() == count_);
+        assert(velocities_zs.size() == count_);
+        assert(move_distances.size() == count_);
+        assert(speeds.size() == count_);
+        assert(teams.size() == count_);
+        assert(parent_ids.size() == count_);
+        assert(awareness_scan_countdowns.size() == count_);
+        assert(navigation_update_countdowns_remaining_ticks.size() == count_);
+        assert(navigation_update_countdowns_periods.size() == count_);
+        assert(separation_steering_xs.size() == count_);
+        assert(separation_steering_ys.size() == count_);
+        assert(separation_steering_zs.size() == count_);
+        assert(navigation_risk_tiers.size() == count_);
+        assert(navigation_lower_risk_scan_counts.size() == count_);
+        assert(avoidance_choice_indices.size() == count_);
+        assert(avoidance_clear_scan_counts.size() == count_);
+        assert(attack_reposition_countdowns.size() == count_);
+        assert(attack_cooldowns.size() == count_);
+        assert(target_ids.size() == count_);
+        assert(target_locations_xs.size() == count_);
+        assert(target_locations_ys.size() == count_);
+        assert(target_locations_zs.size() == count_);
+        assert(target_velocities_xs.size() == count_);
+        assert(target_velocities_ys.size() == count_);
+        assert(target_velocities_zs.size() == count_);
+        assert(target_directions_xs.size() == count_);
+        assert(target_directions_ys.size() == count_);
+        assert(target_directions_zs.size() == count_);
+        assert(intercept_times.size() == count_);
+        assert(target_distance_sq.size() == count_);
+        assert(target_distances.size() == count_);
+        assert(target_radii.size() == count_);
+    }
+    template <bool Enabled = Const>
+    FighterEntityDataSingleResolvedViewImpl(
+        FighterEntityDataSingleResolvedViewImpl<false> const& other)
+        requires Enabled
+        : entity_ids_{other.entity_ids_}
+        , integral_biases_{other.integral_biases_}
+        , float_biases_{other.float_biases_}
+        , tasks_{other.tasks_}
+        , locations_xs_{other.locations_xs_}
+        , locations_ys_{other.locations_ys_}
+        , locations_zs_{other.locations_zs_}
+        , desired_move_locations_xs_{other.desired_move_locations_xs_}
+        , desired_move_locations_ys_{other.desired_move_locations_ys_}
+        , desired_move_locations_zs_{other.desired_move_locations_zs_}
+        , aim_directions_xs_{other.aim_directions_xs_}
+        , aim_directions_ys_{other.aim_directions_ys_}
+        , aim_directions_zs_{other.aim_directions_zs_}
+        , planned_aim_directions_xs_{other.planned_aim_directions_xs_}
+        , planned_aim_directions_ys_{other.planned_aim_directions_ys_}
+        , planned_aim_directions_zs_{other.planned_aim_directions_zs_}
+        , desired_aiming_directions_xs_{other.desired_aiming_directions_xs_}
+        , desired_aiming_directions_ys_{other.desired_aiming_directions_ys_}
+        , desired_aiming_directions_zs_{other.desired_aiming_directions_zs_}
+        , movement_directions_xs_{other.movement_directions_xs_}
+        , movement_directions_ys_{other.movement_directions_ys_}
+        , movement_directions_zs_{other.movement_directions_zs_}
+        , velocities_xs_{other.velocities_xs_}
+        , velocities_ys_{other.velocities_ys_}
+        , velocities_zs_{other.velocities_zs_}
+        , move_distances_{other.move_distances_}
+        , speeds_{other.speeds_}
+        , teams_{other.teams_}
+        , parent_ids_{other.parent_ids_}
+        , awareness_scan_countdowns_{other.awareness_scan_countdowns_}
+        , navigation_update_countdowns_remaining_ticks_{other
+                                                            .navigation_update_countdowns_remaining_ticks_}
+        , navigation_update_countdowns_periods_{other.navigation_update_countdowns_periods_}
+        , separation_steering_xs_{other.separation_steering_xs_}
+        , separation_steering_ys_{other.separation_steering_ys_}
+        , separation_steering_zs_{other.separation_steering_zs_}
+        , navigation_risk_tiers_{other.navigation_risk_tiers_}
+        , navigation_lower_risk_scan_counts_{other.navigation_lower_risk_scan_counts_}
+        , avoidance_choice_indices_{other.avoidance_choice_indices_}
+        , avoidance_clear_scan_counts_{other.avoidance_clear_scan_counts_}
+        , attack_reposition_countdowns_{other.attack_reposition_countdowns_}
+        , attack_cooldowns_{other.attack_cooldowns_}
+        , target_ids_{other.target_ids_}
+        , target_locations_xs_{other.target_locations_xs_}
+        , target_locations_ys_{other.target_locations_ys_}
+        , target_locations_zs_{other.target_locations_zs_}
+        , target_velocities_xs_{other.target_velocities_xs_}
+        , target_velocities_ys_{other.target_velocities_ys_}
+        , target_velocities_zs_{other.target_velocities_zs_}
+        , target_directions_xs_{other.target_directions_xs_}
+        , target_directions_ys_{other.target_directions_ys_}
+        , target_directions_zs_{other.target_directions_zs_}
+        , intercept_times_{other.intercept_times_}
+        , target_distance_sq_{other.target_distance_sq_}
+        , target_distances_{other.target_distances_}
+        , target_radii_{other.target_radii_}
+        , count_{other.count_} {}
+    auto num() const noexcept -> size_type { return count_; }
+    auto is_empty() const noexcept -> bool { return count_ == 0; }
+    auto get_view(this auto const& self) { return self; }
+    auto get_const_view(this auto const& self) {
+        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
+        return Result{self.entity_ids_,
+                      self.integral_biases_,
+                      self.float_biases_,
+                      self.tasks_,
+                      self.locations_xs_,
+                      self.locations_ys_,
+                      self.locations_zs_,
+                      self.desired_move_locations_xs_,
+                      self.desired_move_locations_ys_,
+                      self.desired_move_locations_zs_,
+                      self.aim_directions_xs_,
+                      self.aim_directions_ys_,
+                      self.aim_directions_zs_,
+                      self.planned_aim_directions_xs_,
+                      self.planned_aim_directions_ys_,
+                      self.planned_aim_directions_zs_,
+                      self.desired_aiming_directions_xs_,
+                      self.desired_aiming_directions_ys_,
+                      self.desired_aiming_directions_zs_,
+                      self.movement_directions_xs_,
+                      self.movement_directions_ys_,
+                      self.movement_directions_zs_,
+                      self.velocities_xs_,
+                      self.velocities_ys_,
+                      self.velocities_zs_,
+                      self.move_distances_,
+                      self.speeds_,
+                      self.teams_,
+                      self.parent_ids_,
+                      self.awareness_scan_countdowns_,
+                      self.navigation_update_countdowns_remaining_ticks_,
+                      self.navigation_update_countdowns_periods_,
+                      self.separation_steering_xs_,
+                      self.separation_steering_ys_,
+                      self.separation_steering_zs_,
+                      self.navigation_risk_tiers_,
+                      self.navigation_lower_risk_scan_counts_,
+                      self.avoidance_choice_indices_,
+                      self.avoidance_clear_scan_counts_,
+                      self.attack_reposition_countdowns_,
+                      self.attack_cooldowns_,
+                      self.target_ids_,
+                      self.target_locations_xs_,
+                      self.target_locations_ys_,
+                      self.target_locations_zs_,
+                      self.target_velocities_xs_,
+                      self.target_velocities_ys_,
+                      self.target_velocities_zs_,
+                      self.target_directions_xs_,
+                      self.target_directions_ys_,
+                      self.target_directions_zs_,
+                      self.intercept_times_,
+                      self.target_distance_sq_,
+                      self.target_distances_,
+                      self.target_radii_,
+                      self.count_};
+    }
+    auto resolve(this auto const& self) { return self; }
+    void validate() const {}
+    auto slice(this auto const& self, size_type offset, size_type count) {
+        assert(offset <= self.count_ && count <= self.count_ - offset);
+        using Result = std::remove_cvref_t<decltype(self)>;
+        return Result{
+            self.entity_ids_ == nullptr ? nullptr : self.entity_ids_ + offset,
+            self.integral_biases_ == nullptr ? nullptr : self.integral_biases_ + offset,
+            self.float_biases_ == nullptr ? nullptr : self.float_biases_ + offset,
+            self.tasks_ == nullptr ? nullptr : self.tasks_ + offset,
+            self.locations_xs_ == nullptr ? nullptr : self.locations_xs_ + offset,
+            self.locations_ys_ == nullptr ? nullptr : self.locations_ys_ + offset,
+            self.locations_zs_ == nullptr ? nullptr : self.locations_zs_ + offset,
+            self.desired_move_locations_xs_ == nullptr ? nullptr
+                                                       : self.desired_move_locations_xs_ + offset,
+            self.desired_move_locations_ys_ == nullptr ? nullptr
+                                                       : self.desired_move_locations_ys_ + offset,
+            self.desired_move_locations_zs_ == nullptr ? nullptr
+                                                       : self.desired_move_locations_zs_ + offset,
+            self.aim_directions_xs_ == nullptr ? nullptr : self.aim_directions_xs_ + offset,
+            self.aim_directions_ys_ == nullptr ? nullptr : self.aim_directions_ys_ + offset,
+            self.aim_directions_zs_ == nullptr ? nullptr : self.aim_directions_zs_ + offset,
+            self.planned_aim_directions_xs_ == nullptr ? nullptr
+                                                       : self.planned_aim_directions_xs_ + offset,
+            self.planned_aim_directions_ys_ == nullptr ? nullptr
+                                                       : self.planned_aim_directions_ys_ + offset,
+            self.planned_aim_directions_zs_ == nullptr ? nullptr
+                                                       : self.planned_aim_directions_zs_ + offset,
+            self.desired_aiming_directions_xs_ == nullptr
+                ? nullptr
+                : self.desired_aiming_directions_xs_ + offset,
+            self.desired_aiming_directions_ys_ == nullptr
+                ? nullptr
+                : self.desired_aiming_directions_ys_ + offset,
+            self.desired_aiming_directions_zs_ == nullptr
+                ? nullptr
+                : self.desired_aiming_directions_zs_ + offset,
+            self.movement_directions_xs_ == nullptr ? nullptr
+                                                    : self.movement_directions_xs_ + offset,
+            self.movement_directions_ys_ == nullptr ? nullptr
+                                                    : self.movement_directions_ys_ + offset,
+            self.movement_directions_zs_ == nullptr ? nullptr
+                                                    : self.movement_directions_zs_ + offset,
+            self.velocities_xs_ == nullptr ? nullptr : self.velocities_xs_ + offset,
+            self.velocities_ys_ == nullptr ? nullptr : self.velocities_ys_ + offset,
+            self.velocities_zs_ == nullptr ? nullptr : self.velocities_zs_ + offset,
+            self.move_distances_ == nullptr ? nullptr : self.move_distances_ + offset,
+            self.speeds_ == nullptr ? nullptr : self.speeds_ + offset,
+            self.teams_ == nullptr ? nullptr : self.teams_ + offset,
+            self.parent_ids_ == nullptr ? nullptr : self.parent_ids_ + offset,
+            self.awareness_scan_countdowns_ == nullptr ? nullptr
+                                                       : self.awareness_scan_countdowns_ + offset,
+            self.navigation_update_countdowns_remaining_ticks_ == nullptr
+                ? nullptr
+                : self.navigation_update_countdowns_remaining_ticks_ + offset,
+            self.navigation_update_countdowns_periods_ == nullptr
+                ? nullptr
+                : self.navigation_update_countdowns_periods_ + offset,
+            self.separation_steering_xs_ == nullptr ? nullptr
+                                                    : self.separation_steering_xs_ + offset,
+            self.separation_steering_ys_ == nullptr ? nullptr
+                                                    : self.separation_steering_ys_ + offset,
+            self.separation_steering_zs_ == nullptr ? nullptr
+                                                    : self.separation_steering_zs_ + offset,
+            self.navigation_risk_tiers_ == nullptr ? nullptr : self.navigation_risk_tiers_ + offset,
+            self.navigation_lower_risk_scan_counts_ == nullptr
+                ? nullptr
+                : self.navigation_lower_risk_scan_counts_ + offset,
+            self.avoidance_choice_indices_ == nullptr ? nullptr
+                                                      : self.avoidance_choice_indices_ + offset,
+            self.avoidance_clear_scan_counts_ == nullptr
+                ? nullptr
+                : self.avoidance_clear_scan_counts_ + offset,
+            self.attack_reposition_countdowns_ == nullptr
+                ? nullptr
+                : self.attack_reposition_countdowns_ + offset,
+            self.attack_cooldowns_ == nullptr ? nullptr : self.attack_cooldowns_ + offset,
+            self.target_ids_ == nullptr ? nullptr : self.target_ids_ + offset,
+            self.target_locations_xs_ == nullptr ? nullptr : self.target_locations_xs_ + offset,
+            self.target_locations_ys_ == nullptr ? nullptr : self.target_locations_ys_ + offset,
+            self.target_locations_zs_ == nullptr ? nullptr : self.target_locations_zs_ + offset,
+            self.target_velocities_xs_ == nullptr ? nullptr : self.target_velocities_xs_ + offset,
+            self.target_velocities_ys_ == nullptr ? nullptr : self.target_velocities_ys_ + offset,
+            self.target_velocities_zs_ == nullptr ? nullptr : self.target_velocities_zs_ + offset,
+            self.target_directions_xs_ == nullptr ? nullptr : self.target_directions_xs_ + offset,
+            self.target_directions_ys_ == nullptr ? nullptr : self.target_directions_ys_ + offset,
+            self.target_directions_zs_ == nullptr ? nullptr : self.target_directions_zs_ + offset,
+            self.intercept_times_ == nullptr ? nullptr : self.intercept_times_ + offset,
+            self.target_distance_sq_ == nullptr ? nullptr : self.target_distance_sq_ + offset,
+            self.target_distances_ == nullptr ? nullptr : self.target_distances_ + offset,
+            self.target_radii_ == nullptr ? nullptr : self.target_radii_ + offset,
+            count};
+    }
+    auto get_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count);
+    }
+    auto get_const_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count).get_const_view();
+    }
+    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
+    auto right(this auto const& self, size_type count) {
+        assert(count <= self.num());
+        return self.slice(self.num() - count, count);
+    }
+    auto entity_ids() const -> std::span<Element<EntityId>> { return {entity_ids_, count_}; }
+    auto integral_biases() const -> std::span<Element<std::uint32_t>> {
+        return {integral_biases_, count_};
+    }
+    auto float_biases() const -> std::span<Element<float>> { return {float_biases_, count_}; }
+    auto tasks() const -> std::span<Element<FighterTask>> { return {tasks_, count_}; }
+    auto view_locations() const
+        -> std::conditional_t<Const,
+                              FighterEntityDataSingleResolvedConstView_locations,
+                              FighterEntityDataSingleResolvedView_locations> {
+        return {locations_xs_, locations_ys_, locations_zs_, count_};
+    }
+    auto view_desired_move_locations() const
+        -> std::conditional_t<Const,
+                              FighterEntityDataSingleResolvedConstView_desired_move_locations,
+                              FighterEntityDataSingleResolvedView_desired_move_locations> {
+        return {desired_move_locations_xs_,
+                desired_move_locations_ys_,
+                desired_move_locations_zs_,
+                count_};
+    }
+    auto view_aim_directions() const
+        -> std::conditional_t<Const,
+                              FighterEntityDataSingleResolvedConstView_aim_directions,
+                              FighterEntityDataSingleResolvedView_aim_directions> {
+        return {aim_directions_xs_, aim_directions_ys_, aim_directions_zs_, count_};
+    }
+    auto view_planned_aim_directions() const
+        -> std::conditional_t<Const,
+                              FighterEntityDataSingleResolvedConstView_planned_aim_directions,
+                              FighterEntityDataSingleResolvedView_planned_aim_directions> {
+        return {planned_aim_directions_xs_,
+                planned_aim_directions_ys_,
+                planned_aim_directions_zs_,
+                count_};
+    }
+    auto view_desired_aiming_directions() const
+        -> std::conditional_t<Const,
+                              FighterEntityDataSingleResolvedConstView_desired_aiming_directions,
+                              FighterEntityDataSingleResolvedView_desired_aiming_directions> {
+        return {desired_aiming_directions_xs_,
+                desired_aiming_directions_ys_,
+                desired_aiming_directions_zs_,
+                count_};
+    }
+    auto view_movement_directions() const
+        -> std::conditional_t<Const,
+                              FighterEntityDataSingleResolvedConstView_movement_directions,
+                              FighterEntityDataSingleResolvedView_movement_directions> {
+        return {movement_directions_xs_, movement_directions_ys_, movement_directions_zs_, count_};
+    }
+    auto view_velocities() const
+        -> std::conditional_t<Const,
+                              FighterEntityDataSingleResolvedConstView_velocities,
+                              FighterEntityDataSingleResolvedView_velocities> {
+        return {velocities_xs_, velocities_ys_, velocities_zs_, count_};
+    }
+    auto move_distances() const -> std::span<Element<float>> { return {move_distances_, count_}; }
+    auto speeds() const -> std::span<Element<float>> { return {speeds_, count_}; }
+    auto teams() const -> std::span<Element<::ioj::Team>> { return {teams_, count_}; }
+    auto parent_ids() const -> std::span<Element<EntityId>> { return {parent_ids_, count_}; }
+    auto awareness_scan_countdowns() const -> std::span<Element<std::int8_t>> {
+        return {awareness_scan_countdowns_, count_};
+    }
+    auto navigation_update_countdowns_remaining_ticks() const -> std::span<Element<std::int16_t>> {
+        return {navigation_update_countdowns_remaining_ticks_, count_};
+    }
+    auto navigation_update_countdowns_periods() const -> std::span<Element<std::int16_t>> {
+        return {navigation_update_countdowns_periods_, count_};
+    }
+    auto view_separation_steering() const
+        -> std::conditional_t<Const,
+                              FighterEntityDataSingleResolvedConstView_separation_steering,
+                              FighterEntityDataSingleResolvedView_separation_steering> {
+        return {separation_steering_xs_, separation_steering_ys_, separation_steering_zs_, count_};
+    }
+    auto navigation_risk_tiers() const
+        -> std::span<Element<ioj::sim::fighters::NavigationRiskCode>> {
+        return {navigation_risk_tiers_, count_};
+    }
+    auto navigation_lower_risk_scan_counts() const
+        -> std::span<Element<ioj::sim::fighters::NavigationScanCount>> {
+        return {navigation_lower_risk_scan_counts_, count_};
+    }
+    auto avoidance_choice_indices() const
+        -> std::span<Element<ioj::sim::fighters::AvoidanceChoice>> {
+        return {avoidance_choice_indices_, count_};
+    }
+    auto avoidance_clear_scan_counts() const
+        -> std::span<Element<ioj::sim::fighters::NavigationScanCount>> {
+        return {avoidance_clear_scan_counts_, count_};
+    }
+    auto attack_reposition_countdowns() const -> std::span<Element<std::int16_t>> {
+        return {attack_reposition_countdowns_, count_};
+    }
+    auto attack_cooldowns() const -> std::span<Element<std::int16_t>> {
+        return {attack_cooldowns_, count_};
+    }
+    auto target_ids() const -> std::span<Element<EntityId>> { return {target_ids_, count_}; }
+    auto view_target_locations() const
+        -> std::conditional_t<Const,
+                              FighterEntityDataSingleResolvedConstView_target_locations,
+                              FighterEntityDataSingleResolvedView_target_locations> {
+        return {target_locations_xs_, target_locations_ys_, target_locations_zs_, count_};
+    }
+    auto view_target_velocities() const
+        -> std::conditional_t<Const,
+                              FighterEntityDataSingleResolvedConstView_target_velocities,
+                              FighterEntityDataSingleResolvedView_target_velocities> {
+        return {target_velocities_xs_, target_velocities_ys_, target_velocities_zs_, count_};
+    }
+    auto view_target_directions() const
+        -> std::conditional_t<Const,
+                              FighterEntityDataSingleResolvedConstView_target_directions,
+                              FighterEntityDataSingleResolvedView_target_directions> {
+        return {target_directions_xs_, target_directions_ys_, target_directions_zs_, count_};
+    }
+    auto intercept_times() const -> std::span<Element<float>> { return {intercept_times_, count_}; }
+    auto target_distance_sq() const -> std::span<Element<float>> {
+        return {target_distance_sq_, count_};
+    }
+    auto target_distances() const -> std::span<Element<float>> {
+        return {target_distances_, count_};
+    }
+    auto target_radii() const -> std::span<Element<float>> { return {target_radii_, count_}; }
+    template <typename Func>
+    void each_column(Func&& func) const {
+        func(std::span<Element<EntityId>>{entity_ids_, count_});
+        func(std::span<Element<std::uint32_t>>{integral_biases_, count_});
+        func(std::span<Element<float>>{float_biases_, count_});
+        func(std::span<Element<FighterTask>>{tasks_, count_});
+        func(std::span<Element<float>>{locations_xs_, count_});
+        func(std::span<Element<float>>{locations_ys_, count_});
+        func(std::span<Element<float>>{locations_zs_, count_});
+        func(std::span<Element<float>>{desired_move_locations_xs_, count_});
+        func(std::span<Element<float>>{desired_move_locations_ys_, count_});
+        func(std::span<Element<float>>{desired_move_locations_zs_, count_});
+        func(std::span<Element<float>>{aim_directions_xs_, count_});
+        func(std::span<Element<float>>{aim_directions_ys_, count_});
+        func(std::span<Element<float>>{aim_directions_zs_, count_});
+        func(std::span<Element<float>>{planned_aim_directions_xs_, count_});
+        func(std::span<Element<float>>{planned_aim_directions_ys_, count_});
+        func(std::span<Element<float>>{planned_aim_directions_zs_, count_});
+        func(std::span<Element<float>>{desired_aiming_directions_xs_, count_});
+        func(std::span<Element<float>>{desired_aiming_directions_ys_, count_});
+        func(std::span<Element<float>>{desired_aiming_directions_zs_, count_});
+        func(std::span<Element<float>>{movement_directions_xs_, count_});
+        func(std::span<Element<float>>{movement_directions_ys_, count_});
+        func(std::span<Element<float>>{movement_directions_zs_, count_});
+        func(std::span<Element<float>>{velocities_xs_, count_});
+        func(std::span<Element<float>>{velocities_ys_, count_});
+        func(std::span<Element<float>>{velocities_zs_, count_});
+        func(std::span<Element<float>>{move_distances_, count_});
+        func(std::span<Element<float>>{speeds_, count_});
+        func(std::span<Element<::ioj::Team>>{teams_, count_});
+        func(std::span<Element<EntityId>>{parent_ids_, count_});
+        func(std::span<Element<std::int8_t>>{awareness_scan_countdowns_, count_});
+        func(std::span<Element<std::int16_t>>{navigation_update_countdowns_remaining_ticks_,
+                                              count_});
+        func(std::span<Element<std::int16_t>>{navigation_update_countdowns_periods_, count_});
+        func(std::span<Element<float>>{separation_steering_xs_, count_});
+        func(std::span<Element<float>>{separation_steering_ys_, count_});
+        func(std::span<Element<float>>{separation_steering_zs_, count_});
+        func(std::span<Element<ioj::sim::fighters::NavigationRiskCode>>{navigation_risk_tiers_,
+                                                                        count_});
+        func(std::span<Element<ioj::sim::fighters::NavigationScanCount>>{
+            navigation_lower_risk_scan_counts_, count_});
+        func(std::span<Element<ioj::sim::fighters::AvoidanceChoice>>{avoidance_choice_indices_,
+                                                                     count_});
+        func(std::span<Element<ioj::sim::fighters::NavigationScanCount>>{
+            avoidance_clear_scan_counts_, count_});
+        func(std::span<Element<std::int16_t>>{attack_reposition_countdowns_, count_});
+        func(std::span<Element<std::int16_t>>{attack_cooldowns_, count_});
+        func(std::span<Element<EntityId>>{target_ids_, count_});
+        func(std::span<Element<float>>{target_locations_xs_, count_});
+        func(std::span<Element<float>>{target_locations_ys_, count_});
+        func(std::span<Element<float>>{target_locations_zs_, count_});
+        func(std::span<Element<float>>{target_velocities_xs_, count_});
+        func(std::span<Element<float>>{target_velocities_ys_, count_});
+        func(std::span<Element<float>>{target_velocities_zs_, count_});
+        func(std::span<Element<float>>{target_directions_xs_, count_});
+        func(std::span<Element<float>>{target_directions_ys_, count_});
+        func(std::span<Element<float>>{target_directions_zs_, count_});
+        func(std::span<Element<float>>{intercept_times_, count_});
+        func(std::span<Element<float>>{target_distance_sq_, count_});
+        func(std::span<Element<float>>{target_distances_, count_});
+        func(std::span<Element<float>>{target_radii_, count_});
+    }
+  private:
+    template <bool>
+    friend struct FighterEntityDataSingleResolvedViewImpl;
+    Element<EntityId>* entity_ids_{};
+    Element<std::uint32_t>* integral_biases_{};
+    Element<float>* float_biases_{};
+    Element<FighterTask>* tasks_{};
+    Element<float>* locations_xs_{};
+    Element<float>* locations_ys_{};
+    Element<float>* locations_zs_{};
+    Element<float>* desired_move_locations_xs_{};
+    Element<float>* desired_move_locations_ys_{};
+    Element<float>* desired_move_locations_zs_{};
+    Element<float>* aim_directions_xs_{};
+    Element<float>* aim_directions_ys_{};
+    Element<float>* aim_directions_zs_{};
+    Element<float>* planned_aim_directions_xs_{};
+    Element<float>* planned_aim_directions_ys_{};
+    Element<float>* planned_aim_directions_zs_{};
+    Element<float>* desired_aiming_directions_xs_{};
+    Element<float>* desired_aiming_directions_ys_{};
+    Element<float>* desired_aiming_directions_zs_{};
+    Element<float>* movement_directions_xs_{};
+    Element<float>* movement_directions_ys_{};
+    Element<float>* movement_directions_zs_{};
+    Element<float>* velocities_xs_{};
+    Element<float>* velocities_ys_{};
+    Element<float>* velocities_zs_{};
+    Element<float>* move_distances_{};
+    Element<float>* speeds_{};
+    Element<::ioj::Team>* teams_{};
+    Element<EntityId>* parent_ids_{};
+    Element<std::int8_t>* awareness_scan_countdowns_{};
+    Element<std::int16_t>* navigation_update_countdowns_remaining_ticks_{};
+    Element<std::int16_t>* navigation_update_countdowns_periods_{};
+    Element<float>* separation_steering_xs_{};
+    Element<float>* separation_steering_ys_{};
+    Element<float>* separation_steering_zs_{};
+    Element<ioj::sim::fighters::NavigationRiskCode>* navigation_risk_tiers_{};
+    Element<ioj::sim::fighters::NavigationScanCount>* navigation_lower_risk_scan_counts_{};
+    Element<ioj::sim::fighters::AvoidanceChoice>* avoidance_choice_indices_{};
+    Element<ioj::sim::fighters::NavigationScanCount>* avoidance_clear_scan_counts_{};
+    Element<std::int16_t>* attack_reposition_countdowns_{};
+    Element<std::int16_t>* attack_cooldowns_{};
+    Element<EntityId>* target_ids_{};
+    Element<float>* target_locations_xs_{};
+    Element<float>* target_locations_ys_{};
+    Element<float>* target_locations_zs_{};
+    Element<float>* target_velocities_xs_{};
+    Element<float>* target_velocities_ys_{};
+    Element<float>* target_velocities_zs_{};
+    Element<float>* target_directions_xs_{};
+    Element<float>* target_directions_ys_{};
+    Element<float>* target_directions_zs_{};
+    Element<float>* intercept_times_{};
+    Element<float>* target_distance_sq_{};
+    Element<float>* target_distances_{};
+    Element<float>* target_radii_{};
+    size_type count_{};
+};
+struct FighterEntityDataSingleResolvedConstView : FighterEntityDataSingleResolvedViewImpl<true> {
+    using Base = FighterEntityDataSingleResolvedViewImpl<true>;
+    using Base::Base;
+};
+struct FighterEntityDataSingleResolvedView : FighterEntityDataSingleResolvedViewImpl<false> {
+    using Base = FighterEntityDataSingleResolvedViewImpl<false>;
+    using Base::Base;
+};
 template <bool Const>
 struct FighterEntityDataSingleViewImpl : ioj::soa_storage_detail::CompactViewOperations {
     using soa_schema = FighterEntityDataSchema;
@@ -413,6 +2386,67 @@ struct FighterEntityDataSingleViewImpl : ioj::soa_storage_detail::CompactViewOpe
         func(target_distance_sq());
         func(target_distances());
         func(target_radii());
+    }
+    auto resolve() const -> std::conditional_t<Const,
+                                               FighterEntityDataSingleResolvedConstView,
+                                               FighterEntityDataSingleResolvedView> {
+        return {(make_column_view(Layout::columns.EntityIdsColumn).data()),
+                (make_column_view(Layout::columns.IntegralBiasesColumn).data()),
+                (make_column_view(Layout::columns.FloatBiasesColumn).data()),
+                (make_column_view(Layout::columns.TasksColumn).data()),
+                (make_column_view(Layout::columns.LocationsXsColumn).data()),
+                (make_column_view(Layout::columns.LocationsYsColumn).data()),
+                (make_column_view(Layout::columns.LocationsZsColumn).data()),
+                (make_column_view(Layout::columns.DesiredMoveLocationsXsColumn).data()),
+                (make_column_view(Layout::columns.DesiredMoveLocationsYsColumn).data()),
+                (make_column_view(Layout::columns.DesiredMoveLocationsZsColumn).data()),
+                (make_column_view(Layout::columns.AimDirectionsXsColumn).data()),
+                (make_column_view(Layout::columns.AimDirectionsYsColumn).data()),
+                (make_column_view(Layout::columns.AimDirectionsZsColumn).data()),
+                (make_column_view(Layout::columns.PlannedAimDirectionsXsColumn).data()),
+                (make_column_view(Layout::columns.PlannedAimDirectionsYsColumn).data()),
+                (make_column_view(Layout::columns.PlannedAimDirectionsZsColumn).data()),
+                (make_column_view(Layout::columns.DesiredAimingDirectionsXsColumn).data()),
+                (make_column_view(Layout::columns.DesiredAimingDirectionsYsColumn).data()),
+                (make_column_view(Layout::columns.DesiredAimingDirectionsZsColumn).data()),
+                (make_column_view(Layout::columns.MovementDirectionsXsColumn).data()),
+                (make_column_view(Layout::columns.MovementDirectionsYsColumn).data()),
+                (make_column_view(Layout::columns.MovementDirectionsZsColumn).data()),
+                (make_column_view(Layout::columns.VelocitiesXsColumn).data()),
+                (make_column_view(Layout::columns.VelocitiesYsColumn).data()),
+                (make_column_view(Layout::columns.VelocitiesZsColumn).data()),
+                (make_column_view(Layout::columns.MoveDistancesColumn).data()),
+                (make_column_view(Layout::columns.SpeedsColumn).data()),
+                (make_column_view(Layout::columns.TeamsColumn).data()),
+                (make_column_view(Layout::columns.ParentIdsColumn).data()),
+                (make_column_view(Layout::columns.AwarenessScanCountdownsColumn).data()),
+                (make_column_view(Layout::columns.NavigationUpdateCountdownsRemainingTicksColumn)
+                     .data()),
+                (make_column_view(Layout::columns.NavigationUpdateCountdownsPeriodsColumn).data()),
+                (make_column_view(Layout::columns.SeparationSteeringXsColumn).data()),
+                (make_column_view(Layout::columns.SeparationSteeringYsColumn).data()),
+                (make_column_view(Layout::columns.SeparationSteeringZsColumn).data()),
+                (make_column_view(Layout::columns.NavigationRiskTiersColumn).data()),
+                (make_column_view(Layout::columns.NavigationLowerRiskScanCountsColumn).data()),
+                (make_column_view(Layout::columns.AvoidanceChoiceIndicesColumn).data()),
+                (make_column_view(Layout::columns.AvoidanceClearScanCountsColumn).data()),
+                (make_column_view(Layout::columns.AttackRepositionCountdownsColumn).data()),
+                (make_column_view(Layout::columns.AttackCooldownsColumn).data()),
+                (make_column_view(Layout::columns.TargetIdsColumn).data()),
+                (make_column_view(Layout::columns.TargetLocationsXsColumn).data()),
+                (make_column_view(Layout::columns.TargetLocationsYsColumn).data()),
+                (make_column_view(Layout::columns.TargetLocationsZsColumn).data()),
+                (make_column_view(Layout::columns.TargetVelocitiesXsColumn).data()),
+                (make_column_view(Layout::columns.TargetVelocitiesYsColumn).data()),
+                (make_column_view(Layout::columns.TargetVelocitiesZsColumn).data()),
+                (make_column_view(Layout::columns.TargetDirectionsXsColumn).data()),
+                (make_column_view(Layout::columns.TargetDirectionsYsColumn).data()),
+                (make_column_view(Layout::columns.TargetDirectionsZsColumn).data()),
+                (make_column_view(Layout::columns.InterceptTimesColumn).data()),
+                (make_column_view(Layout::columns.TargetDistanceSqColumn).data()),
+                (make_column_view(Layout::columns.TargetDistancesColumn).data()),
+                (make_column_view(Layout::columns.TargetRadiiColumn).data()),
+                count_};
     }
   private:
     template <typename T>

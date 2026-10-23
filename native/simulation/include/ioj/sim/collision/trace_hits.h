@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ioj/math_types.h"
 #include "ioj/native_soa/storage.h"
 #include "ioj/sim/collision/collision_types.h"
 #include "ioj/sim/collision/query_result_types.h"
@@ -67,6 +68,255 @@ struct TraceHitsSingleLayout {
     static_assert(max_capacity >= capacity_granularity);
 };
 
+struct TraceHitsSingleResolvedView_locations;
+struct TraceHitsSingleResolvedConstView_locations;
+template <bool Const>
+struct TraceHitsSingleResolvedView_locationsImpl {
+    using size_type = std::uint32_t;
+    using View = TraceHitsSingleResolvedView_locations;
+    using ConstView = TraceHitsSingleResolvedConstView_locations;
+    using soa_schema = Vectors3fSchema;
+    template <typename T>
+    using Element = std::conditional_t<Const, T const, T>;
+    TraceHitsSingleResolvedView_locationsImpl() = default;
+    TraceHitsSingleResolvedView_locationsImpl(Element<float>* locations_xs,
+                                              Element<float>* locations_ys,
+                                              Element<float>* locations_zs,
+                                              size_type count)
+        : locations_xs_{locations_xs}
+        , locations_ys_{locations_ys}
+        , locations_zs_{locations_zs}
+        , count_{count} {
+        ioj::soa_storage_detail::validate_column_pointers(
+            count_, locations_xs_, locations_ys_, locations_zs_);
+    }
+    TraceHitsSingleResolvedView_locationsImpl(std::span<Element<float>> locations_xs,
+                                              std::span<Element<float>> locations_ys,
+                                              std::span<Element<float>> locations_zs)
+        : TraceHitsSingleResolvedView_locationsImpl{
+              locations_xs.data(),
+              locations_ys.data(),
+              locations_zs.data(),
+              ioj::soa_storage_detail::checked_row_count(locations_xs.size())} {
+        assert(locations_xs.size() == count_);
+        assert(locations_ys.size() == count_);
+        assert(locations_zs.size() == count_);
+    }
+    template <bool Enabled = Const>
+    TraceHitsSingleResolvedView_locationsImpl(
+        TraceHitsSingleResolvedView_locationsImpl<false> const& other)
+        requires Enabled
+        : locations_xs_{other.locations_xs_}
+        , locations_ys_{other.locations_ys_}
+        , locations_zs_{other.locations_zs_}
+        , count_{other.count_} {}
+    auto num() const noexcept -> size_type { return count_; }
+    auto is_empty() const noexcept -> bool { return count_ == 0; }
+    auto get_view(this auto const& self) { return self; }
+    auto get_const_view(this auto const& self) {
+        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
+        return Result{self.locations_xs_, self.locations_ys_, self.locations_zs_, self.count_};
+    }
+    auto resolve(this auto const& self) { return self; }
+    void validate() const {}
+    auto slice(this auto const& self, size_type offset, size_type count) {
+        assert(offset <= self.count_ && count <= self.count_ - offset);
+        using Result = std::remove_cvref_t<decltype(self)>;
+        return Result{self.locations_xs_ == nullptr ? nullptr : self.locations_xs_ + offset,
+                      self.locations_ys_ == nullptr ? nullptr : self.locations_ys_ + offset,
+                      self.locations_zs_ == nullptr ? nullptr : self.locations_zs_ + offset,
+                      count};
+    }
+    auto get_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count);
+    }
+    auto get_const_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count).get_const_view();
+    }
+    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
+    auto right(this auto const& self, size_type count) {
+        assert(count <= self.num());
+        return self.slice(self.num() - count, count);
+    }
+    auto xs() const -> std::span<Element<float>> { return {locations_xs_, count_}; }
+    auto ys() const -> std::span<Element<float>> { return {locations_ys_, count_}; }
+    auto zs() const -> std::span<Element<float>> { return {locations_zs_, count_}; }
+    template <typename Func>
+    void each_column(Func&& func) const {
+        func(std::span<Element<float>>{locations_xs_, count_});
+        func(std::span<Element<float>>{locations_ys_, count_});
+        func(std::span<Element<float>>{locations_zs_, count_});
+    }
+  private:
+    template <bool>
+    friend struct TraceHitsSingleResolvedView_locationsImpl;
+    Element<float>* locations_xs_{};
+    Element<float>* locations_ys_{};
+    Element<float>* locations_zs_{};
+    size_type count_{};
+};
+struct TraceHitsSingleResolvedConstView_locations
+    : TraceHitsSingleResolvedView_locationsImpl<true> {
+    using Base = TraceHitsSingleResolvedView_locationsImpl<true>;
+    using Base::Base;
+    using equivalent_type = Vector3f;
+    auto operator[](std::uint32_t index) const -> equivalent_type {
+        return equivalent_type{xs()[index], ys()[index], zs()[index]};
+    }
+};
+struct TraceHitsSingleResolvedView_locations : TraceHitsSingleResolvedView_locationsImpl<false> {
+    using Base = TraceHitsSingleResolvedView_locationsImpl<false>;
+    using Base::Base;
+    using equivalent_type = Vector3f;
+    auto operator[](std::uint32_t index) const -> equivalent_type {
+        return equivalent_type{xs()[index], ys()[index], zs()[index]};
+    }
+};
+struct TraceHitsSingleResolvedView;
+struct TraceHitsSingleResolvedConstView;
+template <bool Const>
+struct TraceHitsSingleResolvedViewImpl {
+    using size_type = std::uint32_t;
+    using View = TraceHitsSingleResolvedView;
+    using ConstView = TraceHitsSingleResolvedConstView;
+    using soa_schema = TraceHitsSchema;
+    template <typename T>
+    using Element = std::conditional_t<Const, T const, T>;
+    TraceHitsSingleResolvedViewImpl() = default;
+    TraceHitsSingleResolvedViewImpl(
+        Element<float>* locations_xs,
+        Element<float>* locations_ys,
+        Element<float>* locations_zs,
+        Element<EntityId>* entities,
+        Element<ioj::sim::collision::StaticGeometryIndex>* static_geometry_indices,
+        Element<ioj::sim::TraceHit>* hits,
+        size_type count)
+        : locations_xs_{locations_xs}
+        , locations_ys_{locations_ys}
+        , locations_zs_{locations_zs}
+        , entities_{entities}
+        , static_geometry_indices_{static_geometry_indices}
+        , hits_{hits}
+        , count_{count} {
+        ioj::soa_storage_detail::validate_column_pointers(count_,
+                                                          locations_xs_,
+                                                          locations_ys_,
+                                                          locations_zs_,
+                                                          entities_,
+                                                          static_geometry_indices_,
+                                                          hits_);
+    }
+    TraceHitsSingleResolvedViewImpl(
+        std::span<Element<float>> locations_xs,
+        std::span<Element<float>> locations_ys,
+        std::span<Element<float>> locations_zs,
+        std::span<Element<EntityId>> entities,
+        std::span<Element<ioj::sim::collision::StaticGeometryIndex>> static_geometry_indices,
+        std::span<Element<ioj::sim::TraceHit>> hits)
+        : TraceHitsSingleResolvedViewImpl{
+              locations_xs.data(),
+              locations_ys.data(),
+              locations_zs.data(),
+              entities.data(),
+              static_geometry_indices.data(),
+              hits.data(),
+              ioj::soa_storage_detail::checked_row_count(locations_xs.size())} {
+        assert(locations_xs.size() == count_);
+        assert(locations_ys.size() == count_);
+        assert(locations_zs.size() == count_);
+        assert(entities.size() == count_);
+        assert(static_geometry_indices.size() == count_);
+        assert(hits.size() == count_);
+    }
+    template <bool Enabled = Const>
+    TraceHitsSingleResolvedViewImpl(TraceHitsSingleResolvedViewImpl<false> const& other)
+        requires Enabled
+        : locations_xs_{other.locations_xs_}
+        , locations_ys_{other.locations_ys_}
+        , locations_zs_{other.locations_zs_}
+        , entities_{other.entities_}
+        , static_geometry_indices_{other.static_geometry_indices_}
+        , hits_{other.hits_}
+        , count_{other.count_} {}
+    auto num() const noexcept -> size_type { return count_; }
+    auto is_empty() const noexcept -> bool { return count_ == 0; }
+    auto get_view(this auto const& self) { return self; }
+    auto get_const_view(this auto const& self) {
+        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
+        return Result{self.locations_xs_,
+                      self.locations_ys_,
+                      self.locations_zs_,
+                      self.entities_,
+                      self.static_geometry_indices_,
+                      self.hits_,
+                      self.count_};
+    }
+    auto resolve(this auto const& self) { return self; }
+    void validate() const {}
+    auto slice(this auto const& self, size_type offset, size_type count) {
+        assert(offset <= self.count_ && count <= self.count_ - offset);
+        using Result = std::remove_cvref_t<decltype(self)>;
+        return Result{self.locations_xs_ == nullptr ? nullptr : self.locations_xs_ + offset,
+                      self.locations_ys_ == nullptr ? nullptr : self.locations_ys_ + offset,
+                      self.locations_zs_ == nullptr ? nullptr : self.locations_zs_ + offset,
+                      self.entities_ == nullptr ? nullptr : self.entities_ + offset,
+                      self.static_geometry_indices_ == nullptr
+                          ? nullptr
+                          : self.static_geometry_indices_ + offset,
+                      self.hits_ == nullptr ? nullptr : self.hits_ + offset,
+                      count};
+    }
+    auto get_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count);
+    }
+    auto get_const_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count).get_const_view();
+    }
+    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
+    auto right(this auto const& self, size_type count) {
+        assert(count <= self.num());
+        return self.slice(self.num() - count, count);
+    }
+    auto view_locations() const -> std::conditional_t<Const,
+                                                      TraceHitsSingleResolvedConstView_locations,
+                                                      TraceHitsSingleResolvedView_locations> {
+        return {locations_xs_, locations_ys_, locations_zs_, count_};
+    }
+    auto entities() const -> std::span<Element<EntityId>> { return {entities_, count_}; }
+    auto static_geometry_indices() const
+        -> std::span<Element<ioj::sim::collision::StaticGeometryIndex>> {
+        return {static_geometry_indices_, count_};
+    }
+    auto hits() const -> std::span<Element<ioj::sim::TraceHit>> { return {hits_, count_}; }
+    template <typename Func>
+    void each_column(Func&& func) const {
+        func(std::span<Element<float>>{locations_xs_, count_});
+        func(std::span<Element<float>>{locations_ys_, count_});
+        func(std::span<Element<float>>{locations_zs_, count_});
+        func(std::span<Element<EntityId>>{entities_, count_});
+        func(std::span<Element<ioj::sim::collision::StaticGeometryIndex>>{static_geometry_indices_,
+                                                                          count_});
+        func(std::span<Element<ioj::sim::TraceHit>>{hits_, count_});
+    }
+  private:
+    template <bool>
+    friend struct TraceHitsSingleResolvedViewImpl;
+    Element<float>* locations_xs_{};
+    Element<float>* locations_ys_{};
+    Element<float>* locations_zs_{};
+    Element<EntityId>* entities_{};
+    Element<ioj::sim::collision::StaticGeometryIndex>* static_geometry_indices_{};
+    Element<ioj::sim::TraceHit>* hits_{};
+    size_type count_{};
+};
+struct TraceHitsSingleResolvedConstView : TraceHitsSingleResolvedViewImpl<true> {
+    using Base = TraceHitsSingleResolvedViewImpl<true>;
+    using Base::Base;
+};
+struct TraceHitsSingleResolvedView : TraceHitsSingleResolvedViewImpl<false> {
+    using Base = TraceHitsSingleResolvedViewImpl<false>;
+    using Base::Base;
+};
 template <bool Const>
 struct TraceHitsSingleViewImpl : ioj::soa_storage_detail::CompactViewOperations {
     using soa_schema = TraceHitsSchema;
@@ -113,6 +363,16 @@ struct TraceHitsSingleViewImpl : ioj::soa_storage_detail::CompactViewOperations 
         func(entities());
         func(static_geometry_indices());
         func(hits());
+    }
+    auto resolve() const -> std::
+        conditional_t<Const, TraceHitsSingleResolvedConstView, TraceHitsSingleResolvedView> {
+        return {(make_column_view(Layout::columns.LocationsXsColumn).data()),
+                (make_column_view(Layout::columns.LocationsYsColumn).data()),
+                (make_column_view(Layout::columns.LocationsZsColumn).data()),
+                (make_column_view(Layout::columns.EntitiesColumn).data()),
+                (make_column_view(Layout::columns.StaticGeometryIndicesColumn).data()),
+                (make_column_view(Layout::columns.HitsColumn).data()),
+                count_};
     }
   private:
     template <typename T>

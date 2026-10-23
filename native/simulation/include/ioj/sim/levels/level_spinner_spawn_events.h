@@ -69,6 +69,252 @@ struct LevelSpinnerSpawnEventsSingleLayout {
     static_assert(max_capacity >= capacity_granularity);
 };
 
+struct LevelSpinnerSpawnEventsSingleResolvedView_locations;
+struct LevelSpinnerSpawnEventsSingleResolvedConstView_locations;
+template <bool Const>
+struct LevelSpinnerSpawnEventsSingleResolvedView_locationsImpl {
+    using size_type = std::uint32_t;
+    using View = LevelSpinnerSpawnEventsSingleResolvedView_locations;
+    using ConstView = LevelSpinnerSpawnEventsSingleResolvedConstView_locations;
+    using soa_schema = Vectors3fSchema;
+    template <typename T>
+    using Element = std::conditional_t<Const, T const, T>;
+    LevelSpinnerSpawnEventsSingleResolvedView_locationsImpl() = default;
+    LevelSpinnerSpawnEventsSingleResolvedView_locationsImpl(Element<float>* locations_xs,
+                                                            Element<float>* locations_ys,
+                                                            Element<float>* locations_zs,
+                                                            size_type count)
+        : locations_xs_{locations_xs}
+        , locations_ys_{locations_ys}
+        , locations_zs_{locations_zs}
+        , count_{count} {
+        ioj::soa_storage_detail::validate_column_pointers(
+            count_, locations_xs_, locations_ys_, locations_zs_);
+    }
+    LevelSpinnerSpawnEventsSingleResolvedView_locationsImpl(std::span<Element<float>> locations_xs,
+                                                            std::span<Element<float>> locations_ys,
+                                                            std::span<Element<float>> locations_zs)
+        : LevelSpinnerSpawnEventsSingleResolvedView_locationsImpl{
+              locations_xs.data(),
+              locations_ys.data(),
+              locations_zs.data(),
+              ioj::soa_storage_detail::checked_row_count(locations_xs.size())} {
+        assert(locations_xs.size() == count_);
+        assert(locations_ys.size() == count_);
+        assert(locations_zs.size() == count_);
+    }
+    template <bool Enabled = Const>
+    LevelSpinnerSpawnEventsSingleResolvedView_locationsImpl(
+        LevelSpinnerSpawnEventsSingleResolvedView_locationsImpl<false> const& other)
+        requires Enabled
+        : locations_xs_{other.locations_xs_}
+        , locations_ys_{other.locations_ys_}
+        , locations_zs_{other.locations_zs_}
+        , count_{other.count_} {}
+    auto num() const noexcept -> size_type { return count_; }
+    auto is_empty() const noexcept -> bool { return count_ == 0; }
+    auto get_view(this auto const& self) { return self; }
+    auto get_const_view(this auto const& self) {
+        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
+        return Result{self.locations_xs_, self.locations_ys_, self.locations_zs_, self.count_};
+    }
+    auto resolve(this auto const& self) { return self; }
+    void validate() const {}
+    auto slice(this auto const& self, size_type offset, size_type count) {
+        assert(offset <= self.count_ && count <= self.count_ - offset);
+        using Result = std::remove_cvref_t<decltype(self)>;
+        return Result{self.locations_xs_ == nullptr ? nullptr : self.locations_xs_ + offset,
+                      self.locations_ys_ == nullptr ? nullptr : self.locations_ys_ + offset,
+                      self.locations_zs_ == nullptr ? nullptr : self.locations_zs_ + offset,
+                      count};
+    }
+    auto get_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count);
+    }
+    auto get_const_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count).get_const_view();
+    }
+    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
+    auto right(this auto const& self, size_type count) {
+        assert(count <= self.num());
+        return self.slice(self.num() - count, count);
+    }
+    auto xs() const -> std::span<Element<float>> { return {locations_xs_, count_}; }
+    auto ys() const -> std::span<Element<float>> { return {locations_ys_, count_}; }
+    auto zs() const -> std::span<Element<float>> { return {locations_zs_, count_}; }
+    template <typename Func>
+    void each_column(Func&& func) const {
+        func(std::span<Element<float>>{locations_xs_, count_});
+        func(std::span<Element<float>>{locations_ys_, count_});
+        func(std::span<Element<float>>{locations_zs_, count_});
+    }
+  private:
+    template <bool>
+    friend struct LevelSpinnerSpawnEventsSingleResolvedView_locationsImpl;
+    Element<float>* locations_xs_{};
+    Element<float>* locations_ys_{};
+    Element<float>* locations_zs_{};
+    size_type count_{};
+};
+struct LevelSpinnerSpawnEventsSingleResolvedConstView_locations
+    : LevelSpinnerSpawnEventsSingleResolvedView_locationsImpl<true> {
+    using Base = LevelSpinnerSpawnEventsSingleResolvedView_locationsImpl<true>;
+    using Base::Base;
+};
+struct LevelSpinnerSpawnEventsSingleResolvedView_locations
+    : LevelSpinnerSpawnEventsSingleResolvedView_locationsImpl<false> {
+    using Base = LevelSpinnerSpawnEventsSingleResolvedView_locationsImpl<false>;
+    using Base::Base;
+};
+struct LevelSpinnerSpawnEventsSingleResolvedView;
+struct LevelSpinnerSpawnEventsSingleResolvedConstView;
+template <bool Const>
+struct LevelSpinnerSpawnEventsSingleResolvedViewImpl {
+    using size_type = std::uint32_t;
+    using View = LevelSpinnerSpawnEventsSingleResolvedView;
+    using ConstView = LevelSpinnerSpawnEventsSingleResolvedConstView;
+    using soa_schema = LevelSpinnerSpawnEventsSchema;
+    template <typename T>
+    using Element = std::conditional_t<Const, T const, T>;
+    LevelSpinnerSpawnEventsSingleResolvedViewImpl() = default;
+    LevelSpinnerSpawnEventsSingleResolvedViewImpl(
+        Element<ioj::sim::LevelEntityIndex>* entity_indices,
+        Element<float>* locations_xs,
+        Element<float>* locations_ys,
+        Element<float>* locations_zs,
+        Element<float>* yaws,
+        Element<std::int32_t>* initial_fire_point_indices,
+        size_type count)
+        : entity_indices_{entity_indices}
+        , locations_xs_{locations_xs}
+        , locations_ys_{locations_ys}
+        , locations_zs_{locations_zs}
+        , yaws_{yaws}
+        , initial_fire_point_indices_{initial_fire_point_indices}
+        , count_{count} {
+        ioj::soa_storage_detail::validate_column_pointers(count_,
+                                                          entity_indices_,
+                                                          locations_xs_,
+                                                          locations_ys_,
+                                                          locations_zs_,
+                                                          yaws_,
+                                                          initial_fire_point_indices_);
+    }
+    LevelSpinnerSpawnEventsSingleResolvedViewImpl(
+        std::span<Element<ioj::sim::LevelEntityIndex>> entity_indices,
+        std::span<Element<float>> locations_xs,
+        std::span<Element<float>> locations_ys,
+        std::span<Element<float>> locations_zs,
+        std::span<Element<float>> yaws,
+        std::span<Element<std::int32_t>> initial_fire_point_indices)
+        : LevelSpinnerSpawnEventsSingleResolvedViewImpl{
+              entity_indices.data(),
+              locations_xs.data(),
+              locations_ys.data(),
+              locations_zs.data(),
+              yaws.data(),
+              initial_fire_point_indices.data(),
+              ioj::soa_storage_detail::checked_row_count(entity_indices.size())} {
+        assert(entity_indices.size() == count_);
+        assert(locations_xs.size() == count_);
+        assert(locations_ys.size() == count_);
+        assert(locations_zs.size() == count_);
+        assert(yaws.size() == count_);
+        assert(initial_fire_point_indices.size() == count_);
+    }
+    template <bool Enabled = Const>
+    LevelSpinnerSpawnEventsSingleResolvedViewImpl(
+        LevelSpinnerSpawnEventsSingleResolvedViewImpl<false> const& other)
+        requires Enabled
+        : entity_indices_{other.entity_indices_}
+        , locations_xs_{other.locations_xs_}
+        , locations_ys_{other.locations_ys_}
+        , locations_zs_{other.locations_zs_}
+        , yaws_{other.yaws_}
+        , initial_fire_point_indices_{other.initial_fire_point_indices_}
+        , count_{other.count_} {}
+    auto num() const noexcept -> size_type { return count_; }
+    auto is_empty() const noexcept -> bool { return count_ == 0; }
+    auto get_view(this auto const& self) { return self; }
+    auto get_const_view(this auto const& self) {
+        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
+        return Result{self.entity_indices_,
+                      self.locations_xs_,
+                      self.locations_ys_,
+                      self.locations_zs_,
+                      self.yaws_,
+                      self.initial_fire_point_indices_,
+                      self.count_};
+    }
+    auto resolve(this auto const& self) { return self; }
+    void validate() const {}
+    auto slice(this auto const& self, size_type offset, size_type count) {
+        assert(offset <= self.count_ && count <= self.count_ - offset);
+        using Result = std::remove_cvref_t<decltype(self)>;
+        return Result{self.entity_indices_ == nullptr ? nullptr : self.entity_indices_ + offset,
+                      self.locations_xs_ == nullptr ? nullptr : self.locations_xs_ + offset,
+                      self.locations_ys_ == nullptr ? nullptr : self.locations_ys_ + offset,
+                      self.locations_zs_ == nullptr ? nullptr : self.locations_zs_ + offset,
+                      self.yaws_ == nullptr ? nullptr : self.yaws_ + offset,
+                      self.initial_fire_point_indices_ == nullptr
+                          ? nullptr
+                          : self.initial_fire_point_indices_ + offset,
+                      count};
+    }
+    auto get_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count);
+    }
+    auto get_const_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count).get_const_view();
+    }
+    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
+    auto right(this auto const& self, size_type count) {
+        assert(count <= self.num());
+        return self.slice(self.num() - count, count);
+    }
+    auto entity_indices() const -> std::span<Element<ioj::sim::LevelEntityIndex>> {
+        return {entity_indices_, count_};
+    }
+    auto view_locations() const
+        -> std::conditional_t<Const,
+                              LevelSpinnerSpawnEventsSingleResolvedConstView_locations,
+                              LevelSpinnerSpawnEventsSingleResolvedView_locations> {
+        return {locations_xs_, locations_ys_, locations_zs_, count_};
+    }
+    auto yaws() const -> std::span<Element<float>> { return {yaws_, count_}; }
+    auto initial_fire_point_indices() const -> std::span<Element<std::int32_t>> {
+        return {initial_fire_point_indices_, count_};
+    }
+    template <typename Func>
+    void each_column(Func&& func) const {
+        func(std::span<Element<ioj::sim::LevelEntityIndex>>{entity_indices_, count_});
+        func(std::span<Element<float>>{locations_xs_, count_});
+        func(std::span<Element<float>>{locations_ys_, count_});
+        func(std::span<Element<float>>{locations_zs_, count_});
+        func(std::span<Element<float>>{yaws_, count_});
+        func(std::span<Element<std::int32_t>>{initial_fire_point_indices_, count_});
+    }
+  private:
+    template <bool>
+    friend struct LevelSpinnerSpawnEventsSingleResolvedViewImpl;
+    Element<ioj::sim::LevelEntityIndex>* entity_indices_{};
+    Element<float>* locations_xs_{};
+    Element<float>* locations_ys_{};
+    Element<float>* locations_zs_{};
+    Element<float>* yaws_{};
+    Element<std::int32_t>* initial_fire_point_indices_{};
+    size_type count_{};
+};
+struct LevelSpinnerSpawnEventsSingleResolvedConstView
+    : LevelSpinnerSpawnEventsSingleResolvedViewImpl<true> {
+    using Base = LevelSpinnerSpawnEventsSingleResolvedViewImpl<true>;
+    using Base::Base;
+};
+struct LevelSpinnerSpawnEventsSingleResolvedView
+    : LevelSpinnerSpawnEventsSingleResolvedViewImpl<false> {
+    using Base = LevelSpinnerSpawnEventsSingleResolvedViewImpl<false>;
+    using Base::Base;
+};
 template <bool Const>
 struct LevelSpinnerSpawnEventsSingleViewImpl : ioj::soa_storage_detail::CompactViewOperations {
     using soa_schema = LevelSpinnerSpawnEventsSchema;
@@ -115,6 +361,17 @@ struct LevelSpinnerSpawnEventsSingleViewImpl : ioj::soa_storage_detail::CompactV
         func(locations_view.zs());
         func(yaws());
         func(initial_fire_point_indices());
+    }
+    auto resolve() const -> std::conditional_t<Const,
+                                               LevelSpinnerSpawnEventsSingleResolvedConstView,
+                                               LevelSpinnerSpawnEventsSingleResolvedView> {
+        return {(make_column_view(Layout::columns.EntityIndicesColumn).data()),
+                (make_column_view(Layout::columns.LocationsXsColumn).data()),
+                (make_column_view(Layout::columns.LocationsYsColumn).data()),
+                (make_column_view(Layout::columns.LocationsZsColumn).data()),
+                (make_column_view(Layout::columns.YawsColumn).data()),
+                (make_column_view(Layout::columns.InitialFirePointIndicesColumn).data()),
+                count_};
     }
   private:
     template <typename T>

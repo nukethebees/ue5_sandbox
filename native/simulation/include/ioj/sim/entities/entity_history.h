@@ -73,6 +73,172 @@ struct EntityHistoryColumnsSingleLayout {
     static_assert(max_capacity >= capacity_granularity);
 };
 
+struct EntityHistoryColumnsSingleResolvedView;
+struct EntityHistoryColumnsSingleResolvedConstView;
+template <bool Const>
+struct EntityHistoryColumnsSingleResolvedViewImpl {
+    using size_type = std::uint32_t;
+    using View = EntityHistoryColumnsSingleResolvedView;
+    using ConstView = EntityHistoryColumnsSingleResolvedConstView;
+    using soa_schema = EntityHistoryColumnsSchema;
+    template <typename T>
+    using Element = std::conditional_t<Const, T const, T>;
+    EntityHistoryColumnsSingleResolvedViewImpl() = default;
+    EntityHistoryColumnsSingleResolvedViewImpl(Element<EntityId>* entity_ids,
+                                               Element<ioj::sim::EntityType>* entity_types,
+                                               Element<::ioj::Team>* teams,
+                                               Element<std::uint32_t>* kills,
+                                               Element<EntityId>* killed_by,
+                                               Element<LifeState>* life_state,
+                                               Element<SimTick>* death_ticks,
+                                               Element<Vector3f>* death_locations,
+                                               size_type count)
+        : entity_ids_{entity_ids}
+        , entity_types_{entity_types}
+        , teams_{teams}
+        , kills_{kills}
+        , killed_by_{killed_by}
+        , life_state_{life_state}
+        , death_ticks_{death_ticks}
+        , death_locations_{death_locations}
+        , count_{count} {
+        ioj::soa_storage_detail::validate_column_pointers(count_,
+                                                          entity_ids_,
+                                                          entity_types_,
+                                                          teams_,
+                                                          kills_,
+                                                          killed_by_,
+                                                          life_state_,
+                                                          death_ticks_,
+                                                          death_locations_);
+    }
+    EntityHistoryColumnsSingleResolvedViewImpl(
+        std::span<Element<EntityId>> entity_ids,
+        std::span<Element<ioj::sim::EntityType>> entity_types,
+        std::span<Element<::ioj::Team>> teams,
+        std::span<Element<std::uint32_t>> kills,
+        std::span<Element<EntityId>> killed_by,
+        std::span<Element<LifeState>> life_state,
+        std::span<Element<SimTick>> death_ticks,
+        std::span<Element<Vector3f>> death_locations)
+        : EntityHistoryColumnsSingleResolvedViewImpl{
+              entity_ids.data(),
+              entity_types.data(),
+              teams.data(),
+              kills.data(),
+              killed_by.data(),
+              life_state.data(),
+              death_ticks.data(),
+              death_locations.data(),
+              ioj::soa_storage_detail::checked_row_count(entity_ids.size())} {
+        assert(entity_ids.size() == count_);
+        assert(entity_types.size() == count_);
+        assert(teams.size() == count_);
+        assert(kills.size() == count_);
+        assert(killed_by.size() == count_);
+        assert(life_state.size() == count_);
+        assert(death_ticks.size() == count_);
+        assert(death_locations.size() == count_);
+    }
+    template <bool Enabled = Const>
+    EntityHistoryColumnsSingleResolvedViewImpl(
+        EntityHistoryColumnsSingleResolvedViewImpl<false> const& other)
+        requires Enabled
+        : entity_ids_{other.entity_ids_}
+        , entity_types_{other.entity_types_}
+        , teams_{other.teams_}
+        , kills_{other.kills_}
+        , killed_by_{other.killed_by_}
+        , life_state_{other.life_state_}
+        , death_ticks_{other.death_ticks_}
+        , death_locations_{other.death_locations_}
+        , count_{other.count_} {}
+    auto num() const noexcept -> size_type { return count_; }
+    auto is_empty() const noexcept -> bool { return count_ == 0; }
+    auto get_view(this auto const& self) { return self; }
+    auto get_const_view(this auto const& self) {
+        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
+        return Result{self.entity_ids_,
+                      self.entity_types_,
+                      self.teams_,
+                      self.kills_,
+                      self.killed_by_,
+                      self.life_state_,
+                      self.death_ticks_,
+                      self.death_locations_,
+                      self.count_};
+    }
+    auto resolve(this auto const& self) { return self; }
+    void validate() const {}
+    auto slice(this auto const& self, size_type offset, size_type count) {
+        assert(offset <= self.count_ && count <= self.count_ - offset);
+        using Result = std::remove_cvref_t<decltype(self)>;
+        return Result{self.entity_ids_ == nullptr ? nullptr : self.entity_ids_ + offset,
+                      self.entity_types_ == nullptr ? nullptr : self.entity_types_ + offset,
+                      self.teams_ == nullptr ? nullptr : self.teams_ + offset,
+                      self.kills_ == nullptr ? nullptr : self.kills_ + offset,
+                      self.killed_by_ == nullptr ? nullptr : self.killed_by_ + offset,
+                      self.life_state_ == nullptr ? nullptr : self.life_state_ + offset,
+                      self.death_ticks_ == nullptr ? nullptr : self.death_ticks_ + offset,
+                      self.death_locations_ == nullptr ? nullptr : self.death_locations_ + offset,
+                      count};
+    }
+    auto get_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count);
+    }
+    auto get_const_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count).get_const_view();
+    }
+    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
+    auto right(this auto const& self, size_type count) {
+        assert(count <= self.num());
+        return self.slice(self.num() - count, count);
+    }
+    auto entity_ids() const -> std::span<Element<EntityId>> { return {entity_ids_, count_}; }
+    auto entity_types() const -> std::span<Element<ioj::sim::EntityType>> {
+        return {entity_types_, count_};
+    }
+    auto teams() const -> std::span<Element<::ioj::Team>> { return {teams_, count_}; }
+    auto kills() const -> std::span<Element<std::uint32_t>> { return {kills_, count_}; }
+    auto killed_by() const -> std::span<Element<EntityId>> { return {killed_by_, count_}; }
+    auto life_state() const -> std::span<Element<LifeState>> { return {life_state_, count_}; }
+    auto death_ticks() const -> std::span<Element<SimTick>> { return {death_ticks_, count_}; }
+    auto death_locations() const -> std::span<Element<Vector3f>> {
+        return {death_locations_, count_};
+    }
+    template <typename Func>
+    void each_column(Func&& func) const {
+        func(std::span<Element<EntityId>>{entity_ids_, count_});
+        func(std::span<Element<ioj::sim::EntityType>>{entity_types_, count_});
+        func(std::span<Element<::ioj::Team>>{teams_, count_});
+        func(std::span<Element<std::uint32_t>>{kills_, count_});
+        func(std::span<Element<EntityId>>{killed_by_, count_});
+        func(std::span<Element<LifeState>>{life_state_, count_});
+        func(std::span<Element<SimTick>>{death_ticks_, count_});
+        func(std::span<Element<Vector3f>>{death_locations_, count_});
+    }
+  private:
+    template <bool>
+    friend struct EntityHistoryColumnsSingleResolvedViewImpl;
+    Element<EntityId>* entity_ids_{};
+    Element<ioj::sim::EntityType>* entity_types_{};
+    Element<::ioj::Team>* teams_{};
+    Element<std::uint32_t>* kills_{};
+    Element<EntityId>* killed_by_{};
+    Element<LifeState>* life_state_{};
+    Element<SimTick>* death_ticks_{};
+    Element<Vector3f>* death_locations_{};
+    size_type count_{};
+};
+struct EntityHistoryColumnsSingleResolvedConstView
+    : EntityHistoryColumnsSingleResolvedViewImpl<true> {
+    using Base = EntityHistoryColumnsSingleResolvedViewImpl<true>;
+    using Base::Base;
+};
+struct EntityHistoryColumnsSingleResolvedView : EntityHistoryColumnsSingleResolvedViewImpl<false> {
+    using Base = EntityHistoryColumnsSingleResolvedViewImpl<false>;
+    using Base::Base;
+};
 template <bool Const>
 struct EntityHistoryColumnsSingleViewImpl : ioj::soa_storage_detail::CompactViewOperations {
     using soa_schema = EntityHistoryColumnsSchema;
@@ -113,6 +279,19 @@ struct EntityHistoryColumnsSingleViewImpl : ioj::soa_storage_detail::CompactView
         func(life_state());
         func(death_ticks());
         func(death_locations());
+    }
+    auto resolve() const -> std::conditional_t<Const,
+                                               EntityHistoryColumnsSingleResolvedConstView,
+                                               EntityHistoryColumnsSingleResolvedView> {
+        return {(make_column_view(Layout::columns.EntityIdsColumn).data()),
+                (make_column_view(Layout::columns.EntityTypesColumn).data()),
+                (make_column_view(Layout::columns.TeamsColumn).data()),
+                (make_column_view(Layout::columns.KillsColumn).data()),
+                (make_column_view(Layout::columns.KilledByColumn).data()),
+                (make_column_view(Layout::columns.LifeStateColumn).data()),
+                (make_column_view(Layout::columns.DeathTicksColumn).data()),
+                (make_column_view(Layout::columns.DeathLocationsColumn).data()),
+                count_};
     }
   private:
     template <typename T>

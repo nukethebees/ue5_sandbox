@@ -60,6 +60,111 @@ struct FighterOrderQueueSingleLayout {
     static_assert(max_capacity >= capacity_granularity);
 };
 
+struct FighterOrderQueueSingleResolvedView;
+struct FighterOrderQueueSingleResolvedConstView;
+template <bool Const>
+struct FighterOrderQueueSingleResolvedViewImpl {
+    using size_type = std::uint32_t;
+    using View = FighterOrderQueueSingleResolvedView;
+    using ConstView = FighterOrderQueueSingleResolvedConstView;
+    using soa_schema = FighterOrderQueueSchema;
+    template <typename T>
+    using Element = std::conditional_t<Const, T const, T>;
+    FighterOrderQueueSingleResolvedViewImpl() = default;
+    FighterOrderQueueSingleResolvedViewImpl(Element<EntityId>* entity_ids,
+                                            Element<FighterOrder>* orders,
+                                            Element<FighterTask>* tasks,
+                                            Element<EntityId>* targets,
+                                            size_type count)
+        : entity_ids_{entity_ids}
+        , orders_{orders}
+        , tasks_{tasks}
+        , targets_{targets}
+        , count_{count} {
+        ioj::soa_storage_detail::validate_column_pointers(
+            count_, entity_ids_, orders_, tasks_, targets_);
+    }
+    FighterOrderQueueSingleResolvedViewImpl(std::span<Element<EntityId>> entity_ids,
+                                            std::span<Element<FighterOrder>> orders,
+                                            std::span<Element<FighterTask>> tasks,
+                                            std::span<Element<EntityId>> targets)
+        : FighterOrderQueueSingleResolvedViewImpl{
+              entity_ids.data(),
+              orders.data(),
+              tasks.data(),
+              targets.data(),
+              ioj::soa_storage_detail::checked_row_count(entity_ids.size())} {
+        assert(entity_ids.size() == count_);
+        assert(orders.size() == count_);
+        assert(tasks.size() == count_);
+        assert(targets.size() == count_);
+    }
+    template <bool Enabled = Const>
+    FighterOrderQueueSingleResolvedViewImpl(
+        FighterOrderQueueSingleResolvedViewImpl<false> const& other)
+        requires Enabled
+        : entity_ids_{other.entity_ids_}
+        , orders_{other.orders_}
+        , tasks_{other.tasks_}
+        , targets_{other.targets_}
+        , count_{other.count_} {}
+    auto num() const noexcept -> size_type { return count_; }
+    auto is_empty() const noexcept -> bool { return count_ == 0; }
+    auto get_view(this auto const& self) { return self; }
+    auto get_const_view(this auto const& self) {
+        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
+        return Result{self.entity_ids_, self.orders_, self.tasks_, self.targets_, self.count_};
+    }
+    auto resolve(this auto const& self) { return self; }
+    void validate() const {}
+    auto slice(this auto const& self, size_type offset, size_type count) {
+        assert(offset <= self.count_ && count <= self.count_ - offset);
+        using Result = std::remove_cvref_t<decltype(self)>;
+        return Result{self.entity_ids_ == nullptr ? nullptr : self.entity_ids_ + offset,
+                      self.orders_ == nullptr ? nullptr : self.orders_ + offset,
+                      self.tasks_ == nullptr ? nullptr : self.tasks_ + offset,
+                      self.targets_ == nullptr ? nullptr : self.targets_ + offset,
+                      count};
+    }
+    auto get_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count);
+    }
+    auto get_const_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count).get_const_view();
+    }
+    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
+    auto right(this auto const& self, size_type count) {
+        assert(count <= self.num());
+        return self.slice(self.num() - count, count);
+    }
+    auto entity_ids() const -> std::span<Element<EntityId>> { return {entity_ids_, count_}; }
+    auto orders() const -> std::span<Element<FighterOrder>> { return {orders_, count_}; }
+    auto tasks() const -> std::span<Element<FighterTask>> { return {tasks_, count_}; }
+    auto targets() const -> std::span<Element<EntityId>> { return {targets_, count_}; }
+    template <typename Func>
+    void each_column(Func&& func) const {
+        func(std::span<Element<EntityId>>{entity_ids_, count_});
+        func(std::span<Element<FighterOrder>>{orders_, count_});
+        func(std::span<Element<FighterTask>>{tasks_, count_});
+        func(std::span<Element<EntityId>>{targets_, count_});
+    }
+  private:
+    template <bool>
+    friend struct FighterOrderQueueSingleResolvedViewImpl;
+    Element<EntityId>* entity_ids_{};
+    Element<FighterOrder>* orders_{};
+    Element<FighterTask>* tasks_{};
+    Element<EntityId>* targets_{};
+    size_type count_{};
+};
+struct FighterOrderQueueSingleResolvedConstView : FighterOrderQueueSingleResolvedViewImpl<true> {
+    using Base = FighterOrderQueueSingleResolvedViewImpl<true>;
+    using Base::Base;
+};
+struct FighterOrderQueueSingleResolvedView : FighterOrderQueueSingleResolvedViewImpl<false> {
+    using Base = FighterOrderQueueSingleResolvedViewImpl<false>;
+    using Base::Base;
+};
 template <bool Const>
 struct FighterOrderQueueSingleViewImpl : ioj::soa_storage_detail::CompactViewOperations {
     using soa_schema = FighterOrderQueueSchema;
@@ -92,6 +197,15 @@ struct FighterOrderQueueSingleViewImpl : ioj::soa_storage_detail::CompactViewOpe
         func(orders());
         func(tasks());
         func(targets());
+    }
+    auto resolve() const -> std::conditional_t<Const,
+                                               FighterOrderQueueSingleResolvedConstView,
+                                               FighterOrderQueueSingleResolvedView> {
+        return {(make_column_view(Layout::columns.EntityIdsColumn).data()),
+                (make_column_view(Layout::columns.OrdersColumn).data()),
+                (make_column_view(Layout::columns.TasksColumn).data()),
+                (make_column_view(Layout::columns.TargetsColumn).data()),
+                count_};
     }
   private:
     template <typename T>

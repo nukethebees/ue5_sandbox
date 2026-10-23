@@ -169,11 +169,25 @@ struct StorageOperations {
         if (count == 0) {
             return first;
         }
+        // Keep source columns alive until both existing and appended rows have been copied.
+        auto const source_columns{self.source_pointers(source) + offset};
         auto const new_num{first + count};
         if (new_num > self.capacity_) {
-            self.reallocate(GrowthCapacity(new_num, self.capacity_, Self::capacity_block_bound));
+            auto const new_capacity{
+                GrowthCapacity(new_num, self.capacity_, Self::capacity_block_bound)};
+            auto* const new_data{allocate_storage(self, new_capacity)};
+            if (first > 0) {
+                self.copy_live_columns(new_data, new_capacity);
+            }
+            auto const destination{
+                self.make_data_unchecked(new_data, new_capacity / Self::capacity_granularity)};
+            self.template transfer_columns<false>(destination + first, source_columns, count);
+            release_storage(self);
+            self.data_ = new_data;
+            self.capacity_ = new_capacity;
+        } else {
+            self.template transfer_columns<false>(self.get_data(first), source_columns, count);
         }
-        self.append_columns(source, offset, first, count);
         self.num_ = new_num;
         return first;
     }

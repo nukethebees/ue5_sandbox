@@ -78,6 +78,228 @@ struct EntityCellDataColumnsSingleLayout {
     static_assert(max_capacity >= capacity_granularity);
 };
 
+struct EntityCellDataColumnsSingleResolvedView;
+struct EntityCellDataColumnsSingleResolvedConstView;
+template <bool Const>
+struct EntityCellDataColumnsSingleResolvedViewImpl {
+    using size_type = std::uint32_t;
+    using View = EntityCellDataColumnsSingleResolvedView;
+    using ConstView = EntityCellDataColumnsSingleResolvedConstView;
+    using soa_schema = EntityCellDataColumnsSchema;
+    template <typename T>
+    using Element = std::conditional_t<Const, T const, T>;
+    EntityCellDataColumnsSingleResolvedViewImpl() = default;
+    EntityCellDataColumnsSingleResolvedViewImpl(Element<float>* min_point_xs,
+                                                Element<float>* min_point_ys,
+                                                Element<float>* min_point_zs,
+                                                Element<float>* max_point_xs,
+                                                Element<float>* max_point_ys,
+                                                Element<float>* max_point_zs,
+                                                Element<std::int32_t>* min_cell_xs,
+                                                Element<std::int32_t>* min_cell_ys,
+                                                Element<std::int32_t>* min_cell_zs,
+                                                Element<std::int32_t>* max_cell_xs,
+                                                Element<std::int32_t>* max_cell_ys,
+                                                Element<std::int32_t>* max_cell_zs,
+                                                Element<EntityId>* entity_ids,
+                                                size_type count)
+        : min_point_xs_{min_point_xs}
+        , min_point_ys_{min_point_ys}
+        , min_point_zs_{min_point_zs}
+        , max_point_xs_{max_point_xs}
+        , max_point_ys_{max_point_ys}
+        , max_point_zs_{max_point_zs}
+        , min_cell_xs_{min_cell_xs}
+        , min_cell_ys_{min_cell_ys}
+        , min_cell_zs_{min_cell_zs}
+        , max_cell_xs_{max_cell_xs}
+        , max_cell_ys_{max_cell_ys}
+        , max_cell_zs_{max_cell_zs}
+        , entity_ids_{entity_ids}
+        , count_{count} {
+        ioj::soa_storage_detail::validate_column_pointers(count_,
+                                                          min_point_xs_,
+                                                          min_point_ys_,
+                                                          min_point_zs_,
+                                                          max_point_xs_,
+                                                          max_point_ys_,
+                                                          max_point_zs_,
+                                                          min_cell_xs_,
+                                                          min_cell_ys_,
+                                                          min_cell_zs_,
+                                                          max_cell_xs_,
+                                                          max_cell_ys_,
+                                                          max_cell_zs_,
+                                                          entity_ids_);
+    }
+    EntityCellDataColumnsSingleResolvedViewImpl(std::span<Element<float>> min_point_xs,
+                                                std::span<Element<float>> min_point_ys,
+                                                std::span<Element<float>> min_point_zs,
+                                                std::span<Element<float>> max_point_xs,
+                                                std::span<Element<float>> max_point_ys,
+                                                std::span<Element<float>> max_point_zs,
+                                                std::span<Element<std::int32_t>> min_cell_xs,
+                                                std::span<Element<std::int32_t>> min_cell_ys,
+                                                std::span<Element<std::int32_t>> min_cell_zs,
+                                                std::span<Element<std::int32_t>> max_cell_xs,
+                                                std::span<Element<std::int32_t>> max_cell_ys,
+                                                std::span<Element<std::int32_t>> max_cell_zs,
+                                                std::span<Element<EntityId>> entity_ids)
+        : EntityCellDataColumnsSingleResolvedViewImpl{
+              min_point_xs.data(),
+              min_point_ys.data(),
+              min_point_zs.data(),
+              max_point_xs.data(),
+              max_point_ys.data(),
+              max_point_zs.data(),
+              min_cell_xs.data(),
+              min_cell_ys.data(),
+              min_cell_zs.data(),
+              max_cell_xs.data(),
+              max_cell_ys.data(),
+              max_cell_zs.data(),
+              entity_ids.data(),
+              ioj::soa_storage_detail::checked_row_count(min_point_xs.size())} {
+        assert(min_point_xs.size() == count_);
+        assert(min_point_ys.size() == count_);
+        assert(min_point_zs.size() == count_);
+        assert(max_point_xs.size() == count_);
+        assert(max_point_ys.size() == count_);
+        assert(max_point_zs.size() == count_);
+        assert(min_cell_xs.size() == count_);
+        assert(min_cell_ys.size() == count_);
+        assert(min_cell_zs.size() == count_);
+        assert(max_cell_xs.size() == count_);
+        assert(max_cell_ys.size() == count_);
+        assert(max_cell_zs.size() == count_);
+        assert(entity_ids.size() == count_);
+    }
+    template <bool Enabled = Const>
+    EntityCellDataColumnsSingleResolvedViewImpl(
+        EntityCellDataColumnsSingleResolvedViewImpl<false> const& other)
+        requires Enabled
+        : min_point_xs_{other.min_point_xs_}
+        , min_point_ys_{other.min_point_ys_}
+        , min_point_zs_{other.min_point_zs_}
+        , max_point_xs_{other.max_point_xs_}
+        , max_point_ys_{other.max_point_ys_}
+        , max_point_zs_{other.max_point_zs_}
+        , min_cell_xs_{other.min_cell_xs_}
+        , min_cell_ys_{other.min_cell_ys_}
+        , min_cell_zs_{other.min_cell_zs_}
+        , max_cell_xs_{other.max_cell_xs_}
+        , max_cell_ys_{other.max_cell_ys_}
+        , max_cell_zs_{other.max_cell_zs_}
+        , entity_ids_{other.entity_ids_}
+        , count_{other.count_} {}
+    auto num() const noexcept -> size_type { return count_; }
+    auto is_empty() const noexcept -> bool { return count_ == 0; }
+    auto get_view(this auto const& self) { return self; }
+    auto get_const_view(this auto const& self) {
+        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
+        return Result{self.min_point_xs_,
+                      self.min_point_ys_,
+                      self.min_point_zs_,
+                      self.max_point_xs_,
+                      self.max_point_ys_,
+                      self.max_point_zs_,
+                      self.min_cell_xs_,
+                      self.min_cell_ys_,
+                      self.min_cell_zs_,
+                      self.max_cell_xs_,
+                      self.max_cell_ys_,
+                      self.max_cell_zs_,
+                      self.entity_ids_,
+                      self.count_};
+    }
+    auto resolve(this auto const& self) { return self; }
+    void validate() const {}
+    auto slice(this auto const& self, size_type offset, size_type count) {
+        assert(offset <= self.count_ && count <= self.count_ - offset);
+        using Result = std::remove_cvref_t<decltype(self)>;
+        return Result{self.min_point_xs_ == nullptr ? nullptr : self.min_point_xs_ + offset,
+                      self.min_point_ys_ == nullptr ? nullptr : self.min_point_ys_ + offset,
+                      self.min_point_zs_ == nullptr ? nullptr : self.min_point_zs_ + offset,
+                      self.max_point_xs_ == nullptr ? nullptr : self.max_point_xs_ + offset,
+                      self.max_point_ys_ == nullptr ? nullptr : self.max_point_ys_ + offset,
+                      self.max_point_zs_ == nullptr ? nullptr : self.max_point_zs_ + offset,
+                      self.min_cell_xs_ == nullptr ? nullptr : self.min_cell_xs_ + offset,
+                      self.min_cell_ys_ == nullptr ? nullptr : self.min_cell_ys_ + offset,
+                      self.min_cell_zs_ == nullptr ? nullptr : self.min_cell_zs_ + offset,
+                      self.max_cell_xs_ == nullptr ? nullptr : self.max_cell_xs_ + offset,
+                      self.max_cell_ys_ == nullptr ? nullptr : self.max_cell_ys_ + offset,
+                      self.max_cell_zs_ == nullptr ? nullptr : self.max_cell_zs_ + offset,
+                      self.entity_ids_ == nullptr ? nullptr : self.entity_ids_ + offset,
+                      count};
+    }
+    auto get_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count);
+    }
+    auto get_const_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count).get_const_view();
+    }
+    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
+    auto right(this auto const& self, size_type count) {
+        assert(count <= self.num());
+        return self.slice(self.num() - count, count);
+    }
+    auto min_point_xs() const -> std::span<Element<float>> { return {min_point_xs_, count_}; }
+    auto min_point_ys() const -> std::span<Element<float>> { return {min_point_ys_, count_}; }
+    auto min_point_zs() const -> std::span<Element<float>> { return {min_point_zs_, count_}; }
+    auto max_point_xs() const -> std::span<Element<float>> { return {max_point_xs_, count_}; }
+    auto max_point_ys() const -> std::span<Element<float>> { return {max_point_ys_, count_}; }
+    auto max_point_zs() const -> std::span<Element<float>> { return {max_point_zs_, count_}; }
+    auto min_cell_xs() const -> std::span<Element<std::int32_t>> { return {min_cell_xs_, count_}; }
+    auto min_cell_ys() const -> std::span<Element<std::int32_t>> { return {min_cell_ys_, count_}; }
+    auto min_cell_zs() const -> std::span<Element<std::int32_t>> { return {min_cell_zs_, count_}; }
+    auto max_cell_xs() const -> std::span<Element<std::int32_t>> { return {max_cell_xs_, count_}; }
+    auto max_cell_ys() const -> std::span<Element<std::int32_t>> { return {max_cell_ys_, count_}; }
+    auto max_cell_zs() const -> std::span<Element<std::int32_t>> { return {max_cell_zs_, count_}; }
+    auto entity_ids() const -> std::span<Element<EntityId>> { return {entity_ids_, count_}; }
+    template <typename Func>
+    void each_column(Func&& func) const {
+        func(std::span<Element<float>>{min_point_xs_, count_});
+        func(std::span<Element<float>>{min_point_ys_, count_});
+        func(std::span<Element<float>>{min_point_zs_, count_});
+        func(std::span<Element<float>>{max_point_xs_, count_});
+        func(std::span<Element<float>>{max_point_ys_, count_});
+        func(std::span<Element<float>>{max_point_zs_, count_});
+        func(std::span<Element<std::int32_t>>{min_cell_xs_, count_});
+        func(std::span<Element<std::int32_t>>{min_cell_ys_, count_});
+        func(std::span<Element<std::int32_t>>{min_cell_zs_, count_});
+        func(std::span<Element<std::int32_t>>{max_cell_xs_, count_});
+        func(std::span<Element<std::int32_t>>{max_cell_ys_, count_});
+        func(std::span<Element<std::int32_t>>{max_cell_zs_, count_});
+        func(std::span<Element<EntityId>>{entity_ids_, count_});
+    }
+  private:
+    template <bool>
+    friend struct EntityCellDataColumnsSingleResolvedViewImpl;
+    Element<float>* min_point_xs_{};
+    Element<float>* min_point_ys_{};
+    Element<float>* min_point_zs_{};
+    Element<float>* max_point_xs_{};
+    Element<float>* max_point_ys_{};
+    Element<float>* max_point_zs_{};
+    Element<std::int32_t>* min_cell_xs_{};
+    Element<std::int32_t>* min_cell_ys_{};
+    Element<std::int32_t>* min_cell_zs_{};
+    Element<std::int32_t>* max_cell_xs_{};
+    Element<std::int32_t>* max_cell_ys_{};
+    Element<std::int32_t>* max_cell_zs_{};
+    Element<EntityId>* entity_ids_{};
+    size_type count_{};
+};
+struct EntityCellDataColumnsSingleResolvedConstView
+    : EntityCellDataColumnsSingleResolvedViewImpl<true> {
+    using Base = EntityCellDataColumnsSingleResolvedViewImpl<true>;
+    using Base::Base;
+};
+struct EntityCellDataColumnsSingleResolvedView
+    : EntityCellDataColumnsSingleResolvedViewImpl<false> {
+    using Base = EntityCellDataColumnsSingleResolvedViewImpl<false>;
+    using Base::Base;
+};
 template <bool Const>
 struct EntityCellDataColumnsSingleViewImpl : ioj::soa_storage_detail::CompactViewOperations {
     using soa_schema = EntityCellDataColumnsSchema;
@@ -128,6 +350,24 @@ struct EntityCellDataColumnsSingleViewImpl : ioj::soa_storage_detail::CompactVie
         func(max_cell_ys());
         func(max_cell_zs());
         func(entity_ids());
+    }
+    auto resolve() const -> std::conditional_t<Const,
+                                               EntityCellDataColumnsSingleResolvedConstView,
+                                               EntityCellDataColumnsSingleResolvedView> {
+        return {(make_column_view(Layout::columns.MinPointXsColumn).data()),
+                (make_column_view(Layout::columns.MinPointYsColumn).data()),
+                (make_column_view(Layout::columns.MinPointZsColumn).data()),
+                (make_column_view(Layout::columns.MaxPointXsColumn).data()),
+                (make_column_view(Layout::columns.MaxPointYsColumn).data()),
+                (make_column_view(Layout::columns.MaxPointZsColumn).data()),
+                (make_column_view(Layout::columns.MinCellXsColumn).data()),
+                (make_column_view(Layout::columns.MinCellYsColumn).data()),
+                (make_column_view(Layout::columns.MinCellZsColumn).data()),
+                (make_column_view(Layout::columns.MaxCellXsColumn).data()),
+                (make_column_view(Layout::columns.MaxCellYsColumn).data()),
+                (make_column_view(Layout::columns.MaxCellZsColumn).data()),
+                (make_column_view(Layout::columns.EntityIdsColumn).data()),
+                count_};
     }
   private:
     template <typename T>

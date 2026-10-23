@@ -58,6 +58,105 @@ struct DirectDamageEventsSingleLayout {
     static_assert(max_capacity >= capacity_granularity);
 };
 
+struct DirectDamageEventsSingleResolvedView;
+struct DirectDamageEventsSingleResolvedConstView;
+template <bool Const>
+struct DirectDamageEventsSingleResolvedViewImpl {
+    using size_type = std::uint32_t;
+    using View = DirectDamageEventsSingleResolvedView;
+    using ConstView = DirectDamageEventsSingleResolvedConstView;
+    using soa_schema = DirectDamageEventsSchema;
+    template <typename T>
+    using Element = std::conditional_t<Const, T const, T>;
+    DirectDamageEventsSingleResolvedViewImpl() = default;
+    DirectDamageEventsSingleResolvedViewImpl(Element<EntityId>* damaged_entities,
+                                             Element<std::int32_t>* damage_amounts,
+                                             Element<EntityId>* instigators,
+                                             size_type count)
+        : damaged_entities_{damaged_entities}
+        , damage_amounts_{damage_amounts}
+        , instigators_{instigators}
+        , count_{count} {
+        ioj::soa_storage_detail::validate_column_pointers(
+            count_, damaged_entities_, damage_amounts_, instigators_);
+    }
+    DirectDamageEventsSingleResolvedViewImpl(std::span<Element<EntityId>> damaged_entities,
+                                             std::span<Element<std::int32_t>> damage_amounts,
+                                             std::span<Element<EntityId>> instigators)
+        : DirectDamageEventsSingleResolvedViewImpl{
+              damaged_entities.data(),
+              damage_amounts.data(),
+              instigators.data(),
+              ioj::soa_storage_detail::checked_row_count(damaged_entities.size())} {
+        assert(damaged_entities.size() == count_);
+        assert(damage_amounts.size() == count_);
+        assert(instigators.size() == count_);
+    }
+    template <bool Enabled = Const>
+    DirectDamageEventsSingleResolvedViewImpl(
+        DirectDamageEventsSingleResolvedViewImpl<false> const& other)
+        requires Enabled
+        : damaged_entities_{other.damaged_entities_}
+        , damage_amounts_{other.damage_amounts_}
+        , instigators_{other.instigators_}
+        , count_{other.count_} {}
+    auto num() const noexcept -> size_type { return count_; }
+    auto is_empty() const noexcept -> bool { return count_ == 0; }
+    auto get_view(this auto const& self) { return self; }
+    auto get_const_view(this auto const& self) {
+        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
+        return Result{self.damaged_entities_, self.damage_amounts_, self.instigators_, self.count_};
+    }
+    auto resolve(this auto const& self) { return self; }
+    void validate() const {}
+    auto slice(this auto const& self, size_type offset, size_type count) {
+        assert(offset <= self.count_ && count <= self.count_ - offset);
+        using Result = std::remove_cvref_t<decltype(self)>;
+        return Result{self.damaged_entities_ == nullptr ? nullptr : self.damaged_entities_ + offset,
+                      self.damage_amounts_ == nullptr ? nullptr : self.damage_amounts_ + offset,
+                      self.instigators_ == nullptr ? nullptr : self.instigators_ + offset,
+                      count};
+    }
+    auto get_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count);
+    }
+    auto get_const_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count).get_const_view();
+    }
+    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
+    auto right(this auto const& self, size_type count) {
+        assert(count <= self.num());
+        return self.slice(self.num() - count, count);
+    }
+    auto damaged_entities() const -> std::span<Element<EntityId>> {
+        return {damaged_entities_, count_};
+    }
+    auto damage_amounts() const -> std::span<Element<std::int32_t>> {
+        return {damage_amounts_, count_};
+    }
+    auto instigators() const -> std::span<Element<EntityId>> { return {instigators_, count_}; }
+    template <typename Func>
+    void each_column(Func&& func) const {
+        func(std::span<Element<EntityId>>{damaged_entities_, count_});
+        func(std::span<Element<std::int32_t>>{damage_amounts_, count_});
+        func(std::span<Element<EntityId>>{instigators_, count_});
+    }
+  private:
+    template <bool>
+    friend struct DirectDamageEventsSingleResolvedViewImpl;
+    Element<EntityId>* damaged_entities_{};
+    Element<std::int32_t>* damage_amounts_{};
+    Element<EntityId>* instigators_{};
+    size_type count_{};
+};
+struct DirectDamageEventsSingleResolvedConstView : DirectDamageEventsSingleResolvedViewImpl<true> {
+    using Base = DirectDamageEventsSingleResolvedViewImpl<true>;
+    using Base::Base;
+};
+struct DirectDamageEventsSingleResolvedView : DirectDamageEventsSingleResolvedViewImpl<false> {
+    using Base = DirectDamageEventsSingleResolvedViewImpl<false>;
+    using Base::Base;
+};
 template <bool Const>
 struct DirectDamageEventsSingleViewImpl : ioj::soa_storage_detail::CompactViewOperations {
     using soa_schema = DirectDamageEventsSchema;
@@ -90,6 +189,14 @@ struct DirectDamageEventsSingleViewImpl : ioj::soa_storage_detail::CompactViewOp
         func(damaged_entities());
         func(damage_amounts());
         func(instigators());
+    }
+    auto resolve() const -> std::conditional_t<Const,
+                                               DirectDamageEventsSingleResolvedConstView,
+                                               DirectDamageEventsSingleResolvedView> {
+        return {(make_column_view(Layout::columns.DamagedEntitiesColumn).data()),
+                (make_column_view(Layout::columns.DamageAmountsColumn).data()),
+                (make_column_view(Layout::columns.InstigatorsColumn).data()),
+                count_};
     }
   private:
     template <typename T>

@@ -142,6 +142,217 @@ struct HistoryRowsSingleLayout {
     static_assert(max_capacity >= capacity_granularity);
 };
 
+struct HistoryRowsSingleResolvedView;
+struct HistoryRowsSingleResolvedConstView;
+template <bool Const>
+struct HistoryRowsSingleResolvedViewImpl {
+    using size_type = std::uint32_t;
+    using View = HistoryRowsSingleResolvedView;
+    using ConstView = HistoryRowsSingleResolvedConstView;
+    using soa_schema = HistoryRowsSchema;
+    template <typename T>
+    using Element = std::conditional_t<Const, T const, T>;
+    HistoryRowsSingleResolvedViewImpl() = default;
+    HistoryRowsSingleResolvedViewImpl(
+        Element<SimTick>* completed_ticks,
+        Element<HistoryFieldMask>* validity_masks,
+        Element<std::int32_t>* active_entities,
+        Element<ioj::sim::telemetry::EntityTypeCounts>* active_entities_by_type,
+        Element<ioj::sim::telemetry::EntityCounts>* active_entities_by_team_and_type,
+        Element<std::int32_t>* spawned_entities,
+        Element<std::int32_t>* destroyed_entities,
+        Element<std::int32_t>* kills,
+        Element<std::int32_t>* active_lasers,
+        Element<std::int32_t>* lasers_fired,
+        size_type count)
+        : completed_ticks_{completed_ticks}
+        , validity_masks_{validity_masks}
+        , active_entities_{active_entities}
+        , active_entities_by_type_{active_entities_by_type}
+        , active_entities_by_team_and_type_{active_entities_by_team_and_type}
+        , spawned_entities_{spawned_entities}
+        , destroyed_entities_{destroyed_entities}
+        , kills_{kills}
+        , active_lasers_{active_lasers}
+        , lasers_fired_{lasers_fired}
+        , count_{count} {
+        ioj::soa_storage_detail::validate_column_pointers(count_,
+                                                          completed_ticks_,
+                                                          validity_masks_,
+                                                          active_entities_,
+                                                          active_entities_by_type_,
+                                                          active_entities_by_team_and_type_,
+                                                          spawned_entities_,
+                                                          destroyed_entities_,
+                                                          kills_,
+                                                          active_lasers_,
+                                                          lasers_fired_);
+    }
+    HistoryRowsSingleResolvedViewImpl(
+        std::span<Element<SimTick>> completed_ticks,
+        std::span<Element<HistoryFieldMask>> validity_masks,
+        std::span<Element<std::int32_t>> active_entities,
+        std::span<Element<ioj::sim::telemetry::EntityTypeCounts>> active_entities_by_type,
+        std::span<Element<ioj::sim::telemetry::EntityCounts>> active_entities_by_team_and_type,
+        std::span<Element<std::int32_t>> spawned_entities,
+        std::span<Element<std::int32_t>> destroyed_entities,
+        std::span<Element<std::int32_t>> kills,
+        std::span<Element<std::int32_t>> active_lasers,
+        std::span<Element<std::int32_t>> lasers_fired)
+        : HistoryRowsSingleResolvedViewImpl{
+              completed_ticks.data(),
+              validity_masks.data(),
+              active_entities.data(),
+              active_entities_by_type.data(),
+              active_entities_by_team_and_type.data(),
+              spawned_entities.data(),
+              destroyed_entities.data(),
+              kills.data(),
+              active_lasers.data(),
+              lasers_fired.data(),
+              ioj::soa_storage_detail::checked_row_count(completed_ticks.size())} {
+        assert(completed_ticks.size() == count_);
+        assert(validity_masks.size() == count_);
+        assert(active_entities.size() == count_);
+        assert(active_entities_by_type.size() == count_);
+        assert(active_entities_by_team_and_type.size() == count_);
+        assert(spawned_entities.size() == count_);
+        assert(destroyed_entities.size() == count_);
+        assert(kills.size() == count_);
+        assert(active_lasers.size() == count_);
+        assert(lasers_fired.size() == count_);
+    }
+    template <bool Enabled = Const>
+    HistoryRowsSingleResolvedViewImpl(HistoryRowsSingleResolvedViewImpl<false> const& other)
+        requires Enabled
+        : completed_ticks_{other.completed_ticks_}
+        , validity_masks_{other.validity_masks_}
+        , active_entities_{other.active_entities_}
+        , active_entities_by_type_{other.active_entities_by_type_}
+        , active_entities_by_team_and_type_{other.active_entities_by_team_and_type_}
+        , spawned_entities_{other.spawned_entities_}
+        , destroyed_entities_{other.destroyed_entities_}
+        , kills_{other.kills_}
+        , active_lasers_{other.active_lasers_}
+        , lasers_fired_{other.lasers_fired_}
+        , count_{other.count_} {}
+    auto num() const noexcept -> size_type { return count_; }
+    auto is_empty() const noexcept -> bool { return count_ == 0; }
+    auto get_view(this auto const& self) { return self; }
+    auto get_const_view(this auto const& self) {
+        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
+        return Result{self.completed_ticks_,
+                      self.validity_masks_,
+                      self.active_entities_,
+                      self.active_entities_by_type_,
+                      self.active_entities_by_team_and_type_,
+                      self.spawned_entities_,
+                      self.destroyed_entities_,
+                      self.kills_,
+                      self.active_lasers_,
+                      self.lasers_fired_,
+                      self.count_};
+    }
+    auto resolve(this auto const& self) { return self; }
+    void validate() const {}
+    auto slice(this auto const& self, size_type offset, size_type count) {
+        assert(offset <= self.count_ && count <= self.count_ - offset);
+        using Result = std::remove_cvref_t<decltype(self)>;
+        return Result{
+            self.completed_ticks_ == nullptr ? nullptr : self.completed_ticks_ + offset,
+            self.validity_masks_ == nullptr ? nullptr : self.validity_masks_ + offset,
+            self.active_entities_ == nullptr ? nullptr : self.active_entities_ + offset,
+            self.active_entities_by_type_ == nullptr ? nullptr
+                                                     : self.active_entities_by_type_ + offset,
+            self.active_entities_by_team_and_type_ == nullptr
+                ? nullptr
+                : self.active_entities_by_team_and_type_ + offset,
+            self.spawned_entities_ == nullptr ? nullptr : self.spawned_entities_ + offset,
+            self.destroyed_entities_ == nullptr ? nullptr : self.destroyed_entities_ + offset,
+            self.kills_ == nullptr ? nullptr : self.kills_ + offset,
+            self.active_lasers_ == nullptr ? nullptr : self.active_lasers_ + offset,
+            self.lasers_fired_ == nullptr ? nullptr : self.lasers_fired_ + offset,
+            count};
+    }
+    auto get_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count);
+    }
+    auto get_const_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count).get_const_view();
+    }
+    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
+    auto right(this auto const& self, size_type count) {
+        assert(count <= self.num());
+        return self.slice(self.num() - count, count);
+    }
+    auto completed_ticks() const -> std::span<Element<SimTick>> {
+        return {completed_ticks_, count_};
+    }
+    auto validity_masks() const -> std::span<Element<HistoryFieldMask>> {
+        return {validity_masks_, count_};
+    }
+    auto active_entities() const -> std::span<Element<std::int32_t>> {
+        return {active_entities_, count_};
+    }
+    auto active_entities_by_type() const
+        -> std::span<Element<ioj::sim::telemetry::EntityTypeCounts>> {
+        return {active_entities_by_type_, count_};
+    }
+    auto active_entities_by_team_and_type() const
+        -> std::span<Element<ioj::sim::telemetry::EntityCounts>> {
+        return {active_entities_by_team_and_type_, count_};
+    }
+    auto spawned_entities() const -> std::span<Element<std::int32_t>> {
+        return {spawned_entities_, count_};
+    }
+    auto destroyed_entities() const -> std::span<Element<std::int32_t>> {
+        return {destroyed_entities_, count_};
+    }
+    auto kills() const -> std::span<Element<std::int32_t>> { return {kills_, count_}; }
+    auto active_lasers() const -> std::span<Element<std::int32_t>> {
+        return {active_lasers_, count_};
+    }
+    auto lasers_fired() const -> std::span<Element<std::int32_t>> {
+        return {lasers_fired_, count_};
+    }
+    template <typename Func>
+    void each_column(Func&& func) const {
+        func(std::span<Element<SimTick>>{completed_ticks_, count_});
+        func(std::span<Element<HistoryFieldMask>>{validity_masks_, count_});
+        func(std::span<Element<std::int32_t>>{active_entities_, count_});
+        func(std::span<Element<ioj::sim::telemetry::EntityTypeCounts>>{active_entities_by_type_,
+                                                                       count_});
+        func(std::span<Element<ioj::sim::telemetry::EntityCounts>>{
+            active_entities_by_team_and_type_, count_});
+        func(std::span<Element<std::int32_t>>{spawned_entities_, count_});
+        func(std::span<Element<std::int32_t>>{destroyed_entities_, count_});
+        func(std::span<Element<std::int32_t>>{kills_, count_});
+        func(std::span<Element<std::int32_t>>{active_lasers_, count_});
+        func(std::span<Element<std::int32_t>>{lasers_fired_, count_});
+    }
+  private:
+    template <bool>
+    friend struct HistoryRowsSingleResolvedViewImpl;
+    Element<SimTick>* completed_ticks_{};
+    Element<HistoryFieldMask>* validity_masks_{};
+    Element<std::int32_t>* active_entities_{};
+    Element<ioj::sim::telemetry::EntityTypeCounts>* active_entities_by_type_{};
+    Element<ioj::sim::telemetry::EntityCounts>* active_entities_by_team_and_type_{};
+    Element<std::int32_t>* spawned_entities_{};
+    Element<std::int32_t>* destroyed_entities_{};
+    Element<std::int32_t>* kills_{};
+    Element<std::int32_t>* active_lasers_{};
+    Element<std::int32_t>* lasers_fired_{};
+    size_type count_{};
+};
+struct HistoryRowsSingleResolvedConstView : HistoryRowsSingleResolvedViewImpl<true> {
+    using Base = HistoryRowsSingleResolvedViewImpl<true>;
+    using Base::Base;
+};
+struct HistoryRowsSingleResolvedView : HistoryRowsSingleResolvedViewImpl<false> {
+    using Base = HistoryRowsSingleResolvedViewImpl<false>;
+    using Base::Base;
+};
 template <bool Const>
 struct HistoryRowsSingleViewImpl : ioj::soa_storage_detail::CompactViewOperations {
     using soa_schema = HistoryRowsSchema;
@@ -194,6 +405,20 @@ struct HistoryRowsSingleViewImpl : ioj::soa_storage_detail::CompactViewOperation
         func(kills());
         func(active_lasers());
         func(lasers_fired());
+    }
+    auto resolve() const -> std::
+        conditional_t<Const, HistoryRowsSingleResolvedConstView, HistoryRowsSingleResolvedView> {
+        return {(make_column_view(Layout::columns.CompletedTicksColumn).data()),
+                (make_column_view(Layout::columns.ValidityMasksColumn).data()),
+                (make_column_view(Layout::columns.ActiveEntitiesColumn).data()),
+                (make_column_view(Layout::columns.ActiveEntitiesByTypeColumn).data()),
+                (make_column_view(Layout::columns.ActiveEntitiesByTeamAndTypeColumn).data()),
+                (make_column_view(Layout::columns.SpawnedEntitiesColumn).data()),
+                (make_column_view(Layout::columns.DestroyedEntitiesColumn).data()),
+                (make_column_view(Layout::columns.KillsColumn).data()),
+                (make_column_view(Layout::columns.ActiveLasersColumn).data()),
+                (make_column_view(Layout::columns.LasersFiredColumn).data()),
+                count_};
     }
   private:
     template <typename T>

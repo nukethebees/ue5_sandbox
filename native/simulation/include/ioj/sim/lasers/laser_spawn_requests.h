@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ioj/math_types.h"
 #include "ioj/native_soa/storage.h"
 #include "ioj/rotator_types.h"
 #include "ioj/sim/entities/entity_id.h"
@@ -86,6 +87,571 @@ struct SpawnRequestsSingleLayout {
     static_assert(max_capacity >= capacity_granularity);
 };
 
+struct SpawnRequestsSingleResolvedView_locations;
+struct SpawnRequestsSingleResolvedConstView_locations;
+template <bool Const>
+struct SpawnRequestsSingleResolvedView_locationsImpl {
+    using size_type = std::uint32_t;
+    using View = SpawnRequestsSingleResolvedView_locations;
+    using ConstView = SpawnRequestsSingleResolvedConstView_locations;
+    using soa_schema = Vectors3fSchema;
+    template <typename T>
+    using Element = std::conditional_t<Const, T const, T>;
+    SpawnRequestsSingleResolvedView_locationsImpl() = default;
+    SpawnRequestsSingleResolvedView_locationsImpl(Element<float>* locations_xs,
+                                                  Element<float>* locations_ys,
+                                                  Element<float>* locations_zs,
+                                                  size_type count)
+        : locations_xs_{locations_xs}
+        , locations_ys_{locations_ys}
+        , locations_zs_{locations_zs}
+        , count_{count} {
+        ioj::soa_storage_detail::validate_column_pointers(
+            count_, locations_xs_, locations_ys_, locations_zs_);
+    }
+    SpawnRequestsSingleResolvedView_locationsImpl(std::span<Element<float>> locations_xs,
+                                                  std::span<Element<float>> locations_ys,
+                                                  std::span<Element<float>> locations_zs)
+        : SpawnRequestsSingleResolvedView_locationsImpl{
+              locations_xs.data(),
+              locations_ys.data(),
+              locations_zs.data(),
+              ioj::soa_storage_detail::checked_row_count(locations_xs.size())} {
+        assert(locations_xs.size() == count_);
+        assert(locations_ys.size() == count_);
+        assert(locations_zs.size() == count_);
+    }
+    template <bool Enabled = Const>
+    SpawnRequestsSingleResolvedView_locationsImpl(
+        SpawnRequestsSingleResolvedView_locationsImpl<false> const& other)
+        requires Enabled
+        : locations_xs_{other.locations_xs_}
+        , locations_ys_{other.locations_ys_}
+        , locations_zs_{other.locations_zs_}
+        , count_{other.count_} {}
+    auto num() const noexcept -> size_type { return count_; }
+    auto is_empty() const noexcept -> bool { return count_ == 0; }
+    auto get_view(this auto const& self) { return self; }
+    auto get_const_view(this auto const& self) {
+        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
+        return Result{self.locations_xs_, self.locations_ys_, self.locations_zs_, self.count_};
+    }
+    auto resolve(this auto const& self) { return self; }
+    void validate() const {}
+    auto slice(this auto const& self, size_type offset, size_type count) {
+        assert(offset <= self.count_ && count <= self.count_ - offset);
+        using Result = std::remove_cvref_t<decltype(self)>;
+        return Result{self.locations_xs_ == nullptr ? nullptr : self.locations_xs_ + offset,
+                      self.locations_ys_ == nullptr ? nullptr : self.locations_ys_ + offset,
+                      self.locations_zs_ == nullptr ? nullptr : self.locations_zs_ + offset,
+                      count};
+    }
+    auto get_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count);
+    }
+    auto get_const_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count).get_const_view();
+    }
+    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
+    auto right(this auto const& self, size_type count) {
+        assert(count <= self.num());
+        return self.slice(self.num() - count, count);
+    }
+    auto xs() const -> std::span<Element<float>> { return {locations_xs_, count_}; }
+    auto ys() const -> std::span<Element<float>> { return {locations_ys_, count_}; }
+    auto zs() const -> std::span<Element<float>> { return {locations_zs_, count_}; }
+    template <typename Func>
+    void each_column(Func&& func) const {
+        func(std::span<Element<float>>{locations_xs_, count_});
+        func(std::span<Element<float>>{locations_ys_, count_});
+        func(std::span<Element<float>>{locations_zs_, count_});
+    }
+  private:
+    template <bool>
+    friend struct SpawnRequestsSingleResolvedView_locationsImpl;
+    Element<float>* locations_xs_{};
+    Element<float>* locations_ys_{};
+    Element<float>* locations_zs_{};
+    size_type count_{};
+};
+struct SpawnRequestsSingleResolvedConstView_locations
+    : SpawnRequestsSingleResolvedView_locationsImpl<true> {
+    using Base = SpawnRequestsSingleResolvedView_locationsImpl<true>;
+    using Base::Base;
+    using equivalent_type = Vector3f;
+    auto operator[](std::uint32_t index) const -> equivalent_type {
+        return equivalent_type{xs()[index], ys()[index], zs()[index]};
+    }
+};
+struct SpawnRequestsSingleResolvedView_locations
+    : SpawnRequestsSingleResolvedView_locationsImpl<false> {
+    using Base = SpawnRequestsSingleResolvedView_locationsImpl<false>;
+    using Base::Base;
+    using equivalent_type = Vector3f;
+    auto operator[](std::uint32_t index) const -> equivalent_type {
+        return equivalent_type{xs()[index], ys()[index], zs()[index]};
+    }
+};
+struct SpawnRequestsSingleResolvedView_rotations;
+struct SpawnRequestsSingleResolvedConstView_rotations;
+template <bool Const>
+struct SpawnRequestsSingleResolvedView_rotationsImpl {
+    using size_type = std::uint32_t;
+    using View = SpawnRequestsSingleResolvedView_rotations;
+    using ConstView = SpawnRequestsSingleResolvedConstView_rotations;
+    using soa_schema = Rotators3fSchema;
+    template <typename T>
+    using Element = std::conditional_t<Const, T const, T>;
+    SpawnRequestsSingleResolvedView_rotationsImpl() = default;
+    SpawnRequestsSingleResolvedView_rotationsImpl(Element<float>* rotations_pitches,
+                                                  Element<float>* rotations_yaws,
+                                                  Element<float>* rotations_rolls,
+                                                  size_type count)
+        : rotations_pitches_{rotations_pitches}
+        , rotations_yaws_{rotations_yaws}
+        , rotations_rolls_{rotations_rolls}
+        , count_{count} {
+        ioj::soa_storage_detail::validate_column_pointers(
+            count_, rotations_pitches_, rotations_yaws_, rotations_rolls_);
+    }
+    SpawnRequestsSingleResolvedView_rotationsImpl(std::span<Element<float>> rotations_pitches,
+                                                  std::span<Element<float>> rotations_yaws,
+                                                  std::span<Element<float>> rotations_rolls)
+        : SpawnRequestsSingleResolvedView_rotationsImpl{
+              rotations_pitches.data(),
+              rotations_yaws.data(),
+              rotations_rolls.data(),
+              ioj::soa_storage_detail::checked_row_count(rotations_pitches.size())} {
+        assert(rotations_pitches.size() == count_);
+        assert(rotations_yaws.size() == count_);
+        assert(rotations_rolls.size() == count_);
+    }
+    template <bool Enabled = Const>
+    SpawnRequestsSingleResolvedView_rotationsImpl(
+        SpawnRequestsSingleResolvedView_rotationsImpl<false> const& other)
+        requires Enabled
+        : rotations_pitches_{other.rotations_pitches_}
+        , rotations_yaws_{other.rotations_yaws_}
+        , rotations_rolls_{other.rotations_rolls_}
+        , count_{other.count_} {}
+    auto num() const noexcept -> size_type { return count_; }
+    auto is_empty() const noexcept -> bool { return count_ == 0; }
+    auto get_view(this auto const& self) { return self; }
+    auto get_const_view(this auto const& self) {
+        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
+        return Result{
+            self.rotations_pitches_, self.rotations_yaws_, self.rotations_rolls_, self.count_};
+    }
+    auto resolve(this auto const& self) { return self; }
+    void validate() const {}
+    auto slice(this auto const& self, size_type offset, size_type count) {
+        assert(offset <= self.count_ && count <= self.count_ - offset);
+        using Result = std::remove_cvref_t<decltype(self)>;
+        return Result{self.rotations_pitches_ == nullptr ? nullptr
+                                                         : self.rotations_pitches_ + offset,
+                      self.rotations_yaws_ == nullptr ? nullptr : self.rotations_yaws_ + offset,
+                      self.rotations_rolls_ == nullptr ? nullptr : self.rotations_rolls_ + offset,
+                      count};
+    }
+    auto get_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count);
+    }
+    auto get_const_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count).get_const_view();
+    }
+    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
+    auto right(this auto const& self, size_type count) {
+        assert(count <= self.num());
+        return self.slice(self.num() - count, count);
+    }
+    auto pitches() const -> std::span<Element<float>> { return {rotations_pitches_, count_}; }
+    auto yaws() const -> std::span<Element<float>> { return {rotations_yaws_, count_}; }
+    auto rolls() const -> std::span<Element<float>> { return {rotations_rolls_, count_}; }
+    template <typename Func>
+    void each_column(Func&& func) const {
+        func(std::span<Element<float>>{rotations_pitches_, count_});
+        func(std::span<Element<float>>{rotations_yaws_, count_});
+        func(std::span<Element<float>>{rotations_rolls_, count_});
+    }
+  private:
+    template <bool>
+    friend struct SpawnRequestsSingleResolvedView_rotationsImpl;
+    Element<float>* rotations_pitches_{};
+    Element<float>* rotations_yaws_{};
+    Element<float>* rotations_rolls_{};
+    size_type count_{};
+};
+struct SpawnRequestsSingleResolvedConstView_rotations
+    : SpawnRequestsSingleResolvedView_rotationsImpl<true> {
+    using Base = SpawnRequestsSingleResolvedView_rotationsImpl<true>;
+    using Base::Base;
+    using equivalent_type = Rotator3f;
+    auto operator[](std::uint32_t index) const -> equivalent_type {
+        return equivalent_type{pitches()[index], yaws()[index], rolls()[index]};
+    }
+};
+struct SpawnRequestsSingleResolvedView_rotations
+    : SpawnRequestsSingleResolvedView_rotationsImpl<false> {
+    using Base = SpawnRequestsSingleResolvedView_rotationsImpl<false>;
+    using Base::Base;
+    using equivalent_type = Rotator3f;
+    auto operator[](std::uint32_t index) const -> equivalent_type {
+        return equivalent_type{pitches()[index], yaws()[index], rolls()[index]};
+    }
+};
+struct SpawnRequestsSingleResolvedView_base_velocities;
+struct SpawnRequestsSingleResolvedConstView_base_velocities;
+template <bool Const>
+struct SpawnRequestsSingleResolvedView_base_velocitiesImpl {
+    using size_type = std::uint32_t;
+    using View = SpawnRequestsSingleResolvedView_base_velocities;
+    using ConstView = SpawnRequestsSingleResolvedConstView_base_velocities;
+    using soa_schema = Vectors3fSchema;
+    template <typename T>
+    using Element = std::conditional_t<Const, T const, T>;
+    SpawnRequestsSingleResolvedView_base_velocitiesImpl() = default;
+    SpawnRequestsSingleResolvedView_base_velocitiesImpl(Element<float>* base_velocities_xs,
+                                                        Element<float>* base_velocities_ys,
+                                                        Element<float>* base_velocities_zs,
+                                                        size_type count)
+        : base_velocities_xs_{base_velocities_xs}
+        , base_velocities_ys_{base_velocities_ys}
+        , base_velocities_zs_{base_velocities_zs}
+        , count_{count} {
+        ioj::soa_storage_detail::validate_column_pointers(
+            count_, base_velocities_xs_, base_velocities_ys_, base_velocities_zs_);
+    }
+    SpawnRequestsSingleResolvedView_base_velocitiesImpl(
+        std::span<Element<float>> base_velocities_xs,
+        std::span<Element<float>> base_velocities_ys,
+        std::span<Element<float>> base_velocities_zs)
+        : SpawnRequestsSingleResolvedView_base_velocitiesImpl{
+              base_velocities_xs.data(),
+              base_velocities_ys.data(),
+              base_velocities_zs.data(),
+              ioj::soa_storage_detail::checked_row_count(base_velocities_xs.size())} {
+        assert(base_velocities_xs.size() == count_);
+        assert(base_velocities_ys.size() == count_);
+        assert(base_velocities_zs.size() == count_);
+    }
+    template <bool Enabled = Const>
+    SpawnRequestsSingleResolvedView_base_velocitiesImpl(
+        SpawnRequestsSingleResolvedView_base_velocitiesImpl<false> const& other)
+        requires Enabled
+        : base_velocities_xs_{other.base_velocities_xs_}
+        , base_velocities_ys_{other.base_velocities_ys_}
+        , base_velocities_zs_{other.base_velocities_zs_}
+        , count_{other.count_} {}
+    auto num() const noexcept -> size_type { return count_; }
+    auto is_empty() const noexcept -> bool { return count_ == 0; }
+    auto get_view(this auto const& self) { return self; }
+    auto get_const_view(this auto const& self) {
+        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
+        return Result{self.base_velocities_xs_,
+                      self.base_velocities_ys_,
+                      self.base_velocities_zs_,
+                      self.count_};
+    }
+    auto resolve(this auto const& self) { return self; }
+    void validate() const {}
+    auto slice(this auto const& self, size_type offset, size_type count) {
+        assert(offset <= self.count_ && count <= self.count_ - offset);
+        using Result = std::remove_cvref_t<decltype(self)>;
+        return Result{
+            self.base_velocities_xs_ == nullptr ? nullptr : self.base_velocities_xs_ + offset,
+            self.base_velocities_ys_ == nullptr ? nullptr : self.base_velocities_ys_ + offset,
+            self.base_velocities_zs_ == nullptr ? nullptr : self.base_velocities_zs_ + offset,
+            count};
+    }
+    auto get_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count);
+    }
+    auto get_const_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count).get_const_view();
+    }
+    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
+    auto right(this auto const& self, size_type count) {
+        assert(count <= self.num());
+        return self.slice(self.num() - count, count);
+    }
+    auto xs() const -> std::span<Element<float>> { return {base_velocities_xs_, count_}; }
+    auto ys() const -> std::span<Element<float>> { return {base_velocities_ys_, count_}; }
+    auto zs() const -> std::span<Element<float>> { return {base_velocities_zs_, count_}; }
+    template <typename Func>
+    void each_column(Func&& func) const {
+        func(std::span<Element<float>>{base_velocities_xs_, count_});
+        func(std::span<Element<float>>{base_velocities_ys_, count_});
+        func(std::span<Element<float>>{base_velocities_zs_, count_});
+    }
+  private:
+    template <bool>
+    friend struct SpawnRequestsSingleResolvedView_base_velocitiesImpl;
+    Element<float>* base_velocities_xs_{};
+    Element<float>* base_velocities_ys_{};
+    Element<float>* base_velocities_zs_{};
+    size_type count_{};
+};
+struct SpawnRequestsSingleResolvedConstView_base_velocities
+    : SpawnRequestsSingleResolvedView_base_velocitiesImpl<true> {
+    using Base = SpawnRequestsSingleResolvedView_base_velocitiesImpl<true>;
+    using Base::Base;
+    using equivalent_type = Vector3f;
+    auto operator[](std::uint32_t index) const -> equivalent_type {
+        return equivalent_type{xs()[index], ys()[index], zs()[index]};
+    }
+};
+struct SpawnRequestsSingleResolvedView_base_velocities
+    : SpawnRequestsSingleResolvedView_base_velocitiesImpl<false> {
+    using Base = SpawnRequestsSingleResolvedView_base_velocitiesImpl<false>;
+    using Base::Base;
+    using equivalent_type = Vector3f;
+    auto operator[](std::uint32_t index) const -> equivalent_type {
+        return equivalent_type{xs()[index], ys()[index], zs()[index]};
+    }
+};
+struct SpawnRequestsSingleResolvedView;
+struct SpawnRequestsSingleResolvedConstView;
+template <bool Const>
+struct SpawnRequestsSingleResolvedViewImpl {
+    using size_type = std::uint32_t;
+    using View = SpawnRequestsSingleResolvedView;
+    using ConstView = SpawnRequestsSingleResolvedConstView;
+    using soa_schema = SpawnRequestsSchema;
+    template <typename T>
+    using Element = std::conditional_t<Const, T const, T>;
+    SpawnRequestsSingleResolvedViewImpl() = default;
+    SpawnRequestsSingleResolvedViewImpl(Element<float>* locations_xs,
+                                        Element<float>* locations_ys,
+                                        Element<float>* locations_zs,
+                                        Element<float>* rotations_pitches,
+                                        Element<float>* rotations_yaws,
+                                        Element<float>* rotations_rolls,
+                                        Element<float>* base_velocities_xs,
+                                        Element<float>* base_velocities_ys,
+                                        Element<float>* base_velocities_zs,
+                                        Element<std::int32_t>* damages,
+                                        Element<float>* speeds,
+                                        Element<float>* max_distances,
+                                        Element<EntityId>* instigator_ids,
+                                        Element<ioj::sim::LaserSource>* sources,
+                                        size_type count)
+        : locations_xs_{locations_xs}
+        , locations_ys_{locations_ys}
+        , locations_zs_{locations_zs}
+        , rotations_pitches_{rotations_pitches}
+        , rotations_yaws_{rotations_yaws}
+        , rotations_rolls_{rotations_rolls}
+        , base_velocities_xs_{base_velocities_xs}
+        , base_velocities_ys_{base_velocities_ys}
+        , base_velocities_zs_{base_velocities_zs}
+        , damages_{damages}
+        , speeds_{speeds}
+        , max_distances_{max_distances}
+        , instigator_ids_{instigator_ids}
+        , sources_{sources}
+        , count_{count} {
+        ioj::soa_storage_detail::validate_column_pointers(count_,
+                                                          locations_xs_,
+                                                          locations_ys_,
+                                                          locations_zs_,
+                                                          rotations_pitches_,
+                                                          rotations_yaws_,
+                                                          rotations_rolls_,
+                                                          base_velocities_xs_,
+                                                          base_velocities_ys_,
+                                                          base_velocities_zs_,
+                                                          damages_,
+                                                          speeds_,
+                                                          max_distances_,
+                                                          instigator_ids_,
+                                                          sources_);
+    }
+    SpawnRequestsSingleResolvedViewImpl(std::span<Element<float>> locations_xs,
+                                        std::span<Element<float>> locations_ys,
+                                        std::span<Element<float>> locations_zs,
+                                        std::span<Element<float>> rotations_pitches,
+                                        std::span<Element<float>> rotations_yaws,
+                                        std::span<Element<float>> rotations_rolls,
+                                        std::span<Element<float>> base_velocities_xs,
+                                        std::span<Element<float>> base_velocities_ys,
+                                        std::span<Element<float>> base_velocities_zs,
+                                        std::span<Element<std::int32_t>> damages,
+                                        std::span<Element<float>> speeds,
+                                        std::span<Element<float>> max_distances,
+                                        std::span<Element<EntityId>> instigator_ids,
+                                        std::span<Element<ioj::sim::LaserSource>> sources)
+        : SpawnRequestsSingleResolvedViewImpl{
+              locations_xs.data(),
+              locations_ys.data(),
+              locations_zs.data(),
+              rotations_pitches.data(),
+              rotations_yaws.data(),
+              rotations_rolls.data(),
+              base_velocities_xs.data(),
+              base_velocities_ys.data(),
+              base_velocities_zs.data(),
+              damages.data(),
+              speeds.data(),
+              max_distances.data(),
+              instigator_ids.data(),
+              sources.data(),
+              ioj::soa_storage_detail::checked_row_count(locations_xs.size())} {
+        assert(locations_xs.size() == count_);
+        assert(locations_ys.size() == count_);
+        assert(locations_zs.size() == count_);
+        assert(rotations_pitches.size() == count_);
+        assert(rotations_yaws.size() == count_);
+        assert(rotations_rolls.size() == count_);
+        assert(base_velocities_xs.size() == count_);
+        assert(base_velocities_ys.size() == count_);
+        assert(base_velocities_zs.size() == count_);
+        assert(damages.size() == count_);
+        assert(speeds.size() == count_);
+        assert(max_distances.size() == count_);
+        assert(instigator_ids.size() == count_);
+        assert(sources.size() == count_);
+    }
+    template <bool Enabled = Const>
+    SpawnRequestsSingleResolvedViewImpl(SpawnRequestsSingleResolvedViewImpl<false> const& other)
+        requires Enabled
+        : locations_xs_{other.locations_xs_}
+        , locations_ys_{other.locations_ys_}
+        , locations_zs_{other.locations_zs_}
+        , rotations_pitches_{other.rotations_pitches_}
+        , rotations_yaws_{other.rotations_yaws_}
+        , rotations_rolls_{other.rotations_rolls_}
+        , base_velocities_xs_{other.base_velocities_xs_}
+        , base_velocities_ys_{other.base_velocities_ys_}
+        , base_velocities_zs_{other.base_velocities_zs_}
+        , damages_{other.damages_}
+        , speeds_{other.speeds_}
+        , max_distances_{other.max_distances_}
+        , instigator_ids_{other.instigator_ids_}
+        , sources_{other.sources_}
+        , count_{other.count_} {}
+    auto num() const noexcept -> size_type { return count_; }
+    auto is_empty() const noexcept -> bool { return count_ == 0; }
+    auto get_view(this auto const& self) { return self; }
+    auto get_const_view(this auto const& self) {
+        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
+        return Result{self.locations_xs_,
+                      self.locations_ys_,
+                      self.locations_zs_,
+                      self.rotations_pitches_,
+                      self.rotations_yaws_,
+                      self.rotations_rolls_,
+                      self.base_velocities_xs_,
+                      self.base_velocities_ys_,
+                      self.base_velocities_zs_,
+                      self.damages_,
+                      self.speeds_,
+                      self.max_distances_,
+                      self.instigator_ids_,
+                      self.sources_,
+                      self.count_};
+    }
+    auto resolve(this auto const& self) { return self; }
+    void validate() const {}
+    auto slice(this auto const& self, size_type offset, size_type count) {
+        assert(offset <= self.count_ && count <= self.count_ - offset);
+        using Result = std::remove_cvref_t<decltype(self)>;
+        return Result{
+            self.locations_xs_ == nullptr ? nullptr : self.locations_xs_ + offset,
+            self.locations_ys_ == nullptr ? nullptr : self.locations_ys_ + offset,
+            self.locations_zs_ == nullptr ? nullptr : self.locations_zs_ + offset,
+            self.rotations_pitches_ == nullptr ? nullptr : self.rotations_pitches_ + offset,
+            self.rotations_yaws_ == nullptr ? nullptr : self.rotations_yaws_ + offset,
+            self.rotations_rolls_ == nullptr ? nullptr : self.rotations_rolls_ + offset,
+            self.base_velocities_xs_ == nullptr ? nullptr : self.base_velocities_xs_ + offset,
+            self.base_velocities_ys_ == nullptr ? nullptr : self.base_velocities_ys_ + offset,
+            self.base_velocities_zs_ == nullptr ? nullptr : self.base_velocities_zs_ + offset,
+            self.damages_ == nullptr ? nullptr : self.damages_ + offset,
+            self.speeds_ == nullptr ? nullptr : self.speeds_ + offset,
+            self.max_distances_ == nullptr ? nullptr : self.max_distances_ + offset,
+            self.instigator_ids_ == nullptr ? nullptr : self.instigator_ids_ + offset,
+            self.sources_ == nullptr ? nullptr : self.sources_ + offset,
+            count};
+    }
+    auto get_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count);
+    }
+    auto get_const_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count).get_const_view();
+    }
+    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
+    auto right(this auto const& self, size_type count) {
+        assert(count <= self.num());
+        return self.slice(self.num() - count, count);
+    }
+    auto view_locations() const
+        -> std::conditional_t<Const,
+                              SpawnRequestsSingleResolvedConstView_locations,
+                              SpawnRequestsSingleResolvedView_locations> {
+        return {locations_xs_, locations_ys_, locations_zs_, count_};
+    }
+    auto view_rotations() const
+        -> std::conditional_t<Const,
+                              SpawnRequestsSingleResolvedConstView_rotations,
+                              SpawnRequestsSingleResolvedView_rotations> {
+        return {rotations_pitches_, rotations_yaws_, rotations_rolls_, count_};
+    }
+    auto view_base_velocities() const
+        -> std::conditional_t<Const,
+                              SpawnRequestsSingleResolvedConstView_base_velocities,
+                              SpawnRequestsSingleResolvedView_base_velocities> {
+        return {base_velocities_xs_, base_velocities_ys_, base_velocities_zs_, count_};
+    }
+    auto damages() const -> std::span<Element<std::int32_t>> { return {damages_, count_}; }
+    auto speeds() const -> std::span<Element<float>> { return {speeds_, count_}; }
+    auto max_distances() const -> std::span<Element<float>> { return {max_distances_, count_}; }
+    auto instigator_ids() const -> std::span<Element<EntityId>> {
+        return {instigator_ids_, count_};
+    }
+    auto sources() const -> std::span<Element<ioj::sim::LaserSource>> { return {sources_, count_}; }
+    template <typename Func>
+    void each_column(Func&& func) const {
+        func(std::span<Element<float>>{locations_xs_, count_});
+        func(std::span<Element<float>>{locations_ys_, count_});
+        func(std::span<Element<float>>{locations_zs_, count_});
+        func(std::span<Element<float>>{rotations_pitches_, count_});
+        func(std::span<Element<float>>{rotations_yaws_, count_});
+        func(std::span<Element<float>>{rotations_rolls_, count_});
+        func(std::span<Element<float>>{base_velocities_xs_, count_});
+        func(std::span<Element<float>>{base_velocities_ys_, count_});
+        func(std::span<Element<float>>{base_velocities_zs_, count_});
+        func(std::span<Element<std::int32_t>>{damages_, count_});
+        func(std::span<Element<float>>{speeds_, count_});
+        func(std::span<Element<float>>{max_distances_, count_});
+        func(std::span<Element<EntityId>>{instigator_ids_, count_});
+        func(std::span<Element<ioj::sim::LaserSource>>{sources_, count_});
+    }
+  private:
+    template <bool>
+    friend struct SpawnRequestsSingleResolvedViewImpl;
+    Element<float>* locations_xs_{};
+    Element<float>* locations_ys_{};
+    Element<float>* locations_zs_{};
+    Element<float>* rotations_pitches_{};
+    Element<float>* rotations_yaws_{};
+    Element<float>* rotations_rolls_{};
+    Element<float>* base_velocities_xs_{};
+    Element<float>* base_velocities_ys_{};
+    Element<float>* base_velocities_zs_{};
+    Element<std::int32_t>* damages_{};
+    Element<float>* speeds_{};
+    Element<float>* max_distances_{};
+    Element<EntityId>* instigator_ids_{};
+    Element<ioj::sim::LaserSource>* sources_{};
+    size_type count_{};
+};
+struct SpawnRequestsSingleResolvedConstView : SpawnRequestsSingleResolvedViewImpl<true> {
+    using Base = SpawnRequestsSingleResolvedViewImpl<true>;
+    using Base::Base;
+};
+struct SpawnRequestsSingleResolvedView : SpawnRequestsSingleResolvedViewImpl<false> {
+    using Base = SpawnRequestsSingleResolvedViewImpl<false>;
+    using Base::Base;
+};
 template <bool Const>
 struct SpawnRequestsSingleViewImpl : ioj::soa_storage_detail::CompactViewOperations {
     using soa_schema = SpawnRequestsSchema;
@@ -165,6 +731,25 @@ struct SpawnRequestsSingleViewImpl : ioj::soa_storage_detail::CompactViewOperati
         func(max_distances());
         func(instigator_ids());
         func(sources());
+    }
+    auto resolve() const -> std::conditional_t<Const,
+                                               SpawnRequestsSingleResolvedConstView,
+                                               SpawnRequestsSingleResolvedView> {
+        return {(make_column_view(Layout::columns.LocationsXsColumn).data()),
+                (make_column_view(Layout::columns.LocationsYsColumn).data()),
+                (make_column_view(Layout::columns.LocationsZsColumn).data()),
+                (make_column_view(Layout::columns.RotationsPitchesColumn).data()),
+                (make_column_view(Layout::columns.RotationsYawsColumn).data()),
+                (make_column_view(Layout::columns.RotationsRollsColumn).data()),
+                (make_column_view(Layout::columns.BaseVelocitiesXsColumn).data()),
+                (make_column_view(Layout::columns.BaseVelocitiesYsColumn).data()),
+                (make_column_view(Layout::columns.BaseVelocitiesZsColumn).data()),
+                (make_column_view(Layout::columns.DamagesColumn).data()),
+                (make_column_view(Layout::columns.SpeedsColumn).data()),
+                (make_column_view(Layout::columns.MaxDistancesColumn).data()),
+                (make_column_view(Layout::columns.InstigatorIdsColumn).data()),
+                (make_column_view(Layout::columns.SourcesColumn).data()),
+                count_};
     }
   private:
     template <typename T>

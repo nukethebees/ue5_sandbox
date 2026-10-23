@@ -70,6 +70,261 @@ struct SpinnerEntityDataSingleLayout {
     static_assert(max_capacity >= capacity_granularity);
 };
 
+struct SpinnerEntityDataSingleResolvedView_locations;
+struct SpinnerEntityDataSingleResolvedConstView_locations;
+template <bool Const>
+struct SpinnerEntityDataSingleResolvedView_locationsImpl {
+    using size_type = std::uint32_t;
+    using View = SpinnerEntityDataSingleResolvedView_locations;
+    using ConstView = SpinnerEntityDataSingleResolvedConstView_locations;
+    using soa_schema = Vectors3fSchema;
+    template <typename T>
+    using Element = std::conditional_t<Const, T const, T>;
+    SpinnerEntityDataSingleResolvedView_locationsImpl() = default;
+    SpinnerEntityDataSingleResolvedView_locationsImpl(Element<float>* locations_xs,
+                                                      Element<float>* locations_ys,
+                                                      Element<float>* locations_zs,
+                                                      size_type count)
+        : locations_xs_{locations_xs}
+        , locations_ys_{locations_ys}
+        , locations_zs_{locations_zs}
+        , count_{count} {
+        ioj::soa_storage_detail::validate_column_pointers(
+            count_, locations_xs_, locations_ys_, locations_zs_);
+    }
+    SpinnerEntityDataSingleResolvedView_locationsImpl(std::span<Element<float>> locations_xs,
+                                                      std::span<Element<float>> locations_ys,
+                                                      std::span<Element<float>> locations_zs)
+        : SpinnerEntityDataSingleResolvedView_locationsImpl{
+              locations_xs.data(),
+              locations_ys.data(),
+              locations_zs.data(),
+              ioj::soa_storage_detail::checked_row_count(locations_xs.size())} {
+        assert(locations_xs.size() == count_);
+        assert(locations_ys.size() == count_);
+        assert(locations_zs.size() == count_);
+    }
+    template <bool Enabled = Const>
+    SpinnerEntityDataSingleResolvedView_locationsImpl(
+        SpinnerEntityDataSingleResolvedView_locationsImpl<false> const& other)
+        requires Enabled
+        : locations_xs_{other.locations_xs_}
+        , locations_ys_{other.locations_ys_}
+        , locations_zs_{other.locations_zs_}
+        , count_{other.count_} {}
+    auto num() const noexcept -> size_type { return count_; }
+    auto is_empty() const noexcept -> bool { return count_ == 0; }
+    auto get_view(this auto const& self) { return self; }
+    auto get_const_view(this auto const& self) {
+        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
+        return Result{self.locations_xs_, self.locations_ys_, self.locations_zs_, self.count_};
+    }
+    auto resolve(this auto const& self) { return self; }
+    void validate() const {}
+    auto slice(this auto const& self, size_type offset, size_type count) {
+        assert(offset <= self.count_ && count <= self.count_ - offset);
+        using Result = std::remove_cvref_t<decltype(self)>;
+        return Result{self.locations_xs_ == nullptr ? nullptr : self.locations_xs_ + offset,
+                      self.locations_ys_ == nullptr ? nullptr : self.locations_ys_ + offset,
+                      self.locations_zs_ == nullptr ? nullptr : self.locations_zs_ + offset,
+                      count};
+    }
+    auto get_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count);
+    }
+    auto get_const_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count).get_const_view();
+    }
+    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
+    auto right(this auto const& self, size_type count) {
+        assert(count <= self.num());
+        return self.slice(self.num() - count, count);
+    }
+    auto xs() const -> std::span<Element<float>> { return {locations_xs_, count_}; }
+    auto ys() const -> std::span<Element<float>> { return {locations_ys_, count_}; }
+    auto zs() const -> std::span<Element<float>> { return {locations_zs_, count_}; }
+    template <typename Func>
+    void each_column(Func&& func) const {
+        func(std::span<Element<float>>{locations_xs_, count_});
+        func(std::span<Element<float>>{locations_ys_, count_});
+        func(std::span<Element<float>>{locations_zs_, count_});
+    }
+  private:
+    template <bool>
+    friend struct SpinnerEntityDataSingleResolvedView_locationsImpl;
+    Element<float>* locations_xs_{};
+    Element<float>* locations_ys_{};
+    Element<float>* locations_zs_{};
+    size_type count_{};
+};
+struct SpinnerEntityDataSingleResolvedConstView_locations
+    : SpinnerEntityDataSingleResolvedView_locationsImpl<true> {
+    using Base = SpinnerEntityDataSingleResolvedView_locationsImpl<true>;
+    using Base::Base;
+};
+struct SpinnerEntityDataSingleResolvedView_locations
+    : SpinnerEntityDataSingleResolvedView_locationsImpl<false> {
+    using Base = SpinnerEntityDataSingleResolvedView_locationsImpl<false>;
+    using Base::Base;
+};
+struct SpinnerEntityDataSingleResolvedView;
+struct SpinnerEntityDataSingleResolvedConstView;
+template <bool Const>
+struct SpinnerEntityDataSingleResolvedViewImpl {
+    using size_type = std::uint32_t;
+    using View = SpinnerEntityDataSingleResolvedView;
+    using ConstView = SpinnerEntityDataSingleResolvedConstView;
+    using soa_schema = SpinnerEntityDataSchema;
+    template <typename T>
+    using Element = std::conditional_t<Const, T const, T>;
+    SpinnerEntityDataSingleResolvedViewImpl() = default;
+    SpinnerEntityDataSingleResolvedViewImpl(Element<EntityId>* entity_ids,
+                                            Element<float>* locations_xs,
+                                            Element<float>* locations_ys,
+                                            Element<float>* locations_zs,
+                                            Element<float>* yaws,
+                                            Element<std::int16_t>* laser_cooldowns,
+                                            Element<std::int32_t>* next_fire_point_indices,
+                                            size_type count)
+        : entity_ids_{entity_ids}
+        , locations_xs_{locations_xs}
+        , locations_ys_{locations_ys}
+        , locations_zs_{locations_zs}
+        , yaws_{yaws}
+        , laser_cooldowns_{laser_cooldowns}
+        , next_fire_point_indices_{next_fire_point_indices}
+        , count_{count} {
+        ioj::soa_storage_detail::validate_column_pointers(count_,
+                                                          entity_ids_,
+                                                          locations_xs_,
+                                                          locations_ys_,
+                                                          locations_zs_,
+                                                          yaws_,
+                                                          laser_cooldowns_,
+                                                          next_fire_point_indices_);
+    }
+    SpinnerEntityDataSingleResolvedViewImpl(
+        std::span<Element<EntityId>> entity_ids,
+        std::span<Element<float>> locations_xs,
+        std::span<Element<float>> locations_ys,
+        std::span<Element<float>> locations_zs,
+        std::span<Element<float>> yaws,
+        std::span<Element<std::int16_t>> laser_cooldowns,
+        std::span<Element<std::int32_t>> next_fire_point_indices)
+        : SpinnerEntityDataSingleResolvedViewImpl{
+              entity_ids.data(),
+              locations_xs.data(),
+              locations_ys.data(),
+              locations_zs.data(),
+              yaws.data(),
+              laser_cooldowns.data(),
+              next_fire_point_indices.data(),
+              ioj::soa_storage_detail::checked_row_count(entity_ids.size())} {
+        assert(entity_ids.size() == count_);
+        assert(locations_xs.size() == count_);
+        assert(locations_ys.size() == count_);
+        assert(locations_zs.size() == count_);
+        assert(yaws.size() == count_);
+        assert(laser_cooldowns.size() == count_);
+        assert(next_fire_point_indices.size() == count_);
+    }
+    template <bool Enabled = Const>
+    SpinnerEntityDataSingleResolvedViewImpl(
+        SpinnerEntityDataSingleResolvedViewImpl<false> const& other)
+        requires Enabled
+        : entity_ids_{other.entity_ids_}
+        , locations_xs_{other.locations_xs_}
+        , locations_ys_{other.locations_ys_}
+        , locations_zs_{other.locations_zs_}
+        , yaws_{other.yaws_}
+        , laser_cooldowns_{other.laser_cooldowns_}
+        , next_fire_point_indices_{other.next_fire_point_indices_}
+        , count_{other.count_} {}
+    auto num() const noexcept -> size_type { return count_; }
+    auto is_empty() const noexcept -> bool { return count_ == 0; }
+    auto get_view(this auto const& self) { return self; }
+    auto get_const_view(this auto const& self) {
+        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
+        return Result{self.entity_ids_,
+                      self.locations_xs_,
+                      self.locations_ys_,
+                      self.locations_zs_,
+                      self.yaws_,
+                      self.laser_cooldowns_,
+                      self.next_fire_point_indices_,
+                      self.count_};
+    }
+    auto resolve(this auto const& self) { return self; }
+    void validate() const {}
+    auto slice(this auto const& self, size_type offset, size_type count) {
+        assert(offset <= self.count_ && count <= self.count_ - offset);
+        using Result = std::remove_cvref_t<decltype(self)>;
+        return Result{self.entity_ids_ == nullptr ? nullptr : self.entity_ids_ + offset,
+                      self.locations_xs_ == nullptr ? nullptr : self.locations_xs_ + offset,
+                      self.locations_ys_ == nullptr ? nullptr : self.locations_ys_ + offset,
+                      self.locations_zs_ == nullptr ? nullptr : self.locations_zs_ + offset,
+                      self.yaws_ == nullptr ? nullptr : self.yaws_ + offset,
+                      self.laser_cooldowns_ == nullptr ? nullptr : self.laser_cooldowns_ + offset,
+                      self.next_fire_point_indices_ == nullptr
+                          ? nullptr
+                          : self.next_fire_point_indices_ + offset,
+                      count};
+    }
+    auto get_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count);
+    }
+    auto get_const_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count).get_const_view();
+    }
+    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
+    auto right(this auto const& self, size_type count) {
+        assert(count <= self.num());
+        return self.slice(self.num() - count, count);
+    }
+    auto entity_ids() const -> std::span<Element<EntityId>> { return {entity_ids_, count_}; }
+    auto view_locations() const
+        -> std::conditional_t<Const,
+                              SpinnerEntityDataSingleResolvedConstView_locations,
+                              SpinnerEntityDataSingleResolvedView_locations> {
+        return {locations_xs_, locations_ys_, locations_zs_, count_};
+    }
+    auto yaws() const -> std::span<Element<float>> { return {yaws_, count_}; }
+    auto laser_cooldowns() const -> std::span<Element<std::int16_t>> {
+        return {laser_cooldowns_, count_};
+    }
+    auto next_fire_point_indices() const -> std::span<Element<std::int32_t>> {
+        return {next_fire_point_indices_, count_};
+    }
+    template <typename Func>
+    void each_column(Func&& func) const {
+        func(std::span<Element<EntityId>>{entity_ids_, count_});
+        func(std::span<Element<float>>{locations_xs_, count_});
+        func(std::span<Element<float>>{locations_ys_, count_});
+        func(std::span<Element<float>>{locations_zs_, count_});
+        func(std::span<Element<float>>{yaws_, count_});
+        func(std::span<Element<std::int16_t>>{laser_cooldowns_, count_});
+        func(std::span<Element<std::int32_t>>{next_fire_point_indices_, count_});
+    }
+  private:
+    template <bool>
+    friend struct SpinnerEntityDataSingleResolvedViewImpl;
+    Element<EntityId>* entity_ids_{};
+    Element<float>* locations_xs_{};
+    Element<float>* locations_ys_{};
+    Element<float>* locations_zs_{};
+    Element<float>* yaws_{};
+    Element<std::int16_t>* laser_cooldowns_{};
+    Element<std::int32_t>* next_fire_point_indices_{};
+    size_type count_{};
+};
+struct SpinnerEntityDataSingleResolvedConstView : SpinnerEntityDataSingleResolvedViewImpl<true> {
+    using Base = SpinnerEntityDataSingleResolvedViewImpl<true>;
+    using Base::Base;
+};
+struct SpinnerEntityDataSingleResolvedView : SpinnerEntityDataSingleResolvedViewImpl<false> {
+    using Base = SpinnerEntityDataSingleResolvedViewImpl<false>;
+    using Base::Base;
+};
 template <bool Const>
 struct SpinnerEntityDataSingleViewImpl : ioj::soa_storage_detail::CompactViewOperations {
     using soa_schema = SpinnerEntityDataSchema;
@@ -118,6 +373,18 @@ struct SpinnerEntityDataSingleViewImpl : ioj::soa_storage_detail::CompactViewOpe
         func(yaws());
         func(laser_cooldowns());
         func(next_fire_point_indices());
+    }
+    auto resolve() const -> std::conditional_t<Const,
+                                               SpinnerEntityDataSingleResolvedConstView,
+                                               SpinnerEntityDataSingleResolvedView> {
+        return {(make_column_view(Layout::columns.EntityIdsColumn).data()),
+                (make_column_view(Layout::columns.LocationsXsColumn).data()),
+                (make_column_view(Layout::columns.LocationsYsColumn).data()),
+                (make_column_view(Layout::columns.LocationsZsColumn).data()),
+                (make_column_view(Layout::columns.YawsColumn).data()),
+                (make_column_view(Layout::columns.LaserCooldownsColumn).data()),
+                (make_column_view(Layout::columns.NextFirePointIndicesColumn).data()),
+                count_};
     }
   private:
     template <typename T>

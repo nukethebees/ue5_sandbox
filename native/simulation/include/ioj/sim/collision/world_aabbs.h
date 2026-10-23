@@ -61,6 +61,137 @@ struct WorldAABBsColumnsSingleLayout {
     static_assert(max_capacity >= capacity_granularity);
 };
 
+struct WorldAABBsColumnsSingleResolvedView;
+struct WorldAABBsColumnsSingleResolvedConstView;
+template <bool Const>
+struct WorldAABBsColumnsSingleResolvedViewImpl {
+    using size_type = std::uint32_t;
+    using View = WorldAABBsColumnsSingleResolvedView;
+    using ConstView = WorldAABBsColumnsSingleResolvedConstView;
+    using soa_schema = WorldAABBsColumnsSchema;
+    template <typename T>
+    using Element = std::conditional_t<Const, T const, T>;
+    WorldAABBsColumnsSingleResolvedViewImpl() = default;
+    WorldAABBsColumnsSingleResolvedViewImpl(Element<float>* min_xs,
+                                            Element<float>* min_ys,
+                                            Element<float>* min_zs,
+                                            Element<float>* max_xs,
+                                            Element<float>* max_ys,
+                                            Element<float>* max_zs,
+                                            size_type count)
+        : min_xs_{min_xs}
+        , min_ys_{min_ys}
+        , min_zs_{min_zs}
+        , max_xs_{max_xs}
+        , max_ys_{max_ys}
+        , max_zs_{max_zs}
+        , count_{count} {
+        ioj::soa_storage_detail::validate_column_pointers(
+            count_, min_xs_, min_ys_, min_zs_, max_xs_, max_ys_, max_zs_);
+    }
+    WorldAABBsColumnsSingleResolvedViewImpl(std::span<Element<float>> min_xs,
+                                            std::span<Element<float>> min_ys,
+                                            std::span<Element<float>> min_zs,
+                                            std::span<Element<float>> max_xs,
+                                            std::span<Element<float>> max_ys,
+                                            std::span<Element<float>> max_zs)
+        : WorldAABBsColumnsSingleResolvedViewImpl{
+              min_xs.data(),
+              min_ys.data(),
+              min_zs.data(),
+              max_xs.data(),
+              max_ys.data(),
+              max_zs.data(),
+              ioj::soa_storage_detail::checked_row_count(min_xs.size())} {
+        assert(min_xs.size() == count_);
+        assert(min_ys.size() == count_);
+        assert(min_zs.size() == count_);
+        assert(max_xs.size() == count_);
+        assert(max_ys.size() == count_);
+        assert(max_zs.size() == count_);
+    }
+    template <bool Enabled = Const>
+    WorldAABBsColumnsSingleResolvedViewImpl(
+        WorldAABBsColumnsSingleResolvedViewImpl<false> const& other)
+        requires Enabled
+        : min_xs_{other.min_xs_}
+        , min_ys_{other.min_ys_}
+        , min_zs_{other.min_zs_}
+        , max_xs_{other.max_xs_}
+        , max_ys_{other.max_ys_}
+        , max_zs_{other.max_zs_}
+        , count_{other.count_} {}
+    auto num() const noexcept -> size_type { return count_; }
+    auto is_empty() const noexcept -> bool { return count_ == 0; }
+    auto get_view(this auto const& self) { return self; }
+    auto get_const_view(this auto const& self) {
+        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
+        return Result{self.min_xs_,
+                      self.min_ys_,
+                      self.min_zs_,
+                      self.max_xs_,
+                      self.max_ys_,
+                      self.max_zs_,
+                      self.count_};
+    }
+    auto resolve(this auto const& self) { return self; }
+    void validate() const {}
+    auto slice(this auto const& self, size_type offset, size_type count) {
+        assert(offset <= self.count_ && count <= self.count_ - offset);
+        using Result = std::remove_cvref_t<decltype(self)>;
+        return Result{self.min_xs_ == nullptr ? nullptr : self.min_xs_ + offset,
+                      self.min_ys_ == nullptr ? nullptr : self.min_ys_ + offset,
+                      self.min_zs_ == nullptr ? nullptr : self.min_zs_ + offset,
+                      self.max_xs_ == nullptr ? nullptr : self.max_xs_ + offset,
+                      self.max_ys_ == nullptr ? nullptr : self.max_ys_ + offset,
+                      self.max_zs_ == nullptr ? nullptr : self.max_zs_ + offset,
+                      count};
+    }
+    auto get_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count);
+    }
+    auto get_const_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count).get_const_view();
+    }
+    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
+    auto right(this auto const& self, size_type count) {
+        assert(count <= self.num());
+        return self.slice(self.num() - count, count);
+    }
+    auto min_xs() const -> std::span<Element<float>> { return {min_xs_, count_}; }
+    auto min_ys() const -> std::span<Element<float>> { return {min_ys_, count_}; }
+    auto min_zs() const -> std::span<Element<float>> { return {min_zs_, count_}; }
+    auto max_xs() const -> std::span<Element<float>> { return {max_xs_, count_}; }
+    auto max_ys() const -> std::span<Element<float>> { return {max_ys_, count_}; }
+    auto max_zs() const -> std::span<Element<float>> { return {max_zs_, count_}; }
+    template <typename Func>
+    void each_column(Func&& func) const {
+        func(std::span<Element<float>>{min_xs_, count_});
+        func(std::span<Element<float>>{min_ys_, count_});
+        func(std::span<Element<float>>{min_zs_, count_});
+        func(std::span<Element<float>>{max_xs_, count_});
+        func(std::span<Element<float>>{max_ys_, count_});
+        func(std::span<Element<float>>{max_zs_, count_});
+    }
+  private:
+    template <bool>
+    friend struct WorldAABBsColumnsSingleResolvedViewImpl;
+    Element<float>* min_xs_{};
+    Element<float>* min_ys_{};
+    Element<float>* min_zs_{};
+    Element<float>* max_xs_{};
+    Element<float>* max_ys_{};
+    Element<float>* max_zs_{};
+    size_type count_{};
+};
+struct WorldAABBsColumnsSingleResolvedConstView : WorldAABBsColumnsSingleResolvedViewImpl<true> {
+    using Base = WorldAABBsColumnsSingleResolvedViewImpl<true>;
+    using Base::Base;
+};
+struct WorldAABBsColumnsSingleResolvedView : WorldAABBsColumnsSingleResolvedViewImpl<false> {
+    using Base = WorldAABBsColumnsSingleResolvedViewImpl<false>;
+    using Base::Base;
+};
 template <bool Const>
 struct WorldAABBsColumnsSingleViewImpl : ioj::soa_storage_detail::CompactViewOperations {
     using soa_schema = WorldAABBsColumnsSchema;
@@ -97,6 +228,17 @@ struct WorldAABBsColumnsSingleViewImpl : ioj::soa_storage_detail::CompactViewOpe
         func(max_xs());
         func(max_ys());
         func(max_zs());
+    }
+    auto resolve() const -> std::conditional_t<Const,
+                                               WorldAABBsColumnsSingleResolvedConstView,
+                                               WorldAABBsColumnsSingleResolvedView> {
+        return {(make_column_view(Layout::columns.MinXsColumn).data()),
+                (make_column_view(Layout::columns.MinYsColumn).data()),
+                (make_column_view(Layout::columns.MinZsColumn).data()),
+                (make_column_view(Layout::columns.MaxXsColumn).data()),
+                (make_column_view(Layout::columns.MaxYsColumn).data()),
+                (make_column_view(Layout::columns.MaxZsColumn).data()),
+                count_};
     }
   private:
     template <typename T>

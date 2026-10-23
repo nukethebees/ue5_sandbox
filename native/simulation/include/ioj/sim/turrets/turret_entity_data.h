@@ -103,6 +103,890 @@ struct TurretEntityDataSingleLayout {
     static_assert(max_capacity >= capacity_granularity);
 };
 
+struct TurretEntityDataSingleResolvedView_locations;
+struct TurretEntityDataSingleResolvedConstView_locations;
+template <bool Const>
+struct TurretEntityDataSingleResolvedView_locationsImpl {
+    using size_type = std::uint32_t;
+    using View = TurretEntityDataSingleResolvedView_locations;
+    using ConstView = TurretEntityDataSingleResolvedConstView_locations;
+    using soa_schema = Vectors3fSchema;
+    template <typename T>
+    using Element = std::conditional_t<Const, T const, T>;
+    TurretEntityDataSingleResolvedView_locationsImpl() = default;
+    TurretEntityDataSingleResolvedView_locationsImpl(Element<float>* locations_xs,
+                                                     Element<float>* locations_ys,
+                                                     Element<float>* locations_zs,
+                                                     size_type count)
+        : locations_xs_{locations_xs}
+        , locations_ys_{locations_ys}
+        , locations_zs_{locations_zs}
+        , count_{count} {
+        ioj::soa_storage_detail::validate_column_pointers(
+            count_, locations_xs_, locations_ys_, locations_zs_);
+    }
+    TurretEntityDataSingleResolvedView_locationsImpl(std::span<Element<float>> locations_xs,
+                                                     std::span<Element<float>> locations_ys,
+                                                     std::span<Element<float>> locations_zs)
+        : TurretEntityDataSingleResolvedView_locationsImpl{
+              locations_xs.data(),
+              locations_ys.data(),
+              locations_zs.data(),
+              ioj::soa_storage_detail::checked_row_count(locations_xs.size())} {
+        assert(locations_xs.size() == count_);
+        assert(locations_ys.size() == count_);
+        assert(locations_zs.size() == count_);
+    }
+    template <bool Enabled = Const>
+    TurretEntityDataSingleResolvedView_locationsImpl(
+        TurretEntityDataSingleResolvedView_locationsImpl<false> const& other)
+        requires Enabled
+        : locations_xs_{other.locations_xs_}
+        , locations_ys_{other.locations_ys_}
+        , locations_zs_{other.locations_zs_}
+        , count_{other.count_} {}
+    auto num() const noexcept -> size_type { return count_; }
+    auto is_empty() const noexcept -> bool { return count_ == 0; }
+    auto get_view(this auto const& self) { return self; }
+    auto get_const_view(this auto const& self) {
+        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
+        return Result{self.locations_xs_, self.locations_ys_, self.locations_zs_, self.count_};
+    }
+    auto resolve(this auto const& self) { return self; }
+    void validate() const {}
+    auto slice(this auto const& self, size_type offset, size_type count) {
+        assert(offset <= self.count_ && count <= self.count_ - offset);
+        using Result = std::remove_cvref_t<decltype(self)>;
+        return Result{self.locations_xs_ == nullptr ? nullptr : self.locations_xs_ + offset,
+                      self.locations_ys_ == nullptr ? nullptr : self.locations_ys_ + offset,
+                      self.locations_zs_ == nullptr ? nullptr : self.locations_zs_ + offset,
+                      count};
+    }
+    auto get_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count);
+    }
+    auto get_const_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count).get_const_view();
+    }
+    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
+    auto right(this auto const& self, size_type count) {
+        assert(count <= self.num());
+        return self.slice(self.num() - count, count);
+    }
+    auto xs() const -> std::span<Element<float>> { return {locations_xs_, count_}; }
+    auto ys() const -> std::span<Element<float>> { return {locations_ys_, count_}; }
+    auto zs() const -> std::span<Element<float>> { return {locations_zs_, count_}; }
+    template <typename Func>
+    void each_column(Func&& func) const {
+        func(std::span<Element<float>>{locations_xs_, count_});
+        func(std::span<Element<float>>{locations_ys_, count_});
+        func(std::span<Element<float>>{locations_zs_, count_});
+    }
+  private:
+    template <bool>
+    friend struct TurretEntityDataSingleResolvedView_locationsImpl;
+    Element<float>* locations_xs_{};
+    Element<float>* locations_ys_{};
+    Element<float>* locations_zs_{};
+    size_type count_{};
+};
+struct TurretEntityDataSingleResolvedConstView_locations
+    : TurretEntityDataSingleResolvedView_locationsImpl<true> {
+    using Base = TurretEntityDataSingleResolvedView_locationsImpl<true>;
+    using Base::Base;
+};
+struct TurretEntityDataSingleResolvedView_locations
+    : TurretEntityDataSingleResolvedView_locationsImpl<false> {
+    using Base = TurretEntityDataSingleResolvedView_locationsImpl<false>;
+    using Base::Base;
+};
+struct TurretEntityDataSingleResolvedView_fire_point_locations;
+struct TurretEntityDataSingleResolvedConstView_fire_point_locations;
+template <bool Const>
+struct TurretEntityDataSingleResolvedView_fire_point_locationsImpl {
+    using size_type = std::uint32_t;
+    using View = TurretEntityDataSingleResolvedView_fire_point_locations;
+    using ConstView = TurretEntityDataSingleResolvedConstView_fire_point_locations;
+    using soa_schema = Vectors3fSchema;
+    template <typename T>
+    using Element = std::conditional_t<Const, T const, T>;
+    TurretEntityDataSingleResolvedView_fire_point_locationsImpl() = default;
+    TurretEntityDataSingleResolvedView_fire_point_locationsImpl(
+        Element<float>* fire_point_locations_xs,
+        Element<float>* fire_point_locations_ys,
+        Element<float>* fire_point_locations_zs,
+        size_type count)
+        : fire_point_locations_xs_{fire_point_locations_xs}
+        , fire_point_locations_ys_{fire_point_locations_ys}
+        , fire_point_locations_zs_{fire_point_locations_zs}
+        , count_{count} {
+        ioj::soa_storage_detail::validate_column_pointers(
+            count_, fire_point_locations_xs_, fire_point_locations_ys_, fire_point_locations_zs_);
+    }
+    TurretEntityDataSingleResolvedView_fire_point_locationsImpl(
+        std::span<Element<float>> fire_point_locations_xs,
+        std::span<Element<float>> fire_point_locations_ys,
+        std::span<Element<float>> fire_point_locations_zs)
+        : TurretEntityDataSingleResolvedView_fire_point_locationsImpl{
+              fire_point_locations_xs.data(),
+              fire_point_locations_ys.data(),
+              fire_point_locations_zs.data(),
+              ioj::soa_storage_detail::checked_row_count(fire_point_locations_xs.size())} {
+        assert(fire_point_locations_xs.size() == count_);
+        assert(fire_point_locations_ys.size() == count_);
+        assert(fire_point_locations_zs.size() == count_);
+    }
+    template <bool Enabled = Const>
+    TurretEntityDataSingleResolvedView_fire_point_locationsImpl(
+        TurretEntityDataSingleResolvedView_fire_point_locationsImpl<false> const& other)
+        requires Enabled
+        : fire_point_locations_xs_{other.fire_point_locations_xs_}
+        , fire_point_locations_ys_{other.fire_point_locations_ys_}
+        , fire_point_locations_zs_{other.fire_point_locations_zs_}
+        , count_{other.count_} {}
+    auto num() const noexcept -> size_type { return count_; }
+    auto is_empty() const noexcept -> bool { return count_ == 0; }
+    auto get_view(this auto const& self) { return self; }
+    auto get_const_view(this auto const& self) {
+        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
+        return Result{self.fire_point_locations_xs_,
+                      self.fire_point_locations_ys_,
+                      self.fire_point_locations_zs_,
+                      self.count_};
+    }
+    auto resolve(this auto const& self) { return self; }
+    void validate() const {}
+    auto slice(this auto const& self, size_type offset, size_type count) {
+        assert(offset <= self.count_ && count <= self.count_ - offset);
+        using Result = std::remove_cvref_t<decltype(self)>;
+        return Result{
+            self.fire_point_locations_xs_ == nullptr ? nullptr
+                                                     : self.fire_point_locations_xs_ + offset,
+            self.fire_point_locations_ys_ == nullptr ? nullptr
+                                                     : self.fire_point_locations_ys_ + offset,
+            self.fire_point_locations_zs_ == nullptr ? nullptr
+                                                     : self.fire_point_locations_zs_ + offset,
+            count};
+    }
+    auto get_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count);
+    }
+    auto get_const_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count).get_const_view();
+    }
+    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
+    auto right(this auto const& self, size_type count) {
+        assert(count <= self.num());
+        return self.slice(self.num() - count, count);
+    }
+    auto xs() const -> std::span<Element<float>> { return {fire_point_locations_xs_, count_}; }
+    auto ys() const -> std::span<Element<float>> { return {fire_point_locations_ys_, count_}; }
+    auto zs() const -> std::span<Element<float>> { return {fire_point_locations_zs_, count_}; }
+    template <typename Func>
+    void each_column(Func&& func) const {
+        func(std::span<Element<float>>{fire_point_locations_xs_, count_});
+        func(std::span<Element<float>>{fire_point_locations_ys_, count_});
+        func(std::span<Element<float>>{fire_point_locations_zs_, count_});
+    }
+  private:
+    template <bool>
+    friend struct TurretEntityDataSingleResolvedView_fire_point_locationsImpl;
+    Element<float>* fire_point_locations_xs_{};
+    Element<float>* fire_point_locations_ys_{};
+    Element<float>* fire_point_locations_zs_{};
+    size_type count_{};
+};
+struct TurretEntityDataSingleResolvedConstView_fire_point_locations
+    : TurretEntityDataSingleResolvedView_fire_point_locationsImpl<true> {
+    using Base = TurretEntityDataSingleResolvedView_fire_point_locationsImpl<true>;
+    using Base::Base;
+};
+struct TurretEntityDataSingleResolvedView_fire_point_locations
+    : TurretEntityDataSingleResolvedView_fire_point_locationsImpl<false> {
+    using Base = TurretEntityDataSingleResolvedView_fire_point_locationsImpl<false>;
+    using Base::Base;
+};
+struct TurretEntityDataSingleResolvedView_rotations;
+struct TurretEntityDataSingleResolvedConstView_rotations;
+template <bool Const>
+struct TurretEntityDataSingleResolvedView_rotationsImpl {
+    using size_type = std::uint32_t;
+    using View = TurretEntityDataSingleResolvedView_rotations;
+    using ConstView = TurretEntityDataSingleResolvedConstView_rotations;
+    using soa_schema = Rotators3fSchema;
+    template <typename T>
+    using Element = std::conditional_t<Const, T const, T>;
+    TurretEntityDataSingleResolvedView_rotationsImpl() = default;
+    TurretEntityDataSingleResolvedView_rotationsImpl(Element<float>* rotations_pitches,
+                                                     Element<float>* rotations_yaws,
+                                                     Element<float>* rotations_rolls,
+                                                     size_type count)
+        : rotations_pitches_{rotations_pitches}
+        , rotations_yaws_{rotations_yaws}
+        , rotations_rolls_{rotations_rolls}
+        , count_{count} {
+        ioj::soa_storage_detail::validate_column_pointers(
+            count_, rotations_pitches_, rotations_yaws_, rotations_rolls_);
+    }
+    TurretEntityDataSingleResolvedView_rotationsImpl(std::span<Element<float>> rotations_pitches,
+                                                     std::span<Element<float>> rotations_yaws,
+                                                     std::span<Element<float>> rotations_rolls)
+        : TurretEntityDataSingleResolvedView_rotationsImpl{
+              rotations_pitches.data(),
+              rotations_yaws.data(),
+              rotations_rolls.data(),
+              ioj::soa_storage_detail::checked_row_count(rotations_pitches.size())} {
+        assert(rotations_pitches.size() == count_);
+        assert(rotations_yaws.size() == count_);
+        assert(rotations_rolls.size() == count_);
+    }
+    template <bool Enabled = Const>
+    TurretEntityDataSingleResolvedView_rotationsImpl(
+        TurretEntityDataSingleResolvedView_rotationsImpl<false> const& other)
+        requires Enabled
+        : rotations_pitches_{other.rotations_pitches_}
+        , rotations_yaws_{other.rotations_yaws_}
+        , rotations_rolls_{other.rotations_rolls_}
+        , count_{other.count_} {}
+    auto num() const noexcept -> size_type { return count_; }
+    auto is_empty() const noexcept -> bool { return count_ == 0; }
+    auto get_view(this auto const& self) { return self; }
+    auto get_const_view(this auto const& self) {
+        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
+        return Result{
+            self.rotations_pitches_, self.rotations_yaws_, self.rotations_rolls_, self.count_};
+    }
+    auto resolve(this auto const& self) { return self; }
+    void validate() const {}
+    auto slice(this auto const& self, size_type offset, size_type count) {
+        assert(offset <= self.count_ && count <= self.count_ - offset);
+        using Result = std::remove_cvref_t<decltype(self)>;
+        return Result{self.rotations_pitches_ == nullptr ? nullptr
+                                                         : self.rotations_pitches_ + offset,
+                      self.rotations_yaws_ == nullptr ? nullptr : self.rotations_yaws_ + offset,
+                      self.rotations_rolls_ == nullptr ? nullptr : self.rotations_rolls_ + offset,
+                      count};
+    }
+    auto get_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count);
+    }
+    auto get_const_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count).get_const_view();
+    }
+    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
+    auto right(this auto const& self, size_type count) {
+        assert(count <= self.num());
+        return self.slice(self.num() - count, count);
+    }
+    auto pitches() const -> std::span<Element<float>> { return {rotations_pitches_, count_}; }
+    auto yaws() const -> std::span<Element<float>> { return {rotations_yaws_, count_}; }
+    auto rolls() const -> std::span<Element<float>> { return {rotations_rolls_, count_}; }
+    template <typename Func>
+    void each_column(Func&& func) const {
+        func(std::span<Element<float>>{rotations_pitches_, count_});
+        func(std::span<Element<float>>{rotations_yaws_, count_});
+        func(std::span<Element<float>>{rotations_rolls_, count_});
+    }
+  private:
+    template <bool>
+    friend struct TurretEntityDataSingleResolvedView_rotationsImpl;
+    Element<float>* rotations_pitches_{};
+    Element<float>* rotations_yaws_{};
+    Element<float>* rotations_rolls_{};
+    size_type count_{};
+};
+struct TurretEntityDataSingleResolvedConstView_rotations
+    : TurretEntityDataSingleResolvedView_rotationsImpl<true> {
+    using Base = TurretEntityDataSingleResolvedView_rotationsImpl<true>;
+    using Base::Base;
+};
+struct TurretEntityDataSingleResolvedView_rotations
+    : TurretEntityDataSingleResolvedView_rotationsImpl<false> {
+    using Base = TurretEntityDataSingleResolvedView_rotationsImpl<false>;
+    using Base::Base;
+};
+struct TurretEntityDataSingleResolvedView_target_locations;
+struct TurretEntityDataSingleResolvedConstView_target_locations;
+template <bool Const>
+struct TurretEntityDataSingleResolvedView_target_locationsImpl {
+    using size_type = std::uint32_t;
+    using View = TurretEntityDataSingleResolvedView_target_locations;
+    using ConstView = TurretEntityDataSingleResolvedConstView_target_locations;
+    using soa_schema = Vectors3fSchema;
+    template <typename T>
+    using Element = std::conditional_t<Const, T const, T>;
+    TurretEntityDataSingleResolvedView_target_locationsImpl() = default;
+    TurretEntityDataSingleResolvedView_target_locationsImpl(Element<float>* target_locations_xs,
+                                                            Element<float>* target_locations_ys,
+                                                            Element<float>* target_locations_zs,
+                                                            size_type count)
+        : target_locations_xs_{target_locations_xs}
+        , target_locations_ys_{target_locations_ys}
+        , target_locations_zs_{target_locations_zs}
+        , count_{count} {
+        ioj::soa_storage_detail::validate_column_pointers(
+            count_, target_locations_xs_, target_locations_ys_, target_locations_zs_);
+    }
+    TurretEntityDataSingleResolvedView_target_locationsImpl(
+        std::span<Element<float>> target_locations_xs,
+        std::span<Element<float>> target_locations_ys,
+        std::span<Element<float>> target_locations_zs)
+        : TurretEntityDataSingleResolvedView_target_locationsImpl{
+              target_locations_xs.data(),
+              target_locations_ys.data(),
+              target_locations_zs.data(),
+              ioj::soa_storage_detail::checked_row_count(target_locations_xs.size())} {
+        assert(target_locations_xs.size() == count_);
+        assert(target_locations_ys.size() == count_);
+        assert(target_locations_zs.size() == count_);
+    }
+    template <bool Enabled = Const>
+    TurretEntityDataSingleResolvedView_target_locationsImpl(
+        TurretEntityDataSingleResolvedView_target_locationsImpl<false> const& other)
+        requires Enabled
+        : target_locations_xs_{other.target_locations_xs_}
+        , target_locations_ys_{other.target_locations_ys_}
+        , target_locations_zs_{other.target_locations_zs_}
+        , count_{other.count_} {}
+    auto num() const noexcept -> size_type { return count_; }
+    auto is_empty() const noexcept -> bool { return count_ == 0; }
+    auto get_view(this auto const& self) { return self; }
+    auto get_const_view(this auto const& self) {
+        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
+        return Result{self.target_locations_xs_,
+                      self.target_locations_ys_,
+                      self.target_locations_zs_,
+                      self.count_};
+    }
+    auto resolve(this auto const& self) { return self; }
+    void validate() const {}
+    auto slice(this auto const& self, size_type offset, size_type count) {
+        assert(offset <= self.count_ && count <= self.count_ - offset);
+        using Result = std::remove_cvref_t<decltype(self)>;
+        return Result{
+            self.target_locations_xs_ == nullptr ? nullptr : self.target_locations_xs_ + offset,
+            self.target_locations_ys_ == nullptr ? nullptr : self.target_locations_ys_ + offset,
+            self.target_locations_zs_ == nullptr ? nullptr : self.target_locations_zs_ + offset,
+            count};
+    }
+    auto get_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count);
+    }
+    auto get_const_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count).get_const_view();
+    }
+    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
+    auto right(this auto const& self, size_type count) {
+        assert(count <= self.num());
+        return self.slice(self.num() - count, count);
+    }
+    auto xs() const -> std::span<Element<float>> { return {target_locations_xs_, count_}; }
+    auto ys() const -> std::span<Element<float>> { return {target_locations_ys_, count_}; }
+    auto zs() const -> std::span<Element<float>> { return {target_locations_zs_, count_}; }
+    template <typename Func>
+    void each_column(Func&& func) const {
+        func(std::span<Element<float>>{target_locations_xs_, count_});
+        func(std::span<Element<float>>{target_locations_ys_, count_});
+        func(std::span<Element<float>>{target_locations_zs_, count_});
+    }
+  private:
+    template <bool>
+    friend struct TurretEntityDataSingleResolvedView_target_locationsImpl;
+    Element<float>* target_locations_xs_{};
+    Element<float>* target_locations_ys_{};
+    Element<float>* target_locations_zs_{};
+    size_type count_{};
+};
+struct TurretEntityDataSingleResolvedConstView_target_locations
+    : TurretEntityDataSingleResolvedView_target_locationsImpl<true> {
+    using Base = TurretEntityDataSingleResolvedView_target_locationsImpl<true>;
+    using Base::Base;
+};
+struct TurretEntityDataSingleResolvedView_target_locations
+    : TurretEntityDataSingleResolvedView_target_locationsImpl<false> {
+    using Base = TurretEntityDataSingleResolvedView_target_locationsImpl<false>;
+    using Base::Base;
+};
+struct TurretEntityDataSingleResolvedView_target_velocities;
+struct TurretEntityDataSingleResolvedConstView_target_velocities;
+template <bool Const>
+struct TurretEntityDataSingleResolvedView_target_velocitiesImpl {
+    using size_type = std::uint32_t;
+    using View = TurretEntityDataSingleResolvedView_target_velocities;
+    using ConstView = TurretEntityDataSingleResolvedConstView_target_velocities;
+    using soa_schema = Vectors3fSchema;
+    template <typename T>
+    using Element = std::conditional_t<Const, T const, T>;
+    TurretEntityDataSingleResolvedView_target_velocitiesImpl() = default;
+    TurretEntityDataSingleResolvedView_target_velocitiesImpl(Element<float>* target_velocities_xs,
+                                                             Element<float>* target_velocities_ys,
+                                                             Element<float>* target_velocities_zs,
+                                                             size_type count)
+        : target_velocities_xs_{target_velocities_xs}
+        , target_velocities_ys_{target_velocities_ys}
+        , target_velocities_zs_{target_velocities_zs}
+        , count_{count} {
+        ioj::soa_storage_detail::validate_column_pointers(
+            count_, target_velocities_xs_, target_velocities_ys_, target_velocities_zs_);
+    }
+    TurretEntityDataSingleResolvedView_target_velocitiesImpl(
+        std::span<Element<float>> target_velocities_xs,
+        std::span<Element<float>> target_velocities_ys,
+        std::span<Element<float>> target_velocities_zs)
+        : TurretEntityDataSingleResolvedView_target_velocitiesImpl{
+              target_velocities_xs.data(),
+              target_velocities_ys.data(),
+              target_velocities_zs.data(),
+              ioj::soa_storage_detail::checked_row_count(target_velocities_xs.size())} {
+        assert(target_velocities_xs.size() == count_);
+        assert(target_velocities_ys.size() == count_);
+        assert(target_velocities_zs.size() == count_);
+    }
+    template <bool Enabled = Const>
+    TurretEntityDataSingleResolvedView_target_velocitiesImpl(
+        TurretEntityDataSingleResolvedView_target_velocitiesImpl<false> const& other)
+        requires Enabled
+        : target_velocities_xs_{other.target_velocities_xs_}
+        , target_velocities_ys_{other.target_velocities_ys_}
+        , target_velocities_zs_{other.target_velocities_zs_}
+        , count_{other.count_} {}
+    auto num() const noexcept -> size_type { return count_; }
+    auto is_empty() const noexcept -> bool { return count_ == 0; }
+    auto get_view(this auto const& self) { return self; }
+    auto get_const_view(this auto const& self) {
+        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
+        return Result{self.target_velocities_xs_,
+                      self.target_velocities_ys_,
+                      self.target_velocities_zs_,
+                      self.count_};
+    }
+    auto resolve(this auto const& self) { return self; }
+    void validate() const {}
+    auto slice(this auto const& self, size_type offset, size_type count) {
+        assert(offset <= self.count_ && count <= self.count_ - offset);
+        using Result = std::remove_cvref_t<decltype(self)>;
+        return Result{
+            self.target_velocities_xs_ == nullptr ? nullptr : self.target_velocities_xs_ + offset,
+            self.target_velocities_ys_ == nullptr ? nullptr : self.target_velocities_ys_ + offset,
+            self.target_velocities_zs_ == nullptr ? nullptr : self.target_velocities_zs_ + offset,
+            count};
+    }
+    auto get_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count);
+    }
+    auto get_const_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count).get_const_view();
+    }
+    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
+    auto right(this auto const& self, size_type count) {
+        assert(count <= self.num());
+        return self.slice(self.num() - count, count);
+    }
+    auto xs() const -> std::span<Element<float>> { return {target_velocities_xs_, count_}; }
+    auto ys() const -> std::span<Element<float>> { return {target_velocities_ys_, count_}; }
+    auto zs() const -> std::span<Element<float>> { return {target_velocities_zs_, count_}; }
+    template <typename Func>
+    void each_column(Func&& func) const {
+        func(std::span<Element<float>>{target_velocities_xs_, count_});
+        func(std::span<Element<float>>{target_velocities_ys_, count_});
+        func(std::span<Element<float>>{target_velocities_zs_, count_});
+    }
+  private:
+    template <bool>
+    friend struct TurretEntityDataSingleResolvedView_target_velocitiesImpl;
+    Element<float>* target_velocities_xs_{};
+    Element<float>* target_velocities_ys_{};
+    Element<float>* target_velocities_zs_{};
+    size_type count_{};
+};
+struct TurretEntityDataSingleResolvedConstView_target_velocities
+    : TurretEntityDataSingleResolvedView_target_velocitiesImpl<true> {
+    using Base = TurretEntityDataSingleResolvedView_target_velocitiesImpl<true>;
+    using Base::Base;
+};
+struct TurretEntityDataSingleResolvedView_target_velocities
+    : TurretEntityDataSingleResolvedView_target_velocitiesImpl<false> {
+    using Base = TurretEntityDataSingleResolvedView_target_velocitiesImpl<false>;
+    using Base::Base;
+};
+struct TurretEntityDataSingleResolvedView;
+struct TurretEntityDataSingleResolvedConstView;
+template <bool Const>
+struct TurretEntityDataSingleResolvedViewImpl {
+    using size_type = std::uint32_t;
+    using View = TurretEntityDataSingleResolvedView;
+    using ConstView = TurretEntityDataSingleResolvedConstView;
+    using soa_schema = TurretEntityDataSchema;
+    template <typename T>
+    using Element = std::conditional_t<Const, T const, T>;
+    TurretEntityDataSingleResolvedViewImpl() = default;
+    TurretEntityDataSingleResolvedViewImpl(
+        Element<EntityId>* entity_ids,
+        Element<std::uint32_t>* integral_biases,
+        Element<float>* locations_xs,
+        Element<float>* locations_ys,
+        Element<float>* locations_zs,
+        Element<float>* fire_point_locations_xs,
+        Element<float>* fire_point_locations_ys,
+        Element<float>* fire_point_locations_zs,
+        Element<float>* rotations_pitches,
+        Element<float>* rotations_yaws,
+        Element<float>* rotations_rolls,
+        Element<::ioj::Team>* teams,
+        Element<std::int16_t>* laser_cooldowns,
+        Element<std::int32_t>* laser_damages,
+        Element<std::int16_t>* target_refresh_countdowns_periods,
+        Element<std::int16_t>* target_refresh_countdowns_remaining_ticks,
+        Element<EntityId>* target_ids,
+        Element<float>* target_locations_xs,
+        Element<float>* target_locations_ys,
+        Element<float>* target_locations_zs,
+        Element<float>* target_velocities_xs,
+        Element<float>* target_velocities_ys,
+        Element<float>* target_velocities_zs,
+        size_type count)
+        : entity_ids_{entity_ids}
+        , integral_biases_{integral_biases}
+        , locations_xs_{locations_xs}
+        , locations_ys_{locations_ys}
+        , locations_zs_{locations_zs}
+        , fire_point_locations_xs_{fire_point_locations_xs}
+        , fire_point_locations_ys_{fire_point_locations_ys}
+        , fire_point_locations_zs_{fire_point_locations_zs}
+        , rotations_pitches_{rotations_pitches}
+        , rotations_yaws_{rotations_yaws}
+        , rotations_rolls_{rotations_rolls}
+        , teams_{teams}
+        , laser_cooldowns_{laser_cooldowns}
+        , laser_damages_{laser_damages}
+        , target_refresh_countdowns_periods_{target_refresh_countdowns_periods}
+        , target_refresh_countdowns_remaining_ticks_{target_refresh_countdowns_remaining_ticks}
+        , target_ids_{target_ids}
+        , target_locations_xs_{target_locations_xs}
+        , target_locations_ys_{target_locations_ys}
+        , target_locations_zs_{target_locations_zs}
+        , target_velocities_xs_{target_velocities_xs}
+        , target_velocities_ys_{target_velocities_ys}
+        , target_velocities_zs_{target_velocities_zs}
+        , count_{count} {
+        ioj::soa_storage_detail::validate_column_pointers(
+            count_,
+            entity_ids_,
+            integral_biases_,
+            locations_xs_,
+            locations_ys_,
+            locations_zs_,
+            fire_point_locations_xs_,
+            fire_point_locations_ys_,
+            fire_point_locations_zs_,
+            rotations_pitches_,
+            rotations_yaws_,
+            rotations_rolls_,
+            teams_,
+            laser_cooldowns_,
+            laser_damages_,
+            target_refresh_countdowns_periods_,
+            target_refresh_countdowns_remaining_ticks_,
+            target_ids_,
+            target_locations_xs_,
+            target_locations_ys_,
+            target_locations_zs_,
+            target_velocities_xs_,
+            target_velocities_ys_,
+            target_velocities_zs_);
+    }
+    TurretEntityDataSingleResolvedViewImpl(
+        std::span<Element<EntityId>> entity_ids,
+        std::span<Element<std::uint32_t>> integral_biases,
+        std::span<Element<float>> locations_xs,
+        std::span<Element<float>> locations_ys,
+        std::span<Element<float>> locations_zs,
+        std::span<Element<float>> fire_point_locations_xs,
+        std::span<Element<float>> fire_point_locations_ys,
+        std::span<Element<float>> fire_point_locations_zs,
+        std::span<Element<float>> rotations_pitches,
+        std::span<Element<float>> rotations_yaws,
+        std::span<Element<float>> rotations_rolls,
+        std::span<Element<::ioj::Team>> teams,
+        std::span<Element<std::int16_t>> laser_cooldowns,
+        std::span<Element<std::int32_t>> laser_damages,
+        std::span<Element<std::int16_t>> target_refresh_countdowns_periods,
+        std::span<Element<std::int16_t>> target_refresh_countdowns_remaining_ticks,
+        std::span<Element<EntityId>> target_ids,
+        std::span<Element<float>> target_locations_xs,
+        std::span<Element<float>> target_locations_ys,
+        std::span<Element<float>> target_locations_zs,
+        std::span<Element<float>> target_velocities_xs,
+        std::span<Element<float>> target_velocities_ys,
+        std::span<Element<float>> target_velocities_zs)
+        : TurretEntityDataSingleResolvedViewImpl{
+              entity_ids.data(),
+              integral_biases.data(),
+              locations_xs.data(),
+              locations_ys.data(),
+              locations_zs.data(),
+              fire_point_locations_xs.data(),
+              fire_point_locations_ys.data(),
+              fire_point_locations_zs.data(),
+              rotations_pitches.data(),
+              rotations_yaws.data(),
+              rotations_rolls.data(),
+              teams.data(),
+              laser_cooldowns.data(),
+              laser_damages.data(),
+              target_refresh_countdowns_periods.data(),
+              target_refresh_countdowns_remaining_ticks.data(),
+              target_ids.data(),
+              target_locations_xs.data(),
+              target_locations_ys.data(),
+              target_locations_zs.data(),
+              target_velocities_xs.data(),
+              target_velocities_ys.data(),
+              target_velocities_zs.data(),
+              ioj::soa_storage_detail::checked_row_count(entity_ids.size())} {
+        assert(entity_ids.size() == count_);
+        assert(integral_biases.size() == count_);
+        assert(locations_xs.size() == count_);
+        assert(locations_ys.size() == count_);
+        assert(locations_zs.size() == count_);
+        assert(fire_point_locations_xs.size() == count_);
+        assert(fire_point_locations_ys.size() == count_);
+        assert(fire_point_locations_zs.size() == count_);
+        assert(rotations_pitches.size() == count_);
+        assert(rotations_yaws.size() == count_);
+        assert(rotations_rolls.size() == count_);
+        assert(teams.size() == count_);
+        assert(laser_cooldowns.size() == count_);
+        assert(laser_damages.size() == count_);
+        assert(target_refresh_countdowns_periods.size() == count_);
+        assert(target_refresh_countdowns_remaining_ticks.size() == count_);
+        assert(target_ids.size() == count_);
+        assert(target_locations_xs.size() == count_);
+        assert(target_locations_ys.size() == count_);
+        assert(target_locations_zs.size() == count_);
+        assert(target_velocities_xs.size() == count_);
+        assert(target_velocities_ys.size() == count_);
+        assert(target_velocities_zs.size() == count_);
+    }
+    template <bool Enabled = Const>
+    TurretEntityDataSingleResolvedViewImpl(
+        TurretEntityDataSingleResolvedViewImpl<false> const& other)
+        requires Enabled
+        : entity_ids_{other.entity_ids_}
+        , integral_biases_{other.integral_biases_}
+        , locations_xs_{other.locations_xs_}
+        , locations_ys_{other.locations_ys_}
+        , locations_zs_{other.locations_zs_}
+        , fire_point_locations_xs_{other.fire_point_locations_xs_}
+        , fire_point_locations_ys_{other.fire_point_locations_ys_}
+        , fire_point_locations_zs_{other.fire_point_locations_zs_}
+        , rotations_pitches_{other.rotations_pitches_}
+        , rotations_yaws_{other.rotations_yaws_}
+        , rotations_rolls_{other.rotations_rolls_}
+        , teams_{other.teams_}
+        , laser_cooldowns_{other.laser_cooldowns_}
+        , laser_damages_{other.laser_damages_}
+        , target_refresh_countdowns_periods_{other.target_refresh_countdowns_periods_}
+        , target_refresh_countdowns_remaining_ticks_{other
+                                                         .target_refresh_countdowns_remaining_ticks_}
+        , target_ids_{other.target_ids_}
+        , target_locations_xs_{other.target_locations_xs_}
+        , target_locations_ys_{other.target_locations_ys_}
+        , target_locations_zs_{other.target_locations_zs_}
+        , target_velocities_xs_{other.target_velocities_xs_}
+        , target_velocities_ys_{other.target_velocities_ys_}
+        , target_velocities_zs_{other.target_velocities_zs_}
+        , count_{other.count_} {}
+    auto num() const noexcept -> size_type { return count_; }
+    auto is_empty() const noexcept -> bool { return count_ == 0; }
+    auto get_view(this auto const& self) { return self; }
+    auto get_const_view(this auto const& self) {
+        using Result = typename std::remove_cvref_t<decltype(self)>::ConstView;
+        return Result{self.entity_ids_,
+                      self.integral_biases_,
+                      self.locations_xs_,
+                      self.locations_ys_,
+                      self.locations_zs_,
+                      self.fire_point_locations_xs_,
+                      self.fire_point_locations_ys_,
+                      self.fire_point_locations_zs_,
+                      self.rotations_pitches_,
+                      self.rotations_yaws_,
+                      self.rotations_rolls_,
+                      self.teams_,
+                      self.laser_cooldowns_,
+                      self.laser_damages_,
+                      self.target_refresh_countdowns_periods_,
+                      self.target_refresh_countdowns_remaining_ticks_,
+                      self.target_ids_,
+                      self.target_locations_xs_,
+                      self.target_locations_ys_,
+                      self.target_locations_zs_,
+                      self.target_velocities_xs_,
+                      self.target_velocities_ys_,
+                      self.target_velocities_zs_,
+                      self.count_};
+    }
+    auto resolve(this auto const& self) { return self; }
+    void validate() const {}
+    auto slice(this auto const& self, size_type offset, size_type count) {
+        assert(offset <= self.count_ && count <= self.count_ - offset);
+        using Result = std::remove_cvref_t<decltype(self)>;
+        return Result{
+            self.entity_ids_ == nullptr ? nullptr : self.entity_ids_ + offset,
+            self.integral_biases_ == nullptr ? nullptr : self.integral_biases_ + offset,
+            self.locations_xs_ == nullptr ? nullptr : self.locations_xs_ + offset,
+            self.locations_ys_ == nullptr ? nullptr : self.locations_ys_ + offset,
+            self.locations_zs_ == nullptr ? nullptr : self.locations_zs_ + offset,
+            self.fire_point_locations_xs_ == nullptr ? nullptr
+                                                     : self.fire_point_locations_xs_ + offset,
+            self.fire_point_locations_ys_ == nullptr ? nullptr
+                                                     : self.fire_point_locations_ys_ + offset,
+            self.fire_point_locations_zs_ == nullptr ? nullptr
+                                                     : self.fire_point_locations_zs_ + offset,
+            self.rotations_pitches_ == nullptr ? nullptr : self.rotations_pitches_ + offset,
+            self.rotations_yaws_ == nullptr ? nullptr : self.rotations_yaws_ + offset,
+            self.rotations_rolls_ == nullptr ? nullptr : self.rotations_rolls_ + offset,
+            self.teams_ == nullptr ? nullptr : self.teams_ + offset,
+            self.laser_cooldowns_ == nullptr ? nullptr : self.laser_cooldowns_ + offset,
+            self.laser_damages_ == nullptr ? nullptr : self.laser_damages_ + offset,
+            self.target_refresh_countdowns_periods_ == nullptr
+                ? nullptr
+                : self.target_refresh_countdowns_periods_ + offset,
+            self.target_refresh_countdowns_remaining_ticks_ == nullptr
+                ? nullptr
+                : self.target_refresh_countdowns_remaining_ticks_ + offset,
+            self.target_ids_ == nullptr ? nullptr : self.target_ids_ + offset,
+            self.target_locations_xs_ == nullptr ? nullptr : self.target_locations_xs_ + offset,
+            self.target_locations_ys_ == nullptr ? nullptr : self.target_locations_ys_ + offset,
+            self.target_locations_zs_ == nullptr ? nullptr : self.target_locations_zs_ + offset,
+            self.target_velocities_xs_ == nullptr ? nullptr : self.target_velocities_xs_ + offset,
+            self.target_velocities_ys_ == nullptr ? nullptr : self.target_velocities_ys_ + offset,
+            self.target_velocities_zs_ == nullptr ? nullptr : self.target_velocities_zs_ + offset,
+            count};
+    }
+    auto get_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count);
+    }
+    auto get_const_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count).get_const_view();
+    }
+    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
+    auto right(this auto const& self, size_type count) {
+        assert(count <= self.num());
+        return self.slice(self.num() - count, count);
+    }
+    auto entity_ids() const -> std::span<Element<EntityId>> { return {entity_ids_, count_}; }
+    auto integral_biases() const -> std::span<Element<std::uint32_t>> {
+        return {integral_biases_, count_};
+    }
+    auto view_locations() const
+        -> std::conditional_t<Const,
+                              TurretEntityDataSingleResolvedConstView_locations,
+                              TurretEntityDataSingleResolvedView_locations> {
+        return {locations_xs_, locations_ys_, locations_zs_, count_};
+    }
+    auto view_fire_point_locations() const
+        -> std::conditional_t<Const,
+                              TurretEntityDataSingleResolvedConstView_fire_point_locations,
+                              TurretEntityDataSingleResolvedView_fire_point_locations> {
+        return {
+            fire_point_locations_xs_, fire_point_locations_ys_, fire_point_locations_zs_, count_};
+    }
+    auto view_rotations() const
+        -> std::conditional_t<Const,
+                              TurretEntityDataSingleResolvedConstView_rotations,
+                              TurretEntityDataSingleResolvedView_rotations> {
+        return {rotations_pitches_, rotations_yaws_, rotations_rolls_, count_};
+    }
+    auto teams() const -> std::span<Element<::ioj::Team>> { return {teams_, count_}; }
+    auto laser_cooldowns() const -> std::span<Element<std::int16_t>> {
+        return {laser_cooldowns_, count_};
+    }
+    auto laser_damages() const -> std::span<Element<std::int32_t>> {
+        return {laser_damages_, count_};
+    }
+    auto target_refresh_countdowns_periods() const -> std::span<Element<std::int16_t>> {
+        return {target_refresh_countdowns_periods_, count_};
+    }
+    auto target_refresh_countdowns_remaining_ticks() const -> std::span<Element<std::int16_t>> {
+        return {target_refresh_countdowns_remaining_ticks_, count_};
+    }
+    auto target_ids() const -> std::span<Element<EntityId>> { return {target_ids_, count_}; }
+    auto view_target_locations() const
+        -> std::conditional_t<Const,
+                              TurretEntityDataSingleResolvedConstView_target_locations,
+                              TurretEntityDataSingleResolvedView_target_locations> {
+        return {target_locations_xs_, target_locations_ys_, target_locations_zs_, count_};
+    }
+    auto view_target_velocities() const
+        -> std::conditional_t<Const,
+                              TurretEntityDataSingleResolvedConstView_target_velocities,
+                              TurretEntityDataSingleResolvedView_target_velocities> {
+        return {target_velocities_xs_, target_velocities_ys_, target_velocities_zs_, count_};
+    }
+    template <typename Func>
+    void each_column(Func&& func) const {
+        func(std::span<Element<EntityId>>{entity_ids_, count_});
+        func(std::span<Element<std::uint32_t>>{integral_biases_, count_});
+        func(std::span<Element<float>>{locations_xs_, count_});
+        func(std::span<Element<float>>{locations_ys_, count_});
+        func(std::span<Element<float>>{locations_zs_, count_});
+        func(std::span<Element<float>>{fire_point_locations_xs_, count_});
+        func(std::span<Element<float>>{fire_point_locations_ys_, count_});
+        func(std::span<Element<float>>{fire_point_locations_zs_, count_});
+        func(std::span<Element<float>>{rotations_pitches_, count_});
+        func(std::span<Element<float>>{rotations_yaws_, count_});
+        func(std::span<Element<float>>{rotations_rolls_, count_});
+        func(std::span<Element<::ioj::Team>>{teams_, count_});
+        func(std::span<Element<std::int16_t>>{laser_cooldowns_, count_});
+        func(std::span<Element<std::int32_t>>{laser_damages_, count_});
+        func(std::span<Element<std::int16_t>>{target_refresh_countdowns_periods_, count_});
+        func(std::span<Element<std::int16_t>>{target_refresh_countdowns_remaining_ticks_, count_});
+        func(std::span<Element<EntityId>>{target_ids_, count_});
+        func(std::span<Element<float>>{target_locations_xs_, count_});
+        func(std::span<Element<float>>{target_locations_ys_, count_});
+        func(std::span<Element<float>>{target_locations_zs_, count_});
+        func(std::span<Element<float>>{target_velocities_xs_, count_});
+        func(std::span<Element<float>>{target_velocities_ys_, count_});
+        func(std::span<Element<float>>{target_velocities_zs_, count_});
+    }
+  private:
+    template <bool>
+    friend struct TurretEntityDataSingleResolvedViewImpl;
+    Element<EntityId>* entity_ids_{};
+    Element<std::uint32_t>* integral_biases_{};
+    Element<float>* locations_xs_{};
+    Element<float>* locations_ys_{};
+    Element<float>* locations_zs_{};
+    Element<float>* fire_point_locations_xs_{};
+    Element<float>* fire_point_locations_ys_{};
+    Element<float>* fire_point_locations_zs_{};
+    Element<float>* rotations_pitches_{};
+    Element<float>* rotations_yaws_{};
+    Element<float>* rotations_rolls_{};
+    Element<::ioj::Team>* teams_{};
+    Element<std::int16_t>* laser_cooldowns_{};
+    Element<std::int32_t>* laser_damages_{};
+    Element<std::int16_t>* target_refresh_countdowns_periods_{};
+    Element<std::int16_t>* target_refresh_countdowns_remaining_ticks_{};
+    Element<EntityId>* target_ids_{};
+    Element<float>* target_locations_xs_{};
+    Element<float>* target_locations_ys_{};
+    Element<float>* target_locations_zs_{};
+    Element<float>* target_velocities_xs_{};
+    Element<float>* target_velocities_ys_{};
+    Element<float>* target_velocities_zs_{};
+    size_type count_{};
+};
+struct TurretEntityDataSingleResolvedConstView : TurretEntityDataSingleResolvedViewImpl<true> {
+    using Base = TurretEntityDataSingleResolvedViewImpl<true>;
+    using Base::Base;
+};
+struct TurretEntityDataSingleResolvedView : TurretEntityDataSingleResolvedViewImpl<false> {
+    using Base = TurretEntityDataSingleResolvedViewImpl<false>;
+    using Base::Base;
+};
 template <bool Const>
 struct TurretEntityDataSingleViewImpl : ioj::soa_storage_detail::CompactViewOperations {
     using soa_schema = TurretEntityDataSchema;
@@ -219,6 +1103,35 @@ struct TurretEntityDataSingleViewImpl : ioj::soa_storage_detail::CompactViewOper
         func(target_velocities_view.xs());
         func(target_velocities_view.ys());
         func(target_velocities_view.zs());
+    }
+    auto resolve() const -> std::conditional_t<Const,
+                                               TurretEntityDataSingleResolvedConstView,
+                                               TurretEntityDataSingleResolvedView> {
+        return {
+            (make_column_view(Layout::columns.EntityIdsColumn).data()),
+            (make_column_view(Layout::columns.IntegralBiasesColumn).data()),
+            (make_column_view(Layout::columns.LocationsXsColumn).data()),
+            (make_column_view(Layout::columns.LocationsYsColumn).data()),
+            (make_column_view(Layout::columns.LocationsZsColumn).data()),
+            (make_column_view(Layout::columns.FirePointLocationsXsColumn).data()),
+            (make_column_view(Layout::columns.FirePointLocationsYsColumn).data()),
+            (make_column_view(Layout::columns.FirePointLocationsZsColumn).data()),
+            (make_column_view(Layout::columns.RotationsPitchesColumn).data()),
+            (make_column_view(Layout::columns.RotationsYawsColumn).data()),
+            (make_column_view(Layout::columns.RotationsRollsColumn).data()),
+            (make_column_view(Layout::columns.TeamsColumn).data()),
+            (make_column_view(Layout::columns.LaserCooldownsColumn).data()),
+            (make_column_view(Layout::columns.LaserDamagesColumn).data()),
+            (make_column_view(Layout::columns.TargetRefreshCountdownsPeriodsColumn).data()),
+            (make_column_view(Layout::columns.TargetRefreshCountdownsRemainingTicksColumn).data()),
+            (make_column_view(Layout::columns.TargetIdsColumn).data()),
+            (make_column_view(Layout::columns.TargetLocationsXsColumn).data()),
+            (make_column_view(Layout::columns.TargetLocationsYsColumn).data()),
+            (make_column_view(Layout::columns.TargetLocationsZsColumn).data()),
+            (make_column_view(Layout::columns.TargetVelocitiesXsColumn).data()),
+            (make_column_view(Layout::columns.TargetVelocitiesYsColumn).data()),
+            (make_column_view(Layout::columns.TargetVelocitiesZsColumn).data()),
+            count_};
     }
   private:
     template <typename T>
