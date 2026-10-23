@@ -20,10 +20,13 @@ target_sources(native-layout-tests PRIVATE
 )
 target_link_libraries(native-layout-tests PRIVATE
   native-layout
-  native-soa
   GTest::gtest_main
   sandbox::native_defaults
   ioj::test_pch
+)
+target_include_directories(native-layout-tests
+  PRIVATE
+    "${PROJECT_SOURCE_DIR}/native/lispb/tests/native_soa/include"
 )
 ioj_enable_warnings(native-layout-tests)
 target_compile_definitions(native-layout-tests PRIVATE

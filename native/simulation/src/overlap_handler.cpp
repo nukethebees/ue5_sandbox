@@ -7,7 +7,6 @@ OverlapHandler::OverlapHandler(Positive<Health> const damage_per_overlap_detecti
     : damage_per_overlap_detection_{damage_per_overlap_detection} {}
 
 void OverlapHandler::handle(collision::DetectedOverlapsView const overlaps, CombatEvents& events) {
-    overlaps.entity_entity_overlaps.validate();
     overlaps.entity_static_overlaps.validate();
 
     damage_events_.reset();

@@ -126,12 +126,6 @@ auto build_single_allocation_model(LoweringContext& context, DeclarationHandle s
                 auto const nested_type{
                     type_graph.occurrences().type[type_graph.occurrences().index(occurrence)]};
                 auto const nested{type_graph.definition(nested_type)};
-                auto const nested_schema{type_graph.source_declaration(nested_type)};
-                storage.equivalent_constructors.emplace(
-                    std::pair{result, nested_schema},
-                    type_graph.definitions()
-                        .soas.equivalent_constructor[type_graph.definitions().soas.index(nested)]
-                        .value_or(StringId{}));
                 auto const cpp_type{
                     type_graph.occurrences().cpp_type[type_graph.occurrences().index(occurrence)]};
                 auto const nested_dependencies{ir.types.dependencies(cpp_type)};

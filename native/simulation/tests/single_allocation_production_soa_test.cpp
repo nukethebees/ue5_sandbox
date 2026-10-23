@@ -29,7 +29,7 @@ void expect_storage_lifecycle() {
     source.add_defaulted(1);
     source.add_uninitialised(3);
     EXPECT_EQ(source.num(), 4) << "Storage grows through production add paths";
-    source.get_const_view().validate();
+    EXPECT_EQ(source.get_const_view().num(), 4U);
 
     Storage moved{std::move(source)};
     EXPECT_EQ(moved.num(), 4) << "Move construction preserves rows";

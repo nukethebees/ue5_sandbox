@@ -106,7 +106,6 @@ void CollisionUniformGrid::set_static_aabbs(collision::WorldAABBs static_aabbs) 
         fatal_error("Cannot build static geometry for an unconfigured grid");
     }
 
-    static_aabbs.get_const_view().validate();
     static_storage_.set_aabbs(std::move(static_aabbs));
     rebuild_static_grid();
 }

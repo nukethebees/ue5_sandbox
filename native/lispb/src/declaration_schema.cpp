@@ -325,8 +325,19 @@ auto soa_generated_cpp_names(Declarations const& declarations, DeclarationHandle
     auto const& soas{declarations.soas};
     auto const row{soas.index(schema)};
     auto& strings{declarations.strings()};
-    std::vector<StringId> result{
-        strings.intern(soa_namespace_name(strings.view(soas.name[row])))};
+    auto const scope{soa_namespace_name(strings.view(soas.name[row]))};
+    std::vector<StringId> result{strings.intern(scope)};
+    for (auto const name : {"Schema",
+                            "LayoutColumns",
+                            "Layout",
+                            "ViewImpl",
+                            "View",
+                            "ConstView",
+                            "ResolvedViewImpl",
+                            "ResolvedView",
+                            "ResolvedConstView"}) {
+        result.push_back(strings.intern(scope + "::" + name));
+    }
     if (!soas.layout_only[row]) {
         result.push_back(soas.name[row]);
     }

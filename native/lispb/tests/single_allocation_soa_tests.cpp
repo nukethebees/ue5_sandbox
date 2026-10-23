@@ -204,6 +204,16 @@ TEST(SingleAllocationSoa, RejectsInvalidFlatteningAndOwnerNames) {
     EXPECT_THROW(render(changed("ids array", "trailing_ array")), std::invalid_argument);
 }
 
+TEST(SingleAllocationSoa, RejectsModuleDeclarationsCollidingWithSharedViewTypes) {
+    CompilerTestContext context;
+    auto const manifest{parse_test_manifest(context, R"(
+        (module owner :header "Owner.h" :namespace example
+          (struct Rows (member values array float)))
+        (module collision :header "Collision.h" :namespace example::rows
+          (record View)))")};
+    EXPECT_THROW(render_test_manifest(context, manifest), std::invalid_argument);
+}
+
 TEST(SingleAllocationSoa, FlattensMultipleLevelsAndRepeatedNestedSchemas) {
     auto const output{render(schemas() + R"(
         (struct Grandparent

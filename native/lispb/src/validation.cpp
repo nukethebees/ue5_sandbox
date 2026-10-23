@@ -2541,8 +2541,8 @@ class Validator {
                 context + " namespace");
             if (declarations_.soas.layout_only[declarations_.soas.index(schema)] &&
                 !declarations_.soas.functions[declarations_.soas.index(schema)].empty()) {
-                throw std::invalid_argument{
-                    context + " layout-only has no owner; use view functions"};
+                throw std::invalid_argument{context +
+                                            " layout-only has no owner; use view functions"};
             }
 
             if (declarations_.soas.field_mask_name[declarations_.soas.index(schema)].has_value() !=
@@ -3435,7 +3435,7 @@ class Validator {
 
     void validate_normal_module(lispb::codegen::ModuleHandle const& module,
                                 Manifest const& manifest,
-                                std::set<std::string>& generated_names) {
+                                std::map<std::string, DeclarationHandle>& generated_names) {
         if (declarations_.normal_modules
                 .enum_helper_namespace[declarations_.normal_modules.index(module)]
                 .has_value()) {
@@ -3446,6 +3446,7 @@ class Validator {
         }
         std::vector<lispb::codegen::DeclarationHandle> schemas;
         std::set<lispb::StringId> names;
+        std::set<lispb::StringId> local_generated_names;
         auto const& modules{declarations_.normal_modules};
         auto const& settings{declarations_.module_settings_store};
         auto const settings_row{settings.index(modules.settings[modules.index(module)])};
@@ -3465,7 +3466,13 @@ class Validator {
                     "': " + text(name)};
             }
             for (auto const generated_name : generated_cpp_names(declarations_, declaration)) {
-                if (!generated_names.insert(prefix + text(generated_name)).second) {
+                auto const [existing, inserted]{
+                    generated_names.emplace(prefix + text(generated_name), declaration)};
+                // Preserve ordinary cross-module ambiguity handling while reserving SoA scopes.
+                auto const soa_collision{!inserted &&
+                                         (declaration.kind() == DeclarationKind::soa ||
+                                          existing->second.kind() == DeclarationKind::soa)};
+                if (!local_generated_names.insert(generated_name).second || soa_collision) {
                     throw std::invalid_argument{
                         "Generated C++ name collision in module '" +
                         text(declarations_.module_settings_store
@@ -3616,7 +3623,7 @@ class Validator {
         }
         std::set<lispb::StringId> module_names;
         std::set<std::string> output_paths;
-        std::set<std::string> generated_names;
+        std::map<std::string, DeclarationHandle> generated_names;
         auto const& cpp_types{manifest.types.cpp_types};
         for (auto const& [name_id, registered] : manifest.types.entries) {
             auto const name{std::string{cpp_types.strings().view(name_id)}};
