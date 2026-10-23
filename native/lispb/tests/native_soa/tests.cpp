@@ -285,6 +285,10 @@ TEST(NativeSoa, ResolvedViewsBorrowColumnsAndPreserveNestedLogicalApi) {
         std::is_same_v<decltype(immutable.view_positions().xs()), std::span<float const>>);
     static_assert(!CanAssignFirst<api_owner::ResolvedConstView>);
     EXPECT_EQ(immutable.values().data(), resolved.values().data());
+    static_assert(std::is_same_v<decltype(immutable.get_const_view()), api_owner::ResolvedConstView>);
+    static_assert(std::is_same_v<decltype(immutable.get_const_view(1, 1)), api_owner::ResolvedConstView>);
+    EXPECT_EQ(immutable.get_const_view().values().data(), resolved.values().data());
+    EXPECT_EQ(immutable.get_const_view(1, 1).view_positions()[0].x, 6.0f);
     EXPECT_EQ(resolved.get_const_view(1, 1).view_positions()[0].x, 6.0f);
     EXPECT_EQ(owner.get_const_view().resolve().values().data(), resolved.values().data());
 }
@@ -984,13 +988,21 @@ TEST(NativeSoa, CompactViewsAndBulkAppend) {
     source.reserve(1024);
     view = source.get_view();
     auto const slice{view.slice(1, 64)};
-    ConstPositions const_positions = slice.view_positions();
+    ConstPositions const const_positions = slice.view_positions();
     EXPECT_EQ(const_positions.xs().data(), view.view_positions().xs().data() + 1);
     EXPECT_EQ(const_positions.num(), 64);
+    static_assert(std::is_same_v<decltype(const_positions.get_const_view()), ConstPositions>);
+    static_assert(std::is_same_v<decltype(const_positions.get_const_view(1, 1)), ConstPositions>);
+    EXPECT_EQ(const_positions.get_const_view().xs().data(), const_positions.xs().data());
+    EXPECT_EQ(const_positions.get_const_view(1, 1).xs()[0], 2.0f);
     EXPECT_EQ(slice.values()[63], 64);
     EXPECT_EQ(view.view_positions().xs()[1], 1.f);
-    Owner::ConstView const_view{slice};
+    Owner::ConstView const const_view{slice};
     EXPECT_EQ(const_view.view_positions().xs()[0], 1.f);
+    static_assert(std::is_same_v<decltype(const_view.get_const_view()), Owner::ConstView>);
+    static_assert(std::is_same_v<decltype(const_view.get_const_view(1, 1)), Owner::ConstView>);
+    EXPECT_EQ(const_view.get_const_view().values().data(), const_view.values().data());
+    EXPECT_EQ(const_view.get_const_view(1, 1).view_positions().xs()[0], 2.0f);
     Owner destination{};
     EXPECT_EQ(destination.append_from(source), 0);
     EXPECT_EQ(destination.append_from(const_view), 129);
