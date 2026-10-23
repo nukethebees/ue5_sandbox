@@ -718,6 +718,31 @@ struct PackedFieldTableView : PackedFieldTableViewImpl<false> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<PackedFieldTableView>());
+// Columns:
+// parent: ioj::layout::AnalysisId
+// segment: lispb::schema::PackedSegmentId
+// name: std::string_view
+// semantic_type: std::optional<lispb::schema::TypeId>
+// logical_type: lispb::StringId
+// kind: lispb::codegen::PackedFieldKind
+// reserved: std::uint8_t
+// schema_bit_width: std::uint32_t
+// schema_bit_width_auto: std::uint8_t
+// bit_width: std::uint32_t
+// overridden: std::uint8_t
+// least_significant_bit: std::uint64_t
+// most_significant_bit: std::optional<std::uint64_t>
+// maximum_unsigned_value: std::optional<std::uint64_t>
+// minimum_signed_value: std::optional<std::int64_t>
+// maximum_signed_value: std::optional<std::int64_t>
+// minimum_semantic_value: std::optional<lispb::codegen::PackedIntegerValue>
+// maximum_semantic_value: std::optional<lispb::codegen::PackedIntegerValue>
+// semantic_value_count: std::optional<std::uint64_t>
+// sentinel_code_count: std::uint64_t
+// required_code_count: std::optional<std::uint64_t>
+// minimum_required_bits: std::optional<std::uint32_t>
+// unused_codes: std::optional<std::uint64_t>
+// codes: ioj::layout::RowRange
 struct PackedFieldTable
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {

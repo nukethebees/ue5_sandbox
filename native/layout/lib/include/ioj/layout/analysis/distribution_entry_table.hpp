@@ -304,6 +304,14 @@ struct DistributionEntryTableView : DistributionEntryTableViewImpl<false> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<DistributionEntryTableView>());
+// Columns:
+// component: std::optional<std::size_t>
+// value: std::optional<lispb::codegen::PackedIntegerValue>
+// weight: std::uint64_t
+// extent_bytes: std::optional<std::uint64_t>
+// slack_bytes: std::optional<std::uint64_t>
+// weighted_extent_bytes: std::optional<std::uint64_t>
+// weighted_slack_bytes: std::optional<std::uint64_t>
 struct DistributionEntryTable
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {

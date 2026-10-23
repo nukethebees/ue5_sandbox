@@ -2253,6 +2253,62 @@ struct FighterEntityDataView : FighterEntityDataViewImpl<false> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<FighterEntityDataView>());
+// Columns:
+// entity_ids: EntityId
+// integral_biases: std::uint32_t
+// float_biases: float
+// tasks: FighterTask
+// locations_xs: float
+// locations_ys: float
+// locations_zs: float
+// desired_move_locations_xs: float
+// desired_move_locations_ys: float
+// desired_move_locations_zs: float
+// aim_directions_xs: float
+// aim_directions_ys: float
+// aim_directions_zs: float
+// planned_aim_directions_xs: float
+// planned_aim_directions_ys: float
+// planned_aim_directions_zs: float
+// desired_aiming_directions_xs: float
+// desired_aiming_directions_ys: float
+// desired_aiming_directions_zs: float
+// movement_directions_xs: float
+// movement_directions_ys: float
+// movement_directions_zs: float
+// velocities_xs: float
+// velocities_ys: float
+// velocities_zs: float
+// move_distances: float
+// speeds: float
+// teams: ::ioj::Team
+// parent_ids: EntityId
+// awareness_scan_countdowns: std::int8_t
+// navigation_update_countdowns_remaining_ticks: std::int16_t
+// navigation_update_countdowns_periods: std::int16_t
+// separation_steering_xs: float
+// separation_steering_ys: float
+// separation_steering_zs: float
+// navigation_risk_tiers: ioj::sim::fighters::NavigationRiskCode
+// navigation_lower_risk_scan_counts: ioj::sim::fighters::NavigationScanCount
+// avoidance_choice_indices: ioj::sim::fighters::AvoidanceChoice
+// avoidance_clear_scan_counts: ioj::sim::fighters::NavigationScanCount
+// attack_reposition_countdowns: std::int16_t
+// attack_cooldowns: std::int16_t
+// target_ids: EntityId
+// target_locations_xs: float
+// target_locations_ys: float
+// target_locations_zs: float
+// target_velocities_xs: float
+// target_velocities_ys: float
+// target_velocities_zs: float
+// target_directions_xs: float
+// target_directions_ys: float
+// target_directions_zs: float
+// intercept_times: float
+// target_distance_sq: float
+// target_distances: float
+// target_radii: float
 struct FighterEntityData
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {

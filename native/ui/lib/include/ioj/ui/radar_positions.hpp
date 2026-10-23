@@ -156,6 +156,9 @@ struct PositionsView : PositionsViewImpl<false> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<PositionsView>());
+// Columns:
+// xs: float
+// ys: float
 struct Positions
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {

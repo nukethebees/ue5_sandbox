@@ -496,6 +496,22 @@ struct SoaColumnTableView : SoaColumnTableViewImpl<false> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<SoaColumnTableView>());
+// Columns:
+// parent: ioj::layout::AnalysisId
+// name: std::string_view
+// semantic_type: lispb::schema::TypeId
+// schema_type: lispb::StringId
+// physical_type: lispb::StringId
+// overridden: std::uint8_t
+// type_facts: std::optional<ioj::layout::PhysicalFactId>
+// total_bytes: std::optional<std::uint64_t>
+// allocation_offset_bytes: std::optional<std::uint64_t>
+// padding_before_bytes: std::optional<std::uint64_t>
+// minimum_cache_lines: std::optional<std::uint64_t>
+// elements_per_cache_line: std::optional<std::uint64_t>
+// minimum_pages: std::optional<std::uint64_t>
+// complete_elements_per_page: std::optional<std::uint64_t>
+// cache_line_tiling: std::optional<ioj::layout::CacheLineTiling>
 struct SoaColumnTable
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {

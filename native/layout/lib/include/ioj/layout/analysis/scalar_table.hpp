@@ -370,6 +370,16 @@ struct ScalarTableView : ScalarTableViewImpl<false> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<ScalarTableView>());
+// Columns:
+// type: lispb::schema::TypeId
+// integer_domain: std::optional<ioj::layout::IntegerDomain>
+// enum_domain: std::optional<ioj::layout::EnumDomain>
+// optional_sentinel_encoding: std::optional<ioj::layout::OptionalSentinelEncoding>
+// optional_presence_encoding: std::optional<ioj::layout::OptionalPresenceEncoding>
+// quantized_encoding: std::optional<ioj::layout::QuantizedEncoding>
+// fixed_encoding: std::optional<ioj::layout::FixedEncoding>
+// float_encoding: std::optional<ioj::layout::FloatEncoding>
+// varint_encoding: std::optional<ioj::layout::VarintEncoding>
 struct ScalarTable
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {

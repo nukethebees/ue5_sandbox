@@ -1029,6 +1029,30 @@ struct TurretEntityDataView : TurretEntityDataViewImpl<false> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<TurretEntityDataView>());
+// Columns:
+// entity_ids: EntityId
+// integral_biases: std::uint32_t
+// locations_xs: float
+// locations_ys: float
+// locations_zs: float
+// fire_point_locations_xs: float
+// fire_point_locations_ys: float
+// fire_point_locations_zs: float
+// rotations_pitches: float
+// rotations_yaws: float
+// rotations_rolls: float
+// teams: ::ioj::Team
+// laser_cooldowns: std::int16_t
+// laser_damages: std::int32_t
+// target_refresh_countdowns_periods: std::int16_t
+// target_refresh_countdowns_remaining_ticks: std::int16_t
+// target_ids: EntityId
+// target_locations_xs: float
+// target_locations_ys: float
+// target_locations_zs: float
+// target_velocities_xs: float
+// target_velocities_ys: float
+// target_velocities_zs: float
 struct TurretEntityData
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {

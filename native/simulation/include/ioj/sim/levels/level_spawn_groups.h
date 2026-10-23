@@ -187,6 +187,10 @@ struct LevelSpawnGroupsView : LevelSpawnGroupsViewImpl<false> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<LevelSpawnGroupsView>());
+// Columns:
+// types: ioj::sim::EntityType
+// offsets: std::int32_t
+// counts: LevelEventCount
 struct LevelSpawnGroups
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {

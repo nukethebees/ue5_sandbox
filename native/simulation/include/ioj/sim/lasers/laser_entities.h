@@ -705,6 +705,23 @@ struct LaserEntitiesView : LaserEntitiesViewImpl<false> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<LaserEntitiesView>());
+// Columns:
+// active: std::uint8_t
+// sources: ioj::sim::LaserSource
+// locations_xs: float
+// locations_ys: float
+// locations_zs: float
+// rotations_pitches: float
+// rotations_yaws: float
+// rotations_rolls: float
+// velocities_xs: float
+// velocities_ys: float
+// velocities_zs: float
+// damages: std::int32_t
+// lifetimes_remaining: float
+// instigator_ids: EntityId
+// initial_lifetimes: float
+// spawn_times: float
 struct LaserEntities
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {

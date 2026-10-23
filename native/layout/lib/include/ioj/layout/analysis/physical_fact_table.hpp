@@ -273,6 +273,13 @@ struct PhysicalFactTableView : PhysicalFactTableViewImpl<false> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<PhysicalFactTableView>());
+// Columns:
+// size_bytes: std::uint64_t
+// alignment_bytes: std::uint64_t
+// signedness: lispb::schema::EnumSignedness
+// unsigned_value_bits: std::optional<std::uint32_t>
+// provenance: lispb::StringId
+// origin: ioj::layout::FactOrigin
 struct PhysicalFactTable
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {

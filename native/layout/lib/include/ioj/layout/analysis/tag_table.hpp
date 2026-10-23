@@ -207,6 +207,11 @@ struct TagTableView : TagTableViewImpl<false> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<TagTableView>());
+// Columns:
+// name: std::string_view
+// mapped: std::uint8_t
+// sentinel: std::uint8_t
+// count_sentinel: std::uint8_t
 struct TagTable
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {

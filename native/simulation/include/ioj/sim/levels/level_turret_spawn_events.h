@@ -515,6 +515,17 @@ struct LevelTurretSpawnEventsView : LevelTurretSpawnEventsViewImpl<false> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<LevelTurretSpawnEventsView>());
+// Columns:
+// entity_indices: ioj::sim::LevelEntityIndex
+// locations_xs: float
+// locations_ys: float
+// locations_zs: float
+// rotations_pitches: float
+// rotations_yaws: float
+// rotations_rolls: float
+// teams: ::ioj::Team
+// healths: Health
+// laser_damages: std::int32_t
 struct LevelTurretSpawnEvents
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {

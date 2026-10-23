@@ -381,6 +381,17 @@ struct DistributionTableView : DistributionTableViewImpl<false> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<DistributionTableView>());
+// Columns:
+// analysis: ioj::layout::AnalysisId
+// entries: ioj::layout::RowRange
+// element_count: std::uint64_t
+// total_weight: std::optional<std::uint64_t>
+// total_extent_bytes: std::optional<std::uint64_t>
+// total_slack_bytes: std::optional<std::uint64_t>
+// expected_extent_bytes: std::optional<long double>
+// expected_slack_bytes: std::optional<long double>
+// expected_selected_extent_bytes: std::optional<long double>
+// expected_selected_slack_bytes: std::optional<long double>
 struct DistributionTable
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {

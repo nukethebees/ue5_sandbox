@@ -209,6 +209,10 @@ struct Rotators3fView : Rotators3fViewImpl<false> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<Rotators3fView>());
+// Columns:
+// pitches: float
+// yaws: float
+// rolls: float
 struct Rotators3f
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {

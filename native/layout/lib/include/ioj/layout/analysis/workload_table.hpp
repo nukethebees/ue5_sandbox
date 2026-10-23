@@ -519,6 +519,23 @@ struct WorkloadTableView : WorkloadTableViewImpl<false> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<WorkloadTableView>());
+// Columns:
+// analysis: ioj::layout::AnalysisId
+// selections: ioj::layout::RowRange
+// element_count: std::uint64_t
+// multiplicity: std::uint64_t
+// bytes: ioj::layout::PayloadFootprint
+// bits: ioj::layout::PayloadFootprint
+// cache: ioj::layout::RegionFootprint
+// pages: ioj::layout::RegionFootprint
+// cache_capacity: ioj::layout::CacheCapacityAnalysis
+// packed_waste: ioj::layout::PackedAccessWaste
+// footprint_exact: std::uint8_t
+// storage_bytes: std::optional<std::uint64_t>
+// full_logical_payload_bytes: std::optional<std::uint64_t>
+// unselected_payload_bytes: std::optional<std::uint64_t>
+// allocated_payload_bytes: std::optional<std::uint64_t>
+// capacity_slack_bytes: std::optional<std::uint64_t>
 struct WorkloadTable
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {

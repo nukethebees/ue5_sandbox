@@ -175,6 +175,9 @@ struct EntityEntityOverlapsView : EntityEntityOverlapsViewImpl<false> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<EntityEntityOverlapsView>());
+// Columns:
+// first_entities: EntityId
+// second_entities: EntityId
 struct EntityEntityOverlaps
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {
@@ -462,6 +465,9 @@ struct EntityStaticOverlapsView : EntityStaticOverlapsViewImpl<false> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<EntityStaticOverlapsView>());
+// Columns:
+// entities: EntityId
+// static_geometry_indices: ioj::sim::collision::StaticGeometryIndex
 struct EntityStaticOverlaps
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {

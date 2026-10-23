@@ -292,6 +292,14 @@ struct TypeAnalysisTableView : TypeAnalysisTableViewImpl<false> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<TypeAnalysisTableView>());
+// Columns:
+// schema_type: lispb::schema::TypeId
+// scenario: ioj::layout::ScenarioId
+// physical: std::optional<ioj::layout::PhysicalFactId>
+// enum_backing: std::optional<ioj::layout::EnumBacking>
+// aggregate: std::optional<ioj::layout::AggregateLayout>
+// packed: std::optional<ioj::layout::PackedLayout>
+// soa: std::optional<ioj::layout::SoaLayout>
 struct TypeAnalysisTable
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {

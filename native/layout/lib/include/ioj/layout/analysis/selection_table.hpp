@@ -286,6 +286,14 @@ struct SelectionTableView : SelectionTableViewImpl<false> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<SelectionTableView>());
+// Columns:
+// source: std::size_t
+// operation: ioj::layout::AccessOperation
+// bytes: ioj::layout::PayloadFootprint
+// bits: ioj::layout::PayloadFootprint
+// cache: ioj::layout::RegionFootprint
+// pages: ioj::layout::RegionFootprint
+// capacity_slack_bytes: std::optional<std::uint64_t>
 struct SelectionTable
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {

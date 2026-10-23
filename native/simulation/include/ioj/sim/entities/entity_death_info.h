@@ -207,6 +207,11 @@ struct EntityDeathInfoView : EntityDeathInfoViewImpl<false> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<EntityDeathInfoView>());
+// Columns:
+// reasons: DeathReason
+// victims: EntityId
+// killers: EntityId
+// locations: Vector3f
 struct EntityDeathInfo
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {

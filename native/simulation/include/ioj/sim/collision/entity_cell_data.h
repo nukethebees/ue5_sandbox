@@ -404,6 +404,20 @@ struct EntityCellDataView : EntityCellDataViewImpl<false> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<EntityCellDataView>());
+// Columns:
+// min_point_xs: float
+// min_point_ys: float
+// min_point_zs: float
+// max_point_xs: float
+// max_point_ys: float
+// max_point_zs: float
+// min_cell_xs: std::int32_t
+// min_cell_ys: std::int32_t
+// min_cell_zs: std::int32_t
+// max_cell_xs: std::int32_t
+// max_cell_ys: std::int32_t
+// max_cell_zs: std::int32_t
+// entity_ids: EntityId
 struct EntityCellData
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {

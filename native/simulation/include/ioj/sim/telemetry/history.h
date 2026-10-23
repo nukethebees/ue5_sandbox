@@ -445,6 +445,17 @@ struct HistoryRowsView : HistoryRowsViewImpl<false> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<HistoryRowsView>());
+// Columns:
+// completed_ticks: SimTick
+// validity_masks: HistoryFieldMask
+// active_entities: std::int32_t
+// active_entities_by_type: ioj::sim::telemetry::EntityTypeCounts
+// active_entities_by_team_and_type: ioj::sim::telemetry::EntityCounts
+// spawned_entities: std::int32_t
+// destroyed_entities: std::int32_t
+// kills: std::int32_t
+// active_lasers: std::int32_t
+// lasers_fired: std::int32_t
 struct HistoryRows
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {

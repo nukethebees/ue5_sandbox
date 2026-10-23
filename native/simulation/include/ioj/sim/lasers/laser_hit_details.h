@@ -427,6 +427,14 @@ struct LaserHitDetailsView : LaserHitDetailsViewImpl<false> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<LaserHitDetailsView>());
+// Columns:
+// locations_xs: float
+// locations_ys: float
+// locations_zs: float
+// emission_directions_xs: float
+// emission_directions_ys: float
+// emission_directions_zs: float
+// sources: ioj::sim::LaserSource
 struct LaserHitDetails
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {

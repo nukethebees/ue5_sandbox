@@ -218,6 +218,11 @@ struct RelationshipTableView : RelationshipTableViewImpl<false> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<RelationshipTableView>());
+// Columns:
+// owner: ioj::layout::AnalysisId
+// field: std::optional<std::size_t>
+// relationship: lispb::schema::RelationshipId
+// metrics: std::optional<ioj::layout::RelationshipMetrics>
 struct RelationshipTable
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {

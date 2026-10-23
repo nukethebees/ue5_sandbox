@@ -373,6 +373,13 @@ struct LineTracesView : LineTracesViewImpl<false> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<LineTracesView>());
+// Columns:
+// starts_xs: float
+// starts_ys: float
+// starts_zs: float
+// ends_xs: float
+// ends_ys: float
+// ends_zs: float
 struct LineTraces
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {

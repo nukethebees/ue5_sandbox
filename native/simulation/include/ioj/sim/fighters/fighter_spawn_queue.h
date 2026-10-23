@@ -477,6 +477,16 @@ struct FighterSpawnQueueView : FighterSpawnQueueViewImpl<false> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<FighterSpawnQueueView>());
+// Columns:
+// locations_xs: float
+// locations_ys: float
+// locations_zs: float
+// rotations_pitches: float
+// rotations_yaws: float
+// rotations_rolls: float
+// teams: ::ioj::Team
+// parents: EntityId
+// targets: EntityId
 struct FighterSpawnQueue
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {

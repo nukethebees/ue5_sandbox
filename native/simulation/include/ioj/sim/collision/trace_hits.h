@@ -351,6 +351,13 @@ struct TraceHitsView : TraceHitsViewImpl<false> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<TraceHitsView>());
+// Columns:
+// locations_xs: float
+// locations_ys: float
+// locations_zs: float
+// entities: EntityId
+// static_geometry_indices: ioj::sim::collision::StaticGeometryIndex
+// hits: ioj::sim::TraceHit
 struct TraceHits
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {

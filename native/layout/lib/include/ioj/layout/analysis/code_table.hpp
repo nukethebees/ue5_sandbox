@@ -242,6 +242,12 @@ struct CodeTableView : CodeTableViewImpl<false> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<CodeTableView>());
+// Columns:
+// name: std::string_view
+// sentinel: std::uint8_t
+// count_sentinel: std::uint8_t
+// code: std::optional<ioj::layout::EnumCodeValue>
+// integer_value: std::optional<lispb::codegen::PackedIntegerValue>
 struct CodeTable
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {

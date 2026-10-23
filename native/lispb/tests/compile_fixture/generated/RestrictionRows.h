@@ -145,6 +145,8 @@ struct SingleRestrictionRowsView : SingleRestrictionRowsViewImpl<false> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<SingleRestrictionRowsView>());
+// Columns:
+// restricted: RestrictedLeaf
 struct SingleRestrictionRows
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {

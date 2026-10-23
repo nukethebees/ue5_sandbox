@@ -580,6 +580,19 @@ struct LevelCapitalSpawnEventsView : LevelCapitalSpawnEventsViewImpl<false> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<LevelCapitalSpawnEventsView>());
+// Columns:
+// entity_indices: ioj::sim::LevelEntityIndex
+// target_entity_indices: ioj::sim::LevelEntityIndex
+// locations_xs: float
+// locations_ys: float
+// locations_zs: float
+// rotations_pitches: float
+// rotations_yaws: float
+// rotations_rolls: float
+// teams: ::ioj::Team
+// healths: Health
+// initial_fighter_spawn_delays: float
+// fighter_spawn_cooldowns: float
 struct LevelCapitalSpawnEvents
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {

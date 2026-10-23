@@ -308,6 +308,15 @@ struct EntityHistoryView : EntityHistoryViewImpl<false> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<EntityHistoryView>());
+// Columns:
+// entity_ids: EntityId
+// entity_types: ioj::sim::EntityType
+// teams: ::ioj::Team
+// kills: std::uint32_t
+// killed_by: EntityId
+// life_state: LifeState
+// death_ticks: SimTick
+// death_locations: Vector3f
 struct EntityHistory
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {

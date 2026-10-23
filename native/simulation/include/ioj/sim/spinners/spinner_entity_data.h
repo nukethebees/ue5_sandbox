@@ -376,6 +376,14 @@ struct SpinnerEntityDataView : SpinnerEntityDataViewImpl<false> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<SpinnerEntityDataView>());
+// Columns:
+// entity_ids: EntityId
+// locations_xs: float
+// locations_ys: float
+// locations_zs: float
+// yaws: float
+// laser_cooldowns: std::int16_t
+// next_fire_point_indices: std::int32_t
 struct SpinnerEntityData
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {

@@ -564,6 +564,19 @@ struct CapitalEntityDataView : CapitalEntityDataViewImpl<false> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<CapitalEntityDataView>());
+// Columns:
+// entity_ids: EntityId
+// locations_xs: float
+// locations_ys: float
+// locations_zs: float
+// rotations_pitches: float
+// rotations_yaws: float
+// rotations_rolls: float
+// fighter_spawn_timers: float
+// fighter_spawn_cooldowns: float
+// teams: ::ioj::Team
+// fighter_id_spans: ioj::sim::IndexSpan
+// target_ids: EntityId
 struct CapitalEntityData
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {

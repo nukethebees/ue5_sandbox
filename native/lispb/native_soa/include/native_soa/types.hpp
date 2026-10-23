@@ -191,6 +191,8 @@ struct PointerAView : PointerAViewImpl<false> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<PointerAView>());
+// Columns:
+// others: PointerB*
 struct PointerA
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {
@@ -429,6 +431,8 @@ struct PointerBView : PointerBViewImpl<false> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<PointerBView>());
+// Columns:
+// others: PointerA*
 struct PointerB
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {
@@ -667,6 +671,8 @@ struct ReverseBView : ReverseBViewImpl<false> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<ReverseBView>());
+// Columns:
+// others: ReverseA*
 struct ReverseB
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {
@@ -905,6 +911,8 @@ struct ReverseAView : ReverseAViewImpl<false> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<ReverseAView>());
+// Columns:
+// others: ReverseB*
 struct ReverseA
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {
@@ -1147,6 +1155,8 @@ struct MixedRowsView : MixedRowsViewImpl<false> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<MixedRowsView>());
+// Columns:
+// records: MixedRecord*
 struct MixedRows
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {
@@ -1411,6 +1421,9 @@ struct PairRowsView : PairRowsViewImpl<false> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<PairRowsView>());
+// Columns:
+// pairs: Pair
+// pointers: Node*
 struct PairRows
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {
@@ -1691,6 +1704,10 @@ struct VectorsView : VectorsViewImpl<false> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<VectorsView>());
+// Columns:
+// xs: float
+// ys: float
+// zs: float
 struct Vectors
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {
@@ -2174,6 +2191,14 @@ struct SingleRowsView : SingleRowsViewImpl<false> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<SingleRowsView>());
+// Columns:
+// values: std::int32_t
+// positions_xs: float
+// positions_ys: float
+// positions_zs: float
+// velocities_xs: float
+// velocities_ys: float
+// velocities_zs: float
 struct SingleRows
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {
@@ -2687,6 +2712,15 @@ struct SingleAlignmentRowsView : SingleAlignmentRowsViewImpl<false> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<SingleAlignmentRowsView>());
+// Columns:
+// bytes: std::uint8_t
+// odd: OddBytes
+// aligned32: Aligned32
+// nested_xs: float
+// nested_ys: float
+// nested_zs: float
+// aligned64: Aligned64
+// aligned256: Aligned256
 struct SingleAlignmentRows
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {
@@ -3347,6 +3381,11 @@ struct NATIVE_SOA_FIXTURE_API ApiView : ApiViewImpl<false> {
     void assign_first(float value) { this->values()[0] = value; }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<ApiView>());
+// Columns:
+// values: float
+// masks: ApiMask
+// positions_xs: float
+// positions_ys: float
 struct NATIVE_SOA_FIXTURE_API ApiOwner
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {
@@ -3679,6 +3718,9 @@ struct EquivalentOwnerView : EquivalentOwnerViewImpl<false> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<EquivalentOwnerView>());
+// Columns:
+// xs: float
+// ys: float
 struct EquivalentOwner
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {
@@ -4005,6 +4047,10 @@ struct AccessorOwnerView : AccessorOwnerViewImpl<false> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<AccessorOwnerView>());
+// Columns:
+// horizontal: float
+// vertical: float
+// depth: float
 struct AccessorOwner
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {

@@ -309,6 +309,12 @@ struct RangeQueryMatchesView : RangeQueryMatchesViewImpl<false> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<RangeQueryMatchesView>());
+// Columns:
+// entities: EntityId
+// distances: float
+// directions_xs: float
+// directions_ys: float
+// directions_zs: float
 struct RangeQueryMatches
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {

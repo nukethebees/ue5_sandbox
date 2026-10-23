@@ -206,6 +206,11 @@ struct FighterOrderQueueView : FighterOrderQueueViewImpl<false> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<FighterOrderQueueView>());
+// Columns:
+// entity_ids: EntityId
+// orders: FighterOrder
+// tasks: FighterTask
+// targets: EntityId
 struct FighterOrderQueue
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {

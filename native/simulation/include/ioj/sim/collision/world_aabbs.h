@@ -244,6 +244,13 @@ struct WorldAABBsView : WorldAABBsViewImpl<false> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<WorldAABBsView>());
+// Columns:
+// min_xs: float
+// min_ys: float
+// min_zs: float
+// max_xs: float
+// max_ys: float
+// max_zs: float
 struct WorldAABBs
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {

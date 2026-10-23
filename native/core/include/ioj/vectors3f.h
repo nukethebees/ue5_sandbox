@@ -203,6 +203,10 @@ struct Vectors3fView : Vectors3fViewImpl<false> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<Vectors3fView>());
+// Columns:
+// xs: float
+// ys: float
+// zs: float
 struct Vectors3f
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {

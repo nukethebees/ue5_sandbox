@@ -357,6 +357,13 @@ struct LevelSpinnerSpawnEventsView : LevelSpinnerSpawnEventsViewImpl<false> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<LevelSpinnerSpawnEventsView>());
+// Columns:
+// entity_indices: ioj::sim::LevelEntityIndex
+// locations_xs: float
+// locations_ys: float
+// locations_zs: float
+// yaws: float
+// initial_fire_point_indices: std::int32_t
 struct LevelSpinnerSpawnEvents
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {

@@ -367,6 +367,17 @@ struct ComponentTableView : ComponentTableViewImpl<false> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<ComponentTableView>());
+// Columns:
+// parent: ioj::layout::AnalysisId
+// name: std::string_view
+// tag: std::string_view
+// semantic_type: lispb::schema::TypeId
+// element_count: std::uint64_t
+// element_facts: std::optional<ioj::layout::PhysicalFactId>
+// offset_bytes: std::optional<std::uint64_t>
+// extent_bytes: std::optional<std::uint64_t>
+// padding_before_bytes: std::optional<std::uint64_t>
+// slack_bytes: std::optional<std::uint64_t>
 struct ComponentTable
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {

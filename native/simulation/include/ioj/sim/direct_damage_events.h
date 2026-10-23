@@ -193,6 +193,10 @@ struct DirectDamageEventsView : DirectDamageEventsViewImpl<false> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<DirectDamageEventsView>());
+// Columns:
+// damaged_entities: EntityId
+// damage_amounts: std::int32_t
+// instigators: EntityId
 struct DirectDamageEvents
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {
