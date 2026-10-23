@@ -35,6 +35,15 @@
     (member xs array float)
     (member ys array float)
     (member zs array float))
+  (struct BytePairs
+    (member first array uint8)
+    (member second array uint8))
+  (struct OddPairs
+    (member first array @odd_bytes)
+    (member second array @odd_bytes))
+  (struct VectorGroups
+    (member starts nested Vectors)
+    (member ends nested Vectors))
   (struct SingleRows
     (member values array int32)
     (member positions nested Vectors)
@@ -52,7 +61,7 @@
     :equivalent-type ApiPair
     (member xs array float :equivalent-member x)
     (member ys array float :equivalent-member y)
-    (view-function x_at float
+    (view-function x_at float :definition-in-source true
       (parameter index std::uint32_t)
       :body #cpp{return $column(xs)[index];}cpp#)
     (mutable-view-function shift_x void
