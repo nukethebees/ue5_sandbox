@@ -5,6 +5,15 @@
 #include <cassert>
 
 namespace kernel_codegen::detail {
+
+namespace {
+
+[[maybe_unused]] auto is_tail(lispb::codegen::sexpr::HandleRange const range,
+                              std::size_t const size) noexcept -> bool {
+    return range.offset <= size && range.count == size - range.offset;
+}
+
+}
 auto Operands::add(lispb::IdentifierId const name,
                    lispb::codegen::sexpr::SourceSpan const span,
                    bool const is_component) -> OperandId {
@@ -21,7 +30,7 @@ auto Operands::storage(OperandId const id) const -> std::span<StorageKind const>
 }
 void Operands::append_storage(OperandId const id, StorageKind const value) {
     auto& range{storage_ranges_[id.value]};
-    assert(range.offset + range.count == storage_.size());
+    assert(is_tail(range, storage_.size()));
     storage_.push_back(value);
     ++range.count;
 }
@@ -65,7 +74,7 @@ auto TypeSets::types(TypeSetId const id) const -> std::span<ScalarType const> {
 }
 void TypeSets::append_types(TypeSetId const id, ScalarType const value) {
     auto& range{types_ranges_[id.value]};
-    assert(range.offset + range.count == types_.size());
+    assert(is_tail(range, types_.size()));
     types_.push_back(value);
     ++range.count;
 }
@@ -79,8 +88,8 @@ void TypeSets::clear() {
 auto Operations::add(OperationKind const kind,
                      lispb::IdentifierId const name,
                      lispb::codegen::sexpr::SourceSpan const span) -> OperationId {
-    assert(name_.size() < 0x01000000);
-    auto const id{OperationId{(static_cast<std::uint32_t>(kind) << 24) |
+    assert(name_.size() <= OperationId::index_mask);
+    auto const id{OperationId{(static_cast<std::uint32_t>(kind) << OperationId::kind_shift) |
                               static_cast<std::uint32_t>(name_.size())}};
     name_.push_back(name);
     span_.push_back(span);
@@ -99,7 +108,7 @@ auto Operations::operands(OperationId const id) const -> std::span<OperandId con
 }
 void Operations::append_operands(OperationId const id, OperandId const value) {
     auto& range{operands_ranges_[id.index()]};
-    assert(range.offset + range.count == operands_.size());
+    assert(is_tail(range, operands_.size()));
     operands_.push_back(value);
     ++range.count;
 }
@@ -109,7 +118,7 @@ auto Operations::components(OperationId const id) const -> std::span<lispb::Iden
 }
 void Operations::append_components(OperationId const id, lispb::IdentifierId const value) {
     auto& range{components_ranges_[id.index()]};
-    assert(range.offset + range.count == components_.size());
+    assert(is_tail(range, components_.size()));
     components_.push_back(value);
     ++range.count;
 }
@@ -119,7 +128,7 @@ auto Operations::variants(OperationId const id) const -> std::span<VariantId con
 }
 void Operations::append_variants(OperationId const id, VariantId const value) {
     auto& range{variants_ranges_[id.index()]};
-    assert(range.offset + range.count == variants_.size());
+    assert(is_tail(range, variants_.size()));
     variants_.push_back(value);
     ++range.count;
 }
@@ -179,7 +188,7 @@ auto Modules::type_sets(ModuleId const id) const -> std::span<TypeSetId const> {
 }
 void Modules::append_type_sets(ModuleId const id, TypeSetId const value) {
     auto& range{type_sets_ranges_[id.value]};
-    assert(range.offset + range.count == type_sets_.size());
+    assert(is_tail(range, type_sets_.size()));
     type_sets_.push_back(value);
     ++range.count;
 }
@@ -189,7 +198,7 @@ auto Modules::operations(ModuleId const id) const -> std::span<OperationId const
 }
 void Modules::append_operations(ModuleId const id, OperationId const value) {
     auto& range{operations_ranges_[id.value]};
-    assert(range.offset + range.count == operations_.size());
+    assert(is_tail(range, operations_.size()));
     operations_.push_back(value);
     ++range.count;
 }
@@ -199,7 +208,7 @@ auto Modules::emissions(ModuleId const id) const -> std::span<EmissionId const> 
 }
 void Modules::append_emissions(ModuleId const id, EmissionId const value) {
     auto& range{emissions_ranges_[id.value]};
-    assert(range.offset + range.count == emissions_.size());
+    assert(is_tail(range, emissions_.size()));
     emissions_.push_back(value);
     ++range.count;
 }
