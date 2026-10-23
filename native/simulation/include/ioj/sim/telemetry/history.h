@@ -137,24 +137,20 @@ struct ResolvedViewImpl
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto completed_ticks() const { return this->template column<Layout::completed_ticks_column>(); }
-    auto validity_masks() const { return this->template column<Layout::validity_masks_column>(); }
-    auto active_entities() const { return this->template column<Layout::active_entities_column>(); }
+    auto completed_ticks() const { return this->column(this->columns_.completed_ticks); }
+    auto validity_masks() const { return this->column(this->columns_.validity_masks); }
+    auto active_entities() const { return this->column(this->columns_.active_entities); }
     auto active_entities_by_type() const {
-        return this->template column<Layout::active_entities_by_type_column>();
+        return this->column(this->columns_.active_entities_by_type);
     }
     auto active_entities_by_team_and_type() const {
-        return this->template column<Layout::active_entities_by_team_and_type_column>();
+        return this->column(this->columns_.active_entities_by_team_and_type);
     }
-    auto spawned_entities() const {
-        return this->template column<Layout::spawned_entities_column>();
-    }
-    auto destroyed_entities() const {
-        return this->template column<Layout::destroyed_entities_column>();
-    }
-    auto kills() const { return this->template column<Layout::kills_column>(); }
-    auto active_lasers() const { return this->template column<Layout::active_lasers_column>(); }
-    auto lasers_fired() const { return this->template column<Layout::lasers_fired_column>(); }
+    auto spawned_entities() const { return this->column(this->columns_.spawned_entities); }
+    auto destroyed_entities() const { return this->column(this->columns_.destroyed_entities); }
+    auto kills() const { return this->column(this->columns_.kills); }
+    auto active_lasers() const { return this->column(this->columns_.active_lasers); }
+    auto lasers_fired() const { return this->column(this->columns_.lasers_fired); }
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;

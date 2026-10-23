@@ -112,7 +112,7 @@ struct ResolvedViewImpl
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto entity_ids() const { return this->template column<Layout::entity_ids_column>(); }
+    auto entity_ids() const { return this->column(this->columns_.entity_ids); }
     auto view_locations() const -> std::
         conditional_t<Const, ::ioj::vectors3f::ResolvedConstView, ::ioj::vectors3f::ResolvedView> {
         return {this->columns_.locations_xs,
@@ -128,17 +128,13 @@ struct ResolvedViewImpl
                 this->columns_.rotations_rolls,
                 this->num()};
     }
-    auto fighter_spawn_timers() const {
-        return this->template column<Layout::fighter_spawn_timers_column>();
-    }
+    auto fighter_spawn_timers() const { return this->column(this->columns_.fighter_spawn_timers); }
     auto fighter_spawn_cooldowns() const {
-        return this->template column<Layout::fighter_spawn_cooldowns_column>();
+        return this->column(this->columns_.fighter_spawn_cooldowns);
     }
-    auto teams() const { return this->template column<Layout::teams_column>(); }
-    auto fighter_id_spans() const {
-        return this->template column<Layout::fighter_id_spans_column>();
-    }
-    auto target_ids() const { return this->template column<Layout::target_ids_column>(); }
+    auto teams() const { return this->column(this->columns_.teams); }
+    auto fighter_id_spans() const { return this->column(this->columns_.fighter_id_spans); }
+    auto target_ids() const { return this->column(this->columns_.target_ids); }
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;

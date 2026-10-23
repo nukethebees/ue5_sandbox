@@ -83,11 +83,11 @@ struct ResolvedViewImpl
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto name() const { return this->template column<Layout::name_column>(); }
-    auto sentinel() const { return this->template column<Layout::sentinel_column>(); }
-    auto count_sentinel() const { return this->template column<Layout::count_sentinel_column>(); }
-    auto code() const { return this->template column<Layout::code_column>(); }
-    auto integer_value() const { return this->template column<Layout::integer_value_column>(); }
+    auto name() const { return this->column(this->columns_.name); }
+    auto sentinel() const { return this->column(this->columns_.sentinel); }
+    auto count_sentinel() const { return this->column(this->columns_.count_sentinel); }
+    auto code() const { return this->column(this->columns_.code); }
+    auto integer_value() const { return this->column(this->columns_.integer_value); }
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;

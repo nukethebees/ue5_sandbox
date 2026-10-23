@@ -105,7 +105,7 @@ struct ResolvedViewImpl
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto entity_indices() const { return this->template column<Layout::entity_indices_column>(); }
+    auto entity_indices() const { return this->column(this->columns_.entity_indices); }
     auto view_locations() const -> std::
         conditional_t<Const, ::ioj::vectors3f::ResolvedConstView, ::ioj::vectors3f::ResolvedView> {
         return {this->columns_.locations_xs,
@@ -121,9 +121,9 @@ struct ResolvedViewImpl
                 this->columns_.rotations_rolls,
                 this->num()};
     }
-    auto teams() const { return this->template column<Layout::teams_column>(); }
-    auto healths() const { return this->template column<Layout::healths_column>(); }
-    auto laser_damages() const { return this->template column<Layout::laser_damages_column>(); }
+    auto teams() const { return this->column(this->columns_.teams); }
+    auto healths() const { return this->column(this->columns_.healths); }
+    auto laser_damages() const { return this->column(this->columns_.laser_damages); }
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;

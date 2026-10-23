@@ -63,9 +63,9 @@ struct ResolvedViewImpl
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto pitches() const { return this->template column<Layout::pitches_column>(); }
-    auto yaws() const { return this->template column<Layout::yaws_column>(); }
-    auto rolls() const { return this->template column<Layout::rolls_column>(); }
+    auto pitches() const { return this->column(this->columns_.pitches); }
+    auto yaws() const { return this->column(this->columns_.yaws); }
+    auto rolls() const { return this->column(this->columns_.rolls); }
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;

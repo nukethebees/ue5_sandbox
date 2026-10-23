@@ -164,56 +164,42 @@ struct ResolvedViewImpl
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto parent() const { return this->template column<Layout::parent_column>(); }
-    auto segment() const { return this->template column<Layout::segment_column>(); }
-    auto name() const { return this->template column<Layout::name_column>(); }
-    auto semantic_type() const { return this->template column<Layout::semantic_type_column>(); }
-    auto logical_type() const { return this->template column<Layout::logical_type_column>(); }
-    auto kind() const { return this->template column<Layout::kind_column>(); }
-    auto reserved() const { return this->template column<Layout::reserved_column>(); }
-    auto schema_bit_width() const {
-        return this->template column<Layout::schema_bit_width_column>();
-    }
+    auto parent() const { return this->column(this->columns_.parent); }
+    auto segment() const { return this->column(this->columns_.segment); }
+    auto name() const { return this->column(this->columns_.name); }
+    auto semantic_type() const { return this->column(this->columns_.semantic_type); }
+    auto logical_type() const { return this->column(this->columns_.logical_type); }
+    auto kind() const { return this->column(this->columns_.kind); }
+    auto reserved() const { return this->column(this->columns_.reserved); }
+    auto schema_bit_width() const { return this->column(this->columns_.schema_bit_width); }
     auto schema_bit_width_auto() const {
-        return this->template column<Layout::schema_bit_width_auto_column>();
+        return this->column(this->columns_.schema_bit_width_auto);
     }
-    auto bit_width() const { return this->template column<Layout::bit_width_column>(); }
-    auto overridden() const { return this->template column<Layout::overridden_column>(); }
+    auto bit_width() const { return this->column(this->columns_.bit_width); }
+    auto overridden() const { return this->column(this->columns_.overridden); }
     auto least_significant_bit() const {
-        return this->template column<Layout::least_significant_bit_column>();
+        return this->column(this->columns_.least_significant_bit);
     }
-    auto most_significant_bit() const {
-        return this->template column<Layout::most_significant_bit_column>();
-    }
+    auto most_significant_bit() const { return this->column(this->columns_.most_significant_bit); }
     auto maximum_unsigned_value() const {
-        return this->template column<Layout::maximum_unsigned_value_column>();
+        return this->column(this->columns_.maximum_unsigned_value);
     }
-    auto minimum_signed_value() const {
-        return this->template column<Layout::minimum_signed_value_column>();
-    }
-    auto maximum_signed_value() const {
-        return this->template column<Layout::maximum_signed_value_column>();
-    }
+    auto minimum_signed_value() const { return this->column(this->columns_.minimum_signed_value); }
+    auto maximum_signed_value() const { return this->column(this->columns_.maximum_signed_value); }
     auto minimum_semantic_value() const {
-        return this->template column<Layout::minimum_semantic_value_column>();
+        return this->column(this->columns_.minimum_semantic_value);
     }
     auto maximum_semantic_value() const {
-        return this->template column<Layout::maximum_semantic_value_column>();
+        return this->column(this->columns_.maximum_semantic_value);
     }
-    auto semantic_value_count() const {
-        return this->template column<Layout::semantic_value_count_column>();
-    }
-    auto sentinel_code_count() const {
-        return this->template column<Layout::sentinel_code_count_column>();
-    }
-    auto required_code_count() const {
-        return this->template column<Layout::required_code_count_column>();
-    }
+    auto semantic_value_count() const { return this->column(this->columns_.semantic_value_count); }
+    auto sentinel_code_count() const { return this->column(this->columns_.sentinel_code_count); }
+    auto required_code_count() const { return this->column(this->columns_.required_code_count); }
     auto minimum_required_bits() const {
-        return this->template column<Layout::minimum_required_bits_column>();
+        return this->column(this->columns_.minimum_required_bits);
     }
-    auto unused_codes() const { return this->template column<Layout::unused_codes_column>(); }
-    auto codes() const { return this->template column<Layout::codes_column>(); }
+    auto unused_codes() const { return this->column(this->columns_.unused_codes); }
+    auto codes() const { return this->column(this->columns_.codes); }
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;

@@ -97,7 +97,7 @@ struct ResolvedViewImpl
                 this->columns_.emission_directions_zs,
                 this->num()};
     }
-    auto sources() const { return this->template column<Layout::sources_column>(); }
+    auto sources() const { return this->column(this->columns_.sources); }
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;

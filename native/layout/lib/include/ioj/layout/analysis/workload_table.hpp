@@ -128,30 +128,28 @@ struct ResolvedViewImpl
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto analysis() const { return this->template column<Layout::analysis_column>(); }
-    auto selections() const { return this->template column<Layout::selections_column>(); }
-    auto element_count() const { return this->template column<Layout::element_count_column>(); }
-    auto multiplicity() const { return this->template column<Layout::multiplicity_column>(); }
-    auto bytes() const { return this->template column<Layout::bytes_column>(); }
-    auto bits() const { return this->template column<Layout::bits_column>(); }
-    auto cache() const { return this->template column<Layout::cache_column>(); }
-    auto pages() const { return this->template column<Layout::pages_column>(); }
-    auto cache_capacity() const { return this->template column<Layout::cache_capacity_column>(); }
-    auto packed_waste() const { return this->template column<Layout::packed_waste_column>(); }
-    auto footprint_exact() const { return this->template column<Layout::footprint_exact_column>(); }
-    auto storage_bytes() const { return this->template column<Layout::storage_bytes_column>(); }
+    auto analysis() const { return this->column(this->columns_.analysis); }
+    auto selections() const { return this->column(this->columns_.selections); }
+    auto element_count() const { return this->column(this->columns_.element_count); }
+    auto multiplicity() const { return this->column(this->columns_.multiplicity); }
+    auto bytes() const { return this->column(this->columns_.bytes); }
+    auto bits() const { return this->column(this->columns_.bits); }
+    auto cache() const { return this->column(this->columns_.cache); }
+    auto pages() const { return this->column(this->columns_.pages); }
+    auto cache_capacity() const { return this->column(this->columns_.cache_capacity); }
+    auto packed_waste() const { return this->column(this->columns_.packed_waste); }
+    auto footprint_exact() const { return this->column(this->columns_.footprint_exact); }
+    auto storage_bytes() const { return this->column(this->columns_.storage_bytes); }
     auto full_logical_payload_bytes() const {
-        return this->template column<Layout::full_logical_payload_bytes_column>();
+        return this->column(this->columns_.full_logical_payload_bytes);
     }
     auto unselected_payload_bytes() const {
-        return this->template column<Layout::unselected_payload_bytes_column>();
+        return this->column(this->columns_.unselected_payload_bytes);
     }
     auto allocated_payload_bytes() const {
-        return this->template column<Layout::allocated_payload_bytes_column>();
+        return this->column(this->columns_.allocated_payload_bytes);
     }
-    auto capacity_slack_bytes() const {
-        return this->template column<Layout::capacity_slack_bytes_column>();
-    }
+    auto capacity_slack_bytes() const { return this->column(this->columns_.capacity_slack_bytes); }
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;

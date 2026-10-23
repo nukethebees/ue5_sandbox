@@ -67,10 +67,10 @@ struct ResolvedViewImpl
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto entity_ids() const { return this->template column<Layout::entity_ids_column>(); }
-    auto orders() const { return this->template column<Layout::orders_column>(); }
-    auto tasks() const { return this->template column<Layout::tasks_column>(); }
-    auto targets() const { return this->template column<Layout::targets_column>(); }
+    auto entity_ids() const { return this->column(this->columns_.entity_ids); }
+    auto orders() const { return this->column(this->columns_.orders); }
+    auto tasks() const { return this->column(this->columns_.tasks); }
+    auto targets() const { return this->column(this->columns_.targets); }
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;

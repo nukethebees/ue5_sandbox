@@ -129,8 +129,8 @@ struct ResolvedViewImpl
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto active() const { return this->template column<Layout::active_column>(); }
-    auto sources() const { return this->template column<Layout::sources_column>(); }
+    auto active() const { return this->column(this->columns_.active); }
+    auto sources() const { return this->column(this->columns_.sources); }
     auto view_locations() const -> std::
         conditional_t<Const, ::ioj::vectors3f::ResolvedConstView, ::ioj::vectors3f::ResolvedView> {
         return {this->columns_.locations_xs,
@@ -153,15 +153,11 @@ struct ResolvedViewImpl
                 this->columns_.velocities_zs,
                 this->num()};
     }
-    auto damages() const { return this->template column<Layout::damages_column>(); }
-    auto lifetimes_remaining() const {
-        return this->template column<Layout::lifetimes_remaining_column>();
-    }
-    auto instigator_ids() const { return this->template column<Layout::instigator_ids_column>(); }
-    auto initial_lifetimes() const {
-        return this->template column<Layout::initial_lifetimes_column>();
-    }
-    auto spawn_times() const { return this->template column<Layout::spawn_times_column>(); }
+    auto damages() const { return this->column(this->columns_.damages); }
+    auto lifetimes_remaining() const { return this->column(this->columns_.lifetimes_remaining); }
+    auto instigator_ids() const { return this->column(this->columns_.instigator_ids); }
+    auto initial_lifetimes() const { return this->column(this->columns_.initial_lifetimes); }
+    auto spawn_times() const { return this->column(this->columns_.spawn_times); }
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;

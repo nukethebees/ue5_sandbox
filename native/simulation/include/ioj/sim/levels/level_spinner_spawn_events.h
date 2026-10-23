@@ -80,7 +80,7 @@ struct ResolvedViewImpl
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto entity_indices() const { return this->template column<Layout::entity_indices_column>(); }
+    auto entity_indices() const { return this->column(this->columns_.entity_indices); }
     auto view_locations() const -> std::
         conditional_t<Const, ::ioj::vectors3f::ResolvedConstView, ::ioj::vectors3f::ResolvedView> {
         return {this->columns_.locations_xs,
@@ -88,9 +88,9 @@ struct ResolvedViewImpl
                 this->columns_.locations_zs,
                 this->num()};
     }
-    auto yaws() const { return this->template column<Layout::yaws_column>(); }
+    auto yaws() const { return this->column(this->columns_.yaws); }
     auto initial_fire_point_indices() const {
-        return this->template column<Layout::initial_fire_point_indices_column>();
+        return this->column(this->columns_.initial_fire_point_indices);
     }
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {

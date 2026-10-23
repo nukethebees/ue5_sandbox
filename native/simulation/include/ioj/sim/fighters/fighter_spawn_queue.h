@@ -107,9 +107,9 @@ struct ResolvedViewImpl
                 this->columns_.rotations_rolls,
                 this->num()};
     }
-    auto teams() const { return this->template column<Layout::teams_column>(); }
-    auto parents() const { return this->template column<Layout::parents_column>(); }
-    auto targets() const { return this->template column<Layout::targets_column>(); }
+    auto teams() const { return this->column(this->columns_.teams); }
+    auto parents() const { return this->column(this->columns_.parents); }
+    auto targets() const { return this->column(this->columns_.targets); }
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;

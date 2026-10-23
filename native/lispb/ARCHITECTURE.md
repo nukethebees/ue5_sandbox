@@ -346,7 +346,8 @@ Mixed nested groups use the child's resolved view. Scalar accessors return `std:
 
 `ResolvedViewBase` owns the schema's pointer aggregate and one row count. The layout's existing
 type pack supplies its pointer and span constructor signatures. Pack expansion shares validation,
-mutable-to-const conversion, slicing and indexed column access without repeating physical fields.
+mutable-to-const conversion and slicing without repeating physical fields. Named accessors pass
+their stored pointer to a shared span constructor.
 Named accessors remain generated to preserve owner borrowing and representation-specific nested
 view return types; compact and resolved accessors use one generator implementation.
 

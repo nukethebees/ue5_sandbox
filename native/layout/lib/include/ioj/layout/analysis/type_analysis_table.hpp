@@ -93,13 +93,13 @@ struct ResolvedViewImpl
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto schema_type() const { return this->template column<Layout::schema_type_column>(); }
-    auto scenario() const { return this->template column<Layout::scenario_column>(); }
-    auto physical() const { return this->template column<Layout::physical_column>(); }
-    auto enum_backing() const { return this->template column<Layout::enum_backing_column>(); }
-    auto aggregate() const { return this->template column<Layout::aggregate_column>(); }
-    auto packed() const { return this->template column<Layout::packed_column>(); }
-    auto soa() const { return this->template column<Layout::soa_column>(); }
+    auto schema_type() const { return this->column(this->columns_.schema_type); }
+    auto scenario() const { return this->column(this->columns_.scenario); }
+    auto physical() const { return this->column(this->columns_.physical); }
+    auto enum_backing() const { return this->column(this->columns_.enum_backing); }
+    auto aggregate() const { return this->column(this->columns_.aggregate); }
+    auto packed() const { return this->column(this->columns_.packed); }
+    auto soa() const { return this->column(this->columns_.soa); }
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;

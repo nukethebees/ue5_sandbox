@@ -63,9 +63,9 @@ struct ResolvedViewImpl
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto xs() const { return this->template column<Layout::xs_column>(); }
-    auto ys() const { return this->template column<Layout::ys_column>(); }
-    auto zs() const { return this->template column<Layout::zs_column>(); }
+    auto xs() const { return this->column(this->columns_.xs); }
+    auto ys() const { return this->column(this->columns_.ys); }
+    auto zs() const { return this->column(this->columns_.zs); }
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;

@@ -75,10 +75,10 @@ struct ResolvedViewImpl
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto owner() const { return this->template column<Layout::owner_column>(); }
-    auto field() const { return this->template column<Layout::field_column>(); }
-    auto relationship() const { return this->template column<Layout::relationship_column>(); }
-    auto metrics() const { return this->template column<Layout::metrics_column>(); }
+    auto owner() const { return this->column(this->columns_.owner); }
+    auto field() const { return this->column(this->columns_.field); }
+    auto relationship() const { return this->column(this->columns_.relationship); }
+    auto metrics() const { return this->column(this->columns_.metrics); }
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;

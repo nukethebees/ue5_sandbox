@@ -64,11 +64,9 @@ struct ResolvedViewImpl
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto damaged_entities() const {
-        return this->template column<Layout::damaged_entities_column>();
-    }
-    auto damage_amounts() const { return this->template column<Layout::damage_amounts_column>(); }
-    auto instigators() const { return this->template column<Layout::instigators_column>(); }
+    auto damaged_entities() const { return this->column(this->columns_.damaged_entities); }
+    auto damage_amounts() const { return this->column(this->columns_.damage_amounts); }
+    auto instigators() const { return this->column(this->columns_.instigators); }
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;

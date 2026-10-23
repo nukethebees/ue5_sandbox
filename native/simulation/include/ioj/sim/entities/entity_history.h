@@ -94,14 +94,14 @@ struct ResolvedViewImpl
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto entity_ids() const { return this->template column<Layout::entity_ids_column>(); }
-    auto entity_types() const { return this->template column<Layout::entity_types_column>(); }
-    auto teams() const { return this->template column<Layout::teams_column>(); }
-    auto kills() const { return this->template column<Layout::kills_column>(); }
-    auto killed_by() const { return this->template column<Layout::killed_by_column>(); }
-    auto life_state() const { return this->template column<Layout::life_state_column>(); }
-    auto death_ticks() const { return this->template column<Layout::death_ticks_column>(); }
-    auto death_locations() const { return this->template column<Layout::death_locations_column>(); }
+    auto entity_ids() const { return this->column(this->columns_.entity_ids); }
+    auto entity_types() const { return this->column(this->columns_.entity_types); }
+    auto teams() const { return this->column(this->columns_.teams); }
+    auto kills() const { return this->column(this->columns_.kills); }
+    auto killed_by() const { return this->column(this->columns_.killed_by); }
+    auto life_state() const { return this->column(this->columns_.life_state); }
+    auto death_ticks() const { return this->column(this->columns_.death_ticks); }
+    auto death_locations() const { return this->column(this->columns_.death_locations); }
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;

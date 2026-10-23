@@ -84,7 +84,7 @@ struct ResolvedViewImpl
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto count() const { return this->template column<Layout::count_column>(); }
+    auto count() const { return this->column(this->columns_.count); }
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;
@@ -268,7 +268,7 @@ struct ResolvedViewImpl
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto others() const { return this->template column<Layout::others_column>(); }
+    auto others() const { return this->column(this->columns_.others); }
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;
@@ -432,7 +432,7 @@ struct ResolvedViewImpl
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto others() const { return this->template column<Layout::others_column>(); }
+    auto others() const { return this->column(this->columns_.others); }
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;
@@ -600,7 +600,7 @@ struct ResolvedViewImpl
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto records() const { return this->template column<Layout::records_column>(); }
+    auto records() const { return this->column(this->columns_.records); }
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;
@@ -776,8 +776,8 @@ struct ResolvedViewImpl
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto pairs() const { return this->template column<Layout::pairs_column>(); }
-    auto pointers() const { return this->template column<Layout::pointers_column>(); }
+    auto pairs() const { return this->column(this->columns_.pairs); }
+    auto pointers() const { return this->column(this->columns_.pointers); }
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;
@@ -951,9 +951,9 @@ struct ResolvedViewImpl
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto xs() const { return this->template column<Layout::xs_column>(); }
-    auto ys() const { return this->template column<Layout::ys_column>(); }
-    auto zs() const { return this->template column<Layout::zs_column>(); }
+    auto xs() const { return this->column(this->columns_.xs); }
+    auto ys() const { return this->column(this->columns_.ys); }
+    auto zs() const { return this->column(this->columns_.zs); }
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;
@@ -1137,8 +1137,8 @@ struct ResolvedViewImpl
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto first() const { return this->template column<Layout::first_column>(); }
-    auto second() const { return this->template column<Layout::second_column>(); }
+    auto first() const { return this->column(this->columns_.first); }
+    auto second() const { return this->column(this->columns_.second); }
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;
@@ -1429,7 +1429,7 @@ struct ResolvedViewImpl
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto values() const { return this->template column<Layout::values_column>(); }
+    auto values() const { return this->column(this->columns_.values); }
     auto view_positions() const
         -> std::conditional_t<Const,
                               ::ioj::native_soa_fixture::vectors::ResolvedConstView,
@@ -1749,14 +1749,14 @@ struct ResolvedViewImpl
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto bytes() const { return this->template column<Layout::bytes_column>(); }
+    auto bytes() const { return this->column(this->columns_.bytes); }
     auto view_odd() const
         -> std::conditional_t<Const,
                               ::ioj::native_soa_fixture::odd_pairs::ResolvedConstView,
                               ::ioj::native_soa_fixture::odd_pairs::ResolvedView> {
         return {this->columns_.odd_first, this->columns_.odd_second, this->num()};
     }
-    auto aligned32() const { return this->template column<Layout::aligned32_column>(); }
+    auto aligned32() const { return this->column(this->columns_.aligned32); }
     auto view_nested() const
         -> std::conditional_t<Const,
                               ::ioj::native_soa_fixture::vector_groups::ResolvedConstView,
@@ -1769,8 +1769,8 @@ struct ResolvedViewImpl
                 this->columns_.nested_ends_zs,
                 this->num()};
     }
-    auto aligned64() const { return this->template column<Layout::aligned64_column>(); }
-    auto aligned256() const { return this->template column<Layout::aligned256_column>(); }
+    auto aligned64() const { return this->column(this->columns_.aligned64); }
+    auto aligned256() const { return this->column(this->columns_.aligned256); }
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;
@@ -2082,8 +2082,8 @@ struct ResolvedViewImpl
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto xs() const { return this->template column<Layout::xs_column>(); }
-    auto ys() const { return this->template column<Layout::ys_column>(); }
+    auto xs() const { return this->column(this->columns_.xs); }
+    auto ys() const { return this->column(this->columns_.ys); }
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;
@@ -2248,8 +2248,8 @@ struct ResolvedViewImpl
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto values() const { return this->template column<Layout::values_column>(); }
-    auto masks() const { return this->template column<Layout::masks_column>(); }
+    auto values() const { return this->column(this->columns_.values); }
+    auto masks() const { return this->column(this->columns_.masks); }
     auto view_positions() const
         -> std::conditional_t<Const,
                               ::ioj::native_soa_fixture::api_coordinates::ResolvedConstView,
@@ -2531,8 +2531,8 @@ struct ResolvedViewImpl
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto xs() const { return this->template column<Layout::xs_column>(); }
-    auto ys() const { return this->template column<Layout::ys_column>(); }
+    auto xs() const { return this->column(this->columns_.xs); }
+    auto ys() const { return this->column(this->columns_.ys); }
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;
@@ -2747,9 +2747,9 @@ struct ResolvedViewImpl
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto horizontal() const { return this->template column<Layout::horizontal_column>(); }
-    auto vertical() const { return this->template column<Layout::vertical_column>(); }
-    auto depth() const { return this->template column<Layout::depth_column>(); }
+    auto horizontal() const { return this->column(this->columns_.horizontal); }
+    auto vertical() const { return this->column(this->columns_.vertical); }
+    auto depth() const { return this->column(this->columns_.depth); }
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;

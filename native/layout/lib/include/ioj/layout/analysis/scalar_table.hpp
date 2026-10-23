@@ -104,21 +104,19 @@ struct ResolvedViewImpl
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto type() const { return this->template column<Layout::type_column>(); }
-    auto integer_domain() const { return this->template column<Layout::integer_domain_column>(); }
-    auto enum_domain() const { return this->template column<Layout::enum_domain_column>(); }
+    auto type() const { return this->column(this->columns_.type); }
+    auto integer_domain() const { return this->column(this->columns_.integer_domain); }
+    auto enum_domain() const { return this->column(this->columns_.enum_domain); }
     auto optional_sentinel_encoding() const {
-        return this->template column<Layout::optional_sentinel_encoding_column>();
+        return this->column(this->columns_.optional_sentinel_encoding);
     }
     auto optional_presence_encoding() const {
-        return this->template column<Layout::optional_presence_encoding_column>();
+        return this->column(this->columns_.optional_presence_encoding);
     }
-    auto quantized_encoding() const {
-        return this->template column<Layout::quantized_encoding_column>();
-    }
-    auto fixed_encoding() const { return this->template column<Layout::fixed_encoding_column>(); }
-    auto float_encoding() const { return this->template column<Layout::float_encoding_column>(); }
-    auto varint_encoding() const { return this->template column<Layout::varint_encoding_column>(); }
+    auto quantized_encoding() const { return this->column(this->columns_.quantized_encoding); }
+    auto fixed_encoding() const { return this->column(this->columns_.fixed_encoding); }
+    auto float_encoding() const { return this->column(this->columns_.float_encoding); }
+    auto varint_encoding() const { return this->column(this->columns_.varint_encoding); }
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;

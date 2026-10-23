@@ -143,11 +143,11 @@ struct ResolvedViewImpl
                 this->columns_.base_velocities_zs,
                 this->num()};
     }
-    auto damages() const { return this->template column<Layout::damages_column>(); }
-    auto speeds() const { return this->template column<Layout::speeds_column>(); }
-    auto max_distances() const { return this->template column<Layout::max_distances_column>(); }
-    auto instigator_ids() const { return this->template column<Layout::instigator_ids_column>(); }
-    auto sources() const { return this->template column<Layout::sources_column>(); }
+    auto damages() const { return this->column(this->columns_.damages); }
+    auto speeds() const { return this->column(this->columns_.speeds); }
+    auto max_distances() const { return this->column(this->columns_.max_distances); }
+    auto instigator_ids() const { return this->column(this->columns_.instigator_ids); }
+    auto sources() const { return this->column(this->columns_.sources); }
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;

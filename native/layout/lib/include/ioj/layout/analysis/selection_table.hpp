@@ -89,15 +89,13 @@ struct ResolvedViewImpl
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto source() const { return this->template column<Layout::source_column>(); }
-    auto operation() const { return this->template column<Layout::operation_column>(); }
-    auto bytes() const { return this->template column<Layout::bytes_column>(); }
-    auto bits() const { return this->template column<Layout::bits_column>(); }
-    auto cache() const { return this->template column<Layout::cache_column>(); }
-    auto pages() const { return this->template column<Layout::pages_column>(); }
-    auto capacity_slack_bytes() const {
-        return this->template column<Layout::capacity_slack_bytes_column>();
-    }
+    auto source() const { return this->column(this->columns_.source); }
+    auto operation() const { return this->column(this->columns_.operation); }
+    auto bytes() const { return this->column(this->columns_.bytes); }
+    auto bits() const { return this->column(this->columns_.bits); }
+    auto cache() const { return this->column(this->columns_.cache); }
+    auto pages() const { return this->column(this->columns_.pages); }
+    auto capacity_slack_bytes() const { return this->column(this->columns_.capacity_slack_bytes); }
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;

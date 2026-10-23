@@ -159,8 +159,8 @@ struct ResolvedViewImpl
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto entity_ids() const { return this->template column<Layout::entity_ids_column>(); }
-    auto integral_biases() const { return this->template column<Layout::integral_biases_column>(); }
+    auto entity_ids() const { return this->column(this->columns_.entity_ids); }
+    auto integral_biases() const { return this->column(this->columns_.integral_biases); }
     auto view_locations() const -> std::
         conditional_t<Const, ::ioj::vectors3f::ResolvedConstView, ::ioj::vectors3f::ResolvedView> {
         return {this->columns_.locations_xs,
@@ -183,16 +183,16 @@ struct ResolvedViewImpl
                 this->columns_.rotations_rolls,
                 this->num()};
     }
-    auto teams() const { return this->template column<Layout::teams_column>(); }
-    auto laser_cooldowns() const { return this->template column<Layout::laser_cooldowns_column>(); }
-    auto laser_damages() const { return this->template column<Layout::laser_damages_column>(); }
+    auto teams() const { return this->column(this->columns_.teams); }
+    auto laser_cooldowns() const { return this->column(this->columns_.laser_cooldowns); }
+    auto laser_damages() const { return this->column(this->columns_.laser_damages); }
     auto target_refresh_countdowns_periods() const {
-        return this->template column<Layout::target_refresh_countdowns_periods_column>();
+        return this->column(this->columns_.target_refresh_countdowns_periods);
     }
     auto target_refresh_countdowns_remaining_ticks() const {
-        return this->template column<Layout::target_refresh_countdowns_remaining_ticks_column>();
+        return this->column(this->columns_.target_refresh_countdowns_remaining_ticks);
     }
-    auto target_ids() const { return this->template column<Layout::target_ids_column>(); }
+    auto target_ids() const { return this->column(this->columns_.target_ids); }
     auto view_target_locations() const -> std::
         conditional_t<Const, ::ioj::vectors3f::ResolvedConstView, ::ioj::vectors3f::ResolvedView> {
         return {this->columns_.target_locations_xs,

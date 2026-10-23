@@ -85,14 +85,12 @@ struct ResolvedViewImpl
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto size_bytes() const { return this->template column<Layout::size_bytes_column>(); }
-    auto alignment_bytes() const { return this->template column<Layout::alignment_bytes_column>(); }
-    auto signedness() const { return this->template column<Layout::signedness_column>(); }
-    auto unsigned_value_bits() const {
-        return this->template column<Layout::unsigned_value_bits_column>();
-    }
-    auto provenance() const { return this->template column<Layout::provenance_column>(); }
-    auto origin() const { return this->template column<Layout::origin_column>(); }
+    auto size_bytes() const { return this->column(this->columns_.size_bytes); }
+    auto alignment_bytes() const { return this->column(this->columns_.alignment_bytes); }
+    auto signedness() const { return this->column(this->columns_.signedness); }
+    auto unsigned_value_bits() const { return this->column(this->columns_.unsigned_value_bits); }
+    auto provenance() const { return this->column(this->columns_.provenance); }
+    auto origin() const { return this->column(this->columns_.origin); }
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;

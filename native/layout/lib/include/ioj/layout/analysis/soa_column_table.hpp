@@ -125,33 +125,27 @@ struct ResolvedViewImpl
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto parent() const { return this->template column<Layout::parent_column>(); }
-    auto name() const { return this->template column<Layout::name_column>(); }
-    auto semantic_type() const { return this->template column<Layout::semantic_type_column>(); }
-    auto schema_type() const { return this->template column<Layout::schema_type_column>(); }
-    auto physical_type() const { return this->template column<Layout::physical_type_column>(); }
-    auto overridden() const { return this->template column<Layout::overridden_column>(); }
-    auto type_facts() const { return this->template column<Layout::type_facts_column>(); }
-    auto total_bytes() const { return this->template column<Layout::total_bytes_column>(); }
+    auto parent() const { return this->column(this->columns_.parent); }
+    auto name() const { return this->column(this->columns_.name); }
+    auto semantic_type() const { return this->column(this->columns_.semantic_type); }
+    auto schema_type() const { return this->column(this->columns_.schema_type); }
+    auto physical_type() const { return this->column(this->columns_.physical_type); }
+    auto overridden() const { return this->column(this->columns_.overridden); }
+    auto type_facts() const { return this->column(this->columns_.type_facts); }
+    auto total_bytes() const { return this->column(this->columns_.total_bytes); }
     auto allocation_offset_bytes() const {
-        return this->template column<Layout::allocation_offset_bytes_column>();
+        return this->column(this->columns_.allocation_offset_bytes);
     }
-    auto padding_before_bytes() const {
-        return this->template column<Layout::padding_before_bytes_column>();
-    }
-    auto minimum_cache_lines() const {
-        return this->template column<Layout::minimum_cache_lines_column>();
-    }
+    auto padding_before_bytes() const { return this->column(this->columns_.padding_before_bytes); }
+    auto minimum_cache_lines() const { return this->column(this->columns_.minimum_cache_lines); }
     auto elements_per_cache_line() const {
-        return this->template column<Layout::elements_per_cache_line_column>();
+        return this->column(this->columns_.elements_per_cache_line);
     }
-    auto minimum_pages() const { return this->template column<Layout::minimum_pages_column>(); }
+    auto minimum_pages() const { return this->column(this->columns_.minimum_pages); }
     auto complete_elements_per_page() const {
-        return this->template column<Layout::complete_elements_per_page_column>();
+        return this->column(this->columns_.complete_elements_per_page);
     }
-    auto cache_line_tiling() const {
-        return this->template column<Layout::cache_line_tiling_column>();
-    }
+    auto cache_line_tiling() const { return this->column(this->columns_.cache_line_tiling); }
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;

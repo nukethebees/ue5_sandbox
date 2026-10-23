@@ -74,8 +74,8 @@ struct ResolvedViewImpl
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto entities() const { return this->template column<Layout::entities_column>(); }
-    auto distances() const { return this->template column<Layout::distances_column>(); }
+    auto entities() const { return this->column(this->columns_.entities); }
+    auto distances() const { return this->column(this->columns_.distances); }
     auto view_directions() const -> std::
         conditional_t<Const, ::ioj::vectors3f::ResolvedConstView, ::ioj::vectors3f::ResolvedView> {
         return {this->columns_.directions_xs,

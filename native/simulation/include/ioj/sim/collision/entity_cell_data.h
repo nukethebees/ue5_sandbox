@@ -109,19 +109,19 @@ struct ResolvedViewImpl
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto min_point_xs() const { return this->template column<Layout::min_point_xs_column>(); }
-    auto min_point_ys() const { return this->template column<Layout::min_point_ys_column>(); }
-    auto min_point_zs() const { return this->template column<Layout::min_point_zs_column>(); }
-    auto max_point_xs() const { return this->template column<Layout::max_point_xs_column>(); }
-    auto max_point_ys() const { return this->template column<Layout::max_point_ys_column>(); }
-    auto max_point_zs() const { return this->template column<Layout::max_point_zs_column>(); }
-    auto min_cell_xs() const { return this->template column<Layout::min_cell_xs_column>(); }
-    auto min_cell_ys() const { return this->template column<Layout::min_cell_ys_column>(); }
-    auto min_cell_zs() const { return this->template column<Layout::min_cell_zs_column>(); }
-    auto max_cell_xs() const { return this->template column<Layout::max_cell_xs_column>(); }
-    auto max_cell_ys() const { return this->template column<Layout::max_cell_ys_column>(); }
-    auto max_cell_zs() const { return this->template column<Layout::max_cell_zs_column>(); }
-    auto entity_ids() const { return this->template column<Layout::entity_ids_column>(); }
+    auto min_point_xs() const { return this->column(this->columns_.min_point_xs); }
+    auto min_point_ys() const { return this->column(this->columns_.min_point_ys); }
+    auto min_point_zs() const { return this->column(this->columns_.min_point_zs); }
+    auto max_point_xs() const { return this->column(this->columns_.max_point_xs); }
+    auto max_point_ys() const { return this->column(this->columns_.max_point_ys); }
+    auto max_point_zs() const { return this->column(this->columns_.max_point_zs); }
+    auto min_cell_xs() const { return this->column(this->columns_.min_cell_xs); }
+    auto min_cell_ys() const { return this->column(this->columns_.min_cell_ys); }
+    auto min_cell_zs() const { return this->column(this->columns_.min_cell_zs); }
+    auto max_cell_xs() const { return this->column(this->columns_.max_cell_xs); }
+    auto max_cell_ys() const { return this->column(this->columns_.max_cell_ys); }
+    auto max_cell_zs() const { return this->column(this->columns_.max_cell_zs); }
+    auto entity_ids() const { return this->column(this->columns_.entity_ids); }
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;

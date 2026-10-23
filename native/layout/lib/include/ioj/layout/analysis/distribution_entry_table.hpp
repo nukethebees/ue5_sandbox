@@ -89,17 +89,15 @@ struct ResolvedViewImpl
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto component() const { return this->template column<Layout::component_column>(); }
-    auto value() const { return this->template column<Layout::value_column>(); }
-    auto weight() const { return this->template column<Layout::weight_column>(); }
-    auto extent_bytes() const { return this->template column<Layout::extent_bytes_column>(); }
-    auto slack_bytes() const { return this->template column<Layout::slack_bytes_column>(); }
+    auto component() const { return this->column(this->columns_.component); }
+    auto value() const { return this->column(this->columns_.value); }
+    auto weight() const { return this->column(this->columns_.weight); }
+    auto extent_bytes() const { return this->column(this->columns_.extent_bytes); }
+    auto slack_bytes() const { return this->column(this->columns_.slack_bytes); }
     auto weighted_extent_bytes() const {
-        return this->template column<Layout::weighted_extent_bytes_column>();
+        return this->column(this->columns_.weighted_extent_bytes);
     }
-    auto weighted_slack_bytes() const {
-        return this->template column<Layout::weighted_slack_bytes_column>();
-    }
+    auto weighted_slack_bytes() const { return this->column(this->columns_.weighted_slack_bytes); }
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;

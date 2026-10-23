@@ -59,7 +59,7 @@ struct ResolvedViewImpl
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto restricted() const { return this->template column<Layout::restricted_column>(); }
+    auto restricted() const { return this->column(this->columns_.restricted); }
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;

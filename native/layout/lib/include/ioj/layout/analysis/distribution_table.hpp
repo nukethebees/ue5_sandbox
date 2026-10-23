@@ -100,27 +100,21 @@ struct ResolvedViewImpl
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto analysis() const { return this->template column<Layout::analysis_column>(); }
-    auto entries() const { return this->template column<Layout::entries_column>(); }
-    auto element_count() const { return this->template column<Layout::element_count_column>(); }
-    auto total_weight() const { return this->template column<Layout::total_weight_column>(); }
-    auto total_extent_bytes() const {
-        return this->template column<Layout::total_extent_bytes_column>();
-    }
-    auto total_slack_bytes() const {
-        return this->template column<Layout::total_slack_bytes_column>();
-    }
+    auto analysis() const { return this->column(this->columns_.analysis); }
+    auto entries() const { return this->column(this->columns_.entries); }
+    auto element_count() const { return this->column(this->columns_.element_count); }
+    auto total_weight() const { return this->column(this->columns_.total_weight); }
+    auto total_extent_bytes() const { return this->column(this->columns_.total_extent_bytes); }
+    auto total_slack_bytes() const { return this->column(this->columns_.total_slack_bytes); }
     auto expected_extent_bytes() const {
-        return this->template column<Layout::expected_extent_bytes_column>();
+        return this->column(this->columns_.expected_extent_bytes);
     }
-    auto expected_slack_bytes() const {
-        return this->template column<Layout::expected_slack_bytes_column>();
-    }
+    auto expected_slack_bytes() const { return this->column(this->columns_.expected_slack_bytes); }
     auto expected_selected_extent_bytes() const {
-        return this->template column<Layout::expected_selected_extent_bytes_column>();
+        return this->column(this->columns_.expected_selected_extent_bytes);
     }
     auto expected_selected_slack_bytes() const {
-        return this->template column<Layout::expected_selected_slack_bytes_column>();
+        return this->column(this->columns_.expected_selected_slack_bytes);
     }
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {

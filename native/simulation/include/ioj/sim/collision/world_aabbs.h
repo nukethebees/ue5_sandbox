@@ -74,12 +74,12 @@ struct ResolvedViewImpl
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto min_xs() const { return this->template column<Layout::min_xs_column>(); }
-    auto min_ys() const { return this->template column<Layout::min_ys_column>(); }
-    auto min_zs() const { return this->template column<Layout::min_zs_column>(); }
-    auto max_xs() const { return this->template column<Layout::max_xs_column>(); }
-    auto max_ys() const { return this->template column<Layout::max_ys_column>(); }
-    auto max_zs() const { return this->template column<Layout::max_zs_column>(); }
+    auto min_xs() const { return this->column(this->columns_.min_xs); }
+    auto min_ys() const { return this->column(this->columns_.min_ys); }
+    auto min_zs() const { return this->column(this->columns_.min_zs); }
+    auto max_xs() const { return this->column(this->columns_.max_xs); }
+    auto max_ys() const { return this->column(this->columns_.max_ys); }
+    auto max_zs() const { return this->column(this->columns_.max_zs); }
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;

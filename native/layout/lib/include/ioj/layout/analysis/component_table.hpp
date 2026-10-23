@@ -103,18 +103,16 @@ struct ResolvedViewImpl
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto parent() const { return this->template column<Layout::parent_column>(); }
-    auto name() const { return this->template column<Layout::name_column>(); }
-    auto tag() const { return this->template column<Layout::tag_column>(); }
-    auto semantic_type() const { return this->template column<Layout::semantic_type_column>(); }
-    auto element_count() const { return this->template column<Layout::element_count_column>(); }
-    auto element_facts() const { return this->template column<Layout::element_facts_column>(); }
-    auto offset_bytes() const { return this->template column<Layout::offset_bytes_column>(); }
-    auto extent_bytes() const { return this->template column<Layout::extent_bytes_column>(); }
-    auto padding_before_bytes() const {
-        return this->template column<Layout::padding_before_bytes_column>();
-    }
-    auto slack_bytes() const { return this->template column<Layout::slack_bytes_column>(); }
+    auto parent() const { return this->column(this->columns_.parent); }
+    auto name() const { return this->column(this->columns_.name); }
+    auto tag() const { return this->column(this->columns_.tag); }
+    auto semantic_type() const { return this->column(this->columns_.semantic_type); }
+    auto element_count() const { return this->column(this->columns_.element_count); }
+    auto element_facts() const { return this->column(this->columns_.element_facts); }
+    auto offset_bytes() const { return this->column(this->columns_.offset_bytes); }
+    auto extent_bytes() const { return this->column(this->columns_.extent_bytes); }
+    auto padding_before_bytes() const { return this->column(this->columns_.padding_before_bytes); }
+    auto slack_bytes() const { return this->column(this->columns_.slack_bytes); }
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;

@@ -140,10 +140,9 @@ struct ResolvedViewBase<single_allocation_layout::ColumnLayouts<Ts...>, Pointers
         ((destination = source), ...);
     }
 
-    template <std::size_t Index>
-    auto column() const {
-        auto const& [... pointers] = columns_;
-        return std::span{pointers...[Index], column_count_};
+    template <typename T>
+    auto column(T* pointer) const {
+        return std::span{pointer, column_count_};
     }
 
     PointerStorage columns_{};

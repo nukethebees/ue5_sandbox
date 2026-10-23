@@ -62,8 +62,8 @@ struct ResolvedViewImpl
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto first_entities() const { return this->template column<Layout::first_entities_column>(); }
-    auto second_entities() const { return this->template column<Layout::second_entities_column>(); }
+    auto first_entities() const { return this->column(this->columns_.first_entities); }
+    auto second_entities() const { return this->column(this->columns_.second_entities); }
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;
@@ -253,9 +253,9 @@ struct ResolvedViewImpl
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto entities() const { return this->template column<Layout::entities_column>(); }
+    auto entities() const { return this->column(this->columns_.entities); }
     auto static_geometry_indices() const {
-        return this->template column<Layout::static_geometry_indices_column>();
+        return this->column(this->columns_.static_geometry_indices);
     }
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {

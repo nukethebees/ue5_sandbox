@@ -351,8 +351,10 @@ auto view_accessor_nodes(LoweringContext& context, SingleAllocationModelId model
     auto column_span = [&](SingleAllocationColumnId column) {
         auto const index{std::find(selected.begin(), selected.end(), column) - selected.begin()};
         if (resolved) {
-            return ir.call(ir.template_id(ir.named("this->template column"),
-                                          {layout_column(context, column)}));
+            return ir.call(ir.named("this->column"),
+                           {ir.member_access(
+                               ir.named("this->columns_"),
+                               context.text(columns.flattened_identifier[columns.index(column)]))});
         }
         if (strided) {
             return ir.call(ir.named("this->column"), {ir.literal(std::to_string(index))});

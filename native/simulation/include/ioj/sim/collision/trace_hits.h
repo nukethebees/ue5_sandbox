@@ -89,11 +89,11 @@ struct ResolvedViewImpl
                 this->columns_.locations_zs,
                 this->num()};
     }
-    auto entities() const { return this->template column<Layout::entities_column>(); }
+    auto entities() const { return this->column(this->columns_.entities); }
     auto static_geometry_indices() const {
-        return this->template column<Layout::static_geometry_indices_column>();
+        return this->column(this->columns_.static_geometry_indices);
     }
-    auto hits() const { return this->template column<Layout::hits_column>(); }
+    auto hits() const { return this->column(this->columns_.hits); }
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;

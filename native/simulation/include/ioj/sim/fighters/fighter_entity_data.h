@@ -293,10 +293,10 @@ struct ResolvedViewImpl
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto entity_ids() const { return this->template column<Layout::entity_ids_column>(); }
-    auto integral_biases() const { return this->template column<Layout::integral_biases_column>(); }
-    auto float_biases() const { return this->template column<Layout::float_biases_column>(); }
-    auto tasks() const { return this->template column<Layout::tasks_column>(); }
+    auto entity_ids() const { return this->column(this->columns_.entity_ids); }
+    auto integral_biases() const { return this->column(this->columns_.integral_biases); }
+    auto float_biases() const { return this->column(this->columns_.float_biases); }
+    auto tasks() const { return this->column(this->columns_.tasks); }
     auto view_locations() const -> std::
         conditional_t<Const, ::ioj::vectors3f::ResolvedConstView, ::ioj::vectors3f::ResolvedView> {
         return {this->columns_.locations_xs,
@@ -346,18 +346,18 @@ struct ResolvedViewImpl
                 this->columns_.velocities_zs,
                 this->num()};
     }
-    auto move_distances() const { return this->template column<Layout::move_distances_column>(); }
-    auto speeds() const { return this->template column<Layout::speeds_column>(); }
-    auto teams() const { return this->template column<Layout::teams_column>(); }
-    auto parent_ids() const { return this->template column<Layout::parent_ids_column>(); }
+    auto move_distances() const { return this->column(this->columns_.move_distances); }
+    auto speeds() const { return this->column(this->columns_.speeds); }
+    auto teams() const { return this->column(this->columns_.teams); }
+    auto parent_ids() const { return this->column(this->columns_.parent_ids); }
     auto awareness_scan_countdowns() const {
-        return this->template column<Layout::awareness_scan_countdowns_column>();
+        return this->column(this->columns_.awareness_scan_countdowns);
     }
     auto navigation_update_countdowns_remaining_ticks() const {
-        return this->template column<Layout::navigation_update_countdowns_remaining_ticks_column>();
+        return this->column(this->columns_.navigation_update_countdowns_remaining_ticks);
     }
     auto navigation_update_countdowns_periods() const {
-        return this->template column<Layout::navigation_update_countdowns_periods_column>();
+        return this->column(this->columns_.navigation_update_countdowns_periods);
     }
     auto view_separation_steering() const -> std::
         conditional_t<Const, ::ioj::vectors3f::ResolvedConstView, ::ioj::vectors3f::ResolvedView> {
@@ -367,24 +367,22 @@ struct ResolvedViewImpl
                 this->num()};
     }
     auto navigation_risk_tiers() const {
-        return this->template column<Layout::navigation_risk_tiers_column>();
+        return this->column(this->columns_.navigation_risk_tiers);
     }
     auto navigation_lower_risk_scan_counts() const {
-        return this->template column<Layout::navigation_lower_risk_scan_counts_column>();
+        return this->column(this->columns_.navigation_lower_risk_scan_counts);
     }
     auto avoidance_choice_indices() const {
-        return this->template column<Layout::avoidance_choice_indices_column>();
+        return this->column(this->columns_.avoidance_choice_indices);
     }
     auto avoidance_clear_scan_counts() const {
-        return this->template column<Layout::avoidance_clear_scan_counts_column>();
+        return this->column(this->columns_.avoidance_clear_scan_counts);
     }
     auto attack_reposition_countdowns() const {
-        return this->template column<Layout::attack_reposition_countdowns_column>();
+        return this->column(this->columns_.attack_reposition_countdowns);
     }
-    auto attack_cooldowns() const {
-        return this->template column<Layout::attack_cooldowns_column>();
-    }
-    auto target_ids() const { return this->template column<Layout::target_ids_column>(); }
+    auto attack_cooldowns() const { return this->column(this->columns_.attack_cooldowns); }
+    auto target_ids() const { return this->column(this->columns_.target_ids); }
     auto view_target_locations() const -> std::
         conditional_t<Const, ::ioj::vectors3f::ResolvedConstView, ::ioj::vectors3f::ResolvedView> {
         return {this->columns_.target_locations_xs,
@@ -406,14 +404,10 @@ struct ResolvedViewImpl
                 this->columns_.target_directions_zs,
                 this->num()};
     }
-    auto intercept_times() const { return this->template column<Layout::intercept_times_column>(); }
-    auto target_distance_sq() const {
-        return this->template column<Layout::target_distance_sq_column>();
-    }
-    auto target_distances() const {
-        return this->template column<Layout::target_distances_column>();
-    }
-    auto target_radii() const { return this->template column<Layout::target_radii_column>(); }
+    auto intercept_times() const { return this->column(this->columns_.intercept_times); }
+    auto target_distance_sq() const { return this->column(this->columns_.target_distance_sq); }
+    auto target_distances() const { return this->column(this->columns_.target_distances); }
+    auto target_radii() const { return this->column(this->columns_.target_radii); }
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;

@@ -112,9 +112,9 @@ struct ResolvedViewImpl
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto entity_indices() const { return this->template column<Layout::entity_indices_column>(); }
+    auto entity_indices() const { return this->column(this->columns_.entity_indices); }
     auto target_entity_indices() const {
-        return this->template column<Layout::target_entity_indices_column>();
+        return this->column(this->columns_.target_entity_indices);
     }
     auto view_locations() const -> std::
         conditional_t<Const, ::ioj::vectors3f::ResolvedConstView, ::ioj::vectors3f::ResolvedView> {
@@ -131,13 +131,13 @@ struct ResolvedViewImpl
                 this->columns_.rotations_rolls,
                 this->num()};
     }
-    auto teams() const { return this->template column<Layout::teams_column>(); }
-    auto healths() const { return this->template column<Layout::healths_column>(); }
+    auto teams() const { return this->column(this->columns_.teams); }
+    auto healths() const { return this->column(this->columns_.healths); }
     auto initial_fighter_spawn_delays() const {
-        return this->template column<Layout::initial_fighter_spawn_delays_column>();
+        return this->column(this->columns_.initial_fighter_spawn_delays);
     }
     auto fighter_spawn_cooldowns() const {
-        return this->template column<Layout::fighter_spawn_cooldowns_column>();
+        return this->column(this->columns_.fighter_spawn_cooldowns);
     }
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {

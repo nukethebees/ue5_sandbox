@@ -83,7 +83,7 @@ struct ResolvedViewImpl
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto entity_ids() const { return this->template column<Layout::entity_ids_column>(); }
+    auto entity_ids() const { return this->column(this->columns_.entity_ids); }
     auto view_locations() const -> std::
         conditional_t<Const, ::ioj::vectors3f::ResolvedConstView, ::ioj::vectors3f::ResolvedView> {
         return {this->columns_.locations_xs,
@@ -91,10 +91,10 @@ struct ResolvedViewImpl
                 this->columns_.locations_zs,
                 this->num()};
     }
-    auto yaws() const { return this->template column<Layout::yaws_column>(); }
-    auto laser_cooldowns() const { return this->template column<Layout::laser_cooldowns_column>(); }
+    auto yaws() const { return this->column(this->columns_.yaws); }
+    auto laser_cooldowns() const { return this->column(this->columns_.laser_cooldowns); }
     auto next_fire_point_indices() const {
-        return this->template column<Layout::next_fire_point_indices_column>();
+        return this->column(this->columns_.next_fire_point_indices);
     }
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {

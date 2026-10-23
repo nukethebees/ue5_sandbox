@@ -69,10 +69,10 @@ struct ResolvedViewImpl
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto name() const { return this->template column<Layout::name_column>(); }
-    auto mapped() const { return this->template column<Layout::mapped_column>(); }
-    auto sentinel() const { return this->template column<Layout::sentinel_column>(); }
-    auto count_sentinel() const { return this->template column<Layout::count_sentinel_column>(); }
+    auto name() const { return this->column(this->columns_.name); }
+    auto mapped() const { return this->column(this->columns_.mapped); }
+    auto sentinel() const { return this->column(this->columns_.sentinel); }
+    auto count_sentinel() const { return this->column(this->columns_.count_sentinel); }
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;
