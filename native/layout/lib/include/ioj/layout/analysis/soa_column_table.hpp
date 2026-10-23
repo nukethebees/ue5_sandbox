@@ -4,7 +4,7 @@
 #pragma once
 
 #include "ioj/layout/analysis/analysis_id.hpp"
-#include "ioj/layout/analysis/physical_facts.hpp"
+#include "ioj/layout/analysis/physical_fact_id.hpp"
 #include "ioj/layout/analyzer/cache_line_tiling.hpp"
 #include "ioj/native_soa/storage.h"
 #include "ioj/native_soa/vector_storage_ops.h"
@@ -34,7 +34,7 @@ struct SoaColumnTableConstView {
     std::span<lispb::StringId const> schema_type;
     std::span<lispb::StringId const> physical_type;
     std::span<std::uint8_t const> overridden;
-    std::span<std::optional<ioj::layout::PhysicalFacts> const> type_facts;
+    std::span<std::optional<ioj::layout::PhysicalFactId> const> type_facts;
     std::span<std::optional<std::uint64_t> const> total_bytes;
     std::span<std::optional<std::uint64_t> const> allocation_offset_bytes;
     std::span<std::optional<std::uint64_t> const> padding_before_bytes;
@@ -137,7 +137,7 @@ struct SoaColumnTableView {
     std::span<lispb::StringId> schema_type;
     std::span<lispb::StringId> physical_type;
     std::span<std::uint8_t> overridden;
-    std::span<std::optional<ioj::layout::PhysicalFacts>> type_facts;
+    std::span<std::optional<ioj::layout::PhysicalFactId>> type_facts;
     std::span<std::optional<std::uint64_t>> total_bytes;
     std::span<std::optional<std::uint64_t>> allocation_offset_bytes;
     std::span<std::optional<std::uint64_t>> padding_before_bytes;
@@ -236,7 +236,7 @@ struct SoaColumnTableView {
              lispb::StringId const new_schema_type,
              lispb::StringId const new_physical_type,
              std::uint8_t const new_overridden,
-             std::optional<ioj::layout::PhysicalFacts> const new_type_facts,
+             std::optional<ioj::layout::PhysicalFactId> const new_type_facts,
              std::optional<std::uint64_t> const new_total_bytes,
              std::optional<std::uint64_t> const new_allocation_offset_bytes,
              std::optional<std::uint64_t> const new_padding_before_bytes,
@@ -274,7 +274,7 @@ struct SoaColumnTable {
     ioj::native_soa::Vector<lispb::StringId> schema_type;
     ioj::native_soa::Vector<lispb::StringId> physical_type;
     ioj::native_soa::Vector<std::uint8_t> overridden;
-    ioj::native_soa::Vector<std::optional<ioj::layout::PhysicalFacts>> type_facts;
+    ioj::native_soa::Vector<std::optional<ioj::layout::PhysicalFactId>> type_facts;
     ioj::native_soa::Vector<std::optional<std::uint64_t>> total_bytes;
     ioj::native_soa::Vector<std::optional<std::uint64_t>> allocation_offset_bytes;
     ioj::native_soa::Vector<std::optional<std::uint64_t>> padding_before_bytes;
@@ -341,7 +341,7 @@ struct SoaColumnTable {
              lispb::StringId const new_schema_type,
              lispb::StringId const new_physical_type,
              std::uint8_t const new_overridden,
-             std::optional<ioj::layout::PhysicalFacts> const new_type_facts,
+             std::optional<ioj::layout::PhysicalFactId> const new_type_facts,
              std::optional<std::uint64_t> const new_total_bytes,
              std::optional<std::uint64_t> const new_allocation_offset_bytes,
              std::optional<std::uint64_t> const new_padding_before_bytes,
@@ -373,7 +373,7 @@ struct SoaColumnTable {
              lispb::StringId const new_schema_type,
              lispb::StringId const new_physical_type,
              std::uint8_t const new_overridden,
-             std::optional<ioj::layout::PhysicalFacts> const new_type_facts,
+             std::optional<ioj::layout::PhysicalFactId> const new_type_facts,
              std::optional<std::uint64_t> const new_total_bytes,
              std::optional<std::uint64_t> const new_allocation_offset_bytes,
              std::optional<std::uint64_t> const new_padding_before_bytes,

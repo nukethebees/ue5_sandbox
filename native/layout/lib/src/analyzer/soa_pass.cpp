@@ -95,8 +95,10 @@ void analyze_soa_layout(AnalysisContext& context,
             allocation_alignment.reset();
             continue;
         }
-        auto const size{columns.type_facts[row]->size_bytes};
-        auto const alignment{columns.type_facts[row]->alignment_bytes};
+        auto const size{
+            context.storage.physical_facts.size_bytes()[columns.type_facts[row]->value]};
+        auto const alignment{
+            context.storage.physical_facts.alignment_bytes()[columns.type_facts[row]->value]};
         columns.total_bytes[row] = checked_multiply(size, result.capacity);
         if (!columns.total_bytes[row]) {
             context.report({DiagnosticSeverity::error,

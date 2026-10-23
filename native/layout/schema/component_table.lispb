@@ -13,7 +13,7 @@
     (member tag array @string_view)
     (member semantic_type array @type_id)
     (member element_count array @uint64_t)
-    (member element_facts array @optional_type_facts)
+    (member element_facts array @optional_physical_fact_id)
     (member offset_bytes array @optional_uint64_t)
     (member extent_bytes array @optional_uint64_t)
     (member padding_before_bytes array @optional_uint64_t)

@@ -14,7 +14,7 @@
     (member schema_type array @string_id)
     (member physical_type array @string_id)
     (member overridden array @uint8_t)
-    (member type_facts array @optional_type_facts)
+    (member type_facts array @optional_physical_fact_id)
     (member total_bytes array @optional_uint64_t)
     (member allocation_offset_bytes array @optional_uint64_t)
     (member padding_before_bytes array @optional_uint64_t)

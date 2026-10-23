@@ -123,7 +123,9 @@ TEST(AnalysisBatch, ExternalFactsApplyOnlyToTheirRequestedTarget) {
     AnalysisContext context{document, storage};
     Analyzer::analyze(context, requests);
     ASSERT_EQ(storage.runs.size(), 2);
-    EXPECT_EQ(storage.types.physical[storage.runs[0].analysis.value]->size_bytes, 12);
+    auto const physical{storage.types.physical[storage.runs[0].analysis.value]};
+    ASSERT_TRUE(physical);
+    EXPECT_EQ(storage.physical_facts.size_bytes()[physical->value], 12);
     EXPECT_FALSE(storage.types.physical[storage.runs[1].analysis.value]);
     EXPECT_FALSE(unknown.find("OpaqueVector"));
 }

@@ -37,6 +37,7 @@ void analyze_enum_backing(AnalysisContext& context, AnalysisId id) {
                           types.definitions().enums.underlying_type[types.definitions().enums.index(
                               enumeration)])])})
             : derived_enum_backing_type(types, enumeration).value_or("Unknown")};
+    auto const facts{context.storage.physical_facts.get_const_view().resolve()};
     EnumBacking result;
     result.backing_type = context.storage.strings.intern(backing_type);
     result.backing_facts = context.storage.types.physical[id.value];
@@ -49,7 +50,7 @@ void analyze_enum_backing(AnalysisContext& context, AnalysisId id) {
         context.report({DiagnosticSeverity::warning,
                         "Unknown physical facts for enum backing type '" + backing_type + "'."});
     } else {
-        result.backing_bits = checked_multiply(result.backing_facts->size_bytes, 8);
+        result.backing_bits = checked_multiply(facts.size_bytes()[result.backing_facts->value], 8);
         if (!result.backing_bits.has_value()) {
             context.report({DiagnosticSeverity::error, "Enum backing bit count overflows uint64."});
         } else if (*result.backing_bits == 0) {
@@ -62,10 +63,12 @@ void analyze_enum_backing(AnalysisContext& context, AnalysisId id) {
     if (domain.minimum_value.has_value() && domain.maximum_value.has_value() &&
         domain.minimum_required_bits.has_value()) {
         if (result.backing_facts.has_value() && result.backing_bits.has_value()) {
-            result.backing_can_represent_domain = enum_domain_fits_backing(*domain.minimum_value,
-                                                                           *domain.maximum_value,
-                                                                           *result.backing_facts,
-                                                                           *result.backing_bits);
+            result.backing_can_represent_domain =
+                enum_domain_fits_backing(*domain.minimum_value,
+                                         *domain.maximum_value,
+                                         facts.signedness()[result.backing_facts->value],
+                                         facts.unsigned_value_bits()[result.backing_facts->value],
+                                         *result.backing_bits);
             if (!result.backing_can_represent_domain.has_value()) {
                 context.report({DiagnosticSeverity::warning,
                                 "Integer range facts are unavailable for enum backing type '" +
@@ -80,11 +83,13 @@ void analyze_enum_backing(AnalysisContext& context, AnalysisId id) {
         }
         auto backing_code_bits{std::optional<std::uint64_t>{}};
         if (result.backing_facts.has_value() &&
-            result.backing_facts->integer_signed == std::optional{false} &&
-            result.backing_facts->unsigned_value_bits.has_value()) {
-            backing_code_bits = *result.backing_facts->unsigned_value_bits;
+            facts.signedness()[result.backing_facts->value] ==
+                lispb::schema::EnumSignedness::unsigned_ &&
+            facts.unsigned_value_bits()[result.backing_facts->value].has_value()) {
+            backing_code_bits = *facts.unsigned_value_bits()[result.backing_facts->value];
         } else if (result.backing_facts.has_value() &&
-                   result.backing_facts->integer_signed == std::optional{true}) {
+                   facts.signedness()[result.backing_facts->value] ==
+                       lispb::schema::EnumSignedness::signed_) {
             backing_code_bits = result.backing_bits;
         }
         if (backing_code_bits.has_value() && *backing_code_bits < 64) {

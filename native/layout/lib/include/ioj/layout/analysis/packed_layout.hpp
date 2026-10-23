@@ -1,5 +1,5 @@
 #pragma once
-#include <ioj/layout/analysis/physical_facts.hpp>
+#include <ioj/layout/analysis/physical_fact_id.hpp>
 #include <ioj/layout/analysis/row_range.hpp>
 
 #include <codegen/schema/packed_bit_order.h>
@@ -17,7 +17,7 @@ struct PackedLayout {
     std::optional<lispb::codegen::PackedByteOrder> byte_order{};
     lispb::codegen::PackedBitOrder bit_order{
         lispb::codegen::PackedBitOrder::least_significant_first};
-    std::optional<PhysicalFacts> storage_facts{};
+    std::optional<PhysicalFactId> storage_facts{};
     std::optional<std::uint64_t> storage_bits{};
     std::optional<std::uint64_t> bits_used{};
     std::optional<std::uint64_t> payload_bits{};

@@ -37,9 +37,9 @@ TEST(PhysicalFacts, GeneratedCppAgreesForPointersNestedRecordsAndAlignedExternal
         Analyzer::analyze(context, requests);
         auto const& facts{storage.types.physical[storage.runs.front().analysis.value]};
         ASSERT_TRUE(facts);
-        EXPECT_EQ(facts->size_bytes, size);
-        EXPECT_EQ(facts->alignment_bytes, alignment);
-        EXPECT_EQ(facts->origin, FactOrigin::derived);
+        EXPECT_EQ(storage.physical_facts.size_bytes()[facts->value], size);
+        EXPECT_EQ(storage.physical_facts.alignment_bytes()[facts->value], alignment);
+        EXPECT_EQ(storage.physical_facts.origin()[facts->value], FactOrigin::derived);
     }
     auto const envelope{storage.runs.front().analysis};
     auto const first{storage.types.aggregate[envelope.value]->members.begin};
@@ -83,7 +83,7 @@ TEST(PhysicalFacts, SingleOnlySchemasUseOwnerFactsAndLayoutsHaveNoPhysicalObject
     Analyzer::analyze(context, requests);
     auto const& facts{storage.types.physical[storage.runs[0].analysis.value]};
     ASSERT_TRUE(facts);
-    EXPECT_EQ(facts->size_bytes, sizeof(ApiOwner));
+    EXPECT_EQ(storage.physical_facts.size_bytes()[facts->value], sizeof(ApiOwner));
     EXPECT_FALSE(storage.types.physical[storage.runs[1].analysis.value]);
     expect_analysis_diagnostics(context);
 }
@@ -147,8 +147,11 @@ TEST(PhysicalFacts, PointerPolicyRetainsManualEvidence) {
     AnalysisContext context{document, storage};
     Analyzer::analyze(context, requests);
     ASSERT_TRUE(storage.components.element_facts.front());
-    EXPECT_EQ(storage.components.element_facts.front()->origin, FactOrigin::manual_assumption);
-    EXPECT_TRUE(storage.strings.view(storage.components.element_facts.front()->provenance)
+    EXPECT_EQ(storage.physical_facts.origin()[storage.components.element_facts.front()->value],
+              FactOrigin::manual_assumption);
+    EXPECT_TRUE(storage.strings
+                    .view(storage.physical_facts
+                              .provenance()[storage.components.element_facts.front()->value])
                     .contains(pointer.provenance));
 }
 

@@ -38,8 +38,8 @@ auto compute_element_totals(AnalysisContext& context,
         return total;
     };
 
-    auto const element_bytes{
-        physical.transform([](PhysicalFacts const& facts) { return facts.size_bytes; })};
+    auto const element_bytes{physical.transform(
+        [&](PhysicalFactId fact) { return storage.physical_facts.size_bytes()[fact.value]; })};
     if (!soa) {
         result.total_storage_bytes = scale(element_bytes, "Storage bytes");
     }
@@ -53,8 +53,9 @@ auto compute_element_totals(AnalysisContext& context,
         result.total_tail_padding_bytes =
             scale(aggregate->tail_padding_bytes, "Tail padding bytes");
         result.total_discriminant_bytes =
-            scale(aggregate->discriminant_facts.transform(
-                      [](PhysicalFacts const& facts) { return facts.size_bytes; }),
+            scale(aggregate->discriminant_facts.transform([&](PhysicalFactId fact) {
+                return storage.physical_facts.size_bytes()[fact.value];
+            }),
                   "Discriminant bytes");
         if (result.total_internal_padding_bytes && result.total_tail_padding_bytes) {
             result.total_padding_bytes =

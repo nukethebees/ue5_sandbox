@@ -10,7 +10,7 @@
     :operations (set-num reset)
     (member schema_type array @type_id)
     (member scenario array @scenario_id)
-    (member physical array @optional_type_facts)
+    (member physical array @optional_physical_fact_id)
     (member enum_backing array @optional_enum_backing)
     (member aggregate array @optional_aggregate_layout)
     (member packed array @optional_packed_layout)

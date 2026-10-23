@@ -4,7 +4,7 @@
 #pragma once
 
 #include "ioj/layout/analysis/analysis_id.hpp"
-#include "ioj/layout/analysis/physical_facts.hpp"
+#include "ioj/layout/analysis/physical_fact_id.hpp"
 #include "ioj/native_soa/storage.h"
 #include "ioj/native_soa/vector_storage_ops.h"
 
@@ -31,7 +31,7 @@ struct ComponentTableConstView {
     std::span<std::string_view const> tag;
     std::span<lispb::schema::TypeId const> semantic_type;
     std::span<std::uint64_t const> element_count;
-    std::span<std::optional<ioj::layout::PhysicalFacts> const> element_facts;
+    std::span<std::optional<ioj::layout::PhysicalFactId> const> element_facts;
     std::span<std::optional<std::uint64_t> const> offset_bytes;
     std::span<std::optional<std::uint64_t> const> extent_bytes;
     std::span<std::optional<std::uint64_t> const> padding_before_bytes;
@@ -109,7 +109,7 @@ struct ComponentTableView {
     std::span<std::string_view> tag;
     std::span<lispb::schema::TypeId> semantic_type;
     std::span<std::uint64_t> element_count;
-    std::span<std::optional<ioj::layout::PhysicalFacts>> element_facts;
+    std::span<std::optional<ioj::layout::PhysicalFactId>> element_facts;
     std::span<std::optional<std::uint64_t>> offset_bytes;
     std::span<std::optional<std::uint64_t>> extent_bytes;
     std::span<std::optional<std::uint64_t>> padding_before_bytes;
@@ -183,7 +183,7 @@ struct ComponentTableView {
              std::string_view const new_tag,
              lispb::schema::TypeId const new_semantic_type,
              std::uint64_t const new_element_count,
-             std::optional<ioj::layout::PhysicalFacts> const new_element_facts,
+             std::optional<ioj::layout::PhysicalFactId> const new_element_facts,
              std::optional<std::uint64_t> const new_offset_bytes,
              std::optional<std::uint64_t> const new_extent_bytes,
              std::optional<std::uint64_t> const new_padding_before_bytes,
@@ -210,7 +210,7 @@ struct ComponentTable {
     ioj::native_soa::Vector<std::string_view> tag;
     ioj::native_soa::Vector<lispb::schema::TypeId> semantic_type;
     ioj::native_soa::Vector<std::uint64_t> element_count;
-    ioj::native_soa::Vector<std::optional<ioj::layout::PhysicalFacts>> element_facts;
+    ioj::native_soa::Vector<std::optional<ioj::layout::PhysicalFactId>> element_facts;
     ioj::native_soa::Vector<std::optional<std::uint64_t>> offset_bytes;
     ioj::native_soa::Vector<std::optional<std::uint64_t>> extent_bytes;
     ioj::native_soa::Vector<std::optional<std::uint64_t>> padding_before_bytes;
@@ -262,7 +262,7 @@ struct ComponentTable {
              std::string_view const new_tag,
              lispb::schema::TypeId const new_semantic_type,
              std::uint64_t const new_element_count,
-             std::optional<ioj::layout::PhysicalFacts> const new_element_facts,
+             std::optional<ioj::layout::PhysicalFactId> const new_element_facts,
              std::optional<std::uint64_t> const new_offset_bytes,
              std::optional<std::uint64_t> const new_extent_bytes,
              std::optional<std::uint64_t> const new_padding_before_bytes,
@@ -284,7 +284,7 @@ struct ComponentTable {
              std::string_view const new_tag,
              lispb::schema::TypeId const new_semantic_type,
              std::uint64_t const new_element_count,
-             std::optional<ioj::layout::PhysicalFacts> const new_element_facts,
+             std::optional<ioj::layout::PhysicalFactId> const new_element_facts,
              std::optional<std::uint64_t> const new_offset_bytes,
              std::optional<std::uint64_t> const new_extent_bytes,
              std::optional<std::uint64_t> const new_padding_before_bytes,

@@ -249,10 +249,10 @@ auto analyze_access(AnalysisContext& context, AnalysisRequest const& request, An
                             "Selected access count exceeds the modeled SoA allocation capacity."});
         }
     } else {
-        auto const physical_size{
-            packed ? packed->storage_facts.transform(
-                         [](PhysicalFacts const& facts) { return facts.size_bytes; })
-                   : aggregate->size_bytes};
+        auto const physical_size{packed ? packed->storage_facts.transform([&](PhysicalFactId fact) {
+            return storage.physical_facts.size_bytes()[fact.value];
+        })
+                                        : aggregate->size_bytes};
         table.storage_bytes[row] =
             multiply(context, physical_size, request.element_count, "Access storage bytes");
     }
@@ -276,8 +276,9 @@ auto analyze_access(AnalysisContext& context, AnalysisRequest const& request, An
             has_writes |= access_includes_write(operation);
             auto const per_element{
                 packed ? Quantity{storage.fields.bit_width[child]}
-                : soa  ? storage.columns.type_facts[child].transform(
-                             [](PhysicalFacts const& facts) { return facts.size_bytes; })
+                : soa  ? storage.columns.type_facts[child].transform([&](PhysicalFactId fact) {
+                      return storage.physical_facts.size_bytes()[fact.value];
+                  })
                        : storage.components.extent_bytes[child]};
             auto& selected_payload{packed ? selections.bits[selected] : selections.bytes[selected]};
             auto const useful{multiply(context,

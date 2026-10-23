@@ -14,16 +14,17 @@ namespace ioj::layout::analysis_detail {
 
 auto enum_domain_fits_backing(EnumCodeValue const minimum,
                               EnumCodeValue const maximum,
-                              PhysicalFacts const& facts,
+                              lispb::schema::EnumSignedness signedness,
+                              std::optional<std::uint32_t> unsigned_value_bits,
                               std::uint64_t const backing_bits) -> std::optional<bool> {
-    if (!facts.integer_signed.has_value()) {
+    if (signedness == lispb::schema::EnumSignedness::unspecified) {
         return std::nullopt;
     }
-    if (!*facts.integer_signed) {
-        if (!facts.unsigned_value_bits.has_value()) {
+    if (signedness == lispb::schema::EnumSignedness::unsigned_) {
+        if (!unsigned_value_bits.has_value()) {
             return std::nullopt;
         }
-        auto const maximum_value{maximum_unsigned_value(*facts.unsigned_value_bits)};
+        auto const maximum_value{maximum_unsigned_value(*unsigned_value_bits)};
         return maximum_value.has_value() && !minimum.negative && !maximum.negative &&
                maximum.magnitude <= *maximum_value;
     }

@@ -6,6 +6,7 @@
 #include <ioj/layout/analysis/distribution_table.hpp>
 #include <ioj/layout/analysis/element_totals.hpp>
 #include <ioj/layout/analysis/packed_field_table.hpp>
+#include <ioj/layout/analysis/physical_fact_table.hpp>
 #include <ioj/layout/analysis/relationship_table.hpp>
 #include <ioj/layout/analysis/scalar_table.hpp>
 #include <ioj/layout/analysis/selection_table.hpp>
@@ -26,6 +27,7 @@ struct AnalysisStorage {
     std::vector<AnalysisRun> runs;
     std::vector<ElementTotals> totals;
     TypeAnalysisTable types;
+    PhysicalFactTable physical_facts;
     ScalarTable scalars;
     CodeTable codes;
     ComponentTable components;

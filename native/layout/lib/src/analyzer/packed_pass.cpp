@@ -67,17 +67,18 @@ void
                         .byte_order = packed_table.byte_order[packed_row],
                         .bit_order = packed_table.bit_order[packed_row],
                         .invalid_raw_value = packed_table.invalid_raw_value[packed_row]};
+    auto const facts{context.storage.physical_facts.get_const_view().resolve()};
     result.storage_facts = context.storage.types.physical[id.value];
     if (!result.storage_facts.has_value()) {
         context.report({DiagnosticSeverity::warning,
                         "Unknown physical facts for packed storage type '" + storage_type + "'."});
     } else {
-        result.storage_bits = checked_multiply(result.storage_facts->size_bytes, 8);
+        result.storage_bits = checked_multiply(facts.size_bytes()[result.storage_facts->value], 8);
         if (!result.storage_bits.has_value()) {
             context.report(
                 {DiagnosticSeverity::error, "Packed storage bit count overflows uint64."});
         }
-        if (!result.storage_facts->unsigned_value_bits.has_value()) {
+        if (!facts.unsigned_value_bits()[result.storage_facts->value].has_value()) {
             context.report({DiagnosticSeverity::warning,
                             "Packed storage type '" + storage_type +
                                 "' is not described as an unsigned integer by this ABI profile."});

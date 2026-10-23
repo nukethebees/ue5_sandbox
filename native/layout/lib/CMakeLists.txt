@@ -4,6 +4,7 @@ set(layout_analysis_tables
   distribution_entry_table
   distribution_table
   packed_field_table
+  physical_fact_table
   relationship_table
   scalar_table
   selection_table

@@ -4,6 +4,7 @@ include/ioj/layout/analysis/component_table.hpp
 include/ioj/layout/analysis/distribution_entry_table.hpp
 include/ioj/layout/analysis/distribution_table.hpp
 include/ioj/layout/analysis/packed_field_table.hpp
+include/ioj/layout/analysis/physical_fact_table.hpp
 include/ioj/layout/analysis/relationship_table.hpp
 include/ioj/layout/analysis/scalar_table.hpp
 include/ioj/layout/analysis/selection_table.hpp
@@ -16,6 +17,7 @@ src/analysis/component_table.cpp
 src/analysis/distribution_entry_table.cpp
 src/analysis/distribution_table.cpp
 src/analysis/packed_field_table.cpp
+src/analysis/physical_fact_table.cpp
 src/analysis/relationship_table.cpp
 src/analysis/scalar_table.cpp
 src/analysis/selection_table.cpp

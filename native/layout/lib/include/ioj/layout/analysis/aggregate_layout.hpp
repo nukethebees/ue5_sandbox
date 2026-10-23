@@ -1,5 +1,5 @@
 #pragma once
-#include <ioj/layout/analysis/physical_facts.hpp>
+#include <ioj/layout/analysis/physical_fact_id.hpp>
 #include <ioj/layout/analysis/row_range.hpp>
 
 #include <cstdint>
@@ -15,7 +15,7 @@ struct AggregateLayout {
     std::optional<std::uint64_t> internal_padding_bytes{};
     std::optional<std::uint64_t> tail_padding_bytes{};
     std::optional<std::uint64_t> largest_alternative_bytes{};
-    std::optional<PhysicalFacts> discriminant_facts{};
+    std::optional<PhysicalFactId> discriminant_facts{};
     std::optional<std::uint64_t> payload_size_bytes{};
     std::optional<std::uint64_t> payload_alignment_bytes{};
     std::optional<std::uint64_t> payload_offset_bytes{};

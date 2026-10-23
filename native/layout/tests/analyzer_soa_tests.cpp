@@ -20,7 +20,8 @@ AnalysisCase const cases[]{
          auto const run{run_analysis(context, "Value", {.default_capacity = 3})};
          auto const& result{context.storage.types.soa[run.analysis.value].value()};
          EXPECT_EQ(result.total_payload_bytes, 24);
-         EXPECT_EQ(context.storage.columns.type_facts[result.columns.begin]->alignment_bytes,
+         EXPECT_EQ(context.storage.physical_facts.alignment_bytes()
+                       [context.storage.columns.type_facts[result.columns.begin]->value],
                    alignof(float));
      }},
     {"UnknownMiddleColumn",

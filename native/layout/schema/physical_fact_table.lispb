@@ -1,0 +1,16 @@
+(module physical_fact_table
+  :header "include/ioj/layout/analysis/physical_fact_table.hpp"
+  :source "src/analysis/physical_fact_table.cpp"
+  :header-include "ioj/layout/analysis/physical_fact_table.hpp"
+  :backend standard-library
+  :namespace ioj::layout
+  :prelude #cpp{#include <optional>}cpp#
+  (struct PhysicalFactTable
+    :operations (reset)
+    (member size_bytes array @uint64_t)
+    (member alignment_bytes array @uint64_t)
+    (member signedness array @enum_signedness)
+    (member unsigned_value_bits array @optional_uint32_t)
+    (member provenance array @string_id)
+    (member origin array @fact_origin)
+    (single-allocation PhysicalFactTable)))

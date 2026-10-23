@@ -7,7 +7,7 @@
 namespace ioj::layout::analyzer_packed_tests {
 
 static_assert(single_allocation_layout::supported_leaf<lispb::StringId>);
-static_assert(single_allocation_layout::supported_leaf<std::optional<PhysicalFacts>>);
+static_assert(single_allocation_layout::supported_leaf<std::optional<PhysicalFactId>>);
 static_assert(single_allocation_layout::supported_leaf<std::optional<EnumBacking>>);
 static_assert(single_allocation_layout::supported_leaf<std::optional<PackedLayout>>);
 static_assert(single_allocation_layout::supported_leaf<std::optional<AggregateLayout>>);
@@ -150,7 +150,9 @@ AnalysisCase const cases[]{
          auto const& storage{context.storage};
          auto const& first{storage.types.packed[storage.runs[0].analysis.value].value()};
          auto const& second{storage.types.packed[storage.runs[1].analysis.value].value()};
-         EXPECT_EQ(second.storage_facts->size_bytes - first.storage_facts->size_bytes, 4);
+         EXPECT_EQ(context.storage.physical_facts.size_bytes()[second.storage_facts->value] -
+                       context.storage.physical_facts.size_bytes()[first.storage_facts->value],
+                   4);
          EXPECT_EQ(*storage.totals[1].total_storage_bytes - *storage.totals[0].total_storage_bytes,
                    400);
          EXPECT_EQ(*second.unused_bits - *first.unused_bits, 32);

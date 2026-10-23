@@ -29,17 +29,23 @@
 
 namespace ioj::layout::analysis_detail {
 
-auto retain_facts(AnalysisContext& context, TypeFacts const& facts) -> PhysicalFacts {
-    return {.size_bytes = facts.size_bytes,
-            .alignment_bytes = facts.alignment_bytes,
-            .integer_signed = facts.integer_signed,
-            .unsigned_value_bits = facts.unsigned_value_bits,
-            .provenance = context.storage.strings.intern(facts.provenance),
-            .origin = facts.origin};
+auto retain_facts(AnalysisContext& context, TypeFacts const& facts) -> PhysicalFactId {
+    using Signedness = lispb::schema::EnumSignedness;
+    auto& rows{context.storage.physical_facts};
+    auto const id{PhysicalFactId{rows.num()}};
+    rows.add(facts.size_bytes,
+             facts.alignment_bytes,
+             facts.integer_signed
+                 ? (*facts.integer_signed ? Signedness::signed_ : Signedness::unsigned_)
+                 : Signedness::unspecified,
+             facts.unsigned_value_bits,
+             context.storage.strings.intern(facts.provenance),
+             facts.origin);
+    return id;
 }
 
 auto lookup_physical(AnalysisContext& context, AbiProfile const& abi, std::string_view spelling)
-    -> std::optional<PhysicalFacts> {
+    -> std::optional<PhysicalFactId> {
     auto facts{abi.find(lispb::codegen::native_spelling(std::string{spelling}))};
     if (!facts) {
         context.report({DiagnosticSeverity::warning,
@@ -61,7 +67,7 @@ auto physical_use(AnalysisContext& context,
                   lispb::codegen::CppTypeId cpp_type,
                   lispb::codegen::PhysicalTypeForm form,
                   lispb::StringId object_spelling,
-                  bool names_semantic_type) -> std::optional<PhysicalFacts> {
+                  bool names_semantic_type) -> std::optional<PhysicalFactId> {
     using Form = lispb::codegen::PhysicalTypeForm;
     auto const& types{context.types};
     if (form == Form::unsupported) {
@@ -79,15 +85,18 @@ auto physical_use(AnalysisContext& context,
             return lookup_physical(context, abi, types.cpp_types().spelling(cpp_type));
         }
         if (abi.object_pointer_representation()) {
-            auto facts{lookup_physical(context, abi, *abi.object_pointer_representation())};
-            if (facts && !facts->integer_signed) {
-                if (facts->origin != FactOrigin::manual_assumption) {
-                    facts->origin = FactOrigin::target_abi;
+            auto const facts{lookup_physical(context, abi, *abi.object_pointer_representation())};
+            auto const rows{context.storage.physical_facts.get_view().resolve()};
+            if (facts &&
+                rows.signedness()[facts->value] == lispb::schema::EnumSignedness::unspecified) {
+                if (rows.origin()[facts->value] != FactOrigin::manual_assumption) {
+                    rows.origin()[facts->value] = FactOrigin::target_abi;
                 }
-                auto const provenance{"Object-pointer ABI policy for '" + abi.name() + "' using " +
-                                      *abi.object_pointer_representation() + ": " +
-                                      std::string{context.storage.strings.view(facts->provenance)}};
-                facts->provenance = context.storage.strings.intern(provenance);
+                auto const provenance{
+                    "Object-pointer ABI policy for '" + abi.name() + "' using " +
+                    *abi.object_pointer_representation() + ": " +
+                    std::string{context.storage.strings.view(rows.provenance()[facts->value])}};
+                rows.provenance()[facts->value] = context.storage.strings.intern(provenance);
                 return facts;
             }
         }
@@ -102,7 +111,7 @@ auto physical_use(AnalysisContext& context,
 auto physical_occurrence(AnalysisContext& context,
                          ScenarioId scenario,
                          AbiProfile const& abi,
-                         lispb::schema::ResolvedOccurrenceId use) -> std::optional<PhysicalFacts> {
+                         lispb::schema::ResolvedOccurrenceId use) -> std::optional<PhysicalFactId> {
     auto const& occurrences{context.types.occurrences()};
     auto const row{occurrences.index(use)};
     return physical_use(context,
@@ -119,7 +128,7 @@ auto physical_spelling(AnalysisContext& context,
                        ScenarioId scenario,
                        AbiProfile const& abi,
                        std::string_view spelling,
-                       lispb::codegen::ModuleHandle module) -> std::optional<PhysicalFacts> {
+                       lispb::codegen::ModuleHandle module) -> std::optional<PhysicalFactId> {
     auto const& types{context.types};
     auto const cpp{types.cpp_types().intern(spelling)};
     auto const physical{lispb::codegen::classify_physical_type_use(types.cpp_types(), cpp)};
@@ -152,7 +161,8 @@ auto append_component(AnalysisContext& context,
     members.element_count[row] = count;
     members.element_facts[row] = physical_occurrence(context, scenario, abi, occurrence);
     if (members.element_facts[row]) {
-        members.extent_bytes[row] = checked_multiply(members.element_facts[row]->size_bytes, count);
+        members.extent_bytes[row] = checked_multiply(
+            context.storage.physical_facts.size_bytes()[members.element_facts[row]->value], count);
         if (!members.extent_bytes[row]) {
             context.report(
                 {DiagnosticSeverity::error,
@@ -245,6 +255,8 @@ void aggregate_layout(AnalysisContext& context,
     }
     result.members.count = components.parent.size() - result.members.begin;
 
+    auto const facts{context.storage.physical_facts.get_const_view().resolve()};
+    auto const alignments{facts.alignment_bytes()};
     std::optional<std::uint64_t> offset{0};
     std::uint64_t payload{};
     std::uint64_t padding{};
@@ -259,7 +271,7 @@ void aggregate_layout(AnalysisContext& context,
             continue;
         }
         auto const extent{*components.extent_bytes[row]};
-        auto const member_alignment{components.element_facts[row]->alignment_bytes};
+        auto const member_alignment{alignments[components.element_facts[row]->value]};
         alignment = std::max(alignment, member_alignment);
         largest = std::max(largest, extent);
         if (kind != Kind::record) {
@@ -317,11 +329,12 @@ void aggregate_layout(AnalysisContext& context,
                 result.payload_size_bytes = size;
                 result.payload_alignment_bytes = alignment;
                 if (result.discriminant_facts) {
-                    auto const discriminant{*result.discriminant_facts};
-                    auto const payload_offset{align_up(discriminant.size_bytes, alignment)};
+                    auto const discriminant{result.discriminant_facts->value};
+                    auto const discriminant_size{facts.size_bytes()[discriminant]};
+                    auto const payload_offset{align_up(discriminant_size, alignment)};
                     auto const content_end{payload_offset ? checked_add(*payload_offset, *size)
                                                           : std::nullopt};
-                    auto const object_alignment{std::max(discriminant.alignment_bytes, alignment)};
+                    auto const object_alignment{std::max(alignments[discriminant], alignment)};
                     auto const object_size{content_end ? align_up(*content_end, object_alignment)
                                                        : std::nullopt};
                     if (!object_size) {
@@ -331,7 +344,7 @@ void aggregate_layout(AnalysisContext& context,
                         result.size_bytes = object_size;
                         result.alignment_bytes = object_alignment;
                         result.payload_offset_bytes = payload_offset;
-                        result.internal_padding_bytes = *payload_offset - discriminant.size_bytes;
+                        result.internal_padding_bytes = *payload_offset - discriminant_size;
                         result.tail_padding_bytes = *object_size - *content_end;
                     }
                 }
@@ -352,14 +365,16 @@ void aggregate_layout(AnalysisContext& context,
         result.alignment_bytes.reset();
     }
     if (result.size_bytes && result.alignment_bytes) {
-        PhysicalFacts facts;
-        facts.size_bytes = *result.size_bytes;
-        facts.alignment_bytes = *result.alignment_bytes;
-        facts.origin = FactOrigin::derived;
-        facts.provenance =
-            context.storage.strings.intern("Derived from LispB '" + std::string{spelling} +
-                                           "' using profile '" + abi.name() + "'.");
-        context.storage.types.physical[id.value] = std::move(facts);
+        auto& rows{context.storage.physical_facts};
+        auto const fact{PhysicalFactId{rows.num()}};
+        rows.add(*result.size_bytes,
+                 *result.alignment_bytes,
+                 lispb::schema::EnumSignedness::unspecified,
+                 std::nullopt,
+                 context.storage.strings.intern("Derived from LispB '" + std::string{spelling} +
+                                                "' using profile '" + abi.name() + "'."),
+                 FactOrigin::derived);
+        context.storage.types.physical[id.value] = fact;
     }
     context.storage.types.aggregate[id.value] = std::move(result);
 }
