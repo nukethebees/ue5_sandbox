@@ -121,13 +121,8 @@ struct TypeAnalysisTableResolvedViewImpl {
               packed.data(),
               soa.data(),
               ioj::soa_storage_detail::checked_row_count(schema_type.size())} {
-        assert(schema_type.size() == count_);
-        assert(scenario.size() == count_);
-        assert(physical.size() == count_);
-        assert(enum_backing.size() == count_);
-        assert(aggregate.size() == count_);
-        assert(packed.size() == count_);
-        assert(soa.size() == count_);
+        ioj::soa_storage_detail::validate_column_sizes(
+            count_, schema_type, scenario, physical, enum_backing, aggregate, packed, soa);
     }
     template <bool Enabled = Const>
     TypeAnalysisTableResolvedViewImpl(TypeAnalysisTableResolvedViewImpl<false> const& other)

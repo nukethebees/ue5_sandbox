@@ -86,9 +86,7 @@ struct LevelMissionEventGroupsResolvedViewImpl {
               offsets.data(),
               counts.data(),
               ioj::soa_storage_detail::checked_row_count(types.size())} {
-        assert(types.size() == count_);
-        assert(offsets.size() == count_);
-        assert(counts.size() == count_);
+        ioj::soa_storage_detail::validate_column_sizes(count_, types, offsets, counts);
     }
     template <bool Enabled = Const>
     LevelMissionEventGroupsResolvedViewImpl(

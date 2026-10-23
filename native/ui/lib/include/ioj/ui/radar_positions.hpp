@@ -72,8 +72,7 @@ struct PositionsResolvedViewImpl {
     PositionsResolvedViewImpl(std::span<Element<float>> xs, std::span<Element<float>> ys)
         : PositionsResolvedViewImpl{
               xs.data(), ys.data(), ioj::soa_storage_detail::checked_row_count(xs.size())} {
-        assert(xs.size() == count_);
-        assert(ys.size() == count_);
+        ioj::soa_storage_detail::validate_column_sizes(count_, xs, ys);
     }
     template <bool Enabled = Const>
     PositionsResolvedViewImpl(PositionsResolvedViewImpl<false> const& other)

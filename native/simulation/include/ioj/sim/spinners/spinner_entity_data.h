@@ -119,13 +119,14 @@ struct SpinnerEntityDataResolvedViewImpl {
               laser_cooldowns.data(),
               next_fire_point_indices.data(),
               ioj::soa_storage_detail::checked_row_count(entity_ids.size())} {
-        assert(entity_ids.size() == count_);
-        assert(locations_xs.size() == count_);
-        assert(locations_ys.size() == count_);
-        assert(locations_zs.size() == count_);
-        assert(yaws.size() == count_);
-        assert(laser_cooldowns.size() == count_);
-        assert(next_fire_point_indices.size() == count_);
+        ioj::soa_storage_detail::validate_column_sizes(count_,
+                                                       entity_ids,
+                                                       locations_xs,
+                                                       locations_ys,
+                                                       locations_zs,
+                                                       yaws,
+                                                       laser_cooldowns,
+                                                       next_fire_point_indices);
     }
     template <bool Enabled = Const>
     SpinnerEntityDataResolvedViewImpl(SpinnerEntityDataResolvedViewImpl<false> const& other)

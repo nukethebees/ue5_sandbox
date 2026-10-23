@@ -113,12 +113,13 @@ struct LevelSpinnerSpawnEventsResolvedViewImpl {
               yaws.data(),
               initial_fire_point_indices.data(),
               ioj::soa_storage_detail::checked_row_count(entity_indices.size())} {
-        assert(entity_indices.size() == count_);
-        assert(locations_xs.size() == count_);
-        assert(locations_ys.size() == count_);
-        assert(locations_zs.size() == count_);
-        assert(yaws.size() == count_);
-        assert(initial_fire_point_indices.size() == count_);
+        ioj::soa_storage_detail::validate_column_sizes(count_,
+                                                       entity_indices,
+                                                       locations_xs,
+                                                       locations_ys,
+                                                       locations_zs,
+                                                       yaws,
+                                                       initial_fire_point_indices);
     }
     template <bool Enabled = Const>
     LevelSpinnerSpawnEventsResolvedViewImpl(

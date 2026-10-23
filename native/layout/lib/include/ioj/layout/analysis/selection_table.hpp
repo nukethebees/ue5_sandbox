@@ -116,13 +116,8 @@ struct SelectionTableResolvedViewImpl {
               pages.data(),
               capacity_slack_bytes.data(),
               ioj::soa_storage_detail::checked_row_count(source.size())} {
-        assert(source.size() == count_);
-        assert(operation.size() == count_);
-        assert(bytes.size() == count_);
-        assert(bits.size() == count_);
-        assert(cache.size() == count_);
-        assert(pages.size() == count_);
-        assert(capacity_slack_bytes.size() == count_);
+        ioj::soa_storage_detail::validate_column_sizes(
+            count_, source, operation, bytes, bits, cache, pages, capacity_slack_bytes);
     }
     template <bool Enabled = Const>
     SelectionTableResolvedViewImpl(SelectionTableResolvedViewImpl<false> const& other)

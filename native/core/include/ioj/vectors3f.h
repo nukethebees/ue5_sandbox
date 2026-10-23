@@ -83,9 +83,7 @@ struct Vectors3fResolvedViewImpl {
                                     ys.data(),
                                     zs.data(),
                                     ioj::soa_storage_detail::checked_row_count(xs.size())} {
-        assert(xs.size() == count_);
-        assert(ys.size() == count_);
-        assert(zs.size() == count_);
+        ioj::soa_storage_detail::validate_column_sizes(count_, xs, ys, zs);
     }
     template <bool Enabled = Const>
     Vectors3fResolvedViewImpl(Vectors3fResolvedViewImpl<false> const& other)

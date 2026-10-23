@@ -72,7 +72,7 @@ struct SingleRestrictionRowsResolvedViewImpl {
     SingleRestrictionRowsResolvedViewImpl(std::span<Element<RestrictedLeaf>> restricted)
         : SingleRestrictionRowsResolvedViewImpl{
               restricted.data(), ioj::soa_storage_detail::checked_row_count(restricted.size())} {
-        assert(restricted.size() == count_);
+        ioj::soa_storage_detail::validate_column_sizes(count_, restricted);
     }
     template <bool Enabled = Const>
     SingleRestrictionRowsResolvedViewImpl(SingleRestrictionRowsResolvedViewImpl<false> const& other)

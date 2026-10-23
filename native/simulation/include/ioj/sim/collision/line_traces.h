@@ -102,12 +102,8 @@ struct LineTracesResolvedViewImpl {
                                      ends_ys.data(),
                                      ends_zs.data(),
                                      ioj::soa_storage_detail::checked_row_count(starts_xs.size())} {
-        assert(starts_xs.size() == count_);
-        assert(starts_ys.size() == count_);
-        assert(starts_zs.size() == count_);
-        assert(ends_xs.size() == count_);
-        assert(ends_ys.size() == count_);
-        assert(ends_zs.size() == count_);
+        ioj::soa_storage_detail::validate_column_sizes(
+            count_, starts_xs, starts_ys, starts_zs, ends_xs, ends_ys, ends_zs);
     }
     template <bool Enabled = Const>
     LineTracesResolvedViewImpl(LineTracesResolvedViewImpl<false> const& other)

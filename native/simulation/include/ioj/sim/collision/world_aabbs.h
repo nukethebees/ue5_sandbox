@@ -101,12 +101,8 @@ struct WorldAABBsResolvedViewImpl {
                                      max_ys.data(),
                                      max_zs.data(),
                                      ioj::soa_storage_detail::checked_row_count(min_xs.size())} {
-        assert(min_xs.size() == count_);
-        assert(min_ys.size() == count_);
-        assert(min_zs.size() == count_);
-        assert(max_xs.size() == count_);
-        assert(max_ys.size() == count_);
-        assert(max_zs.size() == count_);
+        ioj::soa_storage_detail::validate_column_sizes(
+            count_, min_xs, min_ys, min_zs, max_xs, max_ys, max_zs);
     }
     template <bool Enabled = Const>
     WorldAABBsResolvedViewImpl(WorldAABBsResolvedViewImpl<false> const& other)

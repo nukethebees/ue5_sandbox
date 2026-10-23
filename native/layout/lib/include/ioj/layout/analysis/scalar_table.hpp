@@ -144,15 +144,16 @@ struct ScalarTableResolvedViewImpl {
                                       float_encoding.data(),
                                       varint_encoding.data(),
                                       ioj::soa_storage_detail::checked_row_count(type.size())} {
-        assert(type.size() == count_);
-        assert(integer_domain.size() == count_);
-        assert(enum_domain.size() == count_);
-        assert(optional_sentinel_encoding.size() == count_);
-        assert(optional_presence_encoding.size() == count_);
-        assert(quantized_encoding.size() == count_);
-        assert(fixed_encoding.size() == count_);
-        assert(float_encoding.size() == count_);
-        assert(varint_encoding.size() == count_);
+        ioj::soa_storage_detail::validate_column_sizes(count_,
+                                                       type,
+                                                       integer_domain,
+                                                       enum_domain,
+                                                       optional_sentinel_encoding,
+                                                       optional_presence_encoding,
+                                                       quantized_encoding,
+                                                       fixed_encoding,
+                                                       float_encoding,
+                                                       varint_encoding);
     }
     template <bool Enabled = Const>
     ScalarTableResolvedViewImpl(ScalarTableResolvedViewImpl<false> const& other)

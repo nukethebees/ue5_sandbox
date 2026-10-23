@@ -159,19 +159,20 @@ struct EntityCellDataResolvedViewImpl {
               max_cell_zs.data(),
               entity_ids.data(),
               ioj::soa_storage_detail::checked_row_count(min_point_xs.size())} {
-        assert(min_point_xs.size() == count_);
-        assert(min_point_ys.size() == count_);
-        assert(min_point_zs.size() == count_);
-        assert(max_point_xs.size() == count_);
-        assert(max_point_ys.size() == count_);
-        assert(max_point_zs.size() == count_);
-        assert(min_cell_xs.size() == count_);
-        assert(min_cell_ys.size() == count_);
-        assert(min_cell_zs.size() == count_);
-        assert(max_cell_xs.size() == count_);
-        assert(max_cell_ys.size() == count_);
-        assert(max_cell_zs.size() == count_);
-        assert(entity_ids.size() == count_);
+        ioj::soa_storage_detail::validate_column_sizes(count_,
+                                                       min_point_xs,
+                                                       min_point_ys,
+                                                       min_point_zs,
+                                                       max_point_xs,
+                                                       max_point_ys,
+                                                       max_point_zs,
+                                                       min_cell_xs,
+                                                       min_cell_ys,
+                                                       min_cell_zs,
+                                                       max_cell_xs,
+                                                       max_cell_ys,
+                                                       max_cell_zs,
+                                                       entity_ids);
     }
     template <bool Enabled = Const>
     EntityCellDataResolvedViewImpl(EntityCellDataResolvedViewImpl<false> const& other)

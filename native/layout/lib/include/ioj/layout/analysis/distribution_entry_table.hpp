@@ -123,13 +123,14 @@ struct DistributionEntryTableResolvedViewImpl {
               weighted_extent_bytes.data(),
               weighted_slack_bytes.data(),
               ioj::soa_storage_detail::checked_row_count(component.size())} {
-        assert(component.size() == count_);
-        assert(value.size() == count_);
-        assert(weight.size() == count_);
-        assert(extent_bytes.size() == count_);
-        assert(slack_bytes.size() == count_);
-        assert(weighted_extent_bytes.size() == count_);
-        assert(weighted_slack_bytes.size() == count_);
+        ioj::soa_storage_detail::validate_column_sizes(count_,
+                                                       component,
+                                                       value,
+                                                       weight,
+                                                       extent_bytes,
+                                                       slack_bytes,
+                                                       weighted_extent_bytes,
+                                                       weighted_slack_bytes);
     }
     template <bool Enabled = Const>
     DistributionEntryTableResolvedViewImpl(

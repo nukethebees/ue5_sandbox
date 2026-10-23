@@ -94,10 +94,7 @@ struct FighterOrderQueueResolvedViewImpl {
               tasks.data(),
               targets.data(),
               ioj::soa_storage_detail::checked_row_count(entity_ids.size())} {
-        assert(entity_ids.size() == count_);
-        assert(orders.size() == count_);
-        assert(tasks.size() == count_);
-        assert(targets.size() == count_);
+        ioj::soa_storage_detail::validate_column_sizes(count_, entity_ids, orders, tasks, targets);
     }
     template <bool Enabled = Const>
     FighterOrderQueueResolvedViewImpl(FighterOrderQueueResolvedViewImpl<false> const& other)

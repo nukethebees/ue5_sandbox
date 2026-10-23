@@ -105,11 +105,8 @@ struct CodeTableResolvedViewImpl {
                                     code.data(),
                                     integer_value.data(),
                                     ioj::soa_storage_detail::checked_row_count(name.size())} {
-        assert(name.size() == count_);
-        assert(sentinel.size() == count_);
-        assert(count_sentinel.size() == count_);
-        assert(code.size() == count_);
-        assert(integer_value.size() == count_);
+        ioj::soa_storage_detail::validate_column_sizes(
+            count_, name, sentinel, count_sentinel, code, integer_value);
     }
     template <bool Enabled = Const>
     CodeTableResolvedViewImpl(CodeTableResolvedViewImpl<false> const& other)

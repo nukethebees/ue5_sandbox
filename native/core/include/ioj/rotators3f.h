@@ -83,9 +83,7 @@ struct Rotators3fResolvedViewImpl {
                                      yaws.data(),
                                      rolls.data(),
                                      ioj::soa_storage_detail::checked_row_count(pitches.size())} {
-        assert(pitches.size() == count_);
-        assert(yaws.size() == count_);
-        assert(rolls.size() == count_);
+        ioj::soa_storage_detail::validate_column_sizes(count_, pitches, yaws, rolls);
     }
     template <bool Enabled = Const>
     Rotators3fResolvedViewImpl(Rotators3fResolvedViewImpl<false> const& other)

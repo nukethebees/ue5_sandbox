@@ -146,16 +146,17 @@ struct ComponentTableResolvedViewImpl {
               padding_before_bytes.data(),
               slack_bytes.data(),
               ioj::soa_storage_detail::checked_row_count(parent.size())} {
-        assert(parent.size() == count_);
-        assert(name.size() == count_);
-        assert(tag.size() == count_);
-        assert(semantic_type.size() == count_);
-        assert(element_count.size() == count_);
-        assert(element_facts.size() == count_);
-        assert(offset_bytes.size() == count_);
-        assert(extent_bytes.size() == count_);
-        assert(padding_before_bytes.size() == count_);
-        assert(slack_bytes.size() == count_);
+        ioj::soa_storage_detail::validate_column_sizes(count_,
+                                                       parent,
+                                                       name,
+                                                       tag,
+                                                       semantic_type,
+                                                       element_count,
+                                                       element_facts,
+                                                       offset_bytes,
+                                                       extent_bytes,
+                                                       padding_before_bytes,
+                                                       slack_bytes);
     }
     template <bool Enabled = Const>
     ComponentTableResolvedViewImpl(ComponentTableResolvedViewImpl<false> const& other)

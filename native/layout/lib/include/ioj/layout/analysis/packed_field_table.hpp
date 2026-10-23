@@ -249,30 +249,31 @@ struct PackedFieldTableResolvedViewImpl {
               unused_codes.data(),
               codes.data(),
               ioj::soa_storage_detail::checked_row_count(parent.size())} {
-        assert(parent.size() == count_);
-        assert(segment.size() == count_);
-        assert(name.size() == count_);
-        assert(semantic_type.size() == count_);
-        assert(logical_type.size() == count_);
-        assert(kind.size() == count_);
-        assert(reserved.size() == count_);
-        assert(schema_bit_width.size() == count_);
-        assert(schema_bit_width_auto.size() == count_);
-        assert(bit_width.size() == count_);
-        assert(overridden.size() == count_);
-        assert(least_significant_bit.size() == count_);
-        assert(most_significant_bit.size() == count_);
-        assert(maximum_unsigned_value.size() == count_);
-        assert(minimum_signed_value.size() == count_);
-        assert(maximum_signed_value.size() == count_);
-        assert(minimum_semantic_value.size() == count_);
-        assert(maximum_semantic_value.size() == count_);
-        assert(semantic_value_count.size() == count_);
-        assert(sentinel_code_count.size() == count_);
-        assert(required_code_count.size() == count_);
-        assert(minimum_required_bits.size() == count_);
-        assert(unused_codes.size() == count_);
-        assert(codes.size() == count_);
+        ioj::soa_storage_detail::validate_column_sizes(count_,
+                                                       parent,
+                                                       segment,
+                                                       name,
+                                                       semantic_type,
+                                                       logical_type,
+                                                       kind,
+                                                       reserved,
+                                                       schema_bit_width,
+                                                       schema_bit_width_auto,
+                                                       bit_width,
+                                                       overridden,
+                                                       least_significant_bit,
+                                                       most_significant_bit,
+                                                       maximum_unsigned_value,
+                                                       minimum_signed_value,
+                                                       maximum_signed_value,
+                                                       minimum_semantic_value,
+                                                       maximum_semantic_value,
+                                                       semantic_value_count,
+                                                       sentinel_code_count,
+                                                       required_code_count,
+                                                       minimum_required_bits,
+                                                       unused_codes,
+                                                       codes);
     }
     template <bool Enabled = Const>
     PackedFieldTableResolvedViewImpl(PackedFieldTableResolvedViewImpl<false> const& other)

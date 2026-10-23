@@ -778,7 +778,7 @@ auto emit_resolved_views(LoweringContext& context,
     std::vector<FunctionParameterId> spans;
     std::vector<MemberInitializerId> initializers;
     std::vector<std::string> span_arguments;
-    std::vector<NodeId> span_checks;
+    std::vector<Expr> size_validation_arguments{ir.named("count_")};
     std::vector<MemberInitializerId> conversions;
     NodeListBuilder validation{ir};
     std::vector<Expr> validation_arguments{ir.named("count_")};
@@ -792,7 +792,7 @@ auto emit_resolved_views(LoweringContext& context,
             ir.member_initializer(ir.strings.intern(pointer_name(column)),
                                   ir.store_text("other." + pointer_name(column))));
         span_arguments.push_back(name + ".data()");
-        span_checks.push_back(ir.raw("assert(" + name + ".size() == count_);"));
+        size_validation_arguments.push_back(ir.named(name));
         validation_arguments.push_back(ir.named(pointer_name(column)));
     }
     validation.add(ir.expr_stmt(ir.call(
@@ -811,10 +811,12 @@ auto emit_resolved_views(LoweringContext& context,
                              ".size())");
     auto const span_constructor{ir.constructor(ir.strings.intern(implementation))};
     ir.set_function_parameters(span_constructor, spans);
-    ir.set_function_body(span_constructor,
-                         span_checks,
-                         {ir.member_initializer(ir.strings.intern(implementation),
-                                                ir.store_text(join(span_arguments, ", ")))});
+    ir.set_function_body(
+        span_constructor,
+        {ir.expr_stmt(ir.call(ir.named("ioj::soa_storage_detail::validate_column_sizes"),
+                              size_validation_arguments))},
+        {ir.member_initializer(ir.strings.intern(implementation),
+                               ir.store_text(join(span_arguments, ", ")))});
     children.add(inline_function(context, span_constructor)).new_lines(1);
 
     conversions.push_back(

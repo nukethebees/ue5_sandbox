@@ -88,9 +88,8 @@ struct DirectDamageEventsResolvedViewImpl {
               damage_amounts.data(),
               instigators.data(),
               ioj::soa_storage_detail::checked_row_count(damaged_entities.size())} {
-        assert(damaged_entities.size() == count_);
-        assert(damage_amounts.size() == count_);
-        assert(instigators.size() == count_);
+        ioj::soa_storage_detail::validate_column_sizes(
+            count_, damaged_entities, damage_amounts, instigators);
     }
     template <bool Enabled = Const>
     DirectDamageEventsResolvedViewImpl(DirectDamageEventsResolvedViewImpl<false> const& other)

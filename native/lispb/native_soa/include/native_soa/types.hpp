@@ -119,7 +119,7 @@ struct PointerAResolvedViewImpl {
     PointerAResolvedViewImpl(std::span<Element<PointerB*>> others)
         : PointerAResolvedViewImpl{others.data(),
                                    ioj::soa_storage_detail::checked_row_count(others.size())} {
-        assert(others.size() == count_);
+        ioj::soa_storage_detail::validate_column_sizes(count_, others);
     }
     template <bool Enabled = Const>
     PointerAResolvedViewImpl(PointerAResolvedViewImpl<false> const& other)
@@ -459,7 +459,7 @@ struct PointerBResolvedViewImpl {
     PointerBResolvedViewImpl(std::span<Element<PointerA*>> others)
         : PointerBResolvedViewImpl{others.data(),
                                    ioj::soa_storage_detail::checked_row_count(others.size())} {
-        assert(others.size() == count_);
+        ioj::soa_storage_detail::validate_column_sizes(count_, others);
     }
     template <bool Enabled = Const>
     PointerBResolvedViewImpl(PointerBResolvedViewImpl<false> const& other)
@@ -799,7 +799,7 @@ struct ReverseBResolvedViewImpl {
     ReverseBResolvedViewImpl(std::span<Element<ReverseA*>> others)
         : ReverseBResolvedViewImpl{others.data(),
                                    ioj::soa_storage_detail::checked_row_count(others.size())} {
-        assert(others.size() == count_);
+        ioj::soa_storage_detail::validate_column_sizes(count_, others);
     }
     template <bool Enabled = Const>
     ReverseBResolvedViewImpl(ReverseBResolvedViewImpl<false> const& other)
@@ -1139,7 +1139,7 @@ struct ReverseAResolvedViewImpl {
     ReverseAResolvedViewImpl(std::span<Element<ReverseB*>> others)
         : ReverseAResolvedViewImpl{others.data(),
                                    ioj::soa_storage_detail::checked_row_count(others.size())} {
-        assert(others.size() == count_);
+        ioj::soa_storage_detail::validate_column_sizes(count_, others);
     }
     template <bool Enabled = Const>
     ReverseAResolvedViewImpl(ReverseAResolvedViewImpl<false> const& other)
@@ -1484,7 +1484,7 @@ struct MixedRowsResolvedViewImpl {
     MixedRowsResolvedViewImpl(std::span<Element<MixedRecord*>> records)
         : MixedRowsResolvedViewImpl{records.data(),
                                     ioj::soa_storage_detail::checked_row_count(records.size())} {
-        assert(records.size() == count_);
+        ioj::soa_storage_detail::validate_column_sizes(count_, records);
     }
     template <bool Enabled = Const>
     MixedRowsResolvedViewImpl(MixedRowsResolvedViewImpl<false> const& other)
@@ -1839,8 +1839,7 @@ struct PairRowsResolvedViewImpl {
         : PairRowsResolvedViewImpl{pairs.data(),
                                    pointers.data(),
                                    ioj::soa_storage_detail::checked_row_count(pairs.size())} {
-        assert(pairs.size() == count_);
-        assert(pointers.size() == count_);
+        ioj::soa_storage_detail::validate_column_sizes(count_, pairs, pointers);
     }
     template <bool Enabled = Const>
     PairRowsResolvedViewImpl(PairRowsResolvedViewImpl<false> const& other)
@@ -2213,9 +2212,7 @@ struct VectorsResolvedViewImpl {
                                   ys.data(),
                                   zs.data(),
                                   ioj::soa_storage_detail::checked_row_count(xs.size())} {
-        assert(xs.size() == count_);
-        assert(ys.size() == count_);
-        assert(zs.size() == count_);
+        ioj::soa_storage_detail::validate_column_sizes(count_, xs, ys, zs);
     }
     template <bool Enabled = Const>
     VectorsResolvedViewImpl(VectorsResolvedViewImpl<false> const& other)
@@ -2637,13 +2634,14 @@ struct SingleRowsResolvedViewImpl {
                                      velocities_ys.data(),
                                      velocities_zs.data(),
                                      ioj::soa_storage_detail::checked_row_count(values.size())} {
-        assert(values.size() == count_);
-        assert(positions_xs.size() == count_);
-        assert(positions_ys.size() == count_);
-        assert(positions_zs.size() == count_);
-        assert(velocities_xs.size() == count_);
-        assert(velocities_ys.size() == count_);
-        assert(velocities_zs.size() == count_);
+        ioj::soa_storage_detail::validate_column_sizes(count_,
+                                                       values,
+                                                       positions_xs,
+                                                       positions_ys,
+                                                       positions_zs,
+                                                       velocities_xs,
+                                                       velocities_ys,
+                                                       velocities_zs);
     }
     template <bool Enabled = Const>
     SingleRowsResolvedViewImpl(SingleRowsResolvedViewImpl<false> const& other)
@@ -3349,14 +3347,8 @@ struct SingleAlignmentRowsResolvedViewImpl {
               aligned64.data(),
               aligned256.data(),
               ioj::soa_storage_detail::checked_row_count(bytes.size())} {
-        assert(bytes.size() == count_);
-        assert(odd.size() == count_);
-        assert(aligned32.size() == count_);
-        assert(nested_xs.size() == count_);
-        assert(nested_ys.size() == count_);
-        assert(nested_zs.size() == count_);
-        assert(aligned64.size() == count_);
-        assert(aligned256.size() == count_);
+        ioj::soa_storage_detail::validate_column_sizes(
+            count_, bytes, odd, aligned32, nested_xs, nested_ys, nested_zs, aligned64, aligned256);
     }
     template <bool Enabled = Const>
     SingleAlignmentRowsResolvedViewImpl(SingleAlignmentRowsResolvedViewImpl<false> const& other)
@@ -4026,8 +4018,7 @@ struct ApiResolvedView_positionsImpl {
               positions_xs.data(),
               positions_ys.data(),
               ioj::soa_storage_detail::checked_row_count(positions_xs.size())} {
-        assert(positions_xs.size() == count_);
-        assert(positions_ys.size() == count_);
+        ioj::soa_storage_detail::validate_column_sizes(count_, positions_xs, positions_ys);
     }
     template <bool Enabled = Const>
     ApiResolvedView_positionsImpl(ApiResolvedView_positionsImpl<false> const& other)
@@ -4142,10 +4133,8 @@ struct ApiResolvedViewImpl {
                               positions_xs.data(),
                               positions_ys.data(),
                               ioj::soa_storage_detail::checked_row_count(values.size())} {
-        assert(values.size() == count_);
-        assert(masks.size() == count_);
-        assert(positions_xs.size() == count_);
-        assert(positions_ys.size() == count_);
+        ioj::soa_storage_detail::validate_column_sizes(
+            count_, values, masks, positions_xs, positions_ys);
     }
     template <bool Enabled = Const>
     ApiResolvedViewImpl(ApiResolvedViewImpl<false> const& other)
@@ -4711,8 +4700,7 @@ struct EquivalentOwnerResolvedViewImpl {
     EquivalentOwnerResolvedViewImpl(std::span<Element<float>> xs, std::span<Element<float>> ys)
         : EquivalentOwnerResolvedViewImpl{
               xs.data(), ys.data(), ioj::soa_storage_detail::checked_row_count(xs.size())} {
-        assert(xs.size() == count_);
-        assert(ys.size() == count_);
+        ioj::soa_storage_detail::validate_column_sizes(count_, xs, ys);
     }
     template <bool Enabled = Const>
     EquivalentOwnerResolvedViewImpl(EquivalentOwnerResolvedViewImpl<false> const& other)
@@ -5121,9 +5109,7 @@ struct AccessorOwnerResolvedViewImpl {
               vertical.data(),
               depth.data(),
               ioj::soa_storage_detail::checked_row_count(horizontal.size())} {
-        assert(horizontal.size() == count_);
-        assert(vertical.size() == count_);
-        assert(depth.size() == count_);
+        ioj::soa_storage_detail::validate_column_sizes(count_, horizontal, vertical, depth);
     }
     template <bool Enabled = Const>
     AccessorOwnerResolvedViewImpl(AccessorOwnerResolvedViewImpl<false> const& other)

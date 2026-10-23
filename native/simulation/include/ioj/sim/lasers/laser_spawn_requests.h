@@ -171,20 +171,21 @@ struct LaserSpawnRequestsResolvedViewImpl {
               instigator_ids.data(),
               sources.data(),
               ioj::soa_storage_detail::checked_row_count(locations_xs.size())} {
-        assert(locations_xs.size() == count_);
-        assert(locations_ys.size() == count_);
-        assert(locations_zs.size() == count_);
-        assert(rotations_pitches.size() == count_);
-        assert(rotations_yaws.size() == count_);
-        assert(rotations_rolls.size() == count_);
-        assert(base_velocities_xs.size() == count_);
-        assert(base_velocities_ys.size() == count_);
-        assert(base_velocities_zs.size() == count_);
-        assert(damages.size() == count_);
-        assert(speeds.size() == count_);
-        assert(max_distances.size() == count_);
-        assert(instigator_ids.size() == count_);
-        assert(sources.size() == count_);
+        ioj::soa_storage_detail::validate_column_sizes(count_,
+                                                       locations_xs,
+                                                       locations_ys,
+                                                       locations_zs,
+                                                       rotations_pitches,
+                                                       rotations_yaws,
+                                                       rotations_rolls,
+                                                       base_velocities_xs,
+                                                       base_velocities_ys,
+                                                       base_velocities_zs,
+                                                       damages,
+                                                       speeds,
+                                                       max_distances,
+                                                       instigator_ids,
+                                                       sources);
     }
     template <bool Enabled = Const>
     LaserSpawnRequestsResolvedViewImpl(LaserSpawnRequestsResolvedViewImpl<false> const& other)

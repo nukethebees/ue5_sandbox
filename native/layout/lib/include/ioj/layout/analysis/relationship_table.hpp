@@ -100,10 +100,7 @@ struct RelationshipTableResolvedViewImpl {
               relationship.data(),
               metrics.data(),
               ioj::soa_storage_detail::checked_row_count(owner.size())} {
-        assert(owner.size() == count_);
-        assert(field.size() == count_);
-        assert(relationship.size() == count_);
-        assert(metrics.size() == count_);
+        ioj::soa_storage_detail::validate_column_sizes(count_, owner, field, relationship, metrics);
     }
     template <bool Enabled = Const>
     RelationshipTableResolvedViewImpl(RelationshipTableResolvedViewImpl<false> const& other)

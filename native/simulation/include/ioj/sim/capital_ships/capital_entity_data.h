@@ -157,18 +157,19 @@ struct CapitalEntityDataResolvedViewImpl {
               fighter_id_spans.data(),
               target_ids.data(),
               ioj::soa_storage_detail::checked_row_count(entity_ids.size())} {
-        assert(entity_ids.size() == count_);
-        assert(locations_xs.size() == count_);
-        assert(locations_ys.size() == count_);
-        assert(locations_zs.size() == count_);
-        assert(rotations_pitches.size() == count_);
-        assert(rotations_yaws.size() == count_);
-        assert(rotations_rolls.size() == count_);
-        assert(fighter_spawn_timers.size() == count_);
-        assert(fighter_spawn_cooldowns.size() == count_);
-        assert(teams.size() == count_);
-        assert(fighter_id_spans.size() == count_);
-        assert(target_ids.size() == count_);
+        ioj::soa_storage_detail::validate_column_sizes(count_,
+                                                       entity_ids,
+                                                       locations_xs,
+                                                       locations_ys,
+                                                       locations_zs,
+                                                       rotations_pitches,
+                                                       rotations_yaws,
+                                                       rotations_rolls,
+                                                       fighter_spawn_timers,
+                                                       fighter_spawn_cooldowns,
+                                                       teams,
+                                                       fighter_id_spans,
+                                                       target_ids);
     }
     template <bool Enabled = Const>
     CapitalEntityDataResolvedViewImpl(CapitalEntityDataResolvedViewImpl<false> const& other)

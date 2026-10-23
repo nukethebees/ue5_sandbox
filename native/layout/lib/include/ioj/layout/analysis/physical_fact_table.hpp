@@ -115,12 +115,13 @@ struct PhysicalFactTableResolvedViewImpl {
               provenance.data(),
               origin.data(),
               ioj::soa_storage_detail::checked_row_count(size_bytes.size())} {
-        assert(size_bytes.size() == count_);
-        assert(alignment_bytes.size() == count_);
-        assert(signedness.size() == count_);
-        assert(unsigned_value_bits.size() == count_);
-        assert(provenance.size() == count_);
-        assert(origin.size() == count_);
+        ioj::soa_storage_detail::validate_column_sizes(count_,
+                                                       size_bytes,
+                                                       alignment_bytes,
+                                                       signedness,
+                                                       unsigned_value_bits,
+                                                       provenance,
+                                                       origin);
     }
     template <bool Enabled = Const>
     PhysicalFactTableResolvedViewImpl(PhysicalFactTableResolvedViewImpl<false> const& other)

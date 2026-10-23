@@ -82,8 +82,7 @@ struct EntityEntityOverlapsResolvedViewImpl {
               first_entities.data(),
               second_entities.data(),
               ioj::soa_storage_detail::checked_row_count(first_entities.size())} {
-        assert(first_entities.size() == count_);
-        assert(second_entities.size() == count_);
+        ioj::soa_storage_detail::validate_column_sizes(count_, first_entities, second_entities);
     }
     template <bool Enabled = Const>
     EntityEntityOverlapsResolvedViewImpl(EntityEntityOverlapsResolvedViewImpl<false> const& other)
@@ -469,8 +468,7 @@ struct EntityStaticOverlapsResolvedViewImpl {
               entities.data(),
               static_geometry_indices.data(),
               ioj::soa_storage_detail::checked_row_count(entities.size())} {
-        assert(entities.size() == count_);
-        assert(static_geometry_indices.size() == count_);
+        ioj::soa_storage_detail::validate_column_sizes(count_, entities, static_geometry_indices);
     }
     template <bool Enabled = Const>
     EntityStaticOverlapsResolvedViewImpl(EntityStaticOverlapsResolvedViewImpl<false> const& other)

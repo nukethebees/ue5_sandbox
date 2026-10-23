@@ -117,13 +117,14 @@ struct LaserHitDetailsResolvedViewImpl {
               emission_directions_zs.data(),
               sources.data(),
               ioj::soa_storage_detail::checked_row_count(locations_xs.size())} {
-        assert(locations_xs.size() == count_);
-        assert(locations_ys.size() == count_);
-        assert(locations_zs.size() == count_);
-        assert(emission_directions_xs.size() == count_);
-        assert(emission_directions_ys.size() == count_);
-        assert(emission_directions_zs.size() == count_);
-        assert(sources.size() == count_);
+        ioj::soa_storage_detail::validate_column_sizes(count_,
+                                                       locations_xs,
+                                                       locations_ys,
+                                                       locations_zs,
+                                                       emission_directions_xs,
+                                                       emission_directions_ys,
+                                                       emission_directions_zs,
+                                                       sources);
     }
     template <bool Enabled = Const>
     LaserHitDetailsResolvedViewImpl(LaserHitDetailsResolvedViewImpl<false> const& other)

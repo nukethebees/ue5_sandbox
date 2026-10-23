@@ -100,11 +100,8 @@ struct RangeQueryMatchesResolvedViewImpl {
               directions_ys.data(),
               directions_zs.data(),
               ioj::soa_storage_detail::checked_row_count(entities.size())} {
-        assert(entities.size() == count_);
-        assert(distances.size() == count_);
-        assert(directions_xs.size() == count_);
-        assert(directions_ys.size() == count_);
-        assert(directions_zs.size() == count_);
+        ioj::soa_storage_detail::validate_column_sizes(
+            count_, entities, distances, directions_xs, directions_ys, directions_zs);
     }
     template <bool Enabled = Const>
     RangeQueryMatchesResolvedViewImpl(RangeQueryMatchesResolvedViewImpl<false> const& other)

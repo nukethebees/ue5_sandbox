@@ -210,16 +210,17 @@ struct HistoryRowsResolvedViewImpl {
               active_lasers.data(),
               lasers_fired.data(),
               ioj::soa_storage_detail::checked_row_count(completed_ticks.size())} {
-        assert(completed_ticks.size() == count_);
-        assert(validity_masks.size() == count_);
-        assert(active_entities.size() == count_);
-        assert(active_entities_by_type.size() == count_);
-        assert(active_entities_by_team_and_type.size() == count_);
-        assert(spawned_entities.size() == count_);
-        assert(destroyed_entities.size() == count_);
-        assert(kills.size() == count_);
-        assert(active_lasers.size() == count_);
-        assert(lasers_fired.size() == count_);
+        ioj::soa_storage_detail::validate_column_sizes(count_,
+                                                       completed_ticks,
+                                                       validity_masks,
+                                                       active_entities,
+                                                       active_entities_by_type,
+                                                       active_entities_by_team_and_type,
+                                                       spawned_entities,
+                                                       destroyed_entities,
+                                                       kills,
+                                                       active_lasers,
+                                                       lasers_fired);
     }
     template <bool Enabled = Const>
     HistoryRowsResolvedViewImpl(HistoryRowsResolvedViewImpl<false> const& other)

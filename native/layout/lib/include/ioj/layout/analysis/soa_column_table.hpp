@@ -183,21 +183,22 @@ struct SoaColumnTableResolvedViewImpl {
               complete_elements_per_page.data(),
               cache_line_tiling.data(),
               ioj::soa_storage_detail::checked_row_count(parent.size())} {
-        assert(parent.size() == count_);
-        assert(name.size() == count_);
-        assert(semantic_type.size() == count_);
-        assert(schema_type.size() == count_);
-        assert(physical_type.size() == count_);
-        assert(overridden.size() == count_);
-        assert(type_facts.size() == count_);
-        assert(total_bytes.size() == count_);
-        assert(allocation_offset_bytes.size() == count_);
-        assert(padding_before_bytes.size() == count_);
-        assert(minimum_cache_lines.size() == count_);
-        assert(elements_per_cache_line.size() == count_);
-        assert(minimum_pages.size() == count_);
-        assert(complete_elements_per_page.size() == count_);
-        assert(cache_line_tiling.size() == count_);
+        ioj::soa_storage_detail::validate_column_sizes(count_,
+                                                       parent,
+                                                       name,
+                                                       semantic_type,
+                                                       schema_type,
+                                                       physical_type,
+                                                       overridden,
+                                                       type_facts,
+                                                       total_bytes,
+                                                       allocation_offset_bytes,
+                                                       padding_before_bytes,
+                                                       minimum_cache_lines,
+                                                       elements_per_cache_line,
+                                                       minimum_pages,
+                                                       complete_elements_per_page,
+                                                       cache_line_tiling);
     }
     template <bool Enabled = Const>
     SoaColumnTableResolvedViewImpl(SoaColumnTableResolvedViewImpl<false> const& other)

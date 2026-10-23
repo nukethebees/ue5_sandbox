@@ -183,22 +183,23 @@ struct LaserEntitiesResolvedViewImpl {
                                         initial_lifetimes.data(),
                                         spawn_times.data(),
                                         ioj::soa_storage_detail::checked_row_count(active.size())} {
-        assert(active.size() == count_);
-        assert(sources.size() == count_);
-        assert(locations_xs.size() == count_);
-        assert(locations_ys.size() == count_);
-        assert(locations_zs.size() == count_);
-        assert(rotations_pitches.size() == count_);
-        assert(rotations_yaws.size() == count_);
-        assert(rotations_rolls.size() == count_);
-        assert(velocities_xs.size() == count_);
-        assert(velocities_ys.size() == count_);
-        assert(velocities_zs.size() == count_);
-        assert(damages.size() == count_);
-        assert(lifetimes_remaining.size() == count_);
-        assert(instigator_ids.size() == count_);
-        assert(initial_lifetimes.size() == count_);
-        assert(spawn_times.size() == count_);
+        ioj::soa_storage_detail::validate_column_sizes(count_,
+                                                       active,
+                                                       sources,
+                                                       locations_xs,
+                                                       locations_ys,
+                                                       locations_zs,
+                                                       rotations_pitches,
+                                                       rotations_yaws,
+                                                       rotations_rolls,
+                                                       velocities_xs,
+                                                       velocities_ys,
+                                                       velocities_zs,
+                                                       damages,
+                                                       lifetimes_remaining,
+                                                       instigator_ids,
+                                                       initial_lifetimes,
+                                                       spawn_times);
     }
     template <bool Enabled = Const>
     LaserEntitiesResolvedViewImpl(LaserEntitiesResolvedViewImpl<false> const& other)

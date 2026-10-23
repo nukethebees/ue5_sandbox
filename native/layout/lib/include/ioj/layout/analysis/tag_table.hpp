@@ -93,10 +93,8 @@ struct TagTableResolvedViewImpl {
                                    sentinel.data(),
                                    count_sentinel.data(),
                                    ioj::soa_storage_detail::checked_row_count(name.size())} {
-        assert(name.size() == count_);
-        assert(mapped.size() == count_);
-        assert(sentinel.size() == count_);
-        assert(count_sentinel.size() == count_);
+        ioj::soa_storage_detail::validate_column_sizes(
+            count_, name, mapped, sentinel, count_sentinel);
     }
     template <bool Enabled = Const>
     TagTableResolvedViewImpl(TagTableResolvedViewImpl<false> const& other)

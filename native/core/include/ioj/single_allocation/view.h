@@ -22,6 +22,12 @@ void validate_column_pointers([[maybe_unused]] std::uint32_t const count,
     assert(count == 0 || ((columns != nullptr) && ...));
 }
 
+template <typename... Columns>
+void validate_column_sizes([[maybe_unused]] std::uint32_t const count,
+                           [[maybe_unused]] Columns const&... columns) {
+    assert(((columns.size() == count) && ...));
+}
+
 // Views borrow their owner and range. The owner must outlive them; reallocation, owner moves,
 // reset, and removal/reordering of borrowed rows invalidate them. Reacquire after invalidation.
 // Accessors trust this contract; they do not detect stale borrows.

@@ -94,10 +94,8 @@ struct EntityDeathInfoResolvedViewImpl {
               killers.data(),
               locations.data(),
               ioj::soa_storage_detail::checked_row_count(reasons.size())} {
-        assert(reasons.size() == count_);
-        assert(victims.size() == count_);
-        assert(killers.size() == count_);
-        assert(locations.size() == count_);
+        ioj::soa_storage_detail::validate_column_sizes(
+            count_, reasons, victims, killers, locations);
     }
     template <bool Enabled = Const>
     EntityDeathInfoResolvedViewImpl(EntityDeathInfoResolvedViewImpl<false> const& other)

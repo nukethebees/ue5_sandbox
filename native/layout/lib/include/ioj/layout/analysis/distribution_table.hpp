@@ -144,16 +144,17 @@ struct DistributionTableResolvedViewImpl {
               expected_selected_extent_bytes.data(),
               expected_selected_slack_bytes.data(),
               ioj::soa_storage_detail::checked_row_count(analysis.size())} {
-        assert(analysis.size() == count_);
-        assert(entries.size() == count_);
-        assert(element_count.size() == count_);
-        assert(total_weight.size() == count_);
-        assert(total_extent_bytes.size() == count_);
-        assert(total_slack_bytes.size() == count_);
-        assert(expected_extent_bytes.size() == count_);
-        assert(expected_slack_bytes.size() == count_);
-        assert(expected_selected_extent_bytes.size() == count_);
-        assert(expected_selected_slack_bytes.size() == count_);
+        ioj::soa_storage_detail::validate_column_sizes(count_,
+                                                       analysis,
+                                                       entries,
+                                                       element_count,
+                                                       total_weight,
+                                                       total_extent_bytes,
+                                                       total_slack_bytes,
+                                                       expected_extent_bytes,
+                                                       expected_slack_bytes,
+                                                       expected_selected_extent_bytes,
+                                                       expected_selected_slack_bytes);
     }
     template <bool Enabled = Const>
     DistributionTableResolvedViewImpl(DistributionTableResolvedViewImpl<false> const& other)

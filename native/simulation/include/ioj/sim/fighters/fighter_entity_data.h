@@ -462,61 +462,62 @@ struct FighterEntityDataResolvedViewImpl {
               target_distances.data(),
               target_radii.data(),
               ioj::soa_storage_detail::checked_row_count(entity_ids.size())} {
-        assert(entity_ids.size() == count_);
-        assert(integral_biases.size() == count_);
-        assert(float_biases.size() == count_);
-        assert(tasks.size() == count_);
-        assert(locations_xs.size() == count_);
-        assert(locations_ys.size() == count_);
-        assert(locations_zs.size() == count_);
-        assert(desired_move_locations_xs.size() == count_);
-        assert(desired_move_locations_ys.size() == count_);
-        assert(desired_move_locations_zs.size() == count_);
-        assert(aim_directions_xs.size() == count_);
-        assert(aim_directions_ys.size() == count_);
-        assert(aim_directions_zs.size() == count_);
-        assert(planned_aim_directions_xs.size() == count_);
-        assert(planned_aim_directions_ys.size() == count_);
-        assert(planned_aim_directions_zs.size() == count_);
-        assert(desired_aiming_directions_xs.size() == count_);
-        assert(desired_aiming_directions_ys.size() == count_);
-        assert(desired_aiming_directions_zs.size() == count_);
-        assert(movement_directions_xs.size() == count_);
-        assert(movement_directions_ys.size() == count_);
-        assert(movement_directions_zs.size() == count_);
-        assert(velocities_xs.size() == count_);
-        assert(velocities_ys.size() == count_);
-        assert(velocities_zs.size() == count_);
-        assert(move_distances.size() == count_);
-        assert(speeds.size() == count_);
-        assert(teams.size() == count_);
-        assert(parent_ids.size() == count_);
-        assert(awareness_scan_countdowns.size() == count_);
-        assert(navigation_update_countdowns_remaining_ticks.size() == count_);
-        assert(navigation_update_countdowns_periods.size() == count_);
-        assert(separation_steering_xs.size() == count_);
-        assert(separation_steering_ys.size() == count_);
-        assert(separation_steering_zs.size() == count_);
-        assert(navigation_risk_tiers.size() == count_);
-        assert(navigation_lower_risk_scan_counts.size() == count_);
-        assert(avoidance_choice_indices.size() == count_);
-        assert(avoidance_clear_scan_counts.size() == count_);
-        assert(attack_reposition_countdowns.size() == count_);
-        assert(attack_cooldowns.size() == count_);
-        assert(target_ids.size() == count_);
-        assert(target_locations_xs.size() == count_);
-        assert(target_locations_ys.size() == count_);
-        assert(target_locations_zs.size() == count_);
-        assert(target_velocities_xs.size() == count_);
-        assert(target_velocities_ys.size() == count_);
-        assert(target_velocities_zs.size() == count_);
-        assert(target_directions_xs.size() == count_);
-        assert(target_directions_ys.size() == count_);
-        assert(target_directions_zs.size() == count_);
-        assert(intercept_times.size() == count_);
-        assert(target_distance_sq.size() == count_);
-        assert(target_distances.size() == count_);
-        assert(target_radii.size() == count_);
+        ioj::soa_storage_detail::validate_column_sizes(count_,
+                                                       entity_ids,
+                                                       integral_biases,
+                                                       float_biases,
+                                                       tasks,
+                                                       locations_xs,
+                                                       locations_ys,
+                                                       locations_zs,
+                                                       desired_move_locations_xs,
+                                                       desired_move_locations_ys,
+                                                       desired_move_locations_zs,
+                                                       aim_directions_xs,
+                                                       aim_directions_ys,
+                                                       aim_directions_zs,
+                                                       planned_aim_directions_xs,
+                                                       planned_aim_directions_ys,
+                                                       planned_aim_directions_zs,
+                                                       desired_aiming_directions_xs,
+                                                       desired_aiming_directions_ys,
+                                                       desired_aiming_directions_zs,
+                                                       movement_directions_xs,
+                                                       movement_directions_ys,
+                                                       movement_directions_zs,
+                                                       velocities_xs,
+                                                       velocities_ys,
+                                                       velocities_zs,
+                                                       move_distances,
+                                                       speeds,
+                                                       teams,
+                                                       parent_ids,
+                                                       awareness_scan_countdowns,
+                                                       navigation_update_countdowns_remaining_ticks,
+                                                       navigation_update_countdowns_periods,
+                                                       separation_steering_xs,
+                                                       separation_steering_ys,
+                                                       separation_steering_zs,
+                                                       navigation_risk_tiers,
+                                                       navigation_lower_risk_scan_counts,
+                                                       avoidance_choice_indices,
+                                                       avoidance_clear_scan_counts,
+                                                       attack_reposition_countdowns,
+                                                       attack_cooldowns,
+                                                       target_ids,
+                                                       target_locations_xs,
+                                                       target_locations_ys,
+                                                       target_locations_zs,
+                                                       target_velocities_xs,
+                                                       target_velocities_ys,
+                                                       target_velocities_zs,
+                                                       target_directions_xs,
+                                                       target_directions_ys,
+                                                       target_directions_zs,
+                                                       intercept_times,
+                                                       target_distance_sq,
+                                                       target_distances,
+                                                       target_radii);
     }
     template <bool Enabled = Const>
     FighterEntityDataResolvedViewImpl(FighterEntityDataResolvedViewImpl<false> const& other)

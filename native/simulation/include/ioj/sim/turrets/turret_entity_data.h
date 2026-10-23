@@ -236,29 +236,30 @@ struct TurretEntityDataResolvedViewImpl {
               target_velocities_ys.data(),
               target_velocities_zs.data(),
               ioj::soa_storage_detail::checked_row_count(entity_ids.size())} {
-        assert(entity_ids.size() == count_);
-        assert(integral_biases.size() == count_);
-        assert(locations_xs.size() == count_);
-        assert(locations_ys.size() == count_);
-        assert(locations_zs.size() == count_);
-        assert(fire_point_locations_xs.size() == count_);
-        assert(fire_point_locations_ys.size() == count_);
-        assert(fire_point_locations_zs.size() == count_);
-        assert(rotations_pitches.size() == count_);
-        assert(rotations_yaws.size() == count_);
-        assert(rotations_rolls.size() == count_);
-        assert(teams.size() == count_);
-        assert(laser_cooldowns.size() == count_);
-        assert(laser_damages.size() == count_);
-        assert(target_refresh_countdowns_periods.size() == count_);
-        assert(target_refresh_countdowns_remaining_ticks.size() == count_);
-        assert(target_ids.size() == count_);
-        assert(target_locations_xs.size() == count_);
-        assert(target_locations_ys.size() == count_);
-        assert(target_locations_zs.size() == count_);
-        assert(target_velocities_xs.size() == count_);
-        assert(target_velocities_ys.size() == count_);
-        assert(target_velocities_zs.size() == count_);
+        ioj::soa_storage_detail::validate_column_sizes(count_,
+                                                       entity_ids,
+                                                       integral_biases,
+                                                       locations_xs,
+                                                       locations_ys,
+                                                       locations_zs,
+                                                       fire_point_locations_xs,
+                                                       fire_point_locations_ys,
+                                                       fire_point_locations_zs,
+                                                       rotations_pitches,
+                                                       rotations_yaws,
+                                                       rotations_rolls,
+                                                       teams,
+                                                       laser_cooldowns,
+                                                       laser_damages,
+                                                       target_refresh_countdowns_periods,
+                                                       target_refresh_countdowns_remaining_ticks,
+                                                       target_ids,
+                                                       target_locations_xs,
+                                                       target_locations_ys,
+                                                       target_locations_zs,
+                                                       target_velocities_xs,
+                                                       target_velocities_ys,
+                                                       target_velocities_zs);
     }
     template <bool Enabled = Const>
     TurretEntityDataResolvedViewImpl(TurretEntityDataResolvedViewImpl<false> const& other)

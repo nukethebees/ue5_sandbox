@@ -145,16 +145,17 @@ struct LevelTurretSpawnEventsResolvedViewImpl {
               healths.data(),
               laser_damages.data(),
               ioj::soa_storage_detail::checked_row_count(entity_indices.size())} {
-        assert(entity_indices.size() == count_);
-        assert(locations_xs.size() == count_);
-        assert(locations_ys.size() == count_);
-        assert(locations_zs.size() == count_);
-        assert(rotations_pitches.size() == count_);
-        assert(rotations_yaws.size() == count_);
-        assert(rotations_rolls.size() == count_);
-        assert(teams.size() == count_);
-        assert(healths.size() == count_);
-        assert(laser_damages.size() == count_);
+        ioj::soa_storage_detail::validate_column_sizes(count_,
+                                                       entity_indices,
+                                                       locations_xs,
+                                                       locations_ys,
+                                                       locations_zs,
+                                                       rotations_pitches,
+                                                       rotations_yaws,
+                                                       rotations_rolls,
+                                                       teams,
+                                                       healths,
+                                                       laser_damages);
     }
     template <bool Enabled = Const>
     LevelTurretSpawnEventsResolvedViewImpl(

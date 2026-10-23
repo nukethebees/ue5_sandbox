@@ -159,18 +159,19 @@ struct LevelCapitalSpawnEventsResolvedViewImpl {
               initial_fighter_spawn_delays.data(),
               fighter_spawn_cooldowns.data(),
               ioj::soa_storage_detail::checked_row_count(entity_indices.size())} {
-        assert(entity_indices.size() == count_);
-        assert(target_entity_indices.size() == count_);
-        assert(locations_xs.size() == count_);
-        assert(locations_ys.size() == count_);
-        assert(locations_zs.size() == count_);
-        assert(rotations_pitches.size() == count_);
-        assert(rotations_yaws.size() == count_);
-        assert(rotations_rolls.size() == count_);
-        assert(teams.size() == count_);
-        assert(healths.size() == count_);
-        assert(initial_fighter_spawn_delays.size() == count_);
-        assert(fighter_spawn_cooldowns.size() == count_);
+        ioj::soa_storage_detail::validate_column_sizes(count_,
+                                                       entity_indices,
+                                                       target_entity_indices,
+                                                       locations_xs,
+                                                       locations_ys,
+                                                       locations_zs,
+                                                       rotations_pitches,
+                                                       rotations_yaws,
+                                                       rotations_rolls,
+                                                       teams,
+                                                       healths,
+                                                       initial_fighter_spawn_delays,
+                                                       fighter_spawn_cooldowns);
     }
     template <bool Enabled = Const>
     LevelCapitalSpawnEventsResolvedViewImpl(

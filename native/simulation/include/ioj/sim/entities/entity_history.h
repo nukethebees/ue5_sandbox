@@ -129,14 +129,15 @@ struct EntityHistoryResolvedViewImpl {
               death_ticks.data(),
               death_locations.data(),
               ioj::soa_storage_detail::checked_row_count(entity_ids.size())} {
-        assert(entity_ids.size() == count_);
-        assert(entity_types.size() == count_);
-        assert(teams.size() == count_);
-        assert(kills.size() == count_);
-        assert(killed_by.size() == count_);
-        assert(life_state.size() == count_);
-        assert(death_ticks.size() == count_);
-        assert(death_locations.size() == count_);
+        ioj::soa_storage_detail::validate_column_sizes(count_,
+                                                       entity_ids,
+                                                       entity_types,
+                                                       teams,
+                                                       kills,
+                                                       killed_by,
+                                                       life_state,
+                                                       death_ticks,
+                                                       death_locations);
     }
     template <bool Enabled = Const>
     EntityHistoryResolvedViewImpl(EntityHistoryResolvedViewImpl<false> const& other)

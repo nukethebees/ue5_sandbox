@@ -188,22 +188,23 @@ struct WorkloadTableResolvedViewImpl {
               allocated_payload_bytes.data(),
               capacity_slack_bytes.data(),
               ioj::soa_storage_detail::checked_row_count(analysis.size())} {
-        assert(analysis.size() == count_);
-        assert(selections.size() == count_);
-        assert(element_count.size() == count_);
-        assert(multiplicity.size() == count_);
-        assert(bytes.size() == count_);
-        assert(bits.size() == count_);
-        assert(cache.size() == count_);
-        assert(pages.size() == count_);
-        assert(cache_capacity.size() == count_);
-        assert(packed_waste.size() == count_);
-        assert(footprint_exact.size() == count_);
-        assert(storage_bytes.size() == count_);
-        assert(full_logical_payload_bytes.size() == count_);
-        assert(unselected_payload_bytes.size() == count_);
-        assert(allocated_payload_bytes.size() == count_);
-        assert(capacity_slack_bytes.size() == count_);
+        ioj::soa_storage_detail::validate_column_sizes(count_,
+                                                       analysis,
+                                                       selections,
+                                                       element_count,
+                                                       multiplicity,
+                                                       bytes,
+                                                       bits,
+                                                       cache,
+                                                       pages,
+                                                       cache_capacity,
+                                                       packed_waste,
+                                                       footprint_exact,
+                                                       storage_bytes,
+                                                       full_logical_payload_bytes,
+                                                       unselected_payload_bytes,
+                                                       allocated_payload_bytes,
+                                                       capacity_slack_bytes);
     }
     template <bool Enabled = Const>
     WorkloadTableResolvedViewImpl(WorkloadTableResolvedViewImpl<false> const& other)
