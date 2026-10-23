@@ -54,15 +54,17 @@ namespace lispb::codegen {
 
 namespace ir_detail {
 auto node(NodeKind kind, std::size_t index) -> NodeId {
-    assert(index < 0x01000000U);
-    return NodeId{(static_cast<std::uint32_t>(kind) << 24) | static_cast<std::uint32_t>(index)};
+    assert(index <= NodeId::index_mask);
+    return NodeId{(static_cast<std::uint32_t>(kind) << NodeId::kind_shift) |
+                  static_cast<std::uint32_t>(index)};
 }
 }
 
 namespace expr_detail {
 auto handle(ExprKind kind, std::size_t index) -> Expr {
-    assert(index < 0x01000000U);
-    return Expr{(static_cast<std::uint32_t>(kind) << 24) | static_cast<std::uint32_t>(index)};
+    assert(index <= Expr::index_mask);
+    return Expr{(static_cast<std::uint32_t>(kind) << Expr::kind_shift) |
+                static_cast<std::uint32_t>(index)};
 }
 }
 

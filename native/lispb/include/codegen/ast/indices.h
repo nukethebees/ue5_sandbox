@@ -18,6 +18,7 @@ struct Enumerators;
 struct SwitchCases;
 }
 
+// Zero denotes an absent type; live IDs are one-based indices into their owning CppTypes store.
 using CppTypeId = Index<CppTypes>;
 using CppFileId = Index<CppFiles>;
 using ModuleId = Index<Modules>;

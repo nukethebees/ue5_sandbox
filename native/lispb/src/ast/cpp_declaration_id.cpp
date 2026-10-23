@@ -4,8 +4,8 @@
 
 namespace lispb::codegen {
 CppDeclarationId::CppDeclarationId(CppDeclarationKind kind, std::uint32_t index) {
-    assert(index <= 0x00ffffffU);
-    value = (static_cast<std::uint32_t>(kind) << 24) | index;
+    assert(index <= index_mask);
+    value = (static_cast<std::uint32_t>(kind) << kind_shift) | index;
 }
 CppDeclarationId::CppDeclarationId(NodeId node)
     : CppDeclarationId{static_cast<CppDeclarationKind>(

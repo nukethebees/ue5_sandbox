@@ -4,9 +4,12 @@
 #include <cstdint>
 namespace lispb::codegen {
 struct TemplateId {
+    inline static constexpr std::uint32_t index_mask{0x00ffffffu};
+    inline static constexpr std::uint32_t kind_shift{24};
+
     std::uint32_t value{};
-    auto kind() const -> TemplateKind { return static_cast<TemplateKind>(value >> 24); }
-    auto index() const -> std::uint32_t { return value & 0x00ffffffU; }
+    auto kind() const -> TemplateKind { return static_cast<TemplateKind>(value >> kind_shift); }
+    auto index() const -> std::uint32_t { return value & index_mask; }
     explicit operator bool() const { return value != 0; }
     auto operator==(TemplateId const&) const -> bool = default;
 };

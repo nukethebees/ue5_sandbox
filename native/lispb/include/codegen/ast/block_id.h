@@ -11,7 +11,7 @@ class CppIR;
 class BlockId {
   public:
     operator NodeId() const { return NodeId{value_}; }
-    auto index() const -> std::uint32_t { return value_ & 0x00ffffffU; }
+    auto index() const -> std::uint32_t { return value_ & NodeId::index_mask; }
     auto operator==(BlockId const&) const -> bool = default;
   private:
     friend class CppIR;
