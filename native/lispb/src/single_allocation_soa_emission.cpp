@@ -305,42 +305,6 @@ auto column_pointer_nodes(LoweringContext& context) -> Nodes {
     return result.build();
 }
 
-auto column_copying_nodes(LoweringContext& context, SingleAllocationModelId model) -> Nodes {
-    auto& model_store{context.ir.lowering.single_allocation_models};
-    auto const model_store_index{model_store.index(model)};
-    auto& column_store{context.ir.lowering.single_allocation_columns};
-    auto& ir{context.ir};
-    NodeListBuilder copy_body{ir};
-    copy_body.add(
-        ir.raw("auto transfer = [count](auto* dst, auto const* src) {\n    " +
-               std::string{"ioj::native_soa::transfer_n<Overlapping>(dst, src, count);\n};"}));
-    for (auto const column : context.ir.lowering.items(model_store.columns[model_store_index])) {
-        copy_body.add(ir.expr_stmt(ir.call(
-            ir.named("transfer"),
-            {ir.member_access(
-                 ir.named("destination"),
-                 context.text(column_store.flattened_identifier[column_store.index(column)])),
-             ir.member_access(
-                 ir.named("source"),
-                 context.text(column_store.flattened_identifier[column_store.index(column)]))})));
-    }
-    auto const transfer{
-        make_function(ir,
-                      "transfer_columns",
-                      "void",
-                      {ir.parameter("DataPointers<std::byte> const&", "destination"),
-                       ir.parameter("DataPointers<Byte> const&", "source"),
-                       ir.parameter("size_type", "count")},
-                      copy_body.build(),
-                      FunctionReceiver::static_)};
-    ir.set_function_template(
-        transfer,
-        ir.template_declaration(
-            {ir.value_template_parameter(ir.types.intern("bool"), ir.strings.intern("Overlapping")),
-             ir.type_template_parameter(ir.strings.intern("Byte"))}));
-    return {inline_function(context, transfer)};
-}
-
 auto permutation_node(LoweringContext& context, SingleAllocationModelId model) -> NodeId {
     auto& ir{context.ir};
     auto const& models{ir.lowering.single_allocation_models};
@@ -786,7 +750,6 @@ auto storage_implementation_nodes(LoweringContext& context, SingleAllocationMode
     auto& model_store{context.ir.lowering.single_allocation_models};
     auto const scope{schema_namespace(context, model_store.schema[model_store.index(model)])};
     auto& ir{context.ir};
-    auto copying{column_copying_nodes(context, model)};
     NodeListBuilder children{ir};
     children
         .append(adjacent(
@@ -803,11 +766,7 @@ auto storage_implementation_nodes(LoweringContext& context, SingleAllocationMode
         .new_lines(1)
         .add(ir.access(Access::private_))
         .new_lines(1)
-        .append(column_pointer_nodes(context))
-        .new_lines(2)
-        .append(section_header(context, "Typed mutations and growth"))
-        .new_lines(1)
-        .append(std::move(copying));
+        .append(column_pointer_nodes(context));
 
     return children.build();
 }

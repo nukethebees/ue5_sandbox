@@ -726,43 +726,6 @@ struct TurretEntityData
         -> DataPointers<Byte> {
         return Layout::make_data<DataPointers<Byte>>(data, blocks);
     }
-
-    /* **************************************** */
-    // Typed mutations and growth
-    /* **************************************** */
-    template <bool Overlapping, typename Byte>
-    static void transfer_columns(DataPointers<std::byte> const& destination,
-                                 DataPointers<Byte> const& source,
-                                 size_type count) {
-        auto transfer = [count](auto* dst, auto const* src) {
-            ioj::native_soa::transfer_n<Overlapping>(dst, src, count);
-        };
-        transfer(destination.entity_ids, source.entity_ids);
-        transfer(destination.integral_biases, source.integral_biases);
-        transfer(destination.locations_xs, source.locations_xs);
-        transfer(destination.locations_ys, source.locations_ys);
-        transfer(destination.locations_zs, source.locations_zs);
-        transfer(destination.fire_point_locations_xs, source.fire_point_locations_xs);
-        transfer(destination.fire_point_locations_ys, source.fire_point_locations_ys);
-        transfer(destination.fire_point_locations_zs, source.fire_point_locations_zs);
-        transfer(destination.rotations_pitches, source.rotations_pitches);
-        transfer(destination.rotations_yaws, source.rotations_yaws);
-        transfer(destination.rotations_rolls, source.rotations_rolls);
-        transfer(destination.teams, source.teams);
-        transfer(destination.laser_cooldowns, source.laser_cooldowns);
-        transfer(destination.laser_damages, source.laser_damages);
-        transfer(destination.target_refresh_countdowns_periods,
-                 source.target_refresh_countdowns_periods);
-        transfer(destination.target_refresh_countdowns_remaining_ticks,
-                 source.target_refresh_countdowns_remaining_ticks);
-        transfer(destination.target_ids, source.target_ids);
-        transfer(destination.target_locations_xs, source.target_locations_xs);
-        transfer(destination.target_locations_ys, source.target_locations_ys);
-        transfer(destination.target_locations_zs, source.target_locations_zs);
-        transfer(destination.target_velocities_xs, source.target_velocities_xs);
-        transfer(destination.target_velocities_ys, source.target_velocities_ys);
-        transfer(destination.target_velocities_zs, source.target_velocities_zs);
-    }
   public:
     auto entity_ids(this auto& self) { return self.get_view().entity_ids(); }
     auto integral_biases(this auto& self) { return self.get_view().integral_biases(); }

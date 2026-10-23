@@ -323,24 +323,6 @@ struct LevelSpinnerSpawnEvents
         -> DataPointers<Byte> {
         return Layout::make_data<DataPointers<Byte>>(data, blocks);
     }
-
-    /* **************************************** */
-    // Typed mutations and growth
-    /* **************************************** */
-    template <bool Overlapping, typename Byte>
-    static void transfer_columns(DataPointers<std::byte> const& destination,
-                                 DataPointers<Byte> const& source,
-                                 size_type count) {
-        auto transfer = [count](auto* dst, auto const* src) {
-            ioj::native_soa::transfer_n<Overlapping>(dst, src, count);
-        };
-        transfer(destination.entity_indices, source.entity_indices);
-        transfer(destination.locations_xs, source.locations_xs);
-        transfer(destination.locations_ys, source.locations_ys);
-        transfer(destination.locations_zs, source.locations_zs);
-        transfer(destination.yaws, source.yaws);
-        transfer(destination.initial_fire_point_indices, source.initial_fire_point_indices);
-    }
   public:
     auto entity_indices(this auto& self) { return self.get_view().entity_indices(); }
     auto view_locations(this auto& self) { return self.get_view().view_locations(); }

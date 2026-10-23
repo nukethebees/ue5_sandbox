@@ -285,23 +285,6 @@ struct RangeQueryMatches
         -> DataPointers<Byte> {
         return Layout::make_data<DataPointers<Byte>>(data, blocks);
     }
-
-    /* **************************************** */
-    // Typed mutations and growth
-    /* **************************************** */
-    template <bool Overlapping, typename Byte>
-    static void transfer_columns(DataPointers<std::byte> const& destination,
-                                 DataPointers<Byte> const& source,
-                                 size_type count) {
-        auto transfer = [count](auto* dst, auto const* src) {
-            ioj::native_soa::transfer_n<Overlapping>(dst, src, count);
-        };
-        transfer(destination.entities, source.entities);
-        transfer(destination.distances, source.distances);
-        transfer(destination.directions_xs, source.directions_xs);
-        transfer(destination.directions_ys, source.directions_ys);
-        transfer(destination.directions_zs, source.directions_zs);
-    }
   public:
     auto entities(this auto& self) { return self.get_view().entities(); }
     auto distances(this auto& self) { return self.get_view().distances(); }

@@ -221,20 +221,6 @@ struct EntityEntityOverlaps
         -> DataPointers<Byte> {
         return Layout::make_data<DataPointers<Byte>>(data, blocks);
     }
-
-    /* **************************************** */
-    // Typed mutations and growth
-    /* **************************************** */
-    template <bool Overlapping, typename Byte>
-    static void transfer_columns(DataPointers<std::byte> const& destination,
-                                 DataPointers<Byte> const& source,
-                                 size_type count) {
-        auto transfer = [count](auto* dst, auto const* src) {
-            ioj::native_soa::transfer_n<Overlapping>(dst, src, count);
-        };
-        transfer(destination.first_entities, source.first_entities);
-        transfer(destination.second_entities, source.second_entities);
-    }
   public:
     auto first_entities(this auto& self) { return self.get_view().first_entities(); }
     auto second_entities(this auto& self) { return self.get_view().second_entities(); }
@@ -463,20 +449,6 @@ struct EntityStaticOverlaps
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
         return Layout::make_data<DataPointers<Byte>>(data, blocks);
-    }
-
-    /* **************************************** */
-    // Typed mutations and growth
-    /* **************************************** */
-    template <bool Overlapping, typename Byte>
-    static void transfer_columns(DataPointers<std::byte> const& destination,
-                                 DataPointers<Byte> const& source,
-                                 size_type count) {
-        auto transfer = [count](auto* dst, auto const* src) {
-            ioj::native_soa::transfer_n<Overlapping>(dst, src, count);
-        };
-        transfer(destination.entities, source.entities);
-        transfer(destination.static_geometry_indices, source.static_geometry_indices);
     }
   public:
     auto entities(this auto& self) { return self.get_view().entities(); }

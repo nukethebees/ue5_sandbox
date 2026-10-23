@@ -504,34 +504,6 @@ struct WorkloadTable
         -> DataPointers<Byte> {
         return Layout::make_data<DataPointers<Byte>>(data, blocks);
     }
-
-    /* **************************************** */
-    // Typed mutations and growth
-    /* **************************************** */
-    template <bool Overlapping, typename Byte>
-    static void transfer_columns(DataPointers<std::byte> const& destination,
-                                 DataPointers<Byte> const& source,
-                                 size_type count) {
-        auto transfer = [count](auto* dst, auto const* src) {
-            ioj::native_soa::transfer_n<Overlapping>(dst, src, count);
-        };
-        transfer(destination.analysis, source.analysis);
-        transfer(destination.selections, source.selections);
-        transfer(destination.element_count, source.element_count);
-        transfer(destination.multiplicity, source.multiplicity);
-        transfer(destination.bytes, source.bytes);
-        transfer(destination.bits, source.bits);
-        transfer(destination.cache, source.cache);
-        transfer(destination.pages, source.pages);
-        transfer(destination.cache_capacity, source.cache_capacity);
-        transfer(destination.packed_waste, source.packed_waste);
-        transfer(destination.footprint_exact, source.footprint_exact);
-        transfer(destination.storage_bytes, source.storage_bytes);
-        transfer(destination.full_logical_payload_bytes, source.full_logical_payload_bytes);
-        transfer(destination.unselected_payload_bytes, source.unselected_payload_bytes);
-        transfer(destination.allocated_payload_bytes, source.allocated_payload_bytes);
-        transfer(destination.capacity_slack_bytes, source.capacity_slack_bytes);
-    }
   public:
     auto analysis(this auto& self) { return self.get_view().analysis(); }
     auto selections(this auto& self) { return self.get_view().selections(); }

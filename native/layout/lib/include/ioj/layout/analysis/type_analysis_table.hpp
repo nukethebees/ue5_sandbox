@@ -324,25 +324,6 @@ struct TypeAnalysisTable
         -> DataPointers<Byte> {
         return Layout::make_data<DataPointers<Byte>>(data, blocks);
     }
-
-    /* **************************************** */
-    // Typed mutations and growth
-    /* **************************************** */
-    template <bool Overlapping, typename Byte>
-    static void transfer_columns(DataPointers<std::byte> const& destination,
-                                 DataPointers<Byte> const& source,
-                                 size_type count) {
-        auto transfer = [count](auto* dst, auto const* src) {
-            ioj::native_soa::transfer_n<Overlapping>(dst, src, count);
-        };
-        transfer(destination.schema_type, source.schema_type);
-        transfer(destination.scenario, source.scenario);
-        transfer(destination.physical, source.physical);
-        transfer(destination.enum_backing, source.enum_backing);
-        transfer(destination.aggregate, source.aggregate);
-        transfer(destination.packed, source.packed);
-        transfer(destination.soa, source.soa);
-    }
   public:
     auto schema_type(this auto& self) { return self.get_view().schema_type(); }
     auto scenario(this auto& self) { return self.get_view().scenario(); }

@@ -332,26 +332,6 @@ struct EntityHistory
         -> DataPointers<Byte> {
         return Layout::make_data<DataPointers<Byte>>(data, blocks);
     }
-
-    /* **************************************** */
-    // Typed mutations and growth
-    /* **************************************** */
-    template <bool Overlapping, typename Byte>
-    static void transfer_columns(DataPointers<std::byte> const& destination,
-                                 DataPointers<Byte> const& source,
-                                 size_type count) {
-        auto transfer = [count](auto* dst, auto const* src) {
-            ioj::native_soa::transfer_n<Overlapping>(dst, src, count);
-        };
-        transfer(destination.entity_ids, source.entity_ids);
-        transfer(destination.entity_types, source.entity_types);
-        transfer(destination.teams, source.teams);
-        transfer(destination.kills, source.kills);
-        transfer(destination.killed_by, source.killed_by);
-        transfer(destination.life_state, source.life_state);
-        transfer(destination.death_ticks, source.death_ticks);
-        transfer(destination.death_locations, source.death_locations);
-    }
   public:
     auto entity_ids(this auto& self) { return self.get_view().entity_ids(); }
     auto entity_types(this auto& self) { return self.get_view().entity_types(); }

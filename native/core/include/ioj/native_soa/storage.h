@@ -8,7 +8,6 @@
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
-#include <cstring>
 #include <memory>
 #include <span>
 #include <type_traits>
@@ -27,19 +26,6 @@ using single_allocation_layout::supported_leaf;
 using single_allocation_layout::try_allocation_bytes;
 using single_allocation_layout::try_round_capacity;
 using soa_storage_detail::source_data;
-
-template <bool Overlapping, typename T>
-void transfer_n(T* const destination, T const* const source, size_type const count) noexcept {
-    if (count == 0) {
-        return;
-    }
-    auto const bytes{static_cast<byte_size_type>(count) * sizeof(T)};
-    if constexpr (Overlapping) {
-        std::memmove(destination, source, bytes);
-    } else {
-        std::memcpy(destination, source, bytes);
-    }
-}
 
 using StorageState = soa_storage_detail::StorageState;
 

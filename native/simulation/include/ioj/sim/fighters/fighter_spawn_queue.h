@@ -384,27 +384,6 @@ struct FighterSpawnQueue
         -> DataPointers<Byte> {
         return Layout::make_data<DataPointers<Byte>>(data, blocks);
     }
-
-    /* **************************************** */
-    // Typed mutations and growth
-    /* **************************************** */
-    template <bool Overlapping, typename Byte>
-    static void transfer_columns(DataPointers<std::byte> const& destination,
-                                 DataPointers<Byte> const& source,
-                                 size_type count) {
-        auto transfer = [count](auto* dst, auto const* src) {
-            ioj::native_soa::transfer_n<Overlapping>(dst, src, count);
-        };
-        transfer(destination.locations_xs, source.locations_xs);
-        transfer(destination.locations_ys, source.locations_ys);
-        transfer(destination.locations_zs, source.locations_zs);
-        transfer(destination.rotations_pitches, source.rotations_pitches);
-        transfer(destination.rotations_yaws, source.rotations_yaws);
-        transfer(destination.rotations_rolls, source.rotations_rolls);
-        transfer(destination.teams, source.teams);
-        transfer(destination.parents, source.parents);
-        transfer(destination.targets, source.targets);
-    }
   public:
     auto view_locations(this auto& self) { return self.get_view().view_locations(); }
     auto view_rotations(this auto& self) { return self.get_view().view_rotations(); }

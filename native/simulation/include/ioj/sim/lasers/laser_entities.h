@@ -553,34 +553,6 @@ struct LaserEntities
         -> DataPointers<Byte> {
         return Layout::make_data<DataPointers<Byte>>(data, blocks);
     }
-
-    /* **************************************** */
-    // Typed mutations and growth
-    /* **************************************** */
-    template <bool Overlapping, typename Byte>
-    static void transfer_columns(DataPointers<std::byte> const& destination,
-                                 DataPointers<Byte> const& source,
-                                 size_type count) {
-        auto transfer = [count](auto* dst, auto const* src) {
-            ioj::native_soa::transfer_n<Overlapping>(dst, src, count);
-        };
-        transfer(destination.active, source.active);
-        transfer(destination.sources, source.sources);
-        transfer(destination.locations_xs, source.locations_xs);
-        transfer(destination.locations_ys, source.locations_ys);
-        transfer(destination.locations_zs, source.locations_zs);
-        transfer(destination.rotations_pitches, source.rotations_pitches);
-        transfer(destination.rotations_yaws, source.rotations_yaws);
-        transfer(destination.rotations_rolls, source.rotations_rolls);
-        transfer(destination.velocities_xs, source.velocities_xs);
-        transfer(destination.velocities_ys, source.velocities_ys);
-        transfer(destination.velocities_zs, source.velocities_zs);
-        transfer(destination.damages, source.damages);
-        transfer(destination.lifetimes_remaining, source.lifetimes_remaining);
-        transfer(destination.instigator_ids, source.instigator_ids);
-        transfer(destination.initial_lifetimes, source.initial_lifetimes);
-        transfer(destination.spawn_times, source.spawn_times);
-    }
   public:
     auto active(this auto& self) { return self.get_view().active(); }
     auto sources(this auto& self) { return self.get_view().sources(); }

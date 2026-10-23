@@ -213,19 +213,6 @@ struct Counts
         -> DataPointers<Byte> {
         return Layout::make_data<DataPointers<Byte>>(data, blocks);
     }
-
-    /* **************************************** */
-    // Typed mutations and growth
-    /* **************************************** */
-    template <bool Overlapping, typename Byte>
-    static void transfer_columns(DataPointers<std::byte> const& destination,
-                                 DataPointers<Byte> const& source,
-                                 size_type count) {
-        auto transfer = [count](auto* dst, auto const* src) {
-            ioj::native_soa::transfer_n<Overlapping>(dst, src, count);
-        };
-        transfer(destination.count, source.count);
-    }
   public:
     auto count(this auto& self) { return self.get_view().count(); }
     void set(size_type index, std::uint32_t const new_count) {
@@ -445,19 +432,6 @@ struct PointerB
         -> DataPointers<Byte> {
         return Layout::make_data<DataPointers<Byte>>(data, blocks);
     }
-
-    /* **************************************** */
-    // Typed mutations and growth
-    /* **************************************** */
-    template <bool Overlapping, typename Byte>
-    static void transfer_columns(DataPointers<std::byte> const& destination,
-                                 DataPointers<Byte> const& source,
-                                 size_type count) {
-        auto transfer = [count](auto* dst, auto const* src) {
-            ioj::native_soa::transfer_n<Overlapping>(dst, src, count);
-        };
-        transfer(destination.others, source.others);
-    }
   public:
     auto others(this auto& self) { return self.get_view().others(); }
     void set(size_type index, PointerA* const new_others) {
@@ -656,19 +630,6 @@ struct PointerA
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
         return Layout::make_data<DataPointers<Byte>>(data, blocks);
-    }
-
-    /* **************************************** */
-    // Typed mutations and growth
-    /* **************************************** */
-    template <bool Overlapping, typename Byte>
-    static void transfer_columns(DataPointers<std::byte> const& destination,
-                                 DataPointers<Byte> const& source,
-                                 size_type count) {
-        auto transfer = [count](auto* dst, auto const* src) {
-            ioj::native_soa::transfer_n<Overlapping>(dst, src, count);
-        };
-        transfer(destination.others, source.others);
     }
   public:
     auto others(this auto& self) { return self.get_view().others(); }
@@ -874,19 +835,6 @@ struct MixedRows
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
         return Layout::make_data<DataPointers<Byte>>(data, blocks);
-    }
-
-    /* **************************************** */
-    // Typed mutations and growth
-    /* **************************************** */
-    template <bool Overlapping, typename Byte>
-    static void transfer_columns(DataPointers<std::byte> const& destination,
-                                 DataPointers<Byte> const& source,
-                                 size_type count) {
-        auto transfer = [count](auto* dst, auto const* src) {
-            ioj::native_soa::transfer_n<Overlapping>(dst, src, count);
-        };
-        transfer(destination.records, source.records);
     }
   public:
     auto records(this auto& self) { return self.get_view().records(); }
@@ -1104,20 +1052,6 @@ struct PairRows
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
         return Layout::make_data<DataPointers<Byte>>(data, blocks);
-    }
-
-    /* **************************************** */
-    // Typed mutations and growth
-    /* **************************************** */
-    template <bool Overlapping, typename Byte>
-    static void transfer_columns(DataPointers<std::byte> const& destination,
-                                 DataPointers<Byte> const& source,
-                                 size_type count) {
-        auto transfer = [count](auto* dst, auto const* src) {
-            ioj::native_soa::transfer_n<Overlapping>(dst, src, count);
-        };
-        transfer(destination.pairs, source.pairs);
-        transfer(destination.pointers, source.pointers);
     }
   public:
     auto pairs(this auto& self) { return self.get_view().pairs(); }
@@ -1350,21 +1284,6 @@ struct Vectors
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
         return Layout::make_data<DataPointers<Byte>>(data, blocks);
-    }
-
-    /* **************************************** */
-    // Typed mutations and growth
-    /* **************************************** */
-    template <bool Overlapping, typename Byte>
-    static void transfer_columns(DataPointers<std::byte> const& destination,
-                                 DataPointers<Byte> const& source,
-                                 size_type count) {
-        auto transfer = [count](auto* dst, auto const* src) {
-            ioj::native_soa::transfer_n<Overlapping>(dst, src, count);
-        };
-        transfer(destination.xs, source.xs);
-        transfer(destination.ys, source.ys);
-        transfer(destination.zs, source.zs);
     }
   public:
     auto xs(this auto& self) { return self.get_view().xs(); }
@@ -2034,25 +1953,6 @@ struct SingleRows
         -> DataPointers<Byte> {
         return Layout::make_data<DataPointers<Byte>>(data, blocks);
     }
-
-    /* **************************************** */
-    // Typed mutations and growth
-    /* **************************************** */
-    template <bool Overlapping, typename Byte>
-    static void transfer_columns(DataPointers<std::byte> const& destination,
-                                 DataPointers<Byte> const& source,
-                                 size_type count) {
-        auto transfer = [count](auto* dst, auto const* src) {
-            ioj::native_soa::transfer_n<Overlapping>(dst, src, count);
-        };
-        transfer(destination.values, source.values);
-        transfer(destination.positions_xs, source.positions_xs);
-        transfer(destination.positions_ys, source.positions_ys);
-        transfer(destination.positions_zs, source.positions_zs);
-        transfer(destination.velocities_xs, source.velocities_xs);
-        transfer(destination.velocities_ys, source.velocities_ys);
-        transfer(destination.velocities_zs, source.velocities_zs);
-    }
   public:
     auto values(this auto& self) { return self.get_view().values(); }
     auto view_positions(this auto& self) { return self.get_view().view_positions(); }
@@ -2524,30 +2424,6 @@ struct SingleAlignmentRows
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
         return Layout::make_data<DataPointers<Byte>>(data, blocks);
-    }
-
-    /* **************************************** */
-    // Typed mutations and growth
-    /* **************************************** */
-    template <bool Overlapping, typename Byte>
-    static void transfer_columns(DataPointers<std::byte> const& destination,
-                                 DataPointers<Byte> const& source,
-                                 size_type count) {
-        auto transfer = [count](auto* dst, auto const* src) {
-            ioj::native_soa::transfer_n<Overlapping>(dst, src, count);
-        };
-        transfer(destination.bytes, source.bytes);
-        transfer(destination.odd_first, source.odd_first);
-        transfer(destination.odd_second, source.odd_second);
-        transfer(destination.aligned32, source.aligned32);
-        transfer(destination.nested_starts_xs, source.nested_starts_xs);
-        transfer(destination.nested_starts_ys, source.nested_starts_ys);
-        transfer(destination.nested_starts_zs, source.nested_starts_zs);
-        transfer(destination.nested_ends_xs, source.nested_ends_xs);
-        transfer(destination.nested_ends_ys, source.nested_ends_ys);
-        transfer(destination.nested_ends_zs, source.nested_ends_zs);
-        transfer(destination.aligned64, source.aligned64);
-        transfer(destination.aligned256, source.aligned256);
     }
   public:
     auto bytes(this auto& self) { return self.get_view().bytes(); }
@@ -3092,22 +2968,6 @@ struct NATIVE_SOA_FIXTURE_API ApiOwner
         -> DataPointers<Byte> {
         return Layout::make_data<DataPointers<Byte>>(data, blocks);
     }
-
-    /* **************************************** */
-    // Typed mutations and growth
-    /* **************************************** */
-    template <bool Overlapping, typename Byte>
-    static void transfer_columns(DataPointers<std::byte> const& destination,
-                                 DataPointers<Byte> const& source,
-                                 size_type count) {
-        auto transfer = [count](auto* dst, auto const* src) {
-            ioj::native_soa::transfer_n<Overlapping>(dst, src, count);
-        };
-        transfer(destination.values, source.values);
-        transfer(destination.masks, source.masks);
-        transfer(destination.positions_xs, source.positions_xs);
-        transfer(destination.positions_ys, source.positions_ys);
-    }
   public:
     auto values(this auto& self) { return self.get_view().values(); }
     auto masks(this auto& self) { return self.get_view().masks(); }
@@ -3390,20 +3250,6 @@ struct EquivalentOwner
         -> DataPointers<Byte> {
         return Layout::make_data<DataPointers<Byte>>(data, blocks);
     }
-
-    /* **************************************** */
-    // Typed mutations and growth
-    /* **************************************** */
-    template <bool Overlapping, typename Byte>
-    static void transfer_columns(DataPointers<std::byte> const& destination,
-                                 DataPointers<Byte> const& source,
-                                 size_type count) {
-        auto transfer = [count](auto* dst, auto const* src) {
-            ioj::native_soa::transfer_n<Overlapping>(dst, src, count);
-        };
-        transfer(destination.xs, source.xs);
-        transfer(destination.ys, source.ys);
-    }
   public:
     auto xs(this auto& self) { return self.get_view().xs(); }
     auto ys(this auto& self) { return self.get_view().ys(); }
@@ -3681,21 +3527,6 @@ struct AccessorOwner
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
         return Layout::make_data<DataPointers<Byte>>(data, blocks);
-    }
-
-    /* **************************************** */
-    // Typed mutations and growth
-    /* **************************************** */
-    template <bool Overlapping, typename Byte>
-    static void transfer_columns(DataPointers<std::byte> const& destination,
-                                 DataPointers<Byte> const& source,
-                                 size_type count) {
-        auto transfer = [count](auto* dst, auto const* src) {
-            ioj::native_soa::transfer_n<Overlapping>(dst, src, count);
-        };
-        transfer(destination.horizontal, source.horizontal);
-        transfer(destination.vertical, source.vertical);
-        transfer(destination.depth, source.depth);
     }
   public:
     auto horizontal(this auto& self) { return self.get_view().horizontal(); }

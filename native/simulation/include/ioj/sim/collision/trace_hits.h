@@ -324,24 +324,6 @@ struct TraceHits
         -> DataPointers<Byte> {
         return Layout::make_data<DataPointers<Byte>>(data, blocks);
     }
-
-    /* **************************************** */
-    // Typed mutations and growth
-    /* **************************************** */
-    template <bool Overlapping, typename Byte>
-    static void transfer_columns(DataPointers<std::byte> const& destination,
-                                 DataPointers<Byte> const& source,
-                                 size_type count) {
-        auto transfer = [count](auto* dst, auto const* src) {
-            ioj::native_soa::transfer_n<Overlapping>(dst, src, count);
-        };
-        transfer(destination.locations_xs, source.locations_xs);
-        transfer(destination.locations_ys, source.locations_ys);
-        transfer(destination.locations_zs, source.locations_zs);
-        transfer(destination.entities, source.entities);
-        transfer(destination.static_geometry_indices, source.static_geometry_indices);
-        transfer(destination.hits, source.hits);
-    }
   public:
     auto view_locations(this auto& self) { return self.get_view().view_locations(); }
     auto entities(this auto& self) { return self.get_view().entities(); }

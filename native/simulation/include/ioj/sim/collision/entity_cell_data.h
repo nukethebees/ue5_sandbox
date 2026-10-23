@@ -426,31 +426,6 @@ struct EntityCellData
         -> DataPointers<Byte> {
         return Layout::make_data<DataPointers<Byte>>(data, blocks);
     }
-
-    /* **************************************** */
-    // Typed mutations and growth
-    /* **************************************** */
-    template <bool Overlapping, typename Byte>
-    static void transfer_columns(DataPointers<std::byte> const& destination,
-                                 DataPointers<Byte> const& source,
-                                 size_type count) {
-        auto transfer = [count](auto* dst, auto const* src) {
-            ioj::native_soa::transfer_n<Overlapping>(dst, src, count);
-        };
-        transfer(destination.min_point_xs, source.min_point_xs);
-        transfer(destination.min_point_ys, source.min_point_ys);
-        transfer(destination.min_point_zs, source.min_point_zs);
-        transfer(destination.max_point_xs, source.max_point_xs);
-        transfer(destination.max_point_ys, source.max_point_ys);
-        transfer(destination.max_point_zs, source.max_point_zs);
-        transfer(destination.min_cell_xs, source.min_cell_xs);
-        transfer(destination.min_cell_ys, source.min_cell_ys);
-        transfer(destination.min_cell_zs, source.min_cell_zs);
-        transfer(destination.max_cell_xs, source.max_cell_xs);
-        transfer(destination.max_cell_ys, source.max_cell_ys);
-        transfer(destination.max_cell_zs, source.max_cell_zs);
-        transfer(destination.entity_ids, source.entity_ids);
-    }
   public:
     auto min_point_xs(this auto& self) { return self.get_view().min_point_xs(); }
     auto min_point_ys(this auto& self) { return self.get_view().min_point_ys(); }

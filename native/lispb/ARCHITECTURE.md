@@ -307,13 +307,14 @@ transferring storage when resources compare equal and copying columns otherwise.
 and assignment are deleted.
 
 `StorageOperations` coordinates lifetime, pointer access, copying, growth and removal using
-generated, typed column operations. Generated flat pointer structures are initialized by
+generated, typed column pointers. Generated flat pointer structures are initialized by
 `ColumnLayouts::make_data()` expanding the element types in physical order. Aggregate expansion
 shares pointer offsetting and default construction. One generated `Schema::with_columns()`
 maps named source accessors into physical order for source pointers and column iteration.
 It never stores independently resizable columns. One row count and capacity govern growth,
 insertion, removal, copying, and permutation; equal-column-size validation is unnecessary inside
-the owner. Transfers remain explicit per-column operations. Row indices and counts use
+the owner. Shared transfers expand matching pointer aggregates in physical column order.
+Row indices and counts use
 `std::uint32_t`; allocation
 bytes use `std::size_t`. Span lengths are checked before conversion to the row-count type.
 

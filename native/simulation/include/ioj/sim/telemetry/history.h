@@ -423,29 +423,6 @@ struct HistoryRows
         -> DataPointers<Byte> {
         return Layout::make_data<DataPointers<Byte>>(data, blocks);
     }
-
-    /* **************************************** */
-    // Typed mutations and growth
-    /* **************************************** */
-    template <bool Overlapping, typename Byte>
-    static void transfer_columns(DataPointers<std::byte> const& destination,
-                                 DataPointers<Byte> const& source,
-                                 size_type count) {
-        auto transfer = [count](auto* dst, auto const* src) {
-            ioj::native_soa::transfer_n<Overlapping>(dst, src, count);
-        };
-        transfer(destination.completed_ticks, source.completed_ticks);
-        transfer(destination.validity_masks, source.validity_masks);
-        transfer(destination.active_entities, source.active_entities);
-        transfer(destination.active_entities_by_type, source.active_entities_by_type);
-        transfer(destination.active_entities_by_team_and_type,
-                 source.active_entities_by_team_and_type);
-        transfer(destination.spawned_entities, source.spawned_entities);
-        transfer(destination.destroyed_entities, source.destroyed_entities);
-        transfer(destination.kills, source.kills);
-        transfer(destination.active_lasers, source.active_lasers);
-        transfer(destination.lasers_fired, source.lasers_fired);
-    }
   public:
     auto completed_ticks(this auto& self) { return self.get_view().completed_ticks(); }
     auto validity_masks(this auto& self) { return self.get_view().validity_masks(); }

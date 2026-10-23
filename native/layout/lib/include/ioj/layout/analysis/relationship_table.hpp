@@ -255,22 +255,6 @@ struct RelationshipTable
         -> DataPointers<Byte> {
         return Layout::make_data<DataPointers<Byte>>(data, blocks);
     }
-
-    /* **************************************** */
-    // Typed mutations and growth
-    /* **************************************** */
-    template <bool Overlapping, typename Byte>
-    static void transfer_columns(DataPointers<std::byte> const& destination,
-                                 DataPointers<Byte> const& source,
-                                 size_type count) {
-        auto transfer = [count](auto* dst, auto const* src) {
-            ioj::native_soa::transfer_n<Overlapping>(dst, src, count);
-        };
-        transfer(destination.owner, source.owner);
-        transfer(destination.field, source.field);
-        transfer(destination.relationship, source.relationship);
-        transfer(destination.metrics, source.metrics);
-    }
   public:
     auto owner(this auto& self) { return self.get_view().owner(); }
     auto field(this auto& self) { return self.get_view().field(); }

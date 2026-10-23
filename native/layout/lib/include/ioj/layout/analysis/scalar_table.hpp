@@ -386,27 +386,6 @@ struct ScalarTable
         -> DataPointers<Byte> {
         return Layout::make_data<DataPointers<Byte>>(data, blocks);
     }
-
-    /* **************************************** */
-    // Typed mutations and growth
-    /* **************************************** */
-    template <bool Overlapping, typename Byte>
-    static void transfer_columns(DataPointers<std::byte> const& destination,
-                                 DataPointers<Byte> const& source,
-                                 size_type count) {
-        auto transfer = [count](auto* dst, auto const* src) {
-            ioj::native_soa::transfer_n<Overlapping>(dst, src, count);
-        };
-        transfer(destination.type, source.type);
-        transfer(destination.integer_domain, source.integer_domain);
-        transfer(destination.enum_domain, source.enum_domain);
-        transfer(destination.optional_sentinel_encoding, source.optional_sentinel_encoding);
-        transfer(destination.optional_presence_encoding, source.optional_presence_encoding);
-        transfer(destination.quantized_encoding, source.quantized_encoding);
-        transfer(destination.fixed_encoding, source.fixed_encoding);
-        transfer(destination.float_encoding, source.float_encoding);
-        transfer(destination.varint_encoding, source.varint_encoding);
-    }
   public:
     auto type(this auto& self) { return self.get_view().type(); }
     auto integer_domain(this auto& self) { return self.get_view().integer_domain(); }

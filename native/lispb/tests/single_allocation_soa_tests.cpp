@@ -46,8 +46,7 @@ TEST(SingleAllocationSoa, OrdinarySchemasGenerateNativeOwnersAndViews) {
     EXPECT_EQ(output.find("LayoutColumns"), std::string::npos);
     EXPECT_NE(output.find("CompactViewBase<Const>"), std::string::npos);
     EXPECT_EQ(output.find("State* state_{};"), std::string::npos);
-    EXPECT_NE(output.find("transfer_n<Overlapping>(dst, src, count);"), std::string::npos);
-    EXPECT_NE(output.find("transfer(destination.nested_xs, source.nested_xs);"), std::string::npos);
+    EXPECT_EQ(output.find("transfer_columns("), std::string::npos);
     EXPECT_EQ(output.find("TArray"), std::string::npos);
     EXPECT_EQ(output.find("FMemory"), std::string::npos);
     EXPECT_EQ(output.find("CoreMinimal"), std::string::npos);

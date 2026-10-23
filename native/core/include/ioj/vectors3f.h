@@ -246,21 +246,6 @@ struct Vectors3f
         -> DataPointers<Byte> {
         return Layout::make_data<DataPointers<Byte>>(data, blocks);
     }
-
-    /* **************************************** */
-    // Typed mutations and growth
-    /* **************************************** */
-    template <bool Overlapping, typename Byte>
-    static void transfer_columns(DataPointers<std::byte> const& destination,
-                                 DataPointers<Byte> const& source,
-                                 size_type count) {
-        auto transfer = [count](auto* dst, auto const* src) {
-            ioj::native_soa::transfer_n<Overlapping>(dst, src, count);
-        };
-        transfer(destination.xs, source.xs);
-        transfer(destination.ys, source.ys);
-        transfer(destination.zs, source.zs);
-    }
   public:
     auto xs(this auto& self) { return self.get_view().xs(); }
     auto ys(this auto& self) { return self.get_view().ys(); }

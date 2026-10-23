@@ -193,19 +193,6 @@ struct SingleRestrictionRows
         -> DataPointers<Byte> {
         return Layout::make_data<DataPointers<Byte>>(data, blocks);
     }
-
-    /* **************************************** */
-    // Typed mutations and growth
-    /* **************************************** */
-    template <bool Overlapping, typename Byte>
-    static void transfer_columns(DataPointers<std::byte> const& destination,
-                                 DataPointers<Byte> const& source,
-                                 size_type count) {
-        auto transfer = [count](auto* dst, auto const* src) {
-            ioj::native_soa::transfer_n<Overlapping>(dst, src, count);
-        };
-        transfer(destination.restricted, source.restricted);
-    }
   public:
     auto restricted(this auto& self) { return self.get_view().restricted(); }
     void set(size_type index, RestrictedLeaf const new_restricted) {

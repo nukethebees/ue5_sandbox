@@ -381,28 +381,6 @@ struct ComponentTable
         -> DataPointers<Byte> {
         return Layout::make_data<DataPointers<Byte>>(data, blocks);
     }
-
-    /* **************************************** */
-    // Typed mutations and growth
-    /* **************************************** */
-    template <bool Overlapping, typename Byte>
-    static void transfer_columns(DataPointers<std::byte> const& destination,
-                                 DataPointers<Byte> const& source,
-                                 size_type count) {
-        auto transfer = [count](auto* dst, auto const* src) {
-            ioj::native_soa::transfer_n<Overlapping>(dst, src, count);
-        };
-        transfer(destination.parent, source.parent);
-        transfer(destination.name, source.name);
-        transfer(destination.tag, source.tag);
-        transfer(destination.semantic_type, source.semantic_type);
-        transfer(destination.element_count, source.element_count);
-        transfer(destination.element_facts, source.element_facts);
-        transfer(destination.offset_bytes, source.offset_bytes);
-        transfer(destination.extent_bytes, source.extent_bytes);
-        transfer(destination.padding_before_bytes, source.padding_before_bytes);
-        transfer(destination.slack_bytes, source.slack_bytes);
-    }
   public:
     auto parent(this auto& self) { return self.get_view().parent(); }
     auto name(this auto& self) { return self.get_view().name(); }

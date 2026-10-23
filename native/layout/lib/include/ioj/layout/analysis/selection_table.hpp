@@ -308,25 +308,6 @@ struct SelectionTable
         -> DataPointers<Byte> {
         return Layout::make_data<DataPointers<Byte>>(data, blocks);
     }
-
-    /* **************************************** */
-    // Typed mutations and growth
-    /* **************************************** */
-    template <bool Overlapping, typename Byte>
-    static void transfer_columns(DataPointers<std::byte> const& destination,
-                                 DataPointers<Byte> const& source,
-                                 size_type count) {
-        auto transfer = [count](auto* dst, auto const* src) {
-            ioj::native_soa::transfer_n<Overlapping>(dst, src, count);
-        };
-        transfer(destination.source, source.source);
-        transfer(destination.operation, source.operation);
-        transfer(destination.bytes, source.bytes);
-        transfer(destination.bits, source.bits);
-        transfer(destination.cache, source.cache);
-        transfer(destination.pages, source.pages);
-        transfer(destination.capacity_slack_bytes, source.capacity_slack_bytes);
-    }
   public:
     auto source(this auto& self) { return self.get_view().source(); }
     auto operation(this auto& self) { return self.get_view().operation(); }

@@ -682,42 +682,6 @@ struct PackedFieldTable
         -> DataPointers<Byte> {
         return Layout::make_data<DataPointers<Byte>>(data, blocks);
     }
-
-    /* **************************************** */
-    // Typed mutations and growth
-    /* **************************************** */
-    template <bool Overlapping, typename Byte>
-    static void transfer_columns(DataPointers<std::byte> const& destination,
-                                 DataPointers<Byte> const& source,
-                                 size_type count) {
-        auto transfer = [count](auto* dst, auto const* src) {
-            ioj::native_soa::transfer_n<Overlapping>(dst, src, count);
-        };
-        transfer(destination.parent, source.parent);
-        transfer(destination.segment, source.segment);
-        transfer(destination.name, source.name);
-        transfer(destination.semantic_type, source.semantic_type);
-        transfer(destination.logical_type, source.logical_type);
-        transfer(destination.kind, source.kind);
-        transfer(destination.reserved, source.reserved);
-        transfer(destination.schema_bit_width, source.schema_bit_width);
-        transfer(destination.schema_bit_width_auto, source.schema_bit_width_auto);
-        transfer(destination.bit_width, source.bit_width);
-        transfer(destination.overridden, source.overridden);
-        transfer(destination.least_significant_bit, source.least_significant_bit);
-        transfer(destination.most_significant_bit, source.most_significant_bit);
-        transfer(destination.maximum_unsigned_value, source.maximum_unsigned_value);
-        transfer(destination.minimum_signed_value, source.minimum_signed_value);
-        transfer(destination.maximum_signed_value, source.maximum_signed_value);
-        transfer(destination.minimum_semantic_value, source.minimum_semantic_value);
-        transfer(destination.maximum_semantic_value, source.maximum_semantic_value);
-        transfer(destination.semantic_value_count, source.semantic_value_count);
-        transfer(destination.sentinel_code_count, source.sentinel_code_count);
-        transfer(destination.required_code_count, source.required_code_count);
-        transfer(destination.minimum_required_bits, source.minimum_required_bits);
-        transfer(destination.unused_codes, source.unused_codes);
-        transfer(destination.codes, source.codes);
-    }
   public:
     auto parent(this auto& self) { return self.get_view().parent(); }
     auto segment(this auto& self) { return self.get_view().segment(); }

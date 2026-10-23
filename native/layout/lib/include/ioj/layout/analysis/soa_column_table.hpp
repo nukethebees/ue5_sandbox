@@ -498,33 +498,6 @@ struct SoaColumnTable
         -> DataPointers<Byte> {
         return Layout::make_data<DataPointers<Byte>>(data, blocks);
     }
-
-    /* **************************************** */
-    // Typed mutations and growth
-    /* **************************************** */
-    template <bool Overlapping, typename Byte>
-    static void transfer_columns(DataPointers<std::byte> const& destination,
-                                 DataPointers<Byte> const& source,
-                                 size_type count) {
-        auto transfer = [count](auto* dst, auto const* src) {
-            ioj::native_soa::transfer_n<Overlapping>(dst, src, count);
-        };
-        transfer(destination.parent, source.parent);
-        transfer(destination.name, source.name);
-        transfer(destination.semantic_type, source.semantic_type);
-        transfer(destination.schema_type, source.schema_type);
-        transfer(destination.physical_type, source.physical_type);
-        transfer(destination.overridden, source.overridden);
-        transfer(destination.type_facts, source.type_facts);
-        transfer(destination.total_bytes, source.total_bytes);
-        transfer(destination.allocation_offset_bytes, source.allocation_offset_bytes);
-        transfer(destination.padding_before_bytes, source.padding_before_bytes);
-        transfer(destination.minimum_cache_lines, source.minimum_cache_lines);
-        transfer(destination.elements_per_cache_line, source.elements_per_cache_line);
-        transfer(destination.minimum_pages, source.minimum_pages);
-        transfer(destination.complete_elements_per_page, source.complete_elements_per_page);
-        transfer(destination.cache_line_tiling, source.cache_line_tiling);
-    }
   public:
     auto parent(this auto& self) { return self.get_view().parent(); }
     auto name(this auto& self) { return self.get_view().name(); }

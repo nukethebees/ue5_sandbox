@@ -389,28 +389,6 @@ struct DistributionTable
         -> DataPointers<Byte> {
         return Layout::make_data<DataPointers<Byte>>(data, blocks);
     }
-
-    /* **************************************** */
-    // Typed mutations and growth
-    /* **************************************** */
-    template <bool Overlapping, typename Byte>
-    static void transfer_columns(DataPointers<std::byte> const& destination,
-                                 DataPointers<Byte> const& source,
-                                 size_type count) {
-        auto transfer = [count](auto* dst, auto const* src) {
-            ioj::native_soa::transfer_n<Overlapping>(dst, src, count);
-        };
-        transfer(destination.analysis, source.analysis);
-        transfer(destination.entries, source.entries);
-        transfer(destination.element_count, source.element_count);
-        transfer(destination.total_weight, source.total_weight);
-        transfer(destination.total_extent_bytes, source.total_extent_bytes);
-        transfer(destination.total_slack_bytes, source.total_slack_bytes);
-        transfer(destination.expected_extent_bytes, source.expected_extent_bytes);
-        transfer(destination.expected_slack_bytes, source.expected_slack_bytes);
-        transfer(destination.expected_selected_extent_bytes, source.expected_selected_extent_bytes);
-        transfer(destination.expected_selected_slack_bytes, source.expected_selected_slack_bytes);
-    }
   public:
     auto analysis(this auto& self) { return self.get_view().analysis(); }
     auto entries(this auto& self) { return self.get_view().entries(); }

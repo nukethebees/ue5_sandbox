@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <cassert>
 #include <cstddef>
+#include <cstring>
 #include <memory>
 #include <memory_resource>
 #include <new>
@@ -28,7 +29,30 @@ auto offset_columns(Data pointers, std::uint32_t offset) noexcept -> Data {
     return pointers;
 }
 
-// Generated owners supply state and explicit typed column operations.
+template <bool Overlapping, typename T>
+void transfer_n(T* const destination, T const* const source, std::uint32_t const count) noexcept {
+    if (count == 0) {
+        return;
+    }
+    auto const bytes{static_cast<std::size_t>(count) * sizeof(T)};
+    if constexpr (Overlapping) {
+        std::memmove(destination, source, bytes);
+    } else {
+        std::memcpy(destination, source, bytes);
+    }
+}
+
+// Pair pointer aggregates from the same schema in physical column order.
+template <bool Overlapping, typename Destination, typename Source>
+void transfer_columns(Destination const& destination,
+                      Source const& source,
+                      std::uint32_t count) noexcept {
+    auto const& [... dst] = destination;
+    auto const& [... src] = source;
+    (transfer_n<Overlapping>(dst, src, count), ...);
+}
+
+// Generated owners supply state and typed column pointers.
 template <auto RoundedCapacity, auto GrowthCapacity>
 struct StorageOperations {
     friend StorageRequirements;
@@ -126,7 +150,7 @@ struct StorageOperations {
                                                    self.capacity_blocks())};
         auto const destination{
             self.make_data_unchecked(new_data, new_capacity / Self::capacity_granularity)};
-        self.template transfer_columns<false>(destination, source, self.num_);
+        transfer_columns<false>(destination, source, self.num_);
     }
 
     template <StorageOwner Self, typename Source>
@@ -136,10 +160,9 @@ struct StorageOperations {
                         StorageSize<Self> source_first,
                         StorageSize<Self> first,
                         StorageSize<Self> count) {
-        self.template transfer_columns<false>(
-            self.get_data(first),
-            offset_columns(self.source_pointers(source), source_first),
-            count);
+        transfer_columns<false>(self.get_data(first),
+                                offset_columns(self.source_pointers(source), source_first),
+                                count);
     }
     template <StorageOwner Self, typename Source>
         requires (!std::is_const_v<Self> && SoaSourceFor<Source, Self, StorageSize<Self>>)
@@ -148,10 +171,9 @@ struct StorageOperations {
                            StorageSize<Self> source_first,
                            StorageSize<Self> first,
                            StorageSize<Self> count) {
-        self.template transfer_columns<true>(
-            self.get_data(first),
-            offset_columns(self.source_pointers(source), source_first),
-            count);
+        transfer_columns<true>(self.get_data(first),
+                               offset_columns(self.source_pointers(source), source_first),
+                               count);
     }
     template <StorageOwner Self>
         requires (!std::is_const_v<Self>)
@@ -160,7 +182,7 @@ struct StorageOperations {
                              StorageSize<Self> source,
                              StorageSize<Self> count) {
         auto const columns{self.get_data()};
-        self.template transfer_columns<false>(
+        transfer_columns<false>(
             offset_columns(columns, index), offset_columns(columns, source), count);
     }
     template <StorageOwner Self>
@@ -168,7 +190,7 @@ struct StorageOperations {
     void swap_remove_indices(this Self& self, std::span<StorageSize<Self> const> indices) {
         auto const columns{self.get_data()};
         for_each_removal_run(self.num_, indices, [&](auto index, auto source, auto count) {
-            self.template transfer_columns<false>(
+            transfer_columns<false>(
                 offset_columns(columns, index), offset_columns(columns, source), count);
         });
     }
@@ -286,13 +308,12 @@ struct StorageOperations {
             }
             auto const destination{
                 self.make_data_unchecked(new_data, new_capacity / Self::capacity_granularity)};
-            self.template transfer_columns<false>(
-                offset_columns(destination, first), source_columns, count);
+            transfer_columns<false>(offset_columns(destination, first), source_columns, count);
             release_storage(self);
             self.data_ = new_data;
             self.capacity_ = new_capacity;
         } else {
-            self.template transfer_columns<false>(self.get_data(first), source_columns, count);
+            transfer_columns<false>(self.get_data(first), source_columns, count);
         }
         self.num_ = new_num;
         return first;
@@ -326,9 +347,9 @@ struct StorageOperations {
                 self.make_data_unchecked(new_data, new_capacity / Self::capacity_granularity),
                 first)};
             for (std::uint32_t row{}; row < count; ++row) {
-                self.template transfer_columns<false>(offset_columns(destination, row),
-                                                      offset_columns(source_columns, indices[row]),
-                                                      1);
+                transfer_columns<false>(offset_columns(destination, row),
+                                        offset_columns(source_columns, indices[row]),
+                                        1);
             }
             release_storage(self);
             self.data_ = new_data;
@@ -336,9 +357,9 @@ struct StorageOperations {
         } else {
             auto const destination{self.get_data(first)};
             for (std::uint32_t row{}; row < count; ++row) {
-                self.template transfer_columns<false>(offset_columns(destination, row),
-                                                      offset_columns(source_columns, indices[row]),
-                                                      1);
+                transfer_columns<false>(offset_columns(destination, row),
+                                        offset_columns(source_columns, indices[row]),
+                                        1);
             }
         }
         self.num_ = new_num;

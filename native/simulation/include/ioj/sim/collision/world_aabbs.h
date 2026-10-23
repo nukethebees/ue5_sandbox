@@ -277,24 +277,6 @@ struct WorldAABBs
         -> DataPointers<Byte> {
         return Layout::make_data<DataPointers<Byte>>(data, blocks);
     }
-
-    /* **************************************** */
-    // Typed mutations and growth
-    /* **************************************** */
-    template <bool Overlapping, typename Byte>
-    static void transfer_columns(DataPointers<std::byte> const& destination,
-                                 DataPointers<Byte> const& source,
-                                 size_type count) {
-        auto transfer = [count](auto* dst, auto const* src) {
-            ioj::native_soa::transfer_n<Overlapping>(dst, src, count);
-        };
-        transfer(destination.min_xs, source.min_xs);
-        transfer(destination.min_ys, source.min_ys);
-        transfer(destination.min_zs, source.min_zs);
-        transfer(destination.max_xs, source.max_xs);
-        transfer(destination.max_ys, source.max_ys);
-        transfer(destination.max_zs, source.max_zs);
-    }
   public:
     auto min_xs(this auto& self) { return self.get_view().min_xs(); }
     auto min_ys(this auto& self) { return self.get_view().min_ys(); }
