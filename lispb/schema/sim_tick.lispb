@@ -1,6 +1,5 @@
 (module sim_tick
   :header "native/simulation/include/ioj/sim/sim_tick.h"
-  :backend standard-library
   :namespace ioj::sim
   (integer-scalar SimTick
     :signed false

@@ -1,11 +1,9 @@
 (module native_entity_death_info
   :header "native/simulation/include/ioj/sim/entities/entity_death_info.h"
-  :backend standard-library
   :namespace ioj::sim
   (struct EntityDeathInfo
-    :operations (all)
     (member reasons array @native_death_reason)
     (member victims array @native_unique_id)
     (member killers array @native_unique_id)
     (member locations array @native_vector_3f)
-    (single-allocation EntityDeathInfo)))
+))

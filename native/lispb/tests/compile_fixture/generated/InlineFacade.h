@@ -3,22 +3,23 @@
 
 #pragma once
 
-#include "Project/Target.h"
+#include "compile_fixture/target.hpp"
 
-#include "CoreMinimal.h"
+#include <cassert>
+#include <cstdint>
 
 namespace codegen_compile_fixture {
 class FInlineFacade {
   public:
     void bind(FTarget& new_target) { target = &new_target; }
 
-    int32 get(int32 const offset = 0) const {
-        check(target != nullptr);
+    std::int32_t get(std::int32_t const offset = 0) const {
+        assert(target != nullptr);
         return target->get(offset);
     }
 
     void reset() {
-        check(target != nullptr);
+        assert(target != nullptr);
         target->clear();
     }
   private:

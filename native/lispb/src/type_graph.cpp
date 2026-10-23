@@ -21,8 +21,6 @@
 #include <codegen/schema/fixed_point_schemas.h>
 #include <codegen/schema/fixed_point_value.h>
 #include <codegen/schema/function_schemas.h>
-#include <codegen/schema/homogeneous_layout_schemas.h>
-#include <codegen/schema/homogeneous_value_schemas.h>
 #include <codegen/schema/indices.h>
 #include <codegen/schema/integer_scalar_cpp_emission.h>
 #include <codegen/schema/integer_scalar_schemas.h>
@@ -52,7 +50,6 @@
 #include <codegen/schema/semantic_relation_schemas.h>
 #include <codegen/schema/setting_schemas.h>
 #include <codegen/schema/settings_module_schemas.h>
-#include <codegen/schema/soa_allocators.h>
 #include <codegen/schema/soa_member_kind.h>
 #include <codegen/schema/soa_member_schemas.h>
 #include <codegen/schema/soa_schemas.h>
@@ -71,13 +68,11 @@
 #include <codegen/schema/umbrella_module_schemas.h>
 #include <codegen/schema/union_alternative_schemas.h>
 #include <codegen/schema/union_schemas.h>
-#include <codegen/schema/vector_soa_schemas.h>
 #include <lispb/indices.h>
 #include <lispb/schema/enum_types.h>
 #include <lispb/schema/external_types.h>
 #include <lispb/schema/facade_types.h>
 #include <lispb/schema/fixed_point_types.h>
-#include <lispb/schema/homogeneous_storage_types.h>
 #include <lispb/schema/indices.h>
 #include <lispb/schema/integer_domain.h>
 #include <lispb/schema/integer_scalar_types.h>
@@ -93,7 +88,6 @@
 #include <lispb/schema/record_members.h>
 #include <lispb/schema/record_types.h>
 #include <lispb/schema/soa_columns.h>
-#include <lispb/schema/soa_source_kind.h>
 #include <lispb/schema/soa_types.h>
 #include <lispb/schema/static_table_types.h>
 #include <lispb/schema/tagged_union_alternatives.h>
@@ -153,7 +147,6 @@ auto forward_declaration_kind(TypeId const node, TypeGraph const& graph)
         case TypeDefinitionKind::tagged_union:
         case TypeDefinitionKind::packed:
         case TypeDefinitionKind::static_table:
-        case TypeDefinitionKind::homogeneous_storage:
             return codegen::RecordKind::struct_;
         default:
             return std::nullopt;
@@ -200,11 +193,9 @@ class TypeGraphBuilder {
         resolve_type_uses();
         codegen::detail::validate_integer_domains(manifest_, graph_);
         resolve_definitions(true);
+        validate_nested_soa_types();
         codegen::detail::validate_manifest(manifest_, graph_);
         resolve_definitions(false);
-        validate_nested_soa_types();
-        validate_standard_library_soa_columns();
-        validate_vector_equivalents();
         validate_aggregate_cycles();
         build_edges();
         codegen::detail::validate_complete_definition_cycles(
@@ -275,7 +266,6 @@ class TypeGraphBuilder {
                      module,
                      source)};
         declarations_.push_back(id);
-        homogeneous_values_.emplace_back();
         graph_.declarations_by_module_name_.emplace(std::pair{module, name}, id);
         if (physical.value) {
             graph_.declarations_by_spelling_.emplace(physical, id);
@@ -320,31 +310,6 @@ class TypeGraphBuilder {
                 auto const name{codegen::declaration_name(store_, source)};
                 if (!names.insert(name).second) {
                     throw std::invalid_argument{"Duplicate declaration name: " + str(name)};
-                }
-                if (auto const layout{
-                        ((source).kind() == lispb::codegen::DeclarationKind::homogeneous_layout
-                             ? std::optional{source}
-                             : std::nullopt)}) {
-                    for (auto const value_id : store_.items(
-                             store_.homogeneous_layouts
-                                 .value_types[store_.homogeneous_layouts.index(*layout)])) {
-                        auto const value{value_id};
-                        declare(module_id,
-                                source,
-                                store_.strings().intern(
-                                    "F" +
-                                    str(store_.homogeneous_layouts
-                                            .name[store_.homogeneous_layouts.index(*layout)]) +
-                                    str(store_.homogeneous_values
-                                            .suffix[store_.homogeneous_values.index(value)])),
-                                lispb::schema::TypeDefinitionId{
-                                    (static_cast<std::uint32_t>(
-                                         lispb::schema::TypeDefinitionKind::homogeneous_storage)
-                                     << 24) |
-                                    0xffffffu});
-                        homogeneous_values_.back() = value_id;
-                    }
-                    continue;
                 }
                 if (!codegen::has_primary_semantic_type(source)) {
                     continue;
@@ -464,9 +429,7 @@ class TypeGraphBuilder {
                                  << 24) |
                                 0xffffffu};
                         }
-                        case lispb::codegen::DeclarationKind::homogeneous_layout:
-                        case lispb::codegen::DeclarationKind::soa:
-                        case lispb::codegen::DeclarationKind::vector_soa: {
+                        case lispb::codegen::DeclarationKind::soa: {
 
                             return lispb::schema::TypeDefinitionId{
                                 (static_cast<std::uint32_t>(lispb::schema::TypeDefinitionKind::soa)
@@ -483,9 +446,6 @@ class TypeGraphBuilder {
                                         : std::nullopt)}) {
                     if (store_.soas.layout_only[store_.soas.index(*soa)]) {
                         physical = StringId{};
-                    } else if (!store_.soas.emits_vector_storage(*soa) &&
-                               store_.soas.single_allocation[store_.soas.index(*soa)]) {
-                        physical = *store_.soas.single_allocation[store_.soas.index(*soa)];
                     }
                 }
                 declare(module_id,
@@ -596,10 +556,11 @@ class TypeGraphBuilder {
         }
         auto const metadata{codegen::external_scalar_schema(manifest_.types, str(name))};
         // Keep occurrence qualifiers and emission dependencies on the resolved use.
-        auto const cpp_type{manifest_.types.cpp_types.intern(store_.strings().view(name))};
+        auto const spelling{codegen::native_spelling(str(name))};
+        auto const cpp_type{manifest_.types.cpp_types.intern(spelling)};
         auto const id{
             add_type({.origin = TypeOrigin::cpp_spelling, .name = name},
-                     name,
+                     text(spelling),
                      external_type(cpp_type, metadata.value_or(codegen::ExternalScalarId{})))};
         raw_external_types_.emplace(name, id);
         return id;
@@ -639,7 +600,6 @@ class TypeGraphBuilder {
                     qualified_name(module_settings, graph_.name(node))) {
                     if (store_.strings().view(graph_.cpp_spelling(node)).empty()) {
                         resolved.cpp_type = manifest_.types.cpp_types.intern("");
-                        resolved.physical = {};
                     } else {
                         auto& types{manifest_.types.cpp_types};
                         auto const original{resolved.cpp_type};
@@ -868,23 +828,6 @@ class TypeGraphBuilder {
                                   store_.soas.mutable_view_functions[store_.soas.index(*soa)]);
                     }
                 }
-                std::uint32_t index{};
-                for (auto const allocator_id :
-                     store_.items(store_.normal_modules
-                                      .soa_array_allocators[store_.normal_modules.index(module)])) {
-                    auto const allocator{allocator_id};
-                    auto const target{bind_reference(
-                        store_.soa_allocator_variants
-                            .allocator[store_.soa_allocator_variants.index(allocator)],
-                        module_id)};
-                    add_use(module_id,
-                            {},
-                            {.category = codegen::TypeReferenceCategory::module_allocator,
-                             .index = index++},
-                            target,
-                            store_.soa_allocator_variants
-                                .allocator[store_.soa_allocator_variants.index(allocator)]);
-                }
             } else if (module_id.kind() == codegen::ModuleKind::settings) {
                 auto const module{module_id};
                 std::uint32_t index{};
@@ -943,7 +886,6 @@ class TypeGraphBuilder {
     auto resolve_normal_definition(codegen::ModuleHandle const module_id,
                                    codegen::DeclarationHandle const declaration)
         -> TypeDefinitionId {
-        auto const module{module_id};
         auto& definitions{graph_.definitions_};
         return [&]() -> TypeDefinitionId {
             auto const source{declaration};
@@ -1476,41 +1418,11 @@ class TypeGraphBuilder {
                 case lispb::codegen::DeclarationKind::soa: {
 
                     std::vector<SoaColumnId> columns;
-                    std::optional<TypeId> element;
                     for (auto const member_id :
                          store_.items(store_.soas.members[store_.soas.index(source)])) {
                         auto const member{member_id};
-                        std::optional<TypeId> nested;
-                        if (store_.soa_members.nested_schema[store_.soa_members.index(member)]) {
-                            nested = local_declaration(
-                                module_id,
-                                *store_.soa_members
-                                     .nested_schema[store_.soa_members.index(member)]);
-                            if (!nested) {
-                                throw std::invalid_argument{
-                                    "Unknown nested semantic type '" +
-                                    str(*store_.soa_members
-                                             .nested_schema[store_.soa_members.index(member)]) +
-                                    "' in module '" +
-                                    str(store_.module_settings_store
-                                            .name[store_.module_settings_store.index(
-                                                store_.module_settings(module_id))]) +
-                                    "'"};
-                            }
-                        }
                         auto const resolved{resolve_ref(
                             store_.soa_members.type[store_.soa_members.index(member)], module_id)};
-                        if (!store_.soas.vector_components[store_.soas.index(source)].empty()) {
-                            if (element &&
-                                *element != graph_.occurrences()
-                                                .type[graph_.occurrences().index(resolved)]) {
-                                throw std::invalid_argument{
-                                    "SOA '" + str(store_.soas.name[store_.soas.index(source)]) +
-                                    "' vector components must have the same resolved type"};
-                            }
-                            element =
-                                graph_.occurrences().type[graph_.occurrences().index(resolved)];
-                        }
                         auto const new_soa_columns_19{definitions.soa_columns.append()};
                         definitions.soa_columns
                             .source[definitions.soa_columns.index(new_soa_columns_19)] = member_id;
@@ -1524,9 +1436,6 @@ class TypeGraphBuilder {
                             .kind[definitions.soa_columns.index(new_soa_columns_19)] =
                             store_.soa_members.kind[store_.soa_members.index(member)];
                         definitions.soa_columns
-                            .nested_type[definitions.soa_columns.index(new_soa_columns_19)] =
-                            nested;
-                        definitions.soa_columns
                             .relationship[definitions.soa_columns.index(new_soa_columns_19)] =
                             relationship(
                                 store_.soa_members.relationship[store_.soa_members.index(member)],
@@ -1537,66 +1446,17 @@ class TypeGraphBuilder {
                                     "'");
                         columns.push_back(new_soa_columns_19);
                     }
-                    if (!store_.soas.vector_components[store_.soas.index(source)].empty() &&
-                        columns.empty()) {
-                        throw std::invalid_argument{
-                            "SOA '" + str(store_.soas.name[store_.soas.index(source)]) +
-                            "' vector components require columns"};
-                    }
                     auto const new_soas_20{definitions.soas.append()};
-                    definitions.soas.backend[definitions.soas.index(new_soas_20)] =
-                        store_.normal_modules.soa_backend[store_.normal_modules.index(module)];
-                    definitions.soas.source_kind[definitions.soas.index(new_soas_20)] =
-                        SoaSourceKind::structure;
                     definitions.soas.set_columns(new_soas_20, columns);
                     definitions.soas.equivalent_type[definitions.soas.index(new_soas_20)] =
                         store_.soas.equivalent_type[store_.soas.index(source)]
                             .transform([&](auto id) { return resolve_ref(id, module_id); })
                             .value_or(ResolvedOccurrenceId{});
-                    definitions.soas.related_storage_name[definitions.soas.index(new_soas_20)] =
-                        store_.soas.single_allocation[store_.soas.index(source)];
-                    definitions.soas.set_vector_components(
-                        new_soas_20,
-                        store_.items(store_.soas.vector_components[store_.soas.index(source)]));
                     definitions.soas.layout_only[definitions.soas.index(new_soas_20)] =
                         store_.soas.layout_only[store_.soas.index(source)];
                     definitions.soas.equivalent_constructor[definitions.soas.index(new_soas_20)] =
                         store_.soas.equivalent_constructor[store_.soas.index(source)];
                     return new_soas_20;
-                }
-                case lispb::codegen::DeclarationKind::vector_soa: {
-
-                    auto const value{
-                        resolve_ref(store_.vector_soas.value_type[store_.vector_soas.index(source)],
-                                    module_id)};
-                    std::vector<SoaColumnId> columns;
-                    for (auto const component : store_.items(
-                             store_.vector_soas.components[store_.vector_soas.index(source)])) {
-                        auto const new_soa_columns_21{definitions.soa_columns.append()};
-                        definitions.soa_columns
-                            .name[definitions.soa_columns.index(new_soa_columns_21)] = component;
-                        definitions.soa_columns
-                            .semantic_type[definitions.soa_columns.index(new_soa_columns_21)] =
-                            value;
-                        columns.push_back(new_soa_columns_21);
-                    }
-                    auto const new_soas_22{definitions.soas.append()};
-                    definitions.soas.backend[definitions.soas.index(new_soas_22)] =
-                        store_.normal_modules.soa_backend[store_.normal_modules.index(module)];
-                    definitions.soas.source_kind[definitions.soas.index(new_soas_22)] =
-                        SoaSourceKind::vector;
-                    definitions.soas.set_columns(new_soas_22, columns);
-                    definitions.soas.equivalent_type[definitions.soas.index(new_soas_22)] =
-                        resolve_ref(
-                            store_.vector_soas.equivalent_type[store_.vector_soas.index(source)],
-                            module_id);
-                    definitions.soas.set_vector_components(
-                        new_soas_22,
-                        store_.items(
-                            store_.vector_soas.components[store_.vector_soas.index(source)]));
-                    definitions.soas.equivalent_constructor[definitions.soas.index(new_soas_22)] =
-                        store_.vector_soas.equivalent_constructor[store_.vector_soas.index(source)];
-                    return new_soas_22;
                 }
                 case lispb::codegen::DeclarationKind::static_table: {
                     auto const definition{definitions.static_tables.append()};
@@ -1609,10 +1469,6 @@ class TypeGraphBuilder {
                     definitions.facades.source[definitions.facades.index(definition)] = source;
                     return definition;
                 }
-                case lispb::codegen::DeclarationKind::homogeneous_layout: {
-
-                    std::unreachable();
-                }
                 default:
                     std::unreachable();
             }
@@ -1620,219 +1476,56 @@ class TypeGraphBuilder {
     }
 
     void resolve_definitions(bool const primary_pass) {
-        {
-            for (std::size_t index{}; index < declarations_.size(); ++index) {
-                auto const declaration{declarations_[index]};
-                auto const source{graph_.source_declaration(declaration)};
-                auto const primary{source.kind() == codegen::DeclarationKind::enumeration ||
-                                   source.kind() == codegen::DeclarationKind::integer_scalar};
-                if (primary != primary_pass) {
-                    continue;
-                }
-                if (homogeneous_values_[index]) {
-                    auto const layout{source};
-                    auto const value{*homogeneous_values_[index]};
-                    std::vector<ResolvedOccurrenceId> input_types;
-                    for (auto const input :
-                         store_.items(store_.homogeneous_values
-                                          .input_types[store_.homogeneous_values.index(value)])) {
-                        input_types.push_back(resolve_ref(input, graph_.module(declaration)));
-                    }
-                    auto const new_homogeneous_storage_29{
-                        graph_.definitions_.homogeneous_storage.append()};
-                    graph_.definitions_.homogeneous_storage.set_components(
-                        new_homogeneous_storage_29,
-                        store_.items(store_.homogeneous_layouts
-                                         .components[store_.homogeneous_layouts.index(layout)]));
-                    graph_.definitions_.homogeneous_storage
-                        .value_type[graph_.definitions_.homogeneous_storage.index(
-                            new_homogeneous_storage_29)] =
-                        resolve_ref(
-                            store_.homogeneous_values.type[store_.homogeneous_values.index(value)],
-                            graph_.module(declaration));
-                    graph_.definitions_.homogeneous_storage
-                        .equivalent_type[graph_.definitions_.homogeneous_storage.index(
-                            new_homogeneous_storage_29)] =
-                        store_.homogeneous_values
-                            .equivalent_type[store_.homogeneous_values.index(value)]
-                            .transform([&](auto id) {
-                                return resolve_ref(id, graph_.module(declaration));
-                            })
-                            .value_or(ResolvedOccurrenceId{});
-                    graph_.definitions_.homogeneous_storage.set_input_members(
-                        new_homogeneous_storage_29,
-                        store_.items(store_.homogeneous_layouts
-                                         .input_members[store_.homogeneous_layouts.index(layout)]));
-                    graph_.definitions_.homogeneous_storage.set_input_types(
-                        new_homogeneous_storage_29, input_types);
-                    graph_.definitions_.homogeneous_storage
-                        .view_template_name[graph_.definitions_.homogeneous_storage.index(
-                            new_homogeneous_storage_29)] =
-                        text("T" +
-                             str(store_.homogeneous_layouts
-                                     .name[store_.homogeneous_layouts.index(layout)]) +
-                             "View");
-                    graph_.definitions_ids_[declaration.value] = new_homogeneous_storage_29;
-                } else {
-                    graph_.definitions_ids_[declaration.value] =
-                        resolve_normal_definition(graph_.module(declaration), source);
-                }
+        for (auto const declaration : declarations_) {
+            auto const source{graph_.source_declaration(declaration)};
+            auto const primary{source.kind() == codegen::DeclarationKind::enumeration ||
+                               source.kind() == codegen::DeclarationKind::integer_scalar};
+            if (primary != primary_pass) {
+                continue;
             }
+            graph_.definitions_ids_[declaration.value] =
+                resolve_normal_definition(graph_.module(declaration), source);
         }
     }
 
     void validate_nested_soa_types() const {
-        std::set<TypeId> visited;
-        auto visit = [&](auto&& self, TypeId const id) -> void {
-            if (!visited.insert(id).second) {
-                return;
-            }
-            auto const soa{graph_.definition(id)};
-            for (auto const column_id : graph_.definitions_.soas.columns_of(soa)) {
-                auto const column{column_id};
-                if (!graph_.definitions_.soa_columns
-                         .nested_type[graph_.definitions_.soa_columns.index(column)]) {
-                    continue;
-                }
-                if (graph_.occurrences().type[graph_.occurrences().index(
-                        graph_.definitions_.soa_columns
-                            .semantic_type[graph_.definitions_.soa_columns.index(column)])] !=
-                        *graph_.definitions_.soa_columns
-                             .nested_type[graph_.definitions_.soa_columns.index(column)] &&
-                    graph_.name(graph_.occurrences().type[graph_.occurrences().index(
-                        graph_.definitions_.soa_columns
-                            .semantic_type[graph_.definitions_.soa_columns.index(column)])]) !=
-                        graph_.name(
-                            *graph_.definitions_.soa_columns
-                                 .nested_type[graph_.definitions_.soa_columns.index(column)])) {
-                    throw std::invalid_argument{
-                        "Nested SOA type does not match nested_schema: " +
-                        str(graph_.definitions_.soa_columns
-                                .name[graph_.definitions_.soa_columns.index(column)])};
-                }
-                self(self,
-                     *graph_.definitions_.soa_columns
-                          .nested_type[graph_.definitions_.soa_columns.index(column)]);
-            }
-        };
-        auto const count{graph_.types().size()};
-        for (std::uint32_t index{}; index < count; ++index) {
-            auto const soa{
-                ((graph_.definitions_ids_[index]).kind() == lispb::schema::TypeDefinitionKind::soa
-                     ? std::optional{graph_.definitions_ids_[index]}
-                     : std::nullopt)};
-            if (soa &&
-                graph_.definitions_.soas.source_kind[graph_.definitions_.soas.index(*soa)] ==
-                    SoaSourceKind::structure &&
-                graph_.definitions_.soas
-                    .related_storage_name[graph_.definitions_.soas.index(*soa)]) {
-                visit(visit, TypeId{index});
-            }
-        }
-    }
-
-    void validate_standard_library_soa_columns() const {
-        auto const& soas{graph_.definitions_.soas};
-        auto const& columns{graph_.definitions_.soa_columns};
+        auto const& members{store_.soa_members};
         auto const& occurrences{graph_.occurrences()};
+        std::set<TypeId> active;
         std::set<TypeId> visited;
         auto visit = [&](auto&& self, TypeId const type) -> void {
-            if (!visited.insert(type).second) {
+            if (visited.contains(type)) {
                 return;
             }
-            for (auto const column : soas.columns_of(graph_.definition(type))) {
-                auto const row{columns.index(column)};
-                if (columns.nested_type[row]) {
-                    self(self, *columns.nested_type[row]);
+            if (!active.insert(type).second) {
+                throw std::invalid_argument{"Cyclic nested SOA: " + str(graph_.name(type))};
+            }
+            auto const schema{graph_.source_declaration(type)};
+            auto const module{graph_.module(type)};
+            for (auto const member : store_.items(store_.soas.members[store_.soas.index(schema)])) {
+                auto const row{members.index(member)};
+                if (members.kind[row] != codegen::SoaMemberKind::nested) {
                     continue;
                 }
-                auto const occurrence{columns.semantic_type[row]};
-                if (graph_.cpp_types().spelling(
-                        occurrences.cpp_type[occurrences.index(occurrence)]) == "bool") {
-                    throw std::invalid_argument{"Standard-library SoA requires contiguous columns; "
-                                                "std::vector<bool> is unsupported"};
+                auto const occurrence{graph_.resolved(module, members.type[row])};
+                auto const use{occurrences.index(occurrence)};
+                auto const nested{occurrences.type[use]};
+                if (graph_.origin(nested) != TypeOrigin::declaration ||
+                    graph_.source_declaration(nested).kind() != codegen::DeclarationKind::soa ||
+                    occurrences.physical_form[use] != codegen::PhysicalTypeForm::value ||
+                    occurrences.cv_qualified[use]) {
+                    throw std::invalid_argument{"Nested SOA member '" + str(members.name[row]) +
+                                                "' must reference a declared SOA value type"};
                 }
+                self(self, nested);
             }
+            active.erase(type);
+            visited.insert(type);
         };
         for (auto const type : graph_.types()) {
-            auto const definition{graph_.definition(type)};
-            if (definition.kind() != TypeDefinitionKind::soa) {
-                continue;
-            }
-            auto const row{soas.index(definition)};
-            if (soas.backend[row] != codegen::SoaBackend::standard_library ||
-                soas.layout_only[row] ||
-                (soas.source_kind[row] == SoaSourceKind::structure &&
-                 !store_.soas.emits_vector_storage(graph_.source_declaration(type)))) {
-                continue;
-            }
-            visit(visit, type);
-        }
-    }
-
-    void validate_vector_equivalents() {
-        std::map<TypeId, TypeDefinitionId> vectors;
-        for (auto const node : graph_.types()) {
-            auto const soa{
-                ((graph_.definition(node)).kind() == lispb::schema::TypeDefinitionKind::soa
-                     ? std::optional{graph_.definition(node)}
-                     : std::nullopt)};
-            if (soa &&
-                graph_.definitions_.soas.source_kind[graph_.definitions_.soas.index(*soa)] ==
-                    SoaSourceKind::vector &&
-                is_valid(graph_.definitions_.soas
-                             .equivalent_type[graph_.definitions_.soas.index(*soa)])) {
-                vectors.emplace(graph_.occurrences().type[graph_.occurrences().index(
-                                    graph_.definitions_.soas
-                                        .equivalent_type[graph_.definitions_.soas.index(*soa)])],
-                                graph_.definition(node));
-            }
-        }
-        for (auto const node : graph_.types()) {
-            auto const soa{
-                ((graph_.definition(node)).kind() == lispb::schema::TypeDefinitionKind::soa
-                     ? std::optional{graph_.definition(node)}
-                     : std::nullopt)};
-            if (!soa ||
-                graph_.definitions_.soas.source_kind[graph_.definitions_.soas.index(*soa)] !=
-                    SoaSourceKind::structure ||
-                graph_.definitions_.soas.vector_components_of(*soa).empty() ||
-                !is_valid(graph_.definitions_.soas
-                              .equivalent_type[graph_.definitions_.soas.index(*soa)])) {
-                continue;
-            }
-            auto const found{vectors.find(graph_.occurrences().type[graph_.occurrences().index(
-                graph_.definitions_.soas.equivalent_type[graph_.definitions_.soas.index(*soa)])])};
-            if (found == vectors.end()) {
-                continue;
-            }
-            auto const declared{found->second};
-            graph_.definitions_.soas
-                .equivalent_constructor[graph_.definitions_.soas.index(graph_.definition(node))] =
-                graph_.definitions_.soas
-                    .equivalent_constructor[graph_.definitions_.soas.index(declared)];
-            if (!std::ranges::equal(graph_.definitions_.soas.vector_components_of(*soa),
-                                    graph_.definitions_.soas.vector_components_of(declared)) ||
-                graph_.definitions_.soas.columns_of(*soa).size() !=
-                    graph_.definitions_.soas.columns_of(declared).size()) {
-                throw std::invalid_argument{
-                    "SOA '" + str(graph_.name(node)) +
-                    "' vector components disagree with its equivalent vector declaration"};
-            }
-            auto const count{graph_.definitions_.soas.columns_of(*soa).size()};
-            for (std::size_t index{}; index < count; ++index) {
-                if (graph_.occurrences().type[graph_.occurrences().index(
-                        graph_.definitions_.soa_columns
-                            .semantic_type[graph_.definitions_.soa_columns.index(
-                                graph_.definitions_.soas.columns_of(*soa)[index])])] !=
-                    graph_.occurrences().type[graph_.occurrences().index(
-                        graph_.definitions_.soa_columns
-                            .semantic_type[graph_.definitions_.soa_columns.index(
-                                graph_.definitions_.soas.columns_of(declared)[index])])]) {
-                    throw std::invalid_argument{
-                        "SOA '" + str(graph_.name(node)) +
-                        "' vector element type disagrees with its equivalent vector declaration"};
-                }
+            if (graph_.origin(type) == TypeOrigin::declaration &&
+                graph_.source_declaration(type).kind() == codegen::DeclarationKind::soa) {
+                visit(visit, type);
             }
         }
     }
@@ -1981,25 +1674,6 @@ class TypeGraphBuilder {
                     }
                     break;
                 }
-                case lispb::schema::TypeDefinitionKind::homogeneous_storage: {
-                    add(graph_.occurrences().type[graph_.occurrences().index(
-                        definitions.homogeneous_storage
-                            .value_type[definitions.homogeneous_storage.index(
-                                graph_.definitions_ids_[index])])]);
-                    if (is_valid(definitions.homogeneous_storage
-                                     .equivalent_type[definitions.homogeneous_storage.index(
-                                         graph_.definitions_ids_[index])])) {
-                        add(graph_.occurrences().type[graph_.occurrences().index(
-                            definitions.homogeneous_storage
-                                .equivalent_type[definitions.homogeneous_storage.index(
-                                    graph_.definitions_ids_[index])])]);
-                    }
-                    for (auto const input : definitions.homogeneous_storage.input_types_of(
-                             graph_.definitions_ids_[index])) {
-                        add(graph_.occurrences().type[graph_.occurrences().index(input)]);
-                    }
-                    break;
-                }
                 case lispb::schema::TypeDefinitionKind::integer_scalar: {
                     if (is_valid(definitions.integer_scalars
                                      .cpp_representation[definitions.integer_scalars.index(
@@ -2120,11 +1794,6 @@ class TypeGraphBuilder {
                         add(graph_.occurrences().type[graph_.occurrences().index(
                             definitions.soa_columns
                                 .semantic_type[definitions.soa_columns.index(column)])]);
-                        if (definitions.soa_columns
-                                .nested_type[definitions.soa_columns.index(column)]) {
-                            add(*definitions.soa_columns
-                                     .nested_type[definitions.soa_columns.index(column)]);
-                        }
                         if (is_valid(definitions.soa_columns
                                          .relationship[definitions.soa_columns.index(column)])) {
                             add(graph_.occurrences().type[graph_.occurrences().index(
@@ -2188,7 +1857,6 @@ class TypeGraphBuilder {
     codegen::Declarations& store_;
     TypeGraph graph_;
     std::vector<TypeId> declarations_;
-    std::vector<std::optional<codegen::HomogeneousValueId>> homogeneous_values_;
     std::map<codegen::ModuleHandle, StringId> module_headers_;
     std::map<StringId, codegen::ModuleHandle> modules_by_name_;
     std::multimap<StringId, TypeId> declarations_by_name_;

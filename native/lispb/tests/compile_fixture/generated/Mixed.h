@@ -3,8 +3,8 @@
 
 #pragma once
 
+#include "Records.h"
 #include "SignatureSecond.h"
-#include "Soa.h"
 
 #include <array>
 #include <compare>

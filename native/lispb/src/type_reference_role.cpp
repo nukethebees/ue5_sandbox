@@ -48,14 +48,8 @@ auto type_reference_role_text(Strings const& strings, TypeReferenceRole const& r
         case TypeReferenceCategory::alternative:
             result = "alternative";
             break;
-        case TypeReferenceCategory::value_type:
-            result = "value type";
-            break;
         case TypeReferenceCategory::equivalent_type:
             result = "equivalent type";
-            break;
-        case TypeReferenceCategory::array_allocator:
-            result = "array allocator";
             break;
         case TypeReferenceCategory::column:
             result = "column";
@@ -69,14 +63,8 @@ auto type_reference_role_text(Strings const& strings, TypeReferenceRole const& r
         case TypeReferenceCategory::method:
             result = "method";
             break;
-        case TypeReferenceCategory::layout_value:
-            result = "value";
-            break;
         case TypeReferenceCategory::validation_dependency:
             result = "validation dependency";
-            break;
-        case TypeReferenceCategory::module_allocator:
-            result = "module allocator";
             break;
         case TypeReferenceCategory::setting:
             result = "setting";
@@ -107,12 +95,6 @@ auto type_reference_role_text(Strings const& strings, TypeReferenceRole const& r
             break;
         case TypeReferencePart::trailing_return:
             result += " trailing return";
-            break;
-        case TypeReferencePart::equivalent_type:
-            result += " equivalent type";
-            break;
-        case TypeReferencePart::input:
-            result += " input " + std::to_string(role.secondary_index);
             break;
         case TypeReferencePart::dependency:
             result += " dependency";

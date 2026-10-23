@@ -5,11 +5,11 @@
 #include <codegen/schema/soa_member_schemas.h>
 #include <codegen/schema/soa_schemas.h>
 #include <lispb/indices.h>
+#include <lispb/schema/type_graph.h>
 #include <lispb/strings.h>
 
 #include <algorithm>
 #include <cstddef>
-#include <map>
 #include <span>
 #include <stdexcept>
 #include <string>
@@ -17,19 +17,21 @@
 
 namespace lispb::codegen::detail {
 
-void validate_soa_body_columns(Declarations const& declarations,
+void validate_soa_body_columns(schema::TypeGraph const& graph,
+                               ModuleHandle module,
                                DeclarationHandle schema,
-                               std::map<StringId, DeclarationHandle> const& schemas,
                                std::string_view const body) {
+    auto const& declarations{graph.declarations()};
     scan_soa_columns(
         body,
         declarations.strings().view(declarations.soas.name[declarations.soas.index(schema)]),
         [&](std::size_t, std::size_t, std::span<std::string const> const path) {
-            auto const* current{&schema};
+            auto current{schema};
+            auto current_module{module};
             auto const count{path.size()};
             for (std::size_t index{}; index < count; ++index) {
                 auto const members{declarations.items(
-                    declarations.soas.members[declarations.soas.index(*current)])};
+                    declarations.soas.members[declarations.soas.index(current)])};
                 auto const found{std::ranges::find(members, path[index], [&](auto id) {
                     return declarations.strings().view(
                         declarations.soa_members.name[declarations.soa_members.index(id)]);
@@ -38,21 +40,23 @@ void validate_soa_body_columns(Declarations const& declarations,
                     throw std::invalid_argument{
                         "SOA '" +
                         std::string{declarations.strings().view(
-                            declarations.soas.name[declarations.soas.index(*current)])} +
+                            declarations.soas.name[declarations.soas.index(current)])} +
                         "' has no column '" + path[index] + "'"};
                 }
                 auto const member{*found};
                 if (index + 1 < count) {
                     if (declarations.soa_members.kind[declarations.soa_members.index(member)] !=
-                            SoaMemberKind::nested ||
-                        !declarations.soa_members
-                             .nested_schema[declarations.soa_members.index(member)]) {
+                        SoaMemberKind::nested) {
                         throw std::invalid_argument{
                             "SOA column path requires a resolved nested schema: " + path[index]};
                     }
-                    current =
-                        &schemas.at(*declarations.soa_members
-                                         .nested_schema[declarations.soa_members.index(member)]);
+                    auto const occurrence{graph.resolved(
+                        current_module,
+                        declarations.soa_members.type[declarations.soa_members.index(member)])};
+                    auto const& occurrences{graph.occurrences()};
+                    auto const nested{occurrences.type[occurrences.index(occurrence)]};
+                    current = graph.source_declaration(nested);
+                    current_module = graph.module(nested);
                 }
             }
         });

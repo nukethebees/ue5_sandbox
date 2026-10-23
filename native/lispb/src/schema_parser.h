@@ -37,7 +37,6 @@ enum class SemanticRelationKind : std::uint8_t;
 enum class SemanticRelationUnit : std::uint8_t;
 enum class SettingApplyMode : std::uint8_t;
 enum class SettingDevice : std::uint8_t;
-enum class StorageOperation : std::uint8_t;
 
 class SchemaParser {
   public:
@@ -77,11 +76,7 @@ class SchemaParser {
     auto parse_parameter_passing(sexpr::FormId const form) -> ParameterPassing;
     auto parse_parameter(Declarations& declarations, sexpr::FormId const form) -> ParameterId;
     auto parse_function(Declarations& declarations, sexpr::FormId const form) -> FunctionSchemaId;
-    auto parse_operation(sexpr::FormId const form) -> StorageOperation;
-    auto parse_operations(sexpr::FormId const form) -> std::vector<StorageOperation>;
-    auto parse_fixed(Declarations& declarations, sexpr::FormId const form) -> FixedSoaId;
     auto parse_member(Declarations& declarations, sexpr::FormId const form) -> SoaMemberId;
-    auto parse_single_allocation(sexpr::FormId const form) -> lispb::StringId;
     auto parse_soa(Declarations& declarations, sexpr::FormId const form) -> DeclarationHandle;
     auto parse_module_settings(Declarations& declarations, sexpr::Fields const& fields)
         -> ModuleSettingsId;
@@ -135,9 +130,6 @@ class SchemaParser {
     auto parse_optional_sentinel(Declarations& declarations, sexpr::FormId const form)
         -> DeclarationHandle;
     auto parse_optional_presence_bit(Declarations& declarations, sexpr::FormId const form)
-        -> DeclarationHandle;
-    auto parse_layout(Declarations& declarations, sexpr::FormId const form) -> DeclarationHandle;
-    auto parse_vector_soa(Declarations& declarations, sexpr::FormId const form)
         -> DeclarationHandle;
     auto parse_normal_declaration(Declarations& declarations, sexpr::FormId const form)
         -> DeclarationHandle;

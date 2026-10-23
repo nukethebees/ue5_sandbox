@@ -35,7 +35,6 @@ class CanonicalRenderer {
     auto build_enum(codegen::DeclarationHandle schema) -> Expr;
     auto packed_field_kind_name(codegen::PackedFieldKind kind) -> std::string_view;
     auto soa_member_kind_name(codegen::SoaMemberKind kind) -> std::string_view;
-    auto storage_operation_name(codegen::StorageOperation operation) -> std::string_view;
     auto build_parameter(codegen::ParameterId parameter) -> Expr;
     auto build_function(codegen::FunctionSchemaId function, std::string_view kind = "function")
         -> Expr;
@@ -73,8 +72,6 @@ class CanonicalRenderer {
     auto build_tagged_union(codegen::DeclarationHandle schema) -> Expr;
     auto build_soa_member(codegen::SoaMemberId member) -> Expr;
     auto build_soa(codegen::DeclarationHandle schema) -> Expr;
-    auto build_vector_soa(codegen::DeclarationHandle schema) -> Expr;
-    auto build_homogeneous_layout(codegen::DeclarationHandle schema) -> Expr;
     auto build_static_table(codegen::DeclarationHandle schema) -> Expr;
     auto build_facade(codegen::DeclarationHandle schema) -> Expr;
     auto build_settings_schema(codegen::DeclarationHandle schema) -> Expr;

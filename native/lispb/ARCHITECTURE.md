@@ -81,7 +81,7 @@ generate or change that container, and its output has no S7 dependency:
 
 ```lisp
 (module simulation_fields
-  :header "generated/simulation_fields.h"
+  :header "ioj/s7/simulation_fields.h"
   :namespace ioj::s7::simulation_fields
   (settings-schema Fields
     :target ioj::sim::SimulationSettings
@@ -132,8 +132,7 @@ The simulation schema owns aggregate data, enums, and ordinary scalar aliases. S
 such as `HealthIndex` remain C++ declarations because their constructors,
 private representation or nested constants are outside this record model; external integer
 registrations expose their domains and invalid sentinels. Telemetry `std::array` aliases also
-remain handwritten: record fixed counts generate member arrays, while homogeneous layouts emit
-different public C++ types. Neither faithfully declares these aliases. Their physical facts can
+remain handwritten: record fixed counts generate member arrays, which do not declare these aliases. Their physical facts can
 still be supplied through the planner's existing ABI profile/probe system.
 
 Lispb parses constrained declarative input and emits checked source assets; it is not a general Lisp
@@ -142,8 +141,9 @@ stable output contract while sharing the parser and generation workflow.
 
 `kernel` describes typed SandboxCore operations and C++ emission profiles. `slate` describes static
 Slate trees and host integration. `material` describes material graphs and emits Unreal assets.
-Generated outputs remain repository-owned source: modify the DSL input, run the matching CMake
-target, review the generated diff, and keep hand-written integration at the boundary.
+Generated outputs are checked in as ordinary repository source, with public headers in each
+consumer's public include directory and private headers/sources beside their handwritten peers.
+Modify the DSL input, run the matching CMake target, and review and commit the generated diff.
 
 See [README.md](README.md) for entry points.
 
@@ -152,9 +152,9 @@ See [README.md](README.md) for entry points.
 A normal `(module name ...)` is one source and C++ output context, not a declaration family.
 Its row in `NormalModuleSchemas` has one ordered range of `DeclarationHandle` values. Enums, integer
 scalars, the six physical-representation declarations, packed values, records, ordinary and
-tagged unions, SoAs, vector SoAs, homogeneous layouts, static tables, and facades can coexist.
+tagged unions, SoAs, static tables, and facades can coexist.
 The sequence is the source of truth for declaration indices and canonical source order.
-Backend and allocator selection, enum helper namespace, header/source paths, C++ namespace,
+Enum helper namespace, header/source paths, C++ namespace,
 includes, and prelude remain module-wide policies. Settings modules remain special because they
 describe generated settings integration rather than independent semantic types; umbrella modules
 remain special because they aggregate existing outputs.
@@ -180,11 +180,8 @@ declarations by semantic navigation relationships.
 
 Declaration metadata is exhaustive: semantic-TypeGraph contribution, canonical source rendering,
 and generated C++ names are each derived by visiting declaration handles. Generated-name ownership
-includes public helper types such as SoA views and homogeneous storage/view traits, so validation
-can reject cross-declaration collisions before lowering a heterogeneous output module.
-SoA array-allocator variants use one validation and expansion policy; they are limited to plain
-dynamic Unreal SoAs and their prefixed generated
-types are checked before lowering.
+includes public helper types such as SoA views and layout descriptions, so validation rejects
+cross-declaration collisions before lowering a mixed output module.
 
 `ioj::layout::Document` is the authoring boundary. Callers queue named edits in a `Transaction`
 and inspect declarations through `DocumentQuery`. Instructions may temporarily break semantic
@@ -275,159 +272,94 @@ and contribute the entire closure to generator dependencies. The source store re
 and module roles and registration locations. Registry definitions remain source-authored,
 with no parallel planner schema or structured editor.
 
-## Single-allocation SoA
+## Native SoA ownership
 
-The LispB `struct` declaration selects `:storage vector`, `single-allocation`, or `both`.
-Without an explicit policy, a `(single-allocation OwnerName)` declaration selects only that
-owner; other schemas emit vector-backed owners. `both` explicitly requests both representations.
-Nested schemas and flattened column names are checked during semantic validation.
-The explicit `:vector-components (xs ys)`, `(xs ys zs)`, or `(pitches yaws rolls)` annotation requires
-exactly those ordered arrays with a common resolved element type. The generated compact vector
-view additionally compiler-checks that the C++ element type is arithmetic and non-volatile.
-The resolved `TypeGraph` records the vector meaning and checks a declared vector equivalent's
-components and element type when one exists. The single-allocation planner walks
-resolved graph columns for physical order and C++ types; emission receives those typed columns
-and does not infer vector semantics. C++ ABI facts such as `sizeof`, `alignof`, trivial
-copyability, and default construction remain compiler-checked.
+An ordinary `struct` is the canonical logical SoA declaration. `SoaSchemas` retains its ordered
+members, equivalent row type and mappings, relationships, and owner/view API. A nested member's
+resolved type identifies another declared SoA. The semantic graph rejects invalid nested types
+and cycles. The layout planner walks these same members across module boundaries to flatten the
+physical columns; logical access retains the groups. Vector and rotator containers use this path
+with explicit equivalent-value mappings and authored mathematical functions.
 
-Plain annotated nested vectors and rotations return shared strided views on demand. They hold
-one data pointer, a byte stride between columns, and a count; slicing advances the pointer.
-Homogeneous adjacent columns have equal spacing, including the layout's alignment and gaps.
-`RotatorSoAView` reuses the vector view's storage and exposes `pitches()`, `yaws()`, and `rolls()`.
-Schemas with equivalent values or custom view APIs retain generated views to preserve those APIs.
+Every dynamic declaration emits one owner named after the schema, `NameView`, `NameConstView`,
+resolved views, and `NameLayout`. Explicit view names can replace the defaults. `:layout-only true`
+supplies a reusable nested group without an owner or standalone views. Such types have no physical
+C++ spelling and cannot be record members or function parameter types. They remain valid logical
+relationship targets and nested groups.
 
-The generated `FooSingleLayout` is metadata, not an owner base. Its chained `ColumnLayout<T>`
-constants determine random-access offsets, exact allocation size, and alignment. All layouts and
-view helpers use the library-owned `LayoutPolicy` (64 rows/block, 192-byte inter-column gap,
-64-byte minimum alignment). A small `LayoutCursor` materializes typed column pointers in one
-linear pass using the same placement primitives as random-access offsets; independent chained
-`Column.offset(blocks)` calls would be correct but make large production layouts expensive to
-compile and materialize. `capacity_block_bound` is deliberately conservative while
-`layout_bytes` remains exact. The cursor and chained offsets are tested against each other,
-including same-type adjacent and over-aligned columns.
+`NameLayout` is metadata, not an owner base. Chained `ColumnLayout<T>` constants determine column
+offsets, exact allocation bytes, and alignment. The existing layout uses 64 rows per block, a
+192-byte inter-column gap, and 64-byte minimum alignment. `LayoutCursor` materializes typed column
+pointers in one linear pass using the same placement primitives. The conservative capacity bound
+and exact byte calculation retain overflow checks. C++ verifies element alignment, trivial
+copyability, and construction requirements; nontrivial owning element types are rejected.
 
-The generated owner directly holds `StorageState` and inherits small generic
-`StorageOperations`; it contains explicit typed per-column mutations. Native and Unreal support
-provide `copy_n`, `default_construct_n`, and `source_data`. Append accepts a structural source
-with `num()`, `validate()`, scalar column accessors, and `view_member()` nested accessors.
-It validates the source range before growing the destination, then resolves source columns
-after growth. Compact self-append therefore survives reallocation. Independent sources, such as
-frame-backed producers, expose their own columns directly and validate their column lengths.
-Their storage must remain valid through destination growth.
-Each compact owner holds one non-owning `std::pmr::memory_resource*`, defaulting to
-`std::pmr::get_default_resource()` at construction. Allocation and release pass exact layout
-bytes and alignment. Move construction adopts the resource; move assignment retains the
-destination resource and copies columns when resources compare unequal. Copying stays deleted.
-Lifetime, allocation, growth, borrowing, and container operations share one `StorageOperations`
-friend in `ioj/single_allocation/operations.h`. Backend aliases supply size types
-and growth policies; column operations remain generated explicitly. Runtime preconditions use
-standard assertions, which disappear when `NDEBUG` is defined; helpers take no validation callback.
-The resource must outlive the storage. Resource choice is a construction argument, not a
-schema allocator variant. Owners are 24 bytes on Win64; shared view state stays unchanged.
+The owner holds one storage state and one non-owning PMR resource pointer. Its default constructor
+selects `std::pmr::get_default_resource()`; the explicit constructor accepts a non-null
+`std::pmr::memory_resource&`. Persistent and frame-local allocations use the same owner. The
+resource must outlive it. Allocation and release pass the exact layout size and alignment.
+Move construction adopts the source resource. Move assignment retains the destination resource,
+transferring storage when resources compare equal and copying columns otherwise. Copy construction
+and assignment are deleted.
 
-The owner has no generated `FooStorage` intermediate. Public named mutable and const compact
-views are thin wrappers over one `FooSingleViewImpl<Const>` accessor implementation. They hold a
-stable pointer to owner state plus offset/count, resolve pointers lazily, and remain 16-byte
-trivially copyable handles, checked with the shared `validate_compact_view` contract. Each generated
-implementation declares its own private state pointer, offset, and count. Shared free functions
-receive these values for range validation, slicing, and column-pointer calculations; they need no
-friend access. Mutable and const specializations are friends only for view conversion. Non-vector
-nested views share the same owner state and range. Column iteration calls individual accessors;
-there is no schema-wide `columns()` conversion. All views are non-owning borrows: the owner must
-outlive them. Reallocation, owner moves, reset, and removal/reordering of borrowed rows invalidate
-them; reacquire views afterward. Owner borrowing methods validate the initial range, and slicing
-checks subrange bounds. Column and group accessors trust the established borrow and do not detect
-stale views. The state/range constructor is used internally with already established ranges.
-Owner borrowing methods constrain explicit-object parameters to lvalues, including const lvalues;
-temporary owners cannot yield views.
+`StorageOperations` coordinates lifetime and mutation using generated, typed per-column operations.
+It never stores independently resizable columns. One row count and capacity govern growth,
+insertion, removal, copying, and permutation; equal-column-size validation is unnecessary inside
+the owner. Keep per-column construction, copying, and destruction explicit instead of replacing
+them with a variadic storage abstraction. Row indices and counts use `std::uint32_t`; allocation
+bytes use `std::size_t`. Span lengths are checked before conversion to the row-count type.
 
-Per-column generated code is intentional and inspectable. Do not replace it with a universal
-storage template or variadic copy mechanism. Native and Unreal share runtime PMR resource selection
-and retain their distinct ordinary-view APIs. Keep generated headers checked in and
-regenerate both the compile fixture and production output after changing schema, planning, or
-emission. Focused `codegen` and `native-soa` workflows cover rejection, layout, aliasing, growth,
-view lifetime, and PMR resource ownership; `native-tests` covers production simulation consumers.
+Append and copy accept structural sources with a matching `soa_schema` tag, `num()`, `validate()`,
+scalar column accessors, and nested `view_member()` accessors. External sources must validate
+independently supplied column lengths and ranges. Append validates the range before growth and
+resolves source columns afterward, allowing compact self-append across reallocation. External
+source storage must remain valid during destination growth. Overlapping copy uses the per-column
+move path; allocation growth and non-overlapping append use the copy path.
 
-### Logical API and storage policy
+## Compact and resolved views
 
-A `DeclarationHandle` into `SoaSchemas` identifies the logical declaration. The type graph resolves its columns and relationships
-before vector and single-allocation lowering split. Both lowerers use `soa_api` for function
-signatures, receiver selection, aliases, and logical column expressions. A compact owner never
-needs an ordinary owner or aggregate view to implement this API.
+The default view retains a pointer to owner state, offset, and count. Generated mutable and const
+types share `NameViewImpl<Const>` and expose typed `std::span` column accessors. Nested compact views
+refer to the same owner state and range, with offsets from the parent's flattened layout. Member
+functions precede private view data. Owner borrowing requires an lvalue and checks the initial
+range; slicing checks its subrange. Accessors rely on these established preconditions.
 
-Every `SoaSchemas` column has an explicit role:
+Calling `.resolve()` materializes a pointer per physical column plus one count. Resolve once
+outside a hot loop when repeated layout calculations would be wasteful. Resolved views preserve
+logical nesting and the declared equivalent-value and custom view API. A dynamic nested group's
+resolved view uses the child's canonical resolved type. Layout-only groups receive local generated
+resolved views. Resolving an already resolved view returns that view. External span constructors
+check equal lengths, non-null pointers for nonempty columns, and row-count conversion.
 
-| Field | Classification | Contract |
-| --- | --- | --- |
-| `name` | A: logical | Stable schema identity, independent of the owner name. |
-| `members` | A: logical | Ordered logical columns, nesting, relationships and mask annotations. |
-| `view_name`, `const_view_name` | D: naming decision | Name the sole compact pair for single-only; name vector views with vector or both. Compact names with both remain `NameSingleView` / `NameSingleConstView`. Layout-only has no standalone pair to name. |
-| `operations` | B: vector | Selects public vector-owner mutations. Compact-owner mutations are constrained by the owner's state and column operations. |
-| `export_specifier` | A: API | Applies to the schema's public owner and named mutable/const views. |
-| `functions` | A: API | Owner functions, emitted on every requested owner, including allocator variants. |
-| `const_view_functions` | A: API | Read-only functions on both mutable and const views. |
-| `mutable_view_functions` | A: API | Functions on mutable views only. |
-| `using_declarations` | A: API | Declarations in every canonical owner and view. Raw C++ must be valid in those receivers. |
-| `equivalent_type` | A: logical/API | Semantic equivalent row type; `equivalent_type` alias and value-returning `operator[]` aggregate-initialize it from columns in declaration order. |
-| `copy_element_memberwise` | B: vector | Chooses direct element assignment instead of container copying for ordinary nested storage. Compact leaves already require trivial copying, so single-only rejects it. |
-| `layout_only` | D: logical layout decision | No physical owner or standalone views. Supplies columns and view API to nested compact occurrences. Rejects owner functions, operations, standalone view names and ownership settings. |
-| `fixed` | B: vector | Additional fixed/container ownership using the ordinary storage abstraction; incompatible with single-only. |
-| `single_allocation` | C: single allocation | Physical owner name; required for single-allocation or both, forbidden with vector. |
-| `array_allocator` | B: vector | Unreal TArray allocation policy; rejected on single-only and by the standard-library vector backend. |
-| `field_mask_name`, `field_enum_name` | A: logical/API | Generated once from the logical columns, before either owner backend, including layout-only schemas. |
-| `vector_components` | A: logical | Component semantics and validation. Runtime vector-view substitution is permitted only when it preserves the entire declared view API. |
-| `storage` | D: policy decision | Explicit physical representations. Default is single-only with a single-allocation declaration, vector otherwise; never implicit both. |
+Both representations borrow storage. The owner and resource must outlive them. Reallocation, owner
+moves, reset, and mutation that removes or reorders borrowed rows require reacquiring views.
+Resolved pointers do not follow reallocation. View validation checks meaningful source and range
+preconditions; it does not add owner column-size invariants or detect stale borrows.
 
-`function`, `view-function`, and `mutable-view-function` forms select owner, read-only-view,
-and mutable-view receivers respectively. Read-only view functions are const. A body is emitted
-inline unless `:definition-in-source true` requests an out-of-line definition; this requires a
-source output and is forbidden for templates. A bodyless function remains an explicit C++
-declaration for a handwritten definition. Mutable-view membership controls pointee mutation;
-const qualification on a mutable view itself does not make its columns const.
+## Logical SoA API
 
-Function bodies remain raw C++. LispB expands explicit `$column(values)` and
-`$column(positions.xs)` expressions through logical member access. The same expression becomes
-an ordinary column member or a compact accessor, with owner access through `get_view()`.
-The expansion is textual (including inside raw C++ comments and literals); other identifiers
-are untouched. Storage-specific handwritten bodies remain storage-specific C++, and `both`
-requires such bodies to compile against both receivers. LispB does not guess how arbitrary C++
-identifiers, containers, macros, or local variables should be rewritten. Custom nested view APIs
-use generated state-relative compact views rather than losing functions through a vector alias.
+`soa_api` derives function signatures, receiver selection, aliases, and logical column expressions
+from the canonical schema. `:equivalent-type` supplies a row value, constructed from columns in
+declaration order unless `:equivalent-constructor` names an explicit constructor function. Per-member
+`:equivalent-member` mappings select input fields; `:equivalent-accessor true` selects a member call.
+This supports scalar and equivalent-value insertion, assignment, and retrieval without recognizing
+vector semantics from column names or C++ spelling.
 
-For vector owners, `:operations` selects `reset`, `reserve`, `set-num`, `add-uninitialised`, `add-defaulted`,
-`remove-at-swap`, `copy-element` (including `copy_elements`) and `append-from`. An omitted or
-empty list exposes none of these. Construction, move/destruction, borrowing, size/capacity,
-iteration and direct column access remain intrinsic. Ordinary owners also retain their existing
-row `set`/`add` and permutation helpers, which are distinct from these bulk operations. Compact
-owners publicly inherit runtime operations constrained by named concepts in
-`soa_storage_detail`. A friend `StorageRequirements` helper evaluates private-member requirements
-without exposing storage access. The owner's state and typed column helpers determine which
-operations are available; there are no generated
-operation-selection flags or public `using` lists. Mutations reject const owners, copy/append
-require matching `soa_schema` tags, and borrowing rejects temporary owners. Each logical SoA
-forward-declares a schema tag shared by its compact owner and mutable/const views, including nested views
-of that logical schema. Independent producers explicitly adopt the destination's tag and implement
-its column interface. A shared source concept checks the tag, size and validation operations;
-the generator no longer repeats per-column source constraints. Tags need only type identity, so
-shared nested schemas can repeat their forward declarations across generated headers. Compact
-column type spelling uses the enclosing namespace when it can retain unambiguous lookup;
-foreign names and names hidden by generated or schema-defined members remain qualified.
-Allocation and
-lifetime helpers remain private or protected in the implementation.
-Compact copy accepts the same structural sources as append and supports overlapping row ranges.
-It uses a separate per-column `move_n` path (`memmove` / `FMemory::Memmove`), while append and
-allocation growth retain non-overlapping `copy_n` (`memcpy` / `FMemory::Memcpy`).
+`function`, `view-function`, and `mutable-view-function` select owner, read-only-view, and mutable-view
+receivers. Read-only view functions are const. Bodies emit inline unless
+`:definition-in-source true` requests an out-of-line definition, which requires a source output
+and is forbidden for templates. Bodyless functions declare handwritten implementations. Const
+qualification on a mutable view does not make its pointees const.
 
-The type graph retains the logical declaration identity while recording the single owner as
-its physical C++ spelling for single-only storage. C++ type references and forward declarations
-use that spelling. Layout-only nodes have an empty C++ spelling and cannot be used as physical
-record members or function parameter types. They remain valid logical relationship targets and
-nested schemas. Registered names, dependency edges and planner identity remain logical; ABI
-facts for an owner are keyed by its physical spelling, never a deleted vector class name.
-When a logical vector schema has a declared vector equivalent, the resolved model also retains
-that vector declaration's `equivalent_constructor`. Compact row conversion uses it when set;
-native vector values use aggregate construction directly.
+Authored bodies remain raw C++. `$column(values)` and `$column(positions.xs)` expand through logical
+column accessors. Expansion is textual, including inside comments and literals; other identifiers
+remain unchanged. Custom functions and using declarations must be valid for their declared receiver.
+Generated field masks derive from the same logical member annotations. Export specifiers apply to
+the public owner and views.
 
-Vector SoA declarations can set `:equivalent-accessors true` with named
-`:equivalent-members` to emit component calls such as `value.x()`. Field access
-remains the default for Unreal equivalents.
+Generated headers are checked in with their consumers. Regenerate production and compile fixtures
+after changes to schema, layout planning, or emission. The `codegen` and `native-soa` checks cover
+schema rejection, nested composition, equivalent values, external sources, layout, growth, aliasing,
+move/resource behavior, and view bounds. Native simulation tests cover the production consumers.
+The SoA compiler and generated owners require no Unreal headers or libraries; separate enum,
+settings, Slate, material, and kernel features retain their own integration contracts.

@@ -10,7 +10,6 @@ auto SoaColumns::append() -> SoaColumnId {
     name.push_back({});
     semantic_type.push_back({});
     kind.push_back(codegen::SoaMemberKind::array);
-    nested_type.push_back({});
     relationship.push_back({});
     return SoaColumnId{row};
 }

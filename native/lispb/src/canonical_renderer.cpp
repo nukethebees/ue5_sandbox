@@ -15,10 +15,7 @@
 #include <codegen/schema/facade_schemas.h>
 #include <codegen/schema/fixed_point_rounding.h>
 #include <codegen/schema/fixed_point_schemas.h>
-#include <codegen/schema/fixed_soa_schemas.h>
 #include <codegen/schema/function_schemas.h>
-#include <codegen/schema/homogeneous_layout_schemas.h>
-#include <codegen/schema/homogeneous_value_schemas.h>
 #include <codegen/schema/indices.h>
 #include <codegen/schema/integer_scalar_cpp_emission.h>
 #include <codegen/schema/integer_scalar_schemas.h>
@@ -51,25 +48,20 @@
 #include <codegen/schema/semantic_relation_kind.h>
 #include <codegen/schema/semantic_relation_schemas.h>
 #include <codegen/schema/semantic_relation_unit.h>
-#include <codegen/schema/soa_allocators.h>
-#include <codegen/schema/soa_backend.h>
 #include <codegen/schema/soa_mask_dimension_schemas.h>
 #include <codegen/schema/soa_member_kind.h>
 #include <codegen/schema/soa_member_schemas.h>
 #include <codegen/schema/soa_schemas.h>
-#include <codegen/schema/soa_storage.h>
 #include <codegen/schema/static_table_column_schemas.h>
 #include <codegen/schema/static_table_group_schemas.h>
 #include <codegen/schema/static_table_row_schemas.h>
 #include <codegen/schema/static_table_schemas.h>
-#include <codegen/schema/storage_operation.h>
 #include <codegen/schema/tagged_union_alternative_schemas.h>
 #include <codegen/schema/tagged_union_schemas.h>
 #include <codegen/schema/type_refs.h>
 #include <codegen/schema/type_registry.h>
 #include <codegen/schema/union_alternative_schemas.h>
 #include <codegen/schema/union_schemas.h>
-#include <codegen/schema/vector_soa_schemas.h>
 #include <codegen/sexpr/sexpr_renderer.h>
 #include <lispb/indices.h>
 #include <lispb/strings.h>
@@ -227,28 +219,6 @@ auto CanonicalRenderer::soa_member_kind_name(codegen::SoaMemberKind const kind)
             return "nested";
     }
     return "array";
-}
-auto CanonicalRenderer::storage_operation_name(codegen::StorageOperation const operation)
-    -> std::string_view {
-    switch (operation) {
-        case codegen::StorageOperation::reset:
-            return "reset";
-        case codegen::StorageOperation::reserve:
-            return "reserve";
-        case codegen::StorageOperation::add_uninitialised:
-            return "add-uninitialised";
-        case codegen::StorageOperation::add_defaulted:
-            return "add-defaulted";
-        case codegen::StorageOperation::remove_at_swap:
-            return "remove-at-swap";
-        case codegen::StorageOperation::set_num:
-            return "set-num";
-        case codegen::StorageOperation::copy_element:
-            return "copy-element";
-        case codegen::StorageOperation::append_from:
-            return "append-from";
-    }
-    return "reset";
 }
 auto CanonicalRenderer::build_parameter(codegen::ParameterId const parameter) -> Expr {
     auto const& parameters{store_.parameters};
@@ -513,8 +483,6 @@ auto CanonicalRenderer::build_soa_member(codegen::SoaMemberId const member) -> E
                          {ir_.atom(members.name[index]),
                           ir_.atom(soa_member_kind_name(members.kind[index])),
                           build_type_ref(members.type[index])})};
-    result.optional_field("fixed-schema", members.fixed_schema[index], atom);
-    result.optional_field("nested-schema", members.nested_schema[index], atom);
     result.optional_field("equivalent-member", members.equivalent_member[index], atom);
     result.flag("equivalent-accessor", members.equivalent_accessor[index]);
     result.flag("mask-field", members.mask_field[index]);
@@ -538,21 +506,13 @@ auto CanonicalRenderer::build_soa(codegen::DeclarationHandle const schema) -> Ex
     auto result{ir_.form("struct", {ir_.atom(soas.name[index])})};
     result.optional_field("view-name", soas.view_name[index], atom);
     result.optional_field("const-view-name", soas.const_view_name[index], atom);
-    result.list_field("operations", items(soas.operations[index]), [this](auto operation) {
-        return ir_.atom(storage_operation_name(operation));
-    });
     if (soas.export_specifier[index].value != 0) {
         result.field("export-specifier", ir_.atom(soas.export_specifier[index]));
     }
     result.list_field("using-declarations", items(soas.using_declarations[index]), string);
     result.optional_field("equivalent-type", soas.equivalent_type[index], type_ref);
     result.optional_field("equivalent-constructor", soas.equivalent_constructor[index], string);
-    result.list_field("vector-components", items(soas.vector_components[index]), atom);
-    result.flag("copy-element-memberwise", soas.copy_element_memberwise[index]);
     result.flag("layout-only", soas.layout_only[index]);
-    if (soas.storage[index]) {
-        result.field("storage", ir_.atom(codegen::soa_storage_name(*soas.storage[index])));
-    }
     result.optional_field("field-mask-name", soas.field_mask_name[index], atom);
     result.optional_field("field-enum-name", soas.field_enum_name[index], atom);
     for (auto const member : items(soas.members[index])) {
@@ -566,70 +526,6 @@ auto CanonicalRenderer::build_soa(codegen::DeclarationHandle const schema) -> Ex
     }
     for (auto const function : items(soas.mutable_view_functions[index])) {
         result.add(build_function(function, "mutable-view-function"));
-    }
-    result.optional_field("array-allocator", soas.array_allocator[index], type_ref);
-    if (soas.fixed[index].has_value()) {
-        auto const& fixed_soas{store_.fixed_soas};
-        auto const fixed_index{fixed_soas.index(*soas.fixed[index])};
-        auto fixed{ir_.form("fixed", {ir_.atom(fixed_soas.storage_name[fixed_index])})};
-        fixed.list_field("containers", items(fixed_soas.containers[fixed_index]), atom);
-        result.add(fixed.build());
-    }
-    if (soas.single_allocation[index].has_value()) {
-        result.add(
-            ir_.form("single-allocation", {ir_.atom(*soas.single_allocation[index])}).build());
-    }
-    return result.build();
-}
-auto CanonicalRenderer::build_vector_soa(codegen::DeclarationHandle const schema) -> Expr {
-    auto const string{[this](auto value) { return ir_.string(value); }};
-    auto const& soas{store_.vector_soas};
-    auto const index{soas.index(schema)};
-    auto result{ir_.form("vector-soa", {ir_.atom(soas.name[index])})};
-    result.field("value-type", build_type_ref(soas.value_type[index]))
-        .field("components", string_list(items(soas.components[index])));
-    result.list_field("equivalent-members", items(soas.equivalent_members[index]), string);
-    result.flag("equivalent-accessors", soas.equivalent_accessors[index]);
-    result.optional_field("equivalent-constructor",
-                          soas.equivalent_constructor[index],
-                          [this](auto value) { return ir_.atom(value); });
-    result.field("equivalent-type", build_type_ref(soas.equivalent_type[index]));
-    if (soas.export_specifier[index].value != 0) {
-        result.field("export-specifier", ir_.atom(soas.export_specifier[index]));
-    }
-    if (soas.fixed[index].has_value()) {
-        auto const& fixed_soas{store_.fixed_soas};
-        auto const fixed_index{fixed_soas.index(*soas.fixed[index])};
-        auto fixed{ir_.form("fixed", {ir_.atom(fixed_soas.storage_name[fixed_index])})};
-        auto const containers{items(fixed_soas.containers[fixed_index])};
-        fixed.list_field("containers", containers, string);
-        result.add(fixed.build());
-    }
-    return result.build();
-}
-auto CanonicalRenderer::build_homogeneous_layout(codegen::DeclarationHandle const schema) -> Expr {
-    auto const string{[this](auto value) { return ir_.string(value); }};
-    auto const& values{store_.homogeneous_values};
-    auto const& layouts{store_.homogeneous_layouts};
-    auto const index{layouts.index(schema)};
-    auto result{ir_.form("layout", {ir_.atom(layouts.name[index])})};
-    result.field("components", string_list(items(layouts.components[index])));
-    result.list_field("input-members", items(layouts.input_members[index]), string);
-    if (layouts.export_specifier[index].value != 0) {
-        result.field("export-specifier", ir_.atom(layouts.export_specifier[index]));
-    }
-    for (auto const value : items(layouts.value_types[index])) {
-        auto const value_index{values.index(value)};
-        auto child{ir_.form(
-            "value-type",
-            {build_type_ref(values.type[value_index]), ir_.atom(values.suffix[value_index])})};
-        child.optional_field("equivalent-type",
-                             values.equivalent_type[value_index],
-                             [this](auto value) { return build_type_ref(value); });
-        child.list_field("input-types", items(values.input_types[value_index]), [this](auto type) {
-            return build_type_ref(type);
-        });
-        result.add(child.build());
     }
     return result.build();
 }
@@ -756,10 +652,6 @@ auto CanonicalRenderer::build_declaration_schema(codegen::DeclarationHandle cons
             return build_tagged_union(declaration);
         case codegen::DeclarationKind::soa:
             return build_soa(declaration);
-        case codegen::DeclarationKind::vector_soa:
-            return build_vector_soa(declaration);
-        case codegen::DeclarationKind::homogeneous_layout:
-            return build_homogeneous_layout(declaration);
         case codegen::DeclarationKind::static_table:
             return build_static_table(declaration);
         case codegen::DeclarationKind::facade:
@@ -773,7 +665,6 @@ auto CanonicalRenderer::build_declaration_schema(codegen::DeclarationHandle cons
 auto CanonicalRenderer::build_module(codegen::ModuleHandle const module) -> Expr {
     auto const string{[this](auto value) { return ir_.string(value); }};
     auto const atom{[this](auto value) { return ir_.atom(value); }};
-    auto const& allocators{store_.soa_allocator_variants};
     auto const settings{store_.module_settings(module)};
     auto const& settings_store{store_.module_settings_store};
     auto const index{settings_store.index(settings)};
@@ -801,16 +692,6 @@ auto CanonicalRenderer::build_module(codegen::ModuleHandle const module) -> Expr
     auto const& modules{store_.normal_modules};
     auto const module_index{modules.index(module)};
     result.optional_field("helper-namespace", modules.enum_helper_namespace[module_index], atom);
-    if (modules.soa_backend[module_index] == codegen::SoaBackend::standard_library) {
-        result.field("backend", ir_.atom("standard-library"));
-    }
-    for (auto const allocator : items(modules.soa_array_allocators[module_index])) {
-        auto const allocator_index{allocators.index(allocator)};
-        result.add(ir_.form("array-allocator",
-                            {ir_.atom(allocators.prefix[allocator_index]),
-                             build_type_ref(allocators.allocator[allocator_index])})
-                       .build());
-    }
     for (auto const declaration : items(modules.declarations[module_index])) {
         result.add(build_declaration_schema(declaration));
     }

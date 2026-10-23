@@ -1,14 +1,32 @@
 # Lispb code generation
 
-Lispb contains the small declarative DSLs used to generate SandboxCore kernels, Slate layouts, and
-Unreal material assets. Use the repository CMake generation targets rather than invoking emitters
-directly.
+Lispb generates native C++ schemas and SoA containers, SandboxCore kernels, Slate layouts, and
+Unreal material assets. Use the repository CMake generation targets. Generated headers and sources
+are checked in beside handwritten code in their normal public include and source directories.
+
+An ordinary `struct` declares ordered SoA columns. Each dynamic owner uses one allocation, one row
+count, and one capacity. Nested members reference another declared SoA through their type:
+
+```lisp
+(struct Points :equivalent-type Point
+  (member xs array float :equivalent-member x)
+  (member ys array float :equivalent-member y))
+(struct Rows
+  (member ids array std::uint32_t)
+  (member points nested Points))
+```
+
+Owners use the default PMR resource, or accept a `std::pmr::memory_resource&` at construction.
+The resource must outlive the owner. Use `get_view()` or `get_const_view()` for compact borrows,
+and call `.resolve()` on a view to materialize its column pointers once before a hot loop.
+Both view representations expose typed spans; neither owns or resizes columns. `:layout-only true`
+declares a reusable nested column group without a standalone owner.
 
 External C++ types can carry scalar information without generating a new C++ type. For example,
 put these definitions in a shared registry file:
 
 ```lisp
-(type signed_byte :spelling "int8" (integer :signed true :bit-width 8))
+(type signed_byte :spelling "std::int8_t" :header "cstdint" (integer :signed true :bit-width 8))
 (type real :spelling "double" (floating-point :format ieee754-binary64))
 ```
 

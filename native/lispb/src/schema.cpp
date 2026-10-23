@@ -7,7 +7,6 @@
 #include <codegen/schema/physical_type_form.h>
 #include <codegen/schema/physical_type_use.h>
 #include <codegen/schema/resolved_cpp_type_use.h>
-#include <codegen/schema/storage_operation.h>
 #include <codegen/schema/type_refs.h>
 #include <codegen/schema/type_registry.h>
 #include <lispb/strings.h>
@@ -19,7 +18,6 @@
 #include <string>
 #include <string_view>
 #include <utility>
-#include <vector>
 
 namespace lispb::codegen {
 
@@ -38,6 +36,7 @@ auto resolve_type_use(TypeRefId const reference_id, TypeRegistry const& types)
         }
         result = types.registered.cpp_type[types.registered.index(*found)];
     } else {
+        auto const spelling{native_spelling(name)};
         constexpr std::array fixed_width_integers{"std::int8_t",
                                                   "std::uint8_t",
                                                   "std::int16_t",
@@ -46,12 +45,12 @@ auto resolve_type_use(TypeRefId const reference_id, TypeRegistry const& types)
                                                   "std::uint32_t",
                                                   "std::int64_t",
                                                   "std::uint64_t"};
-        if (std::ranges::find(fixed_width_integers, name) != fixed_width_integers.end()) {
-            result = cpp_types.intern(name, {cpp_types.dependency(name, "cstdint")});
-        } else if (name == "std::size_t" || name == "std::ptrdiff_t") {
-            result = cpp_types.intern(name, {cpp_types.dependency(name, "cstddef")});
+        if (std::ranges::find(fixed_width_integers, spelling) != fixed_width_integers.end()) {
+            result = cpp_types.intern(spelling, {cpp_types.dependency(spelling, "cstdint")});
+        } else if (spelling == "std::size_t" || spelling == "std::ptrdiff_t") {
+            result = cpp_types.intern(spelling, {cpp_types.dependency(spelling, "cstddef")});
         } else {
-            result = cpp_types.intern(name);
+            result = cpp_types.intern(spelling);
         }
     }
 
@@ -95,19 +94,6 @@ auto native_spelling(std::string const& spelling) -> std::string {
         }
     }
     return spelling;
-}
-
-auto all_storage_operations() -> std::vector<StorageOperation> {
-    return {
-        StorageOperation::reset,
-        StorageOperation::reserve,
-        StorageOperation::add_uninitialised,
-        StorageOperation::add_defaulted,
-        StorageOperation::remove_at_swap,
-        StorageOperation::set_num,
-        StorageOperation::copy_element,
-        StorageOperation::append_from,
-    };
 }
 
 } // namespace lispb::codegen

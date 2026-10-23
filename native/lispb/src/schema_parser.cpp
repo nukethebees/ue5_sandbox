@@ -33,10 +33,7 @@
 #include <codegen/schema/setting_apply_mode.h>
 #include <codegen/schema/setting_control_kind.h>
 #include <codegen/schema/setting_device.h>
-#include <codegen/schema/soa_backend.h>
 #include <codegen/schema/soa_member_kind.h>
-#include <codegen/schema/soa_storage.h>
-#include <codegen/schema/storage_operation.h>
 #include <codegen/schema/type_registry.h>
 #include <codegen/sexpr/fields.h>
 #include <codegen/sexpr/indices.h>
@@ -328,62 +325,10 @@ auto SchemaParser::parse_function(Declarations& declarations, sexpr::FormId cons
     return record_id;
 }
 
-auto SchemaParser::parse_operation(sexpr::FormId const form) -> StorageOperation {
-    auto const value{std::string{parser_.text(form, "storage operation")}};
-    static constexpr std::pair<std::string_view, StorageOperation> operations[]{
-        {"reset", StorageOperation::reset},
-        {"reserve", StorageOperation::reserve},
-        {"add-uninitialised", StorageOperation::add_uninitialised},
-        {"add-defaulted", StorageOperation::add_defaulted},
-        {"remove-at-swap", StorageOperation::remove_at_swap},
-        {"set-num", StorageOperation::set_num},
-        {"copy-element", StorageOperation::copy_element},
-        {"append-from", StorageOperation::append_from},
-    };
-    auto const found{std::ranges::find(
-        operations, value, &std::pair<std::string_view, StorageOperation>::first)};
-    if (found == std::end(operations)) {
-        parser_.fail(form, "unknown storage operation '" + value + "'");
-    }
-    return found->second;
-}
-
-auto SchemaParser::parse_operations(sexpr::FormId const form) -> std::vector<StorageOperation> {
-    if (!syntax_.is_list(form)) {
-        parser_.fail(form, "operations must be a list");
-    }
-    if (syntax_.children(form).size() == 1 &&
-        std::string{parser_.text(syntax_.children(form).front(), "storage operation")} == "all") {
-        return all_storage_operations();
-    }
-    std::vector<StorageOperation> result;
-    result.reserve(syntax_.children(form).size());
-    for (auto const& child : syntax_.children(form)) {
-        if (std::string{parser_.text(child, "storage operation")} == "all") {
-            parser_.fail(child, "'all' must be the only storage operation");
-        }
-        result.push_back(parse_operation(child));
-    }
-    return result;
-}
-
-auto SchemaParser::parse_fixed(Declarations& declarations, sexpr::FormId const form) -> FixedSoaId {
-    Fields const fields{parser_, form, "fixed", 1};
-    fields.validate({"containers"});
-    auto& records{declarations.fixed_soas};
-    auto const record_id{records.append()};
-    auto const record_index{records.index(record_id)};
-    records.storage_name[record_index] =
-        parser_.identifier(fields.positional(0), "fixed storage name");
-    records.containers[record_index] = declarations.range(identifier_list_or(fields, "containers"));
-    return record_id;
-}
-
 auto SchemaParser::parse_member(Declarations& declarations, sexpr::FormId const form)
     -> SoaMemberId {
     Fields const fields{parser_, form, "member", 3};
     fields.validate({"fixed-schema",
-                     "nested-schema",
                      "mask-field",
                      "mask-dimensions",
                      "equivalent-member",
@@ -449,50 +394,30 @@ auto SchemaParser::parse_member(Declarations& declarations, sexpr::FormId const 
     records.type[record_index] = parse_type_ref(declarations, fields.positional(2));
     records.equivalent_member[record_index] = optional_identifier(fields, "equivalent-member");
     records.equivalent_accessor[record_index] = boolean_or(fields, "equivalent-accessor");
-    records.fixed_schema[record_index] = optional_identifier(fields, "fixed-schema");
-    records.nested_schema[record_index] = optional_identifier(fields, "nested-schema");
     records.mask_field[record_index] = boolean_or(fields, "mask-field");
     records.mask_dimensions[record_index] = declarations.range(mask_dimensions);
     records.relationship[record_index] = relationship;
     return record_id;
 }
 
-auto SchemaParser::parse_single_allocation(sexpr::FormId const form) -> lispb::StringId {
-    Fields const fields{parser_, form, "single-allocation", 1};
-    fields.validate({});
-    return parser_.identifier(fields.positional(0), "single-allocation name");
-}
-
 auto SchemaParser::parse_soa(Declarations& declarations, sexpr::FormId const form)
     -> DeclarationHandle {
     Fields const fields{parser_, form, "struct", 1};
-    fields.validate({"storage",
-                     "view-name",
+    fields.validate({"view-name",
                      "const-view-name",
-                     "operations",
                      "export-specifier",
                      "using-declarations",
-                     "array-allocator",
                      "equivalent-type",
                      "equivalent-constructor",
-                     "vector-components",
-                     "copy-element-memberwise",
                      "layout-only",
                      "field-mask-name",
                      "field-enum-name"},
-                    {"member",
-                     "function",
-                     "view-function",
-                     "mutable-view-function",
-                     "fixed",
-                     "single-allocation"});
+                    {"member", "function", "view-function", "mutable-view-function"});
 
     std::vector<SoaMemberId> members;
     std::vector<FunctionSchemaId> functions;
     std::vector<FunctionSchemaId> const_view_functions;
     std::vector<FunctionSchemaId> mutable_view_functions;
-    std::optional<FixedSoaId> fixed;
-    std::optional<lispb::StringId> single_allocation;
     for (auto const declaration_id : fields.declarations()) {
         auto const declaration{declaration_id};
         auto const head{syntax_.head(declaration)};
@@ -504,38 +429,12 @@ auto SchemaParser::parse_soa(Declarations& declarations, sexpr::FormId const for
             const_view_functions.push_back(parse_function(declarations, declaration));
         } else if (head == "mutable-view-function") {
             mutable_view_functions.push_back(parse_function(declarations, declaration));
-        } else if (head == "fixed") {
-            if (fixed.has_value()) {
-                parser_.fail(declaration, "duplicate 'fixed' declaration");
-            }
-            fixed = parse_fixed(declarations, declaration);
-        } else if (head == "single-allocation") {
-            if (single_allocation.has_value()) {
-                parser_.fail(declaration, "duplicate 'single-allocation' declaration");
-            }
-            single_allocation = parse_single_allocation(declaration);
         }
     }
 
-    std::vector<StorageOperation> operations;
-    if (auto const value{fields.optional("operations")}) {
-        operations = parse_operations(*value);
-    }
     std::optional<TypeRefId> equivalent_type;
     if (auto const value{fields.optional("equivalent-type")}) {
         equivalent_type = parse_type_ref(declarations, *value);
-    }
-    std::optional<SoaStorage> storage;
-    if (auto const value{optional_text(fields, "storage")}) {
-        if (*value == "vector") {
-            storage = SoaStorage::vector;
-        } else if (*value == "single-allocation") {
-            storage = SoaStorage::single_allocation;
-        } else if (*value == "both") {
-            storage = SoaStorage::both;
-        } else {
-            parser_.fail(form, "storage must be vector, single-allocation, or both");
-        }
     }
     auto& records{declarations.soas};
     auto const record_id{records.append()};
@@ -544,7 +443,6 @@ auto SchemaParser::parse_soa(Declarations& declarations, sexpr::FormId const for
     records.view_name[record_index] = optional_identifier(fields, "view-name");
     records.const_view_name[record_index] = optional_identifier(fields, "const-view-name");
     records.members[record_index] = declarations.range(members);
-    records.operations[record_index] = declarations.range(operations);
     records.export_specifier[record_index] = parse_export_specifier(fields);
     records.functions[record_index] = declarations.range(functions);
     records.mutable_view_functions[record_index] = declarations.range(mutable_view_functions);
@@ -553,19 +451,9 @@ auto SchemaParser::parse_soa(Declarations& declarations, sexpr::FormId const for
     records.equivalent_type[record_index] = equivalent_type;
     records.equivalent_constructor[record_index] =
         optional_text_id(fields, "equivalent-constructor");
-    records.copy_element_memberwise[record_index] = boolean_or(fields, "copy-element-memberwise");
     records.layout_only[record_index] = boolean_or(fields, "layout-only");
-    records.fixed[record_index] = fixed;
-    records.single_allocation[record_index] = single_allocation;
-    records.array_allocator[record_index] =
-        fields.optional("array-allocator")
-            ? std::optional{parse_type_ref(declarations, *fields.optional("array-allocator"))}
-            : std::nullopt;
     records.field_mask_name[record_index] = optional_identifier(fields, "field-mask-name");
     records.field_enum_name[record_index] = optional_identifier(fields, "field-enum-name");
-    records.vector_components[record_index] =
-        declarations.range(identifier_list_or(fields, "vector-components"));
-    records.storage[record_index] = storage;
     records.const_view_functions[record_index] = declarations.range(const_view_functions);
     return record_id;
 }
@@ -1675,86 +1563,6 @@ auto SchemaParser::parse_optional_presence_bit(Declarations& declarations, sexpr
     return record_id;
 }
 
-auto SchemaParser::parse_layout(Declarations& declarations, sexpr::FormId const form)
-    -> DeclarationHandle {
-    Fields const layout{parser_, form, "layout", 1};
-    layout.validate({"components", "input-members", "export-specifier"}, {"value-type"});
-    std::vector<HomogeneousValueId> value_types;
-    for (auto const value_declaration_id : layout.declarations()) {
-        auto const value_declaration{value_declaration_id};
-        Fields const value{parser_, value_declaration, "value-type", 2};
-        value.validate({"equivalent-type", "input-types"});
-        std::optional<TypeRefId> equivalent;
-        if (auto const equivalent_value{value.optional("equivalent-type")}) {
-            equivalent = parse_type_ref(declarations, *equivalent_value);
-        }
-        std::vector<TypeRefId> inputs;
-        if (auto const input_values{value.optional("input-types")}) {
-            inputs = type_ref_list(declarations, *input_values, "input types");
-        }
-        {
-            auto& records{declarations.homogeneous_values};
-            auto const record_id{records.append()};
-            auto const record_index{records.index(record_id)};
-            records.type[record_index] = parse_type_ref(declarations, value.positional(0));
-            records.suffix[record_index] =
-                parser_.text_id(value.positional(1), "homogeneous type suffix");
-            records.equivalent_type[record_index] = equivalent;
-            records.input_types[record_index] = declarations.range(inputs);
-            value_types.push_back(record_id);
-        }
-    }
-    auto& records{declarations.homogeneous_layouts};
-    auto const record_id{records.append()};
-    auto const record_index{records.index(record_id)};
-    records.name[record_index] =
-        parser_.identifier(layout.positional(0), "homogeneous layout name");
-    records.components[record_index] =
-        declarations.range(identifier_list(layout.required("components"), "layout components"));
-    records.input_members[record_index] =
-        declarations.range(identifier_list_or(layout, "input-members"));
-    records.value_types[record_index] = declarations.range(value_types);
-    records.export_specifier[record_index] = parse_export_specifier(layout);
-    return record_id;
-}
-
-auto SchemaParser::parse_vector_soa(Declarations& declarations, sexpr::FormId const form)
-    -> DeclarationHandle {
-    Fields const fields{parser_, form, "vector-soa", 1};
-    fields.validate({"value-type",
-                     "components",
-                     "equivalent-members",
-                     "equivalent-accessors",
-                     "equivalent-constructor",
-                     "equivalent-type",
-                     "export-specifier"},
-                    {"fixed"});
-    std::optional<FixedSoaId> fixed;
-    if (!fields.declarations().empty()) {
-        if (fields.declarations().size() != 1) {
-            parser_.fail(form, "vector SOA accepts at most one fixed declaration");
-        }
-        fixed = parse_fixed(declarations, fields.declarations().front());
-    }
-    auto& records{declarations.vector_soas};
-    auto const record_id{records.append()};
-    auto const record_index{records.index(record_id)};
-    records.name[record_index] = parser_.identifier(fields.positional(0), "vector storage name");
-    records.value_type[record_index] = parse_type_ref(declarations, fields.required("value-type"));
-    records.components[record_index] =
-        declarations.range(identifier_list(fields.required("components"), "vector components"));
-    records.equivalent_members[record_index] =
-        declarations.range(identifier_list_or(fields, "equivalent-members"));
-    records.equivalent_constructor[record_index] =
-        optional_text_id(fields, "equivalent-constructor");
-    records.equivalent_type[record_index] =
-        parse_type_ref(declarations, fields.required("equivalent-type"));
-    records.export_specifier[record_index] = parse_export_specifier(fields);
-    records.fixed[record_index] = fixed;
-    records.equivalent_accessors[record_index] = boolean_or(fields, "equivalent-accessors");
-    return record_id;
-}
-
 auto SchemaParser::parse_settings_schema(Declarations& declarations, sexpr::FormId const form)
     -> DeclarationHandle {
     Fields const fields{parser_, form, "settings-schema", 1};
@@ -1822,12 +1630,6 @@ auto SchemaParser::parse_normal_declaration(Declarations& declarations, sexpr::F
     if (head == "struct") {
         return parse_soa(declarations, form);
     }
-    if (head == "vector-soa") {
-        return parse_vector_soa(declarations, form);
-    }
-    if (head == "layout") {
-        return parse_layout(declarations, form);
-    }
     if (head == "table") {
         return parse_table(declarations, form);
     }
@@ -1851,8 +1653,7 @@ auto SchemaParser::parse_module(Declarations& declarations, sexpr::FormId const 
                          "namespace",
                          "include-order",
                          "prelude",
-                         "helper-namespace",
-                         "backend"},
+                         "helper-namespace"},
                         {"enum",
                          "integer-scalar",
                          "linear-quantized",
@@ -1866,49 +1667,22 @@ auto SchemaParser::parse_module(Declarations& declarations, sexpr::FormId const 
                          "union",
                          "tagged-union",
                          "struct",
-                         "vector-soa",
                          "layout",
                          "table",
                          "facade",
-                         "settings-schema",
-                         "array-allocator"});
+                         "settings-schema"});
         auto& modules{declarations.normal_modules};
         auto const module{modules.append()};
         auto const module_index{modules.index(module)};
         modules.settings[module_index] = parse_module_settings(declarations, fields);
         modules.enum_helper_namespace[module_index] =
             optional_identifier(fields, "helper-namespace");
-        if (auto const backend{optional_text(fields, "backend")}) {
-            if (*backend == "standard-library") {
-                modules.soa_backend[module_index] = SoaBackend::standard_library;
-            } else if (*backend != "unreal") {
-                parser_.fail(fields.required("backend"),
-                             "SOA backend must be unreal or standard-library");
-            }
-        }
-        std::vector<SoaAllocatorVariantId> allocators;
         std::vector<DeclarationHandle> module_declarations;
         std::optional<DiagnosticId> first_error;
         for (auto const declaration_id : fields.declarations()) {
             try {
                 auto const declaration{declaration_id};
-                if (syntax_.head(declaration) == "array-allocator") {
-                    Fields const allocator{parser_, declaration, "array-allocator", 2};
-                    allocator.validate({});
-                    {
-                        auto& records{declarations.soa_allocator_variants};
-                        auto const record_id{records.append()};
-                        auto const record_index{records.index(record_id)};
-                        records.prefix[record_index] =
-                            parser_.identifier(allocator.positional(0), "allocator prefix");
-                        records.allocator[record_index] =
-                            parse_type_ref(declarations, allocator.positional(1));
-                        allocators.push_back(record_id);
-                    }
-                } else {
-                    module_declarations.push_back(
-                        parse_normal_declaration(declarations, declaration));
-                }
+                module_declarations.push_back(parse_normal_declaration(declarations, declaration));
             } catch (sexpr::SourceError const& error) {
                 if (!first_error) {
                     first_error = error.diagnostic();
@@ -1920,7 +1694,6 @@ auto SchemaParser::parse_module(Declarations& declarations, sexpr::FormId const 
                 syntax_.sources().diagnostics(), syntax_.sources(), *first_error};
         }
 
-        modules.soa_array_allocators[module_index] = declarations.range(allocators);
         modules.declarations[module_index] = declarations.range(module_declarations);
         return module;
     }

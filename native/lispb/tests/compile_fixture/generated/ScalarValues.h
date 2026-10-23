@@ -3,8 +3,6 @@
 
 #pragma once
 
-#include "CoreTypes.h"
-
 #include <cstdint>
 #include <string_view>
 
@@ -12,10 +10,6 @@ namespace codegen_compile_fixture {
 using RegisteredInt = std::int32_t;
 
 using StandardInt = std::int32_t;
-
-using UnrealInt = int32;
-
-using UnrealUint = uint32;
 
 inline constexpr std::uint8_t DamageCode_Laser{static_cast<std::uint8_t>(1)};
 

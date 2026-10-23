@@ -9,10 +9,7 @@
 #include <codegen/schema/facade_method_schemas.h>
 #include <codegen/schema/facade_schemas.h>
 #include <codegen/schema/fixed_point_schemas.h>
-#include <codegen/schema/fixed_soa_schemas.h>
 #include <codegen/schema/function_schemas.h>
-#include <codegen/schema/homogeneous_layout_schemas.h>
-#include <codegen/schema/homogeneous_value_schemas.h>
 #include <codegen/schema/indices.h>
 #include <codegen/schema/integer_scalar_schemas.h>
 #include <codegen/schema/integer_varint_schemas.h>
@@ -41,7 +38,6 @@
 #include <codegen/schema/setting_schemas.h>
 #include <codegen/schema/settings_module_schemas.h>
 #include <codegen/schema/settings_schema_schemas.h>
-#include <codegen/schema/soa_allocators.h>
 #include <codegen/schema/soa_mask_dimension_schemas.h>
 #include <codegen/schema/soa_member_schemas.h>
 #include <codegen/schema/soa_schemas.h>
@@ -49,14 +45,12 @@
 #include <codegen/schema/static_table_group_schemas.h>
 #include <codegen/schema/static_table_row_schemas.h>
 #include <codegen/schema/static_table_schemas.h>
-#include <codegen/schema/storage_operation.h>
 #include <codegen/schema/tagged_union_alternative_schemas.h>
 #include <codegen/schema/tagged_union_schemas.h>
 #include <codegen/schema/type_refs.h>
 #include <codegen/schema/umbrella_module_schemas.h>
 #include <codegen/schema/union_alternative_schemas.h>
 #include <codegen/schema/union_schemas.h>
-#include <codegen/schema/vector_soa_schemas.h>
 #include <lispb/indices.h>
 
 #include <cassert>
@@ -116,10 +110,7 @@ class Declarations {
     FacadeMethodSchemas facade_methods;
     FacadeSchemas facades;
     FixedPointSchemas fixed_points;
-    FixedSoaSchemas fixed_soas;
     FunctionSchemas functions;
-    HomogeneousLayoutSchemas homogeneous_layouts;
-    HomogeneousValueSchemas homogeneous_values;
     IntegerScalarSchemas integer_scalars;
     IntegerVarintSchemas integer_varints;
     LinearQuantizedSchemas linear_quantizeds;
@@ -141,7 +132,6 @@ class Declarations {
     SettingSchemas settings;
     SettingsModuleSchemas settings_modules;
     SettingsSchemaSchemas settings_schemas;
-    SoaAllocators soa_allocator_variants;
     SoaMaskDimensionSchemas soa_mask_dimensions;
     SoaMemberSchemas soa_members;
     SoaSchemas soas;
@@ -155,7 +145,6 @@ class Declarations {
     UmbrellaModuleSchemas umbrella_modules;
     UnionAlternativeSchemas union_alternatives;
     UnionSchemas unions;
-    VectorSoaSchemas vector_soas;
   private:
     template <typename Id>
     auto item_storage() const -> std::vector<Id> const& {
@@ -169,8 +158,6 @@ class Declarations {
             return facade_method_id_items_;
         } else if constexpr (std::same_as<Id, FunctionSchemaId>) {
             return function_schema_id_items_;
-        } else if constexpr (std::same_as<Id, HomogeneousValueId>) {
-            return homogeneous_value_id_items_;
         } else if constexpr (std::same_as<Id, NativeEnumHelper>) {
             return native_enum_helper_items_;
         } else if constexpr (std::same_as<Id, PackedNamedCodeId>) {
@@ -185,8 +172,6 @@ class Declarations {
             return setting_category_id_items_;
         } else if constexpr (std::same_as<Id, SettingId>) {
             return setting_id_items_;
-        } else if constexpr (std::same_as<Id, SoaAllocatorVariantId>) {
-            return soa_allocator_variant_id_items_;
         } else if constexpr (std::same_as<Id, SoaMaskDimensionId>) {
             return soa_mask_dimension_id_items_;
         } else if constexpr (std::same_as<Id, SoaMemberId>) {
@@ -197,8 +182,6 @@ class Declarations {
             return static_table_group_id_items_;
         } else if constexpr (std::same_as<Id, StaticTableRowId>) {
             return static_table_row_id_items_;
-        } else if constexpr (std::same_as<Id, StorageOperation>) {
-            return storage_operation_items_;
         } else if constexpr (std::same_as<Id, TaggedUnionAlternativeId>) {
             return tagged_union_alternative_id_items_;
         } else if constexpr (std::same_as<Id, TypeRefId>) {
@@ -223,7 +206,6 @@ class Declarations {
     std::vector<EnumeratorId> enumerator_id_items_;
     std::vector<FacadeMethodId> facade_method_id_items_;
     std::vector<FunctionSchemaId> function_schema_id_items_;
-    std::vector<HomogeneousValueId> homogeneous_value_id_items_;
     std::vector<NativeEnumHelper> native_enum_helper_items_;
     std::vector<PackedNamedCodeId> packed_named_code_id_items_;
     std::vector<PackedSegmentId> packed_segment_id_items_;
@@ -231,13 +213,11 @@ class Declarations {
     std::vector<RecordMemberId> record_member_id_items_;
     std::vector<SettingCategoryId> setting_category_id_items_;
     std::vector<SettingId> setting_id_items_;
-    std::vector<SoaAllocatorVariantId> soa_allocator_variant_id_items_;
     std::vector<SoaMaskDimensionId> soa_mask_dimension_id_items_;
     std::vector<SoaMemberId> soa_member_id_items_;
     std::vector<StaticTableColumnId> static_table_column_id_items_;
     std::vector<StaticTableGroupId> static_table_group_id_items_;
     std::vector<StaticTableRowId> static_table_row_id_items_;
-    std::vector<StorageOperation> storage_operation_items_;
     std::vector<TaggedUnionAlternativeId> tagged_union_alternative_id_items_;
     std::vector<TypeRefId> type_ref_id_items_;
     std::vector<UnionAlternativeId> union_alternative_id_items_;

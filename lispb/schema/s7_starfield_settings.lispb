@@ -1,7 +1,6 @@
 (module s7_starfield_settings
   :header "native/level_authoring/s7/src/generated/starfield_fields.h"
   :header-include "generated/starfield_fields.h"
-  :backend standard-library
   :namespace ioj::s7::starfield_fields
   (settings-schema Fields
     :target ioj::starfield::Settings

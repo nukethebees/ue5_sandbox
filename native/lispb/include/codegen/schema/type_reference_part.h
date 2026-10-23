@@ -10,8 +10,6 @@ enum class TypeReferencePart : std::uint8_t {
     return_type,
     parameter,
     trailing_return,
-    equivalent_type,
-    input,
     dependency
 };
 

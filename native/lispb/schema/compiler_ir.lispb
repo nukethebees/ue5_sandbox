@@ -1,6 +1,5 @@
 (module compiler_node_kind
   :header "node_kind.h"
-  :backend standard-library
   :namespace lispb::codegen
   (enum NodeKind std::uint8_t
     (value invalid)
@@ -36,7 +35,6 @@
 
 (module compiler_function_flags
   :header "function_flags.h"
-  :backend standard-library
   :namespace lispb::codegen
   (packed-value FunctionFlags :storage std::uint8_t :mutable true
     (field is_constexpr bool :bits 1)
@@ -46,7 +44,6 @@
 
 (module compiler_cpp_file_flags
   :header "cpp_file_flags.h"
-  :backend standard-library
   :namespace lispb::codegen
   (packed-value CppFileFlags :storage std::uint8_t :mutable true
     (field pragma_once bool :bits 1)

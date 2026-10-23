@@ -1,10 +1,8 @@
 (module level_telemetry_history
   :header "native/simulation/include/ioj/sim/telemetry/history.h"
-  :backend standard-library
   :namespace ioj::sim::telemetry
   :include-order ("SpaceGameSimulation/" "SandboxCore/")
   (struct HistoryRows
-    :operations (all)
       :field-mask-name HistoryFieldMask
     :field-enum-name HistoryField
     (member completed_ticks array @native_sim_tick)
@@ -29,4 +27,4 @@
       :mask-field true)
     (member lasers_fired array int32
       :mask-field true)
-    (single-allocation HistoryRows)))
+))

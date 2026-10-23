@@ -5,8 +5,6 @@
 #include <codegen/generator.h>
 #include <codegen/schema/declarations.h>
 #include <codegen/schema/schema_version.h>
-#include <codegen/schema/soa_backend.h>
-#include <codegen/schema/soa_storage.h>
 #include <lispb/compiler_storage.h>
 #include <lispb/indices.h>
 #include <lispb/strings.h>
@@ -20,25 +18,22 @@
 
 namespace single_allocation_tests {
 using lispb::codegen::CompilerTestContext;
-using lispb::codegen::SoaBackend;
-using lispb::codegen::SoaStorage;
 
-TEST(SingleAllocationSoa, StdlibBackendReusesLayoutWithoutUnrealDependencies) {
+TEST(SingleAllocationSoa, OrdinarySchemasGenerateNativeOwnersAndViews) {
     CompilerTestContext context;
     auto const files{render_test_manifest(context, parse_test_manifest(context, R"(
-        (module native :header "Native.h" :namespace example :backend standard-library
+        (module native :header "Native.h" :namespace example
           (struct Child (member xs array float))
           (struct Rows
             (member ids array std::int32_t)
-            (member nested nested Child :nested-schema Child)
+            (member nested nested Child)
             (member local_types array example::Token)
             (member nested_types array example::sub::Token)
             (member foreign_types array other::Token)
-            (member shadowed_types array example::ColLayout)
-            (single-allocation SingleRows))))"))};
+            (member shadowed_types array example::ColLayout))))"))};
     auto const& output{files.front().content};
-    EXPECT_EQ(output.find("struct RowsView"), std::string::npos);
-    EXPECT_EQ(output.find("struct RowsConstView"), std::string::npos);
+    EXPECT_NE(output.find("struct RowsView"), std::string::npos);
+    EXPECT_NE(output.find("struct RowsConstView"), std::string::npos);
     EXPECT_NE(output.find("ColLayout<std::int32_t> IdsColumn"), std::string::npos);
     EXPECT_NE(output.find("auto ids() const"), std::string::npos);
     EXPECT_NE(output.find("NestedXsColumn{IdsColumn}"), std::string::npos);
@@ -64,35 +59,31 @@ TEST(SingleAllocationSoa, StdlibBackendReusesLayoutWithoutUnrealDependencies) {
               std::string::npos);
 }
 
-TEST(SingleAllocationSoa, StdlibRowOperationsUseNestedEquivalentValues) {
+TEST(SingleAllocationSoa, RowOperationsUseNestedEquivalentValues) {
     CompilerTestContext context;
     auto const files{render_test_manifest(context, parse_test_manifest(context, R"(
-        (module native :header "Native.h" :backend standard-library
+        (module native :header "Native.h"
           (struct Points :equivalent-type Point :layout-only true
-            (member xs array float) (member ys array float))
+            (member xs array float :equivalent-member x) (member ys array float :equivalent-member y))
           (struct Rows
             (member ids array std::int32_t)
-            (member points nested Points :nested-schema Points))))"))};
+            (member points nested Points))))"))};
     auto const& output{files.front().content};
-    EXPECT_NE(output.find("void set(size_type const index, std::int32_t const new_ids, Point const "
+    EXPECT_NE(output.find("void set(size_type index, std::int32_t const new_ids, Point const "
                           "new_points) const"),
               std::string::npos);
-    EXPECT_NE(output.find("points.set(index, new_points);"), std::string::npos);
-    EXPECT_NE(
-        output.find("auto add(std::int32_t const new_ids, Point const new_points) -> size_type"),
-        std::string::npos);
-    EXPECT_NE(output.find("ids.emplace_back(new_ids);"), std::string::npos);
-    EXPECT_NE(output.find("points.add(new_points);"), std::string::npos);
-    EXPECT_EQ(output.find("add_defaulted(1);"), std::string::npos);
+    EXPECT_NE(output.find("view_points().set(index, new_points);"), std::string::npos);
+    EXPECT_NE(output.find("set(index, (value.x), (value.y));"), std::string::npos);
+    EXPECT_NE(output.find("size_type add(std::int32_t const new_ids, Point const new_points)"),
+              std::string::npos);
 }
 
 auto schemas() -> std::string {
     return R"(
-        (struct Child (member small array uint8) (member wide array Aligned256))
+        (struct Child (member small array std::uint8_t) (member wide array Aligned256))
         (struct Rows
-          (member ids array int32)
-          (member nested nested Child :nested-schema Child)
-          (single-allocation SingleRows)))";
+          (member ids array std::int32_t)
+          (member nested nested Child)))";
 }
 
 auto render(std::string_view declarations) -> std::string {
@@ -113,62 +104,27 @@ auto changed(std::string_view from, std::string_view to) -> std::string {
     return source;
 }
 
-TEST(SingleAllocationSoa, AllocatorVariantsApplyToNestedColumns) {
-    auto source{changed("(struct Rows", "(struct Rows :storage both")};
-    source +=
-        "(array-allocator Test TestArrayAllocator) (array-allocator Other OtherArrayAllocator)";
-    auto const output{render(source)};
-    EXPECT_NE(output.find("TArray<uint8, TestArrayAllocator> small;"), std::string::npos);
-    EXPECT_NE(output.find("TArray<int32, TestArrayAllocator> ids;"), std::string::npos);
-    EXPECT_NE(output.find("TestChild nested;"), std::string::npos);
-    EXPECT_NE(output.find("TArray<Aligned256, OtherArrayAllocator> wide;"), std::string::npos);
-    EXPECT_NE(output.find("OtherChild nested;"), std::string::npos);
-    EXPECT_NE(output.find("TArray<uint8> small;"), std::string::npos);
-    EXPECT_EQ(output.find("TestSingleRows"), std::string::npos);
-    source += "(array-allocator Test OtherArrayAllocator)";
-    EXPECT_THROW(render(source), std::invalid_argument);
-}
-
-TEST(SingleAllocationSoa, ArrayAllocatorVariantsSkipSingleOnlySchemas) {
-    auto const output{render(schemas() + "(array-allocator Custom CustomAllocator)")};
-    EXPECT_NE(output.find("struct CustomChild"), std::string::npos);
-    EXPECT_EQ(output.find("struct CustomRows"), std::string::npos);
-    EXPECT_NE(output.find("struct SingleRows"), std::string::npos);
-}
-
 TEST(SingleAllocationSoa, RejectsEmptySchema) {
-    EXPECT_THROW(render("(struct Rows (single-allocation SingleRows))"), std::invalid_argument);
+    EXPECT_THROW(render("(struct Rows)"), std::invalid_argument);
 }
 
-TEST(SingleAllocationSoa, RejectsCompactViewNameCollisions) {
+TEST(SingleAllocationSoa, RejectsGeneratedNameCollisions) {
     EXPECT_THROW(render(changed("small array", "validate array")), std::invalid_argument);
-    EXPECT_THROW(
-        render(changed("single-allocation SingleRows", "single-allocation RowsSingleLayout")),
-        std::invalid_argument);
-    EXPECT_THROW(
-        render(changed("single-allocation SingleRows", "single-allocation RowsSingleConstView")),
-        std::invalid_argument);
-    EXPECT_THROW(render(changed("(member ids array int32)",
-                                "(member ids array int32) (member view_nested array float)")),
+    EXPECT_THROW(render(schemas() + "(struct RowsView (member value array float))"),
                  std::invalid_argument);
-    auto source{schemas()};
-    for (auto position{source.find("Child")}; position != std::string::npos;
-         position = source.find("Child", position)) {
-        source.replace(position, 5, "RowsSingleView_nested");
-        position += 21;
-    }
-    EXPECT_THROW(render(source), std::invalid_argument);
+    EXPECT_THROW(render(schemas() + "(struct RowsLayout (member value array float))"),
+                 std::invalid_argument);
 }
+
 TEST(SingleAllocationSoa, RejectsInvalidFlatteningAndOwnerNames) {
-    EXPECT_THROW(render(changed(":nested-schema Child", "")), std::invalid_argument);
-    EXPECT_THROW(render(changed(":nested-schema Child", ":nested-schema Missing")),
+    EXPECT_THROW(render(changed("nested nested Child", "nested nested int")),
                  std::invalid_argument);
-    EXPECT_THROW(render(changed("(member small array uint8) (member wide array Aligned256)",
-                                "(member cycle nested Rows :nested-schema Rows)")),
+    EXPECT_THROW(render(changed("nested nested Child", "nested nested Missing")),
+                 std::invalid_argument);
+    EXPECT_THROW(render(changed("(member small array std::uint8_t) (member wide array Aligned256)",
+                                "(member cycle nested Rows)")),
                  std::invalid_argument);
     EXPECT_THROW(render(changed("nested nested Child", "nested nested Opaque")),
-                 std::invalid_argument);
-    EXPECT_THROW(render(changed("single-allocation SingleRows", "single-allocation ChildView")),
                  std::invalid_argument);
     auto source{schemas()};
     for (auto position{source.find("Child")}; position != std::string::npos;
@@ -177,109 +133,58 @@ TEST(SingleAllocationSoa, RejectsInvalidFlatteningAndOwnerNames) {
         position += 17;
     }
     EXPECT_NO_THROW(render(source));
-    EXPECT_THROW(render(changed("(member ids array int32)",
-                                "(member ids array int32) (member nested_small array int32)")),
-                 std::invalid_argument);
-    EXPECT_NO_THROW(render(changed("(member ids array int32)",
-                                   "(member ids array int32) (member layout_start array int32)")));
-    EXPECT_NO_THROW(render(changed("(member ids array int32)",
-                                   "(member ids array int32) (member col_layout array int32)")));
-    EXPECT_THROW(render(changed("(member ids array int32)",
-                                "(member ids array int32 :nested-schema Child)")),
-                 std::invalid_argument);
+    EXPECT_THROW(
+        render(changed("(member ids array std::int32_t)",
+                       "(member ids array std::int32_t) (member nested_small array std::int32_t)")),
+        std::invalid_argument);
+    EXPECT_NO_THROW(render(
+        changed("(member ids array std::int32_t)",
+                "(member ids array std::int32_t) (member layout_start array std::int32_t)")));
+    EXPECT_NO_THROW(
+        render(changed("(member ids array std::int32_t)",
+                       "(member ids array std::int32_t) (member col_layout array std::int32_t)")));
     EXPECT_THROW(render(changed("ids array", "trailing_ array")), std::invalid_argument);
 }
 
 TEST(SingleAllocationSoa, FlattensMultipleLevelsAndRepeatedNestedSchemas) {
     auto const output{render(schemas() + R"(
         (struct Grandparent
-          (member first nested Rows :nested-schema Rows)
-          (member second nested Rows :nested-schema Rows)
-          (single-allocation SingleGrandparent)))")};
+          (member first nested Rows)
+          (member second nested Rows)))")};
     EXPECT_NE(output.find("SecondIdsColumn{FirstNestedWideColumn}"), std::string::npos);
-    EXPECT_NE(output.find("GrandparentSingleView_first"), std::string::npos);
-    EXPECT_NE(output.find("GrandparentSingleView_second_nested"), std::string::npos);
+    EXPECT_NE(output.find("GrandparentView_first"), std::string::npos);
+    EXPECT_NE(output.find("GrandparentView_second_nested"), std::string::npos);
     EXPECT_NE(output.find("second_nested_view.wide()"), std::string::npos);
 }
 
-TEST(SingleAllocationSoa, CommonApiIsEmittedForEveryRequestedRepresentation) {
-    for (auto const backend : {SoaBackend::unreal, SoaBackend::standard_library}) {
-        for (auto const policy :
-             {SoaStorage::vector, SoaStorage::single_allocation, SoaStorage::both}) {
-            SCOPED_TRACE(static_cast<int>(backend));
-            SCOPED_TRACE(soa_storage_name(policy));
-            std::string source{R"((module api :header "Api.h" :source "Api.cpp" :backend )"};
-            source += backend == SoaBackend::unreal ? "unreal" : "standard-library";
-            source += R"(
-                (struct LogicalRows :view-name NamedView :const-view-name NamedConstView
-                  :operations (set-num) :export-specifier ROWS_API :using-declarations ("Value = float")
-                  :storage )";
-            source += soa_storage_name(policy);
-            source += R"(
-                  (member values array float)
-                  (function first float :const true :body #cpp{return $column(values)[0];}cpp#)
-                  (function external_first float :const true :definition-in-source true :body #cpp{return $column(values)[0];}cpp#)
-                  (mutable-view-function clear_first void :body #cpp{$column(values)[0] = 0;}cpp#)
-                  (view-function read_first float :const true :body #cpp{return $column(values)[0];}cpp#))";
-            if (policy != SoaStorage::vector) {
-                source += "(single-allocation CompactRows)";
-            }
-            source += "))";
-            CompilerTestContext context;
-            auto const files{render_test_manifest(context, parse_test_manifest(context, source))};
-            auto const& header{files.front().content};
-            auto const& implementation{files.back().content};
-            EXPECT_NE(header.find("struct ROWS_API NamedView"), std::string::npos);
-            EXPECT_NE(header.find("struct ROWS_API NamedConstView"), std::string::npos);
-            EXPECT_NE(header.find("using Value = float;"), std::string::npos);
-            EXPECT_NE(header.find("read_first() const"), std::string::npos);
-            EXPECT_NE(header.find("clear_first()"), std::string::npos);
-            EXPECT_EQ(header.find("$column("), std::string::npos);
-            if (policy != SoaStorage::vector) {
-                EXPECT_NE(header.find("struct ROWS_API CompactRows"), std::string::npos);
-                EXPECT_NE(implementation.find("CompactRows::external_first() const"),
-                          std::string::npos);
-                EXPECT_EQ(header.find("using Operations::"), std::string::npos);
-                EXPECT_NE(header.find("void copy_columns_from("), std::string::npos);
-            }
-            if (policy == SoaStorage::single_allocation) {
-                EXPECT_EQ(header.find("struct LogicalRows {"), std::string::npos);
-                EXPECT_EQ(header.find("LogicalRowsSingleViewImpl"), std::string::npos);
-            }
-            if (policy == SoaStorage::both) {
-                EXPECT_NE(header.find("struct ROWS_API LogicalRowsSingleView"), std::string::npos);
-                EXPECT_NE(implementation.find("LogicalRows::external_first() const"),
-                          std::string::npos);
-            }
-        }
-    }
+TEST(SingleAllocationSoa, PreservesCommonApiAndCustomViewNames) {
+    CompilerTestContext context;
+    auto const files{render_test_manifest(context, parse_test_manifest(context, R"(
+        (module api :header "Api.h" :source "Api.cpp"
+          (struct LogicalRows :view-name NamedView :const-view-name NamedConstView
+            :export-specifier ROWS_API :using-declarations ("Value = float")
+            (member values array float)
+            (function first float :const true :body #cpp{return $column(values)[0];}cpp#)
+            (function external_first float :const true :definition-in-source true
+              :body #cpp{return $column(values)[0];}cpp#)
+            (mutable-view-function clear_first void :body #cpp{$column(values)[0] = 0;}cpp#)
+            (view-function read_first float :const true :body #cpp{return $column(values)[0];}cpp#))))"))};
+    auto const& header{files.front().content};
+    auto const& implementation{files.back().content};
+    EXPECT_NE(header.find("struct ROWS_API LogicalRows"), std::string::npos);
+    EXPECT_NE(header.find("struct ROWS_API NamedView"), std::string::npos);
+    EXPECT_NE(header.find("struct ROWS_API NamedConstView"), std::string::npos);
+    EXPECT_NE(header.find("using Value = float;"), std::string::npos);
+    EXPECT_NE(header.find("read_first() const"), std::string::npos);
+    EXPECT_NE(header.find("clear_first()"), std::string::npos);
+    EXPECT_EQ(header.find("$column("), std::string::npos);
+    EXPECT_NE(implementation.find("LogicalRows::external_first() const"), std::string::npos);
 }
 
-TEST(SingleAllocationSoa, RejectsIncompatibleRepresentationSettingsWithLocalDiagnostics) {
-    auto check = [](std::string_view options, std::string_view extra, std::string_view message) {
-        try {
-            render("(struct Rows " + std::string{options} + " (member values array float) " +
-                   std::string{extra} + ")");
-            FAIL() << "Expected rejection containing " << message;
-        } catch (std::invalid_argument const& error) {
-            EXPECT_NE(std::string_view{error.what()}.find(message), std::string_view::npos)
-                << error.what();
-        }
-    };
-    check(":array-allocator Allocator",
-          "(single-allocation Owner)",
-          "array-allocator requires vector storage");
-    check(":copy-element-memberwise true",
-          "(single-allocation Owner)",
-          "single-allocation leaves use trivial copying");
-    check(":storage vector", "(single-allocation Owner)", "storage vector cannot declare");
-    check(":layout-only true", "(single-allocation Owner)", "layout-only cannot declare");
-    check(":storage single-allocation", "", "requires a single-allocation owner");
-    check(":storage both", "", "requires a single-allocation owner");
-    check("",
-          "(single-allocation Owner) (function broken float :body #cpp{return "
-          "$column(missing)[0];}cpp#)",
-          "has no column 'missing'");
+TEST(SingleAllocationSoa, RejectsUnknownLogicalColumns) {
+    EXPECT_THROW(render(R"((struct Rows (member values array float)
+        (function broken float :body #cpp{return $column(missing)[0];}cpp#)))"),
+                 std::invalid_argument);
 }
 
 }

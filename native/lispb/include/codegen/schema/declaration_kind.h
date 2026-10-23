@@ -8,7 +8,7 @@
 namespace lispb::codegen {
 using DeclarationKindUnderlying = std::uint8_t;
 
-// Logical bit width: 5.
+// Logical bit width: 4.
 enum class DeclarationKind : DeclarationKindUnderlying {
     enumeration,
     integer_scalar,
@@ -23,8 +23,6 @@ enum class DeclarationKind : DeclarationKindUnderlying {
     union_type,
     tagged_union,
     soa,
-    vector_soa,
-    homogeneous_layout,
     static_table,
     facade,
     settings_schema,

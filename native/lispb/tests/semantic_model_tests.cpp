@@ -35,7 +35,6 @@
 #include <codegen/schema/semantic_relation_kind.h>
 #include <codegen/schema/semantic_relation_schemas.h>
 #include <codegen/schema/semantic_relation_unit.h>
-#include <codegen/schema/soa_backend.h>
 #include <codegen/schema/soa_member_kind.h>
 #include <codegen/schema/soa_member_schemas.h>
 #include <codegen/schema/soa_schemas.h>
@@ -65,7 +64,6 @@
 #include <lispb/schema/record_members.h>
 #include <lispb/schema/record_types.h>
 #include <lispb/schema/soa_columns.h>
-#include <lispb/schema/soa_source_kind.h>
 #include <lispb/schema/soa_types.h>
 #include <lispb/schema/tagged_union_alternatives.h>
 #include <lispb/schema/tagged_union_types.h>
@@ -1460,14 +1458,14 @@ TEST(SemanticTypeGraph, RetainsPackedPhysicalOrdering) {
               lispb::codegen::PackedBitOrder::most_significant_first);
 }
 
-TEST(SemanticTypeGraph, ResolvesStandardLibrarySoaColumns) {
+TEST(SemanticTypeGraph, ResolvesSoaColumnsAndEquivalentValues) {
     lispb::codegen::CompilerTestContext context;
     [[maybe_unused]] auto& storage{context.storage};
     auto const graph{production_graph(storage)};
     auto const entity_type{
         lispb::codegen::find_test_type(graph, "native_entity_type", "EntityType")};
     auto const history{
-        lispb::codegen::find_test_type(graph, "native_entity_history", "EntityHistoryColumns")};
+        lispb::codegen::find_test_type(graph, "native_entity_history", "EntityHistory")};
     auto const vectors{lispb::codegen::find_test_type(graph, "native_vectors_3f", "Vectors3f")};
     ASSERT_TRUE(entity_type.has_value());
     ASSERT_TRUE(history.has_value());
@@ -1490,8 +1488,6 @@ TEST(SemanticTypeGraph, ResolvesStandardLibrarySoaColumns) {
         *entity_type);
 
     auto const& vector_type{graph.definition(*vectors)};
-    EXPECT_EQ(graph.definitions().soas.source_kind[graph.definitions().soas.index(vector_type)],
-              SoaSourceKind::vector);
     auto const vector_equivalent{graph.find_registered(storage.strings.find("native_vector_3f"))};
     ASSERT_TRUE(vector_equivalent.has_value());
     ASSERT_TRUE(lispb::schema::is_valid(
@@ -1503,10 +1499,6 @@ TEST(SemanticTypeGraph, ResolvesStandardLibrarySoaColumns) {
     EXPECT_NE(std::ranges::find(graph.dependencies_of(*vectors), *vector_equivalent),
               graph.dependencies_of(*vectors).end());
     ASSERT_EQ(graph.definitions().soas.columns_of(vector_type).size(), 3U);
-    EXPECT_TRUE(std::ranges::equal(graph.definitions().soas.vector_components_of(vector_type),
-                                   std::vector<StringId>{storage.strings.find("xs"),
-                                                         storage.strings.find("ys"),
-                                                         storage.strings.find("zs")}));
     for (auto const column_id : graph.definitions().soas.columns_of(vector_type)) {
         auto const column{column_id};
         EXPECT_EQ(text(storage,
@@ -1515,173 +1507,46 @@ TEST(SemanticTypeGraph, ResolvesStandardLibrarySoaColumns) {
                                [graph.definitions().soa_columns.index(column)])])),
                   "float");
     }
-    auto const local_vectors{
-        lispb::codegen::find_test_type(graph, "lasers_soa_entities", "Vectors3f")};
-    ASSERT_TRUE(local_vectors.has_value());
-    auto const& local{graph.definition(*local_vectors)};
-    EXPECT_EQ(graph.definitions().soas.source_kind[graph.definitions().soas.index(local)],
-              SoaSourceKind::structure);
-    EXPECT_TRUE(std::ranges::equal(graph.definitions().soas.vector_components_of(local),
-                                   graph.definitions().soas.vector_components_of(vector_type)));
-    EXPECT_FALSE(graph.definitions()
-                     .soas.equivalent_constructor[graph.definitions().soas.index(vector_type)]);
-    EXPECT_EQ(
-        graph.definitions().soas.equivalent_constructor[graph.definitions().soas.index(local)],
-        graph.definitions()
-            .soas.equivalent_constructor[graph.definitions().soas.index(vector_type)]);
 }
 
-TEST(SemanticTypeGraph, RejectsVectorComponentsThatDisagreeWithDeclaredEquivalent) {
-    lispb::codegen::CompilerTestContext context;
-    [[maybe_unused]] auto& storage{context.storage};
-    auto const project_root{
-        std::filesystem::path{IOJ_CODEGEN_SOURCE_DIR}.parent_path().parent_path()};
-    auto const project{lispb::load_project(storage.syntax, project_root / "lispb/project.lispb")};
-    auto const target{*project.find_target("sandbox-code")};
-    std::vector<std::filesystem::path> sources;
-    for (auto const& source : project.sources(target)) {
-        sources.push_back(project.root / source);
+TEST(SemanticTypeGraph, RejectsNestedMembersWithoutDeclaredSoaTypes) {
+    for (auto const type : {"Missing", "int", "Record", "Child*", "Child const"}) {
+        lispb::codegen::CompilerTestContext context;
+        auto const manifest{lispb::codegen::parse_test_manifest(
+            context,
+            std::string{"(module test :header \"Test.h\" "
+                        "(record Record (member value float)) "
+                        "(struct Child (member values array float)) "
+                        "(struct Parent (member child nested \""} +
+                type + "\")))")};
+        EXPECT_THROW(static_cast<void>(resolve_type_graph(manifest)), std::invalid_argument);
     }
-    auto manifest{
-        lispb::codegen::load_sources(storage, project.root / project.types(target), sources)};
-    auto& store{storage.declarations};
-    for (auto& module_id : manifest.modules) {
-        auto module{((module_id).kind() == lispb::codegen::ModuleKind::normal
-                         ? std::optional{module_id}
-                         : std::nullopt)};
-        if (!module ||
-            text(storage,
-                 store.module_settings_store.name[store.module_settings_store.index(
-                     store.normal_modules.settings[store.normal_modules.index(*module)])]) !=
-                "lasers_soa_entities") {
-            continue;
-        }
-        auto const declarations{
-            store.items(store.normal_modules.declarations[store.normal_modules.index(*module)])};
-        std::vector<lispb::codegen::DeclarationHandle> updated{declarations.begin(),
-                                                               declarations.end()};
-        auto vectors{updated.front()};
-        std::vector<lispb::codegen::SoaMemberId> members;
-        for (auto member_id : store.items(store.soas.members[store.soas.index(vectors)])) {
-            auto member{member_id};
-            store.soa_members.type[store.soa_members.index(member)] = [&] {
-                auto const new_type_refs{store.type_refs.append()};
-                store.type_refs.name[store.type_refs.index(new_type_refs)] =
-                    storage.strings.intern("double");
-                return new_type_refs;
-            }();
-            members.push_back(member);
-        }
-        store.soas.members[store.soas.index(vectors)] = store.range(members);
-        updated.front() = vectors;
-        store.normal_modules.declarations[store.normal_modules.index(*module)] =
-            store.range(updated);
-        module_id = *module;
-    }
-    EXPECT_THROW(static_cast<void>(resolve_type_graph(manifest)), std::invalid_argument);
 }
 
-TEST(SemanticTypeGraph, RejectsNestedSoaTypeThatDisagreesWithResolvedSchema) {
+TEST(SemanticTypeGraph, ResolvesNestedSoaThroughRegisteredCrossModuleType) {
     lispb::codegen::CompilerTestContext context;
-    [[maybe_unused]] auto& storage{context.storage};
-    lispb::codegen::Manifest manifest{
-        lispb::codegen::manifest_schema_version,
-        lispb::codegen::make_test_registry(context),
-        context.storage.declarations,
-        {[&] {
-            auto const new_normal_modules{context.storage.declarations.normal_modules.append()};
-            context.storage.declarations.normal_modules
-                .settings[context.storage.declarations.normal_modules.index(new_normal_modules)] =
-                [&] {
-                    auto const new_module_settings_store{
-                        context.storage.declarations.module_settings_store.append()};
-                    context.storage.declarations.module_settings_store
-                        .name[context.storage.declarations.module_settings_store.index(
-                            new_module_settings_store)] = context.storage.strings.intern("tables");
-                    context.storage.declarations.module_settings_store
-                        .header[context.storage.declarations.module_settings_store.index(
-                            new_module_settings_store)] =
-                        context.storage.strings.intern("Tables.h");
-                    return new_module_settings_store;
-                }();
-            context.storage.declarations.normal_modules
-                .declarations[context.storage.declarations.normal_modules.index(
-                    new_normal_modules)] =
-                context.storage.declarations.range<lispb::codegen::DeclarationHandle>(
-                    {[&] {
-                         auto const new_soas{context.storage.declarations.soas.append()};
-                         context.storage.declarations.soas
-                             .name[context.storage.declarations.soas.index(new_soas)] =
-                             context.storage.strings.intern("Child");
-                         context.storage.declarations.soas
-                             .members[context.storage.declarations.soas.index(new_soas)] =
-                             context.storage.declarations.range<lispb::codegen::SoaMemberId>({[&] {
-                                 auto const new_soa_members{
-                                     context.storage.declarations.soa_members.append()};
-                                 context.storage.declarations.soa_members
-                                     .name[context.storage.declarations.soa_members.index(
-                                         new_soa_members)] =
-                                     context.storage.strings.intern("values");
-                                 context.storage.declarations.soa_members
-                                     .kind[context.storage.declarations.soa_members.index(
-                                         new_soa_members)] = lispb::codegen::SoaMemberKind::array;
-                                 context.storage.declarations.soa_members
-                                     .type[context.storage.declarations.soa_members.index(
-                                         new_soa_members)] = [&] {
-                                     auto const new_type_refs{
-                                         context.storage.declarations.type_refs.append()};
-                                     context.storage.declarations.type_refs
-                                         .name[context.storage.declarations.type_refs.index(
-                                             new_type_refs)] =
-                                         context.storage.strings.intern("float");
-                                     return new_type_refs;
-                                 }();
-                                 return new_soa_members;
-                             }()});
-                         return new_soas;
-                     }(),
-                     [&] {
-                         auto const new_soas{context.storage.declarations.soas.append()};
-                         context.storage.declarations.soas
-                             .name[context.storage.declarations.soas.index(new_soas)] =
-                             context.storage.strings.intern("Parent");
-                         context.storage.declarations.soas
-                             .members[context.storage.declarations.soas.index(new_soas)] =
-                             context.storage.declarations.range<lispb::codegen::SoaMemberId>({[&] {
-                                 auto const new_soa_members{
-                                     context.storage.declarations.soa_members.append()};
-                                 context.storage.declarations.soa_members
-                                     .name[context.storage.declarations.soa_members.index(
-                                         new_soa_members)] =
-                                     context.storage.strings.intern("child");
-                                 context.storage.declarations.soa_members
-                                     .kind[context.storage.declarations.soa_members.index(
-                                         new_soa_members)] = lispb::codegen::SoaMemberKind::nested;
-                                 context.storage.declarations.soa_members
-                                     .type[context.storage.declarations.soa_members.index(
-                                         new_soa_members)] = [&] {
-                                     auto const new_type_refs{
-                                         context.storage.declarations.type_refs.append()};
-                                     context.storage.declarations.type_refs
-                                         .name[context.storage.declarations.type_refs.index(
-                                             new_type_refs)] =
-                                         context.storage.strings.intern("Other");
-                                     return new_type_refs;
-                                 }();
-                                 context.storage.declarations.soa_members
-                                     .nested_schema[context.storage.declarations.soa_members.index(
-                                         new_soa_members)] =
-                                     context.storage.strings.intern("Child");
-                                 return new_soa_members;
-                             }()});
-                         context.storage.declarations.soas
-                             .single_allocation[context.storage.declarations.soas.index(new_soas)] =
-                             context.storage.strings.intern("SingleParent");
-                         return new_soas;
-                     }()});
-            return new_normal_modules;
-        }()}};
-    EXPECT_THROW(static_cast<void>(resolve_type_graph(manifest)), std::invalid_argument);
+    auto const child_type{context.storage.cpp_types.intern("first::Child")};
+    auto const manifest{lispb::codegen::parse_test_manifest(context,
+                                                            R"(
+        (module first :header "First.h" :namespace first
+          (struct Child (member values array float)))
+        (module second :header "Second.h" :namespace second
+          (struct Child (member values array int))
+          (struct Parent
+            (member child nested @first_child)
+            (function first float :const true
+              :body #cpp{return $column(child.values)[0];}cpp#))))",
+                                                            {{"first_child", child_type}})};
+    auto const graph{resolve_type_graph(manifest)};
+    auto const child{lispb::codegen::find_test_type(graph, "first", "Child").value()};
+    auto const parent{lispb::codegen::find_test_type(graph, "second", "Parent").value()};
+    auto const columns{graph.definitions().soas.columns_of(graph.definition(parent))};
+    ASSERT_EQ(columns.size(), 1);
+    auto const& members{graph.definitions().soa_columns};
+    auto const row{members.index(columns.front())};
+    EXPECT_EQ(members.kind[row], lispb::codegen::SoaMemberKind::nested);
+    auto const& occurrences{graph.occurrences()};
+    EXPECT_EQ(occurrences.type[occurrences.index(members.semantic_type[row])], child);
 }
 
 TEST(SemanticTypeGraph, ResolvesSoaColumnRelationshipsAndDependencies) {
@@ -1803,9 +1668,6 @@ TEST(SemanticTypeGraph, ResolvesSoaColumnRelationshipsAndDependencies) {
                              }()});
                          return new_soas;
                      }()});
-            context.storage.declarations.normal_modules
-                .soa_backend[context.storage.declarations.normal_modules.index(
-                    new_normal_modules)] = lispb::codegen::SoaBackend::standard_library;
             return new_normal_modules;
         }()}};
 
@@ -3357,9 +3219,6 @@ TEST(SemanticTypeGraph, TreatsRawCppSpellingsAsExplicitExternalLeaves) {
                         }()});
                     return new_soas;
                 }()});
-            context.storage.declarations.normal_modules
-                .soa_backend[context.storage.declarations.normal_modules.index(
-                    new_normal_modules)] = lispb::codegen::SoaBackend::standard_library;
             return new_normal_modules;
         }()}};
     auto const graph{resolve_type_graph(manifest)};
@@ -3374,7 +3233,7 @@ TEST(SemanticTypeGraph, TreatsRawCppSpellingsAsExplicitExternalLeaves) {
         TypeOrigin::cpp_spelling);
 }
 
-TEST(SemanticTypeGraph, SingleOnlyPhysicalOwnerDoesNotRenameLogicalIdentity) {
+TEST(SemanticTypeGraph, SoaOwnerUsesItsLogicalIdentity) {
     lispb::codegen::CompilerTestContext context;
     [[maybe_unused]] auto& storage{context.storage};
     auto const rows{context.storage.declarations.soas.append()};
@@ -3407,15 +3266,12 @@ TEST(SemanticTypeGraph, SingleOnlyPhysicalOwnerDoesNotRenameLogicalIdentity) {
             context.storage.strings.intern("Row");
         return new_type_refs;
     }();
-    context.storage.declarations.soas
-        .single_allocation[context.storage.declarations.soas.index(rows)] =
-        context.storage.strings.intern("CompactOwner");
     lispb::codegen::Manifest manifest{
         lispb::codegen::manifest_schema_version,
         lispb::codegen::make_test_registry(
             context,
             {{"logical", storage.cpp_types.add("model::LogicalRows")},
-             {"physical", storage.cpp_types.add("model::CompactOwner")}}),
+             {"physical", storage.cpp_types.add("model::LogicalRows")}}),
         context.storage.declarations,
         {[&] {
             auto const new_normal_modules{context.storage.declarations.normal_modules.append()};
@@ -3507,16 +3363,13 @@ TEST(SemanticTypeGraph, SingleOnlyPhysicalOwnerDoesNotRenameLogicalIdentity) {
                                  }()});
                          return new_records;
                      }()});
-            context.storage.declarations.normal_modules
-                .soa_backend[context.storage.declarations.normal_modules.index(
-                    new_normal_modules)] = lispb::codegen::SoaBackend::standard_library;
             return new_normal_modules;
         }()}};
     auto const graph{resolve_type_graph(manifest)};
     auto const id{lispb::codegen::find_test_type(graph, "model", "LogicalRows")};
     ASSERT_TRUE(id);
     EXPECT_EQ(text(storage, graph.name(*id)), "LogicalRows");
-    EXPECT_EQ(text(storage, graph.cpp_spelling(*id)), "model::CompactOwner");
+    EXPECT_EQ(text(storage, graph.cpp_spelling(*id)), "model::LogicalRows");
     EXPECT_EQ(graph.find_registered(storage.strings.find("logical")), id);
     EXPECT_EQ(graph.find_registered(storage.strings.find("physical")), id);
     EXPECT_EQ(graph.find_reference(
@@ -3524,7 +3377,7 @@ TEST(SemanticTypeGraph, SingleOnlyPhysicalOwnerDoesNotRenameLogicalIdentity) {
                       auto const new_type_refs{storage.declarations.type_refs.append()};
                       storage.declarations.type_refs
                           .name[storage.declarations.type_refs.index(new_type_refs)] =
-                          storage.strings.intern("CompactOwner");
+                          storage.strings.intern("LogicalRows");
                       return new_type_refs;
                   }(),
                   manifest.modules.front()),
@@ -3551,7 +3404,7 @@ TEST(SemanticTypeGraph, SingleOnlyPhysicalOwnerDoesNotRenameLogicalIdentity) {
                   graph.definitions()
                       .record_members.semantic_type[graph.definitions().record_members.index(
                           graph.definitions().records.members_of(reference).front())])]),
-              "model::CompactOwner*");
+              "LogicalRows*");
 }
 
 } // namespace

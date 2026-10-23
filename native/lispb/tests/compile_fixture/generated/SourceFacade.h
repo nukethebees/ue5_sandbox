@@ -3,16 +3,18 @@
 
 #pragma once
 
-#include "Project/Target.h"
+#include "compile_fixture/target.hpp"
+
+#include <cstdint>
 
 namespace codegen_compile_fixture {
 class FSourceFacade {
   public:
     void bind(FTarget& new_target);
 
-    void set_value(int32 const value);
+    void set_value(std::int32_t const value);
 
-    int32 get() const;
+    std::int32_t get() const;
   private:
     FTarget* target{nullptr};
 };

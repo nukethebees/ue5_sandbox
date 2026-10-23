@@ -1,9 +1,7 @@
 (module native_entity_cell_data
   :header "native/simulation/include/ioj/sim/collision/entity_cell_data.h"
-  :backend standard-library
   :namespace ioj::sim::collision
-  (struct EntityCellDataColumns
-    :operations (all)
+  (struct EntityCellData
     (member min_point_xs array float)
     (member min_point_ys array float)
     (member min_point_zs array float)
@@ -17,4 +15,4 @@
     (member max_cell_ys array int32)
     (member max_cell_zs array int32)
     (member entity_ids array @native_unique_id)
-    (single-allocation EntityCellData)))
+))

@@ -15,8 +15,6 @@ auto Declarations::clone(DeclarationHandle id) -> DeclarationHandle {
             return settings_schemas.clone(id);
         case DeclarationKind::fixed_point:
             return fixed_points.clone(id);
-        case DeclarationKind::homogeneous_layout:
-            return homogeneous_layouts.clone(id);
         case DeclarationKind::integer_scalar:
             return integer_scalars.clone(id);
         case DeclarationKind::integer_varint:
@@ -41,8 +39,6 @@ auto Declarations::clone(DeclarationHandle id) -> DeclarationHandle {
             return tagged_unions.clone(id);
         case DeclarationKind::union_type:
             return unions.clone(id);
-        case DeclarationKind::vector_soa:
-            return vector_soas.clone(id);
     }
     assert(false);
     std::unreachable();
@@ -88,10 +84,7 @@ void Declarations::clear() {
     facade_methods.clear();
     facades.clear();
     fixed_points.clear();
-    fixed_soas.clear();
     functions.clear();
-    homogeneous_layouts.clear();
-    homogeneous_values.clear();
     integer_scalars.clear();
     integer_varints.clear();
     linear_quantizeds.clear();
@@ -113,7 +106,6 @@ void Declarations::clear() {
     settings.clear();
     settings_modules.clear();
     settings_schemas.clear();
-    soa_allocator_variants.clear();
     soa_mask_dimensions.clear();
     soa_members.clear();
     soas.clear();
@@ -127,13 +119,11 @@ void Declarations::clear() {
     umbrella_modules.clear();
     union_alternatives.clear();
     unions.clear();
-    vector_soas.clear();
     declaration_handle_items_.clear();
     enum_conversion_items_.clear();
     enumerator_id_items_.clear();
     facade_method_id_items_.clear();
     function_schema_id_items_.clear();
-    homogeneous_value_id_items_.clear();
     native_enum_helper_items_.clear();
     packed_named_code_id_items_.clear();
     packed_segment_id_items_.clear();
@@ -141,13 +131,11 @@ void Declarations::clear() {
     record_member_id_items_.clear();
     setting_category_id_items_.clear();
     setting_id_items_.clear();
-    soa_allocator_variant_id_items_.clear();
     soa_mask_dimension_id_items_.clear();
     soa_member_id_items_.clear();
     static_table_column_id_items_.clear();
     static_table_group_id_items_.clear();
     static_table_row_id_items_.clear();
-    storage_operation_items_.clear();
     tagged_union_alternative_id_items_.clear();
     type_ref_id_items_.clear();
     union_alternative_id_items_.clear();

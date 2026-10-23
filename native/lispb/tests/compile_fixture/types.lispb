@@ -1,47 +1,10 @@
-
 (type restricted_leaf
   :spelling "RestrictedLeaf"
-  :header "Project/RestrictedLeaf.h")
-
-(type vector
-  :spelling "FVector2f"
-  :header "Project/Vector2f.h")
-
-(type vector2d
-  :spelling "FVector2d"
-  :header "Project/Vector2d.h")
-
-(type point
-  :spelling "FPoint2f"
-  :header "Project/Point2f.h")
-
-(type row
-  :spelling "FRow"
-  :header "Project/Row.h")
-
-(type scalar
-  :spelling "FScalar1f"
-  :header "Project/Scalar1f.h")
-
-(type vector3
-  :spelling "FVector3f"
-  :header "Project/Vector3f.h")
-
-(type tracked
-  :spelling "FTracked"
-  :header "Project/Tracked.h")
+  :header "compile_fixture/restricted_leaf.hpp")
 
 (type target
   :spelling "FTarget"
-  :header "Project/Target.h")
-
-(type check
-  :spelling "check"
-  :header "CoreMinimal.h")
-
-(type child
-  :spelling "FChild"
-  (operation remove-at-swap remove_at_swap))
+  :header "compile_fixture/target.hpp")
 
 (type packed_state
   :spelling "codegen_compile_fixture::PackedState"
@@ -68,8 +31,7 @@
   :header "cstdint"
   :pass-by value)
 
-(type fixed_child
-  :spelling "FFixedChild")
-
 (type standard_uint16 :spelling "std::uint16_t" :header "cstdint" :pass-by value)
 (type native_int32 :spelling "std::int32_t" :header "cstdint" :pass-by value)
+
+(type assertion :spelling "assert" :header "cassert")

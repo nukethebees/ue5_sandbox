@@ -1,9 +1,7 @@
 (module native_direct_damage_events
   :header "native/simulation/include/ioj/sim/direct_damage_events.h"
-  :backend standard-library
   :namespace ioj::sim
   (struct DirectDamageEvents
-    :operations (all)
     (member damaged_entities array @native_unique_id)
     (member damage_amounts array int32)
     (member instigators array @native_unique_id)
@@ -17,4 +15,4 @@ events.instigators()[index] = instigator;}cpp#
       (parameter damaged_entity (type-ref @native_unique_id :suffix " const"))
       (parameter damage_amount (type-ref int32 :suffix " const"))
       (parameter instigator (type-ref @native_unique_id :suffix " const")))
-    (single-allocation DirectDamageEvents)))
+))

@@ -19,7 +19,6 @@ struct SoaColumns {
     std::vector<StringId> name;
     std::vector<ResolvedOccurrenceId> semantic_type;
     std::vector<codegen::SoaMemberKind> kind;
-    std::vector<std::optional<TypeId>> nested_type;
     std::vector<RelationshipId> relationship;
 };
 

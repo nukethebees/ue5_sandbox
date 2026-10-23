@@ -71,10 +71,7 @@ target_sources(lispb-schema PRIVATE
   src/facade_method_schemas.cpp
   src/facade_schemas.cpp
   src/fixed_point_schemas.cpp
-  src/fixed_soa_schemas.cpp
   src/function_schemas.cpp
-  src/homogeneous_layout_schemas.cpp
-  src/homogeneous_value_schemas.cpp
   src/integer_scalar_schemas.cpp
   src/integer_varint_schemas.cpp
   src/linear_quantized_schemas.cpp
@@ -109,7 +106,6 @@ target_sources(lispb-schema PRIVATE
   src/umbrella_module_schemas.cpp
   src/union_alternative_schemas.cpp
   src/union_schemas.cpp
-  src/vector_soa_schemas.cpp
   src/declaration_query.cpp
   src/document_query.cpp
   src/field_query.cpp
@@ -134,8 +130,6 @@ target_sources(lispb-schema PRIVATE
   src/packed_value_internal.cpp
   src/schema.cpp
   src/physical_type_use.cpp
-  src/soa_allocator_variants.cpp
-  src/soa_allocators.cpp
   src/soa_body.cpp
   src/source_loader.cpp
   src/schema_parser.cpp
@@ -156,7 +150,6 @@ target_sources(lispb-schema PRIVATE
   src/soa_types.cpp
   src/static_table_types.cpp
   src/facade_types.cpp
-  src/homogeneous_storage_types.cpp
   src/record_members.cpp
   src/union_alternatives.cpp
   src/tagged_union_alternatives.cpp
@@ -183,16 +176,9 @@ ioj_enable_warnings(lispb-schema CODEGEN)
 
 add_library(codegen-lib)
 target_sources(codegen-lib PRIVATE
-  src/lowering/resolved_members.cpp
-  src/lowering/fixed_leaves.cpp
-  src/lowering/fixed_member_layouts.cpp
-  src/lowering/fixed_layouts.cpp
   src/lowering/lowering_paths.cpp
   src/lowering/lowering_storage.cpp
   src/lowering/single_allocation_columns.cpp
-  src/lowering/compact_vectors.cpp
-  src/lowering/compact_vector_kind.cpp
-  src/lowering/row_parameters.cpp
   src/lowering/single_allocation_models.cpp
   src/lowering/single_allocation_views.cpp
   src/lowering/packed_field_layouts.cpp
@@ -211,14 +197,7 @@ target_sources(codegen-lib PRIVATE
   src/lowering_context.cpp
   src/enum_lowering.cpp
   src/facade_lowering.cpp
-  src/fixed_soa_lowering.cpp
-  src/fixed_soa_layout.cpp
-  src/fixed_soa_container_lowering.cpp
-  src/fixed_soa_storage_lowering.cpp
   src/generator.cpp
-  src/homogeneous_lowering.cpp
-  src/homogeneous_storage_lowering.cpp
-  src/homogeneous_view_lowering.cpp
   src/lowering_utils.cpp
   src/module_assembly.cpp
   src/settings_lowering.cpp
@@ -226,18 +205,13 @@ target_sources(codegen-lib PRIVATE
   src/string_enum_parser.cpp
   src/soa_lowering.cpp
   src/soa_api.cpp
-  src/soa_member_resolution.cpp
-  src/soa_storage_lowering.cpp
   src/single_allocation_soa_emission.cpp
   src/single_allocation_soa_lowering.cpp
   src/single_allocation_soa_model.cpp
-  src/native_soa_lowering.cpp
   src/packed_value_lowering.cpp
   src/record_lowering.cpp
   src/union_lowering.cpp
-  src/soa_view_lowering.cpp
   src/static_table_lowering.cpp
-  src/vector_lowering.cpp
 )
 set_target_properties(codegen-lib PROPERTIES UNITY_BUILD OFF)
 target_include_directories(codegen-lib PUBLIC include)
@@ -279,16 +253,15 @@ ioj_enable_warnings(lispb CODEGEN)
 set(CODEGEN_COMPILE_FIXTURE_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/tests/compile_fixture")
 set(CODEGEN_COMPILE_FIXTURE_OUTPUT "${CODEGEN_COMPILE_FIXTURE_SOURCE}/generated")
 set(CODEGEN_COMPILE_FIXTURE_HEADERS
+  "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/Records.h"
+  "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/FieldMasks.h"
+  "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/RestrictionRows.h"
+  "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/ReferenceFacade.h"
   "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/Generated.h"
   "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/Mixed.h"
   "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/SignatureFirst.h"
   "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/SignatureSecond.h"
   "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/SignatureDefinitions.h"
-  "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/Homogeneous.h"
-  "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/Soa.h"
-  "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/Vector1.h"
-  "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/Vector2.h"
-  "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/Vector3.h"
   "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/InlineFacade.h"
   "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/SourceFacade.h"
   "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/PlainEnums.h"
@@ -296,23 +269,13 @@ set(CODEGEN_COMPILE_FIXTURE_HEADERS
   "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/ScalarValues.h"
   "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/Representations.h"
   "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/PackedValues.h"
-  "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/ReflectedEnums.h"
-  "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/Settings.h"
-  "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/StaticTables.h"
 )
 set(CODEGEN_COMPILE_FIXTURE_SOURCES
   "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/SignatureFirst.cpp"
   "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/SignatureSecond.cpp"
   "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/SignatureDefinitions.cpp"
-  "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/Homogeneous.cpp"
-  "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/Soa.cpp"
-  "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/Vector1.cpp"
-  "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/Vector2.cpp"
-  "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/Vector3.cpp"
   "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/SourceFacade.cpp"
   "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/PlainEnums.cpp"
-  "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/ReflectedEnums.cpp"
-  "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/Settings.cpp"
 )
 add_custom_target(generate-codegen-compile-fixture
   COMMAND "$<TARGET_FILE:lispb>" generate
@@ -344,9 +307,8 @@ target_sources(codegen-generated-compile-fixture PRIVATE
 set_target_properties(codegen-generated-compile-fixture PROPERTIES UNITY_BUILD OFF)
 target_include_directories(codegen-generated-compile-fixture PUBLIC
   "${CODEGEN_COMPILE_FIXTURE_OUTPUT}"
-  "${CODEGEN_COMPILE_FIXTURE_SOURCE}/stubs"
+  "${CODEGEN_COMPILE_FIXTURE_SOURCE}/include"
   "${PROJECT_SOURCE_DIR}/native/core/include"
-  "${PROJECT_SOURCE_DIR}/Plugins/SandboxCore/Source/SandboxCore/Public"
 )
 target_link_libraries(codegen-generated-compile-fixture PRIVATE sandbox::native_defaults)
 ioj_enable_warnings(codegen-generated-compile-fixture CODEGEN)
@@ -369,10 +331,8 @@ add_executable(codegen-tests
   tests/ast_tests.cpp
   tests/environment_tests.cpp
   tests/expr_tests.cpp
-  tests/fixed_soa_lowering_tests.cpp
   tests/single_allocation_soa_tests.cpp
   tests/generator_tests.cpp
-  tests/homogeneous_lowering_tests.cpp
   tests/source_loader_tests.cpp
   tests/lowering_tests.cpp
   tests/packed_value_tests.cpp
@@ -411,10 +371,9 @@ foreach(restriction IN ITEMS COPY DESTRUCTOR DEFAULT)
   target_compile_definitions(${reject_target} PRIVATE "CODEGEN_BAD_${restriction}")
   target_include_directories(${reject_target} PRIVATE
     "${CODEGEN_COMPILE_FIXTURE_OUTPUT}"
-    "${CODEGEN_COMPILE_FIXTURE_SOURCE}/stubs"
+    "${CODEGEN_COMPILE_FIXTURE_SOURCE}/include"
     "${PROJECT_SOURCE_DIR}/native/core/include"
-    "${PROJECT_SOURCE_DIR}/Plugins/SandboxCore/Source/SandboxCore/Public"
-  )
+    )
   target_link_libraries(${reject_target} PRIVATE sandbox::native_defaults)
   ioj_enable_warnings(${reject_target} CODEGEN)
   add_test(NAME "SingleAllocationRejects${restriction}"
@@ -468,7 +427,7 @@ add_custom_target(generate-code
   COMMAND "$<TARGET_FILE:lispb>" generate
     --project "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
     --build-root "${CMAKE_BINARY_DIR}"
-    --target sandbox-core-test-fixture
+    --target native-soa-fixture
   DEPENDS lispb
   WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
   COMMENT "Generating committed Sandbox C++ files"
@@ -492,7 +451,7 @@ add_custom_target(check-generated-code
   COMMAND "$<TARGET_FILE:lispb>" check
     --project "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
     --build-root "${CMAKE_BINARY_DIR}"
-    --target sandbox-core-test-fixture
+    --target native-soa-fixture
   DEPENDS lispb
   WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
   COMMENT "Checking committed Sandbox C++ files"

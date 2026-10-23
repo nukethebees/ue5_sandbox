@@ -27,8 +27,7 @@ auto rewrite_type_references(
     DeclarationHandle declaration,
     std::function<TypeRefId(TypeReferenceRole const&, TypeRefId, TypeReferenceKind)> const& rewrite)
     -> DeclarationHandle;
-auto generated_cpp_names(Declarations const& declarations,
-                         DeclarationHandle declaration,
-                         ModuleHandle module) -> std::vector<StringId>;
+auto generated_cpp_names(Declarations const& declarations, DeclarationHandle declaration)
+    -> std::vector<StringId>;
 
 } // namespace lispb::codegen

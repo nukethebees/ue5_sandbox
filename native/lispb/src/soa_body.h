@@ -1,20 +1,18 @@
 #pragma once
 
-#include <codegen/schema/declarations.h>
-#include <codegen/schema/soa_schemas.h>
-#include <lispb/indices.h>
-
 #include <algorithm>
 #include <cstddef>
-#include <map>
 #include <stdexcept>
 #include <string>
 #include <string_view>
 #include <vector>
 
 namespace lispb::codegen {
-class Declarations;
 struct DeclarationHandle;
+struct ModuleHandle;
+}
+namespace lispb::schema {
+class TypeGraph;
 }
 
 namespace lispb::codegen::detail {
@@ -52,9 +50,9 @@ void scan_soa_columns(std::string_view const body,
     }
 }
 
-void validate_soa_body_columns(Declarations const& declarations,
+void validate_soa_body_columns(schema::TypeGraph const& graph,
+                               ModuleHandle module,
                                DeclarationHandle schema,
-                               std::map<StringId, DeclarationHandle> const& schemas,
                                std::string_view body);
 
 }

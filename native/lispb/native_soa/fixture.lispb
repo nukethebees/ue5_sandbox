@@ -1,80 +1,57 @@
 (module native_soa_fixture
-  :header "native_soa_types.h"
-  :source "native_soa_types.cpp"
-  :header-include "native_soa_types.h"
+  :header "include/native_soa/types.hpp"
+  :source "src/types.cpp"
+  :header-include "native_soa/types.hpp"
   :prelude #cpp{#define NATIVE_SOA_FIXTURE_API}cpp#
-  :backend standard-library
   :namespace ioj::native_soa_fixture
   (record Pair
     (member x float)
     (member y float))
-  (struct DualApiRows
-    :storage both
-    :view-name DualVectorView
-    :const-view-name DualVectorConstView
-    :operations (set-num)
-    (member values array float)
-    (function row_count uint32 :const true :body #cpp{return num();}cpp#)
-    (view-function first float :body #cpp{return $column(values)[0];}cpp#)
-    (mutable-view-function assign void
-      (parameter value float)
-      :body #cpp{$column(values)[0] = value;}cpp#)
-    (single-allocation DualCompactRows))
   (record Node
     (member next (type-ref Node :suffix "*"))
     (member weight float))
   (record First (member other (type-ref Second :suffix "*")))
   (record Second (member other (type-ref First :suffix "*")))
 
-  (struct PointerA :operations (all)
+  (struct PointerA
     (member others array (type-ref PointerB :suffix "*")))
-  (struct PointerB :operations (all)
+  (struct PointerB
     (member others array (type-ref PointerA :suffix "*")))
-  (struct ReverseB :operations (all)
+  (struct ReverseB
     (member others array (type-ref ReverseA :suffix "*")))
-  (struct ReverseA :operations (all)
+  (struct ReverseA
     (member others array (type-ref ReverseB :suffix "*")))
   (record MixedRecord (member rows (type-ref MixedRows :suffix "*")))
-  (struct MixedRows :operations (all)
+  (struct MixedRows
     (member records array (type-ref MixedRecord :suffix "*")))
   (record Envelope
     (member pairs Pair :count 3)
     (member node Node)
     (member aligned @aligned32))
   (struct PairRows
-    :operations (all)
     (member pairs array Pair)
     (member pointers array (type-ref Node :suffix "*")))
   (struct Vectors
-    :operations (all)
-    :vector-components (xs ys zs)
     (member xs array float)
     (member ys array float)
     (member zs array float))
-  (struct Rows
-    :storage both
-    :operations (all)
+  (struct SingleRows
     (member values array int32)
-    (member positions nested Vectors :nested-schema Vectors)
-    (member velocities nested Vectors :nested-schema Vectors)
-    (single-allocation SingleRows))
-  (struct AlignmentRows
-    :storage both
-    :operations (all)
+    (member positions nested Vectors)
+    (member velocities nested Vectors))
+  (struct SingleAlignmentRows
     (member bytes array uint8)
     (member odd array @odd_bytes)
     (member aligned32 array @aligned32)
-    (member nested nested Vectors :nested-schema Vectors)
+    (member nested nested Vectors)
     (member aligned64 array @aligned64)
-    (member aligned256 array @aligned256)
-    (single-allocation SingleAlignmentRows))
+    (member aligned256 array @aligned256))
   (record ApiPair (member x float) (member y float))
   (struct ApiCoordinates
     :layout-only true
     :equivalent-type ApiPair
-    :vector-components (xs ys)
-    (member xs array float)
-    (member ys array float)
+    (member xs array float :equivalent-member x)
+    (member ys array float :equivalent-member y)
     (view-function x_at float
       (parameter index std::uint32_t)
       :body #cpp{return $column(xs)[index];}cpp#)
@@ -83,17 +60,25 @@
       :body #cpp{auto xs = $column(xs);
 auto const count = num();
 for (std::uint32_t i{}; i < count; ++i) { xs[i] += amount; }}cpp#))
-  (struct ApiRows
+  (struct ApiOwner
     :view-name ApiView
     :const-view-name ApiConstView
     :export-specifier NATIVE_SOA_FIXTURE_API
-    :operations (set-num reserve append-from copy-element)
     :using-declarations ("Value = float")
     :field-mask-name ApiMask
     :field-enum-name ApiField
     (member values array float :mask-field true)
     (member masks array ApiMask)
-    (member positions nested ApiCoordinates :nested-schema ApiCoordinates)
+    (member positions nested ApiCoordinates)
+    (function schema_version int :static true :constexpr true :nodiscard true
+      :body ("return 7;"))
+    (function identity T :static true :constexpr true :nodiscard true
+      :template-parameters "typename T" :requires "(sizeof(T) > 0)"
+      (parameter value T) :body ("return value;"))
+    (view-function schema_version int :constexpr true :nodiscard true
+      :body ("return 7;"))
+    (mutable-view-function mutable_version auto :trailing-return-type int
+      :constexpr true :nodiscard true :body ("return 8;"))
     (function first_value float :const true :inline true
       :body #cpp{return $column(values)[0];}cpp#)
     (function total Value :const true :definition-in-source true
@@ -106,19 +91,15 @@ return result;}cpp#)
       :body #cpp{return $column(positions.xs)[0];}cpp#)
     (mutable-view-function assign_first void
       (parameter value float)
-      :body #cpp{$column(values)[0] = value;}cpp#)
-    (single-allocation ApiOwner))
-  (struct EquivalentRows
-    :operations (set-num)
+      :body #cpp{$column(values)[0] = value;}cpp#))
+  (struct EquivalentOwner
     :equivalent-type ApiPair
     (member xs array float :equivalent-member x)
-    (member ys array float :equivalent-member y)
-    (single-allocation EquivalentOwner))
-  (record ApiReference (member owner (type-ref ApiRows :suffix "*")))
-  (struct AccessorRows
+    (member ys array float :equivalent-member y))
+  (record ApiReference (member owner (type-ref ApiOwner :suffix "*")))
+  (struct AccessorOwner
     :equivalent-type @vector3
     (member horizontal array float :equivalent-member x :equivalent-accessor true)
     (member vertical array float :equivalent-member y :equivalent-accessor true)
-    (member depth array float :equivalent-member z :equivalent-accessor true)
-    (single-allocation AccessorOwner))
+    (member depth array float :equivalent-member z :equivalent-accessor true))
 )

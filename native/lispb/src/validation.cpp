@@ -19,10 +19,7 @@
 #include <codegen/schema/facade_schemas.h>
 #include <codegen/schema/fixed_point_schemas.h>
 #include <codegen/schema/fixed_point_value.h>
-#include <codegen/schema/fixed_soa_schemas.h>
 #include <codegen/schema/function_schemas.h>
-#include <codegen/schema/homogeneous_layout_schemas.h>
-#include <codegen/schema/homogeneous_value_schemas.h>
 #include <codegen/schema/indices.h>
 #include <codegen/schema/integer_scalar_cpp_emission.h>
 #include <codegen/schema/integer_scalar_schemas.h>
@@ -59,19 +56,14 @@
 #include <codegen/schema/setting_control_schemas.h>
 #include <codegen/schema/setting_schemas.h>
 #include <codegen/schema/settings_module_schemas.h>
-#include <codegen/schema/soa_allocator_variants.h>
-#include <codegen/schema/soa_allocators.h>
-#include <codegen/schema/soa_backend.h>
 #include <codegen/schema/soa_mask_dimension_schemas.h>
 #include <codegen/schema/soa_member_kind.h>
 #include <codegen/schema/soa_member_schemas.h>
 #include <codegen/schema/soa_schemas.h>
-#include <codegen/schema/soa_storage.h>
 #include <codegen/schema/static_table_column_schemas.h>
 #include <codegen/schema/static_table_group_schemas.h>
 #include <codegen/schema/static_table_row_schemas.h>
 #include <codegen/schema/static_table_schemas.h>
-#include <codegen/schema/storage_operation.h>
 #include <codegen/schema/tagged_union_alternative_schemas.h>
 #include <codegen/schema/tagged_union_schemas.h>
 #include <codegen/schema/type_refs.h>
@@ -79,7 +71,6 @@
 #include <codegen/schema/umbrella_module_schemas.h>
 #include <codegen/schema/union_alternative_schemas.h>
 #include <codegen/schema/union_schemas.h>
-#include <codegen/schema/vector_soa_schemas.h>
 #include <lispb/indices.h>
 #include <lispb/schema/enum_code.h>
 #include <lispb/schema/enum_domain_issue_severity.h>
@@ -283,13 +274,9 @@ class Validator {
 
     auto is_generated_storage_member_name(std::string_view const value) -> bool {
         static std::set<std::string_view> const names{
-            "apply_array_pairs",
-            "apply_arrays",
             "apply_permutation",
-            "at",
             "copy_element",
             "copy_elements",
-            "copy_to_tail",
             "get_const_view",
             "get_view",
             "is_empty",
@@ -298,8 +285,14 @@ class Validator {
             "right",
             "slice",
             "sort",
+            "stable_sort",
+            "resolve",
+            "validate",
+            "capacity",
+            "allocated_bytes",
+            "get_memory_resource",
+            "each_column",
             "soa_schema",
-            "validate_array_sizes",
         };
         return names.contains(value);
     }
@@ -309,9 +302,7 @@ class Validator {
             "add",
             "add_defaulted",
             "add_uninitialised",
-            "add_zeroed",
             "append_from",
-            "empty",
             "remove_at_swap",
             "reserve",
             "reset",
@@ -347,16 +338,6 @@ class Validator {
         }
     }
 
-    void require_identifier_fragment(std::string_view value, std::string const& context) {
-        require_value(value, context);
-        if (!std::ranges::all_of(value, [](char const character) {
-                return is_identifier_character(static_cast<unsigned char>(character));
-            })) {
-            throw std::invalid_argument{
-                context + " must contain only C++ identifier characters: " + std::string{value}};
-        }
-    }
-
     void require_qualified_identifier(std::string_view value, std::string const& context) {
         require_value(value, context);
         std::size_t begin{};
@@ -371,17 +352,6 @@ class Validator {
         }
         throw std::invalid_argument{context +
                                     " must be a qualified C++ identifier: " + std::string{value}};
-    }
-
-    void require_unique_operations(SchemaRange<StorageOperation> operations,
-                                   std::string const& context) {
-        std::set<StorageOperation> unique;
-        for (auto const operation : declarations_.items(operations)) {
-            if (!unique.insert(operation).second) {
-                throw std::invalid_argument{context + " contains duplicate value: " +
-                                            std::to_string(static_cast<int>(operation))};
-            }
-        }
     }
 
     void require_unique_names(std::vector<std::string> const& names, std::string const& context) {
@@ -2528,74 +2498,13 @@ class Validator {
     void validate_soa(lispb::codegen::ModuleHandle const& module,
                       std::span<lispb::codegen::DeclarationHandle const> schemas,
                       TypeRegistry const& types) {
-        std::map<lispb::StringId, lispb::codegen::DeclarationHandle> schemas_by_name;
-        for (auto const& schema : schemas) {
-            schemas_by_name.emplace(declarations_.soas.name[declarations_.soas.index(schema)],
-                                    schema);
-        }
         for (auto const& schema : schemas) {
             require_identifier(text(declarations_.soas.name[declarations_.soas.index(schema)]),
                                "SOA name");
             auto const context{
                 "SOA '" + text(declarations_.soas.name[declarations_.soas.index(schema)]) + "'"};
             if (declarations_.soas.layout_only[declarations_.soas.index(schema)] &&
-                (declarations_.soas.storage[declarations_.soas.index(schema)] ||
-                 declarations_.soas.single_allocation[declarations_.soas.index(schema)])) {
-                throw std::invalid_argument{context +
-                                            " layout-only cannot declare an ownership policy"};
-            }
-            switch (declarations_.soas.selected_storage(schema)) {
-                case SoaStorage::vector:
-                    if (declarations_.soas.single_allocation[declarations_.soas.index(schema)]) {
-                        throw std::invalid_argument{
-                            context + " storage vector cannot declare a single-allocation owner"};
-                    }
-                    break;
-                case SoaStorage::single_allocation:
-                case SoaStorage::both:
-                    if (!declarations_.soas.single_allocation[declarations_.soas.index(schema)]) {
-                        throw std::invalid_argument{
-                            context + " storage " +
-                            soa_storage_name(declarations_.soas.selected_storage(schema)) +
-                            " requires a single-allocation owner"};
-                    }
-                    break;
-            }
-            if (!declarations_.soas.emits_vector_storage(schema)) {
-                if (declarations_.soas.array_allocator[declarations_.soas.index(schema)]) {
-                    throw std::invalid_argument{context +
-                                                " array-allocator requires vector storage"};
-                }
-                if (declarations_.soas.copy_element_memberwise[declarations_.soas.index(schema)]) {
-                    throw std::invalid_argument{
-                        context + " copy-element-memberwise selects vector container copying; "
-                                  "single-allocation leaves use trivial copying"};
-                }
-                if (declarations_.soas.fixed[declarations_.soas.index(schema)]) {
-                    throw std::invalid_argument{context + " fixed storage requires vector storage"};
-                }
-            }
-            if (declarations_.normal_modules
-                        .soa_backend[declarations_.normal_modules.index(module)] ==
-                    SoaBackend::standard_library &&
-                declarations_.soas.fixed[declarations_.soas.index(schema)]) {
-                throw std::invalid_argument{"Standard-library SoA does not support fixed storage"};
-            }
-            if (declarations_.soas.array_allocator[declarations_.soas.index(schema)]) {
-                validate_type(*declarations_.soas.array_allocator[declarations_.soas.index(schema)],
-                              types,
-                              context + " array allocator");
-                if (declarations_.normal_modules
-                        .soa_backend[declarations_.normal_modules.index(module)] ==
-                    SoaBackend::standard_library) {
-                    throw std::invalid_argument{
-                        context + " array-allocator selects an Unreal TArray allocator; "
-                                  "native vector storage uses its runtime allocator"};
-                }
-            }
-            if (declarations_.soas.layout_only[declarations_.soas.index(schema)] &&
                 (!declarations_.soas.functions[declarations_.soas.index(schema)].empty() ||
-                 !declarations_.soas.operations[declarations_.soas.index(schema)].empty() ||
                  declarations_.soas.view_name[declarations_.soas.index(schema)] ||
                  declarations_.soas.const_view_name[declarations_.soas.index(schema)])) {
                 throw std::invalid_argument{
@@ -2630,12 +2539,6 @@ class Validator {
                     *declarations_.soas.field_enum_name[declarations_.soas.index(schema)],
                     "SOA '" + text(declarations_.soas.name[declarations_.soas.index(schema)]) +
                         "' field enum");
-            }
-            if (declarations_.soas.single_allocation[declarations_.soas.index(schema)]
-                    .has_value()) {
-                require_identifier(
-                    *declarations_.soas.single_allocation[declarations_.soas.index(schema)],
-                    "Single-allocation owner");
             }
             if (declarations_.soas.members[declarations_.soas.index(schema)].empty()) {
                 throw std::invalid_argument{
@@ -2692,32 +2595,6 @@ class Validator {
                              .relationship[declarations_.soa_members.index(member)],
                         types,
                         context + " relationship");
-                }
-                if (declarations_.soa_members.kind[declarations_.soa_members.index(member)] ==
-                        SoaMemberKind::array &&
-                    declarations_.soa_members.fixed_schema[declarations_.soa_members.index(member)]
-                        .has_value()) {
-                    throw std::invalid_argument{
-                        "Array member '" +
-                        text(declarations_.soa_members
-                                 .name[declarations_.soa_members.index(member)]) +
-                        "' must not specify fixed_schema"};
-                }
-                if (declarations_.soa_members.kind[declarations_.soa_members.index(member)] ==
-                        SoaMemberKind::array &&
-                    declarations_.soa_members.nested_schema[declarations_.soa_members.index(member)]
-                        .has_value()) {
-                    throw std::invalid_argument{
-                        "Array member '" +
-                        text(declarations_.soa_members
-                                 .name[declarations_.soa_members.index(member)]) +
-                        "' must not specify nested_schema"};
-                }
-                if (declarations_.soa_members.nested_schema[declarations_.soa_members.index(member)]
-                        .has_value()) {
-                    require_identifier(*declarations_.soa_members
-                                            .nested_schema[declarations_.soa_members.index(member)],
-                                       "Nested SOA schema reference");
                 }
                 if (declarations_.soas.field_mask_name[declarations_.soas.index(schema)]
                         .has_value() &&
@@ -2822,47 +2699,6 @@ class Validator {
                 member_names,
                 "SOA '" + text(declarations_.soas.name[declarations_.soas.index(schema)]) +
                     "' members");
-            if (!declarations_.soas.vector_components[declarations_.soas.index(schema)].empty()) {
-                auto const dimensions{
-                    declarations_.soas.vector_components[declarations_.soas.index(schema)].size()};
-                if (dimensions != 2 && dimensions != 3) {
-                    throw std::invalid_argument{
-                        "SOA '" + text(declarations_.soas.name[declarations_.soas.index(schema)]) +
-                        "' vector-components requires two or three columns"};
-                }
-                if (declarations_.soas.members[declarations_.soas.index(schema)].size() !=
-                    dimensions) {
-                    throw std::invalid_argument{
-                        "SOA '" + text(declarations_.soas.name[declarations_.soas.index(schema)]) +
-                        "' vector-components must list every member"};
-                }
-                auto const components{declarations_.items(
-                    declarations_.soas.vector_components[declarations_.soas.index(schema)])};
-                auto const rotation{dimensions == 3 && view(components[0]) == "pitches" &&
-                                    view(components[1]) == "yaws" &&
-                                    view(components[2]) == "rolls"};
-                for (std::size_t index{}; index < dimensions; ++index) {
-                    auto const member{declarations_.items(
-                        declarations_.soas.members[declarations_.soas.index(schema)])[index]};
-                    auto const expected{rotation ? text(components[index])
-                                                 : std::string(1, "xyz"[index]) + "s"};
-                    if (view(components[index]) != expected ||
-                        text(declarations_.soa_members
-                                 .name[declarations_.soa_members.index(member)]) != expected ||
-                        declarations_.soa_members.kind[declarations_.soa_members.index(member)] !=
-                            SoaMemberKind::array) {
-                        throw std::invalid_argument{
-                            "SOA '" +
-                            text(declarations_.soas.name[declarations_.soas.index(schema)]) +
-                            "' vector-components must be ordered xs/ys[/zs] or "
-                            "pitches/yaws/rolls arrays"};
-                    }
-                }
-            }
-            require_unique_operations(
-                declarations_.soas.operations[declarations_.soas.index(schema)],
-                "SOA '" + text(declarations_.soas.name[declarations_.soas.index(schema)]) +
-                    "' operations");
             validate_export_specifier(
                 declarations_.soas.export_specifier[declarations_.soas.index(schema)],
                 "SOA '" + text(declarations_.soas.name[declarations_.soas.index(schema)]) +
@@ -2873,26 +2709,6 @@ class Validator {
                     declaration,
                     "SOA '" + text(declarations_.soas.name[declarations_.soas.index(schema)]) +
                         "' using declaration");
-            }
-            if (declarations_.soas.fixed[declarations_.soas.index(schema)].has_value()) {
-                auto const fixed{*declarations_.soas.fixed[declarations_.soas.index(schema)]};
-                require_identifier(
-                    declarations_.fixed_soas.storage_name[declarations_.fixed_soas.index(fixed)],
-                    "SOA '" + text(declarations_.soas.name[declarations_.soas.index(schema)]) +
-                        "' fixed storage name");
-                require_unique_names(
-                    declarations_.fixed_soas.containers[declarations_.fixed_soas.index(fixed)],
-                    "SOA '" + text(declarations_.soas.name[declarations_.soas.index(schema)]) +
-                        "' fixed containers");
-
-                for (auto const container :
-                     declarations_.items(declarations_.fixed_soas
-                                             .containers[declarations_.fixed_soas.index(fixed)])) {
-                    require_identifier(
-                        container,
-                        "SOA '" + text(declarations_.soas.name[declarations_.soas.index(schema)]) +
-                            "' fixed container name");
-                }
             }
             if (declarations_.soas.equivalent_type[declarations_.soas.index(schema)].has_value()) {
                 validate_type(*declarations_.soas.equivalent_type[declarations_.soas.index(schema)],
@@ -2945,8 +2761,7 @@ class Validator {
                     for (auto const body : declarations_.items(
                              declarations_.functions
                                  .body_lines[declarations_.functions.index(function)])) {
-                        validate_soa_body_columns(
-                            declarations_, schema, schemas_by_name, view(body));
+                        validate_soa_body_columns(graph_, module, schema, view(body));
                     }
                     require_identifier(
                         text(declarations_.functions.name[declarations_.functions.index(function)]),
@@ -2978,20 +2793,14 @@ class Validator {
                 false);
         }
         for (auto const& root : schemas) {
-            if (!declarations_.soas.single_allocation[declarations_.soas.index(root)]) {
+            if (declarations_.soas.layout_only[declarations_.soas.index(root)]) {
                 continue;
             }
-            std::set<std::string> active;
             std::set<std::string> flattened_names;
             auto visit = [&](auto&& self,
-                             lispb::codegen::DeclarationHandle const& schema,
+                             lispb::codegen::DeclarationHandle schema,
+                             lispb::codegen::ModuleHandle current_module,
                              std::string const& prefix) -> void {
-                if (!active.insert(text(declarations_.soas.name[declarations_.soas.index(schema)]))
-                         .second) {
-                    throw std::invalid_argument{
-                        "Cyclic single-allocation schema: " +
-                        text(declarations_.soas.name[declarations_.soas.index(schema)])};
-                }
                 std::set<std::string> accessors;
                 for (auto const member_id : declarations_.items(
                          declarations_.soas.members[declarations_.soas.index(schema)])) {
@@ -3036,103 +2845,15 @@ class Validator {
                         }
                         continue;
                     }
-                    if (!declarations_.soa_members
-                             .nested_schema[declarations_.soa_members.index(member)]) {
-                        throw std::invalid_argument{
-                            "Missing nested schema for single-allocation "
-                            "member: " +
-                            text(declarations_.soa_members
-                                     .name[declarations_.soa_members.index(member)])};
-                    }
-                    auto const child{std::ranges::find(
-                        schemas,
-                        *declarations_.soa_members
-                             .nested_schema[declarations_.soa_members.index(member)],
-                        [&](DeclarationHandle id) {
-                            return declarations_.soas.name[declarations_.soas.index(id)];
-                        })};
-                    if (child == schemas.end()) {
-                        throw std::invalid_argument{
-                            "Unknown nested schema: " +
-                            text(*declarations_.soa_members
-                                      .nested_schema[declarations_.soa_members.index(member)])};
-                    }
-                    self(self, *child, flattened);
+                    auto const occurrence{graph_.resolved(
+                        current_module,
+                        declarations_.soa_members.type[declarations_.soa_members.index(member)])};
+                    auto const& occurrences{graph_.occurrences()};
+                    auto const child{occurrences.type[occurrences.index(occurrence)]};
+                    self(self, graph_.source_declaration(child), graph_.module(child), flattened);
                 }
-                active.erase(text(declarations_.soas.name[declarations_.soas.index(schema)]));
             };
-            visit(visit, root, {});
-        }
-        for (auto const& schema : schemas) {
-            if (!declarations_.soas.fixed[declarations_.soas.index(schema)].has_value()) {
-                continue;
-            }
-            for (auto const member_id : declarations_.items(
-                     declarations_.soas.members[declarations_.soas.index(schema)])) {
-                auto const member{member_id};
-                if (declarations_.soa_members.kind[declarations_.soa_members.index(member)] !=
-                    SoaMemberKind::nested) {
-                    continue;
-                }
-                if (!declarations_.soa_members.fixed_schema[declarations_.soa_members.index(member)]
-                         .has_value()) {
-                    throw std::invalid_argument{
-                        "Fixed SOA '" +
-                        text(declarations_.soas.name[declarations_.soas.index(schema)]) +
-                        "' nested member '" +
-                        text(declarations_.soa_members
-                                 .name[declarations_.soa_members.index(member)]) +
-                        "' has no fixed_schema"};
-                }
-                auto const found{std::find_if(
-                    schemas.begin(),
-                    schemas.end(),
-                    [&](lispb::codegen::DeclarationHandle const& candidate) {
-                        return declarations_.soas.name[declarations_.soas.index(candidate)] ==
-                             *declarations_.soa_members
-                                   .fixed_schema[declarations_.soa_members.index(member)];
-                    })};
-                if (found == schemas.end() ||
-                    !declarations_.soas.fixed[declarations_.soas.index(*found)].has_value()) {
-                    throw std::invalid_argument{
-                        "Unknown fixed nested schema: " +
-                        text(*declarations_.soa_members
-                                  .fixed_schema[declarations_.soa_members.index(member)])};
-                }
-            }
-        }
-        for (auto const variant_id : declarations_.items(
-                 declarations_.normal_modules
-                     .soa_array_allocators[declarations_.normal_modules.index(module)])) {
-            auto const variant{variant_id};
-            validate_type(declarations_.soa_allocator_variants
-                              .allocator[declarations_.soa_allocator_variants.index(variant)],
-                          types,
-                          "SoA allocator variant");
-        }
-        validate_soa_allocator_variants(
-            declarations_,
-            declarations_.normal_modules.soa_backend[declarations_.normal_modules.index(module)],
-            schemas,
-            declarations_.normal_modules
-                .soa_array_allocators[declarations_.normal_modules.index(module)]);
-        if (!declarations_.module_settings_store
-                 .source[declarations_.module_settings_store.index(
-                     declarations_.normal_modules
-                         .settings[declarations_.normal_modules.index(module)])]
-                 .has_value() &&
-            declarations_.normal_modules.soa_backend[declarations_.normal_modules.index(module)] ==
-                SoaBackend::unreal &&
-            std::ranges::any_of(schemas, [&](auto const schema) {
-                return declarations_.soas.emits_vector_storage(schema);
-            })) {
-            throw std::invalid_argument{
-                "SOA module '" +
-                text(declarations_.module_settings_store
-                         .name[declarations_.module_settings_store.index(
-                             declarations_.normal_modules
-                                 .settings[declarations_.normal_modules.index(module)])]) +
-                "' must have a source output"};
+            visit(visit, root, module, {});
         }
     }
 
@@ -3289,347 +3010,6 @@ class Validator {
                 throw std::invalid_argument{context + " getter '" + getter_name +
                                             "' collides with another table member"};
             }
-        }
-    }
-
-    void validate_homogeneous(lispb::codegen::DeclarationHandle const& layout,
-                              lispb::codegen::ModuleHandle const& module,
-                              TypeRegistry const& types) {
-        if (!declarations_.module_settings_store
-                 .source[declarations_.module_settings_store.index(
-                     declarations_.normal_modules
-                         .settings[declarations_.normal_modules.index(module)])]
-                 .has_value()) {
-            throw std::invalid_argument{
-                "Homogeneous layout requires a source output: " +
-                text(declarations_.homogeneous_layouts
-                         .name[declarations_.homogeneous_layouts.index(layout)])};
-        }
-        require_identifier_fragment(
-            text(declarations_.homogeneous_layouts
-                     .name[declarations_.homogeneous_layouts.index(layout)]),
-            "Homogeneous layout name");
-
-        if (declarations_.homogeneous_layouts
-                .components[declarations_.homogeneous_layouts.index(layout)]
-                .empty()) {
-            throw std::invalid_argument{
-                "Homogeneous layout '" +
-                text(declarations_.homogeneous_layouts
-                         .name[declarations_.homogeneous_layouts.index(layout)]) +
-                "' must have components"};
-        }
-        require_unique_names(declarations_.homogeneous_layouts
-                                 .components[declarations_.homogeneous_layouts.index(layout)],
-                             "Homogeneous layout '" +
-                                 text(declarations_.homogeneous_layouts
-                                          .name[declarations_.homogeneous_layouts.index(layout)]) +
-                                 "' components");
-        for (auto const component : declarations_.items(
-                 declarations_.homogeneous_layouts
-                     .components[declarations_.homogeneous_layouts.index(layout)])) {
-            require_identifier(
-                component,
-                "Homogeneous layout '" +
-                    text(declarations_.homogeneous_layouts
-                             .name[declarations_.homogeneous_layouts.index(layout)]) +
-                    "' component");
-            reject_generated_name_collision(
-                view(component),
-                "Homogeneous layout '" +
-                    text(declarations_.homogeneous_layouts
-                             .name[declarations_.homogeneous_layouts.index(layout)]) +
-                    "' component",
-                true);
-        }
-        if (!declarations_.homogeneous_layouts
-                 .input_members[declarations_.homogeneous_layouts.index(layout)]
-                 .empty() &&
-            declarations_.homogeneous_layouts
-                    .input_members[declarations_.homogeneous_layouts.index(layout)]
-                    .size() != declarations_.homogeneous_layouts
-                                   .components[declarations_.homogeneous_layouts.index(layout)]
-                                   .size()) {
-            throw std::invalid_argument{
-                "Homogeneous layout '" +
-                text(declarations_.homogeneous_layouts
-                         .name[declarations_.homogeneous_layouts.index(layout)]) +
-                "' input members must match its components"};
-        }
-        for (auto const input_member : declarations_.items(
-                 declarations_.homogeneous_layouts
-                     .input_members[declarations_.homogeneous_layouts.index(layout)])) {
-            require_identifier(
-                input_member,
-                "Homogeneous layout '" +
-                    text(declarations_.homogeneous_layouts
-                             .name[declarations_.homogeneous_layouts.index(layout)]) +
-                    "' input member");
-        }
-        std::set<char> parameter_names;
-        for (auto const component : declarations_.items(
-                 declarations_.homogeneous_layouts
-                     .components[declarations_.homogeneous_layouts.index(layout)])) {
-            if (!parameter_names.insert(view(component).front()).second) {
-                throw std::invalid_argument{
-                    "Homogeneous layout '" +
-                    text(declarations_.homogeneous_layouts
-                             .name[declarations_.homogeneous_layouts.index(layout)]) +
-                    "' components must have unique initials"};
-            }
-        }
-        if (declarations_.homogeneous_layouts
-                .value_types[declarations_.homogeneous_layouts.index(layout)]
-                .empty()) {
-            throw std::invalid_argument{
-                "Homogeneous layout '" +
-                text(declarations_.homogeneous_layouts
-                         .name[declarations_.homogeneous_layouts.index(layout)]) +
-                "' must have value types"};
-        }
-        auto has_equivalent{
-            declarations_.homogeneous_values
-                .equivalent_type[declarations_.homogeneous_values.index(
-                    declarations_
-                        .items(declarations_.homogeneous_layouts
-                                   .value_types[declarations_.homogeneous_layouts.index(layout)])
-                        .front())]
-                .has_value()};
-        std::vector<std::string> suffixes;
-        std::set<std::string> equivalent_specialisations;
-        for (auto const value_id : declarations_.items(
-                 declarations_.homogeneous_layouts
-                     .value_types[declarations_.homogeneous_layouts.index(layout)])) {
-            auto const value{value_id};
-            require_identifier_fragment(
-                text(declarations_.homogeneous_values
-                         .suffix[declarations_.homogeneous_values.index(value)]),
-                "Homogeneous layout '" +
-                    text(declarations_.homogeneous_layouts
-                             .name[declarations_.homogeneous_layouts.index(layout)]) +
-                    "' value suffix");
-            suffixes.push_back(text(declarations_.homogeneous_values
-                                        .suffix[declarations_.homogeneous_values.index(value)]));
-
-            validate_type(declarations_.homogeneous_values
-                              .type[declarations_.homogeneous_values.index(value)],
-                          types,
-                          "Homogeneous layout '" +
-                              text(declarations_.homogeneous_layouts
-                                       .name[declarations_.homogeneous_layouts.index(layout)]) +
-                              "'");
-            if (declarations_.homogeneous_values
-                    .equivalent_type[declarations_.homogeneous_values.index(value)]
-                    .has_value() != has_equivalent) {
-                throw std::invalid_argument{
-                    "Homogeneous layout '" +
-                    text(declarations_.homogeneous_layouts
-                             .name[declarations_.homogeneous_layouts.index(layout)]) +
-                    "' must define all equivalent types or none"};
-            }
-            if (declarations_.homogeneous_values
-                    .equivalent_type[declarations_.homogeneous_values.index(value)]
-                    .has_value()) {
-                validate_type(*declarations_.homogeneous_values
-                                   .equivalent_type[declarations_.homogeneous_values.index(value)],
-                              types,
-                              "Homogeneous layout '" +
-                                  text(declarations_.homogeneous_layouts
-                                           .name[declarations_.homogeneous_layouts.index(layout)]) +
-                                  "' equivalent");
-                auto const value_spelling{std::string{types.cpp_types.spelling(
-                    resolved_type(declarations_.homogeneous_values
-                                      .type[declarations_.homogeneous_values.index(value)],
-                                  types))}};
-                if (!equivalent_specialisations.insert(value_spelling).second) {
-                    throw std::invalid_argument{
-                        "Homogeneous layout '" +
-                        text(declarations_.homogeneous_layouts
-                                 .name[declarations_.homogeneous_layouts.index(layout)]) +
-                        "' has duplicate equivalent specialisation: " + value_spelling};
-                }
-            }
-            if (declarations_.homogeneous_layouts
-                    .input_members[declarations_.homogeneous_layouts.index(layout)]
-                    .empty() &&
-                declarations_.homogeneous_layouts
-                        .components[declarations_.homogeneous_layouts.index(layout)]
-                        .size() > 3 &&
-                (declarations_.homogeneous_values
-                     .equivalent_type[declarations_.homogeneous_values.index(value)]
-                     .has_value() ||
-                 !declarations_.homogeneous_values
-                      .input_types[declarations_.homogeneous_values.index(value)]
-                      .empty())) {
-                throw std::invalid_argument{
-                    "Homogeneous layout '" +
-                    text(declarations_.homogeneous_layouts
-                             .name[declarations_.homogeneous_layouts.index(layout)]) +
-                    "' input APIs require at most three components without "
-                    "explicit input members"};
-            }
-            std::set<std::string> input_types;
-            for (auto const input : declarations_.items(
-                     declarations_.homogeneous_values
-                         .input_types[declarations_.homogeneous_values.index(value)])) {
-                validate_type(input,
-                              types,
-                              "Homogeneous layout '" +
-                                  text(declarations_.homogeneous_layouts
-                                           .name[declarations_.homogeneous_layouts.index(layout)]) +
-                                  "' input");
-                auto const input_spelling{
-                    std::string{types.cpp_types.spelling(resolved_type(input, types))}};
-                if (!input_types.insert(input_spelling).second) {
-                    throw std::invalid_argument{
-                        "Homogeneous layout '" +
-                        text(declarations_.homogeneous_layouts
-                                 .name[declarations_.homogeneous_layouts.index(layout)]) +
-                        "' has duplicate input type: " + input_spelling};
-                }
-            }
-        }
-        require_unique_names(suffixes,
-                             "Homogeneous layout '" +
-                                 text(declarations_.homogeneous_layouts
-                                          .name[declarations_.homogeneous_layouts.index(layout)]) +
-                                 "' value suffixes");
-        validate_export_specifier(
-            declarations_.homogeneous_layouts
-                .export_specifier[declarations_.homogeneous_layouts.index(layout)],
-            "Homogeneous layout '" +
-                text(declarations_.homogeneous_layouts
-                         .name[declarations_.homogeneous_layouts.index(layout)]) +
-                "' export specifier");
-    }
-
-    void validate_vector(lispb::codegen::DeclarationHandle const& schema,
-                         lispb::codegen::ModuleSettingsId const& settings,
-                         SoaBackend backend,
-                         TypeRegistry const& types) {
-        require_identifier(
-            text(declarations_.vector_soas.name[declarations_.vector_soas.index(schema)]),
-            "Vector storage name");
-        if (declarations_.vector_soas.components[declarations_.vector_soas.index(schema)].empty() ||
-            declarations_.vector_soas.components[declarations_.vector_soas.index(schema)].size() >
-                3) {
-            throw std::invalid_argument{
-                "Vector SoA '" +
-                text(declarations_.vector_soas.name[declarations_.vector_soas.index(schema)]) +
-                "' must have between one and three components"};
-        }
-        require_unique_names(
-            declarations_.vector_soas.components[declarations_.vector_soas.index(schema)],
-            "Vector SoA '" +
-                text(declarations_.vector_soas.name[declarations_.vector_soas.index(schema)]) +
-                "' components");
-        std::set<char> parameter_names;
-        for (auto const component : declarations_.items(
-                 declarations_.vector_soas.components[declarations_.vector_soas.index(schema)])) {
-            require_identifier(
-                component,
-                "Vector SoA '" +
-                    text(declarations_.vector_soas.name[declarations_.vector_soas.index(schema)]) +
-                    "' component");
-            reject_generated_name_collision(
-                view(component),
-                "Vector SoA '" +
-                    text(declarations_.vector_soas.name[declarations_.vector_soas.index(schema)]) +
-                    "' component",
-                true);
-            if (!parameter_names.insert(view(component).front()).second) {
-                throw std::invalid_argument{
-                    "Vector SoA '" +
-                    text(declarations_.vector_soas.name[declarations_.vector_soas.index(schema)]) +
-                    "' components must have unique initials"};
-            }
-        }
-        if (!declarations_.vector_soas.equivalent_members[declarations_.vector_soas.index(schema)]
-                 .empty()) {
-            if (declarations_.vector_soas
-                    .equivalent_members[declarations_.vector_soas.index(schema)]
-                    .size() !=
-                declarations_.vector_soas.components[declarations_.vector_soas.index(schema)]
-                    .size()) {
-                throw std::invalid_argument{
-                    "Vector SoA '" +
-                    text(declarations_.vector_soas.name[declarations_.vector_soas.index(schema)]) +
-                    "' equivalent members must match its components"};
-            }
-            require_unique_names(
-                declarations_.vector_soas
-                    .equivalent_members[declarations_.vector_soas.index(schema)],
-                "Vector SoA '" +
-                    text(declarations_.vector_soas.name[declarations_.vector_soas.index(schema)]) +
-                    "' equivalent members");
-            for (auto const member : declarations_.items(
-                     declarations_.vector_soas
-                         .equivalent_members[declarations_.vector_soas.index(schema)])) {
-                require_identifier(member,
-                                   "Vector SoA '" +
-                                       text(declarations_.vector_soas
-                                                .name[declarations_.vector_soas.index(schema)]) +
-                                       "' equivalent member");
-            }
-        }
-        if (declarations_.vector_soas
-                .equivalent_accessors[declarations_.vector_soas.index(schema)] &&
-            declarations_.vector_soas.equivalent_members[declarations_.vector_soas.index(schema)]
-                .empty()) {
-            throw std::invalid_argument{
-                "Vector SoA accessor mode requires explicit equivalent members"};
-        }
-        if (backend == SoaBackend::standard_library &&
-            declarations_.vector_soas.equivalent_members[declarations_.vector_soas.index(schema)]
-                .empty()) {
-            throw std::invalid_argument{
-                "Standard-library vector SoA '" +
-                text(declarations_.vector_soas.name[declarations_.vector_soas.index(schema)]) +
-                "' must declare equivalent members"};
-        }
-        if (declarations_.vector_soas
-                .equivalent_constructor[declarations_.vector_soas.index(schema)]
-                .has_value()) {
-            require_qualified_identifier(
-                *declarations_.vector_soas
-                     .equivalent_constructor[declarations_.vector_soas.index(schema)],
-                "Vector SoA '" +
-                    text(declarations_.vector_soas.name[declarations_.vector_soas.index(schema)]) +
-                    "' equivalent constructor");
-        }
-        validate_type(
-            declarations_.vector_soas.value_type[declarations_.vector_soas.index(schema)],
-            types,
-            "Vector SoA '" +
-                text(declarations_.vector_soas.name[declarations_.vector_soas.index(schema)]) +
-                "' value");
-        validate_type(
-            declarations_.vector_soas.equivalent_type[declarations_.vector_soas.index(schema)],
-            types,
-            "Vector SoA '" +
-                text(declarations_.vector_soas.name[declarations_.vector_soas.index(schema)]) +
-                "' equivalent");
-        validate_export_specifier(
-            declarations_.vector_soas.export_specifier[declarations_.vector_soas.index(schema)],
-            "Vector SoA '" +
-                text(declarations_.vector_soas.name[declarations_.vector_soas.index(schema)]) +
-                "' export specifier");
-        if (backend == SoaBackend::standard_library &&
-            declarations_.vector_soas.fixed[declarations_.vector_soas.index(schema)].has_value()) {
-            throw std::invalid_argument{
-                "Standard-library vector SoA '" +
-                text(declarations_.vector_soas.name[declarations_.vector_soas.index(schema)]) +
-                "' does not support fixed storage"};
-        }
-
-        if (backend == SoaBackend::unreal &&
-            !declarations_.module_settings_store
-                 .source[declarations_.module_settings_store.index(settings)]
-                 .has_value()) {
-            throw std::invalid_argument{
-                "Vector SoA '" +
-                text(declarations_.vector_soas.name[declarations_.vector_soas.index(schema)]) +
-                "' must have a source output"};
         }
     }
 
@@ -3969,9 +3349,9 @@ class Validator {
             if (declarations_.setting_controls
                         .kind[declarations_.setting_controls.index(control)] ==
                     SettingControlKind::integer_range &&
-                type != "int32") {
+                type != "std::int32_t") {
                 throw std::invalid_argument{setting_context +
-                                            " integer range value type must be int32"};
+                                            " integer range value type must be std::int32_t"};
             }
         }
     }
@@ -4012,6 +3392,55 @@ class Validator {
         }
     }
 
+    void append_nested_soa_names(DeclarationHandle schema,
+                                 ModuleHandle module,
+                                 std::vector<StringId>& names) const {
+        auto const& soas{declarations_.soas};
+        auto const row{soas.index(schema)};
+        if (soas.layout_only[row]) {
+            return;
+        }
+        auto const name{text(soas.name[row])};
+        auto const view{soas.view_name[row] ? text(*soas.view_name[row]) : name + "View"};
+        auto const const_view{soas.const_view_name[row] ? text(*soas.const_view_name[row])
+                                                        : name + "ConstView"};
+        auto add = [&](std::string spelling) {
+            names.push_back(declarations_.strings().intern(spelling));
+        };
+        auto resolved = [&](std::string spelling, bool is_const) {
+            auto const position{spelling.find(is_const ? "ConstView" : "View")};
+            spelling.insert(position == std::string::npos ? spelling.size() : position, "Resolved");
+            return spelling;
+        };
+        auto collect = [&](auto&& self,
+                           DeclarationHandle parent,
+                           ModuleHandle current_module,
+                           std::string const& suffix) -> void {
+            auto const& members{declarations_.soa_members};
+            for (auto const member : declarations_.items(soas.members[soas.index(parent)])) {
+                auto const member_row{members.index(member)};
+                if (members.kind[member_row] != SoaMemberKind::nested) {
+                    continue;
+                }
+                auto const occurrence{graph_.resolved(current_module, members.type[member_row])};
+                auto const& occurrences{graph_.occurrences()};
+                auto const child_type{occurrences.type[occurrences.index(occurrence)]};
+                auto const child{graph_.source_declaration(child_type)};
+                auto const path{suffix + "_" + text(members.name[member_row])};
+                add(view + path);
+                add(const_view + path);
+                add(view + path + "Impl");
+                if (soas.layout_only[soas.index(child)]) {
+                    add(resolved(view + path, false));
+                    add(resolved(const_view + path, true));
+                    add(resolved(view + path, false) + "Impl");
+                }
+                self(self, child, graph_.module(child_type), path);
+            }
+        };
+        collect(collect, schema, module, "");
+    }
+
     void validate_normal_module(lispb::codegen::ModuleHandle const& module,
                                 Manifest const& manifest) {
         if (declarations_.normal_modules
@@ -4038,8 +3467,11 @@ class Validator {
                                      .settings[declarations_.normal_modules.index(module)])]) +
                     "': " + text(name)};
             }
-            for (auto const& generated_name :
-                 generated_cpp_names(declarations_, declaration, module_)) {
+            auto emitted_names{generated_cpp_names(declarations_, declaration)};
+            if (declaration.kind() == DeclarationKind::soa) {
+                append_nested_soa_names(declaration, module_, emitted_names);
+            }
+            for (auto const generated_name : emitted_names) {
                 if (!generated_names.insert(generated_name).second) {
                     throw std::invalid_argument{
                         "Generated C++ name collision in module '" +
@@ -4121,22 +3553,6 @@ class Validator {
                         validate_static_table(value, manifest.types);
                         break;
                     }
-                    case lispb::codegen::DeclarationKind::homogeneous_layout: {
-
-                        validate_homogeneous(value, module, manifest.types);
-                        break;
-                    }
-                    case lispb::codegen::DeclarationKind::vector_soa: {
-
-                        validate_vector(
-                            value,
-                            declarations_.normal_modules
-                                .settings[declarations_.normal_modules.index(module)],
-                            declarations_.normal_modules
-                                .soa_backend[declarations_.normal_modules.index(module)],
-                            manifest.types);
-                        break;
-                    }
                     case lispb::codegen::DeclarationKind::facade: {
 
                         validate_facade(value,
@@ -4155,10 +3571,7 @@ class Validator {
                 }
             }();
         }
-        if (!schemas.empty() ||
-            !declarations_.normal_modules
-                 .soa_array_allocators[declarations_.normal_modules.index(module)]
-                 .empty()) {
+        if (!schemas.empty()) {
             validate_soa(module, schemas, manifest.types);
         }
     }

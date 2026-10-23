@@ -5,7 +5,6 @@
 #include <codegen/schema/module_handle.h>
 #include <codegen/schema/module_kind.h>
 #include <codegen/schema/schema_range.h>
-#include <codegen/schema/soa_backend.h>
 #include <lispb/indices.h>
 
 #include <optional>
@@ -22,8 +21,6 @@ struct NormalModuleSchemas {
     std::vector<ModuleSettingsId> settings;
     std::vector<SchemaRange<DeclarationHandle>> declarations;
     std::vector<std::optional<StringId>> enum_helper_namespace;
-    std::vector<SoaBackend> soa_backend;
-    std::vector<SchemaRange<SoaAllocatorVariantId>> soa_array_allocators;
 };
 
 }

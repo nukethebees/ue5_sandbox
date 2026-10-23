@@ -1,7 +1,6 @@
 (module entity_instance_handle
   :header "native/simulation/include/ioj/sim/entities/entity_instance_handle.h"
   :header-include "ioj/sim/entities/entity_instance_handle.h"
-  :backend standard-library
   :namespace ioj::sim
   (integer-scalar EntityFrameIndex
     :signed false :minimum 0 :maximum 262143 :bit-width 18

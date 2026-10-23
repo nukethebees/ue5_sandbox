@@ -1,7 +1,6 @@
 (module s7_presentation_settings
   :header "Plugins/SpaceGame/Source/SpaceGame/Private/s7/generated/presentation_fields.h"
   :header-include "s7/generated/presentation_fields.h"
-  :backend standard-library
   :namespace ioj::s7::presentation_fields
   (settings-schema Fields
     :target USpaceGameLevelConfig

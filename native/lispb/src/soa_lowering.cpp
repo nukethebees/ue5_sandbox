@@ -3,11 +3,7 @@
 #include "lowering.h"
 #include "lowering_context.h"
 #include "lowering_utils.h"
-#include "soa_api.h"
-#include "soa_functions.h"
 #include "soa_internal.h"
-#include "soa_receiver.h"
-#include "soa_representation.h"
 
 #include <codegen/ast/cpp_ir.h>
 #include <codegen/ast/cpp_types.h>
@@ -17,9 +13,6 @@
 #include <codegen/schema/declarations.h>
 #include <codegen/schema/indices.h>
 #include <codegen/schema/normal_module_schemas.h>
-#include <codegen/schema/soa_allocator_variants.h>
-#include <codegen/schema/soa_allocators.h>
-#include <codegen/schema/soa_backend.h>
 #include <codegen/schema/soa_mask_dimension_schemas.h>
 #include <codegen/schema/soa_member_schemas.h>
 #include <codegen/schema/soa_schemas.h>
@@ -90,20 +83,18 @@ auto mask_index_expression(LoweringContext& context, SoaMemberId member) -> std:
     return join(terms, " + ");
 }
 
-auto field_mask_nodes(LoweringContext& context,
-                      DeclarationHandle schema,
-                      bool const standard_library = false) -> Nodes {
+auto field_mask_nodes(LoweringContext& context, DeclarationHandle schema) -> Nodes {
     auto& ir{context.ir};
     if (!context.declarations.soas.field_mask_name[context.declarations.soas.index(schema)]
              .has_value()) {
         return {};
     }
 
-    std::string const uint8_type{standard_library ? "std::uint8_t" : "uint8"};
-    std::string const uint16_type{standard_library ? "std::uint16_t" : "uint16"};
-    std::string const uint32_type{standard_library ? "std::uint32_t" : "uint32"};
-    std::string const uint64_type{standard_library ? "std::uint64_t" : "uint64"};
-    std::string const int32_type{standard_library ? "std::int32_t" : "int32"};
+    std::string const uint8_type{"std::uint8_t"};
+    std::string const uint16_type{"std::uint16_t"};
+    std::string const uint32_type{"std::uint32_t"};
+    std::string const uint64_type{"std::uint64_t"};
+    std::string const int32_type{"std::int32_t"};
 
     auto const mask_name{context.text(
         *context.declarations.soas.field_mask_name[context.declarations.soas.index(schema)])};
@@ -249,218 +240,24 @@ auto field_mask_nodes(LoweringContext& context,
                     ir.types.dependency("std::uint64_t", "cstdint")})};
 }
 
-auto lower_soa_impl(LoweringContext& context,
-                    DeclarationHandle schema,
-                    Nodes storage_prelude,
-                    std::map<StringId, DeclarationHandle> const* schemas = nullptr,
-                    Nodes mutable_view_prelude = {},
-                    Nodes view_prelude = {}) -> LoweredSoa {
-    auto& ir{context.ir};
-    auto const members{resolve_members(context, schema)};
-    auto const view_name{
-        context
-            .optional_text(
-                context.declarations.soas.view_name[context.declarations.soas.index(schema)])
-            .value_or(context.text(
-                          context.declarations.soas.name[context.declarations.soas.index(schema)]) +
-                      "View")};
-    auto const const_view_name{
-        context
-            .optional_text(
-                context.declarations.soas.const_view_name[context.declarations.soas.index(schema)])
-            .value_or(context.text(
-                          context.declarations.soas.name[context.declarations.soas.index(schema)]) +
-                      "ConstView")};
-    SoaFunctions const functions{
-        .const_view = soa_view_functions(context, members, true),
-        .mutable_view = soa_view_functions(context, members, false),
-        .operations = soa_storage_functions(context, schema, members),
-        .permutations = soa_permutation_functions(context, members),
-    };
-    auto const_api{lower_soa_api(context,
-                                 schema,
-                                 SoaRepresentation::vector,
-                                 SoaReceiver::const_view,
-                                 const_view_name,
-                                 schemas)};
-    auto mutable_api{lower_soa_api(
-        context, schema, SoaRepresentation::vector, SoaReceiver::mutable_view, view_name, schemas)};
-    const_api.header.insert(const_api.header.end(), view_prelude.begin(), view_prelude.end());
-    mutable_api.header.insert(mutable_api.header.end(), view_prelude.begin(), view_prelude.end());
-    mutable_api.header.insert(
-        mutable_api.header.end(), mutable_view_prelude.begin(), mutable_view_prelude.end());
-    Nodes custom_source;
-    auto storage{soa_storage_node(context,
-                                  schema,
-                                  members,
-                                  view_name,
-                                  const_view_name,
-                                  functions,
-                                  custom_source,
-                                  std::move(storage_prelude),
-                                  schemas)};
-
-    NodeListBuilder header{ir};
-    header
-        .append(soa_view_struct_nodes(context,
-                                      schema,
-                                      members,
-                                      view_name,
-                                      const_view_name,
-                                      functions,
-                                      const_api,
-                                      mutable_api,
-                                      schemas))
-        .add(storage);
-
-    NodeListBuilder source{ir};
-    bool has_source_definition{};
-    auto add_definition = [&](FunctionId const spec, std::string const& owner) {
-        if (has_source_definition) {
-            source.new_lines(2);
-        }
-        source.add(ir.definition(spec, ir.strings.intern(owner)));
-        has_source_definition = true;
-    };
-    source.append(std::move(custom_source)).new_lines(2);
-    source.append(const_api.source).new_lines(2);
-    source.append(mutable_api.source).new_lines(2);
-    auto append_definitions = [&](std::span<FunctionId const> specs, std::string const& owner) {
-        for (auto const& spec : specs) {
-            add_definition(spec, owner);
-        }
-    };
-    append_definitions(functions.const_view, const_view_name);
-    append_definitions(functions.mutable_view, view_name);
-    for (auto const spec : functions.operations) {
-        if (!ir.function_flags(spec).define_in_header()) {
-            add_definition(
-                spec,
-                context.text(
-                    context.declarations.soas.name[context.declarations.soas.index(schema)]));
-        }
-    }
-    add_definition(
-        functions.permutations.front(),
-        context.text(context.declarations.soas.name[context.declarations.soas.index(schema)]));
-    append_definitions(
-        functions.mutable_view,
-        context.text(context.declarations.soas.name[context.declarations.soas.index(schema)]));
-    return LoweredSoa{header.build(), source.build()};
-}
-
-auto lower_one_soa(LoweringContext& context,
-                   DeclarationHandle schema,
-                   std::map<StringId, DeclarationHandle> const& schemas,
-                   SoaBackend const backend) -> LoweredSoa {
-    auto& ir{context.ir};
-    auto const& type_graph{context.semantic};
-    auto const module_name{context.module};
-    auto const standard_library{backend == SoaBackend::standard_library};
-    if (context.declarations.soas.layout_only[context.declarations.soas.index(schema)]) {
-        return {.header = field_mask_nodes(context, schema, standard_library)};
-    }
-    LoweredSoa lowered;
-    if (context.declarations.soas.emits_vector_storage(schema)) {
-        auto const id{type_graph.find_declared(
-            module_name, context.declarations.soas.name[context.declarations.soas.index(schema)])};
-        auto const constructor{id ? type_graph.definitions()
-                                        .soas
-                                        .equivalent_constructor[type_graph.definitions().soas.index(
-                                            type_graph.definition(*id))]
-                                        .value_or(StringId{})
-                                  : StringId{}};
-        lowered = standard_library
-                    ? lower_native_soa(context, schema, schemas, false, {}, constructor)
-                    : lower_soa_impl(context, schema, {}, &schemas);
-    }
-    if (context.declarations.soas.field_mask_name[context.declarations.soas.index(schema)]
-            .has_value()) {
-        NodeListBuilder header{ir};
-        header.append(field_mask_nodes(context, schema, standard_library))
-            .new_lines(2)
-            .append(std::move(lowered.header));
-        lowered.header = header.build();
-    }
-    if (context.declarations.soas.fixed[context.declarations.soas.index(schema)].has_value()) {
-        NodeListBuilder header{ir};
-        header.append(std::move(lowered.header))
-            .new_lines(2)
-            .append(lower_fixed_nodes(context, schema, schemas));
-        lowered.header = header.build();
-    }
-    if (context.declarations.soas.single_allocation[context.declarations.soas.index(schema)]
-            .has_value()) {
-        NodeListBuilder header{ir};
-        NodeListBuilder source{ir};
-        header.append(std::move(lowered.header));
-        source.append(std::move(lowered.source));
-        auto compact{lower_single_allocation(context, schema, schemas, backend)};
-        header.new_lines(2).append(std::move(compact.header));
-        source.new_lines(2).append(std::move(compact.source));
-        lowered = {header.build(), source.build()};
-    }
-    return lowered;
-}
-
 } // namespace
 
-auto lower_soa(LoweringContext& context,
-               DeclarationHandle schema,
-               Nodes storage_prelude,
-               Nodes mutable_view_prelude,
-               Nodes view_prelude) -> LoweredSoa {
-    return lower_soa_impl(context,
-                          schema,
-                          std::move(storage_prelude),
-                          nullptr,
-                          std::move(mutable_view_prelude),
-                          std::move(view_prelude));
-}
-
-auto lower_soa_declaration(LoweringContext& context,
-                           DeclarationHandle schema,
-                           ModuleHandle module,
-                           std::map<StringId, DeclarationHandle> const& schemas,
-                           std::optional<SoaAllocatorVariantId> const allocator_variant)
+auto lower_soa_declaration(LoweringContext& context, DeclarationHandle schema)
     -> DeclarationEmission {
-    if (allocator_variant && !context.declarations.soas.emits_vector_storage(schema)) {
-        return {};
-    }
-    auto wanted{context.declarations.soas.name[context.declarations.soas.index(schema)]};
-    auto variant_context{context};
-    if (allocator_variant) {
-        auto const variant{*allocator_variant};
-        variant_context.soa_variant_prefix =
-            context.declarations.soa_allocator_variants
-                .prefix[context.declarations.soa_allocator_variants.index(variant)];
-        wanted = context.ir.strings.intern(
-            context.text(context.declarations.soa_allocator_variants
-                             .prefix[context.declarations.soa_allocator_variants.index(variant)]) +
-            context.text(context.declarations.soas.name[context.declarations.soas.index(schema)]));
-    }
-    auto const& item{schemas.at(wanted)};
-    auto lowered{
-        lower_one_soa(variant_context,
-                      item,
-                      schemas,
-                      context.declarations.normal_modules
-                          .soa_backend[context.declarations.normal_modules.index(module)])};
-    NodeListBuilder header{context.ir};
+    auto& ir{context.ir};
+    NodeListBuilder header{ir};
     header
-        .add(context.ir.forward_declaration(context.ir.strings.intern(
-            context.text(context.declarations.soas.name[context.declarations.soas.index(item)]) +
+        .add(ir.forward_declaration(ir.strings.intern(
+            context.text(context.declarations.soas.name[context.declarations.soas.index(schema)]) +
             "Schema")))
-        .new_lines(2)
-        .append(std::move(lowered.header));
-    return {.header = header.build(),
-            .source = std::move(lowered.source),
-            .format_generated =
-                context.declarations.normal_modules
-                        .soa_backend[context.declarations.normal_modules.index(module)] ==
-                    SoaBackend::standard_library ||
-                context.declarations.soas.single_allocation[context.declarations.soas.index(item)]
-                    .has_value()};
+        .new_lines(2);
+    header.append(field_mask_nodes(context, schema)).new_lines(1);
+    if (context.declarations.soas.layout_only[context.declarations.soas.index(schema)]) {
+        return {.header = header.build(), .format_generated = true};
+    }
+    auto lowered{lower_single_allocation(context, schema)};
+    header.append(lowered.header);
+    return {.header = header.build(), .source = lowered.source, .format_generated = true};
 }
 
 } // namespace lispb::codegen::detail

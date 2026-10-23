@@ -14,9 +14,7 @@
 #include <codegen/schema/module_settings_store.h>
 #include <codegen/schema/normal_module_schemas.h>
 #include <codegen/schema/schema_version.h>
-#include <codegen/schema/soa_backend.h>
 #include <codegen/schema/soa_schemas.h>
-#include <codegen/schema/storage_operation.h>
 #include <codegen/source_loader.h>
 #include <lispb/compiler_storage.h>
 #include <lispb/indices.h>
@@ -46,36 +44,31 @@ auto example_manifest(CompilerTestContext& context) -> Manifest {
                                R"(
         (module example :header "Generated.h" :source "Generated.cpp"
           :header-include "Project/Generated.h" :namespace example :include-order ("Project/" "SandboxCore/")
-          (struct FData :operations (all) :export-specifier EXAMPLE_API
+          (struct FData :export-specifier EXAMPLE_API
             (member handles array @handle)
             (member weights array float)
-            (member nested_handles nested @handle))))",
+            (member more_handles array @handle))))",
                                {{"handle", handle}});
 }
 
-TEST(Generator, LowersDynamicSoaIntoTypedHeaderAndSource) {
+TEST(Generator, LowersDynamicSoaIntoNativeOwnerAndViews) {
     CompilerTestContext context;
     auto const files{render_test_manifest(context, example_manifest(context))};
     ASSERT_EQ(files.size(), 2);
     auto const& header{files.front().content};
     auto const& source{files.back().content};
-
     EXPECT_NE(header.find("struct EXAMPLE_API FDataConstView"), std::string::npos);
-    EXPECT_NE(header.find("TConstArrayView<FHandle> handles;"), std::string::npos);
-    EXPECT_NE(header.find("TArray<float> weights;"), std::string::npos);
-    EXPECT_NE(header.find("ioj::soa_ops::remove_at_swap(*this, index, count, allow_shrinking);"),
-              std::string::npos);
-    EXPECT_NE(header.find("template <typename Other>"), std::string::npos);
-    EXPECT_NE(header.find("ioj::SupportsApplyArrayPairsWith<FData, Other>"), std::string::npos);
+    EXPECT_NE(header.find("std::span<"), std::string::npos);
+    EXPECT_NE(header.find("std::pmr::memory_resource&"), std::string::npos);
     EXPECT_NE(header.find("#include \"Project/Handle.h\""), std::string::npos);
-    EXPECT_NE(header.find("SandboxCore/soa_storage_ops.h"), std::string::npos);
-
+    EXPECT_NE(header.find("using Operations = ioj::native_soa::StorageOperations;"),
+              std::string::npos);
+    EXPECT_NE(header.find("void swap_remove_columns("), std::string::npos);
+    EXPECT_NE(header.find("void swap_remove_indices("), std::string::npos);
+    EXPECT_NE(header.find("void apply_permutation("), std::string::npos);
+    EXPECT_EQ(header.find("TArray"), std::string::npos);
+    EXPECT_EQ(header.find("validate_array_sizes"), std::string::npos);
     EXPECT_NE(source.find("#include \"Project/Generated.h\""), std::string::npos);
-    EXPECT_NE(source.find("SandboxCore/soa_storage_ops.h"), std::string::npos);
-    EXPECT_NE(source.find("namespace example {"), std::string::npos);
-    EXPECT_NE(source.find("void FData::reset()"), std::string::npos);
-    EXPECT_NE(source.find("ioj::soa_ops::apply_permutation(*this, indices);"), std::string::npos);
-    EXPECT_NE(source.find("auto FData::get_view() -> View"), std::string::npos);
 }
 
 TEST(Generator, LowersSoaFieldMaskFromAnnotatedMembers) {
@@ -84,42 +77,22 @@ TEST(Generator, LowersSoaFieldMaskFromAnnotatedMembers) {
         (module mask :header "Mask.h" :source "Mask.cpp"
           (struct FRows :field-mask-name FFieldMask :field-enum-name EField
             (member masks array FFieldMask)
-            (member first array int32 :mask-field true)
-            (member matrix array int32 :mask-field true :mask-dimensions ((row_index "2") (column_index "3")))
-            (member last array int32 :mask-field true))))")};
+            (member first array std::int32_t :mask-field true)
+            (member matrix array std::int32_t :mask-field true :mask-dimensions ((row_index "2") (column_index "3")))
+            (member last array std::int32_t :mask-field true))))")};
 
     auto const header{render_test_manifest(context, manifest).front().content};
-    EXPECT_NE(header.find("enum class EField : uint8"), std::string::npos);
+    EXPECT_NE(header.find("enum class EField : std::uint8_t"), std::string::npos);
     EXPECT_NE(header.find("First = 0"), std::string::npos);
-    EXPECT_NE(header.find("Matrix = static_cast<uint8>(First) + 1"), std::string::npos);
-    EXPECT_NE(header.find("Last = static_cast<uint8>(Matrix) + (2) * (3)"), std::string::npos);
+    EXPECT_NE(header.find("Matrix = static_cast<std::uint8_t>(First) + 1"), std::string::npos);
+    EXPECT_NE(header.find("Last = static_cast<std::uint8_t>(Matrix) + (2) * (3)"),
+              std::string::npos);
     EXPECT_NE(header.find("using storage_type = std::conditional_t<"), std::string::npos);
-    EXPECT_NE(header.find("matrix_field(int32 const row_index, int32 const column_index)"),
-              std::string::npos);
-    EXPECT_NE(header.find("TArray<FFieldMask> masks;"), std::string::npos);
-
-    auto native_manifest{manifest};
-    auto& store{context.storage.declarations};
-    auto native_module{manifest.modules.front()};
-    store.normal_modules.soa_backend[store.normal_modules.index(native_module)] =
-        SoaBackend::standard_library;
-    auto settings{store.normal_modules.settings[store.normal_modules.index(native_module)]};
-    store.module_settings_store.source[store.module_settings_store.index(settings)].reset();
-    store.normal_modules.settings[store.normal_modules.index(native_module)] = settings;
-    native_manifest.modules.front() = native_module;
-    auto const native_header{render_test_manifest(context, native_manifest).front().content};
-    EXPECT_NE(native_header.find("enum class EField : std::uint8_t"), std::string::npos);
-    EXPECT_NE(native_header.find("Last = static_cast<std::uint8_t>(Matrix) + (2) * (3)"),
-              std::string::npos);
-    EXPECT_NE(native_header.find("ioj::native_soa::Vector<FFieldMask> masks;"), std::string::npos);
-    EXPECT_NE(native_header.find("ioj/native_soa/vector_storage_ops.h"), std::string::npos);
-    EXPECT_NE(native_header.find("#include <utility>"), std::string::npos);
-    EXPECT_EQ(native_header.find("ioj::native_soa::vector_storage_ops::reserve(*this, count);"),
-              std::string::npos);
-    EXPECT_NE(native_header.find("std::forward<Compare>(compare)"), std::string::npos);
-    EXPECT_NE(native_header.find("std::int32_t const row_index"), std::string::npos);
-    EXPECT_NE(native_header.find("std::int32_t const column_index"), std::string::npos);
-    EXPECT_EQ(native_header.find("CoreMinimal.h"), std::string::npos);
+    EXPECT_NE(
+        header.find("matrix_field(std::int32_t const row_index, std::int32_t const column_index)"),
+        std::string::npos);
+    EXPECT_NE(header.find("ColLayout<FFieldMask> MasksColumn"), std::string::npos);
+    EXPECT_EQ(header.find("CoreMinimal.h"), std::string::npos);
 }
 
 TEST(Generator, RejectsDuplicateOutputPaths) {
@@ -138,42 +111,6 @@ TEST(Generator, RejectsCaseInsensitiveDuplicateOutputPaths) {
     auto duplicate{parse_test_manifest(
         context, R"((umbrella-module duplicate :header "generated.h" :headers ()))")};
     manifest.modules.push_back(duplicate.modules.front());
-
-    EXPECT_THROW(lower_test_manifest(context, manifest), std::invalid_argument);
-}
-
-TEST(Generator, RejectsInvalidVectorDimensions) {
-    CompilerTestContext context;
-    auto manifest{parse_test_manifest(context, R"(
-        (module vectors :header "Vectors.h"
-          (vector-soa FVectors :value-type float :components () :equivalent-type FVector)))")};
-
-    EXPECT_THROW(lower_test_manifest(context, manifest), std::invalid_argument);
-}
-
-TEST(Generator, RejectsDuplicateStorageOperations) {
-    CompilerTestContext context;
-    auto manifest{example_manifest(context)};
-    auto& store{context.storage.declarations};
-    auto module{manifest.modules.front()};
-    auto soa{
-        store.items(store.normal_modules.declarations[store.normal_modules.index(module)]).front()};
-    auto operations{all_storage_operations()};
-    operations.push_back(StorageOperation::reset);
-    store.soas.operations[store.soas.index(soa)] = store.range(operations);
-    store.normal_modules.declarations[store.normal_modules.index(module)] = store.range({soa});
-    manifest.modules.front() = module;
-
-    EXPECT_THROW(lower_test_manifest(context, manifest), std::invalid_argument);
-}
-
-TEST(Generator, RejectsPartiallyEquivalentHomogeneousLayouts) {
-    CompilerTestContext context;
-    auto manifest{parse_test_manifest(context, R"(
-        (module vectors :header "Vectors.h" :source "Vectors.cpp"
-          (layout Vectors :components (xs ys)
-            (value-type float f :equivalent-type FVector2f)
-            (value-type double d))))")};
 
     EXPECT_THROW(lower_test_manifest(context, manifest), std::invalid_argument);
 }
@@ -393,71 +330,6 @@ TEST(Generator, LowersFacadeWithReferenceTarget) {
     EXPECT_EQ(files[0].content.find("bind("), std::string::npos);
 }
 
-TEST(Generator, LowersHomogeneousLayouts) {
-    CompilerTestContext context;
-    auto manifest{parse_test_manifest(context, R"(
-        (module rotators :header "Rotators.h" :source "Rotators.cpp"
-          (layout Rotators :components (pitches yaws rolls) :export-specifier EXAMPLE_API (value-type float f))))")};
-
-    auto const files{render_test_manifest(context, manifest)};
-    ASSERT_EQ(files.size(), 2);
-    EXPECT_NE(files[0].content.find("template <typename T>\nstruct TRotatorsView"),
-              std::string::npos);
-    EXPECT_NE(files[0].content.find("struct EXAMPLE_API FRotatorsf"), std::string::npos);
-    EXPECT_NE(files[1].content.find("void FRotatorsf::apply_permutation"), std::string::npos);
-}
-
-TEST(Generator, LowersVectorLayoutsThroughDynamicSoa) {
-    CompilerTestContext context;
-    auto manifest{parse_test_manifest(
-        context,
-        R"(
-        (module vectors :header "Vectors.h" :source "Vectors.cpp"
-          (vector-soa FVectors3f :value-type float :components (xs ys zs) :equivalent-type @vector :export-specifier EXAMPLE_API)))",
-        {{"vector",
-          context.storage.cpp_types.add(
-              "FVector3f",
-              {context.storage.cpp_types.dependency("FVector3f", "CoreMinimal.h")})}})};
-
-    auto const files{render_test_manifest(context, manifest)};
-    ASSERT_EQ(files.size(), 2);
-    EXPECT_NE(files[0].content.find("struct Data"), std::string::npos);
-    EXPECT_NE(files[0].content.find("FVector3f"), std::string::npos);
-    EXPECT_NE(files[0].content.find("float* xs;"), std::string::npos);
-    EXPECT_EQ(files[0].content.find("value_type* xs;"), std::string::npos);
-    EXPECT_NE(files[0].content.find("auto at(int32 const index) const -> FVector3f {\n"
-                                    "        validate_array_sizes();"),
-              std::string::npos);
-    EXPECT_NE(files[0].content.find("auto add(float const new_xs"), std::string::npos);
-    EXPECT_NE(files[0].content.find("return add(value.X, value.Y, value.Z);"), std::string::npos);
-
-    auto const mutable_view_start{files[0].content.find("struct EXAMPLE_API FVectors3fView")};
-    auto const storage_start{files[0].content.find("struct EXAMPLE_API FVectors3f {")};
-    ASSERT_NE(mutable_view_start, std::string::npos);
-    ASSERT_NE(storage_start, std::string::npos);
-    auto const mutable_view{
-        files[0].content.substr(mutable_view_start, storage_start - mutable_view_start)};
-    EXPECT_NE(
-        mutable_view.find("void set(int32 const index, float const new_xs, float const new_ys, "
-                          "float const new_zs) const"),
-        std::string::npos);
-    EXPECT_NE(mutable_view.find("void set(int32 const i, FVector3f const value) const"),
-              std::string::npos);
-}
-
-TEST(Generator, AppliesVectorNamespaceAndPreludeSettings) {
-    CompilerTestContext context;
-    auto manifest{parse_test_manifest(context, R"(
-        (module vectors :header "Vectors.h" :source "Vectors.cpp" :namespace project::vectors :prelude ("class FVectorForward;")
-          (vector-soa FVectors :value-type float :components (xs ys) :equivalent-type FVector2f)))")};
-
-    auto const files{render_test_manifest(context, manifest)};
-    ASSERT_EQ(files.size(), 2);
-    EXPECT_NE(files[0].content.find("class FVectorForward;"), std::string::npos);
-    EXPECT_NE(files[0].content.find("namespace project::vectors {"), std::string::npos);
-    EXPECT_NE(files[1].content.find("namespace project::vectors {"), std::string::npos);
-}
-
 TEST(Generator, AppliesFacadePreludeSettings) {
     CompilerTestContext context;
     auto manifest{parse_test_manifest(context, R"(
@@ -478,26 +350,6 @@ TEST(Generator, AppliesUmbrellaPreludeSettings) {
     ASSERT_EQ(files.size(), 1);
     EXPECT_NE(files[0].content.find("#define PROJECT_INCLUDED 1"), std::string::npos);
     EXPECT_NE(files[0].content.find("#include \"Project/First.h\""), std::string::npos);
-}
-
-TEST(Generator, LowersFlatAndNestedFixedSoaLayouts) {
-    CompilerTestContext context;
-    auto manifest{parse_test_manifest(context,
-                                      R"(
-        (module fixed :header "Fixed.h" :source "Fixed.cpp"
-          (struct FChild :operations (all) (member values array float) (fixed TChildStorage))
-          (struct FRows :operations (all) (member ids array int32)
-            (member children nested @child :fixed-schema FChild) (fixed TRowsStorage :containers (TFixedRows)))))",
-                                      {{"child", context.storage.cpp_types.add("FChild")}})};
-
-    auto const files{render_test_manifest(context, manifest)};
-    ASSERT_EQ(files.size(), 2);
-    auto const& header{files.front().content};
-    EXPECT_NE(header.find("struct TChildStorage"), std::string::npos);
-    EXPECT_NE(header.find("TChildStorage<Capacity> children_;"), std::string::npos);
-    EXPECT_NE(header.find("struct TFixedRows"), std::string::npos);
-    EXPECT_NE(header.find("new_children_values"), std::string::npos);
-    EXPECT_NE(header.find("storage_.construct_from_view_at"), std::string::npos);
 }
 
 TEST(Generator, CommittedProductionFilesAreCurrent) {

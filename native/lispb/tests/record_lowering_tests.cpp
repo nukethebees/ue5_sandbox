@@ -100,14 +100,14 @@ TEST(RecordLowering, ForwardDeclaresMutuallyReferringPointerRecords) {
 TEST(RecordLowering, SoaPointerCyclesRetainSemanticEdgesInEitherSourceOrder) {
     CompilerTestContext context;
     std::array<std::string_view, 2> declarations{
-        R"((struct A :operations (reset reserve add-uninitialised add-defaulted set-num remove-at-swap copy-element append-from)
+        R"((struct A
             (member others array (type-ref B :suffix "*"))))",
-        R"((struct B :operations (reset reserve add-uninitialised add-defaulted set-num remove-at-swap copy-element append-from)
+        R"((struct B
             (member others array (type-ref A :suffix "*"))))"};
     for (int order{}; order < 2; ++order) {
         auto manifest{parse_test_manifest(
             context,
-            R"((module pointers :header "Pointers.h" :namespace example::inner :backend standard-library )" +
+            R"((module pointers :header "Pointers.h" :namespace example::inner )" +
                 std::string{declarations[0]} + std::string{declarations[1]} + ")")};
         auto const graph{schema::resolve_type_graph(manifest)};
         for (auto const& [name, other] : {std::pair{"A", "B"}, std::pair{"B", "A"}}) {
@@ -136,7 +136,7 @@ TEST(RecordLowering, ForwardDeclarationsMatchGeneratedRecordKindsAndExcludeAlias
                             "Packed",
                             "Table",
                             "Facade",
-                            "FValuesf",
+                            "Values",
                             "Alias",
                             "Tag",
                             "External"}) {
@@ -151,12 +151,12 @@ TEST(RecordLowering, ForwardDeclarationsMatchGeneratedRecordKindsAndExcludeAlias
         (packed-value Packed :storage std::uint8_t (field value std::uint8_t :bits 8))
         (table Table (row row) (column value float))
         (facade Facade External target (method reset void))
-        (layout Values :components (x y) (value-type float f))
+        (struct Values (member xs array float) (member ys array float))
         (integer-scalar Alias :signed false :minimum 0 :maximum 255 :bit-width 8
             :cpp-emission alias :cpp-type std::uint8_t)))";
     auto manifest{parse_test_manifest(context, source)};
     auto const output{render_test_manifest(context, manifest).front().content};
-    for (auto const name : {"Record", "Tagged", "Packed", "Table", "FValuesf"}) {
+    for (auto const name : {"Record", "Tagged", "Packed", "Table", "Values"}) {
         EXPECT_NE(output.find(std::string{"struct "} + name + ";"), std::string::npos) << name;
     }
     EXPECT_NE(output.find("union Raw;"), std::string::npos);

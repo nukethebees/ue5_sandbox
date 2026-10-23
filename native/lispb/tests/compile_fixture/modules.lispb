@@ -1,29 +1,83 @@
+(module records_fixture
+  :header "Records.h"
+  :namespace codegen_compile_fixture
+  (record ApiPair (member x float) (member y float)))
+
+(module field_masks_fixture
+  :header "FieldMasks.h"
+  :namespace codegen_compile_fixture
+  (struct FMaskRows8
+    :layout-only true
+    :field-mask-name FFieldMask8
+    :field-enum-name EField8
+    (member masks array FFieldMask8)
+    (member values array std::int32_t
+      :mask-field true
+      :mask-dimensions ((value_index "8"))))
+  (struct FMaskRows9
+    :layout-only true
+    :field-mask-name FFieldMask9
+    :field-enum-name EField9
+    (member masks array FFieldMask9)
+    (member values array std::int32_t
+      :mask-field true
+      :mask-dimensions ((value_index "8")))
+    (member tail array std::int32_t
+      :mask-field true))
+  (struct FMaskRows16
+    :layout-only true
+    :field-mask-name FFieldMask16
+    :field-enum-name EField16
+    (member masks array FFieldMask16)
+    (member values array std::int32_t
+      :mask-field true
+      :mask-dimensions ((value_index "16"))))
+  (struct FMaskRows17
+    :layout-only true
+    :field-mask-name FFieldMask17
+    :field-enum-name EField17
+    (member masks array FFieldMask17)
+    (member values array std::int32_t
+      :mask-field true
+      :mask-dimensions ((value_index "17"))))
+  (struct FMaskRows32
+    :layout-only true
+    :field-mask-name FFieldMask32
+    :field-enum-name EField32
+    (member masks array FFieldMask32)
+    (member values array std::int32_t
+      :mask-field true
+      :mask-dimensions ((value_index "32"))))
+  (struct FMaskRows33
+    :layout-only true
+    :field-mask-name FFieldMask33
+    :field-enum-name EField33
+    (member masks array FFieldMask33)
+    (member values array std::int32_t
+      :mask-field true
+      :mask-dimensions ((value_index "33"))))
+)
+
+(module restriction_fixture
+  :header "RestrictionRows.h"
+  :namespace codegen_compile_fixture
+  (struct SingleRestrictionRows
+    (member restricted array @restricted_leaf)))
+
 (module plain_enum_fixture
   :header "PlainEnums.h"
   :source "PlainEnums.cpp"
   :header-include "PlainEnums.h"
   :namespace codegen_compile_fixture
-  (enum EPlainFixture uint8
+  (enum EPlainFixture @standard_uint8
     :enum-array true
-    :conversions (lex-to-string string-view string lex-to-display-string display-string-view display-string lex-to-serialized-string try-parse-serialized)
-    :export-specifier COMPILE_FIXTURE_API
+    :native-api true
+    :helpers (to-string try-parse to-display-string to-serialized-string try-parse-serialized traits)
     (value First
       :serialized-name first)
     (value ReadableName
       :display-name "Readable Name"
       :serialized-name readable_name)))
-
-(module reflected_enum_fixture
-  :header "ReflectedEnums.h"
-  :source "ReflectedEnums.cpp"
-  :header-include "ReflectedEnums.h"
-  :helper-namespace codegen_compile_fixture
-  (enum EReflectedFixture uint8
-    :reflection blueprint
-    :enum-array true
-    :conversions (lex-to-string display-string-view)
-    (value Visible
-      :display-name "Visible Value")))
 
 (module packed_enum_fixture
   :header "PackedEnums.h"
@@ -53,10 +107,6 @@
     :cpp-emission alias :cpp-type @native_int32)
   (integer-scalar StandardInt :signed true :minimum -100 :maximum 100
     :cpp-emission alias :cpp-type std::int32_t)
-  (integer-scalar UnrealInt :signed true :minimum -100 :maximum 100
-    :cpp-emission alias :cpp-type int32)
-  (integer-scalar UnrealUint :signed false :minimum 0 :maximum 100
-    :cpp-emission alias :cpp-type uint32)
   (integer-scalar DamageCode :signed false :minimum 0 :maximum 10
     :cpp-emission constants :cpp-type @standard_uint8
     (code Laser :value 1))
@@ -193,264 +243,15 @@
     (field component codegen_compile_fixture::PositionF12 :bits auto :kind mini-float)
     (field state std::uint8_t :bits 4)))
 
-(settings-module settings_fixture
-  :header "Settings.h"
-  :source "Settings.cpp"
-  :header-include "Settings.h"
-  :namespace codegen_compile_fixture
-  :api-name TSettingsAccess
-  :state-name FSettingsState
-  :export-specifier COMPILE_FIXTURE_API
-  (category video "Video")
-  (setting vsync "VSync"
-    :tooltip "Synchronize presentation."
-    :category video
-    :value-type bool
-    :backend engine
-    :apply deferred
-    (control toggle))
-  (setting frame_limit "Frame Limit"
-    :category video
-    :value-type float
-    :backend engine
-    :apply immediate
-    :device controller
-    (control choice
-      :options-provider frame_limits
-      :availability-provider frame_limit))
-  (setting resolution_scale "Resolution Scale"
-    :category video
-    :value-type float
-    :backend engine
-    :apply deferred
-    (control float-range :min 50 :max 100 :step 0.5)))
-
-(module homogeneous_fixture
-  :header "Homogeneous.h"
-  :source "Homogeneous.cpp"
-  :header-include "Homogeneous.h"
-  :namespace codegen_compile_fixture
-  (layout Values
-    :components (xs ys)
-    (value-type float f
-      :equivalent-type @vector
-      :input-types (@vector @point))
-    (value-type double d
-      :equivalent-type @vector2d))
-  (layout Scalar
-    :components (values)
-    (value-type int32 i)))
-
-(module static_table_fixture
-  :header "StaticTables.h"
-  :namespace codegen_compile_fixture
-  (table FStaticTableFixture
-    (row first)
-    (row second)
-    (row third)
-    (column ids int32)
-    (column weights float)
-    (group row @row
-      :columns (ids weights)))
-  (table FStaticGroupFixture
-    (row first)
-    (row second)
-    (row third)
-    (column min_xs float)
-    (column min_ys float)
-    (column min_zs float)
-    (column max_xs float)
-    (column max_ys float)
-    (column max_zs float)
-    (group min_point @vector3
-      :columns (min_xs min_ys min_zs))
-    (group max_point @vector3
-      :columns (max_xs max_ys max_zs))))
-
-(module soa_fixture
-  :header "Soa.h"
-  :source "Soa.cpp"
-  :header-include "Soa.h"
-  :namespace codegen_compile_fixture
-
-  (record ApiPair (member x float) (member y float))
-  (struct ApiCoordinates
-    :layout-only true
-    :equivalent-type ApiPair
-    :vector-components (xs ys)
-    (member xs array float)
-    (member ys array float)
-    (view-function x_at float
-      (parameter index std::int32_t)
-      :body #cpp{return $column(xs)[index];}cpp#)
-    (mutable-view-function shift_x void
-      (parameter amount float)
-      :body #cpp{auto xs = $column(xs);
-auto const count = num();
-for (std::int32_t i{}; i < count; ++i) { xs[i] += amount; }}cpp#))
-  (struct ApiRows
-    :view-name ApiView
-    :const-view-name ApiConstView
-    :export-specifier COMPILE_FIXTURE_API
-    :operations (set-num reserve append-from copy-element)
-    :using-declarations ("Value = float")
-    :field-mask-name ApiMask
-    :field-enum-name ApiField
-    (member values array float :mask-field true)
-    (member masks array ApiMask)
-    (member positions nested ApiCoordinates :nested-schema ApiCoordinates)
-    (function schema_version int :static true :constexpr true :nodiscard true
-      :body ("return 7;"))
-    (function identity T :static true :constexpr true :nodiscard true
-      :template-parameters "typename T" :requires "(sizeof(T) > 0)"
-      (parameter value T) :body ("return value;"))
-    (view-function schema_version int :constexpr true :nodiscard true
-      :body ("return 7;"))
-    (mutable-view-function mutable_version auto :trailing-return-type int
-      :constexpr true :nodiscard true :body ("return 8;"))
-    (function first_value float :const true :inline true :nodiscard true
-      :body #cpp{return $column(values)[0];}cpp#)
-    (function total Value :const true :definition-in-source true
-      :body #cpp{auto values = $column(values);
-float result{};
-auto const count = num();
-for (std::int32_t i{}; i < count; ++i) { result += values[i]; }
-return result;}cpp#)
-    (view-function first_x float :definition-in-source true
-      :body #cpp{return $column(positions.xs)[0];}cpp#)
-    (mutable-view-function assign_first void
-      (parameter value float)
-      :body #cpp{$column(values)[0] = value;}cpp#)
-    (single-allocation ApiOwner))
-  (struct EquivalentRows
-    :operations (set-num)
-    :equivalent-type ApiPair
-    (member xs array float)
-    (member ys array float)
-    (single-allocation EquivalentOwner))
-  (record ApiReference (member owner (type-ref ApiRows :suffix "*")))
-
-  (struct FRows
-    :operations (all)
-    :equivalent-type @row
-    (member ids array int32)
-    (member weights array float)
-    (function first_id int32
-      :body #cpp{return ids[0];}cpp#
-      :inline true)
-    (function weight_sum float
-      :body #cpp{return weights[0] + weights[1];}cpp#
-      :definition-in-source true)
-    (function manual_value int32
-      :const true))
-  (struct FChild
-    :operations (all)
-    (member values array int32))
-  (struct FParents
-    :storage both
-    :operations (all)
-    (member keys array int32)
-    (member children nested @child
-      :nested-schema FChild)
-    (single-allocation SingleParents))
-  (struct FMaskRows8
-    :field-mask-name FFieldMask8
-    :field-enum-name EField8
-    (member masks array FFieldMask8)
-    (member values array int32
-      :mask-field true
-      :mask-dimensions ((value_index "8"))))
-  (struct FMaskRows9
-    :field-mask-name FFieldMask9
-    :field-enum-name EField9
-    (member masks array FFieldMask9)
-    (member values array int32
-      :mask-field true
-      :mask-dimensions ((value_index "8")))
-    (member tail array int32
-      :mask-field true))
-  (struct FMaskRows16
-    :field-mask-name FFieldMask16
-    :field-enum-name EField16
-    (member masks array FFieldMask16)
-    (member values array int32
-      :mask-field true
-      :mask-dimensions ((value_index "16"))))
-  (struct FMaskRows17
-    :field-mask-name FFieldMask17
-    :field-enum-name EField17
-    (member masks array FFieldMask17)
-    (member values array int32
-      :mask-field true
-      :mask-dimensions ((value_index "17"))))
-  (struct FMaskRows32
-    :field-mask-name FFieldMask32
-    :field-enum-name EField32
-    (member masks array FFieldMask32)
-    (member values array int32
-      :mask-field true
-      :mask-dimensions ((value_index "32"))))
-  (struct FMaskRows33
-    :field-mask-name FFieldMask33
-    :field-enum-name EField33
-    (member masks array FFieldMask33)
-    (member values array int32
-      :mask-field true
-      :mask-dimensions ((value_index "33"))))
-  (struct RestrictionRows
-    (member restricted array @restricted_leaf)
-    (single-allocation SingleRestrictionRows))
-  (struct FFixedChild
-    (member tracked array @tracked)
-    (fixed TFixedChildStorage))
-  (struct FFixedRows
-    (member ids array int32)
-    (member children nested @fixed_child
-      :fixed-schema FFixedChild)
-    (fixed TFixedRowsStorage
-      :containers (TFixedRows TFixedRowsAlt))))
-
-(module vector2_fixture
-  :header "Vector2.h"
-  :source "Vector2.cpp"
-  :header-include "Vector2.h"
-  :namespace codegen_compile_fixture
-  (vector-soa FVectors2f
-    :value-type float
-    :components (xs ys)
-    :equivalent-type @vector))
-
-(module vector1_fixture
-  :header "Vector1.h"
-  :source "Vector1.cpp"
-  :header-include "Vector1.h"
-  :namespace codegen_compile_fixture
-  (vector-soa FVectors1f
-    :value-type float
-    :components (xs)
-    :equivalent-type @scalar))
-
-(module vector3_fixture
-  :header "Vector3.h"
-  :source "Vector3.cpp"
-  :header-include "Vector3.h"
-  :namespace codegen_compile_fixture
-  (vector-soa FVectors3f
-    :value-type float
-    :components (xs ys zs)
-    :equivalent-type @vector3
-    (fixed TVectors3Storage
-      :containers (TFixedVectors3))))
-
 (module inline_facade_fixture
   :header "InlineFacade.h"
   :namespace codegen_compile_fixture
   (facade FInlineFacade @target target
-    :validation #cpp{check(target != nullptr);}cpp#
-    :validation-dependencies (check)
-    (method get int32
+    :validation #cpp{assert(target != nullptr);}cpp#
+    :validation-dependencies (assertion)
+    (method get std::int32_t
       :const true
-      (parameter offset "int32 const"
+      (parameter offset "std::int32_t const"
         :default "0"))
     (method reset void
       :target-name clear)))
@@ -460,11 +261,11 @@ return result;}cpp#)
   :namespace codegen_compile_fixture
   (facade FReferenceFacade @target target
     :target-storage reference
-    (method get int32
+    (method get std::int32_t
       :const true)
     (method set_value void
       :target-name set
-      (parameter value "int32 const"))))
+      (parameter value "std::int32_t const"))))
 
 (module source_facade_fixture
   :header "SourceFacade.h"
@@ -472,13 +273,13 @@ return result;}cpp#)
   :header-include "SourceFacade.h"
   :namespace codegen_compile_fixture
   (facade FSourceFacade @target target
-    :validation #cpp{check(target != nullptr);}cpp#
-    :validation-dependencies (check)
+    :validation #cpp{assert(target != nullptr);}cpp#
+    :validation-dependencies (assertion)
     :definitions-in-source true
     (method set_value void
       :target-name set
-      (parameter value "int32 const"))
-    (method get int32
+      (parameter value "std::int32_t const"))
+    (method get std::int32_t
       :const true)))
 
 (module mixed_fixture
@@ -592,4 +393,4 @@ return result;}cpp#)
 
 (umbrella-module all_fixture
   :header "Generated.h"
-  :headers ("Homogeneous.h" "Soa.h" "Vector1.h" "Vector2.h" "Vector3.h" "InlineFacade.h" "SourceFacade.h" "ReferenceFacade.h" "PlainEnums.h" "ReflectedEnums.h" "PackedEnums.h" "ScalarValues.h" "Representations.h" "PackedValues.h" "Settings.h" "StaticTables.h" "Mixed.h"))
+  :headers ("Records.h" "FieldMasks.h" "RestrictionRows.h" "InlineFacade.h" "SourceFacade.h" "ReferenceFacade.h" "PlainEnums.h" "PackedEnums.h" "ScalarValues.h" "Representations.h" "PackedValues.h" "Mixed.h"))

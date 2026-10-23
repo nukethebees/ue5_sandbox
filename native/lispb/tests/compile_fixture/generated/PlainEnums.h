@@ -5,11 +5,14 @@
 
 #include "ioj/enum_traits.h"
 
-#include "CoreMinimal.h"
-
+#include <array>
 #include <cstddef>
+#include <cstdint>
+#include <optional>
+#include <string_view>
+
 namespace codegen_compile_fixture {
-using EPlainFixtureUnderlying = uint8;
+using EPlainFixtureUnderlying = std::uint8_t;
 
 // Logical bit width: 1.
 enum class EPlainFixture : EPlainFixtureUnderlying {
@@ -17,34 +20,83 @@ enum class EPlainFixture : EPlainFixtureUnderlying {
     ReadableName,
 };
 
+[[nodiscard]] constexpr auto to_string(EPlainFixture const value) noexcept -> std::string_view {
+    switch (value) {
+        case EPlainFixture::First: {
+            return "First";
+        }
+        case EPlainFixture::ReadableName: {
+            return "ReadableName";
+        }
+    }
+
+    return "<invalid EPlainFixture>";
+}
+
+[[nodiscard]] constexpr auto to_display_string(EPlainFixture const value) noexcept
+    -> std::string_view {
+    switch (value) {
+        case EPlainFixture::First: {
+            return "First";
+        }
+        case EPlainFixture::ReadableName: {
+            return "Readable Name";
+        }
+    }
+
+    return "<invalid EPlainFixture>";
+}
+
+[[nodiscard]] constexpr auto to_serialized_string(EPlainFixture const value) noexcept
+    -> std::string_view {
+    switch (value) {
+        case EPlainFixture::First: {
+            return "first";
+        }
+        case EPlainFixture::ReadableName: {
+            return "readable_name";
+        }
+        default: {
+            return "<invalid EPlainFixture>";
+        }
+    }
+}
+
+[[nodiscard]] constexpr auto try_parse_plain_fixture(std::string_view const value) noexcept
+    -> std::optional<EPlainFixture> {
+    if (value == "First") {
+        return EPlainFixture::First;
+    }
+    if (value == "ReadableName") {
+        return EPlainFixture::ReadableName;
+    }
+    return std::nullopt;
+}
+
+[[nodiscard]] constexpr auto
+    try_parse_serialized_plain_fixture(std::string_view const value) noexcept
+    -> std::optional<EPlainFixture> {
+    if (value == "first") {
+        return EPlainFixture::First;
+    }
+    if (value == "readable_name") {
+        return EPlainFixture::ReadableName;
+    }
+    return std::nullopt;
+}
+
 } // namespace codegen_compile_fixture
 namespace ioj {
+template <>
+struct EnumTraits<::codegen_compile_fixture::EPlainFixture> {
+    inline static constexpr std::array values{
+        ::codegen_compile_fixture::EPlainFixture::First,
+        ::codegen_compile_fixture::EPlainFixture::ReadableName};
+};
+
 template <>
 [[nodiscard]] constexpr auto enum_count<::codegen_compile_fixture::EPlainFixture>() noexcept
     -> std::size_t {
     return 2;
 }
 } // namespace ioj
-
-namespace codegen_compile_fixture {
-COMPILE_FIXTURE_API auto LexToString(EPlainFixture const value) -> TCHAR const*;
-
-COMPILE_FIXTURE_API auto LexToDisplayString(EPlainFixture const value) -> TCHAR const*;
-
-COMPILE_FIXTURE_API auto LexToSerializedString(EPlainFixture const value) -> TCHAR const*;
-
-} // namespace codegen_compile_fixture
-namespace codegen_compile_fixture {
-COMPILE_FIXTURE_API auto to_string_view(EPlainFixture const value) -> FStringView;
-
-COMPILE_FIXTURE_API auto to_string(EPlainFixture const value) -> FString;
-
-COMPILE_FIXTURE_API auto to_display_string_view(EPlainFixture const value) -> FStringView;
-
-COMPILE_FIXTURE_API auto to_display_string(EPlainFixture const value) -> FString;
-
-COMPILE_FIXTURE_API auto try_parse_serialized(FStringView const value,
-                                              codegen_compile_fixture::EPlainFixture& result)
-    -> bool;
-
-} // namespace codegen_compile_fixture

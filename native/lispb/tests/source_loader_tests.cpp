@@ -51,11 +51,9 @@
 #include <codegen/schema/setting_device.h>
 #include <codegen/schema/setting_schemas.h>
 #include <codegen/schema/settings_module_schemas.h>
-#include <codegen/schema/soa_backend.h>
 #include <codegen/schema/soa_mask_dimension_schemas.h>
 #include <codegen/schema/soa_member_schemas.h>
 #include <codegen/schema/soa_schemas.h>
-#include <codegen/schema/soa_storage.h>
 #include <codegen/schema/tagged_union_alternative_schemas.h>
 #include <codegen/schema/tagged_union_schemas.h>
 #include <codegen/schema/type_reference_kind.h>
@@ -189,7 +187,7 @@ auto schema_at(Manifest const& manifest,
 
 TEST(SourceLoader, RecordValueSemanticsSurviveParsingGraphAndLowering) {
     TemporaryManifest files;
-    files.write_root(R"((module records :header "Records.h" :backend standard-library
+    files.write_root(R"((module records :header "Records.h"
       (record Value :comparison three-way :comparison-noexcept true
         (member absent int)
         (member zero int :initializer "")
@@ -547,17 +545,16 @@ TEST(SourceLoader, RecordMethodCrossModuleForwardsRespectPhysicalOwnersAndExtern
         (function value @external)
         (function registered @registered)
         (function global Global)))
-      (module providers :header "Providers.h" :namespace providers :backend standard-library
-        (struct Rows :storage single-allocation (member xs array float)
-          (single-allocation OwnedRows))
+      (module providers :header "Providers.h" :namespace providers
+        (struct Rows (member xs array float))
         (record Registered))
       (module global :header "Global.h" (record Global)))");
     files.write("types.lispb", R"(
       (type external :spelling "external::Value" :header "External.h")
       (type registered :spelling "providers::Registered" :header "Providers.h"))");
     auto const output{files.render(files.load()).front().content};
-    EXPECT_NE(output.find("struct OwnedRows;"), std::string::npos);
-    EXPECT_NE(output.find("providers::OwnedRows rows();"), std::string::npos);
+    EXPECT_NE(output.find("struct Rows;"), std::string::npos);
+    EXPECT_NE(output.find("providers::Rows rows();"), std::string::npos);
     EXPECT_NE(output.find("struct Global;"), std::string::npos);
     EXPECT_EQ(output.find("#include \"Global.h\""), std::string::npos);
     EXPECT_NE(output.find("#include \"External.h\""), std::string::npos);
@@ -573,7 +570,7 @@ TEST(SourceLoader, RecordMethodSignaturesRejectLayoutOnlyTypesAndCompleteDefinit
           "(function make (type-ref Layout :suffix \"*\"))",
           "(function make auto :trailing-return-type (type-ref Layout :suffix \"&\"))",
           "(function accept void (parameter value Layout))"}) {
-        files.write_root(std::string{R"((module values :header "Values.h" :backend standard-library
+        files.write_root(std::string{R"((module values :header "Values.h"
           (record Consumer )"} +
                          signature + R"()
           (struct Layout :layout-only true (member xs array float))))");
@@ -586,7 +583,7 @@ TEST(SourceLoader, RecordMethodSignaturesRejectLayoutOnlyTypesAndCompleteDefinit
     }
     files.write_root(R"((module consumers :header "Consumers.h"
       (record Consumer (function make (type-ref providers::Layout :suffix "*"))))
-      (module providers :header "Providers.h" :namespace providers :backend standard-library
+      (module providers :header "Providers.h" :namespace providers
         (struct Layout :layout-only true (member xs array float))))");
     try {
         static_cast<void>(files.graph());
@@ -617,36 +614,27 @@ TEST(SourceLoader, RecordMethodSignaturesRejectLayoutOnlyTypesAndCompleteDefinit
     }
 }
 
-TEST(SourceLoader, SoaStoragePolicySelectsRepresentations) {
+TEST(SourceLoader, RejectsRemovedSoaRepresentationSyntax) {
     TemporaryManifest files;
-    files.write_root(R"((module rows :header "Rows.h" :backend standard-library
-      (struct VectorRows :storage vector (member values array int32))
-      (struct CompactRows :storage single-allocation (member values array int32)
-        (single-allocation SingleRows))
-      (struct BothRows :storage both (member values array int32)
-        (single-allocation SingleBothRows))))");
-    auto manifest{files.load()};
-    EXPECT_TRUE(files.store().soas.emits_vector_storage(schema_at(manifest, 0, 0)));
-    EXPECT_FALSE(files.store().soas.emits_vector_storage(schema_at(manifest, 0, 1)));
-    EXPECT_TRUE(files.store().soas.emits_vector_storage(schema_at(manifest, 0, 2)));
-    auto const output{files.render(manifest).front().content};
-    EXPECT_NE(output.find("struct VectorRowsView"), std::string::npos);
-    EXPECT_EQ(output.find("struct CompactRowsView"), std::string::npos);
-    EXPECT_NE(output.find("struct BothRowsView"), std::string::npos);
-    for (auto const* invalid : {"vector", "single-allocation", "both", "unknown"}) {
-        files.write_root(
-            std::string{R"((module rows :header "Rows.h" (struct Rows :storage )"} + invalid +
-            " (member values array int32)" +
-            (std::string_view{invalid} == "vector" ? " (single-allocation SingleRows)" : "") +
-            "))");
-        EXPECT_THROW(files.lower(files.load()), std::exception);
+    for (auto const declaration :
+         {"(struct Rows :storage vector (member values array float))",
+          "(struct Rows :storage both (member values array float))",
+          "(struct Rows :storage single-allocation (member values array float))",
+          "(struct Rows :vector-components (values) (member values array float))",
+          "(struct Rows (member values array float) (single-allocation Owner))",
+          "(struct Rows (member values array float) (fixed FixedRows))",
+          "(struct Rows (member child nested Child :nested-schema Child))",
+          "(vector-soa Rows :value-type float :components (xs ys) :equivalent-type Point)"}) {
+        SCOPED_TRACE(declaration);
+        files.write_root(std::string{R"((module rows :header "Rows.h" )"} + declaration + ")");
+        EXPECT_THROW(files.load(), lispb::codegen::sexpr::SourceError);
     }
 }
 
 TEST(SourceLoader, AliasEmissionKeepsSemanticIdentityAndDependencies) {
     TemporaryManifest files;
     files.write_root(
-        R"((module vitals :header "Vitals.h" :namespace fixture :backend standard-library
+        R"((module vitals :header "Vitals.h" :namespace fixture
       (record Vessel (member health Health))
       (struct Fleet (member healths array Health))
       (packed-value PackedHealth :storage std::uint16_t (field health @health :bits auto))
@@ -828,14 +816,14 @@ TEST(SourceLoader, ScalarAliasesShareCppTypeIncludeResolution) {
         files.write("types.lispb",
                     R"((type native_int32 :spelling "std::int32_t" :header "cstdint"))");
         auto const header{files.render(files.load()).front().content};
-        auto const standard{std::string_view{representation}.starts_with('@') ||
-                            std::string_view{representation}.starts_with("std::")};
-        auto const spelling{standard ? "std::int32_t" : representation};
+        auto const spelling{std::string_view{representation} == "uint32" ? "std::uint32_t"
+                                                                         : "std::int32_t"};
         EXPECT_TRUE(header.contains("using Value = " + std::string{spelling} + ";"));
-        auto const include{standard ? "#include <cstdint>" : "#include \"CoreTypes.h\""};
+        auto const include{"#include <cstdint>"};
         auto const position{header.find(include)};
         ASSERT_NE(position, std::string::npos);
         EXPECT_EQ(header.find(include, position + 1), std::string::npos);
+        EXPECT_EQ(header.find("CoreTypes.h"), std::string::npos);
     }
 }
 
@@ -1256,7 +1244,6 @@ TEST(SourceLoader, ReadsCommentsAndTypedSoa) {
 (module example
   :header "Generated.h"
   (struct FData
-    :operations (all)
     (member handles array @handle
       (relation offset_into FData :unit elements))))
 )");
@@ -1274,9 +1261,6 @@ TEST(SourceLoader, ReadsCommentsAndTypedSoa) {
               "add");
     ASSERT_EQ(manifest.modules.size(), 1);
     auto const& schema{schema_at(manifest, 0)};
-    EXPECT_TRUE(std::ranges::equal(
-        files.store().items(files.store().soas.operations[files.store().soas.index(schema)]),
-        all_storage_operations()));
     auto const& member{
         files.store().items(files.store().soas.members[files.store().soas.index(schema)])[0]};
     EXPECT_EQ(files.text(files.context.storage.cpp_types.spelling(resolve_type(
@@ -1301,30 +1285,33 @@ TEST(SourceLoader, ReadsCommentsAndTypedSoa) {
         SemanticRelationUnit::elements);
 }
 
-TEST(SourceLoader, ReadsStandardLibrarySoaBackend) {
+TEST(SourceLoader, OrdinarySoaNeedsNoSourceOutput) {
     TemporaryManifest files;
-    files.write_root(R"(
-(module native_data
-  :header "NativeData.h"
-  :backend standard-library
-  (struct Data
-    :operations (all)
-    (member values array int32)))
-)");
-
-    auto manifest{files.load()};
-    auto const& module{manifest.modules.front()};
-    EXPECT_EQ(files.store().normal_modules.soa_backend[files.store().normal_modules.index(module)],
-              SoaBackend::standard_library);
-    EXPECT_FALSE(
-        files.store()
-            .module_settings_store
-            .source[files.store().module_settings_store.index(
-                files.store().normal_modules.settings[files.store().normal_modules.index(module)])]
-            .has_value());
+    files.write_root(R"((module native_data :header "NativeData.h"
+        (struct Data (member values array std::int32_t))))");
+    auto const output{files.render(files.load()).front().content};
+    EXPECT_NE(output.find("struct Data"), std::string::npos);
+    EXPECT_NE(output.find("std::pmr::memory_resource&"), std::string::npos);
 }
 
-TEST(SourceLoader, RejectsUnknownSoaBackend) {
+TEST(SourceLoader, NativeIntegerSpellingsPreserveExplicitExternalTypes) {
+    TemporaryManifest files;
+    files.write_root(R"((module values :header "Values.h"
+        (record Values
+          (member signed_value int32)
+          (member unsigned_value uint16)
+          (member engine_value @engine_integer))))");
+    files.write("types.lispb", R"(
+        (type engine_integer :spelling int32 :header "EngineInteger.h"))");
+    auto const output{files.render(files.load()).front().content};
+    EXPECT_NE(output.find("#include <cstdint>"), std::string::npos);
+    EXPECT_NE(output.find("std::int32_t signed_value"), std::string::npos);
+    EXPECT_NE(output.find("std::uint16_t unsigned_value"), std::string::npos);
+    EXPECT_NE(output.find("int32 engine_value"), std::string::npos);
+    EXPECT_NE(output.find("#include \"EngineInteger.h\""), std::string::npos);
+}
+
+TEST(SourceLoader, RejectsRemovedSoaBackend) {
     TemporaryManifest files;
     files.write_root(R"(
 (module native_data
@@ -2404,18 +2391,6 @@ TEST(SourceLoader, RejectsUnknownModuleDeclarations) {
     EXPECT_THROW(files.load(), lispb::codegen::sexpr::SourceError);
 }
 
-TEST(SourceLoader, RejectsAllCombinedWithSpecificOperations) {
-    TemporaryManifest files;
-    files.write_root(R"(
-(module bad
-  :header "Bad.h"
-  (struct FData
-    :operations (all reset)
-    (member values array int32)))
-)");
-    EXPECT_THROW(files.load(), lispb::codegen::sexpr::SourceError);
-}
-
 TEST(SourceLoader, LoadsStructuredTypeReferencesAndFacadeStorage) {
     TemporaryManifest files;
     files.write_root(R"(
@@ -2644,30 +2619,28 @@ TEST(SourceLoader, SettingsDeviceDefaultsToShared) {
         SettingDevice::shared);
 }
 
-TEST(SourceLoader, SingleOnlyLogicalApiIsPreserved) {
+TEST(SourceLoader, OrdinarySoaPreservesLogicalApi) {
     TemporaryManifest files;
     files.write_root(R"(
-(module api :header "Api.h" :source "Api.cpp" :backend standard-library
+(module api :header "Api.h" :source "Api.cpp"
   (struct Rows :view-name Values :const-view-name ConstValues
     :export-specifier API :using-declarations ("Value = float")
-    :operations (set-num append-from) :equivalent-type ValueRow
+    :equivalent-type ValueRow
     (member values array float)
     (function first float :const true :body #cpp{return $column(values)[0];}cpp#)
     (function noop void :body ())
     (view-function read float :body #cpp{return $column(values)[0];}cpp#)
-    (mutable-view-function write void :body #cpp{$column(values)[0] = 1;}cpp#)
-    (single-allocation Owner)))
+    (mutable-view-function write void :body #cpp{$column(values)[0] = 1;}cpp#)))
 )");
     auto manifest{files.load()};
     auto const& schema{schema_at(manifest, 0)};
-    EXPECT_EQ(files.store().soas.selected_storage(schema), SoaStorage::single_allocation);
     ASSERT_EQ(files.store().soas.const_view_functions[files.store().soas.index(schema)].size(), 1U);
     EXPECT_TRUE(files.store().functions.is_const[files.store().functions.index(files.store().items(
         files.store().soas.const_view_functions[files.store().soas.index(schema)])[0])]);
     ASSERT_EQ(files.store().soas.mutable_view_functions[files.store().soas.index(schema)].size(),
               1U);
     auto const output{files.render(manifest).front().content};
-    EXPECT_NE(output.find("struct API Owner"), std::string::npos);
+    EXPECT_NE(output.find("struct API Rows"), std::string::npos);
     EXPECT_NE(output.find("std::pmr::memory_resource& resource"), std::string::npos);
     EXPECT_NE(output.find("return this->values()[0];"), std::string::npos);
     EXPECT_EQ(output.find("struct Rows {"), std::string::npos);
@@ -2677,7 +2650,7 @@ TEST(SourceLoader, SingleOnlyLogicalApiIsPreserved) {
 TEST(SourceLoader, RejectsRemovedSingleAllocationAllocatorSyntax) {
     TemporaryManifest files;
     for (auto const declaration : {"(struct Rows :single-allocation-allocator Allocator (member "
-                                   "ids array int) (single-allocation Owner))",
+                                   "ids array int))",
                                    "(struct Rows (member ids array int) (single-allocation Owner "
                                    "(variant Pool Allocator)))"}) {
         files.write_root(std::string{"(module api :header \"Api.h\" "} + declaration + ")");
@@ -2688,11 +2661,10 @@ TEST(SourceLoader, RejectsRemovedSingleAllocationAllocatorSyntax) {
 TEST(SourceLoader, ReadOnlyViewFunctionRejectsMutableReceiver) {
     TemporaryManifest files;
     files.write_root(R"(
-(module api :header "Api.h" :backend standard-library
+(module api :header "Api.h"
   (struct Rows
     (member values array float)
-    (view-function read float :const false :body #cpp{return 0;}cpp#)
-    (single-allocation Owner)))
+    (view-function read float :const false :body #cpp{return 0;}cpp#)))
 )");
     try {
         static_cast<void>(files.load());

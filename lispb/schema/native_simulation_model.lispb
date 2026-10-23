@@ -1,7 +1,6 @@
 (module native_sim_state
   :header "native/simulation/include/ioj/sim/sim_state.h"
   :header-include "ioj/sim/sim_state.h"
-  :backend standard-library
   :namespace ioj::sim
   (enum OrchestratorState std::uint8_t
     (value Uninitialised)
@@ -12,7 +11,6 @@
 (module native_simulation_phase
   :header "native/simulation/include/ioj/sim/simulation_phase.h"
   :header-include "ioj/sim/simulation_phase.h"
-  :backend standard-library
   :namespace ioj::sim
   (enum SimulationPhase @native_uint8
     ; Keep lookup-valid phases before Initialisation, the exclusive lookup boundary.
@@ -28,7 +26,6 @@
 (module native_collision_trace_entity_filter
   :header "native/simulation/include/ioj/sim/collision/trace_entity_filter.h"
   :header-include "ioj/sim/collision/trace_entity_filter.h"
-  :backend standard-library
   :namespace ioj::sim::collision
   (enum TraceEntityFilter std::uint8_t
     (value None)
@@ -37,7 +34,6 @@
 (module native_player_flight_model_enums
   :header "native/simulation/include/ioj/sim/player/flight_model_enums.h"
   :header-include "ioj/sim/player/flight_model_enums.h"
-  :backend standard-library
   :namespace ioj::sim::player
   (enum FlightModelPreset std::uint8_t
     (value Starfox)
@@ -86,7 +82,6 @@
 (module native_fighters_navigation_records
   :header "native/simulation/include/ioj/sim/fighters/navigation_records.h"
   :header-include "ioj/sim/fighters/navigation_records.h"
-  :backend standard-library
   :namespace ioj::sim::fighters
   (record AvoidanceFrame
     (member preferred_direction @native_vector_3f)
@@ -117,7 +112,6 @@
 (module native_collision_grid_geometry_cell_coord_bounds
   :header "native/simulation/include/ioj/sim/collision/cell_coord_bounds.h"
   :header-include "ioj/sim/collision/cell_coord_bounds.h"
-  :backend standard-library
   :namespace ioj::sim::collision
   (record CellCoordBounds
     (member min @native_cell_coord)
@@ -126,7 +120,6 @@
 (module native_collision_grid_geometry_grid_geometry
   :header "native/simulation/include/ioj/sim/collision/grid_geometry.h"
   :header-include "ioj/sim/collision/grid_geometry.h"
-  :backend standard-library
   :namespace ioj::sim::collision
   (record GridGeometry
     (member dimensions @native_cell_coord)
@@ -135,7 +128,6 @@
 (module native_collision_world_aabb
   :header "native/simulation/include/ioj/sim/collision/world_aabb.h"
   :header-include "ioj/sim/collision/world_aabb.h"
-  :backend standard-library
   :namespace ioj::sim::collision
   (record WorldAABB
     (member min @native_vector_3f)
@@ -144,7 +136,6 @@
 (module native_attack_distance_band
   :header "native/simulation/include/ioj/sim/fighters/attack_distance_band.h"
   :header-include "ioj/sim/fighters/attack_distance_band.h"
-  :backend standard-library
   :namespace ioj::sim
   (record AttackDistanceBand
     (member minimum_ratio float :initializer "0.4f")
@@ -155,7 +146,6 @@
 (module native_base_sim_config_laser_weapon_sim_config
   :header "native/simulation/include/ioj/sim/lasers/laser_weapon_sim_config.h"
   :header-include "ioj/sim/lasers/laser_weapon_sim_config.h"
-  :backend standard-library
   :namespace ioj::sim
   (record LaserWeaponSimConfig
     (member damage std::int32_t :initializer "5")
@@ -166,7 +156,6 @@
 (module native_base_sim_config_laser_sim_config
   :header "native/simulation/include/ioj/sim/lasers/laser_sim_config.h"
   :header-include "ioj/sim/lasers/laser_sim_config.h"
-  :backend standard-library
   :namespace ioj::sim
   (record LaserSimConfig
     (member n_preallocated_instances std::int32_t :initializer "5000")))
@@ -174,7 +163,6 @@
 (module native_base_sim_config_overlap_response_config
   :header "native/simulation/include/ioj/sim/collision/overlap_response_config.h"
   :header-include "ioj/sim/collision/overlap_response_config.h"
-  :backend standard-library
   :namespace ioj::sim
   (record OverlapResponseConfig
     (member damage_per_overlap_detection std::int32_t :initializer "50")))
@@ -182,7 +170,6 @@
 (module native_base_sim_config_fighter_sim_config
   :header "native/simulation/include/ioj/sim/fighters/fighter_sim_config.h"
   :header-include "ioj/sim/fighters/fighter_sim_config.h"
-  :backend standard-library
   :namespace ioj::sim
   (record FighterSimConfig
     (member max_live_fighters std::int32_t :initializer "2000")
@@ -215,7 +202,6 @@
 (module native_player_flight_model_data
   :header "native/simulation/include/ioj/sim/player/flight_model_data.h"
   :header-include "ioj/sim/player/flight_model_data.h"
-  :backend standard-library
   :namespace ioj::sim::player
   :prelude ("#include <ioj/sim/player/flight_model_constants.h>")
   (record RateLimitedResponseConfig
@@ -324,7 +310,6 @@
 (module native_player_flight_model_runtime_physical_movement_state
   :header "native/simulation/include/ioj/sim/player/physical_movement_state.h"
   :header-include "ioj/sim/player/physical_movement_state.h"
-  :backend standard-library
   :namespace ioj::sim::player
   (record PhysicalMovementState
     (member transform @native_transform3d :initializer "")
@@ -333,7 +318,6 @@
 (module native_player_flight_model_runtime_player_flight_intent
   :header "native/simulation/include/ioj/sim/player/player_flight_intent.h"
   :header-include "ioj/sim/player/player_flight_intent.h"
-  :backend standard-library
   :namespace ioj::sim::player
   (record PlayerFlightIntent
     (member translation @native_vector3d :initializer "")
@@ -346,7 +330,6 @@
 (module native_player_flight_model_runtime_flight_model_controller_state
   :header "native/simulation/include/ioj/sim/player/flight_model_controller_state.h"
   :header-include "ioj/sim/player/flight_model_controller_state.h"
-  :backend standard-library
   :namespace ioj::sim::player
   (record FlightModelControllerState
     (member forward_manual_response @native_scalar_response :initializer "")
@@ -373,7 +356,6 @@
 (module native_player_flight_model_runtime_player_resource_state
   :header "native/simulation/include/ioj/sim/player/player_resource_state.h"
   :header-include "ioj/sim/player/player_resource_state.h"
-  :backend standard-library
   :namespace ioj::sim::player
   (record PlayerResourceState
     (member thrust_energy float :initializer "1.f")
@@ -382,7 +364,6 @@
 (module native_player_flight_model_runtime_player_presentation_state
   :header "native/simulation/include/ioj/sim/player/player_presentation_state.h"
   :header-include "ioj/sim/player/player_presentation_state.h"
-  :backend standard-library
   :namespace ioj::sim::player
   (record PlayerPresentationState
     (member body_transform @native_transform3d :initializer "")
@@ -391,7 +372,6 @@
 (module native_player_flight_model_runtime_player_simulation_state
   :header "native/simulation/include/ioj/sim/player/player_simulation_state.h"
   :header-include "ioj/sim/player/player_simulation_state.h"
-  :backend standard-library
   :namespace ioj::sim::player
   (record PlayerSimulationState
     (member physical ioj::sim::player::PhysicalMovementState :initializer "")
@@ -402,7 +382,6 @@
 (module native_laser_source
   :header "native/simulation/include/ioj/sim/lasers/laser_source.h"
   :header-include "ioj/sim/lasers/laser_source.h"
-  :backend standard-library
   :namespace ioj::sim
   (record LaserSource
     :comparison equality
@@ -413,7 +392,6 @@
 (module native_index_span
   :header "native/simulation/include/ioj/sim/index_span.h"
   :header-include "ioj/sim/index_span.h"
-  :backend standard-library
   :namespace ioj::sim
   (record IndexSpan
     :comparison three-way
@@ -429,7 +407,6 @@
 (module native_line_trace_result
   :header "native/simulation/include/ioj/sim/collision/line_trace_result.h"
   :header-include "ioj/sim/collision/line_trace_result.h"
-  :backend standard-library
   :namespace ioj::sim
   (record LineTraceResult
     (member location @native_vector_3f :initializer "")
@@ -440,7 +417,6 @@
 (module native_navigation_telemetry
   :header "native/simulation/include/ioj/sim/telemetry/navigation_telemetry.h"
   :header-include "ioj/sim/telemetry/navigation_telemetry.h"
-  :backend standard-library
   :namespace ioj::sim::fighters
   (record NavigationTelemetrySnapshot
     (member separating_fighter_count std::int32_t :initializer "")
@@ -458,7 +434,6 @@
 (module native_level_telemetry_current_state
   :header "native/simulation/include/ioj/sim/telemetry/current_state.h"
   :header-include "ioj/sim/telemetry/current_state.h"
-  :backend standard-library
   :namespace ioj::sim
   (record LevelTelemetryCurrentState
     (member active_entities_by_team_and_type @level_telemetry_entity_counts :initializer "")

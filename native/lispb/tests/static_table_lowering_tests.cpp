@@ -66,7 +66,7 @@ TEST(StaticTableLowering, GeneratesFixedRowsColumnsAndCoreFunctions) {
               std::string::npos);
     EXPECT_NE(output.find("auto get_point(int32 const index) const -> FPoint"), std::string::npos);
     EXPECT_NE(output.find("return FPoint{ids[index], values[index]};"), std::string::npos);
-    EXPECT_NE(output.find("TStaticArray<int32, num_rows> ids{};"), std::string::npos);
+    EXPECT_NE(output.find("TStaticArray<std::int32_t, num_rows> ids{};"), std::string::npos);
     EXPECT_NE(output.find("TStaticArray<FValue, num_rows> values{};"), std::string::npos);
     EXPECT_NE(output.find("namespace project::generated"), std::string::npos);
     EXPECT_NE(output.find("class FForward;"), std::string::npos);

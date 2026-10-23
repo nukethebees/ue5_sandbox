@@ -177,35 +177,6 @@ auto traverse_references(Store& store, DeclarationHandle declaration, Visitor co
         case DeclarationKind::fixed_point:
         case DeclarationKind::settings_schema:
             break;
-        case DeclarationKind::homogeneous_layout:
-            rewrite_row(store.homogeneous_layouts, declaration, [&](auto field, auto row) {
-                static_cast<void>(row);
-                field(store.homogeneous_layouts.value_types, [&](auto& values) {
-                    return rewrite_range(store, values, [&](auto& value, std::uint32_t index) {
-                        return rewrite_row(
-                            store.homogeneous_values, value, [&](auto field, auto row) {
-                                auto location{role(
-                                    TypeReferenceCategory::layout_value,
-                                    store.strings().intern(store.homogeneous_values.suffix[row]),
-                                    index)};
-                                field(store.homogeneous_values.type,
-                                      [&](auto& type) { return reference(location, type); });
-                                location.part = TypeReferencePart::equivalent_type;
-                                field(store.homogeneous_values.equivalent_type,
-                                      [&](auto& type) { return optional(location, type); });
-                                location.part = TypeReferencePart::input;
-                                field(store.homogeneous_values.input_types, [&](auto& inputs) {
-                                    return rewrite_range(
-                                        store, inputs, [&](auto& input, std::uint32_t input_index) {
-                                            location.secondary_index = input_index;
-                                            return reference(location, input);
-                                        });
-                                });
-                            });
-                    });
-                });
-            });
-            break;
         case DeclarationKind::integer_scalar:
             rewrite_row(store.integer_scalars, declaration, [&](auto field, auto row) {
                 static_cast<void>(row);
@@ -301,9 +272,6 @@ auto traverse_references(Store& store, DeclarationHandle declaration, Visitor co
                 field(store.soas.equivalent_type, [&](auto& value) {
                     return optional(role(TypeReferenceCategory::equivalent_type), value);
                 });
-                field(store.soas.array_allocator, [&](auto& value) {
-                    return optional(role(TypeReferenceCategory::array_allocator), value);
-                });
                 field(store.soas.const_view_functions, [&](auto& value) {
                     return functions(
                         store.functions, TypeReferenceCategory::const_view_function, value);
@@ -346,114 +314,44 @@ auto traverse_references(Store& store, DeclarationHandle declaration, Visitor co
                 });
             });
             break;
-        case DeclarationKind::vector_soa:
-            rewrite_row(store.vector_soas, declaration, [&](auto field, auto row) {
-                static_cast<void>(row);
-                field(store.vector_soas.value_type, [&](auto& value) {
-                    return reference(role(TypeReferenceCategory::value_type), value);
-                });
-                field(store.vector_soas.equivalent_type, [&](auto& value) {
-                    return reference(role(TypeReferenceCategory::equivalent_type), value);
-                });
-            });
-            break;
     }
     return declaration;
 }
 
-auto soa_generated_cpp_names(Declarations const& declarations,
-                             DeclarationHandle schema,
-                             ModuleHandle module,
-                             bool includes_allocator_variants) -> std::vector<StringId> {
+auto soa_generated_cpp_names(Declarations const& declarations, DeclarationHandle schema)
+    -> std::vector<StringId> {
     auto const& soas{declarations.soas};
-    auto const schema_row{soas.index(schema)};
-    auto const module_row{declarations.normal_modules.index(module)};
+    auto const row{soas.index(schema)};
+    if (soas.layout_only[row]) {
+        return {};
+    }
     auto& strings{declarations.strings()};
     auto text = [&](auto id) { return std::string{strings.view(id)}; };
-    auto const name{text(soas.name[schema_row])};
-    auto const view_name{soas.view_name[schema_row] ? text(*soas.view_name[schema_row])
-                                                    : name + "View"};
-    auto const const_view_name{soas.const_view_name[schema_row]
-                                   ? text(*soas.const_view_name[schema_row])
-                                   : name + "ConstView"};
-    auto const compact_view{!soas.emits_vector_storage(schema) && soas.view_name[schema_row]
-                                ? text(*soas.view_name[schema_row])
-                                : name + "SingleView"};
-    auto const compact_const_view{!soas.emits_vector_storage(schema) &&
-                                          soas.const_view_name[schema_row]
-                                      ? text(*soas.const_view_name[schema_row])
-                                      : name + "SingleConstView"};
-    std::vector<StringId> result;
-    auto add = [&](std::string_view spelling) { result.push_back(strings.intern(spelling)); };
+    auto const name{text(soas.name[row])};
+    auto const view{soas.view_name[row] ? text(*soas.view_name[row]) : name + "View"};
+    auto const const_view{soas.const_view_name[row] ? text(*soas.const_view_name[row])
+                                                    : name + "ConstView"};
+    std::vector<StringId> result{soas.name[row]};
+    auto add = [&](std::string const& spelling) { result.push_back(strings.intern(spelling)); };
+    auto resolved = [&](std::string spelling, bool is_const) {
+        auto const position{spelling.find(is_const ? "ConstView" : "View")};
+        spelling.insert(position == std::string::npos ? spelling.size() : position, "Resolved");
+        return spelling;
+    };
     add(name + "Schema");
-    if (soas.emits_vector_storage(schema)) {
-        result.push_back(soas.name[schema_row]);
-        add(view_name);
-        add(const_view_name);
+    add(name + "Layout");
+    add(name + "LayoutColumns");
+    add(view);
+    add(const_view);
+    add(view + "Impl");
+    add(resolved(view, false));
+    add(resolved(const_view, true));
+    add(resolved(view, false) + "Impl");
+    if (soas.field_mask_name[row]) {
+        result.push_back(*soas.field_mask_name[row]);
     }
-    if (soas.field_mask_name[schema_row]) {
-        result.push_back(*soas.field_mask_name[schema_row]);
-    }
-    if (soas.field_enum_name[schema_row]) {
-        result.push_back(*soas.field_enum_name[schema_row]);
-    }
-    if (soas.single_allocation[schema_row]) {
-        add(text(*soas.single_allocation[schema_row]));
-        add(name + "SingleLayout");
-        add(name + "SingleLayoutColumns");
-        add(compact_view);
-        add(compact_const_view);
-        add(compact_view + "Impl");
-        std::vector<StringId> ancestors{soas.name[schema_row]};
-        auto collect_nested =
-            [&](auto&& self, DeclarationHandle parent, std::string const& suffix) -> void {
-            for (auto const member_id : declarations.items(soas.members[soas.index(parent)])) {
-                auto const member{declarations.soa_members.index(member_id)};
-                if (declarations.soa_members.kind[member] != SoaMemberKind::nested ||
-                    !declarations.soa_members.nested_schema[member]) {
-                    continue;
-                }
-                for (auto const declaration :
-                     declarations.items(declarations.normal_modules.declarations[module_row])) {
-                    if (declaration.kind() != DeclarationKind::soa) {
-                        continue;
-                    }
-                    auto const nested{soas.index(declaration)};
-                    if (soas.name[nested] != *declarations.soa_members.nested_schema[member] ||
-                        soas.uses_compact_vector_runtime(declaration) ||
-                        std::ranges::find(ancestors, soas.name[nested]) != ancestors.end()) {
-                        continue;
-                    }
-                    auto const path{suffix + "_" + text(declarations.soa_members.name[member])};
-                    add(compact_view + path);
-                    add(compact_const_view + path);
-                    add(compact_view + path + "Impl");
-                    ancestors.push_back(soas.name[nested]);
-                    self(self, declaration, path);
-                    ancestors.pop_back();
-                }
-            }
-        };
-        collect_nested(collect_nested, schema, "");
-    }
-    if (soas.fixed[schema_row]) {
-        auto const fixed{declarations.fixed_soas.index(*soas.fixed[schema_row])};
-        result.push_back(declarations.fixed_soas.storage_name[fixed]);
-        auto const containers{declarations.items(declarations.fixed_soas.containers[fixed])};
-        for (auto const container : containers) {
-            result.push_back(container);
-        }
-    }
-    if (includes_allocator_variants && soas.emits_vector_storage(schema)) {
-        for (auto const id :
-             declarations.items(declarations.normal_modules.soa_array_allocators[module_row])) {
-            auto const prefix{text(declarations.soa_allocator_variants
-                                       .prefix[declarations.soa_allocator_variants.index(id)])};
-            add(prefix + name);
-            add(prefix + name + "Schema");
-            add(prefix + view_name);
-            add(prefix + const_view_name);
-        }
+    if (soas.field_enum_name[row]) {
+        result.push_back(*soas.field_enum_name[row]);
     }
     return result;
 }
@@ -488,10 +386,6 @@ auto declaration_head(DeclarationHandle declaration) -> std::string_view {
             return "tagged-union";
         case DeclarationKind::soa:
             return "struct";
-        case DeclarationKind::vector_soa:
-            return "vector-soa";
-        case DeclarationKind::homogeneous_layout:
-            return "layout";
         case DeclarationKind::static_table:
             return "table";
         case DeclarationKind::facade:
@@ -503,8 +397,7 @@ auto declaration_head(DeclarationHandle declaration) -> std::string_view {
 }
 
 auto has_primary_semantic_type(DeclarationHandle declaration) -> bool {
-    return !ioj::is_any(declaration.kind(),
-                        {DeclarationKind::homogeneous_layout, DeclarationKind::settings_schema});
+    return declaration.kind() != DeclarationKind::settings_schema;
 }
 
 void visit_type_references(
@@ -537,9 +430,6 @@ auto declaration_name(Declarations const& declarations, DeclarationHandle declar
                 .name[declarations.settings_schemas.index(declaration)];
         case DeclarationKind::fixed_point:
             return declarations.fixed_points.name[declarations.fixed_points.index(declaration)];
-        case DeclarationKind::homogeneous_layout:
-            return declarations.homogeneous_layouts
-                .name[declarations.homogeneous_layouts.index(declaration)];
         case DeclarationKind::integer_scalar:
             return declarations.integer_scalars
                 .name[declarations.integer_scalars.index(declaration)];
@@ -569,15 +459,12 @@ auto declaration_name(Declarations const& declarations, DeclarationHandle declar
             return declarations.tagged_unions.name[declarations.tagged_unions.index(declaration)];
         case DeclarationKind::union_type:
             return declarations.unions.name[declarations.unions.index(declaration)];
-        case DeclarationKind::vector_soa:
-            return declarations.vector_soas.name[declarations.vector_soas.index(declaration)];
     }
     std::unreachable();
 }
 
-auto generated_cpp_names(Declarations const& declarations,
-                         DeclarationHandle declaration,
-                         ModuleHandle module) -> std::vector<StringId> {
+auto generated_cpp_names(Declarations const& declarations, DeclarationHandle declaration)
+    -> std::vector<StringId> {
     auto& strings{declarations.strings()};
     auto text = [&](auto id) { return std::string{strings.view(id)}; };
     auto const id{declaration_name(declarations, declaration)};
@@ -619,38 +506,7 @@ auto generated_cpp_names(Declarations const& declarations,
             return result;
         }
         case DeclarationKind::soa:
-            return soa_generated_cpp_names(declarations, declaration, module, true);
-        case DeclarationKind::vector_soa: {
-            std::vector<StringId> result{strings.intern(name + "Schema"),
-                                         id,
-                                         strings.intern(name + "View"),
-                                         strings.intern(name + "ConstView")};
-            auto const fixed{
-                declarations.vector_soas.fixed[declarations.vector_soas.index(declaration)]};
-            if (fixed) {
-                auto const row{declarations.fixed_soas.index(*fixed)};
-                result.push_back(declarations.fixed_soas.storage_name[row]);
-                for (auto container : declarations.items(declarations.fixed_soas.containers[row])) {
-                    result.push_back(container);
-                }
-            }
-            return result;
-        }
-        case DeclarationKind::homogeneous_layout: {
-            std::vector<StringId> result{strings.intern("T" + name + "View")};
-            auto const values{declarations.items(
-                declarations.homogeneous_layouts
-                    .value_types[declarations.homogeneous_layouts.index(declaration)])};
-            auto const& homogeneous{declarations.homogeneous_values};
-            if (!values.empty() && homogeneous.equivalent_type[homogeneous.index(values.front())]) {
-                result.push_back(strings.intern("T" + name + "EquivalentType"));
-            }
-            for (auto value : values) {
-                result.push_back(strings.intern(
-                    "F" + name + text(homogeneous.suffix[homogeneous.index(value)])));
-            }
-            return result;
-        }
+            return soa_generated_cpp_names(declarations, declaration);
         default:
             return {};
     }

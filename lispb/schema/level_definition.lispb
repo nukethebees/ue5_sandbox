@@ -2,7 +2,6 @@
   :header "native/simulation/include/ioj/sim/levels/level_spawn_groups.h"
   :namespace ioj::sim
   (struct LevelSpawnGroups
-    :operations (all)
     (member types array @native_entity_type)
     (member offsets array int32)
     (member counts array @native_level_event_count)
@@ -12,7 +11,6 @@
   :header "native/simulation/include/ioj/sim/levels/level_capital_spawn_events.h"
   :namespace ioj::sim
   (struct LevelCapitalSpawnEvents
-    :operations (all)
     (member entity_indices array @native_level_entity_index)
     (member target_entity_indices array @native_level_entity_index)
     (member locations nested @native_vectors_3f)
@@ -27,7 +25,6 @@
   :header "native/simulation/include/ioj/sim/levels/level_turret_spawn_events.h"
   :namespace ioj::sim
   (struct LevelTurretSpawnEvents
-    :operations (all)
     (member entity_indices array @native_level_entity_index)
     (member locations nested @native_vectors_3f)
     (member rotations nested @native_rotators_3f)
@@ -40,7 +37,6 @@
   :header "native/simulation/include/ioj/sim/levels/level_spinner_spawn_events.h"
   :namespace ioj::sim
   (struct LevelSpinnerSpawnEvents
-    :operations (all)
     (member entity_indices array @native_level_entity_index)
     (member locations nested @native_vectors_3f)
     (member yaws array float)
@@ -51,7 +47,6 @@
   :header "native/simulation/include/ioj/sim/levels/level_mission_event_groups.h"
   :namespace ioj::sim
   (struct LevelMissionEventGroups
-    :operations (all)
     (member types array @native_level_mission_event_type)
     (member offsets array int32)
     (member counts array @native_level_event_count)

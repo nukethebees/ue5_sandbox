@@ -1,9 +1,7 @@
 (module native_fighter_order_queue
   :header "native/simulation/include/ioj/sim/fighters/fighter_order_queue.h"
-  :backend standard-library
   :namespace ioj::sim
   (struct FighterOrderQueue
-    :operations (all)
     (member entity_ids array @native_unique_id)
     (member orders array @native_fighter_order)
     (member tasks array @native_fighter_task)
@@ -20,4 +18,4 @@ queue.targets()[index] = target;}cpp#
       (parameter order (type-ref @native_fighter_order :suffix " const"))
       (parameter task (type-ref @native_fighter_task :suffix " const"))
       (parameter target (type-ref @native_unique_id :suffix " const")))
-    (single-allocation FighterOrderQueue)))
+))

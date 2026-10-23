@@ -1,10 +1,12 @@
 (module native_vectors_3f
   :header "native/core/include/ioj/vectors3f.h"
-  :backend standard-library
+  :header-include "ioj/vectors3f.h"
   :namespace ioj
-  (vector-soa Vectors3f
-    :value-type float
-    :components (xs ys zs)
-    :equivalent-members (x y z)
-    :equivalent-accessors true
-    :equivalent-type @native_vector_3f))
+  (struct Vectors3f
+    :view-name Vectors3fView
+    :const-view-name Vectors3fConstView
+    :equivalent-type @native_vector_3f
+    (member xs array float :equivalent-member x :equivalent-accessor true)
+    (member ys array float :equivalent-member y :equivalent-accessor true)
+    (member zs array float :equivalent-member z :equivalent-accessor true)
+))

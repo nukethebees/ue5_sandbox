@@ -4,23 +4,6 @@
 
 namespace lispb::codegen {
 
-auto SoaSchemas::selected_storage(DeclarationHandle id) const -> SoaStorage {
-    auto const row{index(id)};
-    return storage[row].value_or(single_allocation[row] ? SoaStorage::single_allocation
-                                                        : SoaStorage::vector);
-}
-
-auto SoaSchemas::emits_vector_storage(DeclarationHandle id) const -> bool {
-    return !layout_only[index(id)] && selected_storage(id) != SoaStorage::single_allocation;
-}
-
-auto SoaSchemas::uses_compact_vector_runtime(DeclarationHandle id) const -> bool {
-    auto const row{index(id)};
-    return !vector_components[row].empty() && !equivalent_type[row] &&
-           const_view_functions[row].empty() && mutable_view_functions[row].empty() &&
-           using_declarations[row].empty() && export_specifier[row].value == 0;
-}
-
 auto SoaSchemas::index(DeclarationHandle id) const -> std::uint32_t {
     assert(id.kind() == DeclarationKind::soa);
     auto const row{id.index()};
@@ -34,22 +17,15 @@ auto SoaSchemas::append() -> DeclarationHandle {
     view_name.push_back({});
     const_view_name.push_back({});
     members.push_back({});
-    operations.push_back({});
     export_specifier.push_back({});
     functions.push_back({});
     mutable_view_functions.push_back({});
     using_declarations.push_back({});
     equivalent_type.push_back({});
     equivalent_constructor.push_back({});
-    copy_element_memberwise.push_back(false);
     layout_only.push_back(false);
-    fixed.push_back({});
-    single_allocation.push_back({});
-    array_allocator.push_back({});
     field_mask_name.push_back({});
     field_enum_name.push_back({});
-    vector_components.push_back({});
-    storage.push_back({});
     const_view_functions.push_back({});
     return DeclarationHandle{(static_cast<std::uint32_t>(DeclarationKind::soa) << 24) |
                              (index + 1)};
@@ -62,22 +38,15 @@ auto SoaSchemas::clone(DeclarationHandle id) -> DeclarationHandle {
     view_name[destination] = view_name[source_index];
     const_view_name[destination] = const_view_name[source_index];
     members[destination] = members[source_index];
-    operations[destination] = operations[source_index];
     export_specifier[destination] = export_specifier[source_index];
     functions[destination] = functions[source_index];
     mutable_view_functions[destination] = mutable_view_functions[source_index];
     using_declarations[destination] = using_declarations[source_index];
     equivalent_type[destination] = equivalent_type[source_index];
     equivalent_constructor[destination] = equivalent_constructor[source_index];
-    copy_element_memberwise[destination] = copy_element_memberwise[source_index];
     layout_only[destination] = layout_only[source_index];
-    fixed[destination] = fixed[source_index];
-    single_allocation[destination] = single_allocation[source_index];
-    array_allocator[destination] = array_allocator[source_index];
     field_mask_name[destination] = field_mask_name[source_index];
     field_enum_name[destination] = field_enum_name[source_index];
-    vector_components[destination] = vector_components[source_index];
-    storage[destination] = storage[source_index];
     const_view_functions[destination] = const_view_functions[source_index];
     return result;
 }
@@ -86,22 +55,15 @@ void SoaSchemas::clear() {
     view_name.clear();
     const_view_name.clear();
     members.clear();
-    operations.clear();
     export_specifier.clear();
     functions.clear();
     mutable_view_functions.clear();
     using_declarations.clear();
     equivalent_type.clear();
     equivalent_constructor.clear();
-    copy_element_memberwise.clear();
     layout_only.clear();
-    fixed.clear();
-    single_allocation.clear();
-    array_allocator.clear();
     field_mask_name.clear();
     field_enum_name.clear();
-    vector_components.clear();
-    storage.clear();
     const_view_functions.clear();
 }
 

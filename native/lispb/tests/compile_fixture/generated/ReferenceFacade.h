@@ -3,7 +3,9 @@
 
 #pragma once
 
-#include "Project/Target.h"
+#include "compile_fixture/target.hpp"
+
+#include <cstdint>
 
 namespace codegen_compile_fixture {
 class FReferenceFacade {
@@ -11,9 +13,9 @@ class FReferenceFacade {
     FReferenceFacade(FTarget& new_target)
         : target{new_target} {}
 
-    int32 get() const { return target.get(); }
+    std::int32_t get() const { return target.get(); }
 
-    void set_value(int32 const value) { target.set(value); }
+    void set_value(std::int32_t const value) { target.set(value); }
   private:
     FTarget& target;
 };

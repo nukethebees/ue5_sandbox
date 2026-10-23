@@ -1,34 +1,34 @@
-set(NATIVE_SOA_GENERATED "${CMAKE_CURRENT_BINARY_DIR}/generated")
-add_custom_command(
-  OUTPUT "${NATIVE_SOA_GENERATED}/native_soa_types.h" "${NATIVE_SOA_GENERATED}/native_soa_types.cpp"
-  COMMAND "$<TARGET_FILE:lispb>" generate
-    --project "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
-    --build-root "${CMAKE_BINARY_DIR}"
-    --target native-soa-fixture
-    --depfile "${NATIVE_SOA_GENERATED}/fixture.d"
-  DEPENDS lispb
-    "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
-    "${CMAKE_CURRENT_SOURCE_DIR}/types.lispb"
-    "${CMAKE_CURRENT_SOURCE_DIR}/fixture.lispb"
-  DEPFILE "${NATIVE_SOA_GENERATED}/fixture.d"
-  VERBATIM)
-add_custom_target(generate-native-soa-fixture
-  DEPENDS "${NATIVE_SOA_GENERATED}/native_soa_types.h")
 add_custom_target(check-generated-native-soa-fixture
   COMMAND "$<TARGET_FILE:lispb>" check
     --project "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
     --build-root "${CMAKE_BINARY_DIR}"
     --target native-soa-fixture
-  DEPENDS generate-native-soa-fixture
-  VERBATIM)
+  DEPENDS lispb
+  VERBATIM
+)
 add_dependencies(check-generated-code check-generated-native-soa-fixture)
-add_library(native-soa INTERFACE)
-target_include_directories(native-soa INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/include" "${NATIVE_SOA_GENERATED}")
-target_include_directories(native-soa INTERFACE "${PROJECT_SOURCE_DIR}/native/core/include")
-target_sources(native-soa INTERFACE "${NATIVE_SOA_GENERATED}/native_soa_types.h")
-target_link_libraries(native-soa INTERFACE sandbox::native_defaults)
 
-add_executable(native-soa-tests tests.cpp "${NATIVE_SOA_GENERATED}/native_soa_types.cpp")
+add_library(native-soa INTERFACE)
+target_include_directories(native-soa
+  INTERFACE
+    "${CMAKE_CURRENT_SOURCE_DIR}/include"
+    "${PROJECT_SOURCE_DIR}/native/core/include"
+)
+target_sources(native-soa
+  INTERFACE
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/native_soa/types.hpp"
+)
+target_link_libraries(native-soa
+  INTERFACE
+    sandbox::native_defaults
+)
+
+add_executable(native-soa-tests)
+target_sources(native-soa-tests
+  PRIVATE
+    tests.cpp
+    src/types.cpp
+)
 ioj_enable_warnings(native-soa-tests)
 target_link_libraries(native-soa-tests PRIVATE native-soa GTest::gtest_main)
 add_test(NAME native-soa-tests COMMAND native-soa-tests)
@@ -79,21 +79,5 @@ add_custom_target(native-soa-production-report
     "--benchmark_filter=Production/" --benchmark_repetitions=7
     --benchmark_enable_random_interleaving=true --benchmark_min_time=0.1s
     "--benchmark_out=${CMAKE_BINARY_DIR}/native-soa-production-results.json"
-    --benchmark_out_format=json
-  DEPENDS native-soa-benchmarks USES_TERMINAL VERBATIM)
-
-add_custom_target(native-soa-candidate-report
-  COMMAND "$<TARGET_FILE:native-soa-benchmarks>"
-    "--benchmark_filter=Production/(Spinner|LaserHit)/" --benchmark_repetitions=7
-    --benchmark_enable_random_interleaving=true --benchmark_min_time=0.1s
-    "--benchmark_out=${CMAKE_BINARY_DIR}/native-soa-candidate-results.json"
-    --benchmark_out_format=json
-  DEPENDS native-soa-benchmarks USES_TERMINAL VERBATIM)
-
-add_custom_target(native-soa-laser-hit-append-report
-  COMMAND "$<TARGET_FILE:native-soa-benchmarks>"
-    "--benchmark_filter=Production/LaserHit/" --benchmark_repetitions=9
-    --benchmark_enable_random_interleaving=true --benchmark_min_time=0.3s
-    "--benchmark_out=${CMAKE_BINARY_DIR}/native-soa-laser-hit-append-results.json"
     --benchmark_out_format=json
   DEPENDS native-soa-benchmarks USES_TERMINAL VERBATIM)

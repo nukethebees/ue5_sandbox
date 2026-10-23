@@ -6,13 +6,9 @@ declarations once into a consumer-neutral `TypeGraph`.
 
 Normal modules expose one ordered `DeclarationHandle` sequence. The graph visits that sequence
 directly, so a semantic node's declaration index is the index in its source module, including
-when different declaration kinds are interleaved. A declaration can own multiple semantic types:
-homogeneous layouts retain declaration identity and produce one homogeneous storage row per
-value-type specialization. These nodes retain their source declaration handle; `types_for_declaration` includes
-both ordinary single-type declarations and generated families. The generic view and equivalent-type
-trait remain template descriptions in the authoritative layout schema, without a fabricated
-concrete TypeId or layout. Settings and umbrella output constructs are exceptional
-modules rather than semantic declaration containers.
+when different declaration kinds are interleaved. Semantic nodes retain their source declaration
+handles. Settings and umbrella output constructs are exceptional modules rather than semantic
+declaration containers.
 
 Each node has a stable `TypeIdentity` made from its origin, module, namespace, and declared name.
 References inside one resolved graph use compact `TypeId` indices; these are handles for that graph,
@@ -46,11 +42,18 @@ combines these uses, derived declaration layouts and target-profile facts withou
 
 Static-table columns describe rows, typed fixed-count columns and group result types. Facade columns
 describe target bindings and method signatures; target dependencies do not imply by-value
-storage. Homogeneous storage nodes resolve element, equivalent and input types. These semantic
-models do not assert an ABI layout for Unreal containers or facade reference members.
+storage. These semantic models do not assert an ABI layout for facade reference members.
+
+Ordinary SoA declarations own their ordered logical members. A nested member's resolved type
+identifies its child declaration, including across modules. There is no separate nested-name map
+or vector declaration category. Nested value cycles are rejected before lowering. Physical columns
+are flattened from those same members, while logical access preserves the nesting. Equivalent row
+types and member mappings are independent of storage. Dynamic owners use their declaration name;
+layout-only declarations have no C++ owner spelling but remain valid nested groups and relationship
+targets.
 
 `type_uses()` additionally records explicit schema references with their owning declaration or
-module and role. This includes declaration-only constructs, function signatures, allocators,
+module and role. This includes declaration-only constructs, function signatures,
 registered function/validation dependencies, and settings. These uses support dependency
 inventories without making every owner a semantic type. They do not parse embedded C++ text or
 claim that a registration with no LispB references is unused throughout a C++ project.

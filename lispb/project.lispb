@@ -40,7 +40,6 @@
       "lispb/schema/s7_starfield_settings.lispb"
       "lispb/schema/s7_presentation_settings.lispb"
       "lispb/schema/native_traces.lispb"
-      "lispb/schema/core_layouts.lispb"
       "lispb/schema/level_telemetry_history.lispb"
       "lispb/schema/native_collision.lispb"
         "lispb/schema/native_entity_cell_data.lispb"
@@ -63,7 +62,7 @@
         "lispb/schema/fighter_navigation_types.lispb"
         "lispb/schema/native_vectors.lispb"
         "lispb/schema/native_rotators.lispb"
-        "lispb/schema/collision.lispb"
+        "lispb/schema/native_radar_positions.lispb"
       "lispb/schema/level_definition.lispb"
       "lispb/schema/batch_game.lispb"
       "lispb/schema/enums.lispb"
@@ -80,12 +79,7 @@
   (cpp-schema native-soa-fixture
     :types "native/lispb/native_soa/types.lispb"
     :sources ("native/lispb/native_soa/fixture.lispb")
-    :output-root (build-path "native/lispb/native_soa/generated"))
-
-  (cpp-schema sandbox-core-test-fixture
-    :types "lispb/schema/common_scalars.lispb"
-    :sources ("Plugins/SandboxCore/Source/SandboxCoreEngineTests/Private/soa_fixture.lispb")
-    :output-root (project-path "Plugins/SandboxCore/Source/SandboxCoreEngineTests/Private/generated"))
+    :output-root (project-path "native/lispb/native_soa"))
 
   (slate slate-core-widgets
     :sources ("Plugins/SandboxUI/Source/SandboxUI/Private/widgets/CoreWidgets.lispb")
@@ -211,7 +205,7 @@
       slate-game-options
       slate-level-select))
   (group committed-code
-    :targets (compiler-ir compiler-schema layout-analysis sandbox-code sandbox-core-test-fixture slate-production kernel-unreal kernel-native-core))
+    :targets (compiler-ir compiler-schema layout-analysis sandbox-code native-soa-fixture slate-production kernel-unreal kernel-native-core))
   (group materials
     :targets (
       ui-glow-material

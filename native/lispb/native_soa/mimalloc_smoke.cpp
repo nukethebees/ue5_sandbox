@@ -2,7 +2,7 @@
 #include <sbx/memory_resource.h>
 
 #include <gtest/gtest.h>
-#include <native_soa_types.h>
+#include <native_soa/types.hpp>
 
 #include <cstdint>
 

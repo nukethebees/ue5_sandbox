@@ -4,7 +4,6 @@
 #include <lispb/schema/external_types.h>
 #include <lispb/schema/facade_types.h>
 #include <lispb/schema/fixed_point_types.h>
-#include <lispb/schema/homogeneous_storage_types.h>
 #include <lispb/schema/integer_scalar_types.h>
 #include <lispb/schema/integer_varint_types.h>
 #include <lispb/schema/linear_quantized_types.h>
@@ -43,7 +42,6 @@ struct TypeDefinitions {
     SoaTypes soas;
     StaticTableTypes static_tables;
     FacadeTypes facades;
-    HomogeneousStorageTypes homogeneous_storage;
     RecordMembers record_members;
     UnionAlternatives union_alternatives;
     TaggedUnionAlternatives tagged_union_alternatives;

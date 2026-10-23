@@ -21,7 +21,6 @@ enum class TypeDefinitionKind : std::uint8_t {
     soa,
     static_table,
     facade,
-    homogeneous_storage,
 };
 
 } // namespace lispb::schema

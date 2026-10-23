@@ -1,38 +1,29 @@
 (module native_line_traces
   :header "native/simulation/include/ioj/sim/collision/line_traces.h"
   :header-include "ioj/sim/collision/line_traces.h"
-  :backend standard-library
   :namespace ioj::sim
-  (struct Vectors3f
-    :layout-only true
-    :equivalent-type @native_vector_3f
-    :vector-components (xs ys zs)
-    (member xs array float)
-    (member ys array float)
-    (member zs array float))
   (struct LineTraces
-    :operations (all)
-    (member starts nested @native_vectors_3f :nested-schema Vectors3f)
-    (member ends nested @native_vectors_3f :nested-schema Vectors3f)
-    (single-allocation LineTraces)))
+    (member starts nested @native_vectors_3f)
+    (member ends nested @native_vectors_3f)
+))
 
 (module native_trace_hits
   :header "native/simulation/include/ioj/sim/collision/trace_hits.h"
   :header-include "ioj/sim/collision/trace_hits.h"
-  :backend standard-library
   :namespace ioj::sim
   :prelude ("#include <ioj/sim/collision/line_trace_result.h>")
-  (struct Vectors3f
-    :layout-only true
-    :equivalent-type @native_vector_3f
-    :vector-components (xs ys zs)
-    (member xs array float)
-    (member ys array float)
-    (member zs array float))
   (struct TraceHits
-    :operations (all)
-    (member locations nested @native_vectors_3f :nested-schema Vectors3f)
+    (member locations nested @native_vectors_3f)
     (member entities array @native_unique_id)
     (member static_geometry_indices array @native_static_geometry_index)
     (member hits array @native_trace_hit)
-    (single-allocation TraceHits)))
+))
+
+(module native_range_query_matches
+  :header "native/simulation/include/ioj/sim/collision/range_query_matches.h"
+  :header-include "ioj/sim/collision/range_query_matches.h"
+  :namespace ioj::sim
+  (struct RangeQueryMatches
+    (member entities array @native_unique_id)
+    (member distances array float)
+    (member directions nested @native_vectors_3f)))

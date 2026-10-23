@@ -16,8 +16,6 @@ auto NormalModuleSchemas::append() -> ModuleHandle {
     settings.push_back({});
     declarations.push_back({});
     enum_helper_namespace.push_back({});
-    soa_backend.push_back(SoaBackend::unreal);
-    soa_array_allocators.push_back({});
     return ModuleHandle{(static_cast<std::uint32_t>(ModuleKind::normal) << 24) | (index + 1)};
 }
 auto NormalModuleSchemas::clone(ModuleHandle id) -> ModuleHandle {
@@ -27,16 +25,12 @@ auto NormalModuleSchemas::clone(ModuleHandle id) -> ModuleHandle {
     settings[destination] = settings[source_index];
     declarations[destination] = declarations[source_index];
     enum_helper_namespace[destination] = enum_helper_namespace[source_index];
-    soa_backend[destination] = soa_backend[source_index];
-    soa_array_allocators[destination] = soa_array_allocators[source_index];
     return result;
 }
 void NormalModuleSchemas::clear() {
     settings.clear();
     declarations.clear();
     enum_helper_namespace.clear();
-    soa_backend.clear();
-    soa_array_allocators.clear();
 }
 
 }

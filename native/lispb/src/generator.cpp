@@ -21,7 +21,6 @@
 #include <codegen/schema/enum_schemas.h>
 #include <codegen/schema/facade_schemas.h>
 #include <codegen/schema/fixed_point_schemas.h>
-#include <codegen/schema/homogeneous_layout_schemas.h>
 #include <codegen/schema/indices.h>
 #include <codegen/schema/integer_scalar_cpp_emission.h>
 #include <codegen/schema/integer_scalar_schemas.h>
@@ -39,14 +38,12 @@
 #include <codegen/schema/packed_value_schemas.h>
 #include <codegen/schema/record_schemas.h>
 #include <codegen/schema/settings_module_schemas.h>
-#include <codegen/schema/soa_allocator_variants.h>
 #include <codegen/schema/soa_schemas.h>
 #include <codegen/schema/static_table_schemas.h>
 #include <codegen/schema/tagged_union_schemas.h>
 #include <codegen/schema/type_reference_kind.h>
 #include <codegen/schema/umbrella_module_schemas.h>
 #include <codegen/schema/union_schemas.h>
-#include <codegen/schema/vector_soa_schemas.h>
 #include <codegen/source_loader.h>
 #include <lispb/compilation.h>
 #include <lispb/compiler_storage.h>
@@ -57,7 +54,6 @@
 #include <lispb/schema/external_types.h>
 #include <lispb/schema/facade_types.h>
 #include <lispb/schema/fixed_point_types.h>
-#include <lispb/schema/homogeneous_storage_types.h>
 #include <lispb/schema/indices.h>
 #include <lispb/schema/integer_scalar_types.h>
 #include <lispb/schema/integer_varint_types.h>
@@ -347,23 +343,6 @@ auto lower_modules(CppIR& ir, Manifest& manifest, schema::TypeGraph const& graph
                         store.normal_modules.settings[store.normal_modules.index(module)]};
                     auto const declarations{store.items(
                         store.normal_modules.declarations[store.normal_modules.index(module)])};
-                    std::vector<DeclarationHandle> schemas;
-                    for (auto const declaration : declarations) {
-                        if (auto const soa{
-                                ((declaration).kind() == lispb::codegen::DeclarationKind::soa
-                                     ? std::optional{declaration}
-                                     : std::nullopt)}) {
-                            schemas.push_back(*soa);
-                        }
-                    }
-                    std::map<StringId, DeclarationHandle> expanded;
-                    for (auto const soa : expand_soa_allocator_variants(
-                             store,
-                             schemas,
-                             store.normal_modules
-                                 .soa_array_allocators[store.normal_modules.index(module)])) {
-                        expanded.emplace(store.soas.name[store.soas.index(soa)], soa);
-                    }
                     std::vector<detail::DeclarationEmission> emissions;
                     emissions.reserve(declarations.size() + 1);
                     emissions.push_back(generated_forward_declarations(ir, module_id, graph));
@@ -405,12 +384,7 @@ auto lower_modules(CppIR& ir, Manifest& manifest, schema::TypeGraph const& graph
                                 }
                                 case lispb::codegen::DeclarationKind::soa: {
 
-                                    return detail::lower_soa_declaration(
-                                        context, value, module, expanded);
-                                }
-                                case lispb::codegen::DeclarationKind::homogeneous_layout: {
-
-                                    return detail::lower_homogeneous(context, value);
+                                    return detail::lower_soa_declaration(context, value);
                                 }
                                 case lispb::codegen::DeclarationKind::facade: {
 
@@ -433,14 +407,6 @@ auto lower_modules(CppIR& ir, Manifest& manifest, schema::TypeGraph const& graph
                                                                          module)]}
                                             : std::nullopt);
                                 }
-                                case lispb::codegen::DeclarationKind::vector_soa: {
-
-                                    return detail::lower_vector(
-                                        context,
-                                        value,
-                                        store.normal_modules
-                                            .soa_backend[store.normal_modules.index(module)]);
-                                }
                                 case lispb::codegen::DeclarationKind::fixed_point:
                                 case lispb::codegen::DeclarationKind::integer_varint:
                                 case lispb::codegen::DeclarationKind::linear_quantized:
@@ -452,14 +418,6 @@ auto lower_modules(CppIR& ir, Manifest& manifest, schema::TypeGraph const& graph
                                     std::unreachable();
                             }
                         }());
-                    }
-                    for (auto const allocator : store.items(
-                             store.normal_modules
-                                 .soa_array_allocators[store.normal_modules.index(module)])) {
-                        for (auto const& soa : schemas) {
-                            emissions.push_back(detail::lower_soa_declaration(
-                                context, soa, module, expanded, allocator));
-                        }
                     }
                     auto lowered{detail::assemble_module(context, settings, emissions)};
                     result.insert(result.end(),

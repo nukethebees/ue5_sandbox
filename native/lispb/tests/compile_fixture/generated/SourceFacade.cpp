@@ -3,22 +3,23 @@
 
 #include "SourceFacade.h"
 
-#include "Project/Target.h"
+#include "compile_fixture/target.hpp"
 
-#include "CoreMinimal.h"
+#include <cassert>
+#include <cstdint>
 
 namespace codegen_compile_fixture {
 void FSourceFacade::bind(FTarget& new_target) {
     target = &new_target;
 }
 
-void FSourceFacade::set_value(int32 const value) {
-    check(target != nullptr);
+void FSourceFacade::set_value(std::int32_t const value) {
+    assert(target != nullptr);
     target->set(value);
 }
 
-int32 FSourceFacade::get() const {
-    check(target != nullptr);
+std::int32_t FSourceFacade::get() const {
+    assert(target != nullptr);
     return target->get();
 }
 } // namespace codegen_compile_fixture

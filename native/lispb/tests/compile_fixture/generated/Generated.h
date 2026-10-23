@@ -3,20 +3,15 @@
 
 #pragma once
 
-#include "Homogeneous.h"
+#include "FieldMasks.h"
 #include "InlineFacade.h"
 #include "Mixed.h"
 #include "PackedEnums.h"
 #include "PackedValues.h"
 #include "PlainEnums.h"
+#include "Records.h"
 #include "ReferenceFacade.h"
-#include "ReflectedEnums.h"
 #include "Representations.h"
+#include "RestrictionRows.h"
 #include "ScalarValues.h"
-#include "Settings.h"
-#include "Soa.h"
 #include "SourceFacade.h"
-#include "StaticTables.h"
-#include "Vector1.h"
-#include "Vector2.h"
-#include "Vector3.h"
