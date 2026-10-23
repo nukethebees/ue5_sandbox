@@ -14,8 +14,14 @@ namespace lispb::codegen {
 
 struct EnvironmentSymbol {
     CppDeclarationId declaration;
+    // Distinguish declarations when an IR node is reused in another environment.
+    EnvironmentId declaring_scope;
     EnvironmentId introduced_scope;
     bool ambiguous{};
+
+    auto same_declaration(EnvironmentSymbol const& other) const -> bool {
+        return declaration == other.declaration && declaring_scope == other.declaring_scope;
+    }
 };
 
 enum class LookupStatus { found, missing, unknown };
@@ -47,6 +53,9 @@ class Environments {
                  IdentifierId name,
                  CppDeclarationId declaration,
                  EnvironmentId introduced_scope = {}) -> EnvironmentSymbol;
+    // Preserve declaration ownership for injected names and anonymous namespace imports.
+    auto bind(EnvironmentId environment, IdentifierId name, EnvironmentSymbol symbol)
+        -> EnvironmentSymbol;
     auto named(EnvironmentId parent,
                EnvironmentKind kind,
                IdentifierId name,
@@ -59,8 +68,7 @@ class Environments {
         -> SymbolLookup;
     auto lookup_local(EnvironmentId environment, IdentifierId name) const -> SymbolLookup;
     // Register names supplied by includes without claiming knowledge of their contents.
-    auto reference(std::span<IdentifierId const> name, CppDeclarationId external)
-        -> CppDeclarationId;
+    auto reference(std::span<IdentifierId const> name) -> EnvironmentSymbol;
     // Ignore unknown contents when locating an already registered owner scope.
     // Return null when no such scope exists.
     auto find_environment(EnvironmentId environment, std::span<IdentifierId const> name) const

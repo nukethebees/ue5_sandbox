@@ -53,12 +53,11 @@ void CppIR::append_template(std::string& output,
                             TemplateId declaration,
                             RenderContext const& context) const {
     assert(declaration);
-    RenderScopeGuard const guard{*context.state};
-    context.state->scopes.emplace_back();
     auto const row{declaration.index()};
     output += "template <";
     if (declaration.kind() == TemplateKind::authored_raw) {
         output += strings.view(templates_.authored_text[row]);
+        context.state->environments.mark_unknown(context.state->current);
     } else if (declaration.kind() == TemplateKind::parameters) {
         auto const range{templates_.parameters[row]};
         auto const end{range.begin + range.count};
@@ -107,7 +106,8 @@ void CppIR::append_template(std::string& output,
                                 ? type_template_parameters_.name[index]
                                 : value_template_parameters_.name[index]};
             if (name.value != 0) {
-                context.state->scopes.back().names.push_back(strings.view(name));
+                context.state->environments.declare(
+                    context.state->current, name, CppDeclarationId::from(parameter));
             }
         }
     }

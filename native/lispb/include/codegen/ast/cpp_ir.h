@@ -419,11 +419,22 @@ class CppIR {
                       std::span<NodeId const> values,
                       RenderContext const& context,
                       int newlines) const;
-    auto signature(std::uint32_t function_index, RenderContext const& context) const -> std::string;
-    auto scope(std::span<NodeId const> children, bool complete = false) const -> RenderScope;
-    auto template_scope(TemplateId declaration) const -> RenderScope;
-    auto record_scope(std::string_view owner, RenderContext const& context) const -> RenderScope;
-    void initialize_namespaces(RenderState& state, std::span<NodeId const> children) const;
+    auto signature(std::uint32_t function_index,
+                   RenderContext const& context,
+                   EnvironmentId& environment) const -> std::string;
+    auto declaration_name(Expr expression) const -> IdentifierId;
+    void collect_environment(RenderState& state,
+                             EnvironmentId environment,
+                             std::span<NodeId const> children,
+                             bool complete = false) const;
+    void collect_template_parameters(RenderState& state,
+                                     EnvironmentId environment,
+                                     TemplateId declaration) const;
+    auto block_environment(RenderState& state,
+                           std::span<NodeId const> children,
+                           EnvironmentKind kind = EnvironmentKind::block) const -> EnvironmentId;
+    auto record_environment(std::string_view owner, RenderState& state) const -> EnvironmentId;
+    void initialize_environments(RenderState& state, std::span<NodeId const> children) const;
     std::unordered_map<std::uint32_t, std::vector<IdentifierId>> scope_bindings_;
     std::vector<FunctionParameterId> parameter_references_;
     std::vector<MemberInitializerId> initializer_references_;

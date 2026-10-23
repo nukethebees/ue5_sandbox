@@ -324,7 +324,7 @@ void CppIR::append_expr(
     }
 }
 auto CppIR::render(Expr expr, RenderContext const& context) const -> std::string {
-    RenderState state;
+    RenderState state{strings};
     auto active{context};
     if (active.state == nullptr) {
         active.state = &state;

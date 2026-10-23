@@ -22,10 +22,10 @@ void CppTypes::append(std::string& output,
             output += spelling(type);
             return;
         }
-        std::vector<std::string_view> components;
+        std::vector<IdentifierId> components;
         for (auto const component :
              std::span{name_components_}.subspan(shape.parts.begin, shape.parts.count)) {
-            components.push_back(strings_.view(component));
+            components.push_back(IdentifierId{component.value});
         }
         context.state->append_name(output, components);
     } else {
@@ -38,60 +38,37 @@ void CppTypes::append(std::string& output,
         }
     }
 }
-void RenderState::append_name(std::string& output,
-                              std::span<std::string_view const> components) const {
-    auto append_from = [&](std::size_t first) {
-        auto const count{components.size()};
-        for (auto index{first}; index < count; ++index) {
-            if (index != first) {
+void RenderState::append_name(std::string& output, std::span<IdentifierId const> components) {
+    std::string canonical;
+    for (auto const component : components) {
+        if (!canonical.empty()) {
+            canonical += "::";
+        }
+        canonical += strings.view(component);
+    }
+    auto const target{environments.reference(components)};
+
+    auto const count{components.size()};
+    for (auto first{count - 1};; --first) {
+        auto const result{environments.lookup(current, components.subspan(first))};
+        if (result.status == LookupStatus::found && result.symbol.same_declaration(target)) {
+            for (auto component{first}; component < count; ++component) {
+                if (component != first) {
+                    output += "::";
+                }
+                output += strings.view(components[component]);
+            }
+            return;
+        }
+        if (first == 0) {
+            // Preserve authored qualification when the complete name cannot be checked.
+            if (result.status != LookupStatus::unknown) {
                 output += "::";
             }
-            output += components[index];
-        }
-    };
-
-    auto common{std::size_t{}};
-    auto const limit{std::min(namespaces.size(), components.size() - 1)};
-    while (common < limit && namespaces[common] == components[common]) {
-        ++common;
-    }
-
-    for (auto omitted{common};; --omitted) {
-        bool hidden{};
-        for (auto scope{scopes.rbegin()}; scope != scopes.rend(); ++scope) {
-            if (scope->namespace_scope && scope->namespace_depth < omitted) {
-                break;
-            }
-            // Authored declarations can introduce bindings that the IR cannot inspect.
-            if (scope->opaque) {
-                append_from(0);
-                return;
-            }
-            if ((!scope->namespace_scope || scope->namespace_depth > omitted) &&
-                std::ranges::find(scope->names, components[omitted]) != scope->names.end()) {
-                hidden = true;
-                break;
-            }
-        }
-        if (!hidden) {
-            append_from(omitted);
-            return;
-        }
-        if (omitted == 0) {
-            output += "::";
-            append_from(0);
+            output += canonical;
             return;
         }
     }
-}
-
-RenderScopeGuard::RenderScopeGuard(RenderState& state)
-    : state_{state}
-    , namespace_size_{state.namespaces.size()}
-    , scope_size_{state.scopes.size()} {}
-RenderScopeGuard::~RenderScopeGuard() {
-    state_.namespaces.resize(namespace_size_);
-    state_.scopes.resize(scope_size_);
 }
 
 namespace ir {

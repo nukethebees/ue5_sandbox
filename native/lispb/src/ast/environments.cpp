@@ -54,14 +54,21 @@ auto Environments::declare(EnvironmentId environment,
                            IdentifierId name,
                            CppDeclarationId declaration,
                            EnvironmentId introduced_scope) -> EnvironmentSymbol {
-    assert(name.value != 0 && !declaration.is_null());
+    return bind(environment,
+                name,
+                {.declaration = declaration,
+                 .declaring_scope = environment,
+                 .introduced_scope = introduced_scope});
+}
+auto Environments::bind(EnvironmentId environment, IdentifierId name, EnvironmentSymbol symbol)
+    -> EnvironmentSymbol {
+    assert(name.value != 0 && !symbol.declaration.is_null());
     auto& table{symbols_[index(environment)]};
-    auto const [entry, inserted]{table.try_emplace(
-        name, EnvironmentSymbol{.declaration = declaration, .introduced_scope = introduced_scope})};
-    if (!inserted && !introduced_scope.is_null()) {
+    auto const [entry, inserted]{table.try_emplace(name, symbol)};
+    if (!inserted && !symbol.introduced_scope.is_null()) {
         assert(entry->second.introduced_scope.is_null() ||
-               entry->second.introduced_scope == introduced_scope);
-        entry->second.introduced_scope = introduced_scope;
+               entry->second.introduced_scope == symbol.introduced_scope);
+        entry->second.introduced_scope = symbol.introduced_scope;
     }
     return entry->second;
 }
@@ -92,7 +99,7 @@ void Environments::import_symbols(EnvironmentId destination, EnvironmentId sourc
     auto& table{symbols_[index(destination)]};
     for (auto const& [name, symbol] : symbols(source)) {
         auto const [entry, inserted]{table.emplace(name, symbol)};
-        if (!inserted && entry->second.declaration != symbol.declaration) {
+        if (!inserted && !entry->second.same_declaration(symbol)) {
             entry->second.ambiguous = true;
         }
     }
@@ -103,12 +110,10 @@ void Environments::import_symbols(EnvironmentId destination, EnvironmentId sourc
 
 auto Environments::lookup_local(EnvironmentId environment, IdentifierId name) const
     -> SymbolLookup {
-    if (!complete_[index(environment)]) {
-        return {.status = LookupStatus::unknown};
-    }
     auto const symbol{find_local(environment, name)};
     if (symbol.declaration.is_null()) {
-        return {};
+        return {.status =
+                    complete_[index(environment)] ? LookupStatus::missing : LookupStatus::unknown};
     }
     if (symbol.ambiguous) {
         return {.status = LookupStatus::unknown};
@@ -135,15 +140,19 @@ auto Environments::lookup(EnvironmentId environment, std::span<IdentifierId cons
     }
     return result;
 }
-auto Environments::reference(std::span<IdentifierId const> name, CppDeclarationId external)
-    -> CppDeclarationId {
+auto Environments::reference(std::span<IdentifierId const> name) -> EnvironmentSymbol {
     assert(!name.empty());
     auto environment{global()};
     auto const count{name.size()};
     for (std::size_t component{}; component + 1 < count; ++component) {
         environment = named(environment, EnvironmentKind::external, name[component]);
     }
-    return declare(environment, name.back(), external).declaration;
+    auto const existing{find_local(environment, name.back())};
+    if (!existing.declaration.is_null()) {
+        return existing;
+    }
+    named(environment, EnvironmentKind::external, name.back());
+    return find_local(environment, name.back());
 }
 auto Environments::find_environment(EnvironmentId environment,
                                     std::span<IdentifierId const> name) const -> EnvironmentId {

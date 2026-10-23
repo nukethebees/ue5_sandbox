@@ -1,42 +1,32 @@
 #pragma once
 
-#include <codegen/ast/node_id.h>
+#include <codegen/ast/environments.h>
+#include <lispb/strings.h>
 
-#include <map>
 #include <span>
 #include <string>
 #include <string_view>
+#include <unordered_map>
 #include <vector>
 
 namespace lispb::codegen {
 
-struct RenderScope {
-    std::vector<std::string_view> names;
-    std::size_t namespace_depth{};
-    bool namespace_scope{};
-    bool opaque{};
-};
-
 // Own lookup state for one render; indentation contexts only borrow it.
 struct RenderState {
-    std::vector<std::string_view> namespaces;
-    std::vector<RenderScope> scopes;
-    std::map<std::string, RenderScope> namespace_scopes;
-    std::map<std::string, NodeId> records;
+    explicit RenderState(Strings& strings)
+        : strings{strings} {}
 
-    void append_name(std::string& output, std::span<std::string_view const> components) const;
-};
+    Strings& strings;
+    Environments environments;
+    EnvironmentId current{environments.global()};
+    std::unordered_map<std::uint64_t, EnvironmentId> node_environments;
 
-class RenderScopeGuard {
-  public:
-    explicit RenderScopeGuard(RenderState& state);
-    ~RenderScopeGuard();
-    RenderScopeGuard(RenderScopeGuard const&) = delete;
-    auto operator=(RenderScopeGuard const&) -> RenderScopeGuard& = delete;
-  private:
-    RenderState& state_;
-    std::size_t namespace_size_;
-    std::size_t scope_size_;
+    // A node can be emitted in more than one enclosing scope.
+    static auto node_key(NodeId node, EnvironmentId parent) -> std::uint64_t {
+        return (static_cast<std::uint64_t>(parent.value) << 32) | node.value;
+    }
+
+    void append_name(std::string& output, std::span<IdentifierId const> components);
 };
 
 struct RenderContext {

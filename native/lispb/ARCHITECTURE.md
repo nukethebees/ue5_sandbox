@@ -40,8 +40,12 @@ remain raw language-boundary inputs. Export specifiers are interned identifiers.
 member and output-file flags are generated packed values checked into the source tree.
 
 C++ type references retain qualified-name components and composed type handles alongside their
-canonical spellings. Rendering borrows a per-render namespace stack and lexical binding scopes,
-and removes enclosing namespace prefixes only when their remaining first name is not hidden.
+canonical spellings. Rendering borrows a per-render environment store with parallel parent,
+scope-kind and symbol-table columns. A symbol identifies its declaration through a tagged
+handle and optionally names the environment introduced by that declaration. Lookup searches
+parents for the first name, then follows introduced environments for qualified components.
+The renderer shortens a name only when lookup resolves to the same declaration, and an RAII
+guard restores the current environment after each nested emission region.
 Signatures, templates and typed expressions share this context. Canonical spellings and dependency
 policies remain independent of their displayed names. Authored C++ stays opaque; unknown raw
 declarations or inherited scopes retain qualification. Generated raw declarations can describe

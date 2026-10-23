@@ -197,6 +197,7 @@ target_sources(codegen-lib PRIVATE
   src/lowering/single_allocation_views.cpp
   src/lowering/packed_field_layouts.cpp
   src/ast/cpp_ir.cpp
+  src/ast/cpp_ir_environments.cpp
   src/ast/environments.cpp
   src/ast/cpp_files.cpp
   src/ast/modules.cpp
