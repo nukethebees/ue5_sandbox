@@ -6,8 +6,6 @@
 #include <codegen/schema/declaration_handle.h>
 #include <lispb/indices.h>
 
-#include <map>
-
 namespace lispb::codegen {
 class NodeListBuilder;
 }

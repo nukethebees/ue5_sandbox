@@ -241,7 +241,7 @@ struct StridedViewBase : ViewOperations {
             return bytes;
         }
     }
-
+  protected:
     auto byte_stride() const noexcept -> std::size_t {
         if constexpr (compact_stride) {
             return static_cast<std::size_t>(stride_) * sizeof(T);
@@ -249,7 +249,7 @@ struct StridedViewBase : ViewOperations {
             return stride_;
         }
     }
-
+  private:
     Element<std::byte>* first_{};
     Stride stride_{};
     size_type count_{};
