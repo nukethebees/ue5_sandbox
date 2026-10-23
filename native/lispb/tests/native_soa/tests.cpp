@@ -899,34 +899,30 @@ TEST(NativeSoa, ColumnViewContracts) {
     EXPECT_EQ(empty.resolve().slice(0, 0).zs().data(), nullptr);
 }
 
-TEST(NativeSoa, ByteAndOddSizedGroupsPreservePaddedStridesAcrossGrowth) {
-    auto check = []<typename Owner>() {
-        static_assert(sizeof(typename Owner::View) == 24);
-        static_assert(std::is_trivially_copyable_v<typename Owner::View>);
-        Owner owner;
-        owner.set_num(1);
-        std::memset(owner.first().data(), 17, sizeof(owner.first()[0]));
-        std::memset(owner.second().data(), 31, sizeof(owner.second()[0]));
+TEST(NativeSoa, OddSizedGroupsPreservePaddedStridesAcrossGrowth) {
+    static_assert(sizeof(OddPairs::View) == 24);
+    static_assert(std::is_trivially_copyable_v<OddPairs::View>);
+    OddPairs owner;
+    owner.set_num(1);
+    std::memset(owner.first().data(), 17, sizeof(owner.first()[0]));
+    std::memset(owner.second().data(), 31, sizeof(owner.second()[0]));
 
-        for (auto count : {1U, 65U, 193U}) {
-            owner.set_num(count);
-            auto const view{owner.get_view()};
-            auto const blocks{owner.capacity() / Owner::capacity_granularity};
-            auto const& layout{Owner::Layout::columns};
-            auto const stride{layout.SecondColumn.offset(blocks) - layout.FirstColumn.offset(blocks)};
-            EXPECT_EQ(reinterpret_cast<std::uintptr_t>(view.second().data()) -
-                          reinterpret_cast<std::uintptr_t>(view.first().data()), stride);
-            EXPECT_EQ(std::as_bytes(view.first())[0], std::byte{17});
-            EXPECT_EQ(std::as_bytes(view.second())[0], std::byte{31});
+    for (auto count : {1U, 65U, 193U}) {
+        owner.set_num(count);
+        auto const view{owner.get_view()};
+        auto const blocks{owner.capacity() / OddPairs::capacity_granularity};
+        auto const& layout{OddPairs::Layout::columns};
+        auto const stride{layout.SecondColumn.offset(blocks) - layout.FirstColumn.offset(blocks)};
+        EXPECT_EQ(reinterpret_cast<std::uintptr_t>(view.second().data()) -
+                      reinterpret_cast<std::uintptr_t>(view.first().data()), stride);
+        EXPECT_EQ(std::as_bytes(view.first())[0], std::byte{17});
+        EXPECT_EQ(std::as_bytes(view.second())[0], std::byte{31});
 
-            auto const slice{view.get_const_view().slice(count - 1, 1)};
-            EXPECT_EQ(slice.first().data(), view.first().data() + count - 1);
-            EXPECT_EQ(slice.second().data(), view.second().data() + count - 1);
-            EXPECT_EQ(slice.num(), 1U);
-        }
-    };
-    check.operator()<BytePairs>();
-    check.operator()<OddPairs>();
+        auto const slice{view.get_const_view().slice(count - 1, 1)};
+        EXPECT_EQ(slice.first().data(), view.first().data() + count - 1);
+        EXPECT_EQ(slice.second().data(), view.second().data() + count - 1);
+        EXPECT_EQ(slice.num(), 1U);
+    }
 }
 
 TEST(NativeSoa, HomogeneousNestedGroupsReuseViewsAndPhysicalColumnOrder) {

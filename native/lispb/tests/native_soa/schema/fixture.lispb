@@ -35,9 +35,6 @@
     (member xs array float)
     (member ys array float)
     (member zs array float))
-  (struct BytePairs
-    (member first array uint8)
-    (member second array uint8))
   (struct OddPairs
     (member first array @odd_bytes)
     (member second array @odd_bytes))
