@@ -33,18 +33,13 @@ auto render_static_table(CompilerTestContext& context, bool const two_tables = f
         append_table("FOtherValues");
     }
     source += ')';
-    auto const files{render_test_manifest(
+    auto& types{context.storage.cpp_types};
+    auto const manifest{parse_test_manifest(
         context,
-        parse_test_manifest(
-            context,
-            source,
-            {{"value",
-              context.storage.cpp_types.add(
-                  "FValue", {context.storage.cpp_types.dependency("FValue", "Project/Value.h")})},
-             {"point",
-              context.storage.cpp_types.add(
-                  "FPoint",
-                  {context.storage.cpp_types.dependency("FPoint", "Project/Point.h")})}}))};
+        source,
+        {{"value", types.add("FValue", {types.dependency("FValue", "Project/Value.h")})},
+         {"point", types.add("FPoint", {types.dependency("FPoint", "Project/Point.h")})}})};
+    auto const files{render_test_manifest(context, manifest)};
     EXPECT_EQ(files.size(), 1);
     return files.front().content;
 }

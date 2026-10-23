@@ -12,6 +12,7 @@
 #include <codegen/schema/declarations.h>
 #include <codegen/schema/manifest.h>
 #include <codegen/schema/schema_version.h>
+#include <codegen/schema/type_refs.h>
 #include <codegen/schema/type_registry.h>
 #include <codegen/source_loader.h>
 #include <lispb/compiler_storage.h>
@@ -29,6 +30,12 @@
 
 namespace lispb::codegen {
 
+auto make_test_type_ref(CompilerTestContext& context, std::string_view spelling) -> TypeRefId {
+    auto& types{context.storage.declarations.type_refs};
+    auto const type{types.append()};
+    types.name[types.index(type)] = context.storage.strings.intern(spelling);
+    return type;
+}
 auto make_test_registry(CompilerTestContext& context,
                         std::vector<std::pair<std::string_view, CppTypeId>> const& entries)
     -> TypeRegistry {

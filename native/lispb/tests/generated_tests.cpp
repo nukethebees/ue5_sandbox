@@ -183,8 +183,9 @@ TEST(GeneratedMixedModule, ResolvesForwardPhysicalDependenciesAcrossDeclarationK
         .tag = mixed::Kind::Data,
         .payload = {.data = {.payload = {.position = {.x = 3.0f, .y = 4.0f}}}}};
     EXPECT_EQ(event.tag, mixed::Kind::Data);
-    EXPECT_EQ(event.payload.data.payload.position.x, 3.0f);
-    EXPECT_EQ(event.payload.data.payload.position.y, 4.0f);
+    auto const& position{event.payload.data.payload.position};
+    EXPECT_EQ(position.x, 3.0f);
+    EXPECT_EQ(position.y, 4.0f);
 }
 
 TEST(GeneratedFieldMask, Operations) {
@@ -303,12 +304,14 @@ TEST(GeneratedPackedValue, SettersPreserveOtherFieldsAndRejectOverflow) {
 }
 
 TEST(GeneratedPackedValue, ComparesByRawValue) {
-    EXPECT_LT(FighterState::from_raw(1u), FighterState::from_raw(2u));
-    EXPECT_LE(FighterState::from_raw(1u), FighterState::from_raw(2u));
-    EXPECT_GT(FighterState::from_raw(2u), FighterState::from_raw(1u));
-    EXPECT_GE(FighterState::from_raw(2u), FighterState::from_raw(1u));
-    EXPECT_EQ(FighterState::from_raw(2u), FighterState::from_raw(2u));
-    EXPECT_NE(FighterState::from_raw(1u), FighterState::from_raw(2u));
+    auto const first{FighterState::from_raw(1u)};
+    auto const second{FighterState::from_raw(2u)};
+    EXPECT_LT(first, second);
+    EXPECT_LE(first, second);
+    EXPECT_GT(second, first);
+    EXPECT_GE(second, first);
+    EXPECT_EQ(second, FighterState::from_raw(2u));
+    EXPECT_NE(first, second);
 }
 
 TEST(GeneratedPackedValue, ExhaustivelyRoundTripsUint8Storage) {

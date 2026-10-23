@@ -19,6 +19,7 @@ namespace {
 
 TEST(UnionLowering, GeneratesRawAlternativesAndFixedArrays) {
     CompilerTestContext context;
+    auto& types{context.storage.cpp_types};
     auto manifest{parse_test_manifest(
         context,
         R"(
@@ -26,9 +27,7 @@ TEST(UnionLowering, GeneratesRawAlternativesAndFixedArrays) {
             (union Payload :export-specifier PROJECT_API
                 (alternative identifier std::uint32_t)
                 (alternative values @value :count 3))))",
-        {{"value",
-          context.storage.cpp_types.add(
-              "Value", {context.storage.cpp_types.dependency("Value", "Project/Value.h")})}})};
+        {{"value", types.add("Value", {types.dependency("Value", "Project/Value.h")})}})};
 
     auto const files{render_test_manifest(context, manifest)};
 
@@ -56,6 +55,7 @@ TEST(UnionLowering, EmitsByValueDependenciesBeforeTheirUsers) {
 
 TEST(UnionLowering, GeneratesTaggedAggregateWithExplicitPayloadUnion) {
     CompilerTestContext context;
+    auto& types{context.storage.cpp_types};
     auto manifest{parse_test_manifest(
         context,
         R"(
@@ -66,9 +66,7 @@ TEST(UnionLowering, GeneratesTaggedAggregateWithExplicitPayloadUnion) {
                 (alternative spawn std::uint32_t :tag Spawn)
                 (alternative damage std::uint16_t :count 4 :tag Damage))))",
         {{"event_kind",
-          context.storage.cpp_types.add(
-              "events::EventKind",
-              {context.storage.cpp_types.dependency("events::EventKind", "Events.h")})}})};
+          types.add("events::EventKind", {types.dependency("events::EventKind", "Events.h")})}})};
 
     auto const files{render_test_manifest(context, manifest)};
 

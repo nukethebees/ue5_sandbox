@@ -10,6 +10,7 @@
 #include <codegen/generated_file.h>
 #include <codegen/generator.h>
 #include <codegen/schema/declarations.h>
+#include <codegen/schema/indices.h>
 #include <codegen/schema/manifest.h>
 #include <codegen/schema/schema_range.h>
 #include <codegen/schema/schema_version.h>
@@ -55,6 +56,8 @@ inline auto test_items(Declarations const& declarations, SchemaRange<Id> const r
         return std::vector<Id>{items.begin(), items.end()};
     }
 }
+
+auto make_test_type_ref(CompilerTestContext& context, std::string_view spelling) -> TypeRefId;
 
 auto make_test_registry(CompilerTestContext& context,
                         std::vector<std::pair<std::string_view, CppTypeId>> const& entries = {})

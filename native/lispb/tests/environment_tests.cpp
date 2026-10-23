@@ -16,8 +16,8 @@ TEST(Environments, ResolvesDeclarationsThroughIntroducedScopesAndParents) {
     auto const a{strings.intern("a")};
     auto const foo{strings.intern("Foo")};
     auto const value{strings.intern("Value")};
-    auto const namespace_scope{
-        environments.named(environments.global(), EnvironmentKind::namespace_, a)};
+    auto const global{environments.global()};
+    auto const namespace_scope{environments.named(global, EnvironmentKind::namespace_, a)};
     auto const record{
         CppDeclarationId{NodeId{(static_cast<std::uint32_t>(NodeKind::struct_) << 24) | 7}}};
     auto const record_scope{
@@ -28,13 +28,12 @@ TEST(Environments, ResolvesDeclarationsThroughIntroducedScopesAndParents) {
     auto const block{environments.append(record_scope, EnvironmentKind::block)};
 
     EXPECT_TRUE(EnvironmentId{}.is_null());
-    EXPECT_TRUE(environments.parent(environments.global()).is_null());
-    EXPECT_EQ(
-        environments.lookup(environments.global(), std::array{a, foo, value}).symbol.declaration,
-        alias);
+    EXPECT_TRUE(environments.parent(global).is_null());
+    EXPECT_EQ(environments.lookup(global, std::array{a, foo, value}).symbol.declaration, alias);
     EXPECT_EQ(environments.lookup(block, std::array{foo}).symbol.declaration, record);
-    EXPECT_EQ(environments.lookup(block, std::array{value}).symbol.declaration, alias);
-    EXPECT_TRUE(environments.lookup(block, std::array{value}).symbol.introduced_scope.is_null());
+    auto const value_symbol{environments.lookup(block, std::array{value}).symbol};
+    EXPECT_EQ(value_symbol.declaration, alias);
+    EXPECT_TRUE(value_symbol.introduced_scope.is_null());
     EXPECT_NE(record, alias);
     EXPECT_EQ(environments.named(namespace_scope, EnvironmentKind::record, foo), record_scope);
 }
