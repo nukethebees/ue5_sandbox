@@ -370,16 +370,6 @@ struct ScalarTableView : ScalarTableViewImpl<false> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<ScalarTableView>());
-// Columns:
-// type: lispb::schema::TypeId
-// integer_domain: std::optional<ioj::layout::IntegerDomain>
-// enum_domain: std::optional<ioj::layout::EnumDomain>
-// optional_sentinel_encoding: std::optional<ioj::layout::OptionalSentinelEncoding>
-// optional_presence_encoding: std::optional<ioj::layout::OptionalPresenceEncoding>
-// quantized_encoding: std::optional<ioj::layout::QuantizedEncoding>
-// fixed_encoding: std::optional<ioj::layout::FixedEncoding>
-// float_encoding: std::optional<ioj::layout::FloatEncoding>
-// varint_encoding: std::optional<ioj::layout::VarintEncoding>
 struct ScalarTable
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {
@@ -448,18 +438,6 @@ struct ScalarTable
                     varint_encoding + offset};
         }
     };
-    template <typename Self>
-    auto get_data(this Self& self) noexcept {
-        using Byte = std::conditional_t<std::is_const_v<Self>, std::byte const, std::byte>;
-        if (self.data_ == nullptr) {
-            return DataPointers<Byte>{};
-        }
-        return make_data_unchecked(static_cast<Byte*>(self.data_), self.capacity_blocks());
-    }
-    template <typename Self>
-    auto get_data(this Self& self, size_type const offset) noexcept {
-        return self.get_data() + offset;
-    }
   private:
     friend Operations;
     friend ::ioj::soa_storage_detail::StorageRequirements;
@@ -479,9 +457,6 @@ struct ScalarTable
                 cursor.column_pointer(data, Layout::columns.FixedEncodingColumn),
                 cursor.column_pointer(data, Layout::columns.FloatEncodingColumn),
                 cursor.column_pointer(data, Layout::columns.VarintEncodingColumn)};
-    }
-    auto capacity_blocks() const noexcept -> byte_size_type {
-        return static_cast<byte_size_type>(capacity_ / capacity_granularity);
     }
 
     /* **************************************** */
@@ -517,24 +492,6 @@ struct ScalarTable
         transfer(destination.float_encoding, source.float_encoding);
         transfer(destination.varint_encoding, source.varint_encoding);
     }
-    void swap_remove_columns(size_type const index,
-                             size_type const source,
-                             size_type const move_count) {
-        copy_columns(get_data(), index, source, move_count);
-    }
-    static void copy_columns(DataPointers<std::byte> const& columns,
-                             size_type index,
-                             size_type source,
-                             size_type move_count) {
-        transfer_columns<false>(columns + index, columns + source, move_count);
-    }
-    void swap_remove_indices(std::span<size_type const> indices) {
-        auto const columns{get_data()};
-        ioj::soa_storage_detail::for_each_removal_run(
-            num_, indices, [&](size_type index, size_type source, size_type count) {
-                copy_columns(columns, index, source, count);
-            });
-    }
     template <typename Columns>
     static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
         requires ioj::soa_storage_detail::SoaSourceFor<Columns, ScalarTable, size_type>
@@ -549,31 +506,6 @@ struct ScalarTable
                 source_data(source.fixed_encoding()),
                 source_data(source.float_encoding()),
                 source_data(source.varint_encoding())};
-    }
-    template <typename Columns>
-    void append_columns(Columns const& source,
-                        size_type source_first,
-                        size_type first,
-                        size_type count)
-        requires ioj::soa_storage_detail::SoaSourceFor<Columns, ScalarTable, size_type>
-    {
-        transfer_columns<false>(get_data(first), source_pointers(source) + source_first, count);
-    }
-    template <typename Columns>
-    void copy_columns_from(Columns const& source,
-                           size_type source_first,
-                           size_type first,
-                           size_type count)
-        requires ioj::soa_storage_detail::SoaSourceFor<Columns, ScalarTable, size_type>
-    {
-        transfer_columns<true>(get_data(first), source_pointers(source) + source_first, count);
-    }
-    void copy_live_columns(std::byte* const new_data, size_type const new_capacity) noexcept {
-        auto const old_blocks{capacity_blocks()};
-        auto const new_blocks{static_cast<byte_size_type>(new_capacity / capacity_granularity)};
-        auto const source{make_data_unchecked(static_cast<std::byte const*>(data_), old_blocks)};
-        auto const destination{make_data_unchecked(new_data, new_blocks)};
-        transfer_columns<false>(destination, source, num_);
     }
   public:
     auto type(this auto& self) { return self.get_view().type(); }

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <ioj/single_allocation/concepts.h>
+#include <ioj/single_allocation/removal.h>
 #include <ioj/single_allocation/view.h>
 
 #include <algorithm>
@@ -19,6 +20,26 @@ template <auto RoundedCapacity, auto GrowthCapacity>
 struct StorageOperations {
     friend StorageRequirements;
   protected:
+    /* **************************************** */
+    // Column access
+    /* **************************************** */
+    template <StorageOwner Self>
+    auto get_data(this Self& self) noexcept {
+        using Byte = std::conditional_t<std::is_const_v<Self>, std::byte const, std::byte>;
+        if (self.data_ == nullptr) {
+            return typename Self::template DataPointers<Byte>{};
+        }
+        return self.make_data_unchecked(static_cast<Byte*>(self.data_), self.capacity_blocks());
+    }
+    template <StorageOwner Self>
+    auto get_data(this Self& self, StorageSize<Self> const offset) noexcept {
+        return self.get_data() + offset;
+    }
+    template <StorageOwner Self>
+    auto capacity_blocks(this Self const& self) noexcept -> std::size_t {
+        return self.capacity_ / Self::capacity_granularity;
+    }
+
     /* **************************************** */
     // Lifetime
     /* **************************************** */
@@ -66,6 +87,55 @@ struct StorageOperations {
     // Allocation
     /* **************************************** */
   private:
+    template <StorageOwner Self>
+    void copy_live_columns(this Self& self,
+                           std::byte* const new_data,
+                           StorageSize<Self> const new_capacity) noexcept {
+        auto const source{self.make_data_unchecked(static_cast<std::byte const*>(self.data_),
+                                                   self.capacity_blocks())};
+        auto const destination{
+            self.make_data_unchecked(new_data, new_capacity / Self::capacity_granularity)};
+        self.template transfer_columns<false>(destination, source, self.num_);
+    }
+
+    template <StorageOwner Self, typename Source>
+        requires (!std::is_const_v<Self> && SoaSourceFor<Source, Self, StorageSize<Self>>)
+    void append_columns(this Self& self,
+                        Source const& source,
+                        StorageSize<Self> source_first,
+                        StorageSize<Self> first,
+                        StorageSize<Self> count) {
+        self.template transfer_columns<false>(
+            self.get_data(first), self.source_pointers(source) + source_first, count);
+    }
+    template <StorageOwner Self, typename Source>
+        requires (!std::is_const_v<Self> && SoaSourceFor<Source, Self, StorageSize<Self>>)
+    void copy_columns_from(this Self& self,
+                           Source const& source,
+                           StorageSize<Self> source_first,
+                           StorageSize<Self> first,
+                           StorageSize<Self> count) {
+        self.template transfer_columns<true>(
+            self.get_data(first), self.source_pointers(source) + source_first, count);
+    }
+    template <StorageOwner Self>
+        requires (!std::is_const_v<Self>)
+    void swap_remove_columns(this Self& self,
+                             StorageSize<Self> index,
+                             StorageSize<Self> source,
+                             StorageSize<Self> count) {
+        auto const columns{self.get_data()};
+        self.template transfer_columns<false>(columns + index, columns + source, count);
+    }
+    template <StorageOwner Self>
+        requires (!std::is_const_v<Self>)
+    void swap_remove_indices(this Self& self, std::span<StorageSize<Self> const> indices) {
+        auto const columns{self.get_data()};
+        for_each_removal_run(self.num_, indices, [&](auto index, auto source, auto count) {
+            self.template transfer_columns<false>(columns + index, columns + source, count);
+        });
+    }
+
     template <typename Owner>
     static auto allocate_storage(Owner& owner, StorageSize<Owner> const capacity) -> std::byte* {
         auto const bytes{Owner::layout_bytes(

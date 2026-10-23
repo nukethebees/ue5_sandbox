@@ -63,8 +63,6 @@ TEST(Generator, LowersDynamicSoaIntoNativeOwnerAndViews) {
     EXPECT_NE(header.find("#include \"Project/Handle.h\""), std::string::npos);
     EXPECT_NE(header.find("using Operations = ioj::native_soa::StorageOperations;"),
               std::string::npos);
-    EXPECT_NE(header.find("void swap_remove_columns("), std::string::npos);
-    EXPECT_NE(header.find("void swap_remove_indices("), std::string::npos);
     EXPECT_NE(header.find("void apply_permutation("), std::string::npos);
     EXPECT_EQ(header.find("TArray"), std::string::npos);
     EXPECT_EQ(header.find("validate_array_sizes"), std::string::npos);

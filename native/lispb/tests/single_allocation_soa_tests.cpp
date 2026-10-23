@@ -53,8 +53,6 @@ TEST(SingleAllocationSoa, OrdinarySchemasGenerateNativeOwnersAndViews) {
     EXPECT_NE(output.find("using ioj::native_soa::source_data;"), std::string::npos);
     EXPECT_NE(output.find("source_data(nested_view.xs())"), std::string::npos);
     EXPECT_NE(output.find("Operations::release_storage(*this);"), std::string::npos);
-    EXPECT_NE(output.find("transfer_columns<false>(destination, source, num_);"),
-              std::string::npos);
 }
 
 TEST(SingleAllocationSoa, RowOperationsUseNestedEquivalentValues) {

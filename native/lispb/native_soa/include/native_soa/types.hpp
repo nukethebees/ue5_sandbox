@@ -191,8 +191,6 @@ struct PointerAView : PointerAViewImpl<false> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<PointerAView>());
-// Columns:
-// others: PointerB*
 struct PointerA
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {
@@ -243,18 +241,6 @@ struct PointerA
             return {others + offset};
         }
     };
-    template <typename Self>
-    auto get_data(this Self& self) noexcept {
-        using Byte = std::conditional_t<std::is_const_v<Self>, std::byte const, std::byte>;
-        if (self.data_ == nullptr) {
-            return DataPointers<Byte>{};
-        }
-        return make_data_unchecked(static_cast<Byte*>(self.data_), self.capacity_blocks());
-    }
-    template <typename Self>
-    auto get_data(this Self& self, size_type const offset) noexcept {
-        return self.get_data() + offset;
-    }
   private:
     friend Operations;
     friend ::ioj::soa_storage_detail::StorageRequirements;
@@ -266,9 +252,6 @@ struct PointerA
         -> DataPointers<Byte> {
         ioj::native_soa::LayoutCursor cursor{blocks};
         return {cursor.column_pointer(data, Layout::columns.OthersColumn)};
-    }
-    auto capacity_blocks() const noexcept -> byte_size_type {
-        return static_cast<byte_size_type>(capacity_ / capacity_granularity);
     }
 
     /* **************************************** */
@@ -288,55 +271,12 @@ struct PointerA
         };
         transfer(destination.others, source.others);
     }
-    void swap_remove_columns(size_type const index,
-                             size_type const source,
-                             size_type const move_count) {
-        copy_columns(get_data(), index, source, move_count);
-    }
-    static void copy_columns(DataPointers<std::byte> const& columns,
-                             size_type index,
-                             size_type source,
-                             size_type move_count) {
-        transfer_columns<false>(columns + index, columns + source, move_count);
-    }
-    void swap_remove_indices(std::span<size_type const> indices) {
-        auto const columns{get_data()};
-        ioj::soa_storage_detail::for_each_removal_run(
-            num_, indices, [&](size_type index, size_type source, size_type count) {
-                copy_columns(columns, index, source, count);
-            });
-    }
     template <typename Columns>
     static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
         requires ioj::soa_storage_detail::SoaSourceFor<Columns, PointerA, size_type>
     {
         using ioj::native_soa::source_data;
         return {source_data(source.others())};
-    }
-    template <typename Columns>
-    void append_columns(Columns const& source,
-                        size_type source_first,
-                        size_type first,
-                        size_type count)
-        requires ioj::soa_storage_detail::SoaSourceFor<Columns, PointerA, size_type>
-    {
-        transfer_columns<false>(get_data(first), source_pointers(source) + source_first, count);
-    }
-    template <typename Columns>
-    void copy_columns_from(Columns const& source,
-                           size_type source_first,
-                           size_type first,
-                           size_type count)
-        requires ioj::soa_storage_detail::SoaSourceFor<Columns, PointerA, size_type>
-    {
-        transfer_columns<true>(get_data(first), source_pointers(source) + source_first, count);
-    }
-    void copy_live_columns(std::byte* const new_data, size_type const new_capacity) noexcept {
-        auto const old_blocks{capacity_blocks()};
-        auto const new_blocks{static_cast<byte_size_type>(new_capacity / capacity_granularity)};
-        auto const source{make_data_unchecked(static_cast<std::byte const*>(data_), old_blocks)};
-        auto const destination{make_data_unchecked(new_data, new_blocks)};
-        transfer_columns<false>(destination, source, num_);
     }
   public:
     auto others(this auto& self) { return self.get_view().others(); }
@@ -489,8 +429,6 @@ struct PointerBView : PointerBViewImpl<false> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<PointerBView>());
-// Columns:
-// others: PointerA*
 struct PointerB
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {
@@ -541,18 +479,6 @@ struct PointerB
             return {others + offset};
         }
     };
-    template <typename Self>
-    auto get_data(this Self& self) noexcept {
-        using Byte = std::conditional_t<std::is_const_v<Self>, std::byte const, std::byte>;
-        if (self.data_ == nullptr) {
-            return DataPointers<Byte>{};
-        }
-        return make_data_unchecked(static_cast<Byte*>(self.data_), self.capacity_blocks());
-    }
-    template <typename Self>
-    auto get_data(this Self& self, size_type const offset) noexcept {
-        return self.get_data() + offset;
-    }
   private:
     friend Operations;
     friend ::ioj::soa_storage_detail::StorageRequirements;
@@ -564,9 +490,6 @@ struct PointerB
         -> DataPointers<Byte> {
         ioj::native_soa::LayoutCursor cursor{blocks};
         return {cursor.column_pointer(data, Layout::columns.OthersColumn)};
-    }
-    auto capacity_blocks() const noexcept -> byte_size_type {
-        return static_cast<byte_size_type>(capacity_ / capacity_granularity);
     }
 
     /* **************************************** */
@@ -586,55 +509,12 @@ struct PointerB
         };
         transfer(destination.others, source.others);
     }
-    void swap_remove_columns(size_type const index,
-                             size_type const source,
-                             size_type const move_count) {
-        copy_columns(get_data(), index, source, move_count);
-    }
-    static void copy_columns(DataPointers<std::byte> const& columns,
-                             size_type index,
-                             size_type source,
-                             size_type move_count) {
-        transfer_columns<false>(columns + index, columns + source, move_count);
-    }
-    void swap_remove_indices(std::span<size_type const> indices) {
-        auto const columns{get_data()};
-        ioj::soa_storage_detail::for_each_removal_run(
-            num_, indices, [&](size_type index, size_type source, size_type count) {
-                copy_columns(columns, index, source, count);
-            });
-    }
     template <typename Columns>
     static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
         requires ioj::soa_storage_detail::SoaSourceFor<Columns, PointerB, size_type>
     {
         using ioj::native_soa::source_data;
         return {source_data(source.others())};
-    }
-    template <typename Columns>
-    void append_columns(Columns const& source,
-                        size_type source_first,
-                        size_type first,
-                        size_type count)
-        requires ioj::soa_storage_detail::SoaSourceFor<Columns, PointerB, size_type>
-    {
-        transfer_columns<false>(get_data(first), source_pointers(source) + source_first, count);
-    }
-    template <typename Columns>
-    void copy_columns_from(Columns const& source,
-                           size_type source_first,
-                           size_type first,
-                           size_type count)
-        requires ioj::soa_storage_detail::SoaSourceFor<Columns, PointerB, size_type>
-    {
-        transfer_columns<true>(get_data(first), source_pointers(source) + source_first, count);
-    }
-    void copy_live_columns(std::byte* const new_data, size_type const new_capacity) noexcept {
-        auto const old_blocks{capacity_blocks()};
-        auto const new_blocks{static_cast<byte_size_type>(new_capacity / capacity_granularity)};
-        auto const source{make_data_unchecked(static_cast<std::byte const*>(data_), old_blocks)};
-        auto const destination{make_data_unchecked(new_data, new_blocks)};
-        transfer_columns<false>(destination, source, num_);
     }
   public:
     auto others(this auto& self) { return self.get_view().others(); }
@@ -787,8 +667,6 @@ struct ReverseBView : ReverseBViewImpl<false> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<ReverseBView>());
-// Columns:
-// others: ReverseA*
 struct ReverseB
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {
@@ -839,18 +717,6 @@ struct ReverseB
             return {others + offset};
         }
     };
-    template <typename Self>
-    auto get_data(this Self& self) noexcept {
-        using Byte = std::conditional_t<std::is_const_v<Self>, std::byte const, std::byte>;
-        if (self.data_ == nullptr) {
-            return DataPointers<Byte>{};
-        }
-        return make_data_unchecked(static_cast<Byte*>(self.data_), self.capacity_blocks());
-    }
-    template <typename Self>
-    auto get_data(this Self& self, size_type const offset) noexcept {
-        return self.get_data() + offset;
-    }
   private:
     friend Operations;
     friend ::ioj::soa_storage_detail::StorageRequirements;
@@ -862,9 +728,6 @@ struct ReverseB
         -> DataPointers<Byte> {
         ioj::native_soa::LayoutCursor cursor{blocks};
         return {cursor.column_pointer(data, Layout::columns.OthersColumn)};
-    }
-    auto capacity_blocks() const noexcept -> byte_size_type {
-        return static_cast<byte_size_type>(capacity_ / capacity_granularity);
     }
 
     /* **************************************** */
@@ -884,55 +747,12 @@ struct ReverseB
         };
         transfer(destination.others, source.others);
     }
-    void swap_remove_columns(size_type const index,
-                             size_type const source,
-                             size_type const move_count) {
-        copy_columns(get_data(), index, source, move_count);
-    }
-    static void copy_columns(DataPointers<std::byte> const& columns,
-                             size_type index,
-                             size_type source,
-                             size_type move_count) {
-        transfer_columns<false>(columns + index, columns + source, move_count);
-    }
-    void swap_remove_indices(std::span<size_type const> indices) {
-        auto const columns{get_data()};
-        ioj::soa_storage_detail::for_each_removal_run(
-            num_, indices, [&](size_type index, size_type source, size_type count) {
-                copy_columns(columns, index, source, count);
-            });
-    }
     template <typename Columns>
     static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
         requires ioj::soa_storage_detail::SoaSourceFor<Columns, ReverseB, size_type>
     {
         using ioj::native_soa::source_data;
         return {source_data(source.others())};
-    }
-    template <typename Columns>
-    void append_columns(Columns const& source,
-                        size_type source_first,
-                        size_type first,
-                        size_type count)
-        requires ioj::soa_storage_detail::SoaSourceFor<Columns, ReverseB, size_type>
-    {
-        transfer_columns<false>(get_data(first), source_pointers(source) + source_first, count);
-    }
-    template <typename Columns>
-    void copy_columns_from(Columns const& source,
-                           size_type source_first,
-                           size_type first,
-                           size_type count)
-        requires ioj::soa_storage_detail::SoaSourceFor<Columns, ReverseB, size_type>
-    {
-        transfer_columns<true>(get_data(first), source_pointers(source) + source_first, count);
-    }
-    void copy_live_columns(std::byte* const new_data, size_type const new_capacity) noexcept {
-        auto const old_blocks{capacity_blocks()};
-        auto const new_blocks{static_cast<byte_size_type>(new_capacity / capacity_granularity)};
-        auto const source{make_data_unchecked(static_cast<std::byte const*>(data_), old_blocks)};
-        auto const destination{make_data_unchecked(new_data, new_blocks)};
-        transfer_columns<false>(destination, source, num_);
     }
   public:
     auto others(this auto& self) { return self.get_view().others(); }
@@ -1085,8 +905,6 @@ struct ReverseAView : ReverseAViewImpl<false> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<ReverseAView>());
-// Columns:
-// others: ReverseB*
 struct ReverseA
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {
@@ -1137,18 +955,6 @@ struct ReverseA
             return {others + offset};
         }
     };
-    template <typename Self>
-    auto get_data(this Self& self) noexcept {
-        using Byte = std::conditional_t<std::is_const_v<Self>, std::byte const, std::byte>;
-        if (self.data_ == nullptr) {
-            return DataPointers<Byte>{};
-        }
-        return make_data_unchecked(static_cast<Byte*>(self.data_), self.capacity_blocks());
-    }
-    template <typename Self>
-    auto get_data(this Self& self, size_type const offset) noexcept {
-        return self.get_data() + offset;
-    }
   private:
     friend Operations;
     friend ::ioj::soa_storage_detail::StorageRequirements;
@@ -1160,9 +966,6 @@ struct ReverseA
         -> DataPointers<Byte> {
         ioj::native_soa::LayoutCursor cursor{blocks};
         return {cursor.column_pointer(data, Layout::columns.OthersColumn)};
-    }
-    auto capacity_blocks() const noexcept -> byte_size_type {
-        return static_cast<byte_size_type>(capacity_ / capacity_granularity);
     }
 
     /* **************************************** */
@@ -1182,55 +985,12 @@ struct ReverseA
         };
         transfer(destination.others, source.others);
     }
-    void swap_remove_columns(size_type const index,
-                             size_type const source,
-                             size_type const move_count) {
-        copy_columns(get_data(), index, source, move_count);
-    }
-    static void copy_columns(DataPointers<std::byte> const& columns,
-                             size_type index,
-                             size_type source,
-                             size_type move_count) {
-        transfer_columns<false>(columns + index, columns + source, move_count);
-    }
-    void swap_remove_indices(std::span<size_type const> indices) {
-        auto const columns{get_data()};
-        ioj::soa_storage_detail::for_each_removal_run(
-            num_, indices, [&](size_type index, size_type source, size_type count) {
-                copy_columns(columns, index, source, count);
-            });
-    }
     template <typename Columns>
     static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
         requires ioj::soa_storage_detail::SoaSourceFor<Columns, ReverseA, size_type>
     {
         using ioj::native_soa::source_data;
         return {source_data(source.others())};
-    }
-    template <typename Columns>
-    void append_columns(Columns const& source,
-                        size_type source_first,
-                        size_type first,
-                        size_type count)
-        requires ioj::soa_storage_detail::SoaSourceFor<Columns, ReverseA, size_type>
-    {
-        transfer_columns<false>(get_data(first), source_pointers(source) + source_first, count);
-    }
-    template <typename Columns>
-    void copy_columns_from(Columns const& source,
-                           size_type source_first,
-                           size_type first,
-                           size_type count)
-        requires ioj::soa_storage_detail::SoaSourceFor<Columns, ReverseA, size_type>
-    {
-        transfer_columns<true>(get_data(first), source_pointers(source) + source_first, count);
-    }
-    void copy_live_columns(std::byte* const new_data, size_type const new_capacity) noexcept {
-        auto const old_blocks{capacity_blocks()};
-        auto const new_blocks{static_cast<byte_size_type>(new_capacity / capacity_granularity)};
-        auto const source{make_data_unchecked(static_cast<std::byte const*>(data_), old_blocks)};
-        auto const destination{make_data_unchecked(new_data, new_blocks)};
-        transfer_columns<false>(destination, source, num_);
     }
   public:
     auto others(this auto& self) { return self.get_view().others(); }
@@ -1387,8 +1147,6 @@ struct MixedRowsView : MixedRowsViewImpl<false> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<MixedRowsView>());
-// Columns:
-// records: MixedRecord*
 struct MixedRows
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {
@@ -1441,18 +1199,6 @@ struct MixedRows
             return {records + offset};
         }
     };
-    template <typename Self>
-    auto get_data(this Self& self) noexcept {
-        using Byte = std::conditional_t<std::is_const_v<Self>, std::byte const, std::byte>;
-        if (self.data_ == nullptr) {
-            return DataPointers<Byte>{};
-        }
-        return make_data_unchecked(static_cast<Byte*>(self.data_), self.capacity_blocks());
-    }
-    template <typename Self>
-    auto get_data(this Self& self, size_type const offset) noexcept {
-        return self.get_data() + offset;
-    }
   private:
     friend Operations;
     friend ::ioj::soa_storage_detail::StorageRequirements;
@@ -1464,9 +1210,6 @@ struct MixedRows
         -> DataPointers<Byte> {
         ioj::native_soa::LayoutCursor cursor{blocks};
         return {cursor.column_pointer(data, Layout::columns.RecordsColumn)};
-    }
-    auto capacity_blocks() const noexcept -> byte_size_type {
-        return static_cast<byte_size_type>(capacity_ / capacity_granularity);
     }
 
     /* **************************************** */
@@ -1486,55 +1229,12 @@ struct MixedRows
         };
         transfer(destination.records, source.records);
     }
-    void swap_remove_columns(size_type const index,
-                             size_type const source,
-                             size_type const move_count) {
-        copy_columns(get_data(), index, source, move_count);
-    }
-    static void copy_columns(DataPointers<std::byte> const& columns,
-                             size_type index,
-                             size_type source,
-                             size_type move_count) {
-        transfer_columns<false>(columns + index, columns + source, move_count);
-    }
-    void swap_remove_indices(std::span<size_type const> indices) {
-        auto const columns{get_data()};
-        ioj::soa_storage_detail::for_each_removal_run(
-            num_, indices, [&](size_type index, size_type source, size_type count) {
-                copy_columns(columns, index, source, count);
-            });
-    }
     template <typename Columns>
     static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
         requires ioj::soa_storage_detail::SoaSourceFor<Columns, MixedRows, size_type>
     {
         using ioj::native_soa::source_data;
         return {source_data(source.records())};
-    }
-    template <typename Columns>
-    void append_columns(Columns const& source,
-                        size_type source_first,
-                        size_type first,
-                        size_type count)
-        requires ioj::soa_storage_detail::SoaSourceFor<Columns, MixedRows, size_type>
-    {
-        transfer_columns<false>(get_data(first), source_pointers(source) + source_first, count);
-    }
-    template <typename Columns>
-    void copy_columns_from(Columns const& source,
-                           size_type source_first,
-                           size_type first,
-                           size_type count)
-        requires ioj::soa_storage_detail::SoaSourceFor<Columns, MixedRows, size_type>
-    {
-        transfer_columns<true>(get_data(first), source_pointers(source) + source_first, count);
-    }
-    void copy_live_columns(std::byte* const new_data, size_type const new_capacity) noexcept {
-        auto const old_blocks{capacity_blocks()};
-        auto const new_blocks{static_cast<byte_size_type>(new_capacity / capacity_granularity)};
-        auto const source{make_data_unchecked(static_cast<std::byte const*>(data_), old_blocks)};
-        auto const destination{make_data_unchecked(new_data, new_blocks)};
-        transfer_columns<false>(destination, source, num_);
     }
   public:
     auto records(this auto& self) { return self.get_view().records(); }
@@ -1711,9 +1411,6 @@ struct PairRowsView : PairRowsViewImpl<false> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<PairRowsView>());
-// Columns:
-// pairs: Pair
-// pointers: Node*
 struct PairRows
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {
@@ -1765,18 +1462,6 @@ struct PairRows
             return {pairs + offset, pointers + offset};
         }
     };
-    template <typename Self>
-    auto get_data(this Self& self) noexcept {
-        using Byte = std::conditional_t<std::is_const_v<Self>, std::byte const, std::byte>;
-        if (self.data_ == nullptr) {
-            return DataPointers<Byte>{};
-        }
-        return make_data_unchecked(static_cast<Byte*>(self.data_), self.capacity_blocks());
-    }
-    template <typename Self>
-    auto get_data(this Self& self, size_type const offset) noexcept {
-        return self.get_data() + offset;
-    }
   private:
     friend Operations;
     friend ::ioj::soa_storage_detail::StorageRequirements;
@@ -1789,9 +1474,6 @@ struct PairRows
         ioj::native_soa::LayoutCursor cursor{blocks};
         return {cursor.column_pointer(data, Layout::columns.PairsColumn),
                 cursor.column_pointer(data, Layout::columns.PointersColumn)};
-    }
-    auto capacity_blocks() const noexcept -> byte_size_type {
-        return static_cast<byte_size_type>(capacity_ / capacity_granularity);
     }
 
     /* **************************************** */
@@ -1813,55 +1495,12 @@ struct PairRows
         transfer(destination.pairs, source.pairs);
         transfer(destination.pointers, source.pointers);
     }
-    void swap_remove_columns(size_type const index,
-                             size_type const source,
-                             size_type const move_count) {
-        copy_columns(get_data(), index, source, move_count);
-    }
-    static void copy_columns(DataPointers<std::byte> const& columns,
-                             size_type index,
-                             size_type source,
-                             size_type move_count) {
-        transfer_columns<false>(columns + index, columns + source, move_count);
-    }
-    void swap_remove_indices(std::span<size_type const> indices) {
-        auto const columns{get_data()};
-        ioj::soa_storage_detail::for_each_removal_run(
-            num_, indices, [&](size_type index, size_type source, size_type count) {
-                copy_columns(columns, index, source, count);
-            });
-    }
     template <typename Columns>
     static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
         requires ioj::soa_storage_detail::SoaSourceFor<Columns, PairRows, size_type>
     {
         using ioj::native_soa::source_data;
         return {source_data(source.pairs()), source_data(source.pointers())};
-    }
-    template <typename Columns>
-    void append_columns(Columns const& source,
-                        size_type source_first,
-                        size_type first,
-                        size_type count)
-        requires ioj::soa_storage_detail::SoaSourceFor<Columns, PairRows, size_type>
-    {
-        transfer_columns<false>(get_data(first), source_pointers(source) + source_first, count);
-    }
-    template <typename Columns>
-    void copy_columns_from(Columns const& source,
-                           size_type source_first,
-                           size_type first,
-                           size_type count)
-        requires ioj::soa_storage_detail::SoaSourceFor<Columns, PairRows, size_type>
-    {
-        transfer_columns<true>(get_data(first), source_pointers(source) + source_first, count);
-    }
-    void copy_live_columns(std::byte* const new_data, size_type const new_capacity) noexcept {
-        auto const old_blocks{capacity_blocks()};
-        auto const new_blocks{static_cast<byte_size_type>(new_capacity / capacity_granularity)};
-        auto const source{make_data_unchecked(static_cast<std::byte const*>(data_), old_blocks)};
-        auto const destination{make_data_unchecked(new_data, new_blocks)};
-        transfer_columns<false>(destination, source, num_);
     }
   public:
     auto pairs(this auto& self) { return self.get_view().pairs(); }
@@ -2052,10 +1691,6 @@ struct VectorsView : VectorsViewImpl<false> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<VectorsView>());
-// Columns:
-// xs: float
-// ys: float
-// zs: float
 struct Vectors
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {
@@ -2108,18 +1743,6 @@ struct Vectors
             return {xs + offset, ys + offset, zs + offset};
         }
     };
-    template <typename Self>
-    auto get_data(this Self& self) noexcept {
-        using Byte = std::conditional_t<std::is_const_v<Self>, std::byte const, std::byte>;
-        if (self.data_ == nullptr) {
-            return DataPointers<Byte>{};
-        }
-        return make_data_unchecked(static_cast<Byte*>(self.data_), self.capacity_blocks());
-    }
-    template <typename Self>
-    auto get_data(this Self& self, size_type const offset) noexcept {
-        return self.get_data() + offset;
-    }
   private:
     friend Operations;
     friend ::ioj::soa_storage_detail::StorageRequirements;
@@ -2133,9 +1756,6 @@ struct Vectors
         return {cursor.column_pointer(data, Layout::columns.XsColumn),
                 cursor.column_pointer(data, Layout::columns.YsColumn),
                 cursor.column_pointer(data, Layout::columns.ZsColumn)};
-    }
-    auto capacity_blocks() const noexcept -> byte_size_type {
-        return static_cast<byte_size_type>(capacity_ / capacity_granularity);
     }
 
     /* **************************************** */
@@ -2159,55 +1779,12 @@ struct Vectors
         transfer(destination.ys, source.ys);
         transfer(destination.zs, source.zs);
     }
-    void swap_remove_columns(size_type const index,
-                             size_type const source,
-                             size_type const move_count) {
-        copy_columns(get_data(), index, source, move_count);
-    }
-    static void copy_columns(DataPointers<std::byte> const& columns,
-                             size_type index,
-                             size_type source,
-                             size_type move_count) {
-        transfer_columns<false>(columns + index, columns + source, move_count);
-    }
-    void swap_remove_indices(std::span<size_type const> indices) {
-        auto const columns{get_data()};
-        ioj::soa_storage_detail::for_each_removal_run(
-            num_, indices, [&](size_type index, size_type source, size_type count) {
-                copy_columns(columns, index, source, count);
-            });
-    }
     template <typename Columns>
     static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
         requires ioj::soa_storage_detail::SoaSourceFor<Columns, Vectors, size_type>
     {
         using ioj::native_soa::source_data;
         return {source_data(source.xs()), source_data(source.ys()), source_data(source.zs())};
-    }
-    template <typename Columns>
-    void append_columns(Columns const& source,
-                        size_type source_first,
-                        size_type first,
-                        size_type count)
-        requires ioj::soa_storage_detail::SoaSourceFor<Columns, Vectors, size_type>
-    {
-        transfer_columns<false>(get_data(first), source_pointers(source) + source_first, count);
-    }
-    template <typename Columns>
-    void copy_columns_from(Columns const& source,
-                           size_type source_first,
-                           size_type first,
-                           size_type count)
-        requires ioj::soa_storage_detail::SoaSourceFor<Columns, Vectors, size_type>
-    {
-        transfer_columns<true>(get_data(first), source_pointers(source) + source_first, count);
-    }
-    void copy_live_columns(std::byte* const new_data, size_type const new_capacity) noexcept {
-        auto const old_blocks{capacity_blocks()};
-        auto const new_blocks{static_cast<byte_size_type>(new_capacity / capacity_granularity)};
-        auto const source{make_data_unchecked(static_cast<std::byte const*>(data_), old_blocks)};
-        auto const destination{make_data_unchecked(new_data, new_blocks)};
-        transfer_columns<false>(destination, source, num_);
     }
   public:
     auto xs(this auto& self) { return self.get_view().xs(); }
@@ -2597,14 +2174,6 @@ struct SingleRowsView : SingleRowsViewImpl<false> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<SingleRowsView>());
-// Columns:
-// values: std::int32_t
-// positions_xs: float
-// positions_ys: float
-// positions_zs: float
-// velocities_xs: float
-// velocities_ys: float
-// velocities_zs: float
 struct SingleRows
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {
@@ -2669,18 +2238,6 @@ struct SingleRows
                     velocities_zs + offset};
         }
     };
-    template <typename Self>
-    auto get_data(this Self& self) noexcept {
-        using Byte = std::conditional_t<std::is_const_v<Self>, std::byte const, std::byte>;
-        if (self.data_ == nullptr) {
-            return DataPointers<Byte>{};
-        }
-        return make_data_unchecked(static_cast<Byte*>(self.data_), self.capacity_blocks());
-    }
-    template <typename Self>
-    auto get_data(this Self& self, size_type const offset) noexcept {
-        return self.get_data() + offset;
-    }
   private:
     friend Operations;
     friend ::ioj::soa_storage_detail::StorageRequirements;
@@ -2698,9 +2255,6 @@ struct SingleRows
                 cursor.column_pointer(data, Layout::columns.Velocities.XsColumn),
                 cursor.column_pointer(data, Layout::columns.Velocities.YsColumn),
                 cursor.column_pointer(data, Layout::columns.Velocities.ZsColumn)};
-    }
-    auto capacity_blocks() const noexcept -> byte_size_type {
-        return static_cast<byte_size_type>(capacity_ / capacity_granularity);
     }
 
     /* **************************************** */
@@ -2732,24 +2286,6 @@ struct SingleRows
         transfer(destination.velocities_ys, source.velocities_ys);
         transfer(destination.velocities_zs, source.velocities_zs);
     }
-    void swap_remove_columns(size_type const index,
-                             size_type const source,
-                             size_type const move_count) {
-        copy_columns(get_data(), index, source, move_count);
-    }
-    static void copy_columns(DataPointers<std::byte> const& columns,
-                             size_type index,
-                             size_type source,
-                             size_type move_count) {
-        transfer_columns<false>(columns + index, columns + source, move_count);
-    }
-    void swap_remove_indices(std::span<size_type const> indices) {
-        auto const columns{get_data()};
-        ioj::soa_storage_detail::for_each_removal_run(
-            num_, indices, [&](size_type index, size_type source, size_type count) {
-                copy_columns(columns, index, source, count);
-            });
-    }
     template <typename Columns>
     static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
         requires ioj::soa_storage_detail::SoaSourceFor<Columns, SingleRows, size_type>
@@ -2764,31 +2300,6 @@ struct SingleRows
                 source_data(velocities_view.xs()),
                 source_data(velocities_view.ys()),
                 source_data(velocities_view.zs())};
-    }
-    template <typename Columns>
-    void append_columns(Columns const& source,
-                        size_type source_first,
-                        size_type first,
-                        size_type count)
-        requires ioj::soa_storage_detail::SoaSourceFor<Columns, SingleRows, size_type>
-    {
-        transfer_columns<false>(get_data(first), source_pointers(source) + source_first, count);
-    }
-    template <typename Columns>
-    void copy_columns_from(Columns const& source,
-                           size_type source_first,
-                           size_type first,
-                           size_type count)
-        requires ioj::soa_storage_detail::SoaSourceFor<Columns, SingleRows, size_type>
-    {
-        transfer_columns<true>(get_data(first), source_pointers(source) + source_first, count);
-    }
-    void copy_live_columns(std::byte* const new_data, size_type const new_capacity) noexcept {
-        auto const old_blocks{capacity_blocks()};
-        auto const new_blocks{static_cast<byte_size_type>(new_capacity / capacity_granularity)};
-        auto const source{make_data_unchecked(static_cast<std::byte const*>(data_), old_blocks)};
-        auto const destination{make_data_unchecked(new_data, new_blocks)};
-        transfer_columns<false>(destination, source, num_);
     }
   public:
     auto values(this auto& self) { return self.get_view().values(); }
@@ -3176,15 +2687,6 @@ struct SingleAlignmentRowsView : SingleAlignmentRowsViewImpl<false> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<SingleAlignmentRowsView>());
-// Columns:
-// bytes: std::uint8_t
-// odd: OddBytes
-// aligned32: Aligned32
-// nested_xs: float
-// nested_ys: float
-// nested_zs: float
-// aligned64: Aligned64
-// aligned256: Aligned256
 struct SingleAlignmentRows
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {
@@ -3251,18 +2753,6 @@ struct SingleAlignmentRows
                     aligned256 + offset};
         }
     };
-    template <typename Self>
-    auto get_data(this Self& self) noexcept {
-        using Byte = std::conditional_t<std::is_const_v<Self>, std::byte const, std::byte>;
-        if (self.data_ == nullptr) {
-            return DataPointers<Byte>{};
-        }
-        return make_data_unchecked(static_cast<Byte*>(self.data_), self.capacity_blocks());
-    }
-    template <typename Self>
-    auto get_data(this Self& self, size_type const offset) noexcept {
-        return self.get_data() + offset;
-    }
   private:
     friend Operations;
     friend ::ioj::soa_storage_detail::StorageRequirements;
@@ -3281,9 +2771,6 @@ struct SingleAlignmentRows
                 cursor.column_pointer(data, Layout::columns.Nested.ZsColumn),
                 cursor.column_pointer(data, Layout::columns.Aligned64Column),
                 cursor.column_pointer(data, Layout::columns.Aligned256Column)};
-    }
-    auto capacity_blocks() const noexcept -> byte_size_type {
-        return static_cast<byte_size_type>(capacity_ / capacity_granularity);
     }
 
     /* **************************************** */
@@ -3317,24 +2804,6 @@ struct SingleAlignmentRows
         transfer(destination.aligned64, source.aligned64);
         transfer(destination.aligned256, source.aligned256);
     }
-    void swap_remove_columns(size_type const index,
-                             size_type const source,
-                             size_type const move_count) {
-        copy_columns(get_data(), index, source, move_count);
-    }
-    static void copy_columns(DataPointers<std::byte> const& columns,
-                             size_type index,
-                             size_type source,
-                             size_type move_count) {
-        transfer_columns<false>(columns + index, columns + source, move_count);
-    }
-    void swap_remove_indices(std::span<size_type const> indices) {
-        auto const columns{get_data()};
-        ioj::soa_storage_detail::for_each_removal_run(
-            num_, indices, [&](size_type index, size_type source, size_type count) {
-                copy_columns(columns, index, source, count);
-            });
-    }
     template <typename Columns>
     static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
         requires ioj::soa_storage_detail::SoaSourceFor<Columns, SingleAlignmentRows, size_type>
@@ -3349,31 +2818,6 @@ struct SingleAlignmentRows
                 source_data(nested_view.zs()),
                 source_data(source.aligned64()),
                 source_data(source.aligned256())};
-    }
-    template <typename Columns>
-    void append_columns(Columns const& source,
-                        size_type source_first,
-                        size_type first,
-                        size_type count)
-        requires ioj::soa_storage_detail::SoaSourceFor<Columns, SingleAlignmentRows, size_type>
-    {
-        transfer_columns<false>(get_data(first), source_pointers(source) + source_first, count);
-    }
-    template <typename Columns>
-    void copy_columns_from(Columns const& source,
-                           size_type source_first,
-                           size_type first,
-                           size_type count)
-        requires ioj::soa_storage_detail::SoaSourceFor<Columns, SingleAlignmentRows, size_type>
-    {
-        transfer_columns<true>(get_data(first), source_pointers(source) + source_first, count);
-    }
-    void copy_live_columns(std::byte* const new_data, size_type const new_capacity) noexcept {
-        auto const old_blocks{capacity_blocks()};
-        auto const new_blocks{static_cast<byte_size_type>(new_capacity / capacity_granularity)};
-        auto const source{make_data_unchecked(static_cast<std::byte const*>(data_), old_blocks)};
-        auto const destination{make_data_unchecked(new_data, new_blocks)};
-        transfer_columns<false>(destination, source, num_);
     }
   public:
     auto bytes(this auto& self) { return self.get_view().bytes(); }
@@ -3903,11 +3347,6 @@ struct NATIVE_SOA_FIXTURE_API ApiView : ApiViewImpl<false> {
     void assign_first(float value) { this->values()[0] = value; }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<ApiView>());
-// Columns:
-// values: float
-// masks: ApiMask
-// positions_xs: float
-// positions_ys: float
 struct NATIVE_SOA_FIXTURE_API ApiOwner
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {
@@ -3961,18 +3400,6 @@ struct NATIVE_SOA_FIXTURE_API ApiOwner
             return {values + offset, masks + offset, positions_xs + offset, positions_ys + offset};
         }
     };
-    template <typename Self>
-    auto get_data(this Self& self) noexcept {
-        using Byte = std::conditional_t<std::is_const_v<Self>, std::byte const, std::byte>;
-        if (self.data_ == nullptr) {
-            return DataPointers<Byte>{};
-        }
-        return make_data_unchecked(static_cast<Byte*>(self.data_), self.capacity_blocks());
-    }
-    template <typename Self>
-    auto get_data(this Self& self, size_type const offset) noexcept {
-        return self.get_data() + offset;
-    }
   private:
     friend Operations;
     friend ::ioj::soa_storage_detail::StorageRequirements;
@@ -3987,9 +3414,6 @@ struct NATIVE_SOA_FIXTURE_API ApiOwner
                 cursor.column_pointer(data, Layout::columns.MasksColumn),
                 cursor.column_pointer(data, Layout::columns.Positions.XsColumn),
                 cursor.column_pointer(data, Layout::columns.Positions.YsColumn)};
-    }
-    auto capacity_blocks() const noexcept -> byte_size_type {
-        return static_cast<byte_size_type>(capacity_ / capacity_granularity);
     }
 
     /* **************************************** */
@@ -4015,24 +3439,6 @@ struct NATIVE_SOA_FIXTURE_API ApiOwner
         transfer(destination.positions_xs, source.positions_xs);
         transfer(destination.positions_ys, source.positions_ys);
     }
-    void swap_remove_columns(size_type const index,
-                             size_type const source,
-                             size_type const move_count) {
-        copy_columns(get_data(), index, source, move_count);
-    }
-    static void copy_columns(DataPointers<std::byte> const& columns,
-                             size_type index,
-                             size_type source,
-                             size_type move_count) {
-        transfer_columns<false>(columns + index, columns + source, move_count);
-    }
-    void swap_remove_indices(std::span<size_type const> indices) {
-        auto const columns{get_data()};
-        ioj::soa_storage_detail::for_each_removal_run(
-            num_, indices, [&](size_type index, size_type source, size_type count) {
-                copy_columns(columns, index, source, count);
-            });
-    }
     template <typename Columns>
     static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
         requires ioj::soa_storage_detail::SoaSourceFor<Columns, ApiOwner, size_type>
@@ -4043,31 +3449,6 @@ struct NATIVE_SOA_FIXTURE_API ApiOwner
                 source_data(source.masks()),
                 source_data(positions_view.xs()),
                 source_data(positions_view.ys())};
-    }
-    template <typename Columns>
-    void append_columns(Columns const& source,
-                        size_type source_first,
-                        size_type first,
-                        size_type count)
-        requires ioj::soa_storage_detail::SoaSourceFor<Columns, ApiOwner, size_type>
-    {
-        transfer_columns<false>(get_data(first), source_pointers(source) + source_first, count);
-    }
-    template <typename Columns>
-    void copy_columns_from(Columns const& source,
-                           size_type source_first,
-                           size_type first,
-                           size_type count)
-        requires ioj::soa_storage_detail::SoaSourceFor<Columns, ApiOwner, size_type>
-    {
-        transfer_columns<true>(get_data(first), source_pointers(source) + source_first, count);
-    }
-    void copy_live_columns(std::byte* const new_data, size_type const new_capacity) noexcept {
-        auto const old_blocks{capacity_blocks()};
-        auto const new_blocks{static_cast<byte_size_type>(new_capacity / capacity_granularity)};
-        auto const source{make_data_unchecked(static_cast<std::byte const*>(data_), old_blocks)};
-        auto const destination{make_data_unchecked(new_data, new_blocks)};
-        transfer_columns<false>(destination, source, num_);
     }
   public:
     auto values(this auto& self) { return self.get_view().values(); }
@@ -4298,9 +3679,6 @@ struct EquivalentOwnerView : EquivalentOwnerViewImpl<false> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<EquivalentOwnerView>());
-// Columns:
-// xs: float
-// ys: float
 struct EquivalentOwner
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {
@@ -4354,18 +3732,6 @@ struct EquivalentOwner
             return {xs + offset, ys + offset};
         }
     };
-    template <typename Self>
-    auto get_data(this Self& self) noexcept {
-        using Byte = std::conditional_t<std::is_const_v<Self>, std::byte const, std::byte>;
-        if (self.data_ == nullptr) {
-            return DataPointers<Byte>{};
-        }
-        return make_data_unchecked(static_cast<Byte*>(self.data_), self.capacity_blocks());
-    }
-    template <typename Self>
-    auto get_data(this Self& self, size_type const offset) noexcept {
-        return self.get_data() + offset;
-    }
   private:
     friend Operations;
     friend ::ioj::soa_storage_detail::StorageRequirements;
@@ -4378,9 +3744,6 @@ struct EquivalentOwner
         ioj::native_soa::LayoutCursor cursor{blocks};
         return {cursor.column_pointer(data, Layout::columns.XsColumn),
                 cursor.column_pointer(data, Layout::columns.YsColumn)};
-    }
-    auto capacity_blocks() const noexcept -> byte_size_type {
-        return static_cast<byte_size_type>(capacity_ / capacity_granularity);
     }
 
     /* **************************************** */
@@ -4402,55 +3765,12 @@ struct EquivalentOwner
         transfer(destination.xs, source.xs);
         transfer(destination.ys, source.ys);
     }
-    void swap_remove_columns(size_type const index,
-                             size_type const source,
-                             size_type const move_count) {
-        copy_columns(get_data(), index, source, move_count);
-    }
-    static void copy_columns(DataPointers<std::byte> const& columns,
-                             size_type index,
-                             size_type source,
-                             size_type move_count) {
-        transfer_columns<false>(columns + index, columns + source, move_count);
-    }
-    void swap_remove_indices(std::span<size_type const> indices) {
-        auto const columns{get_data()};
-        ioj::soa_storage_detail::for_each_removal_run(
-            num_, indices, [&](size_type index, size_type source, size_type count) {
-                copy_columns(columns, index, source, count);
-            });
-    }
     template <typename Columns>
     static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
         requires ioj::soa_storage_detail::SoaSourceFor<Columns, EquivalentOwner, size_type>
     {
         using ioj::native_soa::source_data;
         return {source_data(source.xs()), source_data(source.ys())};
-    }
-    template <typename Columns>
-    void append_columns(Columns const& source,
-                        size_type source_first,
-                        size_type first,
-                        size_type count)
-        requires ioj::soa_storage_detail::SoaSourceFor<Columns, EquivalentOwner, size_type>
-    {
-        transfer_columns<false>(get_data(first), source_pointers(source) + source_first, count);
-    }
-    template <typename Columns>
-    void copy_columns_from(Columns const& source,
-                           size_type source_first,
-                           size_type first,
-                           size_type count)
-        requires ioj::soa_storage_detail::SoaSourceFor<Columns, EquivalentOwner, size_type>
-    {
-        transfer_columns<true>(get_data(first), source_pointers(source) + source_first, count);
-    }
-    void copy_live_columns(std::byte* const new_data, size_type const new_capacity) noexcept {
-        auto const old_blocks{capacity_blocks()};
-        auto const new_blocks{static_cast<byte_size_type>(new_capacity / capacity_granularity)};
-        auto const source{make_data_unchecked(static_cast<std::byte const*>(data_), old_blocks)};
-        auto const destination{make_data_unchecked(new_data, new_blocks)};
-        transfer_columns<false>(destination, source, num_);
     }
   public:
     auto xs(this auto& self) { return self.get_view().xs(); }
@@ -4685,10 +4005,6 @@ struct AccessorOwnerView : AccessorOwnerViewImpl<false> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<AccessorOwnerView>());
-// Columns:
-// horizontal: float
-// vertical: float
-// depth: float
 struct AccessorOwner
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {
@@ -4743,18 +4059,6 @@ struct AccessorOwner
             return {horizontal + offset, vertical + offset, depth + offset};
         }
     };
-    template <typename Self>
-    auto get_data(this Self& self) noexcept {
-        using Byte = std::conditional_t<std::is_const_v<Self>, std::byte const, std::byte>;
-        if (self.data_ == nullptr) {
-            return DataPointers<Byte>{};
-        }
-        return make_data_unchecked(static_cast<Byte*>(self.data_), self.capacity_blocks());
-    }
-    template <typename Self>
-    auto get_data(this Self& self, size_type const offset) noexcept {
-        return self.get_data() + offset;
-    }
   private:
     friend Operations;
     friend ::ioj::soa_storage_detail::StorageRequirements;
@@ -4768,9 +4072,6 @@ struct AccessorOwner
         return {cursor.column_pointer(data, Layout::columns.HorizontalColumn),
                 cursor.column_pointer(data, Layout::columns.VerticalColumn),
                 cursor.column_pointer(data, Layout::columns.DepthColumn)};
-    }
-    auto capacity_blocks() const noexcept -> byte_size_type {
-        return static_cast<byte_size_type>(capacity_ / capacity_granularity);
     }
 
     /* **************************************** */
@@ -4794,24 +4095,6 @@ struct AccessorOwner
         transfer(destination.vertical, source.vertical);
         transfer(destination.depth, source.depth);
     }
-    void swap_remove_columns(size_type const index,
-                             size_type const source,
-                             size_type const move_count) {
-        copy_columns(get_data(), index, source, move_count);
-    }
-    static void copy_columns(DataPointers<std::byte> const& columns,
-                             size_type index,
-                             size_type source,
-                             size_type move_count) {
-        transfer_columns<false>(columns + index, columns + source, move_count);
-    }
-    void swap_remove_indices(std::span<size_type const> indices) {
-        auto const columns{get_data()};
-        ioj::soa_storage_detail::for_each_removal_run(
-            num_, indices, [&](size_type index, size_type source, size_type count) {
-                copy_columns(columns, index, source, count);
-            });
-    }
     template <typename Columns>
     static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
         requires ioj::soa_storage_detail::SoaSourceFor<Columns, AccessorOwner, size_type>
@@ -4820,31 +4103,6 @@ struct AccessorOwner
         return {source_data(source.horizontal()),
                 source_data(source.vertical()),
                 source_data(source.depth())};
-    }
-    template <typename Columns>
-    void append_columns(Columns const& source,
-                        size_type source_first,
-                        size_type first,
-                        size_type count)
-        requires ioj::soa_storage_detail::SoaSourceFor<Columns, AccessorOwner, size_type>
-    {
-        transfer_columns<false>(get_data(first), source_pointers(source) + source_first, count);
-    }
-    template <typename Columns>
-    void copy_columns_from(Columns const& source,
-                           size_type source_first,
-                           size_type first,
-                           size_type count)
-        requires ioj::soa_storage_detail::SoaSourceFor<Columns, AccessorOwner, size_type>
-    {
-        transfer_columns<true>(get_data(first), source_pointers(source) + source_first, count);
-    }
-    void copy_live_columns(std::byte* const new_data, size_type const new_capacity) noexcept {
-        auto const old_blocks{capacity_blocks()};
-        auto const new_blocks{static_cast<byte_size_type>(new_capacity / capacity_granularity)};
-        auto const source{make_data_unchecked(static_cast<std::byte const*>(data_), old_blocks)};
-        auto const destination{make_data_unchecked(new_data, new_blocks)};
-        transfer_columns<false>(destination, source, num_);
     }
   public:
     auto horizontal(this auto& self) { return self.get_view().horizontal(); }

@@ -2,7 +2,6 @@
 
 #include <ioj/single_allocation/layout.h>
 #include <ioj/single_allocation/operations.h>
-#include <ioj/single_allocation/removal.h>
 #include <ioj/single_allocation/view.h>
 
 #include <algorithm>

@@ -287,8 +287,11 @@ supplies a reusable nested group without an owner or standalone views. Such type
 C++ spelling and cannot be record members or function parameter types. They remain valid logical
 relationship targets and nested groups.
 
-`NameLayout` is metadata, not an owner base. Chained `ColumnLayout<T>` constants determine column
-offsets, exact allocation bytes, and alignment. The existing layout uses 64 rows per block, a
+`NameLayoutColumns` composes scalar `ColumnLayout<T>` members and nested schema column groups.
+Groups construct their predecessor chains in place, expose `last_column()`, and cannot be copied
+or moved. `NameLayout` uses the shared `Layout<Columns>` metadata and owns the stable constexpr
+start and columns. These determine offsets, exact allocation bytes, and alignment without adding
+state to owners or views. The existing layout uses 64 rows per block, a
 192-byte inter-column gap, and 64-byte minimum alignment. `LayoutCursor` materializes typed column
 pointers in one linear pass using the same placement primitives. The conservative capacity bound
 and exact byte calculation retain overflow checks. C++ verifies element alignment, trivial
@@ -302,7 +305,9 @@ Move construction adopts the source resource. Move assignment retains the destin
 transferring storage when resources compare equal and copying columns otherwise. Copy construction
 and assignment are deleted.
 
-`StorageOperations` coordinates lifetime and mutation using generated, typed per-column operations.
+`StorageOperations` coordinates lifetime, pointer access, copying, growth and removal using
+generated, typed per-column operations. Generated flat pointer structures, pointer construction,
+source access, default construction and transfers retain explicit statements for each leaf.
 It never stores independently resizable columns. One row count and capacity govern growth,
 insertion, removal, copying, and permutation; equal-column-size validation is unnecessary inside
 the owner. Keep per-column construction, copying, and destruction explicit instead of replacing
@@ -318,10 +323,12 @@ move path; allocation growth and non-overlapping append use the copy path.
 
 ## Compact and resolved views
 
-The default view retains a pointer to owner state, offset, and count. Generated mutable and const
-types share `NameViewImpl<Const>` and expose typed `std::span` column accessors. Nested compact views
-refer to the same owner state and range, with offsets from the parent's flattened layout. Member
-functions precede private view data. Owner borrowing requires an lvalue and checks the initial
+`CompactViewBase<Const>` owns the default view's state pointer, offset and count, plus construction,
+slicing and typed `std::span` column access. Named generated views retain schema accessors and one
+matching mutable-to-const conversion; unrelated views cannot convert through their shared base.
+Views remain trivially copyable and 16 bytes on native x64. Nested compact views refer to the same
+owner state and range, using member paths through its composed layout. Owner borrowing requires
+an lvalue and checks the initial
 range; slicing checks its subrange. Accessors rely on these established preconditions.
 
 Calling `.resolve()` materializes a pointer per physical column plus one count. Resolve once

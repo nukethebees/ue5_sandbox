@@ -273,13 +273,6 @@ struct PhysicalFactTableView : PhysicalFactTableViewImpl<false> {
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<PhysicalFactTableView>());
-// Columns:
-// size_bytes: std::uint64_t
-// alignment_bytes: std::uint64_t
-// signedness: lispb::schema::EnumSignedness
-// unsigned_value_bits: std::optional<std::uint32_t>
-// provenance: lispb::StringId
-// origin: ioj::layout::FactOrigin
 struct PhysicalFactTable
     : protected ioj::native_soa::StorageState
     , ioj::native_soa::StorageOperations {
@@ -342,18 +335,6 @@ struct PhysicalFactTable
                     origin + offset};
         }
     };
-    template <typename Self>
-    auto get_data(this Self& self) noexcept {
-        using Byte = std::conditional_t<std::is_const_v<Self>, std::byte const, std::byte>;
-        if (self.data_ == nullptr) {
-            return DataPointers<Byte>{};
-        }
-        return make_data_unchecked(static_cast<Byte*>(self.data_), self.capacity_blocks());
-    }
-    template <typename Self>
-    auto get_data(this Self& self, size_type const offset) noexcept {
-        return self.get_data() + offset;
-    }
   private:
     friend Operations;
     friend ::ioj::soa_storage_detail::StorageRequirements;
@@ -370,9 +351,6 @@ struct PhysicalFactTable
                 cursor.column_pointer(data, Layout::columns.UnsignedValueBitsColumn),
                 cursor.column_pointer(data, Layout::columns.ProvenanceColumn),
                 cursor.column_pointer(data, Layout::columns.OriginColumn)};
-    }
-    auto capacity_blocks() const noexcept -> byte_size_type {
-        return static_cast<byte_size_type>(capacity_ / capacity_granularity);
     }
 
     /* **************************************** */
@@ -402,24 +380,6 @@ struct PhysicalFactTable
         transfer(destination.provenance, source.provenance);
         transfer(destination.origin, source.origin);
     }
-    void swap_remove_columns(size_type const index,
-                             size_type const source,
-                             size_type const move_count) {
-        copy_columns(get_data(), index, source, move_count);
-    }
-    static void copy_columns(DataPointers<std::byte> const& columns,
-                             size_type index,
-                             size_type source,
-                             size_type move_count) {
-        transfer_columns<false>(columns + index, columns + source, move_count);
-    }
-    void swap_remove_indices(std::span<size_type const> indices) {
-        auto const columns{get_data()};
-        ioj::soa_storage_detail::for_each_removal_run(
-            num_, indices, [&](size_type index, size_type source, size_type count) {
-                copy_columns(columns, index, source, count);
-            });
-    }
     template <typename Columns>
     static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
         requires ioj::soa_storage_detail::SoaSourceFor<Columns, PhysicalFactTable, size_type>
@@ -431,31 +391,6 @@ struct PhysicalFactTable
                 source_data(source.unsigned_value_bits()),
                 source_data(source.provenance()),
                 source_data(source.origin())};
-    }
-    template <typename Columns>
-    void append_columns(Columns const& source,
-                        size_type source_first,
-                        size_type first,
-                        size_type count)
-        requires ioj::soa_storage_detail::SoaSourceFor<Columns, PhysicalFactTable, size_type>
-    {
-        transfer_columns<false>(get_data(first), source_pointers(source) + source_first, count);
-    }
-    template <typename Columns>
-    void copy_columns_from(Columns const& source,
-                           size_type source_first,
-                           size_type first,
-                           size_type count)
-        requires ioj::soa_storage_detail::SoaSourceFor<Columns, PhysicalFactTable, size_type>
-    {
-        transfer_columns<true>(get_data(first), source_pointers(source) + source_first, count);
-    }
-    void copy_live_columns(std::byte* const new_data, size_type const new_capacity) noexcept {
-        auto const old_blocks{capacity_blocks()};
-        auto const new_blocks{static_cast<byte_size_type>(new_capacity / capacity_granularity)};
-        auto const source{make_data_unchecked(static_cast<std::byte const*>(data_), old_blocks)};
-        auto const destination{make_data_unchecked(new_data, new_blocks)};
-        transfer_columns<false>(destination, source, num_);
     }
   public:
     auto size_bytes(this auto& self) { return self.get_view().size_bytes(); }
