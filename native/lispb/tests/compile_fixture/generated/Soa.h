@@ -720,7 +720,7 @@ struct EquivalentOwner
 };
 
 struct ApiReference {
-    codegen_compile_fixture::ApiOwner* owner;
+    ApiOwner* owner;
 };
 
 struct FRowsSchema;

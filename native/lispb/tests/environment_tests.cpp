@@ -4,6 +4,7 @@
 #include <gtest/gtest.h>
 
 #include <array>
+#include <stdexcept>
 
 namespace lispb::codegen {
 namespace {
@@ -78,6 +79,20 @@ TEST(Environments, RestoresNestedSelectionsAndResetsAllColumns) {
     EXPECT_EQ(environments.size(), 1);
     EXPECT_EQ(environments.kind(current), EnvironmentKind::global);
     EXPECT_TRUE(environments.symbols(current).empty());
+}
+
+TEST(Environments, ChecksCapacityBeforeNarrowingAnEnvironmentIndex) {
+    Environments environments;
+    auto const limit{EnvironmentId::null_value};
+    for (std::uint32_t index{1}; index < limit; ++index) {
+        EXPECT_EQ(environments.append(environments.global(), EnvironmentKind::block).value, index);
+    }
+
+    EXPECT_EQ(environments.size(), limit);
+    EXPECT_THROW(environments.append(environments.global(), EnvironmentKind::block),
+                 std::length_error);
+    environments.clear();
+    EXPECT_EQ(environments.append(environments.global(), EnvironmentKind::block).value, 1);
 }
 
 }

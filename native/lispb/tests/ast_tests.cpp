@@ -867,5 +867,102 @@ TEST(Ast, UsesTemplateAndMemberScopesInSignaturesAndExpressions) {
     }
 }
 
+TEST(Ast, DistinguishesDeclarationsWhenNodesAreReusedAcrossNamespaces) {
+    CompilerTestContext context;
+    auto& ir{context.ir};
+    auto const alias{ir.using_declaration(ir.strings.intern("Token"), ir.types.intern("int"))};
+    auto const record{
+        ir.record(ir.strings.intern("Holder"),
+                  {ir.instance_member(ir.types.named("a::Token"), ir.strings.intern("value"))})};
+    auto const output{
+        ir.render_nodes(std::vector{ir.namespace_node(ir.strings.intern("a"), {alias, record}),
+                                    ir.namespace_node(ir.strings.intern("b"), {alias, record})},
+                        {},
+                        1)};
+
+    EXPECT_NE(output.find("namespace a {\nusing Token = int;\n\nstruct Holder {\n    Token value;"),
+              std::string::npos)
+        << output;
+    EXPECT_NE(
+        output.find("namespace b {\nusing Token = int;\n\nstruct Holder {\n    a::Token value;"),
+        std::string::npos)
+        << output;
+}
+
+TEST(Ast, TracksLocalHidingAtTheDeclarationAndRestoresEnclosingLookup) {
+    CompilerTestContext context;
+    auto& ir{context.ir};
+    auto const token{ir.types.named("a::Token")};
+    auto const function{ir.function("use", "void")};
+    ir.set_function_body(function,
+                         {ir.variable(token, "before"),
+                          ir.block({ir.variable("int", "Token"), ir.variable(token, "inside")}),
+                          ir.variable(token, "after"),
+                          ir.variable("int", "Token"),
+                          ir.variable(token, "hidden")});
+    auto const output{ir.render(in_namespace(ir, "a", ir.definition(function)))};
+
+    for (auto const expected :
+         {"Token before{};", "a::Token inside{};", "Token after{};", "a::Token hidden{};"}) {
+        EXPECT_NE(output.find(expected), std::string::npos) << output;
+    }
+}
+
+TEST(Ast, ResolvesNestedClassOwnersAndForwardDeclaredInjectedNames) {
+    CompilerTestContext context;
+    auto& ir{context.ir};
+    auto const token{ir.types.named("a::Token")};
+    auto const make{ir.function("make", token)};
+    ir.set_function_parameters(make, {ir.parameter(token, "value")});
+    ir.set_function_body(make, {ir.return_stmt(ir.init_list({}, token))});
+    auto const inner{
+        ir.record(ir.strings.intern("Inner"),
+                  {ir.using_declaration(ir.strings.intern("Token"), ir.types.intern("int")),
+                   ir.declaration(make)})};
+    auto const outer{ir.record(ir.strings.intern("Outer"), {inner})};
+    auto const self{
+        ir.record(ir.strings.intern("Self"),
+                  {ir.instance_member(ir.types.decorate(ir.types.named("a::Self"), "", " const*"),
+                                      ir.strings.intern("next"))})};
+    auto const output{
+        ir.render(ir.namespace_node(ir.strings.intern("a"),
+                                    {outer,
+                                     ir.definition(make, ir.store_text("Outer::Inner")),
+                                     ir.forward_declaration(ir.strings.intern("Self")),
+                                     self}))};
+
+    EXPECT_NE(output.find("Token Outer::Inner::make(a::Token value)"), std::string::npos) << output;
+    EXPECT_NE(output.find("return a::Token{};"), std::string::npos) << output;
+    EXPECT_NE(output.find("Self const* next;"), std::string::npos) << output;
+}
+
+TEST(Ast, KeepsTemplateHeadersIndependentOfFunctionParameters) {
+    CompilerTestContext context;
+    auto& ir{context.ir};
+    auto const token{ir.types.named("a::Token")};
+    auto const function{ir.function("use", token)};
+    ir.set_function_template(
+        function,
+        ir.template_declaration({ir.value_template_parameter(token, ir.strings.intern("N"))}));
+    ir.set_function_parameters(function,
+                               {ir.parameter(token, "Token"), ir.parameter(token, "other")});
+    ir.set_function_return_type(function, token, ReturnSyntax::trailing);
+    auto const output{ir.render(in_namespace(ir, "a", ir.declaration(function)))};
+
+    EXPECT_NE(output.find("template <Token N>"), std::string::npos) << output;
+    EXPECT_NE(output.find("use(Token Token, a::Token other) -> a::Token;"), std::string::npos)
+        << output;
+}
+
+TEST(Ast, PreservesQualificationForAuthoredRecordNames) {
+    CompilerTestContext context;
+    auto& ir{context.ir};
+    auto const record{
+        ir.record(ir.raw_expr("Holder"),
+                  {ir.instance_member(ir.types.named("a::Token"), ir.strings.intern("value"))})};
+
+    EXPECT_NE(ir.render(in_namespace(ir, "a", record)).find("a::Token value;"), std::string::npos);
+}
+
 } // namespace
 } // namespace lispb::codegen

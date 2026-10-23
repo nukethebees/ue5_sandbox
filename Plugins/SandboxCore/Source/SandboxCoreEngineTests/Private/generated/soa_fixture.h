@@ -1163,6 +1163,6 @@ struct EquivalentOwner
 };
 
 struct ApiReference {
-    ioj::soa_test_fixture::ApiOwner* owner;
+    ApiOwner* owner;
 };
 } // namespace ioj::soa_test_fixture
