@@ -1,4 +1,5 @@
 include_guard(GLOBAL)
+include("${CMAKE_CURRENT_LIST_DIR}/validate_arguments.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/unreal_arguments.cmake")
 
 function(add_unreal_target target_name unreal_target)
@@ -22,14 +23,7 @@ endfunction()
 function(add_unreal_editor_target target_name)
   cmake_parse_arguments(PARSE_ARGV 1 editor_target "UNATTENDED" "COMMENT;FOLDER" "ARGUMENTS;DEPENDS")
 
-  if(editor_target_UNPARSED_ARGUMENTS)
-    message(FATAL_ERROR
-      "add_unreal_editor_target(${target_name}) received unexpected arguments: "
-      "${editor_target_UNPARSED_ARGUMENTS}")
-  endif()
-  if(NOT editor_target_COMMENT)
-    message(FATAL_ERROR "add_unreal_editor_target(${target_name}) requires COMMENT.")
-  endif()
+  ioj_validate_arguments(editor_target "add_unreal_editor_target(${target_name})" COMMENT)
 
   if(editor_target_UNATTENDED)
     if(NOT "-unattended" IN_LIST editor_target_ARGUMENTS)
@@ -55,23 +49,7 @@ endfunction()
 function(add_unreal_editor_test test_name)
   cmake_parse_arguments(PARSE_ARGV 1 editor_test "NO_LOCAL_DDC" "TIMEOUT" "ARGUMENTS;LABELS")
 
-  if(editor_test_UNPARSED_ARGUMENTS)
-    message(FATAL_ERROR
-      "add_unreal_editor_test(${test_name}) received unexpected arguments: "
-      "${editor_test_UNPARSED_ARGUMENTS}")
-  endif()
-
-  if(NOT editor_test_ARGUMENTS)
-    message(FATAL_ERROR "add_unreal_editor_test(${test_name}) requires ARGUMENTS.")
-  endif()
-
-  if(NOT editor_test_LABELS)
-    message(FATAL_ERROR "add_unreal_editor_test(${test_name}) requires LABELS.")
-  endif()
-
-  if(NOT editor_test_TIMEOUT)
-    message(FATAL_ERROR "add_unreal_editor_test(${test_name}) requires TIMEOUT.")
-  endif()
+  ioj_validate_arguments(editor_test "add_unreal_editor_test(${test_name})" ARGUMENTS LABELS TIMEOUT)
 
   set(editor_test_common_arguments
     -unattended
@@ -104,19 +82,7 @@ endfunction()
 function(add_unreal_automation_test test_name)
   cmake_parse_arguments(PARSE_ARGV 1 automation_test "" "" "FILTERS;LABELS")
 
-  if(automation_test_UNPARSED_ARGUMENTS)
-    message(FATAL_ERROR
-      "add_unreal_automation_test(${test_name}) received unexpected arguments: "
-      "${automation_test_UNPARSED_ARGUMENTS}")
-  endif()
-
-  if(NOT automation_test_FILTERS)
-    message(FATAL_ERROR "add_unreal_automation_test(${test_name}) requires FILTERS.")
-  endif()
-
-  if(NOT automation_test_LABELS)
-    message(FATAL_ERROR "add_unreal_automation_test(${test_name}) requires LABELS.")
-  endif()
+  ioj_validate_arguments(automation_test "add_unreal_automation_test(${test_name})" FILTERS LABELS)
 
   sandbox_make_automation_filter_expression(automation_filter_expression
     ${automation_test_FILTERS})

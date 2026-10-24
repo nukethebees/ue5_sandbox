@@ -1,18 +1,11 @@
 include_guard(GLOBAL)
+include("${CMAKE_CURRENT_LIST_DIR}/validate_arguments.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/unreal_arguments.cmake")
 
 function(add_unreal_build_cook_run_target target_name)
   cmake_parse_arguments(PARSE_ARGV 1 uat "" "COMMENT" "ARGUMENTS")
 
-  if(uat_UNPARSED_ARGUMENTS)
-    message(FATAL_ERROR
-      "add_unreal_build_cook_run_target(${target_name}) received unexpected arguments: "
-      "${uat_UNPARSED_ARGUMENTS}")
-  endif()
-  if(NOT uat_COMMENT)
-    message(FATAL_ERROR
-      "add_unreal_build_cook_run_target(${target_name}) requires COMMENT.")
-  endif()
+  ioj_validate_arguments(uat "add_unreal_build_cook_run_target(${target_name})" COMMENT)
 
   add_custom_target(${target_name}
     COMMAND

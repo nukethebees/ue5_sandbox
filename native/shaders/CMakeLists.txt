@@ -1,3 +1,5 @@
+include("${PROJECT_SOURCE_DIR}/cmake/validate_arguments.cmake")
+
 find_program(IOJ_DXC_EXECUTABLE
   NAMES dxc dxc.exe
   REQUIRED
@@ -7,19 +9,7 @@ find_program(IOJ_DXC_EXECUTABLE
 function(sandbox_add_dxc_shader_test)
   cmake_parse_arguments(PARSE_ARGV 0 shader "" "NAME;SOURCE;ENTRY_POINT;PROFILE" "")
 
-  if(shader_UNPARSED_ARGUMENTS)
-    message(FATAL_ERROR
-      "sandbox_add_dxc_shader_test received unexpected arguments: ${shader_UNPARSED_ARGUMENTS}"
-    )
-  endif()
-
-  foreach(required_argument IN ITEMS NAME SOURCE PROFILE)
-    if(NOT shader_${required_argument})
-      message(FATAL_ERROR
-        "sandbox_add_dxc_shader_test requires ${required_argument}."
-      )
-    endif()
-  endforeach()
+  ioj_validate_arguments(shader "sandbox_add_dxc_shader_test" NAME SOURCE PROFILE)
 
   if(NOT EXISTS "${shader_SOURCE}")
     message(FATAL_ERROR "DXC shader source does not exist: ${shader_SOURCE}")
