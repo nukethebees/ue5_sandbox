@@ -4,6 +4,8 @@
   :id 'batch-benchmark
   :title "Batch Benchmark"
 
+  ;; Include the elevated capital ships and their fighter spawn slots.
+  :collision-grid (collision-grid :level-size '(2000000 2000000 500000))
 
   ;; Boilerplate observer camera for this playerless seed.
   :camera (camera
