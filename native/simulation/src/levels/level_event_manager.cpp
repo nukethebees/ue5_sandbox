@@ -18,8 +18,7 @@ LevelEventManager::LevelEventManager(capital_ships::Sim& capital_ships,
 void LevelEventManager::initialise(CompiledLevelEvents data, EntityId const player_id) {
     initialisation_ = std::move(data.initialisation);
     schedule_ = std::move(data.schedule);
-    auto const event_tick_count{schedule_.execution_ticks.size()};
-    assert(event_tick_count == schedule_.event_group_counts.size());
+    assert(schedule_.execution_ticks.size() == schedule_.event_group_counts.size());
 
     next_event_index_ = 0;
     spawn_group_offset_ = schedule_.initial_spawn_group_count;
