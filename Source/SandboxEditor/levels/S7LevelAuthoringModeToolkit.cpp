@@ -66,7 +66,7 @@ auto FS7LevelAuthoringModeToolkit::grid_summary() const -> FText {
     auto const collision_grid{document->resolve_collision_grid(config->collision_grid)};
     auto const dimensions{collision_grid.calculate_grid_dimensions()};
     auto const half_bounds{ioj::to_unreal(ioj::sim::collision::grid_half_size(
-        {{dimensions.X, dimensions.Y, dimensions.Z}, ioj::to_native(collision_grid.cell_size)}))};
+        {{dimensions.X, dimensions.Y, dimensions.Z}, ioj::Vector3f{collision_grid.cell_size}}))};
     return FText::FromString(
         FString::Printf(TEXT("Shared grid defaults: %s | Effective grid bounds: +/-%s cm"),
                         *config->GetName(),

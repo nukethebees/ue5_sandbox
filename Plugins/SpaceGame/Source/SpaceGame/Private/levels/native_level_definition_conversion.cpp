@@ -67,10 +67,10 @@ auto to_native(FLevelDraft const& definition) -> std::expected<LevelDefinition, 
         auto const& grid{definition.collision_grid.GetValue()};
         LevelCollisionGridDefinition native_grid;
         if (grid.level_size.IsSet()) {
-            native_grid.level_size = ioj::to_native(FVector{grid.level_size.GetValue()});
+            native_grid.level_size = ioj::Vector3d{grid.level_size.GetValue()};
         }
         if (grid.cell_size.IsSet()) {
-            native_grid.cell_size = ioj::to_native(FVector{grid.cell_size.GetValue()});
+            native_grid.cell_size = ioj::Vector3d{grid.cell_size.GetValue()};
         }
         result.collision_grid = MoveTemp(native_grid);
     }
@@ -79,7 +79,7 @@ auto to_native(FLevelDraft const& definition) -> std::expected<LevelDefinition, 
         auto const& camera{definition.camera.GetValue()};
         result.camera = {
             .target_entity_ids = to_ids<EntityId, FLevelEntityId>(camera.target_entity_ids),
-            .offset_direction = ioj::to_native(camera.offset_direction),
+            .offset_direction = ioj::Vector3d{camera.offset_direction},
             .distance = camera.distance,
         };
     }
@@ -103,7 +103,7 @@ auto to_native(FLevelDraft const& definition) -> std::expected<LevelDefinition, 
             .id = EntityId{to_utf8(entity.id.value)},
             .archetype = archetype.value_or(EntityArchetype::PlayerFighter),
             .team = entity.team,
-            .position = ioj::to_native(entity.position),
+            .position = ioj::Vector3d{entity.position},
             .rotation = {entity.rotation.Pitch, entity.rotation.Yaw, entity.rotation.Roll},
             .spawn_time_seconds = entity.spawn_time_seconds,
         });
@@ -135,10 +135,10 @@ auto to_unreal(LevelDefinition const& level) -> FLevelDraft {
         auto const& grid{*definition.collision_grid()};
         FLevelCollisionGridDefinition unreal_grid;
         if (grid.level_size) {
-            unreal_grid.level_size = ioj::to_unreal(to_float(*grid.level_size));
+            unreal_grid.level_size = ioj::to_unreal(Vector3f{*grid.level_size});
         }
         if (grid.cell_size) {
-            unreal_grid.cell_size = ioj::to_unreal(to_float(*grid.cell_size));
+            unreal_grid.cell_size = ioj::to_unreal(Vector3f{*grid.cell_size});
         }
         builder.set_collision_grid(unreal_grid);
     }

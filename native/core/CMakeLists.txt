@@ -37,6 +37,7 @@ target_sources(native-core
     include/ioj/parallel_for.h
     include/ioj/countdown_timers.h
     include/ioj/vector.h
+    include/ioj/component_sources.h
     include/ioj/vector_value_math.h
     include/ioj/quaternion.h
     include/ioj/math_types.h

@@ -674,16 +674,11 @@ auto FLaserPresentationIndexingTest::RunTest(FString const&) -> bool {
                 static_cast<float>((spawn == 0 ? 0.5 : 2.0 + static_cast<double>(id % 45)) * dt)};
             auto const colour{FLinearColor::White};
 
-            ::ioj::set_vector(
-                requests.get_view().view_locations(),
-                spawn,
-                ioj::to_native(FVector3f{0.0f, static_cast<float>(id * 10), 100000.0f}));
-            ioj::set_rotation(requests.get_view().view_rotations(),
+            ::ioj::set_vector(requests.get_view().view_locations(),
                               spawn,
-                              ioj::to_native(FRotator3f::ZeroRotator));
-            ::ioj::set_vector(requests.get_view().view_base_velocities(),
-                              spawn,
-                              ioj::to_native(FVector3f::ZeroVector));
+                              ioj::Vector3f{0.0f, static_cast<float>(id * 10), 100000.0f});
+            ioj::set_rotation(requests.get_view().view_rotations(), spawn, ioj::Rotator3f{});
+            ::ioj::set_vector(requests.get_view().view_base_velocities(), spawn, ioj::Vector3f{});
             requests.get_view().damages()[spawn] = 1;
             requests.get_view().speeds()[spawn] = 1000.0f;
             requests.get_view().max_distances()[spawn] =

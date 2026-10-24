@@ -48,8 +48,8 @@ inline auto observe_entity(LevelSim const& simulation, EntityId const id)
             return {};
         }
         auto const& state{player->get_physical_state()};
-        return EntityObservation{to_float(state.transform.location),
-                                 to_float(state.velocity),
+        return EntityObservation{Vector3f{state.transform.location},
+                                 Vector3f{state.velocity},
                                  player->team,
                                  player->get_health().health,
                                  0};

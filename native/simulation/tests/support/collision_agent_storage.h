@@ -227,9 +227,9 @@ struct CollisionAgentStorage {
             return {};
         }
         return PlayerSpatialData{player_ids[0],
-                                 to_float(player_transform.location),
-                                 to_float(player_velocity),
-                                 to_quaternion(to_float(player_transform.rotator())),
+                                 Vector3f{player_transform.location},
+                                 Vector3f{player_velocity},
+                                 to_quaternion(Rotator3f{player_transform.rotator()}),
                                  health_table.get_const_view<EntityType::PlayerShip>(1).health(0)};
     }
     void refresh(SpatialQueryManager& queries) const {
@@ -299,7 +299,7 @@ struct CollisionAgentStorage {
                   });
         auto const yaws{spinners.get_const_view().yaws()};
         add_batch(EntityType::TubeSpinner, spinners.get_const_view(), {}, [yaws](auto row) {
-            return to_quaternion(Rotator3f{.yaw = yaws[row]});
+            return to_quaternion(Rotator3f{0.f, yaws[row], 0.f});
         });
         CollisionGridTestAccess::finish(grid);
     }

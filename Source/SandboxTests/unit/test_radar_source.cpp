@@ -38,7 +38,7 @@ void add_entity(tests::FDisplayEntityTestData& entities,
                 bool const alive = true) {
     auto const index{entities.num()};
     entities.add_defaulted(1);
-    set_vector(entities.motion.get_view().view_locations(), index, to_native(location));
+    set_vector(entities.motion.get_view().view_locations(), index, Vector3f{location});
     entities.teams[index] = to_native(team);
     entities.entity_types[index] = type;
     auto const owner{

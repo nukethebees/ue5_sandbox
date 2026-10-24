@@ -5,7 +5,18 @@
 namespace ioj {
 template <std::floating_point T>
 struct alignas(std::same_as<T, float> ? 16 : alignof(T)) Quaternion {
-    Vector<T, 4> components{{T{}, T{}, T{}, T{1}}};
+    constexpr Quaternion() = default;
+    constexpr Quaternion(T const x, T const y, T const z, T const w)
+        : components{x, y, z, w} {}
+    constexpr Quaternion(Vector<T, 4> const values)
+        : components{values} {}
+
+    template <typename Source>
+        requires (CoordinateMembers<Source, T, 4> || CoordinateAccessors<Source, T, 4> ||
+                  UppercaseCoordinateMembers<Source, T, 4> ||
+                  UppercaseCoordinateAccessors<Source, T, 4>)
+    explicit constexpr Quaternion(Source const& value)
+        : components{value} {}
 
     auto operator<=>(Quaternion const&) const = default;
     constexpr auto x() noexcept -> T& { return components.x(); }
@@ -20,6 +31,8 @@ struct alignas(std::same_as<T, float> ? 16 : alignof(T)) Quaternion {
     constexpr auto operator[](std::size_t const index) const noexcept -> T const& {
         return components[index];
     }
+
+    Vector<T, 4> components{T{}, T{}, T{}, T{1}};
 };
 
 template <std::floating_point T>

@@ -53,7 +53,7 @@ TEST_CLASS(CollisionUniformGrid, "Sandbox.UnitTests")
         auto const configured_dims{config.calculate_grid_dimensions()};
         auto const grid_geometry{ioj::sim::collision::GridGeometry{
             {configured_dims.X, configured_dims.Y, configured_dims.Z},
-            ioj::to_native(config.cell_size)}};
+            ioj::Vector3f{config.cell_size}}};
         auto const bounds{
             ioj::FLevelCollisionHost::extract_static_geometry(*world, config, grid_geometry)};
 

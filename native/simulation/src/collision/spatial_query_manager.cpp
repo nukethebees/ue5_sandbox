@@ -519,8 +519,8 @@ void SpatialQueryManager::refresh_spatial_index(LevelReadAccess const& level) {
         level.get_fighters().get_entities().view_velocities().resolve();
     if (auto const* player{level.get_player()}) {
         auto const& physical{player->get_physical_state()};
-        player_spatial_.location = to_float(physical.transform.location);
-        player_spatial_.velocity = to_float(physical.velocity);
+        player_spatial_.location = Vector3f{physical.transform.location};
+        player_spatial_.velocity = Vector3f{physical.velocity};
         auto const& location{player_spatial_.location};
         auto const& velocity{player_spatial_.velocity};
         locations_[EntityType::PlayerShip] = {

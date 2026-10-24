@@ -53,7 +53,7 @@ void add_entity(ioj::tests::FDisplayEntityTestData& entities,
                 ETestTeam const team = ETestTeam::White) {
     auto const index{entities.num()};
     entities.add_defaulted(1);
-    ::ioj::set_vector(entities.motion.get_view().view_locations(), index, ioj::to_native(position));
+    ::ioj::set_vector(entities.motion.get_view().view_locations(), index, ioj::Vector3f{position});
     entity_type_radii[type] = radius;
     entities.teams[index] = ioj::to_native(team);
     entities.entity_types[index] = type;

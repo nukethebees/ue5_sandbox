@@ -67,7 +67,7 @@ auto write_debug_frames(FString const& output_directory) -> bool {
         entities.get_view().entity_ids()[index] =
             ::ioj::sim::EntityId(static_cast<std::uint32_t>(index), ::ioj::sim::EntityType::Turret);
         ::ioj::set_vector(
-            entities.get_view().view_locations(), index, ioj::to_native(positions[index]));
+            entities.get_view().view_locations(), index, ioj::Vector3f{positions[index]});
         entities.get_view().teams()[index] =
             static_cast<::ioj::Team>(index % ioj::enum_count<::ioj::Team>());
     }

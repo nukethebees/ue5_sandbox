@@ -341,10 +341,10 @@ void LevelSim::advance(time_type const dt) {
                 player::ActionInputs const inputs{lasers_simulation_};
                 player_ship_phase->apply_movement(inputs);
                 auto const after{player_ship_simulation_->get_physical_state().transform};
-                auto const before_location{to_float(before.location)};
-                auto const after_location{to_float(after.location)};
-                auto const before_rotation{to_float(before.rotator())};
-                auto const after_rotation{to_float(after.rotator())};
+                auto const before_location{Vector3f{before.location}};
+                auto const after_location{Vector3f{after.location}};
+                auto const before_rotation{Rotator3f{before.rotator()}};
+                auto const after_rotation{Rotator3f{after.rotator()}};
                 if (before_location != after_location || before_rotation != after_rotation) {
                     overlap_candidates_.push_back(player_ship_simulation_->unique_entity_id);
                 }

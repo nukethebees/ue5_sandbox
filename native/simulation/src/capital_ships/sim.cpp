@@ -312,8 +312,8 @@ void Sim::queue_fighter_spawns(FrameMemoryResource* const scratch_resource) {
 
         for (auto const& relative_transform : relative_transforms) {
             auto const new_transform{relative_transform * base_transform};
-            auto const location{to_float(new_transform.location)};
-            auto const rotation{to_float(new_transform.rotator())};
+            auto const location{Vector3f{new_transform.location}};
+            auto const rotation{Rotator3f{new_transform.rotator()}};
             fighter_spawn_wave.add(location.x(),
                                    location.y(),
                                    location.z(),

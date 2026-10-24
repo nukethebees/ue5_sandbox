@@ -1,5 +1,7 @@
 #pragma once
 
+#include <ioj/component_sources.h>
+
 #include <array>
 #include <cassert>
 #include <compare>
@@ -9,7 +11,94 @@ namespace ioj {
 template <typename T, std::size_t N>
     requires (N > 0)
 struct Vector {
-    std::array<T, N> elements{};
+    constexpr Vector() = default;
+    constexpr Vector(std::array<T, N> const values)
+        : elements{values} {}
+
+    template <typename... Values>
+        requires (sizeof...(Values) == N && (std::convertible_to<Values, T> && ...))
+    constexpr Vector(Values... values)
+        : elements{static_cast<T>(values)...} {}
+
+    template <typename Source>
+        requires (N == 1 && CoordinateMembers<Source, T, N>)
+    explicit constexpr Vector(Source const& value)
+        : Vector{value.x} {}
+
+    template <typename Source>
+        requires (N == 2 && CoordinateMembers<Source, T, N>)
+    explicit constexpr Vector(Source const& value)
+        : Vector{value.x, value.y} {}
+
+    template <typename Source>
+        requires (N == 3 && CoordinateMembers<Source, T, N>)
+    explicit constexpr Vector(Source const& value)
+        : Vector{value.x, value.y, value.z} {}
+
+    template <typename Source>
+        requires (N == 4 && CoordinateMembers<Source, T, N>)
+    explicit constexpr Vector(Source const& value)
+        : Vector{value.x, value.y, value.z, value.w} {}
+
+    template <typename Source>
+        requires (N == 1 && CoordinateAccessors<Source, T, N>)
+    explicit constexpr Vector(Source const& value)
+        : Vector{value.x()} {}
+
+    template <typename Source>
+        requires (N == 2 && CoordinateAccessors<Source, T, N>)
+    explicit constexpr Vector(Source const& value)
+        : Vector{value.x(), value.y()} {}
+
+    template <typename Source>
+        requires (N == 3 && CoordinateAccessors<Source, T, N>)
+    explicit constexpr Vector(Source const& value)
+        : Vector{value.x(), value.y(), value.z()} {}
+
+    template <typename Source>
+        requires (N == 4 && CoordinateAccessors<Source, T, N>)
+    explicit constexpr Vector(Source const& value)
+        : Vector{value.x(), value.y(), value.z(), value.w()} {}
+
+    template <typename Source>
+        requires (N == 1 && UppercaseCoordinateMembers<Source, T, N>)
+    explicit constexpr Vector(Source const& value)
+        : Vector{value.X} {}
+
+    template <typename Source>
+        requires (N == 2 && UppercaseCoordinateMembers<Source, T, N>)
+    explicit constexpr Vector(Source const& value)
+        : Vector{value.X, value.Y} {}
+
+    template <typename Source>
+        requires (N == 3 && UppercaseCoordinateMembers<Source, T, N>)
+    explicit constexpr Vector(Source const& value)
+        : Vector{value.X, value.Y, value.Z} {}
+
+    template <typename Source>
+        requires (N == 4 && UppercaseCoordinateMembers<Source, T, N>)
+    explicit constexpr Vector(Source const& value)
+        : Vector{value.X, value.Y, value.Z, value.W} {}
+
+    template <typename Source>
+        requires (N == 1 && UppercaseCoordinateAccessors<Source, T, N>)
+    explicit constexpr Vector(Source const& value)
+        : Vector{value.X()} {}
+
+    template <typename Source>
+        requires (N == 2 && UppercaseCoordinateAccessors<Source, T, N>)
+    explicit constexpr Vector(Source const& value)
+        : Vector{value.X(), value.Y()} {}
+
+    template <typename Source>
+        requires (N == 3 && UppercaseCoordinateAccessors<Source, T, N>)
+    explicit constexpr Vector(Source const& value)
+        : Vector{value.X(), value.Y(), value.Z()} {}
+
+    template <typename Source>
+        requires (N == 4 && UppercaseCoordinateAccessors<Source, T, N>)
+    explicit constexpr Vector(Source const& value)
+        : Vector{value.X(), value.Y(), value.Z(), value.W()} {}
 
     auto operator<=>(Vector const&) const = default;
 
@@ -62,6 +151,8 @@ struct Vector {
     {
         return elements[3];
     }
+
+    std::array<T, N> elements{};
 };
 
 using Vector2f = Vector<float, 2>;

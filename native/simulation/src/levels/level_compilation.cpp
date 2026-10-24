@@ -129,8 +129,8 @@ auto compile_level(LevelDefinition const& level,
                     entity.overrides.target_entity_id.empty()
                         ? sim::invalid_level_entity_index
                         : entity_index(definition, entity.overrides.target_entity_id);
-                set_vector(capital_events.view_locations(), row, to_float(entity.position));
-                set_rotation(capital_events.view_rotations(), row, to_float(entity.rotation));
+                set_vector(capital_events.view_locations(), row, Vector3f{entity.position});
+                set_rotation(capital_events.view_rotations(), row, Rotator3f{entity.rotation});
                 capital_events.teams()[row] = entity.team;
                 capital_events.healths()[row] =
                     entity.overrides.health.value_or(capital_config.max_health);
@@ -141,8 +141,8 @@ auto compile_level(LevelDefinition const& level,
             } else if (entity.archetype == EntityArchetype::StaticTurret) {
                 auto const row{turret_end++};
                 turret_events.entity_indices()[row] = entity_index_value;
-                set_vector(turret_events.view_locations(), row, to_float(entity.position));
-                set_rotation(turret_events.view_rotations(), row, to_float(entity.rotation));
+                set_vector(turret_events.view_locations(), row, Vector3f{entity.position});
+                set_rotation(turret_events.view_rotations(), row, Rotator3f{entity.rotation});
                 turret_events.teams()[row] = entity.team;
                 turret_events.healths()[row] =
                     entity.overrides.health.value_or(turret_config.max_health);

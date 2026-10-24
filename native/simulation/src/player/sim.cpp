@@ -502,9 +502,9 @@ void Sim::fire_lasers_from(ActionInputs const inputs,
     auto const base_velocities{laser_columns.view_base_velocities().resolve()};
 
     for (std::uint32_t i{}; i < laser_count; ++i) {
-        set_vector(locations, i, to_float(fire_points[i].location));
-        set_rotation(rotations, i, to_float(fire_points[i].rotator()));
-        set_vector(base_velocities, i, to_float(state_.physical.velocity));
+        set_vector(locations, i, Vector3f{fire_points[i].location});
+        set_rotation(rotations, i, Rotator3f{fire_points[i].rotator()});
+        set_vector(base_velocities, i, Vector3f{state_.physical.velocity});
     }
 
     std::ranges::fill(laser_columns.damages(), config.laser.damage);
@@ -596,7 +596,7 @@ void Sim::die(EntityId const killer) {
     row.victims()[0] = unique_entity_id;
     row.killers()[0] = killer;
     row.reasons()[0] = reason;
-    row.locations()[0] = to_float(state_.physical.transform.location);
+    row.locations()[0] = Vector3f{state_.physical.transform.location};
     ledger_.record_deaths(deaths.get_const_view(), simulation_clock.get_completed_ticks());
     death_notification_pending = true;
 }

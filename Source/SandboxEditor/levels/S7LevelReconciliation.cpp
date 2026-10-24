@@ -166,8 +166,8 @@ auto apply_s7_level_sync_plan(ULevel& level,
 
     document.Modify();
     auto const grid{definition.collision_grid().value_or(levels::LevelCollisionGridDefinition{})};
-    document.level_size = to_unreal(to_float(grid.level_size.value_or(Vector3d{})));
-    document.grid_cell_size = to_unreal(to_float(grid.cell_size.value_or(Vector3d{})));
+    document.level_size = to_unreal(Vector3f{grid.level_size.value_or(Vector3d{})});
+    document.grid_cell_size = to_unreal(Vector3f{grid.cell_size.value_or(Vector3d{})});
     document.grid_override_schema_version = 1;
     document.level_id = FName{to_fstring(definition.metadata().id.value)};
     document.title = to_fstring(definition.metadata().title);

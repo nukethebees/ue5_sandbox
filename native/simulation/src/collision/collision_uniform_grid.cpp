@@ -200,8 +200,8 @@ void CollisionUniformGrid::rebuild_entity_grid(EntityAABBs const& entity_aabbs,
             make_entity_world_bounds(
                 entity_aabbs,
                 EntityType::PlayerShip,
-                to_float(player->get_physical_state().transform.location),
-                to_quaternion(to_float(player->get_physical_state().transform.rotator()))));
+                Vector3f{player->get_physical_state().transform.location},
+                to_quaternion(Rotator3f{player->get_physical_state().transform.rotator()})));
     }
     auto const capital_rotations{capitals.view_rotations().resolve()};
     append_batch(EntityType::CapitalShip,
@@ -233,7 +233,7 @@ void CollisionUniformGrid::rebuild_entity_grid(EntityAABBs const& entity_aabbs,
                  spinners.view_locations().resolve(),
                  {},
                  [spinner_yaws](std::uint32_t row) {
-                     return to_quaternion(Rotator3f{.yaw = spinner_yaws[row]});
+                     return to_quaternion(Rotator3f{0.f, spinner_yaws[row], 0.f});
                  });
 
     storage.rebuild_entity_data.set_num(output_row);

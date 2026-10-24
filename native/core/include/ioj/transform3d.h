@@ -20,9 +20,5 @@ struct Transform3d {
     }
     auto operator*(Transform3d const& parent) const -> Transform3d;
 };
-inline auto to_float(Vector3d const value) -> Vector3f {
-    return Vector3f{static_cast<float>(value.x()),
-                    static_cast<float>(value.y()),
-                    static_cast<float>(value.z())};
-}
+
 }

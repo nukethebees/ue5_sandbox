@@ -214,7 +214,7 @@ class FCollisionGridSceneProxy final : public FPrimitiveSceneProxy {
     void build_grid_lines(FIntVector3 const grid_dimensions, FVector3f const cell_size) {
         auto const max{ioj::to_unreal(ioj::sim::collision::grid_half_size(
             {{grid_dimensions.X, grid_dimensions.Y, grid_dimensions.Z},
-             ioj::to_native(cell_size)}))};
+             ioj::Vector3f{cell_size}}))};
         auto const min{-max};
 
         for (int32 y{0}; y <= grid_dimensions.Y; ++y) {
@@ -383,8 +383,7 @@ void UCollisionGridVisualizationComponent::clear() {
 
 auto UCollisionGridVisualizationComponent::CreateSceneProxy() -> FPrimitiveSceneProxy* {
     auto const has_valid_grid{::ioj::sim::collision::is_configured(
-        {{grid_dimensions_.X, grid_dimensions_.Y, grid_dimensions_.Z},
-         ioj::to_native(cell_size_)})};
+        {{grid_dimensions_.X, grid_dimensions_.Y, grid_dimensions_.Z}, ioj::Vector3f{cell_size_}})};
     auto const has_collision_bounds{collision_bounds_visible_ &&
                                     (!entity_bounds_.IsEmpty() || !static_bounds_.IsEmpty())};
     if (!has_valid_grid || (!show_grid_ && !has_collision_bounds)) {
@@ -406,7 +405,7 @@ auto UCollisionGridVisualizationComponent::CreateSceneProxy() -> FPrimitiveScene
 auto UCollisionGridVisualizationComponent::CalcBounds(FTransform const&) const -> FBoxSphereBounds {
     FVector const half_extent{ioj::to_unreal(ioj::sim::collision::grid_half_size(
         {{grid_dimensions_.X, grid_dimensions_.Y, grid_dimensions_.Z},
-         ioj::to_native(cell_size_)}))};
+         ioj::Vector3f{cell_size_}}))};
     return FBoxSphereBounds{FVector::ZeroVector, half_extent, half_extent.Size()};
 }
 

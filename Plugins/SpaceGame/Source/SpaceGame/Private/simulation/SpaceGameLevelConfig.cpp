@@ -46,7 +46,7 @@ auto collision_class_lists_are_valid(FCollisionGridConfig const& config) -> bool
 auto collision_grid_dimensions_are_valid(FCollisionGridConfig const& config) -> bool {
     auto const dimensions{config.calculate_grid_dimensions()};
     return ::ioj::sim::collision::is_configured(
-        {{dimensions.X, dimensions.Y, dimensions.Z}, ioj::to_native(config.cell_size)});
+        {{dimensions.X, dimensions.Y, dimensions.Z}, ioj::Vector3f{config.cell_size}});
 }
 }
 
@@ -59,7 +59,7 @@ FCollisionGridConfig::FCollisionGridConfig()
 
 auto FCollisionGridConfig::calculate_grid_dimensions() const noexcept -> FIntVector3 {
     auto const dimensions{::ioj::sim::collision::calculate_grid_dimensions(
-        ioj::to_native(grid_size), ioj::to_native(cell_size))};
+        ioj::Vector3f{grid_size}, ioj::Vector3f{cell_size})};
     return {dimensions.x(), dimensions.y(), dimensions.z()};
 }
 

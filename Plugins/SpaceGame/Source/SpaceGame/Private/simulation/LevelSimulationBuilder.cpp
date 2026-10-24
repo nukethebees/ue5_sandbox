@@ -104,8 +104,8 @@ auto proxy_fits_collision_grid(AActor const& actor,
     auto const bounds{
         sim::collision::make_entity_world_bounds(data.collision.entity_bounds,
                                                  type,
-                                                 to_native_float(transform.GetLocation()),
-                                                 to_native_float(transform.GetRotation()))};
+                                                 Vector3f{transform.GetLocation()},
+                                                 Quaternion4f{transform.GetRotation()})};
     auto const coordinates{
         sim::collision::to_cell_coord_bounds(data.collision.grid_geometry, bounds.min, bounds.max)};
     if (sim::collision::is_cell_coord_in_bounds(data.collision.grid_geometry, coordinates.min) &&
@@ -136,9 +136,9 @@ void append_fighter_spawn_slot_errors(
     for (auto const& error : validation_errors) {
         switch (error.kind) {
             case ::ioj::levels::FighterSpawnSlotValidationErrorKind::IntersectsCapital: {
-                auto const location{to_float(
+                auto const location{Vector3f{
                     capital_config.fighter_spawn_slots_relative_transforms[error.first_slot]
-                        .location)};
+                        .location}};
                 errors.add(FString::Printf(
                     TEXT("fighter spawn slot %d at %s intersects the capital collision bounds plus "
                          "fighter clearance"),
@@ -240,13 +240,12 @@ auto make_level_simulation_init_data(USpaceGameLevelConfig const& config,
         data.capital_ships.fighter_spawn_slots_relative_transforms.size());
     data.fighters = config.fighters.simulation;
     data.turrets = config.turrets.simulation;
-    data.turrets.fire_point_offset =
-        to_native_float(config.turrets.fire_point_offset.GetLocation());
+    data.turrets.fire_point_offset = Vector3f{config.turrets.fire_point_offset.GetLocation()};
     data.spinners = config.tube_spinners.simulation;
     data.spinners.fire_point_offsets.clear();
     for (auto const& offset : config.tube_spinners.fire_point_offsets) {
         data.spinners.fire_point_offsets.push_back(
-            {to_native_float(offset.GetLocation()), to_native_float(offset.Rotator())});
+            {Vector3f{offset.GetLocation()}, Rotator3f{offset.Rotator()}});
     }
     if (player.IsSet()) {
         data.player.emplace(MoveTemp(player.GetValue()));
@@ -256,7 +255,7 @@ auto make_level_simulation_init_data(USpaceGameLevelConfig const& config,
         IsValid(socket) ? static_cast<float>(socket->RelativeLocation.Size()) : 0.f;
     auto const dimensions{config.collision_grid.calculate_grid_dimensions()};
     data.collision.grid_geometry = {{dimensions.X, dimensions.Y, dimensions.Z},
-                                    to_native(config.collision_grid.cell_size)};
+                                    Vector3f{config.collision_grid.cell_size}};
 
     FLevelCollisionHost::EntityMeshes meshes{};
     meshes[sim::EntityType::PlayerShip] = player_collision_mesh;
@@ -364,8 +363,8 @@ auto make_proxy_level_simulation_init_data(USpaceGameLevelConfig const& config,
             .entity = resolve_entity_index(entity_indices, *proxy),
             .target = IsValid(target) ? resolve_entity_index(entity_indices, *target)
                                       : sim::invalid_level_entity_index,
-            .location = to_native_float(transform.GetLocation()),
-            .rotation = to_native_float(transform.Rotator()),
+            .location = Vector3f{transform.GetLocation()},
+            .rotation = Rotator3f{transform.Rotator()},
             .team = to_native(proxy->get_team()),
             .health = to_optional(proxy->get_health()),
             .initial_spawn_delay = to_optional(proxy->get_initial_spawn_delay()),
@@ -379,8 +378,8 @@ auto make_proxy_level_simulation_init_data(USpaceGameLevelConfig const& config,
         build.initial_turret_transforms.Add(transform);
         turrets.push_back({
             .entity = resolve_entity_index(entity_indices, *proxy),
-            .location = to_native_float(transform.GetLocation()),
-            .rotation = to_native_float(transform.Rotator()),
+            .location = Vector3f{transform.GetLocation()},
+            .rotation = Rotator3f{transform.Rotator()},
             .team = to_native(proxy->get_team()),
             .health = to_optional(proxy->get_health()),
             .laser_damage = to_optional(proxy->get_laser_damage()),
@@ -392,7 +391,7 @@ auto make_proxy_level_simulation_init_data(USpaceGameLevelConfig const& config,
         auto const& transform{proxy->GetActorTransform()};
         spinners.push_back({
             .entity = resolve_entity_index(entity_indices, *proxy),
-            .location = to_native_float(transform.GetLocation()),
+            .location = Vector3f{transform.GetLocation()},
             .yaw = static_cast<float>(transform.Rotator().Yaw),
             .initial_fire_point = proxy->get_initial_active_fire_point(),
         });
