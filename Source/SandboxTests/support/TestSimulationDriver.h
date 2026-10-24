@@ -44,8 +44,6 @@ struct TestSimulationDriver {
     void queue_kills(std::span<sim::EntityId const> targets, sim::EntityId instigator = {});
     bool should_export_results() const;
 
-    void set_time_scale(time_type scale);
-
     void set_wait_until_tick_from_now(uint64 wait_cycles);
     bool tick_wait_completed() const;
 
@@ -61,7 +59,6 @@ struct TestSimulationDriver {
 
     uint64 tick_wait_end{0};
     time_type time_wait_end{0.f};
-    time_type time_scale{100.f};
     FTestTimeline timeline;
 };
 }

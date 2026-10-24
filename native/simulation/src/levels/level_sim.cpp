@@ -45,11 +45,9 @@ LevelSim::LevelSim(GameMemory& game_memory, LevelSimInitData data)
                      std::move(data.level_events)}
     , level_telemetry_manager_{
           clock_, entity_ledger_, lasers_simulation_, game_memory, data.telemetry_history} {
-    // Initialise timing and metadata
     clock_.initialise(data.clock_settings);
     set_telemetry_metadata(std::move(data.telemetry_metadata));
 
-    // Configure queries and subsystems
     initialise_spatial_queries(data);
     configure_subsystems(data);
     begin_subsystems();
@@ -62,7 +60,6 @@ LevelSim::LevelSim(GameMemory& game_memory, LevelSimInitData data)
 void LevelSim::finish_initialisation() {
     assert(state_ == OrchestratorState::Uninitialised);
 
-    // Build indexes and query state
     if (player_ship_simulation_) {
         player_ship_simulation_->update_entity_lookup_table();
     }
@@ -74,7 +71,6 @@ void LevelSim::finish_initialisation() {
 
     clock_.transition_to(SimulationPhase::StableSetup);
 
-    // Start telemetry and mission
     level_telemetry_manager_.initialise();
     {
         FrameScratchScope scratch_scope{frame_memory_};
@@ -93,15 +89,11 @@ void LevelSim::pause() {
     assert(state_ != OrchestratorState::Uninitialised);
     state_ = OrchestratorState::Paused;
 }
-void LevelSim::set_time_scale(time_type const scale) {
-    clock_.tick_loop.time_scale = PositiveFinite<time_type>::make(scale);
-}
 
 /* **************************************** */
 // Subsystem setup
 /* **************************************** */
 void LevelSim::configure_subsystems(LevelSimInitData const& data) {
-    // Configure diagnostics and player
     set_fighter_diagnostics_enabled(data.fighter_diagnostics_enabled);
     if (data.player.has_value()) {
         configure_player(data.player.value());
@@ -127,19 +119,15 @@ void LevelSim::configure_player(player::PlayerSpawnData const& spawn) {
     player.configure(spawn);
 }
 void LevelSim::initialise_spatial_queries(LevelSimInitData& data) {
-    // Configure collision queries and buffers
     query_manager_.initialise(data.collision.grid_geometry, data.collision.entity_bounds);
 
-    // Install static bounds
     query_manager_.set_static_collision(std::move(data.collision.static_bounds));
 }
 void LevelSim::begin_subsystems() {
-    // Start player subsystem
     if (player_ship_simulation_.has_value()) {
         player::PhaseInterface{*player_ship_simulation_}.begin_play();
     }
 
-    // Start world subsystems
     capital_ships::PhaseInterface{capital_ships_simulation_}.begin_play();
     fighters::PhaseInterface{fighters_simulation_}.begin_play();
     turrets::PhaseInterface{turrets_simulation_}.begin_play();
@@ -165,10 +153,6 @@ void LevelSim::set_static_collision(std::span<collision::WorldAABB const> bounds
         collision::add(storage, bound.min, bound.max);
     }
     query_manager_.set_static_collision(std::move(storage));
-}
-auto LevelSim::add_static_collision_aabb(Vector3f const min_point, Vector3f const max_point)
-    -> collision::StaticGeometryIndex {
-    return query_manager_.add_static_collision_aabb(min_point, max_point);
 }
 
 /* **************************************** */

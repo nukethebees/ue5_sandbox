@@ -1,6 +1,6 @@
 #include "test_hud_manager_scenario.h"
 #include <ioj/sim/capital_ships/sim.h>
-#include <ioj/sim/missions/mission_compilation.h>
+#include <ioj/sim/missions/compiled_mission.h>
 #include <ioj/time_series_data.h>
 #include <SandboxTests/support/level_checks.h>
 #include <SandboxTests/support/SoftTestAssertions.h>
@@ -29,16 +29,16 @@
 namespace ioj {
 namespace {
 auto defence_objectives() -> levels::MissionDefinition {
-    return {.objectives = {
-                {.id = ioj::levels::ObjectiveName{"defence"},
-                 .title = "Hold position",
-                 .team = Team::Blue,
-                 .expressions = {{ioj::levels::TimeElapsedExpression{
-                                     .seconds = ioj::NonNegativeFinite<double>::make(0.2)}},
-                                 {ioj::levels::EntityDestroyedExpression{
-                                     .entity = levels::EntityId{"defended"}}}},
-                 .roots = ioj::levels::ObjectiveRoots{std::array<ioj::levels::ExpressionIndex, 3>{
-                     0, 1, levels::absent_expression}}}}};
+    return {
+        .objectives = {{.id = ioj::levels::ObjectiveName{"defence"},
+                        .title = "Hold position",
+                        .team = Team::Blue,
+                        .expressions = {{ioj::levels::TimeElapsedExpr{
+                                            .seconds = ioj::NonNegativeFinite<double>::make(0.2)}},
+                                        {ioj::levels::EntityDestroyedExpr{
+                                            .entity = levels::EntityId{"defended"}}}},
+                        .roots = ioj::levels::ObjectiveRoots{std::array<ioj::levels::ExprIndex, 3>{
+                            0, 1, levels::absent_expression}}}}};
 }
 auto count_worldless_hud_entities(ioj::FHUDManager const& manager) -> int32 {
     int32 count{};
@@ -94,7 +94,7 @@ void run_worldless_hud_manager_scenario(FAutomationTestBase& test,
         std::array const ids{levels::EntityId{"defended"}, levels::EntityId{"enemy"}};
         sim::SimClock clock;
         clock.initialise(data.clock_settings);
-        auto compiled{sim::compile_mission(defence_objectives(), ids, clock)};
+        auto compiled{sim::CompiledMission::compile(defence_objectives(), ids, clock)};
         check(compiled);
         data.mission = std::move(*compiled);
     }
@@ -112,8 +112,7 @@ void run_worldless_hud_manager_scenario(FAutomationTestBase& test,
     harness.finish_initialisation();
 
     ioj::FHUDManager hud;
-    hud.initialise(ioj::sim::HudSettings{},
-                   mission,
+    hud.initialise(mission,
                    harness.get_ledger(),
                    simulation.get_capital_ships(),
                    simulation.get_fighters(),
@@ -594,8 +593,8 @@ auto FTestHUDManagerScenario::initialise_headless_hud_manager() -> bool {
     auto const& entity_ledger{orchestrator->get_entity_ledger()};
 
     headless_hud_manager.Emplace();
-    headless_hud_manager->initialise(orchestrator->get_hud_update_frequencies(),
-                                     orchestrator->get_mission(),
+    headless_hud_manager->configure(orchestrator->get_hud_manager().settings());
+    headless_hud_manager->initialise(orchestrator->get_mission(),
                                      entity_ledger,
                                      orchestrator->get_level_simulation()->get_capital_ships(),
                                      orchestrator->get_level_simulation()->get_fighters(),

@@ -9,12 +9,6 @@ sandbox_make_automation_exec_commands(automation_commands "${automation_expressi
 sandbox_assert_equal("automation preserves the startup discovery delay"
   "${automation_commands}"
   "-ExecCmds=Automation RunTests ${automation_expression}; Quit")
-sandbox_make_space_game_test_arguments(empty_time_scale_arguments "")
-sandbox_assert_list_equal("empty time scale adds no arguments"
-  "${empty_time_scale_arguments}" "")
-sandbox_make_space_game_test_arguments(time_scale_arguments 1.25)
-sandbox_assert_list_equal("positive time scale is a single argument"
-  "${time_scale_arguments}" "-SpaceGameTestTimeScale=1.25")
 
 sandbox_make_unreal_cook_arguments(cook_arguments
   [=[C:\Engine Root\UnrealEditor-Cmd.exe]=]

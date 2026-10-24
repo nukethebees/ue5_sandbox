@@ -4,6 +4,12 @@
 
 #include <CoreMinimal.h>
 
+class UGameInstance;
+
+namespace ioj::sim {
+struct LevelSim;
+}
+
 struct FMissionCompletion {
     FString level_display_name{};
     ETeamOutcome state{ETeamOutcome::Defeat};
@@ -14,3 +20,9 @@ struct FMissionCompletion {
 };
 
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnMissionCompleted, FMissionCompletion const&);
+
+namespace ioj {
+SPACEGAME_API void publish_mission_completion(sim::LevelSim& simulation,
+                                              UGameInstance* game_instance,
+                                              FOnMissionCompleted& completed);
+}

@@ -4,6 +4,12 @@
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
 
 struct FTestBatchOrchestratorTestAccess {
+    static void use_settings_file(ATestBatchOrchestrator& orchestrator, FString path) {
+        check(!orchestrator.level_simulation_.IsSet());
+        orchestrator.settings_file.FilePath = MoveTemp(path);
+        orchestrator.settings_prepared_ = false;
+    }
+
     static void queue_direct_damage_events(ATestBatchOrchestrator& orchestrator,
                                            ::ioj::sim::DirectDamageEvents::ConstView events) {
         check(orchestrator.level_simulation_.IsSet());

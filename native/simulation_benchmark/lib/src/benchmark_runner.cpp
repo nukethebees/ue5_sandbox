@@ -165,8 +165,7 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
     auto& data{reference.data};
     sim::apply_settings(settings, data);
     reference.player.config = settings.player;
-    data.clock_settings.time_scale =
-        PositiveFinite<double>::make(static_cast<double>(options.game_speed));
+    data.clock_settings.time_scale = PositiveFinite<double>::make(1.0);
     data.clock_settings.accumulator = 0.0;
     if (options.fighter_stress_cap.has_value()) {
         data.fighters.max_live_fighters = *options.fighter_stress_cap;
@@ -238,7 +237,6 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
     simulation.finish_initialisation();
     auto const initial_capital_ships{simulation.get_capital_ships().get_num_instances()};
     auto const initial_turrets{simulation.get_turrets().get_num_instances()};
-    simulation.set_time_scale(PositiveFinite<double>::make(1.0));
     simulation.start();
 
     auto const tick_period{simulation.get_clock().get_tick_period()};

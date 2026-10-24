@@ -12,6 +12,10 @@
 namespace ioj::sim {
 
 struct LevelSimTestAccess {
+    static auto spatial_queries(LevelSim& simulation) -> SpatialQueryManager& {
+        return simulation.query_manager_;
+    }
+
     static void update_entity_lookup_tables(LevelSim& simulation) {
         auto const previous{simulation.clock_.phase()};
         SimClockTestAccess::set_phase(simulation.clock_, SimulationPhase::Preparation);

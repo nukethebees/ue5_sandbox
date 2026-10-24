@@ -44,8 +44,7 @@ TRACE_DECLARE_INT_COUNTER(SandboxRadarVisibleCount, TEXT("Sandbox/Radar/VisibleC
 TRACE_DECLARE_INT_COUNTER(SandboxRadarUploadBytes, TEXT("Sandbox/Radar/UploadBytes"));
 
 namespace ioj {
-void FHUDManager::initialise(sim::HudSettings const& update_frequencies,
-                             sim::Mission const& new_mission,
+void FHUDManager::initialise(sim::Mission const& new_mission,
                              sim::EntityLedger const& new_entity_ledger,
                              sim::capital_ships::Sim const& new_capitals,
                              sim::fighters::Sim const& new_fighters,
@@ -75,9 +74,9 @@ void FHUDManager::initialise(sim::HudSettings const& update_frequencies,
     auto const update_tick_rate{tick_loop_.tick_rate.get_hz()};
     seconds_per_tick_ = static_cast<float>(1.0 / update_tick_rate);
 
-    std::array const periods{update_frequencies.player_status_update_period,
-                             update_frequencies.entity_count_update_period,
-                             update_frequencies.mission_status_update_period};
+    std::array const periods{settings_.player_status_update_period,
+                             settings_.entity_count_update_period,
+                             settings_.mission_status_update_period};
     auto const n_periods{periods.size()};
     for (std::size_t i{}; i < n_periods; ++i) {
         if (!valid_periods(periods[i])) {

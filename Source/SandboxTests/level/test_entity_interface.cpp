@@ -3,6 +3,7 @@
 #include <ioj/sim/testing/entity_observations.h>
 #include <SandboxTests/support/SimulationTestAssets.h>
 #include <SandboxTests/support/TestActorSpawning.h>
+#include <SandboxTests/support/TestBatchOrchestratorTestAccess.h>
 #include <SandboxTests/support/time_series_test_data.h>
 #include <SpaceGame/defences/spinners/TestTubeSpinnerProxy.h>
 #include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
@@ -22,16 +23,14 @@ FEntityInterfaceScenario::FEntityInterfaceScenario(FSimulationTestContext& conte
         return;
     }
     context.orchestrator.set_level_config(*level_config);
-    auto grid_size{level_config->collision_grid.grid_size};
-    grid_size.Z = 2000000.f;
-    context.orchestrator.set_collision_grid_override(grid_size, FVector3f::ZeroVector);
+    FTestBatchOrchestratorTestAccess::use_settings_file(
+        context.orchestrator, TEXT("Source/SandboxTests/fixtures/entity_interface_settings.scm"));
 
     TestCommandBuilder.Do([this] { spawn_fixture(); });
 }
 
 void FEntityInterfaceScenario::on_tear_down() {
     context_.orchestrator.reset_for_new_level();
-    context_.orchestrator.clear_collision_grid_override();
     context_.orchestrator.set_level_config(const_cast<USpaceGameLevelConfig&>(context_.config));
 }
 

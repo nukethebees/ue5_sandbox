@@ -67,14 +67,11 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     void set_start_mode(EOrchestratorStartMode mode);
     auto get_start_mode() const noexcept -> EOrchestratorStartMode { return start_mode; }
     void set_presentation_enabled(bool enabled);
-    void set_collision_grid_override(FVector3f level_size, FVector3f cell_size);
-    void clear_collision_grid_override();
     void set_level_definition(ioj::levels::LevelDefinition definition) {
         settings_prepared_ = false;
         level_definition_ = MoveTemp(definition);
     }
     auto is_presentation_enabled() const noexcept -> bool { return presentation_enabled; }
-    void set_time_scale(ioj::PositiveFinite<time_type> scale) noexcept;
 
     /* **************************************** */
     // Simulation state and timing
@@ -92,7 +89,9 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
         return level_simulation_.IsSet() ? level_simulation_->get_clock().get_simulation_time()
                                          : 0.0;
     }
-    auto was_launched_paused() const noexcept -> bool { return launched_paused_; }
+    auto was_launched_paused() const noexcept -> bool {
+        return launch_options_.launch_mode == ioj::ELevelLaunchMode::Paused;
+    }
     auto get_benchmark_ticks_remaining() const noexcept -> TOptional<tick_type> {
         if (launch_options_.control_context != EPlayerControlContext::Benchmark ||
             !launch_options_.simulated_duration_seconds.IsSet()) {
@@ -145,9 +144,6 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
         return level_simulation_->get_mission();
     }
     auto get_hud_manager() noexcept -> ioj::FHUDManager& { return hud_manager; }
-    auto get_hud_update_frequencies() const noexcept -> ioj::sim::HudSettings const& {
-        return hud_update_frequencies;
-    }
 
     /* **************************************** */
     // Testing and level preparation
@@ -184,6 +180,11 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
 
     UFUNCTION(CallInEditor, Category = "Sandbox")
     void prepare_level_button();
+
+    UFUNCTION(CallInEditor,
+              Category = "Sandbox|Settings",
+              meta = (DisplayName = "Create level settings..."))
+    void create_level_settings();
 #endif
   private:
     /* **************************************** */
@@ -201,7 +202,6 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     /* **************************************** */
     // Mission and telemetry
     /* **************************************** */
-    void process_mission_result();
     void handle_telemetry_persisted(FString run_id, FString error);
     void persist_finalized_telemetry_run();
 
@@ -210,21 +210,41 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     /* **************************************** */
     auto make_presentation_resources() const -> FLevelPresentationResources;
     void refresh_collision_grid_visualization();
-    [[nodiscard]] auto apply_collision_grid_overrides(FCollisionGridConfig const& source) const
-        -> FCollisionGridConfig;
     void update_collision_bounds_visualization();
+    /* **************************************** */
+    // State
+    /* **************************************** */
+    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Collision")
+    TObjectPtr<UCollisionGridVisualizationComponent> collision_grid_visualization{nullptr};
+
+    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Presentation")
+    TObjectPtr<USandboxISMCComponent> laser_instances_;
+
+    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Presentation")
+    TObjectPtr<USparkRendererComponent> spark_renderer_;
+
+    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Presentation")
+    TObjectPtr<UInstancedStaticMeshComponent> capital_instances_;
+
+    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Presentation")
+    TObjectPtr<USandboxISMCComponent> fighter_instances_;
+
+    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Presentation")
+    TObjectPtr<UInstancedStaticMeshComponent> turret_instances_;
+
+    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Presentation")
+    TObjectPtr<UInstancedStaticMeshComponent> spinner_instances_;
+
+    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Presentation")
+    TObjectPtr<UInstancedStaticMeshComponent> soft_target_instances_;
   public:
     static FOnProxyEntitiesBound on_proxy_entities_bound;
     FOnOrchestratorReset on_reset;
     FOnMissionCompleted on_mission_completed;
   private:
-    /* **************************************** */
-    // State
-    /* **************************************** */
     FOrchestratorEndTickTestHook end_tick_test_hook;
 
     ioj::sim::FixedTickLoop simulation_tick_loop{};
-    TOptional<ioj::PositiveFinite<time_type>> time_scale_override_;
     bool settings_prepared_{};
     UPROPERTY(EditAnywhere,
               Category = "Sandbox|Settings",
@@ -238,47 +258,21 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     UPROPERTY(EditAnywhere, Category = "Sandbox|Assets")
     TObjectPtr<USpaceGameLevelConfig> level_config{nullptr};
 
-    bool use_collision_grid_override{};
-
-    FVector3f level_size_override{FVector3f::ZeroVector};
-
-    FVector3f grid_cell_size_override{FVector3f::ZeroVector};
-
-    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Collision")
-    TObjectPtr<UCollisionGridVisualizationComponent> collision_grid_visualization{nullptr};
-
     ioj::FHUDManager hud_manager;
     TOptional<ioj::sim::LevelSim> level_simulation_;
     TOptional<FLevelPresentation> level_presentation_;
     TArray<FTransform> initial_turret_transforms_;
     ioj::sim::LevelTelemetryEnvironment telemetry_environment_;
     TOptional<ioj::levels::LevelDefinition> level_definition_;
-    bool launched_paused_{};
     ioj::FLevelLaunchOptions launch_options_{};
     FString level_source_{};
     FString settings_source_{};
     ioj::FLevelCollisionHost world_collision_;
 
-    ioj::sim::HudSettings hud_update_frequencies{};
-
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     TObjectPtr<ATestSpaceShip> player_ship{nullptr};
     UPROPERTY(Transient)
     FLevelMissionDefinition mission_definition;
-    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Presentation")
-    TObjectPtr<USandboxISMCComponent> laser_instances_;
-    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Presentation")
-    TObjectPtr<USparkRendererComponent> spark_renderer_;
-    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Presentation")
-    TObjectPtr<UInstancedStaticMeshComponent> capital_instances_;
-    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Presentation")
-    TObjectPtr<USandboxISMCComponent> fighter_instances_;
-    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Presentation")
-    TObjectPtr<UInstancedStaticMeshComponent> turret_instances_;
-    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Presentation")
-    TObjectPtr<UInstancedStaticMeshComponent> spinner_instances_;
-    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Presentation")
-    TObjectPtr<UInstancedStaticMeshComponent> soft_target_instances_;
 
 #if WITH_EDITORONLY_DATA
     UPROPERTY(EditAnywhere, Category = "Sandbox")

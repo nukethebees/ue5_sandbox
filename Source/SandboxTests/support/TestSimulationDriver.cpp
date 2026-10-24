@@ -6,7 +6,6 @@
 #include <ioj/sim/fighters/sim.h>
 #include <SandboxGameShared/core/SandboxDeveloperSettings.h>
 #include <SandboxTests/SandboxTestLogCategories.h>
-#include <SandboxTests/support/SpaceGameTestSettings.h>
 #include <SandboxTests/support/TestBatchOrchestratorTestAccess.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
@@ -23,10 +22,7 @@
 namespace ioj {
 TestSimulationDriver::TestSimulationDriver(UWorld& world, ATestBatchOrchestrator& orchestrator)
     : world{world}
-    , orchestrator{orchestrator} {
-    time_scale = get_space_game_level_test_time_scale();
-    orchestrator.set_time_scale(ioj::PositiveFinite<time_type>::make(time_scale));
-}
+    , orchestrator{orchestrator} {}
 
 auto TestSimulationDriver::from_world(UWorld& world) -> TestSimulationDriver {
     auto* orchestrator{get_first_actor<ATestBatchOrchestrator>(world)};
@@ -88,10 +84,6 @@ bool TestSimulationDriver::should_export_results() const {
 #else
     return false;
 #endif
-}
-
-void TestSimulationDriver::set_time_scale(time_type const scale) {
-    orchestrator.set_time_scale(ioj::PositiveFinite<time_type>::make(scale));
 }
 
 void TestSimulationDriver::set_wait_until_tick_from_now(uint64 wait_cycles) {

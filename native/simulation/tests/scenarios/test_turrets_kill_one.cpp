@@ -1,6 +1,8 @@
 #include "../support/simulation_test_support.h"
+#include <ioj/sim/collision/world_aabb_operations.h>
 #include <ioj/sim/lasers/sim.h>
 #include <ioj/sim/testing/entity_observations.h>
+#include <ioj/sim/testing/level_sim_test_access.h>
 #include <ioj/sim/turrets/sim.h>
 
 #include <limits>
@@ -90,8 +92,9 @@ TEST(WorldlessSpaceGameSimulation, Turrets_LineOfSightBlocking) {
             [&] {
                 spawn_count_before_blocker =
                     harness.get_simulation().get_lasers().get_number_spawned();
-                harness.get_simulation().add_static_collision_aabb({{-500.f, -3000.f, -3000.f}},
-                                                                   {{500.f, 3000.f, 3000.f}});
+                LevelSimTestAccess::spatial_queries(harness.get_simulation())
+                    .add_static_collision_aabb({{-500.f, -3000.f, -3000.f}},
+                                               {{500.f, 3000.f, 3000.f}});
             })
         .finish_at(4.0);
     EXPECT_TRUE(harness.run_until_timeline_finished(4.5))
@@ -111,10 +114,10 @@ TEST(WorldlessSpaceGameSimulation, Turrets_SearchRequiresLineOfSight) {
         {{-1000.f, 0.f, 0.f}}, {{1000.f, 0.f, 0.f}}, {{1000.f, 1000.f, 0.f}}};
     std::vector<Team> const teams{Team::Blue, Team::Red, Team::Red};
     add_worldless_turrets(data, locations, teams, 0);
+    collision::add(
+        data.collision.static_bounds, {{-100.f, -300.f, -3000.f}}, {{100.f, 300.f, 3000.f}});
     tests::WorldlessSimulationTest harness{std::move(data)};
     harness.finish_initialisation();
-    harness.get_simulation().add_static_collision_aabb({{-100.f, -300.f, -3000.f}},
-                                                       {{100.f, 300.f, 3000.f}});
     harness.timeline.finish_at(1.0);
     EXPECT_TRUE(harness.run_until_timeline_finished(1.5)) << "Turret search timeline completes";
     auto const targets{harness.get_simulation().get_turrets().get_target_ids()};

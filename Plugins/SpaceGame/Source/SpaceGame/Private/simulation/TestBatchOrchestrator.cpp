@@ -13,10 +13,6 @@
 #include <SpaceGame/defences/spinners/TestTubeSpinnerProxy.h>
 #include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
 #include <SpaceGame/entities/TestEntity.h>
-#include <SpaceGame/missions/ObjectiveOutcomeConversion.h>
-#include <SpaceGame/missions/TeamOutcomeConversion.h>
-#include <SpaceGame/persistence/SpaceSaveGame.h>
-#include <SpaceGame/persistence/SpaceSaveSubsystem.h>
 #include <SpaceGame/s7/GameSettingsReader.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
@@ -51,9 +47,11 @@
 #include <GameFramework/PlayerController.h>
 #include <GameFramework/PlayerState.h>
 #include <GameFramework/WorldSettings.h>
+#include <HAL/FileManager.h>
 #include <HAL/IConsoleManager.h>
 #include <Kismet/GameplayStatics.h>
-#include <Misc/DateTime.h>
+#include <Misc/FileHelper.h>
+#include <Misc/Paths.h>
 #include <SandboxISMCComponent.h>
 
 namespace ioj::fighter_diagnostics {
@@ -215,7 +213,6 @@ void ATestBatchOrchestrator::reset_for_new_level() {
     level_definition_.Reset();
     settings_prepared_ = false;
 
-    launched_paused_ = false;
     launch_options_ = {};
     level_source_.Reset();
     settings_source_.Reset();
@@ -356,20 +353,6 @@ auto ATestBatchOrchestrator::set_level_config(USpaceGameLevelConfig& config) -> 
         set_actor_config_on_all<ATestTubeSpinnerProxy>(*world, &config.tube_spinners);
     }
     return true;
-}
-void ATestBatchOrchestrator::set_collision_grid_override(FVector3f const level_size,
-                                                         FVector3f const cell_size) {
-    use_collision_grid_override =
-        level_size != FVector3f::ZeroVector || cell_size != FVector3f::ZeroVector;
-    level_size_override = level_size;
-    grid_cell_size_override = cell_size;
-    refresh_collision_grid_visualization();
-}
-void ATestBatchOrchestrator::clear_collision_grid_override() {
-    use_collision_grid_override = false;
-    level_size_override = FVector3f::ZeroVector;
-    grid_cell_size_override = FVector3f::ZeroVector;
-    refresh_collision_grid_visualization();
 }
 void ATestBatchOrchestrator::set_start_mode(EOrchestratorStartMode const mode) {
     if (get_state() != ioj::sim::OrchestratorState::Uninitialised) {
@@ -612,10 +595,12 @@ auto ATestBatchOrchestrator::begin_play() -> bool {
                                     MoveTemp(initial_turret_transforms_));
     }
     update_collision_bounds_visualization();
+    level_definition_.Reset();
+    level_source_.Reset();
+    settings_source_.Reset();
 
     if (presentation_enabled) {
-        hud_manager.initialise(hud_update_frequencies,
-                               get_mission(),
+        hud_manager.initialise(get_mission(),
                                get_entity_ledger(),
                                level_simulation_->get_capital_ships(),
                                level_simulation_->get_fighters(),
@@ -675,7 +660,6 @@ void ATestBatchOrchestrator::handle_level_start_failure(FString message) {
     }
 }
 void ATestBatchOrchestrator::load_authored_level() {
-    launched_paused_ = false;
 
     auto* const world{GetWorld()};
     auto* const game_instance{IsValid(world) ? world->GetGameInstance() : nullptr};
@@ -718,9 +702,7 @@ void ATestBatchOrchestrator::load_authored_level() {
 
     launch_options_ = options;
     level_source_ = MoveTemp(pending->level_source);
-    launched_paused_ = options.launch_mode == ioj::ELevelLaunchMode::Paused;
     presentation_enabled = options.presentation_mode == ioj::ELevelPresentationMode::Visual;
-    set_time_scale(ioj::PositiveFinite<time_type>::make(options.requested_time_scale));
 
     ioj::FLevelLoader loader{*this};
     auto const result{loader.load(pending->definition, options.control_context)};
@@ -741,7 +723,7 @@ void ATestBatchOrchestrator::load_authored_level() {
         return;
     }
 
-    if (launched_paused_) {
+    if (options.launch_mode == ioj::ELevelLaunchMode::Paused) {
         pause_simulation();
     }
 }
@@ -753,22 +735,6 @@ auto ATestBatchOrchestrator::should_initialise_in_begin_play() const noexcept ->
 /* **************************************** */
 // Presentation and diagnostics
 /* **************************************** */
-auto
-    ATestBatchOrchestrator::apply_collision_grid_overrides(FCollisionGridConfig const& source) const
-    -> FCollisionGridConfig {
-    if (!use_collision_grid_override) {
-        return source;
-    }
-    TOptional<FVector3f> size_override;
-    TOptional<FVector3f> cell_override;
-    if (level_size_override != FVector3f::ZeroVector) {
-        size_override = level_size_override;
-    }
-    if (grid_cell_size_override != FVector3f::ZeroVector) {
-        cell_override = grid_cell_size_override;
-    }
-    return source.with_dimension_overrides(size_override, cell_override);
-}
 
 void ATestBatchOrchestrator::refresh_collision_grid_visualization() {
     if (!IsValid(collision_grid_visualization)) {
@@ -780,7 +746,7 @@ void ATestBatchOrchestrator::refresh_collision_grid_visualization() {
 
     TOptional<FCollisionGridVisualizationSettings> settings;
     if (presentation_enabled && IsValid(level_config)) {
-        auto const collision_grid{apply_collision_grid_overrides(level_config->collision_grid)};
+        auto const collision_grid{level_config->collision_grid};
         settings.Emplace(FCollisionGridVisualizationSettings{
             .dimensions = collision_grid.calculate_grid_dimensions(),
             .cell_size = collision_grid.cell_size,
@@ -848,7 +814,8 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
 
     if (level_simulation_->get_clock().get_completed_ticks() != previous_tick) {
         end_tick_test_hook.ExecuteIfBound(*this);
-        process_mission_result();
+        ioj::publish_mission_completion(
+            *level_simulation_, GetGameInstance(), on_mission_completed);
         level_simulation_->complete_run_if_requested(
             launch_options_.stop_when_battle_resolved,
             launch_options_.simulated_duration_seconds.IsSet()
@@ -857,15 +824,6 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
                 : std::nullopt);
     }
     persist_finalized_telemetry_run();
-}
-void ATestBatchOrchestrator::set_time_scale(ioj::PositiveFinite<time_type> const scale) noexcept {
-    time_scale_override_ = scale;
-    if (level_simulation_.IsSet()) {
-        level_simulation_->set_time_scale(scale);
-        return;
-    }
-
-    simulation_tick_loop.time_scale = scale;
 }
 auto ATestBatchOrchestrator::duration_to_tick_period(ioj::Duration const duration) const noexcept
     -> tick_type {
@@ -904,12 +862,12 @@ auto ATestBatchOrchestrator::prepare_level() -> bool {
     auto* const config{loaded->config};
     auto const& settings{loaded->simulation};
     settings_source_ = MoveTemp(loaded->source);
-    config->collision_grid = apply_collision_grid_overrides(config->collision_grid);
     simulation_tick_loop = settings.clock;
-    if (time_scale_override_.IsSet()) {
-        simulation_tick_loop.time_scale = time_scale_override_.GetValue();
+    if (start_mode == EOrchestratorStartMode::AuthoredLevel) {
+        simulation_tick_loop.time_scale =
+            ioj::PositiveFinite<time_type>::make(launch_options_.requested_time_scale);
     }
-    hud_update_frequencies = settings.hud;
+    hud_manager.configure(settings.hud);
 
     if (!IsValid(player_ship)) {
         player_ship = ioj::get_first_actor<ATestSpaceShip>(*world);
@@ -928,6 +886,38 @@ void ATestBatchOrchestrator::apply_level_config() {
         return;
     }
     set_level_config(*level_config);
+}
+
+void ATestBatchOrchestrator::create_level_settings() {
+    auto* const world{GetWorld()};
+    if (!IsValid(world) || world->IsGameWorld()) {
+        UE_LOG(LogSandbox, Warning, TEXT("Create level settings requires an editor world."));
+        return;
+    }
+
+    auto const filename{FPaths::MakeValidFileName(world->GetName()) + TEXT(".scm")};
+    auto const relative_path{FPaths::Combine(TEXT("LevelScripts/Settings"), filename)};
+    auto const path{FPaths::Combine(FPaths::ProjectDir(), relative_path)};
+    auto& files{IFileManager::Get()};
+    if (!files.FileExists(*path)) {
+        files.MakeDirectory(*FPaths::GetPath(path), true);
+        FString const source{
+            TEXT("(settings-layers\n  (load-script \"Settings/base.scm\")\n  (settings))\n")};
+        if (!FFileHelper::SaveStringToFile(source,
+                                           *path,
+                                           FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM,
+                                           &files,
+                                           FILEWRITE_NoReplaceExisting)) {
+            UE_LOG(LogSandbox, Error, TEXT("Cannot create settings file '%s'."), *path);
+            return;
+        }
+    }
+
+    Modify();
+    settings_file.FilePath = relative_path;
+    settings_prepared_ = false;
+    MarkPackageDirty();
+    UE_LOG(LogSandbox, Display, TEXT("Assigned level settings '%s'."), *relative_path);
 }
 
 void ATestBatchOrchestrator::prepare_level_button() {
@@ -955,65 +945,6 @@ auto ATestBatchOrchestrator::make_presentation_resources() const -> FLevelPresen
 /* **************************************** */
 // Mission and telemetry
 /* **************************************** */
-void ATestBatchOrchestrator::process_mission_result() {
-    auto result{level_simulation_->take_player_team_completion()};
-    if (!result.has_value()) {
-        return;
-    }
-
-    auto const& metadata{level_simulation_->get_result_metadata()};
-    auto const& objective_name{
-        level_simulation_->get_mission().objectives().name(result->objective).value};
-    auto const elapsed_seconds{static_cast<float>(
-        ioj::sim::simulation_time(result->tick, level_simulation_->get_clock().get_tick_period()))};
-
-    TOptional<float> par_time_seconds;
-    if (level_definition_.IsSet() && level_definition_->metadata().par_time_seconds) {
-        par_time_seconds = *level_definition_->metadata().par_time_seconds;
-    }
-    bool persisted{};
-    bool new_best_time{};
-    auto* game_instance{GetGameInstance()};
-    auto* saves{USpaceSaveSubsystem::get(game_instance)};
-    if (IsValid(saves)) {
-        if (result->outcome == ioj::TeamOutcome::Victory) {
-            auto const previous_progress{saves->get_level_progress(
-                ioj::FLevelId{FName{UTF8_TO_TCHAR(metadata.level_id.c_str())}})};
-            new_best_time = previous_progress.best_completion_time_seconds < 0.0f ||
-                            elapsed_seconds < previous_progress.best_completion_time_seconds;
-        }
-
-        int32 team_kills{};
-        for (auto const kills :
-             get_entity_ledger().get_combat_telemetry().kills[static_cast<int32>(result->team)]) {
-            team_kills += static_cast<int32>(kills);
-        }
-        FScoreRecord const record{
-            .date = FDateTime::Now(),
-            .level_name = FName{UTF8_TO_TCHAR(metadata.level_id.c_str())},
-            .team = ioj::to_unreal(result->team),
-            .outcome = ioj::to_unreal(result->outcome),
-            .objective_id = UTF8_TO_TCHAR(objective_name.c_str()),
-            .objective_outcome = ioj::to_unreal(result->objective_outcome),
-            .kills = team_kills,
-            .time_seconds = elapsed_seconds,
-        };
-        persisted = saves->save_score_record(record);
-        new_best_time = persisted && new_best_time;
-    } else {
-        UE_LOG(LogSandbox,
-               Error,
-               TEXT("Cannot persist mission result: save subsystem is unavailable"));
-    }
-
-    on_mission_completed.Broadcast(
-        {.level_display_name = UTF8_TO_TCHAR(metadata.level_title.c_str()),
-         .state = ioj::to_unreal(result->outcome),
-         .objective_id = UTF8_TO_TCHAR(objective_name.c_str()),
-         .persisted = persisted,
-         .par_time_seconds = par_time_seconds,
-         .new_best_time = new_best_time});
-}
 void ATestBatchOrchestrator::handle_telemetry_persisted(FString run_id, FString error) {
     if (launch_options_.results_navigation != ioj::ELevelResultsNavigation::Telemetry) {
         return;

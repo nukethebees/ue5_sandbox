@@ -14,17 +14,6 @@ function(sandbox_make_automation_exec_commands output_variable filter_expression
     PARENT_SCOPE)
 endfunction()
 
-function(sandbox_make_space_game_test_arguments output_variable time_scale)
-  set(arguments)
-  if(time_scale)
-    if(NOT time_scale MATCHES "^[0-9]+([.][0-9]+)?$" OR time_scale LESS_EQUAL 0)
-      message(FATAL_ERROR "IOJ_SPACE_GAME_TEST_TIME_SCALE must be empty or a positive number.")
-    endif()
-    list(APPEND arguments "-SpaceGameTestTimeScale=${time_scale}")
-  endif()
-  set(${output_variable} "${arguments}" PARENT_SCOPE)
-endfunction()
-
 function(sandbox_make_unreal_cook_arguments output_variable editor cook_directory)
   set(arguments
     -cook

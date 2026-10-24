@@ -250,10 +250,6 @@ auto set_up_playable_s7_level(ULevel& level, AS7LevelAuthoringDocument& document
     new_orchestrator->set_presentation_enabled(true);
     new_orchestrator->clear_player_ship();
     new_orchestrator->set_level_config(*document.level_config);
-    auto const grid{document.collision_grid_overrides()};
-    new_orchestrator->set_collision_grid_override(
-        grid.level_size.IsSet() ? grid.level_size.GetValue() : FVector3f::ZeroVector,
-        grid.cell_size.IsSet() ? grid.cell_size.GetValue() : FVector3f::ZeroVector);
 
     return FString::Printf(
         TEXT("Playable level ready: game mode, orchestrator, GPU starfield, post-processing, "

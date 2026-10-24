@@ -114,7 +114,6 @@ void FWorldlessSimulationTest::queue_kills(std::span<sim::EntityId const> const 
 auto FWorldlessSimulationTest::run_until_timeline_finished(time_type const maximum_time) -> bool {
     check(maximum_time > 0.0);
     check(simulation_.get_state() == sim::OrchestratorState::Paused);
-    simulation_.set_time_scale(ioj::PositiveFinite<double>::make(1.0));
     simulation_.start();
     auto const tick_period{simulation_.get_clock().get_tick_period()};
     auto const maximum_ticks{static_cast<uint64>(FMath::CeilToDouble(maximum_time / tick_period))};

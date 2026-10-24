@@ -88,14 +88,11 @@ function(add_unreal_automation_test test_name)
     ${automation_test_FILTERS})
   sandbox_make_automation_exec_commands(automation_exec_commands
     "${automation_filter_expression}")
-  sandbox_make_space_game_test_arguments(space_game_test_arguments
-    "${IOJ_SPACE_GAME_TEST_TIME_SCALE}")
 
   add_unreal_editor_test("${test_name}"
     ARGUMENTS
       "${automation_exec_commands}"
       -nullrhi
-      ${space_game_test_arguments}
     LABELS ${automation_test_LABELS}
     TIMEOUT 900
   )

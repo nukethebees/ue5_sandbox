@@ -42,17 +42,16 @@ struct LevelSim {
     // Construction and lifecycle
     /* **************************************** */
     LevelSim(GameMemory& game_memory, LevelSimInitData data);
+
     LevelSim(LevelSim const&) = delete;
     LevelSim(LevelSim&&) = delete;
+
     auto operator=(LevelSim const&) -> LevelSim& = delete;
     auto operator=(LevelSim&&) -> LevelSim& = delete;
 
-    // Call after static collision is installed.
     void finish_initialisation();
     void start();
     void pause();
-    // Require a finite positive scale; use a scalar across the native compiler boundary.
-    void set_time_scale(time_type scale);
 
     /* **************************************** */
     // Simulation
@@ -66,8 +65,6 @@ struct LevelSim {
     void set_fighter_diagnostics_enabled(bool enabled) noexcept;
     void set_telemetry_metadata(LevelTelemetryRunMetadata metadata);
     void set_static_collision(std::span<collision::WorldAABB const> bounds);
-    auto add_static_collision_aabb(Vector3f min_point, Vector3f max_point)
-        -> collision::StaticGeometryIndex;
     auto get_player_ship_commands() noexcept -> std::optional<player::CommandInterface> {
         if (!player_ship_simulation_) {
             return std::nullopt;
@@ -79,15 +76,11 @@ struct LevelSim {
     /* **************************************** */
     // Telemetry and mission results
     /* **************************************** */
-    // Finalizes telemetry without changing simulation state.
     void finalize_telemetry_run(LevelTelemetryRunEndReason reason);
-    // Pauses without resetting either tick accumulator.
     void complete_telemetry_run(LevelTelemetryRunEndReason reason,
                                 std::optional<Team> winning_team = {});
-    // Evaluate after consuming mission results so mission completion takes precedence.
     void complete_run_if_requested(bool stop_when_battle_resolved,
                                    std::optional<Duration> duration);
-    // Consumes the result and marks telemetry terminal without pausing.
     auto take_player_team_completion() -> std::optional<TeamCompletion>;
     auto take_finalized_telemetry_run() -> std::optional<LevelTelemetryRunRecord>;
 

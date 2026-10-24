@@ -6,8 +6,8 @@
 #include "test_level_loader_scenario.h"
 #include "test_player_ship_death_scenario.h"
 #include <SandboxTests/support/SimulationTestAssets.h>
-#include <SandboxTests/support/SpaceGameTestSettings.h>
 #include <SandboxTests/support/test_setup.h>
+#include <SandboxTests/support/TestBatchOrchestratorTestAccess.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
 
 #include <CQTest.h>
@@ -49,6 +49,9 @@ TEST_CLASS(SharedSimulation, "Sandbox.LevelTests")
         if (!checks.is_valid(orchestrator, TEXT("Shared simulation orchestrator is available"))) {
             return;
         }
+
+        FTestBatchOrchestratorTestAccess::use_settings_file(
+            *orchestrator, TEXT("Source/SandboxTests/fixtures/settings.scm"));
 
         context = MakeUnique<ioj::FSimulationTestContext>(ioj::FSimulationTestContext{
             .orchestrator = *orchestrator,

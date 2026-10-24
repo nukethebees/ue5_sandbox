@@ -150,8 +150,10 @@ struct FDataChanges {
 }
 
 struct SPACEGAMEPRESENTATION_API FHUDManager {
-    void initialise(sim::HudSettings const& update_frequencies,
-                    sim::Mission const& new_mission,
+    void configure(sim::HudSettings settings) { settings_ = settings; }
+    auto settings() const -> sim::HudSettings const& { return settings_; }
+
+    void initialise(sim::Mission const& new_mission,
                     sim::EntityLedger const& new_entity_ledger,
                     sim::capital_ships::Sim const& new_capitals,
                     sim::fighters::Sim const& new_fighters,
@@ -259,6 +261,8 @@ struct SPACEGAMEPRESENTATION_API FHUDManager {
 #endif
 
     bool validate_player_ship_for_collection() const;
+
+    sim::HudSettings settings_;
 
     EHUDManagerState state{EHUDManagerState::Disabled};
     TArray<FRegisteredHud> registered_huds;

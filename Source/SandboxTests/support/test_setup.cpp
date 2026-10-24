@@ -1,6 +1,7 @@
 #include "test_setup.h"
 
 #include "SimulationTestAssets.h"
+#include "TestBatchOrchestratorTestAccess.h"
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
@@ -110,7 +111,8 @@ void FTestBatchOrchestratorLevelSetup::end_test() {
 void FTestBatchOrchestratorLevelSetup::reset_test_configuration() {
     check(orchestrator.IsValid());
     orchestrator->set_level_config(*config);
-    auto& mission{orchestrator->get_mission_definition()};
+    FTestBatchOrchestratorTestAccess::use_settings_file(*orchestrator,
+                                                        TEXT("LevelScripts/Settings/base.scm"));
 }
 
 void FTestBatchOrchestratorLevelSetup::teardown() {
