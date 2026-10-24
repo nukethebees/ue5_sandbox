@@ -5,6 +5,7 @@
 
 #include "ioj/s7/field_constraints.h"
 #include "ioj/s7/record_reader.h"
+#include "ioj/type_traits.h"
 #include "ReadableRecords.h"
 #include <ioj/s7/field_reader.h>
 
@@ -16,14 +17,8 @@ namespace ioj::s7 {
 template <>
 struct TypeReader<codegen_compile_fixture::EmptyReadable>
     : RecordReader<codegen_compile_fixture::EmptyReadable> {
-    static void decode(Reader const& reader,
-                       NodeIndex const node,
-                       std::string_view const path,
-                       value_type&,
-                       ReadMode mode,
-                       AstDiagnostics& errors) {
-        decode_record<Field>(
-            reader, node, "empty", path, field_names, mode, errors, ([](Field, auto const&) {}));
+    static void decode(DecodeContext context, value_type&) {
+        decode_record<Field>(context, "empty", field_names, ([](Field, auto const&) {}));
     }
   private:
     enum class Field : std::uint8_t {
@@ -36,16 +31,12 @@ struct TypeReader<codegen_compile_fixture::EmptyReadable>
 template <>
 struct TypeReader<codegen_compile_fixture::EmptyPositional>
     : RecordReader<codegen_compile_fixture::EmptyPositional> {
-    static void decode(Reader const& reader,
-                       NodeIndex const node,
-                       std::string_view const path,
-                       value_type&,
-                       ReadMode,
-                       AstDiagnostics& errors) {
-        auto const arguments{positional_arguments(reader, node, "empty-position", path, 0)};
+    static void decode(DecodeContext context, value_type&) {
+        auto const arguments{
+            positional_arguments(context.reader, context.node, "empty-position", context.path, 0)};
 
         if (!arguments) {
-            append_errors(errors, arguments.error());
+            append_errors(context.errors, arguments.error());
             return;
         }
     }
@@ -54,23 +45,30 @@ struct TypeReader<codegen_compile_fixture::EmptyPositional>
 template <>
 struct TypeReader<codegen_compile_fixture::PositionalChild>
     : RecordReader<codegen_compile_fixture::PositionalChild> {
-    static ReadResult<value_type>
-        construct(Reader const& reader, NodeIndex const node, std::string_view const path) {
-        AstDiagnostics errors{};
+    static ReadResult<value_type> construct(DecodeContext context) {
         std::optional<decltype(value_type::name)> value_name{};
         std::optional<decltype(value_type::count)> value_count{};
-        auto const arguments{positional_arguments(reader, node, "position", path, 2)};
+        auto const arguments{
+            positional_arguments(context.reader, context.node, "position", context.path, 2)};
 
         if (!arguments) {
-            append_errors(errors, arguments.error());
-            return std::unexpected{std::move(errors)};
+            append_errors(context.errors, arguments.error());
+            return std::unexpected{std::move(context.errors)};
         }
-        FieldReader{reader, (*arguments)[0], std::string{path} + ".name", errors}.construct(
-            value_name);
-        FieldReader{reader, (*arguments)[1], std::string{path} + ".count", errors}.construct(
-            value_count, constraints::nonnegative);
-        if (!errors.empty()) {
-            return std::unexpected{std::move(errors)};
+        FieldReader{{context.reader,
+                     (*arguments)[0],
+                     std::string{context.path} + ".name",
+                     context.mode,
+                     context.errors}}
+            .construct(value_name);
+        FieldReader{{context.reader,
+                     (*arguments)[1],
+                     std::string{context.path} + ".count",
+                     context.mode,
+                     context.errors}}
+            .construct(value_count, constraints::nonnegative);
+        if (!context.errors.empty()) {
+            return std::unexpected{std::move(context.errors)};
         }
 
         value_type result{.name = std::move(*value_name), .count = std::move(*value_count)};
@@ -78,41 +76,34 @@ struct TypeReader<codegen_compile_fixture::PositionalChild>
         return result;
     }
 
-    static void decode(Reader const& reader,
-                       NodeIndex const node,
-                       std::string_view const path,
-                       value_type& result,
-                       ReadMode mode,
-                       AstDiagnostics& errors) {
-        auto const arguments{positional_arguments(reader, node, "position", path, 2)};
+    static void decode(DecodeContext context, value_type& result) {
+        auto const arguments{
+            positional_arguments(context.reader, context.node, "position", context.path, 2)};
 
         if (!arguments) {
-            append_errors(errors, arguments.error());
+            append_errors(context.errors, arguments.error());
             return;
         }
-        FieldReader{reader, (*arguments)[0], std::string{path} + ".name", errors, mode}(
-            result.name);
-        FieldReader{reader, (*arguments)[1], std::string{path} + ".count", errors, mode}(
-            result.count, constraints::nonnegative);
+        FieldReader{{context.reader,
+                     (*arguments)[0],
+                     std::string{context.path} + ".name",
+                     context.mode,
+                     context.errors}}(result.name);
+        FieldReader{{context.reader,
+                     (*arguments)[1],
+                     std::string{context.path} + ".count",
+                     context.mode,
+                     context.errors}}(result.count, constraints::nonnegative);
     }
 };
 
 template <>
 struct TypeReader<codegen_compile_fixture::DefaultReadable>
     : RecordReader<codegen_compile_fixture::DefaultReadable> {
-    static void decode(Reader const& reader,
-                       NodeIndex const node,
-                       std::string_view const path,
-                       value_type& result,
-                       ReadMode mode,
-                       AstDiagnostics& errors) {
-        decode_record<Field>(reader,
-                             node,
+    static void decode(DecodeContext context, value_type& result) {
+        decode_record<Field>(context,
                              "default",
-                             path,
                              field_names,
-                             mode,
-                             errors,
                              ([&](Field const field, auto const& read) {
                                  switch (field) {
                                      case Field::count:
@@ -141,28 +132,17 @@ struct TypeReader<codegen_compile_fixture::DefaultReadable>
 template <>
 struct TypeReader<codegen_compile_fixture::RecursiveReadable>
     : RecordReader<codegen_compile_fixture::RecursiveReadable> {
-    static void decode(Reader const& reader,
-                       NodeIndex const node,
-                       std::string_view const path,
-                       value_type& result,
-                       ReadMode mode,
-                       AstDiagnostics& errors) {
-        decode_record<Field>(reader,
-                             node,
-                             "recursive",
-                             path,
-                             field_names,
-                             mode,
-                             errors,
-                             ([&](Field const field, auto const& read) {
-                                 switch (field) {
-                                     case Field::children:
-                                         read(result.children);
-                                         break;
-                                     case Field::Count:
-                                         std::unreachable();
-                                 }
-                             }));
+    static void decode(DecodeContext context, value_type& result) {
+        decode_record<Field>(
+            context, "recursive", field_names, ([&](Field const field, auto const& read) {
+                switch (field) {
+                    case Field::children:
+                        read(result.children);
+                        break;
+                    case Field::Count:
+                        std::unreachable();
+                }
+            }));
     }
   private:
     enum class Field : std::uint8_t {
@@ -176,17 +156,11 @@ struct TypeReader<codegen_compile_fixture::RecursiveReadable>
 template <>
 struct TypeReader<codegen_compile_fixture::BoundedInteger>
     : RecordReader<codegen_compile_fixture::BoundedInteger> {
-    static ReadResult<value_type>
-        construct(Reader const& reader, NodeIndex const node, std::string_view const path) {
-        AstDiagnostics errors{};
+    static ReadResult<value_type> construct(DecodeContext context) {
         std::optional<decltype(value_type::value)> value_value{};
-        decode_record<Field>(reader,
-                             node,
+        decode_record<Field>(context,
                              "integer",
-                             path,
                              field_names,
-                             ReadMode::Create,
-                             errors,
                              ([&](Field const field, auto const& read) {
                                  switch (field) {
                                      case Field::value:
@@ -200,8 +174,8 @@ struct TypeReader<codegen_compile_fixture::BoundedInteger>
                                  }
                              }),
                              required);
-        if (!errors.empty()) {
-            return std::unexpected{std::move(errors)};
+        if (!context.errors.empty()) {
+            return std::unexpected{std::move(context.errors)};
         }
 
         value_type result{.value = std::move(*value_value)};
@@ -209,19 +183,10 @@ struct TypeReader<codegen_compile_fixture::BoundedInteger>
         return result;
     }
 
-    static void decode(Reader const& reader,
-                       NodeIndex const node,
-                       std::string_view const path,
-                       value_type& result,
-                       ReadMode mode,
-                       AstDiagnostics& errors) {
-        decode_record<Field>(reader,
-                             node,
+    static void decode(DecodeContext context, value_type& result) {
+        decode_record<Field>(context,
                              "integer",
-                             path,
                              field_names,
-                             mode,
-                             errors,
                              ([&](Field const field, auto const& read) {
                                  switch (field) {
                                      case Field::value:
@@ -246,23 +211,18 @@ struct TypeReader<codegen_compile_fixture::BoundedInteger>
 };
 
 template <typename T>
-    requires std::same_as<T, codegen_compile_fixture::ReadableChild> ||
-             std::same_as<T, codegen_compile_fixture::ReadableChildOverrides>
+    requires ioj::SameAsAny<T,
+                            codegen_compile_fixture::ReadableChild,
+                            codegen_compile_fixture::ReadableChildOverrides>
 struct TypeReader<T> : RecordReader<T, codegen_compile_fixture::ReadableChildOverrides> {
     using value_type = T;
 
-    static ReadResult<value_type>
-        construct(Reader const& reader, NodeIndex const node, std::string_view const path) {
-        AstDiagnostics errors{};
+    static ReadResult<value_type> construct(DecodeContext context) {
         std::optional<decltype(value_type::name)> value_name{};
         std::optional<decltype(value_type::count)> value_count{};
-        decode_record<Field>(reader,
-                             node,
+        decode_record<Field>(context,
                              "child",
-                             path,
                              field_names,
-                             ReadMode::Create,
-                             errors,
                              ([&](Field const field, auto const& read) {
                                  switch (field) {
                                      case Field::name:
@@ -276,8 +236,8 @@ struct TypeReader<T> : RecordReader<T, codegen_compile_fixture::ReadableChildOve
                                  }
                              }),
                              required);
-        if (!errors.empty()) {
-            return std::unexpected{std::move(errors)};
+        if (!context.errors.empty()) {
+            return std::unexpected{std::move(context.errors)};
         }
 
         value_type result{.name = std::move(*value_name)};
@@ -288,19 +248,10 @@ struct TypeReader<T> : RecordReader<T, codegen_compile_fixture::ReadableChildOve
         return result;
     }
 
-    static void decode(Reader const& reader,
-                       NodeIndex const node,
-                       std::string_view const path,
-                       value_type& result,
-                       ReadMode mode,
-                       AstDiagnostics& errors) {
-        decode_record<Field, is_patch>(reader,
-                                       node,
+    static void decode(DecodeContext context, value_type& result) {
+        decode_record<Field, is_patch>(context,
                                        "child",
-                                       path,
                                        field_names,
-                                       mode,
-                                       errors,
                                        ([&](Field const field, auto const& read) {
                                            switch (field) {
                                                case Field::name:
@@ -331,9 +282,7 @@ struct TypeReader<T> : RecordReader<T, codegen_compile_fixture::ReadableChildOve
 template <>
 struct TypeReader<codegen_compile_fixture::ReadableRecord>
     : RecordReader<codegen_compile_fixture::ReadableRecord> {
-    static ReadResult<value_type>
-        construct(Reader const& reader, NodeIndex const node, std::string_view const path) {
-        AstDiagnostics errors{};
+    static ReadResult<value_type> construct(DecodeContext context) {
         std::optional<decltype(value_type::child)> value_child{};
         std::optional<decltype(value_type::values)> value_values{};
         std::optional<decltype(value_type::points)> value_points{};
@@ -343,13 +292,9 @@ struct TypeReader<codegen_compile_fixture::ReadableRecord>
         std::optional<decltype(value_type::offset)> value_offset{};
         std::optional<decltype(value_type::title)> value_title{};
         std::optional<decltype(value_type::mode)> value_mode{};
-        decode_record<Field>(reader,
-                             node,
+        decode_record<Field>(context,
                              "record",
-                             path,
                              field_names,
-                             ReadMode::Create,
-                             errors,
                              ([&](Field const field, auto const& read) {
                                  switch (field) {
                                      case Field::child:
@@ -389,8 +334,8 @@ struct TypeReader<codegen_compile_fixture::ReadableRecord>
                                  }
                              }),
                              required);
-        if (!errors.empty()) {
-            return std::unexpected{std::move(errors)};
+        if (!context.errors.empty()) {
+            return std::unexpected{std::move(context.errors)};
         }
 
         value_type result{.child = std::move(*value_child)};
@@ -422,19 +367,10 @@ struct TypeReader<codegen_compile_fixture::ReadableRecord>
         return result;
     }
 
-    static void decode(Reader const& reader,
-                       NodeIndex const node,
-                       std::string_view const path,
-                       value_type& result,
-                       ReadMode mode,
-                       AstDiagnostics& errors) {
-        decode_record<Field>(reader,
-                             node,
+    static void decode(DecodeContext context, value_type& result) {
+        decode_record<Field>(context,
                              "record",
-                             path,
                              field_names,
-                             mode,
-                             errors,
                              ([&](Field const field, auto const& read) {
                                  switch (field) {
                                      case Field::child:

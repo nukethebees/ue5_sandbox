@@ -68,7 +68,7 @@ auto read_settings(Reader const& reader, NodeIndex node, std::string_view sectio
         node,
         section,
         [&](NodeIndex layer) {
-            decode_field(reader, layer, section, value, ReadMode::Override, errors);
+            decode_field({reader, layer, section, ReadMode::Override, errors}, value);
         },
         errors);
     if (!errors.empty()) {

@@ -4,6 +4,7 @@
 #pragma once
 
 #include "ioj/s7/record_reader.h"
+#include "ioj/type_traits.h"
 #include "NestedSettings.h"
 #include "Records_reader.h"
 #include <ioj/s7/field_reader.h>
@@ -14,39 +15,29 @@
 
 namespace ioj::s7 {
 template <typename T>
-    requires std::same_as<T, codegen_compile_fixture::SettingsTarget> ||
-             std::same_as<T, codegen_compile_fixture::SettingsTargetOverrides>
+    requires ioj::SameAsAny<T,
+                            codegen_compile_fixture::SettingsTarget,
+                            codegen_compile_fixture::SettingsTargetOverrides>
 struct TypeReader<T> : RecordReader<T, codegen_compile_fixture::SettingsTargetOverrides> {
     using value_type = T;
 
-    static void decode(Reader const& reader,
-                       NodeIndex const node,
-                       std::string_view const path,
-                       value_type& result,
-                       ReadMode mode,
-                       AstDiagnostics& errors) {
-        decode_record<Field, is_patch>(reader,
-                                       node,
-                                       "settings",
-                                       path,
-                                       field_names,
-                                       mode,
-                                       errors,
-                                       ([&](Field const field, auto const& read) {
-                                           switch (field) {
-                                               case Field::first:
-                                                   read(result.first);
-                                                   break;
-                                               case Field::second:
-                                                   read(result.second);
-                                                   break;
-                                               case Field::external_value:
-                                                   read(result.external_value);
-                                                   break;
-                                               case Field::Count:
-                                                   std::unreachable();
-                                           }
-                                       }));
+    static void decode(DecodeContext context, value_type& result) {
+        decode_record<Field, is_patch>(
+            context, "settings", field_names, ([&](Field const field, auto const& read) {
+                switch (field) {
+                    case Field::first:
+                        read(result.first);
+                        break;
+                    case Field::second:
+                        read(result.second);
+                        break;
+                    case Field::external_value:
+                        read(result.external_value);
+                        break;
+                    case Field::Count:
+                        std::unreachable();
+                }
+            }));
     }
   private:
     enum class Field : std::uint8_t {

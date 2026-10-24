@@ -6,6 +6,7 @@
 #include "ioj/s7/field_constraints.h"
 #include "ioj/s7/record_reader.h"
 #include "ioj/sim/capital_ships/capital_ship_sim_config.h"
+#include "ioj/type_traits.h"
 #include <ioj/s7/field_reader.h>
 
 #include <array>
@@ -14,36 +15,24 @@
 
 namespace ioj::s7 {
 template <typename T>
-    requires std::same_as<T, sim::CapitalShipSimConfig> ||
-             std::same_as<T, sim::CapitalShipSimConfigOverrides>
+    requires ioj::SameAsAny<T, sim::CapitalShipSimConfig, sim::CapitalShipSimConfigOverrides>
 struct TypeReader<T> : RecordReader<T, sim::CapitalShipSimConfigOverrides> {
     using value_type = T;
 
-    static void decode(Reader const& reader,
-                       NodeIndex const node,
-                       std::string_view const path,
-                       value_type& result,
-                       ReadMode mode,
-                       AstDiagnostics& errors) {
-        decode_record<Field, is_patch>(reader,
-                                       node,
-                                       "capital-ships",
-                                       path,
-                                       field_names,
-                                       mode,
-                                       errors,
-                                       ([&](Field const field, auto const& read) {
-                                           switch (field) {
-                                               case Field::spawn_delay:
-                                                   read(result.spawn_delay, constraints::finite);
-                                                   break;
-                                               case Field::max_health:
-                                                   read(result.max_health);
-                                                   break;
-                                               case Field::Count:
-                                                   std::unreachable();
-                                           }
-                                       }));
+    static void decode(DecodeContext context, value_type& result) {
+        decode_record<Field, is_patch>(
+            context, "capital-ships", field_names, ([&](Field const field, auto const& read) {
+                switch (field) {
+                    case Field::spawn_delay:
+                        read(result.spawn_delay, constraints::finite);
+                        break;
+                    case Field::max_health:
+                        read(result.max_health);
+                        break;
+                    case Field::Count:
+                        std::unreachable();
+                }
+            }));
     }
   private:
     enum class Field : std::uint8_t {

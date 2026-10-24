@@ -6,6 +6,7 @@
 #include "ioj/s7/field_constraints.h"
 #include "ioj/s7/record_reader.h"
 #include "ioj/sim/lasers/laser_weapon_sim_config.h"
+#include "ioj/type_traits.h"
 #include <ioj/s7/field_reader.h>
 
 #include <array>
@@ -14,43 +15,30 @@
 
 namespace ioj::s7 {
 template <typename T>
-    requires std::same_as<T, sim::LaserWeaponSimConfig> ||
-             std::same_as<T, sim::LaserWeaponSimConfigOverrides>
+    requires ioj::SameAsAny<T, sim::LaserWeaponSimConfig, sim::LaserWeaponSimConfigOverrides>
 struct TypeReader<T> : RecordReader<T, sim::LaserWeaponSimConfigOverrides> {
     using value_type = T;
 
-    static void decode(Reader const& reader,
-                       NodeIndex const node,
-                       std::string_view const path,
-                       value_type& result,
-                       ReadMode mode,
-                       AstDiagnostics& errors) {
-        decode_record<Field, is_patch>(reader,
-                                       node,
-                                       "laser",
-                                       path,
-                                       field_names,
-                                       mode,
-                                       errors,
-                                       ([&](Field const field, auto const& read) {
-                                           switch (field) {
-                                               case Field::damage:
-                                                   read(result.damage);
-                                                   break;
-                                               case Field::projectile_speed:
-                                                   read(result.projectile_speed,
-                                                        constraints::finite);
-                                                   break;
-                                               case Field::max_distance:
-                                                   read(result.max_distance, constraints::finite);
-                                                   break;
-                                               case Field::fire_cooldown:
-                                                   read(result.fire_cooldown, constraints::finite);
-                                                   break;
-                                               case Field::Count:
-                                                   std::unreachable();
-                                           }
-                                       }));
+    static void decode(DecodeContext context, value_type& result) {
+        decode_record<Field, is_patch>(
+            context, "laser", field_names, ([&](Field const field, auto const& read) {
+                switch (field) {
+                    case Field::damage:
+                        read(result.damage);
+                        break;
+                    case Field::projectile_speed:
+                        read(result.projectile_speed, constraints::finite);
+                        break;
+                    case Field::max_distance:
+                        read(result.max_distance, constraints::finite);
+                        break;
+                    case Field::fire_cooldown:
+                        read(result.fire_cooldown, constraints::finite);
+                        break;
+                    case Field::Count:
+                        std::unreachable();
+                }
+            }));
     }
   private:
     enum class Field : std::uint8_t {

@@ -14,28 +14,17 @@ namespace ioj::s7 {
 template <>
 struct TypeReader<codegen_compile_fixture::UnsupportedReader>
     : RecordReader<codegen_compile_fixture::UnsupportedReader> {
-    static void decode(Reader const& reader,
-                       NodeIndex const node,
-                       std::string_view const path,
-                       value_type& result,
-                       ReadMode mode,
-                       AstDiagnostics& errors) {
-        decode_record<Field>(reader,
-                             node,
-                             "unsupported",
-                             path,
-                             field_names,
-                             mode,
-                             errors,
-                             ([&](Field const field, auto const& read) {
-                                 switch (field) {
-                                     case Field::target:
-                                         read(result.target);
-                                         break;
-                                     case Field::Count:
-                                         std::unreachable();
-                                 }
-                             }));
+    static void decode(DecodeContext context, value_type& result) {
+        decode_record<Field>(
+            context, "unsupported", field_names, ([&](Field const field, auto const& read) {
+                switch (field) {
+                    case Field::target:
+                        read(result.target);
+                        break;
+                    case Field::Count:
+                        std::unreachable();
+                }
+            }));
     }
   private:
     enum class Field : std::uint8_t {

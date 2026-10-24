@@ -5,6 +5,7 @@
 
 #include "ioj/s7/field_constraints.h"
 #include "ioj/s7/record_reader.h"
+#include "ioj/type_traits.h"
 #include "Records.h"
 #include <ioj/s7/field_reader.h>
 
@@ -16,19 +17,10 @@ namespace ioj::s7 {
 template <>
 struct TypeReader<codegen_compile_fixture::RangeValue>
     : RecordReader<codegen_compile_fixture::RangeValue> {
-    static void decode(Reader const& reader,
-                       NodeIndex const node,
-                       std::string_view const path,
-                       value_type& result,
-                       ReadMode mode,
-                       AstDiagnostics& errors) {
-        decode_record<Field>(reader,
-                             node,
+    static void decode(DecodeContext context, value_type& result) {
+        decode_record<Field>(context,
                              "range",
-                             path,
                              field_names,
-                             mode,
-                             errors,
                              ([&](Field const field, auto const& read) {
                                  switch (field) {
                                      case Field::minimum:
@@ -55,36 +47,26 @@ struct TypeReader<codegen_compile_fixture::RangeValue>
 };
 
 template <typename T>
-    requires std::same_as<T, codegen_compile_fixture::RangeSettings> ||
-             std::same_as<T, codegen_compile_fixture::RangeSettingsOverrides>
+    requires ioj::SameAsAny<T,
+                            codegen_compile_fixture::RangeSettings,
+                            codegen_compile_fixture::RangeSettingsOverrides>
 struct TypeReader<T> : RecordReader<T, codegen_compile_fixture::RangeSettingsOverrides> {
     using value_type = T;
 
-    static void decode(Reader const& reader,
-                       NodeIndex const node,
-                       std::string_view const path,
-                       value_type& result,
-                       ReadMode mode,
-                       AstDiagnostics& errors) {
-        decode_record<Field, is_patch>(reader,
-                                       node,
-                                       "ranges",
-                                       path,
-                                       field_names,
-                                       mode,
-                                       errors,
-                                       ([&](Field const field, auto const& read) {
-                                           switch (field) {
-                                               case Field::range:
-                                                   read(result.range);
-                                                   break;
-                                               case Field::enabled:
-                                                   read(result.enabled);
-                                                   break;
-                                               case Field::Count:
-                                                   std::unreachable();
-                                           }
-                                       }));
+    static void decode(DecodeContext context, value_type& result) {
+        decode_record<Field, is_patch>(
+            context, "ranges", field_names, ([&](Field const field, auto const& read) {
+                switch (field) {
+                    case Field::range:
+                        read(result.range);
+                        break;
+                    case Field::enabled:
+                        read(result.enabled);
+                        break;
+                    case Field::Count:
+                        std::unreachable();
+                }
+            }));
     }
   private:
     enum class Field : std::uint8_t {
@@ -99,24 +81,16 @@ struct TypeReader<T> : RecordReader<T, codegen_compile_fixture::RangeSettingsOve
 };
 
 template <typename T>
-    requires std::same_as<T, codegen_compile_fixture::WeaponSettings> ||
-             std::same_as<T, codegen_compile_fixture::WeaponSettingsOverrides>
+    requires ioj::SameAsAny<T,
+                            codegen_compile_fixture::WeaponSettings,
+                            codegen_compile_fixture::WeaponSettingsOverrides>
 struct TypeReader<T> : RecordReader<T, codegen_compile_fixture::WeaponSettingsOverrides> {
     using value_type = T;
 
-    static void decode(Reader const& reader,
-                       NodeIndex const node,
-                       std::string_view const path,
-                       value_type& result,
-                       ReadMode mode,
-                       AstDiagnostics& errors) {
-        decode_record<Field, is_patch>(reader,
-                                       node,
+    static void decode(DecodeContext context, value_type& result) {
+        decode_record<Field, is_patch>(context,
                                        "weapon",
-                                       path,
                                        field_names,
-                                       mode,
-                                       errors,
                                        ([&](Field const field, auto const& read) {
                                            switch (field) {
                                                case Field::damage:
@@ -145,39 +119,29 @@ struct TypeReader<T> : RecordReader<T, codegen_compile_fixture::WeaponSettingsOv
 };
 
 template <typename T>
-    requires std::same_as<T, codegen_compile_fixture::ActorSettings> ||
-             std::same_as<T, codegen_compile_fixture::ActorSettingsOverrides>
+    requires ioj::SameAsAny<T,
+                            codegen_compile_fixture::ActorSettings,
+                            codegen_compile_fixture::ActorSettingsOverrides>
 struct TypeReader<T> : RecordReader<T, codegen_compile_fixture::ActorSettingsOverrides> {
     using value_type = T;
 
-    static void decode(Reader const& reader,
-                       NodeIndex const node,
-                       std::string_view const path,
-                       value_type& result,
-                       ReadMode mode,
-                       AstDiagnostics& errors) {
-        decode_record<Field, is_patch>(reader,
-                                       node,
-                                       "actor",
-                                       path,
-                                       field_names,
-                                       mode,
-                                       errors,
-                                       ([&](Field const field, auto const& read) {
-                                           switch (field) {
-                                               case Field::max_health:
-                                                   read(result.max_health);
-                                                   break;
-                                               case Field::weapon:
-                                                   read(result.weapon);
-                                                   break;
-                                               case Field::optional_limit:
-                                                   read(result.optional_limit);
-                                                   break;
-                                               case Field::Count:
-                                                   std::unreachable();
-                                           }
-                                       }));
+    static void decode(DecodeContext context, value_type& result) {
+        decode_record<Field, is_patch>(
+            context, "actor", field_names, ([&](Field const field, auto const& read) {
+                switch (field) {
+                    case Field::max_health:
+                        read(result.max_health);
+                        break;
+                    case Field::weapon:
+                        read(result.weapon);
+                        break;
+                    case Field::optional_limit:
+                        read(result.optional_limit);
+                        break;
+                    case Field::Count:
+                        std::unreachable();
+                }
+            }));
     }
   private:
     enum class Field : std::uint8_t {

@@ -11,6 +11,7 @@
 #include "ioj/settings/presentation.h"
 #include "ioj/settings/radar_reader.h"
 #include "ioj/settings/turret_presentation_reader.h"
+#include "ioj/type_traits.h"
 #include <ioj/s7/field_reader.h>
 
 #include <array>
@@ -19,48 +20,36 @@
 
 namespace ioj::s7 {
 template <typename T>
-    requires std::same_as<T, settings::Presentation> ||
-             std::same_as<T, settings::PresentationOverrides>
+    requires ioj::SameAsAny<T, settings::Presentation, settings::PresentationOverrides>
 struct TypeReader<T> : RecordReader<T, settings::PresentationOverrides> {
     using value_type = T;
 
-    static void decode(Reader const& reader,
-                       NodeIndex const node,
-                       std::string_view const path,
-                       value_type& result,
-                       ReadMode mode,
-                       AstDiagnostics& errors) {
-        decode_record<Field, is_patch>(reader,
-                                       node,
-                                       "presentation",
-                                       path,
-                                       field_names,
-                                       mode,
-                                       errors,
-                                       ([&](Field const field, auto const& read) {
-                                           switch (field) {
-                                               case Field::player_ship:
-                                                   read(result.player_ship);
-                                                   break;
-                                               case Field::laser_projectiles:
-                                                   read(result.laser_projectiles);
-                                                   break;
-                                               case Field::capital_ships:
-                                                   read(result.capital_ships);
-                                                   break;
-                                               case Field::turrets:
-                                                   read(result.turrets);
-                                                   break;
-                                               case Field::entity_overlay:
-                                                   read(result.entity_overlay);
-                                                   break;
-                                               case Field::radar:
-                                                   read(result.radar);
-                                                   break;
-                                               case Field::Count:
-                                                   std::unreachable();
-                                           }
-                                       }));
+    static void decode(DecodeContext context, value_type& result) {
+        decode_record<Field, is_patch>(
+            context, "presentation", field_names, ([&](Field const field, auto const& read) {
+                switch (field) {
+                    case Field::player_ship:
+                        read(result.player_ship);
+                        break;
+                    case Field::laser_projectiles:
+                        read(result.laser_projectiles);
+                        break;
+                    case Field::capital_ships:
+                        read(result.capital_ships);
+                        break;
+                    case Field::turrets:
+                        read(result.turrets);
+                        break;
+                    case Field::entity_overlay:
+                        read(result.entity_overlay);
+                        break;
+                    case Field::radar:
+                        read(result.radar);
+                        break;
+                    case Field::Count:
+                        std::unreachable();
+                }
+            }));
     }
   private:
     enum class Field : std::uint8_t {

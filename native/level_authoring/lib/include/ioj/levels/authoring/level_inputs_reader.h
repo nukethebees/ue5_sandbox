@@ -20,19 +20,10 @@
 namespace ioj::s7 {
 template <>
 struct TypeReader<levels::authoring::EntityInput> : RecordReader<levels::authoring::EntityInput> {
-    static void decode(Reader const& reader,
-                       NodeIndex const node,
-                       std::string_view const path,
-                       value_type& result,
-                       ReadMode mode,
-                       AstDiagnostics& errors) {
-        decode_record<Field>(reader,
-                             node,
+    static void decode(DecodeContext context, value_type& result) {
+        decode_record<Field>(context,
                              "entity",
-                             path,
                              field_names,
-                             mode,
-                             errors,
                              ([&](Field const field, auto const& read) {
                                  switch (field) {
                                      case Field::id:
@@ -108,19 +99,10 @@ struct TypeReader<levels::authoring::EntityInput> : RecordReader<levels::authori
 template <>
 struct TypeReader<levels::authoring::ObjectiveInput>
     : RecordReader<levels::authoring::ObjectiveInput> {
-    static void decode(Reader const& reader,
-                       NodeIndex const node,
-                       std::string_view const path,
-                       value_type& result,
-                       ReadMode mode,
-                       AstDiagnostics& errors) {
-        decode_record<Field>(reader,
-                             node,
+    static void decode(DecodeContext context, value_type& result) {
+        decode_record<Field>(context,
                              "objective",
-                             path,
                              field_names,
-                             mode,
-                             errors,
                              ([&](Field const field, auto const& read) {
                                  switch (field) {
                                      case Field::id:
@@ -173,19 +155,10 @@ struct TypeReader<levels::authoring::ObjectiveInput>
 
 template <>
 struct TypeReader<levels::authoring::MissionInput> : RecordReader<levels::authoring::MissionInput> {
-    static void decode(Reader const& reader,
-                       NodeIndex const node,
-                       std::string_view const path,
-                       value_type& result,
-                       ReadMode mode,
-                       AstDiagnostics& errors) {
-        decode_record<Field>(reader,
-                             node,
+    static void decode(DecodeContext context, value_type& result) {
+        decode_record<Field>(context,
                              "mission",
-                             path,
                              field_names,
-                             mode,
-                             errors,
                              ([&](Field const field, auto const& read) {
                                  switch (field) {
                                      case Field::objectives:
@@ -213,19 +186,10 @@ struct TypeReader<levels::authoring::MissionInput> : RecordReader<levels::author
 
 template <>
 struct TypeReader<levels::authoring::LevelInput> : RecordReader<levels::authoring::LevelInput> {
-    static void decode(Reader const& reader,
-                       NodeIndex const node,
-                       std::string_view const path,
-                       value_type& result,
-                       ReadMode mode,
-                       AstDiagnostics& errors) {
-        decode_record<Field>(reader,
-                             node,
+    static void decode(DecodeContext context, value_type& result) {
+        decode_record<Field>(context,
                              "level",
-                             path,
                              field_names,
-                             mode,
-                             errors,
                              ([&](Field const field, auto const& read) {
                                  switch (field) {
                                      case Field::id:
@@ -300,19 +264,10 @@ struct TypeReader<levels::authoring::LevelInput> : RecordReader<levels::authorin
 template <>
 struct TypeReader<levels::authoring::IncludedLevelInput>
     : RecordReader<levels::authoring::IncludedLevelInput> {
-    static void decode(Reader const& reader,
-                       NodeIndex const node,
-                       std::string_view const path,
-                       value_type& result,
-                       ReadMode mode,
-                       AstDiagnostics& errors) {
-        decode_record<Field>(reader,
-                             node,
+    static void decode(DecodeContext context, value_type& result) {
+        decode_record<Field>(context,
                              "included-definition",
-                             path,
                              field_names,
-                             mode,
-                             errors,
                              ([&](Field const field, auto const& read) {
                                  switch (field) {
                                      case Field::path:
@@ -345,19 +300,10 @@ struct TypeReader<levels::authoring::IncludedLevelInput>
 template <>
 struct TypeReader<levels::authoring::IncludedCampaignInput>
     : RecordReader<levels::authoring::IncludedCampaignInput> {
-    static void decode(Reader const& reader,
-                       NodeIndex const node,
-                       std::string_view const path,
-                       value_type& result,
-                       ReadMode mode,
-                       AstDiagnostics& errors) {
-        decode_record<Field>(reader,
-                             node,
+    static void decode(DecodeContext context, value_type& result) {
+        decode_record<Field>(context,
                              "included-definition",
-                             path,
                              field_names,
-                             mode,
-                             errors,
                              ([&](Field const field, auto const& read) {
                                  switch (field) {
                                      case Field::path:
@@ -389,31 +335,20 @@ struct TypeReader<levels::authoring::IncludedCampaignInput>
 
 template <>
 struct TypeReader<levels::authoring::CatalogInput> : RecordReader<levels::authoring::CatalogInput> {
-    static void decode(Reader const& reader,
-                       NodeIndex const node,
-                       std::string_view const path,
-                       value_type& result,
-                       ReadMode mode,
-                       AstDiagnostics& errors) {
-        decode_record<Field>(reader,
-                             node,
-                             "catalog",
-                             path,
-                             field_names,
-                             mode,
-                             errors,
-                             ([&](Field const field, auto const& read) {
-                                 switch (field) {
-                                     case Field::levels:
-                                         read(result.levels);
-                                         break;
-                                     case Field::campaigns:
-                                         read(result.campaigns);
-                                         break;
-                                     case Field::Count:
-                                         std::unreachable();
-                                 }
-                             }));
+    static void decode(DecodeContext context, value_type& result) {
+        decode_record<Field>(
+            context, "catalog", field_names, ([&](Field const field, auto const& read) {
+                switch (field) {
+                    case Field::levels:
+                        read(result.levels);
+                        break;
+                    case Field::campaigns:
+                        read(result.campaigns);
+                        break;
+                    case Field::Count:
+                        std::unreachable();
+                }
+            }));
     }
   private:
     enum class Field : std::uint8_t {

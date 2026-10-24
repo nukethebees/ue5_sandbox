@@ -15,19 +15,10 @@
 namespace ioj::s7 {
 template <>
 struct TypeReader<levels::TeamResultDefinition> : RecordReader<levels::TeamResultDefinition> {
-    static void decode(Reader const& reader,
-                       NodeIndex const node,
-                       std::string_view const path,
-                       value_type& result,
-                       ReadMode mode,
-                       AstDiagnostics& errors) {
-        decode_record<Field>(reader,
-                             node,
+    static void decode(DecodeContext context, value_type& result) {
+        decode_record<Field>(context,
                              "team-result",
-                             path,
                              field_names,
-                             mode,
-                             errors,
                              ([&](Field const field, auto const& read) {
                                  switch (field) {
                                      case Field::team:

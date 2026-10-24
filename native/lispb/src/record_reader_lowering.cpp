@@ -105,7 +105,6 @@ auto fields_body(LoweringContext& context, DeclarationHandle const record, bool 
     auto const positional{records.s7_positional[row] != 0};
     NodeListBuilder body{ir};
     if (constructing) {
-        body.add(ir.variable("AstDiagnostics", "errors", ir.literal("")));
         for (auto const field : fields) {
             auto const name{context.text(members.name[members.index(field)])};
             body.add(ir.variable("std::optional<decltype(value_type::" + name + ")>",
@@ -115,35 +114,35 @@ auto fields_body(LoweringContext& context, DeclarationHandle const record, bool 
     }
 
     auto const read_method{constructing ? ".construct" : ""};
-    auto const read_mode{constructing ? "" : ", mode"};
     auto const patch{records.generate_overrides[row] && !constructing};
     if (positional) {
-        body.add(ir.variable(
-                     "auto const",
-                     "arguments",
-                     ir.raw_expr(std::format("positional_arguments(reader, node, \"{}\", path, {})",
-                                             context.text(*records.s7_tag[row]),
-                                             fields.size()),
-                                 {})),
+        body.add(ir.variable("auto const",
+                             "arguments",
+                             ir.raw_expr(std::format("positional_arguments(context.reader, "
+                                                     "context.node, \"{}\", context.path, {})",
+                                                     context.text(*records.s7_tag[row]),
+                                                     fields.size()),
+                                         {})),
                  2);
         body.add(ir.if_stmt(
             ir.raw_expr("!arguments", {}),
-            ir.block({ir.expr_stmt(ir.raw_expr("append_errors(errors, arguments.error())", {})),
-                      constructing
-                          ? ir.return_stmt(ir.raw_expr("std::unexpected{std::move(errors)}", {}))
-                          : ir.return_stmt()})));
+            ir.block(
+                {ir.expr_stmt(ir.raw_expr("append_errors(context.errors, arguments.error())", {})),
+                 constructing
+                     ? ir.return_stmt(ir.raw_expr("std::unexpected{std::move(context.errors)}", {}))
+                     : ir.return_stmt()})));
         std::size_t index{};
         for (auto const field : fields) {
             auto const name{context.text(members.name[members.index(field)])};
             auto const destination{(constructing ? "value_" : "result.") + name};
             auto const path{
-                std::format("std::string{{path}} + \".{}\"", field_name(context, field))};
-            body.add(ir.raw(std::format("FieldReader{}{{reader, (*arguments)[{}], {}, errors{}}}"
+                std::format("std::string{{context.path}} + \".{}\"", field_name(context, field))};
+            body.add(ir.raw(std::format("FieldReader{}{{{{context.reader, (*arguments)[{}], {}, "
+                                        "context.mode, context.errors}}}}"
                                         "{}({}{});\n",
                                         patch ? "<is_patch>" : "",
                                         index++,
                                         path,
-                                        read_mode,
                                         read_method,
                                         destination,
                                         constraint_arguments(context, field)),
@@ -165,13 +164,9 @@ auto fields_body(LoweringContext& context, DeclarationHandle const record, bool 
         if (fields.empty()) {
             visitor = "[](Field, auto const&) {}";
         }
-        std::vector<Expr> arguments{ir.named("reader"),
-                                    ir.named("node"),
+        std::vector<Expr> arguments{ir.named("context"),
                                     ir.string_literal(context.text(*records.s7_tag[row])),
-                                    ir.named("path"),
                                     ir.named("field_names"),
-                                    ir.named(constructing ? "ReadMode::Create" : "mode"),
-                                    ir.named("errors"),
                                     ir.raw_expr(visitor, {})};
         if (std::ranges::any_of(fields, [&](auto const field) {
                 return members.s7[members.index(field)].required;
@@ -186,8 +181,8 @@ auto fields_body(LoweringContext& context, DeclarationHandle const record, bool 
         return body.build();
     }
     auto const return_errors{ir.if_stmt(
-        ir.raw_expr("!errors.empty()", {}),
-        ir.block({ir.return_stmt(ir.raw_expr("std::unexpected{std::move(errors)}", {}))}))};
+        ir.raw_expr("!context.errors.empty()", {}),
+        ir.block({ir.return_stmt(ir.raw_expr("std::unexpected{std::move(context.errors)}", {}))}))};
     body.add(return_errors, 2);
     std::vector<std::string> initializers;
     for (auto const field : fields) {
@@ -277,9 +272,7 @@ void lower_record_reader(LoweringContext& context,
         declarations.add(ir.header_function(function), 2);
     }};
     std::vector<FunctionParameterId> const read_parameters{
-        ir.parameter("Reader const&", "reader"),
-        ir.parameter("NodeIndex const", "node"),
-        ir.parameter("std::string_view const", "path")};
+        ir.parameter("DecodeContext", "context")};
     if (std::ranges::any_of(fields, [&](auto field) {
             auto const index{members.index(field)};
             return !members.initializer[index].has_value();
@@ -291,9 +284,6 @@ void lower_record_reader(LoweringContext& context,
     }
     auto decode_parameters{read_parameters};
     decode_parameters.push_back(ir.parameter("value_type&", empty ? "" : "result"));
-    decode_parameters.push_back(
-        ir.parameter("ReadMode", empty && records.s7_positional[row] ? "" : "mode"));
-    decode_parameters.push_back(ir.parameter("AstDiagnostics&", "errors"));
     add_function(
         "decode", "void", decode_parameters, record_reader::fields_body(context, record, false));
     if (paired || !records.s7_positional[row]) {
@@ -346,7 +336,11 @@ void lower_record_reader(LoweringContext& context,
             ir.template_declaration({ir.type_template_parameter(ir.strings.intern("T"))}));
         ir.set_record_requires_clause(
             specialization,
-            ir.binary(BinaryOperator::logical_or, same_type(config_type), same_type(patch_type)));
+            ir.template_id(ir.named("ioj::SameAsAny",
+                                    {ir.types.dependency("ioj::SameAsAny", "ioj/type_traits.h")}),
+                           {ir.type_reference(value_type),
+                            ir.type_reference(config_type),
+                            ir.type_reference(patch_type)}));
     } else {
         ir.set_record_template(specialization, ir.template_specialization());
     }

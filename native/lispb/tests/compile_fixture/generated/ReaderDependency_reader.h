@@ -15,17 +15,11 @@ namespace ioj::s7 {
 template <>
 struct TypeReader<codegen_compile_fixture::ReaderDependency>
     : RecordReader<codegen_compile_fixture::ReaderDependency> {
-    static ReadResult<value_type>
-        construct(Reader const& reader, NodeIndex const node, std::string_view const path) {
-        AstDiagnostics errors{};
+    static ReadResult<value_type> construct(DecodeContext context) {
         std::optional<decltype(value_type::child)> value_child{};
-        decode_record<Field>(reader,
-                             node,
+        decode_record<Field>(context,
                              "dependent",
-                             path,
                              field_names,
-                             ReadMode::Create,
-                             errors,
                              ([&](Field const field, auto const& read) {
                                  switch (field) {
                                      case Field::child:
@@ -36,8 +30,8 @@ struct TypeReader<codegen_compile_fixture::ReaderDependency>
                                  }
                              }),
                              required);
-        if (!errors.empty()) {
-            return std::unexpected{std::move(errors)};
+        if (!context.errors.empty()) {
+            return std::unexpected{std::move(context.errors)};
         }
 
         value_type result{.child = std::move(*value_child)};
@@ -45,19 +39,10 @@ struct TypeReader<codegen_compile_fixture::ReaderDependency>
         return result;
     }
 
-    static void decode(Reader const& reader,
-                       NodeIndex const node,
-                       std::string_view const path,
-                       value_type& result,
-                       ReadMode mode,
-                       AstDiagnostics& errors) {
-        decode_record<Field>(reader,
-                             node,
+    static void decode(DecodeContext context, value_type& result) {
+        decode_record<Field>(context,
                              "dependent",
-                             path,
                              field_names,
-                             mode,
-                             errors,
                              ([&](Field const field, auto const& read) {
                                  switch (field) {
                                      case Field::child:

@@ -6,6 +6,7 @@
 #include "ioj/s7/field_constraints.h"
 #include "ioj/s7/record_reader.h"
 #include "ioj/sim/levels/hud_settings.h"
+#include "ioj/type_traits.h"
 #include <ioj/s7/field_reader.h>
 
 #include <array>
@@ -14,44 +15,33 @@
 
 namespace ioj::s7 {
 template <typename T>
-    requires std::same_as<T, sim::HudSettings> || std::same_as<T, sim::HudSettingsOverrides>
+    requires ioj::SameAsAny<T, sim::HudSettings, sim::HudSettingsOverrides>
 struct TypeReader<T> : RecordReader<T, sim::HudSettingsOverrides> {
     using value_type = T;
 
-    static void decode(Reader const& reader,
-                       NodeIndex const node,
-                       std::string_view const path,
-                       value_type& result,
-                       ReadMode mode,
-                       AstDiagnostics& errors) {
-        decode_record<Field, is_patch>(reader,
-                                       node,
-                                       "hud",
-                                       path,
-                                       field_names,
-                                       mode,
-                                       errors,
-                                       ([&](Field const field, auto const& read) {
-                                           switch (field) {
-                                               case Field::player_status_update_period:
-                                                   read(result.player_status_update_period,
-                                                        constraints::nonnegative,
-                                                        constraints::finite);
-                                                   break;
-                                               case Field::entity_count_update_period:
-                                                   read(result.entity_count_update_period,
-                                                        constraints::nonnegative,
-                                                        constraints::finite);
-                                                   break;
-                                               case Field::mission_status_update_period:
-                                                   read(result.mission_status_update_period,
-                                                        constraints::nonnegative,
-                                                        constraints::finite);
-                                                   break;
-                                               case Field::Count:
-                                                   std::unreachable();
-                                           }
-                                       }));
+    static void decode(DecodeContext context, value_type& result) {
+        decode_record<Field, is_patch>(
+            context, "hud", field_names, ([&](Field const field, auto const& read) {
+                switch (field) {
+                    case Field::player_status_update_period:
+                        read(result.player_status_update_period,
+                             constraints::nonnegative,
+                             constraints::finite);
+                        break;
+                    case Field::entity_count_update_period:
+                        read(result.entity_count_update_period,
+                             constraints::nonnegative,
+                             constraints::finite);
+                        break;
+                    case Field::mission_status_update_period:
+                        read(result.mission_status_update_period,
+                             constraints::nonnegative,
+                             constraints::finite);
+                        break;
+                    case Field::Count:
+                        std::unreachable();
+                }
+            }));
     }
   private:
     enum class Field : std::uint8_t {

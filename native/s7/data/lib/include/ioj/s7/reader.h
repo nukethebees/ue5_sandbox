@@ -5,6 +5,7 @@
 #include <ioj/enum_traits.h>
 #include <ioj/field_mask.h>
 #include <ioj/s7/ast_result.h>
+#include <ioj/s7/decode_context.h>
 #include <ioj/try_numeric_cast.h>
 #include <ioj/vector.h>
 
@@ -53,15 +54,8 @@ class Reader {
 template <typename T>
 struct TypeReader;
 
-enum class ReadMode : std::uint8_t { Create, Override };
-
 template <typename T>
-void decode_field(Reader const& reader,
-                  NodeIndex node,
-                  std::string_view path,
-                  T& destination,
-                  ReadMode mode,
-                  AstDiagnostics& errors);
+void decode_field(DecodeContext context, T& destination);
 
 template <typename T>
 concept Readable = requires(Reader const& reader, NodeIndex node, std::string_view path) {
@@ -250,23 +244,19 @@ struct TypeReader<std::array<T, N>> {
 
 template <typename T>
 struct TypeReader<std::optional<T>> {
-    static void decode(Reader const& reader,
-                       NodeIndex node,
-                       std::string_view path,
-                       std::optional<T>& destination,
-                       ReadMode mode,
-                       AstDiagnostics& errors) {
-        if (mode == ReadMode::Override && destination &&
-            !(reader.ast().node(node).kind == NodeKind::Keyword &&
-              reader.ast().text(node) == "none")) {
-            decode_field(reader, node, path, *destination, mode, errors);
+    static void decode(DecodeContext context, std::optional<T>& destination) {
+        auto const& ast{context.reader.ast()};
+        if (context.mode == ReadMode::Override && destination &&
+            !(ast.node(context.node).kind == NodeKind::Keyword &&
+              ast.text(context.node) == "none")) {
+            decode_field(context, *destination);
             return;
         }
-        auto value{read(reader, node, path)};
+        auto value{read(context.reader, context.node, context.path)};
         if (value) {
             destination = std::move(*value);
         } else {
-            append_errors(errors, std::move(value.error()));
+            append_errors(context.errors, std::move(value.error()));
         }
     }
 
@@ -295,69 +285,55 @@ struct TypeReader<Vector<T, N>> {
 };
 
 template <typename T>
-void read_field(Reader const& reader,
-                NodeIndex const node,
-                std::string_view const path,
-                std::optional<T>& destination,
-                AstDiagnostics& errors) {
-    auto value{read<T>(reader, node, path)};
+void read_field(DecodeContext context, std::optional<T>& destination) {
+    auto value{read<T>(context.reader, context.node, context.path)};
     if (value) {
         destination.emplace(std::move(*value));
     } else {
-        append_errors(errors, std::move(value.error()));
+        append_errors(context.errors, std::move(value.error()));
     }
 }
 
 template <typename T>
-void decode_field(Reader const& reader,
-                  NodeIndex node,
-                  std::string_view path,
-                  T& destination,
-                  ReadMode mode,
-                  AstDiagnostics& errors) {
-    if constexpr (requires {
-                      TypeReader<T>::decode(reader, node, path, destination, mode, errors);
-                  }) {
-        if (mode == ReadMode::Override) {
-            if (reader.ast().node(node).kind == NodeKind::List) {
-                auto const children{reader.ast().children(node)};
-                if (!children.empty() &&
-                    reader.ast().node(children.front()).kind == NodeKind::Keyword &&
-                    reader.ast().text(children.front()) == "settings-layers") {
+void decode_field(DecodeContext context, T& destination) {
+    if constexpr (requires { TypeReader<T>::decode(context, destination); }) {
+        if (context.mode == ReadMode::Override) {
+            auto const& ast{context.reader.ast()};
+            if (ast.node(context.node).kind == NodeKind::List) {
+                auto const children{ast.children(context.node)};
+                if (!children.empty() && ast.node(children.front()).kind == NodeKind::Keyword &&
+                    ast.text(children.front()) == "settings-layers") {
                     for (auto const layer : children.subspan(1)) {
-                        decode_field(reader, layer, path, destination, mode, errors);
+                        context.node = layer;
+                        decode_field(context, destination);
                     }
                     return;
                 }
             }
-            TypeReader<T>::decode(reader, node, path, destination, mode, errors);
+            TypeReader<T>::decode(context, destination);
             return;
         }
     }
-    auto value{read<T>(reader, node, path)};
+    auto value{read<T>(context.reader, context.node, context.path)};
     if (value) {
         destination = std::move(*value);
     } else {
-        append_errors(errors, std::move(value.error()));
+        append_errors(context.errors, std::move(value.error()));
     }
 }
 
 // Preserve presence separately from an optional-valued field's explicit empty value.
 template <typename T>
-void decode_patch_field(Reader const& reader,
-                        NodeIndex node,
-                        std::string_view path,
-                        std::optional<T>& destination,
-                        AstDiagnostics& errors) {
-    if constexpr (std::default_initializable<T> && requires(T& value) {
-                      TypeReader<T>::decode(reader, node, path, value, ReadMode::Override, errors);
-                  }) {
+void decode_patch_field(DecodeContext context, std::optional<T>& destination) {
+    if constexpr (std::default_initializable<T> &&
+                  requires(T& value) { TypeReader<T>::decode(context, value); }) {
         if (!destination) {
             destination.emplace();
         }
-        decode_field(reader, node, path, *destination, ReadMode::Override, errors);
+        context.mode = ReadMode::Override;
+        decode_field(context, *destination);
     } else {
-        read_field(reader, node, path, destination, errors);
+        read_field(context, destination);
     }
 }
 
@@ -365,7 +341,7 @@ template <typename T>
 auto read_override(Reader const& reader, NodeIndex node, std::string_view path, T value)
     -> ReadResult<T> {
     AstDiagnostics errors;
-    decode_field(reader, node, path, value, ReadMode::Override, errors);
+    decode_field({reader, node, path, ReadMode::Override, errors}, value);
     if (!errors.empty()) {
         return std::unexpected{std::move(errors)};
     }

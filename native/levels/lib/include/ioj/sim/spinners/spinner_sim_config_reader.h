@@ -7,6 +7,7 @@
 #include "ioj/s7/record_reader.h"
 #include "ioj/sim/lasers/laser_weapon_sim_config_reader.h"
 #include "ioj/sim/spinners/spinner_sim_config.h"
+#include "ioj/type_traits.h"
 #include <ioj/s7/field_reader.h>
 
 #include <array>
@@ -15,37 +16,24 @@
 
 namespace ioj::s7 {
 template <typename T>
-    requires std::same_as<T, sim::SpinnerSimConfig> ||
-             std::same_as<T, sim::SpinnerSimConfigOverrides>
+    requires ioj::SameAsAny<T, sim::SpinnerSimConfig, sim::SpinnerSimConfigOverrides>
 struct TypeReader<T> : RecordReader<T, sim::SpinnerSimConfigOverrides> {
     using value_type = T;
 
-    static void decode(Reader const& reader,
-                       NodeIndex const node,
-                       std::string_view const path,
-                       value_type& result,
-                       ReadMode mode,
-                       AstDiagnostics& errors) {
-        decode_record<Field, is_patch>(reader,
-                                       node,
-                                       "tube-spinners",
-                                       path,
-                                       field_names,
-                                       mode,
-                                       errors,
-                                       ([&](Field const field, auto const& read) {
-                                           switch (field) {
-                                               case Field::yaw_rotation_speed_degrees:
-                                                   read(result.yaw_rotation_speed_degrees,
-                                                        constraints::finite);
-                                                   break;
-                                               case Field::laser:
-                                                   read(result.laser);
-                                                   break;
-                                               case Field::Count:
-                                                   std::unreachable();
-                                           }
-                                       }));
+    static void decode(DecodeContext context, value_type& result) {
+        decode_record<Field, is_patch>(
+            context, "tube-spinners", field_names, ([&](Field const field, auto const& read) {
+                switch (field) {
+                    case Field::yaw_rotation_speed_degrees:
+                        read(result.yaw_rotation_speed_degrees, constraints::finite);
+                        break;
+                    case Field::laser:
+                        read(result.laser);
+                        break;
+                    case Field::Count:
+                        std::unreachable();
+                }
+            }));
     }
   private:
     enum class Field : std::uint8_t {

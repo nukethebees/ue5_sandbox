@@ -16,6 +16,7 @@
 #include "ioj/sim/player/player_sim_config_reader.h"
 #include "ioj/sim/spinners/spinner_sim_config_reader.h"
 #include "ioj/sim/turrets/turret_sim_config_reader.h"
+#include "ioj/type_traits.h"
 #include <ioj/s7/field_reader.h>
 
 #include <array>
@@ -24,63 +25,51 @@
 
 namespace ioj::s7 {
 template <typename T>
-    requires std::same_as<T, settings::SettingsValues> ||
-             std::same_as<T, settings::SettingsValuesOverrides>
+    requires ioj::SameAsAny<T, settings::SettingsValues, settings::SettingsValuesOverrides>
 struct TypeReader<T> : RecordReader<T, settings::SettingsValuesOverrides> {
     using value_type = T;
 
-    static void decode(Reader const& reader,
-                       NodeIndex const node,
-                       std::string_view const path,
-                       value_type& result,
-                       ReadMode mode,
-                       AstDiagnostics& errors) {
-        decode_record<Field, is_patch>(reader,
-                                       node,
-                                       "settings",
-                                       path,
-                                       field_names,
-                                       mode,
-                                       errors,
-                                       ([&](Field const field, auto const& read) {
-                                           switch (field) {
-                                               case Field::tick:
-                                                   read(result.tick);
-                                                   break;
-                                               case Field::player_ship:
-                                                   read(result.player_ship);
-                                                   break;
-                                               case Field::laser_projectiles:
-                                                   read(result.laser_projectiles);
-                                                   break;
-                                               case Field::capital_ships:
-                                                   read(result.capital_ships);
-                                                   break;
-                                               case Field::fighters:
-                                                   read(result.fighters);
-                                                   break;
-                                               case Field::turrets:
-                                                   read(result.turrets);
-                                                   break;
-                                               case Field::tube_spinners:
-                                                   read(result.tube_spinners);
-                                                   break;
-                                               case Field::collision_grid:
-                                                   read(result.collision_grid);
-                                                   break;
-                                               case Field::hud:
-                                                   read(result.hud);
-                                                   break;
-                                               case Field::presentation:
-                                                   read(result.presentation);
-                                                   break;
-                                               case Field::starfield:
-                                                   read(result.starfield);
-                                                   break;
-                                               case Field::Count:
-                                                   std::unreachable();
-                                           }
-                                       }));
+    static void decode(DecodeContext context, value_type& result) {
+        decode_record<Field, is_patch>(
+            context, "settings", field_names, ([&](Field const field, auto const& read) {
+                switch (field) {
+                    case Field::tick:
+                        read(result.tick);
+                        break;
+                    case Field::player_ship:
+                        read(result.player_ship);
+                        break;
+                    case Field::laser_projectiles:
+                        read(result.laser_projectiles);
+                        break;
+                    case Field::capital_ships:
+                        read(result.capital_ships);
+                        break;
+                    case Field::fighters:
+                        read(result.fighters);
+                        break;
+                    case Field::turrets:
+                        read(result.turrets);
+                        break;
+                    case Field::tube_spinners:
+                        read(result.tube_spinners);
+                        break;
+                    case Field::collision_grid:
+                        read(result.collision_grid);
+                        break;
+                    case Field::hud:
+                        read(result.hud);
+                        break;
+                    case Field::presentation:
+                        read(result.presentation);
+                        break;
+                    case Field::starfield:
+                        read(result.starfield);
+                        break;
+                    case Field::Count:
+                        std::unreachable();
+                }
+            }));
     }
   private:
     enum class Field : std::uint8_t {

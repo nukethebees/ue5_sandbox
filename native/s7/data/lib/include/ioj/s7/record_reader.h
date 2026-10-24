@@ -5,35 +5,33 @@
 
 namespace ioj::s7 {
 template <typename Field, bool Patch = false, std::size_t N, typename Visit>
-void decode_record(Reader const& reader,
-                   NodeIndex node,
+void decode_record(DecodeContext context,
                    std::string_view tag,
-                   std::string_view path,
                    std::array<std::string_view, N> const& names,
-                   ReadMode mode,
-                   AstDiagnostics& errors,
                    Visit visit,
                    RecordMask<Field> const& required = {}) {
     static_assert(N == static_cast<std::size_t>(Field::Count));
     if constexpr (Patch) {
-        mode = ReadMode::Override;
+        context.mode = ReadMode::Override;
     }
     auto const seen{read_record<Field>(
-        reader,
-        node,
+        context.reader,
+        context.node,
         tag,
-        path,
+        context.path,
         [&](std::string_view name) { return try_parse_enum<Field>(name, names); },
         [&](Field field, NodeIndex value, std::string_view location) {
-            visit(field, FieldReader<Patch>{reader, value, location, errors, mode});
+            visit(field,
+                  FieldReader<Patch>{
+                      {context.reader, value, location, context.mode, context.errors}});
         })};
 
     if (!seen) {
-        append_errors(errors, seen.error());
+        append_errors(context.errors, seen.error());
         return;
     }
-    if (mode == ReadMode::Create) {
-        require_fields<Field>(*seen, required, names, path, errors);
+    if (context.mode == ReadMode::Create) {
+        require_fields<Field>(*seen, required, names, context.path, context.errors);
     }
 }
 
@@ -44,16 +42,19 @@ struct RecordReader {
     static auto read(Reader const& reader, NodeIndex node, std::string_view path) -> ReadResult<T> {
         if constexpr (std::same_as<T, Patch>) {
             return read_override(reader, node, path, T{});
-        } else if constexpr (std::default_initializable<T>) {
-            T value{};
-            AstDiagnostics errors;
-            TypeReader<T>::decode(reader, node, path, value, ReadMode::Create, errors);
-            if (!errors.empty()) {
-                return std::unexpected{std::move(errors)};
-            }
-            return value;
         } else {
-            return TypeReader<T>::construct(reader, node, path);
+            AstDiagnostics errors;
+            DecodeContext const context{reader, node, path, ReadMode::Create, errors};
+            if constexpr (std::default_initializable<T>) {
+                T value{};
+                TypeReader<T>::decode(context, value);
+                if (!errors.empty()) {
+                    return std::unexpected{std::move(errors)};
+                }
+                return value;
+            } else {
+                return TypeReader<T>::construct(context);
+            }
         }
     }
 };

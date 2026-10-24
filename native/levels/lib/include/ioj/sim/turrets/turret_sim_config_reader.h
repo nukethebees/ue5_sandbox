@@ -7,6 +7,7 @@
 #include "ioj/s7/record_reader.h"
 #include "ioj/sim/lasers/laser_weapon_sim_config_reader.h"
 #include "ioj/sim/turrets/turret_sim_config.h"
+#include "ioj/type_traits.h"
 #include <ioj/s7/field_reader.h>
 
 #include <array>
@@ -15,25 +16,13 @@
 
 namespace ioj::s7 {
 template <typename T>
-    requires std::same_as<T, sim::TurretSimConfig> || std::same_as<T, sim::TurretSimConfigOverrides>
+    requires ioj::SameAsAny<T, sim::TurretSimConfig, sim::TurretSimConfigOverrides>
 struct TypeReader<T> : RecordReader<T, sim::TurretSimConfigOverrides> {
     using value_type = T;
 
-    static void decode(Reader const& reader,
-                       NodeIndex const node,
-                       std::string_view const path,
-                       value_type& result,
-                       ReadMode mode,
-                       AstDiagnostics& errors) {
+    static void decode(DecodeContext context, value_type& result) {
         decode_record<Field, is_patch>(
-            reader,
-            node,
-            "turrets",
-            path,
-            field_names,
-            mode,
-            errors,
-            ([&](Field const field, auto const& read) {
+            context, "turrets", field_names, ([&](Field const field, auto const& read) {
                 switch (field) {
                     case Field::detection_radius:
                         read(result.detection_radius, constraints::finite);

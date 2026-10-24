@@ -6,6 +6,7 @@
 #include "ioj/s7/field_constraints.h"
 #include "ioj/s7/record_reader.h"
 #include "ioj/sim/collision/overlap_response_config.h"
+#include "ioj/type_traits.h"
 #include <ioj/s7/field_reader.h>
 
 #include <array>
@@ -14,39 +15,27 @@
 
 namespace ioj::s7 {
 template <typename T>
-    requires std::same_as<T, sim::OverlapResponseConfig> ||
-             std::same_as<T, sim::OverlapResponseConfigOverrides>
+    requires ioj::SameAsAny<T, sim::OverlapResponseConfig, sim::OverlapResponseConfigOverrides>
 struct TypeReader<T> : RecordReader<T, sim::OverlapResponseConfigOverrides> {
     using value_type = T;
 
-    static void decode(Reader const& reader,
-                       NodeIndex const node,
-                       std::string_view const path,
-                       value_type& result,
-                       ReadMode mode,
-                       AstDiagnostics& errors) {
-        decode_record<Field, is_patch>(reader,
-                                       node,
-                                       "collision-grid",
-                                       path,
-                                       field_names,
-                                       mode,
-                                       errors,
-                                       ([&](Field const field, auto const& read) {
-                                           switch (field) {
-                                               case Field::damage_per_overlap_detection:
-                                                   read(result.damage_per_overlap_detection);
-                                                   break;
-                                               case Field::level_size:
-                                                   read(result.level_size, constraints::finite);
-                                                   break;
-                                               case Field::cell_size:
-                                                   read(result.cell_size, constraints::finite);
-                                                   break;
-                                               case Field::Count:
-                                                   std::unreachable();
-                                           }
-                                       }));
+    static void decode(DecodeContext context, value_type& result) {
+        decode_record<Field, is_patch>(
+            context, "collision-grid", field_names, ([&](Field const field, auto const& read) {
+                switch (field) {
+                    case Field::damage_per_overlap_detection:
+                        read(result.damage_per_overlap_detection);
+                        break;
+                    case Field::level_size:
+                        read(result.level_size, constraints::finite);
+                        break;
+                    case Field::cell_size:
+                        read(result.cell_size, constraints::finite);
+                        break;
+                    case Field::Count:
+                        std::unreachable();
+                }
+            }));
     }
   private:
     enum class Field : std::uint8_t {

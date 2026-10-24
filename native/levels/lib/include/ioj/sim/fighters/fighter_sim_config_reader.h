@@ -8,6 +8,7 @@
 #include "ioj/settings/attack_distance_band_reader.h"
 #include "ioj/sim/fighters/fighter_sim_config.h"
 #include "ioj/sim/lasers/laser_weapon_sim_config_reader.h"
+#include "ioj/type_traits.h"
 #include <ioj/s7/field_reader.h>
 
 #include <array>
@@ -16,26 +17,13 @@
 
 namespace ioj::s7 {
 template <typename T>
-    requires std::same_as<T, sim::FighterSimConfig> ||
-             std::same_as<T, sim::FighterSimConfigOverrides>
+    requires ioj::SameAsAny<T, sim::FighterSimConfig, sim::FighterSimConfigOverrides>
 struct TypeReader<T> : RecordReader<T, sim::FighterSimConfigOverrides> {
     using value_type = T;
 
-    static void decode(Reader const& reader,
-                       NodeIndex const node,
-                       std::string_view const path,
-                       value_type& result,
-                       ReadMode mode,
-                       AstDiagnostics& errors) {
+    static void decode(DecodeContext context, value_type& result) {
         decode_record<Field, is_patch>(
-            reader,
-            node,
-            "fighters",
-            path,
-            field_names,
-            mode,
-            errors,
-            ([&](Field const field, auto const& read) {
+            context, "fighters", field_names, ([&](Field const field, auto const& read) {
                 switch (field) {
                     case Field::max_live_fighters:
                         read(result.max_live_fighters);

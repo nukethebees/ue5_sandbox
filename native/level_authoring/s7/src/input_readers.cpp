@@ -67,7 +67,9 @@ auto read_expr(Reader const& reader, NodeIndex node, std::string_view path, std:
     AstDiagnostics errors;
     auto const field{[&]<typename T>(std::size_t index, std::string_view name) {
         std::optional<T> value;
-        read_field(reader, (*args)[index], std::format("{}.{}", path, name), value, errors);
+        read_field(
+            {reader, (*args)[index], std::format("{}.{}", path, name), ReadMode::Create, errors},
+            value);
         return value;
     }};
     ExprInput result;
