@@ -167,7 +167,8 @@ inline ReadResult<::codegen_compile_fixture::EmptyReadable>
         reader, node, "empty", path, parse_field, ([](Field, NodeIndex, std::string_view) {}))};
 
     if (!seen) {
-        return std::unexpected{seen.error()};
+        append_errors(errors, seen.error());
+        return std::unexpected{std::move(errors)};
     }
     if (!errors.empty()) {
         return std::unexpected{std::move(errors)};
@@ -203,7 +204,8 @@ inline ReadResult<::codegen_compile_fixture::RecursiveReadable>
         }))};
 
     if (!seen) {
-        return std::unexpected{seen.error()};
+        append_errors(errors, seen.error());
+        return std::unexpected{std::move(errors)};
     }
     if (!errors.empty()) {
         return std::unexpected{std::move(errors)};
@@ -242,7 +244,8 @@ inline ReadResult<::codegen_compile_fixture::BoundedInteger>
         }))};
 
     if (!seen) {
-        return std::unexpected{seen.error()};
+        append_errors(errors, seen.error());
+        return std::unexpected{std::move(errors)};
     }
     if (!seen->test(0)) {
         errors.push_back((AstDiagnostic{AstErrorCode::MissingProperty,
@@ -297,7 +300,8 @@ inline ReadResult<::codegen_compile_fixture::ReadableChild>
         }))};
 
     if (!seen) {
-        return std::unexpected{seen.error()};
+        append_errors(errors, seen.error());
+        return std::unexpected{std::move(errors)};
     }
     if (!seen->test(0)) {
         errors.push_back((AstDiagnostic{AstErrorCode::MissingProperty,
@@ -378,7 +382,8 @@ inline ReadResult<::codegen_compile_fixture::ReadableRecord>
         }))};
 
     if (!seen) {
-        return std::unexpected{seen.error()};
+        append_errors(errors, seen.error());
+        return std::unexpected{std::move(errors)};
     }
     if (!seen->test(0)) {
         errors.push_back((AstDiagnostic{AstErrorCode::MissingProperty,

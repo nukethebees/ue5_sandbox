@@ -66,7 +66,8 @@ inline ReadResult<::ioj::levels::LevelCameraDefinition>
         }))};
 
     if (!seen) {
-        return std::unexpected{seen.error()};
+        append_errors(errors, seen.error());
+        return std::unexpected{std::move(errors)};
     }
     if (!seen->test(0)) {
         errors.push_back((AstDiagnostic{AstErrorCode::MissingProperty,

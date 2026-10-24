@@ -95,9 +95,10 @@ auto read_body(LoweringContext& context, DeclarationHandle const record) -> Node
                                   ir.named("parse_field"),
                                   ir.raw_expr(visitor, {})})),
              2);
-    body.add(
-        ir.if_stmt(ir.raw_expr("!seen", {}),
-                   ir.block({ir.return_stmt(ir.raw_expr("std::unexpected{seen.error()}", {}))})));
+    body.add(ir.if_stmt(
+        ir.raw_expr("!seen", {}),
+        ir.block({ir.expr_stmt(ir.raw_expr("append_errors(errors, seen.error())", {})),
+                  ir.return_stmt(ir.raw_expr("std::unexpected{std::move(errors)}", {}))})));
 
     std::vector<std::string> initializers;
     std::size_t ordinal{};

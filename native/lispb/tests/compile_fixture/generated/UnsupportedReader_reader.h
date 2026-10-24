@@ -49,7 +49,8 @@ inline ReadResult<::codegen_compile_fixture::UnsupportedReader>
         }))};
 
     if (!seen) {
-        return std::unexpected{seen.error()};
+        append_errors(errors, seen.error());
+        return std::unexpected{std::move(errors)};
     }
     if (!errors.empty()) {
         return std::unexpected{std::move(errors)};

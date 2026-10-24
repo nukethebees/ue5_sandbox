@@ -50,7 +50,8 @@ inline ReadResult<::codegen_compile_fixture::ReaderDependency>
         }))};
 
     if (!seen) {
-        return std::unexpected{seen.error()};
+        append_errors(errors, seen.error());
+        return std::unexpected{std::move(errors)};
     }
     if (!seen->test(0)) {
         errors.push_back((AstDiagnostic{AstErrorCode::MissingProperty,
