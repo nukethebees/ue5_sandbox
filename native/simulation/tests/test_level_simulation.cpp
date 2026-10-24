@@ -208,9 +208,13 @@ TEST(NativeSimulation, SchemeFutureEntityAndLateObserverProgressThroughLevelSimu
     clock.initialise(data.clock_settings);
     auto compiled{levels::compile_level(*authored, clock, data.capital_ships, data.turrets)};
     ASSERT_TRUE(compiled);
-    data.level_events = std::move(*compiled);
+    data.level_events = std::move(compiled->events);
+    data.mission = std::move(compiled->mission);
+    data.result_metadata = std::move(compiled->result_metadata);
     GameMemory memory;
     LevelSim simulation{memory, std::move(data)};
+    EXPECT_EQ(simulation.get_level_id(), "future-objective");
+    EXPECT_EQ(simulation.get_level_title(), "Future objective");
     simulation.finish_initialisation();
     simulation.start();
     simulation.advance(0.1);
@@ -261,8 +265,8 @@ TEST(NativeSimulation, LevelCompletionUsesPlayerTeamAndDoesNotCancelOptionalObje
     clock.initialise(data.clock_settings);
     auto compiled{compile_mission(definition, {}, clock)};
     ASSERT_TRUE(compiled);
-    data.level_events.initialisation.mission = {.definition = std::move(*compiled),
-                                                .save_results = false};
+    data.mission = std::move(*compiled);
+    data.result_metadata.save_results = false;
     GameMemory memory;
     LevelSim simulation{memory, std::move(data)};
     simulation.finish_initialisation();
@@ -271,6 +275,7 @@ TEST(NativeSimulation, LevelCompletionUsesPlayerTeamAndDoesNotCancelOptionalObje
     simulation.advance(0.2);
     auto const result{simulation.take_mission_result()};
     ASSERT_TRUE(result);
+    EXPECT_FALSE(result->save_results);
     EXPECT_EQ(result->team, Team::Green);
     EXPECT_EQ(result->outcome, TeamOutcome::Defeat);
     EXPECT_EQ(result->objective_outcome, ObjectiveOutcome::Passed);

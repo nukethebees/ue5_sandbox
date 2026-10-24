@@ -50,7 +50,7 @@ auto resolve_entity_index(FProxyEntityIndexMap const& entities, AActor const& ac
 auto compile_proxy_mission(::FLevelMissionDefinition const& definition,
                            FProxyEntityIndexMap const& entities,
                            sim::SimClock const& clock)
-    -> std::expected<sim::LevelMissionInitialisationData, FLevelStartErrors> {
+    -> std::expected<sim::CompiledMission, FLevelStartErrors> {
     std::vector<levels::EntityId> ids(static_cast<std::size_t>(entities.Num()));
     for (auto const& entity : entities) {
         ids[entity.Value] = levels::EntityId{"proxy-" + std::to_string(entity.Value)};
@@ -72,11 +72,7 @@ auto compile_proxy_mission(::FLevelMissionDefinition const& definition,
         }
         return std::unexpected{MoveTemp(errors)};
     }
-    return sim::LevelMissionInitialisationData{
-        .definition = std::move(*compiled),
-        .level_id = TCHAR_TO_UTF8(*definition.level_id.ToString()),
-        .level_title = TCHAR_TO_UTF8(*definition.level_display_name),
-        .save_results = definition.save_mission_results};
+    return std::move(*compiled);
 }
 
 template <typename TProxy>
@@ -316,7 +312,9 @@ auto make_level_simulation_init_data(USpaceGameLevelConfig const& config,
         }
         return FLevelSimBuildResult{std::unexpect, MoveTemp(errors)};
     }
-    data.level_events = MoveTemp(compiled.value());
+    data.level_events = std::move(compiled->events);
+    data.mission = std::move(compiled->mission);
+    data.result_metadata = std::move(compiled->result_metadata);
     return result;
 }
 
@@ -426,7 +424,11 @@ auto make_proxy_level_simulation_init_data(USpaceGameLevelConfig const& config,
     if (!mission) {
         return FProxyLevelSimBuildResult{std::unexpect, MoveTemp(mission.error())};
     }
-    initialisation.mission = std::move(*mission);
+    build.data.mission = std::move(*mission);
+    build.data.result_metadata = {
+        .level_id = TCHAR_TO_UTF8(*mission_definition.level_id.ToString()),
+        .level_title = TCHAR_TO_UTF8(*mission_definition.level_display_name),
+        .save_results = mission_definition.save_mission_results};
 
     FLevelStartErrors bounds_errors;
     auto const fits{[&](AActor const& actor, sim::EntityType const type) {

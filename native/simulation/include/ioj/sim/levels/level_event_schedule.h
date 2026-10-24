@@ -1,4 +1,5 @@
 #pragma once
+#include <ioj/sim/entities/team_list.h>
 #include <ioj/sim/levels/level_capital_spawn_events.h>
 #include <ioj/sim/levels/level_event_types.h>
 #include <ioj/sim/levels/level_spawn_groups.h>
@@ -25,5 +26,8 @@ struct LevelEventSchedule {
     // Insert payload ranges into the initial prefix; offset and count must be nonnegative.
     void add_initial_spawn_group(EntityType type, std::int32_t offset, std::int32_t count);
     auto add_spawn_group(EntityType type, std::int32_t offset, std::int32_t count) -> bool;
+
+    // Include future capital/turret spawns when configuring team-dependent subsystems.
+    auto get_participating_teams(std::optional<Team> player_team = {}) const -> TeamList;
 };
 }

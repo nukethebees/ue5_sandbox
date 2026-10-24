@@ -2,7 +2,7 @@
 
 #include <ioj/levels/level_definition.h>
 #include <ioj/sim/capital_ships/capital_ship_sim_config.h>
-#include <ioj/sim/levels/compiled_level_events.h>
+#include <ioj/sim/levels/compiled_level.h>
 #include <ioj/sim/turrets/turret_sim_config.h>
 
 #include <expected>
@@ -16,7 +16,7 @@ struct SimClock;
 
 namespace ioj::levels {
 using LevelCompilationErrors = std::vector<std::string>;
-using LevelCompilationResult = std::expected<sim::CompiledLevelEvents, LevelCompilationErrors>;
+using LevelCompilationResult = std::expected<sim::CompiledLevel, LevelCompilationErrors>;
 
 [[nodiscard]] auto compile_level(LevelDefinition const& level,
                                  sim::SimClock const& clock,

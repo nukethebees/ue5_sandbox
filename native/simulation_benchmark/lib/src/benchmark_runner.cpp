@@ -244,10 +244,15 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
         }
         return std::unexpected{std::move(output)};
     }
-    data.level_events = std::move(*compiled);
+    data.level_events = std::move(compiled->events);
+    data.mission = std::move(compiled->mission);
+    data.result_metadata = std::move(compiled->result_metadata);
 
     if (options.fighter_stress_cap.has_value()) {
-        auto const team_count{sim::get_participating_teams(data).num()};
+        auto const team_count{data.level_events.schedule
+                                  .get_participating_teams(
+                                      data.player ? std::optional{data.player->team} : std::nullopt)
+                                  .num()};
         if (team_count == 0 || *options.fighter_stress_cap % team_count != 0) {
             return std::unexpected{
                 "fighter stress cap must divide evenly across participating teams"};

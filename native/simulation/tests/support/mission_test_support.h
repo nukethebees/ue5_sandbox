@@ -30,8 +30,7 @@ inline void install_mission(LevelSimInitData& data, levels::ObjectiveDefinition 
     clock.initialise(data.clock_settings);
     auto compiled{compile_mission(definition, names, clock)};
     ASSERT_TRUE(compiled.has_value());
-    auto& mission{data.level_events.initialisation.mission.emplace()};
-    mission.definition = std::move(*compiled);
-    mission.save_results = false;
+    data.mission = std::move(*compiled);
+    data.result_metadata.save_results = false;
 }
 }

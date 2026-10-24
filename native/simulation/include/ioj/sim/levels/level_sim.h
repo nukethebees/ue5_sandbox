@@ -116,8 +116,8 @@ struct LevelSim {
     auto get_entity_ledger() const -> EntityLedger const& { return entity_ledger_; }
     auto get_entity_tables() const -> EntityTables const& { return entity_tables_; }
     auto get_mission() const -> Mission const& { return mission_; }
-    auto get_level_id() const -> std::string const& { return level_id_; }
-    auto get_level_title() const -> std::string const& { return level_title_; }
+    auto get_level_id() const -> std::string const& { return result_metadata_.level_id; }
+    auto get_level_title() const -> std::string const& { return result_metadata_.level_title; }
     auto get_spatial_query_manager() const -> SpatialQueryManager const& { return query_manager_; }
     auto get_level_telemetry_manager() const -> LevelTelemetryManager const& {
         return level_telemetry_manager_;
@@ -137,7 +137,6 @@ struct LevelSim {
     void configure_player(player::PlayerSpawnData const& spawn);
     void initialise_spatial_queries(LevelSimInitData& data);
     void begin_subsystems();
-    void initialise_events(CompiledLevelEvents events);
 
     SimClock clock_;
     OrchestratorState state_{OrchestratorState::Uninitialised};
@@ -161,8 +160,7 @@ struct LevelSim {
     void update_mission_result();
     Mission mission_;
     std::optional<Team> player_team_{};
-    std::string level_id_, level_title_;
-    bool save_mission_results_{true};
+    LevelResultMetadata result_metadata_;
     std::optional<LevelMissionResult> mission_result_{};
     LevelEventManager event_manager_;
     LevelTelemetryManager level_telemetry_manager_;

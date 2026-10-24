@@ -9,6 +9,8 @@
 #include <ioj/sim/fixed_tick_loop.h>
 #include <ioj/sim/lasers/laser_sim_config.h>
 #include <ioj/sim/levels/compiled_level_events.h>
+#include <ioj/sim/levels/level_result_metadata.h>
+#include <ioj/sim/missions/compiled_mission.h>
 #include <ioj/sim/player/sim.h>
 #include <ioj/sim/spinners/spinner_sim_config.h>
 #include <ioj/sim/telemetry/block_history_types.h>
@@ -30,6 +32,8 @@ struct LevelSimInitData {
 
     std::optional<player::PlayerSpawnData> player;
     CompiledLevelEvents level_events;
+    CompiledMission mission;
+    LevelResultMetadata result_metadata;
 
     CollisionInitData collision;
 
@@ -40,6 +44,4 @@ struct LevelSimInitData {
     bool fighter_diagnostics_enabled{};
 };
 
-// Collect teams from the player and all scheduled capital/turret spawns, including future spawns.
-auto get_participating_teams(LevelSimInitData const& data) -> TeamList;
 }

@@ -96,8 +96,8 @@ void run_worldless_hud_manager_scenario(FAutomationTestBase& test,
         clock.initialise(data.clock_settings);
         auto compiled{sim::compile_mission(defence_objectives(), ids, clock)};
         check(compiled);
-        data.level_events.initialisation.mission = {.definition = std::move(*compiled),
-                                                    .save_results = false};
+        data.mission = std::move(*compiled);
+        data.result_metadata.save_results = false;
     }
 
     FWorldlessSimulationTest harness{MoveTemp(data)};

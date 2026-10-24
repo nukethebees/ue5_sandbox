@@ -1,13 +1,54 @@
 #include <ioj/sim/levels/level_event_schedule.h>
 
+#include <ioj/diagnostics.h>
+
 #include <algorithm>
+#include <array>
 #include <cassert>
 #include <cstdint>
+#include <format>
 #include <optional>
 #include <span>
 #include <vector>
 
 namespace ioj::sim {
+/* **************************************** */
+// Participating teams
+/* **************************************** */
+auto LevelEventSchedule::get_participating_teams(std::optional<Team> const player_team) const
+    -> TeamList {
+    std::array<std::uint8_t, enum_count<Team>()> included{};
+    auto const included_count{included.size()};
+    auto include = [&included](Team const team) {
+        auto const team_index{static_cast<std::int32_t>(team)};
+        if (team_index >= 0 && static_cast<std::size_t>(team_index) < included_count) {
+            included[team_index] = 1;
+        } else {
+            log_error(std::format("Ignoring invalid participating team {}", team_index));
+        }
+    };
+
+    if (player_team.has_value()) {
+        include(*player_team);
+    }
+    for (auto const team : capital_spawns.get_const_view().teams()) {
+        include(team);
+    }
+    for (auto const team : turret_spawns.get_const_view().teams()) {
+        include(team);
+    }
+
+    TeamList result;
+    for (std::int32_t team_index{}; static_cast<std::size_t>(team_index) < included_count;
+         ++team_index) {
+        if (included[team_index] != 0) {
+            result.add(static_cast<Team>(team_index));
+        }
+    }
+
+    return result;
+}
+
 void LevelEventSchedule::add_initial_spawn_group(EntityType const type,
                                                  std::int32_t offset,
                                                  std::int32_t count) {

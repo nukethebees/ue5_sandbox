@@ -22,42 +22,6 @@
 namespace ioj::sim {
 
 /* **************************************** */
-// Participating teams
-/* **************************************** */
-auto get_participating_teams(LevelSimInitData const& data) -> TeamList {
-    std::array<std::uint8_t, enum_count<Team>()> included{};
-    auto const included_count{included.size()};
-    auto include = [&included](Team const team) {
-        auto const team_index{static_cast<std::int32_t>(team)};
-        if (team_index >= 0 && static_cast<std::size_t>(team_index) < included_count) {
-            included[team_index] = 1;
-        } else {
-            log_error(std::format("Ignoring invalid participating team {}", team_index));
-        }
-    };
-
-    if (data.player.has_value()) {
-        include(data.player->team);
-    }
-    for (auto const team : data.level_events.schedule.capital_spawns.get_const_view().teams()) {
-        include(team);
-    }
-    for (auto const team : data.level_events.schedule.turret_spawns.get_const_view().teams()) {
-        include(team);
-    }
-
-    TeamList result;
-    for (std::int32_t team_index{}; static_cast<std::size_t>(team_index) < included_count;
-         ++team_index) {
-        if (included[team_index] != 0) {
-            result.add(static_cast<Team>(team_index));
-        }
-    }
-
-    return result;
-}
-
-/* **************************************** */
 // Construction and lifecycle
 /* **************************************** */
 LevelSim::LevelSim(GameMemory& game_memory, LevelSimInitData data)
@@ -73,7 +37,12 @@ LevelSim::LevelSim(GameMemory& game_memory, LevelSimInitData data)
     , capital_ships_simulation_{entity_ledger_, entity_tables_, fighters_simulation_}
     , turrets_simulation_{clock_, entity_ledger_, entity_tables_}
     , spinners_simulation_{clock_, entity_ledger_, entity_tables_}
-    , event_manager_{capital_ships_simulation_, turrets_simulation_, spinners_simulation_}
+    , mission_{std::move(data.mission)}
+    , result_metadata_{std::move(data.result_metadata)}
+    , event_manager_{capital_ships_simulation_,
+                     turrets_simulation_,
+                     spinners_simulation_,
+                     std::move(data.level_events)}
     , level_telemetry_manager_{
           clock_, entity_ledger_, lasers_simulation_, game_memory, data.telemetry_history} {
     // Initialise timing and metadata
@@ -86,7 +55,8 @@ LevelSim::LevelSim(GameMemory& game_memory, LevelSimInitData data)
     begin_subsystems();
 
     // Run initial events
-    initialise_events(std::move(data.level_events));
+    event_manager_.begin(player_ship_simulation_ ? player_ship_simulation_->unique_entity_id
+                                                 : EntityId{});
     event_manager_.execute_tick(0);
 }
 void LevelSim::finish_initialisation() {
@@ -106,14 +76,6 @@ void LevelSim::finish_initialisation() {
 
     // Start telemetry and mission
     level_telemetry_manager_.initialise();
-    if (auto configuration = event_manager_.take_mission()) {
-        level_id_ = std::move(configuration->level_id);
-        level_title_ = std::move(configuration->level_title);
-        save_mission_results_ = configuration->save_results;
-        mission_ = Mission{std::move(configuration->definition)};
-    } else {
-        mission_ = Mission{};
-    }
     {
         FrameScratchScope scratch_scope{frame_memory_};
         mission_.begin(
@@ -149,7 +111,7 @@ void LevelSim::configure_subsystems(LevelSimInitData const& data) {
     // Configure subsystems
     lasers_simulation_.set_config(data.lasers);
     capital_ships_simulation_.set_config(data.capital_ships);
-    auto const teams{get_participating_teams(data)};
+    auto const teams{event_manager_.get_participating_teams(player_team_)};
     fighters_simulation_.set_config(
         data.fighters,
         {.participating_teams = teams,
@@ -184,12 +146,6 @@ void LevelSim::begin_subsystems() {
 
     spinners::PhaseInterface{spinners_simulation_}.begin_play();
     lasers::PhaseInterface{lasers_simulation_}.begin_play();
-}
-void LevelSim::initialise_events(CompiledLevelEvents events) {
-    auto const player_id{player_ship_simulation_.has_value()
-                             ? player_ship_simulation_->unique_entity_id
-                             : EntityId{}};
-    event_manager_.initialise(std::move(events), player_id);
 }
 /* **************************************** */
 // Configuration and commands
@@ -265,15 +221,15 @@ void LevelSim::update_mission_result() {
     for (auto const completion : mission_.take_completions()) {
         if (player_team_ && completion.team == *player_team_) {
             mission_result_ = LevelMissionResult{
-                .level_id = level_id_,
-                .level_display_name = level_title_,
+                .level_id = result_metadata_.level_id,
+                .level_display_name = result_metadata_.level_title,
                 .team = completion.team,
                 .outcome = completion.outcome,
                 .objective_id = mission_.objectives().name(completion.objective).value,
                 .objective_outcome = completion.objective_outcome,
                 .elapsed_seconds =
                     static_cast<float>(simulation_time(completion.tick, clock_.get_tick_period())),
-                .save_results = save_mission_results_};
+                .save_results = result_metadata_.save_results};
         }
     }
 }

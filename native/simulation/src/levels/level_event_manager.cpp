@@ -12,22 +12,23 @@
 namespace ioj::sim {
 LevelEventManager::LevelEventManager(capital_ships::Sim& capital_ships,
                                      turrets::Sim& turrets,
-                                     spinners::Sim& spinners) noexcept
-    : spawn_manager_{capital_ships, turrets, spinners} {}
-
-void LevelEventManager::initialise(CompiledLevelEvents data, EntityId const player_id) {
-    initialisation_ = std::move(data.initialisation);
-    schedule_ = std::move(data.schedule);
+                                     spinners::Sim& spinners,
+                                     CompiledLevelEvents data)
+    : schedule_{std::move(data.schedule)}
+    , spawn_manager_{capital_ships, turrets, spinners}
+    , player_entity_index_{data.initialisation.player_entity_index}
+    , spawn_group_offset_{schedule_.initial_spawn_group_count} {
     assert(schedule_.execution_ticks.size() == schedule_.event_group_counts.size());
 
-    next_event_index_ = 0;
-    spawn_group_offset_ = schedule_.initial_spawn_group_count;
-    spawn_manager_.initialise(initialisation_.entity_count,
+    spawn_manager_.initialise(data.initialisation.entity_count,
                               schedule_.capital_spawns.get_const_view(),
                               schedule_.turret_spawns.get_const_view(),
                               schedule_.spinner_spawns.get_const_view());
-    if (initialisation_.player_entity_index != invalid_level_entity_index) {
-        spawn_manager_.set_entity_id(initialisation_.player_entity_index, player_id);
+}
+
+void LevelEventManager::begin(EntityId const player_id) {
+    if (player_entity_index_ != invalid_level_entity_index) {
+        spawn_manager_.set_entity_id(player_entity_index_, player_id);
     }
     spawn_manager_.spawn(schedule_.spawn_groups.get_const_view(0, spawn_group_offset_));
 }

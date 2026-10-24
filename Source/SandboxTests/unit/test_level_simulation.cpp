@@ -130,7 +130,9 @@ auto make_scheduled_battle() -> ::ioj::sim::LevelSimInitData {
     clock.initialise(data.clock_settings);
     auto compiled{ioj::levels::compile_level(*definition, clock, data.capital_ships, data.turrets)};
     check(compiled);
-    data.level_events = MoveTemp(compiled.value());
+    data.level_events = std::move(compiled->events);
+    data.mission = std::move(compiled->mission);
+    data.result_metadata = std::move(compiled->result_metadata);
     return data;
 }
 
@@ -152,8 +154,8 @@ void add_mission(::ioj::sim::LevelSimInitData& data) {
     clock.initialise(data.clock_settings);
     auto compiled{ioj::sim::compile_mission(definition, ids, clock)};
     check(compiled);
-    data.level_events.initialisation.mission = {.definition = std::move(*compiled),
-                                                .save_results = false};
+    data.mission = std::move(*compiled);
+    data.result_metadata.save_results = false;
 }
 
 void kill_enemy(::ioj::sim::LevelSim& simulation) {

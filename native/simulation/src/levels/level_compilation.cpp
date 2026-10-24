@@ -65,12 +65,11 @@ auto compile_level(LevelDefinition const& level,
                    sim::TurretSimConfig const& turret_config) -> LevelCompilationResult {
     auto const& definition{level};
 
-    sim::CompiledLevelEvents compiled;
-    auto& initialisation{compiled.initialisation};
-    auto& schedule{compiled.schedule};
-    auto& mission_initialisation{initialisation.mission.emplace()};
-    mission_initialisation.level_id = definition.metadata().id.value;
-    mission_initialisation.level_title = definition.metadata().title;
+    sim::CompiledLevel compiled;
+    auto& initialisation{compiled.events.initialisation};
+    auto& schedule{compiled.events.schedule};
+    compiled.result_metadata.level_id = definition.metadata().id.value;
+    compiled.result_metadata.level_title = definition.metadata().title;
     initialisation.entity_count = static_cast<std::uint32_t>(definition.entities().size());
     if (!definition.player_entity_id().empty()) {
         initialisation.player_entity_index =
@@ -86,7 +85,7 @@ auto compile_level(LevelDefinition const& level,
         if (!mission) {
             return std::unexpected{std::move(mission.error())};
         }
-        mission_initialisation.definition = std::move(*mission);
+        compiled.mission = std::move(*mission);
     }
 
     std::vector<EventSource> sources;
