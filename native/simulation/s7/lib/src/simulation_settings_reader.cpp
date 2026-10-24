@@ -1,6 +1,6 @@
 #include <ioj/s7/simulation_settings_reader.h>
 
-#include "generated/simulation_fields.h"
+#include "simulation_fields.h"
 #include <ioj/levels/authoring/definition_reader.h>
 #include <ioj/levels/level_definition.h>
 

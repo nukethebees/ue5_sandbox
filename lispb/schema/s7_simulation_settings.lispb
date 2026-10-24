@@ -1,6 +1,6 @@
 (module s7_simulation_settings
-  :header "native/simulation/s7/lib/src/generated/simulation_fields.h"
-  :header-include "generated/simulation_fields.h"
+  :header "native/simulation/s7/lib/src/simulation_fields.h"
+  :header-include "simulation_fields.h"
   :namespace ioj::s7::simulation_fields
   (settings-schema Fields
     :target ioj::s7::SimulationSettingsInput

@@ -1,8 +1,8 @@
 #include <ioj/files.h>
 #include <ioj/levels/authoring/campaign_parser.h>
 #include <ioj/levels/authoring/definition_reader.h>
-#include <ioj/levels/authoring/generated/level_inputs_reader.h>
 #include <ioj/levels/authoring/level_definition_writer.h>
+#include <ioj/levels/authoring/level_inputs_reader.h>
 #include <ioj/levels/authoring/level_parser.h>
 #include <ioj/levels/authoring/source_session.h>
 #include <ioj/levels/authoring/starfield_reader.h>

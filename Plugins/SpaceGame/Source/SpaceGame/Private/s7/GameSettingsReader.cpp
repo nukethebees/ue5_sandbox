@@ -1,6 +1,6 @@
 #include <SpaceGame/s7/GameSettingsReader.h>
 
-#include "s7/generated/presentation_fields.h"
+#include "s7/presentation_fields.h"
 #include <ioj/files.h>
 #include <ioj/levels/authoring/definition_reader.h>
 #include <ioj/levels/level_definition.h>

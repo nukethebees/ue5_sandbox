@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "ioj/levels/authoring/generated/level_inputs.h"
 #include "ioj/levels/authoring/input_readers.h"
+#include "ioj/levels/authoring/level_inputs.h"
 #include "ioj/levels/campaign_definition_reader.h"
 #include "ioj/levels/level_camera_definition_reader.h"
 #include "ioj/levels/level_collision_grid_definition_reader.h"
@@ -15,9 +15,9 @@
 namespace ioj::s7 {
 template <>
 struct TypeReader<::ioj::levels::authoring::EntityInput> {
-    using Value = ::ioj::levels::authoring::EntityInput;
+    using value_type = ::ioj::levels::authoring::EntityInput;
 
-    static ReadResult<Value>
+    static ReadResult<value_type>
         read(Reader const& reader, NodeIndex const node, std::string_view const path);
   private:
     enum class Field : std::size_t {
@@ -103,9 +103,9 @@ struct TypeReader<::ioj::levels::authoring::EntityInput> {
 
 template <>
 struct TypeReader<::ioj::levels::authoring::ObjectiveInput> {
-    using Value = ::ioj::levels::authoring::ObjectiveInput;
+    using value_type = ::ioj::levels::authoring::ObjectiveInput;
 
-    static ReadResult<Value>
+    static ReadResult<value_type>
         read(Reader const& reader, NodeIndex const node, std::string_view const path);
   private:
     enum class Field : std::size_t {
@@ -170,9 +170,9 @@ struct TypeReader<::ioj::levels::authoring::ObjectiveInput> {
 
 template <>
 struct TypeReader<::ioj::levels::authoring::MissionInput> {
-    using Value = ::ioj::levels::authoring::MissionInput;
+    using value_type = ::ioj::levels::authoring::MissionInput;
 
-    static ReadResult<Value>
+    static ReadResult<value_type>
         read(Reader const& reader, NodeIndex const node, std::string_view const path);
   private:
     enum class Field : std::size_t {
@@ -194,9 +194,9 @@ struct TypeReader<::ioj::levels::authoring::MissionInput> {
 
 template <>
 struct TypeReader<::ioj::levels::authoring::LevelInput> {
-    using Value = ::ioj::levels::authoring::LevelInput;
+    using value_type = ::ioj::levels::authoring::LevelInput;
 
-    static ReadResult<Value>
+    static ReadResult<value_type>
         read(Reader const& reader, NodeIndex const node, std::string_view const path);
   private:
     enum class Field : std::size_t {
@@ -279,9 +279,9 @@ struct TypeReader<::ioj::levels::authoring::LevelInput> {
 
 template <>
 struct TypeReader<::ioj::levels::authoring::IncludedLevelInput> {
-    using Value = ::ioj::levels::authoring::IncludedLevelInput;
+    using value_type = ::ioj::levels::authoring::IncludedLevelInput;
 
-    static ReadResult<Value>
+    static ReadResult<value_type>
         read(Reader const& reader, NodeIndex const node, std::string_view const path);
   private:
     enum class Field : std::size_t {
@@ -307,9 +307,9 @@ struct TypeReader<::ioj::levels::authoring::IncludedLevelInput> {
 
 template <>
 struct TypeReader<::ioj::levels::authoring::IncludedCampaignInput> {
-    using Value = ::ioj::levels::authoring::IncludedCampaignInput;
+    using value_type = ::ioj::levels::authoring::IncludedCampaignInput;
 
-    static ReadResult<Value>
+    static ReadResult<value_type>
         read(Reader const& reader, NodeIndex const node, std::string_view const path);
   private:
     enum class Field : std::size_t {
@@ -335,9 +335,9 @@ struct TypeReader<::ioj::levels::authoring::IncludedCampaignInput> {
 
 template <>
 struct TypeReader<::ioj::levels::authoring::CatalogInput> {
-    using Value = ::ioj::levels::authoring::CatalogInput;
+    using value_type = ::ioj::levels::authoring::CatalogInput;
 
-    static ReadResult<Value>
+    static ReadResult<value_type>
         read(Reader const& reader, NodeIndex const node, std::string_view const path);
   private:
     enum class Field : std::size_t {
@@ -362,17 +362,17 @@ inline ReadResult<::ioj::levels::authoring::EntityInput>
                                                             NodeIndex const node,
                                                             std::string_view const path) {
     AstDiagnostics errors{};
-    std::optional<decltype(Value::id)> value_id{};
-    std::optional<decltype(Value::archetype)> value_archetype{};
-    std::optional<decltype(Value::team)> value_team{};
-    std::optional<decltype(Value::position)> value_position{};
-    std::optional<decltype(Value::rotation)> value_rotation{};
-    std::optional<decltype(Value::spawn_at)> value_spawn_at{};
-    std::optional<decltype(Value::health)> value_health{};
-    std::optional<decltype(Value::laser_damage)> value_laser_damage{};
-    std::optional<decltype(Value::initial_spawn_delay)> value_initial_spawn_delay{};
-    std::optional<decltype(Value::spawn_cooldown)> value_spawn_cooldown{};
-    std::optional<decltype(Value::target)> value_target{};
+    std::optional<decltype(value_type::id)> value_id{};
+    std::optional<decltype(value_type::archetype)> value_archetype{};
+    std::optional<decltype(value_type::team)> value_team{};
+    std::optional<decltype(value_type::position)> value_position{};
+    std::optional<decltype(value_type::rotation)> value_rotation{};
+    std::optional<decltype(value_type::spawn_at)> value_spawn_at{};
+    std::optional<decltype(value_type::health)> value_health{};
+    std::optional<decltype(value_type::laser_damage)> value_laser_damage{};
+    std::optional<decltype(value_type::initial_spawn_delay)> value_initial_spawn_delay{};
+    std::optional<decltype(value_type::spawn_cooldown)> value_spawn_cooldown{};
+    std::optional<decltype(value_type::target)> value_target{};
     auto const seen{read_record<11>(
         reader,
         node,
@@ -380,39 +380,42 @@ inline ReadResult<::ioj::levels::authoring::EntityInput>
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
+            auto const read = [&](auto& destination) {
+                read_field(reader, value, location, destination, errors);
+            };
             switch (field) {
                 case Field::id:
-                    read_field(reader, value, location, value_id, errors);
+                    read(value_id);
                     break;
                 case Field::archetype:
-                    read_field(reader, value, location, value_archetype, errors);
+                    read(value_archetype);
                     break;
                 case Field::team:
-                    read_field(reader, value, location, value_team, errors);
+                    read(value_team);
                     break;
                 case Field::position:
-                    read_field(reader, value, location, value_position, errors);
+                    read(value_position);
                     break;
                 case Field::rotation:
-                    read_field(reader, value, location, value_rotation, errors);
+                    read(value_rotation);
                     break;
                 case Field::spawn_at:
-                    read_field(reader, value, location, value_spawn_at, errors);
+                    read(value_spawn_at);
                     break;
                 case Field::health:
-                    read_field(reader, value, location, value_health, errors);
+                    read(value_health);
                     break;
                 case Field::laser_damage:
-                    read_field(reader, value, location, value_laser_damage, errors);
+                    read(value_laser_damage);
                     break;
                 case Field::initial_spawn_delay:
-                    read_field(reader, value, location, value_initial_spawn_delay, errors);
+                    read(value_initial_spawn_delay);
                     break;
                 case Field::spawn_cooldown:
-                    read_field(reader, value, location, value_spawn_cooldown, errors);
+                    read(value_spawn_cooldown);
                     break;
                 case Field::target:
-                    read_field(reader, value, location, value_target, errors);
+                    read(value_target);
                     break;
             }
         }))};
@@ -421,28 +424,17 @@ inline ReadResult<::ioj::levels::authoring::EntityInput>
         append_errors(errors, seen.error());
         return std::unexpected{std::move(errors)};
     }
-    if (!seen->test(1)) {
-        errors.push_back((AstDiagnostic{AstErrorCode::MissingProperty,
-                                        std::string{path} + ".archetype",
-                                        "Missing required property ':archetype'"}));
-    }
-    if (!seen->test(2)) {
-        errors.push_back((AstDiagnostic{AstErrorCode::MissingProperty,
-                                        std::string{path} + ".team",
-                                        "Missing required property ':team'"}));
-    }
-    if (!seen->test(3)) {
-        errors.push_back((AstDiagnostic{AstErrorCode::MissingProperty,
-                                        std::string{path} + ".position",
-                                        "Missing required property ':position'"}));
-    }
+    std::array<std::string_view, 11> constexpr required_names{
+        "", "archetype", "team", "position", "", "", "", "", "", "", ""};
+
+    require_fields(*seen, required_names, path, errors);
     if (!errors.empty()) {
         return std::unexpected{std::move(errors)};
     }
 
-    Value result{.archetype = std::move(*value_archetype),
-                 .team = std::move(*value_team),
-                 .position = std::move(*value_position)};
+    value_type result{.archetype = std::move(*value_archetype),
+                      .team = std::move(*value_team),
+                      .position = std::move(*value_position)};
 
     if (value_id) {
         result.id = std::move(*value_id);
@@ -490,14 +482,14 @@ inline ReadResult<::ioj::levels::authoring::ObjectiveInput>
                                                                NodeIndex const node,
                                                                std::string_view const path) {
     AstDiagnostics errors{};
-    std::optional<decltype(Value::id)> value_id{};
-    std::optional<decltype(Value::title)> value_title{};
-    std::optional<decltype(Value::team)> value_team{};
-    std::optional<decltype(Value::nodes)> value_nodes{};
-    std::optional<decltype(Value::pass)> value_pass{};
-    std::optional<decltype(Value::fail)> value_fail{};
-    std::optional<decltype(Value::expire)> value_expire{};
-    std::optional<decltype(Value::depends_on)> value_depends_on{};
+    std::optional<decltype(value_type::id)> value_id{};
+    std::optional<decltype(value_type::title)> value_title{};
+    std::optional<decltype(value_type::team)> value_team{};
+    std::optional<decltype(value_type::nodes)> value_nodes{};
+    std::optional<decltype(value_type::pass)> value_pass{};
+    std::optional<decltype(value_type::fail)> value_fail{};
+    std::optional<decltype(value_type::expire)> value_expire{};
+    std::optional<decltype(value_type::depends_on)> value_depends_on{};
     auto const seen{read_record<8>(
         reader,
         node,
@@ -505,30 +497,33 @@ inline ReadResult<::ioj::levels::authoring::ObjectiveInput>
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
+            auto const read = [&](auto& destination) {
+                read_field(reader, value, location, destination, errors);
+            };
             switch (field) {
                 case Field::id:
-                    read_field(reader, value, location, value_id, errors);
+                    read(value_id);
                     break;
                 case Field::title:
-                    read_field(reader, value, location, value_title, errors);
+                    read(value_title);
                     break;
                 case Field::team:
-                    read_field(reader, value, location, value_team, errors);
+                    read(value_team);
                     break;
                 case Field::nodes:
-                    read_field(reader, value, location, value_nodes, errors);
+                    read(value_nodes);
                     break;
                 case Field::pass:
-                    read_field(reader, value, location, value_pass, errors);
+                    read(value_pass);
                     break;
                 case Field::fail:
-                    read_field(reader, value, location, value_fail, errors);
+                    read(value_fail);
                     break;
                 case Field::expire:
-                    read_field(reader, value, location, value_expire, errors);
+                    read(value_expire);
                     break;
                 case Field::depends_on:
-                    read_field(reader, value, location, value_depends_on, errors);
+                    read(value_depends_on);
                     break;
             }
         }))};
@@ -537,21 +532,14 @@ inline ReadResult<::ioj::levels::authoring::ObjectiveInput>
         append_errors(errors, seen.error());
         return std::unexpected{std::move(errors)};
     }
-    if (!seen->test(0)) {
-        errors.push_back((AstDiagnostic{AstErrorCode::MissingProperty,
-                                        std::string{path} + ".id",
-                                        "Missing required property ':id'"}));
-    }
-    if (!seen->test(2)) {
-        errors.push_back((AstDiagnostic{AstErrorCode::MissingProperty,
-                                        std::string{path} + ".team",
-                                        "Missing required property ':team'"}));
-    }
+    std::array<std::string_view, 8> constexpr required_names{"id", "", "team", "", "", "", "", ""};
+
+    require_fields(*seen, required_names, path, errors);
     if (!errors.empty()) {
         return std::unexpected{std::move(errors)};
     }
 
-    Value result{.id = std::move(*value_id), .team = std::move(*value_team)};
+    value_type result{.id = std::move(*value_id), .team = std::move(*value_team)};
 
     if (value_title) {
         result.title = std::move(*value_title);
@@ -579,8 +567,8 @@ inline ReadResult<::ioj::levels::authoring::MissionInput>
                                                              NodeIndex const node,
                                                              std::string_view const path) {
     AstDiagnostics errors{};
-    std::optional<decltype(Value::objectives)> value_objectives{};
-    std::optional<decltype(Value::team_results)> value_team_results{};
+    std::optional<decltype(value_type::objectives)> value_objectives{};
+    std::optional<decltype(value_type::team_results)> value_team_results{};
     auto const seen{read_record<2>(
         reader,
         node,
@@ -588,12 +576,15 @@ inline ReadResult<::ioj::levels::authoring::MissionInput>
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
+            auto const read = [&](auto& destination) {
+                read_field(reader, value, location, destination, errors);
+            };
             switch (field) {
                 case Field::objectives:
-                    read_field(reader, value, location, value_objectives, errors);
+                    read(value_objectives);
                     break;
                 case Field::team_results:
-                    read_field(reader, value, location, value_team_results, errors);
+                    read(value_team_results);
                     break;
             }
         }))};
@@ -602,16 +593,14 @@ inline ReadResult<::ioj::levels::authoring::MissionInput>
         append_errors(errors, seen.error());
         return std::unexpected{std::move(errors)};
     }
-    if (!seen->test(0)) {
-        errors.push_back((AstDiagnostic{AstErrorCode::MissingProperty,
-                                        std::string{path} + ".objectives",
-                                        "Missing required property ':objectives'"}));
-    }
+    std::array<std::string_view, 2> constexpr required_names{"objectives", ""};
+
+    require_fields(*seen, required_names, path, errors);
     if (!errors.empty()) {
         return std::unexpected{std::move(errors)};
     }
 
-    Value result{.objectives = std::move(*value_objectives)};
+    value_type result{.objectives = std::move(*value_objectives)};
 
     if (value_team_results) {
         result.team_results = std::move(*value_team_results);
@@ -624,17 +613,17 @@ inline ReadResult<::ioj::levels::authoring::LevelInput>
                                                            NodeIndex const node,
                                                            std::string_view const path) {
     AstDiagnostics errors{};
-    std::optional<decltype(Value::id)> value_id{};
-    std::optional<decltype(Value::title)> value_title{};
-    std::optional<decltype(Value::description)> value_description{};
-    std::optional<decltype(Value::par_time)> value_par_time{};
-    std::optional<decltype(Value::unlock)> value_unlock{};
-    std::optional<decltype(Value::player)> value_player{};
-    std::optional<decltype(Value::camera)> value_camera{};
-    std::optional<decltype(Value::collision_grid)> value_collision_grid{};
-    std::optional<decltype(Value::settings)> value_settings{};
-    std::optional<decltype(Value::mission)> value_mission{};
-    std::optional<decltype(Value::entities)> value_entities{};
+    std::optional<decltype(value_type::id)> value_id{};
+    std::optional<decltype(value_type::title)> value_title{};
+    std::optional<decltype(value_type::description)> value_description{};
+    std::optional<decltype(value_type::par_time)> value_par_time{};
+    std::optional<decltype(value_type::unlock)> value_unlock{};
+    std::optional<decltype(value_type::player)> value_player{};
+    std::optional<decltype(value_type::camera)> value_camera{};
+    std::optional<decltype(value_type::collision_grid)> value_collision_grid{};
+    std::optional<decltype(value_type::settings)> value_settings{};
+    std::optional<decltype(value_type::mission)> value_mission{};
+    std::optional<decltype(value_type::entities)> value_entities{};
     auto const seen{read_record<11>(
         reader,
         node,
@@ -642,39 +631,42 @@ inline ReadResult<::ioj::levels::authoring::LevelInput>
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
+            auto const read = [&](auto& destination) {
+                read_field(reader, value, location, destination, errors);
+            };
             switch (field) {
                 case Field::id:
-                    read_field(reader, value, location, value_id, errors);
+                    read(value_id);
                     break;
                 case Field::title:
-                    read_field(reader, value, location, value_title, errors);
+                    read(value_title);
                     break;
                 case Field::description:
-                    read_field(reader, value, location, value_description, errors);
+                    read(value_description);
                     break;
                 case Field::par_time:
-                    read_field(reader, value, location, value_par_time, errors);
+                    read(value_par_time);
                     break;
                 case Field::unlock:
-                    read_field(reader, value, location, value_unlock, errors);
+                    read(value_unlock);
                     break;
                 case Field::player:
-                    read_field(reader, value, location, value_player, errors);
+                    read(value_player);
                     break;
                 case Field::camera:
-                    read_field(reader, value, location, value_camera, errors);
+                    read(value_camera);
                     break;
                 case Field::collision_grid:
-                    read_field(reader, value, location, value_collision_grid, errors);
+                    read(value_collision_grid);
                     break;
                 case Field::settings:
-                    read_field(reader, value, location, value_settings, errors);
+                    read(value_settings);
                     break;
                 case Field::mission:
-                    read_field(reader, value, location, value_mission, errors);
+                    read(value_mission);
                     break;
                 case Field::entities:
-                    read_field(reader, value, location, value_entities, errors);
+                    read(value_entities);
                     break;
             }
         }))};
@@ -683,21 +675,15 @@ inline ReadResult<::ioj::levels::authoring::LevelInput>
         append_errors(errors, seen.error());
         return std::unexpected{std::move(errors)};
     }
-    if (!seen->test(0)) {
-        errors.push_back((AstDiagnostic{AstErrorCode::MissingProperty,
-                                        std::string{path} + ".id",
-                                        "Missing required property ':id'"}));
-    }
-    if (!seen->test(1)) {
-        errors.push_back((AstDiagnostic{AstErrorCode::MissingProperty,
-                                        std::string{path} + ".title",
-                                        "Missing required property ':title'"}));
-    }
+    std::array<std::string_view, 11> constexpr required_names{
+        "id", "title", "", "", "", "", "", "", "", "", ""};
+
+    require_fields(*seen, required_names, path, errors);
     if (!errors.empty()) {
         return std::unexpected{std::move(errors)};
     }
 
-    Value result{.id = std::move(*value_id), .title = std::move(*value_title)};
+    value_type result{.id = std::move(*value_id), .title = std::move(*value_title)};
 
     if (value_description) {
         result.description = std::move(*value_description);
@@ -743,9 +729,9 @@ inline ReadResult<::ioj::levels::authoring::IncludedLevelInput>
                                                                    NodeIndex const node,
                                                                    std::string_view const path) {
     AstDiagnostics errors{};
-    std::optional<decltype(Value::path)> value_path{};
-    std::optional<decltype(Value::value)> value_value{};
-    std::optional<decltype(Value::error)> value_error{};
+    std::optional<decltype(value_type::path)> value_path{};
+    std::optional<decltype(value_type::value)> value_value{};
+    std::optional<decltype(value_type::error)> value_error{};
     auto const seen{read_record<3>(
         reader,
         node,
@@ -753,15 +739,18 @@ inline ReadResult<::ioj::levels::authoring::IncludedLevelInput>
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
+            auto const read = [&](auto& destination) {
+                read_field(reader, value, location, destination, errors);
+            };
             switch (field) {
                 case Field::path:
-                    read_field(reader, value, location, value_path, errors);
+                    read(value_path);
                     break;
                 case Field::value:
-                    read_field(reader, value, location, value_value, errors);
+                    read(value_value);
                     break;
                 case Field::error:
-                    read_field(reader, value, location, value_error, errors);
+                    read(value_error);
                     break;
             }
         }))};
@@ -770,16 +759,14 @@ inline ReadResult<::ioj::levels::authoring::IncludedLevelInput>
         append_errors(errors, seen.error());
         return std::unexpected{std::move(errors)};
     }
-    if (!seen->test(0)) {
-        errors.push_back((AstDiagnostic{AstErrorCode::MissingProperty,
-                                        std::string{path} + ".path",
-                                        "Missing required property ':path'"}));
-    }
+    std::array<std::string_view, 3> constexpr required_names{"path", "", ""};
+
+    require_fields(*seen, required_names, path, errors);
     if (!errors.empty()) {
         return std::unexpected{std::move(errors)};
     }
 
-    Value result{.path = std::move(*value_path)};
+    value_type result{.path = std::move(*value_path)};
 
     if (value_value) {
         result.value = std::move(*value_value);
@@ -795,9 +782,9 @@ inline ReadResult<::ioj::levels::authoring::IncludedCampaignInput>
                                                                       NodeIndex const node,
                                                                       std::string_view const path) {
     AstDiagnostics errors{};
-    std::optional<decltype(Value::path)> value_path{};
-    std::optional<decltype(Value::value)> value_value{};
-    std::optional<decltype(Value::error)> value_error{};
+    std::optional<decltype(value_type::path)> value_path{};
+    std::optional<decltype(value_type::value)> value_value{};
+    std::optional<decltype(value_type::error)> value_error{};
     auto const seen{read_record<3>(
         reader,
         node,
@@ -805,15 +792,18 @@ inline ReadResult<::ioj::levels::authoring::IncludedCampaignInput>
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
+            auto const read = [&](auto& destination) {
+                read_field(reader, value, location, destination, errors);
+            };
             switch (field) {
                 case Field::path:
-                    read_field(reader, value, location, value_path, errors);
+                    read(value_path);
                     break;
                 case Field::value:
-                    read_field(reader, value, location, value_value, errors);
+                    read(value_value);
                     break;
                 case Field::error:
-                    read_field(reader, value, location, value_error, errors);
+                    read(value_error);
                     break;
             }
         }))};
@@ -822,16 +812,14 @@ inline ReadResult<::ioj::levels::authoring::IncludedCampaignInput>
         append_errors(errors, seen.error());
         return std::unexpected{std::move(errors)};
     }
-    if (!seen->test(0)) {
-        errors.push_back((AstDiagnostic{AstErrorCode::MissingProperty,
-                                        std::string{path} + ".path",
-                                        "Missing required property ':path'"}));
-    }
+    std::array<std::string_view, 3> constexpr required_names{"path", "", ""};
+
+    require_fields(*seen, required_names, path, errors);
     if (!errors.empty()) {
         return std::unexpected{std::move(errors)};
     }
 
-    Value result{.path = std::move(*value_path)};
+    value_type result{.path = std::move(*value_path)};
 
     if (value_value) {
         result.value = std::move(*value_value);
@@ -847,8 +835,8 @@ inline ReadResult<::ioj::levels::authoring::CatalogInput>
                                                              NodeIndex const node,
                                                              std::string_view const path) {
     AstDiagnostics errors{};
-    std::optional<decltype(Value::levels)> value_levels{};
-    std::optional<decltype(Value::campaigns)> value_campaigns{};
+    std::optional<decltype(value_type::levels)> value_levels{};
+    std::optional<decltype(value_type::campaigns)> value_campaigns{};
     auto const seen{read_record<2>(
         reader,
         node,
@@ -856,12 +844,15 @@ inline ReadResult<::ioj::levels::authoring::CatalogInput>
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
+            auto const read = [&](auto& destination) {
+                read_field(reader, value, location, destination, errors);
+            };
             switch (field) {
                 case Field::levels:
-                    read_field(reader, value, location, value_levels, errors);
+                    read(value_levels);
                     break;
                 case Field::campaigns:
-                    read_field(reader, value, location, value_campaigns, errors);
+                    read(value_campaigns);
                     break;
             }
         }))};
@@ -874,7 +865,7 @@ inline ReadResult<::ioj::levels::authoring::CatalogInput>
         return std::unexpected{std::move(errors)};
     }
 
-    Value result{};
+    value_type result{};
 
     if (value_levels) {
         result.levels = std::move(*value_levels);

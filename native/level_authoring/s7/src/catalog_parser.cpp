@@ -2,7 +2,7 @@
 
 #include "level_processing.h"
 #include "reader_diagnostics.h"
-#include <ioj/levels/authoring/generated/level_inputs_reader.h>
+#include <ioj/levels/authoring/level_inputs_reader.h>
 
 namespace ioj::levels::authoring {
 namespace {
@@ -12,14 +12,13 @@ auto process_entry(s7::ReadResult<Input> input,
                    std::filesystem::path const& source_root,
                    Process process) -> DefinitionEntry<Definition> {
     if (!input) {
-        return {{}, std::unexpected{detail::diagnostics(std::move(input.error()))}};
+        return {.definition = std::unexpected{detail::diagnostics(std::move(input.error()))}};
     }
     auto const& text{input->path};
     auto const relative{std::filesystem::path{std::u8string{text.begin(), text.end()}}};
     if (relative.empty() || relative.has_root_path() ||
         std::ranges::any_of(relative, [](auto const& part) { return part == ".."; })) {
-        return {{},
-                std::unexpected{
+        return {.definition = std::unexpected{
                     Diagnostics{{DiagnosticCode::InvalidType,
                                  path + ".path",
                                  "Definition paths must be relative to the root directory"}}}};
@@ -42,7 +41,7 @@ auto process_entry(s7::ReadResult<Input> input,
             error.source_path = source_path;
         }
     }
-    return {std::move(source_path), std::move(result)};
+    return {.source_path = std::move(source_path), .definition = std::move(result)};
 }
 }
 

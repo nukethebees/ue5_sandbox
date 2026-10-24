@@ -168,6 +168,8 @@ If a new issue invalidates previous validation or requires additional builds/tes
 
 # Code Reuse
 
+* Put generated non-test code in the ordinary source/include tree alongside handwritten code.
+  Do not create `generated/` directories for production code. Generated test fixtures may use them.
 * Reuse existing code if it can perform the requested task
 * Keep generated code simple and easy to debug. Share repetitive typed SoA operations using the existing column packs when this reduces total code; retain explicit generation for schema-specific behavior. Avoid additional type-description systems or elaborate template frameworks.
 

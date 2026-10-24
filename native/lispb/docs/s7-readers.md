@@ -23,6 +23,10 @@ fields are errors. Optional *presence* preserves the C++ initializer; `:required
 requires the field even if its C++ type has a default. Required members may have
 non-default-constructible constrained types.
 
+`:initializer` contains C++ initializer text. Single-token literals can be unquoted,
+for example `:initializer 1.0f`; quote expressions containing spaces and use `""` for
+empty brace initialization. Numeric member types remain ordinary C++ numeric types.
+
 Member constraints are `:nonzero`, `:positive`, `:nonnegative`, `:finite`, `:nonempty`,
 and inclusive numeric `:minimum` / `:maximum`. Boolean constraints opt in with `true`.
 Constraints apply to the completed value, including defaults, and skip disengaged

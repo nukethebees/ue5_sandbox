@@ -1,6 +1,6 @@
 (module level_inputs
-  :header "native/level_authoring/lib/include/ioj/levels/authoring/generated/level_inputs.h"
-  :header-include "ioj/levels/authoring/generated/level_inputs.h"
+  :header "native/level_authoring/lib/include/ioj/levels/authoring/level_inputs.h"
+  :header-include "ioj/levels/authoring/level_inputs.h"
   :namespace ioj::levels::authoring
   (record EntityInput :generate-s7-reader true :s7-tag "entity"
     :s7-reader-includes ("ioj/levels/authoring/input_readers.h")

@@ -1,6 +1,6 @@
 lispb-outputs-v1
 Plugins/ShooterGame/Source/ShooterGame/Public/ShooterGame/players/CharacterCameraMode.h
-Plugins/SpaceGame/Source/SpaceGame/Private/s7/generated/presentation_fields.h
+Plugins/SpaceGame/Source/SpaceGame/Private/s7/presentation_fields.h
 Plugins/SpaceGame/Source/SpaceGame/Private/settings/GameSettings.generated.cpp
 Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/missions/ObjectiveOutcome.h
 Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/missions/ObjectiveOutcomeConversion.h
@@ -18,10 +18,10 @@ native/core/include/ioj/vectors3f.h
 native/gfx/lib/include/ioj/gfx/starfield_settings.h
 native/ismc/lib/include/ioj/ismc/quat32.h
 native/ismc/lib/include/ioj/ismc/render.h
-native/level_authoring/lib/include/ioj/levels/authoring/generated/level_inputs.h
-native/level_authoring/lib/include/ioj/levels/authoring/generated/level_inputs_reader.h
 native/level_authoring/lib/include/ioj/levels/authoring/grammar.h
-native/level_authoring/s7/src/generated/starfield_fields.h
+native/level_authoring/lib/include/ioj/levels/authoring/level_inputs.h
+native/level_authoring/lib/include/ioj/levels/authoring/level_inputs_reader.h
+native/level_authoring/s7/src/starfield_fields.h
 native/levels/lib/include/ioj/levels/campaign_definition.h
 native/levels/lib/include/ioj/levels/campaign_definition_reader.h
 native/levels/lib/include/ioj/levels/diagnostic_code.h
@@ -110,5 +110,5 @@ native/simulation/include/ioj/sim/telemetry/run_end_reason.h
 native/simulation/include/ioj/sim/turrets/phase_interface.h
 native/simulation/include/ioj/sim/turrets/turret_entity_data.h
 native/simulation/s7/lib/src/attack_distance_band_settings.h
-native/simulation/s7/lib/src/generated/simulation_fields.h
+native/simulation/s7/lib/src/simulation_fields.h
 native/ui/lib/src/radar_positions.hpp

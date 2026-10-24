@@ -101,10 +101,12 @@ This avoids teaching the generator domain-specific destination paths or referenc
 The staging optionals in generated readers also support required constrained members without
 default constructors; they distinguish an omitted field from an explicitly empty optional.
 
-Sparse settings deliberately retain their owned assignment representation: one level may
-contain native, Unreal and starfield sections consumed at different times. Direct AST-to-object
-application would duplicate that path or couple definitions to AST lifetimes. Structural record
-readers and settings bindings share Lispb's keyword lookup generation; their numeric conversions
+Sparse settings retain their owned assignment representation: one level may contain native,
+Unreal and starfield sections consumed at different times. Adding direct AST-to-object application
+alongside assignment dispatch would duplicate field conversion. Replacing that path is possible,
+but must preserve authored presence, layer order and separately consumed sections. The generic
+settings walker contains no per-setting field lists; those are generated from the schemas.
+Structural record readers and settings bindings share Lispb's keyword lookup generation; their numeric conversions
 share `try_numeric_cast`, with settings rejecting nonfinite values at assignment. Starfield
 bindings derive recursively from its ordinary records; explicit mappings remain for handwritten
 simulation roots and Unreal members. Cross-field validation runs after all override layers.

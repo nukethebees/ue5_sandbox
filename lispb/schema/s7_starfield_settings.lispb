@@ -3,41 +3,41 @@
   :header-include "ioj/gfx/starfield_settings.h"
   :namespace ioj::starfield
   (record GenerationSettings :generate-settings true
-    (member star_count @native_int32 :initializer "10000")
-    (member random_seed @native_int32 :initializer "1337"))
+    (member star_count @native_int32 :initializer 10000)
+    (member random_seed @native_int32 :initializer 1337))
   (record StarSettings :generate-settings true
-    (member scale float :initializer "1.0f")
-    (member size_multiplier float :initializer "1.0f")
-    (member global_brightness float :initializer "8.0f")
-    (member colour_variation_strength float :initializer "0.35f")
-    (member parallax_strength float :initializer "0.01f"))
+    (member scale float :initializer 1.0f)
+    (member size_multiplier float :initializer 1.0f)
+    (member global_brightness float :initializer 8.0f)
+    (member colour_variation_strength float :initializer 0.35f)
+    (member parallax_strength float :initializer 0.01f))
   (record GalacticBandSettings :generate-settings true
-    (member strength float :initializer "0.65f")
-    (member width_degrees float :initializer "15.0f"))
+    (member strength float :initializer 0.65f)
+    (member width_degrees float :initializer 15.0f))
   (record StellarClusterSettings :generate-settings true
-    (member strength float :initializer "0.12f")
-    (member width_degrees float :initializer "4.0f"))
+    (member strength float :initializer 0.12f)
+    (member width_degrees float :initializer 4.0f))
   (record DustLaneSettings :generate-settings true
-    (member strength float :initializer "0.9f")
-    (member width_degrees float :initializer "5.0f")
-    (member irregularity float :initializer "0.7f"))
+    (member strength float :initializer 0.9f)
+    (member width_degrees float :initializer 5.0f)
+    (member irregularity float :initializer 0.7f))
   (record BrightStarSettings :generate-settings true
-    (member fraction float :initializer "0.01f")
-    (member size_multiplier float :initializer "1.75f")
-    (member brightness_multiplier float :initializer "2.0f")
-    (member shape_strength float :initializer "0.25f"))
+    (member fraction float :initializer 0.01f)
+    (member size_multiplier float :initializer 1.75f)
+    (member brightness_multiplier float :initializer 2.0f)
+    (member shape_strength float :initializer 0.25f))
   (record TwinkleSettings :generate-settings true
-    (member strength float :initializer "0.1f")
-    (member speed float :initializer "0.35f"))
+    (member strength float :initializer 0.1f)
+    (member speed float :initializer 0.35f))
   (record GalacticHazeSettings :generate-settings true
-    (member strength float :initializer "0.15f")
-    (member width_degrees float :initializer "18.0f"))
+    (member strength float :initializer 0.15f)
+    (member width_degrees float :initializer 18.0f))
   (record GalacticCoreSettings :generate-settings true
-    (member strength float :initializer "0.65f")
-    (member width_degrees float :initializer "32.0f"))
+    (member strength float :initializer 0.65f)
+    (member width_degrees float :initializer 32.0f))
   (record NebularKnotSettings :generate-settings true
-    (member strength float :initializer "0.18f")
-    (member size_degrees float :initializer "9.0f"))
+    (member strength float :initializer 0.18f)
+    (member size_degrees float :initializer 9.0f))
   (record Settings :generate-settings true
     (member generation GenerationSettings :initializer "")
     (member star StarSettings :initializer "")
@@ -51,8 +51,8 @@
     (member nebular_knot NebularKnotSettings :initializer "")))
 
 (module s7_starfield_settings
-  :header "native/level_authoring/s7/src/generated/starfield_fields.h"
-  :header-include "generated/starfield_fields.h"
+  :header "native/level_authoring/s7/src/starfield_fields.h"
+  :header-include "starfield_fields.h"
   :namespace ioj::s7::starfield_fields
   (settings-schema Fields
     :target ioj::starfield::Settings

@@ -1,6 +1,6 @@
 #include <ioj/levels/authoring/starfield_reader.h>
 
-#include "generated/starfield_fields.h"
+#include "starfield_fields.h"
 #include <ioj/levels/authoring/definition_reader.h>
 #include <ioj/settings/settings.h>
 

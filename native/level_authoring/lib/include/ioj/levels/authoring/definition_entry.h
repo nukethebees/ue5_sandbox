@@ -7,7 +7,7 @@
 namespace ioj::levels::authoring {
 template <typename Definition>
 struct DefinitionEntry {
-    std::filesystem::path source_path;
+    std::filesystem::path source_path{};
     std::expected<Definition, Diagnostics> definition;
 };
 }
