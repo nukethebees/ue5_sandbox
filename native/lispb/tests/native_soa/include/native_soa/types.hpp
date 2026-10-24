@@ -212,13 +212,11 @@ struct Counts
 
 struct Pair {
     float x;
-
     float y;
 };
 
 struct Node {
     Node* next;
-
     float weight;
 };
 
@@ -763,9 +761,7 @@ struct MixedRows
 
 struct Envelope {
     std::array<Pair, 3> pairs;
-
     Node node;
-
     Aligned32 aligned;
 };
 
@@ -1984,7 +1980,6 @@ struct SingleAlignmentRows
 
 struct ApiPair {
     float x;
-
     float y;
 };
 

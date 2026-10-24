@@ -581,9 +581,9 @@ TEST(NativeSimulation, LevelSimReconstructionTest) {
 TEST(NativeSimulation, LevelSimPlanarMovementOffsetTest) {
     auto data{make_battle()};
     add_player_spawn(data, {});
-    data.player->flight_models.initial_slot = player::FlightModelSlot::Left;
+    data.player->flight_models.initial_slot = player::FlightModelSlot::Fourth;
     auto& gunship{
-        player::flight_model_profile(data.player->flight_models, player::FlightModelSlot::Left)};
+        player::flight_model_profile(data.player->flight_models, player::FlightModelSlot::Fourth)};
     gunship.config.translation.right.manual.response.mode = player::ResponseMode::Direct;
     gunship.config.translation.up.manual.response.mode = player::ResponseMode::Direct;
 

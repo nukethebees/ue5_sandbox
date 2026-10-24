@@ -3,11 +3,14 @@ add_library(native-simulation-s7 STATIC)
 target_sources(native-simulation-s7
   PRIVATE
     lib/src/simulation_settings_reader.cpp
+    lib/src/simulation_settings_input.h
 )
 
 target_include_directories(native-simulation-s7
   PUBLIC
     lib/include
+  PRIVATE
+    lib/src
 )
 
 target_link_libraries(native-simulation-s7

@@ -20,10 +20,10 @@ using FlightModelSlotUnderlying = std::uint8_t;
 
 // Logical bit width: 2.
 enum class FlightModelSlot : FlightModelSlotUnderlying {
-    Up,
-    Right,
-    Down,
-    Left,
+    First,
+    Second,
+    Third,
+    Fourth,
 };
 
 using TranslationSemanticUnderlying = std::uint8_t;

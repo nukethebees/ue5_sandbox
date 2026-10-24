@@ -14,15 +14,15 @@ namespace player_flight_model_tests {
 auto slot_for(player::FlightModelPreset const preset) -> player::FlightModelSlot {
     switch (preset) {
         case player::FlightModelPreset::Starfox:
-            return player::FlightModelSlot::Up;
+            return player::FlightModelSlot::First;
         case player::FlightModelPreset::Fighter:
-            return player::FlightModelSlot::Right;
+            return player::FlightModelSlot::Second;
         case player::FlightModelPreset::Skater:
-            return player::FlightModelSlot::Down;
+            return player::FlightModelSlot::Third;
         case player::FlightModelPreset::Gunship:
-            return player::FlightModelSlot::Left;
+            return player::FlightModelSlot::Fourth;
     }
-    return player::FlightModelSlot::Up;
+    return player::FlightModelSlot::First;
 }
 
 auto make_data(player::FlightModelPreset const preset) -> LevelSimInitData {
@@ -338,9 +338,9 @@ TEST(NativeSimulationFlightModels, DirectSlotSelectionPreservesPhysicalStateAtBo
     auto const firing_mode{sim_player.laser_firing_mode};
     auto const fire_rate{sim_player.laser_fire_rate};
 
-    commands->select_flight_model_slot(player::FlightModelSlot::Up);
+    commands->select_flight_model_slot(player::FlightModelSlot::First);
 
-    EXPECT_EQ(sim_player.get_active_flight_model_slot(), player::FlightModelSlot::Up);
+    EXPECT_EQ(sim_player.get_active_flight_model_slot(), player::FlightModelSlot::First);
     EXPECT_EQ(sim_player.get_physical_state().transform.location, transform.location);
     EXPECT_EQ(sim_player.get_physical_state().transform.rotation, transform.rotation);
     expect_velocity_near(sim_player.get_physical_state().velocity, before, 1.e-8);
@@ -365,14 +365,14 @@ TEST(NativeSimulationFlightModels, SwitchingClearsPersistentTargetsAndSamplingSt
     profile.config.translation.forward.manual.input_source = player::TranslationInputSource::Axis;
     profile.config.translation.forward.normal.positive_target_speed = 1000.f;
     profile.config.translation.forward.normal.negative_target_speed = 500.f;
-    ASSERT_TRUE(commands->set_flight_model_slot_profile(player::FlightModelSlot::Down, profile));
+    ASSERT_TRUE(commands->set_flight_model_slot_profile(player::FlightModelSlot::Third, profile));
     mutable_player_sim(simulation).start_sampling();
     mutable_player_sim(simulation).set_ship_2d_control({0.5, 0.75});
     mutable_player_sim(simulation).stop_sampling();
     ASSERT_NE(player_sim(simulation).get_controller_state().persistent_forward_target_speed, 0.f);
     mutable_player_sim(simulation).start_sampling();
 
-    commands->select_flight_model_slot(player::FlightModelSlot::Up);
+    commands->select_flight_model_slot(player::FlightModelSlot::First);
 
     EXPECT_FALSE(player_sim(simulation).is_sampling_target_speed());
     EXPECT_EQ(player_sim(simulation).get_sampled_target_speed_scale(), Vector2d{});
@@ -390,7 +390,7 @@ TEST(NativeSimulationFlightModels, SwitchingRecomputesActionsFromHeldIntent) {
     ASSERT_EQ(player_sim(simulation).get_controller_state().effective_action,
               player::BoostBrakeState::Boost);
 
-    commands->select_flight_model_slot(player::FlightModelSlot::Left);
+    commands->select_flight_model_slot(player::FlightModelSlot::Fourth);
 
     EXPECT_TRUE(player_sim(simulation).get_flight_intent().boost_held);
     EXPECT_EQ(player_sim(simulation).get_controller_state().effective_action,
@@ -410,7 +410,7 @@ TEST(NativeSimulationFlightModels, SlotReplacementAppliesRuntimeConfigWithoutRec
     profile.config.translation.forward.normal.positive_acceleration = 1234.f;
     profile.config.maximum_resultant_speed = player::effectively_unlimited_speed;
     EXPECT_TRUE(simulation.get_player_ship_commands()->set_flight_model_slot_profile(
-        player::FlightModelSlot::Down, profile));
+        player::FlightModelSlot::Third, profile));
     EXPECT_TRUE(sim_player.get_active_flight_model_profile().customized);
 
     simulation.get_player_ship_commands()->set_accelerator(1.f);
@@ -437,7 +437,7 @@ TEST(NativeSimulationFlightModels, ResponseSeedingUsesTheNewChannelsReferenceFra
     profile.config.translation.forward.manual.semantic =
         player::TranslationSemantic::TargetVelocity;
     profile.config.translation.forward.manual.reference_frame = player::ReferenceFrame::World;
-    ASSERT_TRUE(commands->set_flight_model_slot_profile(player::FlightModelSlot::Down, profile));
+    ASSERT_TRUE(commands->set_flight_model_slot_profile(player::FlightModelSlot::Third, profile));
 
     EXPECT_NEAR(player_sim(simulation).get_controller_state().forward_manual_response.value(),
                 world_forward_speed,
@@ -459,7 +459,7 @@ TEST(NativeSimulationFlightModels, PassiveDragAndNeutralStabilizationRemainDisti
         forward.passive_drag = use_passive_drag ? 1000.f : 0.f;
         forward.active_stabilization_rate = use_passive_drag ? 0.f : 1000.f;
         EXPECT_TRUE(
-            commands->set_flight_model_slot_profile(player::FlightModelSlot::Down, profile));
+            commands->set_flight_model_slot_profile(player::FlightModelSlot::Third, profile));
         commands->set_accelerator(1.f);
     };
     configure(passive, true);
@@ -570,7 +570,7 @@ TEST(NativeSimulationFlightModels, BoostResponseChangesWithoutDiscardingAccelera
     auto profile{player_sim(simulation).get_active_flight_model_profile()};
     profile.config.boost.response.mode = player::ResponseMode::RateLimited;
     profile.config.boost.response.rate_limited = {1000.f, 1000.f};
-    ASSERT_TRUE(commands->set_flight_model_slot_profile(player::FlightModelSlot::Down, profile));
+    ASSERT_TRUE(commands->set_flight_model_slot_profile(player::FlightModelSlot::Third, profile));
     commands->set_accelerator(1.f);
     advance_ticks(simulation, 1);
     auto const before_boost{velocity(simulation).x()};
@@ -599,7 +599,7 @@ TEST(NativeSimulationFlightModels, PartialFacingCouplingBendsVelocityWithoutLock
     auto profile{player_sim(simulation).get_active_flight_model_profile()};
     profile.config.facing_velocity.mode = player::FacingVelocityCoupling::AlignToFacing;
     profile.config.facing_velocity.alignment_rate = 1000.f;
-    ASSERT_TRUE(commands->set_flight_model_slot_profile(player::FlightModelSlot::Down, profile));
+    ASSERT_TRUE(commands->set_flight_model_slot_profile(player::FlightModelSlot::Third, profile));
     advance_ticks(simulation, 30);
 
     auto const bent{velocity(simulation)};
@@ -665,7 +665,7 @@ TEST(NativeSimulationFlightModels, EnergyFallbackRespectsHeldIntentAndAvailabili
     profile.config.emergency_brake.energy_drain_per_second = 60.f;
     profile.config.brake.available = false;
     profile.config.boost.available = false;
-    ASSERT_TRUE(commands->set_flight_model_slot_profile(player::FlightModelSlot::Down, profile));
+    ASSERT_TRUE(commands->set_flight_model_slot_profile(player::FlightModelSlot::Third, profile));
 
     commands->start_emergency_brake();
     advance_ticks(simulation, 1);
@@ -683,7 +683,7 @@ TEST(NativeSimulationFlightModels, EnergyFallbackUsesOnlyAvailableIndependentlyH
     auto profile{player_sim(simulation).get_active_flight_model_profile()};
     profile.config.emergency_brake.energy_drain_per_second = 60.f;
     profile.config.brake.energy_drain_per_second = 0.f;
-    ASSERT_TRUE(commands->set_flight_model_slot_profile(player::FlightModelSlot::Down, profile));
+    ASSERT_TRUE(commands->set_flight_model_slot_profile(player::FlightModelSlot::Third, profile));
 
     commands->start_boost();
     commands->start_brake();
@@ -708,7 +708,7 @@ TEST(NativeSimulationFlightModels, UnavailableBoostNeverBecomesEffective) {
     auto commands{simulation.get_player_ship_commands()};
     auto profile{player_sim(simulation).get_active_flight_model_profile()};
     profile.config.boost.available = false;
-    ASSERT_TRUE(commands->set_flight_model_slot_profile(player::FlightModelSlot::Down, profile));
+    ASSERT_TRUE(commands->set_flight_model_slot_profile(player::FlightModelSlot::Third, profile));
 
     commands->start_boost();
 
@@ -729,7 +729,7 @@ TEST(NativeSimulationFlightModels, AcceleratorCanDriveEveryTranslationAxis) {
         axis->manual.input_source = player::TranslationInputSource::Accelerator;
         axis->normal.positive_acceleration = 120.f;
     }
-    ASSERT_TRUE(commands->set_flight_model_slot_profile(player::FlightModelSlot::Down, profile));
+    ASSERT_TRUE(commands->set_flight_model_slot_profile(player::FlightModelSlot::Third, profile));
 
     commands->set_accelerator(1.f);
     advance_ticks(simulation, 60);
@@ -752,7 +752,7 @@ TEST(NativeSimulationFlightModels, TargetVelocityUsesInputScaleNotUnlimitedCap) 
     forward.normal.negative_target_speed = 500.f;
     forward.normal.positive_speed_limit = player::effectively_unlimited_speed;
     forward.normal.negative_speed_limit = player::effectively_unlimited_speed;
-    ASSERT_TRUE(commands->set_flight_model_slot_profile(player::FlightModelSlot::Down, profile));
+    ASSERT_TRUE(commands->set_flight_model_slot_profile(player::FlightModelSlot::Third, profile));
 
     commands->set_forward_input(0.5f);
     advance_ticks(simulation, 1);
@@ -774,7 +774,7 @@ TEST(NativeSimulationFlightModels, TargetSpeedUsesAsymmetricScalesAndTrimBounds)
     forward.normal.negative_target_speed = 400.f;
     forward.normal.positive_speed_limit = player::effectively_unlimited_speed;
     forward.normal.negative_speed_limit = player::effectively_unlimited_speed;
-    ASSERT_TRUE(commands->set_flight_model_slot_profile(player::FlightModelSlot::Down, profile));
+    ASSERT_TRUE(commands->set_flight_model_slot_profile(player::FlightModelSlot::Third, profile));
 
     mutable_player_sim(simulation).start_sampling();
     mutable_player_sim(simulation).set_ship_2d_control({0.0, -0.5});
@@ -806,7 +806,7 @@ TEST(NativeSimulationFlightModels, ProfileReplacementClampsTargetsAndReseedsResp
     forward.manual.semantic = player::TranslationSemantic::TargetSpeed;
     forward.manual.input_source = player::TranslationInputSource::Axis;
     forward.normal.positive_target_speed = 1000.f;
-    ASSERT_TRUE(commands->set_flight_model_slot_profile(player::FlightModelSlot::Down, profile));
+    ASSERT_TRUE(commands->set_flight_model_slot_profile(player::FlightModelSlot::Third, profile));
     mutable_player_sim(simulation).start_sampling();
     mutable_player_sim(simulation).set_ship_2d_control({0.0, 0.8});
     mutable_player_sim(simulation).stop_sampling();
@@ -815,7 +815,7 @@ TEST(NativeSimulationFlightModels, ProfileReplacementClampsTargetsAndReseedsResp
 
     profile.config.translation.forward.normal.positive_target_speed = 300.f;
     profile.config.translation.forward.normal.positive_speed_limit = 250.f;
-    ASSERT_TRUE(commands->set_flight_model_slot_profile(player::FlightModelSlot::Down, profile));
+    ASSERT_TRUE(commands->set_flight_model_slot_profile(player::FlightModelSlot::Third, profile));
 
     EXPECT_FLOAT_EQ(player_sim(simulation).get_controller_state().persistent_forward_target_speed,
                     250.f);
@@ -836,7 +836,7 @@ TEST(NativeSimulationFlightModels, LeavingBoostImmediatelyClampsPersistentTarget
     forward.manual.input_source = player::TranslationInputSource::Axis;
     forward.normal.positive_target_speed = 100.f;
     forward.boosted.positive_target_speed = 500.f;
-    ASSERT_TRUE(commands->set_flight_model_slot_profile(player::FlightModelSlot::Down, profile));
+    ASSERT_TRUE(commands->set_flight_model_slot_profile(player::FlightModelSlot::Third, profile));
 
     commands->start_boost();
     mutable_player_sim(simulation).start_sampling();
@@ -859,7 +859,7 @@ TEST(NativeSimulationFlightModels, BrakeResponseStateDoesNotSurviveActionTransit
     auto profile{player_sim(simulation).get_active_flight_model_profile()};
     profile.config.brake.response.mode = player::ResponseMode::RateLimited;
     profile.config.brake.response.rate_limited = {1.f, 1.f};
-    ASSERT_TRUE(commands->set_flight_model_slot_profile(player::FlightModelSlot::Down, profile));
+    ASSERT_TRUE(commands->set_flight_model_slot_profile(player::FlightModelSlot::Third, profile));
     commands->set_accelerator(1.f);
     advance_ticks(simulation, 30);
     commands->set_accelerator(0.f);

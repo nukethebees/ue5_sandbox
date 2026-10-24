@@ -47,14 +47,6 @@ auto record_node(LoweringContext& context, DeclarationHandle record) -> NodeId {
     auto const& record_members{context.declarations.record_members};
     auto const row{records.index(record)};
     NodeListBuilder members{ir};
-    for (auto const member : context.declarations.items(records.members[row])) {
-        auto const member_row{record_members.index(member)};
-        auto const initializer{record_members.initializer[member_row]};
-        members.add(ir.instance_member(
-            record_member_type(context, member),
-            record_members.name[member_row],
-            initializer ? std::optional<Expr>{ir.raw_expr(*initializer, {})} : std::nullopt));
-    }
     if (records.comparison[row] != RecordComparison::none) {
         auto const three_way{records.comparison[row] == RecordComparison::three_way};
         auto const comparison{ir.function(
@@ -72,6 +64,19 @@ auto record_node(LoweringContext& context, DeclarationHandle record) -> NodeId {
     }
     for (auto const function : context.declarations.items(records.functions[row])) {
         members.add(ir.header_function(lower_schema_function(context, function)));
+    }
+    if (records.comparison[row] != RecordComparison::none || !records.functions[row].empty()) {
+        members.new_lines(2);
+    }
+    for (auto const member : context.declarations.items(records.members[row])) {
+        auto const member_row{record_members.index(member)};
+        auto const initializer{record_members.initializer[member_row]};
+        members.add(ir.instance_member(record_member_type(context, member),
+                                       record_members.name[member_row],
+                                       initializer
+                                           ? std::optional<Expr>{ir.raw_expr(*initializer, {})}
+                                           : std::nullopt),
+                    1);
     }
     auto const created_record{ir.record(records.name[row], members.build(), RecordKind::struct_)};
     ir.set_record_export_specifier(created_record, records.export_specifier[row]);

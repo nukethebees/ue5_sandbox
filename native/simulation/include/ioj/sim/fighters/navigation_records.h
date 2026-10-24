@@ -12,51 +12,36 @@
 namespace ioj::sim::fighters {
 struct AvoidanceFrame {
     Vector3f preferred_direction;
-
     Vector3f first_lateral;
-
     Vector3f second_lateral;
-
     float roll_sin;
-
     float roll_cos;
 };
 
 struct NavigationRiskUpdate {
     NavigationRiskTier tier;
-
     std::uint8_t lower_risk_scan_count;
 };
 
 struct SeparationObservationParameters {
     float separation_radius;
-
     float immediate_distance_squared;
-
     float close_distance_squared;
-
     float memory_retention;
-
     float separation_strength;
-
     std::int32_t dense_traffic_neighbour_threshold;
-
     std::uint32_t integral_bias;
-
     float float_bias;
 };
 
 struct SeparationObservation {
     Vector3f steering_memory;
-
     NavigationRiskTier risk_tier;
-
     bool dense_direction_selected;
 };
 
 struct SeparationNeighbour {
     EntityId id;
-
     Vector3f location;
 };
 } // namespace ioj::sim::fighters

@@ -8,7 +8,6 @@
 namespace ioj::sim::collision {
 struct WorldAABB {
     Vector3f min;
-
     Vector3f max;
 };
 } // namespace ioj::sim::collision

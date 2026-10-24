@@ -192,19 +192,19 @@ auto USpaceGameUserSettings::flight_model_loadout() const -> sim::player::Flight
         }
         target = candidate;
     };
-    restore(starfox_flight_model_, sim::player::FlightModelPreset::Starfox, loadout.up);
-    restore(fighter_flight_model_, sim::player::FlightModelPreset::Fighter, loadout.right);
-    restore(skater_flight_model_, sim::player::FlightModelPreset::Skater, loadout.down);
-    restore(gunship_flight_model_, sim::player::FlightModelPreset::Gunship, loadout.left);
+    restore(starfox_flight_model_, sim::player::FlightModelPreset::Starfox, loadout.profiles[0]);
+    restore(fighter_flight_model_, sim::player::FlightModelPreset::Fighter, loadout.profiles[1]);
+    restore(skater_flight_model_, sim::player::FlightModelPreset::Skater, loadout.profiles[2]);
+    restore(gunship_flight_model_, sim::player::FlightModelPreset::Gunship, loadout.profiles[3]);
     return loadout;
 }
 
 void USpaceGameUserSettings::set_flight_model_loadout(
     sim::player::FlightModelLoadout const& loadout) {
-    starfox_flight_model_ = flight_model_settings_codec::encode(loadout.up);
-    fighter_flight_model_ = flight_model_settings_codec::encode(loadout.right);
-    skater_flight_model_ = flight_model_settings_codec::encode(loadout.down);
-    gunship_flight_model_ = flight_model_settings_codec::encode(loadout.left);
+    starfox_flight_model_ = flight_model_settings_codec::encode(loadout.profiles[0]);
+    fighter_flight_model_ = flight_model_settings_codec::encode(loadout.profiles[1]);
+    skater_flight_model_ = flight_model_settings_codec::encode(loadout.profiles[2]);
+    gunship_flight_model_ = flight_model_settings_codec::encode(loadout.profiles[3]);
 }
 
 } // namespace ioj

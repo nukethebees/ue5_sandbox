@@ -113,30 +113,26 @@ struct Uninitialized {
 };
 
 struct ValueDefaults {
-    int uninitialized;
-
-    int zero{};
-
-    int seven{7};
-
     bool operator==(ValueDefaults const&) const = default;
 
     [[nodiscard]] bool valid() const noexcept;
+
+    int uninitialized;
+    int zero{};
+    int seven{7};
 };
 
 struct SpanValue {
-    std::int32_t offset{0};
-
-    std::int32_t count{0};
-
     auto operator<=>(SpanValue const&) const noexcept = default;
 
     [[nodiscard]] constexpr std::int32_t end() const noexcept { return offset + count; }
+
+    std::int32_t offset{0};
+    std::int32_t count{0};
 };
 
 struct Position {
     float x;
-
     float y;
 };
 
@@ -162,17 +158,13 @@ struct Event {
 
 struct NamespaceLookup {
     std::array<Position, 2> local;
-
     ApiPair parent;
-
     second::B sibling;
 };
 
 struct HiddenLookup {
     int Position{7};
-
     codegen_compile_fixture::mixed::Position token{};
-
     int mixed{0};
 };
 

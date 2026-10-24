@@ -8,15 +8,10 @@
 namespace ioj::sim::player {
 struct PlayerFlightIntent {
     Vector3d translation{};
-
     Vector3d rotation{};
-
     float accelerator{};
-
     bool boost_held{};
-
     bool brake_held{};
-
     bool emergency_brake_held{};
 };
 } // namespace ioj::sim::player

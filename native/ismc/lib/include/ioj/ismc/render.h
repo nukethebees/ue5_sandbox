@@ -11,9 +11,7 @@
 namespace ioj::ismc {
 struct PackedTransform {
     ioj::Vector<std::int16_t, 3> position{};
-
     std::uint16_t reserved{};
-
     Quat32 rotation{};
 };
 } // namespace ioj::ismc

@@ -255,17 +255,18 @@ TEST_CLASS(GameSettingsEditState, "Sandbox.UnitTests")
     {
         auto* const user_settings{NewObject<ioj::USpaceGameUserSettings>()};
         auto loadout{ioj::sim::player::make_default_flight_model_loadout()};
-        loadout.right.config.translation.forward.passive_drag = 321.f;
-        loadout.right.customized = true;
+        loadout.profiles[1].config.translation.forward.passive_drag = 321.f;
+        loadout.profiles[1].customized = true;
         user_settings->set_flight_model_loadout(loadout);
         auto const restored{user_settings->flight_model_loadout()};
         TestRunner->TestTrue(TEXT("Fighter tuning survives a settings round trip"),
-                             restored.right == loadout.right);
+                             restored.profiles[1] == loadout.profiles[1]);
         TestRunner->TestTrue(TEXT("Other slots retain their own defaults"),
-                             restored.up == loadout.up && restored.down == loadout.down &&
-                                 restored.left == loadout.left);
+                             restored.profiles[0] == loadout.profiles[0] &&
+                                 restored.profiles[2] == loadout.profiles[2] &&
+                                 restored.profiles[3] == loadout.profiles[3]);
         TestRunner->TestTrue(TEXT("Saved configuration does not change the active slot"),
-                             restored.initial_slot == ioj::sim::player::FlightModelSlot::Up);
+                             restored.initial_slot == ioj::sim::player::FlightModelSlot::First);
     }
 
     TEST_METHOD(FlightModelCodecRejectsCorruptData)

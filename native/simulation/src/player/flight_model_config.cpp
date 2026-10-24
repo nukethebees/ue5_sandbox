@@ -1,23 +1,10 @@
 #include "ioj/sim/player/flight_model_config.h"
 
 #include <array>
+#include <cassert>
 #include <cmath>
 
 namespace ioj::sim::player::flight_model_config_detail {
-auto& select_profile(auto& loadout, FlightModelSlot const slot) noexcept {
-    switch (slot) {
-        case FlightModelSlot::Up:
-            return loadout.up;
-        case FlightModelSlot::Right:
-            return loadout.right;
-        case FlightModelSlot::Down:
-            return loadout.down;
-        case FlightModelSlot::Left:
-            return loadout.left;
-    }
-    return loadout.up;
-}
-
 [[nodiscard]] auto valid_enum(TranslationSemantic const value) noexcept -> bool {
     switch (value) {
         case TranslationSemantic::Disabled:
@@ -454,21 +441,25 @@ auto matches_authored_flight_model_topology(FlightModelConfig const& config,
 
 auto make_default_flight_model_loadout() -> FlightModelLoadout {
     return {
-        .up = make_flight_model_profile(FlightModelPreset::Starfox),
-        .right = make_flight_model_profile(FlightModelPreset::Fighter),
-        .down = make_flight_model_profile(FlightModelPreset::Skater),
-        .left = make_flight_model_profile(FlightModelPreset::Gunship),
-        .initial_slot = FlightModelSlot::Up,
+        .profiles = {make_flight_model_profile(FlightModelPreset::Starfox),
+                     make_flight_model_profile(FlightModelPreset::Fighter),
+                     make_flight_model_profile(FlightModelPreset::Skater),
+                     make_flight_model_profile(FlightModelPreset::Gunship)},
+        .initial_slot = FlightModelSlot::First,
     };
 }
 
 auto flight_model_profile(FlightModelLoadout& loadout, FlightModelSlot const slot) noexcept
     -> FlightModelProfile& {
-    return flight_model_config_detail::select_profile(loadout, slot);
+    auto const index{static_cast<std::size_t>(slot)};
+    assert(index < loadout.profiles.size());
+    return loadout.profiles[index];
 }
 
 auto flight_model_profile(FlightModelLoadout const& loadout, FlightModelSlot const slot) noexcept
     -> FlightModelProfile const& {
-    return flight_model_config_detail::select_profile(loadout, slot);
+    auto const index{static_cast<std::size_t>(slot)};
+    assert(index < loadout.profiles.size());
+    return loadout.profiles[index];
 }
 }

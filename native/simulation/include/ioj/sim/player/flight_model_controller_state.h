@@ -10,43 +10,24 @@
 namespace ioj::sim::player {
 struct FlightModelControllerState {
     ScalarResponse forward_manual_response{};
-
     ScalarResponse forward_automatic_response{};
-
     ScalarResponse right_manual_response{};
-
     ScalarResponse right_automatic_response{};
-
     ScalarResponse up_manual_response{};
-
     ScalarResponse up_automatic_response{};
-
     ScalarResponse pitch_response{};
-
     ScalarResponse yaw_response{};
-
     ScalarResponse roll_response{};
-
     ScalarResponse pitch_stabilization_response{};
-
     ScalarResponse yaw_stabilization_response{};
-
     ScalarResponse roll_stabilization_response{};
-
     ScalarResponse facing_alignment_response{};
-
     ScalarResponse brake_engagement_response{};
-
     Vector3d angular_velocity{};
-
     float persistent_forward_target_speed{};
-
     float persistent_right_target_speed{};
-
     float persistent_up_target_speed{};
-
     Vector3d time_since_rotation_input{100.0, 100.0, 100.0};
-
     BoostBrakeState effective_action{};
 };
 } // namespace ioj::sim::player

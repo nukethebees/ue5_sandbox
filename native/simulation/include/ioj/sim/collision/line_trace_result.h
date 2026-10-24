@@ -10,11 +10,8 @@
 namespace ioj::sim {
 struct LineTraceResult {
     Vector3f location{};
-
     EntityId entity;
-
     collision::StaticGeometryIndex static_geometry_index{collision::invalid_static_geometry_index};
-
     bool hit{false};
 };
 } // namespace ioj::sim

@@ -93,7 +93,7 @@ class FighterTargetRefresh : public ::testing::Test {
                           intercept - vector_at(entities.view_locations(), index), 1.e-8f));
         auto const direction{native_math::safe_normal(offset, 1.e-8f)};
         expect_vector(vector_at(entities.view_desired_move_locations(), index),
-                      state->location - direction * (1000.f * AttackDistanceBand{}.desired_ratio));
+                      state->location - direction * (1000.f * AttackDistanceBand{}.desired()));
     }
 
     void kill_target() {

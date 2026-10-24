@@ -8,11 +8,8 @@
 namespace ioj::sim {
 struct LaserWeaponSimConfig {
     std::int32_t damage{5};
-
     float projectile_speed{10000.f};
-
     float max_distance{10000.f};
-
     float fire_cooldown{0.33f};
 };
 } // namespace ioj::sim

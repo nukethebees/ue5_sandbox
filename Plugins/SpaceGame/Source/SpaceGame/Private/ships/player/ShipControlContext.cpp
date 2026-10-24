@@ -105,13 +105,13 @@ auto FShipControlContext::context_for_slot(::ioj::sim::player::FlightModelSlot c
         return nullptr;
     }
     switch (slot) {
-        case ::ioj::sim::player::FlightModelSlot::Up:
+        case ::ioj::sim::player::FlightModelSlot::First:
             return input_->starfox;
-        case ::ioj::sim::player::FlightModelSlot::Right:
+        case ::ioj::sim::player::FlightModelSlot::Second:
             return input_->fighter;
-        case ::ioj::sim::player::FlightModelSlot::Down:
+        case ::ioj::sim::player::FlightModelSlot::Third:
             return input_->skater;
-        case ::ioj::sim::player::FlightModelSlot::Left:
+        case ::ioj::sim::player::FlightModelSlot::Fourth:
             return input_->gunship;
     }
     return nullptr;
@@ -153,16 +153,16 @@ void FShipControlContext::select_flight_model_slot(::ioj::sim::player::FlightMod
     }
 }
 void FShipControlContext::select_starfox() {
-    select_flight_model_slot(::ioj::sim::player::FlightModelSlot::Up);
+    select_flight_model_slot(::ioj::sim::player::FlightModelSlot::First);
 }
 void FShipControlContext::select_fighter() {
-    select_flight_model_slot(::ioj::sim::player::FlightModelSlot::Right);
+    select_flight_model_slot(::ioj::sim::player::FlightModelSlot::Second);
 }
 void FShipControlContext::select_skater() {
-    select_flight_model_slot(::ioj::sim::player::FlightModelSlot::Down);
+    select_flight_model_slot(::ioj::sim::player::FlightModelSlot::Third);
 }
 void FShipControlContext::select_gunship() {
-    select_flight_model_slot(::ioj::sim::player::FlightModelSlot::Left);
+    select_flight_model_slot(::ioj::sim::player::FlightModelSlot::Fourth);
 }
 void FShipControlContext::bind_actions() {
     auto* const component{input_component_.Get()};

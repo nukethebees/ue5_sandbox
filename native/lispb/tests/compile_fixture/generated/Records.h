@@ -8,7 +8,6 @@
 namespace codegen_compile_fixture {
 struct ApiPair {
     float x;
-
     float y;
 };
 
@@ -20,9 +19,7 @@ inline void apply_overrides(EmptySettings&, EmptySettingsOverrides const&) {}
 
 struct WeaponSettings {
     int damage{5};
-
     float turn_rate{2.f};
-
     float asset_distance{9.f};
 };
 
@@ -43,9 +40,7 @@ inline void apply_overrides(WeaponSettings& target, WeaponSettingsOverrides cons
 
 struct ActorSettings {
     int max_health{100};
-
     WeaponSettings weapon{};
-
     std::optional<int> optional_limit{3};
 };
 

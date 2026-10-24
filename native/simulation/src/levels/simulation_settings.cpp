@@ -89,9 +89,6 @@ auto validate_settings(SimulationSettings const& settings)
     check(fighters.dense_traffic_neighbour_threshold >= 2,
           "fighters.dense-traffic-neighbour-threshold",
           "Expected at least two neighbours");
-    check(fighters.attack_distance_band.values_are_valid(),
-          "fighters.attack-distance-band",
-          "Invalid attack distance band");
     cooldown(fighters.attack_retry_cooldown, "fighters.attack-retry-cooldown");
 
     auto laser = [&](std::string_view const section,

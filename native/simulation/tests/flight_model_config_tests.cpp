@@ -8,7 +8,7 @@
 namespace ioj::sim::player::tests {
 TEST(FlightModelConfig, DefaultLoadoutContainsFourValidDistinctPresets) {
     auto const loadout{make_default_flight_model_loadout()};
-    EXPECT_EQ(loadout.initial_slot, FlightModelSlot::Up);
+    EXPECT_EQ(loadout.initial_slot, FlightModelSlot::First);
 
     std::array const expected{
         FlightModelPreset::Starfox,
@@ -17,10 +17,10 @@ TEST(FlightModelConfig, DefaultLoadoutContainsFourValidDistinctPresets) {
         FlightModelPreset::Gunship,
     };
     std::array const slots{
-        FlightModelSlot::Up,
-        FlightModelSlot::Right,
-        FlightModelSlot::Down,
-        FlightModelSlot::Left,
+        FlightModelSlot::First,
+        FlightModelSlot::Second,
+        FlightModelSlot::Third,
+        FlightModelSlot::Fourth,
     };
     auto const slot_count{slots.size()};
     for (std::size_t index{}; index < slot_count; ++index) {

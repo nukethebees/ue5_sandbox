@@ -41,10 +41,10 @@
     (value Skater)
     (value Gunship))
   (enum FlightModelSlot std::uint8_t
-    (value Up)
-    (value Right)
-    (value Down)
-    (value Left))
+    (value First)
+    (value Second)
+    (value Third)
+    (value Fourth))
   (enum TranslationSemantic std::uint8_t
     (value Disabled)
     (value TargetSpeed)
@@ -133,16 +133,15 @@
     (member min @native_vector_3f)
     (member max @native_vector_3f)))
 
-(module native_attack_distance_band
-  :header "native/simulation/include/ioj/sim/fighters/attack_distance_band.h"
-  :header-include "ioj/sim/fighters/attack_distance_band.h"
-  :namespace ioj::sim
-  (record AttackDistanceBand
+(module s7_attack_distance_band_settings
+  :header "native/simulation/s7/lib/src/attack_distance_band_settings.h"
+  :header-include "attack_distance_band_settings.h"
+  :namespace ioj::s7
+  (record AttackDistanceBandSettings
     :generate-settings true
-    (member minimum_ratio float :initializer "0.4f")
-    (member desired_ratio float :initializer "0.5f")
-    (member maximum_ratio float :initializer "0.6f")
-    (function values_are_valid bool :const true :noexcept true :nodiscard true)))
+    (member minimum_ratio float)
+    (member desired_ratio float)
+    (member maximum_ratio float)))
 
 (module native_base_sim_config_laser_weapon_sim_config
   :header "native/simulation/include/ioj/sim/lasers/laser_weapon_sim_config.h"
@@ -197,7 +196,7 @@
     (member attack_retry_cooldown float :initializer "0.15f")
     (member attack_engagement_threshold float :initializer "5000.f")
     (member attack_reposition_frequency float :initializer "10.f")
-    (member attack_distance_band ioj::sim::AttackDistanceBand)
+    (member attack_distance_band @native_attack_distance_band :settings-exclude true)
     (member arrival_distance float :initializer "500.f")
     (member los_check_buffer float :initializer "100.f")
     (member awareness_radius float :initializer "10000.f")
@@ -306,11 +305,8 @@
     (member config ioj::sim::player::FlightModelConfig :initializer ""))
   (record FlightModelLoadout
     :comparison equality
-    (member up ioj::sim::player::FlightModelProfile :initializer "")
-    (member right ioj::sim::player::FlightModelProfile :initializer "")
-    (member down ioj::sim::player::FlightModelProfile :initializer "")
-    (member left ioj::sim::player::FlightModelProfile :initializer "")
-    (member initial_slot ioj::sim::player::FlightModelSlot :initializer "FlightModelSlot::Up")))
+    (member profiles ioj::sim::player::FlightModelProfile :count 4 :initializer "")
+    (member initial_slot ioj::sim::player::FlightModelSlot :initializer "FlightModelSlot::First")))
 
 (module native_player_flight_model_runtime_physical_movement_state
   :header "native/simulation/include/ioj/sim/player/physical_movement_state.h"

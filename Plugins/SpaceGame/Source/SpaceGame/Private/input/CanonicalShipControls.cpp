@@ -24,13 +24,13 @@ auto canonical_ship_control_context(EShipControlScope const scope)
 }
 auto flight_control_scope(sim::player::FlightModelSlot const slot) -> EShipControlScope {
     switch (slot) {
-        case sim::player::FlightModelSlot::Up:
+        case sim::player::FlightModelSlot::First:
             return EShipControlScope::Starfox;
-        case sim::player::FlightModelSlot::Right:
+        case sim::player::FlightModelSlot::Second:
             return EShipControlScope::Fighter;
-        case sim::player::FlightModelSlot::Down:
+        case sim::player::FlightModelSlot::Third:
             return EShipControlScope::Skater;
-        case sim::player::FlightModelSlot::Left:
+        case sim::player::FlightModelSlot::Fourth:
             return EShipControlScope::Gunship;
     }
     checkNoEntry();
@@ -39,18 +39,18 @@ auto flight_control_scope(sim::player::FlightModelSlot const slot) -> EShipContr
 auto flight_model_slot(EShipControlScope const scope) -> sim::player::FlightModelSlot {
     switch (scope) {
         case EShipControlScope::Starfox:
-            return sim::player::FlightModelSlot::Up;
+            return sim::player::FlightModelSlot::First;
         case EShipControlScope::Fighter:
-            return sim::player::FlightModelSlot::Right;
+            return sim::player::FlightModelSlot::Second;
         case EShipControlScope::Skater:
-            return sim::player::FlightModelSlot::Down;
+            return sim::player::FlightModelSlot::Third;
         case EShipControlScope::Gunship:
-            return sim::player::FlightModelSlot::Left;
+            return sim::player::FlightModelSlot::Fourth;
         case EShipControlScope::General:
             break;
     }
     checkNoEntry();
-    return sim::player::FlightModelSlot::Up;
+    return sim::player::FlightModelSlot::First;
 }
 auto load_ship_control_context(EShipControlScope const scope) -> UInputMappingContext* {
     auto const& definition{canonical_ship_control_context(scope)};

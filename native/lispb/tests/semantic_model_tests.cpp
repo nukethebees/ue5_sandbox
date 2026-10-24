@@ -130,7 +130,7 @@ TEST(SemanticTypeGraph, SimulationModelCompositionUsesDeclaredNodesAndStrongScal
     ASSERT_TRUE(loadout.has_value());
     auto current{*loadout};
     for (auto const& [member_name, expected] :
-         {std::pair{"up", "FlightModelProfile"},
+         {std::pair{"profiles", "FlightModelProfile"},
           std::pair{"config", "FlightModelConfig"},
           std::pair{"translation", "TranslationAxesConfig"},
           std::pair{"forward", "TranslationAxisConfig"},

@@ -338,3 +338,5 @@
   :spelling "ioj::sim::ConditionType"
   :header "ioj/sim/missions/condition_type.h"
   :pass-by value)
+
+(type native_attack_distance_band :spelling "ioj::sim::AttackDistanceBand" :header "ioj/sim/fighters/attack_distance_band.h")

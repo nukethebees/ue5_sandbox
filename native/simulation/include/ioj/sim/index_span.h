@@ -8,10 +8,6 @@
 
 namespace ioj::sim {
 struct IndexSpan {
-    std::uint32_t offset{0};
-
-    std::uint32_t count{0};
-
     auto operator<=>(IndexSpan const&) const noexcept = default;
 
     [[nodiscard]] constexpr bool is_empty() const noexcept { return count == 0; }
@@ -19,5 +15,8 @@ struct IndexSpan {
     [[nodiscard]] constexpr std::uint32_t start() const noexcept { return offset; }
 
     [[nodiscard]] constexpr std::uint32_t end() const noexcept { return offset + count; }
+
+    std::uint32_t offset{0};
+    std::uint32_t count{0};
 };
 } // namespace ioj::sim

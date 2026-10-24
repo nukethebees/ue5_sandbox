@@ -26,8 +26,9 @@ auto make_world() -> LevelSimInitData {
 void add_moving_player(LevelSimInitData& data, Vector3d const location = {}) {
     player::PlayerSpawnData spawn{};
     spawn.transform.location = location;
-    spawn.flight_models.initial_slot = player::FlightModelSlot::Left;
-    auto& gunship{player::flight_model_profile(spawn.flight_models, player::FlightModelSlot::Left)};
+    spawn.flight_models.initial_slot = player::FlightModelSlot::Fourth;
+    auto& gunship{
+        player::flight_model_profile(spawn.flight_models, player::FlightModelSlot::Fourth)};
     gunship.config.translation.right.manual.response.mode = player::ResponseMode::Direct;
     gunship.config.translation.right.normal.positive_speed_limit = 1000.f;
     gunship.config.translation.right.normal.negative_speed_limit = 1000.f;

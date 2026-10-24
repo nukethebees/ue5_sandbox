@@ -6,7 +6,6 @@
 namespace ioj::sim::player {
 struct PlayerResourceState {
     float thrust_energy{1.f};
-
     float thrust_change_rate{};
 };
 } // namespace ioj::sim::player

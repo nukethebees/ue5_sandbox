@@ -183,16 +183,16 @@ TEST_CLASS(ControlContextTransitions, "Sandbox.UnitTests")
             TestRunner->TestTrue(TEXT("Correct mode context is active"),
                                  subsystem_->HasMappingContext(active));
         };
-        assert_mode(Slot::Up, ship_input_.starfox);
+        assert_mode(Slot::First, ship_input_.starfox);
         auto& bridge{FPlayerControlContextsTestAccess::ship_context(contexts_)};
-        FShipControlContextTestAccess::select(bridge, Slot::Left);
-        assert_mode(Slot::Left, ship_input_.gunship);
-        FShipControlContextTestAccess::select(bridge, Slot::Right);
-        assert_mode(Slot::Right, ship_input_.fighter);
-        FShipControlContextTestAccess::select(bridge, Slot::Down);
-        assert_mode(Slot::Down, ship_input_.skater);
-        FShipControlContextTestAccess::select(bridge, Slot::Up);
-        assert_mode(Slot::Up, ship_input_.starfox);
+        FShipControlContextTestAccess::select(bridge, Slot::Fourth);
+        assert_mode(Slot::Fourth, ship_input_.gunship);
+        FShipControlContextTestAccess::select(bridge, Slot::Second);
+        assert_mode(Slot::Second, ship_input_.fighter);
+        FShipControlContextTestAccess::select(bridge, Slot::Third);
+        assert_mode(Slot::Third, ship_input_.skater);
+        FShipControlContextTestAccess::select(bridge, Slot::First);
+        assert_mode(Slot::First, ship_input_.starfox);
     }
 
     TEST_METHOD(UnbindNeutralisesAllContinuousAndHeldShipInput)

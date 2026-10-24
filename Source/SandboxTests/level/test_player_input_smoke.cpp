@@ -428,7 +428,7 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
                                                      : nullptr};
                 auto* const subsystem{subsystem_.Get()};
                 checks.is_true(IsValid(ship) && ship->get_active_flight_model_slot() ==
-                                                    ioj::sim::player::FlightModelSlot::Left,
+                                                    ioj::sim::player::FlightModelSlot::Fourth,
                                TEXT("Gunship key selects native Left slot"));
                 checks.is_true(subsystem->HasMappingContext(
                                    ioj::load_ship_control_context(ioj::EShipControlScope::General)),
@@ -463,7 +463,7 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
                                                : nullptr};
                     return !checks.all_passed ||
                            (IsValid(ship) && ship->get_active_flight_model_slot() ==
-                                                 ioj::sim::player::FlightModelSlot::Left);
+                                                 ioj::sim::player::FlightModelSlot::Fourth);
                 },
                 timeout)
             .Then([this] {
@@ -575,7 +575,7 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
                                                : nullptr};
                     return !checks.all_passed ||
                            (IsValid(ship) && ship->get_active_flight_model_slot() ==
-                                                 ioj::sim::player::FlightModelSlot::Left);
+                                                 ioj::sim::player::FlightModelSlot::Fourth);
                 },
                 timeout)
             .Then([this] {
@@ -695,7 +695,7 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
                                                : nullptr};
                     return !checks.all_passed ||
                            (IsValid(ship) && ship->get_active_flight_model_slot() ==
-                                                 ioj::sim::player::FlightModelSlot::Right);
+                                                 ioj::sim::player::FlightModelSlot::Second);
                 },
                 timeout)
             .Then([this] {
@@ -724,7 +724,7 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
                                                : nullptr};
                     return !checks.all_passed ||
                            (IsValid(ship) && ship->get_active_flight_model_slot() ==
-                                                 ioj::sim::player::FlightModelSlot::Left);
+                                                 ioj::sim::player::FlightModelSlot::Fourth);
                 },
                 timeout)
             .Then([this] {
@@ -1032,10 +1032,11 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
                 checks.is_true(
                     settings->set_flight_model_profile(EShipControlScope::Gunship, tuned),
                     TEXT("Behavioral boost, brake, and stabilization tuning is accepted"));
-                checks.is_true(settings->flight_model_loadout().up == before.up &&
-                                   settings->flight_model_loadout().right == before.right &&
-                                   settings->flight_model_loadout().down == before.down,
-                               TEXT("Editing Gunship leaves other slots unchanged"));
+                checks.is_true(
+                    settings->flight_model_loadout().profiles[0] == before.profiles[0] &&
+                        settings->flight_model_loadout().profiles[1] == before.profiles[1] &&
+                        settings->flight_model_loadout().profiles[2] == before.profiles[2],
+                    TEXT("Editing Gunship leaves other slots unchanged"));
 
                 auto changed{tuned};
                 changed.config.translation.up.manual.semantic = TranslationSemantic::Disabled;

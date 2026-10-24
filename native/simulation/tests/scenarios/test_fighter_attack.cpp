@@ -8,6 +8,15 @@
 namespace ioj::sim {
 namespace fighter_navigation_test {
 inline constexpr std::int32_t collision_resilient_health{1'000'000};
+
+auto contains(Vector3f const minimum, Vector3f const maximum, Vector3f const point) -> bool {
+    for (std::size_t axis{}; axis < 3; ++axis) {
+        if (!(point[axis] >= minimum[axis] && point[axis] <= maximum[axis])) {
+            return false;
+        }
+    }
+    return true;
+}
 }
 
 TEST(WorldlessSpaceGameSimulation, Fighters_ObstacleAvoidance) {
@@ -59,9 +68,7 @@ TEST(WorldlessSpaceGameSimulation, Fighters_ObstacleAvoidance) {
         maximum_x = std::max(maximum_x, location.x());
         entered_expanded_obstacle =
             entered_expanded_obstacle ||
-            (location.x() >= expanded_min.x() && location.x() <= expanded_max.x() &&
-             location.y() >= expanded_min.y() && location.y() <= expanded_max.y() &&
-             location.z() >= expanded_min.z() && location.z() <= expanded_max.z());
+            fighter_navigation_test::contains(expanded_min, expanded_max, location);
     };
     harness.timeline.finish_at(14.0);
     EXPECT_TRUE(harness.run_until_timeline_finished(15.0))
@@ -84,9 +91,7 @@ auto make_fighter_navigation_test_data(tests::SimulationFixture const& config,
     data.fighters.avoidance_lookahead_time = 1.f;
     data.fighters.laser.max_distance = 2000.f;
     data.fighters.attack_engagement_threshold = 1000000.f;
-    data.fighters.attack_distance_band.minimum_ratio = 0.f;
-    data.fighters.attack_distance_band.desired_ratio = 0.f;
-    data.fighters.attack_distance_band.maximum_ratio = 0.f;
+    data.fighters.attack_distance_band = *AttackDistanceBand::make(0.f, 0.f, 0.f);
     data.fighters.separation_radius = 1500.f;
     data.fighters.separation_strength = 1.5f;
     data.capital_ships.fighter_spawn_slots = static_cast<std::int32_t>(spawn_slots.size());
@@ -111,9 +116,7 @@ TEST(WorldlessSpaceGameSimulation, Fighters_NavigationCapitalObstruction) {
     data.fighters.avoidance_lookahead_time = 1.f;
     data.fighters.laser.max_distance = 2000.f;
     data.fighters.attack_engagement_threshold = 1000000.f;
-    data.fighters.attack_distance_band.minimum_ratio = 0.f;
-    data.fighters.attack_distance_band.desired_ratio = 0.f;
-    data.fighters.attack_distance_band.maximum_ratio = 0.f;
+    data.fighters.attack_distance_band = *AttackDistanceBand::make(0.f, 0.f, 0.f);
     data.capital_ships.fighter_spawn_slots = 1;
     data.capital_ships.fighter_spawn_slots_relative_transforms = {
         {.location = {3000.0, 7000.0, 0.0}}};
@@ -153,9 +156,7 @@ TEST(WorldlessSpaceGameSimulation, Fighters_NavigationCapitalObstruction) {
         }
         auto const location{vector_at(locations, 0)};
         entered_obstacle = entered_obstacle ||
-                           (location.x() >= expanded_min.x() && location.x() <= expanded_max.x() &&
-                            location.y() >= expanded_min.y() && location.y() <= expanded_max.y() &&
-                            location.z() >= expanded_min.z() && location.z() <= expanded_max.z());
+                           fighter_navigation_test::contains(expanded_min, expanded_max, location);
         maximum_lateral_distance =
             std::max(maximum_lateral_distance, std::hypot(location.y(), location.z()));
         maximum_x = std::max(maximum_x, location.x());
@@ -182,8 +183,8 @@ TEST(WorldlessSpaceGameSimulation, Fighters_NavigationClearPath) {
     tests::WorldlessSimulationTest harness{std::move(data)};
     harness.finish_initialisation();
     auto const& fighters{harness.get_simulation().get_fighters()};
-    Vector3f first_location{Vector3f{}};
-    Vector3f last_location{Vector3f{}};
+    Vector3f first_location{};
+    Vector3f last_location{};
     bool recorded_first{};
     bool recorded_first_movement{};
     bool scanned_before_first_movement{};
@@ -448,11 +449,8 @@ TEST(WorldlessSpaceGameSimulation, Fighters_NavigationHardAvoidanceAuthority) {
         auto const location_count{locations.num()};
         for (std::uint32_t i{}; i < location_count; ++i) {
             auto const location{vector_at(locations, i)};
-            entered_obstacle =
-                entered_obstacle ||
-                (location.x() >= expanded_min.x() && location.x() <= expanded_max.x() &&
-                 location.y() >= expanded_min.y() && location.y() <= expanded_max.y() &&
-                 location.z() >= expanded_min.z() && location.z() <= expanded_max.z());
+            entered_obstacle = entered_obstacle || fighter_navigation_test::contains(
+                                                       expanded_min, expanded_max, location);
             maximum_x = std::max(maximum_x, location.x());
         }
         auto const& telemetry{fighters.get_navigation_telemetry()};

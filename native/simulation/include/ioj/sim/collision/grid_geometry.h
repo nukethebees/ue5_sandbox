@@ -9,7 +9,6 @@
 namespace ioj::sim::collision {
 struct GridGeometry {
     CellCoord dimensions;
-
     Vector3f cell_dimensions;
 };
 } // namespace ioj::sim::collision

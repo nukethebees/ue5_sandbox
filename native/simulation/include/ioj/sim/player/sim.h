@@ -173,7 +173,7 @@ struct Sim {
     Vector2d sampled_target_speed_scale_{};
     bool sampling_target_speed_{};
     FlightModelLoadout flight_models_{make_default_flight_model_loadout()};
-    FlightModelSlot active_flight_model_slot_{FlightModelSlot::Up};
+    FlightModelSlot active_flight_model_slot_{FlightModelSlot::First};
     /* **************************************** */
     // Tick phases
     /* **************************************** */

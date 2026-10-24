@@ -8,10 +8,9 @@
 
 namespace ioj::sim {
 struct LaserSource {
-    Team team{Team::White};
-
-    EntityType type{EntityType::TubeSpinner};
-
     bool operator==(LaserSource const&) const noexcept = default;
+
+    Team team{Team::White};
+    EntityType type{EntityType::TubeSpinner};
 };
 } // namespace ioj::sim

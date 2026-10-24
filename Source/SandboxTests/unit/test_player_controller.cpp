@@ -137,16 +137,16 @@ TEST_CLASS(PlayerController, "Sandbox.UnitTests")
                               ship->has_simulation());
         TestRunner->TestTrue(
             TEXT("A valid profile can be selected before native simulation binding"),
-            ship->set_flight_model_slot_profile(::ioj::sim::player::FlightModelSlot::Right,
+            ship->set_flight_model_slot_profile(::ioj::sim::player::FlightModelSlot::Second,
                                                 profile));
-        ship->select_flight_model_slot(::ioj::sim::player::FlightModelSlot::Right);
+        ship->select_flight_model_slot(::ioj::sim::player::FlightModelSlot::Second);
 
         auto const spawn{ship->make_spawn_data()};
         auto const& cached{::ioj::sim::player::flight_model_profile(
-            spawn.flight_models, ::ioj::sim::player::FlightModelSlot::Right)};
+            spawn.flight_models, ::ioj::sim::player::FlightModelSlot::Second)};
         TestRunner->TestTrue(
             TEXT("Pre-bind flight-model selection is included in native spawn data"),
-            spawn.flight_models.initial_slot == ::ioj::sim::player::FlightModelSlot::Right &&
+            spawn.flight_models.initial_slot == ::ioj::sim::player::FlightModelSlot::Second &&
                 cached == profile && ship->get_active_flight_model_profile() == profile);
 
         ship->Destroy();

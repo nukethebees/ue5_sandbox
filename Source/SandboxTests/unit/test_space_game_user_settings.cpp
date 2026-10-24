@@ -21,7 +21,7 @@ TEST_CLASS(SpaceGameUserSettings, "Sandbox.UnitTests")
         source->set_motion_blur_enabled(true);
         source->set_master_volume(0.35f);
         auto loadout{ioj::sim::player::make_default_flight_model_loadout()};
-        loadout.left.config.translation.up.normal.positive_target_speed = 1234.f;
+        loadout.profiles[3].config.translation.up.normal.positive_target_speed = 1234.f;
         source->set_flight_model_loadout(loadout);
 
         auto const config_path{FPaths::CreateTempFilename(
@@ -100,7 +100,7 @@ TEST_CLASS(SpaceGameUserSettings, "Sandbox.UnitTests")
     {
         auto* const settings{NewObject<ioj::USpaceGameUserSettings>()};
         auto loadout{ioj::sim::player::make_default_flight_model_loadout()};
-        loadout.left.config.translation.up.manual.semantic =
+        loadout.profiles[3].config.translation.up.manual.semantic =
             ioj::sim::player::TranslationSemantic::Disabled;
         settings->set_flight_model_loadout(loadout);
         TestRunner->TestTrue(TEXT("A saved topology mutation is discarded"),

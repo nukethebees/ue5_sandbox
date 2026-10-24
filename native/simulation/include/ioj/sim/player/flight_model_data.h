@@ -6,208 +6,153 @@
 #include "ioj/sim/player/flight_model_enums.h"
 #include <ioj/sim/player/flight_model_constants.h>
 
+#include <array>
+
 namespace ioj::sim::player {
 struct RateLimitedResponseConfig {
-    float increasing_rate{};
-
-    float decreasing_rate{};
-
     bool operator==(RateLimitedResponseConfig const&) const = default;
+
+    float increasing_rate{};
+    float decreasing_rate{};
 };
 
 struct SecondOrderResponseConfig {
-    float settling_time{3.f};
-
-    float damping_ratio{0.5f};
-
     bool operator==(SecondOrderResponseConfig const&) const = default;
+
+    float settling_time{3.f};
+    float damping_ratio{0.5f};
 };
 
 struct ResponseConfig {
-    ResponseMode mode{ResponseMode::Direct};
-
-    RateLimitedResponseConfig rate_limited{};
-
-    SecondOrderResponseConfig second_order{};
-
     bool operator==(ResponseConfig const&) const = default;
+
+    ResponseMode mode{ResponseMode::Direct};
+    RateLimitedResponseConfig rate_limited{};
+    SecondOrderResponseConfig second_order{};
 };
 
 struct TranslationChannelConfig {
-    TranslationSemantic semantic{TranslationSemantic::Disabled};
-
-    ReferenceFrame reference_frame{ReferenceFrame::Ship};
-
-    TranslationInputSource input_source{TranslationInputSource::Axis};
-
-    float automatic_value{};
-
-    ResponseConfig response{};
-
     bool operator==(TranslationChannelConfig const&) const = default;
+
+    TranslationSemantic semantic{TranslationSemantic::Disabled};
+    ReferenceFrame reference_frame{ReferenceFrame::Ship};
+    TranslationInputSource input_source{TranslationInputSource::Axis};
+    float automatic_value{};
+    ResponseConfig response{};
 };
 
 struct TranslationDriveConfig {
-    float positive_target_speed{};
-
-    float negative_target_speed{};
-
-    float positive_speed_limit{effectively_unlimited_speed};
-
-    float negative_speed_limit{effectively_unlimited_speed};
-
-    float positive_acceleration{};
-
-    float negative_acceleration{};
-
     bool operator==(TranslationDriveConfig const&) const = default;
+
+    float positive_target_speed{};
+    float negative_target_speed{};
+    float positive_speed_limit{effectively_unlimited_speed};
+    float negative_speed_limit{effectively_unlimited_speed};
+    float positive_acceleration{};
+    float negative_acceleration{};
 };
 
 struct TranslationAxisConfig {
-    TranslationChannelConfig manual{};
-
-    TranslationChannelConfig automatic{};
-
-    TranslationDriveConfig normal{};
-
-    TranslationDriveConfig boosted{};
-
-    float passive_drag{};
-
-    ReferenceFrame passive_drag_reference_frame{ReferenceFrame::Ship};
-
-    float active_stabilization_rate{};
-
-    ReferenceFrame active_stabilization_reference_frame{ReferenceFrame::Ship};
-
     bool operator==(TranslationAxisConfig const&) const = default;
+
+    TranslationChannelConfig manual{};
+    TranslationChannelConfig automatic{};
+    TranslationDriveConfig normal{};
+    TranslationDriveConfig boosted{};
+    float passive_drag{};
+    ReferenceFrame passive_drag_reference_frame{ReferenceFrame::Ship};
+    float active_stabilization_rate{};
+    ReferenceFrame active_stabilization_reference_frame{ReferenceFrame::Ship};
 };
 
 struct TranslationAxesConfig {
-    TranslationAxisConfig forward{};
-
-    TranslationAxisConfig right{};
-
-    TranslationAxisConfig up{};
-
     bool operator==(TranslationAxesConfig const&) const = default;
+
+    TranslationAxisConfig forward{};
+    TranslationAxisConfig right{};
+    TranslationAxisConfig up{};
 };
 
 struct RotationStabilizationConfig {
-    bool enabled{};
-
-    float target_angle{};
-
-    float delay{};
-
-    ResponseConfig response{};
-
     bool operator==(RotationStabilizationConfig const&) const = default;
+
+    bool enabled{};
+    float target_angle{};
+    float delay{};
+    ResponseConfig response{};
 };
 
 struct RotationAxisConfig {
-    RotationSemantic manual_semantic{RotationSemantic::Disabled};
-
-    float maximum_rate{};
-
-    float acceleration{};
-
-    ResponseConfig response{};
-
-    RotationStabilizationConfig stabilization{};
-
     bool operator==(RotationAxisConfig const&) const = default;
+
+    RotationSemantic manual_semantic{RotationSemantic::Disabled};
+    float maximum_rate{};
+    float acceleration{};
+    ResponseConfig response{};
+    RotationStabilizationConfig stabilization{};
 };
 
 struct RotationAxesConfig {
-    RotationAxisConfig pitch{};
-
-    RotationAxisConfig yaw{};
-
-    RotationAxisConfig roll{};
-
     bool operator==(RotationAxesConfig const&) const = default;
+
+    RotationAxisConfig pitch{};
+    RotationAxisConfig yaw{};
+    RotationAxisConfig roll{};
 };
 
 struct FacingVelocityConfig {
-    FacingVelocityCoupling mode{FacingVelocityCoupling::Independent};
-
-    float alignment_rate{};
-
-    ResponseConfig response{};
-
     bool operator==(FacingVelocityConfig const&) const = default;
+
+    FacingVelocityCoupling mode{FacingVelocityCoupling::Independent};
+    float alignment_rate{};
+    ResponseConfig response{};
 };
 
 struct BoostConfig {
-    bool available{};
-
-    bool accelerator_activates_boost{};
-
-    float energy_drain_per_second{};
-
-    ResponseConfig response{};
-
     bool operator==(BoostConfig const&) const = default;
+
+    bool available{};
+    bool accelerator_activates_boost{};
+    float energy_drain_per_second{};
+    ResponseConfig response{};
 };
 
 struct BrakeConfig {
-    bool available{};
-
-    float target_speed{};
-
-    float deceleration{};
-
-    float energy_drain_per_second{};
-
-    ResponseConfig response{};
-
     bool operator==(BrakeConfig const&) const = default;
+
+    bool available{};
+    float target_speed{};
+    float deceleration{};
+    float energy_drain_per_second{};
+    ResponseConfig response{};
 };
 
 struct FlightModelConfig {
-    TranslationAxesConfig translation{};
-
-    RotationAxesConfig rotation{};
-
-    FacingVelocityConfig facing_velocity{};
-
-    BoostConfig boost{};
-
-    BrakeConfig brake{};
-
-    BrakeConfig emergency_brake{};
-
-    float energy_recharge_per_second{};
-
-    float maximum_resultant_speed{effectively_unlimited_speed};
-
-    float boosted_maximum_resultant_speed{effectively_unlimited_speed};
-
     bool operator==(FlightModelConfig const&) const = default;
+
+    TranslationAxesConfig translation{};
+    RotationAxesConfig rotation{};
+    FacingVelocityConfig facing_velocity{};
+    BoostConfig boost{};
+    BrakeConfig brake{};
+    BrakeConfig emergency_brake{};
+    float energy_recharge_per_second{};
+    float maximum_resultant_speed{effectively_unlimited_speed};
+    float boosted_maximum_resultant_speed{effectively_unlimited_speed};
 };
 
 struct FlightModelProfile {
-    FlightModelPreset base_preset{FlightModelPreset::Starfox};
-
-    bool customized{};
-
-    FlightModelConfig config{};
-
     bool operator==(FlightModelProfile const&) const = default;
+
+    FlightModelPreset base_preset{FlightModelPreset::Starfox};
+    bool customized{};
+    FlightModelConfig config{};
 };
 
 struct FlightModelLoadout {
-    FlightModelProfile up{};
-
-    FlightModelProfile right{};
-
-    FlightModelProfile down{};
-
-    FlightModelProfile left{};
-
-    FlightModelSlot initial_slot{FlightModelSlot::Up};
-
     bool operator==(FlightModelLoadout const&) const = default;
+
+    std::array<FlightModelProfile, 4> profiles{};
+    FlightModelSlot initial_slot{FlightModelSlot::First};
 };
 } // namespace ioj::sim::player

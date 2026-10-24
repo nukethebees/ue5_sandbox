@@ -54,6 +54,43 @@ TEST(SimulationSettingsReader, PreservesBaseFileCompatibilityAndLevelMission) {
     EXPECT_EQ(level->mission(), mission);
 }
 
+TEST(SimulationSettingsReader, ConstructsAttackBandAfterAllLayersAndLevelOverrides) {
+    auto const source{DefinitionReader{}.read_settings_source(R"(
+      (settings-layers
+        (settings :fighters (fighters :attack-distance-band
+          (attack-distance-band :minimum-ratio 0.8 :desired-ratio 0.9 :maximum-ratio 1)))
+        (settings :fighters (fighters :attack-distance-band
+          (attack-distance-band :desired-ratio 0.85)))))")};
+    ASSERT_TRUE(source);
+    auto const resolved{s7::resolve_simulation_settings(*source)};
+    ASSERT_TRUE(resolved) << resolved.error().front().message;
+    EXPECT_EQ(resolved->fighters.attack_distance_band, *AttackDistanceBand::make(0.8f, 0.85f, 1.f));
+
+    auto const level{DefinitionReader{}.read_level_source(R"(
+      (level :id 'band :title "Band" :player 'player
+        :entities (list (entity :id 'player :archetype 'player-fighter :team 'blue
+                               :position '(0 0 0)))
+        :settings
+        (settings :fighters (fighters :attack-distance-band
+          (attack-distance-band :minimum-ratio 0 :desired-ratio 0 :maximum-ratio 0)))))")};
+    ASSERT_TRUE(level) << level.error().front().message;
+    auto const overridden{s7::resolve_simulation_settings(*source, &*level)};
+    ASSERT_TRUE(overridden) << overridden.error().front().message;
+    EXPECT_EQ(overridden->fighters.attack_distance_band, *AttackDistanceBand::make(0.f, 0.f, 0.f));
+}
+
+TEST(SimulationSettingsReader, RejectsInvalidFinalAttackBandWithoutExposingMutableRuntimeFields) {
+    auto const source{DefinitionReader{}.read_settings_source(R"(
+      (settings :fighters (fighters :attack-distance-band
+        (attack-distance-band :minimum-ratio 0.9))))")};
+    ASSERT_TRUE(source);
+    auto const resolved{s7::resolve_simulation_settings(*source)};
+    ASSERT_FALSE(resolved);
+    ASSERT_EQ(resolved.error().size(), 1u);
+    EXPECT_EQ(resolved.error().front().code, levels::DiagnosticCode::InvalidNumber);
+    EXPECT_EQ(resolved.error().front().node_path, "fighters.attack-distance-band");
+}
+
 TEST(SimulationSettingsReader, RetainsUnknownFieldConversionAndFinalValidationErrors) {
     struct Case {
         std::string_view source;
