@@ -44,6 +44,11 @@
     (value InitialSpawnDelay :serialized-name "initial-spawn-delay")
     (value SpawnCooldown :serialized-name "spawn-cooldown")
     (value Target :serialized-name "target"))
+  (enum ExpressionSyntax @native_uint8
+    :native-api true
+    :helpers (traits to-serialized-string try-parse-serialized)
+    (value Definition :serialized-name "expr")
+    (value Reference :serialized-name "expr-ref"))
   (enum RecordKind @native_uint8
     :native-api true
     :helpers (to-serialized-string)

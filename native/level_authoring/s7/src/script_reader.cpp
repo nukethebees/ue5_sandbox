@@ -2,6 +2,7 @@
 #include <ioj/levels/authoring/catalog_parser.h>
 #include <ioj/levels/authoring/definition_reader.h>
 #include <ioj/levels/authoring/grammar.h>
+#include <ioj/levels/mission_types.h>
 #include <ioj/s7/interpreter.h>
 
 #include <codegen/sexpr/form_builder.h>
@@ -47,19 +48,17 @@ auto dsl_source() -> std::string {
                        name,
                        name);
     }
-    for (auto const name : {"all-of",
-                            "any-of",
-                            "entity-destroyed",
-                            "entity-reached-position",
-                            "time-elapsed",
-                            "objective-resolved",
-                            "entity-kills-reached",
-                            "expr",
-                            "expr-ref"}) {
+    auto const define_expression = [&](std::string_view const name) {
         std::format_to(std::back_inserter(source),
                        "(define ({} . arguments) (cons :{} arguments))\n",
                        name,
                        name);
+    };
+    for (auto const type : EnumTraits<ExpressionType>::values) {
+        define_expression(to_serialized_string(type));
+    }
+    for (auto const syntax : EnumTraits<ExpressionSyntax>::values) {
+        define_expression(to_serialized_string(syntax));
     }
     auto const criterion{to_serialized_string(RecordKind::LevelCompleted)};
     std::format_to(

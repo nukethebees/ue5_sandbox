@@ -20,7 +20,7 @@ auto dependency(AstParser& parser,
                 std::string const& path) -> ObjectiveDependency {
     auto const values{parser.list(node, path)};
     if (values.size() != 3 || ast.node(values[0]).kind != s7::NodeKind::Keyword ||
-        ast.text(values[0]) != "objective-resolved") {
+        ast.text(values[0]) != to_serialized_string(ExpressionType::ObjectiveResolved)) {
         parser.error(
             DiagnosticCode::ExpectedRecord, path, "Expected (objective-resolved 'id 'outcome)");
         return {};
@@ -38,6 +38,11 @@ auto position(AstParser& parser, s7::NodeIndex const node, std::string const& pa
             parser.number(values[2], path)};
 }
 
+struct NamedExpressionDefinition {
+    ExpressionIndex expression;
+    s7::NodeIndex value;
+};
+
 class ExpressionReader {
   public:
     ExpressionReader(AstParser& parser, s7::Ast const& ast, ObjectiveDefinition& objective)
@@ -47,11 +52,11 @@ class ExpressionReader {
 
     void named_nodes(s7::NodeIndex const node, std::string const& path) {
         auto const entries{parser_.list(node, path)};
-        std::vector<std::pair<ExpressionIndex, s7::NodeIndex>> definitions;
+        std::vector<NamedExpressionDefinition> definitions;
         for (auto const entry : entries) {
             auto const values{parser_.list(entry, path)};
             if (values.size() != 3 || ast_.node(values[0]).kind != s7::NodeKind::Keyword ||
-                ast_.text(values[0]) != "expr") {
+                ast_.text(values[0]) != to_serialized_string(ExpressionSyntax::Definition)) {
                 parser_.error(
                     DiagnosticCode::ExpectedRecord, path, "Expected (expr 'name expression)");
                 continue;
@@ -67,10 +72,10 @@ class ExpressionReader {
             objective_.expressions.emplace_back();
             definitions.emplace_back(index, values[2]);
         }
-        for (auto const [index, value] : definitions) {
+        for (auto const definition : definitions) {
             // Keep explicit aliases as one-child conjunctions, including forward references.
-            auto const child{read(value, path)};
-            objective_.expressions[index] = {AllExpression{.children = {child}}};
+            auto const child{read(definition.value, path)};
+            objective_.expressions[definition.expression] = {AllExpression{.children = {child}}};
         }
     }
 
@@ -86,7 +91,7 @@ class ExpressionReader {
             return absent_expression;
         }
         auto const name{ast_.text(values[0])};
-        if (name == "expr-ref") {
+        if (try_parse_serialized_expression_syntax(name) == ExpressionSyntax::Reference) {
             if (values.size() != 2) {
                 parser_.error(DiagnosticCode::InvalidType, path, "expr-ref requires one name");
                 return absent_expression;
@@ -257,7 +262,8 @@ auto parse_mission(AstParser& parser,
     for (auto const& field : fields) {
         if (field.property == Property::Objectives) {
             auto const values{parser.list(field.value, field.node_path)};
-            for (std::size_t index{}; index < values.size(); ++index) {
+            auto const count{values.size()};
+            for (std::size_t index{}; index < count; ++index) {
                 result.objectives.push_back(objective(
                     parser, ast, values[index], std::format("{}[{}]", field.node_path, index)));
             }

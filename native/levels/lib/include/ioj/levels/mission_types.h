@@ -204,3 +204,17 @@ template <>
     return 3;
 }
 } // namespace ioj
+
+namespace ioj {
+template <>
+struct EnumTraits<::ioj::ExpressionType> {
+    inline static constexpr std::array values{::ioj::ExpressionType::All,
+                                              ::ioj::ExpressionType::Any,
+                                              ::ioj::ExpressionType::EntityDestroyed,
+                                              ::ioj::ExpressionType::EntityReachedPosition,
+                                              ::ioj::ExpressionType::TimeElapsed,
+                                              ::ioj::ExpressionType::ObjectiveResolved,
+                                              ::ioj::ExpressionType::EntityKillsReached};
+};
+
+} // namespace ioj

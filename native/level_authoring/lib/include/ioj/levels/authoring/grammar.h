@@ -417,6 +417,41 @@ enum class Property : PropertyUnderlying {
     }
 }
 
+using ExpressionSyntaxUnderlying = std::uint8_t;
+
+// Logical bit width: 1.
+enum class ExpressionSyntax : ExpressionSyntaxUnderlying {
+    Definition,
+    Reference,
+};
+
+[[nodiscard]] constexpr auto to_serialized_string(ExpressionSyntax const value) noexcept
+    -> std::string_view {
+    switch (value) {
+        case ExpressionSyntax::Definition: {
+            return "expr";
+        }
+        case ExpressionSyntax::Reference: {
+            return "expr-ref";
+        }
+        default: {
+            return "<invalid ExpressionSyntax>";
+        }
+    }
+}
+
+[[nodiscard]] constexpr auto
+    try_parse_serialized_expression_syntax(std::string_view const value) noexcept
+    -> std::optional<ExpressionSyntax> {
+    if (value == "expr") {
+        return ExpressionSyntax::Definition;
+    }
+    if (value == "expr-ref") {
+        return ExpressionSyntax::Reference;
+    }
+    return std::nullopt;
+}
+
 using RecordKindUnderlying = std::uint8_t;
 
 // Logical bit width: 4.
@@ -520,6 +555,16 @@ struct EnumTraits<::ioj::levels::authoring::Property> {
                                               ::ioj::levels::authoring::Property::InitialSpawnDelay,
                                               ::ioj::levels::authoring::Property::SpawnCooldown,
                                               ::ioj::levels::authoring::Property::Target};
+};
+
+} // namespace ioj
+
+namespace ioj {
+template <>
+struct EnumTraits<::ioj::levels::authoring::ExpressionSyntax> {
+    inline static constexpr std::array values{
+        ::ioj::levels::authoring::ExpressionSyntax::Definition,
+        ::ioj::levels::authoring::ExpressionSyntax::Reference};
 };
 
 } // namespace ioj
