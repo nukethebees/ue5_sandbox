@@ -6,14 +6,14 @@
 #include <SpaceGamePresentation/entities/TestBatchActorCore.h>
 #include <SpaceGamePresentation/entities/TestTeamConversion.h>
 #include <SpaceGamePresentation/entities/TestTeamVisualData.h>
-#include <SpaceGamePresentation/integration/RotatorConversion.h>
-#include <SpaceGamePresentation/integration/VectorConversion.h>
 #include <SpaceGamePresentation/presentation/DelayedNiagaraSpawns.h>
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
 
 #include <SandboxCore/array_checks.h>
 #include <SandboxCore/array_utils.h>
+#include <SandboxCoreEngine/RotatorConversion.h>
 #include <SandboxCoreEngine/uobject_utils.h>
+#include <SandboxCoreEngine/VectorConversion.h>
 
 #include <Components/InstancedStaticMeshComponent.h>
 #include <Components/SceneComponent.h>

@@ -20,9 +20,6 @@
 #include <SpaceGame/simulation/LevelSimulationBuilder.h>
 #include <SpaceGame/telemetry/LevelTelemetryJson.h>
 #include <SpaceGame/telemetry/LevelTelemetryMetadata.h>
-#include <SpaceGamePresentation/integration/RotatorConversion.h>
-#include <SpaceGamePresentation/integration/TransformConversion.h>
-#include <SpaceGamePresentation/integration/VectorConversion.h>
 #include <SpaceGamePresentation/presentation/HUDManager.h>
 #include <SpaceGamePresentation/simulation/CollisionGridVisualizationComponent.h>
 #include <SpaceGamePresentation/support/mesh.h>
@@ -31,8 +28,11 @@
 
 #include <SandboxCore/array_utils.h>
 #include <SandboxCoreEngine/actor_utils.h>
+#include <SandboxCoreEngine/RotatorConversion.h>
 #include <SandboxCoreEngine/strings.h>
+#include <SandboxCoreEngine/TransformConversion.h>
 #include <SandboxCoreEngine/uobject_utils.h>
+#include <SandboxCoreEngine/VectorConversion.h>
 
 #include <CoreGlobals.h>
 #include <Engine/GameInstance.h>
@@ -53,13 +53,6 @@
 #include <Misc/FileHelper.h>
 #include <Misc/Paths.h>
 #include <SandboxISMCComponent.h>
-
-namespace ioj::fighter_diagnostics {
-inline TAutoConsoleVariable<int32> enabled{
-    TEXT("sg.FighterDiagnostics"),
-    0,
-    TEXT("Log bounded fighter spawn and blocked-navigation reports. Toggle off/on to rearm.")};
-}
 
 namespace {
 template <typename TActor, typename TConfig>
@@ -158,9 +151,7 @@ void ATestBatchOrchestrator::EndPlay(EEndPlayReason::Type const end_play_reason)
     level_presentation_.Reset();
     level_simulation_.Reset();
     level_definition_.Reset();
-    world_collision_.restore_collision();
     SetActorTickEnabled(false);
-    clear_end_tick_test_hook();
 
     Super::EndPlay(end_play_reason);
 }
@@ -200,7 +191,6 @@ void ATestBatchOrchestrator::reset_for_new_level() {
     }
 
     SetActorTickEnabled(false);
-    clear_end_tick_test_hook();
 
     hud_manager.deactivate();
     if (IsValid(player_ship)) {
@@ -217,7 +207,6 @@ void ATestBatchOrchestrator::reset_for_new_level() {
     level_source_.Reset();
     settings_source_.Reset();
 
-    world_collision_.restore_collision();
     collision_grid_visualization->clear_collision_bounds();
     laser_instances_->clear_instances();
     fighter_instances_->clear_instances();
@@ -474,8 +463,6 @@ auto ATestBatchOrchestrator::initialise_simulation(USpaceGameLevelConfig const& 
                     FVector{ioj::to_unreal(ioj::vector_at(turrets.view_locations(), i))});
             }
         }
-        result->fighter_diagnostics_enabled =
-            ioj::fighter_diagnostics::enabled.GetValueOnGameThread() != 0;
         grid_geometry = result->collision.grid_geometry;
         level_simulation_.Emplace(game_subsystem->get_game_memory(), MoveTemp(result.value()));
         return true;
@@ -511,8 +498,6 @@ auto ATestBatchOrchestrator::initialise_simulation(USpaceGameLevelConfig const& 
         errors.add(TEXT("Cannot create level simulation without game memory"));
         return false;
     }
-    data.fighter_diagnostics_enabled =
-        ioj::fighter_diagnostics::enabled.GetValueOnGameThread() != 0;
     grid_geometry = data.collision.grid_geometry;
     level_simulation_.Emplace(game_subsystem->get_game_memory(), MoveTemp(data));
     return true;
@@ -582,7 +567,7 @@ auto ATestBatchOrchestrator::begin_play() -> bool {
         on_proxy_entities_bound.Broadcast(proxy_entities);
         proxy_build->destroy_proxy_actors();
     }
-    auto static_bounds{world_collision_.initialise_static_geometry(
+    auto static_bounds{ioj::FLevelCollisionHost::extract_static_geometry(
         *world, effective_config->collision_grid, grid_geometry)};
     level_simulation_->set_static_collision(static_bounds);
 
@@ -790,9 +775,6 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
         return;
     }
 
-    auto const fighter_diagnostics_enabled{
-        ioj::fighter_diagnostics::enabled.GetValueOnGameThread() != 0};
-    level_simulation_->set_fighter_diagnostics_enabled(fighter_diagnostics_enabled);
     auto const previous_tick{level_simulation_->get_clock().get_completed_ticks()};
     level_simulation_->advance(dt);
     update_collision_bounds_visualization();
@@ -813,10 +795,9 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
     }
 
     if (level_simulation_->get_clock().get_completed_ticks() != previous_tick) {
-        end_tick_test_hook.ExecuteIfBound(*this);
         ioj::publish_mission_completion(
             *level_simulation_, GetGameInstance(), on_mission_completed);
-        level_simulation_->complete_run_if_requested(
+        level_simulation_->stop_run_if_requested(
             launch_options_.stop_when_battle_resolved,
             launch_options_.simulated_duration_seconds.IsSet()
                 ? std::optional{ioj::Duration::make(
@@ -835,12 +816,6 @@ auto ATestBatchOrchestrator::duration_to_tick_period(ioj::Duration const duratio
 /* **************************************** */
 // Testing and level preparation
 /* **************************************** */
-void ATestBatchOrchestrator::set_end_tick_test_hook(FOrchestratorEndTickTestHook hook) {
-    end_tick_test_hook = MoveTemp(hook);
-}
-void ATestBatchOrchestrator::clear_end_tick_test_hook() {
-    end_tick_test_hook.Unbind();
-}
 auto ATestBatchOrchestrator::prepare_level() -> bool {
     check(get_state() == ioj::sim::OrchestratorState::Uninitialised);
     if (settings_prepared_) {

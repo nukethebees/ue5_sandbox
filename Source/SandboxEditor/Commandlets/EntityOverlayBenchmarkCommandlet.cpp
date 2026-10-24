@@ -5,9 +5,9 @@
 #include "ioj/sim/turrets/turret_entity_data.h"
 #include "SpaceGamePresentation/presentation/EntityOverlaySource.h"
 #include <ioj/column_math.h>
-#include <SpaceGamePresentation/integration/VectorConversion.h>
 
 #include "SandboxUI/EntityOverlay/EntityOverlayBenchmark.h"
+#include <SandboxCoreEngine/VectorConversion.h>
 
 #include "HAL/FileManager.h"
 #include "Misc/FileHelper.h"

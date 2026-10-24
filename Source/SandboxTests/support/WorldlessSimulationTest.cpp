@@ -8,9 +8,10 @@
 #include <SpaceGame/simulation/LevelCollisionHost.h>
 #include <SpaceGame/simulation/LevelSimulationBuilder.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
-#include <SpaceGamePresentation/integration/TransformConversion.h>
-#include <SpaceGamePresentation/integration/VectorConversion.h>
 #include <SpaceGamePresentation/support/mesh.h>
+
+#include <SandboxCoreEngine/TransformConversion.h>
+#include <SandboxCoreEngine/VectorConversion.h>
 
 #include <Engine/StaticMesh.h>
 #include <Engine/StaticMeshSocket.h>

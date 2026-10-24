@@ -129,7 +129,6 @@ auto has_unsupported_geometry(FKAggregateGeom const& geometry) -> bool {
 struct FStaticCollisionComponentData {
     FVector3f min_point{FVector3f::ZeroVector};
     FVector3f max_point{FVector3f::ZeroVector};
-    ECollisionEnabled::Type original_collision_mode{ECollisionEnabled::NoCollision};
 };
 
 auto extract_static_collision_component(UPrimitiveComponent& component,
@@ -196,7 +195,6 @@ auto extract_static_collision_component(UPrimitiveComponent& component,
     return FStaticCollisionComponentData{
         .min_point = min_point,
         .max_point = max_point,
-        .original_collision_mode = component.GetCollisionEnabled(),
     };
 }
 }
@@ -215,14 +213,12 @@ auto FLevelCollisionHost::extract_entity_bounds(EntityMeshes const& meshes)
     }
     return result;
 }
-auto FLevelCollisionHost::initialise_static_geometry(
-    UWorld& world,
-    FCollisionGridConfig const& config,
-    sim::collision::GridGeometry const grid_geometry) -> std::vector<sim::collision::WorldAABB> {
-    TRACE_CPUPROFILER_EVENT_SCOPE(
-        Sandbox::ioj::sim::FLevelCollisionHost::initialise_static_geometry);
+auto FLevelCollisionHost::extract_static_geometry(UWorld& world,
+                                                  FCollisionGridConfig const& config,
+                                                  sim::collision::GridGeometry const grid_geometry)
+    -> std::vector<sim::collision::WorldAABB> {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ioj::sim::FLevelCollisionHost::extract_static_geometry);
     checkf(config.is_valid(), TEXT("Cannot harvest static collision with an invalid grid config"));
-    restore_collision();
 
     std::vector<sim::collision::WorldAABB> static_aabbs;
     int32 unexpected_actor_count{};
@@ -284,13 +280,6 @@ auto FLevelCollisionHost::initialise_static_geometry(
 
             static_aabbs.push_back({{data->min_point.X, data->min_point.Y, data->min_point.Z},
                                     {data->max_point.X, data->max_point.Y, data->max_point.Z}});
-            static_collision_sources_.Add({component, data->original_collision_mode});
-        }
-    }
-
-    for (auto const& source : static_collision_sources_) {
-        if (auto* const component{source.component.Get()}; IsValid(component)) {
-            component->SetCollisionEnabled(ECollisionEnabled::NoCollision);
         }
     }
 
@@ -298,17 +287,9 @@ auto FLevelCollisionHost::initialise_static_geometry(
            Display,
            TEXT("Harvested %d static collision components; reported %d unsupported components and "
                 "%d unexpected actors"),
-           static_collision_sources_.Num(),
+           static_cast<int32>(static_aabbs.size()),
            unsupported_component_count,
            unexpected_actor_count);
     return static_aabbs;
-}
-void FLevelCollisionHost::restore_collision() {
-    for (auto const& source : static_collision_sources_) {
-        if (auto* component{source.component.Get()}; IsValid(component)) {
-            component->SetCollisionEnabled(source.original_collision_mode);
-        }
-    }
-    static_collision_sources_.Reset();
 }
 }

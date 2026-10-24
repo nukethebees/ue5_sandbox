@@ -5,7 +5,8 @@
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/SimulationActorClasses.h>
-#include <SpaceGamePresentation/integration/VectorConversion.h>
+
+#include <SandboxCoreEngine/VectorConversion.h>
 
 #include <Engine/StaticMeshActor.h>
 

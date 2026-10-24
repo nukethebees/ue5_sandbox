@@ -3,7 +3,8 @@
 #include <ioj/sim/collision/collision_grid.h>
 #include <ioj/sim/collision/entity_cell_data_operations.h>
 #include <ioj/sim/collision/world_aabbs.h>
-#include <SpaceGamePresentation/integration/VectorConversion.h>
+
+#include <SandboxCoreEngine/VectorConversion.h>
 
 #include <Engine/EngineTypes.h>
 #include <MeshElementCollector.h>

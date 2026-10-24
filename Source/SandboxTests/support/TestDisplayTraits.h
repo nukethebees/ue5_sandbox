@@ -52,9 +52,9 @@ struct TestDisplayTraits<FVector2D> {
     }
 };
 
-template <>
-struct TestDisplayTraits<FVector3d> {
-    static auto format_arg(FVector3d const& value) -> FStringFormatArg {
+template <typename T>
+struct TestDisplayTraits<UE::Math::TVector<T>> {
+    static auto format_arg(UE::Math::TVector<T> const& value) -> FStringFormatArg {
         return FStringFormatArg{value.ToCompactString()};
     }
 };

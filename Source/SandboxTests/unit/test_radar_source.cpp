@@ -5,8 +5,9 @@
 #include <ioj/sim/lasers/laser_source.h>
 #include <SandboxTests/support/DisplayEntityTestData.h>
 #include <SpaceGamePresentation/entities/TestTeamConversion.h>
-#include <SpaceGamePresentation/integration/VectorConversion.h>
 #include <SpaceGamePresentation/presentation/RadarSource.h>
+
+#include <SandboxCoreEngine/VectorConversion.h>
 
 #include <CQTest.h>
 

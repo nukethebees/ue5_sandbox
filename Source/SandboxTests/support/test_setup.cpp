@@ -95,7 +95,6 @@ void FTestBatchOrchestratorLevelSetup::end_test() {
         return;
     }
 
-    orchestrator->clear_end_tick_test_hook();
     orchestrator->pause_simulation();
 
     auto* const player_ship{const_cast<ATestSpaceShip*>(orchestrator->get_player_ship())};

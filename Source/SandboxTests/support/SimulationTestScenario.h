@@ -1,5 +1,6 @@
 #pragma once
 
+#include "simulation_step.h"
 #include "SoftTestAssertions.h"
 #include "TestSimulationDriver.h"
 #include "time_series_test_data.h"
@@ -16,6 +17,8 @@ class USpaceGameLevelConfig;
 class UWorld;
 
 namespace ioj {
+DECLARE_DELEGATE_OneParam(FSimulationSampleCallback, ATestBatchOrchestrator&);
+
 struct FSimulationTestContext {
     ATestBatchOrchestrator& orchestrator;
     FAutomationTestBase& automation_test;
@@ -47,9 +50,14 @@ class FSimulationTestScenario {
     void run_until_timeline_finished(Setup&& setup,
                                      FTimespan const timeout,
                                      Completion&& completion) {
-        TestCommandBuilder.Do(Forward<Setup>(setup))
+        TestCommandBuilder
+            .Do([this, setup = Forward<Setup>(setup)]() mutable {
+                setup();
+                context_.orchestrator.SetActorTickEnabled(false);
+            })
             .Until(
                 [this] {
+                    advance_sample();
                     return !checks.all_passed ||
                            (test_driver.IsSet() && test_driver->timeline.is_finished());
                 },
@@ -57,17 +65,20 @@ class FSimulationTestScenario {
             .Then(Forward<Completion>(completion));
     }
 
-    void set_timeline_end_tick_hook(FOrchestratorEndTickTestHook sample_hook);
+    void advance_sample();
+    void set_sample_callback(FSimulationSampleCallback callback) {
+        sample_callback_ = MoveTemp(callback);
+    }
 
     template <typename... ValueTypes>
     void begin_timed_sampling(time_type const duration,
-                              FOrchestratorEndTickTestHook sample_hook,
+                              FSimulationSampleCallback sample_hook,
                               TimeSeriesData<ValueTypes>&... samples) {
         check(test_driver.IsSet());
 
         reset_and_reserve_time_series(test_driver->orchestrator, duration, samples...);
         test_driver->timeline.finish_at(duration);
-        set_timeline_end_tick_hook(MoveTemp(sample_hook));
+        set_sample_callback(MoveTemp(sample_hook));
     }
 
     virtual void on_tear_down() {}
@@ -78,5 +89,6 @@ class FSimulationTestScenario {
     FSoftTestAssertions& checks;
     FNoDiscardAsserter Assert;
     TOptional<TestSimulationDriver> test_driver{NullOpt};
+    FSimulationSampleCallback sample_callback_;
 };
 }

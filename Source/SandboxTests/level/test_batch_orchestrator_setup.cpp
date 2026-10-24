@@ -9,6 +9,7 @@
 #include <ioj/sim/spinners/sim.h>
 #include <ioj/sim/telemetry/manager.h>
 #include <ioj/sim/turrets/sim.h>
+#include <SandboxTests/support/simulation_step.h>
 #include <SandboxTests/support/SoftTestAssertions.h>
 #include <SandboxTests/support/test_setup.h>
 #include <SandboxTests/support/TestActorSpawning.h>
@@ -147,34 +148,30 @@ void FTestBatchOrchestratorSetupScenario::presentation_frame_ordering() {
             uint64 presented_tick{};
         };
         TimeSeriesData<FFrameObservation> observations;
-        orchestrator.set_end_tick_test_hook(FOrchestratorEndTickTestHook::CreateLambda(
-            [&observations](ATestBatchOrchestrator& owner) {
-                observations.add(
-                    owner.get_simulation_time(),
-                    FFrameObservation{owner.get_completed_ticks(),
-                                      owner.get_level_presentation()->get_last_completed_tick()});
-                if (owner.get_completed_ticks() >= 6) {
-                    FTestBatchOrchestratorTestAccess::complete_telemetry_run(
-                        owner, sim::LevelTelemetryRunEndReason::DurationReached);
-                }
-            }));
+        auto const observe{[&observations](ATestBatchOrchestrator& owner) {
+            observations.add(
+                owner.get_simulation_time(),
+                FFrameObservation{owner.get_completed_ticks(),
+                                  owner.get_level_presentation()->get_last_completed_tick()});
+        }};
         auto const dt{orchestrator.get_level_simulation()->get_clock().get_tick_period()};
-        orchestrator.tick(0.0);
+        advance_simulation(orchestrator, 0.0, observe);
         checks.are_equal(uint64{0},
                          presentation->get_last_completed_tick(),
                          TEXT("Zero fixed ticks preserve the presented state"));
-        orchestrator.tick(dt * 4.25);
+        advance_simulation(orchestrator, dt * 4.25, observe);
         checks.are_equal(uint64{4},
                          presentation->get_last_completed_tick(),
                          TEXT("Presentation observes the final fixed tick"));
         orchestrator.pause_simulation();
-        orchestrator.tick(dt);
+        advance_simulation(orchestrator, dt, observe);
         checks.are_equal(uint64{4},
                          presentation->get_last_completed_tick(),
                          TEXT("Paused frames freeze presentation"));
         orchestrator.start_simulation();
-        orchestrator.tick(dt * 4.0);
-        orchestrator.clear_end_tick_test_hook();
+        advance_simulation(orchestrator, dt * 4.0, observe);
+        FTestBatchOrchestratorTestAccess::stop_run(
+            orchestrator, sim::LevelTelemetryRunEndReason::DurationReached);
         checks.are_equal(
             uint32{2}, observations.num(), TEXT("Each catch-up frame produces one observation"));
         auto const sample_count{observations.num()};
@@ -227,7 +224,7 @@ void FTestBatchOrchestratorSetupScenario::begin_level_telemetry() {
     test_driver->orchestrator.start_simulation();
     initial_active_entity_count = test_driver->get_ledger().count_alive();
     initial_issued_unique_id_count = test_driver->get_ledger().get_num_unique_ids_issued();
-    set_timeline_end_tick_hook(FOrchestratorEndTickTestHook::CreateRaw(
+    set_sample_callback(FSimulationSampleCallback::CreateRaw(
         this, &FTestBatchOrchestratorSetupScenario::on_level_telemetry_end_tick));
     test_driver->timeline.then_after(0.05, [this] { kill_telemetry_test_entity(); });
     test_driver->timeline.finish_at(0.15);

@@ -118,9 +118,10 @@ void FTestBatchOrchestratorResetScenario::start_initial_simulation() {
 
     reset_and_reserve_time_series(
         test_driver->orchestrator, reset_time, initial_samples, reset_samples);
-    test_driver->orchestrator.set_end_tick_test_hook(FOrchestratorEndTickTestHook::CreateRaw(
+    set_sample_callback(FSimulationSampleCallback::CreateRaw(
         this, &FTestBatchOrchestratorResetScenario::on_end_tick));
     test_driver->orchestrator.start_simulation();
+    test_driver->orchestrator.SetActorTickEnabled(false);
 }
 
 void FTestBatchOrchestratorResetScenario::reset_simulation() {
@@ -152,9 +153,10 @@ void FTestBatchOrchestratorResetScenario::reset_simulation() {
     checks.is_true(test_driver->orchestrator.get_level_simulation() == nullptr,
                    TEXT("Level reset destroys the previous simulation"));
     reset_complete = true;
-    test_driver->orchestrator.set_end_tick_test_hook(FOrchestratorEndTickTestHook::CreateRaw(
+    set_sample_callback(FSimulationSampleCallback::CreateRaw(
         this, &FTestBatchOrchestratorResetScenario::on_end_tick));
     test_driver->orchestrator.start_simulation();
+    test_driver->orchestrator.SetActorTickEnabled(false);
     auto const& telemetry{
         test_driver->orchestrator.get_level_telemetry_manager().get_active_entity_count_data()};
     checks.are_equal(uint32{1}, telemetry.num(), TEXT("Restart records one telemetry baseline"));
@@ -211,9 +213,19 @@ void FTestBatchOrchestratorResetScenario::check_reset() {
 
 void FTestBatchOrchestratorResetScenario::run() {
     TestCommandBuilder.Do([this] { start_initial_simulation(); })
-        .Until([this] { return test_driver->get_time() >= reset_time; }, timeout)
+        .Until(
+            [this] {
+                advance_sample();
+                return test_driver->get_time() >= reset_time;
+            },
+            timeout)
         .Then([this] { reset_simulation(); })
-        .Until([this] { return !reset_samples.is_empty(); }, timeout)
+        .Until(
+            [this] {
+                advance_sample();
+                return !reset_samples.is_empty();
+            },
+            timeout)
         .Then([this] { check_reset(); });
 }
 }

@@ -27,8 +27,7 @@ auto read_summary(FString const& path) -> std::expected<FTelemetryRunSummary, FS
     }
     double schema{};
     if (!root->TryGetNumberField(TEXT("schema_version"), schema) ||
-        (schema != 1.0 && schema != 2.0 && schema != 3.0 &&
-         schema != ioj::sim::LevelTelemetryReport::schema_version)) {
+        schema != ioj::sim::LevelTelemetryReport::schema_version) {
         return std::unexpected{
             FString::Printf(TEXT("Unsupported or missing schema in '%s'"), *path)};
     }
@@ -121,10 +120,7 @@ auto FTelemetryRunAnalysis::find_metric(ETelemetryDashboardMetric const metric) 
 auto analyze_level_telemetry_run(ioj::sim::LevelTelemetryReport const& record)
     -> FTelemetryRunAnalysis {
     auto const native{::ioj::sim::telemetry::analyze({
-        .loaded_schema_version = record.loaded_schema_version,
         .tick_rate_hz = record.tick_rate_hz,
-        .completion = record.completion,
-        .tick_series = record.tick_series,
         .battle_samples = record.battle_samples,
     })};
     static_assert(static_cast<std::uint8_t>(::ioj::sim::telemetry::Metric::Count) ==

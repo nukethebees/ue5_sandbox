@@ -78,7 +78,7 @@ void FTestPlayerShipDeathScenario::queue_player_ship_death() {
 
     begin_timed_sampling(
         kill_time + post_kill_time,
-        FOrchestratorEndTickTestHook::CreateRaw(this, &FTestPlayerShipDeathScenario::on_end_tick),
+        FSimulationSampleCallback::CreateRaw(this, &FTestPlayerShipDeathScenario::on_end_tick),
         samples);
 }
 

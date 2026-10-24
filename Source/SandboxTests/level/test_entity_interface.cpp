@@ -117,7 +117,7 @@ void FEntityInterfaceScenario::initial_setup() {
     test_driver->orchestrator.start_simulation();
     begin_timed_sampling(
         test_time,
-        FOrchestratorEndTickTestHook::CreateRaw(this, &FEntityInterfaceScenario::on_end_tick),
+        FSimulationSampleCallback::CreateRaw(this, &FEntityInterfaceScenario::on_end_tick),
         capital_proxy_counts,
         turret_proxy_counts,
         spinner_proxy_counts,

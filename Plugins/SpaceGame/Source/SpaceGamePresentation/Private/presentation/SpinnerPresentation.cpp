@@ -3,12 +3,12 @@
 #include <ioj/column_math.h>
 #include <SandboxGameShared/utilities/actor_utils.h>
 #include <SpaceGamePresentation/entities/TestBatchActorCore.h>
-#include <SpaceGamePresentation/integration/VectorConversion.h>
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
 
 #include <SandboxCore/array_checks.h>
 #include <SandboxCore/array_utils.h>
 #include <SandboxCoreEngine/uobject_utils.h>
+#include <SandboxCoreEngine/VectorConversion.h>
 
 #include <Components/InstancedStaticMeshComponent.h>
 #include <Components/SceneComponent.h>

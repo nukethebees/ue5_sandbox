@@ -24,7 +24,6 @@ class USparkRendererComponent;
 
 class ATestBatchOrchestrator;
 
-DECLARE_DELEGATE_OneParam(FOrchestratorEndTickTestHook, ATestBatchOrchestrator&);
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnProxyEntitiesBound, FProxyEntityMap const&);
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnOrchestratorReset, ATestBatchOrchestrator&);
 
@@ -148,8 +147,6 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     /* **************************************** */
     // Testing and level preparation
     /* **************************************** */
-    void set_end_tick_test_hook(FOrchestratorEndTickTestHook hook);
-    void clear_end_tick_test_hook();
 
     auto prepare_level() -> bool;
 
@@ -242,8 +239,6 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     FOnOrchestratorReset on_reset;
     FOnMissionCompleted on_mission_completed;
   private:
-    FOrchestratorEndTickTestHook end_tick_test_hook;
-
     ioj::sim::FixedTickLoop simulation_tick_loop{};
     bool settings_prepared_{};
     UPROPERTY(EditAnywhere,
@@ -267,7 +262,6 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     ioj::FLevelLaunchOptions launch_options_{};
     FString level_source_{};
     FString settings_source_{};
-    ioj::FLevelCollisionHost world_collision_;
 
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     TObjectPtr<ATestSpaceShip> player_ship{nullptr};

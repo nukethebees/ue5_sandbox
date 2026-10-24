@@ -5,8 +5,8 @@
 #include "SandboxEditor/SandboxEditor.h"
 #include <ioj/sim/collision/collision_grid.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
-#include <SpaceGamePresentation/integration/VectorConversion.h>
 
+#include <SandboxCoreEngine/VectorConversion.h>
 #include <SandboxUI/slate/SlateSlots.h>
 
 #include <IDetailsView.h>

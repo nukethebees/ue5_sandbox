@@ -2,9 +2,9 @@
 
 #include "SandboxGameShared/utilities/macros/null_checks.hpp"
 #include <SpaceGamePresentation/entities/TestTeamVisualData.h>
-#include <SpaceGamePresentation/integration/TransformConversion.h>
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
 
+#include <SandboxCoreEngine/TransformConversion.h>
 #include <SandboxCoreEngine/uobject_utils.h>
 #include <SandboxShaders/SpaceDust/SpaceDustComponent.h>
 

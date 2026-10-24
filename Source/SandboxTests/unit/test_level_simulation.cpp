@@ -20,13 +20,13 @@
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/telemetry/LevelTelemetryJson.h>
 #include <SpaceGamePresentation/entities/TestTeamConversion.h>
-#include <SpaceGamePresentation/integration/RotatorConversion.h>
-#include <SpaceGamePresentation/integration/TransformConversion.h>
-#include <SpaceGamePresentation/integration/VectorConversion.h>
 #include <SpaceGamePresentation/presentation/LevelPresentation.h>
 #include <SpaceGameRendering/SparkRendererComponent.h>
 
+#include <SandboxCoreEngine/RotatorConversion.h>
 #include <SandboxCoreEngine/strings.h>
+#include <SandboxCoreEngine/TransformConversion.h>
+#include <SandboxCoreEngine/VectorConversion.h>
 
 #include <Dom/JsonObject.h>
 #include <Engine/StaticMesh.h>
@@ -935,33 +935,10 @@ auto FLevelTelemetryRunRecordTest::RunTest(FString const&) -> bool {
     TestTrue(TEXT("Serialization rejects precision-unsafe uint64 values"),
              !ioj::sim::serialize_level_telemetry_report(precision_unsafe_report).has_value());
 
-    auto const original_mission_team{completion_json->Values.FindRef(TEXT("mission_team"))};
-    auto const original_mission_outcome{completion_json->Values.FindRef(TEXT("mission_outcome"))};
-    auto const original_objective_outcome{
-        completion_json->Values.FindRef(TEXT("objective_outcome"))};
-    completion_json->SetStringField(TEXT("objective_id"), TEXT("orphan"));
-    TestFalse(TEXT("An objective id without team metadata returns an error"),
-              parse_current_root().has_value());
-    completion_json->RemoveField(TEXT("objective_id"));
-    completion_json->SetField(TEXT("mission_team"), MakeShared<FJsonValueNull>());
-    completion_json->SetStringField(TEXT("mission_outcome"), TEXT("victory"));
-    completion_json->SetField(TEXT("objective_outcome"), MakeShared<FJsonValueNull>());
-    TestFalse(TEXT("Partial optional mission metadata returns an error"),
-              parse_current_root().has_value());
-    completion_json->SetField(TEXT("mission_team"), original_mission_team);
-    completion_json->SetField(TEXT("mission_outcome"), original_mission_outcome);
-    completion_json->SetField(TEXT("objective_outcome"), original_objective_outcome);
-    auto const original_mission_elapsed{
-        completion_json->Values.FindRef(TEXT("mission_elapsed_seconds"))};
-    completion_json->RemoveField(TEXT("mission_team"));
-    completion_json->RemoveField(TEXT("mission_outcome"));
-    completion_json->RemoveField(TEXT("objective_outcome"));
-    completion_json->RemoveField(TEXT("mission_elapsed_seconds"));
-    TestTrue(TEXT("Optional mission fields may be omitted"), parse_current_root().has_value());
-    completion_json->SetField(TEXT("mission_team"), original_mission_team);
-    completion_json->SetField(TEXT("mission_outcome"), original_mission_outcome);
-    completion_json->SetField(TEXT("objective_outcome"), original_objective_outcome);
-    completion_json->SetField(TEXT("mission_elapsed_seconds"), original_mission_elapsed);
+    TestFalse(TEXT("Telemetry does not duplicate mission objective metadata"),
+              completion_json->HasField(TEXT("objective_id")));
+    TestFalse(TEXT("Telemetry does not infer a winning team"),
+              completion_json->HasField(TEXT("winning_team")));
 
     auto const output_directory{FPaths::Combine(FPaths::ProjectSavedDir(),
                                                 TEXT("Automation"),

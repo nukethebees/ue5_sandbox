@@ -5,7 +5,8 @@
 #include <ioj/column_math.h>
 #include <ioj/sim/entities/entity_id.h>
 #include <SpaceGamePresentation/entities/TestTeamConversion.h>
-#include <SpaceGamePresentation/integration/VectorConversion.h>
+
+#include <SandboxCoreEngine/VectorConversion.h>
 
 #include <limits>
 #include <utility>

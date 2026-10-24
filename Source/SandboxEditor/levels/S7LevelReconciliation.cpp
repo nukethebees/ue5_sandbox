@@ -6,9 +6,9 @@
 #include <ioj/levels/authoring/editor_support.h>
 #include <ioj/levels/authoring/scene_reconciliation.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
-#include <SpaceGamePresentation/integration/VectorConversion.h>
 
 #include <SandboxCoreEngine/strings.h>
+#include <SandboxCoreEngine/VectorConversion.h>
 
 #include <Editor.h>
 #include <Engine/Level.h>

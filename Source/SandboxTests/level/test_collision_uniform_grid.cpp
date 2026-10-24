@@ -2,7 +2,8 @@
 #include <SandboxTests/support/TestCollisionActor.h>
 #include <SpaceGame/simulation/LevelCollisionHost.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
-#include <SpaceGamePresentation/integration/VectorConversion.h>
+
+#include <SandboxCoreEngine/VectorConversion.h>
 
 #include <Components/BoxComponent.h>
 #include <Components/InstancedStaticMeshComponent.h>
@@ -53,33 +54,16 @@ TEST_CLASS(CollisionUniformGrid, "Sandbox.UnitTests")
         auto const grid_geometry{ioj::sim::collision::GridGeometry{
             {configured_dims.X, configured_dims.Y, configured_dims.Z},
             ioj::to_native(config.cell_size)}};
-        ioj::FLevelCollisionHost collision_host;
-        auto const bounds{collision_host.initialise_static_geometry(*world, config, grid_geometry)};
+        auto const bounds{
+            ioj::FLevelCollisionHost::extract_static_geometry(*world, config, grid_geometry)};
 
-        auto const sources{collision_host.get_static_collision_sources()};
-        auto const source_count{sources.Num()};
-        checks.are_equal(static_cast<std::size_t>(source_count),
-                         bounds.size(),
-                         TEXT("Each harvested source produces native bounds"));
-        int32 source_index{INDEX_NONE};
-        int32 harvested_actor_source_count{};
-        for (int32 i{}; i < source_count; ++i) {
-            auto* const component{sources[i].component.Get()};
-            if (IsValid(component) && component->GetOwner() == harvested_actor) {
-                ++harvested_actor_source_count;
-            }
-            if (component == harvested_actor->get_collision_component()) {
-                source_index = i;
-            }
-        }
-        checks.is_true(source_index != INDEX_NONE,
-                       TEXT("Configured base class harvests subclass actor"));
-        checks.are_equal(1,
-                         harvested_actor_source_count,
-                         TEXT("Unsupported component is not added to static geometry"));
+        checks.are_equal(
+            std::size_t{1},
+            bounds.size(),
+            TEXT("Harvest configured subclass and exclude omitted/unsupported geometry"));
         checks.is_true(harvested_actor->get_collision_component()->GetCollisionEnabled() ==
-                           ECollisionEnabled::NoCollision,
-                       TEXT("Successful harvest disables Unreal collision"));
+                           ECollisionEnabled::QueryOnly,
+                       TEXT("Geometry extraction leaves component settings unchanged"));
         checks.is_true(omitted_actor->get_collision_component()->GetCollisionEnabled() ==
                            ECollisionEnabled::QueryOnly,
                        TEXT("Omitted actor keeps Unreal collision"));
@@ -87,15 +71,12 @@ TEST_CLASS(CollisionUniformGrid, "Sandbox.UnitTests")
                        TEXT("Failed harvest leaves Unreal collision enabled"));
 
         auto const reharvested_bounds{
-            collision_host.initialise_static_geometry(*world, config, grid_geometry)};
+            ioj::FLevelCollisionHost::extract_static_geometry(*world, config, grid_geometry)};
         checks.are_equal(bounds.size(),
                          reharvested_bounds.size(),
                          TEXT("Reinitialization preserves native bounds count"));
-        checks.are_equal(source_count,
-                         collision_host.get_static_collision_sources().Num(),
-                         TEXT("Reinitialization restores and reharvests static geometry"));
         checks.is_true(harvested_actor->get_collision_component()->GetCollisionEnabled() ==
-                           ECollisionEnabled::NoCollision,
-                       TEXT("Reharvested component remains owned by custom collision"));
+                           ECollisionEnabled::QueryOnly,
+                       TEXT("Repeated extraction leaves component settings unchanged"));
     }
 };

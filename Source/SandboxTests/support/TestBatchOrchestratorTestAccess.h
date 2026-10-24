@@ -21,9 +21,9 @@ struct FTestBatchOrchestratorTestAccess {
         check(orchestrator.level_simulation_.IsSet());
         orchestrator.level_simulation_->set_telemetry_metadata(std::move(metadata));
     }
-    static void complete_telemetry_run(ATestBatchOrchestrator& orchestrator,
-                                       ::ioj::sim::LevelTelemetryRunEndReason reason) {
+    static void stop_run(ATestBatchOrchestrator& orchestrator,
+                         ::ioj::sim::LevelTelemetryRunEndReason reason) {
         check(orchestrator.level_simulation_.IsSet());
-        orchestrator.level_simulation_->complete_telemetry_run(reason);
+        orchestrator.level_simulation_->stop_run(reason);
     }
 };

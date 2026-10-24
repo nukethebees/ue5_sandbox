@@ -1,9 +1,8 @@
 #include <SpaceGame/levels/native_level_definition_conversion.h>
 
-#include <SpaceGamePresentation/integration/TransformConversion.h>
-#include <SpaceGamePresentation/integration/VectorConversion.h>
-
 #include <SandboxCoreEngine/strings.h>
+#include <SandboxCoreEngine/TransformConversion.h>
+#include <SandboxCoreEngine/VectorConversion.h>
 
 #include <algorithm>
 #include <format>

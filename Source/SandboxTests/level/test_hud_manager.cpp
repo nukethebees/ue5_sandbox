@@ -281,7 +281,7 @@ void FTestHUDManagerScenario::defence_begin() {
                                      [this, handles] { test_driver->queue_kills(handles); });
     begin_timed_sampling(
         test_duration,
-        FOrchestratorEndTickTestHook::CreateRaw(this, &FTestHUDManagerScenario::defence_on_tick),
+        FSimulationSampleCallback::CreateRaw(this, &FTestHUDManagerScenario::defence_on_tick),
         defence_samples);
 }
 
@@ -317,10 +317,10 @@ void FTestHUDManagerScenario::mission_time_begin() {
     if (!initialise_headless_hud_manager()) {
         return;
     }
-    begin_timed_sampling(test_duration,
-                         FOrchestratorEndTickTestHook::CreateRaw(
-                             this, &FTestHUDManagerScenario::mission_time_on_tick),
-                         mission_time_samples);
+    begin_timed_sampling(
+        test_duration,
+        FSimulationSampleCallback::CreateRaw(this, &FTestHUDManagerScenario::mission_time_on_tick),
+        mission_time_samples);
 }
 
 void FTestHUDManagerScenario::mission_time_on_tick(ATestBatchOrchestrator&) {
@@ -386,10 +386,10 @@ void FTestHUDManagerScenario::player_kill_begin() {
     test_driver->timeline.then_after(damage_queue_time, [this, targets, instigator] {
         test_driver->queue_kills(targets, instigator);
     });
-    begin_timed_sampling(test_duration,
-                         FOrchestratorEndTickTestHook::CreateRaw(
-                             this, &FTestHUDManagerScenario::player_kill_on_tick),
-                         player_samples);
+    begin_timed_sampling(
+        test_duration,
+        FSimulationSampleCallback::CreateRaw(this, &FTestHUDManagerScenario::player_kill_on_tick),
+        player_samples);
 }
 
 void FTestHUDManagerScenario::player_kill_on_tick(ATestBatchOrchestrator&) {
@@ -538,10 +538,10 @@ void FTestHUDManagerScenario::entity_count_begin() {
     std::array<sim::EntityId, 1> const targets{capitals.get_id(0)};
     test_driver->timeline.then_after(damage_queue_time,
                                      [this, targets] { test_driver->queue_kills(targets); });
-    begin_timed_sampling(test_duration,
-                         FOrchestratorEndTickTestHook::CreateRaw(
-                             this, &FTestHUDManagerScenario::entity_count_on_tick),
-                         entity_count_samples);
+    begin_timed_sampling(
+        test_duration,
+        FSimulationSampleCallback::CreateRaw(this, &FTestHUDManagerScenario::entity_count_on_tick),
+        entity_count_samples);
 }
 
 void FTestHUDManagerScenario::entity_count_on_tick(ATestBatchOrchestrator& orchestrator) {

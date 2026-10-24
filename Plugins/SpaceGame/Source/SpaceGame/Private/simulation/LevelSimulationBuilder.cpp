@@ -20,11 +20,11 @@
 #include <SpaceGame/simulation/LevelCollisionHost.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGamePresentation/entities/TestTeamConversion.h>
-#include <SpaceGamePresentation/integration/RotatorConversion.h>
-#include <SpaceGamePresentation/integration/TransformConversion.h>
-#include <SpaceGamePresentation/integration/VectorConversion.h>
 
+#include <SandboxCoreEngine/RotatorConversion.h>
 #include <SandboxCoreEngine/strings.h>
+#include <SandboxCoreEngine/TransformConversion.h>
+#include <SandboxCoreEngine/VectorConversion.h>
 
 #include <Engine/StaticMesh.h>
 #include <Engine/StaticMeshSocket.h>
@@ -101,11 +101,11 @@ auto proxy_fits_collision_grid(AActor const& actor,
                                USpaceGameLevelConfig const& config,
                                FLevelStartErrors& errors) -> bool {
     auto const transform{actor.GetActorTransform()};
-    auto const bounds{sim::collision::make_entity_world_bounds(
-        data.collision.entity_bounds,
-        type,
-        to_native(FVector3f{transform.GetLocation()}),
-        to_quaternion(to_native(FRotator3f{transform.Rotator()})))};
+    auto const bounds{
+        sim::collision::make_entity_world_bounds(data.collision.entity_bounds,
+                                                 type,
+                                                 to_native_float(transform.GetLocation()),
+                                                 to_native_float(transform.GetRotation()))};
     auto const coordinates{
         sim::collision::to_cell_coord_bounds(data.collision.grid_geometry, bounds.min, bounds.max)};
     if (sim::collision::is_cell_coord_in_bounds(data.collision.grid_geometry, coordinates.min) &&
@@ -241,12 +241,12 @@ auto make_level_simulation_init_data(USpaceGameLevelConfig const& config,
     data.fighters = config.fighters.simulation;
     data.turrets = config.turrets.simulation;
     data.turrets.fire_point_offset =
-        to_native(FVector3f{config.turrets.fire_point_offset.GetLocation()});
+        to_native_float(config.turrets.fire_point_offset.GetLocation());
     data.spinners = config.tube_spinners.simulation;
     data.spinners.fire_point_offsets.clear();
     for (auto const& offset : config.tube_spinners.fire_point_offsets) {
         data.spinners.fire_point_offsets.push_back(
-            {to_native(FVector3f{offset.GetLocation()}), to_native(FRotator3f{offset.Rotator()})});
+            {to_native_float(offset.GetLocation()), to_native_float(offset.Rotator())});
     }
     if (player.IsSet()) {
         data.player.emplace(MoveTemp(player.GetValue()));
@@ -317,6 +317,8 @@ auto make_proxy_level_simulation_init_data(USpaceGameLevelConfig const& config,
                                            AActor const* const player_actor,
                                            UStaticMesh const* const player_collision_mesh)
     -> FProxyLevelSimBuildResult {
+    using namespace level_simulation_builder;
+
     auto base_result{make_level_simulation_init_data(
         config, clock_settings, MoveTemp(player), player_collision_mesh)};
     if (!base_result) {
@@ -326,15 +328,12 @@ auto make_proxy_level_simulation_init_data(USpaceGameLevelConfig const& config,
     FProxyLevelSimBuildResult result{std::in_place};
     auto& build{result.value()};
     build.data = MoveTemp(base_result.value());
-    build.capital_proxies =
-        level_simulation_builder::collect_proxy_actors<ATestCapitalShipProxy>(world);
-    build.turret_proxies =
-        level_simulation_builder::collect_proxy_actors<ATestStaticTurretsProxy>(world);
-    build.spinner_proxies =
-        level_simulation_builder::collect_proxy_actors<ATestTubeSpinnerProxy>(world);
+    build.capital_proxies = collect_proxy_actors<ATestCapitalShipProxy>(world);
+    build.turret_proxies = collect_proxy_actors<ATestStaticTurretsProxy>(world);
+    build.spinner_proxies = collect_proxy_actors<ATestTubeSpinnerProxy>(world);
 
     auto& initialisation{build.data.level_events.initialisation};
-    level_simulation_builder::FProxyEntityIndexMap entity_indices;
+    FProxyEntityIndexMap entity_indices;
     auto allocate_entity_index{[&](AActor const& actor) {
         auto const index{initialisation.entity_count++};
         check(!entity_indices.Contains(&actor));
@@ -362,17 +361,15 @@ auto make_proxy_level_simulation_init_data(USpaceGameLevelConfig const& config,
         auto const& transform{proxy->GetActorTransform()};
         auto const* target{proxy->get_target_ship().Get()};
         capitals.push_back({
-            .entity = level_simulation_builder::resolve_entity_index(entity_indices, *proxy),
-            .target = IsValid(target)
-                        ? level_simulation_builder::resolve_entity_index(entity_indices, *target)
-                        : sim::invalid_level_entity_index,
-            .location = to_native(FVector3f{transform.GetLocation()}),
-            .rotation = to_native(FRotator3f{transform.Rotator()}),
+            .entity = resolve_entity_index(entity_indices, *proxy),
+            .target = IsValid(target) ? resolve_entity_index(entity_indices, *target)
+                                      : sim::invalid_level_entity_index,
+            .location = to_native_float(transform.GetLocation()),
+            .rotation = to_native_float(transform.Rotator()),
             .team = to_native(proxy->get_team()),
-            .health = level_simulation_builder::to_optional(proxy->get_health()),
-            .initial_spawn_delay =
-                level_simulation_builder::to_optional(proxy->get_initial_spawn_delay()),
-            .spawn_cooldown = level_simulation_builder::to_optional(proxy->get_spawn_cooldown()),
+            .health = to_optional(proxy->get_health()),
+            .initial_spawn_delay = to_optional(proxy->get_initial_spawn_delay()),
+            .spawn_cooldown = to_optional(proxy->get_spawn_cooldown()),
         });
     }
     std::vector<sim::InitialTurret> turrets;
@@ -381,12 +378,12 @@ auto make_proxy_level_simulation_init_data(USpaceGameLevelConfig const& config,
         auto const transform{proxy->GetActorTransform()};
         build.initial_turret_transforms.Add(transform);
         turrets.push_back({
-            .entity = level_simulation_builder::resolve_entity_index(entity_indices, *proxy),
-            .location = to_native(FVector3f{transform.GetLocation()}),
-            .rotation = to_native(FRotator3f{transform.Rotator()}),
+            .entity = resolve_entity_index(entity_indices, *proxy),
+            .location = to_native_float(transform.GetLocation()),
+            .rotation = to_native_float(transform.Rotator()),
             .team = to_native(proxy->get_team()),
-            .health = level_simulation_builder::to_optional(proxy->get_health()),
-            .laser_damage = level_simulation_builder::to_optional(proxy->get_laser_damage()),
+            .health = to_optional(proxy->get_health()),
+            .laser_damage = to_optional(proxy->get_laser_damage()),
         });
     }
     std::vector<sim::InitialSpinner> spinners;
@@ -394,8 +391,8 @@ auto make_proxy_level_simulation_init_data(USpaceGameLevelConfig const& config,
     for (auto const* proxy : build.spinner_proxies) {
         auto const& transform{proxy->GetActorTransform()};
         spinners.push_back({
-            .entity = level_simulation_builder::resolve_entity_index(entity_indices, *proxy),
-            .location = to_native(FVector3f{transform.GetLocation()}),
+            .entity = resolve_entity_index(entity_indices, *proxy),
+            .location = to_native_float(transform.GetLocation()),
             .yaw = static_cast<float>(transform.Rotator().Yaw),
             .initial_fire_point = proxy->get_initial_active_fire_point(),
         });
@@ -410,8 +407,7 @@ auto make_proxy_level_simulation_init_data(USpaceGameLevelConfig const& config,
     }
     sim::SimClock clock;
     clock.initialise(build.data.clock_settings);
-    auto mission{
-        level_simulation_builder::compile_proxy_mission(mission_definition, entity_indices, clock)};
+    auto mission{compile_proxy_mission(mission_definition, entity_indices, clock)};
     if (!mission) {
         return FProxyLevelSimBuildResult{std::unexpect, MoveTemp(mission.error())};
     }
@@ -422,26 +418,23 @@ auto make_proxy_level_simulation_init_data(USpaceGameLevelConfig const& config,
 
     FLevelStartErrors bounds_errors;
     auto const fits{[&](AActor const& actor, sim::EntityType const type) {
-        return level_simulation_builder::proxy_fits_collision_grid(
-            actor, type, build.data, config, bounds_errors);
+        return proxy_fits_collision_grid(actor, type, build.data, config, bounds_errors);
     }};
-    if (build.data.player.has_value() && !fits(*player_actor, sim::EntityType::PlayerShip)) {
-        return FProxyLevelSimBuildResult{std::unexpect, MoveTemp(bounds_errors)};
+    if (build.data.player.has_value()) {
+        fits(*player_actor, sim::EntityType::PlayerShip);
     }
     for (auto const* const proxy : build.capital_proxies) {
-        if (!fits(*proxy, sim::EntityType::CapitalShip)) {
-            return FProxyLevelSimBuildResult{std::unexpect, MoveTemp(bounds_errors)};
-        }
+        fits(*proxy, sim::EntityType::CapitalShip);
     }
     for (auto const* const proxy : build.turret_proxies) {
-        if (!fits(*proxy, sim::EntityType::Turret)) {
-            return FProxyLevelSimBuildResult{std::unexpect, MoveTemp(bounds_errors)};
-        }
+        fits(*proxy, sim::EntityType::Turret);
     }
     for (auto const* const proxy : build.spinner_proxies) {
-        if (!fits(*proxy, sim::EntityType::TubeSpinner)) {
-            return FProxyLevelSimBuildResult{std::unexpect, MoveTemp(bounds_errors)};
-        }
+        fits(*proxy, sim::EntityType::TubeSpinner);
+    }
+
+    if (bounds_errors.has_errors()) {
+        return FProxyLevelSimBuildResult{std::unexpect, MoveTemp(bounds_errors)};
     }
 
     return result;

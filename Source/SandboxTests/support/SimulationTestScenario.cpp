@@ -1,10 +1,10 @@
 #include "SimulationTestScenario.h"
 
-#include <SpaceGame/simulation/TestBatchOrchestrator.h>
+#include "simulation_step.h"
 
 namespace ioj {
 void FSimulationTestScenario::tear_down() {
-    context_.orchestrator.clear_end_tick_test_hook();
+    sample_callback_.Unbind();
     on_tear_down();
 }
 
@@ -13,11 +13,16 @@ auto FSimulationTestScenario::initialise_test_driver() -> TestSimulationDriver& 
     return *test_driver;
 }
 
-void FSimulationTestScenario::set_timeline_end_tick_hook(FOrchestratorEndTickTestHook sample_hook) {
-    context_.orchestrator.set_end_tick_test_hook(FOrchestratorEndTickTestHook::CreateLambda(
-        [this, sample_hook = MoveTemp(sample_hook)](ATestBatchOrchestrator& orchestrator) mutable {
-            sample_hook.ExecuteIfBound(orchestrator);
-            test_driver->advance_timeline();
-        }));
+void FSimulationTestScenario::advance_sample() {
+    if (!checks.all_passed || !test_driver.IsSet()) {
+        return;
+    }
+
+    auto const& clock{context_.orchestrator.get_level_simulation()->get_clock()};
+    auto const dt{clock.get_tick_period() / clock.get_time_scale().get()};
+    advance_simulation(context_.orchestrator, dt, [this](ATestBatchOrchestrator& orchestrator) {
+        sample_callback_.ExecuteIfBound(orchestrator);
+        test_driver->advance_timeline();
+    });
 }
 }

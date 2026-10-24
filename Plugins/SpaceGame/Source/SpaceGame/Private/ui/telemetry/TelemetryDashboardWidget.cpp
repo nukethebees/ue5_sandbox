@@ -189,6 +189,10 @@ void UTelemetryDashboardWidget::rebuild_state() {
         last_int(record->tick_series.destroyed_entities),
         last_int(record->tick_series.kills),
         last_int(record->tick_series.lasers_fired))};
+    if (record->completion.reason != sim::LevelTelemetryRunEndReason::MissionSucceeded &&
+        record->completion.reason != sim::LevelTelemetryRunEndReason::MissionFailed) {
+        summary += TEXT("\nMISSION  //  INCOMPLETE");
+    }
     if (record->battle_samples.empty()) {
         summary += TEXT("\nCOMBAT DETAILS  //  UNAVAILABLE");
     } else {
@@ -203,22 +207,15 @@ void UTelemetryDashboardWidget::rebuild_state() {
             return total;
         };
         auto const& combat{record->battle_samples.back().combat};
-        auto const winner{
-            record->completion.reason == sim::LevelTelemetryRunEndReason::BattleResolved
-                ? (record->completion.winning_team.has_value()
-                       ? to_fstring(to_serialized_string(record->completion.winning_team.value()))
-                       : FString{TEXT("draw")})
-                : FString{TEXT("—")}};
-        summary += FString::Printf(
-            TEXT("\nBATTLE RESULT  //  %s    SAMPLES // %d\nCOMBAT  //  SHOTS %llu  HITS %llu  "
-                 "DAMAGE %.0f  KILLS %llu  LOSSES %llu"),
-            *winner,
-            static_cast<int32>(record->battle_samples.size()),
-            sum_counts(combat.shots),
-            sum_counts(combat.hits),
-            sum_counts(combat.damage_dealt),
-            sum_counts(combat.kills),
-            sum_counts(combat.losses));
+        summary +=
+            FString::Printf(TEXT("\nBATTLE SAMPLES // %d\nCOMBAT  //  SHOTS %llu  HITS %llu  "
+                                 "DAMAGE %.0f  KILLS %llu  LOSSES %llu"),
+                            static_cast<int32>(record->battle_samples.size()),
+                            sum_counts(combat.shots),
+                            sum_counts(combat.hits),
+                            sum_counts(combat.damage_dealt),
+                            sum_counts(combat.kills),
+                            sum_counts(combat.losses));
     }
     state_.summary = FText::FromString(MoveTemp(summary));
 }

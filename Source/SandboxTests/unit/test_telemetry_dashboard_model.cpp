@@ -42,10 +42,9 @@ TEST_CLASS(TelemetryDashboardAnalysis, "Sandbox.UnitTests")
         }
     }
 
-    TEST_METHOD(DerivesLegacyRatesAndWeightedMeansBySimulatedTime)
+    TEST_METHOD(MissingBattleSamplesDoNotInventMetrics)
     {
         ioj::sim::LevelTelemetryReport record;
-        record.loaded_schema_version = 1;
         record.completion.completed_ticks = 270;
         record.tick_series.spawned_entities.add(0, 0);
         record.tick_series.spawned_entities.add(90, 10);
@@ -53,19 +52,11 @@ TEST_CLASS(TelemetryDashboardAnalysis, "Sandbox.UnitTests")
         record.tick_series.spawned_entities.add(270, 40);
 
         auto const analysis{analyze_level_telemetry_run(record)};
-        auto const* rate{analysis.find_metric(ETelemetryDashboardMetric::SpawnRate)};
-        TestRunner->TestTrue(TEXT("Legacy rates use simulated coordinates without a warmup gap"),
-                             rate && rate->simulated_elapsed_seconds ==
-                                         TArray<float>{1.5f, 2.5f, 4.5f});
-        TestRunner->TestTrue(TEXT("Rates use counter deltas over simulated durations"),
-                             rate && rate->values.Num() == 3 &&
-                                 FMath::IsNearlyEqual(rate->values[0], 10.f / 1.5f) &&
-                                 FMath::IsNearlyEqual(rate->values[1], 10.f) &&
-                                 FMath::IsNearlyEqual(rate->values[2], 10.f));
-        TestRunner->TestTrue(TEXT("Weighted summaries use simulated durations"),
-                             rate && rate->weighted_mean.IsSet() &&
-                                 FMath::IsNearlyEqual(rate->weighted_mean.GetValue(), 40.0 / 4.5));
-        TestRunner->TestTrue(TEXT("Legacy force history does not fabricate combat"),
+        for (auto const& metric : analysis.metrics) {
+            TestRunner->TestTrue(TEXT("Sparse counters do not reconstruct missing battle samples"),
+                                 metric.values.IsEmpty() && !metric.weighted_mean.IsSet());
+        }
+        TestRunner->TestTrue(TEXT("Missing combat history remains unavailable"),
                              analysis.battle_shots.IsEmpty());
     }
 
@@ -115,18 +106,21 @@ TEST_CLASS(TelemetryDashboardAnalysis, "Sandbox.UnitTests")
                 baseline_active->values == TArray<float>{2.f});
     }
 
-    TEST_METHOD(SparseGaugesSurviveRegressingCounterIntervals)
+    TEST_METHOD(SampledGaugesSurviveRegressingCounterIntervals)
     {
         ioj::sim::LevelTelemetryReport record;
-        record.loaded_schema_version = 1;
-        record.completion.completed_ticks = 150;
-        record.tick_series.active_entities.add(30, 7);
-        record.tick_series.spawned_entities.add(30, 10);
-        record.tick_series.spawned_entities.add(150, 5);
+        ioj::sim::LevelTelemetryBattleSample begin;
+        begin.completed_tick = 30;
+        begin.alive[0][0] = 7;
+        begin.combat.spawned[0][0] = 10;
+        auto end{begin};
+        end.completed_tick = 150;
+        end.combat.spawned[0][0] = 5;
+        record.battle_samples = {begin, end};
         auto const analysis{analyze_level_telemetry_run(record)};
         auto const* active{analysis.find_metric(ETelemetryDashboardMetric::ActiveEntities)};
         auto const* rate{analysis.find_metric(ETelemetryDashboardMetric::SpawnRate)};
-        TestRunner->TestTrue(TEXT("Gauges use sparse endpoint values"),
+        TestRunner->TestTrue(TEXT("Gauges retain sampled endpoint values"),
                              active && active->values == TArray<float>{7.f});
         TestRunner->TestTrue(TEXT("Regressing counters do not produce negative rates"),
                              rate && rate->values.IsEmpty());

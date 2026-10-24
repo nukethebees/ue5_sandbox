@@ -16,13 +16,13 @@
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
 #include <SpaceGamePresentation/entities/TestTeamConversion.h>
-#include <SpaceGamePresentation/integration/VectorConversion.h>
 #include <SpaceGamePresentation/presentation/widgets/BattleViewerHudWidget.h>
 #include <SpaceGamePresentation/presentation/widgets/BenchmarkHudWidget.h>
 #include <SpaceGamePresentation/presentation/widgets/ShipHudWidget.h>
 #include <SpaceGameS7/definition_reader.h>
 
 #include <SandboxCoreEngine/actor_utils.h>
+#include <SandboxCoreEngine/VectorConversion.h>
 
 #include <Camera/CameraActor.h>
 #include <Camera/PlayerCameraManager.h>
@@ -182,9 +182,10 @@ void FLevelLoaderCameraScenario::load_fixture() {
 
     begin_timed_sampling(
         0.05,
-        FOrchestratorEndTickTestHook::CreateRaw(this, &FLevelLoaderCameraScenario::sample_runtime),
+        FSimulationSampleCallback::CreateRaw(this, &FLevelLoaderCameraScenario::sample_runtime),
         entity_counts_);
     context_.orchestrator.start_simulation();
+    context_.orchestrator.SetActorTickEnabled(false);
 }
 
 void FLevelLoaderCameraScenario::sample_runtime(ATestBatchOrchestrator& orchestrator) {
@@ -299,9 +300,10 @@ void FLevelLoaderCameraScenario::load_headless_fixture() {
 
     begin_timed_sampling(
         0.05,
-        FOrchestratorEndTickTestHook::CreateRaw(this, &FLevelLoaderCameraScenario::sample_runtime),
+        FSimulationSampleCallback::CreateRaw(this, &FLevelLoaderCameraScenario::sample_runtime),
         entity_counts_);
     orchestrator.start_simulation();
+    orchestrator.SetActorTickEnabled(false);
     checks.is_true(orchestrator.get_level_simulation() && !orchestrator.is_presentation_enabled(),
                    TEXT("Headless startup has no presentation state"));
     checks.is_true(orchestrator.get_player_ship_simulation() == nullptr,
@@ -355,6 +357,7 @@ void FLevelLoaderCameraScenario::run() {
     TestCommandBuilder.Do([this] { load_fixture(); })
         .Until(
             [this] {
+                advance_sample();
                 return !checks.all_passed ||
                        (test_driver.IsSet() && test_driver->timeline.is_finished());
             },
@@ -363,6 +366,7 @@ void FLevelLoaderCameraScenario::run() {
         .Then([this] { load_headless_fixture(); })
         .Until(
             [this] {
+                advance_sample();
                 return !checks.all_passed ||
                        (test_driver.IsSet() && test_driver->timeline.is_finished());
             },
@@ -438,9 +442,10 @@ void FLevelLoaderScenario::load_fixture() {
 
     begin_timed_sampling(
         0.05,
-        FOrchestratorEndTickTestHook::CreateRaw(this, &FLevelLoaderScenario::sample_runtime),
+        FSimulationSampleCallback::CreateRaw(this, &FLevelLoaderScenario::sample_runtime),
         samples);
     context_.orchestrator.start_simulation();
+    context_.orchestrator.SetActorTickEnabled(false);
 }
 
 void FLevelLoaderScenario::sample_runtime(ATestBatchOrchestrator& orchestrator) {
@@ -549,6 +554,7 @@ void FLevelLoaderScenario::run() {
     TestCommandBuilder.Do([this] { load_fixture(); })
         .Until(
             [this] {
+                advance_sample();
                 return !checks.all_passed ||
                        (test_driver.IsSet() && test_driver->timeline.is_finished());
             },
