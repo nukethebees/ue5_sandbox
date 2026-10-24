@@ -106,7 +106,9 @@ TEST(SimulationSettingsReader, RetainsUnknownFieldConversionAndFinalValidationEr
           Case{"(settings :fighters (fighters :speed 1e100))", InvalidType, "fighters.speed"},
           Case{"(settings :fighters (fighters :health 1.5))", InvalidType, "fighters.health"},
           Case{"(settings :fighters (fighters :health -1))", InvalidNumber, "fighters.health"},
-          Case{"(settings :tick (tick :time-scale 0))", InvalidNumber, "tick.time-scale"}}) {
+          Case{"(settings :tick (tick :time-scale 0))", InvalidNumber, "tick.time-scale"},
+          Case{"(settings :tick (tick :tick-rate 0))", InvalidNumber, "tick.tick-rate"},
+          Case{"(settings :tick (tick :tick-rate -1))", InvalidNumber, "tick.tick-rate"}}) {
         SCOPED_TRACE(test.source);
         auto const source{DefinitionReader{}.read_settings_source(test.source)};
         ASSERT_TRUE(source);

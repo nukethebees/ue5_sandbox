@@ -1,9 +1,11 @@
 #pragma once
 
+#include <ioj/try_numeric_cast.h>
+#include <ioj/vector.h>
+
 #include <cmath>
 #include <concepts>
 #include <cstdint>
-#include <limits>
 #include <string>
 #include <type_traits>
 #include <variant>
@@ -24,49 +26,58 @@ auto copy_value(SettingValue const& value, T& target) -> bool {
     return true;
 }
 
-template <typename T>
-auto convert_number(long double const number, T& target) -> bool {
-    if (!std::isfinite(number) || number < std::numeric_limits<T>::lowest() ||
-        number > std::numeric_limits<T>::max()) {
+template <typename From, typename T>
+auto convert_number(From const number, T& target) -> bool {
+    if (!std::isfinite(number)) {
         return false;
     }
-    if constexpr (std::integral<T>) {
-        if (std::trunc(number) != number) {
-            return false;
-        }
+
+    auto const converted{try_numeric_cast<T>(number)};
+    if (!converted) {
+        return false;
     }
 
-    target = static_cast<T>(number);
+    target = *converted;
     return true;
 }
 
 template <typename T>
 auto assign_number(SettingValue const& value, T& target) -> bool {
     if (auto const* integer{std::get_if<std::int64_t>(&value)}) {
-        return convert_number(static_cast<long double>(*integer), target);
+        return convert_number(*integer, target);
     }
     if (auto const* real{std::get_if<double>(&value)}) {
-        return convert_number(static_cast<long double>(*real), target);
+        return convert_number(*real, target);
     }
     return false;
 }
 
-template <typename T>
-auto assign_vector(SettingValue const& value, T& target) -> bool {
+template <typename T, typename Size>
+auto assign_components(SettingValue const& value, T& target, Size const count) -> bool {
     auto const* source{std::get_if<std::vector<double>>(&value)};
-    if (!source || source->size() != 3) {
+    if (!source || source->size() != static_cast<std::size_t>(count)) {
         return false;
     }
 
-    using Component = std::remove_cvref_t<decltype(target.x())>;
-    Component x{}, y{}, z{};
-    if (!convert_number((*source)[0], x) || !convert_number((*source)[1], y) ||
-        !convert_number((*source)[2], z)) {
-        return false;
+    T converted{};
+    for (Size i{}; i < count; ++i) {
+        if (!convert_number((*source)[static_cast<std::size_t>(i)], converted[i])) {
+            return false;
+        }
     }
 
-    target = T{x, y, z};
+    target = converted;
     return true;
+}
+
+template <typename T, std::size_t N>
+auto assign_vector(SettingValue const& value, Vector<T, N>& target) -> bool {
+    return assign_components(value, target, N);
+}
+
+template <IndexedComponents T>
+auto assign_vector(SettingValue const& value, T& target) -> bool {
+    return assign_components(value, target, T::NumComponents);
 }
 }
 
@@ -82,11 +93,7 @@ struct Setting {
             return setting_assignment::copy_value(value, target);
         } else if constexpr (std::is_arithmetic_v<T>) {
             return setting_assignment::assign_number(value, target);
-        } else if constexpr (requires {
-                                 target.x();
-                                 target.y();
-                                 target.z();
-                             }) {
+        } else if constexpr (requires { setting_assignment::assign_vector(value, target); }) {
             return setting_assignment::assign_vector(value, target);
         }
         return false;

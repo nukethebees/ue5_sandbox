@@ -20,15 +20,15 @@ auto assign(settings::Setting const& setting, T& target) -> std::optional<levels
     return std::nullopt;
 }
 
-template <Numeric T>
-auto assign(settings::Setting const& setting, PositiveFinite<T>& target)
+template <typename T, typename Target>
+auto assign_constrained(settings::Setting const& setting, Target& target)
     -> std::optional<levels::DiagnosticCode> {
     T value{};
     if (!setting.assign(value)) {
         return levels::DiagnosticCode::InvalidType;
     }
 
-    auto const constrained{PositiveFinite<T>::try_make(value)};
+    auto const constrained{Target::try_make(value)};
     if (!constrained) {
         return levels::DiagnosticCode::InvalidNumber;
     }
@@ -36,19 +36,15 @@ auto assign(settings::Setting const& setting, PositiveFinite<T>& target)
     return std::nullopt;
 }
 
+template <typename T, ConstrainedValuePolicy Policy>
+auto assign(settings::Setting const& setting, ConstrainedValue<T, Policy>& target)
+    -> std::optional<levels::DiagnosticCode> {
+    return assign_constrained<T>(setting, target);
+}
+
 auto assign(settings::Setting const& setting, Frequency& target)
     -> std::optional<levels::DiagnosticCode> {
-    double value{};
-    if (!setting.assign(value)) {
-        return levels::DiagnosticCode::InvalidType;
-    }
-
-    auto const frequency{Frequency::try_make(value)};
-    if (!frequency) {
-        return levels::DiagnosticCode::InvalidNumber;
-    }
-    target = *frequency;
-    return std::nullopt;
+    return assign_constrained<double>(setting, target);
 }
 
 template <typename T, typename Parse>

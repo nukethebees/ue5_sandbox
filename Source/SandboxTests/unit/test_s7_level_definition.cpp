@@ -1,3 +1,4 @@
+#include <ioj/settings/settings.h>
 #include <SpaceGameS7/definition_reader.h>
 
 #include <SandboxCoreEngine/strings.h>
@@ -69,6 +70,31 @@ auto contains_error(::ioj::levels::authoring::FLevelDefinitionReadResult const& 
 
 TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
 {
+    TEST_METHOD(AssignsUnrealVectorSettingsAtomically)
+    {
+        FVector2D size{1., 2.};
+        TestRunner->TestTrue(TEXT("Two-component setting converts"),
+                             ioj::settings::Setting{"", std::vector<double>{3., 4.}}.assign(size));
+        TestRunner->TestEqual(TEXT("Both components are assigned"), size, FVector2D{3., 4.});
+        TestRunner->TestFalse(
+            TEXT("Wrong dimensions fail"),
+            ioj::settings::Setting{"", std::vector<double>{5., 6., 7.}}.assign(size));
+        TestRunner->TestEqual(
+            TEXT("Dimension failure preserves destination"), size, FVector2D{3., 4.});
+
+        FVector3f offset{1.f, 2.f, 3.f};
+        TestRunner->TestFalse(
+            TEXT("Out-of-range component fails"),
+            ioj::settings::Setting{"", std::vector<double>{4., 5., 1e100}}.assign(offset));
+        TestRunner->TestEqual(
+            TEXT("Conversion failure preserves every component"), offset, FVector3f{1.f, 2.f, 3.f});
+        TestRunner->TestTrue(
+            TEXT("Three-component setting converts"),
+            ioj::settings::Setting{"", std::vector<double>{4., 5., 6.}}.assign(offset));
+        TestRunner->TestEqual(
+            TEXT("Every component is assigned"), offset, FVector3f{4.f, 5.f, 6.f});
+    }
+
     TEST_METHOD(DecodesScheduledSpawnsAndMissionObjectives)
     {
         ::ioj::levels::authoring::FDefinitionReader reader;

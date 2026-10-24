@@ -10,34 +10,6 @@
 #include <Misc/Paths.h>
 
 namespace ioj::s7::game_settings_reader {
-template <typename T>
-auto assign(settings::Setting const& setting, T& target) -> bool {
-    if constexpr (std::same_as<T, FVector2D> || std::same_as<T, FVector3f>) {
-        auto const* values{std::get_if<std::vector<double>>(&setting.value)};
-        constexpr auto dimensions{std::same_as<T, FVector2D> ? 2u : 3u};
-        if (!values || values->size() != dimensions) {
-            return false;
-        }
-
-        T converted{};
-        auto component = [&](std::size_t const index, auto& destination) {
-            return settings::setting_assignment::convert_number((*values)[index], destination);
-        };
-        if (!component(0, converted.X) || !component(1, converted.Y)) {
-            return false;
-        }
-        if constexpr (dimensions == 3) {
-            if (!component(2, converted.Z)) {
-                return false;
-            }
-        }
-        target = converted;
-        return true;
-    } else {
-        return setting.assign(target);
-    }
-}
-
 auto apply_presentation_settings(ioj::settings::Settings const& settings,
                                  USpaceGameLevelConfig& target)
     -> std::expected<void, ioj::levels::Diagnostics> {
@@ -49,7 +21,7 @@ auto apply_presentation_settings(ioj::settings::Settings const& settings,
         auto const field{presentation_fields::try_parse_fields_field(setting.path)};
         auto const valid{field && presentation_fields::visit_fields_field(
                                       target, *field, [&](auto& target_field) {
-                                          return assign(setting, target_field);
+                                          return setting.assign(target_field);
                                       })};
         if (!valid) {
             return std::unexpected{

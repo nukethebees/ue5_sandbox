@@ -4,15 +4,14 @@
 #include <ioj/constrained_value.h>
 #include <ioj/enum_traits.h>
 #include <ioj/s7/ast_result.h>
+#include <ioj/try_numeric_cast.h>
 #include <ioj/vector.h>
 
 #include <algorithm>
 #include <array>
 #include <bitset>
-#include <cmath>
 #include <concepts>
 #include <format>
-#include <limits>
 #include <optional>
 #include <type_traits>
 #include <utility>
@@ -81,16 +80,12 @@ struct TypeReader<T> {
             } else {
                 value = ast.integer(node);
             }
-            if (std::in_range<T>(value)) {
-                return static_cast<T>(value);
+            if (auto const converted{try_numeric_cast<T>(value)}) {
+                return *converted;
             }
         } else if (kind == NodeKind::Real) {
-            auto const value{ast.real(node)};
-            auto const upper{std::ldexp(1.0, std::numeric_limits<T>::digits)};
-            auto const lower{std::is_signed_v<T> ? -upper : 0.0};
-            if (std::isfinite(value) && std::trunc(value) == value && value >= lower &&
-                value < upper) {
-                return static_cast<T>(value);
+            if (auto const converted{try_numeric_cast<T>(ast.real(node))}) {
+                return *converted;
             }
         }
         return read_error(
@@ -106,12 +101,11 @@ struct TypeReader<T> {
         if (!value) {
             return std::unexpected{value.error()};
         }
-        if (std::isfinite(*value) &&
-            (*value < std::numeric_limits<T>::lowest() || *value > std::numeric_limits<T>::max())) {
-            return read_error(
-                AstErrorCode::InvalidNumber, path, "Number is outside the destination range");
+        if (auto const converted{try_numeric_cast<T>(*value)}) {
+            return *converted;
         }
-        return static_cast<T>(*value);
+        return read_error(
+            AstErrorCode::InvalidNumber, path, "Number is outside the destination range");
     }
 };
 

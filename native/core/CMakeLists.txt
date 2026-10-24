@@ -29,6 +29,7 @@ target_sources(native-core
     include/ioj/require.h
     include/ioj/constrained_numbers.h
     include/ioj/constrained_value.h
+    include/ioj/try_numeric_cast.h
     include/ioj/constrained_vectors.h
     include/ioj/constrained_strings.h
     include/ioj/enum_traits.h

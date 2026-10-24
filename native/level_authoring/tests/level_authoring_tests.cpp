@@ -5,6 +5,7 @@
 #include <ioj/levels/authoring/level_definition_writer.h>
 #include <ioj/levels/authoring/level_parser.h>
 #include <ioj/levels/authoring/source_session.h>
+#include <ioj/levels/authoring/starfield_reader.h>
 #include <ioj/levels/catalog_validation.h>
 #include <ioj/s7/interpreter.h>
 
@@ -87,6 +88,121 @@ static_assert(!std::is_convertible_v<std::string, LevelId>);
 static_assert(!std::is_default_constructible_v<LevelDefinition>);
 static_assert(std::is_same_v<decltype(std::declval<LevelDefinition&>().entities()),
                              std::vector<EntitySpawnDefinition> const&>);
+
+TEST(NativeSettings, PreservesExactIntegersAndRejectsOutOfRangeConversions) {
+    using settings::Setting;
+    auto const maximum{std::numeric_limits<std::int64_t>::max()};
+    std::int64_t integer{};
+    ASSERT_TRUE((Setting{"", maximum}.assign(integer)));
+    EXPECT_EQ(integer, maximum);
+    ASSERT_TRUE((Setting{"", std::int64_t{9007199254740993}}.assign(integer)));
+    EXPECT_EQ(integer, 9007199254740993);
+
+    for (auto const invalid : {0x1p63,
+                               -0x1.0000000000001p63,
+                               1.5,
+                               std::numeric_limits<double>::infinity(),
+                               std::numeric_limits<double>::quiet_NaN()}) {
+        SCOPED_TRACE(invalid);
+        EXPECT_FALSE((Setting{"", invalid}.assign(integer)));
+        EXPECT_EQ(integer, 9007199254740993);
+    }
+    ASSERT_TRUE((Setting{"", -0x1p63}.assign(integer)));
+    EXPECT_EQ(integer, std::numeric_limits<std::int64_t>::min());
+
+    std::uint64_t unsigned_integer{7};
+    EXPECT_FALSE((Setting{"", 0x1p64}.assign(unsigned_integer)));
+    EXPECT_FALSE((Setting{"", std::int64_t{-1}}.assign(unsigned_integer)));
+    EXPECT_EQ(unsigned_integer, 7u);
+    float real{3.f};
+    EXPECT_FALSE((Setting{"", 1e100}.assign(real)));
+    EXPECT_FALSE((Setting{"", std::numeric_limits<double>::infinity()}.assign(real)));
+    EXPECT_EQ(real, 3.f);
+}
+
+TEST(NativeSettings, AssignsWholeVectorsOnlyAfterEveryComponentConverts) {
+    Vector3f target{1.f, 2.f, 3.f};
+    auto assign{[&](std::vector<double> values) {
+        return settings::Setting{"", std::move(values)}.assign(target);
+    }};
+    EXPECT_FALSE(assign({4, 5}));
+    EXPECT_FALSE(assign({4, 5, 1e100}));
+    EXPECT_EQ(target, (Vector3f{1.f, 2.f, 3.f}));
+    ASSERT_TRUE(assign({4, 5, 6}));
+    EXPECT_EQ(target, (Vector3f{4.f, 5.f, 6.f}));
+}
+
+TEST(NativeSettings, DerivesStarfieldBindingsAndPreservesSparseLayers) {
+    TemporaryLevelDirectory directory;
+    auto const path{directory.path() / "settings.scm"};
+    std::ofstream{path} << R"((settings-layers
+      (settings :starfield (starfield
+        :generation (generation :star-count 42 :random-seed -7)
+        :star (star :scale 2 :size-multiplier 3 :global-brightness 4
+                    :colour-variation-strength 5 :parallax-strength 6)
+        :galactic-band (galactic-band :strength 7 :width-degrees 8)
+        :stellar-cluster (stellar-cluster :strength 9 :width-degrees 10)
+        :dust-lane (dust-lane :strength 11 :width-degrees 12 :irregularity 13)
+        :bright-star (bright-star :fraction 14 :size-multiplier 15
+                                 :brightness-multiplier 16 :shape-strength 17)
+        :twinkle (twinkle :strength 18 :speed 19)
+        :galactic-haze (galactic-haze :strength 20 :width-degrees 21)
+        :galactic-core (galactic-core :strength 22 :width-degrees 23)
+        :nebular-knot (nebular-knot :strength 24 :size-degrees 25)))
+      (settings :starfield (starfield :star (star :scale 1)))))";
+    auto const result{read_starfield_settings_file(path)};
+    ASSERT_TRUE(result) << format_diagnostics(result.error());
+    EXPECT_EQ(result->generation.star_count, 42);
+    EXPECT_EQ(result->generation.random_seed, -7);
+    EXPECT_EQ(result->star.scale, starfield::Settings{}.star.scale);
+    EXPECT_EQ(result->star.size_multiplier, 3);
+    EXPECT_EQ(result->star.global_brightness, 4);
+    EXPECT_EQ(result->star.colour_variation_strength, 5);
+    EXPECT_EQ(result->star.parallax_strength, 6);
+    EXPECT_EQ(result->galactic_band.strength, 7);
+    EXPECT_EQ(result->galactic_band.width_degrees, 8);
+    EXPECT_EQ(result->stellar_cluster.strength, 9);
+    EXPECT_EQ(result->stellar_cluster.width_degrees, 10);
+    EXPECT_EQ(result->dust_lane.strength, 11);
+    EXPECT_EQ(result->dust_lane.width_degrees, 12);
+    EXPECT_EQ(result->dust_lane.irregularity, 13);
+    EXPECT_EQ(result->bright_star.fraction, 14);
+    EXPECT_EQ(result->bright_star.size_multiplier, 15);
+    EXPECT_EQ(result->bright_star.brightness_multiplier, 16);
+    EXPECT_EQ(result->bright_star.shape_strength, 17);
+    EXPECT_EQ(result->twinkle.strength, 18);
+    EXPECT_EQ(result->twinkle.speed, 19);
+    EXPECT_EQ(result->galactic_haze.strength, 20);
+    EXPECT_EQ(result->galactic_haze.width_degrees, 21);
+    EXPECT_EQ(result->galactic_core.strength, 22);
+    EXPECT_EQ(result->galactic_core.width_degrees, 23);
+    EXPECT_EQ(result->nebular_knot.strength, 24);
+    EXPECT_EQ(result->nebular_knot.size_degrees, 25);
+}
+
+TEST(NativeSettings, RetainsStarfieldConversionAndDomainDiagnostics) {
+    TemporaryLevelDirectory directory;
+    auto const path{directory.path() / "settings.scm"};
+    struct Case {
+        std::string_view section;
+        DiagnosticCode code;
+        std::string_view field;
+    };
+    for (auto const& test :
+         {Case{"(star :missing 1)", DiagnosticCode::UnknownProperty, "star.missing"},
+          Case{"(star :scale 1e100)", DiagnosticCode::InvalidType, "star.scale"},
+          Case{"(star :scale 0)", DiagnosticCode::InvalidNumber, "star.scale"}}) {
+        SCOPED_TRACE(test.section);
+        std::ofstream{path} << std::format("(settings :starfield (starfield :star {}))",
+                                           test.section);
+        auto const result{read_starfield_settings_file(path)};
+        ASSERT_FALSE(result);
+        ASSERT_EQ(result.error().size(), 1u);
+        EXPECT_EQ(result.error().front().code, test.code);
+        EXPECT_EQ(result.error().front().node_path, std::format("starfield.{}", test.field));
+        EXPECT_EQ(result.error().front().source_path, path);
+    }
+}
 
 TEST(NativeLevelDefinition, VerifiesComponentsBeforeConstructionAndOwnsThem) {
     auto components{make_level("owned")};
