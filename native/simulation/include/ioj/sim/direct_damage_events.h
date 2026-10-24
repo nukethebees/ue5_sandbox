@@ -39,6 +39,10 @@ struct DataPointers {
     Element<EntityId>* damaged_entities{};
     Element<std::int32_t>* damage_amounts{};
     Element<EntityId>* instigators{};
+    template <typename Self, typename Func>
+    static decltype(auto) with_columns(Self& self, Func&& func) {
+        return func(self.damaged_entities, self.damage_amounts, self.instigators);
+    }
 };
 
 struct Schema {

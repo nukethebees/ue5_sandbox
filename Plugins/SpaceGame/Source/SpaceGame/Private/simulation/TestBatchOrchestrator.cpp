@@ -601,7 +601,7 @@ auto ATestBatchOrchestrator::begin_play() -> bool {
     }
     auto static_bounds{world_collision_.initialise_static_geometry(
         *world, effective_config->collision_grid, grid_geometry)};
-    level_simulation_->set_static_collision(MoveTemp(static_bounds));
+    level_simulation_->set_static_collision(static_bounds);
 
     telemetry_environment_ = make_level_telemetry_environment(*world);
     level_simulation_->finish_initialisation();

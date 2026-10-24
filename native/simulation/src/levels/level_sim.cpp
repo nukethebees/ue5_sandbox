@@ -2,6 +2,7 @@
 
 #include <ioj/diagnostics.h>
 #include <ioj/sim/capital_ships/phase_interface.h>
+#include <ioj/sim/collision/world_aabb_operations.h>
 #include <ioj/sim/fighters/phase_interface.h>
 #include <ioj/sim/lasers/phase_interface.h>
 #include <ioj/sim/player/phase_interface.h>
@@ -200,9 +201,14 @@ void LevelSim::set_fighter_diagnostics_enabled(bool const enabled) noexcept {
 void LevelSim::set_telemetry_metadata(LevelTelemetryRunMetadata metadata) {
     level_telemetry_manager_.set_run_metadata(std::move(metadata));
 }
-void LevelSim::set_static_collision(collision::WorldAABBs bounds) {
+void LevelSim::set_static_collision(std::span<collision::WorldAABB const> bounds) {
     assert(state_ == OrchestratorState::Uninitialised);
-    query_manager_.set_static_collision(std::move(bounds));
+    collision::WorldAABBs storage;
+    storage.reserve(static_cast<std::uint32_t>(bounds.size()));
+    for (auto const& bound : bounds) {
+        collision::add(storage, bound.min, bound.max);
+    }
+    query_manager_.set_static_collision(std::move(storage));
 }
 auto LevelSim::add_static_collision_aabb(Vector3f const min_point, Vector3f const max_point)
     -> collision::StaticGeometryIndex {

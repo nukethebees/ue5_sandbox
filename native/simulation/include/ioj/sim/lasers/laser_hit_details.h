@@ -50,6 +50,16 @@ struct DataPointers {
     Element<float>* emission_directions_ys{};
     Element<float>* emission_directions_zs{};
     Element<LaserSource>* sources{};
+    template <typename Self, typename Func>
+    static decltype(auto) with_columns(Self& self, Func&& func) {
+        return func(self.locations_xs,
+                    self.locations_ys,
+                    self.locations_zs,
+                    self.emission_directions_xs,
+                    self.emission_directions_ys,
+                    self.emission_directions_zs,
+                    self.sources);
+    }
 };
 
 struct Schema {

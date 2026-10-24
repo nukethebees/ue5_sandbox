@@ -50,6 +50,10 @@ struct DataPointers {
     Element<std::optional<std::size_t>>* field{};
     Element<lispb::schema::RelationshipId>* relationship{};
     Element<std::optional<ioj::layout::RelationshipMetrics>>* metrics{};
+    template <typename Self, typename Func>
+    static decltype(auto) with_columns(Self& self, Func&& func) {
+        return func(self.owner, self.field, self.relationship, self.metrics);
+    }
 };
 
 struct Schema {

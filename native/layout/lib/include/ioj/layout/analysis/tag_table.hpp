@@ -44,6 +44,10 @@ struct DataPointers {
     Element<std::uint8_t>* mapped{};
     Element<std::uint8_t>* sentinel{};
     Element<std::uint8_t>* count_sentinel{};
+    template <typename Self, typename Func>
+    static decltype(auto) with_columns(Self& self, Func&& func) {
+        return func(self.name, self.mapped, self.sentinel, self.count_sentinel);
+    }
 };
 
 struct Schema {

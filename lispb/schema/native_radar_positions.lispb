@@ -1,6 +1,6 @@
 (module native_radar_positions
-  :header "native/ui/lib/include/ioj/ui/radar_positions.hpp"
-  :header-include "ioj/ui/radar_positions.hpp"
+  :header "native/ui/lib/src/radar_positions.hpp"
+  :header-include "radar_positions.hpp"
   :namespace ioj::ui::radar_2d
   (struct Positions
     (member xs array float)

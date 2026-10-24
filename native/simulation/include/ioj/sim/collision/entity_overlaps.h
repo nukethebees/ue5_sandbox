@@ -37,6 +37,10 @@ struct DataPointers {
     using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
     Element<EntityId>* first_entities{};
     Element<EntityId>* second_entities{};
+    template <typename Self, typename Func>
+    static decltype(auto) with_columns(Self& self, Func&& func) {
+        return func(self.first_entities, self.second_entities);
+    }
 };
 
 struct Schema {
@@ -226,6 +230,10 @@ struct DataPointers {
     using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
     Element<EntityId>* entities{};
     Element<StaticGeometryIndex>* static_geometry_indices{};
+    template <typename Self, typename Func>
+    static decltype(auto) with_columns(Self& self, Func&& func) {
+        return func(self.entities, self.static_geometry_indices);
+    }
 };
 
 struct Schema {

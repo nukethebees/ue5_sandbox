@@ -65,9 +65,6 @@ class NativeWorkflowTests(unittest.TestCase):
                 'cmake_minimum_required(VERSION 4.4.2)\n'
                 'project(UnrealInvocation NONE)\n'
                 f'include("{self.source_dir.as_posix()}/cmake/unreal.cmake")\n'
-                'function(ioj_find_llvm_tool output)\n'
-                '  set(${output} "${CMAKE_SOURCE_DIR}/LLVM Root/bin/clang-cl.exe" PARENT_SCOPE)\n'
-                'endfunction()\n'
                 'set(UE_BUILD_SCRIPT "${CMAKE_SOURCE_DIR}/Engine Root/Build.bat")\n'
                 'set(IOJ_UPROJECT "${CMAKE_SOURCE_DIR}/Game Root/Game.uproject")\n'
                 'set(UE_PLATFORM Win64)\n'
@@ -79,7 +76,6 @@ class NativeWorkflowTests(unittest.TestCase):
             self.run_cmake("-S", str(fixture), "-B", str(build), "-G", "Ninja")
             commands = self.run_cmake("--build", str(build), "--target", "editor", "--", "-t", "commands")
             self.assertIn("coj unreal-build", commands)
-            self.assertRegex(commands, r'"LLVM_PATH=[^"\n]*LLVM Root"')
             for argument in ("--target SandboxEditor", "--platform Win64", "--configuration DebugGame",
                              "--native-toolchain test-native"):
                 self.assertIn(argument, commands)

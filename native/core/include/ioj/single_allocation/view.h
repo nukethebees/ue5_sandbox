@@ -149,7 +149,9 @@ struct ResolvedViewBase<single_allocation_layout::ColumnLayouts<Ts...>, Pointers
         validate_column_pointers(column_count_, pointers...);
     }
     ResolvedViewBase(std::span<Element<Ts>>... columns)
-        : ResolvedViewBase{columns.data()..., checked_row_count(columns...[0].size())} {
+        : ResolvedViewBase{columns.data()..., [](auto const& first, auto const&...) {
+                               return checked_row_count(first.size());
+                           }(columns...)} {
         validate_column_sizes(column_count_, columns...);
     }
 
@@ -159,8 +161,9 @@ struct ResolvedViewBase<single_allocation_layout::ColumnLayouts<Ts...>, Pointers
     template <typename Self>
     auto slice(this Self const& self, size_type offset, size_type count) -> Self {
         assert(offset <= self.column_count_ && count <= self.column_count_ - offset);
-        auto const& [... pointers] = self.columns_;
-        return Self{(pointers ? pointers + offset : nullptr)..., count};
+        return PointerStorage::with_columns(self.columns_, [&](auto*... pointers) {
+            return Self{(pointers ? pointers + offset : nullptr)..., count};
+        });
     }
   protected:
     template <typename, template <typename> typename, bool>
@@ -172,9 +175,8 @@ struct ResolvedViewBase<single_allocation_layout::ColumnLayouts<Ts...>, Pointers
         ResolvedViewBase<single_allocation_layout::ColumnLayouts<Ts...>, Pointers, false> const&
             other)
         : column_count_{other.column_count_} {
-        auto& [... destination] = columns_;
-        auto const& [... source] = other.columns_;
-        ((destination = source), ...);
+        Pointers<std::byte>::with_columns(
+            other.columns_, [this](auto*... source) { columns_ = PointerStorage{source...}; });
     }
 
     template <typename T>

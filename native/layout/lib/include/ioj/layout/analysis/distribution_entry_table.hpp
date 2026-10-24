@@ -58,6 +58,16 @@ struct DataPointers {
     Element<std::optional<std::uint64_t>>* slack_bytes{};
     Element<std::optional<std::uint64_t>>* weighted_extent_bytes{};
     Element<std::optional<std::uint64_t>>* weighted_slack_bytes{};
+    template <typename Self, typename Func>
+    static decltype(auto) with_columns(Self& self, Func&& func) {
+        return func(self.component,
+                    self.value,
+                    self.weight,
+                    self.extent_bytes,
+                    self.slack_bytes,
+                    self.weighted_extent_bytes,
+                    self.weighted_slack_bytes);
+    }
 };
 
 struct Schema {

@@ -58,6 +58,16 @@ struct DataPointers {
     Element<RegionFootprint>* cache{};
     Element<RegionFootprint>* pages{};
     Element<std::optional<std::uint64_t>>* capacity_slack_bytes{};
+    template <typename Self, typename Func>
+    static decltype(auto) with_columns(Self& self, Func&& func) {
+        return func(self.source,
+                    self.operation,
+                    self.bytes,
+                    self.bits,
+                    self.cache,
+                    self.pages,
+                    self.capacity_slack_bytes);
+    }
 };
 
 struct Schema {

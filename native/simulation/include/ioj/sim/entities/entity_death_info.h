@@ -43,6 +43,10 @@ struct DataPointers {
     Element<EntityId>* victims{};
     Element<EntityId>* killers{};
     Element<Vector3f>* locations{};
+    template <typename Self, typename Func>
+    static decltype(auto) with_columns(Self& self, Func&& func) {
+        return func(self.reasons, self.victims, self.killers, self.locations);
+    }
 };
 
 struct Schema {

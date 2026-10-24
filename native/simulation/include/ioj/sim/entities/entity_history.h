@@ -62,6 +62,17 @@ struct DataPointers {
     Element<LifeState>* life_state{};
     Element<SimTick>* death_ticks{};
     Element<Vector3f>* death_locations{};
+    template <typename Self, typename Func>
+    static decltype(auto) with_columns(Self& self, Func&& func) {
+        return func(self.entity_ids,
+                    self.entity_types,
+                    self.teams,
+                    self.kills,
+                    self.killed_by,
+                    self.life_state,
+                    self.death_ticks,
+                    self.death_locations);
+    }
 };
 
 struct Schema {

@@ -1,7 +1,5 @@
 #include "SpaceGame/simulation/LevelCollisionHost.h"
 
-#include <ioj/sim/collision/world_aabb_operations.h>
-#include <ioj/sim/collision/world_aabbs.h>
 #include <ioj/sim/entities/entity_type.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
@@ -220,13 +218,13 @@ auto FLevelCollisionHost::extract_entity_bounds(EntityMeshes const& meshes)
 auto FLevelCollisionHost::initialise_static_geometry(
     UWorld& world,
     FCollisionGridConfig const& config,
-    sim::collision::GridGeometry const grid_geometry) -> sim::collision::WorldAABBs {
+    sim::collision::GridGeometry const grid_geometry) -> std::vector<sim::collision::WorldAABB> {
     TRACE_CPUPROFILER_EVENT_SCOPE(
         Sandbox::ioj::sim::FLevelCollisionHost::initialise_static_geometry);
     checkf(config.is_valid(), TEXT("Cannot harvest static collision with an invalid grid config"));
     restore_collision();
 
-    sim::collision::WorldAABBs static_aabbs;
+    std::vector<sim::collision::WorldAABB> static_aabbs;
     int32 unexpected_actor_count{};
     int32 unsupported_component_count{};
 
@@ -284,9 +282,8 @@ auto FLevelCollisionHost::initialise_static_geometry(
                 continue;
             }
 
-            sim::collision::add(static_aabbs,
-                                {data->min_point.X, data->min_point.Y, data->min_point.Z},
-                                {data->max_point.X, data->max_point.Y, data->max_point.Z});
+            static_aabbs.push_back({{data->min_point.X, data->min_point.Y, data->min_point.Z},
+                                    {data->max_point.X, data->max_point.Y, data->max_point.Z}});
             static_collision_sources_.Add({component, data->original_collision_mode});
         }
     }

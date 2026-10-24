@@ -69,6 +69,19 @@ struct DataPointers {
     Element<::ioj::Team>* teams{};
     Element<Health>* healths{};
     Element<std::int32_t>* laser_damages{};
+    template <typename Self, typename Func>
+    static decltype(auto) with_columns(Self& self, Func&& func) {
+        return func(self.entity_indices,
+                    self.locations_xs,
+                    self.locations_ys,
+                    self.locations_zs,
+                    self.rotations_pitches,
+                    self.rotations_yaws,
+                    self.rotations_rolls,
+                    self.teams,
+                    self.healths,
+                    self.laser_damages);
+    }
 };
 
 struct Schema {

@@ -89,15 +89,15 @@ TEST_CLASS(SandboxUISlateAdapters, "Sandbox.UnitTests")
         auto widget{SNew(SRadar2D)};
         TArray<FRadar2DStyleBucket> buckets;
         buckets.SetNum(2);
-        buckets[0].positions.add(1.0f, 2.0f);
-        buckets[1].positions.add(3.0f, 4.0f);
+        buckets[0].positions.push_back({1.0f, 2.0f});
+        buckets[1].positions.push_back({3.0f, 4.0f});
         TestRunner->TestTrue(TEXT("A complete Unreal radar snapshot is accepted"),
                              widget->set_buckets(MoveTemp(buckets)));
 
         auto stored{widget->get_buckets()};
         TestRunner->TestEqual(TEXT("Every position bucket retains a style"), stored.Num(), 2);
         TestRunner->TestEqual(
-            TEXT("The first bucket retains its position"), stored[0].positions.xs()[0], 1.0f);
+            TEXT("The first bucket retains its position"), stored[0].positions[0].x(), 1.0f);
 
         FRadar2DStyleBucket invalid_bucket;
         invalid_bucket.style.rendered_size = {0.0f, 6.0f};
@@ -108,22 +108,21 @@ TEST_CLASS(SandboxUISlateAdapters, "Sandbox.UnitTests")
         TestRunner->TestEqual(
             TEXT("Rejected snapshots preserve both buckets"), widget->get_buckets().Num(), 2);
 
-        ioj::ui::radar_2d::Positions replacement;
-        replacement.add(5.0f, 6.0f);
+        ioj::ui::radar_2d::PositionList replacement{{5.0f, 6.0f}};
         TestRunner->TestTrue(TEXT("One position bucket can be replaced"),
-                             widget->set_positions(0, replacement.get_const_view()));
-        replacement.xs()[0] = 100.0f;
+                             widget->set_positions(0, replacement));
+        replacement[0] = {100.0f, 6.0f};
         stored = widget->get_buckets();
         TestRunner->TestEqual(
-            TEXT("Radar position updates own their input"), stored[0].positions.xs()[0], 5.0f);
+            TEXT("Radar position updates own their input"), stored[0].positions[0].x(), 5.0f);
         TestRunner->TestEqual(TEXT("Replacing positions does not disturb other styles"),
-                              stored[1].positions.xs()[0],
+                              stored[1].positions[0].x(),
                               3.0f);
 
         TestRunner->TestTrue(TEXT("Individual native position buckets can be cleared"),
                              widget->clear_positions(0));
         TestRunner->TestTrue(TEXT("Clearing positions retains the corresponding style"),
-                             widget->get_buckets()[0].positions.is_empty());
+                             widget->get_buckets()[0].positions.empty());
         widget->clear_styles();
         TestRunner->TestTrue(TEXT("Clearing styles clears both sides of the adapter"),
                              widget->get_buckets().IsEmpty());

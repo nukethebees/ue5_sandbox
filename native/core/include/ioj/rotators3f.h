@@ -38,6 +38,10 @@ struct DataPointers {
     Element<float>* pitches{};
     Element<float>* yaws{};
     Element<float>* rolls{};
+    template <typename Self, typename Func>
+    static decltype(auto) with_columns(Self& self, Func&& func) {
+        return func(self.pitches, self.yaws, self.rolls);
+    }
 };
 
 struct Schema {

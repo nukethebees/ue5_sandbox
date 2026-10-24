@@ -264,6 +264,23 @@ auto data_pointers_node(LoweringContext& context, SingleAllocationModelId model)
             ir.init_list({})));
     }
 
+    std::vector<Expr> arguments;
+    for (auto const column : context.ir.lowering.items(model_store.columns[model_store_index])) {
+        arguments.push_back(ir.named(
+            "self." + context.text(column_store.flattened_identifier[column_store.index(column)])));
+    }
+    auto const visit{make_function(ir,
+                                   "with_columns",
+                                   "decltype(auto)",
+                                   {ir.parameter("Self&", "self"), ir.parameter("Func&&", "func")},
+                                   {ir.return_stmt(ir.call(ir.named("func"), arguments))},
+                                   FunctionReceiver::static_)};
+    ir.set_function_template(
+        visit,
+        ir.template_declaration({ir.type_template_parameter(ir.strings.intern("Self")),
+                                 ir.type_template_parameter(ir.strings.intern("Func"))}));
+    children.new_lines(1).add(inline_function(context, visit));
+
     auto const created_record{
         ir.record(ir.strings.intern("DataPointers"), children.build(), RecordKind::struct_)};
     ir.set_record_template(

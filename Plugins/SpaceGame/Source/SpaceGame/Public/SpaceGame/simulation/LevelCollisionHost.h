@@ -1,7 +1,7 @@
 #pragma once
 #include <ioj/sim/collision/collision_grid.h>
 #include <ioj/sim/collision/entity_aabbs.h>
-#include <ioj/sim/collision/world_aabbs.h>
+#include <ioj/sim/collision/world_aabb.h>
 #include <ioj/sim/entities/entity_type.h>
 #include <SpaceGameSimulation/levels/LevelStartErrors.h>
 
@@ -12,6 +12,7 @@
 
 #include <cstddef>
 #include <expected>
+#include <vector>
 
 class UStaticMesh;
 class UPrimitiveComponent;
@@ -32,7 +33,7 @@ struct SPACEGAME_API FLevelCollisionHost {
     auto initialise_static_geometry(UWorld& world,
                                     FCollisionGridConfig const& config,
                                     sim::collision::GridGeometry grid_geometry)
-        -> sim::collision::WorldAABBs;
+        -> std::vector<sim::collision::WorldAABB>;
     void restore_collision();
     auto get_static_collision_sources() const noexcept -> TConstArrayView<FStaticCollisionSource> {
         return static_collision_sources_;

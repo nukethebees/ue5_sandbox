@@ -41,6 +41,10 @@ struct DataPointers {
     Element<EntityType>* types{};
     Element<std::int32_t>* offsets{};
     Element<LevelEventCount>* counts{};
+    template <typename Self, typename Func>
+    static decltype(auto) with_columns(Self& self, Func&& func) {
+        return func(self.types, self.offsets, self.counts);
+    }
 };
 
 struct Schema {

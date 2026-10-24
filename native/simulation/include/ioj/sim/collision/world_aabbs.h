@@ -44,6 +44,10 @@ struct DataPointers {
     Element<float>* max_xs{};
     Element<float>* max_ys{};
     Element<float>* max_zs{};
+    template <typename Self, typename Func>
+    static decltype(auto) with_columns(Self& self, Func&& func) {
+        return func(self.min_xs, self.min_ys, self.min_zs, self.max_xs, self.max_ys, self.max_zs);
+    }
 };
 
 struct Schema {

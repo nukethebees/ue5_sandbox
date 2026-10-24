@@ -12,6 +12,7 @@ target_sources(native-simulation PRIVATE
   ../../include/ioj/sim/levels/level_spinner_spawn_events.h
   ../../include/ioj/sim/levels/level_spawn_manager.h
   level_compilation.cpp
+  initial_spawns.cpp
   fighter_spawn_slot_validation.cpp
   level_event_manager.cpp
   level_event_schedule.cpp

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ioj/ui/radar_positions.hpp>
+#include <ioj/ui/radar_2d.h>
 
 #include "Styling/SlateBrush.h"
 #include "Templates/UniquePtr.h"
@@ -17,7 +17,7 @@ struct SANDBOXUI_API FRadar2DContactStyle {
 
 struct SANDBOXUI_API FRadar2DStyleBucket {
     FRadar2DContactStyle style;
-    ioj::ui::radar_2d::Positions positions;
+    ioj::ui::radar_2d::PositionList positions;
 };
 
 struct SANDBOXUI_API FRadar2DPresentation {
@@ -49,7 +49,7 @@ class SANDBOXUI_API SRadar2D
     [[nodiscard]] auto add_style(FRadar2DContactStyle style) -> int32;
     [[nodiscard]] bool set_style(int32 style_index, FRadar2DContactStyle style);
     [[nodiscard]] bool set_positions(int32 style_index,
-                                     ioj::ui::radar_2d::positions::ConstView positions);
+                                     std::span<ioj::ui::Vector2f const> positions);
     [[nodiscard]] bool clear_positions(int32 style_index);
     void clear_positions();
     void clear_styles();

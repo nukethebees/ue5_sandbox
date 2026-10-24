@@ -62,6 +62,16 @@ struct DataPointers {
     Element<std::optional<ioj::layout::AggregateLayout>>* aggregate{};
     Element<std::optional<ioj::layout::PackedLayout>>* packed{};
     Element<std::optional<ioj::layout::SoaLayout>>* soa{};
+    template <typename Self, typename Func>
+    static decltype(auto) with_columns(Self& self, Func&& func) {
+        return func(self.schema_type,
+                    self.scenario,
+                    self.physical,
+                    self.enum_backing,
+                    self.aggregate,
+                    self.packed,
+                    self.soa);
+    }
 };
 
 struct Schema {

@@ -86,6 +86,25 @@ struct DataPointers {
     Element<EntityId>* instigator_ids{};
     Element<float>* initial_lifetimes{};
     Element<float>* spawn_times{};
+    template <typename Self, typename Func>
+    static decltype(auto) with_columns(Self& self, Func&& func) {
+        return func(self.active,
+                    self.sources,
+                    self.locations_xs,
+                    self.locations_ys,
+                    self.locations_zs,
+                    self.rotations_pitches,
+                    self.rotations_yaws,
+                    self.rotations_rolls,
+                    self.velocities_xs,
+                    self.velocities_ys,
+                    self.velocities_zs,
+                    self.damages,
+                    self.lifetimes_remaining,
+                    self.instigator_ids,
+                    self.initial_lifetimes,
+                    self.spawn_times);
+    }
 };
 
 struct Schema {

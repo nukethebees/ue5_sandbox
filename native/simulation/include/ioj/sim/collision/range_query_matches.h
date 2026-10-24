@@ -44,6 +44,14 @@ struct DataPointers {
     Element<float>* directions_xs{};
     Element<float>* directions_ys{};
     Element<float>* directions_zs{};
+    template <typename Self, typename Func>
+    static decltype(auto) with_columns(Self& self, Func&& func) {
+        return func(self.entities,
+                    self.distances,
+                    self.directions_xs,
+                    self.directions_ys,
+                    self.directions_zs);
+    }
 };
 
 struct Schema {

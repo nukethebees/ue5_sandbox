@@ -86,6 +86,24 @@ struct DataPointers {
     Element<std::optional<std::uint64_t>>* minimum_pages{};
     Element<std::optional<std::uint64_t>>* complete_elements_per_page{};
     Element<std::optional<ioj::layout::CacheLineTiling>>* cache_line_tiling{};
+    template <typename Self, typename Func>
+    static decltype(auto) with_columns(Self& self, Func&& func) {
+        return func(self.parent,
+                    self.name,
+                    self.semantic_type,
+                    self.schema_type,
+                    self.physical_type,
+                    self.overridden,
+                    self.type_facts,
+                    self.total_bytes,
+                    self.allocation_offset_bytes,
+                    self.padding_before_bytes,
+                    self.minimum_cache_lines,
+                    self.elements_per_cache_line,
+                    self.minimum_pages,
+                    self.complete_elements_per_page,
+                    self.cache_line_tiling);
+    }
 };
 
 struct Schema {

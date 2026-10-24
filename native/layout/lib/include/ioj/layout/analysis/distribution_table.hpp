@@ -66,6 +66,19 @@ struct DataPointers {
     Element<std::optional<long double>>* expected_slack_bytes{};
     Element<std::optional<long double>>* expected_selected_extent_bytes{};
     Element<std::optional<long double>>* expected_selected_slack_bytes{};
+    template <typename Self, typename Func>
+    static decltype(auto) with_columns(Self& self, Func&& func) {
+        return func(self.analysis,
+                    self.entries,
+                    self.element_count,
+                    self.total_weight,
+                    self.total_extent_bytes,
+                    self.total_slack_bytes,
+                    self.expected_extent_bytes,
+                    self.expected_slack_bytes,
+                    self.expected_selected_extent_bytes,
+                    self.expected_selected_slack_bytes);
+    }
 };
 
 struct Schema {

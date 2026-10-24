@@ -34,6 +34,10 @@ struct DataPointers {
     template <typename T>
     using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
     Element<RestrictedLeaf>* restricted{};
+    template <typename Self, typename Func>
+    static decltype(auto) with_columns(Self& self, Func&& func) {
+        return func(self.restricted);
+    }
 };
 
 struct Schema {

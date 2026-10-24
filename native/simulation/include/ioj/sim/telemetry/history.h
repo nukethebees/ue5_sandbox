@@ -103,6 +103,19 @@ struct DataPointers {
     Element<std::int32_t>* kills{};
     Element<std::int32_t>* active_lasers{};
     Element<std::int32_t>* lasers_fired{};
+    template <typename Self, typename Func>
+    static decltype(auto) with_columns(Self& self, Func&& func) {
+        return func(self.completed_ticks,
+                    self.validity_masks,
+                    self.active_entities,
+                    self.active_entities_by_type,
+                    self.active_entities_by_team_and_type,
+                    self.spawned_entities,
+                    self.destroyed_entities,
+                    self.kills,
+                    self.active_lasers,
+                    self.lasers_fired);
+    }
 };
 
 struct Schema {

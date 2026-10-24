@@ -59,6 +59,10 @@ struct DataPointers {
     template <typename T>
     using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
     Element<std::uint32_t>* count{};
+    template <typename Self, typename Func>
+    static decltype(auto) with_columns(Self& self, Func&& func) {
+        return func(self.count);
+    }
 };
 
 struct Schema {
@@ -248,6 +252,10 @@ struct DataPointers {
     template <typename T>
     using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
     Element<PointerA*>* others{};
+    template <typename Self, typename Func>
+    static decltype(auto) with_columns(Self& self, Func&& func) {
+        return func(self.others);
+    }
 };
 
 struct Schema {
@@ -419,6 +427,10 @@ struct DataPointers {
     template <typename T>
     using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
     Element<PointerB*>* others{};
+    template <typename Self, typename Func>
+    static decltype(auto) with_columns(Self& self, Func&& func) {
+        return func(self.others);
+    }
 };
 
 struct Schema {
@@ -594,6 +606,10 @@ struct DataPointers {
     template <typename T>
     using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
     Element<MixedRecord*>* records{};
+    template <typename Self, typename Func>
+    static decltype(auto) with_columns(Self& self, Func&& func) {
+        return func(self.records);
+    }
 };
 
 struct Schema {
@@ -777,6 +793,10 @@ struct DataPointers {
     using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
     Element<Pair>* pairs{};
     Element<Node*>* pointers{};
+    template <typename Self, typename Func>
+    static decltype(auto) with_columns(Self& self, Func&& func) {
+        return func(self.pairs, self.pointers);
+    }
 };
 
 struct Schema {
@@ -956,6 +976,10 @@ struct DataPointers {
     Element<float>* xs{};
     Element<float>* ys{};
     Element<float>* zs{};
+    template <typename Self, typename Func>
+    static decltype(auto) with_columns(Self& self, Func&& func) {
+        return func(self.xs, self.ys, self.zs);
+    }
 };
 
 struct Schema {
@@ -1143,6 +1167,10 @@ struct DataPointers {
     using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
     Element<OddBytes>* first{};
     Element<OddBytes>* second{};
+    template <typename Self, typename Func>
+    static decltype(auto) with_columns(Self& self, Func&& func) {
+        return func(self.first, self.second);
+    }
 };
 
 struct Schema {
@@ -1265,6 +1293,15 @@ struct DataPointers {
     Element<float>* ends_xs{};
     Element<float>* ends_ys{};
     Element<float>* ends_zs{};
+    template <typename Self, typename Func>
+    static decltype(auto) with_columns(Self& self, Func&& func) {
+        return func(self.starts_xs,
+                    self.starts_ys,
+                    self.starts_zs,
+                    self.ends_xs,
+                    self.ends_ys,
+                    self.ends_zs);
+    }
 };
 
 struct Schema {
@@ -1419,6 +1456,16 @@ struct DataPointers {
     Element<float>* velocities_xs{};
     Element<float>* velocities_ys{};
     Element<float>* velocities_zs{};
+    template <typename Self, typename Func>
+    static decltype(auto) with_columns(Self& self, Func&& func) {
+        return func(self.values,
+                    self.positions_xs,
+                    self.positions_ys,
+                    self.positions_zs,
+                    self.velocities_xs,
+                    self.velocities_ys,
+                    self.velocities_zs);
+    }
 };
 
 struct Schema {
@@ -1687,6 +1734,21 @@ struct DataPointers {
     Element<float>* nested_ends_zs{};
     Element<Aligned64>* aligned64{};
     Element<Aligned256>* aligned256{};
+    template <typename Self, typename Func>
+    static decltype(auto) with_columns(Self& self, Func&& func) {
+        return func(self.bytes,
+                    self.odd_first,
+                    self.odd_second,
+                    self.aligned32,
+                    self.nested_starts_xs,
+                    self.nested_starts_ys,
+                    self.nested_starts_zs,
+                    self.nested_ends_xs,
+                    self.nested_ends_ys,
+                    self.nested_ends_zs,
+                    self.aligned64,
+                    self.aligned256);
+    }
 };
 
 struct Schema {
@@ -1950,6 +2012,10 @@ struct DataPointers {
     using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
     Element<float>* xs{};
     Element<float>* ys{};
+    template <typename Self, typename Func>
+    static decltype(auto) with_columns(Self& self, Func&& func) {
+        return func(self.xs, self.ys);
+    }
 };
 
 struct Schema {
@@ -2121,6 +2187,10 @@ struct DataPointers {
     Element<ApiMask>* masks{};
     Element<float>* positions_xs{};
     Element<float>* positions_ys{};
+    template <typename Self, typename Func>
+    static decltype(auto) with_columns(Self& self, Func&& func) {
+        return func(self.values, self.masks, self.positions_xs, self.positions_ys);
+    }
 };
 
 struct Schema {
@@ -2388,6 +2458,10 @@ struct DataPointers {
     using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
     Element<float>* xs{};
     Element<float>* ys{};
+    template <typename Self, typename Func>
+    static decltype(auto) with_columns(Self& self, Func&& func) {
+        return func(self.xs, self.ys);
+    }
 };
 
 struct Schema {
@@ -2608,6 +2682,10 @@ struct DataPointers {
     Element<float>* horizontal{};
     Element<float>* vertical{};
     Element<float>* depth{};
+    template <typename Self, typename Func>
+    static decltype(auto) with_columns(Self& self, Func&& func) {
+        return func(self.horizontal, self.vertical, self.depth);
+    }
 };
 
 struct Schema {

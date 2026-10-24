@@ -43,18 +43,16 @@ TEST(Radar2D, OwnsReplacesRejectsAndClearsPositionBuckets) {
     EXPECT_FLOAT_EQ(data.range(), 1.0f);
     auto const first{data.add_bucket()};
     EXPECT_EQ(first, 0);
-    Positions positions;
-    positions.add(1.0f, 2.0f);
-    positions.add(3.0f, 4.0f);
-    ASSERT_TRUE(data.set_positions(first, positions.get_const_view()));
-    positions.xs()[0] = 100.0f;
-    EXPECT_FLOAT_EQ(data.buckets()[0].xs()[0], 1.0f);
+    PositionList positions{{1.0f, 2.0f}, {3.0f, 4.0f}};
+    ASSERT_TRUE(data.set_positions(first, positions));
+    positions[0] = {100.0f, 2.0f};
+    EXPECT_FLOAT_EQ(data.positions(0).xs[0], 1.0f);
     EXPECT_FALSE(data.set_positions(1, {}));
-    EXPECT_EQ(data.buckets()[0].num(), 2);
+    EXPECT_EQ(data.positions(0).xs.size(), 2);
     EXPECT_TRUE(data.clear_positions(first));
-    EXPECT_TRUE(data.buckets()[0].is_empty());
+    EXPECT_TRUE(data.positions(0).xs.empty());
     data.clear_buckets();
-    EXPECT_TRUE(data.buckets().empty());
+    EXPECT_EQ(data.bucket_count(), 0);
 }
 
 TEST(StackedBarChart, CalculatesPositiveTotalsAndMaximum) {

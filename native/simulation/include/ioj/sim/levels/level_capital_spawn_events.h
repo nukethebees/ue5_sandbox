@@ -74,6 +74,21 @@ struct DataPointers {
     Element<Health>* healths{};
     Element<float>* initial_fighter_spawn_delays{};
     Element<float>* fighter_spawn_cooldowns{};
+    template <typename Self, typename Func>
+    static decltype(auto) with_columns(Self& self, Func&& func) {
+        return func(self.entity_indices,
+                    self.target_entity_indices,
+                    self.locations_xs,
+                    self.locations_ys,
+                    self.locations_zs,
+                    self.rotations_pitches,
+                    self.rotations_yaws,
+                    self.rotations_rolls,
+                    self.teams,
+                    self.healths,
+                    self.initial_fighter_spawn_delays,
+                    self.fighter_spawn_cooldowns);
+    }
 };
 
 struct Schema {

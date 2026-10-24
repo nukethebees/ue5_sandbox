@@ -80,6 +80,23 @@ struct DataPointers {
     Element<float>* max_distances{};
     Element<EntityId>* instigator_ids{};
     Element<LaserSource>* sources{};
+    template <typename Self, typename Func>
+    static decltype(auto) with_columns(Self& self, Func&& func) {
+        return func(self.locations_xs,
+                    self.locations_ys,
+                    self.locations_zs,
+                    self.rotations_pitches,
+                    self.rotations_yaws,
+                    self.rotations_rolls,
+                    self.base_velocities_xs,
+                    self.base_velocities_ys,
+                    self.base_velocities_zs,
+                    self.damages,
+                    self.speeds,
+                    self.max_distances,
+                    self.instigator_ids,
+                    self.sources);
+    }
 };
 
 struct Schema {

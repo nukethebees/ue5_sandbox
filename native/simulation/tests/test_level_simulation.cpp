@@ -370,11 +370,11 @@ TEST(NativeSimulation, LaserFrameOutputsTest) {
 
 TEST(NativeSimulation, LevelSimCollisionBoundsTest) {
     auto data{make_battle()};
-    collision::WorldAABBs static_bounds;
-    collision::add(static_bounds, {{-10.f, 490.f, -10.f}}, {{10.f, 510.f, 10.f}});
+    std::array<collision::WorldAABB, 1> static_bounds{
+        collision::WorldAABB{{{-10.f, 490.f, -10.f}}, {{10.f, 510.f, 10.f}}}};
     GameMemory simulation_memory;
     LevelSim simulation{simulation_memory, std::move(data)};
-    simulation.set_static_collision(std::move(static_bounds));
+    simulation.set_static_collision(static_bounds);
     simulation.finish_initialisation();
 
     auto const& queries{simulation.get_spatial_query_manager()};

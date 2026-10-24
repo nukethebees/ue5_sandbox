@@ -116,6 +116,33 @@ struct DataPointers {
     Element<std::optional<std::uint32_t>>* minimum_required_bits{};
     Element<std::optional<std::uint64_t>>* unused_codes{};
     Element<RowRange>* codes{};
+    template <typename Self, typename Func>
+    static decltype(auto) with_columns(Self& self, Func&& func) {
+        return func(self.parent,
+                    self.segment,
+                    self.name,
+                    self.semantic_type,
+                    self.logical_type,
+                    self.kind,
+                    self.reserved,
+                    self.schema_bit_width,
+                    self.schema_bit_width_auto,
+                    self.bit_width,
+                    self.overridden,
+                    self.least_significant_bit,
+                    self.most_significant_bit,
+                    self.maximum_unsigned_value,
+                    self.minimum_signed_value,
+                    self.maximum_signed_value,
+                    self.minimum_semantic_value,
+                    self.maximum_semantic_value,
+                    self.semantic_value_count,
+                    self.sentinel_code_count,
+                    self.required_code_count,
+                    self.minimum_required_bits,
+                    self.unused_codes,
+                    self.codes);
+    }
 };
 
 struct Schema {

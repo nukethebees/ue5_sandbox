@@ -107,6 +107,32 @@ struct DataPointers {
     Element<float>* target_velocities_xs{};
     Element<float>* target_velocities_ys{};
     Element<float>* target_velocities_zs{};
+    template <typename Self, typename Func>
+    static decltype(auto) with_columns(Self& self, Func&& func) {
+        return func(self.entity_ids,
+                    self.integral_biases,
+                    self.locations_xs,
+                    self.locations_ys,
+                    self.locations_zs,
+                    self.fire_point_locations_xs,
+                    self.fire_point_locations_ys,
+                    self.fire_point_locations_zs,
+                    self.rotations_pitches,
+                    self.rotations_yaws,
+                    self.rotations_rolls,
+                    self.teams,
+                    self.laser_cooldowns,
+                    self.laser_damages,
+                    self.target_refresh_countdowns_periods,
+                    self.target_refresh_countdowns_remaining_ticks,
+                    self.target_ids,
+                    self.target_locations_xs,
+                    self.target_locations_ys,
+                    self.target_locations_zs,
+                    self.target_velocities_xs,
+                    self.target_velocities_ys,
+                    self.target_velocities_zs);
+    }
 };
 
 struct Schema {

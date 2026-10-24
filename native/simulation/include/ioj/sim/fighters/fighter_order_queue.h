@@ -42,6 +42,10 @@ struct DataPointers {
     Element<FighterOrder>* orders{};
     Element<FighterTask>* tasks{};
     Element<EntityId>* targets{};
+    template <typename Self, typename Func>
+    static decltype(auto) with_columns(Self& self, Func&& func) {
+        return func(self.entity_ids, self.orders, self.tasks, self.targets);
+    }
 };
 
 struct Schema {

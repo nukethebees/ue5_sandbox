@@ -20,13 +20,14 @@ namespace ioj::soa_storage_detail {
 
 template <typename Data>
 auto offset_columns(Data pointers, std::uint32_t offset) noexcept -> Data {
-    auto const& [first, ... rest] = pointers;
-    if (first == nullptr) {
-        return {};
-    }
-    template for (auto& pointer : pointers) {
-        pointer += offset;
-    }
+    Data::with_columns(pointers, [&](auto*& first, auto*&... rest) {
+        if (first == nullptr) {
+            pointers = {};
+            return;
+        }
+        first += offset;
+        ((rest += offset), ...);
+    });
     return pointers;
 }
 
@@ -48,9 +49,10 @@ template <bool Overlapping, typename Destination, typename Source>
 void transfer_columns(Destination const& destination,
                       Source const& source,
                       std::uint32_t count) noexcept {
-    auto const& [... dst] = destination;
-    auto const& [... src] = source;
-    (transfer_n<Overlapping>(dst, src, count), ...);
+    Destination::with_columns(destination, [&](auto*... dst) {
+        Source::with_columns(
+            source, [&](auto*... src) { (transfer_n<Overlapping>(dst, src, count), ...); });
+    });
 }
 
 // Generated owners supply state and typed column pointers.
@@ -99,9 +101,10 @@ struct StorageOperations {
     void default_construct_columns(this Self& self,
                                    StorageSize<Self> first,
                                    StorageSize<Self> count) {
-        template for (auto* column : self.get_data(first)) {
-            std::uninitialized_value_construct_n(column, count);
-        }
+        auto columns{self.get_data(first)};
+        decltype(columns)::with_columns(columns, [&](auto*... column) {
+            (std::uninitialized_value_construct_n(column, count), ...);
+        });
     }
 
     template <typename Owner>
@@ -375,8 +378,9 @@ struct StorageOperations {
         requires (!std::is_const_v<Self>)
     void apply_permutation(this Self& self, std::span<StorageSize<Self>> indices) {
         assert(indices.size() == self.num_);
-        auto const& [... columns] = self.get_data();
-        ColumnPermutation{self.num_, indices}(columns...);
+        auto columns{self.get_data()};
+        decltype(columns)::with_columns(
+            columns, [&](auto*... column) { ColumnPermutation{self.num_, indices}(column...); });
     }
     template <typename Self, typename Compare>
     void sort(this Self& self, Compare&& compare, std::span<std::uint32_t> indices) {

@@ -51,6 +51,15 @@ struct DataPointers {
     Element<EntityId>* entities{};
     Element<collision::StaticGeometryIndex>* static_geometry_indices{};
     Element<TraceHit>* hits{};
+    template <typename Self, typename Func>
+    static decltype(auto) with_columns(Self& self, Func&& func) {
+        return func(self.locations_xs,
+                    self.locations_ys,
+                    self.locations_zs,
+                    self.entities,
+                    self.static_geometry_indices,
+                    self.hits);
+    }
 };
 
 struct Schema {

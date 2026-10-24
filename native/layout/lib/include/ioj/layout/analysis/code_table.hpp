@@ -54,6 +54,10 @@ struct DataPointers {
     Element<std::uint8_t>* count_sentinel{};
     Element<std::optional<ioj::layout::EnumCodeValue>>* code{};
     Element<std::optional<lispb::codegen::PackedIntegerValue>>* integer_value{};
+    template <typename Self, typename Func>
+    static decltype(auto) with_columns(Self& self, Func&& func) {
+        return func(self.name, self.sentinel, self.count_sentinel, self.code, self.integer_value);
+    }
 };
 
 struct Schema {

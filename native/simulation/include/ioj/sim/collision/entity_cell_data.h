@@ -72,6 +72,22 @@ struct DataPointers {
     Element<std::int32_t>* max_cell_ys{};
     Element<std::int32_t>* max_cell_zs{};
     Element<EntityId>* entity_ids{};
+    template <typename Self, typename Func>
+    static decltype(auto) with_columns(Self& self, Func&& func) {
+        return func(self.min_point_xs,
+                    self.min_point_ys,
+                    self.min_point_zs,
+                    self.max_point_xs,
+                    self.max_point_ys,
+                    self.max_point_zs,
+                    self.min_cell_xs,
+                    self.min_cell_ys,
+                    self.min_cell_zs,
+                    self.max_cell_xs,
+                    self.max_cell_ys,
+                    self.max_cell_zs,
+                    self.entity_ids);
+    }
 };
 
 struct Schema {

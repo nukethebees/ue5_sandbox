@@ -11,11 +11,6 @@ public class SandboxEditorTarget : TargetRules
         DefaultBuildSettings = BuildSettingsVersion.Latest;
         IncludeOrderVersion = EngineIncludeOrderVersion.Latest;
         CppStandard = CppStandardVersion.Latest;
-        if (Target.Platform == UnrealTargetPlatform.Win64)
-        {
-            WindowsPlatform.Compiler = WindowsCompiler.Clang;
-            WindowsPlatform.bAllowClangLinker = false;
-        }
         ExtraModuleNames.AddRange(new string[] { "Sandbox", "SandboxEditor" });
 
     }

@@ -65,7 +65,7 @@ struct LevelSim {
     /* **************************************** */
     void set_fighter_diagnostics_enabled(bool enabled) noexcept;
     void set_telemetry_metadata(LevelTelemetryRunMetadata metadata);
-    void set_static_collision(collision::WorldAABBs bounds);
+    void set_static_collision(std::span<collision::WorldAABB const> bounds);
     auto add_static_collision_aabb(Vector3f min_point, Vector3f max_point)
         -> collision::StaticGeometryIndex;
     auto get_player_ship_commands() noexcept -> std::optional<player::CommandInterface> {

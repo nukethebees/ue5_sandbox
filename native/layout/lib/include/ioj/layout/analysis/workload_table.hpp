@@ -88,6 +88,25 @@ struct DataPointers {
     Element<std::optional<std::uint64_t>>* unselected_payload_bytes{};
     Element<std::optional<std::uint64_t>>* allocated_payload_bytes{};
     Element<std::optional<std::uint64_t>>* capacity_slack_bytes{};
+    template <typename Self, typename Func>
+    static decltype(auto) with_columns(Self& self, Func&& func) {
+        return func(self.analysis,
+                    self.selections,
+                    self.element_count,
+                    self.multiplicity,
+                    self.bytes,
+                    self.bits,
+                    self.cache,
+                    self.pages,
+                    self.cache_capacity,
+                    self.packed_waste,
+                    self.footprint_exact,
+                    self.storage_bytes,
+                    self.full_logical_payload_bytes,
+                    self.unselected_payload_bytes,
+                    self.allocated_payload_bytes,
+                    self.capacity_slack_bytes);
+    }
 };
 
 struct Schema {

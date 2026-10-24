@@ -71,6 +71,18 @@ struct DataPointers {
     Element<std::optional<ioj::layout::FixedEncoding>>* fixed_encoding{};
     Element<std::optional<ioj::layout::FloatEncoding>>* float_encoding{};
     Element<std::optional<ioj::layout::VarintEncoding>>* varint_encoding{};
+    template <typename Self, typename Func>
+    static decltype(auto) with_columns(Self& self, Func&& func) {
+        return func(self.type,
+                    self.integer_domain,
+                    self.enum_domain,
+                    self.optional_sentinel_encoding,
+                    self.optional_presence_encoding,
+                    self.quantized_encoding,
+                    self.fixed_encoding,
+                    self.float_encoding,
+                    self.varint_encoding);
+    }
 };
 
 struct Schema {

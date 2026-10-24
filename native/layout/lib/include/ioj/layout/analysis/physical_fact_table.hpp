@@ -55,6 +55,15 @@ struct DataPointers {
     Element<std::optional<std::uint32_t>>* unsigned_value_bits{};
     Element<lispb::StringId>* provenance{};
     Element<FactOrigin>* origin{};
+    template <typename Self, typename Func>
+    static decltype(auto) with_columns(Self& self, Func&& func) {
+        return func(self.size_bytes,
+                    self.alignment_bytes,
+                    self.signedness,
+                    self.unsigned_value_bits,
+                    self.provenance,
+                    self.origin);
+    }
 };
 
 struct Schema {

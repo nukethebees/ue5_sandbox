@@ -38,6 +38,10 @@ struct DataPointers {
     Element<float>* xs{};
     Element<float>* ys{};
     Element<float>* zs{};
+    template <typename Self, typename Func>
+    static decltype(auto) with_columns(Self& self, Func&& func) {
+        return func(self.xs, self.ys, self.zs);
+    }
 };
 
 struct Schema {

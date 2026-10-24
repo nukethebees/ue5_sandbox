@@ -35,18 +35,12 @@ exclusively from its `bin` directory, and missing tools fail configuration. CMak
 selection during configure and passes it explicitly to child tests/tools, so later shell
 environment changes do not change their selection. Set `$env:LLVM_ROOT` and configure again
 to select another installation; `-DLLVM_ROOT=...` is ignored.
-The Unreal game and editor targets use Clang 24 (`CompilerVersion=24.0.0`) with
-`CppStandardVersion.Latest`, which UE 5.8 maps to C++26 for Clang. CMake passes its selected
-LLVM installation to UBT through `LLVM_PATH`. Direct UBT or IDE invocations must set
-`LLVM_PATH` to that same installation. The pinned Microsoft linker/SDK, `/MD` runtime and
-simulation `_ITERATOR_DEBUG_LEVEL=0`
+The Unreal game and editor targets use MSVC (`CompilerVersion=14.50.35717`) and consume
+the CMake-built native libraries. Shared headers must remain compatible with that compiler;
+native implementation files can use the selected Clang toolchain's newer language features.
+The pinned Microsoft linker/SDK, `/MD` runtime and simulation `_ITERATOR_DEBUG_LEVEL=0`
 remain shared ABI settings. Tidy uses the installed executable without LLVM development packages;
 IOJ checks are optional built-in machine tooling. See [clang-tidy](clang-tidy.md).
-
-The Unreal Clang migration is incomplete. The current installed MSVC engine lacks the
-Clang-only Core Windows API exports required by these targets; game builds also need
-the missing libpas precompiled manifest and Clang ICU library. A compatible engine build
-and remaining project Clang diagnostics must be resolved before Unreal builds can pass.
 
 The same root supplies `llvm-lib`, `llvm-nm` and `llvm-readobj` for native archives and mimalloc
 symbol audits, plus `clang-scan-deps` for non-unity C++ dependency scanning.

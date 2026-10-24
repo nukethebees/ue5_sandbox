@@ -50,7 +50,7 @@ bool SRadar2D::set_presentation(FRadar2DPresentation presentation) {
 }
 
 bool SRadar2D::set_buckets(TArray<FRadar2DStyleBucket> buckets) {
-    std::vector<ioj::ui::radar_2d::Positions> positions;
+    std::vector<ioj::ui::radar_2d::PositionList> positions;
     positions.reserve(static_cast<std::size_t>(buckets.Num()));
     for (auto& bucket : buckets) {
         if (!is_valid_style(bucket.style)) {
@@ -65,7 +65,7 @@ bool SRadar2D::set_buckets(TArray<FRadar2DStyleBucket> buckets) {
         styles.Add(MoveTemp(bucket.style));
     }
 
-    data_->native.set_buckets(std::move(positions));
+    data_->native.set_buckets(positions);
     styles_ = MoveTemp(styles);
     check_invariants();
     Invalidate(EInvalidateWidgetReason::Paint);
@@ -100,7 +100,7 @@ bool SRadar2D::set_style(int32 const style_index, FRadar2DContactStyle style) {
 }
 
 bool SRadar2D::set_positions(int32 const style_index,
-                             ioj::ui::radar_2d::positions::ConstView const positions) {
+                             std::span<ioj::ui::Vector2f const> positions) {
     check_invariants();
     if (!data_->native.set_positions(style_index, positions)) {
         return false;
@@ -122,12 +122,7 @@ bool SRadar2D::clear_positions(int32 const style_index) {
 
 void SRadar2D::clear_positions() {
     check_invariants();
-    bool changed{false};
-    for (auto const& positions : data_->native.buckets()) {
-        changed |= !positions.is_empty();
-    }
-    if (changed) {
-        data_->native.clear_positions();
+    if (data_->native.clear_positions()) {
         check_invariants();
         Invalidate(EInvalidateWidgetReason::Paint);
     }
@@ -151,15 +146,13 @@ auto SRadar2D::get_range() const noexcept -> float {
 
 auto SRadar2D::get_buckets() const -> TArray<FRadar2DStyleBucket> {
     check_invariants();
-    auto const native_buckets{data_->native.buckets()};
     TArray<FRadar2DStyleBucket> result;
     result.Reserve(styles_.Num());
     auto const count{styles_.Num()};
     for (int32 index{}; index < count; ++index) {
         auto& bucket{result.AddDefaulted_GetRef()};
         bucket.style = styles_[index];
-        bucket.positions.append_from(
-            native_buckets[static_cast<std::size_t>(index)].get_const_view());
+        bucket.positions = data_->native.copy_positions(static_cast<std::size_t>(index));
     }
     return result;
 }
@@ -200,11 +193,10 @@ int32 SRadar2D::OnPaint(FPaintArgs const&,
     auto const contact_layer{layer_id + 1};
     auto const radar_max{layout_origin + layout_size};
     out_draw_elements.PushClip(FSlateClippingZone{radar_geometry});
-    auto const positions_buckets{data_->native.buckets()};
-    auto const bucket_count{static_cast<int32>(positions_buckets.size())};
+    auto const bucket_count{static_cast<int32>(data_->native.bucket_count())};
     for (int32 bucket_index{}; bucket_index < bucket_count; ++bucket_index) {
-        auto const& positions{positions_buckets[bucket_index]};
-        auto const contact_count{positions.num()};
+        auto const positions{data_->native.positions(bucket_index)};
+        auto const contact_count{positions.xs.size()};
         if (contact_count == 0) {
             continue;
         }
@@ -212,8 +204,8 @@ int32 SRadar2D::OnPaint(FPaintArgs const&,
         auto const& style{styles_[bucket_index]};
         auto const half_size{style.rendered_size * 0.5f};
         auto const tint{style.tint * inherited_tint};
-        auto const xs{positions.xs()};
-        auto const ys{positions.ys()};
+        auto const xs{positions.xs};
+        auto const ys{positions.ys};
         for (std::uint32_t contact_index{}; contact_index < contact_count; ++contact_index) {
             auto const native_centre{
                 ioj::ui::radar_2d::to_local({xs[contact_index], ys[contact_index]}, layout)};
@@ -261,6 +253,5 @@ bool SRadar2D::is_valid_presentation(FRadar2DPresentation const& presentation) {
 }
 
 void SRadar2D::check_invariants() const {
-    auto const buckets{data_->native.buckets()};
-    check(static_cast<int32>(buckets.size()) == styles_.Num());
+    check(static_cast<int32>(data_->native.bucket_count()) == styles_.Num());
 }

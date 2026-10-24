@@ -51,6 +51,16 @@ struct DataPointers {
     Element<float>* yaws{};
     Element<std::int16_t>* laser_cooldowns{};
     Element<std::int32_t>* next_fire_point_indices{};
+    template <typename Self, typename Func>
+    static decltype(auto) with_columns(Self& self, Func&& func) {
+        return func(self.entity_ids,
+                    self.locations_xs,
+                    self.locations_ys,
+                    self.locations_zs,
+                    self.yaws,
+                    self.laser_cooldowns,
+                    self.next_fire_point_indices);
+    }
 };
 
 struct Schema {

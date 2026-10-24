@@ -147,7 +147,7 @@ auto make_multi_style_radar(ShowcaseBuilder& builder) -> TSharedRef<SWidget> {
                                      FVector2f{-12.0f, 68.0f},
                                      FVector2f{18.0f, 24.0f},
                                      FVector2f{63.0f, -52.0f}}) {
-        cyan_bucket.positions.add(position.X, position.Y);
+        cyan_bucket.positions.push_back({position.X, position.Y});
     }
     buckets.Add(MoveTemp(cyan_bucket));
 
@@ -155,13 +155,13 @@ auto make_multi_style_radar(ShowcaseBuilder& builder) -> TSharedRef<SWidget> {
     amber_bucket.style = make_radar_style({1.0f, 0.62f, 0.08f, 1.0f}, {10.0f, 10.0f});
     for (FVector2f const position :
          {FVector2f{-34.0f, 8.0f}, FVector2f{6.0f, -12.0f}, FVector2f{47.0f, 44.0f}}) {
-        amber_bucket.positions.add(position.X, position.Y);
+        amber_bucket.positions.push_back({position.X, position.Y});
     }
     buckets.Add(MoveTemp(amber_bucket));
 
     FRadar2DStyleBucket white_bucket;
     white_bucket.style = make_radar_style(FLinearColor::White, {5.0f, 5.0f});
-    white_bucket.positions.add(0.0f, 0.0f);
+    white_bucket.positions.push_back({0.0f, 0.0f});
     buckets.Add(MoveTemp(white_bucket));
 
     (void)radar->set_buckets(MoveTemp(buckets));
@@ -180,8 +180,8 @@ auto make_dense_radar(ShowcaseBuilder& builder) -> TSharedRef<SWidget> {
     for (int32 contact_index{0}; contact_index < contact_count; ++contact_index) {
         auto const angle{static_cast<float>(contact_index) * 2.399963f};
         auto const radius{8.0f + static_cast<float>(contact_index % 120)};
-        buckets[contact_index % buckets.Num()].positions.add(FMath::Cos(angle) * radius,
-                                                             FMath::Sin(angle) * radius);
+        buckets[contact_index % buckets.Num()].positions.push_back(
+            {FMath::Cos(angle) * radius, FMath::Sin(angle) * radius});
     }
 
     (void)radar->set_buckets(MoveTemp(buckets));

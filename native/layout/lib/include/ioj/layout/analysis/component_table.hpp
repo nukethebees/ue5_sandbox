@@ -69,6 +69,19 @@ struct DataPointers {
     Element<std::optional<std::uint64_t>>* extent_bytes{};
     Element<std::optional<std::uint64_t>>* padding_before_bytes{};
     Element<std::optional<std::uint64_t>>* slack_bytes{};
+    template <typename Self, typename Func>
+    static decltype(auto) with_columns(Self& self, Func&& func) {
+        return func(self.parent,
+                    self.name,
+                    self.tag,
+                    self.semantic_type,
+                    self.element_count,
+                    self.element_facts,
+                    self.offset_bytes,
+                    self.extent_bytes,
+                    self.padding_before_bytes,
+                    self.slack_bytes);
+    }
 };
 
 struct Schema {
