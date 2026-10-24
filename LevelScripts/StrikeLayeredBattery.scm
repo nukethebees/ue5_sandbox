@@ -1,3 +1,4 @@
+(load-script "Libraries/objectives.scm")
 (load-script "Libraries/formations.scm")
 
 (level
@@ -10,10 +11,9 @@
 
   :player 'player
 
-  :mission (mission
-    :mode 'kill-enemies
-    :heroes '(player)
-    :must-survive '(player))
+  :mission (decisive-mission 'blue
+    (entity-kills-reached '(player) 8)
+    (destroy-any '(player)))
 
   :entities (cons
     (entity :id 'player :archetype 'player-fighter :team 'blue

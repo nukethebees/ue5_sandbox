@@ -1,7 +1,6 @@
 #pragma once
 
 #include <ioj/sim/levels/level_event_count.h>
-#include <ioj/sim/levels/level_mission_event_type.h>
 
 #include <cstdint>
 #include <limits>
@@ -11,7 +10,6 @@ inline constexpr LevelEventCount max_level_event_count{std::numeric_limits<Level
 
 struct LevelEventGroupCounts {
     LevelEventCount spawn_groups{};
-    LevelEventCount mission_groups{};
 };
 
 [[nodiscard]] auto try_to_level_event_count(std::int32_t count, LevelEventCount& result) noexcept

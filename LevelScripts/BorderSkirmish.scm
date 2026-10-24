@@ -1,3 +1,4 @@
+(load-script "Libraries/objectives.scm")
 (level
   :id 'border-skirmish
   :title "Border Skirmish"
@@ -5,11 +6,9 @@
 
   :player 'player
 
-  :mission (mission
-    :mode 'kill-enemies
-    :heroes '(player blue-capital)
-    :must-survive '(blue-capital)
-    :required-kills '(red-capital))
+  :mission (decisive-mission 'blue
+    (all-of (entity-kills-reached '(player blue-capital) 2) (destroy-all '(red-capital)))
+    (destroy-any '(blue-capital)))
 
   :entities (list
     (entity :id 'player :archetype 'player-fighter :team 'blue

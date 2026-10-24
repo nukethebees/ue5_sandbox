@@ -42,12 +42,3 @@
     (member yaws array float)
     (member initial_fire_point_indices array int32)
 ))
-
-(module level_runtime_events_level_mission_event_groups
-  :header "native/simulation/include/ioj/sim/levels/level_mission_event_groups.h"
-  :namespace ioj::sim
-  (struct LevelMissionEventGroups
-    (member types array @native_level_mission_event_type)
-    (member offsets array int32)
-    (member counts array @native_level_event_count)
-))

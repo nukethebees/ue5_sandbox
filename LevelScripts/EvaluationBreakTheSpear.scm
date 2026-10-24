@@ -1,3 +1,4 @@
+(load-script "Libraries/objectives.scm")
 (load-script "Libraries/formations.scm")
 
 (level
@@ -10,12 +11,9 @@
 
   :player 'player
 
-  :mission (mission
-    :mode 'survive-time
-    :time-limit 150
-    :heroes '(player blue-capital-0 blue-capital-1)
-    :must-survive '(player blue-capital-0 blue-capital-1)
-    :required-kills '(red-flagship))
+  :mission (decisive-mission 'blue
+    (all-of (time-elapsed 150) (destroy-all '(red-flagship)))
+    (any-of (destroy-any '(player blue-capital-0 blue-capital-1)) (time-elapsed 150)))
 
   :entities (append
     (list

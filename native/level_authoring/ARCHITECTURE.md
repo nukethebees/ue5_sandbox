@@ -59,9 +59,10 @@ Simulation depends on it and retains all runtime compilation/state.
 Teams and entity archetypes are enums parsed from LispB-defined spellings at input
 boundaries. Participating teams are derived from initial and scheduled entities. The shared `ioj::Team`
 enum is used throughout authoring and simulation; only Unreal properties use its reflected projection. Semantic validation
-checks references, role constraints, and numeric rules independently of AST parsing.
-Validation stores entity facts in one ID lookup and passes the validated initial mission
-role sets into event validation. Generated entity-ID counters use fixed team/archetype slots.
+checks references, expression and activation cycles, and numeric rules independently of AST parsing.
+Mission expressions use objective-local indices; only published outcomes can cross objective
+boundaries. Runtime compilation flattens parents, rules and reverse dependency references.
+Generated entity-ID counters use fixed team/archetype slots.
 Catalog validators receive only successfully decoded definitions, retaining original
 discovery indices and filesystem paths. Diagnostics distinguish `node_path` from
 `source_path` and carry an error code and message.
@@ -72,7 +73,8 @@ and switches without runtime lookup tables. See
 because it emits evaluable constructors, while the AST represents their evaluated data.
 Literal vectors and ID lists are quoted; collections containing constructors use `list`.
 The writer preserves deterministic ordering and three-decimal rounding. Editor serialization
-continues to reject par-time, unlock criteria, mission events, and settings layers.
+rejects par-time, unlock criteria, objective missions, and settings layers. Objective graphs
+remain authored in S7; the scene editor cannot infer or rewrite them from entity roles.
 
 Settings constructors return records, and `settings-layers` groups records in application order.
 `parse_settings` flattens nested records into owned `ioj::settings::Setting` assignments with

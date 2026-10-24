@@ -1,8 +1,6 @@
+#include <ioj/levels/mission_types.h>
 #include <ioj/levels/team.h>
 #include <ioj/sim/entities/entity_type.h>
-#include <ioj/sim/missions/mission_fail_reason.h>
-#include <ioj/sim/missions/mission_mode.h>
-#include <ioj/sim/missions/mission_state.h>
 #include <ioj/sim/player/fire_rate.h>
 #include <ioj/sim/player/space_ship_common.h>
 #include <ioj/sim/telemetry/run_end_reason.h>
@@ -47,24 +45,12 @@ TEST(NativeEnums, TeamSerializedNamesRoundTrip) {
 }
 
 TEST(NativeEnums, MissionAndTelemetrySerializedNamesRoundTrip) {
-    for (auto const value : {MissionMode::None,
-                             MissionMode::SurviveTime,
-                             MissionMode::KillEnemies,
-                             MissionMode::KillEnemiesWithinTime}) {
-        EXPECT_EQ(try_parse_serialized_mission_mode(to_serialized_string(value)), value);
+    for (auto const value :
+         {ObjectiveOutcome::Passed, ObjectiveOutcome::Failed, ObjectiveOutcome::Expired}) {
+        EXPECT_EQ(try_parse_serialized_objective_outcome(to_serialized_string(value)), value);
     }
-    for (auto const value : {MissionState::NotStarted,
-                             MissionState::Running,
-                             MissionState::Succeeded,
-                             MissionState::Failed,
-                             MissionState::Disabled}) {
-        EXPECT_EQ(try_parse_serialized_mission_state(to_serialized_string(value)), value);
-    }
-    for (auto const value : {MissionFailReason::None,
-                             MissionFailReason::PlayerKilled,
-                             MissionFailReason::TimeElapsed,
-                             MissionFailReason::DefenceObjectiveFailed}) {
-        EXPECT_EQ(try_parse_serialized_mission_fail_reason(to_serialized_string(value)), value);
+    for (auto const value : {TeamOutcome::Victory, TeamOutcome::Defeat}) {
+        EXPECT_EQ(try_parse_serialized_team_outcome(to_serialized_string(value)), value);
     }
     for (auto const value : {LevelTelemetryRunEndReason::MissionSucceeded,
                              LevelTelemetryRunEndReason::MissionFailed,
@@ -76,20 +62,6 @@ TEST(NativeEnums, MissionAndTelemetrySerializedNamesRoundTrip) {
                   value);
     }
     EXPECT_EQ(std::to_underlying(LevelTelemetryRunEndReason::WorldEnd), 5U);
-    EXPECT_EQ(to_serialized_string(MissionMode::None), "none");
-    EXPECT_EQ(to_serialized_string(MissionMode::SurviveTime), "survive_time");
-    EXPECT_EQ(to_serialized_string(MissionMode::KillEnemies), "kill_enemies");
-    EXPECT_EQ(to_serialized_string(MissionMode::KillEnemiesWithinTime), "kill_enemies_within_time");
-    EXPECT_EQ(to_serialized_string(MissionState::NotStarted), "not_started");
-    EXPECT_EQ(to_serialized_string(MissionState::Running), "running");
-    EXPECT_EQ(to_serialized_string(MissionState::Succeeded), "succeeded");
-    EXPECT_EQ(to_serialized_string(MissionState::Failed), "failed");
-    EXPECT_EQ(to_serialized_string(MissionState::Disabled), "disabled");
-    EXPECT_EQ(to_serialized_string(MissionFailReason::None), "none");
-    EXPECT_EQ(to_serialized_string(MissionFailReason::PlayerKilled), "player_killed");
-    EXPECT_EQ(to_serialized_string(MissionFailReason::TimeElapsed), "time_elapsed");
-    EXPECT_EQ(to_serialized_string(MissionFailReason::DefenceObjectiveFailed),
-              "defence_objective_failed");
     EXPECT_EQ(to_serialized_string(LevelTelemetryRunEndReason::MissionSucceeded),
               "mission_succeeded");
     EXPECT_EQ(to_serialized_string(LevelTelemetryRunEndReason::MissionFailed), "mission_failed");
@@ -116,22 +88,6 @@ TEST(NativeEnums, PersistedEnumNumericValuesRemainStable) {
     EXPECT_EQ(std::to_underlying(Team::Orange), 4U);
     EXPECT_EQ(std::to_underlying(Team::Yellow), 5U);
     EXPECT_EQ(enum_count<Team>(), 6U);
-
-    EXPECT_EQ(std::to_underlying(MissionMode::None), 0U);
-    EXPECT_EQ(std::to_underlying(MissionMode::SurviveTime), 1U);
-    EXPECT_EQ(std::to_underlying(MissionMode::KillEnemies), 2U);
-    EXPECT_EQ(std::to_underlying(MissionMode::KillEnemiesWithinTime), 3U);
-
-    EXPECT_EQ(std::to_underlying(MissionState::NotStarted), 0U);
-    EXPECT_EQ(std::to_underlying(MissionState::Running), 1U);
-    EXPECT_EQ(std::to_underlying(MissionState::Succeeded), 2U);
-    EXPECT_EQ(std::to_underlying(MissionState::Failed), 3U);
-    EXPECT_EQ(std::to_underlying(MissionState::Disabled), 4U);
-
-    EXPECT_EQ(std::to_underlying(MissionFailReason::None), 0U);
-    EXPECT_EQ(std::to_underlying(MissionFailReason::PlayerKilled), 1U);
-    EXPECT_EQ(std::to_underlying(MissionFailReason::TimeElapsed), 2U);
-    EXPECT_EQ(std::to_underlying(MissionFailReason::DefenceObjectiveFailed), 3U);
 
     EXPECT_EQ(std::to_underlying(LevelTelemetryRunEndReason::MissionSucceeded), 0U);
     EXPECT_EQ(std::to_underlying(LevelTelemetryRunEndReason::MissionFailed), 1U);

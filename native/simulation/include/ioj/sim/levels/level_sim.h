@@ -14,7 +14,8 @@
 #include <ioj/sim/levels/level_read_access.h>
 #include <ioj/sim/levels/level_sim_init_data.h>
 #include <ioj/sim/memory/game_memory.h>
-#include <ioj/sim/missions/mission_manager.h>
+#include <ioj/sim/missions/mission.h>
+#include <ioj/sim/missions/mission_result.h>
 #include <ioj/sim/overlap_handler.h>
 #include <ioj/sim/player/command_interface.h>
 #include <ioj/sim/player/sim.h>
@@ -110,7 +111,9 @@ struct LevelSim {
     auto get_spinners() const -> spinners::Sim const& { return spinners_simulation_; }
     auto get_entity_ledger() const -> EntityLedger const& { return entity_ledger_; }
     auto get_entity_tables() const -> EntityTables const& { return entity_tables_; }
-    auto get_mission_manager() const -> MissionManager const& { return mission_manager_; }
+    auto get_mission() const -> Mission const& { return mission_; }
+    auto get_level_id() const -> std::string const& { return level_id_; }
+    auto get_level_title() const -> std::string const& { return level_title_; }
     auto get_spatial_query_manager() const -> SpatialQueryManager const& { return query_manager_; }
     auto get_level_telemetry_manager() const -> LevelTelemetryManager const& {
         return level_telemetry_manager_;
@@ -151,7 +154,12 @@ struct LevelSim {
     turrets::Sim turrets_simulation_;
     spinners::Sim spinners_simulation_;
 
-    MissionManager mission_manager_;
+    void update_mission_result();
+    Mission mission_;
+    std::optional<Team> player_team_{};
+    std::string level_id_, level_title_;
+    bool save_mission_results_{true};
+    std::optional<LevelMissionResult> mission_result_{};
     LevelEventManager event_manager_;
     LevelTelemetryManager level_telemetry_manager_;
 };

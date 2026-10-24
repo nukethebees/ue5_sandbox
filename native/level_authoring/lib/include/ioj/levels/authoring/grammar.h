@@ -24,7 +24,15 @@ enum class Property : PropertyUnderlying {
     Player,
     Camera,
     Mission,
-    MissionEvents,
+    Objectives,
+    Nodes,
+    Pass,
+    Fail,
+    Expire,
+    DependsOn,
+    TeamResults,
+    When,
+    Result,
     Entities,
     Settings,
     Levels,
@@ -37,16 +45,6 @@ enum class Property : PropertyUnderlying {
     LookAt,
     Distance,
     OffsetDirection,
-    Mode,
-    TimeLimit,
-    KillCount,
-    Heroes,
-    MustSurvive,
-    RequiredKills,
-    At,
-    AddMustSurvive,
-    AddRequiredKills,
-    IncreaseKillCount,
     Archetype,
     Team,
     Position,
@@ -89,8 +87,32 @@ enum class Property : PropertyUnderlying {
         case Property::Mission: {
             return "mission";
         }
-        case Property::MissionEvents: {
-            return "mission-events";
+        case Property::Objectives: {
+            return "objectives";
+        }
+        case Property::Nodes: {
+            return "nodes";
+        }
+        case Property::Pass: {
+            return "pass";
+        }
+        case Property::Fail: {
+            return "fail";
+        }
+        case Property::Expire: {
+            return "expire";
+        }
+        case Property::DependsOn: {
+            return "depends-on";
+        }
+        case Property::TeamResults: {
+            return "team-results";
+        }
+        case Property::When: {
+            return "when";
+        }
+        case Property::Result: {
+            return "result";
         }
         case Property::Entities: {
             return "entities";
@@ -127,36 +149,6 @@ enum class Property : PropertyUnderlying {
         }
         case Property::OffsetDirection: {
             return "offset-direction";
-        }
-        case Property::Mode: {
-            return "mode";
-        }
-        case Property::TimeLimit: {
-            return "time-limit";
-        }
-        case Property::KillCount: {
-            return "kill-count";
-        }
-        case Property::Heroes: {
-            return "heroes";
-        }
-        case Property::MustSurvive: {
-            return "must-survive";
-        }
-        case Property::RequiredKills: {
-            return "required-kills";
-        }
-        case Property::At: {
-            return "at";
-        }
-        case Property::AddMustSurvive: {
-            return "add-must-survive";
-        }
-        case Property::AddRequiredKills: {
-            return "add-required-kills";
-        }
-        case Property::IncreaseKillCount: {
-            return "increase-kill-count";
         }
         case Property::Archetype: {
             return "archetype";
@@ -201,26 +193,48 @@ enum class Property : PropertyUnderlying {
             if (value == "id") {
                 return Property::Id;
             }
-            if (value == "at") {
-                return Property::At;
-            }
             return std::nullopt;
         }
         case 4: {
-            if (value == "path") {
-                return Property::Path;
+            switch (static_cast<unsigned char>(value[0])) {
+                case 'f': {
+                    if (value == "fail") {
+                        return Property::Fail;
+                    }
+                    return std::nullopt;
+                }
+                case 'p': {
+                    if (value == "pass") {
+                        return Property::Pass;
+                    }
+                    if (value == "path") {
+                        return Property::Path;
+                    }
+                    return std::nullopt;
+                }
+                case 't': {
+                    if (value == "team") {
+                        return Property::Team;
+                    }
+                    return std::nullopt;
+                }
+                case 'w': {
+                    if (value == "when") {
+                        return Property::When;
+                    }
+                    return std::nullopt;
+                }
+                default: {
+                    return std::nullopt;
+                }
             }
-            if (value == "mode") {
-                return Property::Mode;
-            }
-            if (value == "team") {
-                return Property::Team;
-            }
-            return std::nullopt;
         }
         case 5: {
             if (value == "title") {
                 return Property::Title;
+            }
+            if (value == "nodes") {
+                return Property::Nodes;
             }
             if (value == "value") {
                 return Property::Value;
@@ -238,10 +252,13 @@ enum class Property : PropertyUnderlying {
                     }
                     return std::nullopt;
                 }
-                case 'h': {
-                    if (value == "heroes") {
-                        return Property::Heroes;
+                case 'e': {
+                    if (value == "expire") {
+                        return Property::Expire;
                     }
+                    return std::nullopt;
+                }
+                case 'h': {
                     if (value == "health") {
                         return Property::Health;
                     }
@@ -256,6 +273,12 @@ enum class Property : PropertyUnderlying {
                 case 'p': {
                     if (value == "player") {
                         return Property::Player;
+                    }
+                    return std::nullopt;
+                }
+                case 'r': {
+                    if (value == "result") {
+                        return Property::Result;
                     }
                     return std::nullopt;
                 }
@@ -341,14 +364,14 @@ enum class Property : PropertyUnderlying {
             return std::nullopt;
         }
         case 10: {
+            if (value == "objectives") {
+                return Property::Objectives;
+            }
+            if (value == "depends-on") {
+                return Property::DependsOn;
+            }
             if (value == "level-size") {
                 return Property::LevelSize;
-            }
-            if (value == "time-limit") {
-                return Property::TimeLimit;
-            }
-            if (value == "kill-count") {
-                return Property::KillCount;
             }
             return std::nullopt;
         }
@@ -359,8 +382,8 @@ enum class Property : PropertyUnderlying {
             return std::nullopt;
         }
         case 12: {
-            if (value == "must-survive") {
-                return Property::MustSurvive;
+            if (value == "team-results") {
+                return Property::TeamResults;
             }
             if (value == "laser-damage") {
                 return Property::LaserDamage;
@@ -371,12 +394,6 @@ enum class Property : PropertyUnderlying {
             if (value == "collision-grid") {
                 return Property::CollisionGrid;
             }
-            if (value == "mission-events") {
-                return Property::MissionEvents;
-            }
-            if (value == "required-kills") {
-                return Property::RequiredKills;
-            }
             if (value == "spawn-cooldown") {
                 return Property::SpawnCooldown;
             }
@@ -386,21 +403,9 @@ enum class Property : PropertyUnderlying {
             if (value == "offset-direction") {
                 return Property::OffsetDirection;
             }
-            if (value == "add-must-survive") {
-                return Property::AddMustSurvive;
-            }
-            return std::nullopt;
-        }
-        case 18: {
-            if (value == "add-required-kills") {
-                return Property::AddRequiredKills;
-            }
             return std::nullopt;
         }
         case 19: {
-            if (value == "increase-kill-count") {
-                return Property::IncreaseKillCount;
-            }
             if (value == "initial-spawn-delay") {
                 return Property::InitialSpawnDelay;
             }
@@ -424,7 +429,8 @@ enum class RecordKind : RecordKindUnderlying {
     Mission,
     Camera,
     CollisionGrid,
-    MissionEvent,
+    Objective,
+    TeamResult,
     LevelCompleted,
 };
 
@@ -455,8 +461,11 @@ enum class RecordKind : RecordKindUnderlying {
         case RecordKind::CollisionGrid: {
             return "collision-grid";
         }
-        case RecordKind::MissionEvent: {
-            return "mission-event";
+        case RecordKind::Objective: {
+            return "objective";
+        }
+        case RecordKind::TeamResult: {
+            return "team-result";
         }
         case RecordKind::LevelCompleted: {
             return "level-completed";
@@ -480,7 +489,15 @@ struct EnumTraits<::ioj::levels::authoring::Property> {
                                               ::ioj::levels::authoring::Property::Player,
                                               ::ioj::levels::authoring::Property::Camera,
                                               ::ioj::levels::authoring::Property::Mission,
-                                              ::ioj::levels::authoring::Property::MissionEvents,
+                                              ::ioj::levels::authoring::Property::Objectives,
+                                              ::ioj::levels::authoring::Property::Nodes,
+                                              ::ioj::levels::authoring::Property::Pass,
+                                              ::ioj::levels::authoring::Property::Fail,
+                                              ::ioj::levels::authoring::Property::Expire,
+                                              ::ioj::levels::authoring::Property::DependsOn,
+                                              ::ioj::levels::authoring::Property::TeamResults,
+                                              ::ioj::levels::authoring::Property::When,
+                                              ::ioj::levels::authoring::Property::Result,
                                               ::ioj::levels::authoring::Property::Entities,
                                               ::ioj::levels::authoring::Property::Settings,
                                               ::ioj::levels::authoring::Property::Levels,
@@ -493,16 +510,6 @@ struct EnumTraits<::ioj::levels::authoring::Property> {
                                               ::ioj::levels::authoring::Property::LookAt,
                                               ::ioj::levels::authoring::Property::Distance,
                                               ::ioj::levels::authoring::Property::OffsetDirection,
-                                              ::ioj::levels::authoring::Property::Mode,
-                                              ::ioj::levels::authoring::Property::TimeLimit,
-                                              ::ioj::levels::authoring::Property::KillCount,
-                                              ::ioj::levels::authoring::Property::Heroes,
-                                              ::ioj::levels::authoring::Property::MustSurvive,
-                                              ::ioj::levels::authoring::Property::RequiredKills,
-                                              ::ioj::levels::authoring::Property::At,
-                                              ::ioj::levels::authoring::Property::AddMustSurvive,
-                                              ::ioj::levels::authoring::Property::AddRequiredKills,
-                                              ::ioj::levels::authoring::Property::IncreaseKillCount,
                                               ::ioj::levels::authoring::Property::Archetype,
                                               ::ioj::levels::authoring::Property::Team,
                                               ::ioj::levels::authoring::Property::Position,

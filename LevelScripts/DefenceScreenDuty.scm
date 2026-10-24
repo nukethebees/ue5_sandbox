@@ -1,3 +1,4 @@
+(load-script "Libraries/objectives.scm")
 (level
   :id 'defence-screen-duty
   :title "Defence 01: Screen Duty"
@@ -8,10 +9,9 @@
 
   :player 'player
 
-  :mission (mission
-    :mode 'survive-time
-    :time-limit 75
-    :must-survive '(player blue-capital))
+  :mission (decisive-mission 'blue
+    (time-elapsed 75)
+    (destroy-any '(player blue-capital)))
 
   :entities (list
     (entity :id 'player :archetype 'player-fighter :team 'blue

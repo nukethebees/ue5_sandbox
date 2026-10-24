@@ -1,3 +1,4 @@
+(load-script "Libraries/objectives.scm")
 (level
   :id 'dev-three-second-failure
   :title "Dev: Three-Second Failure"
@@ -5,12 +6,9 @@
 
   :player 'player
 
-  :mission (mission
-    :mode 'kill-enemies-within-time
-    :time-limit 3
-    :kill-count 1
-    :heroes '(player)
-    :must-survive '(player))
+  :mission (decisive-mission 'blue
+    (entity-kills-reached '(player) 1)
+    (any-of (destroy-any '(player)) (time-elapsed 3)))
 
   :entities (list
     (entity :id 'player :archetype 'player-fighter :team 'blue

@@ -46,16 +46,6 @@ auto same_rotation(Rotator3d const lhs, Rotator3d const rhs) -> bool {
     }
     return equal || negated;
 }
-auto operator==(LevelMissionDefinition const& lhs, LevelMissionDefinition const& rhs) -> bool {
-    auto const same_time{
-        lhs.time_limit_seconds.has_value() == rhs.time_limit_seconds.has_value() &&
-        (!lhs.time_limit_seconds || same_number(*lhs.time_limit_seconds, *rhs.time_limit_seconds))};
-    return lhs.mode == rhs.mode && same_time && lhs.kill_count == rhs.kill_count &&
-           std::ranges::is_permutation(lhs.hero_entity_ids, rhs.hero_entity_ids) &&
-           std::ranges::is_permutation(lhs.must_survive_entity_ids, rhs.must_survive_entity_ids) &&
-           std::ranges::is_permutation(lhs.required_kill_entity_ids, rhs.required_kill_entity_ids);
-}
-
 auto operator==(LevelCameraDefinition const& lhs, LevelCameraDefinition const& rhs) -> bool {
     return std::ranges::is_permutation(lhs.target_entity_ids, rhs.target_entity_ids) &&
            same_vector(lhs.offset_direction, rhs.offset_direction) &&

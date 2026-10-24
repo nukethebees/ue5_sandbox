@@ -1,7 +1,6 @@
 #include "ioj/sim/levels/level_event_manager.h"
 
 #include <ioj/diagnostics.h>
-#include <ioj/sim/missions/mission_manager.h>
 
 #include <cassert>
 #include <cstdint>
@@ -13,10 +12,8 @@
 namespace ioj::sim {
 LevelEventManager::LevelEventManager(capital_ships::Sim& capital_ships,
                                      turrets::Sim& turrets,
-                                     spinners::Sim& spinners,
-                                     MissionManager& mission_manager) noexcept
-    : spawn_manager_{capital_ships, turrets, spinners}
-    , mission_manager_{mission_manager} {}
+                                     spinners::Sim& spinners) noexcept
+    : spawn_manager_{capital_ships, turrets, spinners} {}
 
 void LevelEventManager::initialise(CompiledLevelEvents data, EntityId const player_id) {
     initialisation_ = std::move(data.initialisation);
@@ -26,7 +23,6 @@ void LevelEventManager::initialise(CompiledLevelEvents data, EntityId const play
 
     next_event_index_ = 0;
     spawn_group_offset_ = schedule_.initial_spawn_group_count;
-    mission_group_offset_ = 0;
     spawn_manager_.initialise(initialisation_.entity_count,
                               schedule_.capital_spawns.get_const_view(),
                               schedule_.turret_spawns.get_const_view(),
@@ -35,31 +31,6 @@ void LevelEventManager::initialise(CompiledLevelEvents data, EntityId const play
         spawn_manager_.set_entity_id(initialisation_.player_entity_index, player_id);
     }
     spawn_manager_.spawn(schedule_.spawn_groups.get_const_view(0, spawn_group_offset_));
-
-    mission_manager_.bind_level_event_data(schedule_.mission_events.values,
-                                           spawn_manager_.get_entity_ids());
-
-    [[maybe_unused]] std::uint32_t spawn_group_count{spawn_group_offset_};
-    [[maybe_unused]] std::uint32_t mission_group_count{};
-    std::uint32_t mission_tick_count{};
-    for (std::uint32_t event_index{}; static_cast<std::size_t>(event_index) < event_tick_count;
-         ++event_index) {
-        if (event_index != 0) {
-            assert(schedule_.execution_ticks[event_index - 1] <
-                   schedule_.execution_ticks[event_index]);
-        }
-
-        auto const counts{schedule_.event_group_counts[event_index]};
-        spawn_group_count += counts.spawn_groups;
-        mission_group_count += counts.mission_groups;
-        if (counts.mission_groups != 0) {
-            ++mission_tick_count;
-        }
-    }
-    assert(spawn_group_count == schedule_.spawn_groups.num());
-    assert(mission_group_count == schedule_.mission_events.groups.num());
-    mission_manager_.set_pending_objective_events(
-        NonNegative<std::int32_t>::make(mission_tick_count));
 }
 
 void LevelEventManager::execute_tick(SimTick const tick) {
@@ -82,23 +53,11 @@ void LevelEventManager::execute_tick(SimTick const tick) {
             schedule_.spawn_groups.get_const_view(spawn_group_offset_, counts.spawn_groups));
         spawn_group_offset_ += counts.spawn_groups;
     }
-    if (counts.mission_groups != 0) {
-        mission_manager_.consume_level_events(schedule_.mission_events.groups.get_const_view(
-            mission_group_offset_, counts.mission_groups));
-        mission_group_offset_ += counts.mission_groups;
-    }
     ++next_event_index_;
 }
 
 auto LevelEventManager::get_spawned_ids() const -> std::span<EntityId const> {
     return spawn_manager_.get_spawned_ids();
-}
-
-void LevelEventManager::configure_mission() {
-    if (initialisation_.mission.has_value()) {
-        mission_manager_.initialise_level_mission(initialisation_.mission.value(),
-                                                  spawn_manager_.get_entity_ids());
-    }
 }
 
 auto LevelEventManager::get_entity_id(LevelEntityIndex const entity_index) const -> EntityId {

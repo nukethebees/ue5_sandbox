@@ -31,8 +31,8 @@ auto check_editor_support(LevelDefinition const& level) -> std::expected<void, D
     if (!definition.unlock_level_ids().empty()) {
         unsupported("level.unlock", "unlock criteria");
     }
-    if (!definition.mission_events().empty()) {
-        unsupported("level.mission-events", "mission events");
+    if (definition.mission()) {
+        unsupported("level.mission", "objective editing; edit the S7 mission source directly");
     }
     if (!definition.settings().empty()) {
         unsupported("level.settings", "settings layers");

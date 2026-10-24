@@ -1,5 +1,4 @@
 target_sources(native-simulation PRIVATE
-  mission_fail_reason.h
-  mission_mode.h
-  mission_state.h
+  mission.h
+  mission_result.h
 )

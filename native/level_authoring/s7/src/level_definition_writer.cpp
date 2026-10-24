@@ -93,30 +93,6 @@ auto emit_editor_level_source(LevelDefinition const& level)
         camera_form.field(Property::OffsetDirection, vector(ir, camera.offset_direction));
         form.field(Property::Camera, camera_form.build());
     }
-    if (definition.mission()) {
-        auto const& mission{*definition.mission()};
-        auto mission_form{ir.form(RecordKind::Mission)};
-        mission_form.field(Property::Mode, ir.quote(mission.mode));
-        if (mission.time_limit_seconds) {
-            mission_form.field(Property::TimeLimit,
-                               ir.atom(editor_number(*mission.time_limit_seconds)));
-        }
-        if (mission.kill_count) {
-            mission_form.field(Property::KillCount, *mission.kill_count);
-        }
-        if (!mission.hero_entity_ids.empty()) {
-            mission_form.field(Property::Heroes, id_list(ir, mission.hero_entity_ids));
-        }
-        if (!mission.must_survive_entity_ids.empty()) {
-            mission_form.field(Property::MustSurvive, id_list(ir, mission.must_survive_entity_ids));
-        }
-        if (!mission.required_kill_entity_ids.empty()) {
-            mission_form.field(Property::RequiredKills,
-                               id_list(ir, mission.required_kill_entity_ids));
-        }
-        form.field(Property::Mission, mission_form.build());
-    }
-
     std::vector<std::size_t> indices(definition.entities().size());
     std::iota(indices.begin(), indices.end(), std::size_t{});
     std::ranges::sort(indices, [&](std::size_t const a, std::size_t const b) {

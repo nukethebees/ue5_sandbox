@@ -4,6 +4,7 @@ target_sources(native-level-authoring
     ../s7/src/ast_parser.cpp
     ../s7/src/settings_parser.cpp
     ../s7/src/level_parser.cpp
+    ../s7/src/mission_parser.cpp
     ../s7/src/campaign_parser.cpp
     ../s7/src/catalog_parser.cpp
     ../s7/src/level_definition_writer.cpp

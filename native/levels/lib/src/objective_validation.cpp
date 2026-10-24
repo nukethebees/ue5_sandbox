@@ -128,12 +128,12 @@ auto validate_mission(MissionDefinition const& mission, std::span<EntityId const
                     break;
                 case ExpressionType::EntityReachedPosition:
                     entity(expression.entity);
-                    if (!std::isfinite(expression.radius) || expression.radius < 0 ||
-                        !std::isfinite(expression.position.x()) ||
+                    if (!std::isfinite(expression.radius * expression.radius) ||
+                        expression.radius < 0 || !std::isfinite(expression.position.x()) ||
                         !std::isfinite(expression.position.y()) ||
                         !std::isfinite(expression.position.z())) {
-                        errors.emplace_back(prefix +
-                                            "Position and nonnegative radius must be finite");
+                        errors.emplace_back(
+                            prefix + "Position and nonnegative squared radius must be finite");
                     }
                     break;
                 case ExpressionType::TimeElapsed:

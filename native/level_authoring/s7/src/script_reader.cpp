@@ -39,10 +39,25 @@ auto dsl_source() -> std::string {
                             RecordKind::Mission,
                             RecordKind::Camera,
                             RecordKind::CollisionGrid,
-                            RecordKind::MissionEvent}) {
+                            RecordKind::Objective,
+                            RecordKind::TeamResult}) {
         auto const name{to_serialized_string(kind)};
         std::format_to(std::back_inserter(source),
                        "(define ({} . properties) (cons :{} properties))\n",
+                       name,
+                       name);
+    }
+    for (auto const name : {"all-of",
+                            "any-of",
+                            "entity-destroyed",
+                            "entity-reached-position",
+                            "time-elapsed",
+                            "objective-resolved",
+                            "entity-kills-reached",
+                            "expr",
+                            "expr-ref"}) {
+        std::format_to(std::back_inserter(source),
+                       "(define ({} . arguments) (cons :{} arguments))\n",
                        name,
                        name);
     }

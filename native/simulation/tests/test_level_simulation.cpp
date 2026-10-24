@@ -1,6 +1,8 @@
-#include "support/simulation_test_support.h"
+#include "support/mission_test_support.h"
 #include <ioj/column_math.h>
+#include <ioj/levels/authoring/definition_reader.h>
 #include <ioj/sim/collision/world_aabb_operations.h>
+#include <ioj/sim/levels/level_compilation.h>
 #include <ioj/sim/testing/entity_observations.h>
 #include <ioj/sim/testing/laser_spawns.h>
 #include <ioj/sim/testing/level_sim_test_access.h>
@@ -23,8 +25,7 @@ static_assert(
     std::is_same_v<decltype(std::declval<LevelSim&>().get_spinners()), spinners::Sim const&>);
 static_assert(
     std::is_same_v<decltype(std::declval<LevelSim&>().get_entity_ledger()), EntityLedger const&>);
-static_assert(std::is_same_v<decltype(std::declval<LevelSim&>().get_mission_manager()),
-                             MissionManager const&>);
+static_assert(std::is_same_v<decltype(std::declval<LevelSim&>().get_mission()), Mission const&>);
 static_assert(std::is_same_v<decltype(std::declval<LevelSim&>().get_spatial_query_manager()),
                              SpatialQueryManager const&>);
 static_assert(std::is_same_v<decltype(std::declval<LevelSim&>().get_level_telemetry_manager()),
@@ -74,14 +75,16 @@ auto make_overlap_response_battle() -> LevelSimInitData {
 }
 
 void add_mission(LevelSimInitData& data) {
-    auto& mission{data.level_events.initialisation.mission.emplace()};
     auto const entities{
         data.level_events.schedule.capital_spawns.get_const_view().entity_indices()};
-    mission.mode = levels::LevelMissionMode::KillEnemies;
-    mission.kill_count = 1;
-    mission.save_results = false;
-    mission.hero_entity_indices = {static_cast<std::int32_t>(entities[0])};
-    mission.required_kill_entity_indices = {static_cast<std::int32_t>(entities[1])};
+    levels::ObjectiveDefinition objective{.team = Team::Green};
+    objective.expressions = {destroyed(entities[1]),
+                             {.type = ExpressionType::EntityKillsReached,
+                              .entities = {mission_entity(entities[0])},
+                              .kills = 1},
+                             {.type = ExpressionType::All, .children = {0, 1}}};
+    objective.roots[0] = 2;
+    install_mission(data, std::move(objective));
 }
 
 void kill_enemy(LevelSim& simulation) {
@@ -139,6 +142,118 @@ TEST(NativeSimulation, LevelSimFrameMemoryUsesAndReturnsGameMemoryBlock) {
     EXPECT_EQ(reused.data(), backing_data);
 }
 
+TEST(NativeSimulation, PositionConditionsUseLiveSpatialDataAndRemainTerminal) {
+    auto data{make_battle()};
+    levels::ObjectiveDefinition objective{.team = Team::Green};
+    objective.expressions = {{.type = ExpressionType::EntityReachedPosition,
+                              .entity = mission_entity(0),
+                              .position = {-1000.0, 0.0, 0.0},
+                              .radius = 1.0},
+                             {.type = ExpressionType::EntityReachedPosition,
+                              .entity = mission_entity(1),
+                              .position = {-1000.0, 0.0, 0.0},
+                              .radius = 1.0},
+                             {.type = ExpressionType::TimeElapsed, .seconds = 0.1},
+                             {.type = ExpressionType::All, .children = {0, 2}}};
+    objective.roots = {3, 1, levels::absent_expression};
+    install_mission(data, std::move(objective));
+    GameMemory memory;
+    LevelSim simulation{memory, std::move(data)};
+    simulation.finish_initialisation();
+    EXPECT_FALSE(simulation.get_mission().outcome(0));
+    DirectDamageEvents damage;
+    damage.add(simulation.get_capital_ships().get_id(0), 100, {});
+    damage.add(simulation.get_capital_ships().get_id(1), 100, {});
+    LevelSimTestAccess::queue_direct_damage_events(simulation, damage.get_const_view());
+    simulation.start();
+    simulation.advance(0.2);
+    EXPECT_EQ(simulation.get_mission().outcome(0), ObjectiveOutcome::Passed);
+    EXPECT_TRUE(simulation.get_mission().active_rules().empty());
+}
+
+TEST(NativeSimulation, SchemeFutureEntityAndLateObserverProgressThroughLevelSimulation) {
+    auto const authored{levels::authoring::DefinitionReader{}.read_level_source(R"(
+      (level :id 'future-objective :title "Future objective"
+        :camera (camera :look-at '(hero) :offset-direction '(-1 0 0) :distance 1000)
+        :entities (list
+          (entity :id 'hero :archetype 'capital-ship :team 'green :position '(-1000 0 0))
+          (entity :id 'enemy :archetype 'capital-ship :team 'white :position '(1000 0 0) :spawn-at 0.2))
+        :mission (mission :objectives (list
+          (objective :id 'destroy :team 'green :pass (entity-destroyed 'enemy))
+          (objective :id 'observe :team 'green
+            :depends-on (list (objective-resolved 'destroy 'passed))
+            :pass (all-of (entity-destroyed 'enemy) (objective-resolved 'destroy 'passed))))
+          :team-results (list (team-result :team 'green
+            :when (objective-resolved 'observe 'passed) :result 'victory)))))")};
+    ASSERT_TRUE(authored);
+    auto data{make_battle()};
+    data.clock_settings.tick_rate = Frequency::make(10.0);
+    data.capital_ships.max_health = 100;
+    SimClock clock;
+    clock.initialise(data.clock_settings);
+    auto compiled{levels::compile_level(*authored, clock, data.capital_ships, data.turrets)};
+    ASSERT_TRUE(compiled);
+    data.level_events = std::move(*compiled);
+    GameMemory memory;
+    LevelSim simulation{memory, std::move(data)};
+    simulation.finish_initialisation();
+    simulation.start();
+    simulation.advance(0.1);
+    EXPECT_FALSE(simulation.get_mission().outcome(0));
+    simulation.advance(0.1);
+    ASSERT_EQ(simulation.get_capital_ships().get_num_instances(), 2);
+    kill_enemy(simulation);
+    simulation.advance(0.1);
+    EXPECT_EQ(simulation.get_mission().outcome(0), ObjectiveOutcome::Passed);
+    EXPECT_EQ(simulation.get_mission().outcome(1), ObjectiveOutcome::Passed);
+    EXPECT_EQ(simulation.get_mission().team_outcome(Team::Green), TeamOutcome::Victory);
+    EXPECT_FALSE(simulation.take_mission_result());
+}
+
+TEST(NativeSimulation, LevelCompletionUsesPlayerTeamAndDoesNotCancelOptionalObjectives) {
+    auto data{make_battle()};
+    data.clock_settings.tick_rate = Frequency::make(10.0);
+    add_player_spawn(data, {});
+    data.player->team = Team::Green;
+    data.player->transform.location = {0.0, 2000.0, 0.0};
+    levels::MissionDefinition definition{
+        .objectives = {{.id = "enemy",
+                        .team = Team::White,
+                        .expressions = {{.type = ExpressionType::TimeElapsed, .seconds = 0.0}},
+                        .roots = {0, levels::absent_expression, levels::absent_expression}},
+                       {.id = "player",
+                        .team = Team::Green,
+                        .expressions = {{.type = ExpressionType::TimeElapsed, .seconds = 0.2}},
+                        .roots = {0, levels::absent_expression, levels::absent_expression}},
+                       {.id = "optional",
+                        .team = Team::Green,
+                        .expressions = {{.type = ExpressionType::TimeElapsed, .seconds = 10.0}},
+                        .roots = {0, levels::absent_expression, levels::absent_expression}}},
+        .team_results = {{Team::White, {"enemy", ObjectiveOutcome::Passed}, TeamOutcome::Victory},
+                         {Team::Green, {"player", ObjectiveOutcome::Passed}, TeamOutcome::Defeat}}};
+    SimClock clock;
+    clock.initialise(data.clock_settings);
+    auto compiled{compile_mission(definition, {}, clock)};
+    ASSERT_TRUE(compiled);
+    data.level_events.initialisation.mission = {.definition = std::move(*compiled),
+                                                .save_results = false};
+    GameMemory memory;
+    LevelSim simulation{memory, std::move(data)};
+    simulation.finish_initialisation();
+    EXPECT_FALSE(simulation.take_mission_result());
+    simulation.start();
+    simulation.advance(0.2);
+    auto const result{simulation.take_mission_result()};
+    ASSERT_TRUE(result);
+    EXPECT_EQ(result->team, Team::Green);
+    EXPECT_EQ(result->outcome, TeamOutcome::Defeat);
+    EXPECT_EQ(result->objective_outcome, ObjectiveOutcome::Passed);
+    EXPECT_EQ(result->objective_id, "player");
+    EXPECT_NEAR(result->elapsed_seconds, 0.2, 1.e-7);
+    EXPECT_EQ(simulation.get_mission().active_objectives().size(), 1);
+    EXPECT_FALSE(simulation.take_mission_result());
+}
+
 TEST(NativeSimulation, LevelSimTelemetryCompletionTest) {
     auto data{make_battle()};
     GameMemory simulation_memory;
@@ -174,6 +289,10 @@ TEST(NativeSimulation, LevelSimTelemetryCompletionTest) {
 
 TEST(NativeSimulation, LevelTelemetryMissionCompletionTest) {
     auto data{make_battle()};
+    player::PlayerSpawnData player;
+    player.team = Team::Green;
+    player.transform.location = {0, 2000, 0};
+    add_player_spawn(data, player);
     data.telemetry_metadata = LevelTelemetryRunMetadata{
         .run_id = "12345678-1234-1234-1234-123456789abc",
         .map_name = "TelemetryMissionTest",
@@ -199,8 +318,8 @@ TEST(NativeSimulation, LevelTelemetryMissionCompletionTest) {
     ASSERT_TRUE(record.has_value()) << "Taking the mission result finalizes telemetry";
     EXPECT_EQ(record->completion.reason, LevelTelemetryRunEndReason::MissionSucceeded)
         << "Mission success selects the telemetry completion reason";
-    ASSERT_TRUE(record->completion.mission_state.has_value()) << "Mission state is present";
-    EXPECT_EQ(record->completion.mission_state.value(), MissionState::Succeeded)
+    ASSERT_TRUE(record->completion.mission_outcome.has_value()) << "Mission state is present";
+    EXPECT_EQ(record->completion.mission_outcome.value(), TeamOutcome::Victory)
         << "Mission state is retained";
 }
 
@@ -574,11 +693,8 @@ TEST(NativeSimulation, WorldlessLevelSimulationTest) {
         << "Damage removes only the first battle's enemy";
     EXPECT_EQ(second.get_capital_ships().get_num_instances(), 2) << "Other battle is unaffected";
     auto result{first.take_mission_result()};
-    EXPECT_TRUE(result.has_value()) << "Worldless mission produces a result";
-    if (result.has_value()) {
-        EXPECT_EQ(result->state, MissionState::Succeeded) << "Worldless battle succeeds";
-        EXPECT_EQ(result->kills, 1) << "Worldless battle attributes the kill";
-    }
+    EXPECT_FALSE(result.has_value()) << "Playerless simulation does not choose a player's outcome";
+    EXPECT_EQ(first.get_mission().team_outcome(Team::Green), TeamOutcome::Victory);
     EXPECT_FALSE(first.take_mission_result().has_value()) << "Mission result is delivered once";
     first.pause();
     auto const paused_ticks{first.get_clock().get_completed_ticks()};

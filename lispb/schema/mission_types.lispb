@@ -4,12 +4,24 @@
   (enum ObjectiveOutcome std::uint8_t
     :native-api true
     :helpers (to-serialized-string try-parse-serialized)
+    (unreal-projection EObjectiveOutcome
+      :header "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/missions/ObjectiveOutcome.h"
+      :header-include "SpaceGame/missions/ObjectiveOutcome.h"
+      :conversion-header "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/missions/ObjectiveOutcomeConversion.h"
+      :native-header-include "ioj/levels/mission_types.h"
+      :reflection uenum)
     (value Passed :serialized-name "passed")
     (value Failed :serialized-name "failed")
     (value Expired :serialized-name "expired"))
   (enum TeamOutcome std::uint8_t
     :native-api true
     :helpers (to-serialized-string try-parse-serialized)
+    (unreal-projection ETeamOutcome
+      :header "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/missions/TeamOutcome.h"
+      :header-include "SpaceGame/missions/TeamOutcome.h"
+      :conversion-header "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/missions/TeamOutcomeConversion.h"
+      :native-header-include "ioj/levels/mission_types.h"
+      :reflection uenum)
     (value Victory :serialized-name "victory")
     (value Defeat :serialized-name "defeat"))
   (enum ExprResult std::uint8_t

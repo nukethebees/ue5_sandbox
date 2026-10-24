@@ -35,7 +35,7 @@ target_sources(native-simulation-tests PRIVATE
   scenarios/test_fighters_intercept_capital.cpp
   scenarios/test_fighters_standby_transition.cpp
   scenarios/test_laser_lifecycle.cpp
-  scenarios/test_mission_manager.cpp
+  scenarios/test_mission.cpp
   scenarios/test_player_ship_vs_capital.cpp
   scenarios/test_simulation_core_regressions.cpp
   scenarios/test_spatial_query_empty.cpp
@@ -69,6 +69,7 @@ foreach(simulation_test_target IN ITEMS native-simulation-tests native-simulatio
   target_link_libraries(${simulation_test_target}
     PRIVATE
       native-simulation-s7
+      native-level-authoring-s7
   )
   target_compile_definitions(${simulation_test_target}
     PRIVATE

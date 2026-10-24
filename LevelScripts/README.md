@@ -7,11 +7,18 @@ Copy an existing `.scm` scenario, give it a unique `:id`, and add its path to
 (level :id 'example :title "Example"
   :player 'player
   :settings (fighters :speed 3000)
-  :mission (mission :mode 'kill-enemies :heroes '(player))
+  :mission (mission
+    :objectives (list
+      (objective :id 'clear :team 'blue :title "Clear the range"
+        :pass (entity-destroyed 'turret)
+        :fail (entity-destroyed 'player)))
+    :team-results (list
+      (team-result :team 'blue :when (objective-resolved 'clear 'passed) :result 'victory)
+      (team-result :team 'blue :when (objective-resolved 'clear 'failed) :result 'defeat)))
   :entities (list
     (entity :id 'player :archetype 'player-fighter
       :team 'blue :position '(0 0 0))
-    (entity :archetype 'static-turret :team 'red
+    (entity :id 'turret :archetype 'static-turret :team 'red
       :position '(0 10000 0))))
 ```
 
@@ -26,8 +33,8 @@ it supplies. For a separate settings file, compose defaults and overrides in ord
 
 Imports are relative to `LevelScripts/`. Shared formation helpers live in
 `Libraries/`. Assets, colours and scene bindings stay in Unreal properties.
-Edit scripts directly for settings and entity overrides; editor scene saving
-currently cannot preserve them.
+Edit scripts directly for missions, settings and entity overrides; editor scene saving
+rejects these unsupported features. See [objective authoring](docs/objectives.md).
 
 Run a scenario with `coj benchmark native-simulation --level LevelScripts/your-level.scm --seconds 10`.
 See [the native guide](../native/README.md) and [benchmark guide](../docs/benchmarks.md)

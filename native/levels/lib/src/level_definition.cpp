@@ -1,5 +1,6 @@
 #include "validation.h"
 #include <ioj/ascii.h>
+#include <ioj/levels/mission_validation.h>
 
 #include <algorithm>
 #include <cassert>
@@ -88,11 +89,16 @@ auto LevelDefinition::make(LevelDefinitionComponents definition)
     if (definition.camera) {
         detail::validate_camera(*definition.camera, entities, result);
     }
-    detail::MissionReferences references;
     if (definition.mission) {
-        references = detail::validate_mission(*definition.mission, entities, result);
+        std::vector<EntityId> ids;
+        for (auto const& entity : definition.entities) {
+            ids.push_back(entity.id);
+        }
+        for (auto& message : validate_mission(*definition.mission, ids)) {
+            result.emplace_back(
+                DiagnosticCode::InvalidMissionStructure, "level.mission", std::move(message));
+        }
     }
-    detail::validate_mission_events(definition, entities, std::move(references), result);
     if (!result.empty()) {
         return std::unexpected{std::move(result)};
     }

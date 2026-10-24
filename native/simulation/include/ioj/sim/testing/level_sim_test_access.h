@@ -158,9 +158,6 @@ struct LevelSimTestAccess {
         std::ranges::copy(requests.instigator_ids(), destination.instigator_ids().begin());
         std::ranges::copy(requests.sources(), destination.sources().begin());
     }
-    static auto complete_mission(LevelSim& simulation) -> bool {
-        return simulation.mission_manager_.complete_mission();
-    }
 };
 
 } // namespace ioj::sim

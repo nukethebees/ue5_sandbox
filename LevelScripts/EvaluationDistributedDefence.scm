@@ -1,3 +1,4 @@
+(load-script "Libraries/objectives.scm")
 (level
   :id 'evaluation-distributed-defence
   :title "Evaluation 02: Distributed Defence"
@@ -8,11 +9,9 @@
 
   :player 'player
 
-  :mission (mission
-    :mode 'survive-time
-    :time-limit 180
-    :heroes '(player blue-installation-west blue-installation-centre blue-installation-east)
-    :must-survive '(player blue-installation-west blue-installation-centre blue-installation-east))
+  :mission (decisive-mission 'blue
+    (time-elapsed 180)
+    (destroy-any '(player blue-installation-west blue-installation-centre blue-installation-east)))
 
   :entities (list
     (entity :id 'player :archetype 'player-fighter :team 'blue

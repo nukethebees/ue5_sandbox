@@ -7,7 +7,7 @@
 #include "scenarios/test_fighters_intercept_capital.h"
 #include "scenarios/test_fighters_standby_transition.h"
 #include "scenarios/test_laser_lifecycle.h"
-#include "scenarios/test_mission_manager.h"
+#include "scenarios/test_mission.h"
 #include "scenarios/test_player_ship_vs_capital.h"
 #include "scenarios/test_simulation_core_regressions.h"
 #include "scenarios/test_spatial_query_empty.h"
@@ -142,49 +142,47 @@ TEST(WorldlessSpaceGameSimulation, Entities_CollisionOverlapDamagesAndKills) {
 
 TEST(WorldlessSpaceGameSimulation, Mission_SurviveTime) {
     auto const config{tests::make_fixture()};
-    run_worldless_mission_manager_scenario(config, MissionManagerScenario::SurviveTime);
+    run_worldless_mission_scenario(config, MissionScenario::SurviveTime);
 }
 
 TEST(WorldlessSpaceGameSimulation, Mission_KillEnemies) {
     auto const config{tests::make_fixture()};
-    run_worldless_mission_manager_scenario(config, MissionManagerScenario::KillEnemies);
+    run_worldless_mission_scenario(config, MissionScenario::KillEnemies);
 }
 
 TEST(WorldlessSpaceGameSimulation, Mission_KillEnemiesWithinTime) {
     auto const config{tests::make_fixture()};
-    run_worldless_mission_manager_scenario(config, MissionManagerScenario::KillEnemiesWithinTime);
+    run_worldless_mission_scenario(config, MissionScenario::KillEnemiesWithinTime);
 }
 
 TEST(WorldlessSpaceGameSimulation, Mission_DefenceObjective) {
     auto const config{tests::make_fixture()};
-    run_worldless_mission_manager_scenario(config, MissionManagerScenario::DefenceObjective);
+    run_worldless_mission_scenario(config, MissionScenario::DefenceObjective);
 }
 
 TEST(WorldlessSpaceGameSimulation, Mission_RequiredKillsObjective) {
     auto const config{tests::make_fixture()};
-    run_worldless_mission_manager_scenario(config, MissionManagerScenario::RequiredKillsObjective);
+    run_worldless_mission_scenario(config, MissionScenario::RequiredKillsObjective);
 }
 
 TEST(WorldlessSpaceGameSimulation, Mission_RequiredKillsTimeElapsed) {
     auto const config{tests::make_fixture()};
-    run_worldless_mission_manager_scenario(config,
-                                           MissionManagerScenario::RequiredKillsTimeElapsed);
+    run_worldless_mission_scenario(config, MissionScenario::RequiredKillsTimeElapsed);
 }
 
 TEST(WorldlessSpaceGameSimulation, Mission_AutomaticKillTargetIncludesLastEnemy) {
     auto const config{tests::make_fixture()};
-    run_worldless_mission_manager_scenario(config, MissionManagerScenario::AutomaticKillTarget);
+    run_worldless_mission_scenario(config, MissionScenario::AuthoredKillTarget);
 }
 
 TEST(WorldlessSpaceGameSimulation, Mission_SuccessIsTerminal) {
     auto const config{tests::make_fixture()};
-    run_worldless_mission_manager_scenario(config, MissionManagerScenario::SuccessIsTerminal);
+    run_worldless_mission_scenario(config, MissionScenario::SuccessIsTerminal);
 }
 
 TEST(WorldlessSpaceGameSimulation, Mission_ExplicitCompletionIsLatched) {
     auto const config{tests::make_fixture()};
-    run_worldless_mission_manager_scenario(config,
-                                           MissionManagerScenario::ExplicitCompletionIsLatched);
+    run_worldless_mission_scenario(config, MissionScenario::OutcomeCompletionIsLatched);
 }
 
 TEST(WorldlessSpaceGameSimulation, PlayerShip_VersusCapital) {

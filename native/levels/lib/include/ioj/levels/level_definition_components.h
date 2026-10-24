@@ -4,8 +4,7 @@
 #include <ioj/levels/level_camera_definition.h>
 #include <ioj/levels/level_collision_grid_definition.h>
 #include <ioj/levels/level_metadata.h>
-#include <ioj/levels/level_mission_definition.h>
-#include <ioj/levels/level_mission_objective_event.h>
+#include <ioj/levels/mission_definition.h>
 #include <ioj/settings/settings.h>
 
 #include <optional>
@@ -19,8 +18,7 @@ struct LevelDefinitionComponents {
     EntityId player_entity_id{};
     std::optional<LevelCameraDefinition> camera{};
     std::optional<LevelCollisionGridDefinition> collision_grid{};
-    std::optional<LevelMissionDefinition> mission{};
-    std::vector<LevelMissionObjectiveEvent> mission_events{};
+    std::optional<MissionDefinition> mission{};
     std::vector<EntitySpawnDefinition> entities{};
     settings::Settings settings{};
 };

@@ -1,3 +1,4 @@
+(load-script "Libraries/objectives.scm")
 (load-script "Libraries/formations.scm")
 
 (define* (turret-trial number description player-position turret-positions
@@ -11,11 +12,11 @@
             :title (format #f "Turret Trial ~A" number)
             :description description
             :player 'player
-            :mission (apply mission
-              (append
-                (list :mode (if time-limit 'kill-enemies-within-time 'kill-enemies)
-                      :heroes '(player) :must-survive '(player))
-                (if time-limit (list :time-limit time-limit) '())))
+            :mission (decisive-mission 'blue
+              (entity-kills-reached '(player) (length turret-positions))
+              (apply any-of
+                (append (list (entity-destroyed 'player))
+                        (if time-limit (list (time-elapsed time-limit)) '()))))
             :entities (cons
               (entity :id 'player :archetype 'player-fighter :team 'blue
                 :position player-position :rotation '(0 90 0))

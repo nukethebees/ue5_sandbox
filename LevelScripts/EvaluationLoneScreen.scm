@@ -1,3 +1,4 @@
+(load-script "Libraries/objectives.scm")
 (level
   :id 'evaluation-lone-screen
   :title "Evaluation 03: Lone Screen"
@@ -8,11 +9,9 @@
 
   :player 'player
 
-  :mission (mission
-    :mode 'survive-time
-    :time-limit 120
-    :heroes '(player)
-    :must-survive '(player))
+  :mission (decisive-mission 'blue
+    (time-elapsed 120)
+    (destroy-any '(player)))
 
   :entities (list
     (entity :id 'player :archetype 'player-fighter :team 'blue

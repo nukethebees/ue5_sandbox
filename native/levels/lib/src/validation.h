@@ -7,22 +7,8 @@
 
 namespace ioj::levels::detail {
 
-struct MissionReferences {
-    IdSet survivors{};
-    IdSet required{};
-};
-
 auto validate_entities(LevelDefinitionComponents const& definition, Diagnostics& result)
     -> EntityValidationState;
-// Return only references to declared entities, even when other validation fails.
-auto validate_mission(LevelMissionDefinition const& mission,
-                      EntityValidationState const& entities,
-                      Diagnostics& result) -> MissionReferences;
-// Consume the initial role sets produced by validate_mission, or empty sets without a mission.
-void validate_mission_events(LevelDefinitionComponents const& definition,
-                             EntityValidationState const& entities,
-                             MissionReferences references,
-                             Diagnostics& result);
 void validate_camera(LevelCameraDefinition const& camera,
                      EntityValidationState const& entities,
                      Diagnostics& result);

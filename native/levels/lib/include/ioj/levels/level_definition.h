@@ -26,11 +26,8 @@ class LevelDefinition {
         -> std::optional<LevelCollisionGridDefinition> const& {
         return collision_grid_;
     }
-    [[nodiscard]] auto mission() const -> std::optional<LevelMissionDefinition> const& {
+    [[nodiscard]] auto mission() const -> std::optional<MissionDefinition> const& {
         return mission_;
-    }
-    [[nodiscard]] auto mission_events() const -> std::vector<LevelMissionObjectiveEvent> const& {
-        return mission_events_;
     }
     [[nodiscard]] auto entities() const -> std::vector<EntitySpawnDefinition> const& {
         return entities_;
@@ -46,7 +43,6 @@ class LevelDefinition {
         , camera_{std::move(components.camera)}
         , collision_grid_{std::move(components.collision_grid)}
         , mission_{std::move(components.mission)}
-        , mission_events_{std::move(components.mission_events)}
         , entities_{std::move(components.entities)}
         , settings_{std::move(components.settings)} {}
 
@@ -55,8 +51,7 @@ class LevelDefinition {
     EntityId player_entity_id_;
     std::optional<LevelCameraDefinition> camera_;
     std::optional<LevelCollisionGridDefinition> collision_grid_;
-    std::optional<LevelMissionDefinition> mission_;
-    std::vector<LevelMissionObjectiveEvent> mission_events_;
+    std::optional<MissionDefinition> mission_;
     std::vector<EntitySpawnDefinition> entities_;
     settings::Settings settings_;
 };

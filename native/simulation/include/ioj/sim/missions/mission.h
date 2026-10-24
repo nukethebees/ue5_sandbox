@@ -122,6 +122,7 @@ struct MissionInputs {
     EntityLedger const& ledger;
     // Stable authored entity slots; unspawned slots contain the null EntityId sentinel.
     std::span<EntityId const> entities;
+    // Position rules require both services, with all live authored entities spatially indexed.
     SpatialQueryManager const* spatial{};
     FrameMemoryResource* scratch{};
 };
@@ -138,12 +139,14 @@ class Mission {
     void initialise(CompiledMission definition);
     // Call once after initial spawns. Zero-duration roots can resolve during begin.
     void begin(MissionInputs const& inputs);
+    // Requires begin() and nondecreasing simulation ticks.
     void tick(MissionInputs const& inputs);
     auto take_completions() -> std::vector<TeamCompletion>;
     auto objectives() const -> std::span<CompiledObjective const> { return data_.objectives; }
     auto active_objectives() const -> std::span<ObjectiveId const> { return active_; }
     auto inactive_objectives() const -> std::span<ObjectiveId const> { return inactive_; }
     auto completed_objectives() const -> std::span<ObjectiveId const> { return completed_; }
+    // A missing outcome means unresolved, including inactive objectives. IDs must be in range.
     auto outcome(ObjectiveId id) const -> std::optional<ObjectiveOutcome>;
     auto team_outcome(Team team) const -> std::optional<TeamOutcome>;
     auto result(ExprRef expression) const -> ExprResult;

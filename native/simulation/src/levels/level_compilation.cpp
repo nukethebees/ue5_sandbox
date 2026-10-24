@@ -18,53 +18,9 @@ struct EventSource {
     std::uint32_t source_index{};
 };
 
-struct MissionTickValues {
-    std::vector<std::int32_t> must_survive{};
-    std::vector<std::int32_t> required_kills{};
-    std::vector<std::int32_t> kill_target_increases{};
-};
-
 auto entity_index(LevelDefinition const& definition, EntityId const& id) -> sim::LevelEntityIndex {
     auto const& entity{definition.entity(id)};
     return static_cast<sim::LevelEntityIndex>(&entity - definition.entities().data());
-}
-
-void append_indices(std::vector<std::int32_t>& output,
-                    LevelDefinition const& definition,
-                    std::vector<EntityId> const& ids) {
-    for (auto const& id : ids) {
-        output.push_back(static_cast<std::int32_t>(entity_index(definition, id)));
-    }
-}
-
-auto append_mission_groups(sim::LevelEventSchedule& schedule,
-                           MissionTickValues& values,
-                           std::string& error) -> bool {
-    auto const append = [&](sim::LevelMissionEventType const type,
-                            std::span<std::int32_t const> const event_values,
-                            std::string_view const name) {
-        if (schedule.add_mission_group(type, event_values)) {
-            return true;
-        }
-        error = std::format("Level event compilation at tick {}: {} event count {} "
-                            "exceeds the per-tick group limit of {}",
-                            schedule.execution_ticks.back(),
-                            name,
-                            event_values.size(),
-                            sim::max_level_event_count);
-        return false;
-    };
-    if (!append(sim::LevelMissionEventType::MustSurvive, values.must_survive, "must-survive") ||
-        !append(sim::LevelMissionEventType::RequiredKill, values.required_kills, "required-kill") ||
-        !append(sim::LevelMissionEventType::IncreaseKillTarget,
-                values.kill_target_increases,
-                "kill-target increase")) {
-        return false;
-    }
-    values.must_survive.clear();
-    values.required_kills.clear();
-    values.kill_target_increases.clear();
-    return true;
 }
 
 auto append_spawn_groups(sim::LevelEventSchedule& schedule,
@@ -121,49 +77,25 @@ auto compile_level(LevelDefinition const& level,
     }
 
     if (definition.mission()) {
-        auto const& mission{*definition.mission()};
-        mission_initialisation.mode = mission.mode;
-        mission_initialisation.time_limit_seconds = mission.time_limit_seconds;
-        mission_initialisation.kill_count = mission.kill_count;
-        append_indices(
-            mission_initialisation.hero_entity_indices, definition, mission.hero_entity_ids);
-        append_indices(mission_initialisation.must_survive_entity_indices,
-                       definition,
-                       mission.must_survive_entity_ids);
-        append_indices(mission_initialisation.required_kill_entity_indices,
-                       definition,
-                       mission.required_kill_entity_ids);
-        if ((mission.mode == LevelMissionMode::KillEnemies ||
-             mission.mode == LevelMissionMode::KillEnemiesWithinTime) &&
-            !mission.kill_count && !mission.hero_entity_ids.empty()) {
-            auto const hero_team{
-                definition.entities()[entity_index(definition, mission.hero_entity_ids.front())]
-                    .team};
-            std::int32_t enemy_count{};
-            for (auto const& entity : definition.entities()) {
-                enemy_count += entity.team != hero_team ? 1 : 0;
-            }
-            mission_initialisation.kill_count = enemy_count;
+        std::vector<EntityId> entities;
+        for (auto const& entity : definition.entities()) {
+            entities.push_back(entity.id);
         }
+        auto mission{sim::compile_mission(*definition.mission(), entities, clock)};
+        if (!mission) {
+            return std::unexpected{std::move(mission.error())};
+        }
+        mission_initialisation.definition = std::move(*mission);
     }
 
     std::vector<EventSource> sources;
     auto const entity_count{static_cast<std::uint32_t>(definition.entities().size())};
-    auto const mission_event_count{static_cast<std::uint32_t>(definition.mission_events().size())};
-    sources.reserve(static_cast<std::size_t>(entity_count + mission_event_count));
+    sources.reserve(static_cast<std::size_t>(entity_count));
     for (std::uint32_t index{}; index < entity_count; ++index) {
         auto const& entity{definition.entities()[static_cast<std::size_t>(index)]};
         if (entity.archetype != EntityArchetype::PlayerFighter) {
             sources.push_back(
                 {clock.duration_to_tick_period(Duration::make(entity.spawn_time_seconds)), index});
-        }
-    }
-    for (std::uint32_t index{}; index < mission_event_count; ++index) {
-        auto const& event{definition.mission_events()[static_cast<std::size_t>(index)]};
-        if (!event.must_survive_entity_ids.empty() || !event.required_kill_entity_ids.empty() ||
-            event.kill_target_increase > 0) {
-            sources.push_back({clock.duration_to_tick_period(Duration::make(event.time_seconds)),
-                               entity_count + index});
         }
     }
     std::ranges::sort(sources, [](EventSource const& left, EventSource const& right) {
@@ -172,7 +104,6 @@ auto compile_level(LevelDefinition const& level,
                 left.source_index < right.source_index);
     });
 
-    MissionTickValues mission_values;
     std::int32_t capital_count{};
     std::int32_t turret_count{};
     for (auto const& entity : definition.entities()) {
@@ -248,8 +179,7 @@ auto compile_level(LevelDefinition const& level,
     schedule.add_initial_spawn_group(sim::EntityType::Turret, 0, turret_offset);
 
     for (auto const source : sources) {
-        auto const is_entity{source.source_index < entity_count};
-        if (is_entity && source.execution_tick == 0) {
+        if (source.execution_tick == 0) {
             continue;
         }
         if (schedule.execution_ticks.empty() ||
@@ -257,32 +187,19 @@ auto compile_level(LevelDefinition const& level,
             if (!schedule.execution_ticks.empty()) {
                 std::string error;
                 if (!append_spawn_groups(
-                        schedule, capital_end, turret_end, capital_offset, turret_offset, error) ||
-                    !append_mission_groups(schedule, mission_values, error)) {
+                        schedule, capital_end, turret_end, capital_offset, turret_offset, error)) {
                     return std::unexpected{LevelCompilationErrors{std::move(error)}};
                 }
             }
             schedule.execution_ticks.push_back(source.execution_tick);
             schedule.event_group_counts.emplace_back();
         }
-        if (is_entity) {
-            append_entity(source.source_index);
-        } else {
-            auto const& event{definition.mission_events()[static_cast<std::size_t>(
-                source.source_index - entity_count)]};
-            append_indices(mission_values.must_survive, definition, event.must_survive_entity_ids);
-            append_indices(
-                mission_values.required_kills, definition, event.required_kill_entity_ids);
-            if (event.kill_target_increase > 0) {
-                mission_values.kill_target_increases.push_back(event.kill_target_increase);
-            }
-        }
+        append_entity(source.source_index);
     }
     if (!schedule.execution_ticks.empty()) {
         std::string error;
         if (!append_spawn_groups(
-                schedule, capital_end, turret_end, capital_offset, turret_offset, error) ||
-            !append_mission_groups(schedule, mission_values, error)) {
+                schedule, capital_end, turret_end, capital_offset, turret_offset, error)) {
             return std::unexpected{LevelCompilationErrors{std::move(error)}};
         }
     }

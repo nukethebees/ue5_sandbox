@@ -69,22 +69,6 @@ auto read_error(levels::authoring::LevelDefinitionReadResult const& result) -> s
     return levels::format_diagnostics(result.error());
 }
 
-auto mission_state_name(sim::MissionState const state) -> std::string {
-    switch (state) {
-        case sim::MissionState::NotStarted:
-            return "not_started";
-        case sim::MissionState::Running:
-            return "running";
-        case sim::MissionState::Succeeded:
-            return "succeeded";
-        case sim::MissionState::Failed:
-            return "failed";
-        case sim::MissionState::Disabled:
-            return "disabled";
-    }
-    return "unknown";
-}
-
 auto json_string(std::string_view const value) -> std::string {
     std::string output{"\""};
     auto write{ioj::FormatWriter{std::back_inserter(output)}};
@@ -434,7 +418,9 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
         .active_lasers = simulation.get_lasers().get_num_instances(),
         .lasers_spawned = simulation.get_lasers().get_number_spawned(),
         .peak_fighters = frame_summary.peak_fighters,
-        .mission_state = mission_state_name(simulation.get_mission_manager().get_mission_state()),
+        .active_objectives = simulation.get_mission().active_objectives().size(),
+        .inactive_objectives = simulation.get_mission().inactive_objectives().size(),
+        .completed_objectives = simulation.get_mission().completed_objectives().size(),
         .frame_memory_capacity_bytes = frame_memory.capacity_bytes,
         .frame_memory_peak_claimed_bytes = frame_summary.peak_claimed_bytes,
         .frame_memory_peak_payload_bytes = frame_summary.peak_payload_bytes,
@@ -516,20 +502,23 @@ auto to_json(BenchmarkResult const& result) -> std::string {
           result.standby_fighters,
           result.moving_fighters,
           result.attacking_fighters);
-    write(R"(,"final_state":{{"mission_state":{},"initial_capital_ships":{},"initial_turrets":{},)"
-          R"("alive_entities":{},"capital_ships":{},"fighters":{},"turrets":{},"spinners":{},)"
-          R"("active_lasers":{},"lasers_spawned":{},"peak_fighters":{}}})",
-          json_string(result.mission_state),
-          result.initial_capital_ships,
-          result.initial_turrets,
-          result.alive_entities,
-          result.capital_ships,
-          result.fighters,
-          result.turrets,
-          result.spinners,
-          result.active_lasers,
-          result.lasers_spawned,
-          result.peak_fighters);
+    write(
+        R"(,"final_state":{{"active_objectives":{},"inactive_objectives":{},"completed_objectives":{},"initial_capital_ships":{},"initial_turrets":{},)"
+        R"("alive_entities":{},"capital_ships":{},"fighters":{},"turrets":{},"spinners":{},)"
+        R"("active_lasers":{},"lasers_spawned":{},"peak_fighters":{}}})",
+        result.active_objectives,
+        result.inactive_objectives,
+        result.completed_objectives,
+        result.initial_capital_ships,
+        result.initial_turrets,
+        result.alive_entities,
+        result.capital_ships,
+        result.fighters,
+        result.turrets,
+        result.spinners,
+        result.active_lasers,
+        result.lasers_spawned,
+        result.peak_fighters);
     write(R"(,"memory":{{"frame_capacity_bytes":{},"frame_peak_claimed_bytes":{},)"
           R"("frame_peak_payload_bytes":{},"frame_total_padding_bytes":{},)"
           R"("frame_total_root_claims":{},"frame_overflow_count":{}}})",

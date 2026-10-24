@@ -94,11 +94,6 @@
   :pass-by value
   (integer :signed false :bit-width 64))
 
-(type native_level_mission_event_type
-  :spelling "LevelMissionEventType"
-  :header "ioj/sim/levels/level_event_types.h"
-  :pass-by value)
-
 (type native_death_reason
   :spelling "DeathReason"
   :header "ioj/sim/entities/entity_life_state.h"

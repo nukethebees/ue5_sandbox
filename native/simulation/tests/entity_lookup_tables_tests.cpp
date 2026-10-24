@@ -184,18 +184,8 @@ TEST(EntityLookupTables, ResolutionHealthChangesBeforeHandlesRetire) {
     CollisionAgentStorage owners;
     auto const id{owners.spawn(EntityType::Fighter, {{10, 0, 0}})};
     owners.publish();
-    MissionManager mission{owners.clock, owners.ledger, owners.entity_tables};
-    mission.set_mission_mode(MissionMode::SurviveTime);
-    mission.add_entity_that_must_survive(id);
-    mission.add_entity_required_to_kill(id);
-    mission.begin_play(&scratch);
-    ASSERT_EQ(mission.get_entity_health_that_must_survive()[0].health, 100);
     SimClockTestAccess::set_phase(owners.clock, SimulationPhase::Resolution);
     owners.set(id, {{20, 0, 0}}, {}, 0);
-    mission.mission_tick(&scratch);
-    EXPECT_EQ(mission.get_entity_health_that_must_survive()[0].health, 0);
-    EXPECT_EQ(mission.get_entity_health_required_to_kill()[0].health, 0);
-    EXPECT_EQ(mission.get_mission_state(), MissionState::Failed);
     std::array const ids{id};
     EXPECT_EQ(owners.health_table.get_const_view<EntityType::Fighter>(1).health(0), 0);
     EXPECT_TRUE(owners.entity_tables.lookups.for_type(EntityType::Fighter)
@@ -209,11 +199,4 @@ TEST(EntityLookupTables, ResolutionHealthChangesBeforeHandlesRetire) {
     EXPECT_TRUE(owners.ledger.is_valid_unique_id(id));
 }
 
-TEST(MissionObjectives, RejectHealthlessSurvivalAndRequiredKillObjectives) {
-    CollisionAgentStorage owners;
-    auto const id{owners.spawn(EntityType::TubeSpinner)};
-    MissionManager mission{owners.clock, owners.ledger, owners.entity_tables};
-    EXPECT_DEATH(mission.add_entity_that_must_survive(id), "require an entity with health");
-    EXPECT_DEATH(mission.add_entity_required_to_kill(id), "require an entity with health");
-}
 } // namespace ioj::sim::tests

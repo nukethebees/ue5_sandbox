@@ -1,6 +1,7 @@
 #include <ioj/levels/authoring/level_parser.h>
 
 #include "ast_parser.h"
+#include "mission_parser.h"
 #include <ioj/levels/authoring/settings_parser.h>
 
 #include <array>
@@ -70,77 +71,6 @@ auto grid(AstParser& parser, s7::NodeIndex const node, std::string const& node_p
                      node_path,
                      "Collision grid requires a level-size or cell-size");
     }
-    return result;
-}
-
-auto mission(AstParser& parser, s7::NodeIndex const node, std::string const& node_path)
-    -> LevelMissionDefinition {
-    LevelMissionDefinition result;
-    auto const fields{parser.record(node, RecordKind::Mission, node_path)};
-    for (auto const& field : fields) {
-        switch (field.property) {
-            case Property::Mode: {
-                auto const mode{parser.symbol(field.value, field.node_path)};
-                auto const parsed{try_parse_serialized_level_mission_mode(mode)};
-                if (!parsed || *parsed == LevelMissionMode::Unspecified) {
-                    parser.error(DiagnosticCode::UnknownSymbol,
-                                 field.node_path,
-                                 std::format("Unknown mission mode '{}'", mode));
-                } else {
-                    result.mode = *parsed;
-                }
-                break;
-            }
-            case Property::TimeLimit:
-                result.time_limit_seconds = parser.float_number(field.value, field.node_path);
-                break;
-            case Property::KillCount:
-                result.kill_count = parser.integer(field.value, field.node_path);
-                break;
-            case Property::Heroes:
-                result.hero_entity_ids = parser.ids<EntityId>(field.value, field.node_path);
-                break;
-            case Property::MustSurvive:
-                result.must_survive_entity_ids = parser.ids<EntityId>(field.value, field.node_path);
-                break;
-            case Property::RequiredKills:
-                result.required_kill_entity_ids =
-                    parser.ids<EntityId>(field.value, field.node_path);
-                break;
-            default:
-                parser.unknown(field);
-                break;
-        }
-    }
-    parser.require(fields, Property::Mode, node_path);
-    return result;
-}
-
-auto mission_event(AstParser& parser, s7::NodeIndex const node, std::string const& node_path)
-    -> LevelMissionObjectiveEvent {
-    LevelMissionObjectiveEvent result;
-    auto const fields{parser.record(node, RecordKind::MissionEvent, node_path)};
-    for (auto const& field : fields) {
-        switch (field.property) {
-            case Property::At:
-                result.time_seconds = parser.number(field.value, field.node_path);
-                break;
-            case Property::AddMustSurvive:
-                result.must_survive_entity_ids = parser.ids<EntityId>(field.value, field.node_path);
-                break;
-            case Property::AddRequiredKills:
-                result.required_kill_entity_ids =
-                    parser.ids<EntityId>(field.value, field.node_path);
-                break;
-            case Property::IncreaseKillCount:
-                result.kill_target_increase = parser.integer(field.value, field.node_path);
-                break;
-            default:
-                parser.unknown(field);
-                break;
-        }
-    }
-    parser.require(fields, Property::At, node_path);
     return result;
 }
 
@@ -307,18 +237,8 @@ auto parse_level(s7::Ast const& ast, s7::NodeIndex const root) -> LevelDefinitio
                 break;
             }
             case Property::Mission:
-                result.mission = mission(parser, field.value, field.node_path);
+                result.mission = detail::parse_mission(parser, ast, field.value, field.node_path);
                 break;
-            case Property::MissionEvents: {
-                auto const values{parser.list(field.value, field.node_path)};
-                auto const count{values.size()};
-                result.mission_events.reserve(count);
-                for (std::size_t index{}; index < count; ++index) {
-                    result.mission_events.push_back(mission_event(
-                        parser, values[index], std::format("{}[{}]", field.node_path, index)));
-                }
-                break;
-            }
             case Property::Entities: {
                 auto const values{parser.list(field.value, field.node_path)};
                 auto const count{values.size()};

@@ -18,6 +18,13 @@
 
 namespace ioj::levels::authoring::tests {
 namespace {
+auto timer_mission() -> MissionDefinition {
+    ObjectiveDefinition objective{.id = "primary", .team = Team::Blue};
+    objective.expressions = {{.type = ExpressionType::TimeElapsed, .seconds = 1.0}};
+    objective.roots[0] = 0;
+    return {.objectives = {objective}};
+}
+
 auto emit_source(LevelDefinition const& level) -> std::expected<std::string, Diagnostics> {
     return emit_editor_level_source(level);
 }
@@ -574,32 +581,19 @@ TEST(NativeLevelAuthoringCollisionGrid, RejectsMalformedAndInvalidExplicitDimens
         EXPECT_FALSE(DefinitionReader{}.read_level_source(source)) << grid;
     }
 }
-TEST(NativeLevelAuthoringWriter, RoundTripsInitialMissionObjectives) {
+TEST(NativeLevelAuthoringWriter, RejectsObjectiveEditingWithoutDiscardingMission) {
     auto definition{make_level("mission")};
-    definition.entities.push_back(
-        {.id = EntityId{"enemy"}, .archetype = EntityArchetype::CapitalShip, .team = Team::Red});
-    definition.mission = LevelMissionDefinition{.mode = LevelMissionMode::KillEnemies,
-                                                .kill_count = 2,
-                                                .hero_entity_ids = {EntityId{"player"}},
-                                                .must_survive_entity_ids = {EntityId{"player"}},
-                                                .required_kill_entity_ids = {EntityId{"enemy"}}};
+    definition.mission = timer_mission();
     auto const source{emit_source(definition)};
-    ASSERT_TRUE(source);
-    auto const parsed{DefinitionReader{}.read_level_source(*source)};
-    ASSERT_TRUE(parsed) << format_diagnostics(parsed.error());
-    ASSERT_TRUE(parsed->mission());
-    EXPECT_EQ(parsed->mission()->mode, LevelMissionMode::KillEnemies);
-    EXPECT_EQ(parsed->mission()->required_kill_entity_ids,
-              definition.mission->required_kill_entity_ids);
+    ASSERT_FALSE(source);
+    EXPECT_EQ(source.error()[0].code, DiagnosticCode::UnsupportedEditorFeature);
+    EXPECT_EQ(definition.mission->objectives[0].id, "primary");
 }
 TEST(NativeLevelAuthoringWriter, ReportsUnsupportedEditorFeatures) {
     auto definition{make_level("unsupported")};
     definition.metadata.par_time_seconds = 10;
     definition.unlock_level_ids.emplace_back("other");
-    definition.mission_events.push_back({});
-    definition.mission = {.mode = LevelMissionMode::KillEnemies,
-                          .kill_count = 1,
-                          .hero_entity_ids = {EntityId{"player"}}};
+    definition.mission = timer_mission();
     auto const result{emit_source(std::move(definition))};
     ASSERT_FALSE(result);
     EXPECT_EQ(std::ranges::count(

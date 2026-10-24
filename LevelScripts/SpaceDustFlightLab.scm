@@ -1,3 +1,4 @@
+(load-script "Libraries/objectives.scm")
 (level
   :id 'space-dust-flight-lab
   :title "Space Dust Flight Lab"
@@ -5,11 +6,9 @@
 
   :player 'player
 
-  :mission (mission
-    :mode 'survive-time
-    :time-limit 3600
-    :heroes '(player)
-    :must-survive '(player))
+  :mission (decisive-mission 'blue
+    (time-elapsed 3600)
+    (destroy-any '(player)))
 
   :entities (list
     (entity :id 'player :archetype 'player-fighter :team 'blue

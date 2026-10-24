@@ -1,4 +1,4 @@
-#include "support/simulation_test_support.h"
+#include "support/mission_test_support.h"
 #include <ioj/column_math.h>
 #include <ioj/sim/testing/entity_observations.h>
 #include <ioj/sim/testing/laser_spawns.h>
@@ -275,7 +275,7 @@ TEST(TickPhases, AuthoredSpawnCanBeHitOnItsScheduledTick) {
     EXPECT_EQ(observe_entity(simulation, turret)->health, 75);
 }
 
-TEST(TickPhases, SpawnMissionEventsSeeSameTickResolvedDeathWithoutDuplicateOverlaps) {
+TEST(TickPhases, DelayedObjectiveSeesSameTickResolvedDeathWithoutDuplicateOverlaps) {
     auto data{make_world()};
     data.collision.overlap_response.damage_per_overlap_detection = 100;
     auto const capital_index{
@@ -283,14 +283,14 @@ TEST(TickPhases, SpawnMissionEventsSeeSameTickResolvedDeathWithoutDuplicateOverl
     schedule_turret(data, {});
     auto const turret_index{
         data.level_events.schedule.turret_spawns.get_const_view().entity_indices()[0]};
-    ASSERT_TRUE(data.level_events.schedule.add_mission_group(
-        LevelMissionEventType::MustSurvive, std::array{static_cast<std::int32_t>(turret_index)}));
-
-    auto& mission{data.level_events.initialisation.mission.emplace()};
-    mission.mode = levels::LevelMissionMode::SurviveTime;
-    mission.time_limit_seconds = 10.f;
-    mission.save_results = false;
-    mission.must_survive_entity_indices = {static_cast<std::int32_t>(capital_index)};
+    levels::ObjectiveDefinition objective{.team = Team::White};
+    objective.expressions = {{.type = ExpressionType::TimeElapsed, .seconds = 10},
+                             destroyed(capital_index),
+                             destroyed(turret_index),
+                             {.type = ExpressionType::Any, .children = {1, 2}}};
+    objective.roots[0] = 0;
+    objective.roots[1] = 3;
+    install_mission(data, std::move(objective));
 
     GameMemory simulation_memory;
     LevelSim simulation{simulation_memory, std::move(data)};
@@ -315,7 +315,7 @@ TEST(TickPhases, SpawnMissionEventsSeeSameTickResolvedDeathWithoutDuplicateOverl
     EXPECT_FALSE(observe_live_entity(simulation, dead_id));
     EXPECT_EQ(ledger.count_alive(), 1);
     EXPECT_EQ(capitals.get_health(capitals.get_id(0)), 900);
-    EXPECT_EQ(simulation.get_mission_manager().get_mission_state(), MissionState::Failed);
+    EXPECT_EQ(simulation.get_mission().outcome(0), ObjectiveOutcome::Failed);
 
     auto const& queries{simulation.get_spatial_query_manager()};
     EXPECT_EQ(queries.get_aabb_overlap_events().entity_entity_overlaps.num(), 1);
@@ -442,12 +442,14 @@ TEST(TickPhases, CapitalDeathPreservesExistingChildrenBeforeMissionEvaluation) {
         data.capital_ships.fighter_spawn_slots_relative_transforms = {
             {.location = {0.0, 500.0, 0.0}}};
 
-        auto& mission{data.level_events.initialisation.mission.emplace()};
-        mission.mode = levels::LevelMissionMode::KillEnemies;
-        mission.kill_count = 1;
-        mission.save_results = false;
-        mission.hero_entity_indices = {static_cast<std::int32_t>(second)};
-        mission.required_kill_entity_indices = {static_cast<std::int32_t>(first)};
+        levels::ObjectiveDefinition objective{.team = Team::White};
+        objective.expressions = {destroyed(first),
+                                 {.type = ExpressionType::EntityKillsReached,
+                                  .entities = {mission_entity(second)},
+                                  .kills = 1},
+                                 {.type = ExpressionType::All, .children = {0, 1}}};
+        objective.roots[0] = 2;
+        install_mission(data, std::move(objective));
 
         GameMemory simulation_memory;
         LevelSim simulation{simulation_memory, std::move(data)};
@@ -490,7 +492,7 @@ TEST(TickPhases, CapitalDeathPreservesExistingChildrenBeforeMissionEvaluation) {
         EXPECT_EQ(observe_entity_row(simulation, victim), EntityInstanceHandle::invalid_value);
         EXPECT_EQ(observe_entity_row(simulation, killer), 0);
         EXPECT_EQ(ledger.count_alive(), kill_tick == 1 ? 1 : 3);
-        EXPECT_EQ(simulation.get_mission_manager().get_mission_state(), MissionState::Succeeded);
+        EXPECT_EQ(simulation.get_mission().outcome(0), ObjectiveOutcome::Passed);
         if (kill_tick == 2) {
             auto const fighter_ids{fighter_sim.get_entity_ids()};
             auto const fighter_parents{fighter_sim.get_parent_ids()};

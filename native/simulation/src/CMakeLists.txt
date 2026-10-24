@@ -60,7 +60,6 @@ target_sources(native-simulation PRIVATE
   ../include/ioj/sim/telemetry/snapshot.h
   ../include/ioj/sim/collision/line_trace_batch.h
   ../include/ioj/sim/collision/line_traces.h
-  ../include/ioj/sim/missions/mission_manager.h
   ../include/ioj/sim/telemetry/navigation_telemetry.h
   ../include/ioj/sim/overlap_handler.h
         ../include/ioj/sim/entities/entity_type.h
@@ -107,7 +106,6 @@ target_sources(native-simulation PRIVATE
   levels/level_read_access.cpp
   levels/level_sim.cpp
   telemetry/manager.cpp
-  missions/mission_manager.cpp
   missions/mission.cpp
   missions/mission_compilation.cpp
   overlap_handler.cpp

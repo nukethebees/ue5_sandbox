@@ -8,7 +8,7 @@
 namespace ioj::levels {
 using DiagnosticCodeUnderlying = std::uint8_t;
 
-// Logical bit width: 7.
+// Logical bit width: 6.
 enum class DiagnosticCode : DiagnosticCodeUnderlying {
     MissingLevelId,
     MissingTitle,
@@ -33,25 +33,10 @@ enum class DiagnosticCode : DiagnosticCodeUnderlying {
     InvalidLevelSize,
     InvalidGridCellSize,
     InvalidGridDimensions,
-    MissingMissionMode,
-    UnsupportedMissionMode,
-    InvalidMissionTimeLimit,
-    UnexpectedMissionTimeLimit,
-    InvalidMissionKillCount,
-    UnexpectedMissionKillCount,
-    MissingMissionHeroes,
-    MissingMissionSurvivors,
-    MissionEntityNotFound,
-    DuplicateMissionEntityReference,
-    ConflictingMissionEntityRoles,
-    AmbiguousAutomaticKillTeams,
+    InvalidMissionStructure,
     MissingUnlockLevelId,
     DuplicateUnlockCriterion,
     SelfUnlockDependency,
-    UnexpectedMissionEvent,
-    InvalidMissionEventTime,
-    InvalidMissionKillIncrease,
-    MissionEventBeforeEntitySpawn,
     FileOpenFailed,
     FileReadFailed,
     ScriptEvaluationFailed,

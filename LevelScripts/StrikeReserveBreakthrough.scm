@@ -1,3 +1,4 @@
+(load-script "Libraries/objectives.scm")
 (load-script "Libraries/formations.scm")
 
 (let ((reserve-id 'red-capital-2)
@@ -12,16 +13,11 @@
 
     :player 'player
 
-    :mission (mission
-      :mode 'kill-enemies
-      :kill-count 3
-      :heroes '(player blue-capital-0 blue-capital-1)
-      :must-survive '(player)
-      :required-kills '(red-capital-0 red-capital-1))
+    :mission (decisive-mission 'blue
+    (all-of (entity-kills-reached '(player blue-capital-0 blue-capital-1) 3) (destroy-all (append '(red-capital-0 red-capital-1) (list reserve-id))))
+    (destroy-any '(player)))
 
-    :mission-events (list
-      (mission-event :at reserve-time
-        :add-required-kills (list reserve-id)))
+
 
     :entities (append
       (list

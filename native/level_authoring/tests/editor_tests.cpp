@@ -11,6 +11,13 @@
 
 namespace ioj::levels::authoring::tests {
 namespace {
+auto timer_mission() -> MissionDefinition {
+    ObjectiveDefinition objective{.id = "primary", .team = Team::Blue};
+    objective.expressions = {{.type = ExpressionType::TimeElapsed, .seconds = 1.0}};
+    objective.roots[0] = 0;
+    return {.objectives = {objective}};
+}
+
 auto reconcile(SceneSnapshot const& observed, LevelDefinitionComponents incoming)
     -> std::expected<SyncPlan, Diagnostics> {
     return LevelDefinition::make(std::move(incoming)).transform([&](LevelDefinition const& level) {
@@ -122,7 +129,7 @@ TEST(NativeEditorScene, UnchangedAndEquivalentRotationsNeedNoOperations) {
     EXPECT_TRUE(observed == observed);
 }
 
-TEST(NativeEditorScene, ReferenceOrderDoesNotChangeThePlan) {
+TEST(NativeEditorScene, CameraReferenceOrderDoesNotChangeThePlan) {
     auto observed{scene()};
     auto& definition{observed.definition};
     definition.player_entity_id = {};
@@ -130,12 +137,9 @@ TEST(NativeEditorScene, ReferenceOrderDoesNotChangeThePlan) {
     definition.camera = {.target_entity_ids = {EntityId{"player"}, EntityId{"enemy"}},
                          .offset_direction = {-1.0, 0.0, 0.0},
                          .distance = 1000.0};
-    definition.mission = {.mode = LevelMissionMode::KillEnemies,
-                          .kill_count = 1,
-                          .hero_entity_ids = {EntityId{"player"}, EntityId{"enemy"}}};
+    definition.mission = timer_mission();
     auto incoming{definition};
     std::ranges::reverse(incoming.camera->target_entity_ids);
-    std::ranges::reverse(incoming.mission->hero_entity_ids);
     auto const plan{reconcile(observed, incoming)};
     ASSERT_TRUE(plan);
     EXPECT_FALSE(plan->has_changes());
@@ -154,7 +158,7 @@ TEST(NativeEditorScene, InvalidObservedValuesCanBeComparedAndRepaired) {
     auto const nan{std::numeric_limits<double>::quiet_NaN()};
     observed.definition.collision_grid = {.level_size = Vector3d{nan, 1.0, 1.0}};
     observed.definition.camera = {.offset_direction = {nan, 0.0, 0.0}, .distance = nan};
-    observed.definition.mission = {.time_limit_seconds = std::numeric_limits<float>::quiet_NaN()};
+    observed.definition.mission = timer_mission();
     EXPECT_EQ(observed, observed);
 
     auto const repaired{reconcile(observed, incoming)};
@@ -169,10 +173,7 @@ TEST(NativeEditorScene, ComparesDocumentFieldsAndRepairsInvalidReferences) {
     auto incoming{observed.definition};
     incoming.metadata.description = "Changed";
     incoming.collision_grid = {.level_size = Vector3d{100000.0, 100000.0, 100000.0}};
-    incoming.mission = {.mode = LevelMissionMode::KillEnemies,
-                        .kill_count = 1,
-                        .hero_entity_ids = {EntityId{"player"}},
-                        .required_kill_entity_ids = {EntityId{"enemy"}}};
+    incoming.mission = timer_mission();
     auto const plan{reconcile(observed, incoming)};
     ASSERT_TRUE(plan);
     EXPECT_TRUE(plan->changes.empty());

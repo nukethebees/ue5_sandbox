@@ -72,11 +72,7 @@ LevelSim::LevelSim(GameMemory& game_memory, LevelSimInitData data)
     , capital_ships_simulation_{entity_ledger_, entity_tables_, fighters_simulation_}
     , turrets_simulation_{clock_, entity_ledger_, entity_tables_}
     , spinners_simulation_{clock_, entity_ledger_, entity_tables_}
-    , mission_manager_{clock_, entity_ledger_, entity_tables_}
-    , event_manager_{capital_ships_simulation_,
-                     turrets_simulation_,
-                     spinners_simulation_,
-                     mission_manager_}
+    , event_manager_{capital_ships_simulation_, turrets_simulation_, spinners_simulation_}
     , level_telemetry_manager_{
           clock_, entity_ledger_, lasers_simulation_, game_memory, data.telemetry_history} {
     // Initialise timing and metadata
@@ -109,10 +105,19 @@ void LevelSim::finish_initialisation() {
 
     // Start telemetry and mission
     level_telemetry_manager_.initialise();
-    event_manager_.configure_mission();
+    if (auto configuration = event_manager_.take_mission()) {
+        level_id_ = std::move(configuration->level_id);
+        level_title_ = std::move(configuration->level_title);
+        save_mission_results_ = configuration->save_results;
+        mission_.initialise(std::move(configuration->definition));
+    } else {
+        mission_.initialise({});
+    }
     {
         FrameScratchScope scratch_scope{frame_memory_};
-        mission_manager_.begin_play(&frame_memory_);
+        mission_.begin(
+            {0, entity_ledger_, event_manager_.get_entity_ids(), &query_manager_, &frame_memory_});
+        update_mission_result();
     }
 
     state_ = OrchestratorState::Paused;
@@ -156,6 +161,7 @@ void LevelSim::configure_player(player::PlayerSpawnData const& spawn) {
     auto& player{player_ship_simulation_.emplace(clock_, entity_ledger_, entity_tables_)};
 
     player.configure(spawn);
+    player_team_ = spawn.team;
 }
 void LevelSim::initialise_spatial_queries(LevelSimInitData& data) {
     // Configure collision queries and buffers
@@ -215,7 +221,7 @@ void LevelSim::complete_telemetry_run(LevelTelemetryRunEndReason const reason,
     state_ = OrchestratorState::Paused;
 }
 auto LevelSim::take_mission_result() -> std::optional<LevelMissionResult> {
-    auto result{mission_manager_.take_result()};
+    auto result{std::exchange(mission_result_, {})};
     if (!result.has_value()) {
         return std::nullopt;
     }
@@ -223,6 +229,23 @@ auto LevelSim::take_mission_result() -> std::optional<LevelMissionResult> {
     level_telemetry_manager_.mark_mission_terminal(*result);
     return result;
 }
+void LevelSim::update_mission_result() {
+    for (auto const completion : mission_.take_completions()) {
+        if (player_team_ && completion.team == *player_team_) {
+            mission_result_ =
+                LevelMissionResult{.level_id = level_id_,
+                                   .level_display_name = level_title_,
+                                   .team = completion.team,
+                                   .outcome = completion.outcome,
+                                   .objective_id = mission_.objectives()[completion.objective].id,
+                                   .objective_outcome = completion.objective_outcome,
+                                   .elapsed_seconds = static_cast<float>(
+                                       simulation_time(completion.tick, clock_.get_tick_period())),
+                                   .save_results = save_mission_results_};
+        }
+    }
+}
+
 auto LevelSim::take_finalized_telemetry_run() -> std::optional<LevelTelemetryRunRecord> {
     return level_telemetry_manager_.take_finalized_run(clock_.get_tick_rate());
 }
@@ -321,7 +344,6 @@ void LevelSim::advance(time_type const dt) {
             clock_.transition_to(SimulationPhase::Thinking);
 
             // Resolve dependent reads after every entity type has updated its lookup table.
-            mission_manager_.prepare_objectives(scratch_resource);
             capital_ships_simulation_.refresh_fighter_ids(scratch_resource);
 
             turrets::ThinkingInputs const turret_inputs{
@@ -449,7 +471,12 @@ void LevelSim::advance(time_type const dt) {
             // Evaluate final health and deaths before invalidating row mappings.
             {
                 FrameScratchScope scratch_scope{frame_memory_};
-                mission_manager_.mission_tick(&frame_memory_);
+                mission_.tick({clock_.completed_ticks + 1,
+                               entity_ledger_,
+                               event_manager_.get_entity_ids(),
+                               &query_manager_,
+                               &frame_memory_});
+                update_mission_result();
             }
 
             // Clean up entities and indexes

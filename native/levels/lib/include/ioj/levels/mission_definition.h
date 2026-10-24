@@ -18,6 +18,7 @@ inline constexpr ExpressionIndex absent_expression{std::numeric_limits<Expressio
 struct ObjectiveDependency {
     std::string objective{};
     ObjectiveOutcome outcome{ObjectiveOutcome::Passed};
+    auto operator==(ObjectiveDependency const&) const -> bool = default;
 };
 
 // Authored expressions use local indices. Only outcome conditions cross objective boundaries.
@@ -31,6 +32,13 @@ struct MissionExpression {
     double seconds{};
     std::uint32_t kills{};
     ObjectiveDependency objective{};
+    auto operator==(MissionExpression const& other) const -> bool {
+        return type == other.type && children == other.children && entity == other.entity &&
+               entities == other.entities && position.x() == other.position.x() &&
+               position.y() == other.position.y() && position.z() == other.position.z() &&
+               radius == other.radius && seconds == other.seconds && kills == other.kills &&
+               objective == other.objective;
+    }
 };
 
 struct ObjectiveDefinition {
@@ -41,16 +49,19 @@ struct ObjectiveDefinition {
     // Indexed by ObjectiveOutcome, in pass/fail/expire precedence order.
     std::array<ExpressionIndex, 3> roots{absent_expression, absent_expression, absent_expression};
     std::vector<ObjectiveDependency> dependencies{};
+    auto operator==(ObjectiveDefinition const&) const -> bool = default;
 };
 
 struct TeamResultDefinition {
     Team team{Team::White};
     ObjectiveDependency when{};
     TeamOutcome result{TeamOutcome::Victory};
+    auto operator==(TeamResultDefinition const&) const -> bool = default;
 };
 
 struct MissionDefinition {
     std::vector<ObjectiveDefinition> objectives{};
     std::vector<TeamResultDefinition> team_results{};
+    auto operator==(MissionDefinition const&) const -> bool = default;
 };
 }

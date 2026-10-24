@@ -1,8 +1,11 @@
+#include <ioj/levels/authoring/definition_reader.h>
 #include <ioj/levels/mission_validation.h>
 #include <ioj/sim/entities/entity_ledger.h>
 #include <ioj/sim/missions/mission.h>
 
 #include <gtest/gtest.h>
+
+#include <limits>
 
 namespace ioj::sim::tests {
 namespace {
@@ -203,5 +206,90 @@ TEST_F(MissionTest, RejectsStructuralAndActivationCyclesButAllowsObservationCycl
     EXPECT_FALSE(compile_mission({.objectives = {a}}, {}, clock));
     a.expressions = {timer(-1)};
     EXPECT_FALSE(compile_mission({.objectives = {a}}, {}, clock));
+}
+
+TEST_F(MissionTest, SchemeNamedDagAndOutcomeDependenciesExecuteThroughRuntimeCompiler) {
+    auto const parsed{levels::authoring::DefinitionReader{}.read_level_source(R"(
+      (level :id 'objectives :title "Objectives" :player 'player
+        :entities (list (entity :id 'player :archetype 'player-fighter :team 'blue :position '(0 0 0)))
+        :mission (mission
+          :objectives (list
+            (objective :id 'first :team 'blue
+              :nodes (list (expr 'timer (time-elapsed 1)))
+              :pass (all-of (expr-ref 'timer) (any-of (expr-ref 'timer) (time-elapsed 100))))
+            (objective :id 'next :team 'blue
+              :depends-on (list (objective-resolved 'first 'passed))
+              :pass (all-of (objective-resolved 'first 'passed) (time-elapsed 2))))
+          :team-results (list
+            (team-result :team 'blue :when (objective-resolved 'next 'passed) :result 'victory)))))")};
+    ASSERT_TRUE(parsed);
+    ASSERT_TRUE(parsed->mission());
+    names.emplace_back("player");
+    entities.emplace_back();
+    start(*parsed->mission());
+    tick(10);
+    EXPECT_EQ(mission.outcome(0), ObjectiveOutcome::Passed);
+    EXPECT_FALSE(mission.team_outcome(Team::Blue));
+    tick(29);
+    EXPECT_FALSE(mission.outcome(1));
+    tick(30);
+    EXPECT_EQ(mission.team_outcome(Team::Blue), TeamOutcome::Victory);
+}
+
+TEST(MissionAuthoring, RejectsNamedDagCyclesAndCrossObjectiveExpressionReferences) {
+    for (auto const expression : {"(expr-ref 'missing)", "(expr-ref 'loop)"}) {
+        auto const source{std::string{R"((level :id 'cycle :title "Cycle" :player 'player
+          :entities (list (entity :id 'player :archetype 'player-fighter :team 'blue :position '(0 0 0)))
+          :mission (mission :objectives (list (objective :id 'a :team 'blue
+            :nodes (list (expr 'loop )"} +
+                          expression + ")) :pass (expr-ref 'loop))))))"};
+        EXPECT_FALSE(levels::authoring::DefinitionReader{}.read_level_source(source));
+    }
+}
+
+TEST_F(MissionTest, SchemeReciprocalHelperResolvesBothTeams) {
+    auto const parsed{levels::authoring::DefinitionReader{
+        std::filesystem::path{IOJ_PROJECT_SOURCE_DIR} / "LevelScripts"}
+                          .read_level_source(R"(
+      (load-script "Libraries/objectives.scm")
+      (level :id 'reciprocal :title "Reciprocal" :player 'player
+        :entities (list (entity :id 'player :archetype 'player-fighter :team 'blue :position '(0 0 0)))
+        :mission (mission
+          :objectives (reciprocal-objectives 'attack 'defend 'blue 'red
+                         (time-elapsed 1) (time-elapsed 10))
+          :team-results (list
+            (team-result :team 'blue :when (objective-resolved 'attack 'passed) :result 'victory)
+            (team-result :team 'red :when (objective-resolved 'defend 'failed) :result 'defeat)))))")};
+    ASSERT_TRUE(parsed);
+    ASSERT_TRUE(parsed->mission());
+    start(*parsed->mission());
+    tick(10);
+    EXPECT_EQ(mission.outcome(0), ObjectiveOutcome::Passed);
+    EXPECT_EQ(mission.outcome(1), ObjectiveOutcome::Failed);
+    EXPECT_EQ(mission.team_outcome(Team::Blue), TeamOutcome::Victory);
+    EXPECT_EQ(mission.team_outcome(Team::Red), TeamOutcome::Defeat);
+}
+
+TEST_F(MissionTest, RejectsInvalidReferencesParametersAndDuplicatePrerequisites) {
+    auto a{objective("a", timer(0))};
+    auto b{objective("b", timer(1))};
+    b.dependencies = {{"a", ObjectiveOutcome::Passed}, {"a", ObjectiveOutcome::Passed}};
+    EXPECT_FALSE(compile_mission({.objectives = {a, b}}, {}, clock));
+    EXPECT_FALSE(compile_mission({.objectives = {a, a}}, {}, clock));
+    b.dependencies = {{"missing", ObjectiveOutcome::Passed}};
+    EXPECT_FALSE(compile_mission({.objectives = {a, b}}, {}, clock));
+    EXPECT_FALSE(compile_mission({.objectives = {a},
+                                  .team_results = {{Team::Blue,
+                                                    {"missing", ObjectiveOutcome::Passed},
+                                                    TeamOutcome::Victory}}},
+                                 {},
+                                 clock));
+    a.expressions[0] = timer(std::numeric_limits<double>::infinity());
+    EXPECT_FALSE(compile_mission({.objectives = {a}}, {}, clock));
+    a.expressions[0] = {.type = ExpressionType::EntityReachedPosition,
+                        .entity = levels::EntityId{"target"},
+                        .radius = std::numeric_limits<double>::max()};
+    names.emplace_back("target");
+    EXPECT_FALSE(compile_mission({.objectives = {a}}, names, clock));
 }
 }
