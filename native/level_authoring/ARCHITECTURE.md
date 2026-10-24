@@ -98,15 +98,25 @@ Ordinary records with matching script/domain layouts (camera, grid, campaign, te
 decode directly through generated companion readers. Level/entity/objective inputs remain
 separate where decoding must precede ID assignment, layout conversion or graph construction.
 This avoids teaching the generator domain-specific destination paths or reference resolution.
-The staging optionals in generated readers also support required constrained members without
-default constructors; they distinguish an omitted field from an explicitly empty optional.
+Generated readers mutate a local default-constructed value when available and stage members
+only when construction is necessary. Presence masks distinguish omissions independently of
+member values. Fixed positional readers handle named expressions, references, dependencies
+and unlock criteria. Expression recursion, leaf selection and reference resolution remain explicit.
 
 Sparse settings retain their owned assignment representation: one level may contain native,
-Unreal and starfield sections consumed at different times. Adding direct AST-to-object application
-alongside assignment dispatch would duplicate field conversion. Replacing that path is possible,
-but must preserve authored presence, layer order and separately consumed sections. The generic
+Unreal sections consumed at different times. These consumers still use generated field bindings.
+Replacing that path must preserve authored presence, layer order and separately consumed sections. The generic
 settings walker contains no per-setting field lists; those are generated from the schemas.
 Structural record readers and settings bindings share Lispb's keyword lookup generation; their numeric conversions
-share `try_numeric_cast`, with settings rejecting nonfinite values at assignment. Starfield
-bindings derive recursively from its ordinary records; explicit mappings remain for handwritten
-simulation roots and Unreal members. Cross-field validation runs after all override layers.
+share `try_numeric_cast`, with flattened settings rejecting nonfinite values at assignment.
+Starfield now reads directly into generated native records: an outer section/layer traversal
+calls the same typed decoder as ordinary records, then validates effective values. Its old
+field bindings and handwritten constraint chain are removed. `read_override` applies a partial
+record to a copy, leaving the caller's instance untouched on failure.
+
+`settings-schema` remains only for simulation and Unreal presentation consumers. Moving plain
+presentation data into native readable records and migrating simulation's root bindings would
+allow those mappings and the flattened-assignment pipeline to be removed. This is not a reason
+to move asset references out of Unreal: engine resources can stay in a separate adapter. UI
+widgets, including colour pickers, can edit native values without owning their configuration.
+Cross-field rules such as attack-distance bands must still validate after all override layers.
