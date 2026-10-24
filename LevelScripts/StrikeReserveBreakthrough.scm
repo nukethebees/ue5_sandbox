@@ -14,10 +14,15 @@
     :player 'player
 
     :mission (decisive-mission 'blue
-    (all-of (entity-kills-reached '(player blue-capital-0 blue-capital-1) 3) (destroy-all (append '(red-capital-0 red-capital-1) (list reserve-id))))
-    (destroy-any '(player)))
-
-
+      (all-of
+        (entity-kills-reached
+          '(player blue-capital-0 blue-capital-1)
+          3)
+        (destroy-all
+          (append
+            '(red-capital-0 red-capital-1)
+            (list reserve-id))))
+      (destroy-any '(player)))
 
     :entities (append
       (list

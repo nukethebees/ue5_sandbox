@@ -136,6 +136,8 @@ If a new issue invalidates previous validation or requires additional builds/tes
   explanations in the source file. Do not add comments that restate the code.
 * Prefer SOA layouts for related performance-sensitive collections.
 * Save loop bounds as const locals.
+* Use named local values or views for repeated long expressions; keep views within the lifetime
+  of the storage they reference and do not retain them across invalidating mutations.
 * State non-obvious API preconditions and missing-result semantics at the declaration. Treat
   impossible internal inputs as contract violations, with assertions at the responsible boundary;
   do not silently convert them into null/missing results. Handle legitimate optional sentinels

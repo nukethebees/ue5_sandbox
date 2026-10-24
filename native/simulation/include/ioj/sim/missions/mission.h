@@ -1,7 +1,7 @@
 #pragma once
 
 #include <ioj/sim/missions/compiled_mission.h>
-#include <ioj/sim/missions/mission_inputs.h>
+#include <ioj/sim/missions/mission_evaluation_context.h>
 #include <ioj/sim/missions/rule_run.h>
 #include <ioj/sim/missions/team_completion.h>
 
@@ -14,8 +14,8 @@ class Mission {
     Mission() = default;
     explicit Mission(CompiledMission definition);
 
-    void begin(MissionInputs const& inputs);
-    void tick(MissionInputs const& inputs);
+    void begin(MissionEvaluationContext const& inputs);
+    void tick(MissionEvaluationContext const& inputs);
 
     /* **************************************** */
     // Inspection
@@ -54,19 +54,22 @@ class Mission {
     auto rule_leaf(RuleId rule) const -> std::uint32_t;
     auto pending_rule(RuleId rule) const -> bool;
     void rebuild_runs();
-    void evaluate(std::span<RuleId const> scheduled, MissionInputs const& inputs);
+    void evaluate(std::span<RuleId const> scheduled, MissionEvaluationContext const& inputs);
 
-    void evaluate_run(ConditionType type, std::span<RuleId const> run, MissionInputs const& inputs);
-    void evaluate_destroyed(std::span<RuleId const> run, MissionInputs const& inputs);
-    void evaluate_elapsed(std::span<RuleId const> run, MissionInputs const& inputs);
+    void evaluate_run(ConditionType type,
+                      std::span<RuleId const> run,
+                      MissionEvaluationContext const& inputs);
+    void evaluate_destroyed(std::span<RuleId const> run, MissionEvaluationContext const& inputs);
+    void evaluate_elapsed(std::span<RuleId const> run, MissionEvaluationContext const& inputs);
     void evaluate_resolved(std::span<RuleId const> run);
-    void evaluate_kills(std::span<RuleId const> run, MissionInputs const& inputs);
-    void evaluate_reached_position(std::span<RuleId const> run, MissionInputs const& inputs);
+    void evaluate_kills(std::span<RuleId const> run, MissionEvaluationContext const& inputs);
+    void evaluate_reached_position(std::span<RuleId const> run,
+                                   MissionEvaluationContext const& inputs);
 
     /* **************************************** */
     // Settlement
     /* **************************************** */
-    void settle(MissionInputs const& inputs);
+    void settle(MissionEvaluationContext const& inputs);
 
     CompiledMission data_;
     std::vector<ObjectiveId> inactive_;

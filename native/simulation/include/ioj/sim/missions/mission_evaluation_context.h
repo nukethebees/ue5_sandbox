@@ -10,7 +10,8 @@ namespace ioj::sim {
 class EntityLedger;
 struct SpatialQueryManager;
 
-struct MissionInputs {
+// Borrow simulation state and scratch storage for one mission evaluation.
+struct MissionEvaluationContext {
     SimTick tick{};
     EntityLedger const& ledger;
     std::span<EntityId const> entities;

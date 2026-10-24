@@ -305,12 +305,13 @@ TEST(TickPhases, DelayedObjectiveSeesSameTickResolvedDeathWithoutDuplicateOverla
 
     EXPECT_EQ(simulation.get_turrets().get_num_instances(), 0);
     auto const& turret_view{simulation.get_read_access().get_turrets()};
-    ASSERT_EQ(turret_view.get_frame_changes().size(), 2);
-    EXPECT_EQ(turret_view.get_frame_changes()[0].kind, EntityFrameChangeKind::Spawn);
-    EXPECT_EQ(turret_view.get_frame_changes()[1].kind, EntityFrameChangeKind::RemoveSwap);
-    EXPECT_EQ(turret_view.get_frame_changes()[0].id, turret_view.get_frame_changes()[1].id);
+    auto const changes{turret_view.get_frame_changes()};
+    ASSERT_EQ(changes.size(), 2);
+    EXPECT_EQ(changes[0].kind, EntityFrameChangeKind::Spawn);
+    EXPECT_EQ(changes[1].kind, EntityFrameChangeKind::RemoveSwap);
+    EXPECT_EQ(changes[0].id, changes[1].id);
     EXPECT_EQ(turret_view.get_death_locations().size(), 1);
-    auto const dead_id{turret_view.get_frame_changes()[1].id};
+    auto const dead_id{changes[1].id};
     EXPECT_EQ(observe_entity_row(simulation, dead_id), EntityInstanceHandle::invalid_value);
     EXPECT_FALSE(observe_entity(simulation, dead_id));
     EXPECT_FALSE(observe_live_entity(simulation, dead_id));
@@ -485,9 +486,10 @@ TEST(TickPhases, CapitalDeathPreservesExistingChildrenBeforeMissionEvaluation) {
         EXPECT_EQ(fighter_sim.get_num_instances(), kill_tick == 1 ? 0 : 2);
         EXPECT_EQ(capitals.get_num_instances(), 1);
         auto const& capital_view{simulation.get_read_access().get_capitals()};
-        ASSERT_FALSE(capital_view.get_frame_changes().empty());
-        EXPECT_EQ(capital_view.get_frame_changes().back().kind, EntityFrameChangeKind::RemoveSwap);
-        EXPECT_EQ(capital_view.get_frame_changes().back().id, victim);
+        auto const changes{capital_view.get_frame_changes()};
+        ASSERT_FALSE(changes.empty());
+        EXPECT_EQ(changes.back().kind, EntityFrameChangeKind::RemoveSwap);
+        EXPECT_EQ(changes.back().id, victim);
         ASSERT_EQ(ledger.get_frame_deaths(EntityType::CapitalShip).size(), 1);
         EXPECT_EQ(observe_entity_row(simulation, victim), EntityInstanceHandle::invalid_value);
         EXPECT_EQ(observe_entity_row(simulation, killer), 0);

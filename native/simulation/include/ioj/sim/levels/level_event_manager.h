@@ -22,11 +22,9 @@ class LevelEventManager {
     auto operator=(LevelEventManager const&) -> LevelEventManager& = delete;
     auto operator=(LevelEventManager&&) -> LevelEventManager& = delete;
 
-    // Call once after configuring and starting the simulation subsystems.
     void begin(EntityId player_id = {});
     void execute_tick(SimTick tick);
     auto get_spawned_ids() const -> std::span<EntityId const>;
-    // Map authored entity slots to runtime IDs; future spawns remain invalid until registered.
     auto get_entity_ids() const -> std::span<EntityId const> {
         return spawn_manager_.get_entity_ids();
     }

@@ -11,8 +11,12 @@
   :player 'playership
 
   :mission (decisive-mission 'blue
-    (all-of (time-elapsed 60) (destroy-all '(capitalship-red2)))
-    (any-of (destroy-any '(capitalship-blue)) (time-elapsed 60)))
+    (all-of
+      (time-elapsed 60)
+      (destroy-all '(capitalship-red2)))
+    (any-of
+      (destroy-any '(capitalship-blue))
+      (time-elapsed 60)))
 
   :entities (list
     ;; Team: blue | Archetype: player-fighter | Count: 1

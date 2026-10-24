@@ -7,7 +7,11 @@
   :player 'player
 
   :mission (decisive-mission 'blue
-    (all-of (entity-kills-reached '(player blue-capital) 2) (destroy-all '(red-capital)))
+    (all-of
+      (entity-kills-reached
+        '(player blue-capital)
+        2)
+      (destroy-all '(red-capital)))
     (destroy-any '(blue-capital)))
 
   :entities (list

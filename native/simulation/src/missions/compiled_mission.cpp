@@ -16,15 +16,14 @@ auto CompiledMission::compile(levels::MissionDefinition const& definition,
     if (!errors.empty()) {
         return std::unexpected{std::move(errors)};
     }
-    CompiledMission result;
+    auto const count{definition.objectives.size()};
+    CompiledMission result{.objectives = Objectives{count}};
     std::unordered_map<levels::ObjectiveName, ObjectiveId> objectives;
     std::unordered_map<levels::EntityId, std::uint32_t> entity_indices;
     auto const entity_count{entities.size()};
     for (std::uint32_t index{}; index < entity_count; ++index) {
         entity_indices.emplace(entities[index], index);
     }
-    auto const count{definition.objectives.size()};
-    result.objectives.resize(count);
     for (std::uint32_t index{}; index < count; ++index) {
         objectives.emplace(definition.objectives[index].id, ObjectiveId{index});
     }

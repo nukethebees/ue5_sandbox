@@ -11,7 +11,11 @@
 
   :mission (decisive-mission 'blue
     (time-elapsed 180)
-    (destroy-any '(player blue-installation-west blue-installation-centre blue-installation-east)))
+    (destroy-any
+      '(player
+         blue-installation-west
+         blue-installation-centre
+         blue-installation-east)))
 
   :entities (list
     (entity :id 'player :archetype 'player-fighter :team 'blue

@@ -11,7 +11,7 @@
 
 namespace ioj::sim {
 namespace mission_evaluation_detail {
-auto entity(MissionInputs const& inputs, std::uint32_t const slot) -> EntityId {
+auto entity(MissionEvaluationContext const& inputs, std::uint32_t const slot) -> EntityId {
     assert(slot < inputs.entities.size());
     return inputs.entities[slot];
 }
@@ -39,7 +39,7 @@ Mission::Mission(CompiledMission definition)
         data_.objectives.membership_position(id) = index;
     }
 }
-void Mission::begin(MissionInputs const& inputs) {
+void Mission::begin(MissionEvaluationContext const& inputs) {
     assert(!begun_);
 
     begun_ = true;
@@ -54,7 +54,7 @@ void Mission::begin(MissionInputs const& inputs) {
 
     settle(inputs);
 }
-void Mission::tick(MissionInputs const& inputs) {
+void Mission::tick(MissionEvaluationContext const& inputs) {
     assert(begun_);
 
     std::span<RuleId const> const rules{active_rules_};
@@ -266,7 +266,8 @@ void Mission::rebuild_runs() {
 
     membership_changed_ = false;
 }
-void Mission::evaluate(std::span<RuleId const> const scheduled, MissionInputs const& inputs) {
+void Mission::evaluate(std::span<RuleId const> const scheduled,
+                       MissionEvaluationContext const& inputs) {
     // Newly activated rules are sorted separately; ordinary ticks use cached runs.
     auto const count{scheduled.size()};
     std::size_t first{};
@@ -285,7 +286,7 @@ void Mission::evaluate(std::span<RuleId const> const scheduled, MissionInputs co
 }
 void Mission::evaluate_run(ConditionType const type,
                            std::span<RuleId const> const run,
-                           MissionInputs const& inputs) {
+                           MissionEvaluationContext const& inputs) {
     switch (type) {
         case ConditionType::EntityDestroyed:
             evaluate_destroyed(run, inputs);
@@ -304,7 +305,8 @@ void Mission::evaluate_run(ConditionType const type,
             break;
     }
 }
-void Mission::evaluate_destroyed(std::span<RuleId const> const run, MissionInputs const& inputs) {
+void Mission::evaluate_destroyed(std::span<RuleId const> const run,
+                                 MissionEvaluationContext const& inputs) {
     auto const& rules{data_.rules};
     auto const life_states{inputs.ledger.get_unique_entities().life_state()};
 
@@ -319,7 +321,8 @@ void Mission::evaluate_destroyed(std::span<RuleId const> const run, MissionInput
         }
     }
 }
-void Mission::evaluate_elapsed(std::span<RuleId const> const run, MissionInputs const& inputs) {
+void Mission::evaluate_elapsed(std::span<RuleId const> const run,
+                               MissionEvaluationContext const& inputs) {
     auto const& rules{data_.rules};
 
     for (auto const rule : run) {
@@ -348,7 +351,8 @@ void Mission::evaluate_resolved(std::span<RuleId const> const run) {
         }
     }
 }
-void Mission::evaluate_kills(std::span<RuleId const> const run, MissionInputs const& inputs) {
+void Mission::evaluate_kills(std::span<RuleId const> const run,
+                             MissionEvaluationContext const& inputs) {
     auto const& rules{data_.rules};
 
     for (auto const rule : run) {
@@ -372,7 +376,7 @@ void Mission::evaluate_kills(std::span<RuleId const> const run, MissionInputs co
     }
 }
 void Mission::evaluate_reached_position(std::span<RuleId const> const run,
-                                        MissionInputs const& inputs) {
+                                        MissionEvaluationContext const& inputs) {
     auto const& rules{data_.rules};
     auto const life_states{inputs.ledger.get_unique_entities().life_state()};
 
@@ -424,7 +428,7 @@ void Mission::evaluate_reached_position(std::span<RuleId const> const run,
 /* **************************************** */
 // Settlement
 /* **************************************** */
-void Mission::settle(MissionInputs const& inputs) {
+void Mission::settle(MissionEvaluationContext const& inputs) {
     while (!newly_active_.empty() || !propagation_.empty() || !pending_objectives_.empty()) {
         if (!newly_active_.empty()) {
             auto rules{std::exchange(newly_active_, {})};

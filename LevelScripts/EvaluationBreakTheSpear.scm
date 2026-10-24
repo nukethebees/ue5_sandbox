@@ -12,8 +12,13 @@
   :player 'player
 
   :mission (decisive-mission 'blue
-    (all-of (time-elapsed 150) (destroy-all '(red-flagship)))
-    (any-of (destroy-any '(player blue-capital-0 blue-capital-1)) (time-elapsed 150)))
+    (all-of
+      (time-elapsed 150)
+      (destroy-all '(red-flagship)))
+    (any-of
+      (destroy-any
+        '(player blue-capital-0 blue-capital-1))
+      (time-elapsed 150)))
 
   :entities (append
     (list

@@ -8,7 +8,9 @@
 
   :mission (decisive-mission 'blue
     (entity-kills-reached '(player) 1)
-    (any-of (destroy-any '(player)) (time-elapsed 3)))
+    (any-of
+      (destroy-any '(player))
+      (time-elapsed 3)))
 
   :entities (list
     (entity :id 'player :archetype 'player-fighter :team 'blue

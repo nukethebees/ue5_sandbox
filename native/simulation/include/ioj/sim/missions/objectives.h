@@ -12,113 +12,115 @@
 #include <vector>
 
 namespace ioj::sim {
-// Every accessor requires an ObjectiveId belonging to this collection.
 class Objectives {
   public:
-    void resize(std::size_t count);
+    Objectives() = default;
+    explicit Objectives(std::size_t count);
+
+    auto is_valid(ObjectiveId id) const -> bool { return id.is_valid() && id.index() < size(); }
     auto size() const -> std::size_t { return names_.size(); }
     auto name(ObjectiveId id) -> levels::ObjectiveName& {
-        assert(id.index() < size());
+        assert(is_valid(id));
         return names_[id.index()];
     }
     auto name(ObjectiveId id) const -> levels::ObjectiveName const& {
-        assert(id.index() < size());
+        assert(is_valid(id));
         return names_[id.index()];
     }
     auto title(ObjectiveId id) -> std::string& {
-        assert(id.index() < size());
+        assert(is_valid(id));
         return titles_[id.index()];
     }
     auto title(ObjectiveId id) const -> std::string const& {
-        assert(id.index() < size());
+        assert(is_valid(id));
         return titles_[id.index()];
     }
     auto team(ObjectiveId id) -> Team& {
-        assert(id.index() < size());
+        assert(is_valid(id));
         return teams_[id.index()];
     }
     auto team(ObjectiveId id) const -> Team {
-        assert(id.index() < size());
+        assert(is_valid(id));
         return teams_[id.index()];
     }
     auto roots(ObjectiveId id) -> ObjectiveRoots& {
-        assert(id.index() < size());
+        assert(is_valid(id));
         return roots_[id.index()];
     }
     auto roots(ObjectiveId id) const -> ObjectiveRoots const& {
-        assert(id.index() < size());
+        assert(is_valid(id));
         return roots_[id.index()];
     }
     auto leaves(ObjectiveId id) -> IndexSpan& {
-        assert(id.index() < size());
+        assert(is_valid(id));
         return leaves_[id.index()];
     }
     auto leaves(ObjectiveId id) const -> IndexSpan {
-        assert(id.index() < size());
+        assert(is_valid(id));
         return leaves_[id.index()];
     }
     auto composites(ObjectiveId id) -> IndexSpan& {
-        assert(id.index() < size());
+        assert(is_valid(id));
         return composites_[id.index()];
     }
     auto composites(ObjectiveId id) const -> IndexSpan {
-        assert(id.index() < size());
+        assert(is_valid(id));
         return composites_[id.index()];
     }
     auto prerequisites(ObjectiveId id) -> std::uint32_t& {
-        assert(id.index() < size());
+        assert(is_valid(id));
         return prerequisites_[id.index()];
     }
     auto prerequisites(ObjectiveId id) const -> std::uint32_t {
-        assert(id.index() < size());
+        assert(is_valid(id));
         return prerequisites_[id.index()];
     }
     auto dependents(ObjectiveId id) -> IndexSpan& {
-        assert(id.index() < size());
+        assert(is_valid(id));
         return dependents_[id.index()];
     }
     auto dependents(ObjectiveId id) const -> IndexSpan {
-        assert(id.index() < size());
+        assert(is_valid(id));
         return dependents_[id.index()];
     }
     auto observers(ObjectiveId id) -> IndexSpan& {
-        assert(id.index() < size());
+        assert(is_valid(id));
         return observers_[id.index()];
     }
     auto observers(ObjectiveId id) const -> IndexSpan {
-        assert(id.index() < size());
+        assert(is_valid(id));
         return observers_[id.index()];
     }
     auto team_results(ObjectiveId id) -> IndexSpan& {
-        assert(id.index() < size());
+        assert(is_valid(id));
         return team_results_[id.index()];
     }
     auto team_results(ObjectiveId id) const -> IndexSpan {
-        assert(id.index() < size());
+        assert(is_valid(id));
         return team_results_[id.index()];
     }
     auto outcome(ObjectiveId id) -> std::optional<ObjectiveOutcome>& {
-        assert(id.index() < size());
+        assert(is_valid(id));
         return outcomes_[id.index()];
     }
     auto outcome(ObjectiveId id) const -> std::optional<ObjectiveOutcome> {
-        assert(id.index() < size());
+        assert(is_valid(id));
         return outcomes_[id.index()];
     }
     auto activation_tick(ObjectiveId id) -> SimTick& {
-        assert(id.index() < size());
+        assert(is_valid(id));
         return activation_ticks_[id.index()];
     }
     auto activation_tick(ObjectiveId id) const -> SimTick {
-        assert(id.index() < size());
+        assert(is_valid(id));
         return activation_ticks_[id.index()];
     }
     auto membership_position(ObjectiveId id) -> std::uint32_t& {
-        assert(id.index() < size());
+        assert(is_valid(id));
         return membership_positions_[id.index()];
     }
     auto membership_position(ObjectiveId id) const -> std::uint32_t {
-        assert(id.index() < size());
+        assert(is_valid(id));
         return membership_positions_[id.index()];
     }
   private:

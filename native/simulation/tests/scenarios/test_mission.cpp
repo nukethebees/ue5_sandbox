@@ -21,8 +21,11 @@ void run_worldless_mission_scenario(tests::SimulationFixture const& config,
     auto data{tests::make_simulation_data(config)};
     data.capital_ships.fighter_spawn_slots = 0;
     data.capital_ships.fighter_spawn_slots_relative_transforms.clear();
-    auto const hero{tests::add_capital_spawn(
-        data, {{-2000, 0, 0}}, Team::Green, invalid_level_entity_index, 60.f, 60.f)};
+    auto const spawn{[&](float x, Team team) {
+        return tests::add_capital_spawn(
+            data, {{x, 0, 0}}, team, invalid_level_entity_index, 60.f, 60.f);
+    }};
+    auto const hero{spawn(-2000.f, Team::Green)};
     std::optional<std::uint32_t> ordinary;
     std::optional<std::uint32_t> required;
     std::optional<std::uint32_t> second;
@@ -30,17 +33,14 @@ void run_worldless_mission_scenario(tests::SimulationFixture const& config,
         scenario == Scenario::KillEnemies || scenario == Scenario::KillEnemiesWithinTime ||
         scenario == Scenario::RequiredKillsObjective || scenario == Scenario::AuthoredKillTarget};
     if (needs_kills) {
-        ordinary = tests::add_capital_spawn(
-            data, {{2000, 0, 0}}, Team::Red, invalid_level_entity_index, 60.f, 60.f);
+        ordinary = spawn(2000.f, Team::Red);
     }
     if (scenario == Scenario::RequiredKillsObjective ||
         scenario == Scenario::RequiredKillsTimeElapsed) {
-        required = tests::add_capital_spawn(
-            data, {{4000, 0, 0}}, Team::Red, invalid_level_entity_index, 60.f, 60.f);
+        required = spawn(4000.f, Team::Red);
     }
     if (scenario == Scenario::AuthoredKillTarget) {
-        second = tests::add_capital_spawn(
-            data, {{4000, 0, 0}}, Team::Red, invalid_level_entity_index, 60.f, 60.f);
+        second = spawn(4000.f, Team::Red);
     }
 
     levels::ObjectiveDefinition objective{.team = Team::Green};

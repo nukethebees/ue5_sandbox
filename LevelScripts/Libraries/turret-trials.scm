@@ -13,10 +13,13 @@
             :description description
             :player 'player
             :mission (decisive-mission 'blue
-              (entity-kills-reached '(player) (length turret-positions))
+              (entity-kills-reached
+                '(player)
+                (length turret-positions))
               (apply any-of
-                (append (list (entity-destroyed 'player))
-                        (if time-limit (list (time-elapsed time-limit)) '()))))
+                (append
+                  (list (entity-destroyed 'player))
+                  (if time-limit (list (time-elapsed time-limit)) '()))))
             :entities (cons
               (entity :id 'player :archetype 'player-fighter :team 'blue
                 :position player-position :rotation '(0 90 0))

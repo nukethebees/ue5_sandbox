@@ -7,7 +7,7 @@
 #include <vector>
 
 namespace ioj::sim {
-struct ExprComposites {
+struct ExprOperators {
     std::vector<ExprResult> results;
     std::vector<ExprType> types;
     std::vector<ObjectiveId> owners;
