@@ -3,10 +3,15 @@
 
 #pragma once
 
+#include "ioj/parse_enum.h"
 #include "ioj/s7/field_constraints.h"
 #include "ioj/sim/lasers/laser_weapon_sim_config_reader.h"
 #include "ioj/sim/spinners/spinner_sim_config.h"
 #include <ioj/s7/field_reader.h>
+
+#include <array>
+#include <optional>
+#include <string_view>
 
 namespace ioj::s7 {
 template <>
@@ -31,13 +36,8 @@ struct TypeReader<sim::SpinnerSimConfig> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        if (name == "yaw-rotation-speed-degrees") {
-            return Field::yaw_rotation_speed_degrees;
-        }
-        if (name == "laser") {
-            return Field::laser;
-        }
-        return std::nullopt;
+        std::array<std::string_view, 2> constexpr names{"yaw-rotation-speed-degrees", "laser"};
+        return ioj::try_parse_enum<Field>(name, names);
     }
 };
 
@@ -63,13 +63,8 @@ struct TypeReader<sim::SpinnerSimConfigOverrides> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        if (name == "yaw-rotation-speed-degrees") {
-            return Field::yaw_rotation_speed_degrees;
-        }
-        if (name == "laser") {
-            return Field::laser;
-        }
-        return std::nullopt;
+        std::array<std::string_view, 2> constexpr names{"yaw-rotation-speed-degrees", "laser"};
+        return ioj::try_parse_enum<Field>(name, names);
     }
 };
 

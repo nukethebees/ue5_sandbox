@@ -3,9 +3,14 @@
 
 #pragma once
 
+#include "ioj/parse_enum.h"
 #include "ioj/s7/field_constraints.h"
 #include "ioj/sim/lasers/laser_weapon_sim_config.h"
 #include <ioj/s7/field_reader.h>
+
+#include <array>
+#include <optional>
+#include <string_view>
 
 namespace ioj::s7 {
 template <>
@@ -32,19 +37,9 @@ struct TypeReader<sim::LaserWeaponSimConfig> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        if (name == "damage") {
-            return Field::damage;
-        }
-        if (name == "projectile-speed") {
-            return Field::projectile_speed;
-        }
-        if (name == "max-distance") {
-            return Field::max_distance;
-        }
-        if (name == "fire-cooldown") {
-            return Field::fire_cooldown;
-        }
-        return std::nullopt;
+        std::array<std::string_view, 4> constexpr names{
+            "damage", "projectile-speed", "max-distance", "fire-cooldown"};
+        return ioj::try_parse_enum<Field>(name, names);
     }
 };
 
@@ -72,19 +67,9 @@ struct TypeReader<sim::LaserWeaponSimConfigOverrides> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        if (name == "damage") {
-            return Field::damage;
-        }
-        if (name == "projectile-speed") {
-            return Field::projectile_speed;
-        }
-        if (name == "max-distance") {
-            return Field::max_distance;
-        }
-        if (name == "fire-cooldown") {
-            return Field::fire_cooldown;
-        }
-        return std::nullopt;
+        std::array<std::string_view, 4> constexpr names{
+            "damage", "projectile-speed", "max-distance", "fire-cooldown"};
+        return ioj::try_parse_enum<Field>(name, names);
     }
 };
 

@@ -6,7 +6,12 @@
 #include "ioj/levels/authoring/input_readers.h"
 #include "ioj/levels/objective_dependency_reader.h"
 #include "ioj/levels/team_result_definition.h"
+#include "ioj/parse_enum.h"
 #include <ioj/s7/field_reader.h>
+
+#include <array>
+#include <optional>
+#include <string_view>
 
 namespace ioj::s7 {
 template <>
@@ -32,16 +37,8 @@ struct TypeReader<levels::TeamResultDefinition> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        if (name == "team") {
-            return Field::team;
-        }
-        if (name == "when") {
-            return Field::when;
-        }
-        if (name == "result") {
-            return Field::result;
-        }
-        return std::nullopt;
+        std::array<std::string_view, 3> constexpr names{"team", "when", "result"};
+        return ioj::try_parse_enum<Field>(name, names);
     }
 };
 

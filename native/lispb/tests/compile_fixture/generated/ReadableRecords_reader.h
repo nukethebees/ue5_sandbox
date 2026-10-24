@@ -3,9 +3,14 @@
 
 #pragma once
 
+#include "ioj/parse_enum.h"
 #include "ioj/s7/field_constraints.h"
 #include "ReadableRecords.h"
 #include <ioj/s7/field_reader.h>
+
+#include <array>
+#include <optional>
+#include <string_view>
 
 namespace ioj::s7 {
 template <>
@@ -28,8 +33,8 @@ struct TypeReader<codegen_compile_fixture::EmptyReadable> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        static_cast<void>(name);
-        return std::nullopt;
+        std::array<std::string_view, 0> constexpr names{};
+        return ioj::try_parse_enum<Field>(name, names);
     }
 };
 
@@ -88,13 +93,8 @@ struct TypeReader<codegen_compile_fixture::DefaultReadable> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        if (name == "count") {
-            return Field::count;
-        }
-        if (name == "maybe") {
-            return Field::maybe;
-        }
-        return std::nullopt;
+        std::array<std::string_view, 2> constexpr names{"count", "maybe"};
+        return ioj::try_parse_enum<Field>(name, names);
     }
 };
 
@@ -119,10 +119,8 @@ struct TypeReader<codegen_compile_fixture::RecursiveReadable> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        if (name == "children") {
-            return Field::children;
-        }
-        return std::nullopt;
+        std::array<std::string_view, 1> constexpr names{"children"};
+        return ioj::try_parse_enum<Field>(name, names);
     }
 };
 
@@ -150,10 +148,8 @@ struct TypeReader<codegen_compile_fixture::BoundedInteger> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        if (name == "value") {
-            return Field::value;
-        }
-        return std::nullopt;
+        std::array<std::string_view, 1> constexpr names{"value"};
+        return ioj::try_parse_enum<Field>(name, names);
     }
 };
 
@@ -182,13 +178,8 @@ struct TypeReader<codegen_compile_fixture::ReadableChild> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        if (name == "name") {
-            return Field::name;
-        }
-        if (name == "count") {
-            return Field::count;
-        }
-        return std::nullopt;
+        std::array<std::string_view, 2> constexpr names{"name", "count"};
+        return ioj::try_parse_enum<Field>(name, names);
     }
 };
 

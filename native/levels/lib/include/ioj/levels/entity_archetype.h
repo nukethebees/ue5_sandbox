@@ -4,6 +4,7 @@
 #pragma once
 
 #include "ioj/enum_traits.h"
+#include "ioj/parse_enum.h"
 
 #include <array>
 #include <cstdint>
@@ -41,16 +42,9 @@ enum class EntityArchetype : EntityArchetypeUnderlying {
 [[nodiscard]] constexpr auto
     try_parse_serialized_entity_archetype(std::string_view const value) noexcept
     -> std::optional<EntityArchetype> {
-    if (value == "player-fighter") {
-        return EntityArchetype::PlayerFighter;
-    }
-    if (value == "capital-ship") {
-        return EntityArchetype::CapitalShip;
-    }
-    if (value == "static-turret") {
-        return EntityArchetype::StaticTurret;
-    }
-    return std::nullopt;
+    std::array<std::string_view, 3> constexpr names{
+        "player-fighter", "capital-ship", "static-turret"};
+    return ioj::try_parse_enum<EntityArchetype>(value, names);
 }
 
 } // namespace ioj::levels

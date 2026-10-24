@@ -3,9 +3,14 @@
 
 #pragma once
 
+#include "ioj/parse_enum.h"
 #include "ReadableRecords_reader.h"
 #include "ReaderDependency.h"
 #include <ioj/s7/field_reader.h>
+
+#include <array>
+#include <optional>
+#include <string_view>
 
 namespace ioj::s7 {
 template <>
@@ -32,10 +37,8 @@ struct TypeReader<codegen_compile_fixture::ReaderDependency> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        if (name == "child") {
-            return Field::child;
-        }
-        return std::nullopt;
+        std::array<std::string_view, 1> constexpr names{"child"};
+        return ioj::try_parse_enum<Field>(name, names);
     }
 };
 

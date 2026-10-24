@@ -637,6 +637,15 @@ TEST(GeneratedEnum, ValuesAndConversions) {
     EXPECT_EQ(try_parse_plain_fixture("First"), EPlainFixture::First);
     EXPECT_EQ(try_parse_serialized_plain_fixture("readable_name"), EPlainFixture::ReadableName);
     EXPECT_FALSE(try_parse_serialized_plain_fixture("missing"));
+    EXPECT_FALSE(try_parse_plain_fixture("first"));
+    static_assert(try_parse_plain_fixture("ReadableName") == EPlainFixture::ReadableName);
+    static_assert(!try_parse_serialized_plain_fixture("missing"));
+    EXPECT_EQ(try_parse_sparse_fixture("Negative"), ESparseFixture::Negative);
+    EXPECT_EQ(try_parse_serialized_sparse_fixture("positive"), ESparseFixture::Positive);
+    EXPECT_FALSE(try_parse_sparse_fixture("missing"));
+    EXPECT_EQ(try_parse_serialized_reordered_fixture("first"), EReorderedFixture::First);
+    EXPECT_EQ(try_parse_serialized_reordered_fixture("later"), EReorderedFixture::Later);
+    EXPECT_FALSE(try_parse_serialized_reordered_fixture("missing"));
     EXPECT_EQ(to_serialized_string(static_cast<EPlainFixture>(99)), "<invalid EPlainFixture>");
 }
 

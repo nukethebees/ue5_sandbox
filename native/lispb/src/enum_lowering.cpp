@@ -526,6 +526,8 @@ auto native_enum_parsers(LoweringContext& context, DeclarationHandle const schem
     auto const name{context.text(enums.name[row])};
     auto const snake_name{snake_case_type_name(name)};
     auto const helpers{context.declarations.items(enums.helpers[row])};
+    auto const& domains{context.semantic.enum_domains()};
+    auto const domain{domains.find(schema)};
     NodeListBuilder parsers{ir};
     for (auto const helper :
          {NativeEnumHelper::try_parse, NativeEnumHelper::try_parse_serialized}) {
@@ -534,7 +536,10 @@ auto native_enum_parsers(LoweringContext& context, DeclarationHandle const schem
         }
 
         std::vector<StringEnumEntry> entries;
+        bool indexed{true};
+        std::size_t ordinal{};
         for (auto const value : context.declarations.items(enums.values[row])) {
+            auto const code{domains.code(domain, ordinal++)};
             auto const value_row{enumerators.index(value)};
             auto const value_name{context.text(enumerators.name[value_row])};
             std::string key;
@@ -547,12 +552,15 @@ auto native_enum_parsers(LoweringContext& context, DeclarationHandle const schem
             } else {
                 key = value_name;
             }
+            indexed = indexed && code && !code->negative && code->magnitude == entries.size();
             entries.push_back({std::move(key), name + "::" + value_name});
         }
 
         auto const prefix{helper == NativeEnumHelper::try_parse ? "try_parse_"
                                                                 : "try_parse_serialized_"};
-        parsers.add(lower_string_enum_parser(ir, prefix + snake_name, name, "value", entries), 2);
+        parsers.add(lower_string_enum_parser(
+                        ir, prefix + snake_name, name, "value", entries, false, indexed),
+                    2);
     }
     return parsers.build();
 }
@@ -826,7 +834,8 @@ auto lower_enum(LoweringContext& context,
                           ir.store_optional_text(annotation(context, value, reflected))));
     }
     declarations.add(ir.enumeration(enums.name[row],
-                                    reflected ? ir.types.intern(unreal_underlying_type(ir.types.spelling(underlying)))
+                                    reflected ? ir.types.intern(unreal_underlying_type(
+                                                    ir.types.spelling(underlying)))
                                               : ir.types.intern(underlying_alias),
                                     std::move(values)),
                      2);

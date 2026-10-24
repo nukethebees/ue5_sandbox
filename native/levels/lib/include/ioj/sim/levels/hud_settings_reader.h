@@ -3,9 +3,14 @@
 
 #pragma once
 
+#include "ioj/parse_enum.h"
 #include "ioj/s7/field_constraints.h"
 #include "ioj/sim/levels/hud_settings.h"
 #include <ioj/s7/field_reader.h>
+
+#include <array>
+#include <optional>
+#include <string_view>
 
 namespace ioj::s7 {
 template <>
@@ -31,16 +36,10 @@ struct TypeReader<sim::HudSettings> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        if (name == "player-status-update-period") {
-            return Field::player_status_update_period;
-        }
-        if (name == "entity-count-update-period") {
-            return Field::entity_count_update_period;
-        }
-        if (name == "mission-status-update-period") {
-            return Field::mission_status_update_period;
-        }
-        return std::nullopt;
+        std::array<std::string_view, 3> constexpr names{"player-status-update-period",
+                                                        "entity-count-update-period",
+                                                        "mission-status-update-period"};
+        return ioj::try_parse_enum<Field>(name, names);
     }
 };
 
@@ -67,16 +66,10 @@ struct TypeReader<sim::HudSettingsOverrides> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        if (name == "player-status-update-period") {
-            return Field::player_status_update_period;
-        }
-        if (name == "entity-count-update-period") {
-            return Field::entity_count_update_period;
-        }
-        if (name == "mission-status-update-period") {
-            return Field::mission_status_update_period;
-        }
-        return std::nullopt;
+        std::array<std::string_view, 3> constexpr names{"player-status-update-period",
+                                                        "entity-count-update-period",
+                                                        "mission-status-update-period"};
+        return ioj::try_parse_enum<Field>(name, names);
     }
 };
 

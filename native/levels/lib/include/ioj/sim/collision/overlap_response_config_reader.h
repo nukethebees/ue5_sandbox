@@ -3,9 +3,14 @@
 
 #pragma once
 
+#include "ioj/parse_enum.h"
 #include "ioj/s7/field_constraints.h"
 #include "ioj/sim/collision/overlap_response_config.h"
 #include <ioj/s7/field_reader.h>
+
+#include <array>
+#include <optional>
+#include <string_view>
 
 namespace ioj::s7 {
 template <>
@@ -31,16 +36,9 @@ struct TypeReader<sim::OverlapResponseConfig> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        if (name == "damage-per-overlap-detection") {
-            return Field::damage_per_overlap_detection;
-        }
-        if (name == "level-size") {
-            return Field::level_size;
-        }
-        if (name == "cell-size") {
-            return Field::cell_size;
-        }
-        return std::nullopt;
+        std::array<std::string_view, 3> constexpr names{
+            "damage-per-overlap-detection", "level-size", "cell-size"};
+        return ioj::try_parse_enum<Field>(name, names);
     }
 };
 
@@ -67,16 +65,9 @@ struct TypeReader<sim::OverlapResponseConfigOverrides> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        if (name == "damage-per-overlap-detection") {
-            return Field::damage_per_overlap_detection;
-        }
-        if (name == "level-size") {
-            return Field::level_size;
-        }
-        if (name == "cell-size") {
-            return Field::cell_size;
-        }
-        return std::nullopt;
+        std::array<std::string_view, 3> constexpr names{
+            "damage-per-overlap-detection", "level-size", "cell-size"};
+        return ioj::try_parse_enum<Field>(name, names);
     }
 };
 

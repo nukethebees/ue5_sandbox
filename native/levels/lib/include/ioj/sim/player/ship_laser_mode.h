@@ -4,6 +4,7 @@
 #pragma once
 
 #include "ioj/enum_traits.h"
+#include "ioj/parse_enum.h"
 
 #include <array>
 #include <cstdint>
@@ -41,16 +42,8 @@ enum class ShipLaserMode : ShipLaserModeUnderlying {
 [[nodiscard]] constexpr auto
     try_parse_serialized_ship_laser_mode(std::string_view const value) noexcept
     -> std::optional<ShipLaserMode> {
-    if (value == "single") {
-        return ShipLaserMode::Single;
-    }
-    if (value == "double") {
-        return ShipLaserMode::Double;
-    }
-    if (value == "hyper") {
-        return ShipLaserMode::Hyper;
-    }
-    return std::nullopt;
+    std::array<std::string_view, 3> constexpr names{"single", "double", "hyper"};
+    return ioj::try_parse_enum<ShipLaserMode>(value, names);
 }
 
 } // namespace ioj::sim

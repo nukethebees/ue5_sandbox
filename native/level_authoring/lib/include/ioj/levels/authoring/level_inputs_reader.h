@@ -10,8 +10,13 @@
 #include "ioj/levels/level_camera_definition_reader.h"
 #include "ioj/levels/level_collision_grid_definition_reader.h"
 #include "ioj/levels/team_result_definition_reader.h"
+#include "ioj/parse_enum.h"
 #include "ioj/s7/field_constraints.h"
 #include <ioj/s7/field_reader.h>
+
+#include <array>
+#include <optional>
+#include <string_view>
 
 namespace ioj::s7 {
 template <>
@@ -207,13 +212,8 @@ struct TypeReader<levels::authoring::MissionInput> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        if (name == "objectives") {
-            return Field::objectives;
-        }
-        if (name == "team-results") {
-            return Field::team_results;
-        }
-        return std::nullopt;
+        std::array<std::string_view, 2> constexpr names{"objectives", "team-results"};
+        return ioj::try_parse_enum<Field>(name, names);
     }
 };
 
@@ -333,16 +333,8 @@ struct TypeReader<levels::authoring::IncludedLevelInput> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        if (name == "path") {
-            return Field::path;
-        }
-        if (name == "value") {
-            return Field::value;
-        }
-        if (name == "error") {
-            return Field::error;
-        }
-        return std::nullopt;
+        std::array<std::string_view, 3> constexpr names{"path", "value", "error"};
+        return ioj::try_parse_enum<Field>(name, names);
     }
 };
 
@@ -369,16 +361,8 @@ struct TypeReader<levels::authoring::IncludedCampaignInput> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        if (name == "path") {
-            return Field::path;
-        }
-        if (name == "value") {
-            return Field::value;
-        }
-        if (name == "error") {
-            return Field::error;
-        }
-        return std::nullopt;
+        std::array<std::string_view, 3> constexpr names{"path", "value", "error"};
+        return ioj::try_parse_enum<Field>(name, names);
     }
 };
 
@@ -404,13 +388,8 @@ struct TypeReader<levels::authoring::CatalogInput> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        if (name == "levels") {
-            return Field::levels;
-        }
-        if (name == "campaigns") {
-            return Field::campaigns;
-        }
-        return std::nullopt;
+        std::array<std::string_view, 2> constexpr names{"levels", "campaigns"};
+        return ioj::try_parse_enum<Field>(name, names);
     }
 };
 

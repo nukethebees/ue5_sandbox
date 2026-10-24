@@ -3,9 +3,14 @@
 
 #pragma once
 
+#include "ioj/parse_enum.h"
 #include "ioj/s7/field_constraints.h"
 #include "ioj/settings/turret_presentation.h"
 #include <ioj/s7/field_reader.h>
+
+#include <array>
+#include <optional>
+#include <string_view>
 
 namespace ioj::s7 {
 template <>
@@ -29,10 +34,8 @@ struct TypeReader<settings::TurretPresentation> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        if (name == "death-effect-scale") {
-            return Field::death_effect_scale;
-        }
-        return std::nullopt;
+        std::array<std::string_view, 1> constexpr names{"death-effect-scale"};
+        return ioj::try_parse_enum<Field>(name, names);
     }
 };
 
@@ -57,10 +60,8 @@ struct TypeReader<settings::TurretPresentationOverrides> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        if (name == "death-effect-scale") {
-            return Field::death_effect_scale;
-        }
-        return std::nullopt;
+        std::array<std::string_view, 1> constexpr names{"death-effect-scale"};
+        return ioj::try_parse_enum<Field>(name, names);
     }
 };
 

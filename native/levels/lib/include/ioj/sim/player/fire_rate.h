@@ -4,6 +4,7 @@
 #pragma once
 
 #include "ioj/enum_traits.h"
+#include "ioj/parse_enum.h"
 
 #include <array>
 #include <cstddef>
@@ -58,16 +59,8 @@ enum class ShipFireRate : ShipFireRateUnderlying {
 [[nodiscard]] constexpr auto
     try_parse_serialized_ship_fire_rate(std::string_view const value) noexcept
     -> std::optional<ShipFireRate> {
-    if (value == "single") {
-        return ShipFireRate::Single;
-    }
-    if (value == "burst3") {
-        return ShipFireRate::Burst3;
-    }
-    if (value == "full-auto") {
-        return ShipFireRate::FullAuto;
-    }
-    return std::nullopt;
+    std::array<std::string_view, 3> constexpr names{"single", "burst3", "full-auto"};
+    return ioj::try_parse_enum<ShipFireRate>(value, names);
 }
 
 } // namespace ioj::sim

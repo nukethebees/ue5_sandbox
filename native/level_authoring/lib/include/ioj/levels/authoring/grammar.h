@@ -4,6 +4,7 @@
 #pragma once
 
 #include "ioj/enum_traits.h"
+#include "ioj/parse_enum.h"
 
 #include <array>
 #include <cstdint>
@@ -443,13 +444,8 @@ enum class ExpressionSyntax : ExpressionSyntaxUnderlying {
 [[nodiscard]] constexpr auto
     try_parse_serialized_expression_syntax(std::string_view const value) noexcept
     -> std::optional<ExpressionSyntax> {
-    if (value == "expr") {
-        return ExpressionSyntax::Definition;
-    }
-    if (value == "expr-ref") {
-        return ExpressionSyntax::Reference;
-    }
-    return std::nullopt;
+    std::array<std::string_view, 2> constexpr names{"expr", "expr-ref"};
+    return ioj::try_parse_enum<ExpressionSyntax>(value, names);
 }
 
 using RecordKindUnderlying = std::uint8_t;

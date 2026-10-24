@@ -7,6 +7,9 @@
 #include "ioj/settings/radar.h"
 #include <ioj/s7/field_reader.h>
 
+#include <optional>
+#include <string_view>
+
 namespace ioj::s7 {
 template <>
 struct TypeReader<settings::Radar> {

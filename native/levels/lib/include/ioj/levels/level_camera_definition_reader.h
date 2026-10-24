@@ -5,7 +5,12 @@
 
 #include "ioj/levels/authoring/identifier_reader.h"
 #include "ioj/levels/level_camera_definition.h"
+#include "ioj/parse_enum.h"
 #include <ioj/s7/field_reader.h>
+
+#include <array>
+#include <optional>
+#include <string_view>
 
 namespace ioj::s7 {
 template <>
@@ -31,16 +36,8 @@ struct TypeReader<levels::LevelCameraDefinition> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        if (name == "look-at") {
-            return Field::target_entity_ids;
-        }
-        if (name == "offset-direction") {
-            return Field::offset_direction;
-        }
-        if (name == "distance") {
-            return Field::distance;
-        }
-        return std::nullopt;
+        std::array<std::string_view, 3> constexpr names{"look-at", "offset-direction", "distance"};
+        return ioj::try_parse_enum<Field>(name, names);
     }
 };
 

@@ -3,8 +3,13 @@
 
 #pragma once
 
+#include "ioj/parse_enum.h"
 #include "ioj/settings/attack_distance_band.h"
 #include <ioj/s7/field_reader.h>
+
+#include <array>
+#include <optional>
+#include <string_view>
 
 namespace ioj::s7 {
 template <>
@@ -30,16 +35,9 @@ struct TypeReader<settings::AttackDistanceBandValue> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        if (name == "minimum-ratio") {
-            return Field::minimum;
-        }
-        if (name == "desired-ratio") {
-            return Field::desired;
-        }
-        if (name == "maximum-ratio") {
-            return Field::maximum;
-        }
-        return std::nullopt;
+        std::array<std::string_view, 3> constexpr names{
+            "minimum-ratio", "desired-ratio", "maximum-ratio"};
+        return ioj::try_parse_enum<Field>(name, names);
     }
 };
 

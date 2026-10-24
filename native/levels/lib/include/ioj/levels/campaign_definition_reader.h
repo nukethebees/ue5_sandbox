@@ -5,7 +5,12 @@
 
 #include "ioj/levels/authoring/identifier_reader.h"
 #include "ioj/levels/campaign_definition.h"
+#include "ioj/parse_enum.h"
 #include <ioj/s7/field_reader.h>
+
+#include <array>
+#include <optional>
+#include <string_view>
 
 namespace ioj::s7 {
 template <>
@@ -31,16 +36,8 @@ struct TypeReader<levels::CampaignDefinition> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        if (name == "id") {
-            return Field::id;
-        }
-        if (name == "title") {
-            return Field::title;
-        }
-        if (name == "levels") {
-            return Field::level_ids;
-        }
-        return std::nullopt;
+        std::array<std::string_view, 3> constexpr names{"id", "title", "levels"};
+        return ioj::try_parse_enum<Field>(name, names);
     }
 };
 

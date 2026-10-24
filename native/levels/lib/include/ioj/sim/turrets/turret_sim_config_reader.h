@@ -3,10 +3,15 @@
 
 #pragma once
 
+#include "ioj/parse_enum.h"
 #include "ioj/s7/field_constraints.h"
 #include "ioj/sim/lasers/laser_weapon_sim_config_reader.h"
 #include "ioj/sim/turrets/turret_sim_config.h"
 #include <ioj/s7/field_reader.h>
+
+#include <array>
+#include <optional>
+#include <string_view>
 
 namespace ioj::s7 {
 template <>
@@ -33,19 +38,9 @@ struct TypeReader<sim::TurretSimConfig> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        if (name == "detection-radius") {
-            return Field::detection_radius;
-        }
-        if (name == "target-refresh-frequency") {
-            return Field::target_refresh_frequency;
-        }
-        if (name == "laser") {
-            return Field::laser;
-        }
-        if (name == "max-health") {
-            return Field::max_health;
-        }
-        return std::nullopt;
+        std::array<std::string_view, 4> constexpr names{
+            "detection-radius", "target-refresh-frequency", "laser", "max-health"};
+        return ioj::try_parse_enum<Field>(name, names);
     }
 };
 
@@ -73,19 +68,9 @@ struct TypeReader<sim::TurretSimConfigOverrides> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        if (name == "detection-radius") {
-            return Field::detection_radius;
-        }
-        if (name == "target-refresh-frequency") {
-            return Field::target_refresh_frequency;
-        }
-        if (name == "laser") {
-            return Field::laser;
-        }
-        if (name == "max-health") {
-            return Field::max_health;
-        }
-        return std::nullopt;
+        std::array<std::string_view, 4> constexpr names{
+            "detection-radius", "target-refresh-frequency", "laser", "max-health"};
+        return ioj::try_parse_enum<Field>(name, names);
     }
 };
 

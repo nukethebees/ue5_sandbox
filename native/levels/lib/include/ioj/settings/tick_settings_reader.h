@@ -3,9 +3,14 @@
 
 #pragma once
 
+#include "ioj/parse_enum.h"
 #include "ioj/s7/frequency_reader.h"
 #include "ioj/settings/tick_settings.h"
 #include <ioj/s7/field_reader.h>
+
+#include <array>
+#include <optional>
+#include <string_view>
 
 namespace ioj::s7 {
 template <>
@@ -30,13 +35,8 @@ struct TypeReader<settings::TickSettings> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        if (name == "tick-rate") {
-            return Field::tick_rate;
-        }
-        if (name == "time-scale") {
-            return Field::time_scale;
-        }
-        return std::nullopt;
+        std::array<std::string_view, 2> constexpr names{"tick-rate", "time-scale"};
+        return ioj::try_parse_enum<Field>(name, names);
     }
 };
 
@@ -62,13 +62,8 @@ struct TypeReader<settings::TickSettingsOverrides> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        if (name == "tick-rate") {
-            return Field::tick_rate;
-        }
-        if (name == "time-scale") {
-            return Field::time_scale;
-        }
-        return std::nullopt;
+        std::array<std::string_view, 2> constexpr names{"tick-rate", "time-scale"};
+        return ioj::try_parse_enum<Field>(name, names);
     }
 };
 

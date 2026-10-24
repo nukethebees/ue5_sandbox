@@ -347,7 +347,7 @@ void lower_record_reader(LoweringContext& context,
                            values),
             2);
         declarations.add(
-            lower_string_enum_parser(ir, "parse_field", "Field", "name", entries, true));
+            lower_string_enum_parser(ir, "parse_field", "Field", "name", entries, true, true));
     }
     auto const specialization{
         ir.record(ir.template_id(ir.named("TypeReader"), {ir.type_reference(value_type)}),

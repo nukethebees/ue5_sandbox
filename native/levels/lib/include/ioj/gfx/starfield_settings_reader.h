@@ -4,8 +4,13 @@
 #pragma once
 
 #include "ioj/gfx/starfield_settings.h"
+#include "ioj/parse_enum.h"
 #include "ioj/s7/field_constraints.h"
 #include <ioj/s7/field_reader.h>
+
+#include <array>
+#include <optional>
+#include <string_view>
 
 namespace ioj::s7 {
 template <>
@@ -30,13 +35,8 @@ struct TypeReader<starfield::GenerationSettings> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        if (name == "star-count") {
-            return Field::star_count;
-        }
-        if (name == "random-seed") {
-            return Field::random_seed;
-        }
-        return std::nullopt;
+        std::array<std::string_view, 2> constexpr names{"star-count", "random-seed"};
+        return ioj::try_parse_enum<Field>(name, names);
     }
 };
 
@@ -62,13 +62,8 @@ struct TypeReader<starfield::GenerationSettingsOverrides> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        if (name == "star-count") {
-            return Field::star_count;
-        }
-        if (name == "random-seed") {
-            return Field::random_seed;
-        }
-        return std::nullopt;
+        std::array<std::string_view, 2> constexpr names{"star-count", "random-seed"};
+        return ioj::try_parse_enum<Field>(name, names);
     }
 };
 
@@ -214,13 +209,8 @@ struct TypeReader<starfield::GalacticBandSettings> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        if (name == "strength") {
-            return Field::strength;
-        }
-        if (name == "width-degrees") {
-            return Field::width_degrees;
-        }
-        return std::nullopt;
+        std::array<std::string_view, 2> constexpr names{"strength", "width-degrees"};
+        return ioj::try_parse_enum<Field>(name, names);
     }
 };
 
@@ -246,13 +236,8 @@ struct TypeReader<starfield::GalacticBandSettingsOverrides> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        if (name == "strength") {
-            return Field::strength;
-        }
-        if (name == "width-degrees") {
-            return Field::width_degrees;
-        }
-        return std::nullopt;
+        std::array<std::string_view, 2> constexpr names{"strength", "width-degrees"};
+        return ioj::try_parse_enum<Field>(name, names);
     }
 };
 
@@ -278,13 +263,8 @@ struct TypeReader<starfield::StellarClusterSettings> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        if (name == "strength") {
-            return Field::strength;
-        }
-        if (name == "width-degrees") {
-            return Field::width_degrees;
-        }
-        return std::nullopt;
+        std::array<std::string_view, 2> constexpr names{"strength", "width-degrees"};
+        return ioj::try_parse_enum<Field>(name, names);
     }
 };
 
@@ -310,13 +290,8 @@ struct TypeReader<starfield::StellarClusterSettingsOverrides> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        if (name == "strength") {
-            return Field::strength;
-        }
-        if (name == "width-degrees") {
-            return Field::width_degrees;
-        }
-        return std::nullopt;
+        std::array<std::string_view, 2> constexpr names{"strength", "width-degrees"};
+        return ioj::try_parse_enum<Field>(name, names);
     }
 };
 
@@ -343,16 +318,9 @@ struct TypeReader<starfield::DustLaneSettings> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        if (name == "strength") {
-            return Field::strength;
-        }
-        if (name == "width-degrees") {
-            return Field::width_degrees;
-        }
-        if (name == "irregularity") {
-            return Field::irregularity;
-        }
-        return std::nullopt;
+        std::array<std::string_view, 3> constexpr names{
+            "strength", "width-degrees", "irregularity"};
+        return ioj::try_parse_enum<Field>(name, names);
     }
 };
 
@@ -379,16 +347,9 @@ struct TypeReader<starfield::DustLaneSettingsOverrides> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        if (name == "strength") {
-            return Field::strength;
-        }
-        if (name == "width-degrees") {
-            return Field::width_degrees;
-        }
-        if (name == "irregularity") {
-            return Field::irregularity;
-        }
-        return std::nullopt;
+        std::array<std::string_view, 3> constexpr names{
+            "strength", "width-degrees", "irregularity"};
+        return ioj::try_parse_enum<Field>(name, names);
     }
 };
 
@@ -416,19 +377,9 @@ struct TypeReader<starfield::BrightStarSettings> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        if (name == "fraction") {
-            return Field::fraction;
-        }
-        if (name == "size-multiplier") {
-            return Field::size_multiplier;
-        }
-        if (name == "brightness-multiplier") {
-            return Field::brightness_multiplier;
-        }
-        if (name == "shape-strength") {
-            return Field::shape_strength;
-        }
-        return std::nullopt;
+        std::array<std::string_view, 4> constexpr names{
+            "fraction", "size-multiplier", "brightness-multiplier", "shape-strength"};
+        return ioj::try_parse_enum<Field>(name, names);
     }
 };
 
@@ -456,19 +407,9 @@ struct TypeReader<starfield::BrightStarSettingsOverrides> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        if (name == "fraction") {
-            return Field::fraction;
-        }
-        if (name == "size-multiplier") {
-            return Field::size_multiplier;
-        }
-        if (name == "brightness-multiplier") {
-            return Field::brightness_multiplier;
-        }
-        if (name == "shape-strength") {
-            return Field::shape_strength;
-        }
-        return std::nullopt;
+        std::array<std::string_view, 4> constexpr names{
+            "fraction", "size-multiplier", "brightness-multiplier", "shape-strength"};
+        return ioj::try_parse_enum<Field>(name, names);
     }
 };
 
@@ -494,13 +435,8 @@ struct TypeReader<starfield::TwinkleSettings> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        if (name == "strength") {
-            return Field::strength;
-        }
-        if (name == "speed") {
-            return Field::speed;
-        }
-        return std::nullopt;
+        std::array<std::string_view, 2> constexpr names{"strength", "speed"};
+        return ioj::try_parse_enum<Field>(name, names);
     }
 };
 
@@ -526,13 +462,8 @@ struct TypeReader<starfield::TwinkleSettingsOverrides> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        if (name == "strength") {
-            return Field::strength;
-        }
-        if (name == "speed") {
-            return Field::speed;
-        }
-        return std::nullopt;
+        std::array<std::string_view, 2> constexpr names{"strength", "speed"};
+        return ioj::try_parse_enum<Field>(name, names);
     }
 };
 
@@ -558,13 +489,8 @@ struct TypeReader<starfield::GalacticHazeSettings> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        if (name == "strength") {
-            return Field::strength;
-        }
-        if (name == "width-degrees") {
-            return Field::width_degrees;
-        }
-        return std::nullopt;
+        std::array<std::string_view, 2> constexpr names{"strength", "width-degrees"};
+        return ioj::try_parse_enum<Field>(name, names);
     }
 };
 
@@ -590,13 +516,8 @@ struct TypeReader<starfield::GalacticHazeSettingsOverrides> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        if (name == "strength") {
-            return Field::strength;
-        }
-        if (name == "width-degrees") {
-            return Field::width_degrees;
-        }
-        return std::nullopt;
+        std::array<std::string_view, 2> constexpr names{"strength", "width-degrees"};
+        return ioj::try_parse_enum<Field>(name, names);
     }
 };
 
@@ -622,13 +543,8 @@ struct TypeReader<starfield::GalacticCoreSettings> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        if (name == "strength") {
-            return Field::strength;
-        }
-        if (name == "width-degrees") {
-            return Field::width_degrees;
-        }
-        return std::nullopt;
+        std::array<std::string_view, 2> constexpr names{"strength", "width-degrees"};
+        return ioj::try_parse_enum<Field>(name, names);
     }
 };
 
@@ -654,13 +570,8 @@ struct TypeReader<starfield::GalacticCoreSettingsOverrides> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        if (name == "strength") {
-            return Field::strength;
-        }
-        if (name == "width-degrees") {
-            return Field::width_degrees;
-        }
-        return std::nullopt;
+        std::array<std::string_view, 2> constexpr names{"strength", "width-degrees"};
+        return ioj::try_parse_enum<Field>(name, names);
     }
 };
 
@@ -686,13 +597,8 @@ struct TypeReader<starfield::NebularKnotSettings> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        if (name == "strength") {
-            return Field::strength;
-        }
-        if (name == "size-degrees") {
-            return Field::size_degrees;
-        }
-        return std::nullopt;
+        std::array<std::string_view, 2> constexpr names{"strength", "size-degrees"};
+        return ioj::try_parse_enum<Field>(name, names);
     }
 };
 
@@ -718,13 +624,8 @@ struct TypeReader<starfield::NebularKnotSettingsOverrides> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        if (name == "strength") {
-            return Field::strength;
-        }
-        if (name == "size-degrees") {
-            return Field::size_degrees;
-        }
-        return std::nullopt;
+        std::array<std::string_view, 2> constexpr names{"strength", "size-degrees"};
+        return ioj::try_parse_enum<Field>(name, names);
     }
 };
 

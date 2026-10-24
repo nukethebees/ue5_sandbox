@@ -4,6 +4,7 @@
 #pragma once
 
 #include "ioj/enum_traits.h"
+#include "ioj/parse_enum.h"
 
 #include <array>
 #include <cstddef>
@@ -42,16 +43,8 @@ enum class ObjectiveOutcome : ObjectiveOutcomeUnderlying {
 [[nodiscard]] constexpr auto
     try_parse_serialized_objective_outcome(std::string_view const value) noexcept
     -> std::optional<ObjectiveOutcome> {
-    if (value == "passed") {
-        return ObjectiveOutcome::Passed;
-    }
-    if (value == "failed") {
-        return ObjectiveOutcome::Failed;
-    }
-    if (value == "expired") {
-        return ObjectiveOutcome::Expired;
-    }
-    return std::nullopt;
+    std::array<std::string_view, 3> constexpr names{"passed", "failed", "expired"};
+    return ioj::try_parse_enum<ObjectiveOutcome>(value, names);
 }
 
 using TeamOutcomeUnderlying = std::uint8_t;
@@ -80,13 +73,8 @@ enum class TeamOutcome : TeamOutcomeUnderlying {
 [[nodiscard]] constexpr auto
     try_parse_serialized_team_outcome(std::string_view const value) noexcept
     -> std::optional<TeamOutcome> {
-    if (value == "victory") {
-        return TeamOutcome::Victory;
-    }
-    if (value == "defeat") {
-        return TeamOutcome::Defeat;
-    }
-    return std::nullopt;
+    std::array<std::string_view, 2> constexpr names{"victory", "defeat"};
+    return ioj::try_parse_enum<TeamOutcome>(value, names);
 }
 
 using ExprResultUnderlying = std::uint8_t;

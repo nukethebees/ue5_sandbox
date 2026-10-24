@@ -3,9 +3,14 @@
 
 #pragma once
 
+#include "ioj/parse_enum.h"
 #include "ioj/s7/field_constraints.h"
 #include "ioj/settings/laser_presentation.h"
 #include <ioj/s7/field_reader.h>
+
+#include <array>
+#include <optional>
+#include <string_view>
 
 namespace ioj::s7 {
 template <>
@@ -30,13 +35,8 @@ struct TypeReader<settings::LaserPresentation> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        if (name == "min-cull-distance") {
-            return Field::min_cull_distance;
-        }
-        if (name == "max-cull-distance") {
-            return Field::max_cull_distance;
-        }
-        return std::nullopt;
+        std::array<std::string_view, 2> constexpr names{"min-cull-distance", "max-cull-distance"};
+        return ioj::try_parse_enum<Field>(name, names);
     }
 };
 
@@ -62,13 +62,8 @@ struct TypeReader<settings::LaserPresentationOverrides> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        if (name == "min-cull-distance") {
-            return Field::min_cull_distance;
-        }
-        if (name == "max-cull-distance") {
-            return Field::max_cull_distance;
-        }
-        return std::nullopt;
+        std::array<std::string_view, 2> constexpr names{"min-cull-distance", "max-cull-distance"};
+        return ioj::try_parse_enum<Field>(name, names);
     }
 };
 

@@ -3,9 +3,14 @@
 
 #pragma once
 
+#include "ioj/parse_enum.h"
 #include "ioj/s7/field_constraints.h"
 #include "ioj/settings/player_presentation.h"
 #include <ioj/s7/field_reader.h>
+
+#include <array>
+#include <optional>
+#include <string_view>
 
 namespace ioj::s7 {
 template <>
@@ -29,10 +34,8 @@ struct TypeReader<settings::PlayerPresentation> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        if (name == "boost-effect-colour-intensity") {
-            return Field::boost_effect_colour_intensity;
-        }
-        return std::nullopt;
+        std::array<std::string_view, 1> constexpr names{"boost-effect-colour-intensity"};
+        return ioj::try_parse_enum<Field>(name, names);
     }
 };
 
@@ -57,10 +60,8 @@ struct TypeReader<settings::PlayerPresentationOverrides> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        if (name == "boost-effect-colour-intensity") {
-            return Field::boost_effect_colour_intensity;
-        }
-        return std::nullopt;
+        std::array<std::string_view, 1> constexpr names{"boost-effect-colour-intensity"};
+        return ioj::try_parse_enum<Field>(name, names);
     }
 };
 

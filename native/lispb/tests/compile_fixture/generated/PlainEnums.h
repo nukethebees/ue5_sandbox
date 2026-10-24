@@ -4,6 +4,7 @@
 #pragma once
 
 #include "ioj/enum_traits.h"
+#include "ioj/parse_enum.h"
 
 #include <array>
 #include <cstddef>
@@ -64,23 +65,68 @@ enum class EPlainFixture : EPlainFixtureUnderlying {
 
 [[nodiscard]] constexpr auto try_parse_plain_fixture(std::string_view const value) noexcept
     -> std::optional<EPlainFixture> {
-    if (value == "First") {
-        return EPlainFixture::First;
-    }
-    if (value == "ReadableName") {
-        return EPlainFixture::ReadableName;
-    }
-    return std::nullopt;
+    std::array<std::string_view, 2> constexpr names{"First", "ReadableName"};
+    return ioj::try_parse_enum<EPlainFixture>(value, names);
 }
 
 [[nodiscard]] constexpr auto
     try_parse_serialized_plain_fixture(std::string_view const value) noexcept
     -> std::optional<EPlainFixture> {
-    if (value == "first") {
-        return EPlainFixture::First;
+    std::array<std::string_view, 2> constexpr names{"first", "readable_name"};
+    return ioj::try_parse_enum<EPlainFixture>(value, names);
+}
+
+using ESparseFixtureUnderlying = std::int32_t;
+
+// Logical bit width: 4.
+enum class ESparseFixture : ESparseFixtureUnderlying {
+    Negative = -2,
+    Positive = 4,
+};
+
+[[nodiscard]] constexpr auto try_parse_sparse_fixture(std::string_view const value) noexcept
+    -> std::optional<ESparseFixture> {
+    if (value == "Negative") {
+        return ESparseFixture::Negative;
     }
-    if (value == "readable_name") {
-        return EPlainFixture::ReadableName;
+    if (value == "Positive") {
+        return ESparseFixture::Positive;
+    }
+    return std::nullopt;
+}
+
+[[nodiscard]] constexpr auto
+    try_parse_serialized_sparse_fixture(std::string_view const value) noexcept
+    -> std::optional<ESparseFixture> {
+    if (value == "negative") {
+        return ESparseFixture::Negative;
+    }
+    if (value == "positive") {
+        return ESparseFixture::Positive;
+    }
+    return std::nullopt;
+}
+
+using EReorderedFixtureUnderlying = std::uint8_t;
+
+// Logical bit width: 2.
+enum class EReorderedFixture : EReorderedFixtureUnderlying {
+    Later = 2,
+    First = 0,
+    Second,
+};
+
+[[nodiscard]] constexpr auto
+    try_parse_serialized_reordered_fixture(std::string_view const value) noexcept
+    -> std::optional<EReorderedFixture> {
+    if (value == "later") {
+        return EReorderedFixture::Later;
+    }
+    if (value == "first") {
+        return EReorderedFixture::First;
+    }
+    if (value == "second") {
+        return EReorderedFixture::Second;
     }
     return std::nullopt;
 }

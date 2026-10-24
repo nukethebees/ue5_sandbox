@@ -3,9 +3,14 @@
 
 #pragma once
 
+#include "ioj/parse_enum.h"
 #include "ioj/s7/field_constraints.h"
 #include "Records.h"
 #include <ioj/s7/field_reader.h>
+
+#include <array>
+#include <optional>
+#include <string_view>
 
 namespace ioj::s7 {
 template <>
@@ -30,13 +35,8 @@ struct TypeReader<codegen_compile_fixture::RangeValue> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        if (name == "minimum") {
-            return Field::minimum;
-        }
-        if (name == "maximum") {
-            return Field::maximum;
-        }
-        return std::nullopt;
+        std::array<std::string_view, 2> constexpr names{"minimum", "maximum"};
+        return ioj::try_parse_enum<Field>(name, names);
     }
 };
 
@@ -62,13 +62,8 @@ struct TypeReader<codegen_compile_fixture::RangeSettings> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        if (name == "range") {
-            return Field::range;
-        }
-        if (name == "enabled") {
-            return Field::enabled;
-        }
-        return std::nullopt;
+        std::array<std::string_view, 2> constexpr names{"range", "enabled"};
+        return ioj::try_parse_enum<Field>(name, names);
     }
 };
 
@@ -94,13 +89,8 @@ struct TypeReader<codegen_compile_fixture::RangeSettingsOverrides> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        if (name == "range") {
-            return Field::range;
-        }
-        if (name == "enabled") {
-            return Field::enabled;
-        }
-        return std::nullopt;
+        std::array<std::string_view, 2> constexpr names{"range", "enabled"};
+        return ioj::try_parse_enum<Field>(name, names);
     }
 };
 
@@ -126,13 +116,8 @@ struct TypeReader<codegen_compile_fixture::WeaponSettings> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        if (name == "damage") {
-            return Field::damage;
-        }
-        if (name == "turn-speed") {
-            return Field::turn_rate;
-        }
-        return std::nullopt;
+        std::array<std::string_view, 2> constexpr names{"damage", "turn-speed"};
+        return ioj::try_parse_enum<Field>(name, names);
     }
 };
 
@@ -158,13 +143,8 @@ struct TypeReader<codegen_compile_fixture::WeaponSettingsOverrides> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        if (name == "damage") {
-            return Field::damage;
-        }
-        if (name == "turn-speed") {
-            return Field::turn_rate;
-        }
-        return std::nullopt;
+        std::array<std::string_view, 2> constexpr names{"damage", "turn-speed"};
+        return ioj::try_parse_enum<Field>(name, names);
     }
 };
 
@@ -191,16 +171,8 @@ struct TypeReader<codegen_compile_fixture::ActorSettings> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        if (name == "max-health") {
-            return Field::max_health;
-        }
-        if (name == "weapon") {
-            return Field::weapon;
-        }
-        if (name == "optional-limit") {
-            return Field::optional_limit;
-        }
-        return std::nullopt;
+        std::array<std::string_view, 3> constexpr names{"max-health", "weapon", "optional-limit"};
+        return ioj::try_parse_enum<Field>(name, names);
     }
 };
 
@@ -227,16 +199,8 @@ struct TypeReader<codegen_compile_fixture::ActorSettingsOverrides> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        if (name == "max-health") {
-            return Field::max_health;
-        }
-        if (name == "weapon") {
-            return Field::weapon;
-        }
-        if (name == "optional-limit") {
-            return Field::optional_limit;
-        }
-        return std::nullopt;
+        std::array<std::string_view, 3> constexpr names{"max-health", "weapon", "optional-limit"};
+        return ioj::try_parse_enum<Field>(name, names);
     }
 };
 

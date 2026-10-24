@@ -151,6 +151,27 @@ auto parser_body(CppIR& ir, Expr const input, std::span<StringEnumEntry const> c
     body.add(ir.switch_stmt(ir.call(ir.member_access(suffix, "size")), cases));
     return body.build();
 }
+
+auto indexed_parser_body(CppIR& ir,
+                         Expr input,
+                         std::string_view enum_type,
+                         std::span<StringEnumEntry const> entries) -> Nodes {
+    std::vector<Expr> names;
+    names.reserve(entries.size());
+    for (auto const& entry : entries) {
+        names.push_back(ir.string_literal(entry.key));
+    }
+    auto const array_type{ir.types.template_type(
+        ir.types.named("std::array", {ir.types.dependency("std::array", "array")}),
+        {ir.types.named("std::string_view"), ir.types.intern(std::to_string(names.size()))})};
+    auto const lookup{
+        ir.template_id(ir.named("ioj::try_parse_enum",
+                                {ir.types.dependency("ioj::try_parse_enum", "ioj/parse_enum.h")}),
+                       {ir.type_reference(ir.types.intern(enum_type))})};
+    return {
+        ir.variable(ir.types.decorate(array_type, "", " constexpr"), "names", ir.init_list(names)),
+        ir.return_stmt(ir.call(lookup, {input, ir.named("names")}))};
+}
 }
 
 auto lower_string_enum_parser(CppIR& ir,
@@ -158,7 +179,8 @@ auto lower_string_enum_parser(CppIR& ir,
                               std::string_view const enum_type,
                               std::string_view const parameter_name,
                               std::span<StringEnumEntry const> const entries,
-                              bool const is_static) -> NodeId {
+                              bool const is_static,
+                              bool const indexed) -> NodeId {
     auto const function{ir.function(function_name, "auto")};
     ir.set_function_return_type(function,
                                 ir.types.intern("std::optional<" + std::string{enum_type} + ">",
@@ -177,8 +199,12 @@ auto lower_string_enum_parser(CppIR& ir,
     }
     flags.set_is_nodiscard(true);
     ir.set_function_noexcept(function);
-    ir.set_function_body(function,
-                         string_enum_parser::parser_body(ir, ir.named(parameter_name), entries));
+    auto const input{ir.named(parameter_name)};
+    ir.set_function_body(
+        function,
+        indexed && entries.size() <= string_enum_parser::linear_limit
+            ? string_enum_parser::indexed_parser_body(ir, input, enum_type, entries)
+            : string_enum_parser::parser_body(ir, input, entries));
     return ir.header_function(function);
 }
 }
