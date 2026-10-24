@@ -19,10 +19,10 @@ struct FMergedProfile {
 
 bool records_equal(FScoreRecord const& left, FScoreRecord const& right) {
     return left.date == right.date && left.level_name == right.level_name &&
-           left.mission_mode == right.mission_mode && left.end_state == right.end_state &&
-           left.fail_reason == right.fail_reason && left.kills == right.kills &&
-           left.time_seconds == right.time_seconds && left.target_kills == right.target_kills &&
-           left.target_completion_time == right.target_completion_time;
+           left.team == right.team && left.outcome == right.outcome &&
+           left.objective_id == right.objective_id &&
+           left.objective_outcome == right.objective_outcome && left.kills == right.kills &&
+           left.time_seconds == right.time_seconds;
 }
 
 bool contains_record(TConstArrayView<FScoreRecord> const records, FScoreRecord const& candidate) {

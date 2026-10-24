@@ -33,13 +33,11 @@ TEST_CLASS(SaveGameProfileAdapter, "Sandbox.UnitTests")
     {
         TArray<FScoreRecord> const records{{.date = FDateTime{2026, 4, 3, 12, 30},
                                             .level_name = TEXT("test_level_42"),
-                                            .mission_mode = ETestMissionMode::KillEnemiesWithinTime,
-                                            .end_state = ETestMissionState::Failed,
-                                            .fail_reason = ETestMissionFailReason::TimeElapsed,
+                                            .outcome = ETeamOutcome::Defeat,
+                                            .objective_id = TEXT("deadline"),
+                                            .objective_outcome = EObjectiveOutcome::Expired,
                                             .kills = 8,
-                                            .time_seconds = 91.f,
-                                            .target_kills = 10,
-                                            .target_completion_time = 90.f}};
+                                            .time_seconds = 91.f}};
 
         auto const report{ioj::save_profile::make_report(TEXT("profile"), records)};
 
@@ -50,11 +48,11 @@ TEST_CLASS(SaveGameProfileAdapter, "Sandbox.UnitTests")
                               FString{TEXT("Test Level 42")});
         TestRunner->TestEqual(TEXT("Kills remain typed"), outcome.kills, 8);
         TestRunner->TestEqual(
-            TEXT("End state is displayed"), outcome.result, FString{TEXT("Failed")});
+            TEXT("End state is displayed"), outcome.result, FString{TEXT("defeat")});
         TestRunner->TestEqual(
-            TEXT("Mission details become display statistics"), outcome.statistics.Num(), 4);
+            TEXT("Mission details become display statistics"), outcome.statistics.Num(), 2);
         TestRunner->TestEqual(TEXT("Failure reason is included"),
                               outcome.statistics.Last().value,
-                              FString{TEXT("TimeElapsed")});
+                              FString{TEXT("expired")});
     }
 };

@@ -1,6 +1,6 @@
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 
-#include <ioj/sim/missions/mission_manager.h>
+#include <ioj/sim/missions/mission.h>
 #include <SandboxGameShared/utilities/macros/null_checks.hpp>
 #include <SpaceGame/input/CanonicalShipControls.h>
 #include <SpaceGame/input/SpaceGameInputUserSettings.h>
@@ -782,7 +782,7 @@ void ASpaceGamePlayerController::return_to_level_select() {
     }
 
     return_to_level_select_pending_ = true;
-    auto const preferred_level_id{orchestrator->get_mission_manager().get_level_id()};
+    auto const preferred_level_id{orchestrator->get_level_id()};
     if (!subsystem->return_to_level_select(FName{UTF8_TO_TCHAR(preferred_level_id.c_str())})) {
         return_to_level_select_pending_ = false;
         return;

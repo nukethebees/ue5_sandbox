@@ -227,19 +227,6 @@ void US7LevelAuthoringMode::Render(FSceneView const* const view,
     if (!pdi || !document_.IsValid()) {
         return;
     }
-    auto draw_roles = [pdi](TArray<TObjectPtr<AActor>> const& actors,
-                            FLinearColor const color,
-                            float const size) {
-        for (auto const actor : actors) {
-            if (IsValid(actor)) {
-                pdi->DrawPoint(actor->GetActorLocation(), color, size, SDPG_Foreground);
-            }
-        }
-    };
-    draw_roles(document_->mission.heroes, FLinearColor{0.2f, 0.6f, 1.0f}, 18.0f);
-    draw_roles(document_->mission.must_survive, FLinearColor{0.2f, 1.0f, 0.35f}, 22.0f);
-    draw_roles(document_->mission.required_kills, FLinearColor{1.0f, 0.15f, 0.1f}, 22.0f);
-
     auto* const level{current_level()};
     if (!IsValid(level)) {
         return;
@@ -288,13 +275,6 @@ void US7LevelAuthoringMode::DrawHUD(FEditorViewportClient* const viewport_client
             continue;
         }
         auto color{FLinearColor::White};
-        if (document_->mission.required_kills.Contains(binding.actor)) {
-            color = FLinearColor{1.0f, 0.15f, 0.1f};
-        } else if (document_->mission.must_survive.Contains(binding.actor)) {
-            color = FLinearColor{0.2f, 1.0f, 0.35f};
-        } else if (document_->mission.heroes.Contains(binding.actor)) {
-            color = FLinearColor{0.2f, 0.6f, 1.0f};
-        }
         auto label_text{FText::FromName(binding.id)};
         if (binding.spawn_time_seconds > 0.0) {
             label_text = FText::Format(LOCTEXT("DelayedEntityLabel", "{0} [T+{1}s]"),
@@ -527,153 +507,6 @@ void US7LevelAuthoringMode::rename_selected_entity(FString const id) {
     }
     set_status(FText::Format(LOCTEXT("RenamedEntityId", "Renamed selected entity to '{0}'."),
                              FText::FromName(new_id)));
-    changed_.Broadcast();
-}
-
-void US7LevelAuthoringMode::assign_selected_heroes() {
-    assign_selected_objective(ObjectiveRole::Hero);
-}
-
-void US7LevelAuthoringMode::assign_selected_must_survive() {
-    assign_selected_objective(ObjectiveRole::MustSurvive);
-}
-
-void US7LevelAuthoringMode::assign_selected_required_kills() {
-    assign_selected_objective(ObjectiveRole::RequiredKill);
-}
-
-void US7LevelAuthoringMode::clear_selected_objectives() {
-    assign_selected_objective(ObjectiveRole::Clear);
-}
-
-void US7LevelAuthoringMode::assign_selected_objective(ObjectiveRole const role) {
-    if (!document_.IsValid() || !GEditor) {
-        return;
-    }
-    TArray<AActor*> selected;
-    for (FSelectionIterator it{*GEditor->GetSelectedActors()}; it; ++it) {
-        auto* const actor{Cast<AActor>(*it)};
-        if (IsValid(actor) &&
-            document_->entities.ContainsByPredicate(
-                [actor](FS7LevelEntityBinding const& binding) { return binding.actor == actor; })) {
-            selected.Add(actor);
-        }
-    }
-    if (selected.IsEmpty()) {
-        set_status(LOCTEXT("NoSelectedEntities", "Select one or more adopted entities first."));
-        changed_.Broadcast();
-        return;
-    }
-
-    FScopedTransaction transaction{
-        LOCTEXT("AssignObjectivesTransaction", "Assign Level Objectives")};
-    document_->Modify();
-    for (auto* const actor : selected) {
-        if (role == ObjectiveRole::Hero) {
-            document_->mission.required_kills.Remove(actor);
-            document_->mission.heroes.AddUnique(actor);
-        } else if (role == ObjectiveRole::MustSurvive) {
-            document_->mission.required_kills.Remove(actor);
-            document_->mission.must_survive.AddUnique(actor);
-        } else if (role == ObjectiveRole::RequiredKill) {
-            document_->mission.heroes.Remove(actor);
-            document_->mission.must_survive.Remove(actor);
-            document_->mission.required_kills.AddUnique(actor);
-        } else {
-            document_->mission.heroes.Remove(actor);
-            document_->mission.must_survive.Remove(actor);
-            document_->mission.required_kills.Remove(actor);
-        }
-    }
-    set_status(FText::Format(LOCTEXT("AssignedObjectives", "Updated objectives for {0} entities."),
-                             selected.Num()));
-    changed_.Broadcast();
-}
-
-void US7LevelAuthoringMode::import_orchestrator_mission() {
-    auto* const level{current_level()};
-    if (!IsValid(level) || !document_.IsValid()) {
-        set_status(LOCTEXT("NoDocumentForMissionImport",
-                           "Open a level with an S7 authoring document first."));
-        changed_.Broadcast();
-        return;
-    }
-
-    ATestBatchOrchestrator* orchestrator{};
-    for (auto const actor : level->Actors) {
-        auto* const candidate{Cast<ATestBatchOrchestrator>(actor.Get())};
-        if (!IsValid(candidate)) {
-            continue;
-        }
-        if (orchestrator) {
-            set_status(LOCTEXT("MultipleMissionOrchestrators",
-                               "The current level contains multiple batch orchestrators."));
-            changed_.Broadcast();
-            return;
-        }
-        orchestrator = candidate;
-    }
-    if (!orchestrator) {
-        set_status(LOCTEXT("NoMissionOrchestrator",
-                           "The current level has no batch orchestrator to import from."));
-        changed_.Broadcast();
-        return;
-    }
-
-    auto const& mission{orchestrator->get_mission_definition()};
-    auto const timed{mission.mission_mode == ETestMissionMode::SurviveTime ||
-                     mission.mission_mode == ETestMissionMode::KillEnemiesWithinTime};
-    auto const kills{mission.mission_mode == ETestMissionMode::KillEnemies ||
-                     mission.mission_mode == ETestMissionMode::KillEnemiesWithinTime};
-    if ((timed && (!FMath::IsFinite(mission.target_time) || mission.target_time <= 0.0f)) ||
-        (kills && mission.kill_target < 1)) {
-        set_status(LOCTEXT("InvalidOrchestratorMission",
-                           "The orchestrator has an invalid mission time or kill target."));
-        changed_.Broadcast();
-        return;
-    }
-
-    TSet<AActor const*> bound_actors;
-    for (auto const& binding : document_->entities) {
-        if (IsValid(binding.actor)) {
-            bound_actors.Add(binding.actor);
-        }
-    }
-    auto const references_are_bound = [&bound_actors](TArray<TObjectPtr<AActor>> const& actors) {
-        for (auto const actor : actors) {
-            if (!IsValid(actor) || !bound_actors.Contains(actor)) {
-                return false;
-            }
-        }
-        return true;
-    };
-    auto const& startup{mission.startup_data};
-    if (!references_are_bound(startup.hero_entities) ||
-        !references_are_bound(startup.entities_must_survive) ||
-        !references_are_bound(startup.entities_required_to_kill)) {
-        set_status(LOCTEXT("UnboundMissionActors",
-                           "Mission objectives reference actors that are not adopted S7 entities. "
-                           "Use Repair / Adopt Actors, then import again."));
-        changed_.Broadcast();
-        return;
-    }
-
-    FScopedTransaction transaction{
-        LOCTEXT("ImportOrchestratorMissionTransaction", "Import Batch Orchestrator Mission")};
-    document_->Modify();
-    document_->mission.mode = mission.mission_mode;
-    document_->mission.time_limit_seconds = mission.target_time;
-    document_->mission.use_explicit_kill_count = kills;
-    document_->mission.kill_count = mission.kill_target;
-    document_->mission.heroes = startup.hero_entities;
-    document_->mission.must_survive = startup.entities_must_survive;
-    document_->mission.required_kills = startup.entities_required_to_kill;
-    if (preview_.IsSet()) {
-        preview_.Reset();
-        source_session_.state().preview = PreviewState::Stale;
-    }
-    set_status(LOCTEXT("ImportedOrchestratorMission",
-                       "Imported the batch orchestrator mission into the S7 document."));
     changed_.Broadcast();
 }
 

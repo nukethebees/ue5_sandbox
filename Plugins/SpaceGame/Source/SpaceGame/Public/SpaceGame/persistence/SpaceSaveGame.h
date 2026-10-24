@@ -1,8 +1,8 @@
 #pragma once
 
-#include <SpaceGame/missions/TestMissionFailReason.h>
-#include <SpaceGame/missions/TestMissionMode.h>
-#include <SpaceGame/missions/TestMissionState.h>
+#include <SpaceGame/missions/ObjectiveOutcome.h>
+#include <SpaceGame/missions/TeamOutcome.h>
+#include <SpaceGamePresentation/entities/TestTeam.h>
 
 #include <CoreMinimal.h>
 #include <GameFramework/SaveGame.h>
@@ -20,33 +20,26 @@ struct FScoreRecord {
     FName level_name{};
 
     UPROPERTY()
-    ETestMissionMode mission_mode{ETestMissionMode::None};
-
+    ETestTeam team{ETestTeam::White};
     UPROPERTY()
-    ETestMissionState end_state{ETestMissionState::NotStarted};
-
+    ETeamOutcome outcome{ETeamOutcome::Defeat};
     UPROPERTY()
-    ETestMissionFailReason fail_reason{ETestMissionFailReason::None};
+    FString objective_id;
+    UPROPERTY()
+    EObjectiveOutcome objective_outcome{EObjectiveOutcome::Failed};
 
     UPROPERTY()
     int32 kills{};
 
     UPROPERTY()
     float time_seconds{};
-
-    // Objectives
-    UPROPERTY()
-    int32 target_kills{-1};
-
-    UPROPERTY()
-    float target_completion_time{-1.f};
 };
 
 UCLASS()
 class SPACEGAME_API USpaceSaveGame : public USaveGame {
     GENERATED_BODY()
   public:
-    static constexpr int32 current_save_version{2};
+    static constexpr int32 current_save_version{3};
 
     UPROPERTY()
     int32 save_version{current_save_version};
@@ -115,7 +108,7 @@ USTRUCT()
 struct SPACEGAME_API FSaveProfileResultsData {
     GENERATED_BODY()
 
-    static constexpr int32 current_save_version{1};
+    static constexpr int32 current_save_version{2};
 
     UPROPERTY()
     int32 save_version{current_save_version};

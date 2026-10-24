@@ -11,36 +11,6 @@
 #include <algorithm>
 
 namespace ioj::editor {
-auto s7_mission_mode(ETestMissionMode const mode) -> levels::LevelMissionMode {
-    using Mode = levels::LevelMissionMode;
-    switch (mode) {
-        case ETestMissionMode::None:
-            return Mode::Unspecified;
-        case ETestMissionMode::SurviveTime:
-            return Mode::SurviveTime;
-        case ETestMissionMode::KillEnemies:
-            return Mode::KillEnemies;
-        case ETestMissionMode::KillEnemiesWithinTime:
-            return Mode::KillEnemiesWithinTime;
-    }
-    checkNoEntry();
-    return Mode::Unspecified;
-}
-auto s7_mission_mode(levels::LevelMissionMode const mode) -> ETestMissionMode {
-    using Mode = levels::LevelMissionMode;
-    switch (mode) {
-        case Mode::Unspecified:
-            return ETestMissionMode::None;
-        case Mode::SurviveTime:
-            return ETestMissionMode::SurviveTime;
-        case Mode::KillEnemies:
-            return ETestMissionMode::KillEnemies;
-        case Mode::KillEnemiesWithinTime:
-            return ETestMissionMode::KillEnemiesWithinTime;
-    }
-    checkNoEntry();
-    return ETestMissionMode::None;
-}
 
 auto resolve_s7_level_actor(AActor const& actor) -> TOptional<FS7LevelResolvedActor> {
     EResolvedLevelArchetype archetype{};

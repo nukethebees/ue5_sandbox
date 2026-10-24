@@ -1,8 +1,7 @@
 #pragma once
 
 #include <ioj/sim/telemetry/snapshot.h>
-#include <SpaceGame/missions/TestMissionFailReason.h>
-#include <SpaceGame/missions/TestMissionState.h>
+#include <SpaceGame/missions/TeamOutcome.h>
 
 #include <CommonActivatableWidget.h>
 
@@ -31,8 +30,8 @@ class SPACEGAME_API UGameUiRootLayout : public UCommonActivatableWidget {
                         FString telemetry_error = {}) -> bool;
     auto show_pause_menu(UInputAction& toggle_action, FPauseMenuData data) -> UPauseMenuWidget*;
     auto show_level_completion(FString level_display_name,
-                               ETestMissionState state,
-                               ETestMissionFailReason fail_reason,
+                               ETeamOutcome state,
+                               FString const& objective_id,
                                sim::LevelTelemetrySnapshot snapshot,
                                TOptional<float> par_time_seconds = NullOpt,
                                bool new_best_time = false) -> ULevelCompletionWidget*;

@@ -1,9 +1,5 @@
 #include "test_hud_manager_scenario.h"
 #include <ioj/sim/capital_ships/sim.h>
-#include <ioj/sim/missions/mission_fail_reason.h>
-#include <ioj/sim/missions/mission_manager.h>
-#include <ioj/sim/missions/mission_mode.h>
-#include <ioj/sim/missions/mission_state.h>
 #include <ioj/time_series_data.h>
 #include <SandboxTests/support/level_checks.h>
 #include <SandboxTests/support/SoftTestAssertions.h>
@@ -11,9 +7,6 @@
 #include <SandboxTests/support/TestActorSpawning.h>
 #include <SandboxTests/support/time_series_test_data.h>
 #include <SandboxTests/support/WorldlessSimulationTest.h>
-#include <SpaceGame/missions/TestMissionFailReasonConversion.h>
-#include <SpaceGame/missions/TestMissionModeConversion.h>
-#include <SpaceGame/missions/TestMissionStateConversion.h>
 #include <SpaceGame/presentation/TestBatchGameUiData.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
@@ -34,6 +27,15 @@
 
 namespace ioj {
 namespace {
+auto defence_objectives() -> levels::MissionDefinition {
+    return {.objectives = {{.id = "defence",
+                            .title = "Hold position",
+                            .team = Team::Blue,
+                            .expressions = {{.type = ExpressionType::TimeElapsed, .seconds = 0.2},
+                                            {.type = ExpressionType::EntityDestroyed,
+                                             .entity = levels::EntityId{"defended"}}},
+                            .roots = {0, 1, levels::absent_expression}}}};
+}
 auto count_worldless_hud_entities(FHUDManager const& manager) -> int32 {
     int32 count{};
     for (auto const& team : manager.get_entity_count_data().alive_per_team_and_type) {
@@ -84,21 +86,19 @@ void run_worldless_hud_manager_scenario(FAutomationTestBase& test,
                                                            60.f);
     }
 
-    auto& mission_data{data.level_events.initialisation.mission.emplace()};
     if (needs_defence) {
-        auto const capital_events{data.level_events.schedule.capital_spawns.get_const_view()};
-        mission_data.mode = levels::LevelMissionMode::SurviveTime;
-        mission_data.time_limit_seconds = 10.f;
-        mission_data.save_results = false;
-        mission_data.must_survive_entity_indices.push_back(
-            capital_events.entity_indices()[first_capital_index]);
-        mission_data.required_kill_entity_indices.push_back(
-            capital_events.entity_indices()[second_capital_index]);
+        std::array const ids{levels::EntityId{"defended"}, levels::EntityId{"enemy"}};
+        sim::SimClock clock;
+        clock.initialise(data.clock_settings);
+        auto compiled{sim::compile_mission(defence_objectives(), ids, clock)};
+        check(compiled);
+        data.level_events.initialisation.mission = {.definition = std::move(*compiled),
+                                                    .save_results = false};
     }
 
     FWorldlessSimulationTest harness{MoveTemp(data)};
     auto& simulation{harness.get_simulation()};
-    auto& mission{simulation.get_mission_manager()};
+    auto& mission{simulation.get_mission()};
     auto const& capitals{simulation.get_capital_ships()};
     auto const first_capital{first_capital_index == sim::invalid_level_entity_index
                                  ? sim::EntityId{}
@@ -126,9 +126,9 @@ void run_worldless_hud_manager_scenario(FAutomationTestBase& test,
     checks.are_equal(harness.get_ledger().count_alive(),
                      count_worldless_hud_entities(hud),
                      TEXT("Initial entity cache matches ledger"));
-    checks.are_equal(mission.get_mission_state(),
-                     hud.get_mission_data().status_data.mission_state,
-                     TEXT("Mission state is cached"));
+    checks.are_equal(static_cast<int32>(mission.active_objectives().size()),
+                     hud.get_mission_data().active,
+                     TEXT("Active objective count is cached"));
     if (scenario == EHUDManagerScenario::InitialCachesPopulateWithoutHUD) {
         return;
     }
@@ -155,13 +155,11 @@ void run_worldless_hud_manager_scenario(FAutomationTestBase& test,
                          count_worldless_hud_entities(hud),
                          TEXT("Entity cache updates without a HUD"));
     } else if (scenario == EHUDManagerScenario::MissionAndDefenceDataUpdateWithoutHUD) {
-        auto const& status{hud.get_mission_data().status_data};
+        checks.are_equal(1, hud.get_mission_data().completed, TEXT("Resolved objective is cached"));
         checks.are_equal(
-            sim::MissionState::Failed, status.mission_state, TEXT("Defence failure is cached"));
-        checks.is_true(status.surviving_entity_health[0].health <= 0,
-                       TEXT("Destroyed survivor health is cached"));
-        checks.is_true(status.required_kill_entity_health[0].health <= 0,
-                       TEXT("Destroyed required-kill health is cached"));
+            0, hud.get_mission_data().active, TEXT("Resolved objective is no longer active"));
+        checks.is_true(mission.outcome(0) == ObjectiveOutcome::Failed,
+                       TEXT("Defence objective fails"));
     } else if (needs_player) {
         auto const& player_status{hud.get_player_status_data()};
         checks.is_true(player_status.has_player_ship, TEXT("Player HUD state is available"));
@@ -170,10 +168,9 @@ void run_worldless_hud_manager_scenario(FAutomationTestBase& test,
                          harness.get_ledger().count_kills(),
                          TEXT("Kill data source records the player kill"));
     } else {
-        auto const cached_time{hud.get_mission_data().status_data.mission_stopwatch};
-        checks.is_true(cached_time > 0.f, TEXT("Cached mission time advances"));
-        checks.is_true(mission.get_mission_stopwatch() - cached_time <= 0.05f,
-                       TEXT("Cached mission time follows simulation time"));
+        checks.are_equal(1, hud.get_mission_data().completed, TEXT("Timer objective resolves"));
+        checks.is_true(mission.outcome(0) == ObjectiveOutcome::Passed,
+                       TEXT("Timer objective passes"));
     }
 }
 
@@ -187,9 +184,8 @@ FTestHUDManagerScenario::FTestHUDManagerScenario(FSimulationTestContext& context
             return;
         }
 
-        auto& mission_manager{orchestrator->get_mission_definition()};
-        mission_manager.set_mission_mode(ETestMissionMode::None);
-        mission_manager.set_save_mission_results(true);
+        auto& mission{orchestrator->get_mission_definition()};
+        mission.set_save_mission_results(true);
     });
 }
 
@@ -213,7 +209,7 @@ void FTestHUDManagerScenario::initial_caches_process_samples() {
 
     auto const& hud_manager{get_headless_hud_manager()};
     auto const& ledger{orchestrator->get_entity_ledger()};
-    auto const& mission_manager{orchestrator->get_mission_manager()};
+    auto const& mission{orchestrator->get_mission()};
     auto const* const player_ship{orchestrator->get_player_ship()};
 
     checks.are_equal(
@@ -225,12 +221,9 @@ void FTestHUDManagerScenario::initial_caches_process_samples() {
                      TEXT("Initial entity count cache matches the ledger"));
 
     auto const& mission_data{hud_manager.get_mission_data()};
-    checks.are_equal(mission_manager.get_mission_state(),
-                     mission_data.status_data.mission_state,
-                     TEXT("Mission state is cached"));
-    checks.are_equal(mission_manager.get_mission_stopwatch(),
-                     mission_data.status_data.mission_stopwatch,
-                     TEXT("Mission time is cached"));
+    checks.are_equal(static_cast<int32>(mission.active_objectives().size()),
+                     mission_data.active,
+                     TEXT("Active objective count is cached"));
 
     if (IsValid(player_ship)) {
         auto const& player_data{hud_manager.get_player_status_data()};
@@ -278,14 +271,10 @@ void FTestHUDManagerScenario::configure_defence_mission(UWorld& world,
         return *capital;
     }};
     auto* const defended{find_capital(FName{TEXT("defended_capital")})};
-    auto* const required_enemy{find_capital(FName{TEXT("required_enemy_capital")})};
-
-    auto& mission_manager{orchestrator.get_mission_definition()};
-    mission_manager.set_save_mission_results(false);
-    mission_manager.set_mission_mode(ETestMissionMode::SurviveTime);
-    mission_manager.set_target_time(10.f);
-    mission_manager.add_entity_that_must_survive(*defended);
-    mission_manager.add_entity_required_to_kill(*required_enemy);
+    auto& definition{orchestrator.get_mission_definition()};
+    definition.set_save_mission_results(false);
+    definition.objectives = defence_objectives();
+    definition.entity_bindings.Add(FName{TEXT("defended")}, defended);
 }
 
 void FTestHUDManagerScenario::defence_begin() {
@@ -293,39 +282,12 @@ void FTestHUDManagerScenario::defence_begin() {
     if (!initialise_headless_hud_manager()) {
         return;
     }
-    auto const& initial_data{get_headless_hud_manager().get_mission_data()};
     checks.are_equal(
-        1, initial_data.static_data.surviving_entity_ids.Num(), TEXT("Must-survive ID is cached"));
-    checks.are_equal(1,
-                     initial_data.static_data.surviving_entity_types.Num(),
-                     TEXT("Must-survive type is cached"));
-    checks.are_equal(1,
-                     initial_data.status_data.surviving_entity_health.Num(),
-                     TEXT("Must-survive health is cached"));
-    checks.is_true(initial_data.status_data.surviving_entity_health[0].health > 0,
-                   TEXT("Must-survive entity starts healthy"));
-    checks.are_equal(1,
-                     initial_data.static_data.required_kill_entity_ids.Num(),
-                     TEXT("Required-kill ID is cached"));
-    checks.are_equal(1,
-                     initial_data.static_data.required_kill_entity_types.Num(),
-                     TEXT("Required-kill type is cached"));
-    checks.are_equal(1,
-                     initial_data.status_data.required_kill_entity_health.Num(),
-                     TEXT("Required-kill health is cached"));
-    checks.is_true(initial_data.status_data.required_kill_entity_health[0].health > 0,
-                   TEXT("Required-kill entity starts healthy"));
-
-    auto const handles{
-        test_driver->orchestrator.get_mission_manager().get_entity_ids_that_must_survive()};
-    check(handles.size() == 1);
-    auto const required_handles{
-        test_driver->orchestrator.get_mission_manager().get_entity_ids_required_to_kill()};
-    check(required_handles.size() == 1);
-    test_driver->timeline.then_after(damage_queue_time, [this, handles, required_handles] {
-        test_driver->queue_kills(required_handles);
-        test_driver->queue_kills(handles);
-    });
+        1, get_headless_hud_manager().get_mission_data().active, TEXT("Objective starts active"));
+    auto const& capitals{test_driver->get_capital_ships()};
+    std::array const handles{capitals.get_id(0), capitals.get_id(1)};
+    test_driver->timeline.then_after(damage_queue_time,
+                                     [this, handles] { test_driver->queue_kills(handles); });
     begin_timed_sampling(
         test_duration,
         FOrchestratorEndTickTestHook::CreateRaw(this, &FTestHUDManagerScenario::defence_on_tick),
@@ -334,36 +296,20 @@ void FTestHUDManagerScenario::defence_begin() {
 
 void FTestHUDManagerScenario::defence_on_tick(ATestBatchOrchestrator&) {
     tick_headless_hud_manager();
-    auto const& data{get_headless_hud_manager().get_mission_data()};
-    FDefenceSample sample{};
-    sample.mission_state = data.status_data.mission_state;
-    sample.mission_stopwatch = data.status_data.mission_stopwatch;
-    sample.registered_hud_count =
-        test_driver->orchestrator.get_hud_manager().get_registered_hud_count();
-    if (data.status_data.surviving_entity_health.Num() == 1) {
-        sample.defended_entity_health = data.status_data.surviving_entity_health[0].health;
-    }
-    if (data.status_data.required_kill_entity_health.Num() == 1) {
-        sample.required_kill_entity_health = data.status_data.required_kill_entity_health[0].health;
-    }
-    defence_samples.add(test_driver->get_time(), sample);
+    auto const& hud{get_headless_hud_manager()};
+    defence_samples.add(test_driver->get_time(),
+                        FDefenceSample{hud.get_mission_data().completed,
+                                       hud.get_mission_data().active,
+                                       hud.get_registered_hud_count()});
 }
 
 void FTestHUDManagerScenario::defence_process_samples() {
-    check_samples_recorded(defence_samples.num(), checks, TEXT("Defence samples recorded"));
+    check_samples_recorded(defence_samples.num(), checks, TEXT("Objective samples recorded"));
     SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
-
     auto const& sample{defence_samples.nearest_value(test_duration)};
-    checks.are_equal(
-        sim::MissionState::Failed, sample.mission_state, TEXT("Defence mission failure is cached"));
-    checks.is_less_equal_than(
-        sample.defended_entity_health, 0, TEXT("Destroyed must-survive health is cached"));
-    checks.is_less_equal_than(
-        sample.required_kill_entity_health, 0, TEXT("Destroyed required-kill health is cached"));
-    checks.is_true(sample.mission_stopwatch > 0.f,
-                   TEXT("Mission stopwatch follows simulation time"));
-    checks.are_equal(0, sample.registered_hud_count, TEXT("Mission updates without a HUD"));
-
+    checks.are_equal(1, sample.completed, TEXT("Completed objective is cached"));
+    checks.are_equal(0, sample.active, TEXT("Completed objective leaves active set"));
+    checks.are_equal(0, sample.registered_hud_count, TEXT("Objectives update without a HUD"));
     SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
 }
 
@@ -386,16 +332,12 @@ void FTestHUDManagerScenario::mission_time_begin() {
                          mission_time_samples);
 }
 
-void FTestHUDManagerScenario::mission_time_on_tick(ATestBatchOrchestrator& orchestrator) {
+void FTestHUDManagerScenario::mission_time_on_tick(ATestBatchOrchestrator&) {
     tick_headless_hud_manager();
-    auto const& mission_manager{orchestrator.get_mission_manager()};
-
-    auto const& hud_manager{get_headless_hud_manager()};
-    auto const& mission_data{hud_manager.get_mission_data()};
-    mission_time_samples.add(test_driver->get_time(),
-                             FMissionTimeSample{mission_data.status_data.mission_stopwatch,
-                                                mission_manager.get_mission_stopwatch(),
-                                                hud_manager.get_registered_hud_count()});
+    auto const& hud{get_headless_hud_manager()};
+    mission_time_samples.add(
+        test_driver->get_time(),
+        FMissionTimeSample{hud.get_mission_data().completed, hud.get_registered_hud_count()});
 }
 
 void FTestHUDManagerScenario::mission_time_process_samples() {
@@ -408,12 +350,9 @@ void FTestHUDManagerScenario::mission_time_process_samples() {
 
     auto const& sample{mission_time_samples.nearest_value(test_duration)};
 
-    checks.is_true(sample.cached_time > 0.f, TEXT("Cached mission time advances"));
-    checks.is_true(sample.mission_time - sample.cached_time <= 0.3f,
-                   TEXT("Cached mission time follows the mission manager cadence"));
-    checks.is_true(mission_time_samples.nearest_time(test_duration) - sample.cached_time <= 0.3,
-                   TEXT("Cached mission time follows simulation-clock cadence"));
-    checks.are_equal(0, sample.registered_hud_count, TEXT("Mission time updates without a HUD"));
+    checks.are_equal(1, sample.completed, TEXT("Timer completion is cached"));
+    checks.are_equal(
+        0, sample.registered_hud_count, TEXT("Timer completion updates without a HUD"));
 
     SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
 }
@@ -664,7 +603,7 @@ auto FTestHUDManagerScenario::initialise_headless_hud_manager() -> bool {
 
     headless_hud_manager.Emplace();
     headless_hud_manager->initialise(orchestrator->get_hud_update_frequencies(),
-                                     orchestrator->get_mission_manager(),
+                                     orchestrator->get_mission(),
                                      entity_ledger,
                                      orchestrator->get_level_simulation()->get_capital_ships(),
                                      orchestrator->get_level_simulation()->get_fighters(),
@@ -727,79 +666,7 @@ void FTestHUDManagerScenario::check_headless_hud_manager_matches_simulation() {
 
 void FTestHUDManagerScenario::check_mission_data_equal(
     hud_manager::FMissionDataCache const& local, hud_manager::FMissionDataCache const& simulation) {
-    auto const& local_static_data{local.static_data};
-    auto const& simulation_static_data{simulation.static_data};
-    checks.are_equal(local_static_data.mission_mode,
-                     simulation_static_data.mission_mode,
-                     TEXT("Headless and simulation mission modes match"));
-    checks.is_true(local_static_data.surviving_entity_ids ==
-                       simulation_static_data.surviving_entity_ids,
-                   TEXT("Headless and simulation surviving mission entity IDs match"));
-    checks.is_true(local_static_data.surviving_entity_types ==
-                       simulation_static_data.surviving_entity_types,
-                   TEXT("Headless and simulation surviving mission entity types match"));
-    checks.is_true(local_static_data.required_kill_entity_ids ==
-                       simulation_static_data.required_kill_entity_ids,
-                   TEXT("Headless and simulation required-kill mission entity IDs match"));
-    checks.is_true(local_static_data.required_kill_entity_types ==
-                       simulation_static_data.required_kill_entity_types,
-                   TEXT("Headless and simulation required-kill mission entity types match"));
-
-    auto const& local_status_data{local.status_data};
-    auto const& simulation_status_data{simulation.status_data};
-    checks.are_equal(local_status_data.mission_state,
-                     simulation_status_data.mission_state,
-                     TEXT("Headless and simulation mission states match"));
-    checks.are_equal(local_status_data.mission_stopwatch,
-                     simulation_status_data.mission_stopwatch,
-                     TEXT("Headless and simulation mission stopwatches match"));
-    checks.are_equal(local_status_data.time_remaining,
-                     simulation_status_data.time_remaining,
-                     TEXT("Headless and simulation mission remaining times match"));
-    checks.are_equal(local_status_data.enemies_remaining,
-                     simulation_status_data.enemies_remaining,
-                     TEXT("Headless and simulation mission enemy counts match"));
-
-    auto const local_health_count{local_status_data.surviving_entity_health.Num()};
-    auto const simulation_health_count{simulation_status_data.surviving_entity_health.Num()};
-    checks.are_equal(local_health_count,
-                     simulation_health_count,
-                     TEXT("Headless and simulation surviving mission health counts match"));
-    auto const health_count{FMath::Min(local_health_count, simulation_health_count)};
-    for (int32 i{0}; i < health_count; ++i) {
-        auto const& local_health{local_status_data.surviving_entity_health[i]};
-        auto const& simulation_health{simulation_status_data.surviving_entity_health[i]};
-        checks.are_equal(local_health.health,
-                         simulation_health.health,
-                         TEXT("Headless and simulation surviving mission health matches"),
-                         i);
-        checks.are_equal(local_health.max_health,
-                         simulation_health.max_health,
-                         TEXT("Headless and simulation surviving mission maximum health matches"),
-                         i);
-    }
-
-    auto const local_required_health_count{local_status_data.required_kill_entity_health.Num()};
-    auto const simulation_required_health_count{
-        simulation_status_data.required_kill_entity_health.Num()};
-    checks.are_equal(local_required_health_count,
-                     simulation_required_health_count,
-                     TEXT("Headless and simulation required-kill mission health counts match"));
-    auto const required_health_count{
-        FMath::Min(local_required_health_count, simulation_required_health_count)};
-    for (int32 i{0}; i < required_health_count; ++i) {
-        auto const& local_health{local_status_data.required_kill_entity_health[i]};
-        auto const& simulation_health{simulation_status_data.required_kill_entity_health[i]};
-        checks.are_equal(local_health.health,
-                         simulation_health.health,
-                         TEXT("Headless and simulation required-kill mission health matches"),
-                         i);
-        checks.are_equal(
-            local_health.max_health,
-            simulation_health.max_health,
-            TEXT("Headless and simulation required-kill mission maximum health matches"),
-            i);
-    }
+    checks.is_true(local == simulation, TEXT("Objective caches match"));
 }
 
 #if WITH_EDITOR

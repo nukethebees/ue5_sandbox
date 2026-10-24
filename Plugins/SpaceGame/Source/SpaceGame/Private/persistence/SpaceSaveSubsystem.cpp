@@ -64,7 +64,7 @@ auto ioj::summarize_level_progress(ioj::FLevelId const level_id,
         ++summary.attempt_count;
         summary.best_kills = FMath::Max(summary.best_kills, record.kills);
         summary.last_played_at = FMath::Max(summary.last_played_at, record.date);
-        if (record.end_state != ETestMissionState::Succeeded) {
+        if (record.outcome != ETeamOutcome::Victory) {
             continue;
         }
 
@@ -284,8 +284,13 @@ auto USpaceSaveSubsystem::make_storage() -> ioj::FSaveProfileStorage {
                 if (!IsValid(save)) {
                     return ioj::ESaveProfileLoadResult::failed;
                 }
+                if (save->save_version != USpaceSaveGame::current_save_version) {
+                    UE_LOG(LogSandboxSubsystem,
+                           Error,
+                           TEXT("Legacy mission saves are not supported by the objective system."));
+                    return ioj::ESaveProfileLoadResult::failed;
+                }
                 records = save->score_records;
-                migrate_legacy_records(save->save_version, records);
                 return ioj::ESaveProfileLoadResult::succeeded;
             };
             if (!ioj::import_local_save_profiles(selection.root, MoveTemp(legacy_loader), error)) {
@@ -378,38 +383,14 @@ auto USpaceSaveSubsystem::make_slot_storage() -> ioj::FSaveProfileStorage {
                 if (!IsValid(save)) {
                     return ioj::ESaveProfileLoadResult::failed;
                 }
+                if (save->save_version != USpaceSaveGame::current_save_version) {
+                    UE_LOG(LogSandboxSubsystem,
+                           Error,
+                           TEXT("Legacy mission saves are not supported by the objective system."));
+                    return ioj::ESaveProfileLoadResult::failed;
+                }
                 records = save->score_records;
-                migrate_legacy_records(save->save_version, records);
                 return ioj::ESaveProfileLoadResult::succeeded;
             },
     };
-}
-
-void USpaceSaveSubsystem::migrate_legacy_records(int32 save_version,
-                                                 TArray<FScoreRecord>& records) {
-    while (save_version < USpaceSaveGame::current_save_version) {
-        switch (save_version) {
-            case 1: {
-                for (auto& record : records) {
-                    record.fail_reason = ETestMissionFailReason::None;
-                    if (record.end_state != ETestMissionState::Failed) {
-                        continue;
-                    }
-                    if (record.mission_mode == ETestMissionMode::KillEnemiesWithinTime &&
-                        record.time_seconds >= record.target_completion_time) {
-                        record.fail_reason = ETestMissionFailReason::TimeElapsed;
-                    }
-                }
-                save_version = 2;
-                break;
-            }
-            default: {
-                UE_LOG(LogSandboxSubsystem,
-                       Error,
-                       TEXT("Unsupported legacy save version %d."),
-                       save_version);
-                return;
-            }
-        }
-    }
 }

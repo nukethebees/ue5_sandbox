@@ -21,11 +21,6 @@ class FS7LevelAuthoringModeToolkit final : public FModeToolkit {
     auto create_document() -> FReply;
     auto repair_and_adopt_entities() -> FReply;
     auto rename_selected_entity() -> FReply;
-    auto assign_selected_heroes() -> FReply;
-    auto assign_selected_must_survive() -> FReply;
-    auto assign_selected_required_kills() -> FReply;
-    auto clear_selected_objectives() -> FReply;
-    auto import_orchestrator_mission() -> FReply;
     auto open_level_config() -> FReply;
     auto validate_playable_level() -> FReply;
     auto set_up_playable_level() -> FReply;

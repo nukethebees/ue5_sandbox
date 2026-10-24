@@ -643,21 +643,6 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
                               FString{TEXT("Edited after preview")});
 
         fixture.document->description = TEXT("Before");
-        auto const original_mission{fixture.document->mission};
-        ioj::editor::FS7LevelSourceSession mission_session;
-        auto const mission_preview{make_stale_preview(fixture, mission_session)};
-        if (!TestRunner->TestTrue(TEXT("Mission preview builds"), mission_preview.has_value())) {
-            TestRunner->AddError(mission_preview.error());
-            return;
-        }
-        fixture.document->mission.mode = ETestMissionMode::SurviveTime;
-        assert_stale_preview_does_not_apply(
-            *TestRunner, fixture, mission_session, *mission_preview, TEXT("scene"));
-        TestRunner->TestEqual(TEXT("Stale apply preserves mission"),
-                              fixture.document->mission.mode,
-                              ETestMissionMode::SurviveTime);
-
-        fixture.document->mission = original_mission;
         ioj::editor::FS7LevelSourceSession camera_session;
         auto const camera_preview{make_stale_preview(fixture, camera_session)};
         if (!TestRunner->TestTrue(TEXT("Camera preview builds"), camera_preview.has_value())) {
@@ -857,50 +842,6 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
                               disk_session.save().has_value());
     }
 
-    TEST_METHOD(ObjectivesRoundTripThroughDocumentAndWriter)
-    {
-        auto* const world{FAutomationEditorCommonUtils::CreateNewMap()};
-        auto* const document{spawn<AS7LevelAuthoringDocument>(*world, TEXT("S7 Document"))};
-        auto* const player{spawn<ATestSpaceShip>(*world, TEXT("Player"))};
-        auto* const enemy{spawn<ATestCapitalShipProxy>(*world, TEXT("Enemy"))};
-        if (!TestRunner->TestNotNull(TEXT("World"), world) ||
-            !TestRunner->TestNotNull(TEXT("Document"), document) ||
-            !TestRunner->TestNotNull(TEXT("Player"), player) ||
-            !TestRunner->TestNotNull(TEXT("Enemy"), enemy)) {
-            return;
-        }
-        player->set_team(ETestTeam::Blue);
-        enemy->set_team(ETestTeam::Red);
-        document->level_config = ioj::s7_level_config::load_canonical();
-        document->level_id = TEXT("objective-round-trip");
-        document->title = TEXT("Objective Round Trip");
-        document->entities = {{.id = TEXT("player"), .actor = player},
-                              {.id = TEXT("enemy"), .actor = enemy}};
-        document->mission.mode = ETestMissionMode::KillEnemies;
-        document->mission.heroes = {player};
-        document->mission.must_survive = {player};
-        document->mission.required_kills = {enemy};
-
-        auto const definition{collect_level(*world->GetCurrentLevel(), *document)};
-        if (!TestRunner->TestTrue(TEXT("Document collects"), definition.has_value())) {
-            TestRunner->AddError(definition.error());
-            return;
-        }
-        auto const source{emit_source(*definition)};
-        if (!TestRunner->TestTrue(TEXT("Definition writes"), source.has_value())) {
-            return;
-        }
-        ioj::levels::authoring::FDefinitionReader reader;
-        auto const read{reader.read_level_source(*source)};
-        if (!TestRunner->TestTrue(TEXT("Generated source reads"), static_cast<bool>(read))) {
-            return;
-        }
-        TestRunner->TestTrue(TEXT("Mission survives"), read->mission().has_value());
-        TestRunner->TestEqual(TEXT("Required kill survives"),
-                              static_cast<int32>(read->mission()->required_kill_entity_ids.size()),
-                              1);
-    }
-
     TEST_METHOD(PreviewReportsMetadataOnlyChange)
     {
         auto const fixture{make_preview_fixture()};
@@ -945,63 +886,28 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
                               FString{TEXT("After description")});
     }
 
-    TEST_METHOD(PreviewReportsMissionOnlyChange)
+    TEST_METHOD(ObjectiveMissionEditingIsExplicitlyRejected)
     {
         auto const fixture{make_preview_fixture()};
         if (!TestRunner->TestTrue(TEXT("Fixture is valid"), fixture.is_valid())) {
             return;
         }
-        fixture.document->mission.mode = ETestMissionMode::KillEnemiesWithinTime;
-        fixture.document->mission.time_limit_seconds = 30.0f;
-        fixture.document->mission.use_explicit_kill_count = true;
-        fixture.document->mission.kill_count = 1;
-        fixture.document->mission.heroes = {fixture.player};
-        fixture.document->mission.required_kills = {fixture.enemy};
         auto definition{collect_level(*fixture.world->GetCurrentLevel(), *fixture.document)};
-        if (!TestRunner->TestTrue(TEXT("Baseline collects"), definition.has_value())) {
-            TestRunner->AddError(definition.error());
+        if (!TestRunner->TestTrue(TEXT("Scene collects"), definition.has_value())) {
             return;
         }
-        definition->mission->time_limit_seconds = 60.0f;
-        definition->mission->kill_count = 2;
-        definition->mission->required_kill_entity_ids.Reset();
-
+        definition->mission = ioj::levels::MissionDefinition{
+            .objectives = {
+                {.id = "primary",
+                 .team = ioj::Team::Blue,
+                 .expressions = {{.type = ioj::ExpressionType::TimeElapsed, .seconds = 1.0}},
+                 .roots = {0, ioj::levels::absent_expression, ioj::levels::absent_expression}}}};
         auto const plan{
             make_plan(*fixture.world->GetCurrentLevel(), *fixture.document, *definition)};
-        if (!TestRunner->TestTrue(TEXT("Preview builds"), plan.has_value())) {
-            TestRunner->AddError(plan.error());
-            return;
-        }
-        TestRunner->TestFalse(TEXT("Metadata is unchanged"), plan->metadata_changed);
-        TestRunner->TestFalse(TEXT("Viewpoint is unchanged"), plan->viewpoint_changed);
-        TestRunner->TestTrue(TEXT("Mission change is reported"), plan->mission_changed);
-        TestRunner->TestEqual(
-            TEXT("Entities are unchanged"), static_cast<int32>(plan->changes.size()), 0);
-
-        auto const applied{ioj::editor::apply_s7_level_sync_plan(
-            *fixture.world->GetCurrentLevel(), *fixture.document, *plan)};
-        if (!TestRunner->TestTrue(TEXT("Preview applies"), applied.has_value())) {
-            TestRunner->AddError(applied.error());
-            return;
-        }
-        auto const collected{collect_level(*fixture.world->GetCurrentLevel(), *fixture.document)};
-        if (!TestRunner->TestTrue(TEXT("Applied scene collects"), collected.has_value()) ||
-            !TestRunner->TestTrue(TEXT("Mission is present"), collected->mission.IsSet())) {
-            return;
-        }
-        TestRunner->TestEqual(TEXT("Mission mode is applied"),
-                              collected->mission->mode,
-                              ioj::levels::LevelMissionMode::KillEnemiesWithinTime);
-        TestRunner->TestEqual(TEXT("Mission time is applied"),
-                              collected->mission->time_limit_seconds.GetValue(),
-                              60.0f);
-        TestRunner->TestEqual(
-            TEXT("Kill count is applied"), collected->mission->kill_count.GetValue(), 2);
-        TestRunner->TestEqual(
-            TEXT("Hero is applied"), collected->mission->hero_entity_ids.Num(), 1);
-        TestRunner->TestEqual(TEXT("Required kills are applied"),
-                              collected->mission->required_kill_entity_ids.Num(),
-                              0);
+        TestRunner->TestFalse(TEXT("Unsupported graphs cannot be applied lossily"),
+                              plan.has_value());
+        TestRunner->TestFalse(TEXT("Unsupported graphs cannot be written lossily"),
+                              emit_source(*definition).has_value());
     }
 
     TEST_METHOD(PreviewReportsObserverCameraOnlyChange)
@@ -1065,7 +971,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
             .offset_direction = FVector{-1.0, 0.0, 0.0},
             .distance = 1000.0,
         };
-        definition->entities.remove_at_swap(0, 1, EAllowShrinking::No);
+        definition->entities.RemoveAtSwap(0, 1, EAllowShrinking::No);
         if (!assert_valid_definition(*TestRunner, *definition)) {
             return;
         }
@@ -1542,9 +1448,6 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         document->camera.targets = {removed};
         document->camera.offset_direction = FVector{0.0, 1.0, 0.0};
         document->camera.distance = 2500.0;
-        document->mission.mode = ETestMissionMode::SurviveTime;
-        document->mission.time_limit_seconds = 12.0f;
-        document->mission.must_survive = {removed};
 
         auto const baseline{collect_level(*world->GetCurrentLevel(), *document)};
         if (!TestRunner->TestTrue(TEXT("Undo baseline is valid"), baseline.has_value())) {
@@ -1560,10 +1463,6 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         builder.set_camera({.target_entity_ids = {ioj::FLevelEntityId{TEXT("add")}},
                             .offset_direction = FVector{-1.0, 0.0, 0.0},
                             .distance = 1000.0});
-        builder.set_mission({.mode = ioj::levels::LevelMissionMode::KillEnemies,
-                             .kill_count = 1,
-                             .hero_entity_ids = {ioj::FLevelEntityId{TEXT("add")}},
-                             .required_kill_entity_ids = {ioj::FLevelEntityId{TEXT("replace")}}});
         builder.add_entity({.id = ioj::FLevelEntityId{TEXT("update")},
                             .archetype = ioj::level_archetypes::capital_ship,
                             .team = ::ioj::Team::Blue,
@@ -1626,8 +1525,6 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         TestRunner->TestTrue(TEXT("Camera target is published"),
                              document->camera.targets.Num() == 1 &&
                                  document->camera.targets[0] == added);
-        TestRunner->TestEqual(
-            TEXT("Mission is published"), document->mission.mode, ETestMissionMode::KillEnemies);
         TestRunner->TestEqual(TEXT("Spawn time is published"),
                               bound_binding(*document, TEXT("update"))->spawn_time_seconds,
                               3.0);
@@ -1664,18 +1561,6 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
                 TEXT("Camera target count is restored"), document->camera.targets.Num(), 1)) {
             TestRunner->TestEqual(TEXT("Camera target is restored"),
                                   document->camera.targets[0].Get(),
-                                  static_cast<AActor*>(removed));
-        }
-        TestRunner->TestEqual(TEXT("Mission mode is restored"),
-                              document->mission.mode,
-                              ETestMissionMode::SurviveTime);
-        TestRunner->TestEqual(
-            TEXT("Mission time is restored"), document->mission.time_limit_seconds, 12.0f);
-        if (TestRunner->TestEqual(TEXT("Mission survivor count is restored"),
-                                  document->mission.must_survive.Num(),
-                                  1)) {
-            TestRunner->TestEqual(TEXT("Mission survivor is restored"),
-                                  document->mission.must_survive[0].Get(),
                                   static_cast<AActor*>(removed));
         }
     }
@@ -1750,9 +1635,6 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
                               {.id = TEXT("deleted"), .actor = deleted},
                               {.id = TEXT("enemy"), .actor = retained}};
         document->camera.targets = {retained, deleted, duplicate_one};
-        document->mission.heroes = {retained, deleted};
-        document->mission.must_survive = {deleted};
-        document->mission.required_kills = {duplicate_two};
 
         auto const repaired{
             ioj::editor::repair_s7_level_bindings(*world->GetCurrentLevel(), *document)};
@@ -1763,7 +1645,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         TestRunner->TestEqual(
             TEXT("Dead and duplicate bindings are removed"), repaired->removed_bindings, 2);
         TestRunner->TestEqual(
-            TEXT("Only dead references are removed"), repaired->removed_references, 3);
+            TEXT("Only dead references are removed"), repaired->removed_references, 1);
         TestRunner->TestEqual(
             TEXT("Both duplicated actors are adopted"), repaired->adopted_entities, 2);
         TestRunner->TestTrue(TEXT("Stable binding ID is preserved"),
@@ -1777,20 +1659,12 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
                               2);
         TestRunner->TestTrue(TEXT("Camera reference remains bound"),
                              document->camera.targets[0] == retained);
-        TestRunner->TestEqual(
-            TEXT("Only retained hero reference survives"), document->mission.heroes.Num(), 1);
-        TestRunner->TestTrue(TEXT("No stale must-survive references remain"),
-                             document->mission.must_survive.IsEmpty());
-        TestRunner->TestTrue(TEXT("Adopted required-kill reference survives"),
-                             document->mission.required_kills.Contains(duplicate_two));
 
         GEditor->UndoTransaction();
 
         TestRunner->TestEqual(TEXT("Repair undo restores bindings"), document->entities.Num(), 3);
         TestRunner->TestEqual(
             TEXT("Repair undo restores camera references"), document->camera.targets.Num(), 3);
-        TestRunner->TestEqual(
-            TEXT("Repair undo restores mission references"), document->mission.heroes.Num(), 2);
     }
 
     TEST_METHOD(SelectedEntityIdRenameValidatesAndUndoes)

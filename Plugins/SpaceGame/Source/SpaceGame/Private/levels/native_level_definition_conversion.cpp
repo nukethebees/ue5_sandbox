@@ -86,34 +86,7 @@ auto to_native(FLevelDraft const& definition) -> std::expected<LevelDefinition, 
         };
     }
     if (definition.mission.IsSet()) {
-        auto const& mission{definition.mission.GetValue()};
-        LevelMissionDefinition native_mission{
-            .mode = mission.mode,
-            .hero_entity_ids = to_ids<EntityId, FLevelEntityId>(mission.hero_entity_ids),
-            .must_survive_entity_ids =
-                to_ids<EntityId, FLevelEntityId>(mission.must_survive_entity_ids),
-            .required_kill_entity_ids =
-                to_ids<EntityId, FLevelEntityId>(mission.required_kill_entity_ids),
-        };
-        if (mission.time_limit_seconds.IsSet()) {
-            native_mission.time_limit_seconds = mission.time_limit_seconds.GetValue();
-        }
-        if (mission.kill_count.IsSet()) {
-            native_mission.kill_count = mission.kill_count.GetValue();
-        }
-        result.mission = MoveTemp(native_mission);
-    }
-
-    result.mission_events.reserve(definition.mission_events.Num());
-    for (auto const& event : definition.mission_events) {
-        result.mission_events.push_back({
-            .time_seconds = event.time_seconds,
-            .must_survive_entity_ids =
-                to_ids<EntityId, FLevelEntityId>(event.must_survive_entity_ids),
-            .required_kill_entity_ids =
-                to_ids<EntityId, FLevelEntityId>(event.required_kill_entity_ids),
-            .kill_target_increase = event.kill_target_increase,
-        });
+        result.mission = definition.mission.GetValue();
     }
     auto const& entities{definition.entities};
     auto const entity_count{entities.Num()};
@@ -196,33 +169,7 @@ auto to_unreal(LevelDefinition const& level) -> FLevelDraft {
         });
     }
     if (definition.mission()) {
-        auto const& source{*definition.mission()};
-        FLevelMissionDefinition mission{
-            .mode = source.mode,
-            .hero_entity_ids = to_unreal_ids<FLevelEntityId>(source.hero_entity_ids),
-            .must_survive_entity_ids =
-                to_unreal_ids<FLevelEntityId>(source.must_survive_entity_ids),
-            .required_kill_entity_ids =
-                to_unreal_ids<FLevelEntityId>(source.required_kill_entity_ids),
-        };
-        if (source.time_limit_seconds) {
-            mission.time_limit_seconds = *source.time_limit_seconds;
-        }
-        if (source.kill_count) {
-            mission.kill_count = *source.kill_count;
-        }
-        builder.set_mission(mission);
-    }
-
-    for (auto const& source : definition.mission_events()) {
-        builder.add_mission_event(FLevelMissionObjectiveEvent{
-            .time_seconds = source.time_seconds,
-            .must_survive_entity_ids =
-                to_unreal_ids<FLevelEntityId>(source.must_survive_entity_ids),
-            .required_kill_entity_ids =
-                to_unreal_ids<FLevelEntityId>(source.required_kill_entity_ids),
-            .kill_target_increase = source.kill_target_increase,
-        });
+        builder.set_mission(*definition.mission());
     }
     for (auto const& source : definition.entities()) {
         builder.add_entity(FEntitySpawnDefinition{

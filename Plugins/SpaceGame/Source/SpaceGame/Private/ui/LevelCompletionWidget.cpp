@@ -15,14 +15,14 @@ ULevelCompletionWidget::ULevelCompletionWidget() {
 }
 
 void ULevelCompletionWidget::prepare_for_open(FString level_display_name,
-                                              ETestMissionState const state,
-                                              ETestMissionFailReason const fail_reason,
+                                              ETeamOutcome const state,
+                                              FString const& objective_id,
                                               sim::LevelTelemetrySnapshot snapshot,
                                               TOptional<float> const par_time_seconds,
                                               bool const new_best_time) {
     level_display_name_ = MoveTemp(level_display_name);
     mission_state_ = state;
-    mission_fail_reason_ = fail_reason;
+    objective_id_ = objective_id;
     stats_snapshot_ = MoveTemp(snapshot);
     par_time_seconds_ = par_time_seconds;
     new_best_time_ = new_best_time;
@@ -106,7 +106,7 @@ void ULevelCompletionWidget::publish_report() {
     if (view_.IsValid()) {
         view_->update_report(level_display_name_,
                              mission_state_,
-                             mission_fail_reason_,
+                             objective_id_,
                              stats_snapshot_,
                              par_time_seconds_,
                              new_best_time_);

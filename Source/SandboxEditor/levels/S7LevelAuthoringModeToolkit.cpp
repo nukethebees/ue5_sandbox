@@ -59,27 +59,6 @@ void FS7LevelAuthoringModeToolkit::Init(TSharedPtr<IToolkitHost> const& toolkit_
                                 .Text(LOCTEXT("Save", "Save Source"))
                                 .OnClicked(this, &FS7LevelAuthoringModeToolkit::save)] +
                   SUniformGridPanel::Slot(
-                      0, 3)[SNew(SButton)
-                                .Text(LOCTEXT("Heroes", "Set Hero"))
-                                .OnClicked(this,
-                                           &FS7LevelAuthoringModeToolkit::assign_selected_heroes)] +
-                  SUniformGridPanel::Slot(1, 3)
-                      [SNew(SButton)
-                           .Text(LOCTEXT("Survive", "Set Defend"))
-                           .OnClicked(
-                               this, &FS7LevelAuthoringModeToolkit::assign_selected_must_survive)] +
-                  SUniformGridPanel::Slot(0, 4)
-                      [SNew(SButton)
-                           .Text(LOCTEXT("Kills", "Set Destroy"))
-                           .OnClicked(
-                               this,
-                               &FS7LevelAuthoringModeToolkit::assign_selected_required_kills)] +
-                  SUniformGridPanel::Slot(1, 4)
-                      [SNew(SButton)
-                           .Text(LOCTEXT("Clear", "Clear Objective"))
-                           .OnClicked(this,
-                                      &FS7LevelAuthoringModeToolkit::clear_selected_objectives)] +
-                  SUniformGridPanel::Slot(
                       0, 5)[SNew(SButton)
                                 .Text(LOCTEXT("SaveAs", "Save Source As"))
                                 .OnClicked(this, &FS7LevelAuthoringModeToolkit::save_as)] +
@@ -92,11 +71,6 @@ void FS7LevelAuthoringModeToolkit::Init(TSharedPtr<IToolkitHost> const& toolkit_
                       [SNew(SButton)
                            .Text(LOCTEXT("OpenScriptEditor", "Open Script Editor"))
                            .OnClicked(this, &FS7LevelAuthoringModeToolkit::open_script_editor)] +
-                  SUniformGridPanel::Slot(1, 6)
-                      [SNew(SButton)
-                           .Text(LOCTEXT("ImportMission", "Import Orchestrator Mission"))
-                           .OnClicked(this,
-                                      &FS7LevelAuthoringModeToolkit::import_orchestrator_mission)] +
                   SUniformGridPanel::Slot(0, 7)
                       [SNew(SButton)
                            .Text(LOCTEXT("SetUpPlayableLevel", "Set Up Playable Level"))
@@ -186,11 +160,6 @@ void FS7LevelAuthoringModeToolkit::refresh() {
 
 FORWARD_ACTION(create_document)
 FORWARD_ACTION(repair_and_adopt_entities)
-FORWARD_ACTION(assign_selected_heroes)
-FORWARD_ACTION(assign_selected_must_survive)
-FORWARD_ACTION(assign_selected_required_kills)
-FORWARD_ACTION(clear_selected_objectives)
-FORWARD_ACTION(import_orchestrator_mission)
 FORWARD_ACTION(open_level_config)
 FORWARD_ACTION(validate_playable_level)
 FORWARD_ACTION(set_up_playable_level)

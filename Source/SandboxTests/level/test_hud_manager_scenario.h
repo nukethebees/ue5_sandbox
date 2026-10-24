@@ -3,7 +3,6 @@
 #include <ioj/sim/entities/entity_type.h>
 #include <ioj/time_series_data.h>
 #include <SandboxTests/support/SimulationTestScenario.h>
-#include <SpaceGame/missions/TestMissionState.h>
 #include <SpaceGamePresentation/entities/TestTeam.h>
 #include <SpaceGamePresentation/presentation/HUDManager.h>
 
@@ -33,11 +32,9 @@ class FTestHUDManagerScenario final : public FSimulationTestScenario {
         int32 registered_hud_count{0};
     };
     struct FDefenceSample {
-        sim::MissionState mission_state{sim::MissionState::NotStarted};
-        int32 defended_entity_health{INDEX_NONE};
-        int32 required_kill_entity_health{INDEX_NONE};
-        float mission_stopwatch{0.f};
-        int32 registered_hud_count{0};
+        int32 completed{};
+        int32 active{};
+        int32 registered_hud_count{};
     };
     struct FPlayerSample {
         int32 points{0};
@@ -46,9 +43,8 @@ class FTestHUDManagerScenario final : public FSimulationTestScenario {
         int32 registered_hud_count{0};
     };
     struct FMissionTimeSample {
-        float cached_time{0.f};
-        float mission_time{0.f};
-        int32 registered_hud_count{0};
+        int32 completed{};
+        int32 registered_hud_count{};
     };
   public:
     FTestHUDManagerScenario(FSimulationTestContext& context, EHUDManagerScenario scenario);

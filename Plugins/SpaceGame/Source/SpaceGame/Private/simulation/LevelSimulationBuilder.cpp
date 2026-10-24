@@ -8,15 +8,11 @@
 #include <ioj/sim/levels/fighter_spawn_slot_validation.h>
 #include <ioj/sim/levels/level_compilation.h>
 #include <ioj/sim/levels/level_initialisation_data.h>
-#include <ioj/sim/missions/mission_fail_reason.h>
-#include <ioj/sim/missions/mission_mode.h>
-#include <ioj/sim/missions/mission_state.h>
 #include <SpaceGame/defences/spinners/TestTubeSpinnerProxy.h>
 #include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
 #include <SpaceGame/entities/TestEntity.h>
 #include <SpaceGame/levels/LevelEntityResolution.h>
 #include <SpaceGame/levels/native_level_definition_conversion.h>
-#include <SpaceGame/missions/TestMissionModeConversion.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
 #include <SpaceGame/simulation/LevelCollisionHost.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
@@ -45,43 +41,35 @@ auto resolve_entity_index(FProxyEntityIndexMap const& entities, AActor const& ac
 }
 
 auto compile_proxy_mission(::FLevelMissionDefinition const& definition,
-                           FProxyEntityIndexMap const& entities)
-    -> ::ioj::sim::LevelMissionInitialisationData {
-    auto const mode{[&] {
-        switch (definition.mission_mode) {
-            case ETestMissionMode::None:
-                return ::ioj::levels::LevelMissionMode::Unspecified;
-            case ETestMissionMode::SurviveTime:
-                return ::ioj::levels::LevelMissionMode::SurviveTime;
-            case ETestMissionMode::KillEnemies:
-                return ::ioj::levels::LevelMissionMode::KillEnemies;
-            case ETestMissionMode::KillEnemiesWithinTime:
-                return ::ioj::levels::LevelMissionMode::KillEnemiesWithinTime;
+                           FProxyEntityIndexMap const& entities,
+                           sim::SimClock const& clock)
+    -> std::expected<sim::LevelMissionInitialisationData, FLevelStartErrors> {
+    std::vector<levels::EntityId> ids(static_cast<std::size_t>(entities.Num()));
+    for (auto const& entity : entities) {
+        ids[entity.Value] = levels::EntityId{"proxy-" + std::to_string(entity.Value)};
+    }
+    FLevelStartErrors errors;
+    for (auto const& binding : definition.entity_bindings) {
+        auto const* index{entities.Find(binding.Value)};
+        if (!index) {
+            errors.add(FString::Printf(TEXT("Mission binding '%s' has no simulation entity."),
+                                       *binding.Key.ToString()));
+            return std::unexpected{MoveTemp(errors)};
         }
-        checkNoEntry();
-        return ::ioj::levels::LevelMissionMode::Unspecified;
-    }()};
-    sim::LevelMissionInitialisationData result{
-        .mode = mode,
-        .time_limit_seconds = definition.target_time,
-        .kill_count = definition.kill_target,
+        ids[*index] = levels::EntityId{TCHAR_TO_UTF8(*binding.Key.ToString().ToLower())};
+    }
+    auto compiled{sim::compile_mission(definition.objectives, ids, clock)};
+    if (!compiled) {
+        for (auto const& message : compiled.error()) {
+            errors.add(to_fstring(message));
+        }
+        return std::unexpected{MoveTemp(errors)};
+    }
+    return sim::LevelMissionInitialisationData{
+        .definition = std::move(*compiled),
         .level_id = TCHAR_TO_UTF8(*definition.level_id.ToString()),
         .level_title = TCHAR_TO_UTF8(*definition.level_display_name),
-    };
-    auto append_indices{[&entities](std::vector<int32>& output, auto const& actors) {
-        for (auto const actor : actors) {
-            if (IsValid(actor)) {
-                output.push_back(static_cast<std::int32_t>(resolve_entity_index(entities, *actor)));
-            }
-        }
-    }};
-    append_indices(result.hero_entity_indices, definition.startup_data.hero_entities);
-    append_indices(result.must_survive_entity_indices,
-                   definition.startup_data.entities_must_survive);
-    append_indices(result.required_kill_entity_indices,
-                   definition.startup_data.entities_required_to_kill);
-    result.save_results = definition.save_mission_results;
-    return result;
+        .save_results = definition.save_mission_results};
 }
 
 template <typename TProxy>
@@ -437,8 +425,14 @@ auto make_proxy_level_simulation_init_data(USpaceGameLevelConfig const& config,
     if (mission_definition.level_display_name.IsEmpty()) {
         mission_definition.level_display_name = mission_definition.level_id.ToString();
     }
-    initialisation.mission =
-        level_simulation_builder::compile_proxy_mission(mission_definition, entity_indices);
+    sim::SimClock clock;
+    clock.initialise(build.data.clock_settings);
+    auto mission{
+        level_simulation_builder::compile_proxy_mission(mission_definition, entity_indices, clock)};
+    if (!mission) {
+        return FProxyLevelSimBuildResult{std::unexpect, MoveTemp(mission.error())};
+    }
+    initialisation.mission = std::move(*mission);
 
     FLevelStartErrors bounds_errors;
     auto const fits{[&](AActor const& actor, sim::EntityType const type) {

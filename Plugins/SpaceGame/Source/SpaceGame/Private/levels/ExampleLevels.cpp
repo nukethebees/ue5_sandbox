@@ -16,18 +16,18 @@ auto make_example_draft() -> FLevelDraft {
         .rotation = FRotator{0.0, 90.0, 0.0},
     })};
     builder.set_player_entity(player_id);
-    auto const blue_capital_id{builder.add_entity(FEntitySpawnDefinition{
+    builder.add_entity(FEntitySpawnDefinition{
         .id = FLevelEntityId{FName{TEXT("blue-capital")}},
         .archetype = level_archetypes::capital_ship,
         .team = Team::Blue,
         .position = FVector{-40000.0, 0.0, 0.0},
-    })};
-    auto const red_capital_id{builder.add_entity(FEntitySpawnDefinition{
+    });
+    builder.add_entity(FEntitySpawnDefinition{
         .id = FLevelEntityId{FName{TEXT("red-capital")}},
         .archetype = level_archetypes::capital_ship,
         .team = Team::Red,
         .position = FVector{40000.0, 0.0, 0.0},
-    })};
+    });
     builder.add_entity(FEntitySpawnDefinition{
         .id = FLevelEntityId{FName{TEXT("red-turret")}},
         .archetype = level_archetypes::static_turret,
@@ -35,12 +35,26 @@ auto make_example_draft() -> FLevelDraft {
         .position = FVector{30000.0, 15000.0, 0.0},
         .rotation = FRotator{0.0, 180.0, 0.0},
     });
-    builder.set_mission(FLevelMissionDefinition{
-        .mode = levels::LevelMissionMode::KillEnemies,
-        .hero_entity_ids = {player_id, blue_capital_id},
-        .must_survive_entity_ids = {blue_capital_id},
-        .required_kill_entity_ids = {red_capital_id},
-    });
+    builder.set_mission(levels::MissionDefinition{
+        .objectives = {{.id = "destroy-capital",
+                        .title = "Destroy the enemy capital",
+                        .team = Team::Blue,
+                        .expressions = {{.type = ExpressionType::EntityDestroyed,
+                                         .entity = levels::EntityId{"red-capital"}},
+                                        {.type = ExpressionType::EntityDestroyed,
+                                         .entity = levels::EntityId{"blue-capital"}},
+                                        {.type = ExpressionType::EntityKillsReached,
+                                         .entities = {levels::EntityId{"player"},
+                                                      levels::EntityId{"blue-capital"}},
+                                         .kills = 2},
+                                        {.type = ExpressionType::All, .children = {0, 2}}},
+                        .roots = {3, 1, levels::absent_expression}}},
+        .team_results = {{.team = Team::Blue,
+                          .when = {"destroy-capital", ObjectiveOutcome::Passed},
+                          .result = TeamOutcome::Victory},
+                         {.team = Team::Blue,
+                          .when = {"destroy-capital", ObjectiveOutcome::Failed},
+                          .result = TeamOutcome::Defeat}}});
     return builder.finish();
 }
 }

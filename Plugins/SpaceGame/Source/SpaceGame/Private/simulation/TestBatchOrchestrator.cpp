@@ -7,15 +7,14 @@
 #include <ioj/levels/team.h>
 #include <ioj/sim/entities/entity_ledger.h>
 #include <ioj/sim/levels/level_initialisation_data.h>
-#include <ioj/sim/missions/mission_manager.h>
+#include <ioj/sim/missions/mission.h>
 #include <ioj/sim/sim_time.h>
 #include <SandboxGameShared/utilities/actor_utils.h>
 #include <SpaceGame/defences/spinners/TestTubeSpinnerProxy.h>
 #include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
 #include <SpaceGame/entities/TestEntity.h>
-#include <SpaceGame/missions/TestMissionFailReasonConversion.h>
-#include <SpaceGame/missions/TestMissionModeConversion.h>
-#include <SpaceGame/missions/TestMissionStateConversion.h>
+#include <SpaceGame/missions/ObjectiveOutcomeConversion.h>
+#include <SpaceGame/missions/TeamOutcomeConversion.h>
 #include <SpaceGame/persistence/SpaceSaveGame.h>
 #include <SpaceGame/persistence/SpaceSaveSubsystem.h>
 #include <SpaceGame/s7/GameSettingsReader.h>
@@ -616,7 +615,7 @@ auto ATestBatchOrchestrator::begin_play() -> bool {
 
     if (presentation_enabled) {
         hud_manager.initialise(hud_update_frequencies,
-                               get_mission_manager(),
+                               get_mission(),
                                get_entity_ledger(),
                                level_simulation_->get_capital_ships(),
                                level_simulation_->get_fighters(),
@@ -972,7 +971,7 @@ void ATestBatchOrchestrator::process_mission_result() {
         auto* game_instance{GetGameInstance()};
         auto* saves{USpaceSaveSubsystem::get(game_instance)};
         if (IsValid(saves)) {
-            if (result->state == ioj::sim::MissionState::Succeeded) {
+            if (result->outcome == ioj::TeamOutcome::Victory) {
                 auto const previous_progress{saves->get_level_progress(
                     ioj::FLevelId{FName{UTF8_TO_TCHAR(result->level_id.c_str())}})};
                 new_best_time =
@@ -980,16 +979,21 @@ void ATestBatchOrchestrator::process_mission_result() {
                     result->elapsed_seconds < previous_progress.best_completion_time_seconds;
             }
 
+            int32 team_kills{};
+            for (auto const kills : get_entity_ledger()
+                                        .get_combat_telemetry()
+                                        .kills[static_cast<int32>(result->team)]) {
+                team_kills += static_cast<int32>(kills);
+            }
             FScoreRecord const record{
                 .date = FDateTime::Now(),
                 .level_name = FName{UTF8_TO_TCHAR(result->level_id.c_str())},
-                .mission_mode = ioj::to_unreal(result->mode),
-                .end_state = ioj::to_unreal(result->state),
-                .fail_reason = ioj::to_unreal(result->fail_reason),
-                .kills = result->kills,
+                .team = ioj::to_unreal(result->team),
+                .outcome = ioj::to_unreal(result->outcome),
+                .objective_id = UTF8_TO_TCHAR(result->objective_id.c_str()),
+                .objective_outcome = ioj::to_unreal(result->objective_outcome),
+                .kills = team_kills,
                 .time_seconds = result->elapsed_seconds,
-                .target_kills = result->target_kills,
-                .target_completion_time = result->target_time,
             };
             persisted = saves->save_score_record(record);
             new_best_time = persisted && new_best_time;
@@ -1002,8 +1006,8 @@ void ATestBatchOrchestrator::process_mission_result() {
     on_mission_completed.Broadcast(
         {.level_id = FName{UTF8_TO_TCHAR(result->level_id.c_str())},
          .level_display_name = UTF8_TO_TCHAR(result->level_display_name.c_str()),
-         .state = ioj::to_unreal(result->state),
-         .fail_reason = ioj::to_unreal(result->fail_reason),
+         .state = ioj::to_unreal(result->outcome),
+         .objective_id = UTF8_TO_TCHAR(result->objective_id.c_str()),
          .persisted = persisted,
          .par_time_seconds = par_time_seconds,
          .new_best_time = new_best_time});

@@ -4,7 +4,7 @@
 #include <ioj/sim/entities/entity_ledger.h>
 #include <ioj/sim/fighters/sim.h>
 #include <ioj/sim/lasers/sim.h>
-#include <ioj/sim/missions/mission_manager.h>
+#include <ioj/sim/missions/mission.h>
 #include <ioj/sim/sim_clock.h>
 #include <ioj/sim/spinners/sim.h>
 #include <ioj/sim/telemetry/manager.h>

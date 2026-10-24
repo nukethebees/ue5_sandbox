@@ -1,8 +1,6 @@
 #pragma once
 #include <ioj/levels/level_definition.h>
-#include <ioj/levels/level_mission_mode.h>
 #include <ioj/sim/levels/level_capital_spawn_events.h>
-#include <ioj/sim/levels/level_mission_event_groups.h>
 #include <ioj/sim/levels/level_spawn_groups.h>
 #include <ioj/sim/levels/level_spinner_spawn_events.h>
 #include <ioj/sim/levels/level_turret_spawn_events.h>
@@ -39,15 +37,6 @@ struct SPACEGAME_API FLevelCollisionGridDefinition {
     TOptional<FVector3f> cell_size{NullOpt};
 };
 
-struct SPACEGAME_API FLevelMissionDefinition {
-    levels::LevelMissionMode mode{levels::LevelMissionMode::Unspecified};
-    TOptional<float> time_limit_seconds{NullOpt};
-    TOptional<int32> kill_count{NullOpt};
-    TArray<FLevelEntityId> hero_entity_ids{};
-    TArray<FLevelEntityId> must_survive_entity_ids{};
-    TArray<FLevelEntityId> required_kill_entity_ids{};
-};
-
 struct SPACEGAME_API FLevelCompletedUnlockCriterion {
     FLevelId level_id{};
 
@@ -56,13 +45,6 @@ struct SPACEGAME_API FLevelCompletedUnlockCriterion {
 
 using FLevelUnlockCriterion = TVariant<FLevelCompletedUnlockCriterion>;
 
-struct SPACEGAME_API FLevelMissionObjectiveEvent {
-    double time_seconds{};
-    TArray<FLevelEntityId> must_survive_entity_ids{};
-    TArray<FLevelEntityId> required_kill_entity_ids{};
-    int32 kill_target_increase{};
-};
-
 // Hold mutable Unreal authoring data until to_native constructs a trusted LevelDefinition.
 struct SPACEGAME_API FLevelDraft {
     FLevelMetadata metadata{};
@@ -70,8 +52,7 @@ struct SPACEGAME_API FLevelDraft {
     FLevelEntityId player_entity_id{};
     TOptional<FLevelCameraDefinition> camera{NullOpt};
     TOptional<FLevelCollisionGridDefinition> collision_grid{NullOpt};
-    TOptional<FLevelMissionDefinition> mission{NullOpt};
-    TArray<FLevelMissionObjectiveEvent> mission_events{};
+    TOptional<levels::MissionDefinition> mission{NullOpt};
     TArray<FEntitySpawnDefinition> entities{};
 };
 
@@ -81,9 +62,8 @@ class SPACEGAME_API FLevelBuilder {
     void set_player_entity(FLevelEntityId id);
     void set_camera(FLevelCameraDefinition const& camera);
     void set_collision_grid(FLevelCollisionGridDefinition const& collision_grid);
-    void set_mission(FLevelMissionDefinition const& mission);
+    void set_mission(levels::MissionDefinition const& mission);
     void add_unlock_criterion(FLevelUnlockCriterion criterion);
-    void add_mission_event(FLevelMissionObjectiveEvent const& event);
     auto add_entity(FEntitySpawnDefinition const& entity) -> FLevelEntityId;
     auto finish() -> FLevelDraft;
   private:

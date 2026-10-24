@@ -6,8 +6,6 @@
 #include <ioj/sim/entities/entity_type.h>
 #include <ioj/sim/fixed_tick_loop.h>
 #include <ioj/sim/levels/simulation_settings.h>
-#include <ioj/sim/missions/mission_mode.h>
-#include <ioj/sim/missions/mission_state.h>
 #include <ioj/sim/player/fire_rate.h>
 #include <ioj/sim/player/flight_model_config.h>
 #include <ioj/sim/player/space_ship_common.h>
@@ -36,7 +34,7 @@ class UShipHudWidget;
 class UInstancedStaticMeshComponent;
 
 namespace ioj::sim {
-struct MissionManager;
+class Mission;
 struct SpatialQueryManager;
 }
 namespace ioj::sim::player {
@@ -81,32 +79,12 @@ struct FHUDUpdateTimerIndex {
 };
 
 namespace ioj::hud_manager {
-struct FMissionStaticDataCache {
-    bool operator==(FMissionStaticDataCache const& other) const noexcept = default;
-
-    sim::MissionMode mission_mode{sim::MissionMode::None};
-    TArray<sim::EntityId> surviving_entity_ids;
-    TArray<sim::EntityType> surviving_entity_types;
-    TArray<sim::EntityId> required_kill_entity_ids;
-    TArray<sim::EntityType> required_kill_entity_types;
-};
-
-struct FMissionStatusDataCache {
-    bool operator==(FMissionStatusDataCache const& other) const noexcept = default;
-
-    sim::MissionState mission_state{sim::MissionState::NotStarted};
-    float mission_stopwatch{0.f};
-    float time_remaining{0.f};
-    int32 enemies_remaining{0};
-    TArray<FShipHealth> surviving_entity_health;
-    TArray<FShipHealth> required_kill_entity_health;
-};
-
 struct FMissionDataCache {
-    bool operator==(FMissionDataCache const& other) const noexcept = default;
-
-    FMissionStaticDataCache static_data;
-    FMissionStatusDataCache status_data;
+    bool operator==(FMissionDataCache const&) const noexcept = default;
+    FString active_titles;
+    int32 active{};
+    int32 completed{};
+    int32 inactive{};
 };
 
 struct FEntityCountDataCache {
@@ -173,7 +151,7 @@ struct FDataChanges {
 
 struct SPACEGAMEPRESENTATION_API FHUDManager {
     void initialise(ioj::sim::HudSettings const& update_frequencies,
-                    ::ioj::sim::MissionManager const& new_mission_manager,
+                    ::ioj::sim::Mission const& new_mission,
                     ::ioj::sim::EntityLedger const& new_entity_ledger,
                     ::ioj::sim::capital_ships::Sim const& new_capitals,
                     ::ioj::sim::fighters::Sim const& new_fighters,
@@ -289,7 +267,7 @@ struct SPACEGAMEPRESENTATION_API FHUDManager {
     EHUDManagerState state{EHUDManagerState::Disabled};
     TArray<FRegisteredHud> registered_huds;
     ::ioj::sim::player::Sim const* player_ship{nullptr};
-    ::ioj::sim::MissionManager const* mission_manager{nullptr};
+    ::ioj::sim::Mission const* mission{nullptr};
     ::ioj::sim::EntityLedger const* entity_ledger{nullptr};
     auto display_batches() const -> std::array<::ioj::presentation::AgentDisplayBatch, 4>;
     ::ioj::sim::capital_ships::Sim const* capitals_{};

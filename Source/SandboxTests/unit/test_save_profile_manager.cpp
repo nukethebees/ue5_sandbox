@@ -78,11 +78,9 @@ struct FFakeProfileStorage {
 auto make_record(FDateTime const date, FName const level, int32 const kills) -> FScoreRecord {
     return {.date = date,
             .level_name = level,
-            .mission_mode = ETestMissionMode::KillEnemies,
-            .end_state = ETestMissionState::Succeeded,
+            .outcome = ETeamOutcome::Victory,
             .kills = kills,
-            .time_seconds = 60.f,
-            .target_kills = kills};
+            .time_seconds = 60.f};
 }
 }
 

@@ -21,16 +21,12 @@ void FLevelBuilder::set_collision_grid(FLevelCollisionGridDefinition const& coll
     definition_.collision_grid = collision_grid;
 }
 
-void FLevelBuilder::set_mission(FLevelMissionDefinition const& mission) {
+void FLevelBuilder::set_mission(levels::MissionDefinition const& mission) {
     definition_.mission = mission;
 }
 
 void FLevelBuilder::add_unlock_criterion(FLevelUnlockCriterion criterion) {
     definition_.unlock_criteria.Add(MoveTemp(criterion));
-}
-
-void FLevelBuilder::add_mission_event(FLevelMissionObjectiveEvent const& event) {
-    definition_.mission_events.Add(event);
 }
 
 auto FLevelBuilder::add_entity(FEntitySpawnDefinition const& entity) -> FLevelEntityId {

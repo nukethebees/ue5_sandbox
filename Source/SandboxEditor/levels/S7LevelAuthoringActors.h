@@ -1,8 +1,6 @@
 #pragma once
 
-#include <ioj/levels/level_mission_mode.h>
 #include <SpaceGame/levels/LevelEntityResolution.h>
-#include <SpaceGame/missions/TestMissionMode.h>
 
 #include <CoreMinimal.h>
 
@@ -27,6 +25,4 @@ void configure_s7_level_actor(AActor& actor,
 auto canonical_s7_level_entity_id(FStringView text, FStringView fallback) -> FName;
 auto is_canonical_s7_level_entity_id(FStringView id) -> bool;
 auto is_canonical_s7_level_entity_id(FName id) -> bool;
-auto s7_mission_mode(ETestMissionMode mode) -> levels::LevelMissionMode;
-auto s7_mission_mode(levels::LevelMissionMode mode) -> ETestMissionMode;
 }

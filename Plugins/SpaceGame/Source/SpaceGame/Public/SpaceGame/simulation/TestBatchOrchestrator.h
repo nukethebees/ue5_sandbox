@@ -141,9 +141,13 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
         check(level_simulation_.IsSet());
         return level_simulation_->get_spatial_query_manager();
     }
-    auto get_mission_manager() const noexcept -> ioj::sim::MissionManager const& {
+    auto get_level_id() const -> std::string const& {
         check(level_simulation_.IsSet());
-        return level_simulation_->get_mission_manager();
+        return level_simulation_->get_level_id();
+    }
+    auto get_mission() const noexcept -> ioj::sim::Mission const& {
+        check(level_simulation_.IsSet());
+        return level_simulation_->get_mission();
     }
     auto get_hud_manager() noexcept -> FHUDManager& { return hud_manager; }
     auto get_hud_manager() const noexcept -> FHUDManager const& { return hud_manager; }

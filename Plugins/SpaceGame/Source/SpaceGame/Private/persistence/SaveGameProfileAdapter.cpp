@@ -2,9 +2,8 @@
 
 #include "SpaceGame/persistence/SpaceSaveGame.h"
 #include <SandboxGameShared/core/levels/levels.h>
-#include <SpaceGame/missions/TestMissionFailReasonConversion.h>
-#include <SpaceGame/missions/TestMissionModeConversion.h>
-#include <SpaceGame/missions/TestMissionStateConversion.h>
+#include <SpaceGame/missions/ObjectiveOutcomeConversion.h>
+#include <SpaceGame/missions/TeamOutcomeConversion.h>
 
 #include <SandboxCoreEngine/enums.h>
 #include <SandboxCoreEngine/strings.h>
@@ -54,44 +53,12 @@ auto make_report(FString profile_id, TConstArrayView<FScoreRecord> records) -> F
         outcome.completed_at = record.date;
         outcome.simulation_duration_seconds = record.time_seconds;
         outcome.kills = record.kills;
-        outcome.result = to_fstring(sim::to_string(to_native(record.end_state)));
-
-        profile_adapter::add_statistic(outcome,
-                                       TEXT("Mission mode"),
-                                       to_fstring(sim::to_string(to_native(record.mission_mode))));
-        switch (record.mission_mode) {
-            case ETestMissionMode::None: {
-                break;
-            }
-            case ETestMissionMode::SurviveTime: {
-                profile_adapter::add_statistic(
-                    outcome,
-                    TEXT("Target survival time"),
-                    FString::Printf(TEXT("%.1f s"), record.target_completion_time));
-                break;
-            }
-            case ETestMissionMode::KillEnemies: {
-                profile_adapter::add_statistic(
-                    outcome, TEXT("Target kills"), FString::FromInt(record.target_kills));
-                break;
-            }
-            case ETestMissionMode::KillEnemiesWithinTime: {
-                profile_adapter::add_statistic(
-                    outcome, TEXT("Target kills"), FString::FromInt(record.target_kills));
-                profile_adapter::add_statistic(
-                    outcome,
-                    TEXT("Target completion time"),
-                    FString::Printf(TEXT("%.1f s"), record.target_completion_time));
-                break;
-            }
-        }
-
-        if (record.end_state == ETestMissionState::Failed) {
-            profile_adapter::add_statistic(
-                outcome,
-                TEXT("Failure reason"),
-                to_fstring(sim::to_string(to_native(record.fail_reason))));
-        }
+        outcome.result = to_fstring(to_serialized_string(to_native(record.outcome)));
+        profile_adapter::add_statistic(outcome, TEXT("Decisive objective"), record.objective_id);
+        profile_adapter::add_statistic(
+            outcome,
+            TEXT("Objective outcome"),
+            to_fstring(to_serialized_string(to_native(record.objective_outcome))));
     }
     return report;
 }

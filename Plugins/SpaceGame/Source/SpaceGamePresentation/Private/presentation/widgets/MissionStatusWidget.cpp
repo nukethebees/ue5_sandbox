@@ -45,96 +45,36 @@ void UMissionStatusWidget::NativePreConstruct() {
     if (!check_widget_bindings()) {
         return;
     }
-
-    mission_mode_widget->set_format_spec(mission_mode_format);
-    mission_time_widget->set_format_spec(mission_time_format);
-    enemies_remaining_widget->set_format_spec(enemies_remaining_format);
-    time_remaining_widget->set_format_spec(time_remaining_format);
-
+    // Preserve widget binding names used by existing assets, with objective-specific labels.
+    mission_mode_widget->set_format_spec(TEXT("OBJECTIVES // {0}"));
+    mission_time_widget->set_format_spec(TEXT("ACTIVE // {0}"));
+    enemies_remaining_widget->set_format_spec(TEXT("COMPLETED // {0}"));
+    time_remaining_widget->set_format_spec(TEXT("WAITING // {0}"));
     if (IsDesignTime()) {
-        set_mission_values(ioj::sim::MissionMode::KillEnemiesWithinTime,
-                           ioj::sim::MissionState::Running,
-                           37.5f,
-                           82.5f,
-                           12);
+        set_mission_data({.active_titles = TEXT("Protect the convoy"),
+                          .active = 1,
+                          .completed = 2,
+                          .inactive = 1});
     }
 }
 
 void UMissionStatusWidget::set_mission_data(ioj::hud_manager::FMissionDataCache const& data) {
-    set_mission_values(data.static_data.mission_mode,
-                       data.status_data.mission_state,
-                       data.status_data.mission_stopwatch,
-                       data.status_data.time_remaining,
-                       data.status_data.enemies_remaining);
-}
-
-void UMissionStatusWidget::set_mission_mode(ioj::sim::MissionMode const new_mode,
-                                            ioj::sim::MissionState const initial_state) {
-    current_mission_mode = new_mode;
-    auto const mode_name{ioj::to_fstring(ioj::sim::to_display_string(new_mode))};
-    auto const state_name{ioj::to_fstring(ioj::sim::to_string(initial_state))};
-    mission_mode_widget->update(mode_name, FStringView{state_name});
-    apply_mission_state_style(initial_state);
-}
-
-void UMissionStatusWidget::set_mission_state(ioj::sim::MissionState const new_state) {
-    auto const mode_name{ioj::to_fstring(ioj::sim::to_display_string(current_mission_mode))};
-    auto const state_name{ioj::to_fstring(ioj::sim::to_string(new_state))};
-    mission_mode_widget->update(mode_name, FStringView{state_name});
-    apply_mission_state_style(new_state);
+    mission_mode_widget->update(data.active_titles);
+    mission_time_widget->update(data.active);
+    enemies_remaining_widget->update(data.completed);
+    time_remaining_widget->update(data.inactive);
 }
 
 void UMissionStatusWidget::apply_hud_style(ioj::FGameHudStyle const& style) {
     hud_style_ = style;
-    mission_mode_widget->set_format_spec(TEXT("{0} // {1}"));
-    mission_time_widget->set_format_spec(TEXT("MISSION TIME // {0}"));
-    enemies_remaining_widget->set_format_spec(TEXT("ENEMIES REMAINING // {0}"));
-    time_remaining_widget->set_format_spec(TEXT("TIME REMAINING // {0}"));
+    mission_mode_widget->set_format_spec(TEXT("OBJECTIVES // {0}"));
+    mission_time_widget->set_format_spec(TEXT("ACTIVE // {0}"));
+    enemies_remaining_widget->set_format_spec(TEXT("COMPLETED // {0}"));
+    time_remaining_widget->set_format_spec(TEXT("WAITING // {0}"));
     mission_mode_widget->set_text_style(style.primary_text);
     mission_time_widget->set_text_style(style.secondary_text);
     enemies_remaining_widget->set_text_style(style.secondary_text);
     time_remaining_widget->set_text_style(style.warning_text);
-}
-
-void UMissionStatusWidget::apply_mission_state_style(ioj::sim::MissionState const state) {
-    if (!hud_style_ || !mission_mode_widget) {
-        return;
-    }
-
-    auto const& style{hud_style_.GetValue()};
-    auto const* text_style{&style.primary_text};
-    if (state == ioj::sim::MissionState::Succeeded) {
-        text_style = &style.success_text;
-    } else if (state == ioj::sim::MissionState::Failed) {
-        text_style = &style.danger_text;
-    } else if (state == ioj::sim::MissionState::Running) {
-        text_style = &style.accent_text;
-    }
-    mission_mode_widget->set_text_style(*text_style);
-}
-
-void UMissionStatusWidget::set_mission_time(float const mission_time) {
-    mission_time_widget->update(mission_time);
-}
-
-void UMissionStatusWidget::set_enemies_remaining(int32 const enemies_remaining) {
-    auto const show_enemies{current_mission_mode == ioj::sim::MissionMode::KillEnemies ||
-                            current_mission_mode == ioj::sim::MissionMode::KillEnemiesWithinTime};
-    enemies_remaining_widget->SetVisibility(show_enemies ? ESlateVisibility::Visible
-                                                         : ESlateVisibility::Collapsed);
-    if (show_enemies) {
-        enemies_remaining_widget->update(enemies_remaining);
-    }
-}
-
-void UMissionStatusWidget::set_time_remaining(float const time_remaining) {
-    auto const show_time{current_mission_mode == ioj::sim::MissionMode::SurviveTime ||
-                         current_mission_mode == ioj::sim::MissionMode::KillEnemiesWithinTime};
-    time_remaining_widget->SetVisibility(show_time ? ESlateVisibility::Visible
-                                                   : ESlateVisibility::Collapsed);
-    if (show_time) {
-        time_remaining_widget->update(time_remaining);
-    }
 }
 
 void UMissionStatusWidget::set_font_size(int32 const new_font_size) {
@@ -143,15 +83,4 @@ void UMissionStatusWidget::set_font_size(int32 const new_font_size) {
     mission_time_widget->set_font_size(font_size);
     enemies_remaining_widget->set_font_size(font_size);
     time_remaining_widget->set_font_size(font_size);
-}
-
-void UMissionStatusWidget::set_mission_values(ioj::sim::MissionMode const mission_mode,
-                                              ioj::sim::MissionState const mission_state,
-                                              float const mission_time,
-                                              float const time_remaining,
-                                              int32 const enemies_remaining) {
-    set_mission_mode(mission_mode, mission_state);
-    set_mission_time(mission_time);
-    set_enemies_remaining(enemies_remaining);
-    set_time_remaining(time_remaining);
 }

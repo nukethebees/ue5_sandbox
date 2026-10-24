@@ -100,8 +100,8 @@ auto UGameUiRootLayout::show_pause_menu(UInputAction& toggle_action, FPauseMenuD
 }
 
 auto UGameUiRootLayout::show_level_completion(FString level_display_name,
-                                              ETestMissionState const state,
-                                              ETestMissionFailReason const fail_reason,
+                                              ETeamOutcome const state,
+                                              FString const& objective_id,
                                               sim::LevelTelemetrySnapshot snapshot,
                                               TOptional<float> const par_time_seconds,
                                               bool const new_best_time) -> ULevelCompletionWidget* {
@@ -128,13 +128,13 @@ auto UGameUiRootLayout::show_level_completion(FString level_display_name,
         completion_class,
         [name = MoveTemp(level_display_name),
          state,
-         fail_reason,
+         objective_id,
          snapshot = MoveTemp(snapshot),
          par_time_seconds,
          new_best_time](ULevelCompletionWidget& widget) mutable {
             widget.prepare_for_open(MoveTemp(name),
                                     state,
-                                    fail_reason,
+                                    objective_id,
                                     MoveTemp(snapshot),
                                     par_time_seconds,
                                     new_best_time);

@@ -14,11 +14,10 @@ constexpr TCHAR valid_level[]{LR"(
   :description "Built as ordinary Scheme data."
   :par-time 75.5
   :player 'player
-  :mission (mission
-    :mode 'kill-enemies
-    :heroes '(player blue-capital)
-    :must-survive '(blue-capital)
-    :required-kills '(red-capital))
+  :mission (mission :objectives (list
+    (objective :id 'primary :team 'blue
+      :pass (entity-destroyed 'red-capital)
+      :fail (entity-destroyed 'blue-capital))))
   :entities (list
     (entity :id 'player :archetype 'player-fighter :team 'blue
       :position '(100 200 300) :rotation '(0 45 0))
@@ -50,11 +49,8 @@ constexpr TCHAR scheduled_level[]{LR"(
   :id 'scheduled-example
   :title "Scheduled Example"
   :camera (camera :look-at '(hero) :distance 1000 :offset-direction '(-1 0 0))
-  :mission (mission :mode 'kill-enemies :kill-count 1 :heroes '(hero))
-  :mission-events (list
-    (mission-event :at 1.25
-      :add-required-kills '(enemy)
-      :increase-kill-count 2))
+  :mission (mission :objectives (list
+    (objective :id 'primary :team 'blue :pass (entity-destroyed 'enemy))))
   :entities (list
     (entity :id 'hero :archetype 'capital-ship :team 'blue
       :position '(0 0 0) :rotation '(0 0 0))
@@ -87,16 +83,10 @@ TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
         auto const& definition{result.value()};
         TestRunner->TestEqual(
             TEXT("Spawn time is decoded"), definition.entities()[1].spawn_time_seconds, 1.25);
-        TestRunner->TestEqual(TEXT("One objective event is decoded"),
-                              static_cast<int32>(definition.mission_events().size()),
-                              1);
-        auto const& event{definition.mission_events()[0]};
-        TestRunner->TestEqual(TEXT("Objective event time is decoded"), event.time_seconds, 1.25);
         TestRunner->TestEqual(
-            TEXT("Kill target increase is decoded"), event.kill_target_increase, 2);
-        TestRunner->TestEqual(TEXT("Required kill is decoded"),
-                              static_cast<int32>(event.required_kill_entity_ids.size()),
-                              1);
+            TEXT("Future entity condition is decoded"),
+            ioj::to_fstring(definition.mission()->objectives[0].expressions[0].entity.value),
+            FString{TEXT("enemy")});
     }
 
     TEST_METHOD(DecodesSchemeDataIntoATrustedDefinition)
@@ -130,20 +120,9 @@ TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
         TestRunner->TestTrue(TEXT("Entity rotation is decoded"),
                              definition.entities()[3].rotation == (ioj::Rotator3d{0.0, 90.0, 0.0}));
         if (TestRunner->TestTrue(TEXT("Mission is decoded"), definition.mission().has_value())) {
-            auto const& mission{definition.mission().value()};
-            TestRunner->TestTrue(TEXT("Mission mode is decoded"),
-                                 mission.mode == ::ioj::levels::LevelMissionMode::KillEnemies);
-            TestRunner->TestFalse(TEXT("Omitted kill count selects automatic targeting"),
-                                  mission.kill_count.has_value());
-            TestRunner->TestEqual(TEXT("Mission heroes are decoded"),
-                                  static_cast<int32>(mission.hero_entity_ids.size()),
-                                  2);
-            TestRunner->TestEqual(TEXT("Mission survivor is decoded"),
-                                  ioj::to_fstring(mission.must_survive_entity_ids[0].value),
-                                  FString{TEXT("blue-capital")});
-            TestRunner->TestEqual(TEXT("Mission required kill is decoded"),
-                                  ioj::to_fstring(mission.required_kill_entity_ids[0].value),
-                                  FString{TEXT("red-capital")});
+            TestRunner->TestEqual(TEXT("Objective team is decoded"),
+                                  definition.mission()->objectives[0].team,
+                                  ioj::Team::Blue);
         }
     }
 
@@ -193,38 +172,15 @@ TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
 
     TEST_METHOD(DecodesTimedMissionValues)
     {
-        ::ioj::levels::authoring::FDefinitionReader reader;
-        auto const result{reader.read_level_source(LR"(
-(level
-  :id 'timed-mission
-  :title "Timed Mission"
-  :player 'player
-  :mission (mission
-    :mode 'kill-enemies-within-time
-    :time-limit 45.5
-    :kill-count 3
-    :heroes '(player))
-  :entities (list
-    (entity :id 'player :archetype 'player-fighter :team 'blue
-      :position '(0 0 0) :rotation '(0 0 0))
-    (entity :id 'enemy :archetype 'capital-ship :team 'red
-      :position '(1000 0 0) :rotation '(0 180 0))))
-)")};
-
-        if (!TestRunner->TestTrue(TEXT("Timed mission is valid"), static_cast<bool>(result))) {
-            return;
+        ioj::levels::authoring::FDefinitionReader reader;
+        FString source{valid_level};
+        source.ReplaceInline(TEXT("(entity-destroyed 'red-capital)"), TEXT("(time-elapsed 45.5)"));
+        auto const result{reader.read_level_source(source)};
+        if (TestRunner->TestTrue(TEXT("Timer parses"), result.has_value())) {
+            TestRunner->TestEqual(TEXT("Timer duration is decoded"),
+                                  result->mission()->objectives[0].expressions[0].seconds,
+                                  45.5);
         }
-        if (!TestRunner->TestTrue(TEXT("Timed mission is decoded"),
-                                  result->mission().has_value())) {
-            return;
-        }
-        auto const& mission{result->mission().value()};
-        TestRunner->TestTrue(TEXT("Timed mode is decoded"),
-                             mission.mode ==
-                                 ::ioj::levels::LevelMissionMode::KillEnemiesWithinTime);
-        TestRunner->TestEqual(
-            TEXT("Time limit is decoded"), mission.time_limit_seconds.value(), 45.5f);
-        TestRunner->TestEqual(TEXT("Kill count is decoded"), mission.kill_count.value(), 3);
     }
 
     TEST_METHOD(DecodesDeclarativeUnlockCriteria)

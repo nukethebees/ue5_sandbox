@@ -11,22 +11,22 @@ TEST_CLASS(LevelProgress, "Sandbox.UnitTests")
         TArray<FScoreRecord> const records{
             {.date = FDateTime{2026, 8, 20},
              .level_name = level_id.value,
-             .end_state = ETestMissionState::Failed,
+             .outcome = ETeamOutcome::Defeat,
              .kills = 12,
              .time_seconds = 30.0f},
             {.date = FDateTime{2026, 8, 21},
              .level_name = level_id.value,
-             .end_state = ETestMissionState::Succeeded,
+             .outcome = ETeamOutcome::Victory,
              .kills = 8,
              .time_seconds = 75.0f},
             {.date = FDateTime{2026, 8, 22},
              .level_name = level_id.value,
-             .end_state = ETestMissionState::Succeeded,
+             .outcome = ETeamOutcome::Victory,
              .kills = 10,
              .time_seconds = 60.0f},
             {.date = FDateTime{2026, 8, 23},
              .level_name = TEXT("another-level"),
-             .end_state = ETestMissionState::Succeeded,
+             .outcome = ETeamOutcome::Victory,
              .kills = 100,
              .time_seconds = 1.0f},
         };
@@ -46,9 +46,8 @@ TEST_CLASS(LevelProgress, "Sandbox.UnitTests")
 
     TEST_METHOD(DistinguishesAttemptedAndUnknownLevels)
     {
-        TArray<FScoreRecord> const records{{.level_name = TEXT("failed-level"),
-                                            .end_state = ETestMissionState::Failed,
-                                            .kills = 3}};
+        TArray<FScoreRecord> const records{
+            {.level_name = TEXT("failed-level"), .outcome = ETeamOutcome::Defeat, .kills = 3}};
 
         auto const attempted{
             ioj::summarize_level_progress(ioj::FLevelId{FName{TEXT("failed-level")}}, records)};

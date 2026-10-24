@@ -155,26 +155,17 @@ auto repair_s7_level_bindings(ULevel& level, AS7LevelAuthoringDocument& document
         }
     }
     auto camera{document.camera.targets};
-    auto heroes{document.mission.heroes};
-    auto survivors{document.mission.must_survive};
-    auto kills{document.mission.required_kills};
     auto prune{[&](auto& references) {
         result.removed_references += references.RemoveAll(
             [&](auto const actor) { return !IsValid(actor) || !bound.Contains(actor); });
     }};
     prune(camera);
-    prune(heroes);
-    prune(survivors);
-    prune(kills);
     if (result.has_changes()) {
         FScopedTransaction transaction{
             NSLOCTEXT("S7LevelAuthoring", "RepairBindings", "Repair S7 Level Bindings")};
         document.Modify();
         document.entities = MoveTemp(bindings);
         document.camera.targets = MoveTemp(camera);
-        document.mission.heroes = MoveTemp(heroes);
-        document.mission.must_survive = MoveTemp(survivors);
-        document.mission.required_kills = MoveTemp(kills);
     }
     return result;
 }
@@ -254,24 +245,7 @@ auto collect_s7_scene(ULevel const& level, AS7LevelAuthoringDocument const& docu
     } else {
         snapshot.viewpoint_valid = player_count == 1;
     }
-    if (document.mission.mode != ETestMissionMode::None) {
-        auto& mission{definition.mission.emplace()};
-        mission.mode = s7_mission_mode(document.mission.mode);
-        if (document.mission.mode == ETestMissionMode::SurviveTime ||
-            document.mission.mode == ETestMissionMode::KillEnemiesWithinTime) {
-            mission.time_limit_seconds = document.mission.time_limit_seconds;
-        }
-        if (document.mission.use_explicit_kill_count &&
-            document.mission.mode != ETestMissionMode::SurviveTime) {
-            mission.kill_count = document.mission.kill_count;
-        }
-        mission.hero_entity_ids =
-            references(document.mission.heroes, snapshot.mission_references_valid);
-        mission.must_survive_entity_ids =
-            references(document.mission.must_survive, snapshot.mission_references_valid);
-        mission.required_kill_entity_ids =
-            references(document.mission.required_kills, snapshot.mission_references_valid);
-    }
+
     return snapshot;
 }
 

@@ -1,7 +1,7 @@
 #include "SpaceGamePresentation/presentation/HUDManager.h"
 
 #include "ioj/sim/collision/spatial_query_manager.h"
-#include "ioj/sim/missions/mission_manager.h"
+#include "ioj/sim/missions/mission.h"
 #include "ioj/sim/player/sim.h"
 #include "SpaceGamePresentation/entities/TestTeamVisualData.h"
 #include "SpaceGamePresentation/presentation/widgets/ShipHudWidget.h"
@@ -44,7 +44,7 @@ TRACE_DECLARE_INT_COUNTER(SandboxRadarVisibleCount, TEXT("Sandbox/Radar/VisibleC
 TRACE_DECLARE_INT_COUNTER(SandboxRadarUploadBytes, TEXT("Sandbox/Radar/UploadBytes"));
 
 void FHUDManager::initialise(ioj::sim::HudSettings const& update_frequencies,
-                             ::ioj::sim::MissionManager const& new_mission_manager,
+                             ::ioj::sim::Mission const& new_mission,
                              ::ioj::sim::EntityLedger const& new_entity_ledger,
                              ::ioj::sim::capital_ships::Sim const& new_capitals,
                              ::ioj::sim::fighters::Sim const& new_fighters,
@@ -92,7 +92,7 @@ void FHUDManager::initialise(ioj::sim::HudSettings const& update_frequencies,
         update_timers.add_started(tick_period);
     }
 
-    mission_manager = &new_mission_manager;
+    mission = &new_mission;
     entity_ledger = &new_entity_ledger;
     capitals_ = &new_capitals;
     fighters_ = &new_fighters;
@@ -169,7 +169,7 @@ void FHUDManager::initialise(ioj::sim::HudSettings const& update_frequencies,
     top_killer_ids_buffer.Reset();
     entity_overlay_objective_roles_.Reset();
     top_killer_ids_buffer.Reserve(entity_ledger->get_num_unique_ids_issued());
-    check(mission_manager);
+    check(mission);
     check(entity_ledger);
     state = EHUDManagerState::Active;
 
@@ -238,7 +238,7 @@ void FHUDManager::deactivate() {
     }
     registered_huds.Reset();
     player_ship = nullptr;
-    mission_manager = nullptr;
+    mission = nullptr;
     entity_ledger = nullptr;
     capitals_ = nullptr;
     fighters_ = nullptr;
@@ -277,7 +277,7 @@ void FHUDManager::tick(ioj::PeriodicTickCountdown8::counter_type const num_ticks
         return;
     }
 
-    check(mission_manager);
+    check(mission);
     check(entity_ledger);
 
     auto const changes{collect_data(num_ticks)};
@@ -292,7 +292,7 @@ void FHUDManager::force_sample() {
         return;
     }
 
-    check(mission_manager);
+    check(mission);
     check(entity_ledger);
 
     ioj::hud_manager::FDataChanges changes;
@@ -459,26 +459,10 @@ auto FHUDManager::display_batches() const -> std::array<::ioj::presentation::Age
 }
 
 void FHUDManager::update_entity_overlay_objective_roles() {
-    check(mission_manager);
-    auto const batches{display_batches()};
-    entity_overlay_objective_roles_.Init(EEntityOverlayObjectiveRole::None,
-                                         ::ioj::presentation::display_entity_count(batches));
-    if (!mission_manager->mission_running()) {
-        return;
-    }
-    auto const defended{mission_manager->get_entity_ids_that_must_survive()};
-    auto const required{mission_manager->get_entity_ids_required_to_kill()};
-    int32 output_index{};
-    for (auto const& batch : batches) {
-        for (auto const id : batch.ids) {
-            auto& role{entity_overlay_objective_roles_[output_index++]};
-            if (std::ranges::contains(required, id)) {
-                role = EEntityOverlayObjectiveRole::Destroy;
-            } else if (std::ranges::contains(defended, id)) {
-                role = EEntityOverlayObjectiveRole::Defend;
-            }
-        }
-    }
+    // Generic expressions do not imply a unique defend/destroy presentation role.
+    entity_overlay_objective_roles_.Init(
+        EEntityOverlayObjectiveRole::None,
+        ::ioj::presentation::display_entity_count(display_batches()));
 }
 
 void FHUDManager::update_entity_overlay(FRegisteredHud& registration,
@@ -868,8 +852,8 @@ void FHUDManager::update_radar(FRegisteredHud& registration) {
 }
 bool FHUDManager::collect_mission_data() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::collect_mission_data);
-    check(mission_manager);
-    if (!mission_manager->is_ready()) {
+    check(mission);
+    if (mission->objectives().empty()) {
         return false;
     }
 
@@ -880,36 +864,19 @@ bool FHUDManager::collect_mission_data() {
     return mission_data_buffers.current() != mission_data_buffers.previous();
 }
 void FHUDManager::read_mission_data(ioj::hud_manager::FMissionDataCache& out) const {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::read_mission_data);
-    check(mission_manager);
-
-    auto& static_data{out.static_data};
-    static_data.mission_mode = mission_manager->get_mission_mode();
-    static_data.surviving_entity_ids.Reset();
-    static_data.surviving_entity_types.Reset();
-    for (auto const value : mission_manager->get_entity_ids_that_must_survive()) {
-        static_data.surviving_entity_ids.Add(value);
-        static_data.surviving_entity_types.Add(value.entity_type());
-    }
-    static_data.required_kill_entity_ids.Reset();
-    static_data.required_kill_entity_types.Reset();
-    for (auto const value : mission_manager->get_entity_ids_required_to_kill()) {
-        static_data.required_kill_entity_ids.Add(value);
-        static_data.required_kill_entity_types.Add(value.entity_type());
-    }
-
-    auto& status_data{out.status_data};
-    status_data.mission_state = mission_manager->get_mission_state();
-    status_data.mission_stopwatch = mission_manager->get_mission_stopwatch();
-    status_data.time_remaining = mission_manager->get_time_remaining();
-    status_data.enemies_remaining = mission_manager->get_kills_remaining();
-    status_data.surviving_entity_health.Reset();
-    for (auto const value : mission_manager->get_entity_health_that_must_survive()) {
-        status_data.surviving_entity_health.Add({value.health, value.max_health});
-    }
-    status_data.required_kill_entity_health.Reset();
-    for (auto const value : mission_manager->get_entity_health_required_to_kill()) {
-        status_data.required_kill_entity_health.Add({value.health, value.max_health});
+    check(mission);
+    out = {};
+    out.active = static_cast<int32>(mission->active_objectives().size());
+    out.completed = static_cast<int32>(mission->completed_objectives().size());
+    out.inactive = static_cast<int32>(mission->inactive_objectives().size());
+    for (auto const id : mission->active_objectives()) {
+        auto const& objective{mission->objectives()[id]};
+        if (!out.active_titles.IsEmpty()) {
+            out.active_titles += TEXT(" / ");
+        }
+        out.active_titles += ioj::to_fstring(ioj::to_string(objective.team)) + TEXT(": ");
+        out.active_titles +=
+            ioj::to_fstring(objective.title.empty() ? objective.id : objective.title);
     }
 }
 bool FHUDManager::collect_entity_count_data() {
@@ -1125,7 +1092,7 @@ void FHUDManager::update_mission_hud(USimulationHudWidget& hud) const {
     auto const& data{mission_data_buffers.current()};
     hud.set_mission_data(data);
     if (auto* const ship_hud{Cast<UShipHudWidget>(&hud)}; IsValid(ship_hud)) {
-        ship_hud->set_stopwatch_time(data.status_data.mission_stopwatch);
+        ship_hud->set_stopwatch_widget_visibility(ESlateVisibility::Collapsed);
     }
 }
 void FHUDManager::update_entity_count_hud(USimulationHudWidget& hud) const {

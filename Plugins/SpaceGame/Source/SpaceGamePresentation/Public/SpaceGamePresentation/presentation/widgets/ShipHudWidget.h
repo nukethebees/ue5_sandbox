@@ -1,6 +1,5 @@
 #pragma once
 
-#include "ioj/sim/missions/mission_state.h"
 #include "SpaceGamePresentation/entities/ShipHealth.h"
 #include "SpaceGamePresentation/presentation/HudCrosshairDistances.h"
 #include "SpaceGamePresentation/presentation/widgets/SimulationHudWidget.h"
@@ -85,10 +84,6 @@ class SPACEGAMEPRESENTATION_API UShipHudWidget : public USimulationHudWidget {
     void set_flight_action(float throttle, FStringView action);
     void set_font_size(int32 const new_font_size);
     auto get_font_size() const noexcept -> int32 { return font_size; }
-    void set_mission_state(ioj::sim::MissionState const new_state);
-    void set_mission_time(float const mission_time);
-    void set_mission_time_remaining(float const time_remaining);
-    void set_mission_enemies_remaining(int32 const enemies_remaining);
 
     void set_radar_frame_store(FRadarFrameStoreConstPtr frame_store);
     void set_radar_style(FRadarStyle const& style);

@@ -15,19 +15,10 @@
 
 namespace ioj {
 namespace level_completion_detail {
-auto failure_reason_text(ETestMissionFailReason const fail_reason) -> FText {
-    switch (fail_reason) {
-        case ETestMissionFailReason::PlayerKilled:
-            return NSLOCTEXT("LevelCompletion", "PlayerKilled", "YOUR SHIP WAS DESTROYED");
-        case ETestMissionFailReason::TimeElapsed:
-            return NSLOCTEXT("LevelCompletion", "TimeElapsed", "TIME LIMIT EXPIRED");
-        case ETestMissionFailReason::DefenceObjectiveFailed:
-            return NSLOCTEXT(
-                "LevelCompletion", "DefenceObjectiveFailed", "DEFENCE OBJECTIVE FAILED");
-        case ETestMissionFailReason::None:
-        default:
-            return NSLOCTEXT("LevelCompletion", "UnknownFailure", "FAILURE REASON UNKNOWN");
-    }
+auto objective_text(FString const& objective_id) -> FText {
+    return FText::Format(
+        NSLOCTEXT("LevelCompletion", "DecisiveObjective", "DECISIVE OBJECTIVE // {0}"),
+        FText::FromString(objective_id));
 }
 } // namespace level_completion_detail
 
@@ -59,13 +50,13 @@ void SLevelCompletionView::Construct(FArguments const& args) {
 }
 
 void SLevelCompletionView::update_report(FString const& level_display_name,
-                                         ETestMissionState const state,
-                                         ETestMissionFailReason const fail_reason,
+                                         ETeamOutcome const state,
+                                         FString const& objective_id,
                                          sim::LevelTelemetrySnapshot const& snapshot,
                                          TOptional<float> const par_time_seconds,
                                          bool const new_best_time) {
-    check(state == ETestMissionState::Succeeded || state == ETestMissionState::Failed);
-    auto const succeeded{state == ETestMissionState::Succeeded};
+    check(state == ETeamOutcome::Victory || state == ETeamOutcome::Defeat);
+    auto const succeeded{state == ETeamOutcome::Victory};
     mission_name_->SetText(level_display_name.IsEmpty()
                                ? NSLOCTEXT("LevelCompletion", "UnknownMission", "UNNAMED OPERATION")
                                : FText::FromString(level_display_name.ToUpper()));
@@ -74,7 +65,7 @@ void SLevelCompletionView::update_report(FString const& level_display_name,
                   : NSLOCTEXT("LevelCompletion", "MissionFailed", "MISSION FAILED"));
     mission_result_->SetColorAndOpacity(succeeded ? style_->palette().success
                                                   : style_->palette().danger);
-    failure_reason_->SetText(level_completion_detail::failure_reason_text(fail_reason));
+    failure_reason_->SetText(level_completion_detail::objective_text(objective_id));
     failure_reason_->SetColorAndOpacity(style_->palette().danger);
     failure_reason_->SetVisibility(succeeded ? EVisibility::Collapsed
                                              : EVisibility::HitTestInvisible);

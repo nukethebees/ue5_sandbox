@@ -4,9 +4,8 @@
 #include <ioj/sim/entities/entity_type.h>
 #include <ioj/sim/telemetry/json_validation.h>
 #include <ioj/sim/telemetry/run_end_reason.h>
-#include <SpaceGame/missions/TestMissionFailReasonConversion.h>
-#include <SpaceGame/missions/TestMissionModeConversion.h>
-#include <SpaceGame/missions/TestMissionStateConversion.h>
+#include <SpaceGame/missions/ObjectiveOutcomeConversion.h>
+#include <SpaceGame/missions/TeamOutcomeConversion.h>
 #include <SpaceGamePresentation/entities/TestTeamConversion.h>
 
 #include <SandboxCore/container_ops.h>
@@ -32,16 +31,11 @@ auto serialized_name(::ioj::Team const value) -> FString {
     return ioj::to_fstring(::ioj::to_serialized_string(value));
 }
 
-auto serialized_name(::ioj::sim::MissionMode const value) -> FString {
-    return ioj::to_fstring(::ioj::sim::to_serialized_string(value));
+auto serialized_name(::ioj::TeamOutcome const value) -> FString {
+    return ioj::to_fstring(::ioj::to_serialized_string(value));
 }
-
-auto serialized_name(::ioj::sim::MissionState const value) -> FString {
-    return ioj::to_fstring(::ioj::sim::to_serialized_string(value));
-}
-
-auto serialized_name(::ioj::sim::MissionFailReason const value) -> FString {
-    return ioj::to_fstring(::ioj::sim::to_serialized_string(value));
+auto serialized_name(::ioj::ObjectiveOutcome const value) -> FString {
+    return ioj::to_fstring(::ioj::to_serialized_string(value));
 }
 
 auto serialized_name(::ioj::sim::LevelTelemetryRunEndReason const value) -> FString {
@@ -410,16 +404,12 @@ auto parse_serialized_enum(FString const& value, FString const& path)
         if (auto const result{::ioj::try_parse_serialized_team(encoded)}) {
             return ioj::to_unreal(*result);
         }
-    } else if constexpr (std::is_same_v<Enum, ETestMissionMode>) {
-        if (auto const result{::ioj::sim::try_parse_serialized_mission_mode(encoded)}) {
+    } else if constexpr (std::is_same_v<Enum, ETeamOutcome>) {
+        if (auto const result{::ioj::try_parse_serialized_team_outcome(encoded)}) {
             return ioj::to_unreal(*result);
         }
-    } else if constexpr (std::is_same_v<Enum, ETestMissionState>) {
-        if (auto const result{::ioj::sim::try_parse_serialized_mission_state(encoded)}) {
-            return ioj::to_unreal(*result);
-        }
-    } else if constexpr (std::is_same_v<Enum, ETestMissionFailReason>) {
-        if (auto const result{::ioj::sim::try_parse_serialized_mission_fail_reason(encoded)}) {
+    } else if constexpr (std::is_same_v<Enum, EObjectiveOutcome>) {
+        if (auto const result{::ioj::try_parse_serialized_objective_outcome(encoded)}) {
             return ioj::to_unreal(*result);
         }
     } else if constexpr (std::is_same_v<Enum, ::ioj::sim::LevelTelemetryRunEndReason>) {
@@ -541,11 +531,13 @@ auto validate_serialized_report(FLevelTelemetryReport const& record)
                                                 : memory.error()};
     }
 
-    auto const mission_values{record.completion.mission_mode.has_value()};
-    if (mission_values != record.completion.mission_state.has_value() ||
-        mission_values != record.completion.mission_fail_reason.has_value()) {
-        return std::unexpected{FString{
-            TEXT("completion mission mode, state, and fail reason must be provided together")}};
+    auto const mission_values{record.completion.mission_team.has_value()};
+    if (mission_values != record.completion.mission_outcome.has_value() ||
+        mission_values != record.completion.objective_outcome.has_value() ||
+        mission_values == record.completion.objective_id.empty()) {
+        return std::unexpected{
+            FString{TEXT("completion mission team, team outcome, objective id and objective "
+                         "outcome must be provided together")}};
     }
     auto const completed_ticks{validate_serialized_integer(
         record.completion.completed_ticks, TEXT("completion.completed_ticks"), true)};
@@ -671,8 +663,7 @@ auto deserialize_level_telemetry_run(FString const& json)
     if (!schema) {
         return std::unexpected{schema.error()};
     }
-    if (*schema != 1 && *schema != 2 && *schema != 3 &&
-        *schema != FLevelTelemetryReport::schema_version) {
+    if (*schema != FLevelTelemetryReport::schema_version) {
         return std::unexpected{
             FString::Printf(TEXT("Unsupported telemetry schema version %d"), *schema)};
     }
@@ -769,43 +760,40 @@ auto deserialize_level_telemetry_run(FString const& json)
                   required_bool(**simulation,
                                 TEXT("presentation_enabled"),
                                 TEXT("simulation.presentation_enabled")));
-    if (*schema >= 2) {
-        READ_REQUIRED(result.metadata.level_source,
-                      required_native_string(
-                          **simulation, TEXT("level_source"), TEXT("simulation.level_source")));
-        READ_REQUIRED(result.metadata.settings_source,
-                      required_native_string(**simulation,
-                                             TEXT("settings_source"),
-                                             TEXT("simulation.settings_source")));
-        READ_REQUIRED(
-            result.metadata.launch_state,
-            required_string(**simulation, TEXT("launch_state"), TEXT("simulation.launch_state")));
-        READ_REQUIRED(result.metadata.presentation_mode,
-                      required_string(**simulation,
-                                      TEXT("presentation_mode"),
-                                      TEXT("simulation.presentation_mode")));
-        READ_REQUIRED(result.metadata.stop_when_battle_resolved,
-                      required_bool(**simulation,
-                                    TEXT("stop_when_battle_resolved"),
-                                    TEXT("simulation.stop_when_battle_resolved")));
-        READ_REQUIRED(result.metadata.results_navigation,
-                      required_string(**simulation,
-                                      TEXT("results_navigation"),
-                                      TEXT("simulation.results_navigation")));
-        auto const* duration{(*simulation)->Values.Find(TEXT("requested_duration_seconds"))};
-        if (duration && (*duration)->Type != EJson::Null) {
-            double value{};
-            READ_REQUIRED(value,
-                          required_number(**simulation,
-                                          TEXT("requested_duration_seconds"),
-                                          TEXT("simulation.requested_duration_seconds")));
-            auto const parsed_duration{ioj::Duration::try_make(value)};
-            if (!parsed_duration) {
-                return std::unexpected{FString{
-                    TEXT("simulation.requested_duration_seconds must be finite and nonnegative")}};
-            }
-            result.metadata.requested_duration_seconds = parsed_duration;
+    READ_REQUIRED(result.metadata.level_source,
+                  required_native_string(
+                      **simulation, TEXT("level_source"), TEXT("simulation.level_source")));
+    READ_REQUIRED(result.metadata.settings_source,
+                  required_native_string(
+                      **simulation, TEXT("settings_source"), TEXT("simulation.settings_source")));
+    READ_REQUIRED(
+        result.metadata.launch_state,
+        required_string(**simulation, TEXT("launch_state"), TEXT("simulation.launch_state")));
+    READ_REQUIRED(result.metadata.presentation_mode,
+                  required_string(**simulation,
+                                  TEXT("presentation_mode"),
+                                  TEXT("simulation.presentation_mode")));
+    READ_REQUIRED(result.metadata.stop_when_battle_resolved,
+                  required_bool(**simulation,
+                                TEXT("stop_when_battle_resolved"),
+                                TEXT("simulation.stop_when_battle_resolved")));
+    READ_REQUIRED(result.metadata.results_navigation,
+                  required_string(**simulation,
+                                  TEXT("results_navigation"),
+                                  TEXT("simulation.results_navigation")));
+    auto const* duration{(*simulation)->Values.Find(TEXT("requested_duration_seconds"))};
+    if (duration && (*duration)->Type != EJson::Null) {
+        double value{};
+        READ_REQUIRED(value,
+                      required_number(**simulation,
+                                      TEXT("requested_duration_seconds"),
+                                      TEXT("simulation.requested_duration_seconds")));
+        auto const parsed_duration{ioj::Duration::try_make(value)};
+        if (!parsed_duration) {
+            return std::unexpected{FString{
+                TEXT("simulation.requested_duration_seconds must be finite and nonnegative")}};
         }
+        result.metadata.requested_duration_seconds = parsed_duration;
     }
 
     FString reason_name;
@@ -819,61 +807,71 @@ auto deserialize_level_telemetry_run(FString const& json)
     READ_REQUIRED(result.completion.completed_ticks,
                   required_integer<uint64>(
                       **completion, TEXT("completed_ticks"), TEXT("completion.completed_ticks")));
-    if (*schema >= 2) {
-        auto const* winner{(*completion)->Values.Find(TEXT("winning_team"))};
-        if (winner && (*winner)->Type != EJson::Null) {
-            FString winner_name;
-            READ_REQUIRED(winner_name,
-                          required_string(
-                              **completion, TEXT("winning_team"), TEXT("completion.winning_team")));
-            ETestTeam team{};
-            READ_REQUIRED(
-                team,
-                parse_serialized_enum<ETestTeam>(winner_name, TEXT("completion.winning_team")));
-            result.completion.winning_team = ioj::to_native(team);
-        }
+    auto const* winner{(*completion)->Values.Find(TEXT("winning_team"))};
+    if (winner && (*winner)->Type != EJson::Null) {
+        FString winner_name;
+        READ_REQUIRED(
+            winner_name,
+            required_string(**completion, TEXT("winning_team"), TEXT("completion.winning_team")));
+        ETestTeam team{};
+        READ_REQUIRED(
+            team, parse_serialized_enum<ETestTeam>(winner_name, TEXT("completion.winning_team")));
+        result.completion.winning_team = ioj::to_native(team);
     }
 
-    auto const* mission_mode_value{(*completion)->Values.Find(TEXT("mission_mode"))};
-    auto const* mission_state_value{(*completion)->Values.Find(TEXT("mission_state"))};
-    auto const* mission_fail_value{(*completion)->Values.Find(TEXT("mission_fail_reason"))};
-    auto const has_mission_mode{mission_mode_value && (*mission_mode_value)->Type != EJson::Null};
-    auto const has_mission_state{mission_state_value &&
-                                 (*mission_state_value)->Type != EJson::Null};
-    auto const has_mission_fail{mission_fail_value && (*mission_fail_value)->Type != EJson::Null};
-    if (has_mission_mode != has_mission_state || has_mission_mode != has_mission_fail) {
-        return std::unexpected{FString{
-            TEXT("completion mission mode, state, and fail reason must be provided together")}};
+    auto const* mission_team_value{(*completion)->Values.Find(TEXT("mission_team"))};
+    auto const* mission_outcome_value{(*completion)->Values.Find(TEXT("mission_outcome"))};
+    auto const* objective_outcome_value{(*completion)->Values.Find(TEXT("objective_outcome"))};
+    auto const* objective_id_value{(*completion)->Values.Find(TEXT("objective_id"))};
+    auto const has_mission_team{mission_team_value && (*mission_team_value)->Type != EJson::Null};
+    auto const has_mission_outcome{mission_outcome_value &&
+                                   (*mission_outcome_value)->Type != EJson::Null};
+    auto const has_objective_outcome{objective_outcome_value &&
+                                     (*objective_outcome_value)->Type != EJson::Null};
+    auto const has_objective_id{objective_id_value && (*objective_id_value)->Type != EJson::Null};
+    if (has_mission_team != has_mission_outcome || has_mission_team != has_objective_outcome ||
+        has_mission_team != has_objective_id) {
+        return std::unexpected{
+            FString{TEXT("completion mission team, team outcome, objective id and objective "
+                         "outcome must be provided together")}};
     }
-    if (has_mission_mode) {
-        FString mode_name;
-        FString state_name;
-        FString fail_name;
+    if (has_mission_team) {
+        FString team_name;
+        FString team_outcome_name;
+        FString objective_outcome_name;
         READ_REQUIRED(
-            mode_name,
-            required_string(**completion, TEXT("mission_mode"), TEXT("completion.mission_mode")));
-        READ_REQUIRED(
-            state_name,
-            required_string(**completion, TEXT("mission_state"), TEXT("completion.mission_state")));
-        READ_REQUIRED(fail_name,
+            team_name,
+            required_string(**completion, TEXT("mission_team"), TEXT("completion.mission_team")));
+        READ_REQUIRED(team_outcome_name,
                       required_string(**completion,
-                                      TEXT("mission_fail_reason"),
-                                      TEXT("completion.mission_fail_reason")));
-        ETestMissionMode mode{};
-        ETestMissionState state{};
-        ETestMissionFailReason fail{};
+                                      TEXT("mission_outcome"),
+                                      TEXT("completion.mission_outcome")));
+        READ_REQUIRED(objective_outcome_name,
+                      required_string(**completion,
+                                      TEXT("objective_outcome"),
+                                      TEXT("completion.objective_outcome")));
+        ETestTeam team{};
+        ETeamOutcome team_outcome{};
+        EObjectiveOutcome objective_outcome{};
+        READ_REQUIRED(team,
+                      parse_serialized_enum<ETestTeam>(team_name, TEXT("completion.mission_team")));
+        READ_REQUIRED(team_outcome,
+                      parse_serialized_enum<ETeamOutcome>(team_outcome_name,
+                                                          TEXT("completion.mission_outcome")));
+        READ_REQUIRED(objective_outcome,
+                      parse_serialized_enum<EObjectiveOutcome>(
+                          objective_outcome_name, TEXT("completion.objective_outcome")));
+        FString objective_id;
         READ_REQUIRED(
-            mode,
-            parse_serialized_enum<ETestMissionMode>(mode_name, TEXT("completion.mission_mode")));
-        READ_REQUIRED(
-            state,
-            parse_serialized_enum<ETestMissionState>(state_name, TEXT("completion.mission_state")));
-        READ_REQUIRED(fail,
-                      parse_serialized_enum<ETestMissionFailReason>(
-                          fail_name, TEXT("completion.mission_fail_reason")));
-        result.completion.mission_mode = ioj::to_native(mode);
-        result.completion.mission_state = ioj::to_native(state);
-        result.completion.mission_fail_reason = ioj::to_native(fail);
+            objective_id,
+            required_string(**completion, TEXT("objective_id"), TEXT("completion.objective_id")));
+        if (objective_id.IsEmpty()) {
+            return std::unexpected{FString{TEXT("completion.objective_id must be nonempty")}};
+        }
+        result.completion.objective_id = TCHAR_TO_UTF8(*objective_id);
+        result.completion.mission_team = ioj::to_native(team);
+        result.completion.mission_outcome = ioj::to_native(team_outcome);
+        result.completion.objective_outcome = ioj::to_native(objective_outcome);
     }
     auto const* mission_elapsed{(*completion)->Values.Find(TEXT("mission_elapsed_seconds"))};
     if (mission_elapsed && (*mission_elapsed)->Type != EJson::Null) {
@@ -977,59 +975,56 @@ auto deserialize_level_telemetry_run(FString const& json)
             }
         }
     }
-    if (*schema >= 2) {
-        TArray<TSharedPtr<FJsonValue>> const* battle_samples{};
-        if (!root->TryGetArrayField(TEXT("battle_samples"), battle_samples) || !battle_samples) {
-            return std::unexpected{FString{TEXT("battle_samples: required array is missing")}};
+    TArray<TSharedPtr<FJsonValue>> const* battle_samples{};
+    if (!root->TryGetArrayField(TEXT("battle_samples"), battle_samples) || !battle_samples) {
+        return std::unexpected{FString{TEXT("battle_samples: required array is missing")}};
+    }
+    result.battle_samples.Reserve(battle_samples->Num());
+    for (int32 index{}; index < battle_samples->Num(); ++index) {
+        auto const path{FString::Printf(TEXT("battle_samples[%d]"), index)};
+        auto const& value{(*battle_samples)[index]};
+        auto const object{value.IsValid() ? value->AsObject() : nullptr};
+        if (!object.IsValid()) {
+            return std::unexpected{error_at(path, TEXT("sample must be an object"))};
         }
-        result.battle_samples.Reserve(battle_samples->Num());
-        for (int32 index{}; index < battle_samples->Num(); ++index) {
-            auto const path{FString::Printf(TEXT("battle_samples[%d]"), index)};
-            auto const& value{(*battle_samples)[index]};
-            auto const object{value.IsValid() ? value->AsObject() : nullptr};
-            if (!object.IsValid()) {
-                return std::unexpected{error_at(path, TEXT("sample must be an object"))};
-            }
-            ::ioj::sim::LevelTelemetryBattleSample sample;
-            READ_REQUIRED(sample.completed_tick,
-                          required_integer<uint64>(
-                              *object, TEXT("completed_tick"), path + TEXT(".completed_tick")));
-            auto alive{
-                parse_flat_counts(*object, TEXT("alive"), path + TEXT(".alive"), sample.alive)};
-            auto combat{required_object(*object, TEXT("combat"), path + TEXT(".combat"))};
-            if (!alive || !combat) {
-                return std::unexpected{!alive ? alive.error() : combat.error()};
-            }
-            auto parsed_combat{parse_combat(**combat, sample.combat, path + TEXT(".combat"))};
-            if (!parsed_combat) {
-                return std::unexpected{parsed_combat.error()};
-            }
-            auto const active_lasers{optional_integer<int32>(
-                *object, TEXT("active_lasers"), path + TEXT(".active_lasers"))};
-            if (!active_lasers) {
-                return std::unexpected{active_lasers.error()};
-            }
-            if (active_lasers->has_value()) {
-                if (**active_lasers < 0) {
-                    return std::unexpected{
-                        error_at(path + TEXT(".active_lasers"), TEXT("value must be nonnegative"))};
-                }
-                sample.active_lasers = **active_lasers;
-            }
-            auto const lasers_fired{optional_integer<int32>(
-                *object, TEXT("lasers_fired"), path + TEXT(".lasers_fired"))};
-            if (!lasers_fired) {
-                return std::unexpected{lasers_fired.error()};
-            }
-            if (lasers_fired->has_value()) {
-                if (**lasers_fired < 0) {
-                    return std::unexpected{
-                        error_at(path + TEXT(".lasers_fired"), TEXT("value must be nonnegative"))};
-                }
-                sample.lasers_fired = **lasers_fired;
-            }
-            result.battle_samples.Add(MoveTemp(sample));
+        ::ioj::sim::LevelTelemetryBattleSample sample;
+        READ_REQUIRED(sample.completed_tick,
+                      required_integer<uint64>(
+                          *object, TEXT("completed_tick"), path + TEXT(".completed_tick")));
+        auto alive{parse_flat_counts(*object, TEXT("alive"), path + TEXT(".alive"), sample.alive)};
+        auto combat{required_object(*object, TEXT("combat"), path + TEXT(".combat"))};
+        if (!alive || !combat) {
+            return std::unexpected{!alive ? alive.error() : combat.error()};
         }
+        auto parsed_combat{parse_combat(**combat, sample.combat, path + TEXT(".combat"))};
+        if (!parsed_combat) {
+            return std::unexpected{parsed_combat.error()};
+        }
+        auto const active_lasers{
+            optional_integer<int32>(*object, TEXT("active_lasers"), path + TEXT(".active_lasers"))};
+        if (!active_lasers) {
+            return std::unexpected{active_lasers.error()};
+        }
+        if (active_lasers->has_value()) {
+            if (**active_lasers < 0) {
+                return std::unexpected{
+                    error_at(path + TEXT(".active_lasers"), TEXT("value must be nonnegative"))};
+            }
+            sample.active_lasers = **active_lasers;
+        }
+        auto const lasers_fired{
+            optional_integer<int32>(*object, TEXT("lasers_fired"), path + TEXT(".lasers_fired"))};
+        if (!lasers_fired) {
+            return std::unexpected{lasers_fired.error()};
+        }
+        if (lasers_fired->has_value()) {
+            if (**lasers_fired < 0) {
+                return std::unexpected{
+                    error_at(path + TEXT(".lasers_fired"), TEXT("value must be nonnegative"))};
+            }
+            sample.lasers_fired = **lasers_fired;
+        }
+        result.battle_samples.Add(MoveTemp(sample));
     }
 #undef READ_REQUIRED
     return result;
@@ -1099,17 +1094,19 @@ auto serialize_level_telemetry_run(FLevelTelemetryReport const& record) -> FStri
 
     auto completion{MakeShared<FJsonObject>()};
     completion->SetStringField(TEXT("reason"), serialized_name(record.completion.reason));
-    if (record.completion.mission_mode.has_value()) {
-        completion->SetStringField(TEXT("mission_mode"),
-                                   serialized_name(record.completion.mission_mode.value()));
-        completion->SetStringField(TEXT("mission_state"),
-                                   serialized_name(record.completion.mission_state.value()));
-        completion->SetStringField(TEXT("mission_fail_reason"),
-                                   serialized_name(record.completion.mission_fail_reason.value()));
+    if (record.completion.mission_team.has_value()) {
+        completion->SetStringField(TEXT("objective_id"),
+                                   ioj::to_fstring(record.completion.objective_id));
+        completion->SetStringField(TEXT("mission_team"),
+                                   serialized_name(record.completion.mission_team.value()));
+        completion->SetStringField(TEXT("mission_outcome"),
+                                   serialized_name(record.completion.mission_outcome.value()));
+        completion->SetStringField(TEXT("objective_outcome"),
+                                   serialized_name(record.completion.objective_outcome.value()));
     } else {
-        completion->SetField(TEXT("mission_mode"), MakeShared<FJsonValueNull>());
-        completion->SetField(TEXT("mission_state"), MakeShared<FJsonValueNull>());
-        completion->SetField(TEXT("mission_fail_reason"), MakeShared<FJsonValueNull>());
+        completion->SetField(TEXT("mission_team"), MakeShared<FJsonValueNull>());
+        completion->SetField(TEXT("mission_outcome"), MakeShared<FJsonValueNull>());
+        completion->SetField(TEXT("objective_outcome"), MakeShared<FJsonValueNull>());
     }
     set_optional_duration(
         *completion, TEXT("mission_elapsed_seconds"), record.completion.mission_elapsed_seconds);

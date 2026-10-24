@@ -183,27 +183,7 @@ auto apply_s7_level_sync_plan(ULevel& level,
             document.camera.targets.Add(resolved.FindChecked(name(id)));
         }
     }
-    document.mission = {};
-    if (definition.mission().has_value()) {
-        auto const& mission{*definition.mission()};
-        document.mission.mode = s7_mission_mode(mission.mode);
-        if (mission.time_limit_seconds.has_value()) {
-            document.mission.time_limit_seconds = *mission.time_limit_seconds;
-        }
-        document.mission.use_explicit_kill_count = mission.kill_count.has_value();
-        if (mission.kill_count.has_value()) {
-            document.mission.kill_count = *mission.kill_count;
-        }
-        auto append_actors = [&resolved](TArray<TObjectPtr<AActor>>& output,
-                                         std::vector<levels::EntityId> const& ids) {
-            for (auto const& id : ids) {
-                output.Add(resolved.FindChecked(name(id)));
-            }
-        };
-        append_actors(document.mission.heroes, mission.hero_entity_ids);
-        append_actors(document.mission.must_survive, mission.must_survive_entity_ids);
-        append_actors(document.mission.required_kills, mission.required_kill_entity_ids);
-    }
+
     return {};
 }
 }

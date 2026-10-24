@@ -1,6 +1,6 @@
 #include <SpaceGame/ships/player/PlayerModalUi.h>
 
-#include <ioj/sim/missions/mission_manager.h>
+#include <ioj/sim/missions/mission.h>
 #include <SpaceGame/missions/MissionCompletion.h>
 #include <SpaceGame/presentation/TestBatchGameUiData.h>
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
@@ -138,7 +138,7 @@ auto FPlayerModalUi::show_completion(ASpaceGamePlayerController& owner,
     }
     completion_menu_ = root_->show_level_completion(completion.level_display_name,
                                                     completion.state,
-                                                    completion.fail_reason,
+                                                    completion.objective_id,
                                                     MoveTemp(snapshot),
                                                     completion.par_time_seconds,
                                                     completion.new_best_time);

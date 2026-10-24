@@ -66,7 +66,6 @@ class SPACEGAME_API USpaceSaveSubsystem : public UGameInstanceSubsystem {
 
     auto make_storage() -> ioj::FSaveProfileStorage;
     static auto make_slot_storage() -> ioj::FSaveProfileStorage;
-    static void migrate_legacy_records(int32 save_version, TArray<FScoreRecord>& records);
 
     ioj::FSaveProfileManager profile_manager_{};
 };

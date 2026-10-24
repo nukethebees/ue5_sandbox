@@ -110,11 +110,8 @@ void FTestBatchOrchestratorLevelSetup::end_test() {
 void FTestBatchOrchestratorLevelSetup::reset_test_configuration() {
     check(orchestrator.IsValid());
     orchestrator->set_level_config(*config);
-    auto& mission_manager{orchestrator->get_mission_definition()};
-    mission_manager.set_mission_mode(ETestMissionMode::None);
-    mission_manager.set_target_time(60.f);
-    mission_manager.set_kill_target(5);
-    mission_manager.set_save_mission_results(false);
+    auto& mission{orchestrator->get_mission_definition()};
+    mission.set_save_mission_results(false);
 }
 
 void FTestBatchOrchestratorLevelSetup::teardown() {

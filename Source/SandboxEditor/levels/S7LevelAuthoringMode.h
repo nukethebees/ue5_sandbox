@@ -13,9 +13,7 @@ class AS7LevelAuthoringDocument;
 
 DECLARE_MULTICAST_DELEGATE(FOnS7LevelAuthoringChanged);
 
-namespace ioj::editor {
-enum class ObjectiveRole { Clear, Hero, MustSurvive, RequiredKill };
-}
+namespace ioj::editor {}
 
 struct SANDBOXEDITOR_API FS7LevelScriptEditorState {
     FString path{};
@@ -60,11 +58,6 @@ class SANDBOXEDITOR_API US7LevelAuthoringMode final : public UBaseLegacyWidgetEd
     void adopt_entities();
     void repair_and_adopt_entities();
     void rename_selected_entity(FString id);
-    void assign_selected_heroes();
-    void assign_selected_must_survive();
-    void assign_selected_required_kills();
-    void clear_selected_objectives();
-    void import_orchestrator_mission();
     void open_level_config();
     void validate_playable_level();
     void set_up_playable_level();
@@ -81,7 +74,6 @@ class SANDBOXEDITOR_API US7LevelAuthoringMode final : public UBaseLegacyWidgetEd
     void refresh_document();
     void set_status(FText text);
     void update_document_source_path();
-    void assign_selected_objective(ioj::editor::ObjectiveRole role);
 
     TWeakObjectPtr<AS7LevelAuthoringDocument> document_{};
     ioj::editor::FS7LevelSourceSession source_session_{};

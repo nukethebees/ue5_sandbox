@@ -351,30 +351,6 @@ void UShipHudWidget::set_flight_action(float const throttle, FStringView const a
     flight_mode_widget->update(throttle, action);
 }
 
-void UShipHudWidget::set_mission_state(ioj::sim::MissionState const new_state) {
-    if (mission_status_panel) {
-        mission_status_panel->set_mission_state(new_state);
-    }
-}
-
-void UShipHudWidget::set_mission_time(float const mission_time) {
-    if (mission_status_panel) {
-        mission_status_panel->set_mission_time(mission_time);
-    }
-}
-
-void UShipHudWidget::set_mission_time_remaining(float const time_remaining) {
-    if (mission_status_panel) {
-        mission_status_panel->set_time_remaining(time_remaining);
-    }
-}
-
-void UShipHudWidget::set_mission_enemies_remaining(int32 const enemies_remaining) {
-    if (mission_status_panel) {
-        mission_status_panel->set_enemies_remaining(enemies_remaining);
-    }
-}
-
 #if WITH_EDITOR
 void UShipHudWidget::update_sampled_speed(TConstArrayView<FVector2d> const samples,
                                           int32 const oldest_index) {

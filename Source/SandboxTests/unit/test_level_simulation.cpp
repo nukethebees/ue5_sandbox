@@ -90,6 +90,7 @@ auto make_battle() -> ::ioj::sim::LevelSimInitData {
 
 auto make_scheduled_battle() -> ::ioj::sim::LevelSimInitData {
     auto data{make_battle()};
+    data.capital_ships.max_health = 100;
     data.level_events = {};
     data.clock_settings.tick_rate = ioj::Frequency::make(10.0);
 
@@ -102,28 +103,25 @@ auto make_scheduled_battle() -> ::ioj::sim::LevelSimInitData {
         .team = ::ioj::Team::Blue,
         .position = FVector{-1000.0, 0.0, 0.0},
     })};
-    auto const enemy{builder.add_entity({
+    builder.add_entity({
         .id = ioj::FLevelEntityId{FName{TEXT("enemy")}},
         .archetype = ioj::level_archetypes::capital_ship,
         .team = ::ioj::Team::Red,
         .position = FVector{1000.0, 0.0, 0.0},
         .spawn_time_seconds = 0.21,
-    })};
+    });
     builder.set_camera({
         .target_entity_ids = {hero},
         .offset_direction = FVector{-1.0, 0.0, 0.0},
         .distance = 1000.0,
     });
-    builder.set_mission({
-        .mode = ::ioj::levels::LevelMissionMode::KillEnemies,
-        .kill_count = 1,
-        .hero_entity_ids = {hero},
-    });
-    builder.add_mission_event({.time_seconds = 0.0, .kill_target_increase = 2});
-    builder.add_mission_event({
-        .time_seconds = 0.21,
-        .required_kill_entity_ids = {enemy},
-    });
+    builder.set_mission(
+        {.objectives = {
+             {.id = "primary",
+              .team = ioj::Team::Blue,
+              .expressions = {{.type = ioj::ExpressionType::EntityDestroyed,
+                               .entity = ioj::levels::EntityId{"enemy"}}},
+              .roots = {0, ioj::levels::absent_expression, ioj::levels::absent_expression}}}});
     auto const definition{ioj::levels::authoring::to_native(builder.finish())};
     check(definition);
     ::ioj::sim::SimClock clock;
@@ -135,14 +133,23 @@ auto make_scheduled_battle() -> ::ioj::sim::LevelSimInitData {
 }
 
 void add_mission(::ioj::sim::LevelSimInitData& data) {
-    auto& mission{data.level_events.initialisation.mission.emplace()};
-    auto const entities{
-        data.level_events.schedule.capital_spawns.get_const_view().entity_indices()};
-    mission.mode = ::ioj::levels::LevelMissionMode::KillEnemies;
-    mission.kill_count = 1;
-    mission.save_results = false;
-    mission.hero_entity_indices = {static_cast<std::int32_t>(entities[0])};
-    mission.required_kill_entity_indices = {static_cast<std::int32_t>(entities[1])};
+    ioj::levels::MissionDefinition definition{
+        .objectives =
+            {{.id = "primary",
+              .team = ioj::Team::Green,
+              .expressions = {{.type = ioj::ExpressionType::EntityDestroyed,
+                               .entity = ioj::levels::EntityId{"enemy"}}},
+              .roots = {0, ioj::levels::absent_expression, ioj::levels::absent_expression}}},
+        .team_results = {{.team = ioj::Team::Green,
+                          .when = {"primary", ioj::ObjectiveOutcome::Passed},
+                          .result = ioj::TeamOutcome::Victory}}};
+    std::array const ids{ioj::levels::EntityId{"hero"}, ioj::levels::EntityId{"enemy"}};
+    ioj::sim::SimClock clock;
+    clock.initialise(data.clock_settings);
+    auto compiled{ioj::sim::compile_mission(definition, ids, clock)};
+    check(compiled);
+    data.level_events.initialisation.mission = {.definition = std::move(*compiled),
+                                                .save_results = false};
 }
 
 void kill_enemy(::ioj::sim::LevelSim& simulation) {
@@ -165,22 +172,16 @@ auto FLevelSimScheduledEventsTest::RunTest(FString const&) -> bool {
               simulation.get_capital_ships().get_num_instances(),
               1);
     simulation.finish_initialisation();
-    TestEqual(TEXT("Tick-zero increase survives authored mission configuration"),
-              simulation.get_mission_manager().get_kill_target(),
-              3);
     TestEqual(TEXT("Only tick-zero entities exist initially"),
               simulation.get_capital_ships().get_num_instances(),
               1);
     TestTrue(TEXT("Future objectives prevent early completion"),
-             simulation.get_mission_manager().has_pending_objective_events());
+             !simulation.get_mission().outcome(0).has_value());
 
     simulation.start();
     auto const dt{simulation.get_clock().get_tick_period()};
     simulation.advance(dt);
     simulation.advance(dt);
-    TestEqual(TEXT("Tick-zero increase is not dispatched again"),
-              simulation.get_mission_manager().get_kill_target(),
-              3);
     TestEqual(TEXT("A fractional authoring time rounds up to the next tick"),
               simulation.get_capital_ships().get_num_instances(),
               1);
@@ -189,12 +190,12 @@ auto FLevelSimScheduledEventsTest::RunTest(FString const&) -> bool {
     TestEqual(TEXT("The delayed entity spawns on its compiled tick"),
               simulation.get_capital_ships().get_num_instances(),
               2);
-    TestEqual(TEXT("The same-tick objective resolves the spawned entity handle"),
-              static_cast<int32>(
-                  simulation.get_mission_manager().get_entity_ids_required_to_kill().size()),
-              1);
-    TestFalse(TEXT("All authored objective events have been dispatched"),
-              simulation.get_mission_manager().has_pending_objective_events());
+    TestFalse(TEXT("Spawn alone does not complete the objective"),
+              simulation.get_mission().outcome(0).has_value());
+    kill_enemy(simulation);
+    simulation.advance(dt);
+    TestTrue(TEXT("Destruction completes the objective"),
+             simulation.get_mission().outcome(0) == ioj::ObjectiveOutcome::Passed);
     return true;
 }
 
@@ -371,14 +372,11 @@ auto FLevelSimPresentationEquivalenceTest::RunTest(FString const&) -> bool {
         TestTrue(TEXT("Presentation preserves entity teams and types"),
                  a.teams == b.teams && a.types == b.types);
     }
-    auto const a{headless.take_mission_result()};
-    auto const b{visible.take_mission_result()};
-    TestTrue(TEXT("Both executions complete the mission"), a.has_value() && b.has_value());
-    if (a.has_value() && b.has_value()) {
-        TestEqual(TEXT("Mission outcomes match"), a->state, b->state);
-        TestEqual(TEXT("Mission kill totals match"), a->kills, b->kills);
-        TestEqual(TEXT("Mission completion times match"), a->elapsed_seconds, b->elapsed_seconds);
-    }
+    TestTrue(TEXT("Both team outcomes match"),
+             headless.get_mission().team_outcome(ioj::Team::Green) ==
+                 visible.get_mission().team_outcome(ioj::Team::Green));
+    TestTrue(TEXT("Team wins"),
+             headless.get_mission().team_outcome(ioj::Team::Green) == ioj::TeamOutcome::Victory);
     return true;
 }
 
@@ -853,34 +851,10 @@ auto FLevelTelemetryRunRecordTest::RunTest(FString const&) -> bool {
     series_json->SetStringField(TEXT("requested_time_scale"), TEXT("discarded"));
     battle_samples_json.Last()->AsObject()->SetStringField(TEXT("range_query_count"),
                                                            TEXT("discarded"));
-    for (int32 version{1}; version <= 3; ++version) {
+    for (int32 version{1}; version < FLevelTelemetryReport::schema_version; ++version) {
         root->SetNumberField(TEXT("schema_version"), version);
-        auto const historical{parse_current_root()};
-        if (TestTrue(TEXT("Legacy reports ignore discarded performance fields"),
-                     historical.has_value())) {
-            TestEqual(TEXT("Legacy schema remains identified"),
-                      historical->loaded_schema_version,
-                      version);
-            TestEqual(TEXT("Legacy reports preserve completed ticks"),
-                      historical->completion.completed_ticks,
-                      report.completion.completed_ticks);
-            TestEqual(TEXT("Legacy reports preserve sparse force history"),
-                      historical->tick_series.active_entities.num(),
-                      report.tick_series.active_entities.num());
-            if (version == 1) {
-                TestTrue(TEXT("Version one does not fabricate combat history"),
-                         historical->battle_samples.IsEmpty());
-            } else {
-                TestTrue(TEXT("Legacy reports preserve battle history"),
-                         historical->battle_samples.Last().alive ==
-                             report.battle_samples.Last().alive);
-            }
-            auto const upgraded{
-                deserialize_level_telemetry_run(serialize_level_telemetry_run(*historical))};
-            TestTrue(TEXT("Historical reports serialize using the current schema"),
-                     upgraded.has_value() &&
-                         upgraded->loaded_schema_version == FLevelTelemetryReport::schema_version);
-        }
+        TestFalse(TEXT("Reports from the retired mission schema are rejected"),
+                  parse_current_root().has_value());
     }
     root->SetNumberField(TEXT("schema_version"), FLevelTelemetryReport::schema_version);
     TestFalse(TEXT("Malformed JSON returns an error"),
@@ -956,27 +930,32 @@ auto FLevelTelemetryRunRecordTest::RunTest(FString const&) -> bool {
     TestTrue(TEXT("Serialization rejects precision-unsafe uint64 values"),
              serialize_level_telemetry_run(precision_unsafe_report).IsEmpty());
 
-    auto const original_mission_mode{completion_json->Values.FindRef(TEXT("mission_mode"))};
-    auto const original_mission_state{completion_json->Values.FindRef(TEXT("mission_state"))};
-    auto const original_mission_fail{completion_json->Values.FindRef(TEXT("mission_fail_reason"))};
-    completion_json->SetField(TEXT("mission_mode"), MakeShared<FJsonValueNull>());
-    completion_json->SetStringField(TEXT("mission_state"), TEXT("running"));
-    completion_json->SetField(TEXT("mission_fail_reason"), MakeShared<FJsonValueNull>());
+    auto const original_mission_team{completion_json->Values.FindRef(TEXT("mission_team"))};
+    auto const original_mission_outcome{completion_json->Values.FindRef(TEXT("mission_outcome"))};
+    auto const original_objective_outcome{
+        completion_json->Values.FindRef(TEXT("objective_outcome"))};
+    completion_json->SetStringField(TEXT("objective_id"), TEXT("orphan"));
+    TestFalse(TEXT("An objective id without team metadata returns an error"),
+              parse_current_root().has_value());
+    completion_json->RemoveField(TEXT("objective_id"));
+    completion_json->SetField(TEXT("mission_team"), MakeShared<FJsonValueNull>());
+    completion_json->SetStringField(TEXT("mission_outcome"), TEXT("victory"));
+    completion_json->SetField(TEXT("objective_outcome"), MakeShared<FJsonValueNull>());
     TestFalse(TEXT("Partial optional mission metadata returns an error"),
               parse_current_root().has_value());
-    completion_json->SetField(TEXT("mission_mode"), original_mission_mode);
-    completion_json->SetField(TEXT("mission_state"), original_mission_state);
-    completion_json->SetField(TEXT("mission_fail_reason"), original_mission_fail);
+    completion_json->SetField(TEXT("mission_team"), original_mission_team);
+    completion_json->SetField(TEXT("mission_outcome"), original_mission_outcome);
+    completion_json->SetField(TEXT("objective_outcome"), original_objective_outcome);
     auto const original_mission_elapsed{
         completion_json->Values.FindRef(TEXT("mission_elapsed_seconds"))};
-    completion_json->RemoveField(TEXT("mission_mode"));
-    completion_json->RemoveField(TEXT("mission_state"));
-    completion_json->RemoveField(TEXT("mission_fail_reason"));
+    completion_json->RemoveField(TEXT("mission_team"));
+    completion_json->RemoveField(TEXT("mission_outcome"));
+    completion_json->RemoveField(TEXT("objective_outcome"));
     completion_json->RemoveField(TEXT("mission_elapsed_seconds"));
     TestTrue(TEXT("Optional mission fields may be omitted"), parse_current_root().has_value());
-    completion_json->SetField(TEXT("mission_mode"), original_mission_mode);
-    completion_json->SetField(TEXT("mission_state"), original_mission_state);
-    completion_json->SetField(TEXT("mission_fail_reason"), original_mission_fail);
+    completion_json->SetField(TEXT("mission_team"), original_mission_team);
+    completion_json->SetField(TEXT("mission_outcome"), original_mission_outcome);
+    completion_json->SetField(TEXT("objective_outcome"), original_objective_outcome);
     completion_json->SetField(TEXT("mission_elapsed_seconds"), original_mission_elapsed);
 
     auto const output_directory{FPaths::Combine(FPaths::ProjectSavedDir(),

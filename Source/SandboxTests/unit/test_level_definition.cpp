@@ -70,16 +70,12 @@ TEST_CLASS(LevelDefinition, "Sandbox.UnitTests")
                              definition.entities[3].archetype ==
                                  ioj::level_archetypes::static_turret);
         if (TestRunner->TestTrue(TEXT("Mission is preserved"), definition.mission.IsSet())) {
-            auto const& mission{definition.mission.GetValue()};
-            TestRunner->TestTrue(TEXT("Mission mode is preserved"),
-                                 mission.mode == ::ioj::levels::LevelMissionMode::KillEnemies);
-            TestRunner->TestFalse(TEXT("Omitted kill count is preserved"),
-                                  mission.kill_count.IsSet());
-            TestRunner->TestEqual(TEXT("Mission has two heroes"), mission.hero_entity_ids.Num(), 2);
-            TestRunner->TestEqual(
-                TEXT("Mission has one protected entity"), mission.must_survive_entity_ids.Num(), 1);
-            TestRunner->TestEqual(
-                TEXT("Mission has one required kill"), mission.required_kill_entity_ids.Num(), 1);
+            TestRunner->TestEqual(TEXT("Objective is preserved"),
+                                  static_cast<int32>(definition.mission->objectives.size()),
+                                  1);
+            TestRunner->TestEqual(TEXT("Team mappings are preserved"),
+                                  static_cast<int32>(definition.mission->team_results.size()),
+                                  2);
         }
     }
 
@@ -223,11 +219,7 @@ TEST_CLASS(LevelDefinition, "Sandbox.UnitTests")
             .offset_direction = FVector{-1.0, 0.0, 0.0},
             .distance = 1000.0,
         });
-        builder.set_mission(ioj::FLevelMissionDefinition{
-            .mode = ::ioj::levels::LevelMissionMode::SurviveTime,
-            .time_limit_seconds = 10.0f,
-            .must_survive_entity_ids = {ioj::FLevelEntityId{FName{TEXT("capital")}}},
-        });
+        builder.set_mission({});
         auto const camera_level{builder.finish()};
         TestRunner->TestTrue(TEXT("First definition has a camera"), camera_level.camera.IsSet());
         TestRunner->TestTrue(TEXT("First definition has a mission"), camera_level.mission.IsSet());
@@ -250,97 +242,25 @@ TEST_CLASS(LevelDefinition, "Sandbox.UnitTests")
                              static_cast<bool>(ioj::validate_level(player_level)));
     }
 
-    TEST_METHOD(MissionModeRequirementsAreValidated)
+    TEST_METHOD(ObjectiveCyclesAreValidated)
     {
-        auto missing_mode{ioj::example_levels::make_example_draft()};
-        missing_mode.mission->mode = ::ioj::levels::LevelMissionMode::Unspecified;
-        auto const missing_mode_validation{ioj::validate_level(missing_mode)};
-        TestRunner->TestTrue(TEXT("Missing mission mode is reported"),
-                             contains_error(missing_mode_validation,
-                                            ioj::ELevelValidationErrorCode::MissingMissionMode));
-
-        auto missing_time{ioj::example_levels::make_example_draft()};
-        missing_time.mission->mode = ::ioj::levels::LevelMissionMode::KillEnemiesWithinTime;
-        auto const missing_time_validation{ioj::validate_level(missing_time)};
+        auto definition{ioj::example_levels::make_example_draft()};
+        auto& objective{definition.mission->objectives[0]};
+        objective.expressions[0] = {.type = ioj::ExpressionType::All, .children = {0}};
         TestRunner->TestTrue(
-            TEXT("Missing timed mission limit is reported"),
-            contains_error(missing_time_validation,
-                           ioj::ELevelValidationErrorCode::InvalidMissionTimeLimit));
-
-        auto missing_heroes{ioj::example_levels::make_example_draft()};
-        missing_heroes.mission->hero_entity_ids.Reset();
-        auto const missing_heroes_validation{ioj::validate_level(missing_heroes)};
-        TestRunner->TestTrue(TEXT("Missing kill mission heroes are reported"),
-                             contains_error(missing_heroes_validation,
-                                            ioj::ELevelValidationErrorCode::MissingMissionHeroes));
-
-        auto invalid_count{ioj::example_levels::make_example_draft()};
-        invalid_count.mission->kill_count = 0;
-        auto const invalid_count_validation{ioj::validate_level(invalid_count)};
-        TestRunner->TestTrue(
-            TEXT("Non-positive explicit kill count is reported"),
-            contains_error(invalid_count_validation,
-                           ioj::ELevelValidationErrorCode::InvalidMissionKillCount));
-
-        auto unexpected_time{ioj::example_levels::make_example_draft()};
-        unexpected_time.mission->time_limit_seconds = 10.0f;
-        auto const unexpected_time_validation{ioj::validate_level(unexpected_time)};
-        TestRunner->TestTrue(
-            TEXT("Untimed mission rejects a time limit"),
-            contains_error(unexpected_time_validation,
-                           ioj::ELevelValidationErrorCode::UnexpectedMissionTimeLimit));
-
-        auto survive{ioj::example_levels::make_example_draft()};
-        survive.mission = ioj::FLevelMissionDefinition{
-            .mode = ::ioj::levels::LevelMissionMode::SurviveTime,
-            .time_limit_seconds = 10.0f,
-            .kill_count = 1,
-        };
-        auto const survive_validation{ioj::validate_level(survive)};
-        TestRunner->TestTrue(
-            TEXT("Survive mission requires a protected entity"),
-            contains_error(survive_validation,
-                           ioj::ELevelValidationErrorCode::MissingMissionSurvivors));
-        TestRunner->TestTrue(
-            TEXT("Survive mission rejects a kill count"),
-            contains_error(survive_validation,
-                           ioj::ELevelValidationErrorCode::UnexpectedMissionKillCount));
+            TEXT("Cycle is rejected"),
+            contains_error(ioj::validate_level(definition),
+                           ioj::ELevelValidationErrorCode::InvalidMissionStructure));
     }
 
     TEST_METHOD(MissionEntityReferencesAreValidated)
     {
-        auto unknown{ioj::example_levels::make_example_draft()};
-        unknown.mission->must_survive_entity_ids[0] = ioj::FLevelEntityId{FName{TEXT("missing")}};
-        auto const unknown_validation{ioj::validate_level(unknown)};
-        TestRunner->TestTrue(TEXT("Unknown mission entity is reported"),
-                             contains_error(unknown_validation,
-                                            ioj::ELevelValidationErrorCode::MissionEntityNotFound));
-
-        auto duplicate{ioj::example_levels::make_example_draft()};
-        auto const duplicate_hero{duplicate.mission->hero_entity_ids[0]};
-        duplicate.mission->hero_entity_ids.Add(duplicate_hero);
-        auto const duplicate_validation{ioj::validate_level(duplicate)};
+        auto definition{ioj::example_levels::make_example_draft()};
+        definition.mission->objectives[0].expressions[0].entity = ioj::levels::EntityId{"missing"};
         TestRunner->TestTrue(
-            TEXT("Duplicate mission entity is reported"),
-            contains_error(duplicate_validation,
-                           ioj::ELevelValidationErrorCode::DuplicateMissionEntityReference));
-
-        auto conflicting{ioj::example_levels::make_example_draft()};
-        conflicting.mission->hero_entity_ids.Add(conflicting.mission->required_kill_entity_ids[0]);
-        auto const conflicting_validation{ioj::validate_level(conflicting)};
-        TestRunner->TestTrue(
-            TEXT("Conflicting mission roles are reported"),
-            contains_error(conflicting_validation,
-                           ioj::ELevelValidationErrorCode::ConflictingMissionEntityRoles));
-
-        auto ambiguous_teams{ioj::example_levels::make_example_draft()};
-        ambiguous_teams.mission->hero_entity_ids.Add(
-            ioj::FLevelEntityId{FName{TEXT("red-turret")}});
-        auto const ambiguous_teams_validation{ioj::validate_level(ambiguous_teams)};
-        TestRunner->TestTrue(
-            TEXT("Automatic count requires one hero team"),
-            contains_error(ambiguous_teams_validation,
-                           ioj::ELevelValidationErrorCode::AmbiguousAutomaticKillTeams));
+            TEXT("Unknown entity is rejected"),
+            contains_error(ioj::validate_level(definition),
+                           ioj::ELevelValidationErrorCode::InvalidMissionStructure));
     }
 
     TEST_METHOD(MalformedDefinitionsReportStructuredErrors)

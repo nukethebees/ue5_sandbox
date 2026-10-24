@@ -1,7 +1,6 @@
 #pragma once
 
 #include <SpaceGame/levels/LevelDefinition.h>
-#include <SpaceGame/missions/TestMissionMode.h>
 
 #include <CoreMinimal.h>
 #include <GameFramework/Info.h>
@@ -37,40 +36,6 @@ struct FS7LevelCameraAuthoringData {
 
     UPROPERTY(EditAnywhere, Category = "Level Authoring", meta = (ClampMin = "0.001"))
     double distance{100000.0};
-};
-
-USTRUCT()
-struct FS7LevelMissionAuthoringData {
-    GENERATED_BODY()
-
-    UPROPERTY(EditAnywhere, Category = "Mission")
-    ETestMissionMode mode{ETestMissionMode::None};
-
-    UPROPERTY(EditAnywhere,
-              Category = "Mission",
-              meta = (ClampMin = "0.001", EditCondition = "mode != ETestMissionMode::KillEnemies"))
-    float time_limit_seconds{60.0f};
-
-    UPROPERTY(
-        EditAnywhere,
-        Category = "Mission",
-        meta = (EditCondition =
-                    "mode != ETestMissionMode::SurviveTime && mode != ETestMissionMode::None"))
-    bool use_explicit_kill_count{};
-
-    UPROPERTY(EditAnywhere,
-              Category = "Mission",
-              meta = (ClampMin = "1", EditCondition = "use_explicit_kill_count"))
-    int32 kill_count{1};
-
-    UPROPERTY(EditAnywhere, Category = "Mission")
-    TArray<TObjectPtr<AActor>> heroes{};
-
-    UPROPERTY(EditAnywhere, Category = "Mission")
-    TArray<TObjectPtr<AActor>> must_survive{};
-
-    UPROPERTY(EditAnywhere, Category = "Mission")
-    TArray<TObjectPtr<AActor>> required_kills{};
 };
 
 UCLASS(NotBlueprintable,
@@ -150,7 +115,4 @@ class SANDBOXEDITOR_API AS7LevelAuthoringDocument final : public AInfo {
               Category = "Viewpoint",
               meta = (ShowOnlyInnerProperties, EditCondition = "use_observer_camera"))
     FS7LevelCameraAuthoringData camera{};
-
-    UPROPERTY(EditAnywhere, Category = "Mission", meta = (ShowOnlyInnerProperties))
-    FS7LevelMissionAuthoringData mission{};
 };

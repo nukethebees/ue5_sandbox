@@ -3,9 +3,6 @@
 #include <ioj/levels/team.h>
 #include <ioj/sim/entities/entity_type.h>
 #include <ioj/sim/lasers/laser_source.h>
-#include <ioj/sim/missions/mission_fail_reason.h>
-#include <ioj/sim/missions/mission_mode.h>
-#include <ioj/sim/missions/mission_state.h>
 #include <SandboxTests/support/PlayerControllerTestAccess.h>
 #include <SandboxTests/support/SimulationTestAssets.h>
 #include <SandboxTests/support/time_series_test_data.h>
@@ -14,9 +11,6 @@
 #include <SpaceGame/levels/LevelDefinition.h>
 #include <SpaceGame/levels/LevelLoader.h>
 #include <SpaceGame/levels/native_level_definition_conversion.h>
-#include <SpaceGame/missions/TestMissionFailReasonConversion.h>
-#include <SpaceGame/missions/TestMissionModeConversion.h>
-#include <SpaceGame/missions/TestMissionStateConversion.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
@@ -251,7 +245,7 @@ void FLevelLoaderCameraScenario::sample_modal_transitions() {
 
     FTestMissionCompletion completion;
     completion.persisted = true;
-    completion.state = ETestMissionState::Succeeded;
+    completion.state = ETeamOutcome::Victory;
     completion.level_display_name = TEXT("Controller modal test");
     FPlayerControllerTestAccess::complete(*controller, completion);
     sample.completion_open = FPlayerControllerTestAccess::has_modal(*controller);
@@ -454,7 +448,7 @@ void FLevelLoaderScenario::sample_runtime(ATestBatchOrchestrator& orchestrator) 
         sample_controller_lifecycle();
     }
     auto const& ledger{orchestrator.get_entity_ledger()};
-    auto const& mission{orchestrator.get_mission_manager()};
+    auto const& mission{orchestrator.get_mission()};
     auto const counts{ledger.count_alive_per_team_and_type()};
     auto const blue{std::to_underlying(ETestTeam::Blue)};
     auto const red{std::to_underlying(ETestTeam::Red)};
@@ -469,16 +463,11 @@ void FLevelLoaderScenario::sample_runtime(ATestBatchOrchestrator& orchestrator) 
         .blue_capitals = counts[blue][capital_type],
         .red_capitals = counts[red][capital_type],
         .red_turrets = counts[red][turret_type],
-        .mission_mode = to_unreal(mission.get_mission_mode()),
-        .mission_state = to_unreal(mission.get_mission_state()),
-        .mission_kill_target = mission.get_kill_target(),
-        .mission_heroes = static_cast<int32>(mission.get_hero_entity_ids().size()),
-        .mission_survivors = static_cast<int32>(mission.get_entity_ids_that_must_survive().size()),
-        .mission_required_kills =
-            static_cast<int32>(mission.get_entity_ids_required_to_kill().size()),
-        .mission_level_name = FName{UTF8_TO_TCHAR(mission.get_level_id().c_str())},
-        .mission_level_display_name = UTF8_TO_TCHAR(mission.get_level_display_name().c_str()),
-        .saves_mission_results = mission.should_save_mission_results(),
+        .active_objectives = static_cast<int32>(mission.active_objectives().size()),
+        .mission_level_name =
+            FName{UTF8_TO_TCHAR(orchestrator.get_level_simulation()->get_level_id().c_str())},
+        .mission_level_display_name =
+            UTF8_TO_TCHAR(orchestrator.get_level_simulation()->get_level_title().c_str()),
     };
     auto const* level{orchestrator.get_level_simulation()};
     check(level);
@@ -535,20 +524,7 @@ void FLevelLoaderScenario::check_runtime() {
     checks.are_equal(1, sample.blue_capitals, TEXT("Entity ledger contains the blue capital"));
     checks.are_equal(1, sample.red_capitals, TEXT("Entity ledger contains the red capital"));
     checks.are_equal(1, sample.red_turrets, TEXT("Entity ledger contains the red turret"));
-    checks.are_equal(ETestMissionMode::KillEnemies,
-                     sample.mission_mode,
-                     TEXT("Loader configures the authored mission mode"));
-    checks.are_equal(
-        ETestMissionState::Running, sample.mission_state, TEXT("Authored mission starts running"));
-    checks.are_equal(2,
-                     sample.mission_kill_target,
-                     TEXT("Omitted kill count resolves to the initial enemy population"));
-    checks.are_equal(2, sample.mission_heroes, TEXT("Loader resolves authored hero entities"));
-    checks.are_equal(1, sample.mission_survivors, TEXT("Loader resolves the protected entity"));
-    checks.are_equal(
-        1, sample.mission_required_kills, TEXT("Loader resolves the required kill entity"));
-    checks.is_true(sample.saves_mission_results,
-                   TEXT("Authored missions save against their authored level id"));
+    checks.are_equal(1, sample.active_objectives, TEXT("Authored objective starts active"));
     checks.is_true(sample.mission_level_name == FName{TEXT("border-skirmish")},
                    TEXT("Mission results use the authored level id"));
     checks.are_equal(FString{TEXT("Border Skirmish")},
