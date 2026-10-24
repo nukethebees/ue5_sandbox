@@ -1,11 +1,10 @@
-#include "test_fighter_los_failure.h"
-
 #include "../support/simulation_test_support.h"
 #include <ioj/sim/capital_ships/sim.h>
 #include <ioj/sim/fighters/sim.h>
 
 namespace ioj::sim {
-void run_worldless_fighter_los_failure(tests::SimulationFixture const& config) {
+TEST(WorldlessSpaceGameSimulation, Fighters_LineOfSightFailureHandling) {
+    auto const config{tests::make_fixture()};
     auto data{tests::make_simulation_data(config)};
     auto const blue{tests::add_capital_spawn(
         data, {{-39600.f, 2170.f, 4360.f}}, Team::Blue, invalid_level_entity_index, 0.f, 1000.f)};

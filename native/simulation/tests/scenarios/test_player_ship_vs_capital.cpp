@@ -1,5 +1,3 @@
-#include "test_player_ship_vs_capital.h"
-
 #include "../support/simulation_test_support.h"
 #include <ioj/sim/capital_ships/sim.h>
 #include <ioj/sim/fighters/sim.h>
@@ -10,7 +8,8 @@ namespace player_vs_capital_test {
 inline constexpr std::int32_t collision_resilient_health{1'000'000};
 }
 
-void run_worldless_player_ship_vs_capital(tests::SimulationFixture const& config) {
+TEST(WorldlessSpaceGameSimulation, PlayerShip_VersusCapital) {
+    auto const config{tests::make_fixture()};
     auto data{tests::make_simulation_data(config)};
     data.fighters.health = player_vs_capital_test::collision_resilient_health;
     data.fighters.laser.projectile_speed = 20000.f;

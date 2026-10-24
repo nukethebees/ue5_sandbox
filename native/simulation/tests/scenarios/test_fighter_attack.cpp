@@ -1,5 +1,3 @@
-#include "test_fighter_attack.h"
-
 #include "../support/simulation_test_support.h"
 #include <ioj/column_math.h>
 #include <ioj/rotator_math.h>
@@ -12,7 +10,8 @@ namespace fighter_navigation_test {
 inline constexpr std::int32_t collision_resilient_health{1'000'000};
 }
 
-void run_worldless_fighter_obstacle_avoidance(tests::SimulationFixture const& config) {
+TEST(WorldlessSpaceGameSimulation, Fighters_ObstacleAvoidance) {
+    auto const config{tests::make_fixture()};
     constexpr float source_x{-15000.f};
     constexpr float target_x{15000.f};
     Vector3f const obstacle_min{{-1000.f, -1500.f, -1500.f}};
@@ -101,7 +100,8 @@ auto make_fighter_navigation_test_data(tests::SimulationFixture const& config,
     return data;
 }
 
-void run_worldless_fighter_capital_obstruction(tests::SimulationFixture const& config) {
+TEST(WorldlessSpaceGameSimulation, Fighters_NavigationCapitalObstruction) {
+    auto const config{tests::make_fixture()};
     Vector3f const source{{-18000.f, -7000.f, 0.f}};
     Vector3f const obstacle{{0.f, 0.f, 0.f}};
     Vector3f const target{{18000.f, 0.f, 0.f}};
@@ -172,7 +172,8 @@ void run_worldless_fighter_capital_obstruction(tests::SimulationFixture const& c
     EXPECT_TRUE(maximum_x > expanded_max.x()) << "Fighter progresses beyond the capital";
 }
 
-void run_worldless_fighter_clear_navigation(tests::SimulationFixture const& config) {
+TEST(WorldlessSpaceGameSimulation, Fighters_NavigationClearPath) {
+    auto const config{tests::make_fixture()};
     auto data{
         make_fighter_navigation_test_data(config,
                                           {Transform3d{.location = Vector3d{3000.f, 7000.f, 0.f}}},
@@ -226,7 +227,8 @@ void run_worldless_fighter_clear_navigation(tests::SimulationFixture const& conf
     EXPECT_TRUE(!saw_avoidance) << "Clear path never applies hard avoidance";
 }
 
-void run_worldless_fighter_separation(tests::SimulationFixture const& config) {
+TEST(WorldlessSpaceGameSimulation, Fighters_NavigationSeparation) {
+    auto const config{tests::make_fixture()};
     auto data{
         make_fighter_navigation_test_data(config,
                                           {Transform3d{.location = Vector3d{3000.f, 6950.f, 0.f}},
@@ -357,7 +359,8 @@ auto run_dense_navigation_fixture(tests::SimulationFixture const& config,
     return result;
 }
 
-void run_worldless_fighter_dense_determinism(tests::SimulationFixture const& config) {
+TEST(WorldlessSpaceGameSimulation, Fighters_NavigationDenseDeterminism) {
+    auto const config{tests::make_fixture()};
     auto const first_id{EntityId(7, EntityType::Fighter)};
     auto const second_id{EntityId(100, EntityType::Fighter)};
     auto const forward{fighters::make_coincident_separation_direction(first_id, second_id)};
@@ -390,7 +393,8 @@ void run_worldless_fighter_dense_determinism(tests::SimulationFixture const& con
         << "Identical fixtures schedule the same number of queries";
 }
 
-void run_worldless_fighter_large_cluster(tests::SimulationFixture const& config) {
+TEST(WorldlessSpaceGameSimulation, Fighters_NavigationLargeCluster) {
+    auto const config{tests::make_fixture()};
     constexpr std::int32_t fighter_count{48};
     auto const result{run_dense_navigation_fixture(config, fighter_count, 10.0)};
     auto const metrics{measure_fighter_cluster(result.locations, result.collision_distance)};
@@ -410,7 +414,8 @@ void run_worldless_fighter_large_cluster(tests::SimulationFixture const& config)
         << "Large cluster exercises immediate-risk navigation";
 }
 
-void run_worldless_fighter_hard_avoidance_authority(tests::SimulationFixture const& config) {
+TEST(WorldlessSpaceGameSimulation, Fighters_NavigationHardAvoidanceAuthority) {
+    auto const config{tests::make_fixture()};
     Vector3f const obstacle_min{{-1000.f, -1000.f, -1500.f}};
     Vector3f const obstacle_max{{1000.f, 1000.f, 1500.f}};
     auto data{
@@ -468,7 +473,8 @@ void run_worldless_fighter_hard_avoidance_authority(tests::SimulationFixture con
     EXPECT_LE(avoidance_transitions, 6) << "Held hard steering does not flap pathologically";
 }
 
-void run_worldless_fighter_navigation_frequency(tests::SimulationFixture const& config) {
+TEST(WorldlessSpaceGameSimulation, Fighters_NavigationFrequency) {
+    auto const config{tests::make_fixture()};
     auto data{
         make_fighter_navigation_test_data(config,
                                           {Transform3d{.location = Vector3d{3000.f, 7000.f, 0.f}}},
@@ -494,7 +500,8 @@ void run_worldless_fighter_navigation_frequency(tests::SimulationFixture const& 
         << "Risky fighters have a higher per-fighter query rate over the same duration";
 }
 
-void run_worldless_fighter_attack(tests::SimulationFixture const& config) {
+TEST(WorldlessSpaceGameSimulation, Fighters_AttackCapital) {
+    auto const config{tests::make_fixture()};
     auto data{tests::make_simulation_data(config)};
     data.fighters.laser.projectile_speed = 20000.f;
     data.fighters.laser.max_distance = 25000.f;

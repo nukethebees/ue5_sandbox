@@ -1,9 +1,20 @@
-#include "test_mission.h"
-
 #include "../support/mission_test_support.h"
+#include "../support/simulation_test_support.h"
 #include <ioj/sim/testing/entity_observations.h>
 
 namespace ioj::sim {
+enum class MissionScenario : std::uint8_t {
+    SurviveTime,
+    KillEnemies,
+    KillEnemiesWithinTime,
+    DefenceObjective,
+    RequiredKillsObjective,
+    RequiredKillsTimeElapsed,
+    AuthoredKillTarget,
+    SuccessIsTerminal,
+    OutcomeCompletionIsLatched,
+};
+
 void run_worldless_mission_scenario(tests::SimulationFixture const& config,
                                     MissionScenario const scenario) {
     using Scenario = MissionScenario;
@@ -117,4 +128,42 @@ void run_worldless_mission_scenario(tests::SimulationFixture const& config,
                   scenario == Scenario::AuthoredKillTarget ? 2u : 1u);
     }
 }
+TEST(WorldlessSpaceGameSimulation, Mission_SurviveTime) {
+    run_worldless_mission_scenario(tests::make_fixture(), MissionScenario::SurviveTime);
+}
+
+TEST(WorldlessSpaceGameSimulation, Mission_KillEnemies) {
+    run_worldless_mission_scenario(tests::make_fixture(), MissionScenario::KillEnemies);
+}
+
+TEST(WorldlessSpaceGameSimulation, Mission_KillEnemiesWithinTime) {
+    run_worldless_mission_scenario(tests::make_fixture(), MissionScenario::KillEnemiesWithinTime);
+}
+
+TEST(WorldlessSpaceGameSimulation, Mission_DefenceObjective) {
+    run_worldless_mission_scenario(tests::make_fixture(), MissionScenario::DefenceObjective);
+}
+
+TEST(WorldlessSpaceGameSimulation, Mission_RequiredKillsObjective) {
+    run_worldless_mission_scenario(tests::make_fixture(), MissionScenario::RequiredKillsObjective);
+}
+
+TEST(WorldlessSpaceGameSimulation, Mission_RequiredKillsTimeElapsed) {
+    run_worldless_mission_scenario(tests::make_fixture(),
+                                   MissionScenario::RequiredKillsTimeElapsed);
+}
+
+TEST(WorldlessSpaceGameSimulation, Mission_AutomaticKillTargetIncludesLastEnemy) {
+    run_worldless_mission_scenario(tests::make_fixture(), MissionScenario::AuthoredKillTarget);
+}
+
+TEST(WorldlessSpaceGameSimulation, Mission_SuccessIsTerminal) {
+    run_worldless_mission_scenario(tests::make_fixture(), MissionScenario::SuccessIsTerminal);
+}
+
+TEST(WorldlessSpaceGameSimulation, Mission_ExplicitCompletionIsLatched) {
+    run_worldless_mission_scenario(tests::make_fixture(),
+                                   MissionScenario::OutcomeCompletionIsLatched);
+}
+
 }

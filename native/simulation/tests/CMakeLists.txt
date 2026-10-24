@@ -42,7 +42,6 @@ target_sources(native-simulation-tests PRIVATE
   scenarios/test_spatial_query_manager.cpp
   scenarios/test_turret_acquisition_regressions.cpp
   scenarios/test_turrets_kill_one.cpp
-  worldless_simulation_tests.cpp
   support/worldless_simulation_test.cpp
   support/simulation_fixture.cpp
   deterministic_bias_tests.cpp

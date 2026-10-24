@@ -1,11 +1,10 @@
-#include "test_capital_command_fighters.h"
-
 #include "../support/simulation_test_support.h"
 #include <ioj/sim/capital_ships/sim.h>
 #include <ioj/sim/testing/entity_observations.h>
 
 namespace ioj::sim {
-void run_worldless_capital_command_fighters(tests::SimulationFixture const& config) {
+TEST(WorldlessSpaceGameSimulation, CapitalCommandFighters_RetargetAfterKills) {
+    auto const config{tests::make_fixture()};
     using Task = fighters::Sim::Task;
     auto data{tests::make_simulation_data(config)};
     tests::add_capital_spawn(data, Vector3f{{-18290.f, 2170.f, 4360.f}}, Team::Green, 1);

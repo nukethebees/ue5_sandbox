@@ -1,5 +1,3 @@
-#include "test_spatial_query_manager.h"
-
 #include "../support/simulation_test_support.h"
 #include <ioj/frame_memory_resource.h>
 #include <ioj/sim/collision/spatial_query_manager.h>
@@ -7,7 +5,8 @@
 #include <array>
 
 namespace ioj::sim {
-void run_worldless_spatial_query_line_of_sight(tests::SimulationFixture const& config) {
+TEST(WorldlessSpaceGameSimulation, SpatialQuery_ResolvesLineOfSightBatches) {
+    auto const config{tests::make_fixture()};
     alignas(FrameMemoryResource::backing_alignment) std::array<std::byte, 64 * 1024>
         query_backing{};
     FrameMemoryResource query_memory{query_backing};

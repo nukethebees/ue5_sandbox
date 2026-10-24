@@ -1,5 +1,3 @@
-#include "test_laser_lifecycle.h"
-
 #include "../support/simulation_test_support.h"
 #include <ioj/column_math.h>
 #include <ioj/sim/collision/world_aabb_operations.h>
@@ -9,6 +7,13 @@
 #include <ioj/sim/testing/level_sim_test_access.h>
 
 namespace ioj::sim {
+enum class LaserLifecycleScenario : std::uint8_t {
+    Hit,
+    SimultaneousLethalHits,
+    Miss,
+    WorldBlocker
+};
+
 namespace {
 constexpr double projectile_queue_time{0.05};
 constexpr double collision_test_end_time{1.5};
@@ -149,6 +154,23 @@ void run_worldless_laser_lifecycle(tests::SimulationFixture const& config,
         EXPECT_EQ(2, final.alive_entities) << "Both entities remain alive";
         EXPECT_EQ(0, final.kills) << "No kill is recorded";
     }
+}
+
+TEST(WorldlessSpaceGameSimulation, Lasers_QueuedSpawnHitsOnLaterTick) {
+    run_worldless_laser_lifecycle(tests::make_fixture(), LaserLifecycleScenario::Hit);
+}
+
+TEST(WorldlessSpaceGameSimulation, Lasers_SimultaneousHitsCauseOneDeath) {
+    run_worldless_laser_lifecycle(tests::make_fixture(),
+                                  LaserLifecycleScenario::SimultaneousLethalHits);
+}
+
+TEST(WorldlessSpaceGameSimulation, Lasers_MissExpiresWithoutDamage) {
+    run_worldless_laser_lifecycle(tests::make_fixture(), LaserLifecycleScenario::Miss);
+}
+
+TEST(WorldlessSpaceGameSimulation, Lasers_WorldBlockerConsumesProjectileWithoutEntityDamage) {
+    run_worldless_laser_lifecycle(tests::make_fixture(), LaserLifecycleScenario::WorldBlocker);
 }
 
 }

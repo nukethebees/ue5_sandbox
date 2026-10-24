@@ -1,11 +1,11 @@
-#include "test_simulation_core_regressions.h"
-
 #include "../support/simulation_test_support.h"
 #include <ioj/sim/capital_ships/sim.h>
 #include <ioj/sim/player/sim.h>
 #include <ioj/sim/testing/entity_observations.h>
 
 namespace ioj::sim {
+enum class SimulationCoreRegressionScenario : std::uint8_t { FixedTickLifecycle, DamageLifecycle };
+
 namespace {
 constexpr double nonlethal_damage_time{0.05};
 constexpr double lethal_damage_time{0.15};
@@ -108,7 +108,8 @@ void run_worldless_simulation_core_regression(tests::SimulationFixture const& co
     EXPECT_EQ(0, harness.get_ledger().count_kills()) << "Unattributed death does not create a kill";
 }
 
-void run_worldless_collision_damage(tests::SimulationFixture const& config) {
+TEST(WorldlessSpaceGameSimulation, Entities_CollisionOverlapDamagesAndKills) {
+    auto const config{tests::make_fixture()};
     struct Sample {
         std::int32_t player_health{};
         std::int32_t capital_health{};
@@ -195,4 +196,14 @@ void run_worldless_collision_damage(tests::SimulationFixture const& config) {
                 LifeState::Unknown)
         << "Collision death is environmental";
 }
+TEST(WorldlessSpaceGameSimulation, Orchestrator_FixedStepPauseResumeAndCatchUp) {
+    run_worldless_simulation_core_regression(tests::make_fixture(),
+                                             SimulationCoreRegressionScenario::FixedTickLifecycle);
+}
+
+TEST(WorldlessSpaceGameSimulation, Entities_NonLethalThenLethalDamageCleansUpAtomically) {
+    run_worldless_simulation_core_regression(tests::make_fixture(),
+                                             SimulationCoreRegressionScenario::DamageLifecycle);
+}
+
 }

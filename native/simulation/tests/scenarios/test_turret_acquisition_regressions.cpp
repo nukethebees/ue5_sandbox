@@ -1,10 +1,14 @@
-#include "test_turret_acquisition_regressions.h"
-
 #include "../support/simulation_test_support.h"
 #include <ioj/sim/lasers/sim.h>
 #include <ioj/sim/turrets/sim.h>
 
 namespace ioj::sim {
+enum class TurretAcquisitionRegressionScenario : std::uint8_t {
+    NoOtherEntity,
+    FriendlyOnly,
+    EnemyOutsideRadius,
+};
+
 void run_worldless_turret_acquisition_regression(
     tests::SimulationFixture const& config, TurretAcquisitionRegressionScenario const scenario) {
     auto data{tests::make_simulation_data(config)};
@@ -38,6 +42,21 @@ void run_worldless_turret_acquisition_regression(
     }
     EXPECT_EQ(0, harness.get_simulation().get_lasers().get_number_spawned())
         << "Turrets without valid targets do not fire";
+}
+
+TEST(WorldlessSpaceGameSimulation, Turrets_NoOtherEntityRemainsIdle) {
+    run_worldless_turret_acquisition_regression(tests::make_fixture(),
+                                                TurretAcquisitionRegressionScenario::NoOtherEntity);
+}
+
+TEST(WorldlessSpaceGameSimulation, Turrets_FriendlyOnlyRemainsIdle) {
+    run_worldless_turret_acquisition_regression(tests::make_fixture(),
+                                                TurretAcquisitionRegressionScenario::FriendlyOnly);
+}
+
+TEST(WorldlessSpaceGameSimulation, Turrets_EnemyOutsideDetectionRadiusRemainsIdle) {
+    run_worldless_turret_acquisition_regression(
+        tests::make_fixture(), TurretAcquisitionRegressionScenario::EnemyOutsideRadius);
 }
 
 }

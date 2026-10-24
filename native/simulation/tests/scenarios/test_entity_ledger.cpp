@@ -1,9 +1,9 @@
-#include "test_entity_ledger.h"
-
 #include "../support/simulation_test_support.h"
 #include <ioj/sim/capital_ships/sim.h>
 
 namespace ioj::sim {
+enum class EntityLedgerScenario : std::uint8_t { TeamCounts, OnePlayerKill, TwoPlayerKills };
+
 namespace {
 constexpr std::array<std::int32_t, 6> expected_team_counts{0, 1, 2, 3, 4, 5};
 }
@@ -117,6 +117,20 @@ void run_worldless_entity_ledger_scenario(tests::SimulationFixture const& config
     EXPECT_EQ(expected_kills, final.total_kills) << "Total kill count remains correct";
     EXPECT_EQ(initial_alive_count - expected_kills, final.alive_count)
         << "Alive count remains correct";
+}
+
+TEST(WorldlessSpaceGameSimulation, EntityLedger_CountsTeams) {
+    run_worldless_entity_ledger_scenario(tests::make_fixture(), EntityLedgerScenario::TeamCounts);
+}
+
+TEST(WorldlessSpaceGameSimulation, EntityLedger_OnePlayerKill) {
+    run_worldless_entity_ledger_scenario(tests::make_fixture(),
+                                         EntityLedgerScenario::OnePlayerKill);
+}
+
+TEST(WorldlessSpaceGameSimulation, EntityLedger_TwoPlayerKills) {
+    run_worldless_entity_ledger_scenario(tests::make_fixture(),
+                                         EntityLedgerScenario::TwoPlayerKills);
 }
 
 }

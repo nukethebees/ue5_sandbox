@@ -1,5 +1,3 @@
-#include "test_fighters_intercept_capital.h"
-
 #include "../support/simulation_test_support.h"
 #include <ioj/sim/capital_ships/sim.h>
 #include <ioj/sim/fighters/sim.h>
@@ -12,7 +10,8 @@ namespace fighters_intercept_test {
 inline constexpr std::int32_t collision_resilient_health{1'000'000};
 }
 
-void run_worldless_fighters_intercept_capital(tests::SimulationFixture const& config) {
+TEST(WorldlessSpaceGameSimulation, Fighters_InterceptCapital) {
+    auto const config{tests::make_fixture()};
     auto data{tests::make_simulation_data(config)};
     data.fighters.health = fighters_intercept_test::collision_resilient_health;
     auto const green{tests::add_capital_spawn(data,

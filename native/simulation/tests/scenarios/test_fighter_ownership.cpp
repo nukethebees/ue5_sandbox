@@ -1,5 +1,3 @@
-#include "test_fighter_ownership.h"
-
 #include "../support/simulation_test_support.h"
 #include <ioj/sim/capital_ships/sim.h>
 #include <ioj/sim/fighters/sim.h>
@@ -13,6 +11,8 @@ The assumption is that there is one wave of fighters total.
 */
 
 namespace ioj::sim {
+enum class FighterOwnershipScenario : std::uint8_t { KillFightersOnly, KillCapital, All };
+
 namespace fighter_ownership_test {
 inline constexpr std::int32_t collision_resilient_health{1'000'000};
 }
@@ -20,7 +20,8 @@ inline constexpr std::int32_t collision_resilient_health{1'000'000};
 /* **************************************** */
 // Simultaneous capital deaths
 /* **************************************** */
-void run_worldless_simultaneous_capital_reassignment(tests::SimulationFixture const& config) {
+TEST(WorldlessSpaceGameSimulation, Capitals_SimultaneousReassignment) {
+    auto const config{tests::make_fixture()};
     struct Sample {
         std::vector<EntityId> capitals{};
         std::vector<std::vector<EntityId>> owned_fighters{};
@@ -282,4 +283,17 @@ void run_worldless_fighter_ownership(tests::SimulationFixture const& config,
     EXPECT_TRUE(fighter_kill_checked) << "Fighter removal is checked";
     EXPECT_TRUE(capital_kill_checked) << "Capital removal is checked";
 }
+TEST(WorldlessSpaceGameSimulation, FighterOwnership_KillFightersOnly) {
+    run_worldless_fighter_ownership(tests::make_fixture(),
+                                    FighterOwnershipScenario::KillFightersOnly);
+}
+
+TEST(WorldlessSpaceGameSimulation, FighterOwnership_KillCapital) {
+    run_worldless_fighter_ownership(tests::make_fixture(), FighterOwnershipScenario::KillCapital);
+}
+
+TEST(WorldlessSpaceGameSimulation, FighterOwnership_All) {
+    run_worldless_fighter_ownership(tests::make_fixture(), FighterOwnershipScenario::All);
+}
+
 }

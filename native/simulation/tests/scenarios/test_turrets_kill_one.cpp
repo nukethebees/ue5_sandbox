@@ -1,5 +1,3 @@
-#include "test_turrets_kill_one.h"
-
 #include "../support/simulation_test_support.h"
 #include <ioj/sim/lasers/sim.h>
 #include <ioj/sim/testing/entity_observations.h>
@@ -8,6 +6,8 @@
 #include <limits>
 
 namespace ioj::sim {
+enum class TurretCombatScenario : std::uint8_t { KillEnemy, ZeroDamage };
+
 namespace {
 void add_worldless_turrets(LevelSimInitData& data,
                            std::span<Vector3f const> const locations,
@@ -74,7 +74,8 @@ void run_worldless_turret_combat(tests::SimulationFixture const& config,
     }
 }
 
-void run_worldless_turret_line_of_sight_blocking(tests::SimulationFixture const& config) {
+TEST(WorldlessSpaceGameSimulation, Turrets_LineOfSightBlocking) {
+    auto const config{tests::make_fixture()};
     auto data{tests::make_simulation_data(config)};
     data.capital_ships.fighter_spawn_slots = 0;
     data.capital_ships.fighter_spawn_slots_relative_transforms.clear();
@@ -101,7 +102,8 @@ void run_worldless_turret_line_of_sight_blocking(tests::SimulationFixture const&
         << "Turrets stop firing after line of sight is blocked";
 }
 
-void run_worldless_turret_search_requires_line_of_sight(tests::SimulationFixture const& config) {
+TEST(WorldlessSpaceGameSimulation, Turrets_SearchRequiresLineOfSight) {
+    auto const config{tests::make_fixture()};
     auto data{tests::make_simulation_data(config)};
     data.capital_ships.fighter_spawn_slots = 0;
     data.capital_ships.fighter_spawn_slots_relative_transforms.clear();
@@ -127,6 +129,14 @@ void run_worldless_turret_search_requires_line_of_sight(tests::SimulationFixture
                   1.f)
             << "Blue turret skips the blocked enemy";
     }
+}
+
+TEST(WorldlessSpaceGameSimulation, Turrets_KillEnemy) {
+    run_worldless_turret_combat(tests::make_fixture(), TurretCombatScenario::KillEnemy);
+}
+
+TEST(WorldlessSpaceGameSimulation, Turrets_ZeroDamage) {
+    run_worldless_turret_combat(tests::make_fixture(), TurretCombatScenario::ZeroDamage);
 }
 
 }

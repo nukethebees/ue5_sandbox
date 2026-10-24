@@ -1,5 +1,3 @@
-#include "test_spatial_query_empty.h"
-
 #include "../support/collision_agent_storage.h"
 #include "../support/simulation_test_support.h"
 #include <ioj/frame_memory_resource.h>
@@ -8,7 +6,8 @@
 #include <array>
 
 namespace ioj::sim {
-void run_worldless_spatial_query_empty(tests::SimulationFixture const& config) {
+TEST(WorldlessSpaceGameSimulation, SpatialQuery_EmptyBatchesAndWorld) {
+    auto const config{tests::make_fixture()};
     alignas(FrameMemoryResource::backing_alignment) std::array<std::byte, 64 * 1024>
         query_backing{};
     FrameMemoryResource query_memory{query_backing};
@@ -36,7 +35,8 @@ void run_worldless_spatial_query_empty(tests::SimulationFixture const& config) {
         << "Empty world has no arbitrary enemy";
 }
 
-void run_worldless_spatial_query_range(tests::SimulationFixture const& config) {
+TEST(WorldlessSpaceGameSimulation, SpatialQuery_TeamAndInclusiveRadiusFiltering) {
+    auto const config{tests::make_fixture()};
     alignas(FrameMemoryResource::backing_alignment) std::array<std::byte, 64 * 1024>
         query_backing{};
     FrameMemoryResource query_memory{query_backing};
