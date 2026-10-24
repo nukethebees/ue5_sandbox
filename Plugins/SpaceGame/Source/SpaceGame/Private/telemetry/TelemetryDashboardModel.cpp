@@ -27,7 +27,7 @@ auto read_summary(FString const& path) -> std::expected<FTelemetryRunSummary, FS
     }
     double schema{};
     if (!root->TryGetNumberField(TEXT("schema_version"), schema) ||
-        schema != ioj::sim::LevelTelemetryReport::schema_version) {
+        schema != ioj::sim::LevelTelemetryRunRecord::schema_version) {
         return std::unexpected{
             FString::Printf(TEXT("Unsupported or missing schema in '%s'"), *path)};
     }
@@ -120,8 +120,8 @@ auto FTelemetryRunAnalysis::find_metric(ETelemetryDashboardMetric const metric) 
 auto analyze_level_telemetry_run(ioj::sim::LevelTelemetryReport const& record)
     -> FTelemetryRunAnalysis {
     auto const native{::ioj::sim::telemetry::analyze({
-        .tick_rate_hz = record.tick_rate_hz,
-        .battle_samples = record.battle_samples,
+        .tick_rate_hz = record.run.tick_rate_hz,
+        .battle_samples = record.run.battle_samples,
     })};
     static_assert(static_cast<std::uint8_t>(::ioj::sim::telemetry::Metric::Count) ==
                   static_cast<std::uint8_t>(ETelemetryDashboardMetric::COUNT));
@@ -246,7 +246,7 @@ auto FTelemetryRunCatalog::get_baseline_candidates() const -> TArray<FTelemetryR
     if (!selected_record_.IsSet()) {
         return result;
     }
-    FName const selected_level{UTF8_TO_TCHAR(selected_record_->metadata.level_id.c_str())};
+    FName const selected_level{UTF8_TO_TCHAR(selected_record_->run.metadata.level_id.c_str())};
     for (auto const& run : all_) {
         if (run.run_id != selected_run_id_ && run.level_id == selected_level) {
             result.Add(run);
@@ -284,7 +284,7 @@ void FTelemetryRunCatalog::load_selection() {
     }
     selected_record_ = MoveTemp(*record);
     if (baseline_record_.IsSet() &&
-        baseline_record_->metadata.level_id != selected_record_->metadata.level_id) {
+        baseline_record_->run.metadata.level_id != selected_record_->run.metadata.level_id) {
         baseline_run_id_.Reset();
         baseline_record_.Reset();
     }

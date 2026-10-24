@@ -4,14 +4,14 @@
 #include <ioj/sim/telemetry/run_record.h>
 
 namespace ioj::sim {
-struct LevelTelemetryReport : LevelTelemetryRunRecord {
+struct LevelTelemetryReport {
     LevelTelemetryReport() = default;
     explicit LevelTelemetryReport(LevelTelemetryRunRecord record);
 
+    LevelTelemetryRunRecord run{};
     LevelTelemetryEnvironment environment{};
-    std::string launch_state{"running"};
-    std::string results_navigation{"none"};
+    bool started_paused{};
+    bool opens_telemetry{};
     bool presentation_enabled{};
-    std::string presentation_mode{"simulation_only"};
 };
 }

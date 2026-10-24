@@ -832,13 +832,13 @@ auto FLevelTelemetryRunRecordTest::RunTest(FString const&) -> bool {
     auto const round_trip{parse_current_root()};
     if (TestTrue(TEXT("Current report round trips"), round_trip.has_value())) {
         TestEqual(TEXT("Round trip preserves the run id"),
-                  round_trip->metadata.run_id,
-                  report.metadata.run_id);
+                  round_trip->run.metadata.run_id,
+                  report.run.metadata.run_id);
         TestEqual(TEXT("Round trip preserves completed ticks"),
-                  round_trip->completion.completed_ticks,
-                  report.completion.completed_ticks);
-        auto const& actual{round_trip->battle_samples};
-        auto const& expected{report.battle_samples};
+                  round_trip->run.completion.completed_ticks,
+                  report.run.completion.completed_ticks);
+        auto const& actual{round_trip->run.battle_samples};
+        auto const& expected{report.run.battle_samples};
         TestTrue(TEXT("Round trip preserves force and combat history"),
                  actual.size() == expected.size() && !actual.empty() &&
                      actual.back().alive == expected.back().alive &&
@@ -855,12 +855,12 @@ auto FLevelTelemetryRunRecordTest::RunTest(FString const&) -> bool {
     series_json->SetStringField(TEXT("requested_time_scale"), TEXT("discarded"));
     battle_samples_json.Last()->AsObject()->SetStringField(TEXT("range_query_count"),
                                                            TEXT("discarded"));
-    for (int32 version{1}; version < ioj::sim::LevelTelemetryReport::schema_version; ++version) {
+    for (int32 version{1}; version < ioj::sim::LevelTelemetryRunRecord::schema_version; ++version) {
         root->SetNumberField(TEXT("schema_version"), version);
         TestFalse(TEXT("Reports from the retired mission schema are rejected"),
                   parse_current_root().has_value());
     }
-    root->SetNumberField(TEXT("schema_version"), ioj::sim::LevelTelemetryReport::schema_version);
+    root->SetNumberField(TEXT("schema_version"), ioj::sim::LevelTelemetryRunRecord::schema_version);
     TestFalse(TEXT("Malformed JSON returns an error"),
               ioj::sim::deserialize_level_telemetry_report("{").has_value());
     root->SetNumberField(TEXT("schema_version"), 999);
@@ -931,7 +931,7 @@ auto FLevelTelemetryRunRecordTest::RunTest(FString const&) -> bool {
     completion_json->SetField(TEXT("completed_ticks"), original_completed_ticks);
 
     auto precision_unsafe_report{report};
-    precision_unsafe_report.completion.completed_ticks = 9007199254740994ULL;
+    precision_unsafe_report.run.completion.completed_ticks = 9007199254740994ULL;
     TestTrue(TEXT("Serialization rejects precision-unsafe uint64 values"),
              !ioj::sim::serialize_level_telemetry_report(precision_unsafe_report).has_value());
 

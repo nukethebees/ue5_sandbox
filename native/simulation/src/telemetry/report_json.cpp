@@ -110,6 +110,18 @@ auto has_value(Json const& object, std::string_view const field) -> bool {
     return found != object.end() && !found->is_null();
 }
 
+auto read_choice(Json const& object,
+                 std::string_view const field,
+                 std::string_view const path,
+                 std::string_view const enabled,
+                 std::string_view const disabled) -> bool {
+    auto const value{read_field<std::string>(object, field, path)};
+    if (value != enabled && value != disabled) {
+        fail(field_path(path, field), std::format("unknown value '{}'", value));
+    }
+    return value == enabled;
+}
+
 template <typename Parse>
 auto read_enum(Json const& object,
                std::string_view const field,
@@ -349,7 +361,7 @@ void read_tick_series(Json const& source, LevelTelemetryTickSeries& output) {
 }
 
 auto validate_report(LevelTelemetryReport const& report) -> std::expected<void, std::string> {
-    if (auto const result{telemetry::validate_level_telemetry_json_record(report)}; !result) {
+    if (auto const result{telemetry::validate_level_telemetry_json_record(report.run)}; !result) {
         return result;
     }
     auto const& environment{report.environment};
@@ -360,7 +372,7 @@ auto validate_report(LevelTelemetryReport const& report) -> std::expected<void, 
         return std::unexpected{
             "environment.total_physical_memory_bytes cannot be represented exactly in JSON"};
     }
-    auto const& completion{report.completion};
+    auto const& completion{report.run.completion};
     if (!try_parse_serialized_level_telemetry_run_end_reason(
             to_serialized_string(completion.reason))) {
         return std::unexpected{"completion contains an invalid enum value"};
@@ -370,20 +382,21 @@ auto validate_report(LevelTelemetryReport const& report) -> std::expected<void, 
 
 auto read_report(Json const& root) -> LevelTelemetryReport {
     auto const schema{read_field<std::int32_t>(root, "schema_version", "")};
-    if (schema != LevelTelemetryReport::schema_version) {
+    if (schema != LevelTelemetryRunRecord::schema_version) {
         fail("schema_version", "unsupported report schema");
     }
 
     LevelTelemetryReport report;
-    report.metadata.run_id = read_field<std::string>(root, "run_id", "");
+    report.run.metadata.run_id = read_field<std::string>(root, "run_id", "");
     auto const& level{required_object(root, "level", "")};
-    report.metadata.map_name = read_field<std::string>(level, "map_name", "level");
-    report.metadata.level_id = read_field<std::string>(level, "level_id", "level");
-    report.metadata.level_display_name = read_field<std::string>(level, "display_name", "level");
+    report.run.metadata.map_name = read_field<std::string>(level, "map_name", "level");
+    report.run.metadata.level_id = read_field<std::string>(level, "level_id", "level");
+    report.run.metadata.level_display_name =
+        read_field<std::string>(level, "display_name", "level");
     auto const& timestamps{required_object(root, "timestamps", "")};
-    report.metadata.launched_utc =
+    report.run.metadata.launched_utc =
         read_field<std::string>(timestamps, "launched_utc", "timestamps");
-    report.completion.completed_utc =
+    report.run.completion.completed_utc =
         read_field<std::string>(timestamps, "completed_utc", "timestamps");
     report.environment = read_environment(required_object(root, "environment", ""));
 
@@ -393,29 +406,34 @@ auto read_report(Json const& root) -> LevelTelemetryReport {
     if (!frequency) {
         fail("simulation.tick_rate_hz", "frequency must be finite and at least 1e-300 Hz");
     }
-    report.tick_rate_hz = *frequency;
+    report.run.tick_rate_hz = *frequency;
     auto const read_simulation{[&simulation]<typename T>(T& field, std::string_view const name) {
         field = read_field<T>(simulation, name, "simulation");
     }};
-    read_simulation(report.metadata.level_source, "level_source");
-    read_simulation(report.metadata.settings_source, "settings_source");
-    read_simulation(report.launch_state, "launch_state");
-    read_simulation(report.presentation_mode, "presentation_mode");
-    read_simulation(report.results_navigation, "results_navigation");
+    read_simulation(report.run.metadata.level_source, "level_source");
+    read_simulation(report.run.metadata.settings_source, "settings_source");
+    report.started_paused =
+        read_choice(simulation, "launch_state", "simulation", "paused", "running");
+    report.opens_telemetry =
+        read_choice(simulation, "results_navigation", "simulation", "telemetry", "none");
     read_simulation(report.presentation_enabled, "presentation_enabled");
-    read_simulation(report.metadata.stop_when_battle_resolved, "stop_when_battle_resolved");
-    report.metadata.requested_duration_seconds =
+    if (report.presentation_enabled !=
+        read_choice(simulation, "presentation_mode", "simulation", "visual", "simulation_only")) {
+        fail("simulation.presentation_mode", "mode disagrees with presentation_enabled");
+    }
+    read_simulation(report.run.metadata.stop_when_battle_resolved, "stop_when_battle_resolved");
+    report.run.metadata.requested_duration_seconds =
         read_duration(simulation, "requested_duration_seconds", "simulation");
 
     auto const& completion{required_object(root, "completion", "")};
-    auto& result{report.completion};
+    auto& result{report.run.completion};
     result.reason = read_enum(
         completion, "reason", "completion", try_parse_serialized_level_telemetry_run_end_reason);
     result.completed_ticks = read_field<SimTick>(completion, "completed_ticks", "completion");
 
-    read_tick_series(required_object(root, "tick_series", ""), report.tick_series);
+    read_tick_series(required_object(root, "tick_series", ""), report.run.tick_series);
     auto const& samples{required_array(root, "battle_samples", "")};
-    report.battle_samples.reserve(samples.size());
+    report.run.battle_samples.reserve(samples.size());
     auto const count{samples.size()};
     for (std::size_t index{}; index < count; ++index) {
         auto const& source{samples[index]};
@@ -430,7 +448,7 @@ auto read_report(Json const& root) -> LevelTelemetryReport {
         if (source.contains("lasers_fired")) {
             sample.lasers_fired = read_field<std::int32_t>(source, "lasers_fired", path);
         }
-        report.battle_samples.push_back(std::move(sample));
+        report.run.battle_samples.push_back(std::move(sample));
     }
     return report;
 }
@@ -442,15 +460,15 @@ auto serialize_level_telemetry_report(LevelTelemetryReport const& report)
         return std::unexpected{valid.error()};
     }
     try {
-        auto const& metadata{report.metadata};
-        auto const& result{report.completion};
+        auto const& metadata{report.run.metadata};
+        auto const& result{report.run.completion};
         Json completion{
             {"reason", to_serialized_string(result.reason)},
             {"completed_ticks", result.completed_ticks},
         };
 
         auto samples = Json::array();
-        for (auto const& sample : report.battle_samples) {
+        for (auto const& sample : report.run.battle_samples) {
             samples.push_back({{"completed_tick", sample.completed_tick},
                                {"alive", write_counts(sample.alive)},
                                {"combat", write_combat(sample.combat)},
@@ -458,7 +476,7 @@ auto serialize_level_telemetry_report(LevelTelemetryReport const& report)
                                {"lasers_fired", sample.lasers_fired}});
         }
         Json root{
-            {"schema_version", LevelTelemetryReport::schema_version},
+            {"schema_version", LevelTelemetryRunRecord::schema_version},
             {"run_id", metadata.run_id},
             {"level",
              {{"map_name", metadata.map_name},
@@ -468,17 +486,17 @@ auto serialize_level_telemetry_report(LevelTelemetryReport const& report)
              {{"launched_utc", metadata.launched_utc}, {"completed_utc", result.completed_utc}}},
             {"environment", write_environment(report.environment)},
             {"simulation",
-             {{"tick_rate_hz", report.tick_rate_hz.get_hz()},
+             {{"tick_rate_hz", report.run.tick_rate_hz.get_hz()},
               {"level_source", metadata.level_source},
               {"settings_source", metadata.settings_source},
-              {"launch_state", report.launch_state},
-              {"presentation_mode", report.presentation_mode},
-              {"results_navigation", report.results_navigation},
+              {"launch_state", report.started_paused ? "paused" : "running"},
+              {"presentation_mode", report.presentation_enabled ? "visual" : "simulation_only"},
+              {"results_navigation", report.opens_telemetry ? "telemetry" : "none"},
               {"presentation_enabled", report.presentation_enabled},
               {"stop_when_battle_resolved", metadata.stop_when_battle_resolved},
               {"requested_duration_seconds", write_duration(metadata.requested_duration_seconds)}}},
             {"completion", std::move(completion)},
-            {"tick_series", write_tick_series(report.tick_series)},
+            {"tick_series", write_tick_series(report.run.tick_series)},
             {"battle_samples", std::move(samples)},
         };
         return root.dump(2);

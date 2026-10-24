@@ -89,7 +89,7 @@ void LevelTelemetryManager::reset() {
     active_entity_count_data_.reset();
     cumulative_kill_count_data_.reset();
     state_ = State::Uninitialised;
-    next_battle_sample_seconds_ = 0.0;
+    battle_sample_timer_.reset();
 }
 
 /* **************************************** */
@@ -101,10 +101,9 @@ void LevelTelemetryManager::tick() {
     sample_live_series();
 
     auto const simulated_seconds{clock_.get_simulation_time()};
-    if (simulated_seconds + 1.e-8 >= next_battle_sample_seconds_) {
+    if (battle_sample_timer_.try_consume(simulated_seconds + 1.e-8)) {
         sample_series();
         sample_battle_state();
-        next_battle_sample_seconds_ = std::floor(simulated_seconds) + 1.0;
     }
 }
 

@@ -945,13 +945,10 @@ auto ATestBatchOrchestrator::take_finalized_telemetry_report()
     }
     ioj::sim::LevelTelemetryReport report{std::move(record.value())};
     report.environment = telemetry_environment_;
-    report.launch_state =
-        launch_options_.launch_mode == ioj::ELevelLaunchMode::Paused ? "paused" : "running";
-    report.results_navigation =
-        launch_options_.results_navigation == ioj::ELevelResultsNavigation::Telemetry ? "telemetry"
-                                                                                      : "none";
+    report.started_paused = launch_options_.launch_mode == ioj::ELevelLaunchMode::Paused;
+    report.opens_telemetry =
+        launch_options_.results_navigation == ioj::ELevelResultsNavigation::Telemetry;
     report.presentation_enabled = presentation_enabled;
-    report.presentation_mode = presentation_enabled ? "visual" : "simulation_only";
     return report;
 }
 void ATestBatchOrchestrator::persist_finalized_telemetry_run() {
@@ -963,7 +960,7 @@ void ATestBatchOrchestrator::persist_finalized_telemetry_run() {
         return;
     }
     auto const& report{finalized_report.GetValue()};
-    auto const run_id{report.metadata.run_id};
+    auto const run_id{report.run.metadata.run_id};
     auto const path{write_level_telemetry_run(report, level_telemetry_runs_directory())};
     if (path) {
         UE_LOG(LogSandbox, Display, TEXT("Wrote level telemetry run to '%s'"), **path);

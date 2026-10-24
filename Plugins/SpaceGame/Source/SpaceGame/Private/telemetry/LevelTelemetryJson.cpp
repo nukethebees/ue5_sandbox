@@ -38,13 +38,14 @@ auto write_level_telemetry_run(ioj::sim::LevelTelemetryReport const& record,
             FString::Printf(TEXT("Could not create output directory '%s'"), *output_directory)};
     }
 
-    FString timestamp{UTF8_TO_TCHAR(record.metadata.launched_utc.c_str())};
+    FString timestamp{UTF8_TO_TCHAR(record.run.metadata.launched_utc.c_str())};
     timestamp.ReplaceCharInline(TEXT(':'), TEXT('-'));
-    FString level_name{UTF8_TO_TCHAR(
-        (record.metadata.level_id.empty() ? record.metadata.map_name : record.metadata.level_id)
-            .c_str())};
+    FString level_name{
+        UTF8_TO_TCHAR((record.run.metadata.level_id.empty() ? record.run.metadata.map_name
+                                                            : record.run.metadata.level_id)
+                          .c_str())};
     level_name = FPaths::MakeValidFileName(level_name);
-    auto const short_run_id{FString{UTF8_TO_TCHAR(record.metadata.run_id.c_str())}.Left(8)};
+    auto const short_run_id{FString{UTF8_TO_TCHAR(record.run.metadata.run_id.c_str())}.Left(8)};
     auto const filename{
         FString::Printf(TEXT("%s_%s_%s.json"), *timestamp, *level_name, *short_run_id)};
     auto const path{FPaths::Combine(output_directory, filename)};

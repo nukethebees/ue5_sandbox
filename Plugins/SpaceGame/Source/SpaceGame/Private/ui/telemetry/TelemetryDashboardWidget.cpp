@@ -133,25 +133,26 @@ void UTelemetryDashboardWidget::rebuild_state() {
         return;
     }
     auto const level{FTelemetryRunSummary{
-        .map_name = UTF8_TO_TCHAR(record->metadata.map_name.c_str()),
-        .level_id = FName{UTF8_TO_TCHAR(record->metadata.level_id.c_str())},
-        .level_display_name = UTF8_TO_TCHAR(record->metadata.level_display_name.c_str())}
+        .map_name = UTF8_TO_TCHAR(record->run.metadata.map_name.c_str()),
+        .level_id = FName{UTF8_TO_TCHAR(record->run.metadata.level_id.c_str())},
+        .level_display_name = UTF8_TO_TCHAR(record->run.metadata.level_display_name.c_str())}
                          .level_label()};
-    auto const completion_reason{to_fstring(sim::to_serialized_string(record->completion.reason))};
+    auto const completion_reason{
+        to_fstring(sim::to_serialized_string(record->run.completion.reason))};
     state_.header = FText::FromString(FString::Printf(
         TEXT("%s\nLAUNCHED // %s    END // %s\nMODE // %s    DURATION // %s\nBUILD // %s    "
              "PLATFORM // %s\nRUN // %s"),
         *level,
-        UTF8_TO_TCHAR(record->metadata.launched_utc.c_str()),
+        UTF8_TO_TCHAR(record->run.metadata.launched_utc.c_str()),
         *completion_reason,
-        *ioj::to_fstring(record->presentation_mode),
-        record->metadata.requested_duration_seconds.has_value()
+        record->presentation_enabled ? TEXT("visual") : TEXT("simulation_only"),
+        record->run.metadata.requested_duration_seconds.has_value()
             ? *FString::Printf(TEXT("%.3fs"),
-                               record->metadata.requested_duration_seconds->get_seconds())
+                               record->run.metadata.requested_duration_seconds->get_seconds())
             : TEXT("unlimited"),
         *ioj::to_fstring(record->environment.build_configuration),
         *ioj::to_fstring(record->environment.platform),
-        UTF8_TO_TCHAR(record->metadata.run_id.c_str())));
+        UTF8_TO_TCHAR(record->run.metadata.run_id.c_str())));
     state_.analysis = analyze_level_telemetry_run(*record);
     auto const* const baseline{catalog_.get_baseline_record()};
     if (baseline) {
@@ -160,13 +161,13 @@ void UTelemetryDashboardWidget::rebuild_state() {
         if (baseline->environment.build_version != record->environment.build_version) {
             warnings.Add(TEXT("different builds"));
         }
-        if (baseline->metadata.level_source != record->metadata.level_source) {
+        if (baseline->run.metadata.level_source != record->run.metadata.level_source) {
             warnings.Add(TEXT("different level source"));
         }
-        if (baseline->metadata.settings_source != record->metadata.settings_source) {
+        if (baseline->run.metadata.settings_source != record->run.metadata.settings_source) {
             warnings.Add(TEXT("different settings source"));
         }
-        if (baseline->presentation_mode != record->presentation_mode) {
+        if (baseline->presentation_enabled != record->presentation_enabled) {
             warnings.Add(TEXT("different presentation modes"));
         }
         if (!warnings.IsEmpty()) {
@@ -181,19 +182,20 @@ void UTelemetryDashboardWidget::rebuild_state() {
         TEXT(
             "COMPLETED TICKS  //  %llu\nSIMULATED TIME  //  %.3fs\nFINAL FORCES  //  "
             "ENTITIES %d  LASERS %d\nFINAL COUNTERS  //  SPAWN %d  DESTROY %d  KILLS %d  FIRED %d"),
-        record->completion.completed_ticks,
-        static_cast<double>(record->completion.completed_ticks) / record->tick_rate_hz.get_hz(),
-        last_int(record->tick_series.active_entities),
-        last_int(record->tick_series.active_lasers),
-        last_int(record->tick_series.spawned_entities),
-        last_int(record->tick_series.destroyed_entities),
-        last_int(record->tick_series.kills),
-        last_int(record->tick_series.lasers_fired))};
-    if (record->completion.reason != sim::LevelTelemetryRunEndReason::MissionSucceeded &&
-        record->completion.reason != sim::LevelTelemetryRunEndReason::MissionFailed) {
+        record->run.completion.completed_ticks,
+        static_cast<double>(record->run.completion.completed_ticks) /
+            record->run.tick_rate_hz.get_hz(),
+        last_int(record->run.tick_series.active_entities),
+        last_int(record->run.tick_series.active_lasers),
+        last_int(record->run.tick_series.spawned_entities),
+        last_int(record->run.tick_series.destroyed_entities),
+        last_int(record->run.tick_series.kills),
+        last_int(record->run.tick_series.lasers_fired))};
+    if (record->run.completion.reason != sim::LevelTelemetryRunEndReason::MissionSucceeded &&
+        record->run.completion.reason != sim::LevelTelemetryRunEndReason::MissionFailed) {
         summary += TEXT("\nMISSION  //  INCOMPLETE");
     }
-    if (record->battle_samples.empty()) {
+    if (record->run.battle_samples.empty()) {
         summary += TEXT("\nCOMBAT DETAILS  //  UNAVAILABLE");
     } else {
         auto sum_counts = [](auto const& counts) {
@@ -206,11 +208,11 @@ void UTelemetryDashboardWidget::rebuild_state() {
             }
             return total;
         };
-        auto const& combat{record->battle_samples.back().combat};
+        auto const& combat{record->run.battle_samples.back().combat};
         summary +=
             FString::Printf(TEXT("\nBATTLE SAMPLES // %d\nCOMBAT  //  SHOTS %llu  HITS %llu  "
                                  "DAMAGE %.0f  KILLS %llu  LOSSES %llu"),
-                            static_cast<int32>(record->battle_samples.size()),
+                            static_cast<int32>(record->run.battle_samples.size()),
                             sum_counts(combat.shots),
                             sum_counts(combat.hits),
                             sum_counts(combat.damage_dealt),

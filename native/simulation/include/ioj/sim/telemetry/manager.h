@@ -1,5 +1,6 @@
 #pragma once
 #include "ioj/sim/telemetry/snapshot.h"
+#include <ioj/periodic_timer.h>
 #include <ioj/sim/entities/entity_ledger.h>
 #include <ioj/sim/sim_tick.h>
 #include <ioj/sim/telemetry/block_history.h>
@@ -111,7 +112,7 @@ class LevelTelemetryManager {
 
     State state_{State::Uninitialised};
 
-    double next_battle_sample_seconds_{};
+    PeriodicTimer battle_sample_timer_{PositiveFinite<double>::make(1.0)};
 };
 
 } // namespace ioj::sim

@@ -4,5 +4,5 @@
 
 namespace ioj::sim {
 LevelTelemetryReport::LevelTelemetryReport(LevelTelemetryRunRecord record)
-    : LevelTelemetryRunRecord{std::move(record)} {}
+    : run{std::move(record)} {}
 }

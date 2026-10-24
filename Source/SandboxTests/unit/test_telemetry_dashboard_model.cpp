@@ -15,12 +15,12 @@ namespace {
 auto make_catalog_record(FString run_id, FString level, FString launch)
     -> ioj::sim::LevelTelemetryReport {
     ioj::sim::LevelTelemetryReport record;
-    record.metadata.run_id = TCHAR_TO_UTF8(*run_id);
-    record.metadata.map_name = TCHAR_TO_UTF8(*level);
-    record.metadata.level_id = TCHAR_TO_UTF8(*level);
-    record.metadata.level_display_name = TCHAR_TO_UTF8(*level);
-    record.metadata.launched_utc = TCHAR_TO_UTF8(*launch);
-    record.completion.completed_utc = record.metadata.launched_utc;
+    record.run.metadata.run_id = TCHAR_TO_UTF8(*run_id);
+    record.run.metadata.map_name = TCHAR_TO_UTF8(*level);
+    record.run.metadata.level_id = TCHAR_TO_UTF8(*level);
+    record.run.metadata.level_display_name = TCHAR_TO_UTF8(*level);
+    record.run.metadata.launched_utc = TCHAR_TO_UTF8(*launch);
+    record.run.completion.completed_utc = record.run.metadata.launched_utc;
     return record;
 }
 }
@@ -45,11 +45,11 @@ TEST_CLASS(TelemetryDashboardAnalysis, "Sandbox.UnitTests")
     TEST_METHOD(MissingBattleSamplesDoNotInventMetrics)
     {
         ioj::sim::LevelTelemetryReport record;
-        record.completion.completed_ticks = 270;
-        record.tick_series.spawned_entities.add(0, 0);
-        record.tick_series.spawned_entities.add(90, 10);
-        record.tick_series.spawned_entities.add(150, 20);
-        record.tick_series.spawned_entities.add(270, 40);
+        record.run.completion.completed_ticks = 270;
+        record.run.tick_series.spawned_entities.add(0, 0);
+        record.run.tick_series.spawned_entities.add(90, 10);
+        record.run.tick_series.spawned_entities.add(150, 20);
+        record.run.tick_series.spawned_entities.add(270, 40);
 
         auto const analysis{analyze_level_telemetry_run(record)};
         for (auto const& metric : analysis.metrics) {
@@ -77,7 +77,7 @@ TEST_CLASS(TelemetryDashboardAnalysis, "Sandbox.UnitTests")
         end.combat.damage_dealt[0][0] = 50;
         end.active_lasers = 4;
         end.lasers_fired = 15;
-        record.battle_samples = {begin, end};
+        record.run.battle_samples = {begin, end};
 
         auto const analysis{analyze_level_telemetry_run(record)};
         auto const* active{analysis.find_metric(ETelemetryDashboardMetric::ActiveEntities)};
@@ -95,7 +95,7 @@ TEST_CLASS(TelemetryDashboardAnalysis, "Sandbox.UnitTests")
                                  analysis.battle_damage_dealt == TArray<float>{0.f, 50.f});
 
         auto baseline{record};
-        baseline.battle_samples[1].alive[0][0] = 2;
+        baseline.run.battle_samples[1].alive[0][0] = 2;
         auto const baseline_analysis{analyze_level_telemetry_run(baseline)};
         auto const* baseline_active{
             baseline_analysis.find_metric(ETelemetryDashboardMetric::ActiveEntities)};
@@ -116,7 +116,7 @@ TEST_CLASS(TelemetryDashboardAnalysis, "Sandbox.UnitTests")
         auto end{begin};
         end.completed_tick = 150;
         end.combat.spawned[0][0] = 5;
-        record.battle_samples = {begin, end};
+        record.run.battle_samples = {begin, end};
         auto const analysis{analyze_level_telemetry_run(record)};
         auto const* active{analysis.find_metric(ETelemetryDashboardMetric::ActiveEntities)};
         auto const* rate{analysis.find_metric(ETelemetryDashboardMetric::SpawnRate)};
@@ -135,7 +135,7 @@ TEST_CLASS(TelemetryDashboardAnalysis, "Sandbox.UnitTests")
                 TestRunner->TestTrue(TEXT("No interval means no rate or weighted summary"),
                                      metric.values.IsEmpty() && !metric.weighted_mean.IsSet());
             }
-            record.battle_samples.push_back({});
+            record.run.battle_samples.push_back({});
         }
     }
 };
