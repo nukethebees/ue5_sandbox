@@ -1893,7 +1893,7 @@ TEST_CLASS(S7PlayableLevel, "Sandbox.UnitTests")
         TestCommandBuilder.Do([] { FStartPIECommand{false}.Update(); })
             .Until([] { return GEditor->PlayWorld && GEditor->PlayWorld->HasBegunPlay(); },
                    FTimespan::FromSeconds(30))
-            .Then([this, fixture, observer] {
+            .Then([this, observer] {
                 auto* const world{GEditor->PlayWorld.Get()};
                 if (!TestRunner->TestNotNull(TEXT("PIE world"), world)) {
                     return;
@@ -1936,6 +1936,8 @@ TEST_CLASS(S7PlayableLevel, "Sandbox.UnitTests")
                 TestRunner->TestEqual(TEXT("Existing authored scheduler spawns the entity"),
                                       orchestrator.get_capital_ships()->get_num_instances(),
                                       initial_capitals + 1);
+            })
+            .Then([this, fixture] {
                 GEditor->EndPlayMap();
                 TestRunner->TestTrue(TEXT("PIE preserves editor actor identity and bindings"),
                                      IsValid(fixture.enemy) &&
