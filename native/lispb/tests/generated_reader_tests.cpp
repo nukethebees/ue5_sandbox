@@ -2,6 +2,7 @@
 
 #include <gtest/gtest.h>
 #include <ReaderDependency_reader.h>
+#include <Records_reader.h>
 
 namespace lispb::tests {
 using namespace ioj::s7;
@@ -15,6 +16,30 @@ auto read_source(std::string_view const source) -> ReadResult<T> {
         return std::unexpected{std::move(ast.error())};
     }
     return read<T>(Reader{*ast}, ast->root, "record");
+}
+
+TEST(GeneratedS7Reader, ReadsSparseTypedOverridesWithNestedLayersAndExplicitEmptyValues) {
+    Interpreter interpreter;
+    auto ast{interpreter.evaluate_ast(R"('(:settings-layers
+      (:actor :max-health 200 :weapon (:weapon :damage 17 :turn-speed 9))
+      (:actor :max-health 100 :weapon (:weapon :damage 5) :optional-limit :none)))")};
+    ASSERT_TRUE(ast);
+    auto patch{read_override(Reader{*ast}, ast->root, "actor", ActorSettingsOverrides{})};
+    ASSERT_TRUE(patch);
+    ASSERT_TRUE(patch->optional_limit);
+    EXPECT_FALSE(*patch->optional_limit);
+    ActorSettings target;
+    target.weapon.asset_distance = 42;
+    apply_overrides(target, *patch);
+    EXPECT_EQ(target.max_health, 100);
+    EXPECT_EQ(target.weapon.damage, 5);
+    EXPECT_EQ(target.weapon.turn_rate, 9);
+    EXPECT_EQ(target.weapon.asset_distance, 42);
+    EXPECT_FALSE(target.optional_limit);
+    EXPECT_FALSE(read_source<WeaponSettingsOverrides>("'(:weapon :asset-distance 3)"));
+    EXPECT_FALSE(read_source<WeaponSettingsOverrides>("'(:weapon :damage -1)"));
+    EXPECT_FALSE(read_source<WeaponSettingsOverrides>("'(:weapon :damage 1 :damage 2)"));
+    EXPECT_TRUE(read_source<ActorSettingsOverrides>("'(:actor)"));
 }
 
 auto read_record_source(std::string_view const source) -> ReadResult<ReadableRecord> {

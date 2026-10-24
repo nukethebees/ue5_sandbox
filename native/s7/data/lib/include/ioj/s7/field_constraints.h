@@ -1,6 +1,7 @@
 #pragma once
 
 #include <ioj/constrained_numbers.h>
+#include <ioj/vector_value_math.h>
 
 #include <cmath>
 #include <limits>
@@ -84,6 +85,11 @@ auto nonempty(T const& value) -> bool {
         static_assert(std::same_as<U, std::string>, "nonempty requires a string");
         return !text.empty();
     });
+}
+
+template <std::floating_point T, std::size_t N>
+auto finite(Vector<T, N> const& value) -> bool {
+    return is_finite(value);
 }
 template <typename T, typename Bound>
 auto minimum(T const& value, Bound const bound) -> bool {

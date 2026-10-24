@@ -362,6 +362,25 @@ void decode_field(Reader const& reader,
     }
 }
 
+// Preserve presence separately from an optional-valued field's explicit empty value.
+template <typename T>
+void decode_patch_field(Reader const& reader,
+                        NodeIndex node,
+                        std::string_view path,
+                        std::optional<T>& destination,
+                        AstDiagnostics& errors) {
+    if constexpr (std::default_initializable<T> && requires(T& value) {
+                      TypeReader<T>::decode(reader, node, path, value, ReadMode::Override, errors);
+                  }) {
+        if (!destination) {
+            destination.emplace();
+        }
+        decode_field(reader, node, path, *destination, ReadMode::Override, errors);
+    } else {
+        read_field(reader, node, path, destination, errors);
+    }
+}
+
 template <typename T>
 auto read_override(Reader const& reader, NodeIndex node, std::string_view path, T value)
     -> ReadResult<T> {

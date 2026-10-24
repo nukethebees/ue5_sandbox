@@ -12,6 +12,7 @@ ReadableRecords_reader.h
 ReaderDependency.h
 ReaderDependency_reader.h
 Records.h
+Records_reader.h
 ReferenceFacade.h
 Representations.h
 RestrictionRows.h
