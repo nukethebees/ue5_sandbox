@@ -239,7 +239,7 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     FOnOrchestratorReset on_reset;
     FOnMissionCompleted on_mission_completed;
   private:
-    ioj::sim::FixedTickLoop simulation_tick_loop{};
+    ioj::settings::TickSettings simulation_tick_settings{};
     bool settings_prepared_{};
     UPROPERTY(EditAnywhere,
               Category = "Sandbox|Settings",

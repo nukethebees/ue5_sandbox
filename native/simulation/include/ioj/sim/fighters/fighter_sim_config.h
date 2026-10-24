@@ -3,8 +3,8 @@
 
 #pragma once
 
+#include "ioj/settings/attack_distance_band.h"
 #include "ioj/sim/entities/health.h"
-#include "ioj/sim/fighters/attack_distance_band.h"
 #include "ioj/sim/lasers/laser_weapon_sim_config.h"
 
 #include <cstdint>
@@ -31,7 +31,7 @@ struct FighterSimConfig {
     float attack_retry_cooldown{0.15f};
     float attack_engagement_threshold{5000.f};
     float attack_reposition_frequency{10.f};
-    AttackDistanceBand attack_distance_band;
+    settings::AttackDistanceBand attack_distance_band{};
     float arrival_distance{500.f};
     float los_check_buffer{100.f};
     float awareness_radius{10000.f};

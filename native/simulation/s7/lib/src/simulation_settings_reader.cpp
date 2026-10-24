@@ -36,6 +36,14 @@ auto assign_constrained(settings::Setting const& setting, Target& target)
     return std::nullopt;
 }
 
+auto assign(settings::Setting const& setting, settings::AttackDistanceBand& target)
+    -> std::optional<levels::DiagnosticCode> {
+    if (!setting.assign(target)) {
+        return levels::DiagnosticCode::InvalidType;
+    }
+    return std::nullopt;
+}
+
 template <typename T, ConstrainedValuePolicy Policy>
 auto assign(settings::Setting const& setting, ConstrainedValue<T, Policy>& target)
     -> std::optional<levels::DiagnosticCode> {
@@ -72,7 +80,7 @@ auto assign(settings::Setting const& setting, ShipFireRate& target)
     return assign_enum(setting, target, sim::try_parse_serialized_ship_fire_rate);
 }
 
-auto apply_settings(settings::Settings const& settings, SimulationSettingsInput& target)
+auto apply_settings(settings::Settings const& settings, SimulationSettings& target)
     -> std::expected<void, levels::Diagnostics> {
     levels::Diagnostics errors;
     for (auto const& setting : settings.assignments) {
@@ -106,7 +114,7 @@ auto apply_settings(settings::Settings const& settings, SimulationSettingsInput&
     return {};
 }
 
-auto apply_settings(levels::LevelDefinition const& level, SimulationSettingsInput& target)
+auto apply_settings(levels::LevelDefinition const& level, SimulationSettings& target)
     -> std::expected<void, levels::Diagnostics> {
     auto applied{apply_settings(level.settings(), target)};
     if (!applied) {
@@ -115,10 +123,10 @@ auto apply_settings(levels::LevelDefinition const& level, SimulationSettingsInpu
 
     if (auto const& grid{level.collision_grid()}; grid) {
         if (grid->level_size) {
-            target.values.collision_grid_size = Vector3f{*grid->level_size};
+            target.collision_grid_size = Vector3f{*grid->level_size};
         }
         if (grid->cell_size) {
-            target.values.collision_cell_size = Vector3f{*grid->cell_size};
+            target.collision_cell_size = Vector3f{*grid->cell_size};
         }
     }
     return {};
@@ -130,22 +138,9 @@ auto resolve_simulation_settings(settings::Settings const& source,
                                  levels::LevelDefinition const* const level)
     -> SimulationSettingsReadResult {
     sim::SimulationSettings result{};
-    SimulationSettingsInput input{result};
-    auto applied{simulation_settings::apply_settings(source, input)};
+    auto applied{simulation_settings::apply_settings(source, result)};
     if (applied && level) {
-        applied = simulation_settings::apply_settings(*level, input);
-    }
-    if (applied) {
-        auto const& values{input.attack_distance_band};
-        auto const band{sim::AttackDistanceBand::make(
-            values.minimum_ratio, values.desired_ratio, values.maximum_ratio)};
-        if (!band) {
-            return std::unexpected{
-                levels::Diagnostics{{levels::DiagnosticCode::InvalidNumber,
-                                     "fighters.attack-distance-band",
-                                     "Expected 0 <= minimum <= desired <= maximum <= 1"}}};
-        }
-        result.fighters.attack_distance_band = *band;
+        applied = simulation_settings::apply_settings(*level, result);
     }
     if (applied) {
         applied = sim::validate_settings(result);

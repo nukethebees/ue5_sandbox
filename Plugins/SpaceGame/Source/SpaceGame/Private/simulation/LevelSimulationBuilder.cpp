@@ -204,7 +204,7 @@ void FProxyLevelSimBuild::destroy_proxy_actors() const {
 }
 
 auto make_level_simulation_init_data(USpaceGameLevelConfig const& config,
-                                     sim::FixedTickLoop const& clock_settings,
+                                     settings::TickSettings const& clock_settings,
                                      TOptional<sim::player::PlayerSpawnData> player,
                                      UStaticMesh const* const player_collision_mesh)
     -> FLevelSimBuildResult {
@@ -279,7 +279,7 @@ auto make_level_simulation_init_data(USpaceGameLevelConfig const& config,
 }
 
 auto make_level_simulation_init_data(USpaceGameLevelConfig const& config,
-                                     sim::FixedTickLoop const& clock_settings,
+                                     settings::TickSettings const& clock_settings,
                                      levels::LevelDefinition const& definition,
                                      TOptional<sim::player::PlayerSpawnData> player,
                                      sim::collision::WorldAABBs static_bounds,
@@ -309,7 +309,7 @@ auto make_level_simulation_init_data(USpaceGameLevelConfig const& config,
 }
 
 auto make_proxy_level_simulation_init_data(USpaceGameLevelConfig const& config,
-                                           sim::FixedTickLoop const& clock_settings,
+                                           settings::TickSettings const& clock_settings,
                                            UWorld& world,
                                            ::FLevelMissionDefinition& mission_definition,
                                            TOptional<sim::player::PlayerSpawnData> player,

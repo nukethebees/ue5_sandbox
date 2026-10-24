@@ -1,5 +1,6 @@
 #pragma once
 
+#include <ioj/settings/tick_settings.h>
 #include <ioj/sim/fixed_tick_loop.h>
 #include <ioj/sim/sim_time.h>
 #include <ioj/sim/simulation_phase.h>
@@ -13,9 +14,8 @@ struct SimClock {
     using tick_type = SimTick;
     using time_type = SimTime;
 
-    void initialise(FixedTickLoop const& settings) {
-        tick_loop = settings;
-        tick_loop.initialise();
+    void initialise(settings::TickSettings const& settings) {
+        tick_loop = {.tick_rate = settings.tick_rate, .time_scale = settings.time_scale};
         completed_ticks = 0;
     }
 

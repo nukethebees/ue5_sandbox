@@ -1,5 +1,6 @@
 #pragma once
 
+#include <ioj/settings/attack_distance_band.h>
 #include <ioj/settings/presentation.h>
 #include <ioj/try_numeric_cast.h>
 #include <ioj/vector.h>
@@ -13,7 +14,8 @@
 #include <vector>
 
 namespace ioj::settings {
-using SettingValue = std::variant<bool, std::int64_t, double, std::string, std::vector<double>>;
+using SettingValue =
+    std::variant<bool, std::int64_t, double, std::string, std::vector<double>, AttackDistanceBand>;
 
 namespace setting_assignment {
 template <typename T>
@@ -86,7 +88,7 @@ struct Setting {
     template <typename T>
     [[nodiscard]] auto assign(T& target) const -> bool {
         if constexpr (std::same_as<T, bool> || std::same_as<T, std::string> ||
-                      std::same_as<T, std::vector<double>>) {
+                      std::same_as<T, std::vector<double>> || std::same_as<T, AttackDistanceBand>) {
             return setting_assignment::copy_value(value, target);
         } else if constexpr (std::is_arithmetic_v<T>) {
             return setting_assignment::assign_number(value, target);

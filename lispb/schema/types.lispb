@@ -344,7 +344,6 @@
   :header "ioj/sim/missions/condition_type.h"
   :pass-by value)
 
-(type native_attack_distance_band :spelling "ioj::sim::AttackDistanceBand" :header "ioj/sim/fighters/attack_distance_band.h")
 
 (type input_entity_id :spelling "ioj::levels::EntityId" :header "ioj/levels/identifiers.h")
 (type input_level_id :spelling "ioj::levels::LevelId" :header "ioj/levels/identifiers.h")

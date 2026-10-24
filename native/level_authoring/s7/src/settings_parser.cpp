@@ -2,6 +2,7 @@
 
 #include "reader_diagnostics.h"
 #include <ioj/levels/authoring/input_readers.h>
+#include <ioj/settings/attack_distance_band_reader.h>
 #include <ioj/settings/presentation_reader.h>
 
 #include <format>
@@ -22,6 +23,15 @@ void append_value(s7::Reader const& reader,
                   s7::NodeIndex const value,
                   std::string const& path,
                   settings::Settings& result) {
+    if (path == "fighters.attack-distance-band") {
+        auto band{s7::read<settings::AttackDistanceBand>(reader, value, path)};
+        if (band) {
+            result.assignments.emplace_back(path, std::move(*band));
+        } else {
+            s7::append_errors(errors, std::move(band.error()));
+        }
+        return;
+    }
     if (path == "presentation") {
         flatten_record(reader, errors, ast, value, path, result);
         return;

@@ -166,7 +166,6 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
     sim::apply_settings(settings, data);
     reference.player.config = settings.player;
     data.clock_settings.time_scale = PositiveFinite<double>::make(1.0);
-    data.clock_settings.accumulator = 0.0;
     if (options.fighter_stress_cap.has_value()) {
         data.fighters.max_live_fighters = *options.fighter_stress_cap;
         data.fighters.laser.damage = 0;

@@ -91,7 +91,7 @@ auto make_fighter_navigation_test_data(tests::SimulationFixture const& config,
     data.fighters.avoidance_lookahead_time = 1.f;
     data.fighters.laser.max_distance = 2000.f;
     data.fighters.attack_engagement_threshold = 1000000.f;
-    data.fighters.attack_distance_band = *AttackDistanceBand::make(0.f, 0.f, 0.f);
+    data.fighters.attack_distance_band = *settings::AttackDistanceBand::try_make({0.f, 0.f, 0.f});
     data.fighters.separation_radius = 1500.f;
     data.fighters.separation_strength = 1.5f;
     data.capital_ships.fighter_spawn_slots = static_cast<std::int32_t>(spawn_slots.size());
@@ -116,7 +116,7 @@ TEST(WorldlessSpaceGameSimulation, Fighters_NavigationCapitalObstruction) {
     data.fighters.avoidance_lookahead_time = 1.f;
     data.fighters.laser.max_distance = 2000.f;
     data.fighters.attack_engagement_threshold = 1000000.f;
-    data.fighters.attack_distance_band = *AttackDistanceBand::make(0.f, 0.f, 0.f);
+    data.fighters.attack_distance_band = *settings::AttackDistanceBand::try_make({0.f, 0.f, 0.f});
     data.capital_ships.fighter_spawn_slots = 1;
     data.capital_ships.fighter_spawn_slots_relative_transforms = {
         {.location = {3000.0, 7000.0, 0.0}}};

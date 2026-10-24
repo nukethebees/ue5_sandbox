@@ -34,14 +34,14 @@ using FProxyLevelSimBuildResult = std::expected<FProxyLevelSimBuild, FLevelStart
 
 SPACEGAME_API auto
     make_level_simulation_init_data(USpaceGameLevelConfig const& config,
-                                    sim::FixedTickLoop const& clock_settings = {},
+                                    settings::TickSettings const& clock_settings = {},
                                     TOptional<sim::player::PlayerSpawnData> player = NullOpt,
                                     UStaticMesh const* player_collision_mesh = nullptr)
         -> FLevelSimBuildResult;
 
 SPACEGAME_API auto
     make_level_simulation_init_data(USpaceGameLevelConfig const& config,
-                                    sim::FixedTickLoop const& clock_settings,
+                                    settings::TickSettings const& clock_settings,
                                     levels::LevelDefinition const& definition,
                                     TOptional<sim::player::PlayerSpawnData> player = NullOpt,
                                     sim::collision::WorldAABBs static_bounds = {},
@@ -50,7 +50,7 @@ SPACEGAME_API auto
 
 SPACEGAME_API auto
     make_proxy_level_simulation_init_data(USpaceGameLevelConfig const& config,
-                                          sim::FixedTickLoop const& clock_settings,
+                                          settings::TickSettings const& clock_settings,
                                           UWorld& world,
                                           ::FLevelMissionDefinition& mission_definition,
                                           TOptional<sim::player::PlayerSpawnData> player = NullOpt,

@@ -114,5 +114,7 @@ record to a copy, leaving the caller's instance untouched on failure.
 
 `settings-schema` remains only for simulation. Retiring it also requires migrating the simulation
 root bindings and its sparse level patches without coupling level definitions to runtime simulation.
-The immutable attack-distance band must still be constructed after all override layers.
+The attack-distance band is one typed setting. Its generated reader constructs a constrained
+triple before publishing it; overrides replace the whole band and cannot mutate individual
+ratios. Tick settings contain only rate and time scale, with accumulation kept in the runtime clock.
 Its intermediate triples can be invalid even when the final effective triple is valid.

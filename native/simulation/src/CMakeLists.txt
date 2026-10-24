@@ -7,8 +7,6 @@ target_sources(native-simulation PRIVATE
   ../include/ioj/sim/entities/entity_lookup_table.h
   ../include/ioj/sim/entities/entity_type_runs.h
   ../include/ioj/sim/player/player_spatial_data.h
-  ../include/ioj/sim/fighters/attack_distance_band.h
-  ../include/ioj/sim/fighters/band_error.h
   ../include/ioj/sim/lasers/laser_weapon_sim_config.h
   ../include/ioj/sim/lasers/laser_sim_config.h
   ../include/ioj/sim/collision/overlap_response_config.h
@@ -91,7 +89,6 @@ target_sources(native-simulation PRIVATE
   ../include/ioj/sim/turrets/turret_entity_data.h
   ../include/ioj/sim/collision/world_aabb_operations.h
   ../include/ioj/sim/collision/world_aabbs.h
-  fighters/attack_distance_band.cpp
   batch_operations.cpp
   collision/collision_events.cpp
   collision/collision_grid_static_storage.cpp

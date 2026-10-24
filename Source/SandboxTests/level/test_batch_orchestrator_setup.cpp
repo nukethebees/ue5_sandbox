@@ -102,7 +102,7 @@ void FTestBatchOrchestratorSetupScenario::simulation_clock_conversions() {
                              orchestrator->get_state() == sim::OrchestratorState::Uninitialised);
 
         sim::SimClock clock;
-        clock.initialise(sim::FixedTickLoop{});
+        clock.initialise(settings::TickSettings{});
 
         auto const expect_period{
             [&](double const frequency, uint64 const ticks, TCHAR const* description) {

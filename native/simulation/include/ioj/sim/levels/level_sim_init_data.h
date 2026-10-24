@@ -1,12 +1,12 @@
 #pragma once
 
+#include <ioj/settings/tick_settings.h>
 #include <ioj/sim/capital_ships/capital_ship_sim_config.h>
 #include <ioj/sim/collision/cell_coord.h>
 #include <ioj/sim/collision/cell_coord_bounds.h>
 #include <ioj/sim/collision/collision_init_data.h>
 #include <ioj/sim/entities/team_list.h>
 #include <ioj/sim/fighters/fighter_sim_config.h>
-#include <ioj/sim/fixed_tick_loop.h>
 #include <ioj/sim/lasers/laser_sim_config.h>
 #include <ioj/sim/levels/compiled_level_events.h>
 #include <ioj/sim/levels/level_result_metadata.h>
@@ -22,7 +22,7 @@
 
 namespace ioj::sim {
 struct LevelSimInitData {
-    FixedTickLoop clock_settings{};
+    settings::TickSettings clock_settings{};
 
     LaserSimConfig lasers;
     CapitalShipSimConfig capital_ships;

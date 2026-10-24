@@ -179,7 +179,7 @@ void ATestBatchOrchestrator::reset_for_new_level() {
     if (level_simulation_.IsSet()) {
         level_simulation_->finalize_telemetry_run(
             ioj::sim::LevelTelemetryRunEndReason::OrchestratorReset);
-        simulation_tick_loop.time_scale = level_simulation_->get_clock().get_time_scale();
+        simulation_tick_settings.time_scale = level_simulation_->get_clock().get_time_scale();
     }
 
     auto* const world{GetWorld()};
@@ -408,7 +408,7 @@ auto ATestBatchOrchestrator::initialise_simulation(USpaceGameLevelConfig const& 
 
     auto const* const player_collision_mesh{IsValid(player_ship) ? player_ship->get_collision_mesh()
                                                                  : nullptr};
-    auto const clock_settings{simulation_tick_loop};
+    auto const clock_settings{simulation_tick_settings};
 
     if (level_definition_.IsSet()) {
         auto result{ioj::make_level_simulation_init_data(config,
@@ -808,7 +808,7 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
 auto ATestBatchOrchestrator::duration_to_tick_period(ioj::Duration const duration) const noexcept
     -> tick_type {
     auto const tick_rate{level_simulation_.IsSet() ? level_simulation_->get_clock().get_tick_rate()
-                                                   : simulation_tick_loop.tick_rate};
+                                                   : simulation_tick_settings.tick_rate};
     return ioj::sim::duration_to_tick_period(tick_rate, duration);
 }
 
@@ -836,9 +836,9 @@ auto ATestBatchOrchestrator::prepare_level() -> bool {
     auto* const config{loaded->config};
     auto const& settings{loaded->simulation};
     settings_source_ = MoveTemp(loaded->source);
-    simulation_tick_loop = settings.clock;
+    simulation_tick_settings = settings.clock;
     if (start_mode == EOrchestratorStartMode::AuthoredLevel) {
-        simulation_tick_loop.time_scale =
+        simulation_tick_settings.time_scale =
             ioj::PositiveFinite<time_type>::make(launch_options_.requested_time_scale);
     }
     hud_manager.configure(settings.hud);

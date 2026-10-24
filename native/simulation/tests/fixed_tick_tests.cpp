@@ -2,6 +2,7 @@
 #include "ioj/sim/fixed_tick_loop.h"
 #include "ioj/sim/sim_time.h"
 #include <ioj/sim/levels/simulation_settings.h>
+#include <ioj/sim/sim_clock.h>
 
 #include <gtest/gtest.h>
 
@@ -67,6 +68,19 @@ TEST(SimulationClock, ConvertsDurationsAndFrequencies) {
     EXPECT_EQ(frequency_to_tick_period(Frequency::make(60.0), Frequency::make(7.0)).get(), 9);
     EXPECT_EQ(duration_to_tick_period(Frequency::make(60.0), Duration::make(0.11)).get(), 7);
     EXPECT_DOUBLE_EQ(simulation_time(12, 0.25), 3.0);
+}
+
+TEST(SimulationClock, InitialisesRuntimeStateFromStaticSettings) {
+    SimClock clock;
+    clock.tick_loop.accumulator = 1.0;
+    clock.completed_ticks = 17;
+    clock.initialise(
+        {.tick_rate = Frequency::make(10.0), .time_scale = PositiveFinite<double>::make(2.0)});
+
+    EXPECT_DOUBLE_EQ(clock.get_tick_period(), 0.1);
+    EXPECT_DOUBLE_EQ(clock.get_time_scale().get(), 2.0);
+    EXPECT_DOUBLE_EQ(clock.tick_loop.accumulator, 0.0);
+    EXPECT_EQ(clock.get_completed_ticks(), 0);
 }
 
 TEST(SimulationSettings, RequiresFinitePositiveFrequencies) {

@@ -37,6 +37,8 @@ native/levels/lib/include/ioj/levels/objective_dependency_reader.h
 native/levels/lib/include/ioj/levels/team.h
 native/levels/lib/include/ioj/levels/team_result_definition.h
 native/levels/lib/include/ioj/levels/team_result_definition_reader.h
+native/levels/lib/include/ioj/settings/attack_distance_band.h
+native/levels/lib/include/ioj/settings/attack_distance_band_reader.h
 native/levels/lib/include/ioj/settings/capital_presentation.h
 native/levels/lib/include/ioj/settings/capital_presentation_reader.h
 native/levels/lib/include/ioj/settings/entity_overlay.h
@@ -128,6 +130,5 @@ native/simulation/include/ioj/sim/telemetry/navigation_telemetry.h
 native/simulation/include/ioj/sim/telemetry/run_end_reason.h
 native/simulation/include/ioj/sim/turrets/phase_interface.h
 native/simulation/include/ioj/sim/turrets/turret_entity_data.h
-native/simulation/s7/lib/src/attack_distance_band_settings.h
 native/simulation/s7/lib/src/simulation_fields.h
 native/ui/lib/src/radar_positions.hpp

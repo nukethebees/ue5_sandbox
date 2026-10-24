@@ -133,15 +133,18 @@
     (member min @native_vector_3f)
     (member max @native_vector_3f)))
 
-(module s7_attack_distance_band_settings
-  :header "native/simulation/s7/lib/src/attack_distance_band_settings.h"
-  :header-include "attack_distance_band_settings.h"
-  :namespace ioj::s7
-  (record AttackDistanceBandSettings
-    :generate-settings true
-    (member minimum_ratio float)
-    (member desired_ratio float)
-    (member maximum_ratio float)))
+(module attack_distance_band
+  :header "native/levels/lib/include/ioj/settings/attack_distance_band.h"
+  :header-include "ioj/settings/attack_distance_band.h"
+  :namespace ioj::settings
+  :prelude ("#include <ioj/settings/attack_distance_band_policy.h>")
+  (record AttackDistanceBand
+    :constraint-policy ioj::settings::attack_distance_band_policy
+    :comparison equality
+    :generate-s7-reader true :s7-tag "attack-distance-band"
+    (member minimum float :initializer 0.4f :s7-name "minimum-ratio" :required true)
+    (member desired float :initializer 0.5f :s7-name "desired-ratio" :required true)
+    (member maximum float :initializer 0.6f :s7-name "maximum-ratio" :required true)))
 
 (module native_base_sim_config_laser_weapon_sim_config
   :header "native/simulation/include/ioj/sim/lasers/laser_weapon_sim_config.h"
@@ -196,7 +199,7 @@
     (member attack_retry_cooldown float :initializer "0.15f")
     (member attack_engagement_threshold float :initializer "5000.f")
     (member attack_reposition_frequency float :initializer "10.f")
-    (member attack_distance_band @native_attack_distance_band :settings-exclude true)
+    (member attack_distance_band ioj::settings::AttackDistanceBand :initializer "")
     (member arrival_distance float :initializer "500.f")
     (member los_check_buffer float :initializer "100.f")
     (member awareness_radius float :initializer "10000.f")

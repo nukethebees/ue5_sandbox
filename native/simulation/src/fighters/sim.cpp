@@ -327,10 +327,10 @@ void Sim::plan_movement(ThinkingInputs const inputs) {
     auto const n_attack{attack_view.num()};
     auto const do_attack{n_attack > 0};
     auto const laser_max_distance{config.laser.max_distance};
-    auto const& attack_distance_band{config.attack_distance_band};
-    auto const desired_attack_distance{laser_max_distance * attack_distance_band.desired()};
-    auto const inner_attack_distance{laser_max_distance * attack_distance_band.minimum()};
-    auto const outer_attack_distance{laser_max_distance * attack_distance_band.maximum()};
+    auto const attack_distance_band{config.attack_distance_band.get()};
+    auto const desired_attack_distance{laser_max_distance * attack_distance_band.desired};
+    auto const inner_attack_distance{laser_max_distance * attack_distance_band.minimum};
+    auto const outer_attack_distance{laser_max_distance * attack_distance_band.maximum};
 
     if (do_attack) {
         auto const locations{attack_view.view_locations().resolve()};
@@ -1441,7 +1441,8 @@ void Sim::handle_firing(TaskView data, ThinkingInputs const inputs) {
     auto const aim_threshold{config.fire_dot_product_threshold};
     auto const laser_max_distance{config.laser.max_distance};
     auto const laser_max_distance_sq{laser_max_distance * laser_max_distance};
-    auto const desired_attack_distance{laser_max_distance * config.attack_distance_band.desired()};
+    auto const desired_attack_distance{laser_max_distance *
+                                       config.attack_distance_band.get().desired};
     auto const arrival_distance{config.arrival_distance};
     auto const attack_position_arrival_distance_sq{arrival_distance * arrival_distance};
     FrameArray<float> aiming_dot_products{scratch_resource};

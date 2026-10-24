@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "simulation_settings_input.h"
+#include "ioj/sim/levels/simulation_settings.h"
 
 #include <cassert>
 #include <cstdint>
@@ -50,14 +50,12 @@ enum class FieldsField : std::uint32_t {
     FightersAttackRetryCooldown,
     FightersAttackEngagementThreshold,
     FightersAttackRepositionFrequency,
+    FightersAttackDistanceBand,
     FightersArrivalDistance,
     FightersLosCheckBuffer,
     FightersAwarenessRadius,
     FightersAwarenessScanFrequency,
     FightersMinimumOpportunisticInterceptDeviationDotProduct,
-    FightersAttackDistanceBandMinimumRatio,
-    FightersAttackDistanceBandDesiredRatio,
-    FightersAttackDistanceBandMaximumRatio,
     TurretsDetectionRadius,
     TurretsTargetRefreshFrequency,
     TurretsMaxHealth,
@@ -250,6 +248,9 @@ enum class FieldsField : std::uint32_t {
             if (path == "player-ship.thrust-energy-max") {
                 return FieldsField::PlayerShipThrustEnergyMax;
             }
+            if (path == "fighters.attack-distance-band") {
+                return FieldsField::FightersAttackDistanceBand;
+            }
             return std::nullopt;
         }
         case 30: {
@@ -364,15 +365,6 @@ enum class FieldsField : std::uint32_t {
             return std::nullopt;
         }
         case 43: {
-            if (path == "fighters.attack-distance-band.minimum-ratio") {
-                return FieldsField::FightersAttackDistanceBandMinimumRatio;
-            }
-            if (path == "fighters.attack-distance-band.desired-ratio") {
-                return FieldsField::FightersAttackDistanceBandDesiredRatio;
-            }
-            if (path == "fighters.attack-distance-band.maximum-ratio") {
-                return FieldsField::FightersAttackDistanceBandMaximumRatio;
-            }
             if (path == "collision-grid.damage-per-overlap-detection") {
                 return FieldsField::CollisionGridDamagePerOverlapDetection;
             }
@@ -398,211 +390,204 @@ enum class FieldsField : std::uint32_t {
 
 // Require a valid field returned by the schema's key parser.
 template <typename Callback>
-[[nodiscard]] bool visit_fields_field(ioj::s7::SimulationSettingsInput& target,
+[[nodiscard]] bool visit_fields_field(ioj::sim::SimulationSettings& target,
                                       FieldsField const field,
                                       Callback&& callback) {
     switch (field) {
         case FieldsField::TickTickRate: {
-            return callback(target.values.clock.tick_rate);
+            return callback(target.clock.tick_rate);
         }
         case FieldsField::TickTimeScale: {
-            return callback(target.values.clock.time_scale);
+            return callback(target.clock.time_scale);
         }
         case FieldsField::PlayerShipThrustEnergyMax: {
-            return callback(target.values.player.thrust_energy_max);
+            return callback(target.player.thrust_energy_max);
         }
         case FieldsField::PlayerShipPitchAngleMax: {
-            return callback(target.values.player.pitch_angle_max);
+            return callback(target.player.pitch_angle_max);
         }
         case FieldsField::PlayerShipPitchSpeed: {
-            return callback(target.values.player.pitch_speed);
+            return callback(target.player.pitch_speed);
         }
         case FieldsField::PlayerShipYawAngleMax: {
-            return callback(target.values.player.yaw_angle_max);
+            return callback(target.player.yaw_angle_max);
         }
         case FieldsField::PlayerShipYawSpeed: {
-            return callback(target.values.player.yaw_speed);
+            return callback(target.player.yaw_speed);
         }
         case FieldsField::PlayerShipTurnBankAngleMax: {
-            return callback(target.values.player.turn_bank_angle_max);
+            return callback(target.player.turn_bank_angle_max);
         }
         case FieldsField::PlayerShipTurnBankSpeed: {
-            return callback(target.values.player.turn_bank_speed);
+            return callback(target.player.turn_bank_speed);
         }
         case FieldsField::PlayerShipHealth: {
-            return callback(target.values.player_initial.health);
+            return callback(target.player_initial.health);
         }
         case FieldsField::PlayerShipLaserMode: {
-            return callback(target.values.player_initial.laser_mode);
+            return callback(target.player_initial.laser_mode);
         }
         case FieldsField::PlayerShipLaserFireRate: {
-            return callback(target.values.player_initial.laser_fire_rate);
+            return callback(target.player_initial.laser_fire_rate);
         }
         case FieldsField::LaserProjectilesNPreallocatedInstances: {
-            return callback(target.values.lasers.n_preallocated_instances);
+            return callback(target.lasers.n_preallocated_instances);
         }
         case FieldsField::CapitalShipsSpawnDelay: {
-            return callback(target.values.capital_ships.spawn_delay);
+            return callback(target.capital_ships.spawn_delay);
         }
         case FieldsField::CapitalShipsMaxHealth: {
-            return callback(target.values.capital_ships.max_health);
+            return callback(target.capital_ships.max_health);
         }
         case FieldsField::FightersMaxLiveFighters: {
-            return callback(target.values.fighters.max_live_fighters);
+            return callback(target.fighters.max_live_fighters);
         }
         case FieldsField::FightersFireDotProductThreshold: {
-            return callback(target.values.fighters.fire_dot_product_threshold);
+            return callback(target.fighters.fire_dot_product_threshold);
         }
         case FieldsField::FightersSpeed: {
-            return callback(target.values.fighters.speed);
+            return callback(target.fighters.speed);
         }
         case FieldsField::FightersTurnSpeedUnitless: {
-            return callback(target.values.fighters.turn_speed_unitless);
+            return callback(target.fighters.turn_speed_unitless);
         }
         case FieldsField::FightersAvoidanceClearUpdateFrequency: {
-            return callback(target.values.fighters.avoidance_clear_update_frequency);
+            return callback(target.fighters.avoidance_clear_update_frequency);
         }
         case FieldsField::FightersAvoidanceUpdateFrequency: {
-            return callback(target.values.fighters.avoidance_update_frequency);
+            return callback(target.fighters.avoidance_update_frequency);
         }
         case FieldsField::FightersAvoidanceActiveUpdateFrequency: {
-            return callback(target.values.fighters.avoidance_active_update_frequency);
+            return callback(target.fighters.avoidance_active_update_frequency);
         }
         case FieldsField::FightersAvoidanceImmediateUpdateFrequency: {
-            return callback(target.values.fighters.avoidance_immediate_update_frequency);
+            return callback(target.fighters.avoidance_immediate_update_frequency);
         }
         case FieldsField::FightersAvoidanceLookaheadTime: {
-            return callback(target.values.fighters.avoidance_lookahead_time);
+            return callback(target.fighters.avoidance_lookahead_time);
         }
         case FieldsField::FightersAvoidanceClearanceBuffer: {
-            return callback(target.values.fighters.avoidance_clearance_buffer);
+            return callback(target.fighters.avoidance_clearance_buffer);
         }
         case FieldsField::FightersSeparationRadius: {
-            return callback(target.values.fighters.separation_radius);
+            return callback(target.fighters.separation_radius);
         }
         case FieldsField::FightersSeparationStrength: {
-            return callback(target.values.fighters.separation_strength);
+            return callback(target.fighters.separation_strength);
         }
         case FieldsField::FightersSteeringMemoryDuration: {
-            return callback(target.values.fighters.steering_memory_duration);
+            return callback(target.fighters.steering_memory_duration);
         }
         case FieldsField::FightersDenseTrafficNeighbourThreshold: {
-            return callback(target.values.fighters.dense_traffic_neighbour_threshold);
+            return callback(target.fighters.dense_traffic_neighbour_threshold);
         }
         case FieldsField::FightersLaserDamage: {
-            return callback(target.values.fighters.laser.damage);
+            return callback(target.fighters.laser.damage);
         }
         case FieldsField::FightersLaserProjectileSpeed: {
-            return callback(target.values.fighters.laser.projectile_speed);
+            return callback(target.fighters.laser.projectile_speed);
         }
         case FieldsField::FightersLaserMaxDistance: {
-            return callback(target.values.fighters.laser.max_distance);
+            return callback(target.fighters.laser.max_distance);
         }
         case FieldsField::FightersLaserFireCooldown: {
-            return callback(target.values.fighters.laser.fire_cooldown);
+            return callback(target.fighters.laser.fire_cooldown);
         }
         case FieldsField::FightersHealth: {
-            return callback(target.values.fighters.health);
+            return callback(target.fighters.health);
         }
         case FieldsField::FightersAttackRetryCooldown: {
-            return callback(target.values.fighters.attack_retry_cooldown);
+            return callback(target.fighters.attack_retry_cooldown);
         }
         case FieldsField::FightersAttackEngagementThreshold: {
-            return callback(target.values.fighters.attack_engagement_threshold);
+            return callback(target.fighters.attack_engagement_threshold);
         }
         case FieldsField::FightersAttackRepositionFrequency: {
-            return callback(target.values.fighters.attack_reposition_frequency);
+            return callback(target.fighters.attack_reposition_frequency);
+        }
+        case FieldsField::FightersAttackDistanceBand: {
+            return callback(target.fighters.attack_distance_band);
         }
         case FieldsField::FightersArrivalDistance: {
-            return callback(target.values.fighters.arrival_distance);
+            return callback(target.fighters.arrival_distance);
         }
         case FieldsField::FightersLosCheckBuffer: {
-            return callback(target.values.fighters.los_check_buffer);
+            return callback(target.fighters.los_check_buffer);
         }
         case FieldsField::FightersAwarenessRadius: {
-            return callback(target.values.fighters.awareness_radius);
+            return callback(target.fighters.awareness_radius);
         }
         case FieldsField::FightersAwarenessScanFrequency: {
-            return callback(target.values.fighters.awareness_scan_frequency);
+            return callback(target.fighters.awareness_scan_frequency);
         }
         case FieldsField::FightersMinimumOpportunisticInterceptDeviationDotProduct: {
-            return callback(
-                target.values.fighters.minimum_opportunistic_intercept_deviation_dot_product);
-        }
-        case FieldsField::FightersAttackDistanceBandMinimumRatio: {
-            return callback(target.attack_distance_band.minimum_ratio);
-        }
-        case FieldsField::FightersAttackDistanceBandDesiredRatio: {
-            return callback(target.attack_distance_band.desired_ratio);
-        }
-        case FieldsField::FightersAttackDistanceBandMaximumRatio: {
-            return callback(target.attack_distance_band.maximum_ratio);
+            return callback(target.fighters.minimum_opportunistic_intercept_deviation_dot_product);
         }
         case FieldsField::TurretsDetectionRadius: {
-            return callback(target.values.turrets.detection_radius);
+            return callback(target.turrets.detection_radius);
         }
         case FieldsField::TurretsTargetRefreshFrequency: {
-            return callback(target.values.turrets.target_refresh_frequency);
+            return callback(target.turrets.target_refresh_frequency);
         }
         case FieldsField::TurretsMaxHealth: {
-            return callback(target.values.turrets.max_health);
+            return callback(target.turrets.max_health);
         }
         case FieldsField::TubeSpinnersYawRotationSpeedDegrees: {
-            return callback(target.values.spinners.yaw_rotation_speed_degrees);
+            return callback(target.spinners.yaw_rotation_speed_degrees);
         }
         case FieldsField::CollisionGridLevelSize: {
-            return callback(target.values.collision_grid_size);
+            return callback(target.collision_grid_size);
         }
         case FieldsField::CollisionGridCellSize: {
-            return callback(target.values.collision_cell_size);
+            return callback(target.collision_cell_size);
         }
         case FieldsField::CollisionGridDamagePerOverlapDetection: {
-            return callback(target.values.overlap_response.damage_per_overlap_detection);
+            return callback(target.overlap_response.damage_per_overlap_detection);
         }
         case FieldsField::HudPlayerStatusUpdatePeriod: {
-            return callback(target.values.hud.player_status_update_period);
+            return callback(target.hud.player_status_update_period);
         }
         case FieldsField::HudEntityCountUpdatePeriod: {
-            return callback(target.values.hud.entity_count_update_period);
+            return callback(target.hud.entity_count_update_period);
         }
         case FieldsField::HudMissionStatusUpdatePeriod: {
-            return callback(target.values.hud.mission_status_update_period);
+            return callback(target.hud.mission_status_update_period);
         }
         case FieldsField::PlayerShipLaserDamage: {
-            return callback(target.values.player.laser.damage);
+            return callback(target.player.laser.damage);
         }
         case FieldsField::PlayerShipLaserProjectileSpeed: {
-            return callback(target.values.player.laser.projectile_speed);
+            return callback(target.player.laser.projectile_speed);
         }
         case FieldsField::PlayerShipLaserMaxDistance: {
-            return callback(target.values.player.laser.max_distance);
+            return callback(target.player.laser.max_distance);
         }
         case FieldsField::PlayerShipLaserFireCooldown: {
-            return callback(target.values.player.laser.fire_cooldown);
+            return callback(target.player.laser.fire_cooldown);
         }
         case FieldsField::TurretsLaserDamage: {
-            return callback(target.values.turrets.laser.damage);
+            return callback(target.turrets.laser.damage);
         }
         case FieldsField::TurretsLaserProjectileSpeed: {
-            return callback(target.values.turrets.laser.projectile_speed);
+            return callback(target.turrets.laser.projectile_speed);
         }
         case FieldsField::TurretsLaserMaxDistance: {
-            return callback(target.values.turrets.laser.max_distance);
+            return callback(target.turrets.laser.max_distance);
         }
         case FieldsField::TurretsLaserFireCooldown: {
-            return callback(target.values.turrets.laser.fire_cooldown);
+            return callback(target.turrets.laser.fire_cooldown);
         }
         case FieldsField::TubeSpinnersLaserDamage: {
-            return callback(target.values.spinners.laser.damage);
+            return callback(target.spinners.laser.damage);
         }
         case FieldsField::TubeSpinnersLaserProjectileSpeed: {
-            return callback(target.values.spinners.laser.projectile_speed);
+            return callback(target.spinners.laser.projectile_speed);
         }
         case FieldsField::TubeSpinnersLaserMaxDistance: {
-            return callback(target.values.spinners.laser.max_distance);
+            return callback(target.spinners.laser.max_distance);
         }
         case FieldsField::TubeSpinnersLaserFireCooldown: {
-            return callback(target.values.spinners.laser.fire_cooldown);
+            return callback(target.spinners.laser.fire_cooldown);
         }
     }
     assert(false);

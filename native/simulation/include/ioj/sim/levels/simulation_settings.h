@@ -1,10 +1,10 @@
 #pragma once
 
 #include <ioj/levels/diagnostics.h>
+#include <ioj/settings/tick_settings.h>
 #include <ioj/sim/capital_ships/capital_ship_sim_config.h>
 #include <ioj/sim/collision/overlap_response_config.h>
 #include <ioj/sim/fighters/fighter_sim_config.h>
-#include <ioj/sim/fixed_tick_loop.h>
 #include <ioj/sim/lasers/laser_sim_config.h>
 #include <ioj/sim/player/fire_rate.h>
 #include <ioj/sim/player/player_sim_config.h>
@@ -31,7 +31,7 @@ struct PlayerInitialSettings {
 };
 
 struct SimulationSettings {
-    FixedTickLoop clock{};
+    settings::TickSettings clock{};
     PlayerSimConfig player{};
     PlayerInitialSettings player_initial{};
     LaserSimConfig lasers{};
