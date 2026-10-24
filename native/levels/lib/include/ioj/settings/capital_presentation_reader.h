@@ -162,59 +162,32 @@ inline void TypeReader<::ioj::settings::CapitalPresentation>::decode(Reader cons
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination) {
-                auto const error_count{errors.size()};
-                decode_field(reader, value, location, destination, mode, errors);
-                return errors.size() == error_count;
+            auto const read{[&](auto& destination, auto... checks) {
+                read_checked(
+                    destination,
+                    location,
+                    errors,
+                    [&] { decode_field(reader, value, location, destination, mode, errors); },
+                    checks...);
             }};
             switch (field) {
                 case Field::n_small_explosions:
                     read(result.n_small_explosions);
                     break;
                 case Field::time_between_explosions:
-                    if (read(result.time_between_explosions)) {
-                        if (!constraints::finite(result.time_between_explosions)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a finite value"});
-                        }
-                    }
+                    read(result.time_between_explosions, constraints::finite);
                     break;
                 case Field::min_small_explosion_range:
-                    if (read(result.min_small_explosion_range)) {
-                        if (!constraints::finite(result.min_small_explosion_range)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a finite value"});
-                        }
-                    }
+                    read(result.min_small_explosion_range, constraints::finite);
                     break;
                 case Field::max_small_explosion_range:
-                    if (read(result.max_small_explosion_range)) {
-                        if (!constraints::finite(result.max_small_explosion_range)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a finite value"});
-                        }
-                    }
+                    read(result.max_small_explosion_range, constraints::finite);
                     break;
                 case Field::large_explosion_delay:
-                    if (read(result.large_explosion_delay)) {
-                        if (!constraints::finite(result.large_explosion_delay)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a finite value"});
-                        }
-                    }
+                    read(result.large_explosion_delay, constraints::finite);
                     break;
                 case Field::proxy_arrow_size:
-                    if (read(result.proxy_arrow_size)) {
-                        if (!constraints::finite(result.proxy_arrow_size)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a finite value"});
-                        }
-                    }
+                    read(result.proxy_arrow_size, constraints::finite);
                     break;
                 case Field::Count:
                     std::unreachable();
@@ -248,59 +221,32 @@ inline void
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination) {
-                auto const error_count{errors.size()};
-                decode_patch_field(reader, value, location, destination, errors);
-                return errors.size() == error_count;
+            auto const read{[&](auto& destination, auto... checks) {
+                read_checked(
+                    destination,
+                    location,
+                    errors,
+                    [&] { decode_patch_field(reader, value, location, destination, errors); },
+                    checks...);
             }};
             switch (field) {
                 case Field::n_small_explosions:
                     read(result.n_small_explosions);
                     break;
                 case Field::time_between_explosions:
-                    if (read(result.time_between_explosions)) {
-                        if (!constraints::finite(result.time_between_explosions)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a finite value"});
-                        }
-                    }
+                    read(result.time_between_explosions, constraints::finite);
                     break;
                 case Field::min_small_explosion_range:
-                    if (read(result.min_small_explosion_range)) {
-                        if (!constraints::finite(result.min_small_explosion_range)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a finite value"});
-                        }
-                    }
+                    read(result.min_small_explosion_range, constraints::finite);
                     break;
                 case Field::max_small_explosion_range:
-                    if (read(result.max_small_explosion_range)) {
-                        if (!constraints::finite(result.max_small_explosion_range)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a finite value"});
-                        }
-                    }
+                    read(result.max_small_explosion_range, constraints::finite);
                     break;
                 case Field::large_explosion_delay:
-                    if (read(result.large_explosion_delay)) {
-                        if (!constraints::finite(result.large_explosion_delay)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a finite value"});
-                        }
-                    }
+                    read(result.large_explosion_delay, constraints::finite);
                     break;
                 case Field::proxy_arrow_size:
-                    if (read(result.proxy_arrow_size)) {
-                        if (!constraints::finite(result.proxy_arrow_size)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a finite value"});
-                        }
-                    }
+                    read(result.proxy_arrow_size, constraints::finite);
                     break;
                 case Field::Count:
                     std::unreachable();

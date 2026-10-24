@@ -233,104 +233,47 @@ inline void TypeReader<::ioj::settings::EntityOverlay>::decode(Reader const& rea
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination) {
-                auto const error_count{errors.size()};
-                decode_field(reader, value, location, destination, mode, errors);
-                return errors.size() == error_count;
+            auto const read{[&](auto& destination, auto... checks) {
+                read_checked(
+                    destination,
+                    location,
+                    errors,
+                    [&] { decode_field(reader, value, location, destination, mode, errors); },
+                    checks...);
             }};
             switch (field) {
                 case Field::enabled:
                     read(result.enabled);
                     break;
                 case Field::maximum_range:
-                    if (read(result.maximum_range)) {
-                        if (!constraints::finite(result.maximum_range)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a finite value"});
-                        }
-                    }
+                    read(result.maximum_range, constraints::finite);
                     break;
                 case Field::bar_size_pixels:
-                    if (read(result.bar_size_pixels)) {
-                        if (!constraints::finite(result.bar_size_pixels)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a finite value"});
-                        }
-                    }
+                    read(result.bar_size_pixels, constraints::finite);
                     break;
                 case Field::screen_offset_pixels:
-                    if (read(result.screen_offset_pixels)) {
-                        if (!constraints::finite(result.screen_offset_pixels)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a finite value"});
-                        }
-                    }
+                    read(result.screen_offset_pixels, constraints::finite);
                     break;
                 case Field::minimum_bar_scale:
-                    if (read(result.minimum_bar_scale)) {
-                        if (!constraints::finite(result.minimum_bar_scale)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a finite value"});
-                        }
-                    }
+                    read(result.minimum_bar_scale, constraints::finite);
                     break;
                 case Field::maximum_bar_scale:
-                    if (read(result.maximum_bar_scale)) {
-                        if (!constraints::finite(result.maximum_bar_scale)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a finite value"});
-                        }
-                    }
+                    read(result.maximum_bar_scale, constraints::finite);
                     break;
                 case Field::inset_pixels:
-                    if (read(result.inset_pixels)) {
-                        if (!constraints::finite(result.inset_pixels)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a finite value"});
-                        }
-                    }
+                    read(result.inset_pixels, constraints::finite);
                     break;
                 case Field::maximum_inset_height_ratio:
-                    if (read(result.maximum_inset_height_ratio)) {
-                        if (!constraints::finite(result.maximum_inset_height_ratio)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a finite value"});
-                        }
-                    }
+                    read(result.maximum_inset_height_ratio, constraints::finite);
                     break;
                 case Field::objective_frame_pixels:
-                    if (read(result.objective_frame_pixels)) {
-                        if (!constraints::finite(result.objective_frame_pixels)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a finite value"});
-                        }
-                    }
+                    read(result.objective_frame_pixels, constraints::finite);
                     break;
                 case Field::objective_bar_height_scale:
-                    if (read(result.objective_bar_height_scale)) {
-                        if (!constraints::finite(result.objective_bar_height_scale)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a finite value"});
-                        }
-                    }
+                    read(result.objective_bar_height_scale, constraints::finite);
                     break;
                 case Field::screen_edge_padding_pixels:
-                    if (read(result.screen_edge_padding_pixels)) {
-                        if (!constraints::finite(result.screen_edge_padding_pixels)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a finite value"});
-                        }
-                    }
+                    read(result.screen_edge_padding_pixels, constraints::finite);
                     break;
                 case Field::soft_target:
                     read(result.soft_target);
@@ -366,104 +309,47 @@ inline void TypeReader<::ioj::settings::EntityOverlayOverrides>::decode(Reader c
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination) {
-                auto const error_count{errors.size()};
-                decode_patch_field(reader, value, location, destination, errors);
-                return errors.size() == error_count;
+            auto const read{[&](auto& destination, auto... checks) {
+                read_checked(
+                    destination,
+                    location,
+                    errors,
+                    [&] { decode_patch_field(reader, value, location, destination, errors); },
+                    checks...);
             }};
             switch (field) {
                 case Field::enabled:
                     read(result.enabled);
                     break;
                 case Field::maximum_range:
-                    if (read(result.maximum_range)) {
-                        if (!constraints::finite(result.maximum_range)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a finite value"});
-                        }
-                    }
+                    read(result.maximum_range, constraints::finite);
                     break;
                 case Field::bar_size_pixels:
-                    if (read(result.bar_size_pixels)) {
-                        if (!constraints::finite(result.bar_size_pixels)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a finite value"});
-                        }
-                    }
+                    read(result.bar_size_pixels, constraints::finite);
                     break;
                 case Field::screen_offset_pixels:
-                    if (read(result.screen_offset_pixels)) {
-                        if (!constraints::finite(result.screen_offset_pixels)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a finite value"});
-                        }
-                    }
+                    read(result.screen_offset_pixels, constraints::finite);
                     break;
                 case Field::minimum_bar_scale:
-                    if (read(result.minimum_bar_scale)) {
-                        if (!constraints::finite(result.minimum_bar_scale)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a finite value"});
-                        }
-                    }
+                    read(result.minimum_bar_scale, constraints::finite);
                     break;
                 case Field::maximum_bar_scale:
-                    if (read(result.maximum_bar_scale)) {
-                        if (!constraints::finite(result.maximum_bar_scale)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a finite value"});
-                        }
-                    }
+                    read(result.maximum_bar_scale, constraints::finite);
                     break;
                 case Field::inset_pixels:
-                    if (read(result.inset_pixels)) {
-                        if (!constraints::finite(result.inset_pixels)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a finite value"});
-                        }
-                    }
+                    read(result.inset_pixels, constraints::finite);
                     break;
                 case Field::maximum_inset_height_ratio:
-                    if (read(result.maximum_inset_height_ratio)) {
-                        if (!constraints::finite(result.maximum_inset_height_ratio)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a finite value"});
-                        }
-                    }
+                    read(result.maximum_inset_height_ratio, constraints::finite);
                     break;
                 case Field::objective_frame_pixels:
-                    if (read(result.objective_frame_pixels)) {
-                        if (!constraints::finite(result.objective_frame_pixels)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a finite value"});
-                        }
-                    }
+                    read(result.objective_frame_pixels, constraints::finite);
                     break;
                 case Field::objective_bar_height_scale:
-                    if (read(result.objective_bar_height_scale)) {
-                        if (!constraints::finite(result.objective_bar_height_scale)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a finite value"});
-                        }
-                    }
+                    read(result.objective_bar_height_scale, constraints::finite);
                     break;
                 case Field::screen_edge_padding_pixels:
-                    if (read(result.screen_edge_padding_pixels)) {
-                        if (!constraints::finite(result.screen_edge_padding_pixels)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a finite value"});
-                        }
-                    }
+                    read(result.screen_edge_padding_pixels, constraints::finite);
                     break;
                 case Field::soft_target:
                     read(result.soft_target);

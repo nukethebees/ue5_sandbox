@@ -330,11 +330,15 @@ inline ReadResult<::codegen_compile_fixture::PositionalChild>
     AstDiagnostics errors{};
     std::optional<decltype(value_type::name)> value_name{};
     std::optional<decltype(value_type::count)> value_count{};
-    auto const read{[&](auto& destination, NodeIndex value, std::string_view location) {
-        auto const error_count{errors.size()};
-        read_field(reader, value, location, destination, errors);
-        return errors.size() == error_count;
-    }};
+    auto const read{
+        [&](auto& destination, NodeIndex value, std::string_view location, auto... checks) {
+            read_checked(
+                destination,
+                location,
+                errors,
+                [&] { read_field(reader, value, location, destination, errors); },
+                checks...);
+        }};
 
     auto const arguments{positional_arguments(reader, node, "position", path, 2)};
 
@@ -343,13 +347,7 @@ inline ReadResult<::codegen_compile_fixture::PositionalChild>
         return std::unexpected{std::move(errors)};
     }
     read(value_name, (*arguments)[0], std::string{path} + ".name");
-    if (read(value_count, (*arguments)[1], std::string{path} + ".count")) {
-        if (!constraints::nonnegative(value_count)) {
-            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                           std::string{std::string{path} + ".count"},
-                                           "Expected a nonnegative value"});
-        }
-    }
+    read(value_count, (*arguments)[1], std::string{path} + ".count", constraints::nonnegative);
     if (!errors.empty()) {
         return std::unexpected{std::move(errors)};
     }
@@ -366,11 +364,15 @@ inline void
                                                                    value_type& result,
                                                                    ReadMode mode,
                                                                    AstDiagnostics& errors) {
-    auto const read{[&](auto& destination, NodeIndex value, std::string_view location) {
-        auto const error_count{errors.size()};
-        decode_field(reader, value, location, destination, mode, errors);
-        return errors.size() == error_count;
-    }};
+    auto const read{
+        [&](auto& destination, NodeIndex value, std::string_view location, auto... checks) {
+            read_checked(
+                destination,
+                location,
+                errors,
+                [&] { decode_field(reader, value, location, destination, mode, errors); },
+                checks...);
+        }};
 
     auto const arguments{positional_arguments(reader, node, "position", path, 2)};
 
@@ -379,13 +381,7 @@ inline void
         return;
     }
     read(result.name, (*arguments)[0], std::string{path} + ".name");
-    if (read(result.count, (*arguments)[1], std::string{path} + ".count")) {
-        if (!constraints::nonnegative(result.count)) {
-            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                           std::string{std::string{path} + ".count"},
-                                           "Expected a nonnegative value"});
-        }
-    }
+    read(result.count, (*arguments)[1], std::string{path} + ".count", constraints::nonnegative);
 }
 
 inline ReadResult<::codegen_compile_fixture::DefaultReadable>
@@ -409,10 +405,13 @@ inline void
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination) {
-                auto const error_count{errors.size()};
-                decode_field(reader, value, location, destination, mode, errors);
-                return errors.size() == error_count;
+            auto const read{[&](auto& destination, auto... checks) {
+                read_checked(
+                    destination,
+                    location,
+                    errors,
+                    [&] { decode_field(reader, value, location, destination, mode, errors); },
+                    checks...);
             }};
             switch (field) {
                 case Field::count:
@@ -459,10 +458,13 @@ inline void
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination) {
-                auto const error_count{errors.size()};
-                decode_field(reader, value, location, destination, mode, errors);
-                return errors.size() == error_count;
+            auto const read{[&](auto& destination, auto... checks) {
+                read_checked(
+                    destination,
+                    location,
+                    errors,
+                    [&] { decode_field(reader, value, location, destination, mode, errors); },
+                    checks...);
             }};
             switch (field) {
                 case Field::children:
@@ -499,25 +501,19 @@ inline ReadResult<::codegen_compile_fixture::BoundedInteger>
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination) {
-                auto const error_count{errors.size()};
-                read_field(reader, value, location, destination, errors);
-                return errors.size() == error_count;
+            auto const read{[&](auto& destination, auto... checks) {
+                read_checked(
+                    destination,
+                    location,
+                    errors,
+                    [&] { read_field(reader, value, location, destination, errors); },
+                    checks...);
             }};
             switch (field) {
                 case Field::value:
-                    if (read(value_value)) {
-                        if (!constraints::minimum(value_value, (-9223372036854775807LL - 1LL))) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Value is below the minimum"});
-                        }
-                        if (!constraints::maximum(value_value, 9223372036854775806ULL)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Value is above the maximum"});
-                        }
-                    }
+                    read(value_value,
+                         constraints::minimum((-9223372036854775807LL - 1LL)),
+                         constraints::maximum(9223372036854775806ULL));
                     break;
                 case Field::Count:
                     std::unreachable();
@@ -555,25 +551,19 @@ inline void
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination) {
-                auto const error_count{errors.size()};
-                decode_field(reader, value, location, destination, mode, errors);
-                return errors.size() == error_count;
+            auto const read{[&](auto& destination, auto... checks) {
+                read_checked(
+                    destination,
+                    location,
+                    errors,
+                    [&] { decode_field(reader, value, location, destination, mode, errors); },
+                    checks...);
             }};
             switch (field) {
                 case Field::value:
-                    if (read(result.value)) {
-                        if (!constraints::minimum(result.value, (-9223372036854775807LL - 1LL))) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Value is below the minimum"});
-                        }
-                        if (!constraints::maximum(result.value, 9223372036854775806ULL)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Value is above the maximum"});
-                        }
-                    }
+                    read(result.value,
+                         constraints::minimum((-9223372036854775807LL - 1LL)),
+                         constraints::maximum(9223372036854775806ULL));
                     break;
                 case Field::Count:
                     std::unreachable();
@@ -613,23 +603,20 @@ inline ReadResult<::codegen_compile_fixture::ReadableChild>
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination) {
-                auto const error_count{errors.size()};
-                read_field(reader, value, location, destination, errors);
-                return errors.size() == error_count;
+            auto const read{[&](auto& destination, auto... checks) {
+                read_checked(
+                    destination,
+                    location,
+                    errors,
+                    [&] { read_field(reader, value, location, destination, errors); },
+                    checks...);
             }};
             switch (field) {
                 case Field::name:
                     read(value_name);
                     break;
                 case Field::count:
-                    if (read(value_count)) {
-                        if (!constraints::nonnegative(value_count)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a nonnegative value"});
-                        }
-                    }
+                    read(value_count, constraints::nonnegative);
                     break;
                 case Field::Count:
                     std::unreachable();
@@ -670,23 +657,20 @@ inline void
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination) {
-                auto const error_count{errors.size()};
-                decode_field(reader, value, location, destination, mode, errors);
-                return errors.size() == error_count;
+            auto const read{[&](auto& destination, auto... checks) {
+                read_checked(
+                    destination,
+                    location,
+                    errors,
+                    [&] { decode_field(reader, value, location, destination, mode, errors); },
+                    checks...);
             }};
             switch (field) {
                 case Field::name:
                     read(result.name);
                     break;
                 case Field::count:
-                    if (read(result.count)) {
-                        if (!constraints::nonnegative(result.count)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a nonnegative value"});
-                        }
-                    }
+                    read(result.count, constraints::nonnegative);
                     break;
                 case Field::Count:
                     std::unreachable();
@@ -733,10 +717,13 @@ inline ReadResult<::codegen_compile_fixture::ReadableRecord>
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination) {
-                auto const error_count{errors.size()};
-                read_field(reader, value, location, destination, errors);
-                return errors.size() == error_count;
+            auto const read{[&](auto& destination, auto... checks) {
+                read_checked(
+                    destination,
+                    location,
+                    errors,
+                    [&] { read_field(reader, value, location, destination, errors); },
+                    checks...);
             }};
             switch (field) {
                 case Field::child:
@@ -755,46 +742,17 @@ inline ReadResult<::codegen_compile_fixture::ReadableRecord>
                     read(value_maybe);
                     break;
                 case Field::scale:
-                    if (read(value_scale)) {
-                        if (!constraints::positive(value_scale)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a positive value"});
-                        }
-                        if (!constraints::finite(value_scale)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a finite value"});
-                        }
-                        if (!constraints::minimum(value_scale, 5.00000000000000000e-01)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Value is below the minimum"});
-                        }
-                        if (!constraints::maximum(value_scale, 5ULL)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Value is above the maximum"});
-                        }
-                    }
+                    read(value_scale,
+                         constraints::positive,
+                         constraints::finite,
+                         constraints::minimum(5.00000000000000000e-01),
+                         constraints::maximum(5ULL));
                     break;
                 case Field::offset:
-                    if (read(value_offset)) {
-                        if (!constraints::nonzero(value_offset)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a nonzero value"});
-                        }
-                    }
+                    read(value_offset, constraints::nonzero);
                     break;
                 case Field::title:
-                    if (read(value_title)) {
-                        if (!constraints::nonempty(value_title)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidType,
-                                                           std::string{location},
-                                                           "Expected a nonempty string"});
-                        }
-                    }
+                    read(value_title, constraints::nonempty);
                     break;
                 case Field::mode:
                     read(value_mode);
@@ -860,10 +818,13 @@ inline void
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination) {
-                auto const error_count{errors.size()};
-                decode_field(reader, value, location, destination, mode, errors);
-                return errors.size() == error_count;
+            auto const read{[&](auto& destination, auto... checks) {
+                read_checked(
+                    destination,
+                    location,
+                    errors,
+                    [&] { decode_field(reader, value, location, destination, mode, errors); },
+                    checks...);
             }};
             switch (field) {
                 case Field::child:
@@ -882,46 +843,17 @@ inline void
                     read(result.maybe);
                     break;
                 case Field::scale:
-                    if (read(result.scale)) {
-                        if (!constraints::positive(result.scale)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a positive value"});
-                        }
-                        if (!constraints::finite(result.scale)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a finite value"});
-                        }
-                        if (!constraints::minimum(result.scale, 5.00000000000000000e-01)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Value is below the minimum"});
-                        }
-                        if (!constraints::maximum(result.scale, 5ULL)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Value is above the maximum"});
-                        }
-                    }
+                    read(result.scale,
+                         constraints::positive,
+                         constraints::finite,
+                         constraints::minimum(5.00000000000000000e-01),
+                         constraints::maximum(5ULL));
                     break;
                 case Field::offset:
-                    if (read(result.offset)) {
-                        if (!constraints::nonzero(result.offset)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a nonzero value"});
-                        }
-                    }
+                    read(result.offset, constraints::nonzero);
                     break;
                 case Field::title:
-                    if (read(result.title)) {
-                        if (!constraints::nonempty(result.title)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidType,
-                                                           std::string{location},
-                                                           "Expected a nonempty string"});
-                        }
-                    }
+                    read(result.title, constraints::nonempty);
                     break;
                 case Field::mode:
                     read(result.mode);

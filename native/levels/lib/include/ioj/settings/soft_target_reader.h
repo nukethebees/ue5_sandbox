@@ -246,128 +246,53 @@ inline void TypeReader<::ioj::settings::SoftTarget>::decode(Reader const& reader
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination) {
-                auto const error_count{errors.size()};
-                decode_field(reader, value, location, destination, mode, errors);
-                return errors.size() == error_count;
+            auto const read{[&](auto& destination, auto... checks) {
+                read_checked(
+                    destination,
+                    location,
+                    errors,
+                    [&] { decode_field(reader, value, location, destination, mode, errors); },
+                    checks...);
             }};
             switch (field) {
                 case Field::acquisition_radius_pixels:
-                    if (read(result.acquisition_radius_pixels)) {
-                        if (!constraints::finite(result.acquisition_radius_pixels)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a finite value"});
-                        }
-                    }
+                    read(result.acquisition_radius_pixels, constraints::finite);
                     break;
                 case Field::retention_radius_pixels:
-                    if (read(result.retention_radius_pixels)) {
-                        if (!constraints::finite(result.retention_radius_pixels)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a finite value"});
-                        }
-                    }
+                    read(result.retention_radius_pixels, constraints::finite);
                     break;
                 case Field::centre_tie_radius_pixels:
-                    if (read(result.centre_tie_radius_pixels)) {
-                        if (!constraints::finite(result.centre_tie_radius_pixels)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a finite value"});
-                        }
-                    }
+                    read(result.centre_tie_radius_pixels, constraints::finite);
                     break;
                 case Field::switch_improvement_ratio:
-                    if (read(result.switch_improvement_ratio)) {
-                        if (!constraints::finite(result.switch_improvement_ratio)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a finite value"});
-                        }
-                    }
+                    read(result.switch_improvement_ratio, constraints::finite);
                     break;
                 case Field::range_transition_start_multiplier:
-                    if (read(result.range_transition_start_multiplier)) {
-                        if (!constraints::finite(result.range_transition_start_multiplier)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a finite value"});
-                        }
-                    }
+                    read(result.range_transition_start_multiplier, constraints::finite);
                     break;
                 case Field::minimum_radius_pixels:
-                    if (read(result.minimum_radius_pixels)) {
-                        if (!constraints::finite(result.minimum_radius_pixels)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a finite value"});
-                        }
-                    }
+                    read(result.minimum_radius_pixels, constraints::finite);
                     break;
                 case Field::maximum_radius_pixels:
-                    if (read(result.maximum_radius_pixels)) {
-                        if (!constraints::finite(result.maximum_radius_pixels)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a finite value"});
-                        }
-                    }
+                    read(result.maximum_radius_pixels, constraints::finite);
                     break;
                 case Field::bounds_padding_pixels:
-                    if (read(result.bounds_padding_pixels)) {
-                        if (!constraints::finite(result.bounds_padding_pixels)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a finite value"});
-                        }
-                    }
+                    read(result.bounds_padding_pixels, constraints::finite);
                     break;
                 case Field::bracket_start_radius_multiplier:
-                    if (read(result.bracket_start_radius_multiplier)) {
-                        if (!constraints::finite(result.bracket_start_radius_multiplier)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a finite value"});
-                        }
-                    }
+                    read(result.bracket_start_radius_multiplier, constraints::finite);
                     break;
                 case Field::opacity:
-                    if (read(result.opacity)) {
-                        if (!constraints::finite(result.opacity)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a finite value"});
-                        }
-                    }
+                    read(result.opacity, constraints::finite);
                     break;
                 case Field::pulse_opacity_boost:
-                    if (read(result.pulse_opacity_boost)) {
-                        if (!constraints::finite(result.pulse_opacity_boost)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a finite value"});
-                        }
-                    }
+                    read(result.pulse_opacity_boost, constraints::finite);
                     break;
                 case Field::pulse_duration:
-                    if (read(result.pulse_duration)) {
-                        if (!constraints::finite(result.pulse_duration)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a finite value"});
-                        }
-                    }
+                    read(result.pulse_duration, constraints::finite);
                     break;
                 case Field::fade_out_duration:
-                    if (read(result.fade_out_duration)) {
-                        if (!constraints::finite(result.fade_out_duration)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a finite value"});
-                        }
-                    }
+                    read(result.fade_out_duration, constraints::finite);
                     break;
                 case Field::Count:
                     std::unreachable();
@@ -400,128 +325,53 @@ inline void TypeReader<::ioj::settings::SoftTargetOverrides>::decode(Reader cons
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination) {
-                auto const error_count{errors.size()};
-                decode_patch_field(reader, value, location, destination, errors);
-                return errors.size() == error_count;
+            auto const read{[&](auto& destination, auto... checks) {
+                read_checked(
+                    destination,
+                    location,
+                    errors,
+                    [&] { decode_patch_field(reader, value, location, destination, errors); },
+                    checks...);
             }};
             switch (field) {
                 case Field::acquisition_radius_pixels:
-                    if (read(result.acquisition_radius_pixels)) {
-                        if (!constraints::finite(result.acquisition_radius_pixels)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a finite value"});
-                        }
-                    }
+                    read(result.acquisition_radius_pixels, constraints::finite);
                     break;
                 case Field::retention_radius_pixels:
-                    if (read(result.retention_radius_pixels)) {
-                        if (!constraints::finite(result.retention_radius_pixels)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a finite value"});
-                        }
-                    }
+                    read(result.retention_radius_pixels, constraints::finite);
                     break;
                 case Field::centre_tie_radius_pixels:
-                    if (read(result.centre_tie_radius_pixels)) {
-                        if (!constraints::finite(result.centre_tie_radius_pixels)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a finite value"});
-                        }
-                    }
+                    read(result.centre_tie_radius_pixels, constraints::finite);
                     break;
                 case Field::switch_improvement_ratio:
-                    if (read(result.switch_improvement_ratio)) {
-                        if (!constraints::finite(result.switch_improvement_ratio)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a finite value"});
-                        }
-                    }
+                    read(result.switch_improvement_ratio, constraints::finite);
                     break;
                 case Field::range_transition_start_multiplier:
-                    if (read(result.range_transition_start_multiplier)) {
-                        if (!constraints::finite(result.range_transition_start_multiplier)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a finite value"});
-                        }
-                    }
+                    read(result.range_transition_start_multiplier, constraints::finite);
                     break;
                 case Field::minimum_radius_pixels:
-                    if (read(result.minimum_radius_pixels)) {
-                        if (!constraints::finite(result.minimum_radius_pixels)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a finite value"});
-                        }
-                    }
+                    read(result.minimum_radius_pixels, constraints::finite);
                     break;
                 case Field::maximum_radius_pixels:
-                    if (read(result.maximum_radius_pixels)) {
-                        if (!constraints::finite(result.maximum_radius_pixels)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a finite value"});
-                        }
-                    }
+                    read(result.maximum_radius_pixels, constraints::finite);
                     break;
                 case Field::bounds_padding_pixels:
-                    if (read(result.bounds_padding_pixels)) {
-                        if (!constraints::finite(result.bounds_padding_pixels)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a finite value"});
-                        }
-                    }
+                    read(result.bounds_padding_pixels, constraints::finite);
                     break;
                 case Field::bracket_start_radius_multiplier:
-                    if (read(result.bracket_start_radius_multiplier)) {
-                        if (!constraints::finite(result.bracket_start_radius_multiplier)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a finite value"});
-                        }
-                    }
+                    read(result.bracket_start_radius_multiplier, constraints::finite);
                     break;
                 case Field::opacity:
-                    if (read(result.opacity)) {
-                        if (!constraints::finite(result.opacity)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a finite value"});
-                        }
-                    }
+                    read(result.opacity, constraints::finite);
                     break;
                 case Field::pulse_opacity_boost:
-                    if (read(result.pulse_opacity_boost)) {
-                        if (!constraints::finite(result.pulse_opacity_boost)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a finite value"});
-                        }
-                    }
+                    read(result.pulse_opacity_boost, constraints::finite);
                     break;
                 case Field::pulse_duration:
-                    if (read(result.pulse_duration)) {
-                        if (!constraints::finite(result.pulse_duration)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a finite value"});
-                        }
-                    }
+                    read(result.pulse_duration, constraints::finite);
                     break;
                 case Field::fade_out_duration:
-                    if (read(result.fade_out_duration)) {
-                        if (!constraints::finite(result.fade_out_duration)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a finite value"});
-                        }
-                    }
+                    read(result.fade_out_duration, constraints::finite);
                     break;
                 case Field::Count:
                     std::unreachable();

@@ -60,10 +60,13 @@ inline void
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination) {
-                auto const error_count{errors.size()};
-                decode_field(reader, value, location, destination, mode, errors);
-                return errors.size() == error_count;
+            auto const read{[&](auto& destination, auto... checks) {
+                read_checked(
+                    destination,
+                    location,
+                    errors,
+                    [&] { decode_field(reader, value, location, destination, mode, errors); },
+                    checks...);
             }};
             switch (field) {
                 case Field::level_size:

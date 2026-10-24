@@ -91,21 +91,21 @@ TEST(SchemeReader, AppliesConstraintsToValuesAndPresentOptionals) {
     EXPECT_TRUE(constraints::finite(3));
     EXPECT_FALSE(constraints::nonempty(std::string{}));
     EXPECT_TRUE(constraints::nonempty(*NonEmptyString::try_make("value")));
-    EXPECT_TRUE(constraints::minimum(std::optional<int>{}, 5));
-    EXPECT_FALSE(constraints::minimum(std::optional{4}, 5));
-    EXPECT_TRUE(constraints::minimum(5, 5));
-    EXPECT_TRUE(constraints::maximum(5, 5));
-    EXPECT_FALSE(constraints::maximum(6, 5));
-    EXPECT_FALSE(constraints::maximum(std::numeric_limits<std::uint64_t>::max(), INT64_MAX));
-    EXPECT_FALSE(constraints::minimum(-1, 0u));
-    EXPECT_FALSE(constraints::minimum(INT64_MAX, std::ldexp(1.0, 63)));
-    EXPECT_FALSE(constraints::maximum(std::ldexp(1.0, 64), UINT64_MAX));
-    EXPECT_TRUE(constraints::maximum(INT64_MAX, std::ldexp(1.0, 63)));
-    EXPECT_TRUE(constraints::minimum(std::ldexp(1.0, 64), UINT64_MAX));
-    EXPECT_FALSE(constraints::minimum(std::int8_t{127}, 127.1));
-    EXPECT_FALSE(constraints::maximum(std::int8_t{-128}, -128.1));
-    EXPECT_TRUE(constraints::maximum(4, 4.5));
-    EXPECT_FALSE(constraints::minimum(4, 4.5));
-    EXPECT_FALSE(constraints::maximum(0, std::numeric_limits<double>::quiet_NaN()));
+    EXPECT_TRUE(constraints::minimum(5)(std::optional<int>{}));
+    EXPECT_FALSE(constraints::minimum(5)(std::optional{4}));
+    EXPECT_TRUE(constraints::minimum(5)(5));
+    EXPECT_TRUE(constraints::maximum(5)(5));
+    EXPECT_FALSE(constraints::maximum(5)(6));
+    EXPECT_FALSE(constraints::maximum(INT64_MAX)(std::numeric_limits<std::uint64_t>::max()));
+    EXPECT_FALSE(constraints::minimum(0u)(-1));
+    EXPECT_FALSE(constraints::minimum(std::ldexp(1.0, 63))(INT64_MAX));
+    EXPECT_FALSE(constraints::maximum(UINT64_MAX)(std::ldexp(1.0, 64)));
+    EXPECT_TRUE(constraints::maximum(std::ldexp(1.0, 63))(INT64_MAX));
+    EXPECT_TRUE(constraints::minimum(UINT64_MAX)(std::ldexp(1.0, 64)));
+    EXPECT_FALSE(constraints::minimum(127.1)(std::int8_t{127}));
+    EXPECT_FALSE(constraints::maximum(-128.1)(std::int8_t{-128}));
+    EXPECT_TRUE(constraints::maximum(4.5)(4));
+    EXPECT_FALSE(constraints::minimum(4.5)(4));
+    EXPECT_FALSE(constraints::maximum(std::numeric_limits<double>::quiet_NaN())(0));
 }
 }

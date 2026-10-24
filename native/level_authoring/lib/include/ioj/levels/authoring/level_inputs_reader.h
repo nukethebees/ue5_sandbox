@@ -434,10 +434,13 @@ inline void TypeReader<::ioj::levels::authoring::EntityInput>::decode(Reader con
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination) {
-                auto const error_count{errors.size()};
-                decode_field(reader, value, location, destination, mode, errors);
-                return errors.size() == error_count;
+            auto const read{[&](auto& destination, auto... checks) {
+                read_checked(
+                    destination,
+                    location,
+                    errors,
+                    [&] { decode_field(reader, value, location, destination, mode, errors); },
+                    checks...);
             }};
             switch (field) {
                 case Field::id:
@@ -465,22 +468,10 @@ inline void TypeReader<::ioj::levels::authoring::EntityInput>::decode(Reader con
                     read(result.laser_damage);
                     break;
                 case Field::initial_spawn_delay:
-                    if (read(result.initial_spawn_delay)) {
-                        if (!constraints::finite(result.initial_spawn_delay)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a finite value"});
-                        }
-                    }
+                    read(result.initial_spawn_delay, constraints::finite);
                     break;
                 case Field::spawn_cooldown:
-                    if (read(result.spawn_cooldown)) {
-                        if (!constraints::finite(result.spawn_cooldown)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a finite value"});
-                        }
-                    }
+                    read(result.spawn_cooldown, constraints::finite);
                     break;
                 case Field::target:
                     read(result.target);
@@ -524,10 +515,13 @@ inline void
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination) {
-                auto const error_count{errors.size()};
-                decode_field(reader, value, location, destination, mode, errors);
-                return errors.size() == error_count;
+            auto const read{[&](auto& destination, auto... checks) {
+                read_checked(
+                    destination,
+                    location,
+                    errors,
+                    [&] { decode_field(reader, value, location, destination, mode, errors); },
+                    checks...);
             }};
             switch (field) {
                 case Field::id:
@@ -591,10 +585,13 @@ inline void TypeReader<::ioj::levels::authoring::MissionInput>::decode(Reader co
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination) {
-                auto const error_count{errors.size()};
-                decode_field(reader, value, location, destination, mode, errors);
-                return errors.size() == error_count;
+            auto const read{[&](auto& destination, auto... checks) {
+                read_checked(
+                    destination,
+                    location,
+                    errors,
+                    [&] { decode_field(reader, value, location, destination, mode, errors); },
+                    checks...);
             }};
             switch (field) {
                 case Field::objectives:
@@ -640,10 +637,13 @@ inline void TypeReader<::ioj::levels::authoring::LevelInput>::decode(Reader cons
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination) {
-                auto const error_count{errors.size()};
-                decode_field(reader, value, location, destination, mode, errors);
-                return errors.size() == error_count;
+            auto const read{[&](auto& destination, auto... checks) {
+                read_checked(
+                    destination,
+                    location,
+                    errors,
+                    [&] { decode_field(reader, value, location, destination, mode, errors); },
+                    checks...);
             }};
             switch (field) {
                 case Field::id:
@@ -656,13 +656,7 @@ inline void TypeReader<::ioj::levels::authoring::LevelInput>::decode(Reader cons
                     read(result.description);
                     break;
                 case Field::par_time:
-                    if (read(result.par_time)) {
-                        if (!constraints::finite(result.par_time)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a finite value"});
-                        }
-                    }
+                    read(result.par_time, constraints::finite);
                     break;
                 case Field::unlock:
                     read(result.unlock);
@@ -724,10 +718,13 @@ inline void
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination) {
-                auto const error_count{errors.size()};
-                decode_field(reader, value, location, destination, mode, errors);
-                return errors.size() == error_count;
+            auto const read{[&](auto& destination, auto... checks) {
+                read_checked(
+                    destination,
+                    location,
+                    errors,
+                    [&] { decode_field(reader, value, location, destination, mode, errors); },
+                    checks...);
             }};
             switch (field) {
                 case Field::path:
@@ -777,10 +774,13 @@ inline void
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination) {
-                auto const error_count{errors.size()};
-                decode_field(reader, value, location, destination, mode, errors);
-                return errors.size() == error_count;
+            auto const read{[&](auto& destination, auto... checks) {
+                read_checked(
+                    destination,
+                    location,
+                    errors,
+                    [&] { decode_field(reader, value, location, destination, mode, errors); },
+                    checks...);
             }};
             switch (field) {
                 case Field::path:
@@ -829,10 +829,13 @@ inline void TypeReader<::ioj::levels::authoring::CatalogInput>::decode(Reader co
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination) {
-                auto const error_count{errors.size()};
-                decode_field(reader, value, location, destination, mode, errors);
-                return errors.size() == error_count;
+            auto const read{[&](auto& destination, auto... checks) {
+                read_checked(
+                    destination,
+                    location,
+                    errors,
+                    [&] { decode_field(reader, value, location, destination, mode, errors); },
+                    checks...);
             }};
             switch (field) {
                 case Field::levels:

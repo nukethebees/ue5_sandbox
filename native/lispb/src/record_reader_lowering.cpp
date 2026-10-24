@@ -65,52 +65,34 @@ auto reader_fields(LoweringContext& context, DeclarationHandle record, bool over
     return result;
 }
 
-auto checked_read(LoweringContext& context,
-                  RecordMemberId field,
-                  std::string const& destination,
-                  std::string const& read,
-                  std::string const& path) -> std::string {
+auto constraint_arguments(LoweringContext& context, RecordMemberId field) -> std::string {
     auto const& members{context.declarations.record_members};
     auto const& options{members.s7[members.index(field)]};
     std::string checks;
-    auto const constraint{[&](std::string const& check,
-                              std::string_view message,
-                              std::string_view code = "InvalidNumber") {
-        checks += std::format(
-            "if (!constraints::{}) {{\nerrors.push_back(AstDiagnostic{{AstErrorCode::{}, "
-            "std::string{{{}}}, \"{}\"}});\n}}\n",
-            check,
-            code,
-            path,
-            message);
-    }};
+    auto const constraint{
+        [&](std::string_view check) { checks += std::format(", constraints::{}", check); }};
     if (options.nonzero) {
-        constraint(std::format("nonzero({})", destination), "Expected a nonzero value");
+        constraint("nonzero");
     }
     if (options.positive) {
-        constraint(std::format("positive({})", destination), "Expected a positive value");
+        constraint("positive");
     }
     if (options.nonnegative) {
-        constraint(std::format("nonnegative({})", destination), "Expected a nonnegative value");
+        constraint("nonnegative");
     }
     if (options.finite) {
-        constraint(std::format("finite({})", destination), "Expected a finite value");
+        constraint("finite");
     }
     if (options.nonempty) {
-        constraint(
-            std::format("nonempty({})", destination), "Expected a nonempty string", "InvalidType");
+        constraint("nonempty");
     }
     if (options.minimum) {
-        constraint(
-            std::format("minimum({}, {})", destination, bound_literal(context, *options.minimum)),
-            "Value is below the minimum");
+        constraint(std::format("minimum({})", bound_literal(context, *options.minimum)));
     }
     if (options.maximum) {
-        constraint(
-            std::format("maximum({}, {})", destination, bound_literal(context, *options.maximum)),
-            "Value is above the maximum");
+        constraint(std::format("maximum({})", bound_literal(context, *options.maximum)));
     }
-    return checks.empty() ? read + ";\n" : std::format("if ({}) {{\n{}}}\n", read, checks);
+    return checks;
 }
 
 auto fields_body(LoweringContext& context,
@@ -138,11 +120,11 @@ auto fields_body(LoweringContext& context,
         overrides      ? "decode_patch_field(reader, value, location, destination, errors)"
         : constructing ? "read_field(reader, value, location, destination, errors)"
                        : "decode_field(reader, value, location, destination, mode, errors)"};
-    auto const read_callback{std::format(
-        "[&](auto& destination{}) {{\n"
-        "auto const error_count{{errors.size()}};\n{};\nreturn errors.size() == error_count;\n}}",
-        positional ? ", NodeIndex value, std::string_view location" : "",
-        read_value)};
+    auto const read_callback{
+        std::format("[&](auto& destination{}, auto... checks) {{\n"
+                    "read_checked(destination, location, errors, [&] {{ {}; }}, checks...);\n}}",
+                    positional ? ", NodeIndex value, std::string_view location" : "",
+                    read_value)};
     if (positional && !fields.empty()) {
         body.add(ir.variable("auto const", "read", ir.raw_expr(read_callback, {})), 2);
     }
@@ -167,14 +149,12 @@ auto fields_body(LoweringContext& context,
             auto const destination{(constructing ? "value_" : "result.") + name};
             auto const path{
                 std::format("std::string{{path}} + \".{}\"", field_name(context, field))};
-            body.add(ir.raw(
-                checked_read(
-                    context,
-                    field,
-                    destination,
-                    std::format("read({}, (*arguments)[{}], {})", destination, index++, path),
-                    path),
-                {}));
+            body.add(ir.raw(std::format("read({}, (*arguments)[{}], {}{});\n",
+                                        destination,
+                                        index++,
+                                        path,
+                                        constraint_arguments(context, field)),
+                            {}));
         }
     } else {
         // The IR has no lambda node; keep only the streaming callback's syntax textual.
@@ -184,11 +164,10 @@ auto fields_body(LoweringContext& context,
         for (auto const field : fields) {
             auto const name{context.text(members.name[members.index(field)])};
             auto const destination{(constructing ? "value_" : "result.") + name};
-            visitor += std::format(
-                "case Field::{}: {}break;\n",
-                name,
-                checked_read(
-                    context, field, destination, std::format("read({})", destination), "location"));
+            visitor += std::format("case Field::{}: read({}{}); break;\n",
+                                   name,
+                                   destination,
+                                   constraint_arguments(context, field));
         }
         visitor += "case Field::Count: std::unreachable();\n}\n}";
         if (fields.empty()) {

@@ -52,6 +52,11 @@ Omitted fields retain trusted C++ defaults or the caller's existing values. Sign
 vector constraints reuse the existing constrained types' `try_make` functions. Prefer a
 constrained member type when the invariant must survive later C++ mutation; do not repeat
 the same invariant as a schema annotation.
+Generated field calls pass shared constraint objects, for example
+`read(result.scale, constraints::positive, constraints::finite)`. `read_checked` skips checks
+when decoding that field fails; otherwise each failed constraint appends its diagnostic.
+Predicates and messages live together in `field_constraints.h`, including bound-capturing
+`minimum(bound)` and `maximum(bound)` constraints.
 Cross-field/domain validation remains ordinary C++. Integral bounds retain their exact
 64-bit values. Do not use arbitrary C++ expressions as bounds.
 

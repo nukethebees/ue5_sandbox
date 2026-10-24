@@ -480,25 +480,19 @@ inline void TypeReader<::ioj::starfield::GenerationSettings>::decode(Reader cons
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination) {
-                auto const error_count{errors.size()};
-                decode_field(reader, value, location, destination, mode, errors);
-                return errors.size() == error_count;
+            auto const read{[&](auto& destination, auto... checks) {
+                read_checked(
+                    destination,
+                    location,
+                    errors,
+                    [&] { decode_field(reader, value, location, destination, mode, errors); },
+                    checks...);
             }};
             switch (field) {
                 case Field::star_count:
-                    if (read(result.star_count)) {
-                        if (!constraints::minimum(result.star_count, 1ULL)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Value is below the minimum"});
-                        }
-                        if (!constraints::maximum(result.star_count, 1000000ULL)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Value is above the maximum"});
-                        }
-                    }
+                    read(result.star_count,
+                         constraints::minimum(1ULL),
+                         constraints::maximum(1000000ULL));
                     break;
                 case Field::random_seed:
                     read(result.random_seed);
@@ -532,66 +526,29 @@ inline void TypeReader<::ioj::starfield::StarSettings>::decode(Reader const& rea
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination) {
-                auto const error_count{errors.size()};
-                decode_field(reader, value, location, destination, mode, errors);
-                return errors.size() == error_count;
+            auto const read{[&](auto& destination, auto... checks) {
+                read_checked(
+                    destination,
+                    location,
+                    errors,
+                    [&] { decode_field(reader, value, location, destination, mode, errors); },
+                    checks...);
             }};
             switch (field) {
                 case Field::scale:
-                    if (read(result.scale)) {
-                        if (!constraints::positive(result.scale)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a positive value"});
-                        }
-                        if (!constraints::finite(result.scale)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a finite value"});
-                        }
-                    }
+                    read(result.scale, constraints::positive, constraints::finite);
                     break;
                 case Field::size_multiplier:
-                    if (read(result.size_multiplier)) {
-                        if (!constraints::nonnegative(result.size_multiplier)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a nonnegative value"});
-                        }
-                        if (!constraints::finite(result.size_multiplier)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a finite value"});
-                        }
-                    }
+                    read(result.size_multiplier, constraints::nonnegative, constraints::finite);
                     break;
                 case Field::global_brightness:
-                    if (read(result.global_brightness)) {
-                        if (!constraints::finite(result.global_brightness)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a finite value"});
-                        }
-                    }
+                    read(result.global_brightness, constraints::finite);
                     break;
                 case Field::colour_variation_strength:
-                    if (read(result.colour_variation_strength)) {
-                        if (!constraints::finite(result.colour_variation_strength)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a finite value"});
-                        }
-                    }
+                    read(result.colour_variation_strength, constraints::finite);
                     break;
                 case Field::parallax_strength:
-                    if (read(result.parallax_strength)) {
-                        if (!constraints::finite(result.parallax_strength)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a finite value"});
-                        }
-                    }
+                    read(result.parallax_strength, constraints::finite);
                     break;
                 case Field::Count:
                     std::unreachable();
@@ -624,39 +581,23 @@ inline void TypeReader<::ioj::starfield::GalacticBandSettings>::decode(Reader co
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination) {
-                auto const error_count{errors.size()};
-                decode_field(reader, value, location, destination, mode, errors);
-                return errors.size() == error_count;
+            auto const read{[&](auto& destination, auto... checks) {
+                read_checked(
+                    destination,
+                    location,
+                    errors,
+                    [&] { decode_field(reader, value, location, destination, mode, errors); },
+                    checks...);
             }};
             switch (field) {
                 case Field::strength:
-                    if (read(result.strength)) {
-                        if (!constraints::finite(result.strength)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a finite value"});
-                        }
-                    }
+                    read(result.strength, constraints::finite);
                     break;
                 case Field::width_degrees:
-                    if (read(result.width_degrees)) {
-                        if (!constraints::positive(result.width_degrees)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a positive value"});
-                        }
-                        if (!constraints::finite(result.width_degrees)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a finite value"});
-                        }
-                        if (!constraints::maximum(result.width_degrees, 90ULL)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Value is above the maximum"});
-                        }
-                    }
+                    read(result.width_degrees,
+                         constraints::positive,
+                         constraints::finite,
+                         constraints::maximum(90ULL));
                     break;
                 case Field::Count:
                     std::unreachable();
@@ -690,34 +631,20 @@ inline void
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination) {
-                auto const error_count{errors.size()};
-                decode_field(reader, value, location, destination, mode, errors);
-                return errors.size() == error_count;
+            auto const read{[&](auto& destination, auto... checks) {
+                read_checked(
+                    destination,
+                    location,
+                    errors,
+                    [&] { decode_field(reader, value, location, destination, mode, errors); },
+                    checks...);
             }};
             switch (field) {
                 case Field::strength:
-                    if (read(result.strength)) {
-                        if (!constraints::finite(result.strength)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a finite value"});
-                        }
-                    }
+                    read(result.strength, constraints::finite);
                     break;
                 case Field::width_degrees:
-                    if (read(result.width_degrees)) {
-                        if (!constraints::positive(result.width_degrees)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a positive value"});
-                        }
-                        if (!constraints::finite(result.width_degrees)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a finite value"});
-                        }
-                    }
+                    read(result.width_degrees, constraints::positive, constraints::finite);
                     break;
                 case Field::Count:
                     std::unreachable();
@@ -750,43 +677,23 @@ inline void TypeReader<::ioj::starfield::DustLaneSettings>::decode(Reader const&
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination) {
-                auto const error_count{errors.size()};
-                decode_field(reader, value, location, destination, mode, errors);
-                return errors.size() == error_count;
+            auto const read{[&](auto& destination, auto... checks) {
+                read_checked(
+                    destination,
+                    location,
+                    errors,
+                    [&] { decode_field(reader, value, location, destination, mode, errors); },
+                    checks...);
             }};
             switch (field) {
                 case Field::strength:
-                    if (read(result.strength)) {
-                        if (!constraints::finite(result.strength)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a finite value"});
-                        }
-                    }
+                    read(result.strength, constraints::finite);
                     break;
                 case Field::width_degrees:
-                    if (read(result.width_degrees)) {
-                        if (!constraints::positive(result.width_degrees)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a positive value"});
-                        }
-                        if (!constraints::finite(result.width_degrees)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a finite value"});
-                        }
-                    }
+                    read(result.width_degrees, constraints::positive, constraints::finite);
                     break;
                 case Field::irregularity:
-                    if (read(result.irregularity)) {
-                        if (!constraints::finite(result.irregularity)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a finite value"});
-                        }
-                    }
+                    read(result.irregularity, constraints::finite);
                     break;
                 case Field::Count:
                     std::unreachable();
@@ -819,52 +726,26 @@ inline void TypeReader<::ioj::starfield::BrightStarSettings>::decode(Reader cons
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination) {
-                auto const error_count{errors.size()};
-                decode_field(reader, value, location, destination, mode, errors);
-                return errors.size() == error_count;
+            auto const read{[&](auto& destination, auto... checks) {
+                read_checked(
+                    destination,
+                    location,
+                    errors,
+                    [&] { decode_field(reader, value, location, destination, mode, errors); },
+                    checks...);
             }};
             switch (field) {
                 case Field::fraction:
-                    if (read(result.fraction)) {
-                        if (!constraints::finite(result.fraction)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a finite value"});
-                        }
-                    }
+                    read(result.fraction, constraints::finite);
                     break;
                 case Field::size_multiplier:
-                    if (read(result.size_multiplier)) {
-                        if (!constraints::nonnegative(result.size_multiplier)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a nonnegative value"});
-                        }
-                        if (!constraints::finite(result.size_multiplier)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a finite value"});
-                        }
-                    }
+                    read(result.size_multiplier, constraints::nonnegative, constraints::finite);
                     break;
                 case Field::brightness_multiplier:
-                    if (read(result.brightness_multiplier)) {
-                        if (!constraints::finite(result.brightness_multiplier)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a finite value"});
-                        }
-                    }
+                    read(result.brightness_multiplier, constraints::finite);
                     break;
                 case Field::shape_strength:
-                    if (read(result.shape_strength)) {
-                        if (!constraints::finite(result.shape_strength)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a finite value"});
-                        }
-                    }
+                    read(result.shape_strength, constraints::finite);
                     break;
                 case Field::Count:
                     std::unreachable();
@@ -897,29 +778,20 @@ inline void TypeReader<::ioj::starfield::TwinkleSettings>::decode(Reader const& 
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination) {
-                auto const error_count{errors.size()};
-                decode_field(reader, value, location, destination, mode, errors);
-                return errors.size() == error_count;
+            auto const read{[&](auto& destination, auto... checks) {
+                read_checked(
+                    destination,
+                    location,
+                    errors,
+                    [&] { decode_field(reader, value, location, destination, mode, errors); },
+                    checks...);
             }};
             switch (field) {
                 case Field::strength:
-                    if (read(result.strength)) {
-                        if (!constraints::finite(result.strength)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a finite value"});
-                        }
-                    }
+                    read(result.strength, constraints::finite);
                     break;
                 case Field::speed:
-                    if (read(result.speed)) {
-                        if (!constraints::finite(result.speed)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a finite value"});
-                        }
-                    }
+                    read(result.speed, constraints::finite);
                     break;
                 case Field::Count:
                     std::unreachable();
@@ -952,34 +824,20 @@ inline void TypeReader<::ioj::starfield::GalacticHazeSettings>::decode(Reader co
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination) {
-                auto const error_count{errors.size()};
-                decode_field(reader, value, location, destination, mode, errors);
-                return errors.size() == error_count;
+            auto const read{[&](auto& destination, auto... checks) {
+                read_checked(
+                    destination,
+                    location,
+                    errors,
+                    [&] { decode_field(reader, value, location, destination, mode, errors); },
+                    checks...);
             }};
             switch (field) {
                 case Field::strength:
-                    if (read(result.strength)) {
-                        if (!constraints::finite(result.strength)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a finite value"});
-                        }
-                    }
+                    read(result.strength, constraints::finite);
                     break;
                 case Field::width_degrees:
-                    if (read(result.width_degrees)) {
-                        if (!constraints::positive(result.width_degrees)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a positive value"});
-                        }
-                        if (!constraints::finite(result.width_degrees)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a finite value"});
-                        }
-                    }
+                    read(result.width_degrees, constraints::positive, constraints::finite);
                     break;
                 case Field::Count:
                     std::unreachable();
@@ -1012,34 +870,20 @@ inline void TypeReader<::ioj::starfield::GalacticCoreSettings>::decode(Reader co
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination) {
-                auto const error_count{errors.size()};
-                decode_field(reader, value, location, destination, mode, errors);
-                return errors.size() == error_count;
+            auto const read{[&](auto& destination, auto... checks) {
+                read_checked(
+                    destination,
+                    location,
+                    errors,
+                    [&] { decode_field(reader, value, location, destination, mode, errors); },
+                    checks...);
             }};
             switch (field) {
                 case Field::strength:
-                    if (read(result.strength)) {
-                        if (!constraints::finite(result.strength)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a finite value"});
-                        }
-                    }
+                    read(result.strength, constraints::finite);
                     break;
                 case Field::width_degrees:
-                    if (read(result.width_degrees)) {
-                        if (!constraints::positive(result.width_degrees)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a positive value"});
-                        }
-                        if (!constraints::finite(result.width_degrees)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a finite value"});
-                        }
-                    }
+                    read(result.width_degrees, constraints::positive, constraints::finite);
                     break;
                 case Field::Count:
                     std::unreachable();
@@ -1072,34 +916,20 @@ inline void TypeReader<::ioj::starfield::NebularKnotSettings>::decode(Reader con
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination) {
-                auto const error_count{errors.size()};
-                decode_field(reader, value, location, destination, mode, errors);
-                return errors.size() == error_count;
+            auto const read{[&](auto& destination, auto... checks) {
+                read_checked(
+                    destination,
+                    location,
+                    errors,
+                    [&] { decode_field(reader, value, location, destination, mode, errors); },
+                    checks...);
             }};
             switch (field) {
                 case Field::strength:
-                    if (read(result.strength)) {
-                        if (!constraints::finite(result.strength)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a finite value"});
-                        }
-                    }
+                    read(result.strength, constraints::finite);
                     break;
                 case Field::size_degrees:
-                    if (read(result.size_degrees)) {
-                        if (!constraints::positive(result.size_degrees)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a positive value"});
-                        }
-                        if (!constraints::finite(result.size_degrees)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a finite value"});
-                        }
-                    }
+                    read(result.size_degrees, constraints::positive, constraints::finite);
                     break;
                 case Field::Count:
                     std::unreachable();
@@ -1130,10 +960,13 @@ inline void TypeReader<::ioj::starfield::Settings>::decode(Reader const& reader,
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination) {
-                auto const error_count{errors.size()};
-                decode_field(reader, value, location, destination, mode, errors);
-                return errors.size() == error_count;
+            auto const read{[&](auto& destination, auto... checks) {
+                read_checked(
+                    destination,
+                    location,
+                    errors,
+                    [&] { decode_field(reader, value, location, destination, mode, errors); },
+                    checks...);
             }};
             switch (field) {
                 case Field::generation:

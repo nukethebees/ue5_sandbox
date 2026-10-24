@@ -92,29 +92,20 @@ inline void TypeReader<::ioj::settings::LaserPresentation>::decode(Reader const&
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination) {
-                auto const error_count{errors.size()};
-                decode_field(reader, value, location, destination, mode, errors);
-                return errors.size() == error_count;
+            auto const read{[&](auto& destination, auto... checks) {
+                read_checked(
+                    destination,
+                    location,
+                    errors,
+                    [&] { decode_field(reader, value, location, destination, mode, errors); },
+                    checks...);
             }};
             switch (field) {
                 case Field::min_cull_distance:
-                    if (read(result.min_cull_distance)) {
-                        if (!constraints::finite(result.min_cull_distance)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a finite value"});
-                        }
-                    }
+                    read(result.min_cull_distance, constraints::finite);
                     break;
                 case Field::max_cull_distance:
-                    if (read(result.max_cull_distance)) {
-                        if (!constraints::finite(result.max_cull_distance)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a finite value"});
-                        }
-                    }
+                    read(result.max_cull_distance, constraints::finite);
                     break;
                 case Field::Count:
                     std::unreachable();
@@ -148,29 +139,20 @@ inline void
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination) {
-                auto const error_count{errors.size()};
-                decode_patch_field(reader, value, location, destination, errors);
-                return errors.size() == error_count;
+            auto const read{[&](auto& destination, auto... checks) {
+                read_checked(
+                    destination,
+                    location,
+                    errors,
+                    [&] { decode_patch_field(reader, value, location, destination, errors); },
+                    checks...);
             }};
             switch (field) {
                 case Field::min_cull_distance:
-                    if (read(result.min_cull_distance)) {
-                        if (!constraints::finite(result.min_cull_distance)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a finite value"});
-                        }
-                    }
+                    read(result.min_cull_distance, constraints::finite);
                     break;
                 case Field::max_cull_distance:
-                    if (read(result.max_cull_distance)) {
-                        if (!constraints::finite(result.max_cull_distance)) {
-                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
-                                                           std::string{location},
-                                                           "Expected a finite value"});
-                        }
-                    }
+                    read(result.max_cull_distance, constraints::finite);
                     break;
                 case Field::Count:
                     std::unreachable();

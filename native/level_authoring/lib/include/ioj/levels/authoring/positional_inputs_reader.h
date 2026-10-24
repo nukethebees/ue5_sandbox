@@ -68,11 +68,15 @@ inline void
                                                                  value_type& result,
                                                                  ReadMode mode,
                                                                  AstDiagnostics& errors) {
-    auto const read{[&](auto& destination, NodeIndex value, std::string_view location) {
-        auto const error_count{errors.size()};
-        decode_field(reader, value, location, destination, mode, errors);
-        return errors.size() == error_count;
-    }};
+    auto const read{
+        [&](auto& destination, NodeIndex value, std::string_view location, auto... checks) {
+            read_checked(
+                destination,
+                location,
+                errors,
+                [&] { decode_field(reader, value, location, destination, mode, errors); },
+                checks...);
+        }};
 
     auto const arguments{positional_arguments(reader, node, "expr", path, 2)};
 
@@ -97,11 +101,15 @@ inline void TypeReader<::ioj::levels::authoring::UnlockInput>::decode(Reader con
                                                                       value_type& result,
                                                                       ReadMode mode,
                                                                       AstDiagnostics& errors) {
-    auto const read{[&](auto& destination, NodeIndex value, std::string_view location) {
-        auto const error_count{errors.size()};
-        decode_field(reader, value, location, destination, mode, errors);
-        return errors.size() == error_count;
-    }};
+    auto const read{
+        [&](auto& destination, NodeIndex value, std::string_view location, auto... checks) {
+            read_checked(
+                destination,
+                location,
+                errors,
+                [&] { decode_field(reader, value, location, destination, mode, errors); },
+                checks...);
+        }};
 
     auto const arguments{positional_arguments(reader, node, "level-completed", path, 1)};
 
@@ -126,11 +134,15 @@ inline void
                                                                      value_type& result,
                                                                      ReadMode mode,
                                                                      AstDiagnostics& errors) {
-    auto const read{[&](auto& destination, NodeIndex value, std::string_view location) {
-        auto const error_count{errors.size()};
-        decode_field(reader, value, location, destination, mode, errors);
-        return errors.size() == error_count;
-    }};
+    auto const read{
+        [&](auto& destination, NodeIndex value, std::string_view location, auto... checks) {
+            read_checked(
+                destination,
+                location,
+                errors,
+                [&] { decode_field(reader, value, location, destination, mode, errors); },
+                checks...);
+        }};
 
     auto const arguments{positional_arguments(reader, node, "expr-ref", path, 1)};
 

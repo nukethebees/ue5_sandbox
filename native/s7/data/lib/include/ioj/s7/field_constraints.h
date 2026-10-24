@@ -3,6 +3,7 @@
 #include <ioj/constrained_numbers.h>
 #include <ioj/constrained_strings.h>
 #include <ioj/constrained_vectors.h>
+#include <ioj/s7/field_constraint.h>
 
 #include <cmath>
 #include <limits>
@@ -40,41 +41,21 @@ auto less_equal(L const left, R const right) -> bool {
     }
 }
 
-template <typename T, typename Predicate>
-auto check(T const& value, Predicate predicate) -> bool {
-    return predicate(value);
-}
-template <typename T, ConstrainedValuePolicy Policy, typename Predicate>
-auto check(ConstrainedValue<T, Policy> const& value, Predicate predicate) -> bool {
-    return predicate(value.get_ref());
-}
-template <typename T, typename Predicate>
-auto check(std::optional<T> const& value, Predicate predicate) -> bool {
-    return !value || check(*value, predicate);
-}
-template <typename T>
-auto nonzero(T const& value) -> bool {
-    return check(value, []<typename U>(U const& number) {
-        static_assert(std::is_arithmetic_v<U> && !std::same_as<U, bool>,
-                      "nonzero requires a number");
-        return number != 0;
-    });
-}
-template <typename T>
-auto positive(T const& value) -> bool {
-    return check(value, []<typename U>(U const& number) {
-        return Positive<U>::try_make(number).has_value();
-    });
-}
-template <typename T>
-auto nonnegative(T const& value) -> bool {
-    return check(value, []<typename U>(U const& number) {
-        return NonNegative<U>::try_make(number).has_value();
-    });
-}
-template <typename T>
-auto finite(T const& value) -> bool {
-    return check(value, []<typename U>(U const& number) {
+inline constexpr auto nonzero{FieldConstraint{[]<typename U>(U const& number) {
+                                                  static_assert(std::is_arithmetic_v<U> &&
+                                                                    !std::same_as<U, bool>,
+                                                                "nonzero requires a number");
+                                                  return number != 0;
+                                              },
+                                              "Expected a nonzero value"}};
+inline constexpr auto positive{FieldConstraint{
+    []<typename U>(U const& number) { return Positive<U>::try_make(number).has_value(); },
+    "Expected a positive value"}};
+inline constexpr auto nonnegative{FieldConstraint{
+    []<typename U>(U const& number) { return NonNegative<U>::try_make(number).has_value(); },
+    "Expected a nonnegative value"}};
+inline constexpr auto finite{FieldConstraint{
+    []<typename U>(U const& number) {
         if constexpr (requires { number.elements; }) {
             return ConstrainedValue<U, ioj::detail::finite_vector_policy>::try_make(number)
                 .has_value();
@@ -85,30 +66,32 @@ auto finite(T const& value) -> bool {
                           "finite requires a number or vector");
             return true;
         }
-    });
-}
-template <typename T>
-auto nonempty(T const& value) -> bool {
-    return check(value, []<typename U>(U const& text) {
-        static_assert(std::same_as<U, std::string>, "nonempty requires a string");
-        return NonEmptyString::try_make(text).has_value();
-    });
-}
+    },
+    "Expected a finite value"}};
+inline constexpr auto nonempty{
+    FieldConstraint{[]<typename U>(U const& text) {
+                        static_assert(std::same_as<U, std::string>, "nonempty requires a string");
+                        return NonEmptyString::try_make(text).has_value();
+                    },
+                    "Expected a nonempty string",
+                    AstErrorCode::InvalidType}};
 
-template <typename T, typename Bound>
-auto minimum(T const& value, Bound const bound) -> bool {
-    return check(value, [bound]<typename U>(U const& number) {
-        static_assert(std::is_arithmetic_v<U> && !std::same_as<U, bool>,
-                      "minimum requires a number");
-        return less_equal(bound, number);
-    });
+template <typename Bound>
+auto minimum(Bound const bound) {
+    return FieldConstraint{[bound]<typename U>(U const& number) {
+                               static_assert(std::is_arithmetic_v<U> && !std::same_as<U, bool>,
+                                             "minimum requires a number");
+                               return less_equal(bound, number);
+                           },
+                           "Value is below the minimum"};
 }
-template <typename T, typename Bound>
-auto maximum(T const& value, Bound const bound) -> bool {
-    return check(value, [bound]<typename U>(U const& number) {
-        static_assert(std::is_arithmetic_v<U> && !std::same_as<U, bool>,
-                      "maximum requires a number");
-        return less_equal(number, bound);
-    });
+template <typename Bound>
+auto maximum(Bound const bound) {
+    return FieldConstraint{[bound]<typename U>(U const& number) {
+                               static_assert(std::is_arithmetic_v<U> && !std::same_as<U, bool>,
+                                             "maximum requires a number");
+                               return less_equal(number, bound);
+                           },
+                           "Value is above the maximum"};
 }
 }
