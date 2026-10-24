@@ -362,16 +362,7 @@ auto validate_report(LevelTelemetryReport const& report) -> std::expected<void, 
     }
     auto const& completion{report.completion};
     if (!try_parse_serialized_level_telemetry_run_end_reason(
-            to_serialized_string(completion.reason)) ||
-        (completion.winning_team &&
-         !try_parse_serialized_team(to_serialized_string(*completion.winning_team))) ||
-        (completion.mission_team &&
-         !try_parse_serialized_team(to_serialized_string(*completion.mission_team))) ||
-        (completion.mission_outcome &&
-         !try_parse_serialized_team_outcome(to_serialized_string(*completion.mission_outcome))) ||
-        (completion.objective_outcome &&
-         !try_parse_serialized_objective_outcome(
-             to_serialized_string(*completion.objective_outcome)))) {
+            to_serialized_string(completion.reason))) {
         return std::unexpected{"completion contains an invalid enum value"};
     }
     return {};
@@ -424,29 +415,6 @@ auto read_report(Json const& root) -> LevelTelemetryReport {
     result.reason = read_enum(
         completion, "reason", "completion", try_parse_serialized_level_telemetry_run_end_reason);
     result.completed_ticks = read_field<SimTick>(completion, "completed_ticks", "completion");
-    if (has_value(completion, "winning_team")) {
-        result.winning_team =
-            read_enum(completion, "winning_team", "completion", try_parse_serialized_team);
-    }
-    auto const mission{has_value(completion, "mission_team")};
-    if (mission != has_value(completion, "mission_outcome") ||
-        mission != has_value(completion, "objective_outcome") ||
-        mission != has_value(completion, "objective_id")) {
-        fail("completion",
-             "mission team, outcome, objective id and objective outcome must be provided together");
-    }
-    if (mission) {
-        result.mission_team =
-            read_enum(completion, "mission_team", "completion", try_parse_serialized_team);
-        result.mission_outcome = read_enum(
-            completion, "mission_outcome", "completion", try_parse_serialized_team_outcome);
-        result.objective_outcome = read_enum(
-            completion, "objective_outcome", "completion", try_parse_serialized_objective_outcome);
-        result.decisive_objective_id =
-            read_field<std::string>(completion, "objective_id", "completion");
-    }
-    result.mission_elapsed_seconds =
-        read_duration(completion, "mission_elapsed_seconds", "completion");
 
     read_tick_series(required_object(root, "tick_series", ""), report.tick_series);
     auto const& samples{required_array(root, "battle_samples", "")};
@@ -482,20 +450,7 @@ auto serialize_level_telemetry_report(LevelTelemetryReport const& report)
         Json completion{
             {"reason", to_serialized_string(result.reason)},
             {"completed_ticks", result.completed_ticks},
-            {"winning_team",
-             result.winning_team ? Json(to_serialized_string(*result.winning_team))
-                                 : Json(nullptr)},
-            {"mission_team", nullptr},
-            {"mission_outcome", nullptr},
-            {"objective_outcome", nullptr},
-            {"mission_elapsed_seconds", write_duration(result.mission_elapsed_seconds)},
         };
-        if (result.mission_team) {
-            completion["mission_team"] = to_serialized_string(*result.mission_team);
-            completion["mission_outcome"] = to_serialized_string(*result.mission_outcome);
-            completion["objective_outcome"] = to_serialized_string(*result.objective_outcome);
-            completion["objective_id"] = result.decisive_objective_id;
-        }
 
         auto samples = Json::array();
         for (auto const& sample : report.battle_samples) {

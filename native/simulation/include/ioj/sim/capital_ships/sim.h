@@ -55,7 +55,6 @@ struct Sim {
     auto get_frame_changes() const -> std::span<EntityFrameChange const> { return frame_changes_; }
     void reset_frame_output() { frame_changes_.clear(); }
     void set_config(CapitalShipSimConfig const& new_config) noexcept;
-    void set_diagnostics_enabled(bool enabled) noexcept { diagnostics_enabled_ = enabled; }
 
     /* **************************************** */
     // Accessors
@@ -154,7 +153,6 @@ struct Sim {
     friend class sim::LevelSpawnManager;
 
     CapitalShipSimConfig config{};
-    bool diagnostics_enabled_{};
     EntityLedger& ledger_;
     EntityTables& entity_tables_;
 

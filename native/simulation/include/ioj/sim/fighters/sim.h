@@ -61,7 +61,6 @@ struct Sim {
         return entity_buffers.current().get_const_view();
     }
     void set_config(FighterSimConfig const& new_config, FighterLevelData level_data) noexcept;
-    void set_diagnostics_enabled(bool enabled) noexcept { diagnostics_enabled_ = enabled; }
 
     /* **************************************** */
     // Accessors
@@ -232,7 +231,6 @@ struct Sim {
     float movement_tick_period_{};
     FighterSimConfig config{};
     float collision_radius_{};
-    bool diagnostics_enabled_{};
     std::array<std::uint8_t, enum_count<Team>()> participant_mask{};
     std::array<std::int32_t, enum_count<Team>()> remaining_team_capacity{};
     std::int32_t per_team_limit{};
@@ -268,7 +266,5 @@ struct Sim {
     std::vector<EntityId> overlap_candidates_;
 
     NavigationTelemetrySnapshot navigation_telemetry;
-    std::int32_t diagnostic_stop_reports{};
-    std::int32_t diagnostic_spawn_reports{};
 };
 } // namespace ioj::sim::fighters

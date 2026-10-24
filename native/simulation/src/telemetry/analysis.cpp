@@ -7,23 +7,7 @@
 
 namespace ioj::sim::telemetry {
 namespace {
-template <typename Series>
-auto as_of(Series const& series, std::uint64_t const tick) -> typename Series::value_type const* {
-    auto const count{series.num()};
-    for (auto remaining{count}; remaining > 0; --remaining) {
-        auto const index{remaining - 1};
-        if (series.time_at(index) <= tick) {
-            return &series.value_at(index);
-        }
-    }
-    return nullptr;
-}
-
 struct MetricBuilder {
-    MetricSeries series;
-    double weighted_sum{};
-    double total_weight{};
-
     explicit MetricBuilder(Metric const metric) { series.metric = metric; }
 
     void add(double const time, double const value, double const weight) {
@@ -43,34 +27,11 @@ struct MetricBuilder {
         }
         return std::move(series);
     }
+
+    MetricSeries series;
+    double weighted_sum{};
+    double total_weight{};
 };
-
-template <typename Series>
-void add_gauge(MetricBuilder& builder,
-               Series const& series,
-               std::uint64_t const tick,
-               double const time,
-               double const weight) {
-    if (auto const* const value{as_of(series, tick)}) {
-        builder.add(time, static_cast<double>(*value), weight);
-    }
-}
-
-template <typename Series>
-void add_rate(MetricBuilder& builder,
-              Series const& series,
-              std::uint64_t const begin_tick,
-              std::uint64_t const end_tick,
-              double const time,
-              double const duration) {
-    auto const* const begin{as_of(series, begin_tick)};
-    auto const* const end{as_of(series, end_tick)};
-    if (!begin || !end || *end < *begin) {
-        return;
-    }
-    builder.add(
-        time, (static_cast<double>(*end) - static_cast<double>(*begin)) / duration, duration);
-}
 
 template <typename Counts>
 auto sum_counts(Counts const& counts) -> float {
@@ -101,87 +62,7 @@ auto analyze(AnalysisInput const input) -> Analysis {
     auto const builder{[&builders](Metric const metric) -> MetricBuilder& {
         return builders[static_cast<std::size_t>(metric)];
     }};
-    auto const use_battle_metrics{input.loaded_schema_version >= 2 &&
-                                  input.battle_samples.size() >= 2};
-
     auto const tick_rate_hz{input.tick_rate_hz.get_hz()};
-    if (!use_battle_metrics) {
-        std::vector<std::uint64_t> ticks;
-        auto const collect_ticks{[&ticks](auto const& series) {
-            auto const count{series.num()};
-            for (std::uint32_t index{}; index < count; ++index) {
-                ticks.push_back(series.time_at(index));
-            }
-        }};
-        collect_ticks(input.tick_series.active_entities);
-        collect_ticks(input.tick_series.spawned_entities);
-        collect_ticks(input.tick_series.destroyed_entities);
-        collect_ticks(input.tick_series.kills);
-        collect_ticks(input.tick_series.active_lasers);
-        collect_ticks(input.tick_series.lasers_fired);
-        for (auto const& series : input.tick_series.active_entities_by_type) {
-            collect_ticks(series);
-        }
-        ticks.push_back(input.completion.completed_ticks);
-        std::sort(ticks.begin(), ticks.end());
-
-        constexpr std::array type_metrics{Metric::PlayerShips,
-                                          Metric::Turrets,
-                                          Metric::CapitalShips,
-                                          Metric::CapitalShipFighters,
-                                          Metric::TubeSpinners};
-        auto const tick_count{ticks.size()};
-        for (std::size_t index{1}; index < tick_count; ++index) {
-            auto const begin_tick{ticks[index - 1]};
-            auto const end_tick{ticks[index]};
-            if (end_tick == begin_tick) {
-                continue;
-            }
-            auto const duration{static_cast<double>(end_tick - begin_tick) / tick_rate_hz};
-            auto const time{static_cast<double>(end_tick) / tick_rate_hz};
-            add_gauge(builder(Metric::ActiveEntities),
-                      input.tick_series.active_entities,
-                      end_tick,
-                      time,
-                      duration);
-            for (std::int32_t type{}; type < LevelTelemetryTickSeries::entity_type_count; ++type) {
-                add_gauge(builder(type_metrics[static_cast<std::size_t>(type)]),
-                          input.tick_series.active_entities_by_type[static_cast<std::size_t>(type)],
-                          end_tick,
-                          time,
-                          duration);
-            }
-            add_gauge(builder(Metric::ActiveLasers),
-                      input.tick_series.active_lasers,
-                      end_tick,
-                      time,
-                      duration);
-            add_rate(builder(Metric::SpawnRate),
-                     input.tick_series.spawned_entities,
-                     begin_tick,
-                     end_tick,
-                     time,
-                     duration);
-            add_rate(builder(Metric::DestructionRate),
-                     input.tick_series.destroyed_entities,
-                     begin_tick,
-                     end_tick,
-                     time,
-                     duration);
-            add_rate(builder(Metric::KillRate),
-                     input.tick_series.kills,
-                     begin_tick,
-                     end_tick,
-                     time,
-                     duration);
-            add_rate(builder(Metric::LaserFireRate),
-                     input.tick_series.lasers_fired,
-                     begin_tick,
-                     end_tick,
-                     time,
-                     duration);
-        }
-    }
 
     result.battle_simulated_seconds.reserve(input.battle_samples.size());
     result.battle_alive_entities.reserve(input.battle_samples.size());
@@ -199,7 +80,7 @@ auto analyze(AnalysisInput const input) -> Analysis {
         result.battle_kills.push_back(sum_counts(sample.combat.kills));
     }
 
-    if (use_battle_metrics) {
+    if (input.battle_samples.size() >= 2) {
         constexpr std::array type_metrics{Metric::PlayerShips,
                                           Metric::Turrets,
                                           Metric::CapitalShips,

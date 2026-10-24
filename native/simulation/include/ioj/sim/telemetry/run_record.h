@@ -10,9 +10,8 @@
 
 namespace ioj::sim {
 struct LevelTelemetryRunRecord {
-    static constexpr std::int32_t schema_version{9};
+    static constexpr std::int32_t schema_version{10};
 
-    std::int32_t loaded_schema_version{schema_version};
     LevelTelemetryRunMetadata metadata{};
     Frequency tick_rate_hz{Frequency::make(60.0)};
     LevelTelemetryRunCompletion completion{};

@@ -62,7 +62,6 @@ struct LevelSim {
     /* **************************************** */
     // Configuration and commands
     /* **************************************** */
-    void set_fighter_diagnostics_enabled(bool enabled) noexcept;
     void set_telemetry_metadata(LevelTelemetryRunMetadata metadata);
     void set_static_collision(std::span<collision::WorldAABB const> bounds);
     auto get_player_ship_commands() noexcept -> std::optional<player::CommandInterface> {
@@ -77,10 +76,8 @@ struct LevelSim {
     // Telemetry and mission results
     /* **************************************** */
     void finalize_telemetry_run(LevelTelemetryRunEndReason reason);
-    void complete_telemetry_run(LevelTelemetryRunEndReason reason,
-                                std::optional<Team> winning_team = {});
-    void complete_run_if_requested(bool stop_when_battle_resolved,
-                                   std::optional<Duration> duration);
+    void stop_run(LevelTelemetryRunEndReason reason);
+    void stop_run_if_requested(bool stop_when_battle_resolved, std::optional<Duration> duration);
     auto take_player_team_completion() -> std::optional<TeamCompletion>;
     auto take_finalized_telemetry_run() -> std::optional<LevelTelemetryRunRecord>;
 

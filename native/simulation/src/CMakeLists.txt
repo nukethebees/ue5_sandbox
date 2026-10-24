@@ -31,7 +31,6 @@ target_sources(native-simulation PRIVATE
   ../include/ioj/sim/combat_statistics.h
   ../include/ioj/sim/entities/entity_telemetry.h
   ../include/ioj/sim/collision/entity_world_bounds.h
-  ../include/ioj/sim/fighters/fighter_diagnostics.h
   ../include/ioj/sim/fighters/fighter_entity_data.h
   ../include/ioj/sim/fighters/fighter_navigation_scratch.h
   ../include/ioj/sim/fighters/fighter_navigation.h

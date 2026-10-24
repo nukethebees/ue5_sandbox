@@ -16,7 +16,6 @@
 #include <ioj/sim/deterministic_bias.h>
 #include <ioj/sim/entities/entity_id_checks.h>
 #include <ioj/sim/entities/entity_ledger.h>
-#include <ioj/sim/fighters/fighter_diagnostics.h>
 #include <ioj/sim/lasers/laser_source.h>
 #include <ioj/sim/lasers/sim.h>
 #include <ioj/sim/profiling.h>
@@ -92,11 +91,6 @@ auto make_fire_point_candidate(Vector3f const target_location,
     auto const trace_end{target_location - direction * trace_end_offset};
 
     return {candidate_location, trace_start, trace_end};
-}
-}
-namespace diagnostic_detail {
-auto vector_string(Vector3f const value) -> std::string {
-    return std::format("({}, {}, {})", value.x(), value.y(), value.z());
 }
 }
 
@@ -992,24 +986,14 @@ void Sim::select_navigation_alternatives(NavigationScratch& scratch,
     SANDBOX_PROFILE_SCOPE("fighters::Sim::select_navigation_alternatives");
 
     auto const data{entity_buffers.current().get_view()};
-    if (!diagnostics_enabled_) {
-        diagnostic_stop_reports = 0;
-    }
     auto const n_blocked_fighters{scratch.blocked_fighter_indices.num()};
     auto const locations{data.view_locations().resolve()};
     auto const speeds{data.speeds()};
     auto const choices{data.avoidance_choice_indices()};
     auto const trace_results{scratch.trace_hits.get_const_view()};
     auto const hits{trace_results.hits()};
-    auto const hit_entities{trace_results.entities()};
-    auto const hit_static_indices{trace_results.static_geometry_indices()};
+
     auto const hit_locations{trace_results.view_locations().resolve()};
-    auto const trace_ends{scratch.line_of_sight_ends.get_const_view().resolve()};
-    auto const entity_ids{data.entity_ids()};
-    auto const destinations{data.view_desired_move_locations().resolve()};
-    auto const movement_directions{data.view_movement_directions().resolve()};
-    auto const separation_steering{data.view_separation_steering().resolve()};
-    auto const risk_tiers{data.navigation_risk_tiers()};
 
     for (std::uint32_t blocked_index{}; blocked_index < n_blocked_fighters; ++blocked_index) {
         auto const fighter_index{scratch.blocked_fighter_indices[blocked_index]};
@@ -1018,7 +1002,7 @@ void Sim::select_navigation_alternatives(NavigationScratch& scratch,
         auto const safe_progress_distance{speeds[fighter_index] * safe_progress_time};
 
         auto const candidate_begin{blocked_index * n_avoidance_choices};
-        auto const candidate_end{candidate_begin + n_avoidance_choices};
+
         auto const candidate_count{static_cast<std::size_t>(n_avoidance_choices)};
         // Each fighter owns a distinct candidate subrange.
         // NOLINTBEGIN(ioj-loop-view-construction,ioj-loop-view-accessor-call)
@@ -1033,34 +1017,6 @@ void Sim::select_navigation_alternatives(NavigationScratch& scratch,
         // NOLINTEND(ioj-loop-view-construction,ioj-loop-view-accessor-call)
 
         choices[fighter_index] = chosen_choice;
-        if (chosen_choice == stop_movement_choice &&
-            diagnostics::take_report(diagnostics_enabled_, diagnostic_stop_reports, 8)) {
-            log_error(std::format(
-                "[FighterStop] fighterId={} position={} destination={} "
-                "preferred={} separation={} clearance={:.2f} safeTravel={:.2f} risk={}",
-                entity_ids[fighter_index].raw_value(),
-                diagnostic_detail::vector_string(fighter_location),
-                diagnostic_detail::vector_string(vector_at(destinations, fighter_index)),
-                diagnostic_detail::vector_string(vector_at(movement_directions, fighter_index)),
-                diagnostic_detail::vector_string(vector_at(separation_steering, fighter_index)),
-                collision_radius_ + config.avoidance_clearance_buffer,
-                safe_progress_distance,
-                risk_tiers[fighter_index]));
-            for (std::uint32_t trace_index{candidate_begin}; trace_index < candidate_end;
-                 ++trace_index) {
-                log_error(std::format("[FighterStop] choice={} end={} inWorld={} hit={} "
-                                      "blockerId={} staticIndex={} hitDistance={:.2f}",
-                                      scratch.trace_choice_indices[trace_index],
-                                      diagnostic_detail::vector_string(trace_ends[trace_index]),
-                                      scratch.line_of_sight_results[trace_index],
-                                      hits[trace_index],
-                                      hit_entities[trace_index].raw_value(),
-                                      hit_static_indices[trace_index],
-                                      hits[trace_index]
-                                          ? size(fighter_location - hit_locations[trace_index])
-                                          : -1.f));
-            }
-        }
     }
 }
 void Sim::apply_navigation_choices(NavigationScratch const& scratch) {
@@ -1398,9 +1354,6 @@ void Sim::commit_spawns() {
     entity_tables_.lookups.assert_preparation_mutation_allowed();
     SANDBOX_PROFILE_SCOPE("fighters::Sim::commit_spawns");
 
-    if (!diagnostics_enabled_) {
-        diagnostic_spawn_reports = 0;
-    }
     auto const n_cur{get_num_instances()};
     auto const n_new{spawn_queue.num()};
 
@@ -1444,22 +1397,6 @@ void Sim::commit_spawns() {
     entity_tables_.health.initialise_rows<EntityType::Fighter>(n_cur, n_new, config.health);
     if (is_alive(config.health)) {
         ++membership_revision_;
-    }
-    if (diagnostics_enabled_) {
-        auto const parent_ids{new_data.parent_ids()};
-        auto const target_ids{new_data.target_ids()};
-        auto const spawn_locations{new_data.view_locations().resolve()};
-        for (std::uint32_t i{}; i < n_new; ++i) {
-            if (!diagnostics::take_report(diagnostics_enabled_, diagnostic_spawn_reports, 64)) {
-                break;
-            }
-            log_error(std::format("[FighterSpawn] Committed fighterId={} parentId={} "
-                                  "targetId={} world={}",
-                                  entity_ids[i].raw_value(),
-                                  parent_ids[i].raw_value(),
-                                  target_ids[i].raw_value(),
-                                  diagnostic_detail::vector_string(vector_at(spawn_locations, i))));
-        }
     }
     make_deterministic_biases(
         std::span<EntityId const>{data.entity_ids()}.subspan(n_cur, n_new),

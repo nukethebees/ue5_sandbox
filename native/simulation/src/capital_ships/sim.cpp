@@ -11,7 +11,6 @@
 #include <ioj/sim/combat_events.h>
 #include <ioj/sim/entities/entity_ledger.h>
 #include <ioj/sim/entities/health.h>
-#include <ioj/sim/fighters/fighter_diagnostics.h>
 #include <ioj/sim/fighters/fighter_spawn_queue.h>
 #include <ioj/sim/fighters/sim.h>
 #include <ioj/sim/profiling.h>
@@ -267,7 +266,6 @@ auto Sim::get_fighter_spawn_slots() const noexcept -> std::uint32_t {
 }
 void Sim::queue_fighter_spawns(FrameMemoryResource* const scratch_resource) {
     SANDBOX_PROFILE_SCOPE("capital_ships::Sim::queue_fighter_spawns");
-    if (!diagnostics_enabled_) {}
 
     auto const entities{this->entities.get_view()};
 

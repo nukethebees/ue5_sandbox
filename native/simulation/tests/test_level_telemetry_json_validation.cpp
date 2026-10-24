@@ -30,18 +30,6 @@ TEST(LevelTelemetryJsonValidation, RejectsInvalidRecordInvariants) {
 
     EXPECT_TRUE(validate_level_telemetry_json_record(record).has_value());
 
-    record.completion.mission_team = Team::Blue;
-    EXPECT_FALSE(validate_level_telemetry_json_record(record).has_value());
-    record.completion.mission_outcome = TeamOutcome::Victory;
-    record.completion.objective_outcome = ObjectiveOutcome::Passed;
-    EXPECT_FALSE(validate_level_telemetry_json_record(record).has_value());
-    record.completion.decisive_objective_id = "primary";
-    EXPECT_TRUE(validate_level_telemetry_json_record(record).has_value());
-    record.completion = {};
-    record.completion.decisive_objective_id = "orphan";
-    EXPECT_FALSE(validate_level_telemetry_json_record(record).has_value());
-    record.completion = {};
-
     record.tick_series.active_entities.add(1, -1);
     EXPECT_FALSE(validate_level_telemetry_json_record(record).has_value());
     record.tick_series.active_entities = {};
@@ -60,11 +48,7 @@ TEST(LevelTelemetryJsonValidation, RoundTripsNativeReportAndMissionCompletion) {
     report.presentation_enabled = true;
     report.presentation_mode = "visual";
     report.tick_rate_hz = Frequency::make(120.0);
-    report.completion.mission_team = Team::Blue;
-    report.completion.mission_outcome = TeamOutcome::Victory;
-    report.completion.objective_outcome = ObjectiveOutcome::Passed;
-    report.completion.decisive_objective_id = "protect-convoy";
-    report.completion.mission_elapsed_seconds = Duration::make(2.0);
+    report.completion.reason = LevelTelemetryRunEndReason::MissionSucceeded;
     report.completion.completed_ticks = 240;
     report.tick_series.active_entities.add(0, 2);
     report.tick_series.active_entities.add(240, 1);
@@ -84,9 +68,10 @@ TEST(LevelTelemetryJsonValidation, RoundTripsNativeReportAndMissionCompletion) {
     EXPECT_EQ(parsed->environment.total_physical_memory_bytes, 32ULL << 30);
     EXPECT_TRUE(parsed->presentation_enabled);
     EXPECT_EQ(parsed->tick_rate_hz.get_hz(), 120.0);
-    EXPECT_EQ(parsed->completion.mission_outcome, TeamOutcome::Victory);
-    EXPECT_EQ(parsed->completion.decisive_objective_id, "protect-convoy");
-    EXPECT_EQ(parsed->completion.mission_elapsed_seconds->get_seconds(), 2.0);
+    EXPECT_EQ(parsed->completion.reason, LevelTelemetryRunEndReason::MissionSucceeded);
+    EXPECT_EQ(parsed->completion.completed_ticks, 240);
+    EXPECT_EQ(serialized->find("winning_team"), std::string::npos);
+    EXPECT_EQ(serialized->find("objective_id"), std::string::npos);
     EXPECT_EQ(parsed->tick_series.active_entities.num(), 2);
     EXPECT_EQ(parsed->tick_series.active_entities.last_value(), 1);
     ASSERT_EQ(parsed->battle_samples.size(), 1);

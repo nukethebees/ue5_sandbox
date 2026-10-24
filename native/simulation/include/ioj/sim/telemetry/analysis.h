@@ -24,10 +24,7 @@ enum class Metric : std::uint8_t {
 };
 
 struct AnalysisInput {
-    std::int32_t loaded_schema_version{};
     Frequency tick_rate_hz{Frequency::make(60.0)};
-    LevelTelemetryRunCompletion const& completion;
-    LevelTelemetryTickSeries const& tick_series;
     std::span<LevelTelemetryBattleSample const> battle_samples;
 };
 

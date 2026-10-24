@@ -187,12 +187,8 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
             auto const health{*player_definition->overrides.health};
             player.health = {health, health};
         }
-        player.transform.location = {player_definition->position.x(),
-                                     player_definition->position.y(),
-                                     player_definition->position.z()};
-        player.transform.rotation = to_quaternion(Rotator3d{player_definition->rotation.pitch,
-                                                            player_definition->rotation.yaw,
-                                                            player_definition->rotation.roll});
+        player.transform.location = player_definition->position;
+        player.transform.rotation = to_quaternion(player_definition->rotation);
         data.player = player;
     }
 
@@ -266,9 +262,11 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
         auto const saturated_count{simulation.get_fighters().get_num_instances()};
         if (saturated_count != cap) {
             return std::unexpected{
-                "fighter population did not reach configured cap " + std::to_string(cap) +
-                " within " + std::to_string(options.saturation_timeout_seconds) +
-                " simulated seconds; reached " + std::to_string(saturated_count)};
+                std::format("fighter population did not reach configured cap {} within {} "
+                            "simulated seconds; reached {}",
+                            cap,
+                            options.saturation_timeout_seconds,
+                            saturated_count)};
         }
 
         auto const spawned_at_saturation{simulation.get_capital_ships().get_fighters_spawned()};
@@ -329,7 +327,7 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
     }
 
     if (options.telemetry_enabled) {
-        simulation.complete_telemetry_run(sim::LevelTelemetryRunEndReason::DurationReached);
+        simulation.stop_run(sim::LevelTelemetryRunEndReason::DurationReached);
     } else {
         simulation.pause();
     }

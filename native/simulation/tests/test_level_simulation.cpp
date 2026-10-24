@@ -16,26 +16,21 @@
 
 namespace ioj::sim::tests {
 
-static_assert(std::is_same_v<decltype(std::declval<LevelSim&>().get_lasers()), lasers::Sim const&>);
-static_assert(std::is_same_v<decltype(std::declval<LevelSim&>().get_capital_ships()),
-                             capital_ships::Sim const&>);
-static_assert(
-    std::is_same_v<decltype(std::declval<LevelSim&>().get_fighters()), fighters::Sim const&>);
-static_assert(
-    std::is_same_v<decltype(std::declval<LevelSim&>().get_turrets()), turrets::Sim const&>);
-static_assert(
-    std::is_same_v<decltype(std::declval<LevelSim&>().get_spinners()), spinners::Sim const&>);
-static_assert(
-    std::is_same_v<decltype(std::declval<LevelSim&>().get_entity_ledger()), EntityLedger const&>);
-static_assert(std::is_same_v<decltype(std::declval<LevelSim&>().get_mission()), Mission const&>);
-static_assert(std::is_same_v<decltype(std::declval<LevelSim&>().get_spatial_query_manager()),
-                             SpatialQueryManager const&>);
-static_assert(std::is_same_v<decltype(std::declval<LevelSim&>().get_level_telemetry_manager()),
-                             LevelTelemetryManager const&>);
-static_assert(std::is_same_v<decltype(std::declval<LevelSim&>().get_player_ship_simulation()),
-                             player::Sim const*>);
-static_assert(std::is_same_v<decltype(std::declval<LevelSim&>().get_player_ship_commands()),
-                             std::optional<player::CommandInterface>>);
+static_assert(requires(LevelSim& simulation) {
+    { simulation.get_lasers() } -> std::same_as<lasers::Sim const&>;
+    { simulation.get_capital_ships() } -> std::same_as<capital_ships::Sim const&>;
+    { simulation.get_fighters() } -> std::same_as<fighters::Sim const&>;
+    { simulation.get_turrets() } -> std::same_as<turrets::Sim const&>;
+    { simulation.get_spinners() } -> std::same_as<spinners::Sim const&>;
+    { simulation.get_entity_ledger() } -> std::same_as<EntityLedger const&>;
+    { simulation.get_mission() } -> std::same_as<Mission const&>;
+    { simulation.get_spatial_query_manager() } -> std::same_as<SpatialQueryManager const&>;
+    { simulation.get_level_telemetry_manager() } -> std::same_as<LevelTelemetryManager const&>;
+    { simulation.get_player_ship_simulation() } -> std::same_as<player::Sim const*>;
+    {
+        simulation.get_player_ship_commands()
+    } -> std::same_as<std::optional<player::CommandInterface>>;
+});
 
 static_assert(
     std::is_const_v<std::remove_reference_t<
@@ -158,15 +153,16 @@ TEST(NativeSimulation, LevelSimFrameMemoryUsesAndReturnsGameMemoryBlock) {
 TEST(NativeSimulation, PositionConditionsUseLiveSpatialDataAndRemainTerminal) {
     auto data{make_battle()};
     levels::ObjectiveDefinition objective{.team = Team::Green};
+    auto const target{FiniteVector<double, 3>::make(Vector3d{-1000.0, 0.0, 0.0})};
     objective.expressions = {
-        {ioj::levels::EntityReachedPositionExpr{
-            .entity = mission_entity(0),
-            .position = ioj::FiniteVector<double, 3>::make(ioj::Vector3d{-1000.0, 0.0, 0.0}),
-            .radius = ioj::NonNegativeFinite<double>::make(1.0)}},
-        {ioj::levels::EntityReachedPositionExpr{
-            .entity = mission_entity(1),
-            .position = ioj::FiniteVector<double, 3>::make(ioj::Vector3d{-1000.0, 0.0, 0.0}),
-            .radius = ioj::NonNegativeFinite<double>::make(1.0)}},
+        {ioj::levels::EntityReachedPositionExpr{.entity = mission_entity(0),
+                                                .position = target,
+                                                .radius =
+                                                    ioj::NonNegativeFinite<double>::make(1.0)}},
+        {ioj::levels::EntityReachedPositionExpr{.entity = mission_entity(1),
+                                                .position = target,
+                                                .radius =
+                                                    ioj::NonNegativeFinite<double>::make(1.0)}},
         {ioj::levels::TimeElapsedExpr{.seconds = ioj::NonNegativeFinite<double>::make(0.1)}},
         {ioj::levels::AllExpr{.children = {0, 2}}}};
     objective.roots = ioj::levels::ObjectiveRoots{
@@ -283,10 +279,8 @@ TEST(NativeSimulation, LevelCompletionUsesPlayerTeamAndDoesNotCancelOptionalObje
 
     auto const record{simulation.take_finalized_telemetry_run()};
     ASSERT_TRUE(record);
-    EXPECT_EQ(record->completion.decisive_objective_id, "player");
+    EXPECT_EQ(record->completion.reason, LevelTelemetryRunEndReason::MissionFailed);
     EXPECT_EQ(record->completion.completed_ticks, 4);
-    ASSERT_TRUE(record->completion.mission_elapsed_seconds);
-    EXPECT_NEAR(record->completion.mission_elapsed_seconds->get_seconds(), 0.2, 1.e-7);
 }
 
 TEST(NativeSimulation, LevelSimTelemetryCompletionTest) {
@@ -297,10 +291,10 @@ TEST(NativeSimulation, LevelSimTelemetryCompletionTest) {
     simulation.start();
     auto const dt{simulation.get_clock().get_tick_period()};
     simulation.advance(dt * 1.25);
-    simulation.complete_run_if_requested(true, Duration::make(dt * 2.0));
+    simulation.stop_run_if_requested(true, Duration::make(dt * 2.0));
     EXPECT_EQ(simulation.get_state(), OrchestratorState::Running)
         << "Two living teams and time remaining keep the run active";
-    simulation.complete_run_if_requested(false, Duration::make(dt));
+    simulation.stop_run_if_requested(false, Duration::make(dt));
     EXPECT_EQ(simulation.get_state(), OrchestratorState::Paused) << "Completed run is paused";
     EXPECT_EQ(simulation.get_clock().get_completed_ticks(), std::uint64_t{1})
         << "Only one simulation tick completes";
@@ -308,8 +302,8 @@ TEST(NativeSimulation, LevelSimTelemetryCompletionTest) {
     ASSERT_TRUE(record.has_value()) << "Completion yields a telemetry record";
     EXPECT_EQ(record->completion.reason, LevelTelemetryRunEndReason::DurationReached)
         << "Completion reason is retained";
-    EXPECT_FALSE(record->completion.winning_team.has_value())
-        << "A time limit does not declare a winning team";
+    EXPECT_TRUE(simulation.get_mission().completed_objectives().empty())
+        << "A duration stop does not infer a mission outcome";
     EXPECT_EQ(record->completion.completed_ticks, std::uint64_t{1})
         << "Completion records the current tick";
     EXPECT_FALSE(simulation.take_finalized_telemetry_run().has_value())
@@ -356,9 +350,7 @@ TEST(NativeSimulation, LevelTelemetryMissionCompletionTest) {
     ASSERT_TRUE(record.has_value()) << "Taking the mission result finalizes telemetry";
     EXPECT_EQ(record->completion.reason, LevelTelemetryRunEndReason::MissionSucceeded)
         << "Mission success selects the telemetry completion reason";
-    ASSERT_TRUE(record->completion.mission_outcome.has_value()) << "Mission state is present";
-    EXPECT_EQ(record->completion.mission_outcome.value(), TeamOutcome::Victory)
-        << "Mission state is retained";
+    EXPECT_EQ(mission_result->outcome, TeamOutcome::Victory);
 }
 
 TEST(NativeSimulation, LaserFrameOutputsTest) {

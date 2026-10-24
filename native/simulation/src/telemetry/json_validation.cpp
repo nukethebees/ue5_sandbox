@@ -124,13 +124,6 @@ auto parse_json_uint64(double const value, std::string_view const path)
 
 auto validate_level_telemetry_json_record(LevelTelemetryRunRecord const& record)
     -> std::expected<void, std::string> {
-    auto const mission_values{record.completion.mission_team.has_value()};
-    if (mission_values != record.completion.mission_outcome.has_value() ||
-        mission_values != record.completion.objective_outcome.has_value() ||
-        mission_values == record.completion.decisive_objective_id.empty()) {
-        return std::unexpected{"completion mission team, outcome, objective id and objective "
-                               "outcome must be provided together"};
-    }
     auto const completed_ticks{validate_json_integer(
         record.completion.completed_ticks, "completion.completed_ticks", true)};
     if (!completed_ticks) {

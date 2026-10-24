@@ -94,7 +94,6 @@ void LevelSim::pause() {
 // Subsystem setup
 /* **************************************** */
 void LevelSim::configure_subsystems(LevelSimInitData const& data) {
-    set_fighter_diagnostics_enabled(data.fighter_diagnostics_enabled);
     if (data.player.has_value()) {
         configure_player(data.player.value());
     }
@@ -138,10 +137,6 @@ void LevelSim::begin_subsystems() {
 /* **************************************** */
 // Configuration and commands
 /* **************************************** */
-void LevelSim::set_fighter_diagnostics_enabled(bool const enabled) noexcept {
-    capital_ships_simulation_.set_diagnostics_enabled(enabled);
-    fighters_simulation_.set_diagnostics_enabled(enabled);
-}
 void LevelSim::set_telemetry_metadata(LevelTelemetryRunMetadata metadata) {
     level_telemetry_manager_.set_run_metadata(std::move(metadata));
 }
@@ -161,42 +156,40 @@ void LevelSim::set_static_collision(std::span<collision::WorldAABB const> bounds
 void LevelSim::finalize_telemetry_run(LevelTelemetryRunEndReason const reason) {
     level_telemetry_manager_.finalize(reason);
 }
-void LevelSim::complete_telemetry_run(LevelTelemetryRunEndReason const reason,
-                                      std::optional<Team> winning_team) {
-    level_telemetry_manager_.finalize(reason, winning_team);
+void LevelSim::stop_run(LevelTelemetryRunEndReason const reason) {
+    level_telemetry_manager_.finalize(reason);
     state_ = OrchestratorState::Paused;
 }
-void LevelSim::complete_run_if_requested(bool stop_when_battle_resolved,
-                                         std::optional<Duration> duration) {
-    if (level_telemetry_manager_.get_state() != LevelTelemetryManager::State::Recording) {
+void LevelSim::stop_run_if_requested(bool stop_when_battle_resolved,
+                                     std::optional<Duration> duration) {
+    if (state_ != OrchestratorState::Running) {
         return;
     }
 
     if (stop_when_battle_resolved && !event_manager_.has_future_spawns()) {
         auto const alive{entity_ledger_.count_alive_per_team()};
         std::int32_t living_teams{};
-        std::optional<Team> winner;
         for (auto const team : EnumTraits<Team>::values) {
             if (alive[static_cast<std::int32_t>(team)] > 0) {
                 ++living_teams;
-                winner = team;
             }
         }
         if (living_teams <= 1) {
-            complete_telemetry_run(LevelTelemetryRunEndReason::BattleResolved, winner);
+            stop_run(LevelTelemetryRunEndReason::BattleResolved);
             return;
         }
     }
 
     if (duration && clock_.get_simulation_time() >= duration->get_seconds()) {
-        complete_telemetry_run(LevelTelemetryRunEndReason::DurationReached);
+        stop_run(LevelTelemetryRunEndReason::DurationReached);
     }
 }
 auto LevelSim::take_player_team_completion() -> std::optional<TeamCompletion> {
     for (auto const completion : mission_.take_completions()) {
         if (player_ship_simulation_ && completion.team == player_ship_simulation_->team) {
-            level_telemetry_manager_.mark_mission_terminal(
-                completion, mission_.objectives().name(completion.objective).value);
+            level_telemetry_manager_.finalize(completion.outcome == TeamOutcome::Victory
+                                                  ? LevelTelemetryRunEndReason::MissionSucceeded
+                                                  : LevelTelemetryRunEndReason::MissionFailed);
             return completion;
         }
     }

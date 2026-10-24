@@ -17,7 +17,6 @@
 
 namespace ioj::sim {
 
-struct TeamCompletion;
 struct SimClock;
 struct LevelTelemetryManagerTestAccess;
 
@@ -61,8 +60,7 @@ class LevelTelemetryManager {
     /* **************************************** */
     // Requires Uninitialised or Recording.
     void set_run_metadata(LevelTelemetryRunMetadata metadata);
-    void mark_mission_terminal(TeamCompletion const& result, std::string_view objective_name);
-    void finalize(LevelTelemetryRunEndReason reason, std::optional<Team> winning_team = {});
+    void finalize(LevelTelemetryRunEndReason reason);
     // Returns empty unless the record awaits extraction.
     auto take_finalized_run(Frequency tick_rate_hz) -> std::optional<LevelTelemetryRunRecord>;
 
@@ -94,14 +92,6 @@ class LevelTelemetryManager {
     void sample_series();
     void sample_battle_state(bool force = false);
     auto append_history_row(tick_type completed_tick) -> telemetry::HistoryRows::View;
-
-    /* **************************************** */
-    // Finalization
-    /* **************************************** */
-    void finalize_run(LevelTelemetryRunEndReason reason,
-                      TeamCompletion const* mission_result,
-                      std::string_view objective_name,
-                      std::optional<Team> winning_team = {});
 
     /* **************************************** */
     // State

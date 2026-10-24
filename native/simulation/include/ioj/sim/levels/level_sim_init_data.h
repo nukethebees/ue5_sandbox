@@ -41,7 +41,6 @@ struct LevelSimInitData {
 
     LevelTelemetryRunMetadata telemetry_metadata{};
     LevelTelemetryHistoryConfig telemetry_history{};
-    bool fighter_diagnostics_enabled{};
 };
 
 }
