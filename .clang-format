@@ -69,7 +69,7 @@ IncludeCategories:
   # generated headers are ordinary project dependencies.
   - Regex: '^"[^/"]+\.generated\.h"$'
     Priority: 100
-  - Regex: '^["<](ioj/|native/|SpaceGame[^/]*[/\.]|ShooterGame[^/]*/|Sandbox(GameShared|Editor|Tests)?/|SGLegacy/)'
+  - Regex: '^["<](ioj/|native/|SpaceGame[^/]*[/\.]|ShooterGame[^/]*/|Sandbox(GameShared|Editor|Tests)?/)'
     Priority: 1
     CaseSensitive: true
   - Regex: '^["<](sandbox/|sbx/|codegen/|lispb/|kernel_codegen/|slate_codegen/|material_gen/|mesh_gen/|jobserver/|Sandbox(Core|CoreEngine|UI|UIExamples|Shaders|Celestials)/|Sbx(MeshGenLab|ShadersExperiments|UIExperiments)/)'

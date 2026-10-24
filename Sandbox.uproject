@@ -469,10 +469,6 @@
 			"Enabled": true
 		},
 		{
-			"Name": "SGLegacy",
-			"Enabled": false
-		},
-		{
 			"Name": "SteamController",
 			"Enabled": true
 		},

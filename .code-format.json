@@ -12,7 +12,6 @@
     "Plugins/SandboxMesh",
     "Plugins/SandboxShaders",
     "Plugins/SandboxUI",
-    "Plugins/SGLegacy",
     "Plugins/SpaceGame"
   ],
   "Extensions": [
