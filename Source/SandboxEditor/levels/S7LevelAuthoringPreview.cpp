@@ -53,9 +53,6 @@ auto actor_identities(ULevel const& level, AS7LevelAuthoringDocument const& docu
         }
     }};
     append(document.camera.targets);
-    append(document.mission.heroes);
-    append(document.mission.must_survive);
-    append(document.mission.required_kills);
     result.Add(nullptr);
     for (auto const actor : level.Actors) {
         if (IsValid(actor) && resolve_s7_level_actor(*actor).IsSet()) {
