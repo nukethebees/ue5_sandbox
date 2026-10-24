@@ -9,7 +9,12 @@ class UEdMode;
 class US7LevelAuthoringMode;
 class AS7LevelAuthoringDocument;
 
+namespace SlateGenerated {
+struct FS7LevelAuthoringModeToolkitBuilder;
+}
+
 class FS7LevelAuthoringModeToolkit final : public FModeToolkit {
+    friend struct SlateGenerated::FS7LevelAuthoringModeToolkitBuilder;
   public:
     void Init(TSharedPtr<IToolkitHost> const& toolkit_host,
               TWeakObjectPtr<UEdMode> owning_mode) override;
@@ -18,6 +23,7 @@ class FS7LevelAuthoringModeToolkit final : public FModeToolkit {
     auto GetInlineContent() const -> TSharedPtr<SWidget> override;
   private:
     void refresh();
+    auto grid_summary() const -> FText;
     auto create_document() -> FReply;
     auto repair_and_adopt_entities() -> FReply;
     auto rename_selected_entity() -> FReply;

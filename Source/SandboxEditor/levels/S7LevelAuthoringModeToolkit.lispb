@@ -1,0 +1,51 @@
+(defmacro authoring-action (id label clicked)
+  (SButton
+    :Text (loc "FS7LevelAuthoringModeToolkit" $id $label)
+    :OnClicked (method $clicked)))
+
+(defmacro authoring-row (left right)
+  (auto
+    (hbox
+      (fill :padding 2 $left)
+      (fill :padding 2 $right))))
+
+(widget-class FS7LevelAuthoringModeToolkit
+  (function BuildRoot
+    (params (existing details))
+    (vbox
+      (auto :padding 2
+        (vbox
+          (authoring-row
+            (authoring-action "New" "New" create_document)
+            (authoring-action "Load" "Load & Apply S7" load_s7))
+          (authoring-row
+            (authoring-action "Preview" "Preview Apply" preview_apply)
+            (authoring-action "Apply" "Apply Preview" apply_preview))
+          (authoring-row
+            (authoring-action "RepairAndAdopt" "Repair / Adopt Actors" repair_and_adopt_entities)
+            (authoring-action "Save" "Save Source" save))
+          (authoring-row
+            (authoring-action "SaveAs" "Save Source As" save_as)
+            (authoring-action "SaveCanonical" "Save Canonical from Scene" save_canonical_from_scene))
+          (authoring-row
+            (authoring-action "OpenScriptEditor" "Open Script Editor" open_script_editor)
+            (SBox))
+          (authoring-row
+            (authoring-action "SetUpPlayableLevel" "Set Up Playable Level" set_up_playable_level)
+            (authoring-action "ValidatePlayableLevel" "Validate Level" validate_playable_level))
+          (authoring-row
+            (SButton
+              :Text (loc "FS7LevelAuthoringModeToolkit" "EditLevelConfig" "Edit Grid Defaults")
+              :ToolTipText (loc "FS7LevelAuthoringModeToolkit" "EditLevelConfigTooltip"
+                "Edit shared defaults. Changes may affect multiple S7 levels.")
+              :OnClicked (method open_level_config))
+            (SBox))
+          (authoring-row
+            (assign entity_id_ SEditableTextBox
+              :HintText (loc "FS7LevelAuthoringModeToolkit" "EntityIdHint" "Selected entity ID"))
+            (authoring-action "RenameEntity" "Rename Entity ID" rename_selected_entity))))
+      (auto :padding 4
+        (STextBlock :AutoWrapText true :Text (method grid_summary)))
+      (auto :padding 4
+        (assign status_ SMultiLineEditableTextBox :IsReadOnly true :AutoWrapText true))
+      (auto (existing details)))))

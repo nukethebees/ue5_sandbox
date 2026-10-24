@@ -40,6 +40,8 @@ auto make_camera_level() -> ioj::FLevelDraft {
 
 TEST_CLASS(LevelDefinition, "Sandbox.UnitTests")
 {
+    using Error = ioj::ELevelValidationErrorCode;
+
     TEST_METHOD(BuilderConstructsValidLevel)
     {
         auto const definition{ioj::example_levels::make_example_draft()};
@@ -86,9 +88,7 @@ TEST_CLASS(LevelDefinition, "Sandbox.UnitTests")
 
         auto const validation{ioj::validate_level(definition)};
         TestRunner->TestFalse(TEXT("Definition is invalid"), static_cast<bool>(validation));
-        TestRunner->TestTrue(
-            TEXT("Unknown team is reported"),
-            contains_error(validation, ioj::ELevelValidationErrorCode::UnsupportedTeam));
+        expect_error(TEXT("Unknown team is reported"), validation, Error::UnsupportedTeam);
     }
 
     TEST_METHOD(BuilderConstructsValidPlayerlessCameraLevel)
@@ -117,29 +117,21 @@ TEST_CLASS(LevelDefinition, "Sandbox.UnitTests")
         TestRunner->TestTrue(TEXT("Positive mission par time is valid"),
                              static_cast<bool>(ioj::validate_level(valid)));
 
-        auto zero{valid};
-        zero.metadata.par_time_seconds = 0.0f;
-        TestRunner->TestTrue(TEXT("Zero par time is rejected"),
-                             contains_error(ioj::validate_level(zero),
-                                            ioj::ELevelValidationErrorCode::InvalidParTime));
-
-        auto negative{valid};
-        negative.metadata.par_time_seconds = -1.0f;
-        TestRunner->TestTrue(TEXT("Negative par time is rejected"),
-                             contains_error(ioj::validate_level(negative),
-                                            ioj::ELevelValidationErrorCode::InvalidParTime));
-
-        auto non_finite{valid};
-        non_finite.metadata.par_time_seconds = std::numeric_limits<float>::infinity();
-        TestRunner->TestTrue(TEXT("Non-finite par time is rejected"),
-                             contains_error(ioj::validate_level(non_finite),
-                                            ioj::ELevelValidationErrorCode::InvalidParTime));
+        auto const expect_invalid_par{[&](float const seconds, TCHAR const* description) {
+            auto definition{valid};
+            definition.metadata.par_time_seconds = seconds;
+            expect_error(description, ioj::validate_level(definition), Error::InvalidParTime);
+        }};
+        expect_invalid_par(0.0f, TEXT("Zero par time is rejected"));
+        expect_invalid_par(-1.0f, TEXT("Negative par time is rejected"));
+        expect_invalid_par(std::numeric_limits<float>::infinity(),
+                           TEXT("Non-finite par time is rejected"));
 
         auto playerless{make_camera_level()};
         playerless.metadata.par_time_seconds = 45.0f;
-        TestRunner->TestTrue(TEXT("Playerless level par time is rejected"),
-                             contains_error(ioj::validate_level(playerless),
-                                            ioj::ELevelValidationErrorCode::UnexpectedParTime));
+        expect_error(TEXT("Playerless level par time is rejected"),
+                     ioj::validate_level(playerless),
+                     Error::UnexpectedParTime);
     }
 
     TEST_METHOD(CameraCanTargetOneEntity)
@@ -199,9 +191,7 @@ TEST_CLASS(LevelDefinition, "Sandbox.UnitTests")
 
         auto const validation{ioj::validate_level(definition)};
         TestRunner->TestFalse(TEXT("Definition is invalid"), static_cast<bool>(validation));
-        TestRunner->TestTrue(
-            TEXT("Duplicate entity id is reported"),
-            contains_error(validation, ioj::ELevelValidationErrorCode::DuplicateEntityId));
+        expect_error(TEXT("Duplicate entity id is reported"), validation, Error::DuplicateEntityId);
     }
 
     TEST_METHOD(BuilderReuseClearsCameraState)
@@ -247,10 +237,9 @@ TEST_CLASS(LevelDefinition, "Sandbox.UnitTests")
         auto definition{ioj::example_levels::make_example_draft()};
         auto& objective{definition.mission->objectives[0]};
         objective.expressions[0] = {ioj::levels::AllExpression{.children = {0}}};
-        TestRunner->TestTrue(
-            TEXT("Cycle is rejected"),
-            contains_error(ioj::validate_level(definition),
-                           ioj::ELevelValidationErrorCode::InvalidMissionStructure));
+        expect_error(TEXT("Cycle is rejected"),
+                     ioj::validate_level(definition),
+                     Error::InvalidMissionStructure);
     }
 
     TEST_METHOD(MissionEntityReferencesAreValidated)
@@ -258,10 +247,9 @@ TEST_CLASS(LevelDefinition, "Sandbox.UnitTests")
         auto definition{ioj::example_levels::make_example_draft()};
         definition.mission->objectives[0].expressions[0] = {
             ioj::levels::EntityDestroyedExpression{ioj::levels::EntityId{"missing"}}};
-        TestRunner->TestTrue(
-            TEXT("Unknown entity is rejected"),
-            contains_error(ioj::validate_level(definition),
-                           ioj::ELevelValidationErrorCode::InvalidMissionStructure));
+        expect_error(TEXT("Unknown entity is rejected"),
+                     ioj::validate_level(definition),
+                     Error::InvalidMissionStructure);
     }
 
     TEST_METHOD(MalformedDefinitionsReportStructuredErrors)
@@ -269,31 +257,30 @@ TEST_CLASS(LevelDefinition, "Sandbox.UnitTests")
         auto missing_id{ioj::example_levels::make_example_draft()};
         missing_id.metadata.id = {};
         auto const missing_id_validation{ioj::validate_level(missing_id)};
-        TestRunner->TestTrue(
-            TEXT("Missing stable id is reported"),
-            contains_error(missing_id_validation, ioj::ELevelValidationErrorCode::MissingLevelId));
+        expect_error(
+            TEXT("Missing stable id is reported"), missing_id_validation, Error::MissingLevelId);
 
         auto missing_player{ioj::example_levels::make_example_draft()};
         missing_player.player_entity_id = {};
         auto const missing_player_validation{ioj::validate_level(missing_player)};
-        TestRunner->TestTrue(TEXT("Missing viewpoint is reported"),
-                             contains_error(missing_player_validation,
-                                            ioj::ELevelValidationErrorCode::MissingViewpoint));
+        expect_error(TEXT("Missing viewpoint is reported"),
+                     missing_player_validation,
+                     Error::MissingViewpoint);
 
         auto unsupported_archetype{ioj::example_levels::make_example_draft()};
         unsupported_archetype.entities[1].archetype =
             ioj::FEntityArchetypeId{FName{TEXT("pirate-fighter")}};
         auto const unsupported_archetype_validation{ioj::validate_level(unsupported_archetype)};
-        TestRunner->TestTrue(TEXT("Unsupported archetype is reported"),
-                             contains_error(unsupported_archetype_validation,
-                                            ioj::ELevelValidationErrorCode::UnsupportedArchetype));
+        expect_error(TEXT("Unsupported archetype is reported"),
+                     unsupported_archetype_validation,
+                     Error::UnsupportedArchetype);
 
         auto invalid_placement{ioj::example_levels::make_example_draft()};
         invalid_placement.entities[1].position.X = std::numeric_limits<double>::quiet_NaN();
         auto const invalid_placement_validation{ioj::validate_level(invalid_placement)};
-        TestRunner->TestTrue(TEXT("Invalid placement is reported"),
-                             contains_error(invalid_placement_validation,
-                                            ioj::ELevelValidationErrorCode::InvalidPlacement));
+        expect_error(TEXT("Invalid placement is reported"),
+                     invalid_placement_validation,
+                     Error::InvalidPlacement);
     }
 
     TEST_METHOD(CameraAndPlayerAreMutuallyExclusive)
@@ -301,16 +288,15 @@ TEST_CLASS(LevelDefinition, "Sandbox.UnitTests")
         auto both{ioj::example_levels::make_example_draft()};
         both.camera = make_camera_level().camera;
         auto const both_validation{ioj::validate_level(both)};
-        TestRunner->TestTrue(
-            TEXT("Player and camera conflict is reported"),
-            contains_error(both_validation, ioj::ELevelValidationErrorCode::ConflictingViewpoints));
+        expect_error(TEXT("Player and camera conflict is reported"),
+                     both_validation,
+                     Error::ConflictingViewpoints);
 
         auto neither{make_camera_level()};
         neither.camera.Reset();
         auto const neither_validation{ioj::validate_level(neither)};
-        TestRunner->TestTrue(
-            TEXT("Missing viewpoint is reported"),
-            contains_error(neither_validation, ioj::ELevelValidationErrorCode::MissingViewpoint));
+        expect_error(
+            TEXT("Missing viewpoint is reported"), neither_validation, Error::MissingViewpoint);
     }
 
     TEST_METHOD(CameraTargetsMustBeUniqueDeclaredEntities)
@@ -318,55 +304,50 @@ TEST_CLASS(LevelDefinition, "Sandbox.UnitTests")
         auto duplicate{make_camera_level()};
         duplicate.camera->target_entity_ids[1] = duplicate.camera->target_entity_ids[0];
         auto const duplicate_validation{ioj::validate_level(duplicate)};
-        TestRunner->TestTrue(TEXT("Duplicate camera target is reported"),
-                             contains_error(duplicate_validation,
-                                            ioj::ELevelValidationErrorCode::DuplicateCameraTarget));
+        expect_error(TEXT("Duplicate camera target is reported"),
+                     duplicate_validation,
+                     Error::DuplicateCameraTarget);
 
         auto unknown{make_camera_level()};
         unknown.camera->target_entity_ids[0] = ioj::FLevelEntityId{FName{TEXT("missing-capital")}};
         auto const unknown_validation{ioj::validate_level(unknown)};
-        TestRunner->TestTrue(TEXT("Unknown camera target is reported"),
-                             contains_error(unknown_validation,
-                                            ioj::ELevelValidationErrorCode::CameraTargetNotFound));
+        expect_error(TEXT("Unknown camera target is reported"),
+                     unknown_validation,
+                     Error::CameraTargetNotFound);
 
         auto empty{make_camera_level()};
         empty.camera->target_entity_ids.Reset();
         auto const empty_validation{ioj::validate_level(empty)};
-        TestRunner->TestTrue(
-            TEXT("Missing camera target is reported"),
-            contains_error(empty_validation, ioj::ELevelValidationErrorCode::MissingCameraTarget));
+        expect_error(TEXT("Missing camera target is reported"),
+                     empty_validation,
+                     Error::MissingCameraTarget);
     }
 
     TEST_METHOD(CameraPlacementMustBeFiniteAndNonZero)
     {
-        auto invalid_distance{make_camera_level()};
-        invalid_distance.camera->distance = 0.0;
-        auto const distance_validation{ioj::validate_level(invalid_distance)};
-        TestRunner->TestTrue(TEXT("Invalid camera distance is reported"),
-                             contains_error(distance_validation,
-                                            ioj::ELevelValidationErrorCode::InvalidCameraDistance));
+        auto const expect_invalid_distance{[&](double const distance, TCHAR const* description) {
+            auto definition{make_camera_level()};
+            definition.camera->distance = distance;
+            expect_error(
+                description, ioj::validate_level(definition), Error::InvalidCameraDistance);
+        }};
+        auto const expect_invalid_direction{[&](FVector const direction, TCHAR const* description) {
+            auto definition{make_camera_level()};
+            definition.camera->offset_direction = direction;
+            expect_error(
+                description, ioj::validate_level(definition), Error::InvalidCameraOffsetDirection);
+        }};
 
-        auto invalid_direction{make_camera_level()};
-        invalid_direction.camera->offset_direction = FVector::ZeroVector;
-        auto const direction_validation{ioj::validate_level(invalid_direction)};
-        TestRunner->TestTrue(
-            TEXT("Invalid camera direction is reported"),
-            contains_error(direction_validation,
-                           ioj::ELevelValidationErrorCode::InvalidCameraOffsetDirection));
+        expect_invalid_distance(0.0, TEXT("Invalid camera distance is reported"));
+        expect_invalid_distance(std::numeric_limits<double>::infinity(),
+                                TEXT("Non-finite camera distance is reported"));
+        expect_invalid_direction(FVector::ZeroVector, TEXT("Invalid camera direction is reported"));
+        expect_invalid_direction({std::numeric_limits<double>::quiet_NaN(), 0.0, 0.0},
+                                 TEXT("Non-finite camera direction is reported"));
+    }
 
-        auto non_finite_distance{make_camera_level()};
-        non_finite_distance.camera->distance = std::numeric_limits<double>::infinity();
-        auto const non_finite_distance_validation{ioj::validate_level(non_finite_distance)};
-        TestRunner->TestTrue(TEXT("Non-finite camera distance is reported"),
-                             contains_error(non_finite_distance_validation,
-                                            ioj::ELevelValidationErrorCode::InvalidCameraDistance));
-
-        auto non_finite_direction{make_camera_level()};
-        non_finite_direction.camera->offset_direction.X = std::numeric_limits<double>::quiet_NaN();
-        auto const non_finite_direction_validation{ioj::validate_level(non_finite_direction)};
-        TestRunner->TestTrue(
-            TEXT("Non-finite camera direction is reported"),
-            contains_error(non_finite_direction_validation,
-                           ioj::ELevelValidationErrorCode::InvalidCameraOffsetDirection));
+    void expect_error(
+        TCHAR const* description, ioj::FLevelValidationResult const& result, Error const code) {
+        TestRunner->TestTrue(description, contains_error(result, code));
     }
 };

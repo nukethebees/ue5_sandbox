@@ -76,6 +76,7 @@ set_tests_properties(SlateExpandCli PROPERTIES LABELS "unit;all;native;codegen")
 
 set(SLATE_CODEGEN_DOCUMENTS
   "Source/SandboxEditor/levels/S7LevelScriptEditor.lispb"
+  "Source/SandboxEditor/levels/S7LevelAuthoringModeToolkit.lispb"
   "Plugins/SandboxUI/Source/SandboxUI/Private/widgets/CoreWidgets.lispb"
   "Plugins/SandboxUI/Source/SandboxUIExamples/Private/SandboxUIShowcase.lispb"
   "Plugins/SandboxUI/Source/SbxUIExperiments/Private/Benchmarks/Heatmap/HeatmapBenchmarkSlate.lispb"

@@ -29,12 +29,6 @@ auto to_closed_max_cell(float const value,
     }
     return to_cell(value, cell_dimension, half_grid_extent);
 }
-auto grid_half_size(GridGeometry const geometry) noexcept -> Vector3f {
-    return Vector3f{
-        static_cast<float>(geometry.dimensions.x()) * geometry.cell_dimensions.x() * 0.5f,
-        static_cast<float>(geometry.dimensions.y()) * geometry.cell_dimensions.y() * 0.5f,
-        static_cast<float>(geometry.dimensions.z()) * geometry.cell_dimensions.z() * 0.5f};
-}
 
 }
 
@@ -59,6 +53,13 @@ auto calculate_grid_dimensions(Vector3f const grid_size, Vector3f const cell_siz
             levels::grid_axis_count(grid_size.y(), cell_size.y()),
             levels::grid_axis_count(grid_size.z(), cell_size.z())};
 }
+auto grid_half_size(GridGeometry const geometry) noexcept -> Vector3f {
+    return Vector3f{
+        static_cast<float>(geometry.dimensions.x()) * geometry.cell_dimensions.x() * 0.5f,
+        static_cast<float>(geometry.dimensions.y()) * geometry.cell_dimensions.y() * 0.5f,
+        static_cast<float>(geometry.dimensions.z()) * geometry.cell_dimensions.z() * 0.5f};
+}
+
 auto num_cells(GridGeometry const geometry) noexcept -> GridCellCount {
     return geometry.dimensions.x() * geometry.dimensions.y() * geometry.dimensions.z();
 }

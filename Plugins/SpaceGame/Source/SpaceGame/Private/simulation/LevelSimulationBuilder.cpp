@@ -114,9 +114,7 @@ auto proxy_fits_collision_grid(AActor const& actor,
     }
 
     auto const& grid{data.collision.grid_geometry};
-    auto const half_size{FVector3f{grid.dimensions.x() * grid.cell_dimensions.x() * 0.5f,
-                                   grid.dimensions.y() * grid.cell_dimensions.y() * 0.5f,
-                                   grid.dimensions.z() * grid.cell_dimensions.z() * 0.5f}};
+    auto const half_size{to_unreal(sim::collision::grid_half_size(grid))};
     auto const min{to_unreal(bounds.min)};
     auto const max{to_unreal(bounds.max)};
     errors.add(FString::Printf(

@@ -69,22 +69,15 @@ auto make_battle() -> ::ioj::sim::LevelSimInitData {
     data.capital_ships.fighter_spawn_slots = 0;
     auto& spawn_storage{data.level_events.schedule.capital_spawns};
     data.level_events.schedule.add_initial_spawn_group(::ioj::sim::EntityType::CapitalShip, 0, 2);
-    spawn_storage.add_defaulted(2);
-    auto const spawns{spawn_storage.get_view()};
-    spawns.entity_indices()[0] = 0;
-    spawns.entity_indices()[1] = 1;
-    spawns.target_entity_indices()[0] = ::ioj::sim::invalid_level_entity_index;
-    spawns.target_entity_indices()[1] = ::ioj::sim::invalid_level_entity_index;
-    spawns.teams()[0] = ::ioj::Team::Green;
-    spawns.teams()[1] = ::ioj::Team::White;
-    spawns.healths()[0] = 100;
-    spawns.healths()[1] = 100;
-    spawns.initial_fighter_spawn_delays()[0] = 60.f;
-    spawns.initial_fighter_spawn_delays()[1] = 60.f;
-    spawns.fighter_spawn_cooldowns()[0] = 60.f;
-    spawns.fighter_spawn_cooldowns()[1] = 60.f;
-    spawns.view_locations().xs()[0] = -1000.f;
-    spawns.view_locations().xs()[1] = 1000.f;
+    auto const add_capital{[&](ioj::sim::LevelEntityIndex const entity,
+                               ioj::Team const team,
+                               float const x) {
+        spawn_storage.add(
+            entity, ioj::sim::invalid_level_entity_index, {x, 0.f, 0.f}, {}, team, 100, 60.f, 60.f);
+    }};
+    add_capital(0, ioj::Team::Green, -1000.f);
+    add_capital(1, ioj::Team::White, 1000.f);
+
     data.level_events.initialisation.entity_count = 2;
     for (auto const type : ioj::EnumTraits<::ioj::sim::EntityType>::values) {
         data.collision.entity_bounds.set_half_extents(type, {{10.f, 10.f, 10.f}});
@@ -846,12 +839,12 @@ auto FLevelTelemetryRunRecordTest::RunTest(FString const&) -> bool {
         TestEqual(TEXT("Round trip preserves completed ticks"),
                   round_trip->completion.completed_ticks,
                   report.completion.completed_ticks);
+        auto const& actual{round_trip->battle_samples};
+        auto const& expected{report.battle_samples};
         TestTrue(TEXT("Round trip preserves force and combat history"),
-                 round_trip->battle_samples.size() == report.battle_samples.size() &&
-                     round_trip->battle_samples.back().alive ==
-                         report.battle_samples.back().alive &&
-                     round_trip->battle_samples.back().combat.shots ==
-                         report.battle_samples.back().combat.shots);
+                 actual.size() == expected.size() && !actual.empty() &&
+                     actual.back().alive == expected.back().alive &&
+                     actual.back().combat.shots == expected.back().combat.shots);
     }
 
     root->SetStringField(TEXT("performance_windows"), TEXT("discarded malformed timing data"));

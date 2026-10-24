@@ -6,6 +6,7 @@
 #include <ioj/levels/authoring/editor_support.h>
 #include <ioj/levels/authoring/scene_reconciliation.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
+#include <SpaceGamePresentation/integration/VectorConversion.h>
 
 #include <SandboxCoreEngine/strings.h>
 
@@ -16,11 +17,16 @@
 
 namespace ioj::editor {
 namespace s7_level_reconciliation_detail {
-auto make_changes(ULevel const& level,
+struct PreparedSync {
+    UEditorEngine& editor;
+    USpaceGameLevelConfig& config;
+    levels::authoring::SyncPlan plan;
+    std::vector<UClass*> entity_classes;
+};
+
+auto prepare_sync(ULevel const& level,
                   AS7LevelAuthoringDocument const& document,
-                  levels::LevelDefinition const& incoming)
-    -> std::expected<levels::authoring::SyncPlan, FString> {
-    auto const& definition{incoming};
+                  levels::LevelDefinition const& incoming) -> std::expected<PreparedSync, FString> {
     auto* const world{GEditor ? GEditor->GetEditorWorldContext().World() : nullptr};
     if (!IsValid(world) || world->IsGameWorld() || level.OwningWorld != world ||
         world->GetCurrentLevel() != &level || document.GetLevel() != &level) {
@@ -33,20 +39,27 @@ auto make_changes(ULevel const& level,
         return std::unexpected{TEXT("The authoring document has no level configuration.")};
     }
 
-    // Validate every configured class before any actor is spawned or modified.
-    for (auto const& entity : definition.entities()) {
-        auto* const type{s7_level_actor_class(entity.archetype, *document.level_config)};
+    auto& config{*document.level_config};
+    std::vector<UClass*> entity_classes;
+    entity_classes.reserve(incoming.entities().size());
+    for (auto const& entity : incoming.entities()) {
+        auto* const type{s7_level_actor_class(entity.archetype, config)};
         if (!IsValid(type) ||
             type->HasAnyClassFlags(CLASS_Abstract | CLASS_NotPlaceable | CLASS_Transient)) {
             return std::unexpected{FString::Printf(TEXT("Entity '%s' cannot be materialised."),
                                                    *to_fstring(entity.id.value))};
         }
+        entity_classes.push_back(type);
     }
+
     auto scene{collect_s7_scene(level, document)};
     if (!scene) {
         return std::unexpected{scene.error()};
     }
-    return levels::authoring::reconcile_scene(*scene, incoming);
+    return PreparedSync{*GEditor,
+                        config,
+                        levels::authoring::reconcile_scene(*scene, incoming),
+                        std::move(entity_classes)};
 }
 
 auto transform(levels::EntitySpawnDefinition const& entity) -> FTransform {
@@ -66,18 +79,19 @@ auto make_s7_level_sync_plan(ULevel const& level,
     if (!support) {
         return std::unexpected{to_fstring(levels::format_diagnostics(support.error()))};
     }
-    auto changes{s7_level_reconciliation_detail::make_changes(level, document, definition)};
+    auto changes{s7_level_reconciliation_detail::prepare_sync(level, document, definition)};
     if (!changes) {
         return std::unexpected{changes.error()};
     }
-    return FS7LevelSyncPlan{MoveTemp(*changes), MoveTemp(definition)};
+    return FS7LevelSyncPlan{MoveTemp(changes->plan), MoveTemp(definition)};
 }
 
 auto apply_s7_level_sync_plan(ULevel& level,
                               AS7LevelAuthoringDocument& document,
                               FS7LevelSyncPlan const& plan) -> std::expected<void, FString> {
     using namespace s7_level_reconciliation_detail;
-    auto current{make_changes(level, document, plan.definition)};
+    // Recheck mutable editor state after the preview, before opening the transaction.
+    auto current{prepare_sync(level, document, plan.definition)};
     auto const& definition{plan.definition};
     if (!current) {
         return std::unexpected{current.error()};
@@ -93,7 +107,7 @@ auto apply_s7_level_sync_plan(ULevel& level,
     TArray<AActor*> staged;
     TArray<AActor*> removed;
 
-    for (auto const& change : current->changes) {
+    for (auto const& change : current->plan.changes) {
         auto const id{name(change.id)};
         if (change.action == ES7LevelSyncAction::Remove) {
             removed.Add(resolved.FindChecked(id));
@@ -105,13 +119,12 @@ auto apply_s7_level_sync_plan(ULevel& level,
             continue;
         }
         auto const& entity{entities[change.incoming_index]};
-        auto* const actor{
-            GEditor->AddActor(&level,
-                              s7_level_actor_class(entity.archetype, *document.level_config),
-                              transform(entity),
-                              true,
-                              RF_Transactional,
-                              false)};
+        auto* const actor{current->editor.AddActor(&level,
+                                                   current->entity_classes[change.incoming_index],
+                                                   transform(entity),
+                                                   true,
+                                                   RF_Transactional,
+                                                   false)};
         if (!IsValid(actor)) {
             for (auto* const spawned : staged) {
                 spawned->Destroy();
@@ -127,7 +140,7 @@ auto apply_s7_level_sync_plan(ULevel& level,
         resolved.Add(id, actor);
     }
 
-    for (auto const& change : current->changes) {
+    for (auto const& change : current->plan.changes) {
         if (change.action == ES7LevelSyncAction::Remove) {
             continue;
         }
@@ -138,7 +151,7 @@ auto apply_s7_level_sync_plan(ULevel& level,
             configure_s7_level_actor(actor,
                                      entity.archetype,
                                      to_unreal(entity.team),
-                                     *document.level_config,
+                                     current->config,
                                      transform(entity),
                                      id);
         } else if (change.relabel_actor) {
@@ -153,14 +166,8 @@ auto apply_s7_level_sync_plan(ULevel& level,
 
     document.Modify();
     auto const grid{definition.collision_grid().value_or(levels::LevelCollisionGridDefinition{})};
-    auto vector{[](std::optional<Vector3d> const& value) -> FVector3f {
-        return value ? FVector3f{static_cast<float>(value->x()),
-                                 static_cast<float>(value->y()),
-                                 static_cast<float>(value->z())}
-                     : FVector3f::ZeroVector;
-    }};
-    document.level_size = vector(grid.level_size);
-    document.grid_cell_size = vector(grid.cell_size);
+    document.level_size = to_unreal(to_float(grid.level_size.value_or(Vector3d{})));
+    document.grid_cell_size = to_unreal(to_float(grid.cell_size.value_or(Vector3d{})));
     document.grid_override_schema_version = 1;
     document.level_id = FName{to_fstring(definition.metadata().id.value)};
     document.title = to_fstring(definition.metadata().title);

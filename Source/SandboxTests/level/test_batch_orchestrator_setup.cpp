@@ -103,15 +103,17 @@ void FTestBatchOrchestratorSetupScenario::simulation_clock_conversions() {
         sim::SimClock clock;
         clock.initialise(sim::FixedTickLoop{});
 
-        TestRunner->TestEqual(TEXT("Tick-rate frequency has a one-tick period"),
-                              clock.frequency_to_tick_period(ioj::Frequency::make(60.0)).get(),
-                              uint64{1});
-        TestRunner->TestEqual(TEXT("Frequency periods round up"),
-                              clock.frequency_to_tick_period(ioj::Frequency::make(24.0)).get(),
-                              uint64{3});
-        TestRunner->TestEqual(TEXT("Above-tick-rate frequency has a one-tick period"),
-                              clock.frequency_to_tick_period(ioj::Frequency::make(120.0)).get(),
-                              uint64{1});
+        auto const expect_period{
+            [&](double const frequency, uint64 const ticks, TCHAR const* description) {
+                TestRunner->TestEqual(
+                    description,
+                    clock.frequency_to_tick_period(ioj::Frequency::make(frequency)).get(),
+                    ticks);
+            }};
+        expect_period(60.0, 1, TEXT("Tick-rate frequency has a one-tick period"));
+        expect_period(24.0, 3, TEXT("Frequency periods round up"));
+        expect_period(120.0, 1, TEXT("Above-tick-rate frequency has a one-tick period"));
+
         TestRunner->TestEqual(TEXT("Zero duration has a zero-tick period"),
                               clock.duration_to_tick_period(ioj::Duration::make(0.0)).get(),
                               uint64{0});
