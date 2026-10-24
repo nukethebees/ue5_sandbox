@@ -28,6 +28,8 @@ target_sources(native-core
     include/ioj/diagnostics.h
     include/ioj/require.h
     include/ioj/constrained_numbers.h
+    include/ioj/constrained_value.h
+    include/ioj/constrained_vectors.h
     include/ioj/enum_traits.h
     include/ioj/field_mask.h
     include/ioj/packed_value.h
@@ -106,6 +108,7 @@ target_sources(native-core-tests
     tests/vector_lerp_tests.cpp
     tests/array_utils_tests.cpp
     tests/container_tests.cpp
+    tests/constrained_value_tests.cpp
     tests/fixed_array_tests.cpp
     tests/frame_array_tests.cpp
     tests/frame_memory_resource_tests.cpp

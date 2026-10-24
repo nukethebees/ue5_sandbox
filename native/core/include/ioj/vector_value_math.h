@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <cmath>
 #include <concepts>
+#include <limits>
 #include <type_traits>
 
 namespace ioj {
@@ -140,9 +141,10 @@ template <typename T>
             a.x() * b.y() - a.y() * b.x()};
 }
 template <std::floating_point T, std::size_t N>
-[[nodiscard]] auto is_finite(Vector<T, N> const value) noexcept -> bool {
+[[nodiscard]] constexpr auto is_finite(Vector<T, N> const value) noexcept -> bool {
     for (auto const element : value.elements) {
-        if (!std::isfinite(element)) {
+        if (!(element >= std::numeric_limits<T>::lowest() &&
+              element <= std::numeric_limits<T>::max())) {
             return false;
         }
     }

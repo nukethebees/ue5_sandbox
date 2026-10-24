@@ -13,6 +13,7 @@ template <typename Enum, typename T>
 class EnumArray {
   public:
     constexpr EnumArray() = default;
+    constexpr explicit EnumArray(T const& value) { elements_.fill(value); }
     constexpr explicit EnumArray(std::array<T, enum_count<Enum>()> elements)
         : elements_{std::move(elements)} {}
 
@@ -26,6 +27,7 @@ class EnumArray {
     [[nodiscard]] static constexpr auto size() noexcept -> std::size_t {
         return enum_count<Enum>();
     }
+    auto operator==(EnumArray const&) const -> bool = default;
   private:
     std::array<T, enum_count<Enum>()> elements_{};
 };
