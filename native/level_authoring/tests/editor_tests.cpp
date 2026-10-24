@@ -122,11 +122,15 @@ INSTANTIATE_TEST_SUITE_P(
 
 TEST(NativeEditorScene, UnchangedAndEquivalentRotationsNeedNoOperations) {
     auto observed{scene()};
-    auto incoming{observed.definition};
-    incoming.entities[1].rotation.yaw = 360.0;
-    auto const plan{reconcile(observed, incoming)};
-    ASSERT_TRUE(plan);
-    EXPECT_FALSE(plan->has_changes());
+    for (auto const yaw : {0.0, 180.0, 45.0}) {
+        observed.definition.entities[1].rotation = {30.0, yaw, -60.0};
+        auto incoming{observed.definition};
+        incoming.entities[1].rotation.yaw = yaw - 360.0;
+        auto const plan{reconcile(observed, incoming)};
+        ASSERT_TRUE(plan);
+        EXPECT_FALSE(plan->has_changes()) << yaw;
+    }
+
     EXPECT_TRUE(observed == observed);
 }
 

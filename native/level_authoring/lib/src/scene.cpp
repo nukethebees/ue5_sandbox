@@ -1,10 +1,9 @@
 #include <ioj/levels/authoring/scene_reconciliation.h>
+#include <ioj/rotator3d.h>
 
 #include <algorithm>
-#include <array>
 #include <cassert>
 #include <cmath>
-#include <numbers>
 #include <unordered_map>
 
 namespace ioj::levels::authoring {
@@ -22,28 +21,19 @@ auto same_vector(Vector3d const& lhs, Vector3d const& rhs) -> bool {
 auto near_vector(Vector3d const& lhs, Vector3d const& rhs) -> bool {
     return near(lhs.x(), rhs.x()) && near(lhs.y(), rhs.y()) && near(lhs.z(), rhs.z());
 }
-auto quaternion(Rotator3d const r) -> std::array<double, 4> {
-    auto const half_radians{std::numbers::pi / 360.0};
-    auto const cp{std::cos(r.pitch * half_radians)};
-    auto const sp{std::sin(r.pitch * half_radians)};
-    auto const cy{std::cos(r.yaw * half_radians)};
-    auto const sy{std::sin(r.yaw * half_radians)};
-    auto const cr{std::cos(r.roll * half_radians)};
-    auto const sr{std::sin(r.roll * half_radians)};
-    return {cr * sp * sy - sr * cp * cy,
-            -cr * sp * cy - sr * cp * sy,
-            cr * cp * sy - sr * sp * cy,
-            cr * cp * cy + sr * sp * sy};
-}
 auto same_rotation(Rotator3d const lhs, Rotator3d const rhs) -> bool {
-    auto const a{quaternion(lhs)};
-    auto const b{quaternion(rhs)};
+    auto const a{to_quaternion(lhs)};
+    auto const b{to_quaternion(rhs)};
+
+    // Opposite quaternion signs represent the same orientation.
     bool equal{true};
     bool negated{true};
-    for (std::size_t i{}; i < a.size(); ++i) {
+    auto const count{a.components.elements.size()};
+    for (std::size_t i{}; i < count; ++i) {
         equal = equal && near(a[i], b[i]);
         negated = negated && near(a[i], -b[i]);
     }
+
     return equal || negated;
 }
 auto operator==(LevelCameraDefinition const& lhs, LevelCameraDefinition const& rhs) -> bool {

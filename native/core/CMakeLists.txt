@@ -62,9 +62,10 @@ target_include_directories(native-core
     include
 )
 
-# Keep file and diagnostic consumers independent of the runtime allocation/profiling code.
+# Keep runtime allocation/profiling separate from other core utilities.
 set_source_files_properties(
   src/files.cpp
+  src/frame_memory_resource.cpp
   src/require.cpp
   PROPERTIES
     SKIP_UNITY_BUILD_INCLUSION ON
