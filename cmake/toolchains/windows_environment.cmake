@@ -12,12 +12,12 @@ foreach(line IN LISTS windows_settings_lines)
     else()
       set(in_windows_settings FALSE)
     endif()
-  elseif(in_windows_settings AND line MATCHES "^(CompilerVersion|WindowsSDKVersion)=([0-9.]+)$")
+  elseif(in_windows_settings AND line MATCHES "^(ToolchainVersion|WindowsSDKVersion)=([0-9.]+)$")
     set(windows_${CMAKE_MATCH_1} "${CMAKE_MATCH_2}")
   endif()
 endforeach()
-if(NOT windows_CompilerVersion OR NOT windows_WindowsSDKVersion)
-  message(FATAL_ERROR "Pin CompilerVersion and WindowsSDKVersion in ${windows_settings_file}.")
+if(NOT windows_ToolchainVersion OR NOT windows_WindowsSDKVersion)
+  message(FATAL_ERROR "Pin ToolchainVersion and WindowsSDKVersion in ${windows_settings_file}.")
 endif()
 
 find_program(IOJ_VSWHERE_EXECUTABLE NAMES vswhere vswhere.exe
@@ -38,19 +38,19 @@ string(REPLACE "\r" "" visual_studio_roots "${visual_studio_roots}")
 string(REPLACE "\n" ";" visual_studio_roots "${visual_studio_roots}")
 set(visual_studio_root "")
 foreach(candidate IN LISTS visual_studio_roots)
-  if(EXISTS "${candidate}/VC/Tools/MSVC/${windows_CompilerVersion}/bin/Hostx64/x64/cl.exe")
+  if(EXISTS "${candidate}/VC/Tools/MSVC/${windows_ToolchainVersion}/bin/Hostx64/x64/cl.exe")
     set(visual_studio_root "${candidate}")
     break()
   endif()
 endforeach()
 if(visual_studio_root STREQUAL "")
   message(FATAL_ERROR
-    "Install the MSVC ${windows_CompilerVersion} x64 build tools pinned in ${windows_settings_file}.")
+    "Install the MSVC ${windows_ToolchainVersion} x64 build tools pinned in ${windows_settings_file}.")
 endif()
 
 # Reuse the selected environment in CMake's nested compiler checks.
 file(TO_CMAKE_PATH "$ENV{VCToolsInstallDir}" inherited_toolchain_directory)
-file(TO_CMAKE_PATH "${visual_studio_root}/VC/Tools/MSVC/${windows_CompilerVersion}" expected_toolchain_directory)
+file(TO_CMAKE_PATH "${visual_studio_root}/VC/Tools/MSVC/${windows_ToolchainVersion}" expected_toolchain_directory)
 file(TO_CMAKE_PATH "$ENV{WindowsSDKVersion}" inherited_sdk_version)
 get_property(in_try_compile GLOBAL PROPERTY IN_TRY_COMPILE)
 if(NOT in_try_compile
@@ -65,7 +65,7 @@ if(NOT in_try_compile
   execute_process(
     COMMAND cmd.exe /d /v:on /c call "${vsdevcmd}"
       -no_logo -arch=x64 -host_arch=x64
-      "-vcvars_ver=${windows_CompilerVersion}" "-winsdk=${windows_WindowsSDKVersion}" >nul
+      "-vcvars_ver=${windows_ToolchainVersion}" "-winsdk=${windows_WindowsSDKVersion}" >nul
       && echo IOJ_MSVC_PATH=!PATH!
       && echo IOJ_MSVC_INCLUDE=!INCLUDE!
       && echo IOJ_MSVC_EXTERNAL_INCLUDE=!EXTERNAL_INCLUDE!
@@ -83,7 +83,7 @@ if(NOT in_try_compile
   )
   if(NOT vsdevcmd_result EQUAL 0)
     message(FATAL_ERROR
-      "Failed to initialise MSVC ${windows_CompilerVersion} and Windows SDK ${windows_WindowsSDKVersion}. "
+      "Failed to initialise MSVC ${windows_ToolchainVersion} and Windows SDK ${windows_WindowsSDKVersion}. "
       "Install the pinned versions through Visual Studio Installer.")
   endif()
 endif()
@@ -121,4 +121,4 @@ sandbox_make_msvc_library_linker_flags(msvc_linker_flags ${msvc_LIB})
 set(CMAKE_EXE_LINKER_FLAGS_INIT "${msvc_linker_flags}")
 set(CMAKE_SHARED_LINKER_FLAGS_INIT "${msvc_linker_flags}")
 set(CMAKE_MODULE_LINKER_FLAGS_INIT "${msvc_linker_flags}")
-message(STATUS "Windows toolchain: MSVC ${windows_CompilerVersion}, SDK ${windows_WindowsSDKVersion}")
+message(STATUS "Windows toolchain: MSVC ${windows_ToolchainVersion}, SDK ${windows_WindowsSDKVersion}")

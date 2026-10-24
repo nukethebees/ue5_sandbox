@@ -1,9 +1,15 @@
 include_guard(GLOBAL)
 include("${CMAKE_CURRENT_LIST_DIR}/unreal_arguments.cmake")
+include("${CMAKE_CURRENT_LIST_DIR}/llvm_tools.cmake")
 
 function(add_unreal_target target_name unreal_target)
+  ioj_find_llvm_tool(IOJ_UNREAL_CLANG_CL_EXECUTABLE clang-cl)
+  cmake_path(GET IOJ_UNREAL_CLANG_CL_EXECUTABLE PARENT_PATH unreal_llvm_bin)
+  cmake_path(GET unreal_llvm_bin PARENT_PATH unreal_llvm_root)
+
   add_custom_target(${target_name}
     COMMAND
+      "${CMAKE_COMMAND}" -E env "LLVM_PATH=${unreal_llvm_root}"
       coj unreal-build
       --build-script "${UE_BUILD_SCRIPT}"
       --target ${unreal_target}
