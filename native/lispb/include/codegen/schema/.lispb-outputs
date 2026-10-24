@@ -1,2 +1,4 @@
 lispb-outputs-v1
 declaration_kind.h
+packed_field_kind.h
+soa_member_kind.h

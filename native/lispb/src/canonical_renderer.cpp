@@ -192,34 +192,6 @@ auto CanonicalRenderer::build_enum(codegen::DeclarationHandle const schema) -> E
     }
     return result.build();
 }
-auto CanonicalRenderer::packed_field_kind_name(codegen::PackedFieldKind const kind)
-    -> std::string_view {
-    switch (kind) {
-        case codegen::PackedFieldKind::unsigned_integer:
-            return "unsigned";
-        case codegen::PackedFieldKind::signed_integer:
-            return "signed";
-        case codegen::PackedFieldKind::enumeration:
-            return "enum";
-        case codegen::PackedFieldKind::linear_quantized:
-            return "linear-quantized";
-        case codegen::PackedFieldKind::fixed_point:
-            return "fixed-point";
-        case codegen::PackedFieldKind::mini_float:
-            return "mini-float";
-    }
-    return "unsigned";
-}
-auto CanonicalRenderer::soa_member_kind_name(codegen::SoaMemberKind const kind)
-    -> std::string_view {
-    switch (kind) {
-        case codegen::SoaMemberKind::array:
-            return "array";
-        case codegen::SoaMemberKind::nested:
-            return "nested";
-    }
-    return "array";
-}
 auto CanonicalRenderer::build_parameter(codegen::ParameterId const parameter) -> Expr {
     auto const& parameters{store_.parameters};
     auto const index{parameters.index(parameter)};
@@ -284,7 +256,7 @@ auto CanonicalRenderer::build_packed_segment(codegen::PackedSegmentId const segm
                          fields.bits[index].has_value() ? ir_.atom(*fields.bits[index])
                                                         : ir_.atoms.automatic);
             if (fields.kind[index] != codegen::PackedFieldKind::unsigned_integer) {
-                result.field("kind", ir_.atom(packed_field_kind_name(fields.kind[index])));
+                result.field("kind", ir_.atom(codegen::to_serialized_string(fields.kind[index])));
             }
             result.flag("range-helper", fields.range_helper[index]);
             result.optional_field("default", fields.default_value[index], integer);
@@ -486,7 +458,7 @@ auto CanonicalRenderer::build_soa_member(codegen::SoaMemberId const member) -> E
     auto const index{members.index(member)};
     auto result{ir_.form("member",
                          {ir_.atom(members.name[index]),
-                          ir_.atom(soa_member_kind_name(members.kind[index])),
+                          ir_.atom(codegen::to_serialized_string(members.kind[index])),
                           build_type_ref(members.type[index])})};
     result.optional_field("equivalent-member", members.equivalent_member[index], atom);
     result.flag("equivalent-accessor", members.equivalent_accessor[index]);

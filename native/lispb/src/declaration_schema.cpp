@@ -156,6 +156,13 @@ auto traverse_references(Store& store, DeclarationHandle declaration, Visitor co
             });
         });
     };
+    auto source = [&](auto& columns) {
+        rewrite_row(columns, declaration, [&](auto field, auto) {
+            field(columns.source, [&](auto& value) {
+                return reference(role(TypeReferenceCategory::source), value);
+            });
+        });
+    };
     switch (declaration.kind()) {
         case DeclarationKind::enumeration:
             rewrite_row(store.enums, declaration, [&](auto field, auto row) {
@@ -200,38 +207,18 @@ auto traverse_references(Store& store, DeclarationHandle declaration, Visitor co
             });
             break;
         case DeclarationKind::integer_varint:
-            rewrite_row(store.integer_varints, declaration, [&](auto field, auto row) {
-                static_cast<void>(row);
-                field(store.integer_varints.source, [&](auto& value) {
-                    return reference(role(TypeReferenceCategory::source), value);
-                });
-            });
+            source(store.integer_varints);
             break;
         case DeclarationKind::linear_quantized:
-            rewrite_row(store.linear_quantizeds, declaration, [&](auto field, auto row) {
-                static_cast<void>(row);
-                field(store.linear_quantizeds.source, [&](auto& value) {
-                    return reference(role(TypeReferenceCategory::source), value);
-                });
-            });
+            source(store.linear_quantizeds);
             break;
         case DeclarationKind::mini_float:
             break;
         case DeclarationKind::optional_presence_bit:
-            rewrite_row(store.optional_presence_bits, declaration, [&](auto field, auto row) {
-                static_cast<void>(row);
-                field(store.optional_presence_bits.source, [&](auto& value) {
-                    return reference(role(TypeReferenceCategory::source), value);
-                });
-            });
+            source(store.optional_presence_bits);
             break;
         case DeclarationKind::optional_sentinel:
-            rewrite_row(store.optional_sentinels, declaration, [&](auto field, auto row) {
-                static_cast<void>(row);
-                field(store.optional_sentinels.source, [&](auto& value) {
-                    return reference(role(TypeReferenceCategory::source), value);
-                });
-            });
+            source(store.optional_sentinels);
             break;
         case DeclarationKind::packed_value:
             rewrite_row(store.packed_values, declaration, [&](auto field, auto row) {
@@ -439,45 +426,42 @@ auto rewrite_type_references(
 }
 
 auto declaration_name(Declarations const& declarations, DeclarationHandle declaration) -> StringId {
+    auto name = [declaration](auto const& columns) {
+        return columns.name[columns.index(declaration)];
+    };
     switch (declaration.kind()) {
         case DeclarationKind::enumeration:
-            return declarations.enums.name[declarations.enums.index(declaration)];
+            return name(declarations.enums);
         case DeclarationKind::facade:
-            return declarations.facades.name[declarations.facades.index(declaration)];
+            return name(declarations.facades);
         case DeclarationKind::settings_schema:
-            return declarations.settings_schemas
-                .name[declarations.settings_schemas.index(declaration)];
+            return name(declarations.settings_schemas);
         case DeclarationKind::fixed_point:
-            return declarations.fixed_points.name[declarations.fixed_points.index(declaration)];
+            return name(declarations.fixed_points);
         case DeclarationKind::integer_scalar:
-            return declarations.integer_scalars
-                .name[declarations.integer_scalars.index(declaration)];
+            return name(declarations.integer_scalars);
         case DeclarationKind::integer_varint:
-            return declarations.integer_varints
-                .name[declarations.integer_varints.index(declaration)];
+            return name(declarations.integer_varints);
         case DeclarationKind::linear_quantized:
-            return declarations.linear_quantizeds
-                .name[declarations.linear_quantizeds.index(declaration)];
+            return name(declarations.linear_quantizeds);
         case DeclarationKind::mini_float:
-            return declarations.mini_floats.name[declarations.mini_floats.index(declaration)];
+            return name(declarations.mini_floats);
         case DeclarationKind::optional_presence_bit:
-            return declarations.optional_presence_bits
-                .name[declarations.optional_presence_bits.index(declaration)];
+            return name(declarations.optional_presence_bits);
         case DeclarationKind::optional_sentinel:
-            return declarations.optional_sentinels
-                .name[declarations.optional_sentinels.index(declaration)];
+            return name(declarations.optional_sentinels);
         case DeclarationKind::packed_value:
-            return declarations.packed_values.name[declarations.packed_values.index(declaration)];
+            return name(declarations.packed_values);
         case DeclarationKind::record:
-            return declarations.records.name[declarations.records.index(declaration)];
+            return name(declarations.records);
         case DeclarationKind::soa:
-            return declarations.soas.name[declarations.soas.index(declaration)];
+            return name(declarations.soas);
         case DeclarationKind::static_table:
-            return declarations.static_tables.name[declarations.static_tables.index(declaration)];
+            return name(declarations.static_tables);
         case DeclarationKind::tagged_union:
-            return declarations.tagged_unions.name[declarations.tagged_unions.index(declaration)];
+            return name(declarations.tagged_unions);
         case DeclarationKind::union_type:
-            return declarations.unions.name[declarations.unions.index(declaration)];
+            return name(declarations.unions);
     }
     std::unreachable();
 }

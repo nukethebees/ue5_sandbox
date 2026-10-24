@@ -18,3 +18,25 @@
     (value static_table)
     (value facade)
     (value settings_schema)))
+
+(module compiler_packed_field_kind
+  :header "packed_field_kind.h"
+  :namespace lispb::codegen
+  (enum PackedFieldKind std::uint8_t
+    :native-api true
+    :helpers (to-serialized-string)
+    (value unsigned_integer :serialized-name "unsigned")
+    (value signed_integer :serialized-name "signed")
+    (value enumeration :serialized-name "enum")
+    (value linear_quantized :serialized-name "linear-quantized")
+    (value fixed_point :serialized-name "fixed-point")
+    (value mini_float :serialized-name "mini-float")))
+
+(module compiler_soa_member_kind
+  :header "soa_member_kind.h"
+  :namespace lispb::codegen
+  (enum SoaMemberKind std::uint8_t
+    :native-api true
+    :helpers (to-serialized-string)
+    (value array :serialized-name "array")
+    (value nested :serialized-name "nested")))
