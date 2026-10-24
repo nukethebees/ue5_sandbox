@@ -127,6 +127,11 @@ If a new issue invalidates previous validation or requires additional builds/tes
 * East const; always use braces.
 * Prefer `auto` where the type is obvious.
 * Prefer simple C++ over template metaprogramming.
+* Declare one variable or data member per declaration and per line. Do not combine declarators.
+* Put all member-function declarations before data-member declarations; never interleave them.
+* Keep headers concise. Do not add inline explanatory comments to routine declarations or members.
+  Add a comment only for a non-obvious contract that names and types cannot express; put implementation
+  explanations in the source file. Do not add comments that restate the code.
 * Prefer SOA layouts for related performance-sensitive collections.
 * Save loop bounds as const locals.
 * State non-obvious API preconditions and missing-result semantics at the declaration. Treat

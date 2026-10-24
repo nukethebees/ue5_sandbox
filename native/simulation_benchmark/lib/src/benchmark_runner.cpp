@@ -13,6 +13,8 @@
 #include <ioj/sim/sim_clock.h>
 #include <ioj/sim/telemetry/run_end_reason.h>
 
+#include <nlohmann/json.hpp>
+
 #include <algorithm>
 #include <cassert>
 #include <chrono>
@@ -25,12 +27,6 @@
 namespace ioj::simulation_benchmark {
 namespace {
 struct FrameMemorySummary {
-    std::size_t peak_claimed_bytes{};
-    std::size_t peak_payload_bytes{};
-    std::uint64_t total_padding_bytes{};
-    std::uint64_t total_root_claims{};
-    std::uint32_t peak_fighters{};
-
     void record_tick(sim::LevelSim const& simulation) {
         auto const stats{simulation.get_frame_memory_stats()};
         peak_claimed_bytes = std::max(peak_claimed_bytes, stats.last_frame_claimed_bytes);
@@ -39,6 +35,12 @@ struct FrameMemorySummary {
         total_root_claims += stats.last_frame_root_claim_count;
         peak_fighters = std::max(peak_fighters, simulation.get_fighters().get_num_instances());
     }
+
+    std::size_t peak_claimed_bytes{};
+    std::size_t peak_payload_bytes{};
+    std::uint64_t total_padding_bytes{};
+    std::uint64_t total_root_claims{};
+    std::uint32_t peak_fighters{};
 };
 
 struct TickTimingSummary {
@@ -69,43 +71,6 @@ auto read_error(levels::authoring::LevelDefinitionReadResult const& result) -> s
     return levels::format_diagnostics(result.error());
 }
 
-auto json_string(std::string_view const value) -> std::string {
-    std::string output{"\""};
-    auto write{ioj::FormatWriter{std::back_inserter(output)}};
-    for (auto const character : value) {
-        switch (character) {
-            case '"':
-                output += "\\\"";
-                break;
-            case '\\':
-                output += "\\\\";
-                break;
-            case '\b':
-                output += "\\b";
-                break;
-            case '\f':
-                output += "\\f";
-                break;
-            case '\n':
-                output += "\\n";
-                break;
-            case '\r':
-                output += "\\r";
-                break;
-            case '\t':
-                output += "\\t";
-                break;
-            default:
-                if (static_cast<unsigned char>(character) < 0x20) {
-                    write("\\u{:04x}", static_cast<unsigned char>(character));
-                } else {
-                    output += character;
-                }
-        }
-    }
-    output += '"';
-    return output;
-}
 } // namespace
 
 auto calculate_tick_count(double const seconds, Frequency const tick_rate_hz)
@@ -463,9 +428,9 @@ auto to_json(BenchmarkResult const& result) -> std::string {
     std::string output;
     auto write{ioj::FormatWriter{std::back_inserter(output)}};
     write(R"({{"schema_version":2,"level":{{"path":{},"id":{},"title":{}}})",
-          json_string(result.level_path),
-          json_string(result.level_id),
-          json_string(result.level_title));
+          nlohmann::json(result.level_path).dump(),
+          nlohmann::json(result.level_id).dump(),
+          nlohmann::json(result.level_title).dump());
     write(R"(,"workload":{{"requested_seconds":{:.17g},"tick_rate_hz":{:.17g},"game_speed":{},)"
           R"("requested_ticks":{},"completed_ticks":{},"completed_seconds":{:.17g},)"
           R"("advance_calls":{},"saturation_ticks":{},"warmup_ticks":{},)"
@@ -543,8 +508,8 @@ auto to_json(BenchmarkResult const& result) -> std::string {
     write(
         R"(,"environment":{{"hardware_threads":{},"compiler":{},"build_type":{},"tracy_enabled":{}}}}})",
         result.hardware_threads,
-        json_string(result.compiler),
-        json_string(result.build_type),
+        nlohmann::json(result.compiler).dump(),
+        nlohmann::json(result.build_type).dump(),
         result.tracy_enabled);
     return output;
 }

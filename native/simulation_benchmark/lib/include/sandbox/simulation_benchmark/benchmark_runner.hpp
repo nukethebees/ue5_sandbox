@@ -55,7 +55,9 @@ struct BenchmarkResult {
     std::uint32_t active_lasers{};
     std::uint32_t lasers_spawned{};
     std::uint32_t peak_fighters{};
-    std::size_t active_objectives{}, inactive_objectives{}, completed_objectives{};
+    std::size_t active_objectives{};
+    std::size_t inactive_objectives{};
+    std::size_t completed_objectives{};
     std::size_t frame_memory_capacity_bytes{};
     std::size_t frame_memory_peak_claimed_bytes{};
     std::size_t frame_memory_peak_payload_bytes{};

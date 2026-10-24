@@ -14,6 +14,7 @@ target_link_libraries(native-simulation-benchmark-lib
     native-simulation-s7
     native-level-authoring-s7
     CLI11::CLI11
+    nlohmann_json::nlohmann_json
 )
 ioj_enable_warnings(native-simulation-benchmark-lib)
 target_compile_definitions(native-simulation-benchmark-lib PRIVATE
