@@ -76,27 +76,10 @@ ownership is useful; retained compiler nodes and declarations store handles.
 
 ## Ordinary value records
 
-`settings-schema` declares a separate field adapter for an existing C++ container. It does not
-generate or change that container, and its output has no S7 dependency:
-
-```lisp
-(module simulation_fields
-  :header "ioj/s7/simulation_fields.h"
-  :namespace ioj::s7::simulation_fields
-  (settings-schema Fields
-    :target ioj::sim::SimulationSettings
-    :target-header "ioj/sim/levels/simulation_settings.h"
-    (field "fighters.speed" "fighters.speed")
-    (field "tick.tick-rate" "clock.tick_rate")))
-```
-
-This emits `FieldsField`, `try_parse_fields_field(path)` and
-`visit_fields_field(target, field, callback)`. Parsing returns an optional enum; the visitor
-requires a valid parsed enum and passes the actual member reference to a boolean callback.
-The callback supplies scalar, enum or vector conversion at the loading boundary. Member types
-and defaults remain owned by the C++ container. Field paths must be unique, and member paths
-are dot-separated C++ identifiers. These adapters are metadata declarations without semantic
-layout types; they reuse normal module assembly, dependency emission and source rendering.
+Ordinary records can generate typed S7 readers and sparse override types from the same
+member declarations. Nested records compose through `TypeReader<T>`; generated field lookup
+and decoding preserve presence, diagnostics and ordered layers. Runtime records contain no
+parsing state. See [record settings](docs/record-settings.md) and [S7 readers](docs/s7-readers.md).
 
 Record members distinguish an omitted initializer from `:initializer ""` (C++ `{}`) and
 `:initializer "3.f"` (C++ `{3.f}`). The string is the brace initializer's expression list;

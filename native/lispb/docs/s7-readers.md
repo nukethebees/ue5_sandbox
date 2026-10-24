@@ -122,9 +122,8 @@ references, outcome dependencies and unlock criteria use generated positional re
 Recursive mission composition and leaf-payload selection still use a typed adapter.
 
 Catalog entries capture `ReadResult<T>` so a bad imported definition remains an error
-associated with that file without discarding successful siblings. Sparse settings use a
-typed presentation patch and, for simulation, the remaining flattened assignments.
-Presentation defaults and fields live in native records; Unreal retains resource references
-and colour controls. Starfield decodes directly into its native record. Neither presentation
-nor starfield uses a separate `settings-schema` mapping.
+associated with that file without discarding successful siblings. Simulation, presentation
+and starfield settings use generated sparse patches over shared configuration records.
+Unreal retains resource references and colour controls. The former `settings-schema`
+mapping and flattened assignment representation have been removed.
 No writers are generated.

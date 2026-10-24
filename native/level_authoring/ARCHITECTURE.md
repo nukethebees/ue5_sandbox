@@ -76,45 +76,32 @@ The writer preserves deterministic ordering and three-decimal rounding. Editor s
 rejects par-time, unlock criteria, objective missions, and settings layers. Objective graphs
 remain authored in S7; the scene editor cannot infer or rewrite them from entity roles.
 
-Settings constructors return records, and `settings-layers` groups records in application order.
-`parse_settings` decodes presentation sections into generated `PresentationOverrides`.
-Optional patch fields preserve authored presence even when a level is decoded before its base
-configuration. Generated application merges base and level patches into ordinary native values.
-Unreal resource references and colours remain in the engine structs beside those values.
-Unknown presentation fields and malformed values fail during decoding.
-Simulation still uses owned `ioj::settings::Setting` assignments with dotted paths and
-scalar/numeric-vector values, applied by its resolver before final domain validation.
+Settings constructors return records; `settings-layers` groups records in application order.
+`parse_settings` decodes them into generated `SettingsValuesOverrides`, preserving presence
+independently of defaults. Simulation, presentation and starfield use the same typed readers.
+Unknown fields, duplicate properties, incompatible values and field constraints are checked
+during decoding. Simulation applies the generated group patches to its handwritten root,
+then validates the effective configuration's domain constraints.
 
-AST parsers, Scheme file readers and serializers live under `s7/src/`. General authoring code
+Shared static configuration records live under `native/levels`; runtime state remains under
+simulation. Unreal retains asset references and colour controls. Asset-derived members are
+excluded from authored readers and patches. The old `settings-schema` compiler family,
+flattened path/value assignments and simulation dispatcher are removed.
+
+AST readers, Scheme file readers and serializers live under `s7/src/`. General authoring code
 such as scene reconciliation and source sessions remains under `lib/src/`. The AST-only and
-interpreter-backed libraries keep their existing dependency boundaries.
-
-Lispb `settings-schema` declarations generate field-name enums, keyword lookup and typed member
-dispatch for the remaining simulation consumer. Its reader default-constructs native settings, assigns supplied
-fields through that dispatch and then validates domain constraints. Generated adapters stay
-separate from runtime types; simulation and presentation code consume resolved settings.
+interpreter-backed libraries retain their dependency boundaries.
 
 Ordinary records with matching script/domain layouts (camera, grid, campaign, team result)
 decode directly through generated companion readers. Level/entity/objective inputs remain
 separate where decoding must precede ID assignment, layout conversion or graph construction.
-This avoids teaching the generator domain-specific destination paths or reference resolution.
 Generated readers mutate a local default-constructed value when available and stage members
 only when construction is necessary. Presence masks distinguish omissions independently of
 member values. Fixed positional readers handle named expressions, references, dependencies
 and unlock criteria. Expression recursion, leaf selection and reference resolution remain explicit.
 
-The remaining simulation assignment representation preserves authored presence and layer order.
-The generic settings walker contains no per-setting field lists; those are generated from the schemas.
-Structural record readers and settings bindings share Lispb's keyword lookup generation; their numeric conversions
-share `try_numeric_cast`, with flattened settings rejecting nonfinite values at assignment.
-Starfield now reads directly into generated native records: an outer section/layer traversal
-calls the same typed decoder as ordinary records, checking each supplied field immediately. Its old
-field bindings and handwritten constraint chain are removed. `read_override` applies a partial
-record to a copy, leaving the caller's instance untouched on failure.
-
-`settings-schema` remains only for simulation. Retiring it also requires migrating the simulation
-root bindings and its sparse level patches without coupling level definitions to runtime simulation.
-The attack-distance band is one typed setting. Its generated reader constructs a constrained
-triple before publishing it; overrides replace the whole band and cannot mutate individual
-ratios. Tick settings contain only rate and time scale, with accumulation kept in the runtime clock.
-Its intermediate triples can be invalid even when the final effective triple is valid.
+`read_override` applies a partial record to a copy, leaving the caller's instance untouched
+on failure. Each supplied layer is validated; later values cannot hide malformed earlier values.
+The attack-distance band is one constrained setting. Overrides replace the whole triple and
+cannot mutate individual ratios. Tick settings contain only rate and time scale; accumulation
+remains in the runtime clock.
