@@ -85,12 +85,6 @@ inline void TypeReader<::ioj::settings::LaserPresentation>::decode(Reader const&
                                                                    value_type& result,
                                                                    ReadMode mode,
                                                                    AstDiagnostics& errors) {
-    auto const read{[&](auto& destination, NodeIndex value, std::string_view location) {
-        auto const error_count{errors.size()};
-        decode_field(reader, value, location, destination, mode, errors);
-        return errors.size() == error_count;
-    }};
-
     auto const seen{read_record<Field>(
         reader,
         node,
@@ -98,9 +92,14 @@ inline void TypeReader<::ioj::settings::LaserPresentation>::decode(Reader const&
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
+            auto const read{[&](auto& destination) {
+                auto const error_count{errors.size()};
+                decode_field(reader, value, location, destination, mode, errors);
+                return errors.size() == error_count;
+            }};
             switch (field) {
                 case Field::min_cull_distance:
-                    if (read(result.min_cull_distance, value, location)) {
+                    if (read(result.min_cull_distance)) {
                         if (!constraints::finite(result.min_cull_distance)) {
                             errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
                                                            std::string{location},
@@ -109,7 +108,7 @@ inline void TypeReader<::ioj::settings::LaserPresentation>::decode(Reader const&
                     }
                     break;
                 case Field::max_cull_distance:
-                    if (read(result.max_cull_distance, value, location)) {
+                    if (read(result.max_cull_distance)) {
                         if (!constraints::finite(result.max_cull_distance)) {
                             errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
                                                            std::string{location},
@@ -142,12 +141,6 @@ inline void
                                                                     value_type& result,
                                                                     ReadMode,
                                                                     AstDiagnostics& errors) {
-    auto const read{[&](auto& destination, NodeIndex value, std::string_view location) {
-        auto const error_count{errors.size()};
-        decode_patch_field(reader, value, location, destination, errors);
-        return errors.size() == error_count;
-    }};
-
     auto const seen{read_record<Field>(
         reader,
         node,
@@ -155,9 +148,14 @@ inline void
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
+            auto const read{[&](auto& destination) {
+                auto const error_count{errors.size()};
+                decode_patch_field(reader, value, location, destination, errors);
+                return errors.size() == error_count;
+            }};
             switch (field) {
                 case Field::min_cull_distance:
-                    if (read(result.min_cull_distance, value, location)) {
+                    if (read(result.min_cull_distance)) {
                         if (!constraints::finite(result.min_cull_distance)) {
                             errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
                                                            std::string{location},
@@ -166,7 +164,7 @@ inline void
                     }
                     break;
                 case Field::max_cull_distance:
-                    if (read(result.max_cull_distance, value, location)) {
+                    if (read(result.max_cull_distance)) {
                         if (!constraints::finite(result.max_cull_distance)) {
                             errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
                                                            std::string{location},

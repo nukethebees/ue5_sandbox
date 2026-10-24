@@ -139,10 +139,11 @@ auto fields_body(LoweringContext& context,
         : constructing ? "read_field(reader, value, location, destination, errors)"
                        : "decode_field(reader, value, location, destination, mode, errors)"};
     auto const read_callback{std::format(
-        "[&](auto& destination, NodeIndex value, std::string_view location) {{\n"
+        "[&](auto& destination{}) {{\n"
         "auto const error_count{{errors.size()}};\n{};\nreturn errors.size() == error_count;\n}}",
+        positional ? ", NodeIndex value, std::string_view location" : "",
         read_value)};
-    if (!fields.empty()) {
+    if (positional && !fields.empty()) {
         body.add(ir.variable("auto const", "read", ir.raw_expr(read_callback, {})), 2);
     }
     if (positional) {
@@ -178,18 +179,16 @@ auto fields_body(LoweringContext& context,
     } else {
         // The IR has no lambda node; keep only the streaming callback's syntax textual.
         std::string visitor{"[&](Field const field, NodeIndex const value, std::string_view const "
-                            "location) {\nswitch (field) {\n"};
+                            "location) {\nauto const read{"};
+        visitor += read_callback + "};\nswitch (field) {\n";
         for (auto const field : fields) {
             auto const name{context.text(members.name[members.index(field)])};
             auto const destination{(constructing ? "value_" : "result.") + name};
-            visitor +=
-                std::format("case Field::{}: {}break;\n",
-                            name,
-                            checked_read(context,
-                                         field,
-                                         destination,
-                                         std::format("read({}, value, location)", destination),
-                                         "location"));
+            visitor += std::format(
+                "case Field::{}: {}break;\n",
+                name,
+                checked_read(
+                    context, field, destination, std::format("read({})", destination), "location"));
         }
         visitor += "case Field::Count: std::unreachable();\n}\n}";
         if (fields.empty()) {

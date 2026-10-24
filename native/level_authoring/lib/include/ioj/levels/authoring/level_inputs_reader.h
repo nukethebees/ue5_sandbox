@@ -427,12 +427,6 @@ inline void TypeReader<::ioj::levels::authoring::EntityInput>::decode(Reader con
                                                                       value_type& result,
                                                                       ReadMode mode,
                                                                       AstDiagnostics& errors) {
-    auto const read{[&](auto& destination, NodeIndex value, std::string_view location) {
-        auto const error_count{errors.size()};
-        decode_field(reader, value, location, destination, mode, errors);
-        return errors.size() == error_count;
-    }};
-
     auto const seen{read_record<Field>(
         reader,
         node,
@@ -440,33 +434,38 @@ inline void TypeReader<::ioj::levels::authoring::EntityInput>::decode(Reader con
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
+            auto const read{[&](auto& destination) {
+                auto const error_count{errors.size()};
+                decode_field(reader, value, location, destination, mode, errors);
+                return errors.size() == error_count;
+            }};
             switch (field) {
                 case Field::id:
-                    read(result.id, value, location);
+                    read(result.id);
                     break;
                 case Field::archetype:
-                    read(result.archetype, value, location);
+                    read(result.archetype);
                     break;
                 case Field::team:
-                    read(result.team, value, location);
+                    read(result.team);
                     break;
                 case Field::position:
-                    read(result.position, value, location);
+                    read(result.position);
                     break;
                 case Field::rotation:
-                    read(result.rotation, value, location);
+                    read(result.rotation);
                     break;
                 case Field::spawn_at:
-                    read(result.spawn_at, value, location);
+                    read(result.spawn_at);
                     break;
                 case Field::health:
-                    read(result.health, value, location);
+                    read(result.health);
                     break;
                 case Field::laser_damage:
-                    read(result.laser_damage, value, location);
+                    read(result.laser_damage);
                     break;
                 case Field::initial_spawn_delay:
-                    if (read(result.initial_spawn_delay, value, location)) {
+                    if (read(result.initial_spawn_delay)) {
                         if (!constraints::finite(result.initial_spawn_delay)) {
                             errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
                                                            std::string{location},
@@ -475,7 +474,7 @@ inline void TypeReader<::ioj::levels::authoring::EntityInput>::decode(Reader con
                     }
                     break;
                 case Field::spawn_cooldown:
-                    if (read(result.spawn_cooldown, value, location)) {
+                    if (read(result.spawn_cooldown)) {
                         if (!constraints::finite(result.spawn_cooldown)) {
                             errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
                                                            std::string{location},
@@ -484,7 +483,7 @@ inline void TypeReader<::ioj::levels::authoring::EntityInput>::decode(Reader con
                     }
                     break;
                 case Field::target:
-                    read(result.target, value, location);
+                    read(result.target);
                     break;
                 case Field::Count:
                     std::unreachable();
@@ -518,12 +517,6 @@ inline void
                                                                  value_type& result,
                                                                  ReadMode mode,
                                                                  AstDiagnostics& errors) {
-    auto const read{[&](auto& destination, NodeIndex value, std::string_view location) {
-        auto const error_count{errors.size()};
-        decode_field(reader, value, location, destination, mode, errors);
-        return errors.size() == error_count;
-    }};
-
     auto const seen{read_record<Field>(
         reader,
         node,
@@ -531,30 +524,35 @@ inline void
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
+            auto const read{[&](auto& destination) {
+                auto const error_count{errors.size()};
+                decode_field(reader, value, location, destination, mode, errors);
+                return errors.size() == error_count;
+            }};
             switch (field) {
                 case Field::id:
-                    read(result.id, value, location);
+                    read(result.id);
                     break;
                 case Field::title:
-                    read(result.title, value, location);
+                    read(result.title);
                     break;
                 case Field::team:
-                    read(result.team, value, location);
+                    read(result.team);
                     break;
                 case Field::nodes:
-                    read(result.nodes, value, location);
+                    read(result.nodes);
                     break;
                 case Field::pass:
-                    read(result.pass, value, location);
+                    read(result.pass);
                     break;
                 case Field::fail:
-                    read(result.fail, value, location);
+                    read(result.fail);
                     break;
                 case Field::expire:
-                    read(result.expire, value, location);
+                    read(result.expire);
                     break;
                 case Field::depends_on:
-                    read(result.depends_on, value, location);
+                    read(result.depends_on);
                     break;
                 case Field::Count:
                     std::unreachable();
@@ -586,12 +584,6 @@ inline void TypeReader<::ioj::levels::authoring::MissionInput>::decode(Reader co
                                                                        value_type& result,
                                                                        ReadMode mode,
                                                                        AstDiagnostics& errors) {
-    auto const read{[&](auto& destination, NodeIndex value, std::string_view location) {
-        auto const error_count{errors.size()};
-        decode_field(reader, value, location, destination, mode, errors);
-        return errors.size() == error_count;
-    }};
-
     auto const seen{read_record<Field>(
         reader,
         node,
@@ -599,12 +591,17 @@ inline void TypeReader<::ioj::levels::authoring::MissionInput>::decode(Reader co
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
+            auto const read{[&](auto& destination) {
+                auto const error_count{errors.size()};
+                decode_field(reader, value, location, destination, mode, errors);
+                return errors.size() == error_count;
+            }};
             switch (field) {
                 case Field::objectives:
-                    read(result.objectives, value, location);
+                    read(result.objectives);
                     break;
                 case Field::team_results:
-                    read(result.team_results, value, location);
+                    read(result.team_results);
                     break;
                 case Field::Count:
                     std::unreachable();
@@ -636,12 +633,6 @@ inline void TypeReader<::ioj::levels::authoring::LevelInput>::decode(Reader cons
                                                                      value_type& result,
                                                                      ReadMode mode,
                                                                      AstDiagnostics& errors) {
-    auto const read{[&](auto& destination, NodeIndex value, std::string_view location) {
-        auto const error_count{errors.size()};
-        decode_field(reader, value, location, destination, mode, errors);
-        return errors.size() == error_count;
-    }};
-
     auto const seen{read_record<Field>(
         reader,
         node,
@@ -649,18 +640,23 @@ inline void TypeReader<::ioj::levels::authoring::LevelInput>::decode(Reader cons
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
+            auto const read{[&](auto& destination) {
+                auto const error_count{errors.size()};
+                decode_field(reader, value, location, destination, mode, errors);
+                return errors.size() == error_count;
+            }};
             switch (field) {
                 case Field::id:
-                    read(result.id, value, location);
+                    read(result.id);
                     break;
                 case Field::title:
-                    read(result.title, value, location);
+                    read(result.title);
                     break;
                 case Field::description:
-                    read(result.description, value, location);
+                    read(result.description);
                     break;
                 case Field::par_time:
-                    if (read(result.par_time, value, location)) {
+                    if (read(result.par_time)) {
                         if (!constraints::finite(result.par_time)) {
                             errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
                                                            std::string{location},
@@ -669,25 +665,25 @@ inline void TypeReader<::ioj::levels::authoring::LevelInput>::decode(Reader cons
                     }
                     break;
                 case Field::unlock:
-                    read(result.unlock, value, location);
+                    read(result.unlock);
                     break;
                 case Field::player:
-                    read(result.player, value, location);
+                    read(result.player);
                     break;
                 case Field::camera:
-                    read(result.camera, value, location);
+                    read(result.camera);
                     break;
                 case Field::collision_grid:
-                    read(result.collision_grid, value, location);
+                    read(result.collision_grid);
                     break;
                 case Field::settings:
-                    read(result.settings, value, location);
+                    read(result.settings);
                     break;
                 case Field::mission:
-                    read(result.mission, value, location);
+                    read(result.mission);
                     break;
                 case Field::entities:
-                    read(result.entities, value, location);
+                    read(result.entities);
                     break;
                 case Field::Count:
                     std::unreachable();
@@ -721,12 +717,6 @@ inline void
                                                                      value_type& result,
                                                                      ReadMode mode,
                                                                      AstDiagnostics& errors) {
-    auto const read{[&](auto& destination, NodeIndex value, std::string_view location) {
-        auto const error_count{errors.size()};
-        decode_field(reader, value, location, destination, mode, errors);
-        return errors.size() == error_count;
-    }};
-
     auto const seen{read_record<Field>(
         reader,
         node,
@@ -734,15 +724,20 @@ inline void
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
+            auto const read{[&](auto& destination) {
+                auto const error_count{errors.size()};
+                decode_field(reader, value, location, destination, mode, errors);
+                return errors.size() == error_count;
+            }};
             switch (field) {
                 case Field::path:
-                    read(result.path, value, location);
+                    read(result.path);
                     break;
                 case Field::value:
-                    read(result.value, value, location);
+                    read(result.value);
                     break;
                 case Field::error:
-                    read(result.error, value, location);
+                    read(result.error);
                     break;
                 case Field::Count:
                     std::unreachable();
@@ -775,12 +770,6 @@ inline void
                                                                         value_type& result,
                                                                         ReadMode mode,
                                                                         AstDiagnostics& errors) {
-    auto const read{[&](auto& destination, NodeIndex value, std::string_view location) {
-        auto const error_count{errors.size()};
-        decode_field(reader, value, location, destination, mode, errors);
-        return errors.size() == error_count;
-    }};
-
     auto const seen{read_record<Field>(
         reader,
         node,
@@ -788,15 +777,20 @@ inline void
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
+            auto const read{[&](auto& destination) {
+                auto const error_count{errors.size()};
+                decode_field(reader, value, location, destination, mode, errors);
+                return errors.size() == error_count;
+            }};
             switch (field) {
                 case Field::path:
-                    read(result.path, value, location);
+                    read(result.path);
                     break;
                 case Field::value:
-                    read(result.value, value, location);
+                    read(result.value);
                     break;
                 case Field::error:
-                    read(result.error, value, location);
+                    read(result.error);
                     break;
                 case Field::Count:
                     std::unreachable();
@@ -828,12 +822,6 @@ inline void TypeReader<::ioj::levels::authoring::CatalogInput>::decode(Reader co
                                                                        value_type& result,
                                                                        ReadMode mode,
                                                                        AstDiagnostics& errors) {
-    auto const read{[&](auto& destination, NodeIndex value, std::string_view location) {
-        auto const error_count{errors.size()};
-        decode_field(reader, value, location, destination, mode, errors);
-        return errors.size() == error_count;
-    }};
-
     auto const seen{read_record<Field>(
         reader,
         node,
@@ -841,12 +829,17 @@ inline void TypeReader<::ioj::levels::authoring::CatalogInput>::decode(Reader co
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
+            auto const read{[&](auto& destination) {
+                auto const error_count{errors.size()};
+                decode_field(reader, value, location, destination, mode, errors);
+                return errors.size() == error_count;
+            }};
             switch (field) {
                 case Field::levels:
-                    read(result.levels, value, location);
+                    read(result.levels);
                     break;
                 case Field::campaigns:
-                    read(result.campaigns, value, location);
+                    read(result.campaigns);
                     break;
                 case Field::Count:
                     std::unreachable();

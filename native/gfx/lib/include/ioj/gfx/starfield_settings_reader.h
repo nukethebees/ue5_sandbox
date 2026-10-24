@@ -473,12 +473,6 @@ inline void TypeReader<::ioj::starfield::GenerationSettings>::decode(Reader cons
                                                                      value_type& result,
                                                                      ReadMode mode,
                                                                      AstDiagnostics& errors) {
-    auto const read{[&](auto& destination, NodeIndex value, std::string_view location) {
-        auto const error_count{errors.size()};
-        decode_field(reader, value, location, destination, mode, errors);
-        return errors.size() == error_count;
-    }};
-
     auto const seen{read_record<Field>(
         reader,
         node,
@@ -486,9 +480,14 @@ inline void TypeReader<::ioj::starfield::GenerationSettings>::decode(Reader cons
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
+            auto const read{[&](auto& destination) {
+                auto const error_count{errors.size()};
+                decode_field(reader, value, location, destination, mode, errors);
+                return errors.size() == error_count;
+            }};
             switch (field) {
                 case Field::star_count:
-                    if (read(result.star_count, value, location)) {
+                    if (read(result.star_count)) {
                         if (!constraints::minimum(result.star_count, 1ULL)) {
                             errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
                                                            std::string{location},
@@ -502,7 +501,7 @@ inline void TypeReader<::ioj::starfield::GenerationSettings>::decode(Reader cons
                     }
                     break;
                 case Field::random_seed:
-                    read(result.random_seed, value, location);
+                    read(result.random_seed);
                     break;
                 case Field::Count:
                     std::unreachable();
@@ -526,12 +525,6 @@ inline void TypeReader<::ioj::starfield::StarSettings>::decode(Reader const& rea
                                                                value_type& result,
                                                                ReadMode mode,
                                                                AstDiagnostics& errors) {
-    auto const read{[&](auto& destination, NodeIndex value, std::string_view location) {
-        auto const error_count{errors.size()};
-        decode_field(reader, value, location, destination, mode, errors);
-        return errors.size() == error_count;
-    }};
-
     auto const seen{read_record<Field>(
         reader,
         node,
@@ -539,9 +532,14 @@ inline void TypeReader<::ioj::starfield::StarSettings>::decode(Reader const& rea
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
+            auto const read{[&](auto& destination) {
+                auto const error_count{errors.size()};
+                decode_field(reader, value, location, destination, mode, errors);
+                return errors.size() == error_count;
+            }};
             switch (field) {
                 case Field::scale:
-                    if (read(result.scale, value, location)) {
+                    if (read(result.scale)) {
                         if (!constraints::positive(result.scale)) {
                             errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
                                                            std::string{location},
@@ -555,7 +553,7 @@ inline void TypeReader<::ioj::starfield::StarSettings>::decode(Reader const& rea
                     }
                     break;
                 case Field::size_multiplier:
-                    if (read(result.size_multiplier, value, location)) {
+                    if (read(result.size_multiplier)) {
                         if (!constraints::nonnegative(result.size_multiplier)) {
                             errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
                                                            std::string{location},
@@ -569,7 +567,7 @@ inline void TypeReader<::ioj::starfield::StarSettings>::decode(Reader const& rea
                     }
                     break;
                 case Field::global_brightness:
-                    if (read(result.global_brightness, value, location)) {
+                    if (read(result.global_brightness)) {
                         if (!constraints::finite(result.global_brightness)) {
                             errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
                                                            std::string{location},
@@ -578,7 +576,7 @@ inline void TypeReader<::ioj::starfield::StarSettings>::decode(Reader const& rea
                     }
                     break;
                 case Field::colour_variation_strength:
-                    if (read(result.colour_variation_strength, value, location)) {
+                    if (read(result.colour_variation_strength)) {
                         if (!constraints::finite(result.colour_variation_strength)) {
                             errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
                                                            std::string{location},
@@ -587,7 +585,7 @@ inline void TypeReader<::ioj::starfield::StarSettings>::decode(Reader const& rea
                     }
                     break;
                 case Field::parallax_strength:
-                    if (read(result.parallax_strength, value, location)) {
+                    if (read(result.parallax_strength)) {
                         if (!constraints::finite(result.parallax_strength)) {
                             errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
                                                            std::string{location},
@@ -619,12 +617,6 @@ inline void TypeReader<::ioj::starfield::GalacticBandSettings>::decode(Reader co
                                                                        value_type& result,
                                                                        ReadMode mode,
                                                                        AstDiagnostics& errors) {
-    auto const read{[&](auto& destination, NodeIndex value, std::string_view location) {
-        auto const error_count{errors.size()};
-        decode_field(reader, value, location, destination, mode, errors);
-        return errors.size() == error_count;
-    }};
-
     auto const seen{read_record<Field>(
         reader,
         node,
@@ -632,9 +624,14 @@ inline void TypeReader<::ioj::starfield::GalacticBandSettings>::decode(Reader co
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
+            auto const read{[&](auto& destination) {
+                auto const error_count{errors.size()};
+                decode_field(reader, value, location, destination, mode, errors);
+                return errors.size() == error_count;
+            }};
             switch (field) {
                 case Field::strength:
-                    if (read(result.strength, value, location)) {
+                    if (read(result.strength)) {
                         if (!constraints::finite(result.strength)) {
                             errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
                                                            std::string{location},
@@ -643,7 +640,7 @@ inline void TypeReader<::ioj::starfield::GalacticBandSettings>::decode(Reader co
                     }
                     break;
                 case Field::width_degrees:
-                    if (read(result.width_degrees, value, location)) {
+                    if (read(result.width_degrees)) {
                         if (!constraints::positive(result.width_degrees)) {
                             errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
                                                            std::string{location},
@@ -686,12 +683,6 @@ inline void
                                                                  value_type& result,
                                                                  ReadMode mode,
                                                                  AstDiagnostics& errors) {
-    auto const read{[&](auto& destination, NodeIndex value, std::string_view location) {
-        auto const error_count{errors.size()};
-        decode_field(reader, value, location, destination, mode, errors);
-        return errors.size() == error_count;
-    }};
-
     auto const seen{read_record<Field>(
         reader,
         node,
@@ -699,9 +690,14 @@ inline void
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
+            auto const read{[&](auto& destination) {
+                auto const error_count{errors.size()};
+                decode_field(reader, value, location, destination, mode, errors);
+                return errors.size() == error_count;
+            }};
             switch (field) {
                 case Field::strength:
-                    if (read(result.strength, value, location)) {
+                    if (read(result.strength)) {
                         if (!constraints::finite(result.strength)) {
                             errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
                                                            std::string{location},
@@ -710,7 +706,7 @@ inline void
                     }
                     break;
                 case Field::width_degrees:
-                    if (read(result.width_degrees, value, location)) {
+                    if (read(result.width_degrees)) {
                         if (!constraints::positive(result.width_degrees)) {
                             errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
                                                            std::string{location},
@@ -747,12 +743,6 @@ inline void TypeReader<::ioj::starfield::DustLaneSettings>::decode(Reader const&
                                                                    value_type& result,
                                                                    ReadMode mode,
                                                                    AstDiagnostics& errors) {
-    auto const read{[&](auto& destination, NodeIndex value, std::string_view location) {
-        auto const error_count{errors.size()};
-        decode_field(reader, value, location, destination, mode, errors);
-        return errors.size() == error_count;
-    }};
-
     auto const seen{read_record<Field>(
         reader,
         node,
@@ -760,9 +750,14 @@ inline void TypeReader<::ioj::starfield::DustLaneSettings>::decode(Reader const&
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
+            auto const read{[&](auto& destination) {
+                auto const error_count{errors.size()};
+                decode_field(reader, value, location, destination, mode, errors);
+                return errors.size() == error_count;
+            }};
             switch (field) {
                 case Field::strength:
-                    if (read(result.strength, value, location)) {
+                    if (read(result.strength)) {
                         if (!constraints::finite(result.strength)) {
                             errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
                                                            std::string{location},
@@ -771,7 +766,7 @@ inline void TypeReader<::ioj::starfield::DustLaneSettings>::decode(Reader const&
                     }
                     break;
                 case Field::width_degrees:
-                    if (read(result.width_degrees, value, location)) {
+                    if (read(result.width_degrees)) {
                         if (!constraints::positive(result.width_degrees)) {
                             errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
                                                            std::string{location},
@@ -785,7 +780,7 @@ inline void TypeReader<::ioj::starfield::DustLaneSettings>::decode(Reader const&
                     }
                     break;
                 case Field::irregularity:
-                    if (read(result.irregularity, value, location)) {
+                    if (read(result.irregularity)) {
                         if (!constraints::finite(result.irregularity)) {
                             errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
                                                            std::string{location},
@@ -817,12 +812,6 @@ inline void TypeReader<::ioj::starfield::BrightStarSettings>::decode(Reader cons
                                                                      value_type& result,
                                                                      ReadMode mode,
                                                                      AstDiagnostics& errors) {
-    auto const read{[&](auto& destination, NodeIndex value, std::string_view location) {
-        auto const error_count{errors.size()};
-        decode_field(reader, value, location, destination, mode, errors);
-        return errors.size() == error_count;
-    }};
-
     auto const seen{read_record<Field>(
         reader,
         node,
@@ -830,9 +819,14 @@ inline void TypeReader<::ioj::starfield::BrightStarSettings>::decode(Reader cons
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
+            auto const read{[&](auto& destination) {
+                auto const error_count{errors.size()};
+                decode_field(reader, value, location, destination, mode, errors);
+                return errors.size() == error_count;
+            }};
             switch (field) {
                 case Field::fraction:
-                    if (read(result.fraction, value, location)) {
+                    if (read(result.fraction)) {
                         if (!constraints::finite(result.fraction)) {
                             errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
                                                            std::string{location},
@@ -841,7 +835,7 @@ inline void TypeReader<::ioj::starfield::BrightStarSettings>::decode(Reader cons
                     }
                     break;
                 case Field::size_multiplier:
-                    if (read(result.size_multiplier, value, location)) {
+                    if (read(result.size_multiplier)) {
                         if (!constraints::nonnegative(result.size_multiplier)) {
                             errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
                                                            std::string{location},
@@ -855,7 +849,7 @@ inline void TypeReader<::ioj::starfield::BrightStarSettings>::decode(Reader cons
                     }
                     break;
                 case Field::brightness_multiplier:
-                    if (read(result.brightness_multiplier, value, location)) {
+                    if (read(result.brightness_multiplier)) {
                         if (!constraints::finite(result.brightness_multiplier)) {
                             errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
                                                            std::string{location},
@@ -864,7 +858,7 @@ inline void TypeReader<::ioj::starfield::BrightStarSettings>::decode(Reader cons
                     }
                     break;
                 case Field::shape_strength:
-                    if (read(result.shape_strength, value, location)) {
+                    if (read(result.shape_strength)) {
                         if (!constraints::finite(result.shape_strength)) {
                             errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
                                                            std::string{location},
@@ -896,12 +890,6 @@ inline void TypeReader<::ioj::starfield::TwinkleSettings>::decode(Reader const& 
                                                                   value_type& result,
                                                                   ReadMode mode,
                                                                   AstDiagnostics& errors) {
-    auto const read{[&](auto& destination, NodeIndex value, std::string_view location) {
-        auto const error_count{errors.size()};
-        decode_field(reader, value, location, destination, mode, errors);
-        return errors.size() == error_count;
-    }};
-
     auto const seen{read_record<Field>(
         reader,
         node,
@@ -909,9 +897,14 @@ inline void TypeReader<::ioj::starfield::TwinkleSettings>::decode(Reader const& 
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
+            auto const read{[&](auto& destination) {
+                auto const error_count{errors.size()};
+                decode_field(reader, value, location, destination, mode, errors);
+                return errors.size() == error_count;
+            }};
             switch (field) {
                 case Field::strength:
-                    if (read(result.strength, value, location)) {
+                    if (read(result.strength)) {
                         if (!constraints::finite(result.strength)) {
                             errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
                                                            std::string{location},
@@ -920,7 +913,7 @@ inline void TypeReader<::ioj::starfield::TwinkleSettings>::decode(Reader const& 
                     }
                     break;
                 case Field::speed:
-                    if (read(result.speed, value, location)) {
+                    if (read(result.speed)) {
                         if (!constraints::finite(result.speed)) {
                             errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
                                                            std::string{location},
@@ -952,12 +945,6 @@ inline void TypeReader<::ioj::starfield::GalacticHazeSettings>::decode(Reader co
                                                                        value_type& result,
                                                                        ReadMode mode,
                                                                        AstDiagnostics& errors) {
-    auto const read{[&](auto& destination, NodeIndex value, std::string_view location) {
-        auto const error_count{errors.size()};
-        decode_field(reader, value, location, destination, mode, errors);
-        return errors.size() == error_count;
-    }};
-
     auto const seen{read_record<Field>(
         reader,
         node,
@@ -965,9 +952,14 @@ inline void TypeReader<::ioj::starfield::GalacticHazeSettings>::decode(Reader co
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
+            auto const read{[&](auto& destination) {
+                auto const error_count{errors.size()};
+                decode_field(reader, value, location, destination, mode, errors);
+                return errors.size() == error_count;
+            }};
             switch (field) {
                 case Field::strength:
-                    if (read(result.strength, value, location)) {
+                    if (read(result.strength)) {
                         if (!constraints::finite(result.strength)) {
                             errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
                                                            std::string{location},
@@ -976,7 +968,7 @@ inline void TypeReader<::ioj::starfield::GalacticHazeSettings>::decode(Reader co
                     }
                     break;
                 case Field::width_degrees:
-                    if (read(result.width_degrees, value, location)) {
+                    if (read(result.width_degrees)) {
                         if (!constraints::positive(result.width_degrees)) {
                             errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
                                                            std::string{location},
@@ -1013,12 +1005,6 @@ inline void TypeReader<::ioj::starfield::GalacticCoreSettings>::decode(Reader co
                                                                        value_type& result,
                                                                        ReadMode mode,
                                                                        AstDiagnostics& errors) {
-    auto const read{[&](auto& destination, NodeIndex value, std::string_view location) {
-        auto const error_count{errors.size()};
-        decode_field(reader, value, location, destination, mode, errors);
-        return errors.size() == error_count;
-    }};
-
     auto const seen{read_record<Field>(
         reader,
         node,
@@ -1026,9 +1012,14 @@ inline void TypeReader<::ioj::starfield::GalacticCoreSettings>::decode(Reader co
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
+            auto const read{[&](auto& destination) {
+                auto const error_count{errors.size()};
+                decode_field(reader, value, location, destination, mode, errors);
+                return errors.size() == error_count;
+            }};
             switch (field) {
                 case Field::strength:
-                    if (read(result.strength, value, location)) {
+                    if (read(result.strength)) {
                         if (!constraints::finite(result.strength)) {
                             errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
                                                            std::string{location},
@@ -1037,7 +1028,7 @@ inline void TypeReader<::ioj::starfield::GalacticCoreSettings>::decode(Reader co
                     }
                     break;
                 case Field::width_degrees:
-                    if (read(result.width_degrees, value, location)) {
+                    if (read(result.width_degrees)) {
                         if (!constraints::positive(result.width_degrees)) {
                             errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
                                                            std::string{location},
@@ -1074,12 +1065,6 @@ inline void TypeReader<::ioj::starfield::NebularKnotSettings>::decode(Reader con
                                                                       value_type& result,
                                                                       ReadMode mode,
                                                                       AstDiagnostics& errors) {
-    auto const read{[&](auto& destination, NodeIndex value, std::string_view location) {
-        auto const error_count{errors.size()};
-        decode_field(reader, value, location, destination, mode, errors);
-        return errors.size() == error_count;
-    }};
-
     auto const seen{read_record<Field>(
         reader,
         node,
@@ -1087,9 +1072,14 @@ inline void TypeReader<::ioj::starfield::NebularKnotSettings>::decode(Reader con
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
+            auto const read{[&](auto& destination) {
+                auto const error_count{errors.size()};
+                decode_field(reader, value, location, destination, mode, errors);
+                return errors.size() == error_count;
+            }};
             switch (field) {
                 case Field::strength:
-                    if (read(result.strength, value, location)) {
+                    if (read(result.strength)) {
                         if (!constraints::finite(result.strength)) {
                             errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
                                                            std::string{location},
@@ -1098,7 +1088,7 @@ inline void TypeReader<::ioj::starfield::NebularKnotSettings>::decode(Reader con
                     }
                     break;
                 case Field::size_degrees:
-                    if (read(result.size_degrees, value, location)) {
+                    if (read(result.size_degrees)) {
                         if (!constraints::positive(result.size_degrees)) {
                             errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
                                                            std::string{location},
@@ -1133,12 +1123,6 @@ inline void TypeReader<::ioj::starfield::Settings>::decode(Reader const& reader,
                                                            value_type& result,
                                                            ReadMode mode,
                                                            AstDiagnostics& errors) {
-    auto const read{[&](auto& destination, NodeIndex value, std::string_view location) {
-        auto const error_count{errors.size()};
-        decode_field(reader, value, location, destination, mode, errors);
-        return errors.size() == error_count;
-    }};
-
     auto const seen{read_record<Field>(
         reader,
         node,
@@ -1146,36 +1130,41 @@ inline void TypeReader<::ioj::starfield::Settings>::decode(Reader const& reader,
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
+            auto const read{[&](auto& destination) {
+                auto const error_count{errors.size()};
+                decode_field(reader, value, location, destination, mode, errors);
+                return errors.size() == error_count;
+            }};
             switch (field) {
                 case Field::generation:
-                    read(result.generation, value, location);
+                    read(result.generation);
                     break;
                 case Field::star:
-                    read(result.star, value, location);
+                    read(result.star);
                     break;
                 case Field::galactic_band:
-                    read(result.galactic_band, value, location);
+                    read(result.galactic_band);
                     break;
                 case Field::stellar_cluster:
-                    read(result.stellar_cluster, value, location);
+                    read(result.stellar_cluster);
                     break;
                 case Field::dust_lane:
-                    read(result.dust_lane, value, location);
+                    read(result.dust_lane);
                     break;
                 case Field::bright_star:
-                    read(result.bright_star, value, location);
+                    read(result.bright_star);
                     break;
                 case Field::twinkle:
-                    read(result.twinkle, value, location);
+                    read(result.twinkle);
                     break;
                 case Field::galactic_haze:
-                    read(result.galactic_haze, value, location);
+                    read(result.galactic_haze);
                     break;
                 case Field::galactic_core:
-                    read(result.galactic_core, value, location);
+                    read(result.galactic_core);
                     break;
                 case Field::nebular_knot:
-                    read(result.nebular_knot, value, location);
+                    read(result.nebular_knot);
                     break;
                 case Field::Count:
                     std::unreachable();

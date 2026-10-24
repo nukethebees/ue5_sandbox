@@ -226,12 +226,6 @@ inline void TypeReader<::ioj::settings::EntityOverlay>::decode(Reader const& rea
                                                                value_type& result,
                                                                ReadMode mode,
                                                                AstDiagnostics& errors) {
-    auto const read{[&](auto& destination, NodeIndex value, std::string_view location) {
-        auto const error_count{errors.size()};
-        decode_field(reader, value, location, destination, mode, errors);
-        return errors.size() == error_count;
-    }};
-
     auto const seen{read_record<Field>(
         reader,
         node,
@@ -239,12 +233,17 @@ inline void TypeReader<::ioj::settings::EntityOverlay>::decode(Reader const& rea
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
+            auto const read{[&](auto& destination) {
+                auto const error_count{errors.size()};
+                decode_field(reader, value, location, destination, mode, errors);
+                return errors.size() == error_count;
+            }};
             switch (field) {
                 case Field::enabled:
-                    read(result.enabled, value, location);
+                    read(result.enabled);
                     break;
                 case Field::maximum_range:
-                    if (read(result.maximum_range, value, location)) {
+                    if (read(result.maximum_range)) {
                         if (!constraints::finite(result.maximum_range)) {
                             errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
                                                            std::string{location},
@@ -253,7 +252,7 @@ inline void TypeReader<::ioj::settings::EntityOverlay>::decode(Reader const& rea
                     }
                     break;
                 case Field::bar_size_pixels:
-                    if (read(result.bar_size_pixels, value, location)) {
+                    if (read(result.bar_size_pixels)) {
                         if (!constraints::finite(result.bar_size_pixels)) {
                             errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
                                                            std::string{location},
@@ -262,7 +261,7 @@ inline void TypeReader<::ioj::settings::EntityOverlay>::decode(Reader const& rea
                     }
                     break;
                 case Field::screen_offset_pixels:
-                    if (read(result.screen_offset_pixels, value, location)) {
+                    if (read(result.screen_offset_pixels)) {
                         if (!constraints::finite(result.screen_offset_pixels)) {
                             errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
                                                            std::string{location},
@@ -271,7 +270,7 @@ inline void TypeReader<::ioj::settings::EntityOverlay>::decode(Reader const& rea
                     }
                     break;
                 case Field::minimum_bar_scale:
-                    if (read(result.minimum_bar_scale, value, location)) {
+                    if (read(result.minimum_bar_scale)) {
                         if (!constraints::finite(result.minimum_bar_scale)) {
                             errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
                                                            std::string{location},
@@ -280,7 +279,7 @@ inline void TypeReader<::ioj::settings::EntityOverlay>::decode(Reader const& rea
                     }
                     break;
                 case Field::maximum_bar_scale:
-                    if (read(result.maximum_bar_scale, value, location)) {
+                    if (read(result.maximum_bar_scale)) {
                         if (!constraints::finite(result.maximum_bar_scale)) {
                             errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
                                                            std::string{location},
@@ -289,7 +288,7 @@ inline void TypeReader<::ioj::settings::EntityOverlay>::decode(Reader const& rea
                     }
                     break;
                 case Field::inset_pixels:
-                    if (read(result.inset_pixels, value, location)) {
+                    if (read(result.inset_pixels)) {
                         if (!constraints::finite(result.inset_pixels)) {
                             errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
                                                            std::string{location},
@@ -298,7 +297,7 @@ inline void TypeReader<::ioj::settings::EntityOverlay>::decode(Reader const& rea
                     }
                     break;
                 case Field::maximum_inset_height_ratio:
-                    if (read(result.maximum_inset_height_ratio, value, location)) {
+                    if (read(result.maximum_inset_height_ratio)) {
                         if (!constraints::finite(result.maximum_inset_height_ratio)) {
                             errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
                                                            std::string{location},
@@ -307,7 +306,7 @@ inline void TypeReader<::ioj::settings::EntityOverlay>::decode(Reader const& rea
                     }
                     break;
                 case Field::objective_frame_pixels:
-                    if (read(result.objective_frame_pixels, value, location)) {
+                    if (read(result.objective_frame_pixels)) {
                         if (!constraints::finite(result.objective_frame_pixels)) {
                             errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
                                                            std::string{location},
@@ -316,7 +315,7 @@ inline void TypeReader<::ioj::settings::EntityOverlay>::decode(Reader const& rea
                     }
                     break;
                 case Field::objective_bar_height_scale:
-                    if (read(result.objective_bar_height_scale, value, location)) {
+                    if (read(result.objective_bar_height_scale)) {
                         if (!constraints::finite(result.objective_bar_height_scale)) {
                             errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
                                                            std::string{location},
@@ -325,7 +324,7 @@ inline void TypeReader<::ioj::settings::EntityOverlay>::decode(Reader const& rea
                     }
                     break;
                 case Field::screen_edge_padding_pixels:
-                    if (read(result.screen_edge_padding_pixels, value, location)) {
+                    if (read(result.screen_edge_padding_pixels)) {
                         if (!constraints::finite(result.screen_edge_padding_pixels)) {
                             errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
                                                            std::string{location},
@@ -334,7 +333,7 @@ inline void TypeReader<::ioj::settings::EntityOverlay>::decode(Reader const& rea
                     }
                     break;
                 case Field::soft_target:
-                    read(result.soft_target, value, location);
+                    read(result.soft_target);
                     break;
                 case Field::Count:
                     std::unreachable();
@@ -360,12 +359,6 @@ inline void TypeReader<::ioj::settings::EntityOverlayOverrides>::decode(Reader c
                                                                         value_type& result,
                                                                         ReadMode,
                                                                         AstDiagnostics& errors) {
-    auto const read{[&](auto& destination, NodeIndex value, std::string_view location) {
-        auto const error_count{errors.size()};
-        decode_patch_field(reader, value, location, destination, errors);
-        return errors.size() == error_count;
-    }};
-
     auto const seen{read_record<Field>(
         reader,
         node,
@@ -373,12 +366,17 @@ inline void TypeReader<::ioj::settings::EntityOverlayOverrides>::decode(Reader c
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
+            auto const read{[&](auto& destination) {
+                auto const error_count{errors.size()};
+                decode_patch_field(reader, value, location, destination, errors);
+                return errors.size() == error_count;
+            }};
             switch (field) {
                 case Field::enabled:
-                    read(result.enabled, value, location);
+                    read(result.enabled);
                     break;
                 case Field::maximum_range:
-                    if (read(result.maximum_range, value, location)) {
+                    if (read(result.maximum_range)) {
                         if (!constraints::finite(result.maximum_range)) {
                             errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
                                                            std::string{location},
@@ -387,7 +385,7 @@ inline void TypeReader<::ioj::settings::EntityOverlayOverrides>::decode(Reader c
                     }
                     break;
                 case Field::bar_size_pixels:
-                    if (read(result.bar_size_pixels, value, location)) {
+                    if (read(result.bar_size_pixels)) {
                         if (!constraints::finite(result.bar_size_pixels)) {
                             errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
                                                            std::string{location},
@@ -396,7 +394,7 @@ inline void TypeReader<::ioj::settings::EntityOverlayOverrides>::decode(Reader c
                     }
                     break;
                 case Field::screen_offset_pixels:
-                    if (read(result.screen_offset_pixels, value, location)) {
+                    if (read(result.screen_offset_pixels)) {
                         if (!constraints::finite(result.screen_offset_pixels)) {
                             errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
                                                            std::string{location},
@@ -405,7 +403,7 @@ inline void TypeReader<::ioj::settings::EntityOverlayOverrides>::decode(Reader c
                     }
                     break;
                 case Field::minimum_bar_scale:
-                    if (read(result.minimum_bar_scale, value, location)) {
+                    if (read(result.minimum_bar_scale)) {
                         if (!constraints::finite(result.minimum_bar_scale)) {
                             errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
                                                            std::string{location},
@@ -414,7 +412,7 @@ inline void TypeReader<::ioj::settings::EntityOverlayOverrides>::decode(Reader c
                     }
                     break;
                 case Field::maximum_bar_scale:
-                    if (read(result.maximum_bar_scale, value, location)) {
+                    if (read(result.maximum_bar_scale)) {
                         if (!constraints::finite(result.maximum_bar_scale)) {
                             errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
                                                            std::string{location},
@@ -423,7 +421,7 @@ inline void TypeReader<::ioj::settings::EntityOverlayOverrides>::decode(Reader c
                     }
                     break;
                 case Field::inset_pixels:
-                    if (read(result.inset_pixels, value, location)) {
+                    if (read(result.inset_pixels)) {
                         if (!constraints::finite(result.inset_pixels)) {
                             errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
                                                            std::string{location},
@@ -432,7 +430,7 @@ inline void TypeReader<::ioj::settings::EntityOverlayOverrides>::decode(Reader c
                     }
                     break;
                 case Field::maximum_inset_height_ratio:
-                    if (read(result.maximum_inset_height_ratio, value, location)) {
+                    if (read(result.maximum_inset_height_ratio)) {
                         if (!constraints::finite(result.maximum_inset_height_ratio)) {
                             errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
                                                            std::string{location},
@@ -441,7 +439,7 @@ inline void TypeReader<::ioj::settings::EntityOverlayOverrides>::decode(Reader c
                     }
                     break;
                 case Field::objective_frame_pixels:
-                    if (read(result.objective_frame_pixels, value, location)) {
+                    if (read(result.objective_frame_pixels)) {
                         if (!constraints::finite(result.objective_frame_pixels)) {
                             errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
                                                            std::string{location},
@@ -450,7 +448,7 @@ inline void TypeReader<::ioj::settings::EntityOverlayOverrides>::decode(Reader c
                     }
                     break;
                 case Field::objective_bar_height_scale:
-                    if (read(result.objective_bar_height_scale, value, location)) {
+                    if (read(result.objective_bar_height_scale)) {
                         if (!constraints::finite(result.objective_bar_height_scale)) {
                             errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
                                                            std::string{location},
@@ -459,7 +457,7 @@ inline void TypeReader<::ioj::settings::EntityOverlayOverrides>::decode(Reader c
                     }
                     break;
                 case Field::screen_edge_padding_pixels:
-                    if (read(result.screen_edge_padding_pixels, value, location)) {
+                    if (read(result.screen_edge_padding_pixels)) {
                         if (!constraints::finite(result.screen_edge_padding_pixels)) {
                             errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
                                                            std::string{location},
@@ -468,7 +466,7 @@ inline void TypeReader<::ioj::settings::EntityOverlayOverrides>::decode(Reader c
                     }
                     break;
                 case Field::soft_target:
-                    read(result.soft_target, value, location);
+                    read(result.soft_target);
                     break;
                 case Field::Count:
                     std::unreachable();

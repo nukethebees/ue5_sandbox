@@ -253,12 +253,6 @@ inline void TypeReader<::ioj::settings::Radar>::decode(Reader const& reader,
                                                        value_type& result,
                                                        ReadMode mode,
                                                        AstDiagnostics& errors) {
-    auto const read{[&](auto& destination, NodeIndex value, std::string_view location) {
-        auto const error_count{errors.size()};
-        decode_field(reader, value, location, destination, mode, errors);
-        return errors.size() == error_count;
-    }};
-
     auto const seen{read_record<Field>(
         reader,
         node,
@@ -266,12 +260,17 @@ inline void TypeReader<::ioj::settings::Radar>::decode(Reader const& reader,
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
+            auto const read{[&](auto& destination) {
+                auto const error_count{errors.size()};
+                decode_field(reader, value, location, destination, mode, errors);
+                return errors.size() == error_count;
+            }};
             switch (field) {
                 case Field::enabled:
-                    read(result.enabled, value, location);
+                    read(result.enabled);
                     break;
                 case Field::combat_range:
-                    if (read(result.combat_range, value, location)) {
+                    if (read(result.combat_range)) {
                         if (!constraints::finite(result.combat_range)) {
                             errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
                                                            std::string{location},
@@ -280,7 +279,7 @@ inline void TypeReader<::ioj::settings::Radar>::decode(Reader const& reader,
                     }
                     break;
                 case Field::tactical_range:
-                    if (read(result.tactical_range, value, location)) {
+                    if (read(result.tactical_range)) {
                         if (!constraints::finite(result.tactical_range)) {
                             errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
                                                            std::string{location},
@@ -289,7 +288,7 @@ inline void TypeReader<::ioj::settings::Radar>::decode(Reader const& reader,
                     }
                     break;
                 case Field::maximum_range:
-                    if (read(result.maximum_range, value, location)) {
+                    if (read(result.maximum_range)) {
                         if (!constraints::finite(result.maximum_range)) {
                             errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
                                                            std::string{location},
@@ -298,7 +297,7 @@ inline void TypeReader<::ioj::settings::Radar>::decode(Reader const& reader,
                     }
                     break;
                 case Field::combat_display_radius:
-                    if (read(result.combat_display_radius, value, location)) {
+                    if (read(result.combat_display_radius)) {
                         if (!constraints::finite(result.combat_display_radius)) {
                             errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
                                                            std::string{location},
@@ -307,7 +306,7 @@ inline void TypeReader<::ioj::settings::Radar>::decode(Reader const& reader,
                     }
                     break;
                 case Field::grid_opacity:
-                    if (read(result.grid_opacity, value, location)) {
+                    if (read(result.grid_opacity)) {
                         if (!constraints::finite(result.grid_opacity)) {
                             errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
                                                            std::string{location},
@@ -316,7 +315,7 @@ inline void TypeReader<::ioj::settings::Radar>::decode(Reader const& reader,
                     }
                     break;
                 case Field::core_cell_radius:
-                    if (read(result.core_cell_radius, value, location)) {
+                    if (read(result.core_cell_radius)) {
                         if (!constraints::finite(result.core_cell_radius)) {
                             errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
                                                            std::string{location},
@@ -325,7 +324,7 @@ inline void TypeReader<::ioj::settings::Radar>::decode(Reader const& reader,
                     }
                     break;
                 case Field::combat_cell_radius:
-                    if (read(result.combat_cell_radius, value, location)) {
+                    if (read(result.combat_cell_radius)) {
                         if (!constraints::finite(result.combat_cell_radius)) {
                             errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
                                                            std::string{location},
@@ -334,7 +333,7 @@ inline void TypeReader<::ioj::settings::Radar>::decode(Reader const& reader,
                     }
                     break;
                 case Field::tactical_cell_radius:
-                    if (read(result.tactical_cell_radius, value, location)) {
+                    if (read(result.tactical_cell_radius)) {
                         if (!constraints::finite(result.tactical_cell_radius)) {
                             errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
                                                            std::string{location},
@@ -343,7 +342,7 @@ inline void TypeReader<::ioj::settings::Radar>::decode(Reader const& reader,
                     }
                     break;
                 case Field::strategic_cell_radius:
-                    if (read(result.strategic_cell_radius, value, location)) {
+                    if (read(result.strategic_cell_radius)) {
                         if (!constraints::finite(result.strategic_cell_radius)) {
                             errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
                                                            std::string{location},
@@ -352,7 +351,7 @@ inline void TypeReader<::ioj::settings::Radar>::decode(Reader const& reader,
                     }
                     break;
                 case Field::glyph_size_scale:
-                    if (read(result.glyph_size_scale, value, location)) {
+                    if (read(result.glyph_size_scale)) {
                         if (!constraints::finite(result.glyph_size_scale)) {
                             errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
                                                            std::string{location},
@@ -361,7 +360,7 @@ inline void TypeReader<::ioj::settings::Radar>::decode(Reader const& reader,
                     }
                     break;
                 case Field::objective_size_multiplier:
-                    if (read(result.objective_size_multiplier, value, location)) {
+                    if (read(result.objective_size_multiplier)) {
                         if (!constraints::finite(result.objective_size_multiplier)) {
                             errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
                                                            std::string{location},
@@ -370,7 +369,7 @@ inline void TypeReader<::ioj::settings::Radar>::decode(Reader const& reader,
                     }
                     break;
                 case Field::objective_ring_padding_pixels:
-                    if (read(result.objective_ring_padding_pixels, value, location)) {
+                    if (read(result.objective_ring_padding_pixels)) {
                         if (!constraints::finite(result.objective_ring_padding_pixels)) {
                             errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
                                                            std::string{location},
@@ -379,7 +378,7 @@ inline void TypeReader<::ioj::settings::Radar>::decode(Reader const& reader,
                     }
                     break;
                 case Field::objective_ring_thickness_pixels:
-                    if (read(result.objective_ring_thickness_pixels, value, location)) {
+                    if (read(result.objective_ring_thickness_pixels)) {
                         if (!constraints::finite(result.objective_ring_thickness_pixels)) {
                             errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
                                                            std::string{location},
@@ -411,12 +410,6 @@ inline void TypeReader<::ioj::settings::RadarOverrides>::decode(Reader const& re
                                                                 value_type& result,
                                                                 ReadMode,
                                                                 AstDiagnostics& errors) {
-    auto const read{[&](auto& destination, NodeIndex value, std::string_view location) {
-        auto const error_count{errors.size()};
-        decode_patch_field(reader, value, location, destination, errors);
-        return errors.size() == error_count;
-    }};
-
     auto const seen{read_record<Field>(
         reader,
         node,
@@ -424,12 +417,17 @@ inline void TypeReader<::ioj::settings::RadarOverrides>::decode(Reader const& re
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
+            auto const read{[&](auto& destination) {
+                auto const error_count{errors.size()};
+                decode_patch_field(reader, value, location, destination, errors);
+                return errors.size() == error_count;
+            }};
             switch (field) {
                 case Field::enabled:
-                    read(result.enabled, value, location);
+                    read(result.enabled);
                     break;
                 case Field::combat_range:
-                    if (read(result.combat_range, value, location)) {
+                    if (read(result.combat_range)) {
                         if (!constraints::finite(result.combat_range)) {
                             errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
                                                            std::string{location},
@@ -438,7 +436,7 @@ inline void TypeReader<::ioj::settings::RadarOverrides>::decode(Reader const& re
                     }
                     break;
                 case Field::tactical_range:
-                    if (read(result.tactical_range, value, location)) {
+                    if (read(result.tactical_range)) {
                         if (!constraints::finite(result.tactical_range)) {
                             errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
                                                            std::string{location},
@@ -447,7 +445,7 @@ inline void TypeReader<::ioj::settings::RadarOverrides>::decode(Reader const& re
                     }
                     break;
                 case Field::maximum_range:
-                    if (read(result.maximum_range, value, location)) {
+                    if (read(result.maximum_range)) {
                         if (!constraints::finite(result.maximum_range)) {
                             errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
                                                            std::string{location},
@@ -456,7 +454,7 @@ inline void TypeReader<::ioj::settings::RadarOverrides>::decode(Reader const& re
                     }
                     break;
                 case Field::combat_display_radius:
-                    if (read(result.combat_display_radius, value, location)) {
+                    if (read(result.combat_display_radius)) {
                         if (!constraints::finite(result.combat_display_radius)) {
                             errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
                                                            std::string{location},
@@ -465,7 +463,7 @@ inline void TypeReader<::ioj::settings::RadarOverrides>::decode(Reader const& re
                     }
                     break;
                 case Field::grid_opacity:
-                    if (read(result.grid_opacity, value, location)) {
+                    if (read(result.grid_opacity)) {
                         if (!constraints::finite(result.grid_opacity)) {
                             errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
                                                            std::string{location},
@@ -474,7 +472,7 @@ inline void TypeReader<::ioj::settings::RadarOverrides>::decode(Reader const& re
                     }
                     break;
                 case Field::core_cell_radius:
-                    if (read(result.core_cell_radius, value, location)) {
+                    if (read(result.core_cell_radius)) {
                         if (!constraints::finite(result.core_cell_radius)) {
                             errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
                                                            std::string{location},
@@ -483,7 +481,7 @@ inline void TypeReader<::ioj::settings::RadarOverrides>::decode(Reader const& re
                     }
                     break;
                 case Field::combat_cell_radius:
-                    if (read(result.combat_cell_radius, value, location)) {
+                    if (read(result.combat_cell_radius)) {
                         if (!constraints::finite(result.combat_cell_radius)) {
                             errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
                                                            std::string{location},
@@ -492,7 +490,7 @@ inline void TypeReader<::ioj::settings::RadarOverrides>::decode(Reader const& re
                     }
                     break;
                 case Field::tactical_cell_radius:
-                    if (read(result.tactical_cell_radius, value, location)) {
+                    if (read(result.tactical_cell_radius)) {
                         if (!constraints::finite(result.tactical_cell_radius)) {
                             errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
                                                            std::string{location},
@@ -501,7 +499,7 @@ inline void TypeReader<::ioj::settings::RadarOverrides>::decode(Reader const& re
                     }
                     break;
                 case Field::strategic_cell_radius:
-                    if (read(result.strategic_cell_radius, value, location)) {
+                    if (read(result.strategic_cell_radius)) {
                         if (!constraints::finite(result.strategic_cell_radius)) {
                             errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
                                                            std::string{location},
@@ -510,7 +508,7 @@ inline void TypeReader<::ioj::settings::RadarOverrides>::decode(Reader const& re
                     }
                     break;
                 case Field::glyph_size_scale:
-                    if (read(result.glyph_size_scale, value, location)) {
+                    if (read(result.glyph_size_scale)) {
                         if (!constraints::finite(result.glyph_size_scale)) {
                             errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
                                                            std::string{location},
@@ -519,7 +517,7 @@ inline void TypeReader<::ioj::settings::RadarOverrides>::decode(Reader const& re
                     }
                     break;
                 case Field::objective_size_multiplier:
-                    if (read(result.objective_size_multiplier, value, location)) {
+                    if (read(result.objective_size_multiplier)) {
                         if (!constraints::finite(result.objective_size_multiplier)) {
                             errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
                                                            std::string{location},
@@ -528,7 +526,7 @@ inline void TypeReader<::ioj::settings::RadarOverrides>::decode(Reader const& re
                     }
                     break;
                 case Field::objective_ring_padding_pixels:
-                    if (read(result.objective_ring_padding_pixels, value, location)) {
+                    if (read(result.objective_ring_padding_pixels)) {
                         if (!constraints::finite(result.objective_ring_padding_pixels)) {
                             errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
                                                            std::string{location},
@@ -537,7 +535,7 @@ inline void TypeReader<::ioj::settings::RadarOverrides>::decode(Reader const& re
                     }
                     break;
                 case Field::objective_ring_thickness_pixels:
-                    if (read(result.objective_ring_thickness_pixels, value, location)) {
+                    if (read(result.objective_ring_thickness_pixels)) {
                         if (!constraints::finite(result.objective_ring_thickness_pixels)) {
                             errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
                                                            std::string{location},

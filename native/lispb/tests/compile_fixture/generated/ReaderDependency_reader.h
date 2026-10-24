@@ -51,12 +51,6 @@ inline ReadResult<::codegen_compile_fixture::ReaderDependency>
         Reader const& reader, NodeIndex const node, std::string_view const path) {
     AstDiagnostics errors{};
     std::optional<decltype(value_type::child)> value_child{};
-    auto const read{[&](auto& destination, NodeIndex value, std::string_view location) {
-        auto const error_count{errors.size()};
-        read_field(reader, value, location, destination, errors);
-        return errors.size() == error_count;
-    }};
-
     auto const seen{read_record<Field>(
         reader,
         node,
@@ -64,9 +58,14 @@ inline ReadResult<::codegen_compile_fixture::ReaderDependency>
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
+            auto const read{[&](auto& destination) {
+                auto const error_count{errors.size()};
+                read_field(reader, value, location, destination, errors);
+                return errors.size() == error_count;
+            }};
             switch (field) {
                 case Field::child:
-                    read(value_child, value, location);
+                    read(value_child);
                     break;
                 case Field::Count:
                     std::unreachable();
@@ -97,12 +96,6 @@ inline void
                                                                     value_type& result,
                                                                     ReadMode mode,
                                                                     AstDiagnostics& errors) {
-    auto const read{[&](auto& destination, NodeIndex value, std::string_view location) {
-        auto const error_count{errors.size()};
-        decode_field(reader, value, location, destination, mode, errors);
-        return errors.size() == error_count;
-    }};
-
     auto const seen{read_record<Field>(
         reader,
         node,
@@ -110,9 +103,14 @@ inline void
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
+            auto const read{[&](auto& destination) {
+                auto const error_count{errors.size()};
+                decode_field(reader, value, location, destination, mode, errors);
+                return errors.size() == error_count;
+            }};
             switch (field) {
                 case Field::child:
-                    read(result.child, value, location);
+                    read(result.child);
                     break;
                 case Field::Count:
                     std::unreachable();

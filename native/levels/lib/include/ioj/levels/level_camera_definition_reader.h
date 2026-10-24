@@ -57,12 +57,6 @@ inline void TypeReader<::ioj::levels::LevelCameraDefinition>::decode(Reader cons
                                                                      value_type& result,
                                                                      ReadMode mode,
                                                                      AstDiagnostics& errors) {
-    auto const read{[&](auto& destination, NodeIndex value, std::string_view location) {
-        auto const error_count{errors.size()};
-        decode_field(reader, value, location, destination, mode, errors);
-        return errors.size() == error_count;
-    }};
-
     auto const seen{read_record<Field>(
         reader,
         node,
@@ -70,15 +64,20 @@ inline void TypeReader<::ioj::levels::LevelCameraDefinition>::decode(Reader cons
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
+            auto const read{[&](auto& destination) {
+                auto const error_count{errors.size()};
+                decode_field(reader, value, location, destination, mode, errors);
+                return errors.size() == error_count;
+            }};
             switch (field) {
                 case Field::target_entity_ids:
-                    read(result.target_entity_ids, value, location);
+                    read(result.target_entity_ids);
                     break;
                 case Field::offset_direction:
-                    read(result.offset_direction, value, location);
+                    read(result.offset_direction);
                     break;
                 case Field::distance:
-                    read(result.distance, value, location);
+                    read(result.distance);
                     break;
                 case Field::Count:
                     std::unreachable();

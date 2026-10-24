@@ -155,12 +155,6 @@ inline void TypeReader<::ioj::settings::CapitalPresentation>::decode(Reader cons
                                                                      value_type& result,
                                                                      ReadMode mode,
                                                                      AstDiagnostics& errors) {
-    auto const read{[&](auto& destination, NodeIndex value, std::string_view location) {
-        auto const error_count{errors.size()};
-        decode_field(reader, value, location, destination, mode, errors);
-        return errors.size() == error_count;
-    }};
-
     auto const seen{read_record<Field>(
         reader,
         node,
@@ -168,12 +162,17 @@ inline void TypeReader<::ioj::settings::CapitalPresentation>::decode(Reader cons
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
+            auto const read{[&](auto& destination) {
+                auto const error_count{errors.size()};
+                decode_field(reader, value, location, destination, mode, errors);
+                return errors.size() == error_count;
+            }};
             switch (field) {
                 case Field::n_small_explosions:
-                    read(result.n_small_explosions, value, location);
+                    read(result.n_small_explosions);
                     break;
                 case Field::time_between_explosions:
-                    if (read(result.time_between_explosions, value, location)) {
+                    if (read(result.time_between_explosions)) {
                         if (!constraints::finite(result.time_between_explosions)) {
                             errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
                                                            std::string{location},
@@ -182,7 +181,7 @@ inline void TypeReader<::ioj::settings::CapitalPresentation>::decode(Reader cons
                     }
                     break;
                 case Field::min_small_explosion_range:
-                    if (read(result.min_small_explosion_range, value, location)) {
+                    if (read(result.min_small_explosion_range)) {
                         if (!constraints::finite(result.min_small_explosion_range)) {
                             errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
                                                            std::string{location},
@@ -191,7 +190,7 @@ inline void TypeReader<::ioj::settings::CapitalPresentation>::decode(Reader cons
                     }
                     break;
                 case Field::max_small_explosion_range:
-                    if (read(result.max_small_explosion_range, value, location)) {
+                    if (read(result.max_small_explosion_range)) {
                         if (!constraints::finite(result.max_small_explosion_range)) {
                             errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
                                                            std::string{location},
@@ -200,7 +199,7 @@ inline void TypeReader<::ioj::settings::CapitalPresentation>::decode(Reader cons
                     }
                     break;
                 case Field::large_explosion_delay:
-                    if (read(result.large_explosion_delay, value, location)) {
+                    if (read(result.large_explosion_delay)) {
                         if (!constraints::finite(result.large_explosion_delay)) {
                             errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
                                                            std::string{location},
@@ -209,7 +208,7 @@ inline void TypeReader<::ioj::settings::CapitalPresentation>::decode(Reader cons
                     }
                     break;
                 case Field::proxy_arrow_size:
-                    if (read(result.proxy_arrow_size, value, location)) {
+                    if (read(result.proxy_arrow_size)) {
                         if (!constraints::finite(result.proxy_arrow_size)) {
                             errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
                                                            std::string{location},
@@ -242,12 +241,6 @@ inline void
                                                                       value_type& result,
                                                                       ReadMode,
                                                                       AstDiagnostics& errors) {
-    auto const read{[&](auto& destination, NodeIndex value, std::string_view location) {
-        auto const error_count{errors.size()};
-        decode_patch_field(reader, value, location, destination, errors);
-        return errors.size() == error_count;
-    }};
-
     auto const seen{read_record<Field>(
         reader,
         node,
@@ -255,12 +248,17 @@ inline void
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
+            auto const read{[&](auto& destination) {
+                auto const error_count{errors.size()};
+                decode_patch_field(reader, value, location, destination, errors);
+                return errors.size() == error_count;
+            }};
             switch (field) {
                 case Field::n_small_explosions:
-                    read(result.n_small_explosions, value, location);
+                    read(result.n_small_explosions);
                     break;
                 case Field::time_between_explosions:
-                    if (read(result.time_between_explosions, value, location)) {
+                    if (read(result.time_between_explosions)) {
                         if (!constraints::finite(result.time_between_explosions)) {
                             errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
                                                            std::string{location},
@@ -269,7 +267,7 @@ inline void
                     }
                     break;
                 case Field::min_small_explosion_range:
-                    if (read(result.min_small_explosion_range, value, location)) {
+                    if (read(result.min_small_explosion_range)) {
                         if (!constraints::finite(result.min_small_explosion_range)) {
                             errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
                                                            std::string{location},
@@ -278,7 +276,7 @@ inline void
                     }
                     break;
                 case Field::max_small_explosion_range:
-                    if (read(result.max_small_explosion_range, value, location)) {
+                    if (read(result.max_small_explosion_range)) {
                         if (!constraints::finite(result.max_small_explosion_range)) {
                             errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
                                                            std::string{location},
@@ -287,7 +285,7 @@ inline void
                     }
                     break;
                 case Field::large_explosion_delay:
-                    if (read(result.large_explosion_delay, value, location)) {
+                    if (read(result.large_explosion_delay)) {
                         if (!constraints::finite(result.large_explosion_delay)) {
                             errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
                                                            std::string{location},
@@ -296,7 +294,7 @@ inline void
                     }
                     break;
                 case Field::proxy_arrow_size:
-                    if (read(result.proxy_arrow_size, value, location)) {
+                    if (read(result.proxy_arrow_size)) {
                         if (!constraints::finite(result.proxy_arrow_size)) {
                             errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
                                                            std::string{location},

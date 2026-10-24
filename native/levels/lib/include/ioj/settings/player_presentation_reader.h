@@ -77,12 +77,6 @@ inline void TypeReader<::ioj::settings::PlayerPresentation>::decode(Reader const
                                                                     value_type& result,
                                                                     ReadMode mode,
                                                                     AstDiagnostics& errors) {
-    auto const read{[&](auto& destination, NodeIndex value, std::string_view location) {
-        auto const error_count{errors.size()};
-        decode_field(reader, value, location, destination, mode, errors);
-        return errors.size() == error_count;
-    }};
-
     auto const seen{read_record<Field>(
         reader,
         node,
@@ -90,9 +84,14 @@ inline void TypeReader<::ioj::settings::PlayerPresentation>::decode(Reader const
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
+            auto const read{[&](auto& destination) {
+                auto const error_count{errors.size()};
+                decode_field(reader, value, location, destination, mode, errors);
+                return errors.size() == error_count;
+            }};
             switch (field) {
                 case Field::boost_effect_colour_intensity:
-                    if (read(result.boost_effect_colour_intensity, value, location)) {
+                    if (read(result.boost_effect_colour_intensity)) {
                         if (!constraints::finite(result.boost_effect_colour_intensity)) {
                             errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
                                                            std::string{location},
@@ -125,12 +124,6 @@ inline void
                                                                      value_type& result,
                                                                      ReadMode,
                                                                      AstDiagnostics& errors) {
-    auto const read{[&](auto& destination, NodeIndex value, std::string_view location) {
-        auto const error_count{errors.size()};
-        decode_patch_field(reader, value, location, destination, errors);
-        return errors.size() == error_count;
-    }};
-
     auto const seen{read_record<Field>(
         reader,
         node,
@@ -138,9 +131,14 @@ inline void
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
+            auto const read{[&](auto& destination) {
+                auto const error_count{errors.size()};
+                decode_patch_field(reader, value, location, destination, errors);
+                return errors.size() == error_count;
+            }};
             switch (field) {
                 case Field::boost_effect_colour_intensity:
-                    if (read(result.boost_effect_colour_intensity, value, location)) {
+                    if (read(result.boost_effect_colour_intensity)) {
                         if (!constraints::finite(result.boost_effect_colour_intensity)) {
                             errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
                                                            std::string{location},

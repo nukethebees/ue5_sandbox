@@ -57,12 +57,6 @@ inline void TypeReader<::ioj::levels::CampaignDefinition>::decode(Reader const& 
                                                                   value_type& result,
                                                                   ReadMode mode,
                                                                   AstDiagnostics& errors) {
-    auto const read{[&](auto& destination, NodeIndex value, std::string_view location) {
-        auto const error_count{errors.size()};
-        decode_field(reader, value, location, destination, mode, errors);
-        return errors.size() == error_count;
-    }};
-
     auto const seen{read_record<Field>(
         reader,
         node,
@@ -70,15 +64,20 @@ inline void TypeReader<::ioj::levels::CampaignDefinition>::decode(Reader const& 
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
+            auto const read{[&](auto& destination) {
+                auto const error_count{errors.size()};
+                decode_field(reader, value, location, destination, mode, errors);
+                return errors.size() == error_count;
+            }};
             switch (field) {
                 case Field::id:
-                    read(result.id, value, location);
+                    read(result.id);
                     break;
                 case Field::title:
-                    read(result.title, value, location);
+                    read(result.title);
                     break;
                 case Field::level_ids:
-                    read(result.level_ids, value, location);
+                    read(result.level_ids);
                     break;
                 case Field::Count:
                     std::unreachable();

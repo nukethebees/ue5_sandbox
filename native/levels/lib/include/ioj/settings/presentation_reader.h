@@ -164,12 +164,6 @@ inline void TypeReader<::ioj::settings::Presentation>::decode(Reader const& read
                                                               value_type& result,
                                                               ReadMode mode,
                                                               AstDiagnostics& errors) {
-    auto const read{[&](auto& destination, NodeIndex value, std::string_view location) {
-        auto const error_count{errors.size()};
-        decode_field(reader, value, location, destination, mode, errors);
-        return errors.size() == error_count;
-    }};
-
     auto const seen{read_record<Field>(
         reader,
         node,
@@ -177,24 +171,29 @@ inline void TypeReader<::ioj::settings::Presentation>::decode(Reader const& read
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
+            auto const read{[&](auto& destination) {
+                auto const error_count{errors.size()};
+                decode_field(reader, value, location, destination, mode, errors);
+                return errors.size() == error_count;
+            }};
             switch (field) {
                 case Field::player_ship:
-                    read(result.player_ship, value, location);
+                    read(result.player_ship);
                     break;
                 case Field::laser_projectiles:
-                    read(result.laser_projectiles, value, location);
+                    read(result.laser_projectiles);
                     break;
                 case Field::capital_ships:
-                    read(result.capital_ships, value, location);
+                    read(result.capital_ships);
                     break;
                 case Field::turrets:
-                    read(result.turrets, value, location);
+                    read(result.turrets);
                     break;
                 case Field::entity_overlay:
-                    read(result.entity_overlay, value, location);
+                    read(result.entity_overlay);
                     break;
                 case Field::radar:
-                    read(result.radar, value, location);
+                    read(result.radar);
                     break;
                 case Field::Count:
                     std::unreachable();
@@ -220,12 +219,6 @@ inline void TypeReader<::ioj::settings::PresentationOverrides>::decode(Reader co
                                                                        value_type& result,
                                                                        ReadMode,
                                                                        AstDiagnostics& errors) {
-    auto const read{[&](auto& destination, NodeIndex value, std::string_view location) {
-        auto const error_count{errors.size()};
-        decode_patch_field(reader, value, location, destination, errors);
-        return errors.size() == error_count;
-    }};
-
     auto const seen{read_record<Field>(
         reader,
         node,
@@ -233,24 +226,29 @@ inline void TypeReader<::ioj::settings::PresentationOverrides>::decode(Reader co
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
+            auto const read{[&](auto& destination) {
+                auto const error_count{errors.size()};
+                decode_patch_field(reader, value, location, destination, errors);
+                return errors.size() == error_count;
+            }};
             switch (field) {
                 case Field::player_ship:
-                    read(result.player_ship, value, location);
+                    read(result.player_ship);
                     break;
                 case Field::laser_projectiles:
-                    read(result.laser_projectiles, value, location);
+                    read(result.laser_projectiles);
                     break;
                 case Field::capital_ships:
-                    read(result.capital_ships, value, location);
+                    read(result.capital_ships);
                     break;
                 case Field::turrets:
-                    read(result.turrets, value, location);
+                    read(result.turrets);
                     break;
                 case Field::entity_overlay:
-                    read(result.entity_overlay, value, location);
+                    read(result.entity_overlay);
                     break;
                 case Field::radar:
-                    read(result.radar, value, location);
+                    read(result.radar);
                     break;
                 case Field::Count:
                     std::unreachable();

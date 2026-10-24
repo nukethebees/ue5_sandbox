@@ -162,12 +162,6 @@ inline void
                                                                   value_type& result,
                                                                   ReadMode mode,
                                                                   AstDiagnostics& errors) {
-    auto const read{[&](auto& destination, NodeIndex value, std::string_view location) {
-        auto const error_count{errors.size()};
-        decode_field(reader, value, location, destination, mode, errors);
-        return errors.size() == error_count;
-    }};
-
     auto const seen{read_record<Field>(
         reader,
         node,
@@ -175,9 +169,14 @@ inline void
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
+            auto const read{[&](auto& destination) {
+                auto const error_count{errors.size()};
+                decode_field(reader, value, location, destination, mode, errors);
+                return errors.size() == error_count;
+            }};
             switch (field) {
                 case Field::damage:
-                    if (read(result.damage, value, location)) {
+                    if (read(result.damage)) {
                         if (!constraints::nonnegative(result.damage)) {
                             errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
                                                            std::string{location},
@@ -186,10 +185,10 @@ inline void
                     }
                     break;
                 case Field::turn_rate:
-                    read(result.turn_rate, value, location);
+                    read(result.turn_rate);
                     break;
                 case Field::asset_distance:
-                    read(result.asset_distance, value, location);
+                    read(result.asset_distance);
                     break;
                 case Field::Count:
                     std::unreachable();
@@ -215,12 +214,6 @@ inline void TypeReader<::codegen_compile_fixture::WeaponSettingsOverrides>::deco
     value_type& result,
     ReadMode,
     AstDiagnostics& errors) {
-    auto const read{[&](auto& destination, NodeIndex value, std::string_view location) {
-        auto const error_count{errors.size()};
-        decode_patch_field(reader, value, location, destination, errors);
-        return errors.size() == error_count;
-    }};
-
     auto const seen{read_record<Field>(
         reader,
         node,
@@ -228,9 +221,14 @@ inline void TypeReader<::codegen_compile_fixture::WeaponSettingsOverrides>::deco
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
+            auto const read{[&](auto& destination) {
+                auto const error_count{errors.size()};
+                decode_patch_field(reader, value, location, destination, errors);
+                return errors.size() == error_count;
+            }};
             switch (field) {
                 case Field::damage:
-                    if (read(result.damage, value, location)) {
+                    if (read(result.damage)) {
                         if (!constraints::nonnegative(result.damage)) {
                             errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
                                                            std::string{location},
@@ -239,7 +237,7 @@ inline void TypeReader<::codegen_compile_fixture::WeaponSettingsOverrides>::deco
                     }
                     break;
                 case Field::turn_rate:
-                    read(result.turn_rate, value, location);
+                    read(result.turn_rate);
                     break;
                 case Field::Count:
                     std::unreachable();
@@ -266,12 +264,6 @@ inline void
                                                                  value_type& result,
                                                                  ReadMode mode,
                                                                  AstDiagnostics& errors) {
-    auto const read{[&](auto& destination, NodeIndex value, std::string_view location) {
-        auto const error_count{errors.size()};
-        decode_field(reader, value, location, destination, mode, errors);
-        return errors.size() == error_count;
-    }};
-
     auto const seen{read_record<Field>(
         reader,
         node,
@@ -279,15 +271,20 @@ inline void
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
+            auto const read{[&](auto& destination) {
+                auto const error_count{errors.size()};
+                decode_field(reader, value, location, destination, mode, errors);
+                return errors.size() == error_count;
+            }};
             switch (field) {
                 case Field::max_health:
-                    read(result.max_health, value, location);
+                    read(result.max_health);
                     break;
                 case Field::weapon:
-                    read(result.weapon, value, location);
+                    read(result.weapon);
                     break;
                 case Field::optional_limit:
-                    read(result.optional_limit, value, location);
+                    read(result.optional_limit);
                     break;
                 case Field::Count:
                     std::unreachable();
@@ -313,12 +310,6 @@ inline void TypeReader<::codegen_compile_fixture::ActorSettingsOverrides>::decod
     value_type& result,
     ReadMode,
     AstDiagnostics& errors) {
-    auto const read{[&](auto& destination, NodeIndex value, std::string_view location) {
-        auto const error_count{errors.size()};
-        decode_patch_field(reader, value, location, destination, errors);
-        return errors.size() == error_count;
-    }};
-
     auto const seen{read_record<Field>(
         reader,
         node,
@@ -326,15 +317,20 @@ inline void TypeReader<::codegen_compile_fixture::ActorSettingsOverrides>::decod
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
+            auto const read{[&](auto& destination) {
+                auto const error_count{errors.size()};
+                decode_patch_field(reader, value, location, destination, errors);
+                return errors.size() == error_count;
+            }};
             switch (field) {
                 case Field::max_health:
-                    read(result.max_health, value, location);
+                    read(result.max_health);
                     break;
                 case Field::weapon:
-                    read(result.weapon, value, location);
+                    read(result.weapon);
                     break;
                 case Field::optional_limit:
-                    read(result.optional_limit, value, location);
+                    read(result.optional_limit);
                     break;
                 case Field::Count:
                     std::unreachable();
