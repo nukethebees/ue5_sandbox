@@ -1757,10 +1757,7 @@ class Validator {
                         std::string{types.cpp_types.spelling(field_type)} != "bool")) {
                 names.push_back(text(declarations_.packed_fields
                                          .name[declarations_.packed_fields.index(*field)]) +
-                                "_minimum");
-                names.push_back(text(declarations_.packed_fields
-                                         .name[declarations_.packed_fields.index(*field)]) +
-                                "_maximum");
+                                "_range");
             }
             if (declarations_.packed_fields
                     .range_helper[declarations_.packed_fields.index(*field)]) {

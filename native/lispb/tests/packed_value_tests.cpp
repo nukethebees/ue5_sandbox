@@ -1139,16 +1139,15 @@ TEST(PackedValue, LowersTypedFieldsAndThreeWayComparison) {
               std::string::npos);
     EXPECT_NE(header.find("invalid_value{storage_type{0x7fffffff}}"), std::string::npos);
     EXPECT_NE(header.find("entity_index_range_fits"), std::string::npos);
-    EXPECT_NE(header.find("entity_index_minimum{static_cast<entity_index_type>(10)}"),
+    EXPECT_NE(header.find("entity_index_range{static_cast<entity_index_type>(10),"),
               std::string::npos);
-    EXPECT_NE(header.find("entity_index_maximum{static_cast<entity_index_type>(1000000)}"),
+    EXPECT_NE(header.find("static_cast<entity_index_type>(1000000)}"), std::string::npos);
+    EXPECT_NE(header.find("entity_index_value >= entity_index_range.min && entity_index_value <= "
+                          "entity_index_range.max"),
               std::string::npos);
-    EXPECT_NE(header.find("entity_index_value >= entity_index_minimum && entity_index_value <= "
-                          "entity_index_maximum"),
+    EXPECT_NE(header.find(
+                  "ioj::range_fits(first, count, entity_index_range.min, entity_index_range.max)"),
               std::string::npos);
-    EXPECT_NE(
-        header.find("ioj::range_fits(first, count, entity_index_minimum, entity_index_maximum)"),
-        std::string::npos);
     EXPECT_NE(header.find("entity_index_Player{static_cast<entity_index_type>(42)}"),
               std::string::npos);
     EXPECT_NE(header.find("entity_index_Invalid{static_cast<entity_index_type>(16777215)}"),
@@ -1688,11 +1687,11 @@ TEST(PackedValue, LowersSignedArbitraryWidthFieldWithSafeSignExtension) {
     EXPECT_NE(header.find("delta() const noexcept -> delta_type"), std::string::npos);
     EXPECT_EQ(header.find("try_set_delta(delta_type const value)"), std::string::npos);
     EXPECT_NE(header.find("set_delta(delta_type const value)"), std::string::npos);
-    EXPECT_NE(header.find("delta_minimum{static_cast<delta_type>(-65536)}"), std::string::npos);
-    EXPECT_NE(header.find("delta_maximum{static_cast<delta_type>(65535)}"), std::string::npos);
+    EXPECT_NE(header.find("delta_range{static_cast<delta_type>(-65536),"), std::string::npos);
+    EXPECT_NE(header.find("static_cast<delta_type>(65535)}"), std::string::npos);
     EXPECT_NE(header.find("ioj::packed_extract<delta_field>(value_)"), std::string::npos);
     EXPECT_NE(header.find("ioj::packed_insert<delta_field>(value_, value)"), std::string::npos);
-    EXPECT_NE(header.find("assert(value >= delta_minimum && value <= delta_maximum)"),
+    EXPECT_NE(header.find("assert(value >= delta_range.min && value <= delta_range.max)"),
               std::string::npos);
 }
 
@@ -1810,8 +1809,8 @@ TEST(PackedValue, LowersSharedIntegerScalarDomainForPackedPlacement) {
               std::string::npos);
     EXPECT_NE(header.find("entity_index_Unknown{static_cast<entity_index_type>(4095)}"),
               std::string::npos);
-    EXPECT_NE(header.find("value >= entity_index_minimum"), std::string::npos);
-    EXPECT_NE(header.find("value <= entity_index_maximum"), std::string::npos);
+    EXPECT_NE(header.find("value >= entity_index_range.min"), std::string::npos);
+    EXPECT_NE(header.find("value <= entity_index_range.max"), std::string::npos);
     EXPECT_NE(header.find("value == entity_index_Unknown"), std::string::npos);
     EXPECT_NE(header.find("entity_index() == entity_index_Unknown"), std::string::npos);
     EXPECT_EQ(header.find("using entity_index_type = project::Health;"), std::string::npos);
@@ -4870,29 +4869,7 @@ TEST(PackedValue, RejectsDescriptorAndRawFactoryNameCollisions) {
                 rows_1[1] = [&] {
                     auto row_0{packed_fields.clone(rows_1[1])};
                     packed_fields.name[packed_fields.index(row_0)] =
-                        strings.intern("entity_index_minimum");
-                    return row_0;
-                }();
-                return declarations.range(rows_1);
-            }();
-            return row_2;
-        }();
-        return declarations.range(rows_3);
-    }();
-    EXPECT_THROW(lower(context, module), std::invalid_argument);
-    normal_modules.declarations[module_row] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module_row])};
-        auto rows_3{std::vector(original_items.begin(), original_items.end())};
-        rows_3.front() = [&] {
-            auto row_2{packed_values.clone(rows_3.front())};
-            auto const row_2_row{packed_values.index(row_2)};
-            packed_values.segments[row_2_row] = [&] {
-                auto const original_items{declarations.items(packed_values.segments[row_2_row])};
-                auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                rows_1[1] = [&] {
-                    auto row_0{packed_fields.clone(rows_1[1])};
-                    packed_fields.name[packed_fields.index(row_0)] =
-                        strings.intern("entity_index_maximum");
+                        strings.intern("entity_index_range");
                     return row_0;
                 }();
                 return declarations.range(rows_1);

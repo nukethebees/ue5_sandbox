@@ -121,8 +121,8 @@ TEST(EntityId, AssertsWhenConstructionViolatesThePackedDomain) {
 #endif
 
 TEST(EntityId, AllocationRangeDetectsExhaustionWithoutWrapping) {
-    constexpr auto minimum{EntityId::index_minimum};
-    constexpr auto maximum{EntityId::index_maximum};
+    constexpr auto minimum{EntityId::index_range.min};
+    constexpr auto maximum{EntityId::index_range.max};
     EXPECT_TRUE(range_fits(0u, 0u, minimum, maximum));
     EXPECT_TRUE(range_fits(0u, maximum + 1, minimum, maximum));
     EXPECT_TRUE(range_fits(maximum, 1u, minimum, maximum));

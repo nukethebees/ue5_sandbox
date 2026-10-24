@@ -4,6 +4,7 @@
 #pragma once
 
 #include "ioj/enum_traits.h"
+#include "ioj/min_max.h"
 #include "ioj/packed_value.h"
 
 #include <cassert>
@@ -30,15 +31,14 @@ struct FighterOrder {
     // task
     using task_type = std::uint8_t;
     using task_field = ioj::PackedField<storage_type, task_type, 0, 1>;
-    inline static constexpr task_type task_minimum{0};
-    inline static constexpr task_type task_maximum{static_cast<task_type>(task_field::value_mask)};
+    static constexpr ioj::MinMax<task_type> task_range{
+        0, static_cast<task_type>(task_field::value_mask)};
 
     // target
     using target_type = std::uint8_t;
     using target_field = ioj::PackedField<storage_type, target_type, 1, 1>;
-    inline static constexpr target_type target_minimum{0};
-    inline static constexpr target_type target_maximum{
-        static_cast<target_type>(target_field::value_mask)};
+    static constexpr ioj::MinMax<target_type> target_range{
+        0, static_cast<target_type>(target_field::value_mask)};
 
     constexpr FighterOrder() noexcept = default;
     [[nodiscard]] static constexpr auto from_raw(storage_type const raw) noexcept -> FighterOrder {
@@ -51,8 +51,8 @@ struct FighterOrder {
 
     explicit constexpr FighterOrder(task_type const task_value,
                                     target_type const target_value) noexcept {
-        assert(task_value <= task_maximum);
-        assert(target_value <= target_maximum);
+        assert(task_value <= task_range.max);
+        assert(target_value <= target_range.max);
         value_ = static_cast<storage_type>(ioj::packed_pack<task_field>(task_value) |
                                            ioj::packed_pack<target_field>(target_value));
     }

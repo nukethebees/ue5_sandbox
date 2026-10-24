@@ -4,6 +4,7 @@
 #pragma once
 
 #include "ioj/levels/team.h"
+#include "ioj/min_max.h"
 #include "ioj/packed_value.h"
 
 #include <cassert>
@@ -24,9 +25,8 @@ struct EntityInstanceHandle {
     // index
     using index_type = std::uint32_t;
     using index_field = ioj::PackedField<storage_type, index_type, 0, 18>;
-    inline static constexpr index_type index_minimum{static_cast<index_type>(0)};
-    inline static constexpr index_type index_maximum{
-        static_cast<index_type>(index_field::value_mask)};
+    static constexpr ioj::MinMax<index_type> index_range{
+        static_cast<index_type>(0), static_cast<index_type>(index_field::value_mask)};
 
     // team
     using team_type = ::ioj::Team;
@@ -37,12 +37,11 @@ struct EntityInstanceHandle {
     // health_state
     using health_state_type = std::uint8_t;
     using health_state_field = ioj::PackedField<storage_type, health_state_type, 21, 2>;
-    inline static constexpr health_state_type health_state_minimum{
-        static_cast<health_state_type>(0)};
-    inline static constexpr health_state_type health_state_maximum{
+    static constexpr ioj::MinMax<health_state_type> health_state_range{
+        static_cast<health_state_type>(0),
         static_cast<health_state_type>(health_state_field::value_mask)};
 
-    inline static constexpr storage_type invalid_value{storage_type{0xffffffff}};
+    static constexpr storage_type invalid_value{storage_type{0xffffffff}};
 
     constexpr EntityInstanceHandle() noexcept = default;
     [[nodiscard]] static constexpr auto from_raw(storage_type const raw) noexcept
@@ -57,10 +56,10 @@ struct EntityInstanceHandle {
     explicit constexpr EntityInstanceHandle(index_type const index_value,
                                             team_type const team_value,
                                             health_state_type const health_state_value) noexcept {
-        assert((index_value >= index_minimum && index_value <= index_maximum));
+        assert((index_value >= index_range.min && index_value <= index_range.max));
         assert(static_cast<std::size_t>(team_value) < ioj::enum_count<team_type>());
-        assert((health_state_value >= health_state_minimum &&
-                health_state_value <= health_state_maximum));
+        assert((health_state_value >= health_state_range.min &&
+                health_state_value <= health_state_range.max));
         value_ = static_cast<storage_type>(
             ioj::packed_pack<index_field>(index_value) | ioj::packed_pack<team_field>(team_value) |
             ioj::packed_pack<health_state_field>(health_state_value));
@@ -68,9 +67,10 @@ struct EntityInstanceHandle {
 
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
         return value_ != invalid_value &&
-               ((index() >= index_minimum && index() <= index_maximum)) &&
+               ((index() >= index_range.min && index() <= index_range.max)) &&
                static_cast<std::size_t>(team()) < ioj::enum_count<team_type>() &&
-               ((health_state() >= health_state_minimum && health_state() <= health_state_maximum));
+               ((health_state() >= health_state_range.min &&
+                 health_state() <= health_state_range.max));
     }
 
     [[nodiscard]] constexpr auto operator<=>(EntityInstanceHandle const&) const noexcept = default;
@@ -80,7 +80,7 @@ struct EntityInstanceHandle {
     }
 
     constexpr void set_index(index_type const value) noexcept {
-        assert((value >= index_minimum && value <= index_maximum));
+        assert((value >= index_range.min && value <= index_range.max));
         value_ = ioj::packed_insert<index_field>(value_, value);
     }
 
@@ -98,7 +98,7 @@ struct EntityInstanceHandle {
     }
 
     constexpr void set_health_state(health_state_type const value) noexcept {
-        assert((value >= health_state_minimum && value <= health_state_maximum));
+        assert((value >= health_state_range.min && value <= health_state_range.max));
         value_ = ioj::packed_insert<health_state_field>(value_, value);
     }
   private:

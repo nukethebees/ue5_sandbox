@@ -2,7 +2,7 @@
   :header "native/simulation/include/ioj/sim/missions/condition_type.h"
   :namespace ioj::sim
   (enum ConditionType std::uint8_t
-    :native-api true :helpers ()
+    :native-api true :enum-array true :helpers (traits)
     (value EntityDestroyed) (value EntityReachedPosition) (value TimeElapsed)
     (value ObjectiveResolved) (value EntityKillsReached)))
 

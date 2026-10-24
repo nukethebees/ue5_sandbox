@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ioj/min_max.h"
 #include "ioj/packed_value.h"
 #include "ioj/range_fits.h"
 #include "PackedEnums.h"
@@ -22,16 +23,16 @@ struct Defaults {
     // low
     using low_type = std::uint8_t;
     using low_field = ioj::PackedField<storage_type, low_type, 0, 3>;
-    inline static constexpr low_type low_minimum{0};
-    inline static constexpr low_type low_maximum{static_cast<low_type>(low_field::value_mask)};
+    static constexpr ioj::MinMax<low_type> low_range{0,
+                                                     static_cast<low_type>(low_field::value_mask)};
 
     // delta
     using delta_type = std::int8_t;
     static_assert(std::is_signed_v<delta_type>);
     static_assert(std::numeric_limits<delta_type>::digits + 1 >= 5);
     using delta_field = ioj::PackedField<storage_type, delta_type, 5, 5>;
-    inline static constexpr delta_type delta_minimum{static_cast<delta_type>(-16)};
-    inline static constexpr delta_type delta_maximum{static_cast<delta_type>(15)};
+    static constexpr ioj::MinMax<delta_type> delta_range{static_cast<delta_type>(-16),
+                                                         static_cast<delta_type>(15)};
 
     constexpr Defaults() noexcept = default;
     [[nodiscard]] static constexpr auto from_raw(storage_type const raw) noexcept -> Defaults {
@@ -43,8 +44,8 @@ struct Defaults {
     [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
 
     explicit constexpr Defaults(low_type const low_value, delta_type const delta_value) noexcept {
-        assert(low_value <= low_maximum);
-        assert(delta_value >= delta_minimum && delta_value <= delta_maximum);
+        assert(low_value <= low_range.max);
+        assert(delta_value >= delta_range.min && delta_value <= delta_range.max);
         value_ = static_cast<storage_type>(ioj::packed_pack<low_field>(low_value) |
                                            ioj::packed_pack<delta_field>(delta_value));
     }
@@ -58,7 +59,7 @@ struct Defaults {
     }
 
     constexpr void set_low(low_type const value) noexcept {
-        assert(value <= low_maximum);
+        assert(value <= low_range.max);
         value_ = ioj::packed_insert<low_field>(value_, value);
     }
 
@@ -67,7 +68,7 @@ struct Defaults {
     }
 
     constexpr void set_delta(delta_type const value) noexcept {
-        assert(value >= delta_minimum && value <= delta_maximum);
+        assert(value >= delta_range.min && value <= delta_range.max);
         value_ = ioj::packed_insert<delta_field>(value_, value);
     }
   private:
@@ -82,16 +83,16 @@ struct DefaultsMsb {
     // low
     using low_type = std::uint8_t;
     using low_field = ioj::PackedField<storage_type, low_type, 13, 3>;
-    inline static constexpr low_type low_minimum{0};
-    inline static constexpr low_type low_maximum{static_cast<low_type>(low_field::value_mask)};
+    static constexpr ioj::MinMax<low_type> low_range{0,
+                                                     static_cast<low_type>(low_field::value_mask)};
 
     // delta
     using delta_type = std::int8_t;
     static_assert(std::is_signed_v<delta_type>);
     static_assert(std::numeric_limits<delta_type>::digits + 1 >= 5);
     using delta_field = ioj::PackedField<storage_type, delta_type, 6, 5>;
-    inline static constexpr delta_type delta_minimum{static_cast<delta_type>(-16)};
-    inline static constexpr delta_type delta_maximum{static_cast<delta_type>(15)};
+    static constexpr ioj::MinMax<delta_type> delta_range{static_cast<delta_type>(-16),
+                                                         static_cast<delta_type>(15)};
 
     constexpr DefaultsMsb() noexcept = default;
     [[nodiscard]] static constexpr auto from_raw(storage_type const raw) noexcept -> DefaultsMsb {
@@ -104,8 +105,8 @@ struct DefaultsMsb {
 
     explicit constexpr DefaultsMsb(low_type const low_value,
                                    delta_type const delta_value) noexcept {
-        assert(low_value <= low_maximum);
-        assert(delta_value >= delta_minimum && delta_value <= delta_maximum);
+        assert(low_value <= low_range.max);
+        assert(delta_value >= delta_range.min && delta_value <= delta_range.max);
         value_ = static_cast<storage_type>(ioj::packed_pack<low_field>(low_value) |
                                            ioj::packed_pack<delta_field>(delta_value));
     }
@@ -133,21 +134,20 @@ struct PartialDefaults {
     // first
     using first_type = std::uint8_t;
     using first_field = ioj::PackedField<storage_type, first_type, 0, 2>;
-    inline static constexpr first_type first_minimum{0};
-    inline static constexpr first_type first_maximum{
-        static_cast<first_type>(first_field::value_mask)};
+    static constexpr ioj::MinMax<first_type> first_range{
+        0, static_cast<first_type>(first_field::value_mask)};
 
     // gap
     using gap_type = std::uint8_t;
     using gap_field = ioj::PackedField<storage_type, gap_type, 2, 2>;
-    inline static constexpr gap_type gap_minimum{0};
-    inline static constexpr gap_type gap_maximum{static_cast<gap_type>(gap_field::value_mask)};
+    static constexpr ioj::MinMax<gap_type> gap_range{0,
+                                                     static_cast<gap_type>(gap_field::value_mask)};
 
     // last
     using last_type = std::uint8_t;
     using last_field = ioj::PackedField<storage_type, last_type, 4, 2>;
-    inline static constexpr last_type last_minimum{0};
-    inline static constexpr last_type last_maximum{static_cast<last_type>(last_field::value_mask)};
+    static constexpr ioj::MinMax<last_type> last_range{
+        0, static_cast<last_type>(last_field::value_mask)};
 
     constexpr PartialDefaults() noexcept = delete;
     [[nodiscard]] static constexpr auto from_raw(storage_type const raw) noexcept
@@ -160,9 +160,9 @@ struct PartialDefaults {
     explicit constexpr PartialDefaults(first_type const first_value,
                                        gap_type const gap_value,
                                        last_type const last_value) noexcept {
-        assert(first_value <= first_maximum);
-        assert(gap_value <= gap_maximum);
-        assert(last_value <= last_maximum);
+        assert(first_value <= first_range.max);
+        assert(gap_value <= gap_range.max);
+        assert(last_value <= last_range.max);
         value_ = static_cast<storage_type>(ioj::packed_pack<first_field>(first_value) |
                                            ioj::packed_pack<gap_field>(gap_value) |
                                            ioj::packed_pack<last_field>(last_value));
@@ -177,7 +177,7 @@ struct PartialDefaults {
     }
 
     constexpr void set_first(first_type const value) noexcept {
-        assert(value <= first_maximum);
+        assert(value <= first_range.max);
         value_ = ioj::packed_insert<first_field>(value_, value);
     }
 
@@ -186,7 +186,7 @@ struct PartialDefaults {
     }
 
     constexpr void set_gap(gap_type const value) noexcept {
-        assert(value <= gap_maximum);
+        assert(value <= gap_range.max);
         value_ = ioj::packed_insert<gap_field>(value_, value);
     }
 
@@ -195,7 +195,7 @@ struct PartialDefaults {
     }
 
     constexpr void set_last(last_type const value) noexcept {
-        assert(value <= last_maximum);
+        assert(value <= last_range.max);
         value_ = ioj::packed_insert<last_field>(value_, value);
     }
   private:
@@ -213,9 +213,8 @@ struct PackedSingle {
     // value
     using value_type = std::uint8_t;
     using value_field = ioj::PackedField<storage_type, value_type, 4, 4>;
-    inline static constexpr value_type value_minimum{0};
-    inline static constexpr value_type value_maximum{
-        static_cast<value_type>(value_field::value_mask)};
+    static constexpr ioj::MinMax<value_type> value_range{
+        0, static_cast<value_type>(value_field::value_mask)};
 
     constexpr PackedSingle() noexcept = default;
     [[nodiscard]] static constexpr auto from_raw(storage_type const raw) noexcept -> PackedSingle {
@@ -227,7 +226,7 @@ struct PackedSingle {
     [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
 
     explicit constexpr PackedSingle(value_type const value_value) noexcept {
-        assert(value_value <= value_maximum);
+        assert(value_value <= value_range.max);
         value_ = static_cast<storage_type>(ioj::packed_pack<value_field>(value_value));
     }
 
@@ -250,9 +249,8 @@ struct FighterState {
     // entity_index
     using entity_index_type = std::uint32_t;
     using entity_index_field = ioj::PackedField<storage_type, entity_index_type, 0, 24>;
-    inline static constexpr entity_index_type entity_index_minimum{0};
-    inline static constexpr entity_index_type entity_index_maximum{
-        static_cast<entity_index_type>(entity_index_field::value_mask)};
+    static constexpr ioj::MinMax<entity_index_type> entity_index_range{
+        0, static_cast<entity_index_type>(entity_index_field::value_mask)};
 
     // state
     using state_type = codegen_compile_fixture::PackedState;
@@ -271,7 +269,7 @@ struct FighterState {
 
     explicit constexpr FighterState(entity_index_type const entity_index_value,
                                     state_type const state_value) noexcept {
-        assert(entity_index_value <= entity_index_maximum);
+        assert(entity_index_value <= entity_index_range.max);
         assert(static_cast<state_underlying_type>(state_value) <=
                static_cast<state_underlying_type>(state_field::value_mask));
         value_ =
@@ -288,7 +286,7 @@ struct FighterState {
     }
 
     constexpr void set_entity_index(entity_index_type const value) noexcept {
-        assert(value <= entity_index_maximum);
+        assert(value <= entity_index_range.max);
         value_ = ioj::packed_insert<entity_index_field>(value_, value);
     }
 
@@ -313,8 +311,8 @@ struct PackedByte {
     // low
     using low_type = std::uint8_t;
     using low_field = ioj::PackedField<storage_type, low_type, 0, 3>;
-    inline static constexpr low_type low_minimum{0};
-    inline static constexpr low_type low_maximum{static_cast<low_type>(low_field::value_mask)};
+    static constexpr ioj::MinMax<low_type> low_range{0,
+                                                     static_cast<low_type>(low_field::value_mask)};
 
     // flag
     using flag_type = bool;
@@ -323,8 +321,8 @@ struct PackedByte {
     // high
     using high_type = std::uint8_t;
     using high_field = ioj::PackedField<storage_type, high_type, 4, 4>;
-    inline static constexpr high_type high_minimum{0};
-    inline static constexpr high_type high_maximum{static_cast<high_type>(high_field::value_mask)};
+    static constexpr ioj::MinMax<high_type> high_range{
+        0, static_cast<high_type>(high_field::value_mask)};
 
     constexpr PackedByte() noexcept = default;
     [[nodiscard]] static constexpr auto from_raw(storage_type const raw) noexcept -> PackedByte {
@@ -338,8 +336,8 @@ struct PackedByte {
     explicit constexpr PackedByte(low_type const low_value,
                                   flag_type const flag_value,
                                   high_type const high_value) noexcept {
-        assert(low_value <= low_maximum);
-        assert(high_value <= high_maximum);
+        assert(low_value <= low_range.max);
+        assert(high_value <= high_range.max);
         value_ = static_cast<storage_type>(ioj::packed_pack<low_field>(low_value) |
                                            ioj::packed_pack<flag_field>(flag_value) |
                                            ioj::packed_pack<high_field>(high_value));
@@ -354,7 +352,7 @@ struct PackedByte {
     }
 
     constexpr void set_low(low_type const value) noexcept {
-        assert(value <= low_maximum);
+        assert(value <= low_range.max);
         value_ = ioj::packed_insert<low_field>(value_, value);
     }
 
@@ -371,7 +369,7 @@ struct PackedByte {
     }
 
     constexpr void set_high(high_type const value) noexcept {
-        assert(value <= high_maximum);
+        assert(value <= high_range.max);
         value_ = ioj::packed_insert<high_field>(value_, value);
     }
   private:
@@ -386,22 +384,20 @@ struct NetworkHeader {
     // version
     using version_type = std::uint8_t;
     using version_field = ioj::PackedField<storage_type, version_type, 28, 4>;
-    inline static constexpr version_type version_minimum{0};
-    inline static constexpr version_type version_maximum{
-        static_cast<version_type>(version_field::value_mask)};
+    static constexpr ioj::MinMax<version_type> version_range{
+        0, static_cast<version_type>(version_field::value_mask)};
 
     // kind
     using kind_type = std::uint8_t;
     using kind_field = ioj::PackedField<storage_type, kind_type, 20, 8>;
-    inline static constexpr kind_type kind_minimum{0};
-    inline static constexpr kind_type kind_maximum{static_cast<kind_type>(kind_field::value_mask)};
+    static constexpr ioj::MinMax<kind_type> kind_range{
+        0, static_cast<kind_type>(kind_field::value_mask)};
 
     // length
     using length_type = std::uint16_t;
     using length_field = ioj::PackedField<storage_type, length_type, 0, 16>;
-    inline static constexpr length_type length_minimum{0};
-    inline static constexpr length_type length_maximum{
-        static_cast<length_type>(length_field::value_mask)};
+    static constexpr ioj::MinMax<length_type> length_range{
+        0, static_cast<length_type>(length_field::value_mask)};
 
     constexpr NetworkHeader() noexcept = default;
     [[nodiscard]] static constexpr auto from_raw(storage_type const raw) noexcept -> NetworkHeader {
@@ -415,9 +411,9 @@ struct NetworkHeader {
     explicit constexpr NetworkHeader(version_type const version_value,
                                      kind_type const kind_value,
                                      length_type const length_value) noexcept {
-        assert(version_value <= version_maximum);
-        assert(kind_value <= kind_maximum);
-        assert(length_value <= length_maximum);
+        assert(version_value <= version_range.max);
+        assert(kind_value <= kind_range.max);
+        assert(length_value <= length_range.max);
         value_ = static_cast<storage_type>(ioj::packed_pack<version_field>(version_value) |
                                            ioj::packed_pack<kind_field>(kind_value) |
                                            ioj::packed_pack<length_field>(length_value));
@@ -432,7 +428,7 @@ struct NetworkHeader {
     }
 
     constexpr void set_version(version_type const value) noexcept {
-        assert(value <= version_maximum);
+        assert(value <= version_range.max);
         value_ = ioj::packed_insert<version_field>(value_, value);
     }
 
@@ -441,7 +437,7 @@ struct NetworkHeader {
     }
 
     constexpr void set_kind(kind_type const value) noexcept {
-        assert(value <= kind_maximum);
+        assert(value <= kind_range.max);
         value_ = ioj::packed_insert<kind_field>(value_, value);
     }
 
@@ -450,7 +446,7 @@ struct NetworkHeader {
     }
 
     constexpr void set_length(length_type const value) noexcept {
-        assert(value <= length_maximum);
+        assert(value <= length_range.max);
         value_ = ioj::packed_insert<length_field>(value_, value);
     }
   private:
@@ -465,9 +461,8 @@ struct PackedWide {
     // value
     using value_type = std::uint64_t;
     using value_field = ioj::PackedField<storage_type, value_type, 0, 64>;
-    inline static constexpr value_type value_minimum{static_cast<value_type>(0)};
-    inline static constexpr value_type value_maximum{
-        static_cast<value_type>(value_field::value_mask)};
+    static constexpr ioj::MinMax<value_type> value_range{
+        static_cast<value_type>(0), static_cast<value_type>(value_field::value_mask)};
 
     constexpr PackedWide() noexcept = default;
     [[nodiscard]] static constexpr auto from_raw(storage_type const raw) noexcept -> PackedWide {
@@ -479,12 +474,12 @@ struct PackedWide {
     [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
 
     explicit constexpr PackedWide(value_type const value_value) noexcept {
-        assert((value_value >= value_minimum && value_value <= value_maximum));
+        assert((value_value >= value_range.min && value_value <= value_range.max));
         value_ = static_cast<storage_type>(ioj::packed_pack<value_field>(value_value));
     }
 
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
-        return ((value() >= value_minimum && value() <= value_maximum));
+        return ((value() >= value_range.min && value() <= value_range.max));
     }
 
     [[nodiscard]] constexpr auto operator<=>(PackedWide const&) const noexcept = default;
@@ -494,7 +489,7 @@ struct PackedWide {
     }
 
     constexpr void set_value(value_type const value) noexcept {
-        assert((value >= value_minimum && value <= value_maximum));
+        assert((value >= value_range.min && value <= value_range.max));
         value_ = ioj::packed_insert<value_field>(value_, value);
     }
   private:
@@ -511,8 +506,8 @@ struct SignedDelta {
     static_assert(std::is_signed_v<delta_type>);
     static_assert(std::numeric_limits<delta_type>::digits + 1 >= 17);
     using delta_field = ioj::PackedField<storage_type, delta_type, 0, 17>;
-    inline static constexpr delta_type delta_minimum{static_cast<delta_type>(-65536)};
-    inline static constexpr delta_type delta_maximum{static_cast<delta_type>(65535)};
+    static constexpr ioj::MinMax<delta_type> delta_range{static_cast<delta_type>(-65536),
+                                                         static_cast<delta_type>(65535)};
 
     constexpr SignedDelta() noexcept = default;
     [[nodiscard]] static constexpr auto from_raw(storage_type const raw) noexcept -> SignedDelta {
@@ -524,7 +519,7 @@ struct SignedDelta {
     [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
 
     explicit constexpr SignedDelta(delta_type const delta_value) noexcept {
-        assert(delta_value >= delta_minimum && delta_value <= delta_maximum);
+        assert(delta_value >= delta_range.min && delta_value <= delta_range.max);
         value_ = static_cast<storage_type>(ioj::packed_pack<delta_field>(delta_value));
     }
 
@@ -537,7 +532,7 @@ struct SignedDelta {
     }
 
     constexpr void set_delta(delta_type const value) noexcept {
-        assert(value >= delta_minimum && value <= delta_maximum);
+        assert(value >= delta_range.min && value <= delta_range.max);
         value_ = ioj::packed_insert<delta_field>(value_, value);
     }
   private:
@@ -554,8 +549,8 @@ struct SignedWide {
     static_assert(std::is_signed_v<delta_type>);
     static_assert(std::numeric_limits<delta_type>::digits + 1 >= 64);
     using delta_field = ioj::PackedField<storage_type, delta_type, 0, 64>;
-    inline static constexpr delta_type delta_minimum{std::numeric_limits<delta_type>::min()};
-    inline static constexpr delta_type delta_maximum{std::numeric_limits<delta_type>::max()};
+    static constexpr ioj::MinMax<delta_type> delta_range{std::numeric_limits<delta_type>::min(),
+                                                         std::numeric_limits<delta_type>::max()};
 
     constexpr SignedWide() noexcept = default;
     [[nodiscard]] static constexpr auto from_raw(storage_type const raw) noexcept -> SignedWide {
@@ -567,7 +562,7 @@ struct SignedWide {
     [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
 
     explicit constexpr SignedWide(delta_type const delta_value) noexcept {
-        assert(delta_value >= delta_minimum && delta_value <= delta_maximum);
+        assert(delta_value >= delta_range.min && delta_value <= delta_range.max);
         assert((delta_value >= std::numeric_limits<delta_type>::min() &&
                 delta_value <= static_cast<delta_type>(9223372036854775807)));
         value_ = static_cast<storage_type>(ioj::packed_pack<delta_field>(delta_value));
@@ -585,7 +580,7 @@ struct SignedWide {
     }
 
     constexpr void set_delta(delta_type const value) noexcept {
-        assert(value >= delta_minimum && value <= delta_maximum);
+        assert(value >= delta_range.min && value <= delta_range.max);
         assert((value >= std::numeric_limits<delta_type>::min() &&
                 value <= static_cast<delta_type>(9223372036854775807)));
         value_ = ioj::packed_insert<delta_field>(value_, value);
@@ -604,13 +599,10 @@ struct SignedTemperature {
     static_assert(std::is_signed_v<temperature_type>);
     static_assert(std::numeric_limits<temperature_type>::digits + 1 >= 8);
     using temperature_field = ioj::PackedField<storage_type, temperature_type, 0, 8>;
-    inline static constexpr temperature_type temperature_minimum{
-        static_cast<temperature_type>(-128)};
-    inline static constexpr temperature_type temperature_maximum{
-        static_cast<temperature_type>(127)};
-    inline static constexpr temperature_type temperature_Freezing{static_cast<temperature_type>(0)};
-    inline static constexpr temperature_type temperature_Unknown{
-        static_cast<temperature_type>(-128)};
+    static constexpr ioj::MinMax<temperature_type> temperature_range{
+        static_cast<temperature_type>(-128), static_cast<temperature_type>(127)};
+    static constexpr temperature_type temperature_Freezing{static_cast<temperature_type>(0)};
+    static constexpr temperature_type temperature_Unknown{static_cast<temperature_type>(-128)};
 
     constexpr SignedTemperature() noexcept = default;
     [[nodiscard]] static constexpr auto from_raw(storage_type const raw) noexcept
@@ -623,8 +615,8 @@ struct SignedTemperature {
     [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
 
     explicit constexpr SignedTemperature(temperature_type const temperature_value) noexcept {
-        assert(temperature_value >= temperature_minimum &&
-               temperature_value <= temperature_maximum);
+        assert(temperature_value >= temperature_range.min &&
+               temperature_value <= temperature_range.max);
         assert((temperature_value >= static_cast<temperature_type>(-100) &&
                 temperature_value <= static_cast<temperature_type>(100)) ||
                temperature_value == temperature_Unknown);
@@ -644,7 +636,7 @@ struct SignedTemperature {
     }
 
     constexpr void set_temperature(temperature_type const value) noexcept {
-        assert(value >= temperature_minimum && value <= temperature_maximum);
+        assert(value >= temperature_range.min && value <= temperature_range.max);
         assert((value >= static_cast<temperature_type>(-100) &&
                 value <= static_cast<temperature_type>(100)) ||
                value == temperature_Unknown);
@@ -668,9 +660,8 @@ struct PackedTinyState {
     // payload
     using payload_type = std::uint8_t;
     using payload_field = ioj::PackedField<storage_type, payload_type, 2, 6>;
-    inline static constexpr payload_type payload_minimum{0};
-    inline static constexpr payload_type payload_maximum{
-        static_cast<payload_type>(payload_field::value_mask)};
+    static constexpr ioj::MinMax<payload_type> payload_range{
+        0, static_cast<payload_type>(payload_field::value_mask)};
 
     constexpr PackedTinyState() noexcept = default;
     [[nodiscard]] static constexpr auto from_raw(storage_type const raw) noexcept
@@ -686,7 +677,7 @@ struct PackedTinyState {
                                        payload_type const payload_value) noexcept {
         assert(static_cast<state_underlying_type>(state_value) <=
                static_cast<state_underlying_type>(state_field::value_mask));
-        assert(payload_value <= payload_maximum);
+        assert(payload_value <= payload_range.max);
         value_ = static_cast<storage_type>(ioj::packed_pack<state_field>(state_value) |
                                            ioj::packed_pack<payload_field>(payload_value));
     }
@@ -710,7 +701,7 @@ struct PackedTinyState {
     }
 
     constexpr void set_payload(payload_type const value) noexcept {
-        assert(value <= payload_maximum);
+        assert(value <= payload_range.max);
         value_ = ioj::packed_insert<payload_field>(value_, value);
     }
   private:
@@ -775,9 +766,8 @@ struct CheckedValue {
     // serial
     using serial_type = std::uint32_t;
     using serial_field = ioj::PackedField<storage_type, serial_type, 0, 24>;
-    inline static constexpr serial_type serial_minimum{0};
-    inline static constexpr serial_type serial_maximum{
-        static_cast<serial_type>(serial_field::value_mask)};
+    static constexpr ioj::MinMax<serial_type> serial_range{
+        0, static_cast<serial_type>(serial_field::value_mask)};
 
     // state
     using state_type = codegen_compile_fixture::DomainState;
@@ -785,7 +775,7 @@ struct CheckedValue {
     using state_underlying_type = std::underlying_type_t<state_type>;
     using state_field = ioj::PackedField<storage_type, state_type, 24, 8>;
 
-    inline static constexpr storage_type invalid_value{storage_type{0x7fffffff}};
+    static constexpr storage_type invalid_value{storage_type{0x7fffffff}};
 
     constexpr CheckedValue() noexcept = default;
     [[nodiscard]] static constexpr auto from_raw(storage_type const raw) noexcept -> CheckedValue {
@@ -798,7 +788,7 @@ struct CheckedValue {
 
     explicit constexpr CheckedValue(serial_type const serial_value,
                                     state_type const state_value) noexcept {
-        assert(serial_value <= serial_maximum);
+        assert(serial_value <= serial_range.max);
         assert(static_cast<std::size_t>(state_value) < ioj::enum_count<state_type>());
         value_ = static_cast<storage_type>(ioj::packed_pack<serial_field>(serial_value) |
                                            ioj::packed_pack<state_field>(state_value));
@@ -818,7 +808,7 @@ struct CheckedValue {
     [[nodiscard]] static constexpr auto serial_range_fits(serial_type const first,
                                                           serial_type const count) noexcept
         -> bool {
-        return ioj::range_fits(first, count, serial_minimum, serial_maximum);
+        return ioj::range_fits(first, count, serial_range.min, serial_range.max);
     }
 
     [[nodiscard]] constexpr auto state() const noexcept -> state_type {
@@ -838,14 +828,13 @@ struct Vitals {
     static_assert(std::is_unsigned_v<health_encoded_type>);
     static_assert(std::numeric_limits<health_encoded_type>::digits >= 8);
     using health_field = ioj::PackedField<storage_type, health_encoded_type, 0, 8>;
-    inline static constexpr health_encoded_type health_maximum_encoded{health_encoded_type{0xfd}};
+    static constexpr health_encoded_type health_maximum_encoded{health_encoded_type{0xfd}};
 
     // state
     using state_type = std::uint8_t;
     using state_field = ioj::PackedField<storage_type, state_type, 8, 8>;
-    inline static constexpr state_type state_minimum{0};
-    inline static constexpr state_type state_maximum{
-        static_cast<state_type>(state_field::value_mask)};
+    static constexpr ioj::MinMax<state_type> state_range{
+        0, static_cast<state_type>(state_field::value_mask)};
 
     constexpr Vitals() noexcept = default;
     [[nodiscard]] static constexpr auto from_raw(storage_type const raw) noexcept -> Vitals {
@@ -859,7 +848,7 @@ struct Vitals {
     explicit constexpr Vitals(health_encoded_type const health_encoded_value,
                               state_type const state_value) noexcept {
         assert(health_encoded_value <= health_maximum_encoded);
-        assert(state_value <= state_maximum);
+        assert(state_value <= state_range.max);
         value_ = static_cast<storage_type>(ioj::packed_pack<health_field>(health_encoded_value) |
                                            ioj::packed_pack<state_field>(state_value));
     }
@@ -884,7 +873,7 @@ struct Vitals {
     }
 
     constexpr void set_state(state_type const value) noexcept {
-        assert(value <= state_maximum);
+        assert(value <= state_range.max);
         value_ = ioj::packed_insert<state_field>(value_, value);
     }
   private:
@@ -901,29 +890,26 @@ struct Motion {
     static_assert(std::is_signed_v<velocity_raw_type>);
     static_assert(std::numeric_limits<velocity_raw_type>::digits + 1 >= 12);
     using velocity_field = ioj::PackedField<storage_type, velocity_raw_type, 0, 12>;
-    inline static constexpr velocity_raw_type velocity_minimum_raw{
-        static_cast<velocity_raw_type>(-2048)};
-    inline static constexpr velocity_raw_type velocity_maximum_raw{
-        static_cast<velocity_raw_type>(2047)};
-    inline static constexpr velocity_raw_type velocity_minimum_allowed_raw{velocity_minimum_raw};
-    inline static constexpr velocity_raw_type velocity_maximum_allowed_raw{velocity_maximum_raw};
+    static constexpr velocity_raw_type velocity_minimum_raw{static_cast<velocity_raw_type>(-2048)};
+    static constexpr velocity_raw_type velocity_maximum_raw{static_cast<velocity_raw_type>(2047)};
+    static constexpr velocity_raw_type velocity_minimum_allowed_raw{velocity_minimum_raw};
+    static constexpr velocity_raw_type velocity_maximum_allowed_raw{velocity_maximum_raw};
 
     // fraction
     using fraction_raw_type = std::uint8_t;
     static_assert(std::is_unsigned_v<fraction_raw_type>);
     static_assert(std::numeric_limits<fraction_raw_type>::digits >= 7);
     using fraction_field = ioj::PackedField<storage_type, fraction_raw_type, 12, 7>;
-    inline static constexpr fraction_raw_type fraction_minimum_raw{fraction_raw_type{0}};
-    inline static constexpr fraction_raw_type fraction_maximum_raw{fraction_raw_type{0x7f}};
-    inline static constexpr fraction_raw_type fraction_minimum_allowed_raw{fraction_minimum_raw};
-    inline static constexpr fraction_raw_type fraction_maximum_allowed_raw{fraction_maximum_raw};
+    static constexpr fraction_raw_type fraction_minimum_raw{fraction_raw_type{0}};
+    static constexpr fraction_raw_type fraction_maximum_raw{fraction_raw_type{0x7f}};
+    static constexpr fraction_raw_type fraction_minimum_allowed_raw{fraction_minimum_raw};
+    static constexpr fraction_raw_type fraction_maximum_allowed_raw{fraction_maximum_raw};
 
     // state
     using state_type = std::uint16_t;
     using state_field = ioj::PackedField<storage_type, state_type, 19, 13>;
-    inline static constexpr state_type state_minimum{0};
-    inline static constexpr state_type state_maximum{
-        static_cast<state_type>(state_field::value_mask)};
+    static constexpr ioj::MinMax<state_type> state_range{
+        0, static_cast<state_type>(state_field::value_mask)};
 
     constexpr Motion() noexcept = default;
     [[nodiscard]] static constexpr auto from_raw(storage_type const raw) noexcept -> Motion {
@@ -941,7 +927,7 @@ struct Motion {
                velocity_raw_value <= velocity_maximum_allowed_raw);
         assert(fraction_raw_value >= fraction_minimum_allowed_raw &&
                fraction_raw_value <= fraction_maximum_allowed_raw);
-        assert(state_value <= state_maximum);
+        assert(state_value <= state_range.max);
         value_ = static_cast<storage_type>(ioj::packed_pack<velocity_field>(velocity_raw_value) |
                                            ioj::packed_pack<fraction_field>(fraction_raw_value) |
                                            ioj::packed_pack<state_field>(state_value));
@@ -1052,7 +1038,7 @@ struct Motion {
     }
 
     constexpr void set_state(state_type const value) noexcept {
-        assert(value <= state_maximum);
+        assert(value <= state_range.max);
         value_ = ioj::packed_insert<state_field>(value_, value);
     }
   private:
@@ -1069,15 +1055,14 @@ struct PackedMiniFloat {
     static_assert(std::is_unsigned_v<component_encoded_type>);
     static_assert(std::numeric_limits<component_encoded_type>::digits >= 12);
     using component_field = ioj::PackedField<storage_type, component_encoded_type, 0, 12>;
-    inline static constexpr component_encoded_type component_maximum_encoded{
+    static constexpr component_encoded_type component_maximum_encoded{
         component_encoded_type{0xfff}};
 
     // state
     using state_type = std::uint8_t;
     using state_field = ioj::PackedField<storage_type, state_type, 12, 4>;
-    inline static constexpr state_type state_minimum{0};
-    inline static constexpr state_type state_maximum{
-        static_cast<state_type>(state_field::value_mask)};
+    static constexpr ioj::MinMax<state_type> state_range{
+        0, static_cast<state_type>(state_field::value_mask)};
 
     constexpr PackedMiniFloat() noexcept = default;
     [[nodiscard]] static constexpr auto from_raw(storage_type const raw) noexcept
@@ -1092,7 +1077,7 @@ struct PackedMiniFloat {
     explicit constexpr PackedMiniFloat(component_encoded_type const component_encoded_value,
                                        state_type const state_value) noexcept {
         assert(component_encoded_value <= component_maximum_encoded);
-        assert(state_value <= state_maximum);
+        assert(state_value <= state_range.max);
         value_ =
             static_cast<storage_type>(ioj::packed_pack<component_field>(component_encoded_value) |
                                       ioj::packed_pack<state_field>(state_value));
@@ -1116,7 +1101,7 @@ struct PackedMiniFloat {
     }
 
     constexpr void set_state(state_type const value) noexcept {
-        assert(value <= state_maximum);
+        assert(value <= state_range.max);
         value_ = ioj::packed_insert<state_field>(value_, value);
     }
   private:

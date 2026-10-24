@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ioj/min_max.h"
 #include "ioj/packed_value.h"
 #include "ioj/sim/missions/condition_type.h"
 
@@ -20,9 +21,8 @@ struct RuleId {
     // index
     using index_type = std::uint32_t;
     using index_field = ioj::PackedField<storage_type, index_type, 0, 24>;
-    inline static constexpr index_type index_minimum{0};
-    inline static constexpr index_type index_maximum{
-        static_cast<index_type>(index_field::value_mask)};
+    static constexpr ioj::MinMax<index_type> index_range{
+        0, static_cast<index_type>(index_field::value_mask)};
 
     // type
     using type_type = ioj::sim::ConditionType;
@@ -40,14 +40,15 @@ struct RuleId {
     [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
 
     explicit constexpr RuleId(index_type const index_value, type_type const type_value) noexcept {
-        assert(index_value <= index_maximum);
-        assert(static_cast<type_underlying_type>(type_value) <=
-               static_cast<type_underlying_type>(type_field::value_mask));
+        assert(index_value <= index_range.max);
+        assert(static_cast<std::size_t>(type_value) < ioj::enum_count<type_type>());
         value_ = static_cast<storage_type>(ioj::packed_pack<index_field>(index_value) |
                                            ioj::packed_pack<type_field>(type_value));
     }
 
-    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool { return true; }
+    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
+        return static_cast<std::size_t>(type()) < ioj::enum_count<type_type>();
+    }
 
     [[nodiscard]] constexpr auto operator<=>(RuleId const&) const noexcept = default;
 

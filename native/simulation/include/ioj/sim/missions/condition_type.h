@@ -3,6 +3,10 @@
 
 #pragma once
 
+#include "ioj/enum_traits.h"
+
+#include <array>
+#include <cstddef>
 #include <cstdint>
 
 namespace ioj::sim {
@@ -18,3 +22,18 @@ enum class ConditionType : ConditionTypeUnderlying {
 };
 
 } // namespace ioj::sim
+namespace ioj {
+template <>
+struct EnumTraits<::ioj::sim::ConditionType> {
+    inline static constexpr std::array values{::ioj::sim::ConditionType::EntityDestroyed,
+                                              ::ioj::sim::ConditionType::EntityReachedPosition,
+                                              ::ioj::sim::ConditionType::TimeElapsed,
+                                              ::ioj::sim::ConditionType::ObjectiveResolved,
+                                              ::ioj::sim::ConditionType::EntityKillsReached};
+};
+
+template <>
+[[nodiscard]] constexpr auto enum_count<::ioj::sim::ConditionType>() noexcept -> std::size_t {
+    return 5;
+}
+} // namespace ioj

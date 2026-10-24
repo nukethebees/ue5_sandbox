@@ -284,11 +284,11 @@ void append_semantic_range_assertion(LoweringContext& context,
     auto const field_alias{packed_field_type_alias(context, field)};
     auto const unsigned_integer{field_definitions.kind[field_row] ==
                                 PackedFieldKind::unsigned_integer};
-    auto const minimum{unsigned_integer ? field_name + "_minimum"
+    auto const minimum{unsigned_integer ? field_name + "_range.min"
                                         : integer_cast_literal(field_alias, *minimum_value)};
     auto const maximum{
         unsigned_integer
-            ? field_name + "_maximum"
+            ? field_name + "_range.max"
             : integer_cast_literal(field_alias, *field_definitions.maximum_value[field_row])};
     ioj::FormatWriter write{std::back_inserter(output)};
     write("        assert(({0} >= {1} && {0} <= {2})", value_name, minimum, maximum);
@@ -348,10 +348,11 @@ void append_field_validation(LoweringContext& context,
         return;
     }
     if (field_kind == PackedFieldKind::signed_integer) {
-        write(
-            "        assert({0} >= {1}_minimum && {0} <= {1}_maximum);\n", value_name, field_name);
+        write("        assert({0} >= {1}_range.min && {0} <= {1}_range.max);\n",
+              value_name,
+              field_name);
     } else if (!field_definitions.minimum_value[field_row].has_value()) {
-        write("        assert({} <= {}_maximum);\n", value_name, field_name);
+        write("        assert({} <= {}_range.max);\n", value_name, field_name);
     }
     append_semantic_range_assertion(context, output, packed_field, value_name);
 }
@@ -508,13 +509,13 @@ auto packed_value_text(LoweringContext& context,
               packed_store.offset[layout_row],
               field_bits);
         if (kind == schema::TypeDefinitionKind::linear_quantized) {
-            write("    inline static constexpr {0} {1}_maximum_encoded{{{0}{{{2}}}}};\n",
+            write("    static constexpr {0} {1}_maximum_encoded{{{0}{{{2}}}}};\n",
                   field_alias,
                   field_name,
                   hex_value(maximum_quantized_code(context, definition)));
         }
         if (field_kind == PackedFieldKind::mini_float) {
-            write("    inline static constexpr {0} {1}_maximum_encoded{{{0}{{{2}}}}};\n",
+            write("    static constexpr {0} {1}_maximum_encoded{{{0}{{{2}}}}};\n",
                   field_alias,
                   field_name,
                   hex_value(value_mask));
@@ -526,17 +527,17 @@ auto packed_value_text(LoweringContext& context,
                 auto const native_width{
                     *packed_signed_width(std::string{ir.types.spelling(field_type)})};
                 if (field_bits == static_cast<std::uint32_t>(native_width)) {
-                    write("    inline static constexpr {0} "
+                    write("    static constexpr {0} "
                           "{1}_minimum_raw{{std::numeric_limits<{0}>::min()}};\n"
-                          "    inline static constexpr {0} "
+                          "    static constexpr {0} "
                           "{1}_maximum_raw{{std::numeric_limits<{0}>::max()}};\n",
                           field_alias,
                           field_name);
                 } else {
                     auto const sign_magnitude{std::uint64_t{1} << (field_bits - 1)};
-                    write("    inline static constexpr {0} "
+                    write("    static constexpr {0} "
                           "{1}_minimum_raw{{static_cast<{0}>(-{2})}};\n"
-                          "    inline static constexpr {0} "
+                          "    static constexpr {0} "
                           "{1}_maximum_raw{{static_cast<{0}>({3})}};\n",
                           field_alias,
                           field_name,
@@ -544,16 +545,16 @@ auto packed_value_text(LoweringContext& context,
                           sign_magnitude - 1);
                 }
             } else {
-                write("    inline static constexpr {0} {1}_minimum_raw{{{0}{{0}}}};\n"
-                      "    inline static constexpr {0} {1}_maximum_raw{{{0}{{{2}}}}};\n",
+                write("    static constexpr {0} {1}_minimum_raw{{{0}{{0}}}};\n"
+                      "    static constexpr {0} {1}_maximum_raw{{{0}{{{2}}}}};\n",
                       field_alias,
                       field_name,
                       hex_value(value_mask));
             }
             auto const minimum{fixed_points.minimum_raw_value[fixed_row]};
             auto const maximum{fixed_points.maximum_raw_value[fixed_row]};
-            write("    inline static constexpr {0} {1}_minimum_allowed_raw{{{2}}};\n"
-                  "    inline static constexpr {0} {1}_maximum_allowed_raw{{{3}}};\n",
+            write("    static constexpr {0} {1}_minimum_allowed_raw{{{2}}};\n"
+                  "    static constexpr {0} {1}_maximum_allowed_raw{{{3}}};\n",
                   field_alias,
                   field_name,
                   minimum ? integer_cast_literal(field_alias, *minimum)
@@ -562,19 +563,18 @@ auto packed_value_text(LoweringContext& context,
                           : field_name + "_maximum_raw");
         }
         if (field_kind == PackedFieldKind::signed_integer) {
+            dependencies.push_back(ir.types.dependency("ioj::MinMax", "ioj/min_max.h"));
             auto const signed_width{
                 *packed_signed_width(std::string{ir.types.spelling(field_type)})};
             if (field_bits == static_cast<std::uint32_t>(signed_width)) {
-                write("    inline static constexpr {0} "
-                      "{1}_minimum{{std::numeric_limits<{0}>::min()}};\n"
-                      "    inline static constexpr {0} "
-                      "{1}_maximum{{std::numeric_limits<{0}>::max()}};\n",
+                write("    static constexpr ioj::MinMax<{0}> {1}_range{{"
+                      "std::numeric_limits<{0}>::min(), std::numeric_limits<{0}>::max()}};\n",
                       field_alias,
                       field_name);
             } else {
                 auto const sign_magnitude{std::uint64_t{1} << (field_bits - 1)};
-                write("    inline static constexpr {0} {1}_minimum{{static_cast<{0}>(-{2})}};\n"
-                      "    inline static constexpr {0} {1}_maximum{{static_cast<{0}>({3})}};\n",
+                write("    static constexpr ioj::MinMax<{0}> {1}_range{{"
+                      "static_cast<{0}>(-{2}), static_cast<{0}>({3})}};\n",
                       field_alias,
                       field_name,
                       sign_magnitude,
@@ -583,10 +583,10 @@ auto packed_value_text(LoweringContext& context,
         }
         if (field_kind == PackedFieldKind::unsigned_integer &&
             ir.types.spelling(field_type) != "bool") {
+            dependencies.push_back(ir.types.dependency("ioj::MinMax", "ioj/min_max.h"));
             auto const minimum{field_definitions.minimum_value[field_row]};
             auto const maximum{field_definitions.maximum_value[field_row]};
-            write("    inline static constexpr {0} {1}_minimum{{{2}}};\n"
-                  "    inline static constexpr {0} {1}_maximum{{{3}}};\n",
+            write("    static constexpr ioj::MinMax<{0}> {1}_range{{{2}, {3}}};\n",
                   field_alias,
                   field_name,
                   minimum ? integer_cast_literal(field_alias, *minimum) : "0",
@@ -598,7 +598,7 @@ auto packed_value_text(LoweringContext& context,
         for (auto const code :
              context.declarations.items(field_definitions.named_codes[field_row])) {
             auto const code_row{named_codes.index(code)};
-            write("    inline static constexpr {} {}_{}{{{}}};\n",
+            write("    static constexpr {} {}_{}{{{}}};\n",
                   field_alias,
                   field_name,
                   context.text(named_codes.name[code_row]),
@@ -648,7 +648,7 @@ auto packed_value_text(LoweringContext& context,
     }
 
     if (invalid_value.has_value()) {
-        write("\n    inline static constexpr storage_type invalid_value{{storage_type{{{}}}}};\n",
+        write("\n    static constexpr storage_type invalid_value{{storage_type{{{}}}}};\n",
               hex_value(*invalid_value));
     }
     write("\n    constexpr {0}() noexcept = {1};\n"
@@ -686,11 +686,11 @@ auto packed_value_text(LoweringContext& context,
             auto const field_alias{packed_field_type_alias(context, field)};
             auto const unsigned_integer{field_kind == PackedFieldKind::unsigned_integer};
             auto const minimum{unsigned_integer
-                                   ? field_name + "_minimum"
+                                   ? field_name + "_range.min"
                                    : integer_cast_literal(
                                          field_alias, *field_definitions.minimum_value[field_row])};
             auto const maximum{unsigned_integer
-                                   ? field_name + "_maximum"
+                                   ? field_name + "_range.max"
                                    : integer_cast_literal(
                                          field_alias, *field_definitions.maximum_value[field_row])};
             auto check{std::format("({0}() >= {1} && {0}() <= {2})", field_name, minimum, maximum)};
@@ -822,12 +822,12 @@ auto packed_value_text(LoweringContext& context,
         }
         if (field_definitions.range_helper[field_row]) {
             dependencies.push_back(ir.types.dependency("ioj::range_fits", "ioj/range_fits.h"));
-            write(
-                "\n    [[nodiscard]] static constexpr auto {0}_range_fits({1} const first, {1} "
-                "const count) noexcept -> bool {{\n"
-                "        return ioj::range_fits(first, count, {0}_minimum, {0}_maximum);\n    }}\n",
-                field_name,
-                field_alias);
+            write("\n    [[nodiscard]] static constexpr auto {0}_range_fits({1} const first, {1} "
+                  "const count) noexcept -> bool {{\n"
+                  "        return ioj::range_fits(first, count, {0}_range.min, {0}_range.max);\n   "
+                  " }}\n",
+                  field_name,
+                  field_alias);
         }
     }
 

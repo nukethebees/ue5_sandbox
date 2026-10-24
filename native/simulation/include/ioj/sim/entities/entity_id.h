@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ioj/min_max.h"
 #include "ioj/packed_value.h"
 #include "ioj/sim/entities/entity_type.h"
 
@@ -20,9 +21,8 @@ struct EntityId {
     // index
     using index_type = std::uint32_t;
     using index_field = ioj::PackedField<storage_type, index_type, 0, 24>;
-    inline static constexpr index_type index_minimum{0};
-    inline static constexpr index_type index_maximum{
-        static_cast<index_type>(index_field::value_mask)};
+    static constexpr ioj::MinMax<index_type> index_range{
+        0, static_cast<index_type>(index_field::value_mask)};
 
     // entity_type
     using entity_type_type = ioj::sim::EntityType;
@@ -30,7 +30,7 @@ struct EntityId {
     using entity_type_underlying_type = std::underlying_type_t<entity_type_type>;
     using entity_type_field = ioj::PackedField<storage_type, entity_type_type, 24, 8>;
 
-    inline static constexpr storage_type invalid_value{storage_type{0xffffffff}};
+    static constexpr storage_type invalid_value{storage_type{0xffffffff}};
 
     constexpr EntityId() noexcept = default;
     [[nodiscard]] static constexpr auto from_raw(storage_type const raw) noexcept -> EntityId {
@@ -43,7 +43,7 @@ struct EntityId {
 
     explicit constexpr EntityId(index_type const index_value,
                                 entity_type_type const entity_type_value) noexcept {
-        assert(index_value <= index_maximum);
+        assert(index_value <= index_range.max);
         assert(static_cast<std::size_t>(entity_type_value) < ioj::enum_count<entity_type_type>());
         value_ = static_cast<storage_type>(ioj::packed_pack<index_field>(index_value) |
                                            ioj::packed_pack<entity_type_field>(entity_type_value));

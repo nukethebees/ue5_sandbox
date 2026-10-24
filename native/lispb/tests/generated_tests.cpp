@@ -529,8 +529,8 @@ TEST(GeneratedPackedValue, RoundTripsMiniFloatEncodedCodes) {
 
 TEST(GeneratedPackedValue, GeneratesConstructionValidationAndRangeHelpers) {
     static_assert(CheckedValue::invalid_value == 0x7fffffffu);
-    static_assert(CheckedValue::serial_minimum == 0);
-    static_assert(CheckedValue::serial_maximum == CheckedValue::serial_field::value_mask);
+    static_assert(CheckedValue::serial_range.min == 0);
+    static_assert(CheckedValue::serial_range.max == CheckedValue::serial_field::value_mask);
     static_assert(CheckedValue::serial_range_fits(0, CheckedValue::serial_field::value_mask + 1));
     static_assert(!CheckedValue::serial_range_fits(CheckedValue::serial_field::value_mask, 2));
     static_assert(ioj::range_fits(10u, 11u, 10u, 20u));

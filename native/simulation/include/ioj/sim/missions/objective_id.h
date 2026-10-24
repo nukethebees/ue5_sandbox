@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ioj/min_max.h"
 #include "ioj/packed_value.h"
 
 #include <cassert>
@@ -19,11 +20,10 @@ struct ObjectiveId {
     // index
     using index_type = std::uint32_t;
     using index_field = ioj::PackedField<storage_type, index_type, 0, 32>;
-    inline static constexpr index_type index_minimum{0};
-    inline static constexpr index_type index_maximum{
-        static_cast<index_type>(index_field::value_mask)};
+    static constexpr ioj::MinMax<index_type> index_range{
+        0, static_cast<index_type>(index_field::value_mask)};
 
-    inline static constexpr storage_type invalid_value{storage_type{0xffffffff}};
+    static constexpr storage_type invalid_value{storage_type{0xffffffff}};
 
     constexpr ObjectiveId() noexcept = default;
     [[nodiscard]] static constexpr auto from_raw(storage_type const raw) noexcept -> ObjectiveId {
@@ -35,7 +35,7 @@ struct ObjectiveId {
     [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
 
     explicit constexpr ObjectiveId(index_type const index_value) noexcept {
-        assert(index_value <= index_maximum);
+        assert(index_value <= index_range.max);
         auto const raw{static_cast<storage_type>(ioj::packed_pack<index_field>(index_value))};
         assert(raw != invalid_value);
         value_ = raw;
