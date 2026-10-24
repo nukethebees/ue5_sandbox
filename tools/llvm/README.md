@@ -82,6 +82,16 @@ Rebuild the same tree after editing a checker. An implementation edit recompiles
 relinks clang-tidy. The installed executable is a machine-level snapshot; game workflows do not
 rebuild it automatically when a worktree changes.
 
+Use `-TidyOnly` to configure the selected build against this worktree, build only clang-tidy and
+run all checker tests. Add `-Install` to install and verify only clang-tidy after those tests pass:
+
+```powershell
+./tools/llvm/build.ps1 'C:/Program Files/Microsoft Visual Studio/18/Community/Common7/Tools' -TidyOnly -Install
+```
+
+This retains the same pinned source and compiler checks. It does not build or install the other
+tools or compiler runtimes. Omit `-TidyOnly` for the full toolchain workflow.
+
 ```powershell
 cmake --build D:/llvm/build --target clang-tidy --parallel 24
 D:/llvm/build/bin/clang-tidy.exe '-checks=-*,ioj-*' -list-checks

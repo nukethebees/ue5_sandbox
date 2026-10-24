@@ -7,6 +7,7 @@ param(
     [string]$LLVMRoot = $env:LLVM_ROOT,
     [ValidateRange(1, 256)]
     [int]$Jobs = 24,
+    [switch]$TidyOnly,
     [switch]$Install
 )
 
@@ -162,7 +163,12 @@ if (-not [string]::IsNullOrWhiteSpace($LLVMRoot)) {
 & cmake @configureArgs
 if ($LASTEXITCODE -ne 0) { throw 'LLVM configure failed.' }
 
-& cmake --build $BuildDir --target clang clang-format clang-tidy clang-scan-deps llvm-ar llvm-nm llvm-readobj runtimes --parallel $Jobs
+[string[]]$buildTargets = if ($TidyOnly) {
+    @('clang-tidy')
+} else {
+    @('clang', 'clang-format', 'clang-tidy', 'clang-scan-deps', 'llvm-ar', 'llvm-nm', 'llvm-readobj', 'runtimes')
+}
+& cmake --build $BuildDir --target @buildTargets --parallel $Jobs
 if ($LASTEXITCODE -ne 0) { throw 'LLVM toolchain build failed.' }
 
 $checks = & (Join-Path $BuildDir 'bin/clang-tidy.exe') '-checks=-*,ioj-*' -list-checks
@@ -186,13 +192,23 @@ try {
 }
 
 if ($Install) {
-    foreach ($component in @('clang', 'clang-resource-headers', 'clang-format', 'clang-tidy', 'clang-scan-deps',
-            'llvm-ar', 'llvm-lib', 'llvm-nm', 'llvm-readobj', 'builtins', 'runtimes')) {
+    $installComponents = if ($TidyOnly) {
+        @('clang-tidy')
+    } else {
+        @('clang', 'clang-resource-headers', 'clang-format', 'clang-tidy', 'clang-scan-deps',
+            'llvm-ar', 'llvm-lib', 'llvm-nm', 'llvm-readobj', 'builtins', 'runtimes')
+    }
+    foreach ($component in $installComponents) {
         & cmake --install $BuildDir --component $component
         if ($LASTEXITCODE -ne 0) { throw "LLVM component install failed: $component" }
     }
-    foreach ($tool in @('clang.exe', 'clang-cl.exe', 'clang-format.exe', 'clang-tidy.exe', 'clang-scan-deps.exe',
-            'run-clang-tidy', 'llvm-ar.exe', 'llvm-lib.exe', 'llvm-nm.exe', 'llvm-readobj.exe')) {
+    $installedTools = if ($TidyOnly) {
+        @('clang-tidy.exe')
+    } else {
+        @('clang.exe', 'clang-cl.exe', 'clang-format.exe', 'clang-tidy.exe', 'clang-scan-deps.exe',
+            'run-clang-tidy', 'llvm-ar.exe', 'llvm-lib.exe', 'llvm-nm.exe', 'llvm-readobj.exe')
+    }
+    foreach ($tool in $installedTools) {
         if (-not (Test-Path -LiteralPath (Join-Path $LLVMRoot "bin/$tool") -PathType Leaf)) {
             throw "Installed toolchain is missing $tool."
         }
@@ -201,6 +217,10 @@ if ($Install) {
             (Get-FileHash -LiteralPath (Join-Path $BuildDir "bin/$tool")).Hash) {
             throw "Installed $tool does not match the newly built executable."
         }
+    }
+    if ($TidyOnly) {
+        Write-Host "Verified clang-tidy installation: $LLVMRoot"
+        return
     }
     $resourceDirectory = & (Join-Path $LLVMRoot 'bin/clang.exe') -print-resource-dir
     if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath (Join-Path $resourceDirectory 'include/stddef.h'))) {

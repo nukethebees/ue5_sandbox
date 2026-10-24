@@ -144,3 +144,56 @@ exit /b 0
     }
 }
 Write-Host 'Common7/Tools initializes the pinned environment; setup failures stop before patching/building.'
+
+function git {
+    $global:LASTEXITCODE = 0
+    if ($args -contains 'rev-parse') {
+        return 'e0b3e4c82911376fcb2dfcbc4a3dd3f4f5891aba'
+    }
+}
+
+function cmake {
+    if ($args -contains '--build') {
+        $script:observedBuildArguments = @($args)
+        throw 'LLVM target probe reached build'
+    }
+    $global:LASTEXITCODE = 0
+}
+
+$buildEnvironment = @{
+    VSCMD_ARG_HOST_ARCH = 'x64'
+    VSCMD_ARG_TGT_ARCH = 'x64'
+    VCToolsVersion = '14.50.35717'
+    WindowsSDKVersion = '10.0.22621.0'
+    VCToolsInstallDir = (Join-Path $FixtureRoot 'compiler')
+    WindowsSdkDir = (Join-Path $FixtureRoot 'sdk')
+}
+$previousBuildEnvironment = @{}
+foreach ($name in $buildEnvironment.Keys) {
+    $previousBuildEnvironment[$name] = [Environment]::GetEnvironmentVariable($name, 'Process')
+    [Environment]::SetEnvironmentVariable($name, $buildEnvironment[$name], 'Process')
+}
+try {
+    foreach ($tidyOnly in @($false, $true)) {
+        $observedBuildArguments = @()
+        try {
+            . $buildScript -LLVMSource $sourceDirectory -BuildDir $discoveryBuild -LLVMRoot $discoveryInstall -TidyOnly:$tidyOnly
+            throw 'Target probe did not stop at the build'
+        } catch {
+            if ($_.Exception.Message -ne 'LLVM target probe reached build') { throw }
+        }
+        $expectedTargets = if ($tidyOnly) {
+            'clang-tidy'
+        } else {
+            'clang clang-format clang-tidy clang-scan-deps llvm-ar llvm-nm llvm-readobj runtimes'
+        }
+        if (($observedBuildArguments -join ' ') -ne "--build $discoveryBuild --target $expectedTargets --parallel 24") {
+            throw "Unexpected LLVM build command: $observedBuildArguments"
+        }
+    }
+} finally {
+    foreach ($name in $previousBuildEnvironment.Keys) {
+        [Environment]::SetEnvironmentVariable($name, $previousBuildEnvironment[$name], 'Process')
+    }
+}
+Write-Host 'TidyOnly builds clang-tidy alone; the default still builds the complete toolchain.'
