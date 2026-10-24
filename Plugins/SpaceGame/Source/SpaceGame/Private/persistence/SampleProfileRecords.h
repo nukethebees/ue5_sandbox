@@ -5,5 +5,5 @@
 struct FScoreRecord;
 
 namespace ioj::detail {
-auto make_test_profile_records() -> TArray<FScoreRecord>;
+auto make_sample_profile_records() -> TArray<FScoreRecord>;
 }

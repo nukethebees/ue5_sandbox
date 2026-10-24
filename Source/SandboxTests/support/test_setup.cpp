@@ -111,7 +111,6 @@ void FTestBatchOrchestratorLevelSetup::reset_test_configuration() {
     check(orchestrator.IsValid());
     orchestrator->set_level_config(*config);
     auto& mission{orchestrator->get_mission_definition()};
-    mission.set_save_mission_results(false);
 }
 
 void FTestBatchOrchestratorLevelSetup::teardown() {

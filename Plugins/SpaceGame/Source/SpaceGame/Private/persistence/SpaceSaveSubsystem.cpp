@@ -1,9 +1,9 @@
 #include "SpaceGame/persistence/SpaceSaveSubsystem.h"
 
+#include "SampleProfileRecords.h"
 #include "SpaceGame/persistence/SaveProfileFileStorage.h"
 #include "SpaceGame/persistence/SpaceSaveGame.h"
 #include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
-#include "TestSaveProfileSource.h"
 #include <SandboxGameShared/core/SandboxDeveloperSettings.h>
 
 #include <CoreGlobals.h>
@@ -14,6 +14,7 @@
 #include <Kismet/GameplayStatics.h>
 #include <Misc/App.h>
 #include <Misc/CommandLine.h>
+#include <Misc/Guid.h>
 #include <Misc/Paths.h>
 
 namespace space_save_subsystem {
@@ -148,7 +149,7 @@ bool USpaceSaveSubsystem::reset_test_profile() {
 #if UE_BUILD_SHIPPING
     return false;
 #else
-    return profile_manager_.reset_test_profile(ioj::detail::make_test_profile_records());
+    return profile_manager_.reset_test_profile(ioj::detail::make_sample_profile_records());
 #endif
 }
 
@@ -221,6 +222,15 @@ auto USpaceSaveSubsystem::legacy_slot_name() -> FString {
 }
 
 auto USpaceSaveSubsystem::make_storage() -> ioj::FSaveProfileStorage {
+    if (GIsAutomationTesting) {
+        auto const root{FPaths::Combine(FPaths::ProjectSavedDir(),
+                                        TEXT("Automation/SaveProfiles"),
+                                        FGuid::NewGuid().ToString(EGuidFormats::Digits))};
+        UE_LOG(LogSandboxSubsystem, Display, TEXT("Automation save storage: %s"), *root);
+        return ioj::make_file_profile_storage(
+            root, [](TArray<FScoreRecord>&) { return ioj::ESaveProfileLoadResult::not_found; });
+    }
+
     ioj::FSaveProfileStorageSelection selection{};
     FString error{};
     if (!ioj::resolve_save_profile_storage(FCommandLine::Get(),

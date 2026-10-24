@@ -20,14 +20,14 @@ namespace ioj {
 using FLevelSimBuildResult = std::expected<sim::LevelSimInitData, FLevelStartErrors>;
 
 struct FProxyLevelSimBuild {
+    auto bind_proxy_entities(sim::LevelSim const& simulation) const -> FProxyEntityMap;
+    void destroy_proxy_actors() const;
+
     sim::LevelSimInitData data;
     TArray<FTransform> initial_turret_transforms;
     TArray<ATestCapitalShipProxy*> capital_proxies;
     TArray<ATestStaticTurretsProxy*> turret_proxies;
     TArray<ATestTubeSpinnerProxy*> spinner_proxies;
-
-    auto bind_proxy_entities(sim::LevelSim const& simulation) const -> FProxyEntityMap;
-    void destroy_proxy_actors() const;
 };
 
 using FProxyLevelSimBuildResult = std::expected<FProxyLevelSimBuild, FLevelStartErrors>;

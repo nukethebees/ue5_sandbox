@@ -10,6 +10,7 @@
 #include <ioj/sim/levels/level_compilation.h>
 #include <ioj/sim/levels/level_initialisation_data.h>
 #include <ioj/sim/missions/mission_compilation.h>
+#include <SandboxGameShared/utilities/actor_utils.h>
 #include <SpaceGame/defences/spinners/TestTubeSpinnerProxy.h>
 #include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
 #include <SpaceGame/entities/TestEntity.h>
@@ -91,14 +92,6 @@ void add_proxy_bindings(TArray<TProxy*> const& proxies, FProxyEntityMap& binding
         auto const id{proxy->get_unique_id()};
         check(id.is_valid());
         bindings.Add(proxy, id);
-    }
-}
-
-template <typename TProxy>
-void destroy_proxy_actors(TArray<TProxy*> const& proxies) {
-    for (auto* const proxy : proxies) {
-        check(IsValid(proxy));
-        check(proxy->Destroy());
     }
 }
 
@@ -207,9 +200,9 @@ auto FProxyLevelSimBuild::bind_proxy_entities(sim::LevelSim const& simulation) c
 }
 
 void FProxyLevelSimBuild::destroy_proxy_actors() const {
-    level_simulation_builder::destroy_proxy_actors(capital_proxies);
-    level_simulation_builder::destroy_proxy_actors(turret_proxies);
-    level_simulation_builder::destroy_proxy_actors(spinner_proxies);
+    destroy_all_actors(capital_proxies);
+    destroy_all_actors(turret_proxies);
+    destroy_all_actors(spinner_proxies);
 }
 
 auto make_level_simulation_init_data(USpaceGameLevelConfig const& config,
@@ -427,8 +420,7 @@ auto make_proxy_level_simulation_init_data(USpaceGameLevelConfig const& config,
     build.data.mission = std::move(*mission);
     build.data.result_metadata = {
         .level_id = TCHAR_TO_UTF8(*mission_definition.level_id.ToString()),
-        .level_title = TCHAR_TO_UTF8(*mission_definition.level_display_name),
-        .save_results = mission_definition.save_mission_results};
+        .level_title = TCHAR_TO_UTF8(*mission_definition.level_display_name)};
 
     FLevelStartErrors bounds_errors;
     auto const fits{[&](AActor const& actor, sim::EntityType const type) {

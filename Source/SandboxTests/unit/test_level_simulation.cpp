@@ -155,7 +155,6 @@ void add_mission(::ioj::sim::LevelSimInitData& data) {
     auto compiled{ioj::sim::compile_mission(definition, ids, clock)};
     check(compiled);
     data.mission = std::move(*compiled);
-    data.result_metadata.save_results = false;
 }
 
 void kill_enemy(::ioj::sim::LevelSim& simulation) {

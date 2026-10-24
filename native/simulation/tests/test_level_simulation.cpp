@@ -266,7 +266,6 @@ TEST(NativeSimulation, LevelCompletionUsesPlayerTeamAndDoesNotCancelOptionalObje
     auto compiled{compile_mission(definition, {}, clock)};
     ASSERT_TRUE(compiled);
     data.mission = std::move(*compiled);
-    data.result_metadata.save_results = false;
     GameMemory memory;
     LevelSim simulation{memory, std::move(data)};
     simulation.finish_initialisation();
@@ -275,7 +274,6 @@ TEST(NativeSimulation, LevelCompletionUsesPlayerTeamAndDoesNotCancelOptionalObje
     simulation.advance(0.4);
     auto const result{simulation.take_player_team_completion()};
     ASSERT_TRUE(result);
-    EXPECT_FALSE(simulation.get_result_metadata().save_results);
     EXPECT_EQ(result->team, Team::Green);
     EXPECT_EQ(result->outcome, TeamOutcome::Defeat);
     EXPECT_EQ(result->objective_outcome, ObjectiveOutcome::Passed);

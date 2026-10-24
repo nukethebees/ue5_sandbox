@@ -97,7 +97,6 @@ void run_worldless_hud_manager_scenario(FAutomationTestBase& test,
         auto compiled{sim::compile_mission(defence_objectives(), ids, clock)};
         check(compiled);
         data.mission = std::move(*compiled);
-        data.result_metadata.save_results = false;
     }
 
     FWorldlessSimulationTest harness{MoveTemp(data)};
@@ -181,17 +180,7 @@ void run_worldless_hud_manager_scenario(FAutomationTestBase& test,
 FTestHUDManagerScenario::FTestHUDManagerScenario(FSimulationTestContext& context,
                                                  EHUDManagerScenario const scenario)
     : FSimulationTestScenario{context}
-    , scenario_{scenario} {
-    TestCommandBuilder.Do([this] {
-        auto* const orchestrator{&context_.orchestrator};
-        if (!checks.is_valid(orchestrator, TEXT("Orchestrator is available"))) {
-            return;
-        }
-
-        auto& mission{orchestrator->get_mission_definition()};
-        mission.set_save_mission_results(true);
-    });
-}
+    , scenario_{scenario} {}
 
 void FTestHUDManagerScenario::on_tear_down() {
     check_headless_hud_manager_matches_simulation();
@@ -276,7 +265,6 @@ void FTestHUDManagerScenario::configure_defence_mission(UWorld& world,
     }};
     auto* const defended{find_capital(FName{TEXT("defended_capital")})};
     auto& definition{orchestrator.get_mission_definition()};
-    definition.set_save_mission_results(false);
     definition.objectives = defence_objectives();
     definition.entity_bindings.Add(FName{TEXT("defended")}, defended);
 }

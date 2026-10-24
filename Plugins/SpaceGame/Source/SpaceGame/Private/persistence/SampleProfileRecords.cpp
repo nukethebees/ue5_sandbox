@@ -1,9 +1,9 @@
-#include "TestSaveProfileSource.h"
+#include "SampleProfileRecords.h"
 
 #include "SpaceGame/persistence/SpaceSaveGame.h"
 
 namespace ioj::detail {
-auto make_test_profile_records() -> TArray<FScoreRecord> {
+auto make_sample_profile_records() -> TArray<FScoreRecord> {
     return {
         {.date = FDateTime{2026, 8, 20, 19, 5},
          .level_name = TEXT("VegaPatrol"),
