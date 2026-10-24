@@ -10,7 +10,7 @@
 class ASpaceGamePlayerController;
 class UTestBatchGameUiData;
 class UInputAction;
-struct FTestMissionCompletion;
+struct FMissionCompletion;
 namespace ioj {
 class UGameUiRootLayout;
 class UPauseMenuWidget;
@@ -39,7 +39,7 @@ struct SPACEGAME_API FPlayerModalUi {
                     UInputAction& action,
                     ioj::FPauseMenuData data) -> bool;
     auto show_completion(ASpaceGamePlayerController& owner,
-                         FTestMissionCompletion const& completion,
+                         FMissionCompletion const& completion,
                          ioj::sim::LevelTelemetrySnapshot snapshot) -> bool;
     void detach_callbacks(ASpaceGamePlayerController& owner);
     void clear_modals(ASpaceGamePlayerController& owner);

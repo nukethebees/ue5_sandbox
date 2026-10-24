@@ -45,11 +45,7 @@ void UMissionStatusWidget::NativePreConstruct() {
     if (!check_widget_bindings()) {
         return;
     }
-    // Preserve widget binding names used by existing assets, with objective-specific labels.
-    mission_mode_widget->set_format_spec(TEXT("OBJECTIVES // {0}"));
-    mission_time_widget->set_format_spec(TEXT("ACTIVE // {0}"));
-    enemies_remaining_widget->set_format_spec(TEXT("COMPLETED // {0}"));
-    time_remaining_widget->set_format_spec(TEXT("WAITING // {0}"));
+    configure_labels();
     if (IsDesignTime()) {
         set_mission_data({.active_titles = TEXT("Protect the convoy"),
                           .active = 1,
@@ -67,10 +63,7 @@ void UMissionStatusWidget::set_mission_data(ioj::hud_manager::FMissionDataCache 
 
 void UMissionStatusWidget::apply_hud_style(ioj::FGameHudStyle const& style) {
     hud_style_ = style;
-    mission_mode_widget->set_format_spec(TEXT("OBJECTIVES // {0}"));
-    mission_time_widget->set_format_spec(TEXT("ACTIVE // {0}"));
-    enemies_remaining_widget->set_format_spec(TEXT("COMPLETED // {0}"));
-    time_remaining_widget->set_format_spec(TEXT("WAITING // {0}"));
+    configure_labels();
     mission_mode_widget->set_text_style(style.primary_text);
     mission_time_widget->set_text_style(style.secondary_text);
     enemies_remaining_widget->set_text_style(style.secondary_text);
@@ -83,4 +76,11 @@ void UMissionStatusWidget::set_font_size(int32 const new_font_size) {
     mission_time_widget->set_font_size(font_size);
     enemies_remaining_widget->set_font_size(font_size);
     time_remaining_widget->set_font_size(font_size);
+}
+
+void UMissionStatusWidget::configure_labels() {
+    mission_mode_widget->set_format_spec(TEXT("OBJECTIVES // {0}"));
+    mission_time_widget->set_format_spec(TEXT("ACTIVE // {0}"));
+    enemies_remaining_widget->set_format_spec(TEXT("COMPLETED // {0}"));
+    time_remaining_widget->set_format_spec(TEXT("WAITING // {0}"));
 }

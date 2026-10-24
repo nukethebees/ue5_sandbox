@@ -1,5 +1,8 @@
+#include <ioj/sim/telemetry/report_json.h>
 #include <SpaceGame/telemetry/LevelTelemetryJson.h>
 #include <SpaceGame/telemetry/TelemetryDashboardModel.h>
+
+#include <SandboxCoreEngine/strings.h>
 
 #include <CQTest.h>
 #include <HAL/FileManager.h>
@@ -9,8 +12,9 @@
 #include <Misc/ScopeExit.h>
 
 namespace {
-auto make_catalog_record(FString run_id, FString level, FString launch) -> FLevelTelemetryReport {
-    FLevelTelemetryReport record;
+auto make_catalog_record(FString run_id, FString level, FString launch)
+    -> ioj::sim::LevelTelemetryReport {
+    ioj::sim::LevelTelemetryReport record;
     record.metadata.run_id = TCHAR_TO_UTF8(*run_id);
     record.metadata.map_name = TCHAR_TO_UTF8(*level);
     record.metadata.level_id = TCHAR_TO_UTF8(*level);
@@ -40,7 +44,7 @@ TEST_CLASS(TelemetryDashboardAnalysis, "Sandbox.UnitTests")
 
     TEST_METHOD(DerivesLegacyRatesAndWeightedMeansBySimulatedTime)
     {
-        FLevelTelemetryReport record;
+        ioj::sim::LevelTelemetryReport record;
         record.loaded_schema_version = 1;
         record.completion.completed_ticks = 270;
         record.tick_series.spawned_entities.add(0, 0);
@@ -67,7 +71,7 @@ TEST_CLASS(TelemetryDashboardAnalysis, "Sandbox.UnitTests")
 
     TEST_METHOD(DerivesBattleForcesCombatAndProjectileRates)
     {
-        FLevelTelemetryReport record;
+        ioj::sim::LevelTelemetryReport record;
         ::ioj::sim::LevelTelemetryBattleSample begin;
         begin.alive[0][0] = 2;
         begin.combat.spawned[0][0] = 2;
@@ -113,7 +117,7 @@ TEST_CLASS(TelemetryDashboardAnalysis, "Sandbox.UnitTests")
 
     TEST_METHOD(SparseGaugesSurviveRegressingCounterIntervals)
     {
-        FLevelTelemetryReport record;
+        ioj::sim::LevelTelemetryReport record;
         record.loaded_schema_version = 1;
         record.completion.completed_ticks = 150;
         record.tick_series.active_entities.add(30, 7);
@@ -130,14 +134,14 @@ TEST_CLASS(TelemetryDashboardAnalysis, "Sandbox.UnitTests")
 
     TEST_METHOD(EmptyAndSingleSampleRunsDoNotInventIntervals)
     {
-        FLevelTelemetryReport record;
+        ioj::sim::LevelTelemetryReport record;
         for (int32 sample_count{}; sample_count < 2; ++sample_count) {
             auto const analysis{analyze_level_telemetry_run(record)};
             for (auto const& metric : analysis.metrics) {
                 TestRunner->TestTrue(TEXT("No interval means no rate or weighted summary"),
                                      metric.values.IsEmpty() && !metric.weighted_mean.IsSet());
             }
-            record.battle_samples.Add({});
+            record.battle_samples.push_back({});
         }
     }
 };
@@ -161,7 +165,12 @@ TEST_CLASS(TelemetryRunCatalog, "Sandbox.UnitTests")
                              write_level_telemetry_run(newer, directory).has_value());
         FFileHelper::SaveStringToFile(TEXT("not json"),
                                       *FPaths::Combine(directory, TEXT("broken.json")));
-        auto invalid_reason_json{serialize_level_telemetry_run(older)};
+        auto const serialized{ioj::sim::serialize_level_telemetry_report(older)};
+        if (!TestRunner->TestTrue(TEXT("Catalog fixture serialization succeeds"),
+                                  serialized.has_value())) {
+            return;
+        }
+        auto invalid_reason_json{ioj::to_fstring(*serialized)};
         invalid_reason_json.ReplaceInline(TEXT("world_end"), TEXT("future_reason"));
         FFileHelper::SaveStringToFile(invalid_reason_json,
                                       *FPaths::Combine(directory, TEXT("invalid_reason.json")));

@@ -40,7 +40,7 @@ auto defence_objectives() -> levels::MissionDefinition {
                  .roots = ioj::levels::ObjectiveRoots{std::array<ioj::levels::ExpressionIndex, 3>{
                      0, 1, levels::absent_expression}}}}};
 }
-auto count_worldless_hud_entities(FHUDManager const& manager) -> int32 {
+auto count_worldless_hud_entities(ioj::FHUDManager const& manager) -> int32 {
     int32 count{};
     for (auto const& team : manager.get_entity_count_data().alive_per_team_and_type) {
         for (auto const value : team) {
@@ -111,7 +111,7 @@ void run_worldless_hud_manager_scenario(FAutomationTestBase& test,
                                   : capitals.get_id(second_capital_index)};
     harness.finish_initialisation();
 
-    FHUDManager hud;
+    ioj::FHUDManager hud;
     hud.initialise(ioj::sim::HudSettings{},
                    mission,
                    harness.get_ledger(),
@@ -125,7 +125,7 @@ void run_worldless_hud_manager_scenario(FAutomationTestBase& test,
                    {},
                    {});
     checks.are_equal(0, hud.get_registered_hud_count(), TEXT("No HUD widgets are registered"));
-    checks.are_equal(EHUDManagerState::Active, hud.get_state(), TEXT("HUD manager is active"));
+    checks.are_equal(ioj::EHUDManagerState::Active, hud.get_state(), TEXT("HUD manager is active"));
     checks.are_equal(harness.get_ledger().count_alive(),
                      count_worldless_hud_entities(hud),
                      TEXT("Initial entity cache matches ledger"));
@@ -208,7 +208,7 @@ void FTestHUDManagerScenario::initial_caches_process_samples() {
     checks.are_equal(
         0, hud_manager.get_registered_hud_count(), TEXT("No HUD widgets are registered"));
     checks.are_equal(
-        EHUDManagerState::Active, hud_manager.get_state(), TEXT("HUD manager is active"));
+        ioj::EHUDManagerState::Active, hud_manager.get_state(), TEXT("HUD manager is active"));
     checks.are_equal(ledger.count_alive(),
                      count_cached_entities(hud_manager),
                      TEXT("Initial entity count cache matches the ledger"));
@@ -609,7 +609,7 @@ auto FTestHUDManagerScenario::initialise_headless_hud_manager() -> bool {
     return true;
 }
 
-auto FTestHUDManagerScenario::get_headless_hud_manager() -> FHUDManager& {
+auto FTestHUDManagerScenario::get_headless_hud_manager() -> ioj::FHUDManager& {
     check(headless_hud_manager.IsSet());
     return headless_hud_manager.GetValue();
 }
@@ -681,7 +681,7 @@ void FTestHUDManagerScenario::check_sampled_speed_data_equal(
 }
 #endif
 
-auto FTestHUDManagerScenario::count_cached_entities(FHUDManager const& manager) -> int32 {
+auto FTestHUDManagerScenario::count_cached_entities(ioj::FHUDManager const& manager) -> int32 {
     int32 total{0};
     auto const& counts{manager.get_entity_count_data().alive_per_team_and_type};
     constexpr int32 n_teams{enum_count<ETestTeam>()};

@@ -21,6 +21,9 @@ class SPACEGAMEPRESENTATION_API UMissionStatusWidget : public UUserWidget {
     void apply_hud_style(ioj::FGameHudStyle const& style);
     void set_font_size(int32 const new_font_size);
     auto get_font_size() const noexcept -> int32 { return font_size; }
+  private:
+    void configure_labels();
+    auto check_widget_bindings() const -> bool;
   protected:
     void NativeConstruct() override;
     void NativePreConstruct() override;
@@ -41,6 +44,5 @@ class SPACEGAMEPRESENTATION_API UMissionStatusWidget : public UUserWidget {
     UPROPERTY(EditAnywhere, Category = "UI")
     int32 font_size{24};
   private:
-    auto check_widget_bindings() const -> bool;
     TOptional<ioj::FGameHudStyle> hud_style_{};
 };

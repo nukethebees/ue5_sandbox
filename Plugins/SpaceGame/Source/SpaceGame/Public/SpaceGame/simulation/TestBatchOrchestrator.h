@@ -1,5 +1,6 @@
 #pragma once
 #include <ioj/sim/levels/level_sim.h>
+#include <ioj/sim/telemetry/report.h>
 #include <SpaceGame/entities/ProxyEntityMap.h>
 #include <SpaceGame/missions/LevelMissionDefinition.h>
 #include <SpaceGame/missions/MissionCompletion.h>
@@ -7,7 +8,6 @@
 #include <SpaceGame/simulation/LevelSimulationBuilder.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/system/GameSubsystem.h>
-#include <SpaceGame/telemetry/LevelTelemetryReport.h>
 #include <SpaceGamePresentation/presentation/HUDManager.h>
 #include <SpaceGamePresentation/presentation/LevelPresentation.h>
 
@@ -79,7 +79,6 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     /* **************************************** */
     // Simulation state and timing
     /* **************************************** */
-    auto frequency_to_tick_period(ioj::Frequency frequency) const noexcept -> tick_type;
     auto duration_to_tick_period(ioj::Duration duration) const noexcept -> tick_type;
 
     auto get_state() const noexcept -> ioj::sim::OrchestratorState {
@@ -92,10 +91,6 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     auto get_simulation_time() const noexcept -> time_type {
         return level_simulation_.IsSet() ? level_simulation_->get_clock().get_simulation_time()
                                          : 0.0;
-    }
-    auto get_tick_period() const noexcept -> time_type {
-        return level_simulation_.IsSet() ? level_simulation_->get_clock().get_tick_period()
-                                         : simulation_tick_loop.get_tick_period();
     }
     auto was_launched_paused() const noexcept -> bool { return launched_paused_; }
     auto get_benchmark_ticks_remaining() const noexcept -> TOptional<tick_type> {
@@ -149,8 +144,7 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
         check(level_simulation_.IsSet());
         return level_simulation_->get_mission();
     }
-    auto get_hud_manager() noexcept -> FHUDManager& { return hud_manager; }
-    auto get_hud_manager() const noexcept -> FHUDManager const& { return hud_manager; }
+    auto get_hud_manager() noexcept -> ioj::FHUDManager& { return hud_manager; }
     auto get_hud_update_frequencies() const noexcept -> ioj::sim::HudSettings const& {
         return hud_update_frequencies;
     }
@@ -166,9 +160,6 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     /* **************************************** */
     // Events, results, and presentation
     /* **************************************** */
-    static FOnProxyEntitiesBound on_proxy_entities_bound;
-    FOnOrchestratorReset on_reset;
-    FOnTestMissionCompleted on_mission_completed;
     auto get_mission_definition() -> FLevelMissionDefinition& { return mission_definition; }
     auto get_level_simulation() const -> ioj::sim::LevelSim const* {
         return level_simulation_.IsSet() ? &level_simulation_.GetValue() : nullptr;
@@ -176,7 +167,7 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     auto get_level_presentation() const -> FLevelPresentation const* {
         return level_presentation_.IsSet() ? &level_presentation_.GetValue() : nullptr;
     }
-    auto take_finalized_telemetry_report() -> TOptional<FLevelTelemetryReport>;
+    auto take_finalized_telemetry_report() -> TOptional<ioj::sim::LevelTelemetryReport>;
     auto get_presentation_resources() const -> FLevelPresentationResources {
         return make_presentation_resources();
     }
@@ -222,7 +213,11 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     [[nodiscard]] auto apply_collision_grid_overrides(FCollisionGridConfig const& source) const
         -> FCollisionGridConfig;
     void update_collision_bounds_visualization();
-
+  public:
+    static FOnProxyEntitiesBound on_proxy_entities_bound;
+    FOnOrchestratorReset on_reset;
+    FOnMissionCompleted on_mission_completed;
+  private:
     /* **************************************** */
     // State
     /* **************************************** */
@@ -231,7 +226,6 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     ioj::sim::FixedTickLoop simulation_tick_loop{};
     TOptional<ioj::PositiveFinite<time_type>> time_scale_override_;
     bool settings_prepared_{};
-
     UPROPERTY(EditAnywhere,
               Category = "Sandbox|Settings",
               meta = (FilePathFilter = "scm", RelativeToGameDir))
@@ -253,11 +247,11 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     UPROPERTY(VisibleAnywhere, Category = "Sandbox|Collision")
     TObjectPtr<UCollisionGridVisualizationComponent> collision_grid_visualization{nullptr};
 
-    FHUDManager hud_manager;
+    ioj::FHUDManager hud_manager;
     TOptional<ioj::sim::LevelSim> level_simulation_;
     TOptional<FLevelPresentation> level_presentation_;
     TArray<FTransform> initial_turret_transforms_;
-    FLevelTelemetryEnvironment telemetry_environment_;
+    ioj::sim::LevelTelemetryEnvironment telemetry_environment_;
     TOptional<ioj::levels::LevelDefinition> level_definition_;
     bool launched_paused_{};
     ioj::FLevelLaunchOptions launch_options_{};

@@ -243,7 +243,7 @@ void FLevelLoaderCameraScenario::sample_modal_transitions() {
                            !FPlayerControllerTestAccess::has_modal(*controller) &&
                            controller->is_observer_movement_enabled();
 
-    FTestMissionCompletion completion;
+    FMissionCompletion completion;
     completion.persisted = true;
     completion.state = ETeamOutcome::Victory;
     completion.level_display_name = TEXT("Controller modal test");

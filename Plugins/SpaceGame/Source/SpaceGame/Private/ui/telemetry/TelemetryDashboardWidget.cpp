@@ -144,21 +144,20 @@ void UTelemetryDashboardWidget::rebuild_state() {
         *level,
         UTF8_TO_TCHAR(record->metadata.launched_utc.c_str()),
         *completion_reason,
-        *record->metadata.presentation_mode,
+        *ioj::to_fstring(record->presentation_mode),
         record->metadata.requested_duration_seconds.has_value()
             ? *FString::Printf(TEXT("%.3fs"),
                                record->metadata.requested_duration_seconds->get_seconds())
             : TEXT("unlimited"),
-        *record->metadata.environment.build_configuration,
-        *record->metadata.environment.platform,
+        *ioj::to_fstring(record->environment.build_configuration),
+        *ioj::to_fstring(record->environment.platform),
         UTF8_TO_TCHAR(record->metadata.run_id.c_str())));
     state_.analysis = analyze_level_telemetry_run(*record);
     auto const* const baseline{catalog_.get_baseline_record()};
     if (baseline) {
         state_.baseline_analysis = analyze_level_telemetry_run(*baseline);
         TArray<FString> warnings;
-        if (baseline->metadata.environment.build_version !=
-            record->metadata.environment.build_version) {
+        if (baseline->environment.build_version != record->environment.build_version) {
             warnings.Add(TEXT("different builds"));
         }
         if (baseline->metadata.level_source != record->metadata.level_source) {
@@ -167,7 +166,7 @@ void UTelemetryDashboardWidget::rebuild_state() {
         if (baseline->metadata.settings_source != record->metadata.settings_source) {
             warnings.Add(TEXT("different settings source"));
         }
-        if (baseline->metadata.presentation_mode != record->metadata.presentation_mode) {
+        if (baseline->presentation_mode != record->presentation_mode) {
             warnings.Add(TEXT("different presentation modes"));
         }
         if (!warnings.IsEmpty()) {
@@ -190,7 +189,7 @@ void UTelemetryDashboardWidget::rebuild_state() {
         last_int(record->tick_series.destroyed_entities),
         last_int(record->tick_series.kills),
         last_int(record->tick_series.lasers_fired))};
-    if (record->battle_samples.IsEmpty()) {
+    if (record->battle_samples.empty()) {
         summary += TEXT("\nCOMBAT DETAILS  //  UNAVAILABLE");
     } else {
         auto sum_counts = [](auto const& counts) {
@@ -203,7 +202,7 @@ void UTelemetryDashboardWidget::rebuild_state() {
             }
             return total;
         };
-        auto const& combat{record->battle_samples.Last().combat};
+        auto const& combat{record->battle_samples.back().combat};
         auto const winner{
             record->completion.reason == sim::LevelTelemetryRunEndReason::BattleResolved
                 ? (record->completion.winning_team.has_value()
@@ -214,7 +213,7 @@ void UTelemetryDashboardWidget::rebuild_state() {
             TEXT("\nBATTLE RESULT  //  %s    SAMPLES // %d\nCOMBAT  //  SHOTS %llu  HITS %llu  "
                  "DAMAGE %.0f  KILLS %llu  LOSSES %llu"),
             *winner,
-            record->battle_samples.Num(),
+            static_cast<int32>(record->battle_samples.size()),
             sum_counts(combat.shots),
             sum_counts(combat.hits),
             sum_counts(combat.damage_dealt),

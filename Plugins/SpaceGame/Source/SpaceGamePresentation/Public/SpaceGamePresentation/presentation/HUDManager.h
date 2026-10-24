@@ -52,6 +52,7 @@ struct Sim;
 namespace ioj::sim::spinners {
 struct Sim;
 }
+namespace ioj {
 enum class EHUDManagerState : uint8 {
     Disabled,
     Active,
@@ -75,10 +76,9 @@ struct FHUDUpdateTimerIndex {
     static constexpr int32 player_status{0};
     static constexpr int32 entity_counts{1};
     static constexpr int32 mission_status{2};
-    static constexpr int32 count{3};
 };
 
-namespace ioj::hud_manager {
+namespace hud_manager {
 struct FMissionDataCache {
     bool operator==(FMissionDataCache const&) const noexcept = default;
     FString active_titles;
@@ -150,22 +150,22 @@ struct FDataChanges {
 }
 
 struct SPACEGAMEPRESENTATION_API FHUDManager {
-    void initialise(ioj::sim::HudSettings const& update_frequencies,
-                    ::ioj::sim::Mission const& new_mission,
-                    ::ioj::sim::EntityLedger const& new_entity_ledger,
-                    ::ioj::sim::capital_ships::Sim const& new_capitals,
-                    ::ioj::sim::fighters::Sim const& new_fighters,
-                    ::ioj::sim::turrets::Sim const& new_turrets,
-                    ::ioj::sim::spinners::Sim const& new_spinners,
-                    ::ioj::sim::SpatialQueryManager const& new_spatial_query_manager,
-                    ::ioj::sim::player::Sim const* new_player_ship,
+    void initialise(sim::HudSettings const& update_frequencies,
+                    sim::Mission const& new_mission,
+                    sim::EntityLedger const& new_entity_ledger,
+                    sim::capital_ships::Sim const& new_capitals,
+                    sim::fighters::Sim const& new_fighters,
+                    sim::turrets::Sim const& new_turrets,
+                    sim::spinners::Sim const& new_spinners,
+                    sim::SpatialQueryManager const& new_spatial_query_manager,
+                    sim::player::Sim const* new_player_ship,
                     FLevelVisualConfig const& level_config,
                     FEntityOverlaySettings const& entity_overlay_settings,
                     FRadarSettings const& radar_settings,
                     UInstancedStaticMeshComponent* soft_target_instances = nullptr);
     void deactivate();
     void advance(double dt);
-    void tick(ioj::PeriodicTickCountdown8::counter_type num_ticks);
+    void tick(PeriodicTickCountdown8::counter_type num_ticks);
     void force_sample();
 
     void register_hud(USimulationHudWidget& hud);
@@ -175,32 +175,34 @@ struct SPACEGAMEPRESENTATION_API FHUDManager {
     auto get_state() const noexcept -> EHUDManagerState { return state; }
     auto get_registered_hud_count() const noexcept -> int32 { return registered_huds.Num(); }
     auto has_mission_data_cache() const noexcept -> bool { return has_mission_data; }
-    auto get_mission_data() const noexcept -> ioj::hud_manager::FMissionDataCache const& {
+    auto get_mission_data() const noexcept -> hud_manager::FMissionDataCache const& {
         return mission_data_buffers.current();
     }
-    auto get_entity_count_data() const noexcept -> ioj::hud_manager::FEntityCountDataCache const& {
+    auto get_entity_count_data() const noexcept -> hud_manager::FEntityCountDataCache const& {
         return entity_count_data_buffers.current();
     }
-    auto get_kill_data() const noexcept -> ioj::hud_manager::FKillDataCache const& {
-        return kill_data_buffers.current();
-    }
-    auto get_player_status_data() const noexcept
-        -> ioj::hud_manager::FPlayerStatusDataCache const& {
+    auto get_kill_data() const noexcept -> hud_manager::FKillDataCache const& { return kill_data_; }
+    auto get_player_status_data() const noexcept -> hud_manager::FPlayerStatusDataCache const& {
         return player_status_data_buffers.current();
     }
-    auto get_player_flight_data() const noexcept
-        -> ioj::hud_manager::FPlayerFlightDataCache const& {
+    auto get_player_flight_data() const noexcept -> hud_manager::FPlayerFlightDataCache const& {
         return player_flight_data_buffers.current();
     }
 #if WITH_EDITOR
-    auto get_sampled_speed_data() const noexcept
-        -> ioj::hud_manager::FSampledSpeedDataCache const& {
+    auto get_sampled_speed_data() const noexcept -> hud_manager::FSampledSpeedDataCache const& {
         return sampled_speed_data_buffers.current();
     }
 #endif
   private:
     using FWorldSoftTargetCustomDataBuffer =
-        TArray<float, TInlineAllocator<ioj::soft_target_world::custom_data_count * 2>>;
+        TArray<float, TInlineAllocator<soft_target_world::custom_data_count * 2>>;
+
+    struct FSoftTargetVisual {
+        sim::EntityId entity{};
+        float range_alpha{};
+        float radius_pixels{};
+        float world_units_per_pixel{};
+    };
 
     struct FRegisteredHud {
         TWeakObjectPtr<USimulationHudWidget> hud;
@@ -208,22 +210,16 @@ struct SPACEGAMEPRESENTATION_API FHUDManager {
         FEntityOverlayFrameStorePtr entity_overlay_frame_store;
         FEntityOverlayCollector entity_overlay_collector;
         FRadarFrameStorePtr radar_frame_store;
-        ::ioj::sim::EntityId soft_target{};
-        float soft_target_range_alpha{0.0f};
-        float soft_target_radius_pixels{0.0f};
-        float soft_target_world_units_per_pixel{0.0f};
-        float soft_target_pulse_remaining{0.0f};
-        ::ioj::sim::EntityId fading_soft_target{};
-        float fading_soft_target_range_alpha{0.0f};
-        float fading_soft_target_radius_pixels{0.0f};
-        float fading_soft_target_world_units_per_pixel{0.0f};
-        float fading_soft_target_visibility_remaining{0.0f};
+        FSoftTargetVisual soft_target{};
+        float soft_target_pulse_remaining{};
+        FSoftTargetVisual fading_soft_target{};
+        float fading_soft_target_visibility_remaining{};
     };
 
-    auto collect_data(ioj::PeriodicTickCountdown8::counter_type num_ticks)
-        -> ioj::hud_manager::FDataChanges;
+    auto collect_data(PeriodicTickCountdown8::counter_type num_ticks) -> hud_manager::FDataChanges;
+    auto display_batches() const -> std::array<presentation::AgentDisplayBatch, 4>;
     bool collect_mission_data();
-    void read_mission_data(ioj::hud_manager::FMissionDataCache& out) const;
+    void read_mission_data(hud_manager::FMissionDataCache& out) const;
     bool collect_entity_count_data();
     void collect_kill_data();
     bool collect_player_status_data();
@@ -252,7 +248,7 @@ struct SPACEGAMEPRESENTATION_API FHUDManager {
     bool collect_sampled_speed_data();
 #endif
 
-    void update_huds(ioj::hud_manager::FDataChanges const& changes);
+    void update_huds(hud_manager::FDataChanges const& changes);
     void synchronise_hud(USimulationHudWidget& hud) const;
     void update_mission_hud(USimulationHudWidget& hud) const;
     void update_entity_count_hud(USimulationHudWidget& hud) const;
@@ -266,24 +262,23 @@ struct SPACEGAMEPRESENTATION_API FHUDManager {
 
     EHUDManagerState state{EHUDManagerState::Disabled};
     TArray<FRegisteredHud> registered_huds;
-    ::ioj::sim::player::Sim const* player_ship{nullptr};
-    ::ioj::sim::Mission const* mission{nullptr};
-    ::ioj::sim::EntityLedger const* entity_ledger{nullptr};
-    auto display_batches() const -> std::array<::ioj::presentation::AgentDisplayBatch, 4>;
-    ::ioj::sim::capital_ships::Sim const* capitals_{};
-    ::ioj::sim::fighters::Sim const* fighters_{};
-    ::ioj::sim::turrets::Sim const* turrets_{};
-    ::ioj::sim::spinners::Sim const* spinners_{};
-    ::ioj::sim::SpatialQueryManager const* spatial_query_manager{nullptr};
-    ::ioj::sim::FixedTickLoop tick_loop_{};
-    ioj::PeriodicTickCountdown8 update_timers;
+    sim::player::Sim const* player_ship{nullptr};
+    sim::Mission const* mission{nullptr};
+    sim::EntityLedger const* entity_ledger{nullptr};
+    sim::capital_ships::Sim const* capitals_{};
+    sim::fighters::Sim const* fighters_{};
+    sim::turrets::Sim const* turrets_{};
+    sim::spinners::Sim const* spinners_{};
+    sim::SpatialQueryManager const* spatial_query_manager{nullptr};
+    sim::FixedTickLoop tick_loop_{};
+    PeriodicTickCountdown8 update_timers;
 
-    ioj::MultiBuffer<ioj::hud_manager::FMissionDataCache, 2> mission_data_buffers;
-    ioj::MultiBuffer<ioj::hud_manager::FEntityCountDataCache, 2> entity_count_data_buffers;
-    ioj::MultiBuffer<ioj::hud_manager::FKillDataCache, 2> kill_data_buffers;
-    ioj::MultiBuffer<ioj::hud_manager::FPlayerStatusDataCache, 2> player_status_data_buffers;
-    ioj::MultiBuffer<ioj::hud_manager::FPlayerFlightDataCache, 2> player_flight_data_buffers;
-    TArray<::ioj::sim::EntityId, TInlineAllocator<ioj::ship_hud::top_killer_inline_capacity>>
+    MultiBuffer<hud_manager::FMissionDataCache, 2> mission_data_buffers;
+    MultiBuffer<hud_manager::FEntityCountDataCache, 2> entity_count_data_buffers;
+    hud_manager::FKillDataCache kill_data_;
+    MultiBuffer<hud_manager::FPlayerStatusDataCache, 2> player_status_data_buffers;
+    MultiBuffer<hud_manager::FPlayerFlightDataCache, 2> player_flight_data_buffers;
+    TArray<sim::EntityId, TInlineAllocator<ship_hud::top_killer_inline_capacity>>
         top_killer_ids_buffer;
 
     bool has_mission_data{false};
@@ -305,7 +300,9 @@ struct SPACEGAMEPRESENTATION_API FHUDManager {
     FRadarContactColours radar_contact_colours_;
 
 #if WITH_EDITOR
-    ioj::MultiBuffer<ioj::hud_manager::FSampledSpeedDataCache, 2> sampled_speed_data_buffers;
+    MultiBuffer<hud_manager::FSampledSpeedDataCache, 2> sampled_speed_data_buffers;
     bool has_sampled_speed_data{false};
 #endif
 };
+
+}

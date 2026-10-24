@@ -737,7 +737,7 @@ void ASpaceGamePlayerController::on_completion_menu_deactivated() {
         resume_game();
     }
 }
-void ASpaceGamePlayerController::on_mission_completed(FTestMissionCompletion const& completion) {
+void ASpaceGamePlayerController::on_mission_completed(FMissionCompletion const& completion) {
     if (!is_gameplay_mode()) {
         return;
     }

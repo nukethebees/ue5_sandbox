@@ -130,7 +130,7 @@ auto FPlayerModalUi::show_pause(ASpaceGamePlayerController& owner,
     return true;
 }
 auto FPlayerModalUi::show_completion(ASpaceGamePlayerController& owner,
-                                     FTestMissionCompletion const& completion,
+                                     FMissionCompletion const& completion,
                                      ioj::sim::LevelTelemetrySnapshot snapshot) -> bool {
     if (!has_root()) {
         UE_LOG(LogSandboxController, Error, TEXT("FPlayerModalUi: UI root is invalid."));

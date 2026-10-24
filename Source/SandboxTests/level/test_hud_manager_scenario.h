@@ -71,7 +71,7 @@ class FTestHUDManagerScenario final : public FSimulationTestScenario {
     void entity_count_on_tick(ATestBatchOrchestrator& orchestrator);
     void entity_count_process_samples();
     auto initialise_headless_hud_manager() -> bool;
-    auto get_headless_hud_manager() -> FHUDManager&;
+    auto get_headless_hud_manager() -> ioj::FHUDManager&;
     void tick_headless_hud_manager();
     void check_headless_hud_manager_matches_simulation();
     void check_mission_data_equal(hud_manager::FMissionDataCache const& local,
@@ -80,9 +80,9 @@ class FTestHUDManagerScenario final : public FSimulationTestScenario {
     void check_sampled_speed_data_equal(hud_manager::FSampledSpeedDataCache const& local,
                                         hud_manager::FSampledSpeedDataCache const& simulation);
 #endif
-    static auto count_cached_entities(FHUDManager const& manager) -> int32;
+    static auto count_cached_entities(ioj::FHUDManager const& manager) -> int32;
 
-    TOptional<FHUDManager> headless_hud_manager{NullOpt};
+    TOptional<ioj::FHUDManager> headless_hud_manager{NullOpt};
     int32 initial_alive_count{0};
     TimeSeriesData<FEntityCountSample> entity_count_samples;
     TimeSeriesData<FDefenceSample> defence_samples;

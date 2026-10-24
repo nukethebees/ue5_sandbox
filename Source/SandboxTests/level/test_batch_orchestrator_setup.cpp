@@ -192,8 +192,8 @@ void FTestBatchOrchestratorSetupScenario::presentation_frame_ordering() {
             checks.are_equal(uint64{8},
                              report->completion.completed_ticks,
                              TEXT("Telemetry retains the final resolved tick"));
-            checks.is_true(!report->battle_samples.IsEmpty() &&
-                               report->battle_samples.Last().completed_tick == 8,
+            checks.is_true(!report->battle_samples.empty() &&
+                               report->battle_samples.back().completed_tick == 8,
                            TEXT("Terminal battle sample observes the final resolved tick"));
         }
         checks.is_true(!orchestrator.take_finalized_telemetry_report().IsSet(),

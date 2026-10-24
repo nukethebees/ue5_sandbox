@@ -4,8 +4,7 @@
 
 #include <CoreMinimal.h>
 
-struct FTestMissionCompletion {
-    FName level_id{NAME_None};
+struct FMissionCompletion {
     FString level_display_name{};
     ETeamOutcome state{ETeamOutcome::Defeat};
     FString objective_id{};
@@ -14,4 +13,4 @@ struct FTestMissionCompletion {
     bool new_best_time{false};
 };
 
-DECLARE_MULTICAST_DELEGATE_OneParam(FOnTestMissionCompleted, FTestMissionCompletion const&);
+DECLARE_MULTICAST_DELEGATE_OneParam(FOnMissionCompleted, FMissionCompletion const&);

@@ -52,7 +52,7 @@ struct FPlayerControllerTestAccess {
         return controller.modal_ui_.has_modal();
     }
     static void complete(ASpaceGamePlayerController& controller,
-                         FTestMissionCompletion const& completion) {
+                         FMissionCompletion const& completion) {
         controller.on_mission_completed(completion);
     }
     static void close_completion(ASpaceGamePlayerController& controller) {

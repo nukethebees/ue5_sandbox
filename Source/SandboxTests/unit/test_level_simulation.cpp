@@ -7,6 +7,7 @@
 #include <ioj/sim/levels/level_event_manager.h>
 #include <ioj/sim/levels/level_sim.h>
 #include <ioj/sim/missions/mission_compilation.h>
+#include <ioj/sim/telemetry/report_json.h>
 #include <ioj/sim/testing/laser_spawns.h>
 #include <ioj/sim/testing/level_sim_test_access.h>
 #include <SandboxTests/support/SimulationTestAssets.h>
@@ -24,6 +25,8 @@
 #include <SpaceGamePresentation/integration/VectorConversion.h>
 #include <SpaceGamePresentation/presentation/LevelPresentation.h>
 #include <SpaceGameRendering/SparkRendererComponent.h>
+
+#include <SandboxCoreEngine/strings.h>
 
 #include <Dom/JsonObject.h>
 #include <Engine/StaticMesh.h>
@@ -790,8 +793,12 @@ auto FLevelTelemetryRunRecordTest::RunTest(FString const&) -> bool {
         return false;
     }
 
-    FLevelTelemetryReport report{*record};
-    auto const json{serialize_level_telemetry_run(report)};
+    ioj::sim::LevelTelemetryReport report{*record};
+    auto const serialized{ioj::sim::serialize_level_telemetry_report(report)};
+    if (!TestTrue(TEXT("Report serialization succeeds"), serialized.has_value())) {
+        return false;
+    }
+    auto const json{ioj::to_fstring(*serialized)};
     TSharedPtr<FJsonObject> root;
     auto reader{TJsonReaderFactory<>::Create(json)};
     if (!TestTrue(TEXT("Serialized run is valid JSON"),
@@ -828,7 +835,7 @@ auto FLevelTelemetryRunRecordTest::RunTest(FString const&) -> bool {
         FString mutated_json;
         auto writer{TJsonWriterFactory<>::Create(&mutated_json)};
         FJsonSerializer::Serialize(root.ToSharedRef(), writer);
-        return deserialize_level_telemetry_run(mutated_json);
+        return ioj::sim::deserialize_level_telemetry_report(ioj::to_string(mutated_json));
     };
     root->SetStringField(TEXT("future_field"), TEXT("ignored"));
     auto const round_trip{parse_current_root()};
@@ -840,11 +847,11 @@ auto FLevelTelemetryRunRecordTest::RunTest(FString const&) -> bool {
                   round_trip->completion.completed_ticks,
                   report.completion.completed_ticks);
         TestTrue(TEXT("Round trip preserves force and combat history"),
-                 round_trip->battle_samples.Num() == report.battle_samples.Num() &&
-                     round_trip->battle_samples.Last().alive ==
-                         report.battle_samples.Last().alive &&
-                     round_trip->battle_samples.Last().combat.shots ==
-                         report.battle_samples.Last().combat.shots);
+                 round_trip->battle_samples.size() == report.battle_samples.size() &&
+                     round_trip->battle_samples.back().alive ==
+                         report.battle_samples.back().alive &&
+                     round_trip->battle_samples.back().combat.shots ==
+                         report.battle_samples.back().combat.shots);
     }
 
     root->SetStringField(TEXT("performance_windows"), TEXT("discarded malformed timing data"));
@@ -857,20 +864,21 @@ auto FLevelTelemetryRunRecordTest::RunTest(FString const&) -> bool {
     series_json->SetStringField(TEXT("requested_time_scale"), TEXT("discarded"));
     battle_samples_json.Last()->AsObject()->SetStringField(TEXT("range_query_count"),
                                                            TEXT("discarded"));
-    for (int32 version{1}; version < FLevelTelemetryReport::schema_version; ++version) {
+    for (int32 version{1}; version < ioj::sim::LevelTelemetryReport::schema_version; ++version) {
         root->SetNumberField(TEXT("schema_version"), version);
         TestFalse(TEXT("Reports from the retired mission schema are rejected"),
                   parse_current_root().has_value());
     }
-    root->SetNumberField(TEXT("schema_version"), FLevelTelemetryReport::schema_version);
+    root->SetNumberField(TEXT("schema_version"), ioj::sim::LevelTelemetryReport::schema_version);
     TestFalse(TEXT("Malformed JSON returns an error"),
-              deserialize_level_telemetry_run(TEXT("{")).has_value());
+              ioj::sim::deserialize_level_telemetry_report("{").has_value());
     root->SetNumberField(TEXT("schema_version"), 999);
     FString unsupported_json;
     auto unsupported_writer{TJsonWriterFactory<>::Create(&unsupported_json)};
     FJsonSerializer::Serialize(root.ToSharedRef(), unsupported_writer);
-    TestFalse(TEXT("Unsupported schemas return an error"),
-              deserialize_level_telemetry_run(unsupported_json).has_value());
+    TestFalse(
+        TEXT("Unsupported schemas return an error"),
+        ioj::sim::deserialize_level_telemetry_report(ioj::to_string(unsupported_json)).has_value());
     root->SetNumberField(TEXT("schema_version"),
                          ::ioj::sim::LevelTelemetryRunRecord::schema_version);
 
@@ -934,7 +942,7 @@ auto FLevelTelemetryRunRecordTest::RunTest(FString const&) -> bool {
     auto precision_unsafe_report{report};
     precision_unsafe_report.completion.completed_ticks = 9007199254740994ULL;
     TestTrue(TEXT("Serialization rejects precision-unsafe uint64 values"),
-             serialize_level_telemetry_run(precision_unsafe_report).IsEmpty());
+             !ioj::sim::serialize_level_telemetry_report(precision_unsafe_report).has_value());
 
     auto const original_mission_team{completion_json->Values.FindRef(TEXT("mission_team"))};
     auto const original_mission_outcome{completion_json->Values.FindRef(TEXT("mission_outcome"))};

@@ -1,6 +1,8 @@
 #pragma once
 
-#include <SpaceGame/telemetry/LevelTelemetryReport.h>
+#include <ioj/sim/telemetry/report.h>
+
+#include <HAL/Platform.h>
 
 class UWorld;
 struct FLevelMissionDefinition;
@@ -11,4 +13,4 @@ SPACEGAME_API auto
         -> ::ioj::sim::LevelTelemetryRunMetadata;
 
 SPACEGAME_API auto make_level_telemetry_environment(UWorld const& world)
-    -> FLevelTelemetryEnvironment;
+    -> ioj::sim::LevelTelemetryEnvironment;

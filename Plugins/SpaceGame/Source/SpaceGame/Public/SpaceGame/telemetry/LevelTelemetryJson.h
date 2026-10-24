@@ -1,15 +1,14 @@
 #pragma once
 
-#include <SpaceGame/telemetry/LevelTelemetryReport.h>
+#include <ioj/sim/telemetry/report.h>
+
+#include <CoreMinimal.h>
 
 #include <expected>
 
-SPACEGAME_API auto serialize_level_telemetry_run(FLevelTelemetryReport const& record) -> FString;
-SPACEGAME_API auto deserialize_level_telemetry_run(FString const& json)
-    -> std::expected<FLevelTelemetryReport, FString>;
 SPACEGAME_API auto read_level_telemetry_run(FString const& path)
-    -> std::expected<FLevelTelemetryReport, FString>;
+    -> std::expected<ioj::sim::LevelTelemetryReport, FString>;
 SPACEGAME_API auto level_telemetry_runs_directory() -> FString;
-SPACEGAME_API auto write_level_telemetry_run(FLevelTelemetryReport const& record,
+SPACEGAME_API auto write_level_telemetry_run(ioj::sim::LevelTelemetryReport const& record,
                                              FString const& output_directory)
     -> std::expected<FString, FString>;

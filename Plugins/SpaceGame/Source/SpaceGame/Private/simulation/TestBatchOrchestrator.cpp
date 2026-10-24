@@ -867,12 +867,6 @@ void ATestBatchOrchestrator::set_time_scale(ioj::PositiveFinite<time_type> const
 
     simulation_tick_loop.time_scale = scale;
 }
-auto ATestBatchOrchestrator::frequency_to_tick_period(ioj::Frequency const frequency) const noexcept
-    -> tick_type {
-    auto const tick_rate{level_simulation_.IsSet() ? level_simulation_->get_clock().get_tick_rate()
-                                                   : simulation_tick_loop.tick_rate};
-    return ioj::sim::frequency_to_tick_period(tick_rate, frequency);
-}
 auto ATestBatchOrchestrator::duration_to_tick_period(ioj::Duration const duration) const noexcept
     -> tick_type {
     auto const tick_rate{level_simulation_.IsSet() ? level_simulation_->get_clock().get_tick_rate()
@@ -1013,8 +1007,7 @@ void ATestBatchOrchestrator::process_mission_result() {
     }
 
     on_mission_completed.Broadcast(
-        {.level_id = FName{UTF8_TO_TCHAR(metadata.level_id.c_str())},
-         .level_display_name = UTF8_TO_TCHAR(metadata.level_title.c_str()),
+        {.level_display_name = UTF8_TO_TCHAR(metadata.level_title.c_str()),
          .state = ioj::to_unreal(result->outcome),
          .objective_id = UTF8_TO_TCHAR(objective_name.c_str()),
          .persisted = persisted,
@@ -1035,7 +1028,8 @@ void ATestBatchOrchestrator::handle_telemetry_persisted(FString run_id, FString 
         UE_LOG(LogSandbox, Error, TEXT("Cannot navigate to completed telemetry run"));
     }
 }
-auto ATestBatchOrchestrator::take_finalized_telemetry_report() -> TOptional<FLevelTelemetryReport> {
+auto ATestBatchOrchestrator::take_finalized_telemetry_report()
+    -> TOptional<ioj::sim::LevelTelemetryReport> {
     if (!level_simulation_.IsSet()) {
         return {};
     }
@@ -1043,18 +1037,15 @@ auto ATestBatchOrchestrator::take_finalized_telemetry_report() -> TOptional<FLev
     if (!record.has_value()) {
         return {};
     }
-    FLevelTelemetryReport report{std::move(record.value())};
-    report.metadata.environment = telemetry_environment_;
-    report.metadata.launch_state = launch_options_.launch_mode == ioj::ELevelLaunchMode::Paused
-                                     ? TEXT("paused")
-                                     : TEXT("running");
-    report.metadata.results_navigation =
-        launch_options_.results_navigation == ioj::ELevelResultsNavigation::Telemetry
-            ? TEXT("telemetry")
-            : TEXT("none");
-    report.metadata.presentation_enabled = presentation_enabled;
-    report.metadata.presentation_mode =
-        presentation_enabled ? TEXT("visual") : TEXT("simulation_only");
+    ioj::sim::LevelTelemetryReport report{std::move(record.value())};
+    report.environment = telemetry_environment_;
+    report.launch_state =
+        launch_options_.launch_mode == ioj::ELevelLaunchMode::Paused ? "paused" : "running";
+    report.results_navigation =
+        launch_options_.results_navigation == ioj::ELevelResultsNavigation::Telemetry ? "telemetry"
+                                                                                      : "none";
+    report.presentation_enabled = presentation_enabled;
+    report.presentation_mode = presentation_enabled ? "visual" : "simulation_only";
     return report;
 }
 void ATestBatchOrchestrator::persist_finalized_telemetry_run() {
