@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Styling/SlateTypes.h"
 
 #include "AlignAxesCheckboxStates.generated.h"
 

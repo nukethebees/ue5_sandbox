@@ -5,6 +5,7 @@
 #include "SSandboxEditorToolsMainPanel.h"
 
 #include "Framework/Docking/TabManager.h"
+#include "Widgets/Docking/SDockTab.h"
 #include "WorkspaceMenuStructure.h"
 #include "WorkspaceMenuStructureModule.h"
 

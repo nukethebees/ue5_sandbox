@@ -5,7 +5,7 @@
 #include <CoreMinimal.h>
 
 namespace ioj {
-struct SPACEGAMESIMULATION_API FLevelId {
+struct FLevelId {
     FName value{NAME_None};
 
     auto operator==(FLevelId const&) const -> bool = default;
@@ -16,7 +16,7 @@ inline auto GetTypeHash(FLevelId const& id) -> uint32 {
     return GetTypeHash(id.value);
 }
 
-struct SPACEGAMESIMULATION_API FCampaignId {
+struct FCampaignId {
     FName value{NAME_None};
 
     auto operator==(FCampaignId const&) const -> bool = default;
@@ -27,7 +27,7 @@ inline auto GetTypeHash(FCampaignId const& id) -> uint32 {
     return GetTypeHash(id.value);
 }
 
-struct SPACEGAMESIMULATION_API FLevelEntityId {
+struct FLevelEntityId {
     FName value{NAME_None};
 
     auto operator==(FLevelEntityId const&) const -> bool = default;
@@ -38,7 +38,7 @@ inline auto GetTypeHash(FLevelEntityId const& id) -> uint32 {
     return GetTypeHash(id.value);
 }
 
-struct SPACEGAMESIMULATION_API FEntityArchetypeId {
+struct FEntityArchetypeId {
     FName value{NAME_None};
 
     auto operator==(FEntityArchetypeId const&) const -> bool = default;

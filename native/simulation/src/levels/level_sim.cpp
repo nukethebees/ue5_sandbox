@@ -132,8 +132,8 @@ void LevelSim::pause() {
     assert(state_ != OrchestratorState::Uninitialised);
     state_ = OrchestratorState::Paused;
 }
-void LevelSim::set_time_scale(PositiveFinite<time_type> const scale) {
-    clock_.tick_loop.time_scale = scale;
+void LevelSim::set_time_scale(time_type const scale) {
+    clock_.tick_loop.time_scale = PositiveFinite<time_type>::make(scale);
 }
 
 /* **************************************** */

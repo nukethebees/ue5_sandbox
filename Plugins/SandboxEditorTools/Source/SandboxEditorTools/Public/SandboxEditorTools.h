@@ -6,6 +6,8 @@
 
 class SSandboxEditorToolsMainPanel;
 class UEdToolsData;
+class SDockTab;
+class FSpawnTabArgs;
 
 class FSandboxEditorToolsModule : public IModuleInterface {
   public:

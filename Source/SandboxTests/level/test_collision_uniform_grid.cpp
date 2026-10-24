@@ -1,5 +1,3 @@
-#include <ioj/sim/collision/collision_uniform_grid.h>
-#include <ioj/sim/entities/entity_tables.h>
 #include <SandboxTests/support/SoftTestAssertions.h>
 #include <SandboxTests/support/TestCollisionActor.h>
 #include <SpaceGame/simulation/LevelCollisionHost.h>
@@ -51,18 +49,18 @@ TEST_CLASS(CollisionUniformGrid, "Sandbox.UnitTests")
         config.omitted_collision_actor_classes.Add(
             ASandboxTestOmittedCollisionActor::StaticClass());
 
-        ioj::sim::collision::CollisionUniformGrid grid;
         auto const configured_dims{config.calculate_grid_dimensions()};
         auto const grid_geometry{ioj::sim::collision::GridGeometry{
             {configured_dims.X, configured_dims.Y, configured_dims.Z},
             ioj::to_native(config.cell_size)}};
-        grid.set_geometry(grid_geometry);
         ioj::FLevelCollisionHost collision_host;
-        grid.set_static_aabbs(
-            collision_host.initialise_static_geometry(*world, config, grid_geometry));
+        auto const bounds{collision_host.initialise_static_geometry(*world, config, grid_geometry)};
 
         auto const sources{collision_host.get_static_collision_sources()};
         auto const source_count{sources.Num()};
+        checks.are_equal(static_cast<std::size_t>(source_count),
+                         bounds.size(),
+                         TEXT("Each harvested source produces native bounds"));
         int32 source_index{INDEX_NONE};
         int32 harvested_actor_source_count{};
         for (int32 i{}; i < source_count; ++i) {
@@ -88,8 +86,11 @@ TEST_CLASS(CollisionUniformGrid, "Sandbox.UnitTests")
         checks.is_true(unsupported_component->GetCollisionEnabled() == ECollisionEnabled::QueryOnly,
                        TEXT("Failed harvest leaves Unreal collision enabled"));
 
-        grid.set_static_aabbs(
-            collision_host.initialise_static_geometry(*world, config, grid_geometry));
+        auto const reharvested_bounds{
+            collision_host.initialise_static_geometry(*world, config, grid_geometry)};
+        checks.are_equal(bounds.size(),
+                         reharvested_bounds.size(),
+                         TEXT("Reinitialization preserves native bounds count"));
         checks.are_equal(source_count,
                          collision_host.get_static_collision_sources().Num(),
                          TEXT("Reinitialization restores and reharvests static geometry"));

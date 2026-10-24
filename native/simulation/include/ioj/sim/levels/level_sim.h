@@ -52,7 +52,8 @@ struct LevelSim {
     void finish_initialisation();
     void start();
     void pause();
-    void set_time_scale(PositiveFinite<time_type> scale);
+    // Require a finite positive scale; use a scalar across the native compiler boundary.
+    void set_time_scale(time_type scale);
 
     /* **************************************** */
     // Simulation

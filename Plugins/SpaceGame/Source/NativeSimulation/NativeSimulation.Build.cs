@@ -35,8 +35,6 @@ public class NativeSimulation : ModuleRules
         PublicSystemIncludePaths.Add(
             Path.Combine(repositoryRoot, "native", "simulation", "s7", "lib", "include"));
         PublicSystemIncludePaths.Add(
-            Path.Combine(repositoryRoot, "native", "lispb", "native_soa", "include"));
-        PublicSystemIncludePaths.Add(
             Path.Combine(repositoryRoot, "native", "profiling", "include"));
 
         if (!Target.bGenerateProjectFiles)
