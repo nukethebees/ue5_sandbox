@@ -7,6 +7,10 @@ PackedEnums.h
 PackedValues.h
 PlainEnums.cpp
 PlainEnums.h
+ReadableRecords.h
+ReadableRecords_reader.h
+ReaderDependency.h
+ReaderDependency_reader.h
 Records.h
 ReferenceFacade.h
 Representations.h
@@ -21,3 +25,5 @@ SignatureSecond.cpp
 SignatureSecond.h
 SourceFacade.cpp
 SourceFacade.h
+UnsupportedReader.h
+UnsupportedReader_reader.h

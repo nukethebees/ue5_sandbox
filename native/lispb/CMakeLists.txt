@@ -210,6 +210,7 @@ target_sources(codegen-lib PRIVATE
   src/single_allocation_soa_model.cpp
   src/packed_value_lowering.cpp
   src/record_lowering.cpp
+  src/record_reader_lowering.cpp
   src/union_lowering.cpp
   src/static_table_lowering.cpp
 )
@@ -318,10 +319,12 @@ add_executable(codegen-generated-tests)
 target_sources(codegen-generated-tests PRIVATE
   tests/generated_tests.cpp
   tests/packed_support_tests.cpp
+  tests/generated_reader_tests.cpp
 )
 set_target_properties(codegen-generated-tests PROPERTIES UNITY_BUILD OFF)
 target_link_libraries(codegen-generated-tests PRIVATE
   codegen-generated-compile-fixture
+  sandbox-s7
   GTest::gtest_main
   sandbox::native_defaults
 )
@@ -365,6 +368,27 @@ add_test(NAME codegen-tests COMMAND codegen-tests)
 set_tests_properties(codegen-tests PROPERTIES LABELS "unit;all;native;codegen")
 add_test(NAME codegen-generated-tests COMMAND codegen-generated-tests)
 set_tests_properties(codegen-generated-tests PROPERTIES LABELS "unit;all;native;codegen")
+add_library(codegen-reject-unsupported-reader OBJECT EXCLUDE_FROM_ALL)
+target_sources(codegen-reject-unsupported-reader
+  PRIVATE
+    tests/compile_fixture/unsupported_reader.cpp
+)
+target_link_libraries(codegen-reject-unsupported-reader
+  PRIVATE
+    codegen-generated-compile-fixture
+    native-s7-data
+    sandbox::native_defaults
+)
+ioj_enable_warnings(codegen-reject-unsupported-reader CODEGEN)
+add_test(NAME S7ReaderRejectsUnsupportedMember
+  COMMAND "${CMAKE_COMMAND}" "-DBUILD_DIR=${CMAKE_BINARY_DIR}"
+    -DREJECT_TARGET=codegen-reject-unsupported-reader
+    -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/reject_unsupported_reader.cmake"
+)
+set_tests_properties(S7ReaderRejectsUnsupportedMember PROPERTIES
+  LABELS "all;native;codegen;compile-contract;subprocess"
+  RESOURCE_LOCK codegen-negative-build
+)
 foreach(restriction IN ITEMS COPY DESTRUCTOR DEFAULT)
   set(reject_target "codegen-reject-single-${restriction}")
   add_library(${reject_target} OBJECT EXCLUDE_FROM_ALL tests/compile_fixture/rejected_leaf.cpp)

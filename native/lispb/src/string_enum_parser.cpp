@@ -157,7 +157,8 @@ auto lower_string_enum_parser(CppIR& ir,
                               std::string_view const function_name,
                               std::string_view const enum_type,
                               std::string_view const parameter_name,
-                              std::span<StringEnumEntry const> const entries) -> NodeId {
+                              std::span<StringEnumEntry const> const entries,
+                              bool const is_static) -> NodeId {
     auto const function{ir.function(function_name, "auto")};
     ir.set_function_return_type(function,
                                 ir.types.intern("std::optional<" + std::string{enum_type} + ">",
@@ -171,6 +172,9 @@ auto lower_string_enum_parser(CppIR& ir,
     auto& flags{ir.function_flags(function)};
     flags.set_define_in_header(true);
     flags.set_is_constexpr(true);
+    if (is_static) {
+        ir.set_function_receiver(function, FunctionReceiver::static_);
+    }
     flags.set_is_nodiscard(true);
     ir.set_function_noexcept(function);
     ir.set_function_body(function,

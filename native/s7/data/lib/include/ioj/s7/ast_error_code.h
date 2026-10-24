@@ -6,6 +6,16 @@ enum class AstErrorCode {
     UnsupportedValue,
     ImproperList,
     CyclicStructure,
-    LimitExceeded
+    LimitExceeded,
+    ExpectedRecord,
+    ExpectedKeyword,
+    UnknownProperty,
+    DuplicateProperty,
+    MissingProperty,
+    MissingValue,
+    InvalidType,
+    InvalidNumber,
+    UnknownSymbol,
+    InvalidSymbol
 };
 }

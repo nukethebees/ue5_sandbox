@@ -120,6 +120,79 @@ TEST(RecordLowering, SettingsOptionsSurviveSourceRoundTrip) {
               render_test_manifest(reparsed, round_trip).front().content);
 }
 
+TEST(RecordLowering, ReaderOptionsSurviveRoundTripAndLeaveOrdinaryOutputUnchanged) {
+    auto const render{[](std::string_view const options) {
+        CompilerTestContext context;
+        auto const manifest{parse_test_manifest(
+            context,
+            std::format(R"((module records :header "Records.h" :namespace example
+                (record Config {} (member max_speed float :initializer "2.f"))))",
+                        options))};
+        auto const source{
+            schema::render_module_source(manifest.declarations, manifest.modules.front())};
+        CompilerTestContext reparsed;
+        auto const round_trip{parse_test_manifest(reparsed, source)};
+        auto const output{render_test_manifest(context, manifest)};
+        auto const second{render_test_manifest(reparsed, round_trip)};
+        EXPECT_EQ(output.size(), second.size());
+        for (std::size_t i{}; i < output.size(); ++i) {
+            EXPECT_EQ(output[i].content, second[i].content);
+        }
+        return output;
+    }};
+    auto const ordinary{render("")};
+    auto const reader{render(":generate-s7-reader true :s7-tag config")};
+    ASSERT_EQ(ordinary.size(), 1u);
+    ASSERT_EQ(reader.size(), 2u);
+    EXPECT_EQ(ordinary.front().content, reader.front().content);
+    EXPECT_EQ(reader.front().content.find("s7/reader"), std::string::npos);
+}
+
+TEST(RecordLowering, RetainsReaderConstraintsInCanonicalSource) {
+    CompilerTestContext context;
+    auto const manifest{parse_test_manifest(context, R"(
+        (module records :header "Records.h"
+          (record Config :generate-s7-reader true :s7-tag config
+            :s7-reader-includes ("CustomReader.h")
+            (member value int :s7-name renamed :required true :nonzero true
+              :positive true :nonnegative true :finite true :minimum -9223372036854775808 :maximum 9)
+            (member text int :nonempty true))))")};
+    auto const source{
+        schema::render_module_source(manifest.declarations, manifest.modules.front())};
+    CompilerTestContext reparsed;
+    auto const round_trip{parse_test_manifest(reparsed, source)};
+    EXPECT_EQ(source,
+              schema::render_module_source(round_trip.declarations, round_trip.modules.front()));
+    auto const first{render_test_manifest(context, manifest)};
+    auto const second{render_test_manifest(reparsed, round_trip)};
+    ASSERT_EQ(first.size(), 2u);
+    EXPECT_EQ(first.back().content, second.back().content);
+}
+
+TEST(RecordLowering, RejectsAmbiguousReaderFieldsAndInvalidBounds) {
+    for (
+        auto const declarations :
+        {R"((record Config :generate-s7-reader true))",
+         R"((record Config :s7-tag config))",
+         R"((record Config :generate-s7-reader true :s7-tag config
+            (member first int :s7-name same) (member second int :s7-name same)))",
+         R"((record Config :generate-s7-reader true :s7-tag config (member value int :s7-name "")))",
+         R"((record Config :generate-s7-reader true :s7-tag config (member value int :minimum 4 :maximum 2)))",
+         R"((record Config :generate-s7-reader true :s7-tag config (member value int :minimum "1;bad")))",
+         R"((record Config :generate-s7-reader true :s7-tag config (member value int :minimum -9223372036854775809)))"}) {
+        SCOPED_TRACE(declarations);
+        CompilerTestContext context;
+        EXPECT_THROW(
+            {
+                auto const manifest{parse_test_manifest(
+                    context,
+                    std::format(R"((module records :header "Records.h" {}))", declarations))};
+                static_cast<void>(lower_test_manifest(context, manifest));
+            },
+            std::exception);
+    }
+}
+
 TEST(RecordLowering, AllowsEmptyAndRejectsDuplicateAndZeroCountMembers) {
     CompilerTestContext context;
     auto record = [&](std::string_view members) {

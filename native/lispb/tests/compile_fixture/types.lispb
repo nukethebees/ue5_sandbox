@@ -37,3 +37,7 @@
 (type assertion :spelling "assert" :header "cassert")
 
 (type fixture_optional_int :spelling "std::optional<int>" :header "optional")
+(type reader_nonempty_string :spelling "ioj::NonEmptyString" :header "ioj/constrained_strings.h")
+(type reader_string :spelling "std::string" :header "string")
+(type reader_children :spelling "std::vector<codegen_compile_fixture::ReadableChild>" :header "vector")
+(type reader_recursive :spelling "std::vector<codegen_compile_fixture::RecursiveReadable>" :header "vector")

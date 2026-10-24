@@ -2,6 +2,7 @@
 #include "lowering.h"
 #include "lowering_context.h"
 #include "lowering_utils.h"
+#include "record_reader_lowering.h"
 #include "settings_fields.h"
 
 #include <codegen/ast/cpp_ir.h>
@@ -143,6 +144,9 @@ auto lower_record(LoweringContext& context, DeclarationHandle schema) -> Declara
     if (records.generate_overrides[records.index(schema)]) {
         auto const overrides{record_overrides(context, schema)};
         result.header.insert(result.header.end(), overrides.begin(), overrides.end());
+    }
+    if (records.s7_tag[records.index(schema)]) {
+        lower_record_reader(context, schema, result);
     }
     return result;
 }

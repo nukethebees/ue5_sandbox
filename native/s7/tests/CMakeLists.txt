@@ -27,6 +27,7 @@ add_executable(native-s7-ast-tests)
 target_sources(native-s7-ast-tests
   PRIVATE
     ast_tests.cpp
+    reader_tests.cpp
 )
 target_link_libraries(native-s7-ast-tests
   PRIVATE

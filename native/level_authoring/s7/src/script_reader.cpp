@@ -1,7 +1,9 @@
+#include "reader_diagnostics.h"
 #include <ioj/files.h>
 #include <ioj/levels/authoring/catalog_parser.h>
 #include <ioj/levels/authoring/definition_reader.h>
 #include <ioj/levels/authoring/grammar.h>
+#include <ioj/levels/campaign_validation.h>
 #include <ioj/levels/mission_types.h>
 #include <ioj/s7/interpreter.h>
 
@@ -16,21 +18,7 @@ namespace ioj::levels::authoring {
 namespace {
 using MaterializedSource = std::expected<s7::Ast, Diagnostics>;
 
-auto diagnostic_code(s7::AstErrorCode const code) -> DiagnosticCode {
-    switch (code) {
-        case s7::AstErrorCode::EvaluationFailed:
-            return DiagnosticCode::ScriptEvaluationFailed;
-        case s7::AstErrorCode::UnsupportedValue:
-            return DiagnosticCode::UnsupportedValue;
-        case s7::AstErrorCode::ImproperList:
-            return DiagnosticCode::ImproperList;
-        case s7::AstErrorCode::CyclicStructure:
-            return DiagnosticCode::CyclicStructure;
-        case s7::AstErrorCode::LimitExceeded:
-            return DiagnosticCode::LimitExceeded;
-    }
-    std::unreachable();
-}
+using detail::diagnostic_code;
 
 auto dsl_source() -> std::string {
     std::string source{"(begin\n"};

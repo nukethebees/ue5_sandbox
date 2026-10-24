@@ -8,6 +8,7 @@
 #include <lispb/indices.h>
 
 #include <cstdint>
+#include <optional>
 #include <vector>
 
 namespace lispb::codegen {
@@ -20,6 +21,8 @@ struct RecordSchemas {
 
     std::vector<std::uint8_t> generate_settings;
     std::vector<std::uint8_t> generate_overrides;
+    std::vector<std::optional<StringId>> s7_tag;
+    std::vector<SchemaRange<StringId>> s7_reader_includes;
     std::vector<StringId> name;
     std::vector<SchemaRange<RecordMemberId>> members;
     std::vector<StringId> export_specifier;

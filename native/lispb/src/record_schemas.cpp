@@ -16,6 +16,8 @@ auto RecordSchemas::append() -> DeclarationHandle {
     name.push_back({});
     generate_settings.push_back(false);
     generate_overrides.push_back(false);
+    s7_tag.push_back({});
+    s7_reader_includes.push_back({});
     members.push_back({});
     export_specifier.push_back({});
     comparison.push_back(RecordComparison::none);
@@ -31,6 +33,8 @@ auto RecordSchemas::clone(DeclarationHandle id) -> DeclarationHandle {
     name[destination] = name[source_index];
     generate_settings[destination] = generate_settings[source_index];
     generate_overrides[destination] = generate_overrides[source_index];
+    s7_tag[destination] = s7_tag[source_index];
+    s7_reader_includes[destination] = s7_reader_includes[source_index];
     members[destination] = members[source_index];
     export_specifier[destination] = export_specifier[source_index];
     comparison[destination] = comparison[source_index];
@@ -42,6 +46,8 @@ void RecordSchemas::clear() {
     name.clear();
     generate_settings.clear();
     generate_overrides.clear();
+    s7_tag.clear();
+    s7_reader_includes.clear();
     members.clear();
     export_specifier.clear();
     comparison.clear();

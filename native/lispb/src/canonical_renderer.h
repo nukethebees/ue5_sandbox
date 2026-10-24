@@ -55,6 +55,18 @@ class CanonicalRenderer {
             ir_.form(head, {ir_.atom(columns.name[index]), build_type_ref(columns.type[index])})};
         result.optional_field("count", columns.count[index]);
         if constexpr (std::is_same_v<Child, codegen::RecordMemberId>) {
+            auto const& s7{columns.s7[index]};
+            result.optional_field(
+                "s7-name", s7.name, [this](auto value) { return ir_.string(value); });
+            result.flag("required", s7.required);
+            result.flag("nonzero", s7.nonzero);
+            result.flag("positive", s7.positive);
+            result.flag("nonnegative", s7.nonnegative);
+            result.flag("finite", s7.finite);
+            result.flag("nonempty", s7.nonempty);
+            auto const number{[this](StringId value) { return ir_.atom(value); }};
+            result.optional_field("minimum", s7.minimum, number);
+            result.optional_field("maximum", s7.maximum, number);
             result.flag("settings-exclude", columns.settings_exclude[index]);
             if (columns.settings_name[index]) {
                 result.field("settings-name", ir_.string(*columns.settings_name[index]));

@@ -1,3 +1,37 @@
+(module readers_fixture
+  :header "ReadableRecords.h"
+  :namespace codegen_compile_fixture
+  (record EmptyReadable :generate-s7-reader true :s7-tag "empty")
+  (record RecursiveReadable :generate-s7-reader true :s7-tag "recursive"
+    (member children @reader_recursive :initializer ""))
+  (record BoundedInteger :generate-s7-reader true :s7-tag "integer"
+    (member value std::int64_t :required true :minimum -9223372036854775808 :maximum 9223372036854775806))
+  (record ReadableChild :generate-s7-reader true :s7-tag "child"
+    (member name @reader_nonempty_string :required true)
+    (member count int :initializer "2" :nonnegative true))
+  (record ReadableRecord :generate-s7-reader true :s7-tag "record"
+    (member child ReadableChild :required true)
+    (member values @reader_children :initializer "")
+    (member points float :count 3 :initializer "" :s7-name "samples")
+    (member enabled bool :initializer "true")
+    (member maybe @fixture_optional_int :initializer "7")
+    (member scale float :initializer "1.f" :positive true :finite true :minimum 0.5 :maximum 5)
+    (member offset int :initializer "1" :nonzero true)
+    (member title @reader_string :initializer "\"untitled\"" :nonempty true)
+    (member mode codegen_compile_fixture::EPlainFixture :initializer "codegen_compile_fixture::EPlainFixture::First")))
+
+(module reader_dependency_fixture
+  :header "ReaderDependency.h"
+  :namespace codegen_compile_fixture
+  (record ReaderDependency :generate-s7-reader true :s7-tag "dependent"
+    (member child codegen_compile_fixture::ReadableChild :required true)))
+
+(module unsupported_reader_fixture
+  :header "UnsupportedReader.h"
+  :namespace codegen_compile_fixture
+  (record UnsupportedReader :generate-s7-reader true :s7-tag "unsupported"
+    (member target @target :initializer "")))
+
 (module records_fixture
   :header "Records.h"
   :namespace codegen_compile_fixture

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <codegen/schema/indices.h>
+#include <codegen/schema/s7_field_options.h>
 #include <lispb/indices.h>
 
 #include <cstdint>
@@ -17,6 +18,7 @@ struct RecordMemberSchemas {
 
     std::vector<std::uint8_t> settings_exclude;
     std::vector<std::optional<StringId>> settings_name;
+    std::vector<S7FieldOptions> s7;
     std::vector<StringId> name;
     std::vector<TypeRefId> type;
     std::vector<std::optional<std::uint64_t>> count;

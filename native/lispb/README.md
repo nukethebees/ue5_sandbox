@@ -67,3 +67,5 @@ pipeline and the sibling DSL documents for their language-specific contracts.
 
 Ordinary records can also supply settings field metadata and optional C++ patches. See
 [Record settings](docs/record-settings.md) for section bindings, exclusions and patch semantics.
+
+Records can also opt into [typed S7 readers](docs/s7-readers.md) for AST deserialization.

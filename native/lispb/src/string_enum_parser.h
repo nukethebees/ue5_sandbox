@@ -20,5 +20,6 @@ auto lower_string_enum_parser(CppIR& ir,
                               std::string_view function_name,
                               std::string_view enum_type,
                               std::string_view parameter_name,
-                              std::span<StringEnumEntry const> entries) -> NodeId;
+                              std::span<StringEnumEntry const> entries,
+                              bool is_static = false) -> NodeId;
 }

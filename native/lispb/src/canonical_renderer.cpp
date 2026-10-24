@@ -407,6 +407,12 @@ auto CanonicalRenderer::build_record(codegen::DeclarationHandle const schema) ->
     result.flag("comparison-noexcept", records.comparison_noexcept[index]);
     result.flag("generate-settings", records.generate_settings[index]);
     result.flag("generate-overrides", records.generate_overrides[index]);
+    result.flag("generate-s7-reader", records.s7_tag[index].has_value());
+    result.optional_field(
+        "s7-tag", records.s7_tag[index], [this](auto value) { return ir_.string(value); });
+    result.list_field("s7-reader-includes",
+                      items(records.s7_reader_includes[index]),
+                      [this](auto value) { return ir_.string(value); });
     for (auto const member : items(records.members[index])) {
         result.add(build_aggregate_child(store_.record_members, "member", member));
     }

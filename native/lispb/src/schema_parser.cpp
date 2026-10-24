@@ -46,8 +46,10 @@
 
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
+#include <format>
 #include <limits>
 #include <optional>
 #include <span>
@@ -1137,7 +1139,20 @@ auto SchemaParser::parse_setting(Declarations& declarations, sexpr::FormId const
 auto SchemaParser::parse_record_member(Declarations& declarations, sexpr::FormId const form)
     -> RecordMemberId {
     Fields const fields{parser_, form, "member", 2};
-    fields.validate({"count", "initializer", "settings-exclude", "settings-name"}, {"relation"});
+    fields.validate({"count",
+                     "initializer",
+                     "settings-exclude",
+                     "settings-name",
+                     "s7-name",
+                     "required",
+                     "nonzero",
+                     "positive",
+                     "nonnegative",
+                     "finite",
+                     "nonempty",
+                     "minimum",
+                     "maximum"},
+                    {"relation"});
     auto const count{fields.optional("count")};
     std::optional<SemanticRelationId> relationship;
     for (auto const declaration_id : fields.declarations()) {
@@ -1173,6 +1188,43 @@ auto SchemaParser::parse_record_member(Declarations& declarations, sexpr::FormId
     records.initializer[record_index] = optional_text_id(fields, "initializer");
     records.settings_exclude[record_index] = boolean_or(fields, "settings-exclude");
     records.settings_name[record_index] = optional_text_id(fields, "settings-name");
+    auto& s7{records.s7[record_index]};
+    s7.name = optional_text_id(fields, "s7-name");
+    s7.required = boolean_or(fields, "required");
+    s7.nonzero = boolean_or(fields, "nonzero");
+    s7.positive = boolean_or(fields, "positive");
+    s7.nonnegative = boolean_or(fields, "nonnegative");
+    s7.finite = boolean_or(fields, "finite");
+    s7.nonempty = boolean_or(fields, "nonempty");
+    auto const bound = [&](std::string_view name) -> std::optional<StringId> {
+        auto const value{fields.optional(name)};
+        if (!value) {
+            return {};
+        }
+        auto const number{parser_.number(*value, name)};
+        if (!std::isfinite(number)) {
+            parser_.fail(*value, "S7 field bounds must be finite");
+        }
+        auto const text{parser_.text(*value, name)};
+        std::string spelling;
+        if (text.find_first_of(".eE") == std::string_view::npos) {
+            auto const integer{packed_integer(*value, name)};
+            if (integer.negative && !packed_integer_as_signed(integer)) {
+                parser_.fail(*value, "S7 integer bound is below the signed 64-bit range");
+            }
+            spelling = format_packed_integer(integer);
+        } else {
+            spelling = std::format("{:.17e}", number);
+        }
+        return declarations.strings().intern(spelling);
+    };
+    s7.minimum = bound("minimum");
+    s7.maximum = bound("maximum");
+    if (s7.minimum && s7.maximum &&
+        parser_.number(fields.required("minimum"), "minimum") >
+            parser_.number(fields.required("maximum"), "maximum")) {
+        parser_.fail(form, "S7 field minimum exceeds maximum");
+    }
     return record_id;
 }
 
@@ -1183,7 +1235,10 @@ auto SchemaParser::parse_record(Declarations& declarations, sexpr::FormId const 
                      "comparison",
                      "comparison-noexcept",
                      "generate-settings",
-                     "generate-overrides"},
+                     "generate-overrides",
+                     "generate-s7-reader",
+                     "s7-tag",
+                     "s7-reader-includes"},
                     {"member", "function"});
     auto comparison{RecordComparison::none};
     if (auto const value{optional_text(fields, "comparison")}) {
@@ -1216,6 +1271,13 @@ auto SchemaParser::parse_record(Declarations& declarations, sexpr::FormId const 
     records.comparison_noexcept[record_index] = boolean_or(fields, "comparison-noexcept");
     records.generate_settings[record_index] = boolean_or(fields, "generate-settings");
     records.generate_overrides[record_index] = boolean_or(fields, "generate-overrides");
+    if (boolean_or(fields, "generate-s7-reader")) {
+        records.s7_tag[record_index] = parser_.text_id(fields.required("s7-tag"), "S7 record tag");
+        records.s7_reader_includes[record_index] =
+            declarations.range(text_id_list_or(fields, "s7-reader-includes"));
+    } else if (fields.optional("s7-tag") || fields.optional("s7-reader-includes")) {
+        parser_.fail(form, "S7 reader options require generate-s7-reader true");
+    }
     records.functions[record_index] = declarations.range(functions);
     return record_id;
 }

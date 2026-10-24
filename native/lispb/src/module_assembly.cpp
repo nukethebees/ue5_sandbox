@@ -2,6 +2,7 @@
 #include "lowering.h"
 #include "lowering_context.h"
 #include "lowering_utils.h"
+#include "record_reader_lowering.h"
 
 #include <codegen/ast/cpp_files.h>
 #include <codegen/ast/cpp_ir.h>
@@ -62,6 +63,9 @@ auto assemble_module(LoweringContext& context,
     NodeListBuilder header_tail{ir};
     NodeListBuilder source_global{ir};
     NodeListBuilder source_tail{ir};
+    NodeListBuilder reader_declarations{ir};
+    NodeListBuilder reader_definitions{ir};
+    std::vector<StringId> reader_includes;
     bool has_header{};
     bool has_source{};
     bool has_header_global{};
@@ -71,6 +75,15 @@ auto assemble_module(LoweringContext& context,
     bool has_source_tail{};
     std::optional<std::string> tail_namespace;
     for (auto& emission : emissions) {
+        if (!emission.reader_declarations.empty()) {
+            reader_declarations.append(std::move(emission.reader_declarations)).new_lines(2);
+            reader_definitions.append(std::move(emission.reader_definitions)).new_lines(2);
+            for (auto const include : emission.reader_includes) {
+                if (std::ranges::find(reader_includes, include) == reader_includes.end()) {
+                    reader_includes.push_back(include);
+                }
+            }
+        }
         header.append(std::move(emission.header_prefix));
         header_generated_include.append(std::move(emission.header_generated_include));
         if (!emission.header.empty()) {
@@ -204,6 +217,31 @@ auto assemble_module(LoweringContext& context,
     }
     auto const result{
         ir.modules.append(settings_store.name[settings_row], header_file, source_file)};
+
+    auto reader_nodes{reader_declarations.build()};
+    if (!reader_nodes.empty()) {
+        NodeListBuilder reader{ir};
+        reader.add(
+            ir.include(ir.strings.intern(source_include(context, settings)), IncludeStyle::quoted));
+        reader.add(ir.include(ir.strings.intern("ioj/s7/reader.h"), IncludeStyle::system));
+        reader.add(
+            ir.include(ir.strings.intern("ioj/s7/field_constraints.h"), IncludeStyle::system));
+        for (auto const include : reader_includes) {
+            reader.add(ir.include(include, IncludeStyle::quoted));
+        }
+        reader.new_lines(2);
+        auto definitions{reader_definitions.build()};
+        reader_nodes.insert(reader_nodes.end(), definitions.begin(), definitions.end());
+        reader.add(ir.namespace_node(ir.strings.intern("ioj::s7"), reader_nodes));
+        auto const reader_path{
+            reader_header_path(context.text(settings_store.header[settings_row]))};
+        auto const file{ir.files.append(ir.strings.intern(reader_path), reader.build())};
+        ir.files.flags[ir.files.index(file)].set_format_generated(true);
+        additional.push_back(ir.modules.append(
+            ir.strings.intern(context.text(settings_store.name[settings_row]) + "Reader"),
+            file,
+            {}));
+    }
 
     std::vector<ModuleId> modules;
     modules.reserve(additional.size() + 1);

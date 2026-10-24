@@ -3,6 +3,7 @@ add_library(native-s7-data STATIC)
 target_sources(native-s7-data
   PRIVATE
     src/ast.cpp
+    src/reader.cpp
 )
 target_include_directories(native-s7-data
   PUBLIC
