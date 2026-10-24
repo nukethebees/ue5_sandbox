@@ -154,7 +154,10 @@ struct TypeReader<T> {
             return std::unexpected{name.error()};
         }
         for (auto const value : EnumTraits<T>::values) {
-            if (to_serialized_string(value) == *name) {
+            if (std::ranges::equal(std::string_view{to_serialized_string(value)},
+                                   *name,
+                                   std::ranges::equal_to{},
+                                   ioj::tolower)) {
                 return value;
             }
         }

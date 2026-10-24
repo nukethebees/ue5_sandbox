@@ -4,15 +4,36 @@
 #pragma once
 
 #include "ioj/constrained_strings.h"
+#include "ioj/enum_traits.h"
 #include "PlainEnums.h"
 
 #include <array>
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace codegen_compile_fixture {
+using ReaderEnumUnderlying = std::uint8_t;
+
+// Logical bit width: 1.
+enum class ReaderEnum : ReaderEnumUnderlying {
+    Mixed,
+};
+
+[[nodiscard]] constexpr auto to_serialized_string(ReaderEnum const value) noexcept
+    -> std::string_view {
+    switch (value) {
+        case ReaderEnum::Mixed: {
+            return "MixedCase";
+        }
+        default: {
+            return "<invalid ReaderEnum>";
+        }
+    }
+}
+
 struct EmptyReadable {};
 
 struct RecursiveReadable {
@@ -40,3 +61,10 @@ struct ReadableRecord {
     EPlainFixture mode{codegen_compile_fixture::EPlainFixture::First};
 };
 } // namespace codegen_compile_fixture
+namespace ioj {
+template <>
+struct EnumTraits<::codegen_compile_fixture::ReaderEnum> {
+    inline static constexpr std::array values{::codegen_compile_fixture::ReaderEnum::Mixed};
+};
+
+} // namespace ioj

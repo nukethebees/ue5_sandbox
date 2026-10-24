@@ -1,6 +1,8 @@
 (module readers_fixture
   :header "ReadableRecords.h"
   :namespace codegen_compile_fixture
+  (enum ReaderEnum std::uint8_t :native-api true :helpers (traits to-serialized-string)
+    (value Mixed :serialized-name "MixedCase"))
   (record EmptyReadable :generate-s7-reader true :s7-tag "empty")
   (record RecursiveReadable :generate-s7-reader true :s7-tag "recursive"
     (member children @reader_recursive :initializer ""))

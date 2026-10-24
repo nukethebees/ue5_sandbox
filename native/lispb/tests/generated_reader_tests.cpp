@@ -22,6 +22,8 @@ auto read_record_source(std::string_view const source) -> ReadResult<ReadableRec
 }
 
 TEST(GeneratedS7Reader, ReadsEmptyRecursiveAndCrossModuleRecords) {
+    EXPECT_EQ(*read_source<ReaderEnum>("'MixedCase"), ReaderEnum::Mixed);
+    EXPECT_EQ(*read_source<ReaderEnum>("'mixedcase"), ReaderEnum::Mixed);
     EXPECT_TRUE(read_source<EmptyReadable>("'(:empty)"));
     EXPECT_FALSE(read_source<EmptyReadable>("'(:empty :extra 1)"));
     auto const recursive{read_source<RecursiveReadable>(
