@@ -3,6 +3,8 @@
 #include "ast_parser.h"
 #include "mission_parser.h"
 #include <ioj/levels/authoring/settings_parser.h>
+#include <ioj/levels/level_camera_definition_reader.h>
+#include <ioj/levels/level_collision_grid_definition_reader.h>
 
 #include <array>
 #include <format>
@@ -12,61 +14,10 @@ namespace ioj::levels::authoring {
 namespace {
 using detail::AstParser;
 
-auto vector(AstParser& parser, s7::NodeIndex const node, std::string const& node_path) -> Vector3d {
-    auto const values{parser.list(node, node_path)};
-    if (values.size() != 3) {
-        parser.error(DiagnosticCode::InvalidType, node_path, "Expected three numeric components");
-        return {};
-    }
-    return {parser.number(values[0], node_path + "[0]"),
-            parser.number(values[1], node_path + "[1]"),
-            parser.number(values[2], node_path + "[2]")};
-}
-
-auto camera(AstParser& parser, s7::NodeIndex const node, std::string const& node_path)
-    -> LevelCameraDefinition {
-    LevelCameraDefinition result;
-    auto const fields{parser.record(node, RecordKind::Camera, node_path)};
-    for (auto const& field : fields) {
-        switch (field.property) {
-            case Property::LookAt:
-                result.target_entity_ids = parser.ids<EntityId>(field.value, field.node_path);
-                break;
-            case Property::Distance:
-                result.distance = parser.number(field.value, field.node_path);
-                break;
-            case Property::OffsetDirection:
-                result.offset_direction = vector(parser, field.value, field.node_path);
-                break;
-            default:
-                parser.unknown(field);
-                break;
-        }
-    }
-    for (auto const property : {Property::LookAt, Property::Distance, Property::OffsetDirection}) {
-        parser.require(fields, property, node_path);
-    }
-    return result;
-}
-
 auto grid(AstParser& parser, s7::NodeIndex const node, std::string const& node_path)
     -> LevelCollisionGridDefinition {
-    LevelCollisionGridDefinition result;
-    auto const fields{parser.record(node, RecordKind::CollisionGrid, node_path)};
-    for (auto const& field : fields) {
-        switch (field.property) {
-            case Property::LevelSize:
-                result.level_size = vector(parser, field.value, field.node_path);
-                break;
-            case Property::CellSize:
-                result.cell_size = vector(parser, field.value, field.node_path);
-                break;
-            default:
-                parser.unknown(field);
-                break;
-        }
-    }
-    if (fields.empty()) {
+    auto result{parser.read<LevelCollisionGridDefinition>(node, node_path)};
+    if (!result.level_size && !result.cell_size) {
         parser.error(DiagnosticCode::MissingProperty,
                      node_path,
                      "Collision grid requires a level-size or cell-size");
@@ -90,10 +41,10 @@ auto entity(AstParser& parser, s7::NodeIndex const node, std::string const& node
                 result.team = parser.team(field.value, field.node_path);
                 break;
             case Property::Position:
-                result.position = vector(parser, field.value, field.node_path);
+                result.position = parser.read<Vector3d>(field.value, field.node_path);
                 break;
             case Property::Rotation: {
-                auto const components{vector(parser, field.value, field.node_path)};
+                auto const components{parser.read<Vector3d>(field.value, field.node_path)};
                 result.rotation = {components.x(), components.y(), components.z()};
                 break;
             }
@@ -210,7 +161,7 @@ auto parse_level(s7::Ast const& ast, s7::NodeIndex const root) -> LevelDefinitio
                 result.player_entity_id = EntityId{parser.symbol(field.value, field.node_path)};
                 break;
             case Property::Camera:
-                result.camera = camera(parser, field.value, field.node_path);
+                result.camera = parser.read<LevelCameraDefinition>(field.value, field.node_path);
                 break;
             case Property::CollisionGrid:
                 result.collision_grid = grid(parser, field.value, field.node_path);

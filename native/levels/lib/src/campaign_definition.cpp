@@ -1,6 +1,5 @@
-#include <ioj/levels/campaign_definition.h>
-
 #include <ioj/ascii.h>
+#include <ioj/levels/campaign_validation.h>
 
 #include <format>
 #include <unordered_set>

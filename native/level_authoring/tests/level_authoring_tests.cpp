@@ -131,6 +131,37 @@ TEST(NativeLevelAuthoringReader, IntegerFieldsRequireExactInt32Values) {
     }
 }
 
+TEST(NativeLevelAuthoringReader, GeneratedRecordsCoexistWithMissionsAndSparseSettings) {
+    auto const level{DefinitionReader{}.read_level_source(R"(
+      (let ((distance (* 2 500)))
+        (level :id 'generated-records :title "Generated records"
+          :camera (camera :look-at '(capital) :distance distance :offset-direction '(-1 0 1))
+          :collision-grid (collision-grid :cell-size '(5000 5000 5000))
+          :entities (list (entity :id 'capital :archetype 'capital-ship :team 'blue :position '(0 0 0)))
+          :settings (settings-layers
+            (settings :fighters (fighters :speed 9000))
+            (settings :fighters (fighters :speed 2000)))
+          :mission (mission :objectives (list
+            (objective :id 'wait :team 'blue :pass (time-elapsed 1)))))))")};
+    ASSERT_TRUE(level) << format_diagnostics(level.error());
+    ASSERT_TRUE(level->camera());
+    EXPECT_EQ(level->camera()->target_entity_ids, (std::vector{EntityId{"capital"}}));
+    EXPECT_EQ(level->camera()->distance, 1000);
+    ASSERT_TRUE(level->collision_grid());
+    EXPECT_FALSE(level->collision_grid()->level_size);
+    ASSERT_TRUE(level->collision_grid()->cell_size);
+    EXPECT_EQ(level->collision_grid()->cell_size->x(), 5000);
+    ASSERT_TRUE(level->mission());
+    ASSERT_EQ(level->mission()->objectives.size(), 1u);
+    EXPECT_EQ(level->mission()->objectives.front().id, ObjectiveName{"wait"});
+    auto const& settings{level->settings()};
+    ASSERT_EQ(settings.size(), 2u);
+    EXPECT_EQ(settings[0].path, "fighters.speed");
+    EXPECT_EQ(settings[1].path, "fighters.speed");
+    EXPECT_EQ(std::get<std::int64_t>(settings[0].value), 9000);
+    EXPECT_EQ(std::get<std::int64_t>(settings[1].value), 2000);
+}
+
 TEST(NativeLevelAuthoringReader, FloatFieldsRejectNonfiniteAndUnrepresentableValues) {
     for (auto const value : {"0.5", "1e100", "+inf.0", "+nan.0"}) {
         SCOPED_TRACE(value);

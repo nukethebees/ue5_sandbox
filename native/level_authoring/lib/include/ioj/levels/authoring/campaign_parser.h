@@ -1,5 +1,6 @@
 #pragma once
 #include <ioj/levels/campaign_definition.h>
+#include <ioj/levels/diagnostics.h>
 #include <ioj/s7/ast.h>
 
 namespace ioj::levels::authoring {

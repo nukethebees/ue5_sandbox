@@ -27,17 +27,6 @@ auto dependency(AstParser& parser,
     }
     return {parser.identifier<ObjectiveName>(values[1], path), outcome(parser, values[2], path)};
 }
-auto position(AstParser& parser, s7::NodeIndex const node, std::string const& path) -> Vector3d {
-    auto const values{parser.list(node, path)};
-    if (values.size() != 3) {
-        parser.error(DiagnosticCode::InvalidType, path, "Expected three position coordinates");
-        return {};
-    }
-    return {parser.number(values[0], path),
-            parser.number(values[1], path),
-            parser.number(values[2], path)};
-}
-
 struct NamedExpressionDefinition {
     ExprIndex expression;
     s7::NodeIndex value;
@@ -149,7 +138,7 @@ class ExpressionReader {
             case ExprType::EntityReachedPosition:
                 if (arity(3)) {
                     auto const target{
-                        FiniteVector<double, 3>::try_make(position(parser_, values[2], path))};
+                        FiniteVector<double, 3>::try_make(parser_.read<Vector3d>(values[2], path))};
                     auto const radius{
                         NonNegativeFinite<double>::try_make(parser_.number(values[3], path))};
                     if (!target || !radius) {

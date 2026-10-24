@@ -1,3 +1,34 @@
+(module native_level_camera
+  :header "native/levels/lib/include/ioj/levels/level_camera_definition.h"
+  :header-include "ioj/levels/level_camera_definition.h"
+  :namespace ioj::levels
+  :prelude ("#include <vector>")
+  (record LevelCameraDefinition :generate-s7-reader true :s7-tag "camera"
+    :s7-reader-includes ("ioj/levels/authoring/identifier_reader.h")
+    (member target_entity_ids @native_entity_ids :initializer "" :required true :s7-name "look-at")
+    (member offset_direction @native_vector3d :initializer "" :required true)
+    (member distance double :initializer "" :required true)))
+
+(module native_level_collision_grid
+  :header "native/levels/lib/include/ioj/levels/level_collision_grid_definition.h"
+  :header-include "ioj/levels/level_collision_grid_definition.h"
+  :namespace ioj::levels
+  :prelude ("#include <optional>")
+  (record LevelCollisionGridDefinition :generate-s7-reader true :s7-tag "collision-grid"
+    (member level_size @native_optional_vector3d :initializer "")
+    (member cell_size @native_optional_vector3d :initializer "")))
+
+(module native_campaign
+  :header "native/levels/lib/include/ioj/levels/campaign_definition.h"
+  :header-include "ioj/levels/campaign_definition.h"
+  :namespace ioj::levels
+  :prelude ("#include <vector>")
+  (record CampaignDefinition :generate-s7-reader true :s7-tag "campaign"
+    :s7-reader-includes ("ioj/levels/authoring/identifier_reader.h")
+    (member id @native_campaign_id :initializer "" :required true)
+    (member title @native_string :initializer "" :required true)
+    (member level_ids @native_level_ids :initializer "" :required true :s7-name "levels")))
+
 (module native_team
   :header "native/levels/lib/include/ioj/levels/team.h"
   :header-include "ioj/levels/team.h"

@@ -1,11 +1,11 @@
 #pragma once
-#include <ioj/ascii.h>
+#include "reader_diagnostics.h"
 #include <ioj/constrained_strings.h>
 #include <ioj/levels/authoring/grammar.h>
+#include <ioj/levels/authoring/identifier_reader.h>
 #include <ioj/levels/diagnostics.h>
 #include <ioj/levels/entity_archetype.h>
 #include <ioj/levels/team.h>
-#include <ioj/s7/ast.h>
 
 #include <algorithm>
 #include <format>
@@ -22,6 +22,11 @@ class AstParser {
   public:
     explicit AstParser(s7::Ast const& ast)
         : ast_{ast} {}
+
+    template <typename T>
+    [[nodiscard]] auto read(s7::NodeIndex node, std::string_view path) -> T {
+        return take(s7::read<T>(s7::Reader{ast_}, node, path));
+    }
     [[nodiscard]] auto record(s7::NodeIndex node, RecordKind kind, std::string_view const node_path)
         -> std::vector<Field>;
     [[nodiscard]] auto list(s7::NodeIndex node, std::string_view const node_path)
@@ -53,17 +58,22 @@ class AstParser {
     template <typename Id>
     [[nodiscard]] auto ids(s7::NodeIndex const node, std::string_view const node_path)
         -> std::vector<Id> {
-        std::vector<Id> result;
-        auto const values{list(node, node_path)};
-        auto const count{values.size()};
-        result.reserve(count);
-        for (std::size_t index{}; index < count; ++index) {
-            result.push_back(
-                identifier<Id>(values[index], std::format("{}[{}]", node_path, index)));
-        }
-        return result;
+        return read<std::vector<Id>>(node, node_path);
     }
   private:
+    template <typename T>
+    auto take(s7::ReadResult<T> result) -> T {
+        if (result) {
+            return std::move(*result);
+        }
+        for (auto& diagnostic : result.error()) {
+            error(diagnostic_code(diagnostic.code),
+                  diagnostic.node_path,
+                  std::move(diagnostic.message));
+        }
+        return {};
+    }
+
     s7::Ast const& ast_;
     Diagnostics errors_{};
 };
