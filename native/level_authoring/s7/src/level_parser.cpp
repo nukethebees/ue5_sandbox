@@ -81,12 +81,7 @@ auto entity(AstParser& parser, s7::NodeIndex const node, std::string const& node
     for (auto const& field : fields) {
         switch (field.property) {
             case Property::Id:
-                result.id = EntityId{parser.symbol(field.value, field.node_path)};
-                if (result.id.empty()) {
-                    parser.error(DiagnosticCode::InvalidSymbol,
-                                 field.node_path,
-                                 "Entity id must not be empty");
-                }
+                result.id = parser.identifier<EntityId>(field.value, field.node_path);
                 break;
             case Property::Archetype:
                 result.archetype = parser.archetype(field.value, field.node_path);
@@ -120,12 +115,7 @@ auto entity(AstParser& parser, s7::NodeIndex const node, std::string const& node
                 break;
             case Property::Target:
                 result.overrides.target_entity_id =
-                    EntityId{parser.symbol(field.value, field.node_path)};
-                if (result.overrides.target_entity_id.empty()) {
-                    parser.error(DiagnosticCode::InvalidSymbol,
-                                 field.node_path,
-                                 "Target entity id must not be empty");
-                }
+                    parser.identifier<EntityId>(field.value, field.node_path);
                 break;
             default:
                 parser.unknown(field);

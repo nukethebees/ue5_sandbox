@@ -1,5 +1,6 @@
 #pragma once
 #include <ioj/ascii.h>
+#include <ioj/constrained_strings.h>
 #include <ioj/levels/authoring/grammar.h>
 #include <ioj/levels/diagnostics.h>
 #include <ioj/levels/entity_archetype.h>
@@ -26,6 +27,8 @@ class AstParser {
     [[nodiscard]] auto list(s7::NodeIndex node, std::string_view const node_path)
         -> std::span<s7::NodeIndex const>;
     [[nodiscard]] auto symbol(s7::NodeIndex node, std::string_view const node_path) -> std::string;
+    [[nodiscard]] auto nonempty_symbol(s7::NodeIndex node, std::string_view node_path)
+        -> std::optional<NonEmptyString>;
     [[nodiscard]] auto string(s7::NodeIndex node, std::string_view const node_path) -> std::string;
     [[nodiscard]] auto number(s7::NodeIndex node, std::string_view const node_path) -> double;
     [[nodiscard]] auto integer(s7::NodeIndex node, std::string_view const node_path)
@@ -41,6 +44,13 @@ class AstParser {
     [[nodiscard]] auto take_errors() -> Diagnostics { return std::move(errors_); }
 
     template <typename Id>
+    [[nodiscard]] auto identifier(s7::NodeIndex const node, std::string_view const node_path)
+        -> Id {
+        auto const value{nonempty_symbol(node, node_path)};
+        return value ? Id{value->get()} : Id{};
+    }
+
+    template <typename Id>
     [[nodiscard]] auto ids(s7::NodeIndex const node, std::string_view const node_path)
         -> std::vector<Id> {
         std::vector<Id> result;
@@ -48,7 +58,8 @@ class AstParser {
         auto const count{values.size()};
         result.reserve(count);
         for (std::size_t index{}; index < count; ++index) {
-            result.emplace_back(symbol(values[index], std::format("{}[{}]", node_path, index)));
+            result.push_back(
+                identifier<Id>(values[index], std::format("{}[{}]", node_path, index)));
         }
         return result;
     }

@@ -70,6 +70,15 @@ auto AstParser::symbol(s7::NodeIndex const node, std::string_view const node_pat
     std::ranges::transform(result, result.begin(), ioj::tolower);
     return result;
 }
+auto AstParser::nonempty_symbol(s7::NodeIndex const node, std::string_view const node_path)
+    -> std::optional<NonEmptyString> {
+    auto value{NonEmptyString::try_make(symbol(node, node_path))};
+    if (!value && ast_.node(node).kind == s7::NodeKind::Symbol) {
+        error(DiagnosticCode::InvalidSymbol, node_path, "Symbol must not be empty");
+    }
+    return value;
+}
+
 auto AstParser::team(s7::NodeIndex const node, std::string_view const node_path) -> Team {
     auto const text{symbol(node, node_path)};
     auto const value{try_parse_serialized_team(text)};

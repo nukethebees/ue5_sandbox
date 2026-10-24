@@ -25,7 +25,7 @@ auto dependency(AstParser& parser,
             DiagnosticCode::ExpectedRecord, path, "Expected (objective-resolved 'id 'outcome)");
         return {};
     }
-    return {ObjectiveName{parser.symbol(values[1], path)}, outcome(parser, values[2], path)};
+    return {parser.identifier<ObjectiveName>(values[1], path), outcome(parser, values[2], path)};
 }
 auto position(AstParser& parser, s7::NodeIndex const node, std::string const& path) -> Vector3d {
     auto const values{parser.list(node, path)};
@@ -61,12 +61,14 @@ class ExpressionReader {
                     DiagnosticCode::ExpectedRecord, path, "Expected (expr 'name expression)");
                 continue;
             }
-            auto const name{parser_.symbol(values[1], path)};
+            auto const name{parser_.nonempty_symbol(values[1], path)};
+            if (!name) {
+                continue;
+            }
             auto const index{static_cast<ExpressionIndex>(objective_.expressions.size())};
-            if (name.empty() || !names_.emplace(name, index).second) {
-                parser_.error(DiagnosticCode::DuplicateProperty,
-                              path,
-                              "Expression names must be nonempty and unique");
+            if (!names_.emplace(name->get_ref(), index).second) {
+                parser_.error(
+                    DiagnosticCode::DuplicateProperty, path, "Expression names must be unique");
                 continue;
             }
             objective_.expressions.emplace_back();
@@ -96,7 +98,11 @@ class ExpressionReader {
                 parser_.error(DiagnosticCode::InvalidType, path, "expr-ref requires one name");
                 return absent_expression;
             }
-            auto const found{names_.find(parser_.symbol(values[1], path))};
+            auto const reference{parser_.nonempty_symbol(values[1], path)};
+            if (!reference) {
+                return absent_expression;
+            }
+            auto const found{names_.find(reference->get_ref())};
             if (found == names_.end()) {
                 parser_.error(
                     DiagnosticCode::UnknownSymbol, path, "Unknown objective-local expression");
@@ -137,7 +143,7 @@ class ExpressionReader {
             case ExpressionType::EntityDestroyed:
                 if (arity(1)) {
                     expression.payload =
-                        EntityDestroyedExpression{EntityId{parser_.symbol(values[1], path)}};
+                        EntityDestroyedExpression{parser_.identifier<EntityId>(values[1], path)};
                 }
                 break;
             case ExpressionType::EntityReachedPosition:
@@ -152,7 +158,7 @@ class ExpressionReader {
                                       "Position must be finite and radius finite and nonnegative");
                     } else {
                         expression.payload = EntityReachedPositionExpression{
-                            EntityId{parser_.symbol(values[1], path)}, *target, *radius};
+                            parser_.identifier<EntityId>(values[1], path), *target, *radius};
                     }
                 }
                 break;
@@ -215,7 +221,7 @@ auto objective(AstParser& parser,
     for (auto const& field : fields) {
         switch (field.property) {
             case Property::Id:
-                result.id = ObjectiveName{parser.symbol(field.value, field.node_path)};
+                result.id = parser.identifier<ObjectiveName>(field.value, field.node_path);
                 break;
             case Property::Title:
                 result.title = parser.string(field.value, field.node_path);

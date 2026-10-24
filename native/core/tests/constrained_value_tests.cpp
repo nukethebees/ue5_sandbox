@@ -1,4 +1,5 @@
 #include <ioj/constrained_numbers.h>
+#include <ioj/constrained_strings.h>
 #include <ioj/constrained_vectors.h>
 
 #include <gtest/gtest.h>
@@ -10,6 +11,19 @@ static_assert(sizeof(FiniteVector<double, 3>) == sizeof(Vector3d));
 static_assert(FiniteVector<double, 3>{Vector3d{1, 2, 3}}.get() == Vector3d{1, 2, 3});
 static_assert(NonNegativeFinite<double>{0}.get() == 0);
 static_assert(!std::default_initializable<Positive<int>>);
+static_assert(!std::default_initializable<NonEmptyString>);
+static_assert(!noexcept(std::declval<NonEmptyString const&>().get()));
+
+TEST(ConstrainedValue, OwnsNonEmptyStringsAndSupportsIndependentCopies) {
+    EXPECT_FALSE(NonEmptyString::try_make(""));
+    std::string source(100, 'x');
+    auto const value{NonEmptyString::make(source)};
+    source.clear();
+    auto copy{value.get()};
+    copy.clear();
+    EXPECT_EQ(value.get_ref(), std::string(100, 'x'));
+    EXPECT_EQ(std::format("{}", value), value.get_ref());
+}
 
 TEST(ConstrainedValue, VectorGetReturnsAnIndependentValue) {
     auto const constrained{FiniteVector<double, 3>::make({1, 2, 3})};

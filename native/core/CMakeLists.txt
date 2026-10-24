@@ -30,6 +30,7 @@ target_sources(native-core
     include/ioj/constrained_numbers.h
     include/ioj/constrained_value.h
     include/ioj/constrained_vectors.h
+    include/ioj/constrained_strings.h
     include/ioj/enum_traits.h
     include/ioj/field_mask.h
     include/ioj/packed_value.h
