@@ -17,7 +17,9 @@ auto settings_record(schema::TypeGraph const& graph,
     auto const declaration{graph.source_declaration(type)};
     if (occurrences.names_semantic_type[row] && !occurrences.cv_qualified[row] &&
         occurrences.physical_form[row] == PhysicalTypeForm::value && declaration.value != 0 &&
-        declaration.kind() == DeclarationKind::record) {
+        declaration.kind() == DeclarationKind::record &&
+        !graph.declarations()
+             .records.constraint_policy[graph.declarations().records.index(declaration)]) {
         return type;
     }
     return std::nullopt;

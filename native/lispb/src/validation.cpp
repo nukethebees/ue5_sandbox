@@ -1802,6 +1802,14 @@ class Validator {
         auto const row{declarations_.records.index(record)};
         auto const& records{declarations_.records};
         auto const& members{declarations_.record_members};
+        if (records.constraint_policy[row]) {
+            require_qualified_identifier(*records.constraint_policy[row],
+                                         "Record constraint policy");
+            if (records.generate_overrides[row]) {
+                throw std::invalid_argument{"Constrained records are replaced as complete values; "
+                                            "generate overrides on their containing record"};
+            }
+        }
         if (records.generate_overrides[row] && !records.generate_settings[row]) {
             throw std::invalid_argument{"Record overrides require :generate-settings true"};
         }

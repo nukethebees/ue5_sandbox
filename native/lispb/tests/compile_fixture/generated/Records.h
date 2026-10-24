@@ -3,9 +3,42 @@
 
 #pragma once
 
+#include "ioj/constrained_value.h"
+
+#include <compile_fixture/range_policy.hpp>
+
 #include <optional>
 
 namespace codegen_compile_fixture {
+struct RangeValue {
+    bool operator==(RangeValue const&) const = default;
+
+    int minimum{0};
+    int maximum{10};
+};
+
+using Range = ioj::ConstrainedValue<RangeValue, codegen_compile_fixture::range_policy>;
+
+struct RangeSettings {
+    Range range{};
+    bool enabled{true};
+};
+
+struct RangeSettingsOverrides {
+    std::optional<Range> range{};
+
+    std::optional<bool> enabled{};
+};
+
+inline void apply_overrides(RangeSettings& target, RangeSettingsOverrides const& overrides) {
+    if (overrides.range) {
+        target.range = *overrides.range;
+    }
+    if (overrides.enabled) {
+        target.enabled = *overrides.enabled;
+    }
+}
+
 struct ApiPair {
     float x;
     float y;

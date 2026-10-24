@@ -283,7 +283,9 @@ void lower_record_reader(LoweringContext& context,
     auto const empty{fields.empty()};
     auto const type{context.semantic.find_declared(context.module, records.name[row]).value()};
     auto const name{"::" + context.text(context.semantic.cpp_spelling(type)) +
-                    (overrides ? "Overrides" : "")};
+                    (overrides                        ? "Overrides"
+                     : records.constraint_policy[row] ? "Value"
+                                                      : "")};
     auto const reader_name{"TypeReader<" + name + ">"};
     auto const& members{context.declarations.record_members};
     if (std::ranges::any_of(fields, [&](auto field) {

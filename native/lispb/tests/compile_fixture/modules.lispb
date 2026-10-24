@@ -44,6 +44,15 @@
 (module records_fixture
   :header "Records.h"
   :namespace codegen_compile_fixture
+  :prelude ("#include <compile_fixture/range_policy.hpp>")
+  (record Range :constraint-policy codegen_compile_fixture::range_policy
+    :comparison equality :generate-s7-reader true :s7-tag "range"
+    (member minimum int :initializer 0 :required true)
+    (member maximum int :initializer 10 :required true))
+  (record RangeSettings :generate-settings true :generate-overrides true
+    :generate-s7-reader true :s7-tag "ranges"
+    (member range Range :initializer "")
+    (member enabled bool :initializer true))
   (record ApiPair (member x float) (member y float))
   (record EmptySettings :generate-settings true :generate-overrides true)
   (record WeaponSettings :generate-settings true :generate-overrides true

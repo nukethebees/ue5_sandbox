@@ -1232,6 +1232,7 @@ auto SchemaParser::parse_record(Declarations& declarations, sexpr::FormId const 
     -> DeclarationHandle {
     Fields const fields{parser_, form, "record", 1};
     fields.validate({"export-specifier",
+                     "constraint-policy",
                      "comparison",
                      "comparison-noexcept",
                      "generate-settings",
@@ -1270,6 +1271,7 @@ auto SchemaParser::parse_record(Declarations& declarations, sexpr::FormId const 
     records.export_specifier[record_index] = parse_export_specifier(fields);
     records.comparison[record_index] = comparison;
     records.comparison_noexcept[record_index] = boolean_or(fields, "comparison-noexcept");
+    records.constraint_policy[record_index] = optional_identifier(fields, "constraint-policy");
     records.generate_settings[record_index] = boolean_or(fields, "generate-settings");
     records.generate_overrides[record_index] = boolean_or(fields, "generate-overrides");
     if (boolean_or(fields, "generate-s7-reader")) {

@@ -77,7 +77,11 @@ TEST(RecordLowering, RejectsInvalidSettingsBindingsAndOverrideDependencies) {
            (settings-schema Fields :target Config :target-header "Records.h"
              (section "config" "config" :record Config)))",
             R"((record Config :generate-settings true :generate-overrides true (member speed float))
-           (record ConfigOverrides))"}) {
+           (record ConfigOverrides))",
+            R"((record Config :constraint-policy example::policy)
+           (record ConfigValue))",
+            R"((record Config :constraint-policy example::policy
+                :generate-settings true :generate-overrides true))"}) {
         SCOPED_TRACE(declarations);
         CompilerTestContext context;
         auto manifest{parse_test_manifest(
@@ -107,6 +111,10 @@ TEST(RecordLowering, SettingsOptionsSurviveSourceRoundTrip) {
           (record Config :generate-settings true :generate-overrides true
             (member max_speed float :initializer "2.f" :settings-name "speed")
             (member asset float :settings-exclude true))
+          (record Range :constraint-policy example::policy
+            :generate-s7-reader true :s7-tag "range"
+            (member minimum int :initializer 0 :required true)
+            (member maximum int :initializer 1 :required true))
           (settings-schema Fields :target Root :target-header "Root.h"
             (section "config" "config" :record Config)
             (field "extra" "extra"))))")};

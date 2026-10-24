@@ -47,6 +47,8 @@ auto record_node(LoweringContext& context, DeclarationHandle record) -> NodeId {
     auto const& records{context.declarations.records};
     auto const& record_members{context.declarations.record_members};
     auto const row{records.index(record)};
+    auto const name{context.text(records.name[row]) +
+                    (records.constraint_policy[row] ? "Value" : "")};
     NodeListBuilder members{ir};
     if (records.comparison[row] != RecordComparison::none) {
         auto const three_way{records.comparison[row] == RecordComparison::three_way};
@@ -54,8 +56,7 @@ auto record_node(LoweringContext& context, DeclarationHandle record) -> NodeId {
             three_way ? "operator<=>" : "operator==",
             three_way ? ir.types.intern("auto", {ir.types.dependency("auto", "compare")})
                       : ir.types.intern("bool"))};
-        ir.set_function_parameters(comparison,
-                                   {ir.parameter(context.text(records.name[row]) + " const&", "")});
+        ir.set_function_parameters(comparison, {ir.parameter(name + " const&", "")});
         ir.set_function_receiver(comparison, FunctionReceiver::const_);
         if (records.comparison_noexcept[row]) {
             ir.set_function_noexcept(comparison);
@@ -79,7 +80,8 @@ auto record_node(LoweringContext& context, DeclarationHandle record) -> NodeId {
                                            : std::nullopt),
                     1);
     }
-    auto const created_record{ir.record(records.name[row], members.build(), RecordKind::struct_)};
+    auto const created_record{
+        ir.record(ir.strings.intern(name), members.build(), RecordKind::struct_)};
     ir.set_record_export_specifier(created_record, records.export_specifier[row]);
     return created_record;
 }
@@ -141,6 +143,15 @@ auto record_overrides(LoweringContext& context, DeclarationHandle const record)
 auto lower_record(LoweringContext& context, DeclarationHandle schema) -> DeclarationEmission {
     auto result{DeclarationEmission{.header = {record_node(context, schema)}}};
     auto const& records{context.declarations.records};
+    auto const row{records.index(schema)};
+    if (auto const policy{records.constraint_policy[row]}) {
+        auto const name{context.text(records.name[row])};
+        auto& ir{context.ir};
+        auto const constrained{ir.types.intern(
+            "ioj::ConstrainedValue<" + name + "Value, " + context.text(*policy) + ">",
+            {ir.types.dependency("ioj::ConstrainedValue", "ioj/constrained_value.h")})};
+        result.header.push_back(ir.using_declaration(records.name[row], constrained));
+    }
     if (records.generate_overrides[records.index(schema)]) {
         auto const overrides{record_overrides(context, schema)};
         result.header.insert(result.header.end(), overrides.begin(), overrides.end());

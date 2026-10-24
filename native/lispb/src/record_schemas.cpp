@@ -14,6 +14,7 @@ auto RecordSchemas::append() -> DeclarationHandle {
     auto const index{static_cast<std::uint32_t>(name.size())};
     assert(index < 0x00fffffe);
     name.push_back({});
+    constraint_policy.push_back({});
     generate_settings.push_back(false);
     generate_overrides.push_back(false);
     s7_tag.push_back({});
@@ -32,6 +33,7 @@ auto RecordSchemas::clone(DeclarationHandle id) -> DeclarationHandle {
     auto const result{append()};
     auto const destination{index(result)};
     name[destination] = name[source_index];
+    constraint_policy[destination] = constraint_policy[source_index];
     generate_settings[destination] = generate_settings[source_index];
     generate_overrides[destination] = generate_overrides[source_index];
     s7_tag[destination] = s7_tag[source_index];
@@ -46,6 +48,7 @@ auto RecordSchemas::clone(DeclarationHandle id) -> DeclarationHandle {
 }
 void RecordSchemas::clear() {
     name.clear();
+    constraint_policy.clear();
     generate_settings.clear();
     generate_overrides.clear();
     s7_tag.clear();

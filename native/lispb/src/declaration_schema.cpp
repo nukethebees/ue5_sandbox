@@ -482,6 +482,9 @@ auto generated_cpp_names(Declarations const& declarations, DeclarationHandle dec
         case DeclarationKind::enumeration:
             return {id, strings.intern(name + "Underlying")};
         case DeclarationKind::record:
+            if (declarations.records.constraint_policy[declarations.records.index(declaration)]) {
+                return {id, strings.intern(name + "Value")};
+            }
             if (declarations.records.generate_overrides[declarations.records.index(declaration)]) {
                 return {id, strings.intern(name + "Overrides")};
             }

@@ -19,6 +19,7 @@ struct RecordSchemas {
     [[nodiscard]] auto index(DeclarationHandle id) const -> std::uint32_t;
     void clear();
 
+    std::vector<std::optional<StringId>> constraint_policy;
     std::vector<std::uint8_t> generate_settings;
     std::vector<std::uint8_t> generate_overrides;
     std::vector<std::optional<StringId>> s7_tag;

@@ -405,6 +405,9 @@ auto CanonicalRenderer::build_record(codegen::DeclarationHandle const schema) ->
                                   : "three-way"));
     }
     result.flag("comparison-noexcept", records.comparison_noexcept[index]);
+    result.optional_field("constraint-policy",
+                          records.constraint_policy[index],
+                          [this](auto value) { return ir_.atom(value); });
     result.flag("generate-settings", records.generate_settings[index]);
     result.flag("generate-overrides", records.generate_overrides[index]);
     result.flag("generate-s7-reader", records.s7_tag[index].has_value());

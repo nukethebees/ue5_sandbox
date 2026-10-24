@@ -18,6 +18,44 @@ auto read_source(std::string_view const source) -> ReadResult<T> {
     return read<T>(Reader{*ast}, ast->root, "record");
 }
 
+TEST(GeneratedS7Reader, ConstrainedRecordsValidateAndOverrideAsWholeValues) {
+    RangeSettings target;
+    EXPECT_EQ(target.range.get().minimum, 0);
+    EXPECT_EQ(target.range.get().maximum, 10);
+    EXPECT_FALSE(Range::try_make({10, 0}));
+    static_assert(std::same_as<decltype(target.range.get_ref()), RangeValue const&>);
+    static_assert(std::same_as<decltype(RangeSettingsOverrides::range), std::optional<Range>>);
+
+    auto patch{
+        read_source<RangeSettingsOverrides>("'(:ranges :range (:range :minimum 20 :maximum 30))")};
+    ASSERT_TRUE(patch);
+    apply_overrides(target, *patch);
+    EXPECT_EQ(target.range.get().minimum, 20);
+    EXPECT_EQ(target.range.get().maximum, 30);
+    EXPECT_TRUE(target.enabled);
+
+    auto omitted{read_source<RangeSettingsOverrides>("'(:ranges :enabled #f)")};
+    ASSERT_TRUE(omitted);
+    apply_overrides(target, *omitted);
+    EXPECT_EQ(target.range.get().minimum, 20);
+    EXPECT_FALSE(target.enabled);
+
+    auto defaults{
+        read_source<RangeSettingsOverrides>("'(:ranges :range (:range :minimum 0 :maximum 10))")};
+    ASSERT_TRUE(defaults);
+    apply_overrides(target, *defaults);
+    EXPECT_EQ(target.range, Range{});
+
+    auto missing{read_source<RangeSettingsOverrides>("'(:ranges :range (:range :minimum 5))")};
+    ASSERT_FALSE(missing);
+    EXPECT_EQ(missing.error().front().node_path, "record.range.maximum");
+    auto invalid{
+        read_source<RangeSettingsOverrides>("'(:ranges :range (:range :minimum 30 :maximum 20))")};
+    ASSERT_FALSE(invalid);
+    EXPECT_EQ(invalid.error().front().node_path, "record.range");
+    EXPECT_EQ(invalid.error().front().message, "Expected minimum <= maximum");
+}
+
 TEST(GeneratedS7Reader, ReadsSparseTypedOverridesWithNestedLayersAndExplicitEmptyValues) {
     Interpreter interpreter;
     auto ast{interpreter.evaluate_ast(R"('(:settings-layers

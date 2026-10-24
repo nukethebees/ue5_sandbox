@@ -9,6 +9,102 @@
 
 namespace ioj::s7 {
 template <>
+struct TypeReader<::codegen_compile_fixture::RangeValue> {
+    using value_type = ::codegen_compile_fixture::RangeValue;
+
+    static ReadResult<value_type>
+        read(Reader const& reader, NodeIndex const node, std::string_view const path);
+
+    static void decode(Reader const& reader,
+                       NodeIndex const node,
+                       std::string_view const path,
+                       value_type& result,
+                       ReadMode mode,
+                       AstDiagnostics& errors);
+  private:
+    enum class Field : std::uint8_t {
+        minimum,
+        maximum,
+        Count,
+    };
+
+    [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
+        -> std::optional<Field> {
+        if (name == "minimum") {
+            return Field::minimum;
+        }
+        if (name == "maximum") {
+            return Field::maximum;
+        }
+        return std::nullopt;
+    }
+};
+
+template <>
+struct TypeReader<::codegen_compile_fixture::RangeSettings> {
+    using value_type = ::codegen_compile_fixture::RangeSettings;
+
+    static ReadResult<value_type>
+        read(Reader const& reader, NodeIndex const node, std::string_view const path);
+
+    static void decode(Reader const& reader,
+                       NodeIndex const node,
+                       std::string_view const path,
+                       value_type& result,
+                       ReadMode mode,
+                       AstDiagnostics& errors);
+  private:
+    enum class Field : std::uint8_t {
+        range,
+        enabled,
+        Count,
+    };
+
+    [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
+        -> std::optional<Field> {
+        if (name == "range") {
+            return Field::range;
+        }
+        if (name == "enabled") {
+            return Field::enabled;
+        }
+        return std::nullopt;
+    }
+};
+
+template <>
+struct TypeReader<::codegen_compile_fixture::RangeSettingsOverrides> {
+    using value_type = ::codegen_compile_fixture::RangeSettingsOverrides;
+
+    static ReadResult<value_type>
+        read(Reader const& reader, NodeIndex const node, std::string_view const path);
+
+    static void decode(Reader const& reader,
+                       NodeIndex const node,
+                       std::string_view const path,
+                       value_type& result,
+                       ReadMode,
+                       AstDiagnostics& errors);
+  private:
+    enum class Field : std::uint8_t {
+        range,
+        enabled,
+        Count,
+    };
+
+    [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
+        -> std::optional<Field> {
+        if (name == "range") {
+            return Field::range;
+        }
+        if (name == "enabled") {
+            return Field::enabled;
+        }
+        return std::nullopt;
+    }
+};
+
+template <>
 struct TypeReader<::codegen_compile_fixture::WeaponSettings> {
     using value_type = ::codegen_compile_fixture::WeaponSettings;
 
@@ -147,6 +243,142 @@ struct TypeReader<::codegen_compile_fixture::ActorSettingsOverrides> {
         return std::nullopt;
     }
 };
+
+inline ReadResult<::codegen_compile_fixture::RangeValue>
+    TypeReader<::codegen_compile_fixture::RangeValue>::read(Reader const& reader,
+                                                            NodeIndex const node,
+                                                            std::string_view const path) {
+    return read_generated<value_type>(reader, node, path);
+}
+
+inline void TypeReader<::codegen_compile_fixture::RangeValue>::decode(Reader const& reader,
+                                                                      NodeIndex const node,
+                                                                      std::string_view const path,
+                                                                      value_type& result,
+                                                                      ReadMode mode,
+                                                                      AstDiagnostics& errors) {
+    auto const seen{read_record<Field>(
+        reader,
+        node,
+        "range",
+        path,
+        parse_field,
+        ([&](Field const field, NodeIndex const value, std::string_view const location) {
+            auto const read{[&](auto& destination) {
+                auto const error_count{errors.size()};
+                decode_field(reader, value, location, destination, mode, errors);
+                return errors.size() == error_count;
+            }};
+            switch (field) {
+                case Field::minimum:
+                    read(result.minimum);
+                    break;
+                case Field::maximum:
+                    read(result.maximum);
+                    break;
+                case Field::Count:
+                    std::unreachable();
+            }
+        }))};
+
+    if (!seen) {
+        append_errors(errors, seen.error());
+        return;
+    }
+    std::array<std::string_view, 2> constexpr required_names{"minimum", "maximum"};
+
+    auto constexpr required{required_fields<Field>(required_names)};
+    if (mode == ReadMode::Create) {
+        require_fields<Field>(*seen, required, required_names, path, errors);
+    }
+}
+
+inline ReadResult<::codegen_compile_fixture::RangeSettings>
+    TypeReader<::codegen_compile_fixture::RangeSettings>::read(Reader const& reader,
+                                                               NodeIndex const node,
+                                                               std::string_view const path) {
+    return read_generated<value_type>(reader, node, path);
+}
+
+inline void
+    TypeReader<::codegen_compile_fixture::RangeSettings>::decode(Reader const& reader,
+                                                                 NodeIndex const node,
+                                                                 std::string_view const path,
+                                                                 value_type& result,
+                                                                 ReadMode mode,
+                                                                 AstDiagnostics& errors) {
+    auto const seen{read_record<Field>(
+        reader,
+        node,
+        "ranges",
+        path,
+        parse_field,
+        ([&](Field const field, NodeIndex const value, std::string_view const location) {
+            auto const read{[&](auto& destination) {
+                auto const error_count{errors.size()};
+                decode_field(reader, value, location, destination, mode, errors);
+                return errors.size() == error_count;
+            }};
+            switch (field) {
+                case Field::range:
+                    read(result.range);
+                    break;
+                case Field::enabled:
+                    read(result.enabled);
+                    break;
+                case Field::Count:
+                    std::unreachable();
+            }
+        }))};
+
+    if (!seen) {
+        append_errors(errors, seen.error());
+        return;
+    }
+}
+
+inline ReadResult<::codegen_compile_fixture::RangeSettingsOverrides>
+    TypeReader<::codegen_compile_fixture::RangeSettingsOverrides>::read(
+        Reader const& reader, NodeIndex const node, std::string_view const path) {
+    return read_generated<value_type>(reader, node, path);
+}
+
+inline void TypeReader<::codegen_compile_fixture::RangeSettingsOverrides>::decode(
+    Reader const& reader,
+    NodeIndex const node,
+    std::string_view const path,
+    value_type& result,
+    ReadMode,
+    AstDiagnostics& errors) {
+    auto const seen{read_record<Field>(
+        reader,
+        node,
+        "ranges",
+        path,
+        parse_field,
+        ([&](Field const field, NodeIndex const value, std::string_view const location) {
+            auto const read{[&](auto& destination) {
+                auto const error_count{errors.size()};
+                decode_patch_field(reader, value, location, destination, errors);
+                return errors.size() == error_count;
+            }};
+            switch (field) {
+                case Field::range:
+                    read(result.range);
+                    break;
+                case Field::enabled:
+                    read(result.enabled);
+                    break;
+                case Field::Count:
+                    std::unreachable();
+            }
+        }))};
+
+    if (!seen) {
+        append_errors(errors, seen.error());
+        return;
+    }
+}
 
 inline ReadResult<::codegen_compile_fixture::WeaponSettings>
     TypeReader<::codegen_compile_fixture::WeaponSettings>::read(Reader const& reader,

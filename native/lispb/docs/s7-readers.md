@@ -55,6 +55,20 @@ the same invariant as a schema annotation.
 Cross-field/domain validation remains ordinary C++. Integral bounds retain their exact
 64-bit values. Do not use arbitrary C++ expressions as bounds.
 
+For an invariant that must survive C++ mutation, a record may specify
+`:constraint-policy project::policy`, naming an existing `ConstrainedValuePolicy` supplied
+through the module's includes. Lispb emits the fields as `RecordValue` and exposes `Record`
+as `ConstrainedValue<RecordValue, project::policy>`. Its generated value reader composes
+with the ordinary constrained reader, which calls `try_make` before returning `Record`.
+Defaults must satisfy the policy for the constrained type to be default-constructible.
+
+A constrained record is replaced as one complete value, including inside generated override
+records. Mark all required components with `:required true`; an override must supply those
+components too. Enable `:generate-overrides` on the containing record, not on the constrained
+record. This preserves cross-field invariants without exposing writable component references.
+`AttackDistanceBand` uses this for its ordered minimum/desired/maximum triple. A later layer
+cannot repair an invalid earlier triple.
+
 The common reader supports integers (including exact ratios/reals), floating-point
 numbers, booleans, strings, native vectors, serialized enums, constrained values,
 `std::vector<T>`, `std::array<T, N>`, and `std::optional<T>`. Containers recursively use
