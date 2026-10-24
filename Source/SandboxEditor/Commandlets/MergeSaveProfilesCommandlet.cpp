@@ -149,8 +149,7 @@ int32 UMergeSaveProfilesCommandlet::Main(FString const& parameters) {
 
     auto const staging_root{destination_root + TEXT(".importing.") +
                             FGuid::NewGuid().ToString(EGuidFormats::Digits)};
-    auto no_legacy = [](TArray<FScoreRecord>&) { return ioj::ESaveProfileLoadResult::not_found; };
-    auto storage{ioj::make_file_profile_storage(staging_root, no_legacy)};
+    auto storage{ioj::make_file_profile_storage(staging_root)};
     FSaveProfileIndexData merged_index{};
     TArray<FString> profile_ids{};
     merged_profiles.GetKeys(profile_ids);

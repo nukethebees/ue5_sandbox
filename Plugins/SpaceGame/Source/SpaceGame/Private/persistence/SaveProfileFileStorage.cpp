@@ -184,7 +184,7 @@ bool save_data(FString const& path, DataType const& data) {
     return UGameplayStatics::SaveGameToMemory(save, payload) && save_payload(path, payload);
 }
 
-struct FStorageState : TSharedFromThis<FStorageState> {
+struct FStorageState {
     FString root{};
     FString lock_name{};
     FCriticalSection process_lock{};
@@ -200,12 +200,11 @@ auto development_save_base_root() -> FString {
 auto resolve_save_profile_storage(FString const& command_line,
                                   bool const editor,
                                   bool const unattended,
-                                  bool const automation,
                                   FSaveProfileStorageSelection& selection,
                                   FString& error) -> bool {
     selection = {};
     selection.mode = editor ? ESaveProfileStorageMode::shared : ESaveProfileStorageMode::platform;
-    if (editor && (unattended || automation)) {
+    if (editor && unattended) {
         selection.mode = ESaveProfileStorageMode::local;
     }
     if (!editor) {
@@ -234,7 +233,6 @@ auto resolve_save_profile_storage(FString const& command_line,
             return false;
         }
         selection.mode = ESaveProfileStorageMode::experimental;
-        selection.experiment_name = experiment;
     }
 
     selection.import_local = FParse::Param(*command_line, TEXT("SpaceSaveImportLocal"));
@@ -263,8 +261,7 @@ auto resolve_save_profile_storage(FString const& command_line,
             selection.root = FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("SaveGames"));
             break;
         case ESaveProfileStorageMode::experimental:
-            selection.root =
-                FPaths::Combine(base_root, TEXT("Experiments"), selection.experiment_name);
+            selection.root = FPaths::Combine(base_root, TEXT("Experiments"), experiment);
             break;
         case ESaveProfileStorageMode::platform:
             break;
@@ -272,9 +269,7 @@ auto resolve_save_profile_storage(FString const& command_line,
     return true;
 }
 
-auto make_file_profile_storage(
-    FString root, TFunction<ESaveProfileLoadResult(TArray<FScoreRecord>&)> load_legacy_results)
-    -> FSaveProfileStorage {
+auto make_file_profile_storage(FString root) -> FSaveProfileStorage {
     using namespace save_profile_file_storage;
     IFileManager::Get().MakeDirectory(*root, true);
     auto state{MakeShared<FStorageState>()};
@@ -314,7 +309,6 @@ auto make_file_profile_storage(
                        save_data<USpaceSaveProfileResultsSaveGame>(
                            FPaths::Combine(state->root, results_filename(profile_id)), data);
             },
-        .load_legacy_results = MoveTemp(load_legacy_results),
     };
 }
 
@@ -339,8 +333,8 @@ auto clone_save_profile_files(FString const& source_root,
 
     auto const staging{destination_root + TEXT(".creating.") +
                        FGuid::NewGuid().ToString(EGuidFormats::Digits)};
-    auto no_legacy = [](TArray<FScoreRecord>&) { return ESaveProfileLoadResult::not_found; };
-    auto source_storage{make_file_profile_storage(source_root, MoveTemp(no_legacy))};
+
+    auto source_storage{make_file_profile_storage(source_root)};
     auto const copied{
         source_storage.with_exclusive_access([&source_storage, &source_root, &staging] {
             FSaveProfileIndexData index{};
@@ -406,7 +400,14 @@ auto import_local_save_profiles(
 
     auto const staging{destination_root + TEXT(".importing.") +
                        FGuid::NewGuid().ToString(EGuidFormats::Digits)};
-    auto storage{make_file_profile_storage(staging, load_legacy_results)};
+    auto storage{make_file_profile_storage(staging)};
+    storage.load_legacy_results =
+        [load = MoveTemp(load_legacy_results)](TArray<FScoreRecord>& records) {
+            // Require existing data for an explicit import, even if the source disappears.
+            return load(records) == ESaveProfileLoadResult::succeeded
+                     ? ESaveProfileLoadResult::succeeded
+                     : ESaveProfileLoadResult::failed;
+        };
     auto const index_slot{FString{TEXT("SpaceProfileIndex")}};
     auto imported{false};
     if (!UGameplayStatics::DoesSaveGameExist(index_slot, 0)) {
@@ -441,8 +442,7 @@ auto import_local_save_profiles(
     }
 
     if (imported) {
-        auto no_legacy = [](TArray<FScoreRecord>&) { return ESaveProfileLoadResult::not_found; };
-        FSaveProfileManager validator{make_file_profile_storage(staging, MoveTemp(no_legacy))};
+        FSaveProfileManager validator{make_file_profile_storage(staging)};
         imported = validator.initialise();
     }
     if (!imported) {

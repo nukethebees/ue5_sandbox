@@ -517,7 +517,7 @@ TEST_CLASS(SaveProfileManager, "Sandbox.UnitTests")
         FString error{};
         TestRunner->TestTrue(
             TEXT("Interactive editor selection resolves"),
-            ioj::resolve_save_profile_storage(TEXT(""), true, false, false, selection, error));
+            ioj::resolve_save_profile_storage(TEXT(""), true, false, selection, error));
         TestRunner->TestTrue(TEXT("Interactive editor defaults Shared"),
                              selection.mode == ioj::ESaveProfileStorageMode::shared);
         TestRunner->TestTrue(TEXT("Shared root has a stable leaf"),
@@ -525,7 +525,7 @@ TEST_CLASS(SaveProfileManager, "Sandbox.UnitTests")
 
         TestRunner->TestTrue(
             TEXT("Unattended selection resolves"),
-            ioj::resolve_save_profile_storage(TEXT(""), true, true, false, selection, error));
+            ioj::resolve_save_profile_storage(TEXT(""), true, true, selection, error));
         TestRunner->TestTrue(TEXT("Unattended editor defaults Local"),
                              selection.mode == ioj::ESaveProfileStorageMode::local);
 
@@ -534,22 +534,20 @@ TEST_CLASS(SaveProfileManager, "Sandbox.UnitTests")
                                  TEXT("-SpaceSaveExperiment=Migration_Test -SpaceSaveCloneShared"),
                                  true,
                                  false,
-                                 false,
                                  selection,
                                  error));
-        TestRunner->TestEqual(TEXT("Experiment name is canonical"),
-                              selection.experiment_name,
-                              FString{TEXT("migration_test")});
+        TestRunner->TestTrue(TEXT("Experiment directory is canonical"),
+                             selection.root.EndsWith(TEXT("Experiments/migration_test")));
         TestRunner->TestTrue(TEXT("Experiment cloning is selected"), selection.clone_shared);
 
         TestRunner->TestFalse(
             TEXT("Conflicting selectors are rejected"),
             ioj::resolve_save_profile_storage(
-                TEXT("-SpaceSaveLocal -SpaceSaveShared"), true, false, false, selection, error));
+                TEXT("-SpaceSaveLocal -SpaceSaveShared"), true, false, selection, error));
         TestRunner->TestFalse(
             TEXT("Unsafe experiment names are rejected"),
             ioj::resolve_save_profile_storage(
-                TEXT("-SpaceSaveExperiment=../shared"), true, false, false, selection, error));
+                TEXT("-SpaceSaveExperiment=../shared"), true, false, selection, error));
     }
 
     TEST_METHOD(FileStorageRecoversPreviousValidFile)
@@ -562,10 +560,7 @@ TEST_CLASS(SaveProfileManager, "Sandbox.UnitTests")
             IFileManager::Get().DeleteDirectory(*root, false, true);
         };
 
-        auto no_legacy = [](TArray<FScoreRecord>&) {
-            return ioj::ESaveProfileLoadResult::not_found;
-        };
-        auto storage{ioj::make_file_profile_storage(root, MoveTemp(no_legacy))};
+        auto storage{ioj::make_file_profile_storage(root)};
         FSaveProfileIndexData first{.active_profile_id = TEXT("default_profile")};
         first.profiles.Add(FSaveProfileMetadata{.profile_id = TEXT("default_profile"),
                                                 .display_name = TEXT("Default Profile")});
@@ -595,12 +590,9 @@ TEST_CLASS(SaveProfileManager, "Sandbox.UnitTests")
             IFileManager::Get().DeleteDirectory(*root, false, true);
         };
 
-        auto no_legacy = [](TArray<FScoreRecord>&) {
-            return ioj::ESaveProfileLoadResult::not_found;
-        };
         auto const shared_root{FPaths::Combine(root, TEXT("Shared"))};
         auto const experiment_root{FPaths::Combine(root, TEXT("Experiment"))};
-        auto shared{ioj::make_file_profile_storage(shared_root, no_legacy)};
+        auto shared{ioj::make_file_profile_storage(shared_root)};
         FSaveProfileIndexData index{.active_profile_id = TEXT("default_profile")};
         index.profiles.Add(FSaveProfileMetadata{.profile_id = TEXT("default_profile"),
                                                 .display_name = TEXT("Shared Profile")});
@@ -609,7 +601,7 @@ TEST_CLASS(SaveProfileManager, "Sandbox.UnitTests")
 
         FString error{};
         ASSERT_THAT(IsTrue(ioj::clone_save_profile_files(shared_root, experiment_root, error)));
-        auto experiment{ioj::make_file_profile_storage(experiment_root, no_legacy)};
+        auto experiment{ioj::make_file_profile_storage(experiment_root)};
         FSaveProfileIndexData experiment_index{};
         ASSERT_THAT(IsTrue(experiment.load_index(experiment_index) ==
                            ioj::ESaveProfileLoadResult::succeeded));

@@ -227,8 +227,7 @@ auto USpaceSaveSubsystem::make_storage() -> ioj::FSaveProfileStorage {
                                         TEXT("Automation/SaveProfiles"),
                                         FGuid::NewGuid().ToString(EGuidFormats::Digits))};
         UE_LOG(LogSandboxSubsystem, Display, TEXT("Automation save storage: %s"), *root);
-        return ioj::make_file_profile_storage(
-            root, [](TArray<FScoreRecord>&) { return ioj::ESaveProfileLoadResult::not_found; });
+        return ioj::make_file_profile_storage(root);
     }
 
     ioj::FSaveProfileStorageSelection selection{};
@@ -240,7 +239,6 @@ auto USpaceSaveSubsystem::make_storage() -> ioj::FSaveProfileStorage {
                                            false,
 #endif
                                            FApp::IsUnattended(),
-                                           GIsAutomationTesting,
                                            selection,
                                            error)) {
         UE_LOG(LogSandboxSubsystem, Error, TEXT("Invalid save storage selection: %s"), *error);
@@ -288,22 +286,7 @@ auto USpaceSaveSubsystem::make_storage() -> ioj::FSaveProfileStorage {
                        TEXT("-SpaceSaveImportLocal was requested but no local saves exist."));
                 return {};
             }
-            auto legacy_loader = [](TArray<FScoreRecord>& records) {
-                auto* const save{Cast<USpaceSaveGame>(
-                    UGameplayStatics::LoadGameFromSlot(legacy_slot_name(), user_index))};
-                if (!IsValid(save)) {
-                    return ioj::ESaveProfileLoadResult::failed;
-                }
-                if (save->save_version != USpaceSaveGame::current_save_version) {
-                    UE_LOG(LogSandboxSubsystem,
-                           Error,
-                           TEXT("Legacy mission saves are not supported by the objective system."));
-                    return ioj::ESaveProfileLoadResult::failed;
-                }
-                records = save->score_records;
-                return ioj::ESaveProfileLoadResult::succeeded;
-            };
-            if (!ioj::import_local_save_profiles(selection.root, MoveTemp(legacy_loader), error)) {
+            if (!ioj::import_local_save_profiles(selection.root, load_legacy_results, error)) {
                 UE_LOG(
                     LogSandboxSubsystem, Error, TEXT("Failed to import local saves: %s"), *error);
                 return {};
@@ -321,10 +304,7 @@ auto USpaceSaveSubsystem::make_storage() -> ioj::FSaveProfileStorage {
             LogSandboxSubsystem, Display, TEXT("Save storage mode: Shared (%s)"), *selection.root);
     }
 
-    auto legacy_loader = [](TArray<FScoreRecord>&) {
-        return ioj::ESaveProfileLoadResult::not_found;
-    };
-    return ioj::make_file_profile_storage(selection.root, MoveTemp(legacy_loader));
+    return ioj::make_file_profile_storage(selection.root);
 }
 
 auto USpaceSaveSubsystem::make_slot_storage() -> ioj::FSaveProfileStorage {
@@ -382,25 +362,26 @@ auto USpaceSaveSubsystem::make_slot_storage() -> ioj::FSaveProfileStorage {
                 return UGameplayStatics::SaveGameToSlot(
                     save, profile_results_slot_name(profile_id), user_index);
             },
-        .load_legacy_results =
-            [](TArray<FScoreRecord>& records) {
-                auto const slot{legacy_slot_name()};
-                if (!UGameplayStatics::DoesSaveGameExist(slot, user_index)) {
-                    return ioj::ESaveProfileLoadResult::not_found;
-                }
-                auto* const save{
-                    Cast<USpaceSaveGame>(UGameplayStatics::LoadGameFromSlot(slot, user_index))};
-                if (!IsValid(save)) {
-                    return ioj::ESaveProfileLoadResult::failed;
-                }
-                if (save->save_version != USpaceSaveGame::current_save_version) {
-                    UE_LOG(LogSandboxSubsystem,
-                           Error,
-                           TEXT("Legacy mission saves are not supported by the objective system."));
-                    return ioj::ESaveProfileLoadResult::failed;
-                }
-                records = save->score_records;
-                return ioj::ESaveProfileLoadResult::succeeded;
-            },
+        .load_legacy_results = load_legacy_results,
     };
+}
+
+auto USpaceSaveSubsystem::load_legacy_results(TArray<FScoreRecord>& records)
+    -> ioj::ESaveProfileLoadResult {
+    auto const slot{legacy_slot_name()};
+    if (!UGameplayStatics::DoesSaveGameExist(slot, user_index)) {
+        return ioj::ESaveProfileLoadResult::not_found;
+    }
+    auto* const save{Cast<USpaceSaveGame>(UGameplayStatics::LoadGameFromSlot(slot, user_index))};
+    if (!IsValid(save)) {
+        return ioj::ESaveProfileLoadResult::failed;
+    }
+    if (save->save_version != USpaceSaveGame::current_save_version) {
+        UE_LOG(LogSandboxSubsystem,
+               Error,
+               TEXT("Legacy mission saves are not supported by the objective system."));
+        return ioj::ESaveProfileLoadResult::failed;
+    }
+    records = save->score_records;
+    return ioj::ESaveProfileLoadResult::succeeded;
 }

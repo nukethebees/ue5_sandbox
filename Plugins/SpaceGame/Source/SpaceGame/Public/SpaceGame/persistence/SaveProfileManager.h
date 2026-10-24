@@ -32,7 +32,8 @@ struct SPACEGAME_API FSaveProfileStorage {
     TFunction<bool(FSaveProfileIndexData const&)> save_index{};
     TFunction<ESaveProfileLoadResult(FString const&, FSaveProfileResultsData&)> load_results{};
     TFunction<bool(FString const&, FSaveProfileResultsData const&)> save_results{};
-    TFunction<ESaveProfileLoadResult(TArray<FScoreRecord>&)> load_legacy_results{};
+    TFunction<ESaveProfileLoadResult(TArray<FScoreRecord>&)> load_legacy_results{
+        [](TArray<FScoreRecord>&) { return ESaveProfileLoadResult::not_found; }};
 };
 
 class SPACEGAME_API FSaveProfileManager {
