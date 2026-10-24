@@ -826,7 +826,8 @@ auto lower_enum(LoweringContext& context,
                           ir.store_optional_text(annotation(context, value, reflected))));
     }
     declarations.add(ir.enumeration(enums.name[row],
-                                    reflected ? underlying : ir.types.intern(underlying_alias),
+                                    reflected ? ir.types.intern(unreal_underlying_type(ir.types.spelling(underlying)))
+                                              : ir.types.intern(underlying_alias),
                                     std::move(values)),
                      2);
     if (reflected) {

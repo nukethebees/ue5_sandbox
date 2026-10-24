@@ -739,7 +739,7 @@ TEST(Lowering, EmitsReflectedEnumsAndSelectableOutOfLineConversions) {
     }())};
 
     EXPECT_NE(output.header.find("#include \"Modes.generated.h\""), std::string::npos);
-    EXPECT_NE(output.header.find("UENUM(BlueprintType)\nenum class EMode : std::uint8_t"),
+    EXPECT_NE(output.header.find("UENUM(BlueprintType)\nenum class EMode : uint8"),
               std::string::npos);
     EXPECT_NE(output.header.find("Readable = 7 UMETA(DisplayName = \"Readable Value\")"),
               std::string::npos);

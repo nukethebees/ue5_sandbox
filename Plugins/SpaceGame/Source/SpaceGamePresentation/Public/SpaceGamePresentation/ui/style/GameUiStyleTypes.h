@@ -14,7 +14,7 @@
 
 // Logical bit width: 4.
 UENUM()
-enum class EGameTextStyle : std::uint8_t {
+enum class EGameTextStyle : uint8 {
     Body,
     BodySecondary UMETA(DisplayName = "Body Secondary"),
     Caption,
@@ -31,7 +31,7 @@ using EGameTextStyleUnderlying = std::uint8_t;
 
 // Logical bit width: 1.
 UENUM()
-enum class EGameButtonStyle : std::uint8_t {
+enum class EGameButtonStyle : uint8 {
     Primary,
     Secondary,
 };
@@ -40,7 +40,7 @@ using EGameButtonStyleUnderlying = std::uint8_t;
 
 // Logical bit width: 4.
 UENUM()
-enum class EGameUiIcon : std::uint8_t {
+enum class EGameUiIcon : uint8 {
     Hive,
     Video,
     Gameplay,

@@ -14,7 +14,7 @@
 
 // Logical bit width: 1.
 UENUM(BlueprintType)
-enum class ECharacterCameraMode : std::uint8_t {
+enum class ECharacterCameraMode : uint8 {
     FirstPerson UMETA(DisplayName = "First Person"),
     ThirdPerson UMETA(DisplayName = "Third Person"),
 };
