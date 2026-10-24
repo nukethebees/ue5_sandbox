@@ -12,6 +12,7 @@
 #include "ioj/layout/analyzer/cache_capacity_analysis.hpp"
 #include "ioj/native_soa/storage.h"
 #include "ioj/single_allocation/layout.h"
+#include "ioj/single_allocation/view.h"
 
 #include <cassert>
 #include <cstdint>
@@ -155,44 +156,16 @@ struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;
     using Base::Base;
 };
-struct ResolvedView : ResolvedViewImpl<false> {
-    using Base = ResolvedViewImpl<false>;
+struct ResolvedView
+    : soa_storage_detail::ViewRowOperations<ResolvedView,
+                                            ::ioj::layout::workload_table::Layout::column_types,
+                                            ResolvedViewImpl<false>> {
+    using Base = ioj::soa_storage_detail::ViewRowOperations<
+        ResolvedView,
+        ::ioj::layout::workload_table::Layout::column_types,
+        ResolvedViewImpl<false>>;
     using Base::Base;
-    void set(size_type index,
-             ioj::layout::AnalysisId const new_analysis,
-             ioj::layout::RowRange const new_selections,
-             std::uint64_t const new_element_count,
-             std::uint64_t const new_multiplicity,
-             ioj::layout::PayloadFootprint const new_bytes,
-             ioj::layout::PayloadFootprint const new_bits,
-             ioj::layout::RegionFootprint const new_cache,
-             ioj::layout::RegionFootprint const new_pages,
-             ioj::layout::CacheCapacityAnalysis const new_cache_capacity,
-             ioj::layout::PackedAccessWaste const new_packed_waste,
-             std::uint8_t const new_footprint_exact,
-             std::optional<std::uint64_t> const new_storage_bytes,
-             std::optional<std::uint64_t> const new_full_logical_payload_bytes,
-             std::optional<std::uint64_t> const new_unselected_payload_bytes,
-             std::optional<std::uint64_t> const new_allocated_payload_bytes,
-             std::optional<std::uint64_t> const new_capacity_slack_bytes) const {
-        assert(index < num());
-        this->analysis()[index] = new_analysis;
-        this->selections()[index] = new_selections;
-        this->element_count()[index] = new_element_count;
-        this->multiplicity()[index] = new_multiplicity;
-        this->bytes()[index] = new_bytes;
-        this->bits()[index] = new_bits;
-        this->cache()[index] = new_cache;
-        this->pages()[index] = new_pages;
-        this->cache_capacity()[index] = new_cache_capacity;
-        this->packed_waste()[index] = new_packed_waste;
-        this->footprint_exact()[index] = new_footprint_exact;
-        this->storage_bytes()[index] = new_storage_bytes;
-        this->full_logical_payload_bytes()[index] = new_full_logical_payload_bytes;
-        this->unselected_payload_bytes()[index] = new_unselected_payload_bytes;
-        this->allocated_payload_bytes()[index] = new_allocated_payload_bytes;
-        this->capacity_slack_bytes()[index] = new_capacity_slack_bytes;
-    }
+    using Base::set;
 };
 
 /* **************************************** */
@@ -259,44 +232,16 @@ struct ConstView : ViewImpl<true> {
     using Base::Base;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<ConstView>());
-struct View : ViewImpl<false> {
-    using Base = ViewImpl<false>;
+struct View
+    : soa_storage_detail::ViewRowOperations<View,
+                                            ::ioj::layout::workload_table::Layout::column_types,
+                                            ViewImpl<false>> {
+    using Base = ioj::soa_storage_detail::ViewRowOperations<
+        View,
+        ::ioj::layout::workload_table::Layout::column_types,
+        ViewImpl<false>>;
     using Base::Base;
-    void set(size_type index,
-             ioj::layout::AnalysisId const new_analysis,
-             ioj::layout::RowRange const new_selections,
-             std::uint64_t const new_element_count,
-             std::uint64_t const new_multiplicity,
-             ioj::layout::PayloadFootprint const new_bytes,
-             ioj::layout::PayloadFootprint const new_bits,
-             ioj::layout::RegionFootprint const new_cache,
-             ioj::layout::RegionFootprint const new_pages,
-             ioj::layout::CacheCapacityAnalysis const new_cache_capacity,
-             ioj::layout::PackedAccessWaste const new_packed_waste,
-             std::uint8_t const new_footprint_exact,
-             std::optional<std::uint64_t> const new_storage_bytes,
-             std::optional<std::uint64_t> const new_full_logical_payload_bytes,
-             std::optional<std::uint64_t> const new_unselected_payload_bytes,
-             std::optional<std::uint64_t> const new_allocated_payload_bytes,
-             std::optional<std::uint64_t> const new_capacity_slack_bytes) const {
-        assert(index < num());
-        this->analysis()[index] = new_analysis;
-        this->selections()[index] = new_selections;
-        this->element_count()[index] = new_element_count;
-        this->multiplicity()[index] = new_multiplicity;
-        this->bytes()[index] = new_bytes;
-        this->bits()[index] = new_bits;
-        this->cache()[index] = new_cache;
-        this->pages()[index] = new_pages;
-        this->cache_capacity()[index] = new_cache_capacity;
-        this->packed_waste()[index] = new_packed_waste;
-        this->footprint_exact()[index] = new_footprint_exact;
-        this->storage_bytes()[index] = new_storage_bytes;
-        this->full_logical_payload_bytes()[index] = new_full_logical_payload_bytes;
-        this->unselected_payload_bytes()[index] = new_unselected_payload_bytes;
-        this->allocated_payload_bytes()[index] = new_allocated_payload_bytes;
-        this->capacity_slack_bytes()[index] = new_capacity_slack_bytes;
-    }
+    using Base::set;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
 
@@ -324,7 +269,9 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
 // capacity_slack_bytes: std::optional<std::uint64_t>
 struct WorkloadTable
     : protected ioj::native_soa::StorageState
-    , ioj::native_soa::StorageOperations {
+    , soa_storage_detail::OwnerRowOperations<WorkloadTable,
+                                             ::ioj::layout::workload_table::Layout::column_types,
+                                             ioj::native_soa::StorageOperations> {
     using soa_schema = ::ioj::layout::workload_table::Schema;
     using Operations = ioj::native_soa::StorageOperations;
     using Layout = ::ioj::layout::workload_table::Layout;
@@ -387,78 +334,12 @@ struct WorkloadTable
         return self.get_view().allocated_payload_bytes();
     }
     auto capacity_slack_bytes(this auto& self) { return self.get_view().capacity_slack_bytes(); }
-    void set(size_type index,
-             AnalysisId const new_analysis,
-             RowRange const new_selections,
-             std::uint64_t const new_element_count,
-             std::uint64_t const new_multiplicity,
-             PayloadFootprint const new_bytes,
-             PayloadFootprint const new_bits,
-             RegionFootprint const new_cache,
-             RegionFootprint const new_pages,
-             CacheCapacityAnalysis const new_cache_capacity,
-             PackedAccessWaste const new_packed_waste,
-             std::uint8_t const new_footprint_exact,
-             std::optional<std::uint64_t> const new_storage_bytes,
-             std::optional<std::uint64_t> const new_full_logical_payload_bytes,
-             std::optional<std::uint64_t> const new_unselected_payload_bytes,
-             std::optional<std::uint64_t> const new_allocated_payload_bytes,
-             std::optional<std::uint64_t> const new_capacity_slack_bytes) {
-        assert(index < num());
-        get_view().analysis()[index] = new_analysis;
-        get_view().selections()[index] = new_selections;
-        get_view().element_count()[index] = new_element_count;
-        get_view().multiplicity()[index] = new_multiplicity;
-        get_view().bytes()[index] = new_bytes;
-        get_view().bits()[index] = new_bits;
-        get_view().cache()[index] = new_cache;
-        get_view().pages()[index] = new_pages;
-        get_view().cache_capacity()[index] = new_cache_capacity;
-        get_view().packed_waste()[index] = new_packed_waste;
-        get_view().footprint_exact()[index] = new_footprint_exact;
-        get_view().storage_bytes()[index] = new_storage_bytes;
-        get_view().full_logical_payload_bytes()[index] = new_full_logical_payload_bytes;
-        get_view().unselected_payload_bytes()[index] = new_unselected_payload_bytes;
-        get_view().allocated_payload_bytes()[index] = new_allocated_payload_bytes;
-        get_view().capacity_slack_bytes()[index] = new_capacity_slack_bytes;
-    }
-    size_type add(AnalysisId const new_analysis,
-                  RowRange const new_selections,
-                  std::uint64_t const new_element_count,
-                  std::uint64_t const new_multiplicity,
-                  PayloadFootprint const new_bytes,
-                  PayloadFootprint const new_bits,
-                  RegionFootprint const new_cache,
-                  RegionFootprint const new_pages,
-                  CacheCapacityAnalysis const new_cache_capacity,
-                  PackedAccessWaste const new_packed_waste,
-                  std::uint8_t const new_footprint_exact,
-                  std::optional<std::uint64_t> const new_storage_bytes,
-                  std::optional<std::uint64_t> const new_full_logical_payload_bytes,
-                  std::optional<std::uint64_t> const new_unselected_payload_bytes,
-                  std::optional<std::uint64_t> const new_allocated_payload_bytes,
-                  std::optional<std::uint64_t> const new_capacity_slack_bytes) {
-        auto const index{num()};
-        add_uninitialised(1);
-        set(index,
-            new_analysis,
-            new_selections,
-            new_element_count,
-            new_multiplicity,
-            new_bytes,
-            new_bits,
-            new_cache,
-            new_pages,
-            new_cache_capacity,
-            new_packed_waste,
-            new_footprint_exact,
-            new_storage_bytes,
-            new_full_logical_payload_bytes,
-            new_unselected_payload_bytes,
-            new_allocated_payload_bytes,
-            new_capacity_slack_bytes);
-        return index;
-    }
+    using RowOperations =
+        soa_storage_detail::OwnerRowOperations<WorkloadTable,
+                                               ::ioj::layout::workload_table::Layout::column_types,
+                                               ioj::native_soa::StorageOperations>;
+    using RowOperations::add;
+    using RowOperations::set;
     WorkloadId
         append(AnalysisId owner, RowRange selected, std::uint64_t count, std::uint64_t repeat);
   private:

@@ -7,6 +7,7 @@
 #include "ioj/native_soa/storage.h"
 #include "ioj/sim/entities/entity_id.h"
 #include "ioj/single_allocation/layout.h"
+#include "ioj/single_allocation/view.h"
 #include "ioj/vectors3f.h"
 
 #include <cassert>
@@ -88,22 +89,16 @@ struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;
     using Base::Base;
 };
-struct ResolvedView : ResolvedViewImpl<false> {
-    using Base = ResolvedViewImpl<false>;
+struct ResolvedView
+    : soa_storage_detail::ViewRowOperations<ResolvedView,
+                                            ::ioj::sim::range_query_matches::Layout::column_types,
+                                            ResolvedViewImpl<false>> {
+    using Base = ioj::soa_storage_detail::ViewRowOperations<
+        ResolvedView,
+        ::ioj::sim::range_query_matches::Layout::column_types,
+        ResolvedViewImpl<false>>;
     using Base::Base;
-    void set(size_type index,
-             EntityId const new_entities,
-             float const new_distances,
-             float const new_directions_xs,
-             float const new_directions_ys,
-             float const new_directions_zs) const {
-        assert(index < num());
-        this->entities()[index] = new_entities;
-        this->distances()[index] = new_distances;
-        this->view_directions().xs()[index] = new_directions_xs;
-        this->view_directions().ys()[index] = new_directions_ys;
-        this->view_directions().zs()[index] = new_directions_zs;
-    }
+    using Base::set;
     void set(size_type index,
              EntityId const new_entities,
              float const new_distances,
@@ -152,22 +147,16 @@ struct ConstView : ViewImpl<true> {
     using Base::Base;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<ConstView>());
-struct View : ViewImpl<false> {
-    using Base = ViewImpl<false>;
+struct View
+    : soa_storage_detail::ViewRowOperations<View,
+                                            ::ioj::sim::range_query_matches::Layout::column_types,
+                                            ViewImpl<false>> {
+    using Base = ioj::soa_storage_detail::ViewRowOperations<
+        View,
+        ::ioj::sim::range_query_matches::Layout::column_types,
+        ViewImpl<false>>;
     using Base::Base;
-    void set(size_type index,
-             EntityId const new_entities,
-             float const new_distances,
-             float const new_directions_xs,
-             float const new_directions_ys,
-             float const new_directions_zs) const {
-        assert(index < num());
-        this->entities()[index] = new_entities;
-        this->distances()[index] = new_distances;
-        this->view_directions().xs()[index] = new_directions_xs;
-        this->view_directions().ys()[index] = new_directions_ys;
-        this->view_directions().zs()[index] = new_directions_zs;
-    }
+    using Base::set;
     void set(size_type index,
              EntityId const new_entities,
              float const new_distances,
@@ -193,7 +182,9 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
 // directions_zs: float
 struct RangeQueryMatches
     : protected ioj::native_soa::StorageState
-    , ioj::native_soa::StorageOperations {
+    , soa_storage_detail::OwnerRowOperations<RangeQueryMatches,
+                                             ::ioj::sim::range_query_matches::Layout::column_types,
+                                             ioj::native_soa::StorageOperations> {
     using soa_schema = ::ioj::sim::range_query_matches::Schema;
     using Operations = ioj::native_soa::StorageOperations;
     using Layout = ::ioj::sim::range_query_matches::Layout;
@@ -237,34 +228,12 @@ struct RangeQueryMatches
     auto entities(this auto& self) { return self.get_view().entities(); }
     auto distances(this auto& self) { return self.get_view().distances(); }
     auto view_directions(this auto& self) { return self.get_view().view_directions(); }
-    void set(size_type index,
-             EntityId const new_entities,
-             float const new_distances,
-             float const new_directions_xs,
-             float const new_directions_ys,
-             float const new_directions_zs) {
-        assert(index < num());
-        get_view().entities()[index] = new_entities;
-        get_view().distances()[index] = new_distances;
-        get_view().view_directions().xs()[index] = new_directions_xs;
-        get_view().view_directions().ys()[index] = new_directions_ys;
-        get_view().view_directions().zs()[index] = new_directions_zs;
-    }
-    size_type add(EntityId const new_entities,
-                  float const new_distances,
-                  float const new_directions_xs,
-                  float const new_directions_ys,
-                  float const new_directions_zs) {
-        auto const index{num()};
-        add_uninitialised(1);
-        set(index,
-            new_entities,
-            new_distances,
-            new_directions_xs,
-            new_directions_ys,
-            new_directions_zs);
-        return index;
-    }
+    using RowOperations = soa_storage_detail::OwnerRowOperations<
+        RangeQueryMatches,
+        ::ioj::sim::range_query_matches::Layout::column_types,
+        ioj::native_soa::StorageOperations>;
+    using RowOperations::add;
+    using RowOperations::set;
     void set(size_type index,
              EntityId const new_entities,
              float const new_distances,

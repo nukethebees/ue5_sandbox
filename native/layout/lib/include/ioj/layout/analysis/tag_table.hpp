@@ -5,6 +5,7 @@
 
 #include "ioj/native_soa/storage.h"
 #include "ioj/single_allocation/layout.h"
+#include "ioj/single_allocation/view.h"
 
 #include <cassert>
 #include <cstdint>
@@ -78,20 +79,16 @@ struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;
     using Base::Base;
 };
-struct ResolvedView : ResolvedViewImpl<false> {
-    using Base = ResolvedViewImpl<false>;
+struct ResolvedView
+    : soa_storage_detail::ViewRowOperations<ResolvedView,
+                                            ::ioj::layout::tag_table::Layout::column_types,
+                                            ResolvedViewImpl<false>> {
+    using Base =
+        ioj::soa_storage_detail::ViewRowOperations<ResolvedView,
+                                                   ::ioj::layout::tag_table::Layout::column_types,
+                                                   ResolvedViewImpl<false>>;
     using Base::Base;
-    void set(size_type index,
-             std::string_view const new_name,
-             std::uint8_t const new_mapped,
-             std::uint8_t const new_sentinel,
-             std::uint8_t const new_count_sentinel) const {
-        assert(index < num());
-        this->name()[index] = new_name;
-        this->mapped()[index] = new_mapped;
-        this->sentinel()[index] = new_sentinel;
-        this->count_sentinel()[index] = new_count_sentinel;
-    }
+    using Base::set;
 };
 
 /* **************************************** */
@@ -124,20 +121,13 @@ struct ConstView : ViewImpl<true> {
     using Base::Base;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<ConstView>());
-struct View : ViewImpl<false> {
-    using Base = ViewImpl<false>;
+struct View
+    : soa_storage_detail::
+          ViewRowOperations<View, ::ioj::layout::tag_table::Layout::column_types, ViewImpl<false>> {
+    using Base = ioj::soa_storage_detail::
+        ViewRowOperations<View, ::ioj::layout::tag_table::Layout::column_types, ViewImpl<false>>;
     using Base::Base;
-    void set(size_type index,
-             std::string_view const new_name,
-             std::uint8_t const new_mapped,
-             std::uint8_t const new_sentinel,
-             std::uint8_t const new_count_sentinel) const {
-        assert(index < num());
-        this->name()[index] = new_name;
-        this->mapped()[index] = new_mapped;
-        this->sentinel()[index] = new_sentinel;
-        this->count_sentinel()[index] = new_count_sentinel;
-    }
+    using Base::set;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
 
@@ -153,7 +143,9 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
 // count_sentinel: std::uint8_t
 struct TagTable
     : protected ioj::native_soa::StorageState
-    , ioj::native_soa::StorageOperations {
+    , soa_storage_detail::OwnerRowOperations<TagTable,
+                                             ::ioj::layout::tag_table::Layout::column_types,
+                                             ioj::native_soa::StorageOperations> {
     using soa_schema = ::ioj::layout::tag_table::Schema;
     using Operations = ioj::native_soa::StorageOperations;
     using Layout = ::ioj::layout::tag_table::Layout;
@@ -196,26 +188,12 @@ struct TagTable
     auto mapped(this auto& self) { return self.get_view().mapped(); }
     auto sentinel(this auto& self) { return self.get_view().sentinel(); }
     auto count_sentinel(this auto& self) { return self.get_view().count_sentinel(); }
-    void set(size_type index,
-             std::string_view const new_name,
-             std::uint8_t const new_mapped,
-             std::uint8_t const new_sentinel,
-             std::uint8_t const new_count_sentinel) {
-        assert(index < num());
-        get_view().name()[index] = new_name;
-        get_view().mapped()[index] = new_mapped;
-        get_view().sentinel()[index] = new_sentinel;
-        get_view().count_sentinel()[index] = new_count_sentinel;
-    }
-    size_type add(std::string_view const new_name,
-                  std::uint8_t const new_mapped,
-                  std::uint8_t const new_sentinel,
-                  std::uint8_t const new_count_sentinel) {
-        auto const index{num()};
-        add_uninitialised(1);
-        set(index, new_name, new_mapped, new_sentinel, new_count_sentinel);
-        return index;
-    }
+    using RowOperations =
+        soa_storage_detail::OwnerRowOperations<TagTable,
+                                               ::ioj::layout::tag_table::Layout::column_types,
+                                               ioj::native_soa::StorageOperations>;
+    using RowOperations::add;
+    using RowOperations::set;
   private:
     friend Operations;
     friend ::ioj::soa_storage_detail::StorageRequirements;

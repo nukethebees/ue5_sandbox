@@ -471,17 +471,25 @@ auto emit_resolved_views(LoweringContext& context,
     result.add(record).new_lines(1);
     for (bool const is_const : {true, false}) {
         auto const name{is_const ? const_name : mutable_name};
-        auto const base{implementation + (is_const ? "<true>" : "<false>")};
+        auto const receiver{is_const ? SoaReceiver::const_view : SoaReceiver::mutable_view};
+        auto const base{soa_row_operations(
+            context,
+            schema,
+            receiver,
+            name,
+            ir.types.intern(implementation + (is_const ? "<true>" : "<false>")))};
         NodeListBuilder wrapper{ir};
-        wrapper.add(ir.raw("using Base = " + base + ";\nusing Base::Base;")).new_lines(1);
-        auto api{lower_soa_api(
-            context, schema, is_const ? SoaReceiver::const_view : SoaReceiver::mutable_view, name)};
+        wrapper.add(ir.using_declaration(ir.strings.intern("Base"), base))
+            .new_lines(1)
+            .add(ir.raw("using Base::Base;"))
+            .new_lines(1);
+        auto api{lower_soa_api(context, schema, receiver, name, base)};
         wrapper.append(api.header);
         if (!api.source.empty()) {
             source.append(api.source).new_lines(1);
         }
         auto const type{ir.record(ir.strings.intern(name), wrapper.build(), RecordKind::struct_)};
-        ir.set_record_bases(type, {ir.types.intern(base)});
+        ir.set_record_bases(type, {base});
         result.add(type).new_lines(1);
     }
     return result.build();
@@ -676,18 +684,26 @@ auto emit_single_allocation_views(LoweringContext& context,
         .new_lines(1);
     for (bool const is_const : {true, false}) {
         std::string const name{is_const ? "ConstView" : "View"};
-        std::string const base{is_const ? "ViewImpl<true>" : "ViewImpl<false>"};
+        auto const receiver{is_const ? SoaReceiver::const_view : SoaReceiver::mutable_view};
+        auto const base{
+            soa_row_operations(context,
+                               schema,
+                               receiver,
+                               name,
+                               ir.types.intern(is_const ? "ViewImpl<true>" : "ViewImpl<false>"))};
         NodeListBuilder children{ir};
-        children.add(ir.raw("using Base = " + base + ";\nusing Base::Base;")).new_lines(1);
-        auto api{lower_soa_api(
-            context, schema, is_const ? SoaReceiver::const_view : SoaReceiver::mutable_view, name)};
+        children.add(ir.using_declaration(ir.strings.intern("Base"), base))
+            .new_lines(1)
+            .add(ir.raw("using Base::Base;"))
+            .new_lines(1);
+        auto api{lower_soa_api(context, schema, receiver, name, base)};
         children.append(api.header);
         if (!api.source.empty()) {
             source.append(api.source).new_lines(2);
         }
         auto const record{
             ir.record(ir.strings.intern(name), children.build(), RecordKind::struct_)};
-        ir.set_record_bases(record, {ir.types.intern(base)});
+        ir.set_record_bases(record, {base});
         ir.set_record_export_specifier(
             record,
             context.declarations.soas.export_specifier[context.declarations.soas.index(schema)]);
@@ -711,6 +727,11 @@ auto emit_single_allocation_container(LoweringContext& context,
     auto& ir{context.ir};
     NodeListBuilder children{ir};
     auto const operations{std::string{"ioj::native_soa::StorageOperations"}};
+    auto const row_operations{soa_row_operations(context,
+                                                 schema,
+                                                 SoaReceiver::owner,
+                                                 context.text(owner_name),
+                                                 ir.types.intern(operations))};
     children
         .add(ir.using_declaration(
             ir.strings.intern("soa_schema"),
@@ -742,7 +763,8 @@ auto emit_single_allocation_container(LoweringContext& context,
     auto api{lower_soa_api(context,
                            model_store.schema[model_store_index],
                            SoaReceiver::owner,
-                           context.text(owner_name))};
+                           context.text(owner_name),
+                           row_operations)};
     children.new_lines(1).append(std::move(api.header));
     source.append(std::move(api.source)).new_lines(2);
     children.new_lines(1)
@@ -759,8 +781,7 @@ auto emit_single_allocation_container(LoweringContext& context,
     describe_compact_scope(context, created_record, model_store.schema[model_store_index]);
     ir.set_record_bases(
         created_record,
-        {ir.types.intern("protected " + std::string{"ioj::native_soa::StorageState"}),
-         ir.types.intern(operations)});
+        {ir.types.intern("protected ioj::native_soa::StorageState"), row_operations});
     ir.set_record_export_specifier(
         created_record,
         context.declarations.soas.export_specifier[context.declarations.soas.index(

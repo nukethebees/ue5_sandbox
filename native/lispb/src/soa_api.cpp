@@ -3,6 +3,7 @@
 #include "lowered_soa.h"
 #include "lowering_context.h"
 #include "lowering_utils.h"
+#include "single_allocation_soa_model.h"
 #include "soa_body.h"
 #include "soa_receiver.h"
 
@@ -77,8 +78,25 @@ auto logical_column_access(LoweringContext& context,
 }
 
 namespace {
-auto compact_row_api(LoweringContext& context, DeclarationHandle schema, SoaReceiver receiver)
-    -> Nodes {
+auto has_custom_row_function(LoweringContext& context,
+                             DeclarationHandle schema,
+                             SoaReceiver receiver,
+                             std::string_view name) -> bool {
+    auto const& declarations{context.declarations};
+    auto const& soas{declarations.soas};
+    auto const row{soas.index(schema)};
+    auto const functions{receiver == SoaReceiver::owner ? soas.functions[row]
+                                                        : soas.mutable_view_functions[row]};
+    return std::ranges::any_of(declarations.items(functions), [&](auto function) {
+        return context.text(declarations.functions.name[declarations.functions.index(function)]) ==
+               name;
+    });
+}
+
+auto compact_row_api(LoweringContext& context,
+                     DeclarationHandle schema,
+                     SoaReceiver receiver,
+                     CppTypeId base) -> Nodes {
     auto& ir{context.ir};
     auto const& declarations{context.declarations};
     auto const& soas{declarations.soas};
@@ -86,15 +104,20 @@ auto compact_row_api(LoweringContext& context, DeclarationHandle schema, SoaRece
     NodeListBuilder result{ir};
     auto const owner{receiver == SoaReceiver::owner};
     auto const mutable_view{receiver == SoaReceiver::mutable_view};
-    auto const functions{owner ? soas.functions[soas.index(schema)]
-                               : soas.mutable_view_functions[soas.index(schema)]};
     auto custom = [&](std::string_view name) {
-        return std::ranges::any_of(declarations.items(functions), [&](auto function) {
-            return context.text(
-                       declarations.functions.name[declarations.functions.index(function)]) == name;
-        });
+        return has_custom_row_function(context, schema, receiver, name);
     };
-    auto emit = [&](FunctionId function) {
+    auto emit = [&](std::string_view name,
+                    std::vector<FunctionParameterId> parameters,
+                    Nodes body) {
+        auto const function{ir.function(name, name == "set" ? "void" : "size_type")};
+        if (name == "set") {
+            parameters.insert(parameters.begin(), ir.parameter("size_type", "index"));
+            ir.set_function_receiver(
+                function, mutable_view ? FunctionReceiver::const_ : FunctionReceiver::unqualified);
+        }
+        ir.set_function_parameters(function, parameters);
+        ir.set_function_body(function, body);
         ir.function_flags(function).set_define_in_header(true);
         ir.function_flags(function).set_is_inline(true);
         result.add(ir.header_function(function)).new_lines(1);
@@ -111,24 +134,23 @@ auto compact_row_api(LoweringContext& context, DeclarationHandle schema, SoaRece
                 .new_lines(1);
         }
     }
-    if (!owner && !mutable_view) {
+    if ((!owner && !mutable_view) || custom("set")) {
         return result.build();
     }
+    if (owner) {
+        result.add(ir.using_declaration(ir.strings.intern("RowOperations"), base)).new_lines(1);
+    }
+    result.add(ir.raw(owner ? "using RowOperations::set;" : "using Base::set;")).new_lines(1);
+    if (owner && !custom("add")) {
+        result.add(ir.raw("using RowOperations::add;")).new_lines(1);
+    }
 
-    std::vector<FunctionParameterId> parameters;
-    std::vector<Expr> arguments{ir.named("index")};
+    std::vector<CppTypeId> parameter_types;
     std::vector<Expr> equivalent_arguments;
     auto mapped{soas.equivalent_type[soas.index(schema)].has_value()};
-    NodeListBuilder assignments{ir};
-    assignments.add(ir.raw("assert(index < num());"));
-    auto collect = [&](auto&& self,
-                       DeclarationHandle current,
-                       std::vector<std::string> const& path,
-                       std::string const& value) -> void {
+    auto collect = [&](auto&& self, DeclarationHandle current, std::string const& value) -> void {
         for (auto member : declarations.items(soas.members[soas.index(current)])) {
             auto const row{members.index(member)};
-            auto column{path};
-            column.push_back(context.text(members.name[row]));
             auto component{value};
             if (members.equivalent_member[row]) {
                 component += "." + context.text(*members.equivalent_member[row]);
@@ -139,42 +161,15 @@ auto compact_row_api(LoweringContext& context, DeclarationHandle schema, SoaRece
                 mapped = false;
             }
             if (members.kind[row] == SoaMemberKind::nested) {
-                self(self,
-                     context.for_declaration(current).nested_declaration(member),
-                     column,
-                     component);
+                self(self, context.for_declaration(current).nested_declaration(member), component);
                 continue;
             }
             auto const type{context.for_declaration(current).resolve(members.type[row])};
-            auto const name{"new_" + join(column, "_")};
-            parameters.push_back(ir.parameter(ir.types.decorate(type, "", " const"), name));
-            arguments.push_back(ir.named(name));
+            parameter_types.push_back(ir.types.decorate(type, "", " const"));
             equivalent_arguments.push_back(ir.raw_expr(component));
-            assignments.add(ir.raw(
-                logical_column_access(context, schema, column, owner ? "get_view()" : "this->") +
-                "[index] = " + name + ";"));
         }
     };
-    collect(collect, schema, {}, "value");
-    if (!custom("set")) {
-        auto const setter{ir.function("set", "void")};
-        auto setter_parameters{parameters};
-        setter_parameters.insert(setter_parameters.begin(), ir.parameter("size_type", "index"));
-        ir.set_function_parameters(setter, setter_parameters);
-        ir.set_function_body(setter, assignments.build());
-        ir.set_function_receiver(
-            setter, mutable_view ? FunctionReceiver::const_ : FunctionReceiver::unqualified);
-        emit(setter);
-    }
-    if (owner && !custom("add") && !custom("set")) {
-        auto const add{ir.function("add", "size_type")};
-        ir.set_function_parameters(add, parameters);
-        ir.set_function_body(add,
-                             {ir.raw("auto const index{num()};\nadd_uninitialised(1);"),
-                              ir.expr_stmt(ir.call(ir.named("set"), arguments)),
-                              ir.return_stmt(ir.named("index"))});
-        emit(add);
-    }
+    collect(collect, schema, "value");
     auto can_assign_equivalent = [&](auto&& self, DeclarationHandle current) -> bool {
         if (!soas.equivalent_type[soas.index(current)]) {
             return false;
@@ -225,47 +220,29 @@ auto compact_row_api(LoweringContext& context, DeclarationHandle schema, SoaRece
     };
     collect_logical(collect_logical, schema, {});
     auto const same_parameters{std::ranges::equal(
-        parameters,
+        parameter_types,
         logical_parameters,
         {},
-        [&](auto parameter) { return ir.types.spelling(ir.parameter_type(parameter)); },
+        [&](auto type) { return ir.types.spelling(type); },
         [&](auto parameter) { return ir.types.spelling(ir.parameter_type(parameter)); })};
-    if (!same_parameters && !custom("set")) {
-        auto const setter{ir.function("set", "void")};
-        auto setter_parameters{logical_parameters};
-        setter_parameters.insert(setter_parameters.begin(), ir.parameter("size_type", "index"));
-        ir.set_function_parameters(setter, setter_parameters);
-        ir.set_function_body(setter, logical_assignments.build());
-        ir.set_function_receiver(
-            setter, mutable_view ? FunctionReceiver::const_ : FunctionReceiver::unqualified);
-        emit(setter);
+    if (!same_parameters) {
+        emit("set", logical_parameters, logical_assignments.build());
         if (owner && !custom("add")) {
-            auto const add{ir.function("add", "size_type")};
-            ir.set_function_parameters(add, logical_parameters);
-            ir.set_function_body(add,
-                                 {ir.raw("auto const index{num()};\nadd_uninitialised(1);"),
-                                  ir.expr_stmt(ir.call(ir.named("set"), logical_arguments)),
-                                  ir.return_stmt(ir.named("index"))});
-            emit(add);
+            emit("add",
+                 logical_parameters,
+                 {ir.raw("auto const index{num()};\nadd_uninitialised(1);"),
+                  ir.expr_stmt(ir.call(ir.named("set"), logical_arguments)),
+                  ir.return_stmt(ir.named("index"))});
         }
     }
-    if (mapped && !custom("set")) {
+    if (mapped) {
         auto const equivalent{context.resolve(*soas.equivalent_type[soas.index(schema)])};
         auto const value{ir.parameter(ir.types.decorate(equivalent, "", " const"), "value")};
-        auto const setter{ir.function("set", "void")};
-        ir.set_function_parameters(setter, {ir.parameter("size_type", "index"), value});
         auto set_arguments{equivalent_arguments};
         set_arguments.insert(set_arguments.begin(), ir.named("index"));
-        ir.set_function_body(setter, {ir.expr_stmt(ir.call(ir.named("set"), set_arguments))});
-        ir.set_function_receiver(
-            setter, mutable_view ? FunctionReceiver::const_ : FunctionReceiver::unqualified);
-        emit(setter);
+        emit("set", {value}, {ir.expr_stmt(ir.call(ir.named("set"), set_arguments))});
         if (owner && !custom("add")) {
-            auto const add{ir.function("add", "size_type")};
-            ir.set_function_parameters(add, {value});
-            ir.set_function_body(add,
-                                 {ir.return_stmt(ir.call(ir.named("add"), equivalent_arguments))});
-            emit(add);
+            emit("add", {value}, {ir.return_stmt(ir.call(ir.named("add"), equivalent_arguments))});
         }
     }
     return result.build();
@@ -295,15 +272,36 @@ auto expand_columns(LoweringContext& context,
 }
 }
 
+auto soa_row_operations(LoweringContext& context,
+                        DeclarationHandle schema,
+                        SoaReceiver receiver,
+                        std::string const& type_name,
+                        CppTypeId base) -> CppTypeId {
+    if (receiver == SoaReceiver::const_view ||
+        has_custom_row_function(context, schema, receiver, "set")) {
+        return base;
+    }
+    auto& types{context.ir.types};
+    auto const operations{receiver == SoaReceiver::owner ? "OwnerRowOperations"
+                                                         : "ViewRowOperations"};
+    return types.template_type(
+        types.named("ioj::soa_storage_detail::" + std::string{operations},
+                    {types.dependency(operations, "ioj/single_allocation/view.h")}),
+        {types.named(type_name),
+         types.named(schema_namespace(context, schema) + "::Layout::column_types"),
+         base});
+}
+
 auto lower_soa_api(LoweringContext& parent_context,
                    DeclarationHandle schema,
                    SoaReceiver const receiver,
-                   std::string const& type_name) -> LoweredSoa {
+                   std::string const& type_name,
+                   CppTypeId base) -> LoweredSoa {
     auto context{parent_context.for_declaration(schema)};
     auto& ir{context.ir};
     NodeListBuilder header{ir};
     NodeListBuilder source{ir};
-    header.append(compact_row_api(context, schema, receiver));
+    header.append(compact_row_api(context, schema, receiver, base));
     for (auto const alias : context.declarations.items(
              context.declarations.soas
                  .using_declarations[context.declarations.soas.index(schema)])) {

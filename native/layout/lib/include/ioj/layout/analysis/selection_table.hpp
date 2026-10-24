@@ -8,6 +8,7 @@
 #include "ioj/layout/analyzer/access_operation.hpp"
 #include "ioj/native_soa/storage.h"
 #include "ioj/single_allocation/layout.h"
+#include "ioj/single_allocation/view.h"
 
 #include <cassert>
 #include <cstddef>
@@ -101,26 +102,16 @@ struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;
     using Base::Base;
 };
-struct ResolvedView : ResolvedViewImpl<false> {
-    using Base = ResolvedViewImpl<false>;
+struct ResolvedView
+    : soa_storage_detail::ViewRowOperations<ResolvedView,
+                                            ::ioj::layout::selection_table::Layout::column_types,
+                                            ResolvedViewImpl<false>> {
+    using Base = ioj::soa_storage_detail::ViewRowOperations<
+        ResolvedView,
+        ::ioj::layout::selection_table::Layout::column_types,
+        ResolvedViewImpl<false>>;
     using Base::Base;
-    void set(size_type index,
-             std::size_t const new_source,
-             ioj::layout::AccessOperation const new_operation,
-             ioj::layout::PayloadFootprint const new_bytes,
-             ioj::layout::PayloadFootprint const new_bits,
-             ioj::layout::RegionFootprint const new_cache,
-             ioj::layout::RegionFootprint const new_pages,
-             std::optional<std::uint64_t> const new_capacity_slack_bytes) const {
-        assert(index < num());
-        this->source()[index] = new_source;
-        this->operation()[index] = new_operation;
-        this->bytes()[index] = new_bytes;
-        this->bits()[index] = new_bits;
-        this->cache()[index] = new_cache;
-        this->pages()[index] = new_pages;
-        this->capacity_slack_bytes()[index] = new_capacity_slack_bytes;
-    }
+    using Base::set;
 };
 
 /* **************************************** */
@@ -159,26 +150,16 @@ struct ConstView : ViewImpl<true> {
     using Base::Base;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<ConstView>());
-struct View : ViewImpl<false> {
-    using Base = ViewImpl<false>;
+struct View
+    : soa_storage_detail::ViewRowOperations<View,
+                                            ::ioj::layout::selection_table::Layout::column_types,
+                                            ViewImpl<false>> {
+    using Base = ioj::soa_storage_detail::ViewRowOperations<
+        View,
+        ::ioj::layout::selection_table::Layout::column_types,
+        ViewImpl<false>>;
     using Base::Base;
-    void set(size_type index,
-             std::size_t const new_source,
-             ioj::layout::AccessOperation const new_operation,
-             ioj::layout::PayloadFootprint const new_bytes,
-             ioj::layout::PayloadFootprint const new_bits,
-             ioj::layout::RegionFootprint const new_cache,
-             ioj::layout::RegionFootprint const new_pages,
-             std::optional<std::uint64_t> const new_capacity_slack_bytes) const {
-        assert(index < num());
-        this->source()[index] = new_source;
-        this->operation()[index] = new_operation;
-        this->bytes()[index] = new_bytes;
-        this->bits()[index] = new_bits;
-        this->cache()[index] = new_cache;
-        this->pages()[index] = new_pages;
-        this->capacity_slack_bytes()[index] = new_capacity_slack_bytes;
-    }
+    using Base::set;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
 
@@ -197,7 +178,9 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
 // capacity_slack_bytes: std::optional<std::uint64_t>
 struct SelectionTable
     : protected ioj::native_soa::StorageState
-    , ioj::native_soa::StorageOperations {
+    , soa_storage_detail::OwnerRowOperations<SelectionTable,
+                                             ::ioj::layout::selection_table::Layout::column_types,
+                                             ioj::native_soa::StorageOperations> {
     using soa_schema = ::ioj::layout::selection_table::Schema;
     using Operations = ioj::native_soa::StorageOperations;
     using Layout = ::ioj::layout::selection_table::Layout;
@@ -245,42 +228,12 @@ struct SelectionTable
     auto cache(this auto& self) { return self.get_view().cache(); }
     auto pages(this auto& self) { return self.get_view().pages(); }
     auto capacity_slack_bytes(this auto& self) { return self.get_view().capacity_slack_bytes(); }
-    void set(size_type index,
-             std::size_t const new_source,
-             AccessOperation const new_operation,
-             PayloadFootprint const new_bytes,
-             PayloadFootprint const new_bits,
-             RegionFootprint const new_cache,
-             RegionFootprint const new_pages,
-             std::optional<std::uint64_t> const new_capacity_slack_bytes) {
-        assert(index < num());
-        get_view().source()[index] = new_source;
-        get_view().operation()[index] = new_operation;
-        get_view().bytes()[index] = new_bytes;
-        get_view().bits()[index] = new_bits;
-        get_view().cache()[index] = new_cache;
-        get_view().pages()[index] = new_pages;
-        get_view().capacity_slack_bytes()[index] = new_capacity_slack_bytes;
-    }
-    size_type add(std::size_t const new_source,
-                  AccessOperation const new_operation,
-                  PayloadFootprint const new_bytes,
-                  PayloadFootprint const new_bits,
-                  RegionFootprint const new_cache,
-                  RegionFootprint const new_pages,
-                  std::optional<std::uint64_t> const new_capacity_slack_bytes) {
-        auto const index{num()};
-        add_uninitialised(1);
-        set(index,
-            new_source,
-            new_operation,
-            new_bytes,
-            new_bits,
-            new_cache,
-            new_pages,
-            new_capacity_slack_bytes);
-        return index;
-    }
+    using RowOperations =
+        soa_storage_detail::OwnerRowOperations<SelectionTable,
+                                               ::ioj::layout::selection_table::Layout::column_types,
+                                               ioj::native_soa::StorageOperations>;
+    using RowOperations::add;
+    using RowOperations::set;
     std::size_t append(std::size_t selected_source, AccessOperation selected_operation);
   private:
     friend Operations;

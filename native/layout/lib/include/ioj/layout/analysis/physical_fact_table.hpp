@@ -6,6 +6,7 @@
 #include "ioj/layout/fact_origin.hpp"
 #include "ioj/native_soa/storage.h"
 #include "ioj/single_allocation/layout.h"
+#include "ioj/single_allocation/view.h"
 
 #include "lispb/indices.h"
 #include "lispb/schema/enum_signedness.h"
@@ -96,24 +97,17 @@ struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;
     using Base::Base;
 };
-struct ResolvedView : ResolvedViewImpl<false> {
-    using Base = ResolvedViewImpl<false>;
+struct ResolvedView
+    : soa_storage_detail::ViewRowOperations<
+          ResolvedView,
+          ::ioj::layout::physical_fact_table::Layout::column_types,
+          ResolvedViewImpl<false>> {
+    using Base = ioj::soa_storage_detail::ViewRowOperations<
+        ResolvedView,
+        ::ioj::layout::physical_fact_table::Layout::column_types,
+        ResolvedViewImpl<false>>;
     using Base::Base;
-    void set(size_type index,
-             std::uint64_t const new_size_bytes,
-             std::uint64_t const new_alignment_bytes,
-             lispb::schema::EnumSignedness const new_signedness,
-             std::optional<std::uint32_t> const new_unsigned_value_bits,
-             lispb::StringId const new_provenance,
-             ioj::layout::FactOrigin const new_origin) const {
-        assert(index < num());
-        this->size_bytes()[index] = new_size_bytes;
-        this->alignment_bytes()[index] = new_alignment_bytes;
-        this->signedness()[index] = new_signedness;
-        this->unsigned_value_bits()[index] = new_unsigned_value_bits;
-        this->provenance()[index] = new_provenance;
-        this->origin()[index] = new_origin;
-    }
+    using Base::set;
 };
 
 /* **************************************** */
@@ -158,24 +152,17 @@ struct ConstView : ViewImpl<true> {
     using Base::Base;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<ConstView>());
-struct View : ViewImpl<false> {
-    using Base = ViewImpl<false>;
+struct View
+    : soa_storage_detail::ViewRowOperations<
+          View,
+          ::ioj::layout::physical_fact_table::Layout::column_types,
+          ViewImpl<false>> {
+    using Base = ioj::soa_storage_detail::ViewRowOperations<
+        View,
+        ::ioj::layout::physical_fact_table::Layout::column_types,
+        ViewImpl<false>>;
     using Base::Base;
-    void set(size_type index,
-             std::uint64_t const new_size_bytes,
-             std::uint64_t const new_alignment_bytes,
-             lispb::schema::EnumSignedness const new_signedness,
-             std::optional<std::uint32_t> const new_unsigned_value_bits,
-             lispb::StringId const new_provenance,
-             ioj::layout::FactOrigin const new_origin) const {
-        assert(index < num());
-        this->size_bytes()[index] = new_size_bytes;
-        this->alignment_bytes()[index] = new_alignment_bytes;
-        this->signedness()[index] = new_signedness;
-        this->unsigned_value_bits()[index] = new_unsigned_value_bits;
-        this->provenance()[index] = new_provenance;
-        this->origin()[index] = new_origin;
-    }
+    using Base::set;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
 
@@ -193,7 +180,10 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
 // origin: ioj::layout::FactOrigin
 struct PhysicalFactTable
     : protected ioj::native_soa::StorageState
-    , ioj::native_soa::StorageOperations {
+    , soa_storage_detail::OwnerRowOperations<
+          PhysicalFactTable,
+          ::ioj::layout::physical_fact_table::Layout::column_types,
+          ioj::native_soa::StorageOperations> {
     using soa_schema = ::ioj::layout::physical_fact_table::Schema;
     using Operations = ioj::native_soa::StorageOperations;
     using Layout = ::ioj::layout::physical_fact_table::Layout;
@@ -240,38 +230,12 @@ struct PhysicalFactTable
     auto unsigned_value_bits(this auto& self) { return self.get_view().unsigned_value_bits(); }
     auto provenance(this auto& self) { return self.get_view().provenance(); }
     auto origin(this auto& self) { return self.get_view().origin(); }
-    void set(size_type index,
-             std::uint64_t const new_size_bytes,
-             std::uint64_t const new_alignment_bytes,
-             lispb::schema::EnumSignedness const new_signedness,
-             std::optional<std::uint32_t> const new_unsigned_value_bits,
-             lispb::StringId const new_provenance,
-             FactOrigin const new_origin) {
-        assert(index < num());
-        get_view().size_bytes()[index] = new_size_bytes;
-        get_view().alignment_bytes()[index] = new_alignment_bytes;
-        get_view().signedness()[index] = new_signedness;
-        get_view().unsigned_value_bits()[index] = new_unsigned_value_bits;
-        get_view().provenance()[index] = new_provenance;
-        get_view().origin()[index] = new_origin;
-    }
-    size_type add(std::uint64_t const new_size_bytes,
-                  std::uint64_t const new_alignment_bytes,
-                  lispb::schema::EnumSignedness const new_signedness,
-                  std::optional<std::uint32_t> const new_unsigned_value_bits,
-                  lispb::StringId const new_provenance,
-                  FactOrigin const new_origin) {
-        auto const index{num()};
-        add_uninitialised(1);
-        set(index,
-            new_size_bytes,
-            new_alignment_bytes,
-            new_signedness,
-            new_unsigned_value_bits,
-            new_provenance,
-            new_origin);
-        return index;
-    }
+    using RowOperations = soa_storage_detail::OwnerRowOperations<
+        PhysicalFactTable,
+        ::ioj::layout::physical_fact_table::Layout::column_types,
+        ioj::native_soa::StorageOperations>;
+    using RowOperations::add;
+    using RowOperations::set;
   private:
     friend Operations;
     friend ::ioj::soa_storage_detail::StorageRequirements;

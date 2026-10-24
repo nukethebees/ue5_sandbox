@@ -6,6 +6,7 @@
 #include "ioj/layout/analyzer/enum_code_value.hpp"
 #include "ioj/native_soa/storage.h"
 #include "ioj/single_allocation/layout.h"
+#include "ioj/single_allocation/view.h"
 
 #include "codegen/schema/packed_integer_value.h"
 
@@ -93,22 +94,16 @@ struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;
     using Base::Base;
 };
-struct ResolvedView : ResolvedViewImpl<false> {
-    using Base = ResolvedViewImpl<false>;
+struct ResolvedView
+    : soa_storage_detail::ViewRowOperations<ResolvedView,
+                                            ::ioj::layout::code_table::Layout::column_types,
+                                            ResolvedViewImpl<false>> {
+    using Base =
+        ioj::soa_storage_detail::ViewRowOperations<ResolvedView,
+                                                   ::ioj::layout::code_table::Layout::column_types,
+                                                   ResolvedViewImpl<false>>;
     using Base::Base;
-    void set(size_type index,
-             std::string_view const new_name,
-             std::uint8_t const new_sentinel,
-             std::uint8_t const new_count_sentinel,
-             std::optional<ioj::layout::EnumCodeValue> const new_code,
-             std::optional<lispb::codegen::PackedIntegerValue> const new_integer_value) const {
-        assert(index < num());
-        this->name()[index] = new_name;
-        this->sentinel()[index] = new_sentinel;
-        this->count_sentinel()[index] = new_count_sentinel;
-        this->code()[index] = new_code;
-        this->integer_value()[index] = new_integer_value;
-    }
+    using Base::set;
 };
 
 /* **************************************** */
@@ -148,22 +143,14 @@ struct ConstView : ViewImpl<true> {
     using Base::Base;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<ConstView>());
-struct View : ViewImpl<false> {
-    using Base = ViewImpl<false>;
+struct View
+    : soa_storage_detail::ViewRowOperations<View,
+                                            ::ioj::layout::code_table::Layout::column_types,
+                                            ViewImpl<false>> {
+    using Base = ioj::soa_storage_detail::
+        ViewRowOperations<View, ::ioj::layout::code_table::Layout::column_types, ViewImpl<false>>;
     using Base::Base;
-    void set(size_type index,
-             std::string_view const new_name,
-             std::uint8_t const new_sentinel,
-             std::uint8_t const new_count_sentinel,
-             std::optional<ioj::layout::EnumCodeValue> const new_code,
-             std::optional<lispb::codegen::PackedIntegerValue> const new_integer_value) const {
-        assert(index < num());
-        this->name()[index] = new_name;
-        this->sentinel()[index] = new_sentinel;
-        this->count_sentinel()[index] = new_count_sentinel;
-        this->code()[index] = new_code;
-        this->integer_value()[index] = new_integer_value;
-    }
+    using Base::set;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
 
@@ -180,7 +167,9 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
 // integer_value: std::optional<lispb::codegen::PackedIntegerValue>
 struct CodeTable
     : protected ioj::native_soa::StorageState
-    , ioj::native_soa::StorageOperations {
+    , soa_storage_detail::OwnerRowOperations<CodeTable,
+                                             ::ioj::layout::code_table::Layout::column_types,
+                                             ioj::native_soa::StorageOperations> {
     using soa_schema = ::ioj::layout::code_table::Schema;
     using Operations = ioj::native_soa::StorageOperations;
     using Layout = ::ioj::layout::code_table::Layout;
@@ -226,29 +215,12 @@ struct CodeTable
     auto count_sentinel(this auto& self) { return self.get_view().count_sentinel(); }
     auto code(this auto& self) { return self.get_view().code(); }
     auto integer_value(this auto& self) { return self.get_view().integer_value(); }
-    void set(size_type index,
-             std::string_view const new_name,
-             std::uint8_t const new_sentinel,
-             std::uint8_t const new_count_sentinel,
-             std::optional<ioj::layout::EnumCodeValue> const new_code,
-             std::optional<lispb::codegen::PackedIntegerValue> const new_integer_value) {
-        assert(index < num());
-        get_view().name()[index] = new_name;
-        get_view().sentinel()[index] = new_sentinel;
-        get_view().count_sentinel()[index] = new_count_sentinel;
-        get_view().code()[index] = new_code;
-        get_view().integer_value()[index] = new_integer_value;
-    }
-    size_type add(std::string_view const new_name,
-                  std::uint8_t const new_sentinel,
-                  std::uint8_t const new_count_sentinel,
-                  std::optional<ioj::layout::EnumCodeValue> const new_code,
-                  std::optional<lispb::codegen::PackedIntegerValue> const new_integer_value) {
-        auto const index{num()};
-        add_uninitialised(1);
-        set(index, new_name, new_sentinel, new_count_sentinel, new_code, new_integer_value);
-        return index;
-    }
+    using RowOperations =
+        soa_storage_detail::OwnerRowOperations<CodeTable,
+                                               ::ioj::layout::code_table::Layout::column_types,
+                                               ioj::native_soa::StorageOperations>;
+    using RowOperations::add;
+    using RowOperations::set;
     std::size_t append();
   private:
     friend Operations;

@@ -8,6 +8,7 @@
 #include "ioj/sim/entities/entity_telemetry.h"
 #include "ioj/sim/sim_tick.h"
 #include "ioj/single_allocation/layout.h"
+#include "ioj/single_allocation/view.h"
 
 #include <cassert>
 #include <cstdint>
@@ -156,32 +157,17 @@ struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;
     using Base::Base;
 };
-struct ResolvedView : ResolvedViewImpl<false> {
-    using Base = ResolvedViewImpl<false>;
+struct ResolvedView
+    : soa_storage_detail::ViewRowOperations<
+          ResolvedView,
+          ::ioj::sim::telemetry::history_rows::Layout::column_types,
+          ResolvedViewImpl<false>> {
+    using Base = ioj::soa_storage_detail::ViewRowOperations<
+        ResolvedView,
+        ::ioj::sim::telemetry::history_rows::Layout::column_types,
+        ResolvedViewImpl<false>>;
     using Base::Base;
-    void set(size_type index,
-             SimTick const new_completed_ticks,
-             HistoryFieldMask const new_validity_masks,
-             std::int32_t const new_active_entities,
-             ioj::sim::telemetry::EntityTypeCounts const new_active_entities_by_type,
-             ioj::sim::telemetry::EntityCounts const new_active_entities_by_team_and_type,
-             std::int32_t const new_spawned_entities,
-             std::int32_t const new_destroyed_entities,
-             std::int32_t const new_kills,
-             std::int32_t const new_active_lasers,
-             std::int32_t const new_lasers_fired) const {
-        assert(index < num());
-        this->completed_ticks()[index] = new_completed_ticks;
-        this->validity_masks()[index] = new_validity_masks;
-        this->active_entities()[index] = new_active_entities;
-        this->active_entities_by_type()[index] = new_active_entities_by_type;
-        this->active_entities_by_team_and_type()[index] = new_active_entities_by_team_and_type;
-        this->spawned_entities()[index] = new_spawned_entities;
-        this->destroyed_entities()[index] = new_destroyed_entities;
-        this->kills()[index] = new_kills;
-        this->active_lasers()[index] = new_active_lasers;
-        this->lasers_fired()[index] = new_lasers_fired;
-    }
+    using Base::set;
 };
 
 /* **************************************** */
@@ -237,32 +223,17 @@ struct ConstView : ViewImpl<true> {
     using Base::Base;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<ConstView>());
-struct View : ViewImpl<false> {
-    using Base = ViewImpl<false>;
+struct View
+    : soa_storage_detail::ViewRowOperations<
+          View,
+          ::ioj::sim::telemetry::history_rows::Layout::column_types,
+          ViewImpl<false>> {
+    using Base = ioj::soa_storage_detail::ViewRowOperations<
+        View,
+        ::ioj::sim::telemetry::history_rows::Layout::column_types,
+        ViewImpl<false>>;
     using Base::Base;
-    void set(size_type index,
-             SimTick const new_completed_ticks,
-             HistoryFieldMask const new_validity_masks,
-             std::int32_t const new_active_entities,
-             ioj::sim::telemetry::EntityTypeCounts const new_active_entities_by_type,
-             ioj::sim::telemetry::EntityCounts const new_active_entities_by_team_and_type,
-             std::int32_t const new_spawned_entities,
-             std::int32_t const new_destroyed_entities,
-             std::int32_t const new_kills,
-             std::int32_t const new_active_lasers,
-             std::int32_t const new_lasers_fired) const {
-        assert(index < num());
-        this->completed_ticks()[index] = new_completed_ticks;
-        this->validity_masks()[index] = new_validity_masks;
-        this->active_entities()[index] = new_active_entities;
-        this->active_entities_by_type()[index] = new_active_entities_by_type;
-        this->active_entities_by_team_and_type()[index] = new_active_entities_by_team_and_type;
-        this->spawned_entities()[index] = new_spawned_entities;
-        this->destroyed_entities()[index] = new_destroyed_entities;
-        this->kills()[index] = new_kills;
-        this->active_lasers()[index] = new_active_lasers;
-        this->lasers_fired()[index] = new_lasers_fired;
-    }
+    using Base::set;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
 
@@ -284,7 +255,10 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
 // lasers_fired: std::int32_t
 struct HistoryRows
     : protected ioj::native_soa::StorageState
-    , ioj::native_soa::StorageOperations {
+    , soa_storage_detail::OwnerRowOperations<
+          HistoryRows,
+          ::ioj::sim::telemetry::history_rows::Layout::column_types,
+          ioj::native_soa::StorageOperations> {
     using soa_schema = ::ioj::sim::telemetry::history_rows::Schema;
     using Operations = ioj::native_soa::StorageOperations;
     using Layout = ::ioj::sim::telemetry::history_rows::Layout;
@@ -339,54 +313,12 @@ struct HistoryRows
     auto kills(this auto& self) { return self.get_view().kills(); }
     auto active_lasers(this auto& self) { return self.get_view().active_lasers(); }
     auto lasers_fired(this auto& self) { return self.get_view().lasers_fired(); }
-    void set(size_type index,
-             SimTick const new_completed_ticks,
-             HistoryFieldMask const new_validity_masks,
-             std::int32_t const new_active_entities,
-             EntityTypeCounts const new_active_entities_by_type,
-             EntityCounts const new_active_entities_by_team_and_type,
-             std::int32_t const new_spawned_entities,
-             std::int32_t const new_destroyed_entities,
-             std::int32_t const new_kills,
-             std::int32_t const new_active_lasers,
-             std::int32_t const new_lasers_fired) {
-        assert(index < num());
-        get_view().completed_ticks()[index] = new_completed_ticks;
-        get_view().validity_masks()[index] = new_validity_masks;
-        get_view().active_entities()[index] = new_active_entities;
-        get_view().active_entities_by_type()[index] = new_active_entities_by_type;
-        get_view().active_entities_by_team_and_type()[index] = new_active_entities_by_team_and_type;
-        get_view().spawned_entities()[index] = new_spawned_entities;
-        get_view().destroyed_entities()[index] = new_destroyed_entities;
-        get_view().kills()[index] = new_kills;
-        get_view().active_lasers()[index] = new_active_lasers;
-        get_view().lasers_fired()[index] = new_lasers_fired;
-    }
-    size_type add(SimTick const new_completed_ticks,
-                  HistoryFieldMask const new_validity_masks,
-                  std::int32_t const new_active_entities,
-                  EntityTypeCounts const new_active_entities_by_type,
-                  EntityCounts const new_active_entities_by_team_and_type,
-                  std::int32_t const new_spawned_entities,
-                  std::int32_t const new_destroyed_entities,
-                  std::int32_t const new_kills,
-                  std::int32_t const new_active_lasers,
-                  std::int32_t const new_lasers_fired) {
-        auto const index{num()};
-        add_uninitialised(1);
-        set(index,
-            new_completed_ticks,
-            new_validity_masks,
-            new_active_entities,
-            new_active_entities_by_type,
-            new_active_entities_by_team_and_type,
-            new_spawned_entities,
-            new_destroyed_entities,
-            new_kills,
-            new_active_lasers,
-            new_lasers_fired);
-        return index;
-    }
+    using RowOperations = soa_storage_detail::OwnerRowOperations<
+        HistoryRows,
+        ::ioj::sim::telemetry::history_rows::Layout::column_types,
+        ioj::native_soa::StorageOperations>;
+    using RowOperations::add;
+    using RowOperations::set;
   private:
     friend Operations;
     friend ::ioj::soa_storage_detail::StorageRequirements;

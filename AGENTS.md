@@ -160,7 +160,7 @@ If a new issue invalidates previous validation or requires additional builds/tes
 # Code Reuse
 
 * Reuse existing code if it can perform the requested task
-* Keep generated code explicit, simple, and easy to debug. Do not consolidate their per-column operations into variadic calls.
+* Keep generated code simple and easy to debug. Share repetitive typed SoA operations using the existing column packs when this reduces total code; retain explicit generation for schema-specific behavior. Avoid additional type-description systems or elaborate template frameworks.
 
 # Formatting
 

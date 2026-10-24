@@ -7,6 +7,7 @@
 #include "ioj/layout/analysis/relationship_metrics.hpp"
 #include "ioj/native_soa/storage.h"
 #include "ioj/single_allocation/layout.h"
+#include "ioj/single_allocation/view.h"
 
 #include "lispb/schema/indices.h"
 
@@ -84,20 +85,16 @@ struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;
     using Base::Base;
 };
-struct ResolvedView : ResolvedViewImpl<false> {
-    using Base = ResolvedViewImpl<false>;
+struct ResolvedView
+    : soa_storage_detail::ViewRowOperations<ResolvedView,
+                                            ::ioj::layout::relationship_table::Layout::column_types,
+                                            ResolvedViewImpl<false>> {
+    using Base = ioj::soa_storage_detail::ViewRowOperations<
+        ResolvedView,
+        ::ioj::layout::relationship_table::Layout::column_types,
+        ResolvedViewImpl<false>>;
     using Base::Base;
-    void set(size_type index,
-             ioj::layout::AnalysisId const new_owner,
-             std::optional<std::size_t> const new_field,
-             lispb::schema::RelationshipId const new_relationship,
-             std::optional<ioj::layout::RelationshipMetrics> const new_metrics) const {
-        assert(index < num());
-        this->owner()[index] = new_owner;
-        this->field()[index] = new_field;
-        this->relationship()[index] = new_relationship;
-        this->metrics()[index] = new_metrics;
-    }
+    using Base::set;
 };
 
 /* **************************************** */
@@ -136,20 +133,16 @@ struct ConstView : ViewImpl<true> {
     using Base::Base;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<ConstView>());
-struct View : ViewImpl<false> {
-    using Base = ViewImpl<false>;
+struct View
+    : soa_storage_detail::ViewRowOperations<View,
+                                            ::ioj::layout::relationship_table::Layout::column_types,
+                                            ViewImpl<false>> {
+    using Base = ioj::soa_storage_detail::ViewRowOperations<
+        View,
+        ::ioj::layout::relationship_table::Layout::column_types,
+        ViewImpl<false>>;
     using Base::Base;
-    void set(size_type index,
-             ioj::layout::AnalysisId const new_owner,
-             std::optional<std::size_t> const new_field,
-             lispb::schema::RelationshipId const new_relationship,
-             std::optional<ioj::layout::RelationshipMetrics> const new_metrics) const {
-        assert(index < num());
-        this->owner()[index] = new_owner;
-        this->field()[index] = new_field;
-        this->relationship()[index] = new_relationship;
-        this->metrics()[index] = new_metrics;
-    }
+    using Base::set;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
 
@@ -165,7 +158,10 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
 // metrics: std::optional<ioj::layout::RelationshipMetrics>
 struct RelationshipTable
     : protected ioj::native_soa::StorageState
-    , ioj::native_soa::StorageOperations {
+    , soa_storage_detail::OwnerRowOperations<
+          RelationshipTable,
+          ::ioj::layout::relationship_table::Layout::column_types,
+          ioj::native_soa::StorageOperations> {
     using soa_schema = ::ioj::layout::relationship_table::Schema;
     using Operations = ioj::native_soa::StorageOperations;
     using Layout = ::ioj::layout::relationship_table::Layout;
@@ -210,26 +206,12 @@ struct RelationshipTable
     auto field(this auto& self) { return self.get_view().field(); }
     auto relationship(this auto& self) { return self.get_view().relationship(); }
     auto metrics(this auto& self) { return self.get_view().metrics(); }
-    void set(size_type index,
-             AnalysisId const new_owner,
-             std::optional<std::size_t> const new_field,
-             lispb::schema::RelationshipId const new_relationship,
-             std::optional<ioj::layout::RelationshipMetrics> const new_metrics) {
-        assert(index < num());
-        get_view().owner()[index] = new_owner;
-        get_view().field()[index] = new_field;
-        get_view().relationship()[index] = new_relationship;
-        get_view().metrics()[index] = new_metrics;
-    }
-    size_type add(AnalysisId const new_owner,
-                  std::optional<std::size_t> const new_field,
-                  lispb::schema::RelationshipId const new_relationship,
-                  std::optional<ioj::layout::RelationshipMetrics> const new_metrics) {
-        auto const index{num()};
-        add_uninitialised(1);
-        set(index, new_owner, new_field, new_relationship, new_metrics);
-        return index;
-    }
+    using RowOperations = soa_storage_detail::OwnerRowOperations<
+        RelationshipTable,
+        ::ioj::layout::relationship_table::Layout::column_types,
+        ioj::native_soa::StorageOperations>;
+    using RowOperations::add;
+    using RowOperations::set;
     std::size_t append();
   private:
     friend Operations;

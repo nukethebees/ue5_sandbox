@@ -6,6 +6,7 @@
 #include "ioj/native_soa/storage.h"
 #include "ioj/sim/entities/entity_id.h"
 #include "ioj/single_allocation/layout.h"
+#include "ioj/single_allocation/view.h"
 
 #include <cassert>
 #include <cstdint>
@@ -127,38 +128,17 @@ struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;
     using Base::Base;
 };
-struct ResolvedView : ResolvedViewImpl<false> {
-    using Base = ResolvedViewImpl<false>;
+struct ResolvedView
+    : soa_storage_detail::ViewRowOperations<
+          ResolvedView,
+          ::ioj::sim::collision::entity_cell_data::Layout::column_types,
+          ResolvedViewImpl<false>> {
+    using Base = ioj::soa_storage_detail::ViewRowOperations<
+        ResolvedView,
+        ::ioj::sim::collision::entity_cell_data::Layout::column_types,
+        ResolvedViewImpl<false>>;
     using Base::Base;
-    void set(size_type index,
-             float const new_min_point_xs,
-             float const new_min_point_ys,
-             float const new_min_point_zs,
-             float const new_max_point_xs,
-             float const new_max_point_ys,
-             float const new_max_point_zs,
-             std::int32_t const new_min_cell_xs,
-             std::int32_t const new_min_cell_ys,
-             std::int32_t const new_min_cell_zs,
-             std::int32_t const new_max_cell_xs,
-             std::int32_t const new_max_cell_ys,
-             std::int32_t const new_max_cell_zs,
-             EntityId const new_entity_ids) const {
-        assert(index < num());
-        this->min_point_xs()[index] = new_min_point_xs;
-        this->min_point_ys()[index] = new_min_point_ys;
-        this->min_point_zs()[index] = new_min_point_zs;
-        this->max_point_xs()[index] = new_max_point_xs;
-        this->max_point_ys()[index] = new_max_point_ys;
-        this->max_point_zs()[index] = new_max_point_zs;
-        this->min_cell_xs()[index] = new_min_cell_xs;
-        this->min_cell_ys()[index] = new_min_cell_ys;
-        this->min_cell_zs()[index] = new_min_cell_zs;
-        this->max_cell_xs()[index] = new_max_cell_xs;
-        this->max_cell_ys()[index] = new_max_cell_ys;
-        this->max_cell_zs()[index] = new_max_cell_zs;
-        this->entity_ids()[index] = new_entity_ids;
-    }
+    using Base::set;
 };
 
 /* **************************************** */
@@ -211,38 +191,17 @@ struct ConstView : ViewImpl<true> {
     using Base::Base;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<ConstView>());
-struct View : ViewImpl<false> {
-    using Base = ViewImpl<false>;
+struct View
+    : soa_storage_detail::ViewRowOperations<
+          View,
+          ::ioj::sim::collision::entity_cell_data::Layout::column_types,
+          ViewImpl<false>> {
+    using Base = ioj::soa_storage_detail::ViewRowOperations<
+        View,
+        ::ioj::sim::collision::entity_cell_data::Layout::column_types,
+        ViewImpl<false>>;
     using Base::Base;
-    void set(size_type index,
-             float const new_min_point_xs,
-             float const new_min_point_ys,
-             float const new_min_point_zs,
-             float const new_max_point_xs,
-             float const new_max_point_ys,
-             float const new_max_point_zs,
-             std::int32_t const new_min_cell_xs,
-             std::int32_t const new_min_cell_ys,
-             std::int32_t const new_min_cell_zs,
-             std::int32_t const new_max_cell_xs,
-             std::int32_t const new_max_cell_ys,
-             std::int32_t const new_max_cell_zs,
-             EntityId const new_entity_ids) const {
-        assert(index < num());
-        this->min_point_xs()[index] = new_min_point_xs;
-        this->min_point_ys()[index] = new_min_point_ys;
-        this->min_point_zs()[index] = new_min_point_zs;
-        this->max_point_xs()[index] = new_max_point_xs;
-        this->max_point_ys()[index] = new_max_point_ys;
-        this->max_point_zs()[index] = new_max_point_zs;
-        this->min_cell_xs()[index] = new_min_cell_xs;
-        this->min_cell_ys()[index] = new_min_cell_ys;
-        this->min_cell_zs()[index] = new_min_cell_zs;
-        this->max_cell_xs()[index] = new_max_cell_xs;
-        this->max_cell_ys()[index] = new_max_cell_ys;
-        this->max_cell_zs()[index] = new_max_cell_zs;
-        this->entity_ids()[index] = new_entity_ids;
-    }
+    using Base::set;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
 
@@ -267,7 +226,10 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
 // entity_ids: EntityId
 struct EntityCellData
     : protected ioj::native_soa::StorageState
-    , ioj::native_soa::StorageOperations {
+    , soa_storage_detail::OwnerRowOperations<
+          EntityCellData,
+          ::ioj::sim::collision::entity_cell_data::Layout::column_types,
+          ioj::native_soa::StorageOperations> {
     using soa_schema = ::ioj::sim::collision::entity_cell_data::Schema;
     using Operations = ioj::native_soa::StorageOperations;
     using Layout = ::ioj::sim::collision::entity_cell_data::Layout;
@@ -321,66 +283,12 @@ struct EntityCellData
     auto max_cell_ys(this auto& self) { return self.get_view().max_cell_ys(); }
     auto max_cell_zs(this auto& self) { return self.get_view().max_cell_zs(); }
     auto entity_ids(this auto& self) { return self.get_view().entity_ids(); }
-    void set(size_type index,
-             float const new_min_point_xs,
-             float const new_min_point_ys,
-             float const new_min_point_zs,
-             float const new_max_point_xs,
-             float const new_max_point_ys,
-             float const new_max_point_zs,
-             std::int32_t const new_min_cell_xs,
-             std::int32_t const new_min_cell_ys,
-             std::int32_t const new_min_cell_zs,
-             std::int32_t const new_max_cell_xs,
-             std::int32_t const new_max_cell_ys,
-             std::int32_t const new_max_cell_zs,
-             EntityId const new_entity_ids) {
-        assert(index < num());
-        get_view().min_point_xs()[index] = new_min_point_xs;
-        get_view().min_point_ys()[index] = new_min_point_ys;
-        get_view().min_point_zs()[index] = new_min_point_zs;
-        get_view().max_point_xs()[index] = new_max_point_xs;
-        get_view().max_point_ys()[index] = new_max_point_ys;
-        get_view().max_point_zs()[index] = new_max_point_zs;
-        get_view().min_cell_xs()[index] = new_min_cell_xs;
-        get_view().min_cell_ys()[index] = new_min_cell_ys;
-        get_view().min_cell_zs()[index] = new_min_cell_zs;
-        get_view().max_cell_xs()[index] = new_max_cell_xs;
-        get_view().max_cell_ys()[index] = new_max_cell_ys;
-        get_view().max_cell_zs()[index] = new_max_cell_zs;
-        get_view().entity_ids()[index] = new_entity_ids;
-    }
-    size_type add(float const new_min_point_xs,
-                  float const new_min_point_ys,
-                  float const new_min_point_zs,
-                  float const new_max_point_xs,
-                  float const new_max_point_ys,
-                  float const new_max_point_zs,
-                  std::int32_t const new_min_cell_xs,
-                  std::int32_t const new_min_cell_ys,
-                  std::int32_t const new_min_cell_zs,
-                  std::int32_t const new_max_cell_xs,
-                  std::int32_t const new_max_cell_ys,
-                  std::int32_t const new_max_cell_zs,
-                  EntityId const new_entity_ids) {
-        auto const index{num()};
-        add_uninitialised(1);
-        set(index,
-            new_min_point_xs,
-            new_min_point_ys,
-            new_min_point_zs,
-            new_max_point_xs,
-            new_max_point_ys,
-            new_max_point_zs,
-            new_min_cell_xs,
-            new_min_cell_ys,
-            new_min_cell_zs,
-            new_max_cell_xs,
-            new_max_cell_ys,
-            new_max_cell_zs,
-            new_entity_ids);
-        return index;
-    }
+    using RowOperations = soa_storage_detail::OwnerRowOperations<
+        EntityCellData,
+        ::ioj::sim::collision::entity_cell_data::Layout::column_types,
+        ioj::native_soa::StorageOperations>;
+    using RowOperations::add;
+    using RowOperations::set;
   private:
     friend Operations;
     friend ::ioj::soa_storage_detail::StorageRequirements;

@@ -7,6 +7,7 @@
 #include "ioj/native_soa/storage.h"
 #include "ioj/sim/lasers/laser_source.h"
 #include "ioj/single_allocation/layout.h"
+#include "ioj/single_allocation/view.h"
 #include "ioj/vectors3f.h"
 
 #include <cassert>
@@ -103,26 +104,16 @@ struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;
     using Base::Base;
 };
-struct ResolvedView : ResolvedViewImpl<false> {
-    using Base = ResolvedViewImpl<false>;
+struct ResolvedView
+    : soa_storage_detail::ViewRowOperations<ResolvedView,
+                                            ::ioj::sim::laser_hit_details::Layout::column_types,
+                                            ResolvedViewImpl<false>> {
+    using Base = ioj::soa_storage_detail::ViewRowOperations<
+        ResolvedView,
+        ::ioj::sim::laser_hit_details::Layout::column_types,
+        ResolvedViewImpl<false>>;
     using Base::Base;
-    void set(size_type index,
-             float const new_locations_xs,
-             float const new_locations_ys,
-             float const new_locations_zs,
-             float const new_emission_directions_xs,
-             float const new_emission_directions_ys,
-             float const new_emission_directions_zs,
-             ioj::sim::LaserSource const new_sources) const {
-        assert(index < num());
-        this->view_locations().xs()[index] = new_locations_xs;
-        this->view_locations().ys()[index] = new_locations_ys;
-        this->view_locations().zs()[index] = new_locations_zs;
-        this->view_emission_directions().xs()[index] = new_emission_directions_xs;
-        this->view_emission_directions().ys()[index] = new_emission_directions_ys;
-        this->view_emission_directions().zs()[index] = new_emission_directions_zs;
-        this->sources()[index] = new_sources;
-    }
+    using Base::set;
     void set(size_type index,
              Vector3f const new_locations,
              Vector3f const new_emission_directions,
@@ -179,26 +170,16 @@ struct ConstView : ViewImpl<true> {
     using Base::Base;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<ConstView>());
-struct View : ViewImpl<false> {
-    using Base = ViewImpl<false>;
+struct View
+    : soa_storage_detail::ViewRowOperations<View,
+                                            ::ioj::sim::laser_hit_details::Layout::column_types,
+                                            ViewImpl<false>> {
+    using Base = ioj::soa_storage_detail::ViewRowOperations<
+        View,
+        ::ioj::sim::laser_hit_details::Layout::column_types,
+        ViewImpl<false>>;
     using Base::Base;
-    void set(size_type index,
-             float const new_locations_xs,
-             float const new_locations_ys,
-             float const new_locations_zs,
-             float const new_emission_directions_xs,
-             float const new_emission_directions_ys,
-             float const new_emission_directions_zs,
-             ioj::sim::LaserSource const new_sources) const {
-        assert(index < num());
-        this->view_locations().xs()[index] = new_locations_xs;
-        this->view_locations().ys()[index] = new_locations_ys;
-        this->view_locations().zs()[index] = new_locations_zs;
-        this->view_emission_directions().xs()[index] = new_emission_directions_xs;
-        this->view_emission_directions().ys()[index] = new_emission_directions_ys;
-        this->view_emission_directions().zs()[index] = new_emission_directions_zs;
-        this->sources()[index] = new_sources;
-    }
+    using Base::set;
     void set(size_type index,
              Vector3f const new_locations,
              Vector3f const new_emission_directions,
@@ -226,7 +207,9 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
 // sources: ioj::sim::LaserSource
 struct LaserHitDetails
     : protected ioj::native_soa::StorageState
-    , ioj::native_soa::StorageOperations {
+    , soa_storage_detail::OwnerRowOperations<LaserHitDetails,
+                                             ::ioj::sim::laser_hit_details::Layout::column_types,
+                                             ioj::native_soa::StorageOperations> {
     using soa_schema = ::ioj::sim::laser_hit_details::Schema;
     using Operations = ioj::native_soa::StorageOperations;
     using Layout = ::ioj::sim::laser_hit_details::Layout;
@@ -272,42 +255,12 @@ struct LaserHitDetails
         return self.get_view().view_emission_directions();
     }
     auto sources(this auto& self) { return self.get_view().sources(); }
-    void set(size_type index,
-             float const new_locations_xs,
-             float const new_locations_ys,
-             float const new_locations_zs,
-             float const new_emission_directions_xs,
-             float const new_emission_directions_ys,
-             float const new_emission_directions_zs,
-             LaserSource const new_sources) {
-        assert(index < num());
-        get_view().view_locations().xs()[index] = new_locations_xs;
-        get_view().view_locations().ys()[index] = new_locations_ys;
-        get_view().view_locations().zs()[index] = new_locations_zs;
-        get_view().view_emission_directions().xs()[index] = new_emission_directions_xs;
-        get_view().view_emission_directions().ys()[index] = new_emission_directions_ys;
-        get_view().view_emission_directions().zs()[index] = new_emission_directions_zs;
-        get_view().sources()[index] = new_sources;
-    }
-    size_type add(float const new_locations_xs,
-                  float const new_locations_ys,
-                  float const new_locations_zs,
-                  float const new_emission_directions_xs,
-                  float const new_emission_directions_ys,
-                  float const new_emission_directions_zs,
-                  LaserSource const new_sources) {
-        auto const index{num()};
-        add_uninitialised(1);
-        set(index,
-            new_locations_xs,
-            new_locations_ys,
-            new_locations_zs,
-            new_emission_directions_xs,
-            new_emission_directions_ys,
-            new_emission_directions_zs,
-            new_sources);
-        return index;
-    }
+    using RowOperations =
+        soa_storage_detail::OwnerRowOperations<LaserHitDetails,
+                                               ::ioj::sim::laser_hit_details::Layout::column_types,
+                                               ioj::native_soa::StorageOperations>;
+    using RowOperations::add;
+    using RowOperations::set;
     void set(size_type index,
              Vector3f const new_locations,
              Vector3f const new_emission_directions,

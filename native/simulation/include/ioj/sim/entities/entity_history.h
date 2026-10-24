@@ -11,6 +11,7 @@
 #include "ioj/sim/entities/entity_type.h"
 #include "ioj/sim/sim_tick.h"
 #include "ioj/single_allocation/layout.h"
+#include "ioj/single_allocation/view.h"
 
 #include <cassert>
 #include <cstdint>
@@ -107,28 +108,16 @@ struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;
     using Base::Base;
 };
-struct ResolvedView : ResolvedViewImpl<false> {
-    using Base = ResolvedViewImpl<false>;
+struct ResolvedView
+    : soa_storage_detail::ViewRowOperations<ResolvedView,
+                                            ::ioj::sim::entity_history::Layout::column_types,
+                                            ResolvedViewImpl<false>> {
+    using Base =
+        ioj::soa_storage_detail::ViewRowOperations<ResolvedView,
+                                                   ::ioj::sim::entity_history::Layout::column_types,
+                                                   ResolvedViewImpl<false>>;
     using Base::Base;
-    void set(size_type index,
-             EntityId const new_entity_ids,
-             ioj::sim::EntityType const new_entity_types,
-             ::ioj::Team const new_teams,
-             std::uint32_t const new_kills,
-             EntityId const new_killed_by,
-             LifeState const new_life_state,
-             SimTick const new_death_ticks,
-             Vector3f const new_death_locations) const {
-        assert(index < num());
-        this->entity_ids()[index] = new_entity_ids;
-        this->entity_types()[index] = new_entity_types;
-        this->teams()[index] = new_teams;
-        this->kills()[index] = new_kills;
-        this->killed_by()[index] = new_killed_by;
-        this->life_state()[index] = new_life_state;
-        this->death_ticks()[index] = new_death_ticks;
-        this->death_locations()[index] = new_death_locations;
-    }
+    using Base::set;
 };
 
 /* **************************************** */
@@ -167,28 +156,14 @@ struct ConstView : ViewImpl<true> {
     using Base::Base;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<ConstView>());
-struct View : ViewImpl<false> {
-    using Base = ViewImpl<false>;
+struct View
+    : soa_storage_detail::ViewRowOperations<View,
+                                            ::ioj::sim::entity_history::Layout::column_types,
+                                            ViewImpl<false>> {
+    using Base = ioj::soa_storage_detail::
+        ViewRowOperations<View, ::ioj::sim::entity_history::Layout::column_types, ViewImpl<false>>;
     using Base::Base;
-    void set(size_type index,
-             EntityId const new_entity_ids,
-             ioj::sim::EntityType const new_entity_types,
-             ::ioj::Team const new_teams,
-             std::uint32_t const new_kills,
-             EntityId const new_killed_by,
-             LifeState const new_life_state,
-             SimTick const new_death_ticks,
-             Vector3f const new_death_locations) const {
-        assert(index < num());
-        this->entity_ids()[index] = new_entity_ids;
-        this->entity_types()[index] = new_entity_types;
-        this->teams()[index] = new_teams;
-        this->kills()[index] = new_kills;
-        this->killed_by()[index] = new_killed_by;
-        this->life_state()[index] = new_life_state;
-        this->death_ticks()[index] = new_death_ticks;
-        this->death_locations()[index] = new_death_locations;
-    }
+    using Base::set;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
 
@@ -208,7 +183,9 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
 // death_locations: Vector3f
 struct EntityHistory
     : protected ioj::native_soa::StorageState
-    , ioj::native_soa::StorageOperations {
+    , soa_storage_detail::OwnerRowOperations<EntityHistory,
+                                             ::ioj::sim::entity_history::Layout::column_types,
+                                             ioj::native_soa::StorageOperations> {
     using soa_schema = ::ioj::sim::entity_history::Schema;
     using Operations = ioj::native_soa::StorageOperations;
     using Layout = ::ioj::sim::entity_history::Layout;
@@ -257,46 +234,12 @@ struct EntityHistory
     auto life_state(this auto& self) { return self.get_view().life_state(); }
     auto death_ticks(this auto& self) { return self.get_view().death_ticks(); }
     auto death_locations(this auto& self) { return self.get_view().death_locations(); }
-    void set(size_type index,
-             EntityId const new_entity_ids,
-             EntityType const new_entity_types,
-             ::ioj::Team const new_teams,
-             std::uint32_t const new_kills,
-             EntityId const new_killed_by,
-             LifeState const new_life_state,
-             SimTick const new_death_ticks,
-             Vector3f const new_death_locations) {
-        assert(index < num());
-        get_view().entity_ids()[index] = new_entity_ids;
-        get_view().entity_types()[index] = new_entity_types;
-        get_view().teams()[index] = new_teams;
-        get_view().kills()[index] = new_kills;
-        get_view().killed_by()[index] = new_killed_by;
-        get_view().life_state()[index] = new_life_state;
-        get_view().death_ticks()[index] = new_death_ticks;
-        get_view().death_locations()[index] = new_death_locations;
-    }
-    size_type add(EntityId const new_entity_ids,
-                  EntityType const new_entity_types,
-                  ::ioj::Team const new_teams,
-                  std::uint32_t const new_kills,
-                  EntityId const new_killed_by,
-                  LifeState const new_life_state,
-                  SimTick const new_death_ticks,
-                  Vector3f const new_death_locations) {
-        auto const index{num()};
-        add_uninitialised(1);
-        set(index,
-            new_entity_ids,
-            new_entity_types,
-            new_teams,
-            new_kills,
-            new_killed_by,
-            new_life_state,
-            new_death_ticks,
-            new_death_locations);
-        return index;
-    }
+    using RowOperations =
+        soa_storage_detail::OwnerRowOperations<EntityHistory,
+                                               ::ioj::sim::entity_history::Layout::column_types,
+                                               ioj::native_soa::StorageOperations>;
+    using RowOperations::add;
+    using RowOperations::set;
   private:
     friend Operations;
     friend ::ioj::soa_storage_detail::StorageRequirements;

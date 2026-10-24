@@ -7,6 +7,7 @@
 #include "ioj/layout/analysis/row_range.hpp"
 #include "ioj/native_soa/storage.h"
 #include "ioj/single_allocation/layout.h"
+#include "ioj/single_allocation/view.h"
 
 #include "codegen/schema/packed_field_kind.h"
 #include "codegen/schema/packed_integer_value.h"
@@ -205,60 +206,16 @@ struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;
     using Base::Base;
 };
-struct ResolvedView : ResolvedViewImpl<false> {
-    using Base = ResolvedViewImpl<false>;
+struct ResolvedView
+    : soa_storage_detail::ViewRowOperations<ResolvedView,
+                                            ::ioj::layout::packed_field_table::Layout::column_types,
+                                            ResolvedViewImpl<false>> {
+    using Base = ioj::soa_storage_detail::ViewRowOperations<
+        ResolvedView,
+        ::ioj::layout::packed_field_table::Layout::column_types,
+        ResolvedViewImpl<false>>;
     using Base::Base;
-    void set(size_type index,
-             ioj::layout::AnalysisId const new_parent,
-             lispb::schema::PackedSegmentId const new_segment,
-             std::string_view const new_name,
-             std::optional<lispb::schema::TypeId> const new_semantic_type,
-             lispb::StringId const new_logical_type,
-             lispb::codegen::PackedFieldKind const new_kind,
-             std::uint8_t const new_reserved,
-             std::uint32_t const new_schema_bit_width,
-             std::uint8_t const new_schema_bit_width_auto,
-             std::uint32_t const new_bit_width,
-             std::uint8_t const new_overridden,
-             std::uint64_t const new_least_significant_bit,
-             std::optional<std::uint64_t> const new_most_significant_bit,
-             std::optional<std::uint64_t> const new_maximum_unsigned_value,
-             std::optional<std::int64_t> const new_minimum_signed_value,
-             std::optional<std::int64_t> const new_maximum_signed_value,
-             std::optional<lispb::codegen::PackedIntegerValue> const new_minimum_semantic_value,
-             std::optional<lispb::codegen::PackedIntegerValue> const new_maximum_semantic_value,
-             std::optional<std::uint64_t> const new_semantic_value_count,
-             std::uint64_t const new_sentinel_code_count,
-             std::optional<std::uint64_t> const new_required_code_count,
-             std::optional<std::uint32_t> const new_minimum_required_bits,
-             std::optional<std::uint64_t> const new_unused_codes,
-             ioj::layout::RowRange const new_codes) const {
-        assert(index < num());
-        this->parent()[index] = new_parent;
-        this->segment()[index] = new_segment;
-        this->name()[index] = new_name;
-        this->semantic_type()[index] = new_semantic_type;
-        this->logical_type()[index] = new_logical_type;
-        this->kind()[index] = new_kind;
-        this->reserved()[index] = new_reserved;
-        this->schema_bit_width()[index] = new_schema_bit_width;
-        this->schema_bit_width_auto()[index] = new_schema_bit_width_auto;
-        this->bit_width()[index] = new_bit_width;
-        this->overridden()[index] = new_overridden;
-        this->least_significant_bit()[index] = new_least_significant_bit;
-        this->most_significant_bit()[index] = new_most_significant_bit;
-        this->maximum_unsigned_value()[index] = new_maximum_unsigned_value;
-        this->minimum_signed_value()[index] = new_minimum_signed_value;
-        this->maximum_signed_value()[index] = new_maximum_signed_value;
-        this->minimum_semantic_value()[index] = new_minimum_semantic_value;
-        this->maximum_semantic_value()[index] = new_maximum_semantic_value;
-        this->semantic_value_count()[index] = new_semantic_value_count;
-        this->sentinel_code_count()[index] = new_sentinel_code_count;
-        this->required_code_count()[index] = new_required_code_count;
-        this->minimum_required_bits()[index] = new_minimum_required_bits;
-        this->unused_codes()[index] = new_unused_codes;
-        this->codes()[index] = new_codes;
-    }
+    using Base::set;
 };
 
 /* **************************************** */
@@ -360,60 +317,16 @@ struct ConstView : ViewImpl<true> {
     using Base::Base;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<ConstView>());
-struct View : ViewImpl<false> {
-    using Base = ViewImpl<false>;
+struct View
+    : soa_storage_detail::ViewRowOperations<View,
+                                            ::ioj::layout::packed_field_table::Layout::column_types,
+                                            ViewImpl<false>> {
+    using Base = ioj::soa_storage_detail::ViewRowOperations<
+        View,
+        ::ioj::layout::packed_field_table::Layout::column_types,
+        ViewImpl<false>>;
     using Base::Base;
-    void set(size_type index,
-             ioj::layout::AnalysisId const new_parent,
-             lispb::schema::PackedSegmentId const new_segment,
-             std::string_view const new_name,
-             std::optional<lispb::schema::TypeId> const new_semantic_type,
-             lispb::StringId const new_logical_type,
-             lispb::codegen::PackedFieldKind const new_kind,
-             std::uint8_t const new_reserved,
-             std::uint32_t const new_schema_bit_width,
-             std::uint8_t const new_schema_bit_width_auto,
-             std::uint32_t const new_bit_width,
-             std::uint8_t const new_overridden,
-             std::uint64_t const new_least_significant_bit,
-             std::optional<std::uint64_t> const new_most_significant_bit,
-             std::optional<std::uint64_t> const new_maximum_unsigned_value,
-             std::optional<std::int64_t> const new_minimum_signed_value,
-             std::optional<std::int64_t> const new_maximum_signed_value,
-             std::optional<lispb::codegen::PackedIntegerValue> const new_minimum_semantic_value,
-             std::optional<lispb::codegen::PackedIntegerValue> const new_maximum_semantic_value,
-             std::optional<std::uint64_t> const new_semantic_value_count,
-             std::uint64_t const new_sentinel_code_count,
-             std::optional<std::uint64_t> const new_required_code_count,
-             std::optional<std::uint32_t> const new_minimum_required_bits,
-             std::optional<std::uint64_t> const new_unused_codes,
-             ioj::layout::RowRange const new_codes) const {
-        assert(index < num());
-        this->parent()[index] = new_parent;
-        this->segment()[index] = new_segment;
-        this->name()[index] = new_name;
-        this->semantic_type()[index] = new_semantic_type;
-        this->logical_type()[index] = new_logical_type;
-        this->kind()[index] = new_kind;
-        this->reserved()[index] = new_reserved;
-        this->schema_bit_width()[index] = new_schema_bit_width;
-        this->schema_bit_width_auto()[index] = new_schema_bit_width_auto;
-        this->bit_width()[index] = new_bit_width;
-        this->overridden()[index] = new_overridden;
-        this->least_significant_bit()[index] = new_least_significant_bit;
-        this->most_significant_bit()[index] = new_most_significant_bit;
-        this->maximum_unsigned_value()[index] = new_maximum_unsigned_value;
-        this->minimum_signed_value()[index] = new_minimum_signed_value;
-        this->maximum_signed_value()[index] = new_maximum_signed_value;
-        this->minimum_semantic_value()[index] = new_minimum_semantic_value;
-        this->maximum_semantic_value()[index] = new_maximum_semantic_value;
-        this->semantic_value_count()[index] = new_semantic_value_count;
-        this->sentinel_code_count()[index] = new_sentinel_code_count;
-        this->required_code_count()[index] = new_required_code_count;
-        this->minimum_required_bits()[index] = new_minimum_required_bits;
-        this->unused_codes()[index] = new_unused_codes;
-        this->codes()[index] = new_codes;
-    }
+    using Base::set;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
 
@@ -449,7 +362,10 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
 // codes: ioj::layout::RowRange
 struct PackedFieldTable
     : protected ioj::native_soa::StorageState
-    , ioj::native_soa::StorageOperations {
+    , soa_storage_detail::OwnerRowOperations<
+          PackedFieldTable,
+          ::ioj::layout::packed_field_table::Layout::column_types,
+          ioj::native_soa::StorageOperations> {
     using soa_schema = ::ioj::layout::packed_field_table::Schema;
     using Operations = ioj::native_soa::StorageOperations;
     using Layout = ::ioj::layout::packed_field_table::Layout;
@@ -520,111 +436,12 @@ struct PackedFieldTable
     auto minimum_required_bits(this auto& self) { return self.get_view().minimum_required_bits(); }
     auto unused_codes(this auto& self) { return self.get_view().unused_codes(); }
     auto codes(this auto& self) { return self.get_view().codes(); }
-    void set(size_type index,
-             AnalysisId const new_parent,
-             lispb::schema::PackedSegmentId const new_segment,
-             std::string_view const new_name,
-             std::optional<lispb::schema::TypeId> const new_semantic_type,
-             lispb::StringId const new_logical_type,
-             lispb::codegen::PackedFieldKind const new_kind,
-             std::uint8_t const new_reserved,
-             std::uint32_t const new_schema_bit_width,
-             std::uint8_t const new_schema_bit_width_auto,
-             std::uint32_t const new_bit_width,
-             std::uint8_t const new_overridden,
-             std::uint64_t const new_least_significant_bit,
-             std::optional<std::uint64_t> const new_most_significant_bit,
-             std::optional<std::uint64_t> const new_maximum_unsigned_value,
-             std::optional<std::int64_t> const new_minimum_signed_value,
-             std::optional<std::int64_t> const new_maximum_signed_value,
-             std::optional<lispb::codegen::PackedIntegerValue> const new_minimum_semantic_value,
-             std::optional<lispb::codegen::PackedIntegerValue> const new_maximum_semantic_value,
-             std::optional<std::uint64_t> const new_semantic_value_count,
-             std::uint64_t const new_sentinel_code_count,
-             std::optional<std::uint64_t> const new_required_code_count,
-             std::optional<std::uint32_t> const new_minimum_required_bits,
-             std::optional<std::uint64_t> const new_unused_codes,
-             RowRange const new_codes) {
-        assert(index < num());
-        get_view().parent()[index] = new_parent;
-        get_view().segment()[index] = new_segment;
-        get_view().name()[index] = new_name;
-        get_view().semantic_type()[index] = new_semantic_type;
-        get_view().logical_type()[index] = new_logical_type;
-        get_view().kind()[index] = new_kind;
-        get_view().reserved()[index] = new_reserved;
-        get_view().schema_bit_width()[index] = new_schema_bit_width;
-        get_view().schema_bit_width_auto()[index] = new_schema_bit_width_auto;
-        get_view().bit_width()[index] = new_bit_width;
-        get_view().overridden()[index] = new_overridden;
-        get_view().least_significant_bit()[index] = new_least_significant_bit;
-        get_view().most_significant_bit()[index] = new_most_significant_bit;
-        get_view().maximum_unsigned_value()[index] = new_maximum_unsigned_value;
-        get_view().minimum_signed_value()[index] = new_minimum_signed_value;
-        get_view().maximum_signed_value()[index] = new_maximum_signed_value;
-        get_view().minimum_semantic_value()[index] = new_minimum_semantic_value;
-        get_view().maximum_semantic_value()[index] = new_maximum_semantic_value;
-        get_view().semantic_value_count()[index] = new_semantic_value_count;
-        get_view().sentinel_code_count()[index] = new_sentinel_code_count;
-        get_view().required_code_count()[index] = new_required_code_count;
-        get_view().minimum_required_bits()[index] = new_minimum_required_bits;
-        get_view().unused_codes()[index] = new_unused_codes;
-        get_view().codes()[index] = new_codes;
-    }
-    size_type
-        add(AnalysisId const new_parent,
-            lispb::schema::PackedSegmentId const new_segment,
-            std::string_view const new_name,
-            std::optional<lispb::schema::TypeId> const new_semantic_type,
-            lispb::StringId const new_logical_type,
-            lispb::codegen::PackedFieldKind const new_kind,
-            std::uint8_t const new_reserved,
-            std::uint32_t const new_schema_bit_width,
-            std::uint8_t const new_schema_bit_width_auto,
-            std::uint32_t const new_bit_width,
-            std::uint8_t const new_overridden,
-            std::uint64_t const new_least_significant_bit,
-            std::optional<std::uint64_t> const new_most_significant_bit,
-            std::optional<std::uint64_t> const new_maximum_unsigned_value,
-            std::optional<std::int64_t> const new_minimum_signed_value,
-            std::optional<std::int64_t> const new_maximum_signed_value,
-            std::optional<lispb::codegen::PackedIntegerValue> const new_minimum_semantic_value,
-            std::optional<lispb::codegen::PackedIntegerValue> const new_maximum_semantic_value,
-            std::optional<std::uint64_t> const new_semantic_value_count,
-            std::uint64_t const new_sentinel_code_count,
-            std::optional<std::uint64_t> const new_required_code_count,
-            std::optional<std::uint32_t> const new_minimum_required_bits,
-            std::optional<std::uint64_t> const new_unused_codes,
-            RowRange const new_codes) {
-        auto const index{num()};
-        add_uninitialised(1);
-        set(index,
-            new_parent,
-            new_segment,
-            new_name,
-            new_semantic_type,
-            new_logical_type,
-            new_kind,
-            new_reserved,
-            new_schema_bit_width,
-            new_schema_bit_width_auto,
-            new_bit_width,
-            new_overridden,
-            new_least_significant_bit,
-            new_most_significant_bit,
-            new_maximum_unsigned_value,
-            new_minimum_signed_value,
-            new_maximum_signed_value,
-            new_minimum_semantic_value,
-            new_maximum_semantic_value,
-            new_semantic_value_count,
-            new_sentinel_code_count,
-            new_required_code_count,
-            new_minimum_required_bits,
-            new_unused_codes,
-            new_codes);
-        return index;
-    }
+    using RowOperations = soa_storage_detail::OwnerRowOperations<
+        PackedFieldTable,
+        ::ioj::layout::packed_field_table::Layout::column_types,
+        ioj::native_soa::StorageOperations>;
+    using RowOperations::add;
+    using RowOperations::set;
     std::size_t append();
   private:
     friend Operations;

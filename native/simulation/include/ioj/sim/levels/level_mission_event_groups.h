@@ -6,6 +6,7 @@
 #include "ioj/native_soa/storage.h"
 #include "ioj/sim/levels/level_event_types.h"
 #include "ioj/single_allocation/layout.h"
+#include "ioj/single_allocation/view.h"
 
 #include <cassert>
 #include <cstdint>
@@ -74,18 +75,17 @@ struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;
     using Base::Base;
 };
-struct ResolvedView : ResolvedViewImpl<false> {
-    using Base = ResolvedViewImpl<false>;
+struct ResolvedView
+    : soa_storage_detail::ViewRowOperations<
+          ResolvedView,
+          ::ioj::sim::level_mission_event_groups::Layout::column_types,
+          ResolvedViewImpl<false>> {
+    using Base = ioj::soa_storage_detail::ViewRowOperations<
+        ResolvedView,
+        ::ioj::sim::level_mission_event_groups::Layout::column_types,
+        ResolvedViewImpl<false>>;
     using Base::Base;
-    void set(size_type index,
-             LevelMissionEventType const new_types,
-             std::int32_t const new_offsets,
-             LevelEventCount const new_counts) const {
-        assert(index < num());
-        this->types()[index] = new_types;
-        this->offsets()[index] = new_offsets;
-        this->counts()[index] = new_counts;
-    }
+    using Base::set;
 };
 
 /* **************************************** */
@@ -118,18 +118,17 @@ struct ConstView : ViewImpl<true> {
     using Base::Base;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<ConstView>());
-struct View : ViewImpl<false> {
-    using Base = ViewImpl<false>;
+struct View
+    : soa_storage_detail::ViewRowOperations<
+          View,
+          ::ioj::sim::level_mission_event_groups::Layout::column_types,
+          ViewImpl<false>> {
+    using Base = ioj::soa_storage_detail::ViewRowOperations<
+        View,
+        ::ioj::sim::level_mission_event_groups::Layout::column_types,
+        ViewImpl<false>>;
     using Base::Base;
-    void set(size_type index,
-             LevelMissionEventType const new_types,
-             std::int32_t const new_offsets,
-             LevelEventCount const new_counts) const {
-        assert(index < num());
-        this->types()[index] = new_types;
-        this->offsets()[index] = new_offsets;
-        this->counts()[index] = new_counts;
-    }
+    using Base::set;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
 
@@ -144,7 +143,10 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
 // counts: LevelEventCount
 struct LevelMissionEventGroups
     : protected ioj::native_soa::StorageState
-    , ioj::native_soa::StorageOperations {
+    , soa_storage_detail::OwnerRowOperations<
+          LevelMissionEventGroups,
+          ::ioj::sim::level_mission_event_groups::Layout::column_types,
+          ioj::native_soa::StorageOperations> {
     using soa_schema = ::ioj::sim::level_mission_event_groups::Schema;
     using Operations = ioj::native_soa::StorageOperations;
     using Layout = ::ioj::sim::level_mission_event_groups::Layout;
@@ -188,23 +190,12 @@ struct LevelMissionEventGroups
     auto types(this auto& self) { return self.get_view().types(); }
     auto offsets(this auto& self) { return self.get_view().offsets(); }
     auto counts(this auto& self) { return self.get_view().counts(); }
-    void set(size_type index,
-             LevelMissionEventType const new_types,
-             std::int32_t const new_offsets,
-             LevelEventCount const new_counts) {
-        assert(index < num());
-        get_view().types()[index] = new_types;
-        get_view().offsets()[index] = new_offsets;
-        get_view().counts()[index] = new_counts;
-    }
-    size_type add(LevelMissionEventType const new_types,
-                  std::int32_t const new_offsets,
-                  LevelEventCount const new_counts) {
-        auto const index{num()};
-        add_uninitialised(1);
-        set(index, new_types, new_offsets, new_counts);
-        return index;
-    }
+    using RowOperations = soa_storage_detail::OwnerRowOperations<
+        LevelMissionEventGroups,
+        ::ioj::sim::level_mission_event_groups::Layout::column_types,
+        ioj::native_soa::StorageOperations>;
+    using RowOperations::add;
+    using RowOperations::set;
   private:
     friend Operations;
     friend ::ioj::soa_storage_detail::StorageRequirements;

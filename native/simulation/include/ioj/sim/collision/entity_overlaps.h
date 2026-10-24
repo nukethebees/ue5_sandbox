@@ -7,6 +7,7 @@
 #include "ioj/sim/collision/collision_types.h"
 #include "ioj/sim/entities/entity_id.h"
 #include "ioj/single_allocation/layout.h"
+#include "ioj/single_allocation/view.h"
 
 #include <cassert>
 #include <memory_resource>
@@ -69,16 +70,17 @@ struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;
     using Base::Base;
 };
-struct ResolvedView : ResolvedViewImpl<false> {
-    using Base = ResolvedViewImpl<false>;
+struct ResolvedView
+    : soa_storage_detail::ViewRowOperations<
+          ResolvedView,
+          ::ioj::sim::collision::entity_entity_overlaps::Layout::column_types,
+          ResolvedViewImpl<false>> {
+    using Base = ioj::soa_storage_detail::ViewRowOperations<
+        ResolvedView,
+        ::ioj::sim::collision::entity_entity_overlaps::Layout::column_types,
+        ResolvedViewImpl<false>>;
     using Base::Base;
-    void set(size_type index,
-             EntityId const new_first_entities,
-             EntityId const new_second_entities) const {
-        assert(index < num());
-        this->first_entities()[index] = new_first_entities;
-        this->second_entities()[index] = new_second_entities;
-    }
+    using Base::set;
 };
 
 /* **************************************** */
@@ -118,16 +120,17 @@ struct ConstView : ViewImpl<true> {
     using Base::Base;
 };
 static_assert(std::is_trivially_copyable_v<ConstView>);
-struct View : ViewImpl<false> {
-    using Base = ViewImpl<false>;
+struct View
+    : soa_storage_detail::ViewRowOperations<
+          View,
+          ::ioj::sim::collision::entity_entity_overlaps::Layout::column_types,
+          ViewImpl<false>> {
+    using Base = ioj::soa_storage_detail::ViewRowOperations<
+        View,
+        ::ioj::sim::collision::entity_entity_overlaps::Layout::column_types,
+        ViewImpl<false>>;
     using Base::Base;
-    void set(size_type index,
-             EntityId const new_first_entities,
-             EntityId const new_second_entities) const {
-        assert(index < num());
-        this->first_entities()[index] = new_first_entities;
-        this->second_entities()[index] = new_second_entities;
-    }
+    using Base::set;
 };
 static_assert(std::is_trivially_copyable_v<View>);
 
@@ -141,7 +144,10 @@ static_assert(std::is_trivially_copyable_v<View>);
 // second_entities: EntityId
 struct EntityEntityOverlaps
     : protected ioj::native_soa::StorageState
-    , ioj::native_soa::StorageOperations {
+    , soa_storage_detail::OwnerRowOperations<
+          EntityEntityOverlaps,
+          ::ioj::sim::collision::entity_entity_overlaps::Layout::column_types,
+          ioj::native_soa::StorageOperations> {
     using soa_schema = ::ioj::sim::collision::entity_entity_overlaps::Schema;
     using Operations = ioj::native_soa::StorageOperations;
     using Layout = ::ioj::sim::collision::entity_entity_overlaps::Layout;
@@ -184,19 +190,12 @@ struct EntityEntityOverlaps
   public:
     auto first_entities(this auto& self) { return self.get_view().first_entities(); }
     auto second_entities(this auto& self) { return self.get_view().second_entities(); }
-    void set(size_type index,
-             EntityId const new_first_entities,
-             EntityId const new_second_entities) {
-        assert(index < num());
-        get_view().first_entities()[index] = new_first_entities;
-        get_view().second_entities()[index] = new_second_entities;
-    }
-    size_type add(EntityId const new_first_entities, EntityId const new_second_entities) {
-        auto const index{num()};
-        add_uninitialised(1);
-        set(index, new_first_entities, new_second_entities);
-        return index;
-    }
+    using RowOperations = soa_storage_detail::OwnerRowOperations<
+        EntityEntityOverlaps,
+        ::ioj::sim::collision::entity_entity_overlaps::Layout::column_types,
+        ioj::native_soa::StorageOperations>;
+    using RowOperations::add;
+    using RowOperations::set;
   private:
     friend Operations;
     friend ::ioj::soa_storage_detail::StorageRequirements;
@@ -262,16 +261,17 @@ struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;
     using Base::Base;
 };
-struct ResolvedView : ResolvedViewImpl<false> {
-    using Base = ResolvedViewImpl<false>;
+struct ResolvedView
+    : soa_storage_detail::ViewRowOperations<
+          ResolvedView,
+          ::ioj::sim::collision::entity_static_overlaps::Layout::column_types,
+          ResolvedViewImpl<false>> {
+    using Base = ioj::soa_storage_detail::ViewRowOperations<
+        ResolvedView,
+        ::ioj::sim::collision::entity_static_overlaps::Layout::column_types,
+        ResolvedViewImpl<false>>;
     using Base::Base;
-    void set(size_type index,
-             EntityId const new_entities,
-             ioj::sim::collision::StaticGeometryIndex const new_static_geometry_indices) const {
-        assert(index < num());
-        this->entities()[index] = new_entities;
-        this->static_geometry_indices()[index] = new_static_geometry_indices;
-    }
+    using Base::set;
 };
 
 /* **************************************** */
@@ -303,16 +303,17 @@ struct ConstView : ViewImpl<true> {
     using Base::Base;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<ConstView>());
-struct View : ViewImpl<false> {
-    using Base = ViewImpl<false>;
+struct View
+    : soa_storage_detail::ViewRowOperations<
+          View,
+          ::ioj::sim::collision::entity_static_overlaps::Layout::column_types,
+          ViewImpl<false>> {
+    using Base = ioj::soa_storage_detail::ViewRowOperations<
+        View,
+        ::ioj::sim::collision::entity_static_overlaps::Layout::column_types,
+        ViewImpl<false>>;
     using Base::Base;
-    void set(size_type index,
-             EntityId const new_entities,
-             ioj::sim::collision::StaticGeometryIndex const new_static_geometry_indices) const {
-        assert(index < num());
-        this->entities()[index] = new_entities;
-        this->static_geometry_indices()[index] = new_static_geometry_indices;
-    }
+    using Base::set;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
 
@@ -326,7 +327,10 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
 // static_geometry_indices: ioj::sim::collision::StaticGeometryIndex
 struct EntityStaticOverlaps
     : protected ioj::native_soa::StorageState
-    , ioj::native_soa::StorageOperations {
+    , soa_storage_detail::OwnerRowOperations<
+          EntityStaticOverlaps,
+          ::ioj::sim::collision::entity_static_overlaps::Layout::column_types,
+          ioj::native_soa::StorageOperations> {
     using soa_schema = ::ioj::sim::collision::entity_static_overlaps::Schema;
     using Operations = ioj::native_soa::StorageOperations;
     using Layout = ::ioj::sim::collision::entity_static_overlaps::Layout;
@@ -371,20 +375,12 @@ struct EntityStaticOverlaps
     auto static_geometry_indices(this auto& self) {
         return self.get_view().static_geometry_indices();
     }
-    void set(size_type index,
-             EntityId const new_entities,
-             StaticGeometryIndex const new_static_geometry_indices) {
-        assert(index < num());
-        get_view().entities()[index] = new_entities;
-        get_view().static_geometry_indices()[index] = new_static_geometry_indices;
-    }
-    size_type add(EntityId const new_entities,
-                  StaticGeometryIndex const new_static_geometry_indices) {
-        auto const index{num()};
-        add_uninitialised(1);
-        set(index, new_entities, new_static_geometry_indices);
-        return index;
-    }
+    using RowOperations = soa_storage_detail::OwnerRowOperations<
+        EntityStaticOverlaps,
+        ::ioj::sim::collision::entity_static_overlaps::Layout::column_types,
+        ioj::native_soa::StorageOperations>;
+    using RowOperations::add;
+    using RowOperations::set;
   private:
     friend Operations;
     friend ::ioj::soa_storage_detail::StorageRequirements;

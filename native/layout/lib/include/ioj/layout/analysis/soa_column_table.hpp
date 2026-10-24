@@ -8,6 +8,7 @@
 #include "ioj/layout/analyzer/cache_line_tiling.hpp"
 #include "ioj/native_soa/storage.h"
 #include "ioj/single_allocation/layout.h"
+#include "ioj/single_allocation/view.h"
 
 #include "lispb/indices.h"
 #include "lispb/schema/indices.h"
@@ -151,42 +152,16 @@ struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;
     using Base::Base;
 };
-struct ResolvedView : ResolvedViewImpl<false> {
-    using Base = ResolvedViewImpl<false>;
+struct ResolvedView
+    : soa_storage_detail::ViewRowOperations<ResolvedView,
+                                            ::ioj::layout::soa_column_table::Layout::column_types,
+                                            ResolvedViewImpl<false>> {
+    using Base = ioj::soa_storage_detail::ViewRowOperations<
+        ResolvedView,
+        ::ioj::layout::soa_column_table::Layout::column_types,
+        ResolvedViewImpl<false>>;
     using Base::Base;
-    void set(size_type index,
-             ioj::layout::AnalysisId const new_parent,
-             std::string_view const new_name,
-             lispb::schema::TypeId const new_semantic_type,
-             lispb::StringId const new_schema_type,
-             lispb::StringId const new_physical_type,
-             std::uint8_t const new_overridden,
-             std::optional<ioj::layout::PhysicalFactId> const new_type_facts,
-             std::optional<std::uint64_t> const new_total_bytes,
-             std::optional<std::uint64_t> const new_allocation_offset_bytes,
-             std::optional<std::uint64_t> const new_padding_before_bytes,
-             std::optional<std::uint64_t> const new_minimum_cache_lines,
-             std::optional<std::uint64_t> const new_elements_per_cache_line,
-             std::optional<std::uint64_t> const new_minimum_pages,
-             std::optional<std::uint64_t> const new_complete_elements_per_page,
-             std::optional<ioj::layout::CacheLineTiling> const new_cache_line_tiling) const {
-        assert(index < num());
-        this->parent()[index] = new_parent;
-        this->name()[index] = new_name;
-        this->semantic_type()[index] = new_semantic_type;
-        this->schema_type()[index] = new_schema_type;
-        this->physical_type()[index] = new_physical_type;
-        this->overridden()[index] = new_overridden;
-        this->type_facts()[index] = new_type_facts;
-        this->total_bytes()[index] = new_total_bytes;
-        this->allocation_offset_bytes()[index] = new_allocation_offset_bytes;
-        this->padding_before_bytes()[index] = new_padding_before_bytes;
-        this->minimum_cache_lines()[index] = new_minimum_cache_lines;
-        this->elements_per_cache_line()[index] = new_elements_per_cache_line;
-        this->minimum_pages()[index] = new_minimum_pages;
-        this->complete_elements_per_page()[index] = new_complete_elements_per_page;
-        this->cache_line_tiling()[index] = new_cache_line_tiling;
-    }
+    using Base::set;
 };
 
 /* **************************************** */
@@ -262,42 +237,16 @@ struct ConstView : ViewImpl<true> {
     using Base::Base;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<ConstView>());
-struct View : ViewImpl<false> {
-    using Base = ViewImpl<false>;
+struct View
+    : soa_storage_detail::ViewRowOperations<View,
+                                            ::ioj::layout::soa_column_table::Layout::column_types,
+                                            ViewImpl<false>> {
+    using Base = ioj::soa_storage_detail::ViewRowOperations<
+        View,
+        ::ioj::layout::soa_column_table::Layout::column_types,
+        ViewImpl<false>>;
     using Base::Base;
-    void set(size_type index,
-             ioj::layout::AnalysisId const new_parent,
-             std::string_view const new_name,
-             lispb::schema::TypeId const new_semantic_type,
-             lispb::StringId const new_schema_type,
-             lispb::StringId const new_physical_type,
-             std::uint8_t const new_overridden,
-             std::optional<ioj::layout::PhysicalFactId> const new_type_facts,
-             std::optional<std::uint64_t> const new_total_bytes,
-             std::optional<std::uint64_t> const new_allocation_offset_bytes,
-             std::optional<std::uint64_t> const new_padding_before_bytes,
-             std::optional<std::uint64_t> const new_minimum_cache_lines,
-             std::optional<std::uint64_t> const new_elements_per_cache_line,
-             std::optional<std::uint64_t> const new_minimum_pages,
-             std::optional<std::uint64_t> const new_complete_elements_per_page,
-             std::optional<ioj::layout::CacheLineTiling> const new_cache_line_tiling) const {
-        assert(index < num());
-        this->parent()[index] = new_parent;
-        this->name()[index] = new_name;
-        this->semantic_type()[index] = new_semantic_type;
-        this->schema_type()[index] = new_schema_type;
-        this->physical_type()[index] = new_physical_type;
-        this->overridden()[index] = new_overridden;
-        this->type_facts()[index] = new_type_facts;
-        this->total_bytes()[index] = new_total_bytes;
-        this->allocation_offset_bytes()[index] = new_allocation_offset_bytes;
-        this->padding_before_bytes()[index] = new_padding_before_bytes;
-        this->minimum_cache_lines()[index] = new_minimum_cache_lines;
-        this->elements_per_cache_line()[index] = new_elements_per_cache_line;
-        this->minimum_pages()[index] = new_minimum_pages;
-        this->complete_elements_per_page()[index] = new_complete_elements_per_page;
-        this->cache_line_tiling()[index] = new_cache_line_tiling;
-    }
+    using Base::set;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
 
@@ -324,7 +273,9 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
 // cache_line_tiling: std::optional<ioj::layout::CacheLineTiling>
 struct SoaColumnTable
     : protected ioj::native_soa::StorageState
-    , ioj::native_soa::StorageOperations {
+    , soa_storage_detail::OwnerRowOperations<SoaColumnTable,
+                                             ::ioj::layout::soa_column_table::Layout::column_types,
+                                             ioj::native_soa::StorageOperations> {
     using soa_schema = ::ioj::layout::soa_column_table::Schema;
     using Operations = ioj::native_soa::StorageOperations;
     using Layout = ::ioj::layout::soa_column_table::Layout;
@@ -386,74 +337,12 @@ struct SoaColumnTable
         return self.get_view().complete_elements_per_page();
     }
     auto cache_line_tiling(this auto& self) { return self.get_view().cache_line_tiling(); }
-    void set(size_type index,
-             AnalysisId const new_parent,
-             std::string_view const new_name,
-             lispb::schema::TypeId const new_semantic_type,
-             lispb::StringId const new_schema_type,
-             lispb::StringId const new_physical_type,
-             std::uint8_t const new_overridden,
-             std::optional<ioj::layout::PhysicalFactId> const new_type_facts,
-             std::optional<std::uint64_t> const new_total_bytes,
-             std::optional<std::uint64_t> const new_allocation_offset_bytes,
-             std::optional<std::uint64_t> const new_padding_before_bytes,
-             std::optional<std::uint64_t> const new_minimum_cache_lines,
-             std::optional<std::uint64_t> const new_elements_per_cache_line,
-             std::optional<std::uint64_t> const new_minimum_pages,
-             std::optional<std::uint64_t> const new_complete_elements_per_page,
-             std::optional<ioj::layout::CacheLineTiling> const new_cache_line_tiling) {
-        assert(index < num());
-        get_view().parent()[index] = new_parent;
-        get_view().name()[index] = new_name;
-        get_view().semantic_type()[index] = new_semantic_type;
-        get_view().schema_type()[index] = new_schema_type;
-        get_view().physical_type()[index] = new_physical_type;
-        get_view().overridden()[index] = new_overridden;
-        get_view().type_facts()[index] = new_type_facts;
-        get_view().total_bytes()[index] = new_total_bytes;
-        get_view().allocation_offset_bytes()[index] = new_allocation_offset_bytes;
-        get_view().padding_before_bytes()[index] = new_padding_before_bytes;
-        get_view().minimum_cache_lines()[index] = new_minimum_cache_lines;
-        get_view().elements_per_cache_line()[index] = new_elements_per_cache_line;
-        get_view().minimum_pages()[index] = new_minimum_pages;
-        get_view().complete_elements_per_page()[index] = new_complete_elements_per_page;
-        get_view().cache_line_tiling()[index] = new_cache_line_tiling;
-    }
-    size_type add(AnalysisId const new_parent,
-                  std::string_view const new_name,
-                  lispb::schema::TypeId const new_semantic_type,
-                  lispb::StringId const new_schema_type,
-                  lispb::StringId const new_physical_type,
-                  std::uint8_t const new_overridden,
-                  std::optional<ioj::layout::PhysicalFactId> const new_type_facts,
-                  std::optional<std::uint64_t> const new_total_bytes,
-                  std::optional<std::uint64_t> const new_allocation_offset_bytes,
-                  std::optional<std::uint64_t> const new_padding_before_bytes,
-                  std::optional<std::uint64_t> const new_minimum_cache_lines,
-                  std::optional<std::uint64_t> const new_elements_per_cache_line,
-                  std::optional<std::uint64_t> const new_minimum_pages,
-                  std::optional<std::uint64_t> const new_complete_elements_per_page,
-                  std::optional<ioj::layout::CacheLineTiling> const new_cache_line_tiling) {
-        auto const index{num()};
-        add_uninitialised(1);
-        set(index,
-            new_parent,
-            new_name,
-            new_semantic_type,
-            new_schema_type,
-            new_physical_type,
-            new_overridden,
-            new_type_facts,
-            new_total_bytes,
-            new_allocation_offset_bytes,
-            new_padding_before_bytes,
-            new_minimum_cache_lines,
-            new_elements_per_cache_line,
-            new_minimum_pages,
-            new_complete_elements_per_page,
-            new_cache_line_tiling);
-        return index;
-    }
+    using RowOperations = soa_storage_detail::OwnerRowOperations<
+        SoaColumnTable,
+        ::ioj::layout::soa_column_table::Layout::column_types,
+        ioj::native_soa::StorageOperations>;
+    using RowOperations::add;
+    using RowOperations::set;
     std::size_t append();
   private:
     friend Operations;

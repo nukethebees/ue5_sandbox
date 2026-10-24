@@ -6,6 +6,7 @@
 #include "ioj/native_soa/storage.h"
 #include "ioj/rotator_types.h"
 #include "ioj/single_allocation/layout.h"
+#include "ioj/single_allocation/view.h"
 
 #include <cassert>
 #include <memory_resource>
@@ -76,18 +77,15 @@ struct ResolvedConstView : ResolvedViewImpl<true> {
         return equivalent_type{pitches()[index], yaws()[index], rolls()[index]};
     }
 };
-struct ResolvedView : ResolvedViewImpl<false> {
-    using Base = ResolvedViewImpl<false>;
+struct ResolvedView
+    : soa_storage_detail::ViewRowOperations<ResolvedView,
+                                            ::ioj::rotators3f::Layout::column_types,
+                                            ResolvedViewImpl<false>> {
+    using Base = ioj::soa_storage_detail::ViewRowOperations<ResolvedView,
+                                                            ::ioj::rotators3f::Layout::column_types,
+                                                            ResolvedViewImpl<false>>;
     using Base::Base;
-    void set(size_type index,
-             float const new_pitches,
-             float const new_yaws,
-             float const new_rolls) const {
-        assert(index < num());
-        this->pitches()[index] = new_pitches;
-        this->yaws()[index] = new_yaws;
-        this->rolls()[index] = new_rolls;
-    }
+    using Base::set;
     void set(size_type index, Rotator3f const value) const {
         set(index, (value.pitch), (value.yaw), (value.roll));
     }
@@ -135,18 +133,13 @@ struct ConstView : ViewImpl<true> {
     }
 };
 static_assert(std::is_trivially_copyable_v<ConstView>);
-struct View : ViewImpl<false> {
-    using Base = ViewImpl<false>;
+struct View
+    : soa_storage_detail::
+          ViewRowOperations<View, ::ioj::rotators3f::Layout::column_types, ViewImpl<false>> {
+    using Base = ioj::soa_storage_detail::
+        ViewRowOperations<View, ::ioj::rotators3f::Layout::column_types, ViewImpl<false>>;
     using Base::Base;
-    void set(size_type index,
-             float const new_pitches,
-             float const new_yaws,
-             float const new_rolls) const {
-        assert(index < num());
-        this->pitches()[index] = new_pitches;
-        this->yaws()[index] = new_yaws;
-        this->rolls()[index] = new_rolls;
-    }
+    using Base::set;
     void set(size_type index, Rotator3f const value) const {
         set(index, (value.pitch), (value.yaw), (value.roll));
     }
@@ -169,7 +162,9 @@ static_assert(std::is_trivially_copyable_v<View>);
 // rolls: float
 struct Rotators3f
     : protected ioj::native_soa::StorageState
-    , ioj::native_soa::StorageOperations {
+    , soa_storage_detail::OwnerRowOperations<Rotators3f,
+                                             ::ioj::rotators3f::Layout::column_types,
+                                             ioj::native_soa::StorageOperations> {
     using soa_schema = ::ioj::rotators3f::Schema;
     using Operations = ioj::native_soa::StorageOperations;
     using Layout = ::ioj::rotators3f::Layout;
@@ -213,19 +208,12 @@ struct Rotators3f
     auto pitches(this auto& self) { return self.get_view().pitches(); }
     auto yaws(this auto& self) { return self.get_view().yaws(); }
     auto rolls(this auto& self) { return self.get_view().rolls(); }
-    void
-        set(size_type index, float const new_pitches, float const new_yaws, float const new_rolls) {
-        assert(index < num());
-        get_view().pitches()[index] = new_pitches;
-        get_view().yaws()[index] = new_yaws;
-        get_view().rolls()[index] = new_rolls;
-    }
-    size_type add(float const new_pitches, float const new_yaws, float const new_rolls) {
-        auto const index{num()};
-        add_uninitialised(1);
-        set(index, new_pitches, new_yaws, new_rolls);
-        return index;
-    }
+    using RowOperations =
+        soa_storage_detail::OwnerRowOperations<Rotators3f,
+                                               ::ioj::rotators3f::Layout::column_types,
+                                               ioj::native_soa::StorageOperations>;
+    using RowOperations::add;
+    using RowOperations::set;
     void set(size_type index, Rotator3f const value) {
         set(index, (value.pitch), (value.yaw), (value.roll));
     }

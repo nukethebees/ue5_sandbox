@@ -7,6 +7,7 @@
 #include "ioj/layout/analysis/physical_fact_id.hpp"
 #include "ioj/native_soa/storage.h"
 #include "ioj/single_allocation/layout.h"
+#include "ioj/single_allocation/view.h"
 
 #include "lispb/schema/indices.h"
 
@@ -118,32 +119,16 @@ struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;
     using Base::Base;
 };
-struct ResolvedView : ResolvedViewImpl<false> {
-    using Base = ResolvedViewImpl<false>;
+struct ResolvedView
+    : soa_storage_detail::ViewRowOperations<ResolvedView,
+                                            ::ioj::layout::component_table::Layout::column_types,
+                                            ResolvedViewImpl<false>> {
+    using Base = ioj::soa_storage_detail::ViewRowOperations<
+        ResolvedView,
+        ::ioj::layout::component_table::Layout::column_types,
+        ResolvedViewImpl<false>>;
     using Base::Base;
-    void set(size_type index,
-             ioj::layout::AnalysisId const new_parent,
-             std::string_view const new_name,
-             std::string_view const new_tag,
-             lispb::schema::TypeId const new_semantic_type,
-             std::uint64_t const new_element_count,
-             std::optional<ioj::layout::PhysicalFactId> const new_element_facts,
-             std::optional<std::uint64_t> const new_offset_bytes,
-             std::optional<std::uint64_t> const new_extent_bytes,
-             std::optional<std::uint64_t> const new_padding_before_bytes,
-             std::optional<std::uint64_t> const new_slack_bytes) const {
-        assert(index < num());
-        this->parent()[index] = new_parent;
-        this->name()[index] = new_name;
-        this->tag()[index] = new_tag;
-        this->semantic_type()[index] = new_semantic_type;
-        this->element_count()[index] = new_element_count;
-        this->element_facts()[index] = new_element_facts;
-        this->offset_bytes()[index] = new_offset_bytes;
-        this->extent_bytes()[index] = new_extent_bytes;
-        this->padding_before_bytes()[index] = new_padding_before_bytes;
-        this->slack_bytes()[index] = new_slack_bytes;
-    }
+    using Base::set;
 };
 
 /* **************************************** */
@@ -196,32 +181,16 @@ struct ConstView : ViewImpl<true> {
     using Base::Base;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<ConstView>());
-struct View : ViewImpl<false> {
-    using Base = ViewImpl<false>;
+struct View
+    : soa_storage_detail::ViewRowOperations<View,
+                                            ::ioj::layout::component_table::Layout::column_types,
+                                            ViewImpl<false>> {
+    using Base = ioj::soa_storage_detail::ViewRowOperations<
+        View,
+        ::ioj::layout::component_table::Layout::column_types,
+        ViewImpl<false>>;
     using Base::Base;
-    void set(size_type index,
-             ioj::layout::AnalysisId const new_parent,
-             std::string_view const new_name,
-             std::string_view const new_tag,
-             lispb::schema::TypeId const new_semantic_type,
-             std::uint64_t const new_element_count,
-             std::optional<ioj::layout::PhysicalFactId> const new_element_facts,
-             std::optional<std::uint64_t> const new_offset_bytes,
-             std::optional<std::uint64_t> const new_extent_bytes,
-             std::optional<std::uint64_t> const new_padding_before_bytes,
-             std::optional<std::uint64_t> const new_slack_bytes) const {
-        assert(index < num());
-        this->parent()[index] = new_parent;
-        this->name()[index] = new_name;
-        this->tag()[index] = new_tag;
-        this->semantic_type()[index] = new_semantic_type;
-        this->element_count()[index] = new_element_count;
-        this->element_facts()[index] = new_element_facts;
-        this->offset_bytes()[index] = new_offset_bytes;
-        this->extent_bytes()[index] = new_extent_bytes;
-        this->padding_before_bytes()[index] = new_padding_before_bytes;
-        this->slack_bytes()[index] = new_slack_bytes;
-    }
+    using Base::set;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
 
@@ -243,7 +212,9 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
 // slack_bytes: std::optional<std::uint64_t>
 struct ComponentTable
     : protected ioj::native_soa::StorageState
-    , ioj::native_soa::StorageOperations {
+    , soa_storage_detail::OwnerRowOperations<ComponentTable,
+                                             ::ioj::layout::component_table::Layout::column_types,
+                                             ioj::native_soa::StorageOperations> {
     using soa_schema = ::ioj::layout::component_table::Schema;
     using Operations = ioj::native_soa::StorageOperations;
     using Layout = ::ioj::layout::component_table::Layout;
@@ -294,54 +265,12 @@ struct ComponentTable
     auto extent_bytes(this auto& self) { return self.get_view().extent_bytes(); }
     auto padding_before_bytes(this auto& self) { return self.get_view().padding_before_bytes(); }
     auto slack_bytes(this auto& self) { return self.get_view().slack_bytes(); }
-    void set(size_type index,
-             AnalysisId const new_parent,
-             std::string_view const new_name,
-             std::string_view const new_tag,
-             lispb::schema::TypeId const new_semantic_type,
-             std::uint64_t const new_element_count,
-             std::optional<ioj::layout::PhysicalFactId> const new_element_facts,
-             std::optional<std::uint64_t> const new_offset_bytes,
-             std::optional<std::uint64_t> const new_extent_bytes,
-             std::optional<std::uint64_t> const new_padding_before_bytes,
-             std::optional<std::uint64_t> const new_slack_bytes) {
-        assert(index < num());
-        get_view().parent()[index] = new_parent;
-        get_view().name()[index] = new_name;
-        get_view().tag()[index] = new_tag;
-        get_view().semantic_type()[index] = new_semantic_type;
-        get_view().element_count()[index] = new_element_count;
-        get_view().element_facts()[index] = new_element_facts;
-        get_view().offset_bytes()[index] = new_offset_bytes;
-        get_view().extent_bytes()[index] = new_extent_bytes;
-        get_view().padding_before_bytes()[index] = new_padding_before_bytes;
-        get_view().slack_bytes()[index] = new_slack_bytes;
-    }
-    size_type add(AnalysisId const new_parent,
-                  std::string_view const new_name,
-                  std::string_view const new_tag,
-                  lispb::schema::TypeId const new_semantic_type,
-                  std::uint64_t const new_element_count,
-                  std::optional<ioj::layout::PhysicalFactId> const new_element_facts,
-                  std::optional<std::uint64_t> const new_offset_bytes,
-                  std::optional<std::uint64_t> const new_extent_bytes,
-                  std::optional<std::uint64_t> const new_padding_before_bytes,
-                  std::optional<std::uint64_t> const new_slack_bytes) {
-        auto const index{num()};
-        add_uninitialised(1);
-        set(index,
-            new_parent,
-            new_name,
-            new_tag,
-            new_semantic_type,
-            new_element_count,
-            new_element_facts,
-            new_offset_bytes,
-            new_extent_bytes,
-            new_padding_before_bytes,
-            new_slack_bytes);
-        return index;
-    }
+    using RowOperations =
+        soa_storage_detail::OwnerRowOperations<ComponentTable,
+                                               ::ioj::layout::component_table::Layout::column_types,
+                                               ioj::native_soa::StorageOperations>;
+    using RowOperations::add;
+    using RowOperations::set;
     std::size_t append();
   private:
     friend Operations;

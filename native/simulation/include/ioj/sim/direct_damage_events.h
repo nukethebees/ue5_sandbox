@@ -6,6 +6,7 @@
 #include "ioj/native_soa/storage.h"
 #include "ioj/sim/entities/entity_id.h"
 #include "ioj/single_allocation/layout.h"
+#include "ioj/single_allocation/view.h"
 
 #include <cassert>
 #include <cstdint>
@@ -72,18 +73,16 @@ struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;
     using Base::Base;
 };
-struct ResolvedView : ResolvedViewImpl<false> {
-    using Base = ResolvedViewImpl<false>;
+struct ResolvedView
+    : soa_storage_detail::ViewRowOperations<ResolvedView,
+                                            ::ioj::sim::direct_damage_events::Layout::column_types,
+                                            ResolvedViewImpl<false>> {
+    using Base = ioj::soa_storage_detail::ViewRowOperations<
+        ResolvedView,
+        ::ioj::sim::direct_damage_events::Layout::column_types,
+        ResolvedViewImpl<false>>;
     using Base::Base;
-    void set(size_type index,
-             EntityId const new_damaged_entities,
-             std::int32_t const new_damage_amounts,
-             EntityId const new_instigators) const {
-        assert(index < num());
-        this->damaged_entities()[index] = new_damaged_entities;
-        this->damage_amounts()[index] = new_damage_amounts;
-        this->instigators()[index] = new_instigators;
-    }
+    using Base::set;
 };
 
 /* **************************************** */
@@ -118,18 +117,16 @@ struct ConstView : ViewImpl<true> {
     using Base::Base;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<ConstView>());
-struct View : ViewImpl<false> {
-    using Base = ViewImpl<false>;
+struct View
+    : soa_storage_detail::ViewRowOperations<View,
+                                            ::ioj::sim::direct_damage_events::Layout::column_types,
+                                            ViewImpl<false>> {
+    using Base = ioj::soa_storage_detail::ViewRowOperations<
+        View,
+        ::ioj::sim::direct_damage_events::Layout::column_types,
+        ViewImpl<false>>;
     using Base::Base;
-    void set(size_type index,
-             EntityId const new_damaged_entities,
-             std::int32_t const new_damage_amounts,
-             EntityId const new_instigators) const {
-        assert(index < num());
-        this->damaged_entities()[index] = new_damaged_entities;
-        this->damage_amounts()[index] = new_damage_amounts;
-        this->instigators()[index] = new_instigators;
-    }
+    using Base::set;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
 
@@ -144,7 +141,9 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
 // instigators: EntityId
 struct DirectDamageEvents
     : protected ioj::native_soa::StorageState
-    , ioj::native_soa::StorageOperations {
+    , soa_storage_detail::OwnerRowOperations<DirectDamageEvents,
+                                             ::ioj::sim::direct_damage_events::Layout::column_types,
+                                             ioj::native_soa::StorageOperations> {
     using soa_schema = ::ioj::sim::direct_damage_events::Schema;
     using Operations = ioj::native_soa::StorageOperations;
     using Layout = ::ioj::sim::direct_damage_events::Layout;
@@ -188,15 +187,11 @@ struct DirectDamageEvents
     auto damaged_entities(this auto& self) { return self.get_view().damaged_entities(); }
     auto damage_amounts(this auto& self) { return self.get_view().damage_amounts(); }
     auto instigators(this auto& self) { return self.get_view().instigators(); }
-    void set(size_type index,
-             EntityId const new_damaged_entities,
-             std::int32_t const new_damage_amounts,
-             EntityId const new_instigators) {
-        assert(index < num());
-        get_view().damaged_entities()[index] = new_damaged_entities;
-        get_view().damage_amounts()[index] = new_damage_amounts;
-        get_view().instigators()[index] = new_instigators;
-    }
+    using RowOperations = soa_storage_detail::OwnerRowOperations<
+        DirectDamageEvents,
+        ::ioj::sim::direct_damage_events::Layout::column_types,
+        ioj::native_soa::StorageOperations>;
+    using RowOperations::set;
     void add(EntityId const damaged_entity,
              std::int32_t const damage_amount,
              EntityId const instigator) {

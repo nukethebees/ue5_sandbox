@@ -12,6 +12,7 @@
 #include "ioj/layout/analysis/soa_layout.hpp"
 #include "ioj/native_soa/storage.h"
 #include "ioj/single_allocation/layout.h"
+#include "ioj/single_allocation/view.h"
 
 #include "lispb/schema/indices.h"
 
@@ -105,26 +106,17 @@ struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;
     using Base::Base;
 };
-struct ResolvedView : ResolvedViewImpl<false> {
-    using Base = ResolvedViewImpl<false>;
+struct ResolvedView
+    : soa_storage_detail::ViewRowOperations<
+          ResolvedView,
+          ::ioj::layout::type_analysis_table::Layout::column_types,
+          ResolvedViewImpl<false>> {
+    using Base = ioj::soa_storage_detail::ViewRowOperations<
+        ResolvedView,
+        ::ioj::layout::type_analysis_table::Layout::column_types,
+        ResolvedViewImpl<false>>;
     using Base::Base;
-    void set(size_type index,
-             lispb::schema::TypeId const new_schema_type,
-             ioj::layout::ScenarioId const new_scenario,
-             std::optional<ioj::layout::PhysicalFactId> const new_physical,
-             std::optional<ioj::layout::EnumBacking> const new_enum_backing,
-             std::optional<ioj::layout::AggregateLayout> const new_aggregate,
-             std::optional<ioj::layout::PackedLayout> const new_packed,
-             std::optional<ioj::layout::SoaLayout> const new_soa) const {
-        assert(index < num());
-        this->schema_type()[index] = new_schema_type;
-        this->scenario()[index] = new_scenario;
-        this->physical()[index] = new_physical;
-        this->enum_backing()[index] = new_enum_backing;
-        this->aggregate()[index] = new_aggregate;
-        this->packed()[index] = new_packed;
-        this->soa()[index] = new_soa;
-    }
+    using Base::set;
 };
 
 /* **************************************** */
@@ -175,26 +167,17 @@ struct ConstView : ViewImpl<true> {
     using Base::Base;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<ConstView>());
-struct View : ViewImpl<false> {
-    using Base = ViewImpl<false>;
+struct View
+    : soa_storage_detail::ViewRowOperations<
+          View,
+          ::ioj::layout::type_analysis_table::Layout::column_types,
+          ViewImpl<false>> {
+    using Base = ioj::soa_storage_detail::ViewRowOperations<
+        View,
+        ::ioj::layout::type_analysis_table::Layout::column_types,
+        ViewImpl<false>>;
     using Base::Base;
-    void set(size_type index,
-             lispb::schema::TypeId const new_schema_type,
-             ioj::layout::ScenarioId const new_scenario,
-             std::optional<ioj::layout::PhysicalFactId> const new_physical,
-             std::optional<ioj::layout::EnumBacking> const new_enum_backing,
-             std::optional<ioj::layout::AggregateLayout> const new_aggregate,
-             std::optional<ioj::layout::PackedLayout> const new_packed,
-             std::optional<ioj::layout::SoaLayout> const new_soa) const {
-        assert(index < num());
-        this->schema_type()[index] = new_schema_type;
-        this->scenario()[index] = new_scenario;
-        this->physical()[index] = new_physical;
-        this->enum_backing()[index] = new_enum_backing;
-        this->aggregate()[index] = new_aggregate;
-        this->packed()[index] = new_packed;
-        this->soa()[index] = new_soa;
-    }
+    using Base::set;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
 
@@ -213,7 +196,10 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
 // soa: std::optional<ioj::layout::SoaLayout>
 struct TypeAnalysisTable
     : protected ioj::native_soa::StorageState
-    , ioj::native_soa::StorageOperations {
+    , soa_storage_detail::OwnerRowOperations<
+          TypeAnalysisTable,
+          ::ioj::layout::type_analysis_table::Layout::column_types,
+          ioj::native_soa::StorageOperations> {
     using soa_schema = ::ioj::layout::type_analysis_table::Schema;
     using Operations = ioj::native_soa::StorageOperations;
     using Layout = ::ioj::layout::type_analysis_table::Layout;
@@ -261,42 +247,12 @@ struct TypeAnalysisTable
     auto aggregate(this auto& self) { return self.get_view().aggregate(); }
     auto packed(this auto& self) { return self.get_view().packed(); }
     auto soa(this auto& self) { return self.get_view().soa(); }
-    void set(size_type index,
-             lispb::schema::TypeId const new_schema_type,
-             ScenarioId const new_scenario,
-             std::optional<ioj::layout::PhysicalFactId> const new_physical,
-             std::optional<ioj::layout::EnumBacking> const new_enum_backing,
-             std::optional<ioj::layout::AggregateLayout> const new_aggregate,
-             std::optional<ioj::layout::PackedLayout> const new_packed,
-             std::optional<ioj::layout::SoaLayout> const new_soa) {
-        assert(index < num());
-        get_view().schema_type()[index] = new_schema_type;
-        get_view().scenario()[index] = new_scenario;
-        get_view().physical()[index] = new_physical;
-        get_view().enum_backing()[index] = new_enum_backing;
-        get_view().aggregate()[index] = new_aggregate;
-        get_view().packed()[index] = new_packed;
-        get_view().soa()[index] = new_soa;
-    }
-    size_type add(lispb::schema::TypeId const new_schema_type,
-                  ScenarioId const new_scenario,
-                  std::optional<ioj::layout::PhysicalFactId> const new_physical,
-                  std::optional<ioj::layout::EnumBacking> const new_enum_backing,
-                  std::optional<ioj::layout::AggregateLayout> const new_aggregate,
-                  std::optional<ioj::layout::PackedLayout> const new_packed,
-                  std::optional<ioj::layout::SoaLayout> const new_soa) {
-        auto const index{num()};
-        add_uninitialised(1);
-        set(index,
-            new_schema_type,
-            new_scenario,
-            new_physical,
-            new_enum_backing,
-            new_aggregate,
-            new_packed,
-            new_soa);
-        return index;
-    }
+    using RowOperations = soa_storage_detail::OwnerRowOperations<
+        TypeAnalysisTable,
+        ::ioj::layout::type_analysis_table::Layout::column_types,
+        ioj::native_soa::StorageOperations>;
+    using RowOperations::add;
+    using RowOperations::set;
     AnalysisId append(lispb::schema::TypeId type, ScenarioId scenario_id);
     AnalysisId find(lispb::schema::TypeId type, ScenarioId scenario_id) const;
   private:

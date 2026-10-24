@@ -8,6 +8,7 @@
 #include "ioj/layout/analysis/row_range.hpp"
 #include "ioj/native_soa/storage.h"
 #include "ioj/single_allocation/layout.h"
+#include "ioj/single_allocation/view.h"
 
 #include <cassert>
 #include <cstdint>
@@ -121,32 +122,16 @@ struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;
     using Base::Base;
 };
-struct ResolvedView : ResolvedViewImpl<false> {
-    using Base = ResolvedViewImpl<false>;
+struct ResolvedView
+    : soa_storage_detail::ViewRowOperations<ResolvedView,
+                                            ::ioj::layout::distribution_table::Layout::column_types,
+                                            ResolvedViewImpl<false>> {
+    using Base = ioj::soa_storage_detail::ViewRowOperations<
+        ResolvedView,
+        ::ioj::layout::distribution_table::Layout::column_types,
+        ResolvedViewImpl<false>>;
     using Base::Base;
-    void set(size_type index,
-             ioj::layout::AnalysisId const new_analysis,
-             ioj::layout::RowRange const new_entries,
-             std::uint64_t const new_element_count,
-             std::optional<std::uint64_t> const new_total_weight,
-             std::optional<std::uint64_t> const new_total_extent_bytes,
-             std::optional<std::uint64_t> const new_total_slack_bytes,
-             std::optional<long double> const new_expected_extent_bytes,
-             std::optional<long double> const new_expected_slack_bytes,
-             std::optional<long double> const new_expected_selected_extent_bytes,
-             std::optional<long double> const new_expected_selected_slack_bytes) const {
-        assert(index < num());
-        this->analysis()[index] = new_analysis;
-        this->entries()[index] = new_entries;
-        this->element_count()[index] = new_element_count;
-        this->total_weight()[index] = new_total_weight;
-        this->total_extent_bytes()[index] = new_total_extent_bytes;
-        this->total_slack_bytes()[index] = new_total_slack_bytes;
-        this->expected_extent_bytes()[index] = new_expected_extent_bytes;
-        this->expected_slack_bytes()[index] = new_expected_slack_bytes;
-        this->expected_selected_extent_bytes()[index] = new_expected_selected_extent_bytes;
-        this->expected_selected_slack_bytes()[index] = new_expected_selected_slack_bytes;
-    }
+    using Base::set;
 };
 
 /* **************************************** */
@@ -206,32 +191,16 @@ struct ConstView : ViewImpl<true> {
     using Base::Base;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<ConstView>());
-struct View : ViewImpl<false> {
-    using Base = ViewImpl<false>;
+struct View
+    : soa_storage_detail::ViewRowOperations<View,
+                                            ::ioj::layout::distribution_table::Layout::column_types,
+                                            ViewImpl<false>> {
+    using Base = ioj::soa_storage_detail::ViewRowOperations<
+        View,
+        ::ioj::layout::distribution_table::Layout::column_types,
+        ViewImpl<false>>;
     using Base::Base;
-    void set(size_type index,
-             ioj::layout::AnalysisId const new_analysis,
-             ioj::layout::RowRange const new_entries,
-             std::uint64_t const new_element_count,
-             std::optional<std::uint64_t> const new_total_weight,
-             std::optional<std::uint64_t> const new_total_extent_bytes,
-             std::optional<std::uint64_t> const new_total_slack_bytes,
-             std::optional<long double> const new_expected_extent_bytes,
-             std::optional<long double> const new_expected_slack_bytes,
-             std::optional<long double> const new_expected_selected_extent_bytes,
-             std::optional<long double> const new_expected_selected_slack_bytes) const {
-        assert(index < num());
-        this->analysis()[index] = new_analysis;
-        this->entries()[index] = new_entries;
-        this->element_count()[index] = new_element_count;
-        this->total_weight()[index] = new_total_weight;
-        this->total_extent_bytes()[index] = new_total_extent_bytes;
-        this->total_slack_bytes()[index] = new_total_slack_bytes;
-        this->expected_extent_bytes()[index] = new_expected_extent_bytes;
-        this->expected_slack_bytes()[index] = new_expected_slack_bytes;
-        this->expected_selected_extent_bytes()[index] = new_expected_selected_extent_bytes;
-        this->expected_selected_slack_bytes()[index] = new_expected_selected_slack_bytes;
-    }
+    using Base::set;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
 
@@ -253,7 +222,10 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
 // expected_selected_slack_bytes: std::optional<long double>
 struct DistributionTable
     : protected ioj::native_soa::StorageState
-    , ioj::native_soa::StorageOperations {
+    , soa_storage_detail::OwnerRowOperations<
+          DistributionTable,
+          ::ioj::layout::distribution_table::Layout::column_types,
+          ioj::native_soa::StorageOperations> {
     using soa_schema = ::ioj::layout::distribution_table::Schema;
     using Operations = ioj::native_soa::StorageOperations;
     using Layout = ::ioj::layout::distribution_table::Layout;
@@ -308,54 +280,12 @@ struct DistributionTable
     auto expected_selected_slack_bytes(this auto& self) {
         return self.get_view().expected_selected_slack_bytes();
     }
-    void set(size_type index,
-             AnalysisId const new_analysis,
-             RowRange const new_entries,
-             std::uint64_t const new_element_count,
-             std::optional<std::uint64_t> const new_total_weight,
-             std::optional<std::uint64_t> const new_total_extent_bytes,
-             std::optional<std::uint64_t> const new_total_slack_bytes,
-             std::optional<long double> const new_expected_extent_bytes,
-             std::optional<long double> const new_expected_slack_bytes,
-             std::optional<long double> const new_expected_selected_extent_bytes,
-             std::optional<long double> const new_expected_selected_slack_bytes) {
-        assert(index < num());
-        get_view().analysis()[index] = new_analysis;
-        get_view().entries()[index] = new_entries;
-        get_view().element_count()[index] = new_element_count;
-        get_view().total_weight()[index] = new_total_weight;
-        get_view().total_extent_bytes()[index] = new_total_extent_bytes;
-        get_view().total_slack_bytes()[index] = new_total_slack_bytes;
-        get_view().expected_extent_bytes()[index] = new_expected_extent_bytes;
-        get_view().expected_slack_bytes()[index] = new_expected_slack_bytes;
-        get_view().expected_selected_extent_bytes()[index] = new_expected_selected_extent_bytes;
-        get_view().expected_selected_slack_bytes()[index] = new_expected_selected_slack_bytes;
-    }
-    size_type add(AnalysisId const new_analysis,
-                  RowRange const new_entries,
-                  std::uint64_t const new_element_count,
-                  std::optional<std::uint64_t> const new_total_weight,
-                  std::optional<std::uint64_t> const new_total_extent_bytes,
-                  std::optional<std::uint64_t> const new_total_slack_bytes,
-                  std::optional<long double> const new_expected_extent_bytes,
-                  std::optional<long double> const new_expected_slack_bytes,
-                  std::optional<long double> const new_expected_selected_extent_bytes,
-                  std::optional<long double> const new_expected_selected_slack_bytes) {
-        auto const index{num()};
-        add_uninitialised(1);
-        set(index,
-            new_analysis,
-            new_entries,
-            new_element_count,
-            new_total_weight,
-            new_total_extent_bytes,
-            new_total_slack_bytes,
-            new_expected_extent_bytes,
-            new_expected_slack_bytes,
-            new_expected_selected_extent_bytes,
-            new_expected_selected_slack_bytes);
-        return index;
-    }
+    using RowOperations = soa_storage_detail::OwnerRowOperations<
+        DistributionTable,
+        ::ioj::layout::distribution_table::Layout::column_types,
+        ioj::native_soa::StorageOperations>;
+    using RowOperations::add;
+    using RowOperations::set;
     DistributionId append(AnalysisId owner, RowRange samples, std::uint64_t count);
   private:
     friend Operations;

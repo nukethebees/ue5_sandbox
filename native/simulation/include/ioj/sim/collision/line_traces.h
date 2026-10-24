@@ -6,6 +6,7 @@
 #include "ioj/math_types.h"
 #include "ioj/native_soa/storage.h"
 #include "ioj/single_allocation/layout.h"
+#include "ioj/single_allocation/view.h"
 #include "ioj/vectors3f.h"
 
 #include <cassert>
@@ -95,24 +96,16 @@ struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;
     using Base::Base;
 };
-struct ResolvedView : ResolvedViewImpl<false> {
-    using Base = ResolvedViewImpl<false>;
+struct ResolvedView
+    : soa_storage_detail::ViewRowOperations<ResolvedView,
+                                            ::ioj::sim::line_traces::Layout::column_types,
+                                            ResolvedViewImpl<false>> {
+    using Base =
+        ioj::soa_storage_detail::ViewRowOperations<ResolvedView,
+                                                   ::ioj::sim::line_traces::Layout::column_types,
+                                                   ResolvedViewImpl<false>>;
     using Base::Base;
-    void set(size_type index,
-             float const new_starts_xs,
-             float const new_starts_ys,
-             float const new_starts_zs,
-             float const new_ends_xs,
-             float const new_ends_ys,
-             float const new_ends_zs) const {
-        assert(index < num());
-        this->view_starts().xs()[index] = new_starts_xs;
-        this->view_starts().ys()[index] = new_starts_ys;
-        this->view_starts().zs()[index] = new_starts_zs;
-        this->view_ends().xs()[index] = new_ends_xs;
-        this->view_ends().ys()[index] = new_ends_ys;
-        this->view_ends().zs()[index] = new_ends_zs;
-    }
+    using Base::set;
     void set(size_type index, Vector3f const new_starts, Vector3f const new_ends) const {
         assert(index < num());
         this->view_starts().set(index, new_starts);
@@ -158,24 +151,13 @@ struct ConstView : ViewImpl<true> {
     using Base::Base;
 };
 static_assert(std::is_trivially_copyable_v<ConstView>);
-struct View : ViewImpl<false> {
-    using Base = ViewImpl<false>;
+struct View
+    : soa_storage_detail::
+          ViewRowOperations<View, ::ioj::sim::line_traces::Layout::column_types, ViewImpl<false>> {
+    using Base = ioj::soa_storage_detail::
+        ViewRowOperations<View, ::ioj::sim::line_traces::Layout::column_types, ViewImpl<false>>;
     using Base::Base;
-    void set(size_type index,
-             float const new_starts_xs,
-             float const new_starts_ys,
-             float const new_starts_zs,
-             float const new_ends_xs,
-             float const new_ends_ys,
-             float const new_ends_zs) const {
-        assert(index < num());
-        this->view_starts().xs()[index] = new_starts_xs;
-        this->view_starts().ys()[index] = new_starts_ys;
-        this->view_starts().zs()[index] = new_starts_zs;
-        this->view_ends().xs()[index] = new_ends_xs;
-        this->view_ends().ys()[index] = new_ends_ys;
-        this->view_ends().zs()[index] = new_ends_zs;
-    }
+    using Base::set;
     void set(size_type index, Vector3f const new_starts, Vector3f const new_ends) const {
         assert(index < num());
         this->view_starts().set(index, new_starts);
@@ -198,7 +180,9 @@ static_assert(std::is_trivially_copyable_v<View>);
 // ends_zs: float
 struct LineTraces
     : protected ioj::native_soa::StorageState
-    , ioj::native_soa::StorageOperations {
+    , soa_storage_detail::OwnerRowOperations<LineTraces,
+                                             ::ioj::sim::line_traces::Layout::column_types,
+                                             ioj::native_soa::StorageOperations> {
     using soa_schema = ::ioj::sim::line_traces::Schema;
     using Operations = ioj::native_soa::StorageOperations;
     using Layout = ::ioj::sim::line_traces::Layout;
@@ -241,38 +225,12 @@ struct LineTraces
   public:
     auto view_starts(this auto& self) { return self.get_view().view_starts(); }
     auto view_ends(this auto& self) { return self.get_view().view_ends(); }
-    void set(size_type index,
-             float const new_starts_xs,
-             float const new_starts_ys,
-             float const new_starts_zs,
-             float const new_ends_xs,
-             float const new_ends_ys,
-             float const new_ends_zs) {
-        assert(index < num());
-        get_view().view_starts().xs()[index] = new_starts_xs;
-        get_view().view_starts().ys()[index] = new_starts_ys;
-        get_view().view_starts().zs()[index] = new_starts_zs;
-        get_view().view_ends().xs()[index] = new_ends_xs;
-        get_view().view_ends().ys()[index] = new_ends_ys;
-        get_view().view_ends().zs()[index] = new_ends_zs;
-    }
-    size_type add(float const new_starts_xs,
-                  float const new_starts_ys,
-                  float const new_starts_zs,
-                  float const new_ends_xs,
-                  float const new_ends_ys,
-                  float const new_ends_zs) {
-        auto const index{num()};
-        add_uninitialised(1);
-        set(index,
-            new_starts_xs,
-            new_starts_ys,
-            new_starts_zs,
-            new_ends_xs,
-            new_ends_ys,
-            new_ends_zs);
-        return index;
-    }
+    using RowOperations =
+        soa_storage_detail::OwnerRowOperations<LineTraces,
+                                               ::ioj::sim::line_traces::Layout::column_types,
+                                               ioj::native_soa::StorageOperations>;
+    using RowOperations::add;
+    using RowOperations::set;
     void set(size_type index, Vector3f const new_starts, Vector3f const new_ends) {
         assert(index < num());
         get_view().view_starts().set(index, new_starts);

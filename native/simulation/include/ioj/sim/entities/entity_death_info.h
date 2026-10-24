@@ -8,6 +8,7 @@
 #include "ioj/sim/entities/entity_id.h"
 #include "ioj/sim/entities/entity_life_state.h"
 #include "ioj/single_allocation/layout.h"
+#include "ioj/single_allocation/view.h"
 
 #include <cassert>
 #include <memory_resource>
@@ -77,20 +78,16 @@ struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;
     using Base::Base;
 };
-struct ResolvedView : ResolvedViewImpl<false> {
-    using Base = ResolvedViewImpl<false>;
+struct ResolvedView
+    : soa_storage_detail::ViewRowOperations<ResolvedView,
+                                            ::ioj::sim::entity_death_info::Layout::column_types,
+                                            ResolvedViewImpl<false>> {
+    using Base = ioj::soa_storage_detail::ViewRowOperations<
+        ResolvedView,
+        ::ioj::sim::entity_death_info::Layout::column_types,
+        ResolvedViewImpl<false>>;
     using Base::Base;
-    void set(size_type index,
-             DeathReason const new_reasons,
-             EntityId const new_victims,
-             EntityId const new_killers,
-             Vector3f const new_locations) const {
-        assert(index < num());
-        this->reasons()[index] = new_reasons;
-        this->victims()[index] = new_victims;
-        this->killers()[index] = new_killers;
-        this->locations()[index] = new_locations;
-    }
+    using Base::set;
 };
 
 /* **************************************** */
@@ -121,20 +118,16 @@ struct ConstView : ViewImpl<true> {
     using Base::Base;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<ConstView>());
-struct View : ViewImpl<false> {
-    using Base = ViewImpl<false>;
+struct View
+    : soa_storage_detail::ViewRowOperations<View,
+                                            ::ioj::sim::entity_death_info::Layout::column_types,
+                                            ViewImpl<false>> {
+    using Base = ioj::soa_storage_detail::ViewRowOperations<
+        View,
+        ::ioj::sim::entity_death_info::Layout::column_types,
+        ViewImpl<false>>;
     using Base::Base;
-    void set(size_type index,
-             DeathReason const new_reasons,
-             EntityId const new_victims,
-             EntityId const new_killers,
-             Vector3f const new_locations) const {
-        assert(index < num());
-        this->reasons()[index] = new_reasons;
-        this->victims()[index] = new_victims;
-        this->killers()[index] = new_killers;
-        this->locations()[index] = new_locations;
-    }
+    using Base::set;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
 
@@ -150,7 +143,9 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
 // locations: Vector3f
 struct EntityDeathInfo
     : protected ioj::native_soa::StorageState
-    , ioj::native_soa::StorageOperations {
+    , soa_storage_detail::OwnerRowOperations<EntityDeathInfo,
+                                             ::ioj::sim::entity_death_info::Layout::column_types,
+                                             ioj::native_soa::StorageOperations> {
     using soa_schema = ::ioj::sim::entity_death_info::Schema;
     using Operations = ioj::native_soa::StorageOperations;
     using Layout = ::ioj::sim::entity_death_info::Layout;
@@ -195,26 +190,12 @@ struct EntityDeathInfo
     auto victims(this auto& self) { return self.get_view().victims(); }
     auto killers(this auto& self) { return self.get_view().killers(); }
     auto locations(this auto& self) { return self.get_view().locations(); }
-    void set(size_type index,
-             DeathReason const new_reasons,
-             EntityId const new_victims,
-             EntityId const new_killers,
-             Vector3f const new_locations) {
-        assert(index < num());
-        get_view().reasons()[index] = new_reasons;
-        get_view().victims()[index] = new_victims;
-        get_view().killers()[index] = new_killers;
-        get_view().locations()[index] = new_locations;
-    }
-    size_type add(DeathReason const new_reasons,
-                  EntityId const new_victims,
-                  EntityId const new_killers,
-                  Vector3f const new_locations) {
-        auto const index{num()};
-        add_uninitialised(1);
-        set(index, new_reasons, new_victims, new_killers, new_locations);
-        return index;
-    }
+    using RowOperations =
+        soa_storage_detail::OwnerRowOperations<EntityDeathInfo,
+                                               ::ioj::sim::entity_death_info::Layout::column_types,
+                                               ioj::native_soa::StorageOperations>;
+    using RowOperations::add;
+    using RowOperations::set;
   private:
     friend Operations;
     friend ::ioj::soa_storage_detail::StorageRequirements;

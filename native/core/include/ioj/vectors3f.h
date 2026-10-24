@@ -6,6 +6,7 @@
 #include "ioj/math_types.h"
 #include "ioj/native_soa/storage.h"
 #include "ioj/single_allocation/layout.h"
+#include "ioj/single_allocation/view.h"
 
 #include <cassert>
 #include <memory_resource>
@@ -76,15 +77,15 @@ struct ResolvedConstView : ResolvedViewImpl<true> {
         return equivalent_type{xs()[index], ys()[index], zs()[index]};
     }
 };
-struct ResolvedView : ResolvedViewImpl<false> {
-    using Base = ResolvedViewImpl<false>;
+struct ResolvedView
+    : soa_storage_detail::ViewRowOperations<ResolvedView,
+                                            ::ioj::vectors3f::Layout::column_types,
+                                            ResolvedViewImpl<false>> {
+    using Base = ioj::soa_storage_detail::ViewRowOperations<ResolvedView,
+                                                            ::ioj::vectors3f::Layout::column_types,
+                                                            ResolvedViewImpl<false>>;
     using Base::Base;
-    void set(size_type index, float const new_xs, float const new_ys, float const new_zs) const {
-        assert(index < num());
-        this->xs()[index] = new_xs;
-        this->ys()[index] = new_ys;
-        this->zs()[index] = new_zs;
-    }
+    using Base::set;
     void set(size_type index, Vector3f const value) const {
         set(index, (value.x()), (value.y()), (value.z()));
     }
@@ -132,15 +133,13 @@ struct ConstView : ViewImpl<true> {
     }
 };
 static_assert(std::is_trivially_copyable_v<ConstView>);
-struct View : ViewImpl<false> {
-    using Base = ViewImpl<false>;
+struct View
+    : soa_storage_detail::
+          ViewRowOperations<View, ::ioj::vectors3f::Layout::column_types, ViewImpl<false>> {
+    using Base = ioj::soa_storage_detail::
+        ViewRowOperations<View, ::ioj::vectors3f::Layout::column_types, ViewImpl<false>>;
     using Base::Base;
-    void set(size_type index, float const new_xs, float const new_ys, float const new_zs) const {
-        assert(index < num());
-        this->xs()[index] = new_xs;
-        this->ys()[index] = new_ys;
-        this->zs()[index] = new_zs;
-    }
+    using Base::set;
     void set(size_type index, Vector3f const value) const {
         set(index, (value.x()), (value.y()), (value.z()));
     }
@@ -163,7 +162,9 @@ static_assert(std::is_trivially_copyable_v<View>);
 // zs: float
 struct Vectors3f
     : protected ioj::native_soa::StorageState
-    , ioj::native_soa::StorageOperations {
+    , soa_storage_detail::OwnerRowOperations<Vectors3f,
+                                             ::ioj::vectors3f::Layout::column_types,
+                                             ioj::native_soa::StorageOperations> {
     using soa_schema = ::ioj::vectors3f::Schema;
     using Operations = ioj::native_soa::StorageOperations;
     using Layout = ::ioj::vectors3f::Layout;
@@ -207,18 +208,12 @@ struct Vectors3f
     auto xs(this auto& self) { return self.get_view().xs(); }
     auto ys(this auto& self) { return self.get_view().ys(); }
     auto zs(this auto& self) { return self.get_view().zs(); }
-    void set(size_type index, float const new_xs, float const new_ys, float const new_zs) {
-        assert(index < num());
-        get_view().xs()[index] = new_xs;
-        get_view().ys()[index] = new_ys;
-        get_view().zs()[index] = new_zs;
-    }
-    size_type add(float const new_xs, float const new_ys, float const new_zs) {
-        auto const index{num()};
-        add_uninitialised(1);
-        set(index, new_xs, new_ys, new_zs);
-        return index;
-    }
+    using RowOperations =
+        soa_storage_detail::OwnerRowOperations<Vectors3f,
+                                               ::ioj::vectors3f::Layout::column_types,
+                                               ioj::native_soa::StorageOperations>;
+    using RowOperations::add;
+    using RowOperations::set;
     void set(size_type index, Vector3f const value) {
         set(index, (value.x()), (value.y()), (value.z()));
     }

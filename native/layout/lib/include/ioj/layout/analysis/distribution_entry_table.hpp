@@ -5,6 +5,7 @@
 
 #include "ioj/native_soa/storage.h"
 #include "ioj/single_allocation/layout.h"
+#include "ioj/single_allocation/view.h"
 
 #include "codegen/schema/packed_integer_value.h"
 
@@ -103,26 +104,17 @@ struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;
     using Base::Base;
 };
-struct ResolvedView : ResolvedViewImpl<false> {
-    using Base = ResolvedViewImpl<false>;
+struct ResolvedView
+    : soa_storage_detail::ViewRowOperations<
+          ResolvedView,
+          ::ioj::layout::distribution_entry_table::Layout::column_types,
+          ResolvedViewImpl<false>> {
+    using Base = ioj::soa_storage_detail::ViewRowOperations<
+        ResolvedView,
+        ::ioj::layout::distribution_entry_table::Layout::column_types,
+        ResolvedViewImpl<false>>;
     using Base::Base;
-    void set(size_type index,
-             std::optional<std::size_t> const new_component,
-             std::optional<lispb::codegen::PackedIntegerValue> const new_value,
-             std::uint64_t const new_weight,
-             std::optional<std::uint64_t> const new_extent_bytes,
-             std::optional<std::uint64_t> const new_slack_bytes,
-             std::optional<std::uint64_t> const new_weighted_extent_bytes,
-             std::optional<std::uint64_t> const new_weighted_slack_bytes) const {
-        assert(index < num());
-        this->component()[index] = new_component;
-        this->value()[index] = new_value;
-        this->weight()[index] = new_weight;
-        this->extent_bytes()[index] = new_extent_bytes;
-        this->slack_bytes()[index] = new_slack_bytes;
-        this->weighted_extent_bytes()[index] = new_weighted_extent_bytes;
-        this->weighted_slack_bytes()[index] = new_weighted_slack_bytes;
-    }
+    using Base::set;
 };
 
 /* **************************************** */
@@ -172,26 +164,17 @@ struct ConstView : ViewImpl<true> {
     using Base::Base;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<ConstView>());
-struct View : ViewImpl<false> {
-    using Base = ViewImpl<false>;
+struct View
+    : soa_storage_detail::ViewRowOperations<
+          View,
+          ::ioj::layout::distribution_entry_table::Layout::column_types,
+          ViewImpl<false>> {
+    using Base = ioj::soa_storage_detail::ViewRowOperations<
+        View,
+        ::ioj::layout::distribution_entry_table::Layout::column_types,
+        ViewImpl<false>>;
     using Base::Base;
-    void set(size_type index,
-             std::optional<std::size_t> const new_component,
-             std::optional<lispb::codegen::PackedIntegerValue> const new_value,
-             std::uint64_t const new_weight,
-             std::optional<std::uint64_t> const new_extent_bytes,
-             std::optional<std::uint64_t> const new_slack_bytes,
-             std::optional<std::uint64_t> const new_weighted_extent_bytes,
-             std::optional<std::uint64_t> const new_weighted_slack_bytes) const {
-        assert(index < num());
-        this->component()[index] = new_component;
-        this->value()[index] = new_value;
-        this->weight()[index] = new_weight;
-        this->extent_bytes()[index] = new_extent_bytes;
-        this->slack_bytes()[index] = new_slack_bytes;
-        this->weighted_extent_bytes()[index] = new_weighted_extent_bytes;
-        this->weighted_slack_bytes()[index] = new_weighted_slack_bytes;
-    }
+    using Base::set;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
 
@@ -210,7 +193,10 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
 // weighted_slack_bytes: std::optional<std::uint64_t>
 struct DistributionEntryTable
     : protected ioj::native_soa::StorageState
-    , ioj::native_soa::StorageOperations {
+    , soa_storage_detail::OwnerRowOperations<
+          DistributionEntryTable,
+          ::ioj::layout::distribution_entry_table::Layout::column_types,
+          ioj::native_soa::StorageOperations> {
     using soa_schema = ::ioj::layout::distribution_entry_table::Schema;
     using Operations = ioj::native_soa::StorageOperations;
     using Layout = ::ioj::layout::distribution_entry_table::Layout;
@@ -258,42 +244,12 @@ struct DistributionEntryTable
     auto slack_bytes(this auto& self) { return self.get_view().slack_bytes(); }
     auto weighted_extent_bytes(this auto& self) { return self.get_view().weighted_extent_bytes(); }
     auto weighted_slack_bytes(this auto& self) { return self.get_view().weighted_slack_bytes(); }
-    void set(size_type index,
-             std::optional<std::size_t> const new_component,
-             std::optional<lispb::codegen::PackedIntegerValue> const new_value,
-             std::uint64_t const new_weight,
-             std::optional<std::uint64_t> const new_extent_bytes,
-             std::optional<std::uint64_t> const new_slack_bytes,
-             std::optional<std::uint64_t> const new_weighted_extent_bytes,
-             std::optional<std::uint64_t> const new_weighted_slack_bytes) {
-        assert(index < num());
-        get_view().component()[index] = new_component;
-        get_view().value()[index] = new_value;
-        get_view().weight()[index] = new_weight;
-        get_view().extent_bytes()[index] = new_extent_bytes;
-        get_view().slack_bytes()[index] = new_slack_bytes;
-        get_view().weighted_extent_bytes()[index] = new_weighted_extent_bytes;
-        get_view().weighted_slack_bytes()[index] = new_weighted_slack_bytes;
-    }
-    size_type add(std::optional<std::size_t> const new_component,
-                  std::optional<lispb::codegen::PackedIntegerValue> const new_value,
-                  std::uint64_t const new_weight,
-                  std::optional<std::uint64_t> const new_extent_bytes,
-                  std::optional<std::uint64_t> const new_slack_bytes,
-                  std::optional<std::uint64_t> const new_weighted_extent_bytes,
-                  std::optional<std::uint64_t> const new_weighted_slack_bytes) {
-        auto const index{num()};
-        add_uninitialised(1);
-        set(index,
-            new_component,
-            new_value,
-            new_weight,
-            new_extent_bytes,
-            new_slack_bytes,
-            new_weighted_extent_bytes,
-            new_weighted_slack_bytes);
-        return index;
-    }
+    using RowOperations = soa_storage_detail::OwnerRowOperations<
+        DistributionEntryTable,
+        ::ioj::layout::distribution_entry_table::Layout::column_types,
+        ioj::native_soa::StorageOperations>;
+    using RowOperations::add;
+    using RowOperations::set;
   private:
     friend Operations;
     friend ::ioj::soa_storage_detail::StorageRequirements;

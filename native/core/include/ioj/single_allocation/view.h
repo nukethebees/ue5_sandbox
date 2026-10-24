@@ -59,6 +59,43 @@ void validate_source(Source const& source) {
     }
 }
 
+template <typename Self, typename... Ts>
+void assign_row(Self& self, std::uint32_t index, Ts const&... values) {
+    assert(index < self.num());
+    auto const view{self.get_view()};
+    Self::soa_schema::with_columns(view,
+                                   [&](auto... columns) { ((columns[index] = values), ...); });
+}
+
+template <typename Self, typename Columns, typename Base>
+struct OwnerRowOperations;
+
+template <typename Self, typename Base, typename... Ts>
+struct OwnerRowOperations<Self, single_allocation_layout::ColumnLayouts<Ts...>, Base> : Base {
+    void set(std::uint32_t index, Ts const... values) {
+        assign_row(static_cast<Self&>(*this), index, values...);
+    }
+    auto add(Ts const... values) -> std::uint32_t {
+        auto& self{static_cast<Self&>(*this)};
+        auto const index{self.num()};
+        // Snapshot arguments by value before growth can invalidate their source columns.
+        self.add_uninitialised(1);
+        self.set(index, values...);
+        return index;
+    }
+};
+
+template <typename Self, typename Columns, typename Base>
+struct ViewRowOperations;
+
+template <typename Self, typename Base, typename... Ts>
+struct ViewRowOperations<Self, single_allocation_layout::ColumnLayouts<Ts...>, Base> : Base {
+    using Base::Base;
+    void set(std::uint32_t index, Ts const... values) const {
+        assign_row(static_cast<Self const&>(*this), index, values...);
+    }
+};
+
 struct ViewOperations {
     template <typename Self, typename Func>
     void each_column(this Self const& self, Func&& func) {

@@ -5,6 +5,7 @@
 
 #include "ioj/native_soa/storage.h"
 #include "ioj/single_allocation/layout.h"
+#include "ioj/single_allocation/view.h"
 
 #include <cassert>
 #include <memory_resource>
@@ -67,14 +68,16 @@ struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;
     using Base::Base;
 };
-struct ResolvedView : ResolvedViewImpl<false> {
-    using Base = ResolvedViewImpl<false>;
+struct ResolvedView
+    : soa_storage_detail::ViewRowOperations<ResolvedView,
+                                            ::ioj::ui::radar_2d::positions::Layout::column_types,
+                                            ResolvedViewImpl<false>> {
+    using Base = ioj::soa_storage_detail::ViewRowOperations<
+        ResolvedView,
+        ::ioj::ui::radar_2d::positions::Layout::column_types,
+        ResolvedViewImpl<false>>;
     using Base::Base;
-    void set(size_type index, float const new_xs, float const new_ys) const {
-        assert(index < num());
-        this->xs()[index] = new_xs;
-        this->ys()[index] = new_ys;
-    }
+    using Base::set;
 };
 
 /* **************************************** */
@@ -109,14 +112,16 @@ struct ConstView : ViewImpl<true> {
     using Base::Base;
 };
 static_assert(std::is_trivially_copyable_v<ConstView>);
-struct View : ViewImpl<false> {
-    using Base = ViewImpl<false>;
+struct View
+    : soa_storage_detail::ViewRowOperations<View,
+                                            ::ioj::ui::radar_2d::positions::Layout::column_types,
+                                            ViewImpl<false>> {
+    using Base = ioj::soa_storage_detail::ViewRowOperations<
+        View,
+        ::ioj::ui::radar_2d::positions::Layout::column_types,
+        ViewImpl<false>>;
     using Base::Base;
-    void set(size_type index, float const new_xs, float const new_ys) const {
-        assert(index < num());
-        this->xs()[index] = new_xs;
-        this->ys()[index] = new_ys;
-    }
+    using Base::set;
 };
 static_assert(std::is_trivially_copyable_v<View>);
 
@@ -130,7 +135,9 @@ static_assert(std::is_trivially_copyable_v<View>);
 // ys: float
 struct Positions
     : protected ioj::native_soa::StorageState
-    , ioj::native_soa::StorageOperations {
+    , soa_storage_detail::OwnerRowOperations<Positions,
+                                             ::ioj::ui::radar_2d::positions::Layout::column_types,
+                                             ioj::native_soa::StorageOperations> {
     using soa_schema = ::ioj::ui::radar_2d::positions::Schema;
     using Operations = ioj::native_soa::StorageOperations;
     using Layout = ::ioj::ui::radar_2d::positions::Layout;
@@ -173,17 +180,12 @@ struct Positions
   public:
     auto xs(this auto& self) { return self.get_view().xs(); }
     auto ys(this auto& self) { return self.get_view().ys(); }
-    void set(size_type index, float const new_xs, float const new_ys) {
-        assert(index < num());
-        get_view().xs()[index] = new_xs;
-        get_view().ys()[index] = new_ys;
-    }
-    size_type add(float const new_xs, float const new_ys) {
-        auto const index{num()};
-        add_uninitialised(1);
-        set(index, new_xs, new_ys);
-        return index;
-    }
+    using RowOperations =
+        soa_storage_detail::OwnerRowOperations<Positions,
+                                               ::ioj::ui::radar_2d::positions::Layout::column_types,
+                                               ioj::native_soa::StorageOperations>;
+    using RowOperations::add;
+    using RowOperations::set;
   private:
     friend Operations;
     friend ::ioj::soa_storage_detail::StorageRequirements;

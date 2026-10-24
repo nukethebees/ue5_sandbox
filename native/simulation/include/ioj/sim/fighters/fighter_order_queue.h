@@ -7,6 +7,7 @@
 #include "ioj/sim/entities/entity_id.h"
 #include "ioj/sim/fighters/fighter_task_format.h"
 #include "ioj/single_allocation/layout.h"
+#include "ioj/single_allocation/view.h"
 
 #include <cassert>
 #include <memory_resource>
@@ -76,20 +77,16 @@ struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;
     using Base::Base;
 };
-struct ResolvedView : ResolvedViewImpl<false> {
-    using Base = ResolvedViewImpl<false>;
+struct ResolvedView
+    : soa_storage_detail::ViewRowOperations<ResolvedView,
+                                            ::ioj::sim::fighter_order_queue::Layout::column_types,
+                                            ResolvedViewImpl<false>> {
+    using Base = ioj::soa_storage_detail::ViewRowOperations<
+        ResolvedView,
+        ::ioj::sim::fighter_order_queue::Layout::column_types,
+        ResolvedViewImpl<false>>;
     using Base::Base;
-    void set(size_type index,
-             EntityId const new_entity_ids,
-             FighterOrder const new_orders,
-             FighterTask const new_tasks,
-             EntityId const new_targets) const {
-        assert(index < num());
-        this->entity_ids()[index] = new_entity_ids;
-        this->orders()[index] = new_orders;
-        this->tasks()[index] = new_tasks;
-        this->targets()[index] = new_targets;
-    }
+    using Base::set;
 };
 
 /* **************************************** */
@@ -121,20 +118,16 @@ struct ConstView : ViewImpl<true> {
     using Base::Base;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<ConstView>());
-struct View : ViewImpl<false> {
-    using Base = ViewImpl<false>;
+struct View
+    : soa_storage_detail::ViewRowOperations<View,
+                                            ::ioj::sim::fighter_order_queue::Layout::column_types,
+                                            ViewImpl<false>> {
+    using Base = ioj::soa_storage_detail::ViewRowOperations<
+        View,
+        ::ioj::sim::fighter_order_queue::Layout::column_types,
+        ViewImpl<false>>;
     using Base::Base;
-    void set(size_type index,
-             EntityId const new_entity_ids,
-             FighterOrder const new_orders,
-             FighterTask const new_tasks,
-             EntityId const new_targets) const {
-        assert(index < num());
-        this->entity_ids()[index] = new_entity_ids;
-        this->orders()[index] = new_orders;
-        this->tasks()[index] = new_tasks;
-        this->targets()[index] = new_targets;
-    }
+    using Base::set;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
 
@@ -150,7 +143,9 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
 // targets: EntityId
 struct FighterOrderQueue
     : protected ioj::native_soa::StorageState
-    , ioj::native_soa::StorageOperations {
+    , soa_storage_detail::OwnerRowOperations<FighterOrderQueue,
+                                             ::ioj::sim::fighter_order_queue::Layout::column_types,
+                                             ioj::native_soa::StorageOperations> {
     using soa_schema = ::ioj::sim::fighter_order_queue::Schema;
     using Operations = ioj::native_soa::StorageOperations;
     using Layout = ::ioj::sim::fighter_order_queue::Layout;
@@ -195,17 +190,11 @@ struct FighterOrderQueue
     auto orders(this auto& self) { return self.get_view().orders(); }
     auto tasks(this auto& self) { return self.get_view().tasks(); }
     auto targets(this auto& self) { return self.get_view().targets(); }
-    void set(size_type index,
-             EntityId const new_entity_ids,
-             FighterOrder const new_orders,
-             FighterTask const new_tasks,
-             EntityId const new_targets) {
-        assert(index < num());
-        get_view().entity_ids()[index] = new_entity_ids;
-        get_view().orders()[index] = new_orders;
-        get_view().tasks()[index] = new_tasks;
-        get_view().targets()[index] = new_targets;
-    }
+    using RowOperations = soa_storage_detail::OwnerRowOperations<
+        FighterOrderQueue,
+        ::ioj::sim::fighter_order_queue::Layout::column_types,
+        ioj::native_soa::StorageOperations>;
+    using RowOperations::set;
     void add(EntityId const entity_id,
              FighterOrder const order,
              FighterTask const task,

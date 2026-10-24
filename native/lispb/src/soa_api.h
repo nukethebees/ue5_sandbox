@@ -4,6 +4,7 @@
 #include "lowering_context.h"
 #include "soa_receiver.h"
 
+#include <codegen/ast/indices.h>
 #include <codegen/schema/soa_schemas.h>
 #include <lispb/indices.h>
 
@@ -13,6 +14,11 @@
 
 namespace lispb::codegen::detail {
 
+auto soa_row_operations(LoweringContext& context,
+                        DeclarationHandle schema,
+                        SoaReceiver receiver,
+                        std::string const& type_name,
+                        CppTypeId base) -> CppTypeId;
 auto logical_column_access(LoweringContext& context,
                            DeclarationHandle schema,
                            std::span<std::string const> path,
@@ -20,5 +26,6 @@ auto logical_column_access(LoweringContext& context,
 auto lower_soa_api(LoweringContext& context,
                    DeclarationHandle schema,
                    SoaReceiver receiver,
-                   std::string const& type_name) -> LoweredSoa;
+                   std::string const& type_name,
+                   CppTypeId base) -> LoweredSoa;
 }

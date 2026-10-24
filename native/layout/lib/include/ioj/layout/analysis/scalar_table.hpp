@@ -13,6 +13,7 @@
 #include "ioj/layout/analysis/varint_encoding.hpp"
 #include "ioj/native_soa/storage.h"
 #include "ioj/single_allocation/layout.h"
+#include "ioj/single_allocation/view.h"
 
 #include "lispb/schema/indices.h"
 
@@ -122,31 +123,16 @@ struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;
     using Base::Base;
 };
-struct ResolvedView : ResolvedViewImpl<false> {
-    using Base = ResolvedViewImpl<false>;
+struct ResolvedView
+    : soa_storage_detail::ViewRowOperations<ResolvedView,
+                                            ::ioj::layout::scalar_table::Layout::column_types,
+                                            ResolvedViewImpl<false>> {
+    using Base = ioj::soa_storage_detail::ViewRowOperations<
+        ResolvedView,
+        ::ioj::layout::scalar_table::Layout::column_types,
+        ResolvedViewImpl<false>>;
     using Base::Base;
-    void set(
-        size_type index,
-        lispb::schema::TypeId const new_type,
-        std::optional<ioj::layout::IntegerDomain> const new_integer_domain,
-        std::optional<ioj::layout::EnumDomain> const new_enum_domain,
-        std::optional<ioj::layout::OptionalSentinelEncoding> const new_optional_sentinel_encoding,
-        std::optional<ioj::layout::OptionalPresenceEncoding> const new_optional_presence_encoding,
-        std::optional<ioj::layout::QuantizedEncoding> const new_quantized_encoding,
-        std::optional<ioj::layout::FixedEncoding> const new_fixed_encoding,
-        std::optional<ioj::layout::FloatEncoding> const new_float_encoding,
-        std::optional<ioj::layout::VarintEncoding> const new_varint_encoding) const {
-        assert(index < num());
-        this->type()[index] = new_type;
-        this->integer_domain()[index] = new_integer_domain;
-        this->enum_domain()[index] = new_enum_domain;
-        this->optional_sentinel_encoding()[index] = new_optional_sentinel_encoding;
-        this->optional_presence_encoding()[index] = new_optional_presence_encoding;
-        this->quantized_encoding()[index] = new_quantized_encoding;
-        this->fixed_encoding()[index] = new_fixed_encoding;
-        this->float_encoding()[index] = new_float_encoding;
-        this->varint_encoding()[index] = new_varint_encoding;
-    }
+    using Base::set;
 };
 
 /* **************************************** */
@@ -206,31 +192,14 @@ struct ConstView : ViewImpl<true> {
     using Base::Base;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<ConstView>());
-struct View : ViewImpl<false> {
-    using Base = ViewImpl<false>;
+struct View
+    : soa_storage_detail::ViewRowOperations<View,
+                                            ::ioj::layout::scalar_table::Layout::column_types,
+                                            ViewImpl<false>> {
+    using Base = ioj::soa_storage_detail::
+        ViewRowOperations<View, ::ioj::layout::scalar_table::Layout::column_types, ViewImpl<false>>;
     using Base::Base;
-    void set(
-        size_type index,
-        lispb::schema::TypeId const new_type,
-        std::optional<ioj::layout::IntegerDomain> const new_integer_domain,
-        std::optional<ioj::layout::EnumDomain> const new_enum_domain,
-        std::optional<ioj::layout::OptionalSentinelEncoding> const new_optional_sentinel_encoding,
-        std::optional<ioj::layout::OptionalPresenceEncoding> const new_optional_presence_encoding,
-        std::optional<ioj::layout::QuantizedEncoding> const new_quantized_encoding,
-        std::optional<ioj::layout::FixedEncoding> const new_fixed_encoding,
-        std::optional<ioj::layout::FloatEncoding> const new_float_encoding,
-        std::optional<ioj::layout::VarintEncoding> const new_varint_encoding) const {
-        assert(index < num());
-        this->type()[index] = new_type;
-        this->integer_domain()[index] = new_integer_domain;
-        this->enum_domain()[index] = new_enum_domain;
-        this->optional_sentinel_encoding()[index] = new_optional_sentinel_encoding;
-        this->optional_presence_encoding()[index] = new_optional_presence_encoding;
-        this->quantized_encoding()[index] = new_quantized_encoding;
-        this->fixed_encoding()[index] = new_fixed_encoding;
-        this->float_encoding()[index] = new_float_encoding;
-        this->varint_encoding()[index] = new_varint_encoding;
-    }
+    using Base::set;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
 
@@ -251,7 +220,9 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
 // varint_encoding: std::optional<ioj::layout::VarintEncoding>
 struct ScalarTable
     : protected ioj::native_soa::StorageState
-    , ioj::native_soa::StorageOperations {
+    , soa_storage_detail::OwnerRowOperations<ScalarTable,
+                                             ::ioj::layout::scalar_table::Layout::column_types,
+                                             ioj::native_soa::StorageOperations> {
     using soa_schema = ::ioj::layout::scalar_table::Schema;
     using Operations = ioj::native_soa::StorageOperations;
     using Layout = ::ioj::layout::scalar_table::Layout;
@@ -305,52 +276,12 @@ struct ScalarTable
     auto fixed_encoding(this auto& self) { return self.get_view().fixed_encoding(); }
     auto float_encoding(this auto& self) { return self.get_view().float_encoding(); }
     auto varint_encoding(this auto& self) { return self.get_view().varint_encoding(); }
-    void set(
-        size_type index,
-        lispb::schema::TypeId const new_type,
-        std::optional<ioj::layout::IntegerDomain> const new_integer_domain,
-        std::optional<ioj::layout::EnumDomain> const new_enum_domain,
-        std::optional<ioj::layout::OptionalSentinelEncoding> const new_optional_sentinel_encoding,
-        std::optional<ioj::layout::OptionalPresenceEncoding> const new_optional_presence_encoding,
-        std::optional<ioj::layout::QuantizedEncoding> const new_quantized_encoding,
-        std::optional<ioj::layout::FixedEncoding> const new_fixed_encoding,
-        std::optional<ioj::layout::FloatEncoding> const new_float_encoding,
-        std::optional<ioj::layout::VarintEncoding> const new_varint_encoding) {
-        assert(index < num());
-        get_view().type()[index] = new_type;
-        get_view().integer_domain()[index] = new_integer_domain;
-        get_view().enum_domain()[index] = new_enum_domain;
-        get_view().optional_sentinel_encoding()[index] = new_optional_sentinel_encoding;
-        get_view().optional_presence_encoding()[index] = new_optional_presence_encoding;
-        get_view().quantized_encoding()[index] = new_quantized_encoding;
-        get_view().fixed_encoding()[index] = new_fixed_encoding;
-        get_view().float_encoding()[index] = new_float_encoding;
-        get_view().varint_encoding()[index] = new_varint_encoding;
-    }
-    size_type add(
-        lispb::schema::TypeId const new_type,
-        std::optional<ioj::layout::IntegerDomain> const new_integer_domain,
-        std::optional<ioj::layout::EnumDomain> const new_enum_domain,
-        std::optional<ioj::layout::OptionalSentinelEncoding> const new_optional_sentinel_encoding,
-        std::optional<ioj::layout::OptionalPresenceEncoding> const new_optional_presence_encoding,
-        std::optional<ioj::layout::QuantizedEncoding> const new_quantized_encoding,
-        std::optional<ioj::layout::FixedEncoding> const new_fixed_encoding,
-        std::optional<ioj::layout::FloatEncoding> const new_float_encoding,
-        std::optional<ioj::layout::VarintEncoding> const new_varint_encoding) {
-        auto const index{num()};
-        add_uninitialised(1);
-        set(index,
-            new_type,
-            new_integer_domain,
-            new_enum_domain,
-            new_optional_sentinel_encoding,
-            new_optional_presence_encoding,
-            new_quantized_encoding,
-            new_fixed_encoding,
-            new_float_encoding,
-            new_varint_encoding);
-        return index;
-    }
+    using RowOperations =
+        soa_storage_detail::OwnerRowOperations<ScalarTable,
+                                               ::ioj::layout::scalar_table::Layout::column_types,
+                                               ioj::native_soa::StorageOperations>;
+    using RowOperations::add;
+    using RowOperations::set;
     std::size_t append(lispb::schema::TypeId value);
     std::size_t find(lispb::schema::TypeId value) const;
   private:

@@ -10,6 +10,7 @@
 #include "ioj/rotators3f.h"
 #include "ioj/sim/entities/entity_id.h"
 #include "ioj/single_allocation/layout.h"
+#include "ioj/single_allocation/view.h"
 #include "ioj/vectors3f.h"
 
 #include <cassert>
@@ -115,30 +116,16 @@ struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;
     using Base::Base;
 };
-struct ResolvedView : ResolvedViewImpl<false> {
-    using Base = ResolvedViewImpl<false>;
+struct ResolvedView
+    : soa_storage_detail::ViewRowOperations<ResolvedView,
+                                            ::ioj::sim::fighter_spawn_queue::Layout::column_types,
+                                            ResolvedViewImpl<false>> {
+    using Base = ioj::soa_storage_detail::ViewRowOperations<
+        ResolvedView,
+        ::ioj::sim::fighter_spawn_queue::Layout::column_types,
+        ResolvedViewImpl<false>>;
     using Base::Base;
-    void set(size_type index,
-             float const new_locations_xs,
-             float const new_locations_ys,
-             float const new_locations_zs,
-             float const new_rotations_pitches,
-             float const new_rotations_yaws,
-             float const new_rotations_rolls,
-             ::ioj::Team const new_teams,
-             EntityId const new_parents,
-             EntityId const new_targets) const {
-        assert(index < num());
-        this->view_locations().xs()[index] = new_locations_xs;
-        this->view_locations().ys()[index] = new_locations_ys;
-        this->view_locations().zs()[index] = new_locations_zs;
-        this->view_rotations().pitches()[index] = new_rotations_pitches;
-        this->view_rotations().yaws()[index] = new_rotations_yaws;
-        this->view_rotations().rolls()[index] = new_rotations_rolls;
-        this->teams()[index] = new_teams;
-        this->parents()[index] = new_parents;
-        this->targets()[index] = new_targets;
-    }
+    using Base::set;
     void set(size_type index,
              Vector3f const new_locations,
              Rotator3f const new_rotations,
@@ -202,30 +189,16 @@ struct ConstView : ViewImpl<true> {
     using Base::Base;
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<ConstView>());
-struct View : ViewImpl<false> {
-    using Base = ViewImpl<false>;
+struct View
+    : soa_storage_detail::ViewRowOperations<View,
+                                            ::ioj::sim::fighter_spawn_queue::Layout::column_types,
+                                            ViewImpl<false>> {
+    using Base = ioj::soa_storage_detail::ViewRowOperations<
+        View,
+        ::ioj::sim::fighter_spawn_queue::Layout::column_types,
+        ViewImpl<false>>;
     using Base::Base;
-    void set(size_type index,
-             float const new_locations_xs,
-             float const new_locations_ys,
-             float const new_locations_zs,
-             float const new_rotations_pitches,
-             float const new_rotations_yaws,
-             float const new_rotations_rolls,
-             ::ioj::Team const new_teams,
-             EntityId const new_parents,
-             EntityId const new_targets) const {
-        assert(index < num());
-        this->view_locations().xs()[index] = new_locations_xs;
-        this->view_locations().ys()[index] = new_locations_ys;
-        this->view_locations().zs()[index] = new_locations_zs;
-        this->view_rotations().pitches()[index] = new_rotations_pitches;
-        this->view_rotations().yaws()[index] = new_rotations_yaws;
-        this->view_rotations().rolls()[index] = new_rotations_rolls;
-        this->teams()[index] = new_teams;
-        this->parents()[index] = new_parents;
-        this->targets()[index] = new_targets;
-    }
+    using Base::set;
     void set(size_type index,
              Vector3f const new_locations,
              Rotator3f const new_rotations,
@@ -259,7 +232,9 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
 // targets: EntityId
 struct FighterSpawnQueue
     : protected ioj::native_soa::StorageState
-    , ioj::native_soa::StorageOperations {
+    , soa_storage_detail::OwnerRowOperations<FighterSpawnQueue,
+                                             ::ioj::sim::fighter_spawn_queue::Layout::column_types,
+                                             ioj::native_soa::StorageOperations> {
     using soa_schema = ::ioj::sim::fighter_spawn_queue::Schema;
     using Operations = ioj::native_soa::StorageOperations;
     using Layout = ::ioj::sim::fighter_spawn_queue::Layout;
@@ -305,50 +280,12 @@ struct FighterSpawnQueue
     auto teams(this auto& self) { return self.get_view().teams(); }
     auto parents(this auto& self) { return self.get_view().parents(); }
     auto targets(this auto& self) { return self.get_view().targets(); }
-    void set(size_type index,
-             float const new_locations_xs,
-             float const new_locations_ys,
-             float const new_locations_zs,
-             float const new_rotations_pitches,
-             float const new_rotations_yaws,
-             float const new_rotations_rolls,
-             ::ioj::Team const new_teams,
-             EntityId const new_parents,
-             EntityId const new_targets) {
-        assert(index < num());
-        get_view().view_locations().xs()[index] = new_locations_xs;
-        get_view().view_locations().ys()[index] = new_locations_ys;
-        get_view().view_locations().zs()[index] = new_locations_zs;
-        get_view().view_rotations().pitches()[index] = new_rotations_pitches;
-        get_view().view_rotations().yaws()[index] = new_rotations_yaws;
-        get_view().view_rotations().rolls()[index] = new_rotations_rolls;
-        get_view().teams()[index] = new_teams;
-        get_view().parents()[index] = new_parents;
-        get_view().targets()[index] = new_targets;
-    }
-    size_type add(float const new_locations_xs,
-                  float const new_locations_ys,
-                  float const new_locations_zs,
-                  float const new_rotations_pitches,
-                  float const new_rotations_yaws,
-                  float const new_rotations_rolls,
-                  ::ioj::Team const new_teams,
-                  EntityId const new_parents,
-                  EntityId const new_targets) {
-        auto const index{num()};
-        add_uninitialised(1);
-        set(index,
-            new_locations_xs,
-            new_locations_ys,
-            new_locations_zs,
-            new_rotations_pitches,
-            new_rotations_yaws,
-            new_rotations_rolls,
-            new_teams,
-            new_parents,
-            new_targets);
-        return index;
-    }
+    using RowOperations = soa_storage_detail::OwnerRowOperations<
+        FighterSpawnQueue,
+        ::ioj::sim::fighter_spawn_queue::Layout::column_types,
+        ioj::native_soa::StorageOperations>;
+    using RowOperations::add;
+    using RowOperations::set;
     void set(size_type index,
              Vector3f const new_locations,
              Rotator3f const new_rotations,
