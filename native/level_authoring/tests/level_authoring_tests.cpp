@@ -101,6 +101,36 @@ TEST(NativeLevelDefinition, VerifiesComponentsBeforeConstructionAndOwnsThem) {
     EXPECT_EQ(level->entities().size(), 1u);
 }
 
+TEST(NativeLevelAuthoringReader, IntegerFieldsRequireExactInt32Values) {
+    auto const read{[](std::string_view const value) {
+        return DefinitionReader{}.read_level_source(std::format(
+            R"((level :id 'integer :title "Integer" :player 'player
+              :entities (list (entity :id 'player :archetype 'player-fighter :team 'blue
+                :position '(0 0 0) :health {}))))",
+            value));
+    }};
+
+    for (auto const value : {"2147483647", "2147483647.0", "4294967294/2"}) {
+        SCOPED_TRACE(value);
+        auto const result{read(value)};
+        ASSERT_TRUE(result);
+        EXPECT_EQ(result->entities()[0].overrides.health, std::numeric_limits<std::int32_t>::max());
+    }
+    for (auto const value : {"2147483648",
+                             "2147483648.0",
+                             "-2147483649",
+                             "3/2",
+                             "1.5",
+                             "+nan.0",
+                             "+inf.0",
+                             "\"123\""}) {
+        SCOPED_TRACE(value);
+        auto const result{read(value)};
+        ASSERT_FALSE(result);
+        EXPECT_TRUE(has_code(result.error(), DiagnosticCode::InvalidNumber));
+    }
+}
+
 TEST(NativeSourceSession, PreservesTextAndSeparatesSavedFromAppliedState) {
     TemporaryLevelDirectory directory;
     auto const path{directory.path() / "source.scm"};

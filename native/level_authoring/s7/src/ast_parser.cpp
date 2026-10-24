@@ -5,6 +5,19 @@
 #include <limits>
 
 namespace ioj::levels::authoring::detail {
+template <typename T>
+using Int32Source =
+    ConstrainedValue<T,
+                     ConstrainedValuePolicy{
+                         [](T const value) {
+                             if (!(value >= std::numeric_limits<std::int32_t>::min() &&
+                                   value <= std::numeric_limits<std::int32_t>::max())) {
+                                 return false;
+                             }
+                             return value == static_cast<std::int32_t>(value);
+                         },
+                         "Expected a 32-bit integer"}>;
+
 auto AstParser::record(s7::NodeIndex const node,
                        RecordKind const kind,
                        std::string_view const node_path) -> std::vector<Field> {
@@ -123,30 +136,26 @@ auto AstParser::number(s7::NodeIndex const node, std::string_view const node_pat
 }
 auto AstParser::integer(s7::NodeIndex const node, std::string_view const node_path)
     -> std::int32_t {
+    auto const convert{[]<typename T>(T const value) -> std::optional<std::int32_t> {
+        auto const valid{Int32Source<T>::try_make(value)};
+        return valid ? std::optional{static_cast<std::int32_t>(valid->get())} : std::nullopt;
+    }};
+    std::optional<std::int32_t> result;
     auto const& value{ast_.node(node)};
     if (value.kind == s7::NodeKind::Integer) {
-        auto const integer{ast_.integer(node)};
-        if (integer >= std::numeric_limits<std::int32_t>::min() &&
-            integer <= std::numeric_limits<std::int32_t>::max()) {
-            return static_cast<std::int32_t>(integer);
-        }
+        result = convert(ast_.integer(node));
     } else if (value.kind == s7::NodeKind::Real) {
-        auto const real{ast_.real(node)};
-        if (std::isfinite(real) && std::trunc(real) == real &&
-            real >= std::numeric_limits<std::int32_t>::min() &&
-            real <= std::numeric_limits<std::int32_t>::max()) {
-            return static_cast<std::int32_t>(real);
-        }
+        result = convert(ast_.real(node));
     } else if (value.kind == s7::NodeKind::Ratio) {
         auto const ratio{ast_.ratio(node)};
         if (ratio.denominator > 0 && ratio.numerator % ratio.denominator == 0) {
-            auto const quotient{ratio.numerator / ratio.denominator};
-            if (quotient >= std::numeric_limits<std::int32_t>::min() &&
-                quotient <= std::numeric_limits<std::int32_t>::max()) {
-                return static_cast<std::int32_t>(quotient);
-            }
+            result = convert(ratio.numerator / ratio.denominator);
         }
     }
+    if (result) {
+        return *result;
+    }
+
     error(DiagnosticCode::InvalidNumber, node_path, "Expected a 32-bit integer");
     return 0;
 }
