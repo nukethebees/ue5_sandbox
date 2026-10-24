@@ -19,111 +19,45 @@ class Objectives {
 
     auto is_valid(ObjectiveId id) const -> bool { return id.is_valid() && id.index() < size(); }
     auto size() const -> std::size_t { return names_.size(); }
-    auto name(ObjectiveId id) -> levels::ObjectiveName& {
-        assert(is_valid(id));
-        return names_[id.index()];
-    }
-    auto name(ObjectiveId id) const -> levels::ObjectiveName const& {
-        assert(is_valid(id));
-        return names_[id.index()];
-    }
-    auto title(ObjectiveId id) -> std::string& {
-        assert(is_valid(id));
-        return titles_[id.index()];
-    }
-    auto title(ObjectiveId id) const -> std::string const& {
-        assert(is_valid(id));
-        return titles_[id.index()];
-    }
-    auto team(ObjectiveId id) -> Team& {
-        assert(is_valid(id));
-        return teams_[id.index()];
-    }
-    auto team(ObjectiveId id) const -> Team {
-        assert(is_valid(id));
-        return teams_[id.index()];
-    }
-    auto roots(ObjectiveId id) -> ObjectiveRoots& {
-        assert(is_valid(id));
-        return roots_[id.index()];
-    }
-    auto roots(ObjectiveId id) const -> ObjectiveRoots const& {
-        assert(is_valid(id));
-        return roots_[id.index()];
-    }
-    auto leaves(ObjectiveId id) -> IndexSpan& {
-        assert(is_valid(id));
-        return leaves_[id.index()];
-    }
-    auto leaves(ObjectiveId id) const -> IndexSpan {
-        assert(is_valid(id));
-        return leaves_[id.index()];
-    }
-    auto composites(ObjectiveId id) -> IndexSpan& {
-        assert(is_valid(id));
-        return composites_[id.index()];
-    }
-    auto composites(ObjectiveId id) const -> IndexSpan {
-        assert(is_valid(id));
-        return composites_[id.index()];
-    }
-    auto prerequisites(ObjectiveId id) -> std::uint32_t& {
-        assert(is_valid(id));
-        return prerequisites_[id.index()];
-    }
-    auto prerequisites(ObjectiveId id) const -> std::uint32_t {
-        assert(is_valid(id));
-        return prerequisites_[id.index()];
-    }
-    auto dependents(ObjectiveId id) -> IndexSpan& {
-        assert(is_valid(id));
-        return dependents_[id.index()];
-    }
-    auto dependents(ObjectiveId id) const -> IndexSpan {
-        assert(is_valid(id));
-        return dependents_[id.index()];
-    }
-    auto observers(ObjectiveId id) -> IndexSpan& {
-        assert(is_valid(id));
-        return observers_[id.index()];
-    }
-    auto observers(ObjectiveId id) const -> IndexSpan {
-        assert(is_valid(id));
-        return observers_[id.index()];
-    }
-    auto team_results(ObjectiveId id) -> IndexSpan& {
-        assert(is_valid(id));
-        return team_results_[id.index()];
-    }
-    auto team_results(ObjectiveId id) const -> IndexSpan {
-        assert(is_valid(id));
-        return team_results_[id.index()];
-    }
-    auto outcome(ObjectiveId id) -> std::optional<ObjectiveOutcome>& {
-        assert(is_valid(id));
-        return outcomes_[id.index()];
-    }
+    auto name(ObjectiveId id) -> levels::ObjectiveName& { return at(names_, id); }
+    auto name(ObjectiveId id) const -> levels::ObjectiveName const& { return at(names_, id); }
+    auto title(ObjectiveId id) -> std::string& { return at(titles_, id); }
+    auto title(ObjectiveId id) const -> std::string const& { return at(titles_, id); }
+    auto team(ObjectiveId id) -> Team& { return at(teams_, id); }
+    auto team(ObjectiveId id) const -> Team { return at(teams_, id); }
+    auto roots(ObjectiveId id) -> ObjectiveRoots& { return at(roots_, id); }
+    auto roots(ObjectiveId id) const -> ObjectiveRoots const& { return at(roots_, id); }
+    auto leaves(ObjectiveId id) -> IndexSpan& { return at(leaves_, id); }
+    auto leaves(ObjectiveId id) const -> IndexSpan { return at(leaves_, id); }
+    auto composites(ObjectiveId id) -> IndexSpan& { return at(composites_, id); }
+    auto composites(ObjectiveId id) const -> IndexSpan { return at(composites_, id); }
+    auto prerequisites(ObjectiveId id) -> std::uint32_t& { return at(prerequisites_, id); }
+    auto prerequisites(ObjectiveId id) const -> std::uint32_t { return at(prerequisites_, id); }
+    auto dependents(ObjectiveId id) -> IndexSpan& { return at(dependents_, id); }
+    auto dependents(ObjectiveId id) const -> IndexSpan { return at(dependents_, id); }
+    auto observers(ObjectiveId id) -> IndexSpan& { return at(observers_, id); }
+    auto observers(ObjectiveId id) const -> IndexSpan { return at(observers_, id); }
+    auto team_results(ObjectiveId id) -> IndexSpan& { return at(team_results_, id); }
+    auto team_results(ObjectiveId id) const -> IndexSpan { return at(team_results_, id); }
+    auto outcome(ObjectiveId id) -> std::optional<ObjectiveOutcome>& { return at(outcomes_, id); }
     auto outcome(ObjectiveId id) const -> std::optional<ObjectiveOutcome> {
-        assert(is_valid(id));
-        return outcomes_[id.index()];
+        return at(outcomes_, id);
     }
-    auto activation_tick(ObjectiveId id) -> SimTick& {
-        assert(is_valid(id));
-        return activation_ticks_[id.index()];
-    }
-    auto activation_tick(ObjectiveId id) const -> SimTick {
-        assert(is_valid(id));
-        return activation_ticks_[id.index()];
-    }
+    auto activation_tick(ObjectiveId id) -> SimTick& { return at(activation_ticks_, id); }
+    auto activation_tick(ObjectiveId id) const -> SimTick { return at(activation_ticks_, id); }
     auto membership_position(ObjectiveId id) -> std::uint32_t& {
-        assert(is_valid(id));
-        return membership_positions_[id.index()];
+        return at(membership_positions_, id);
     }
     auto membership_position(ObjectiveId id) const -> std::uint32_t {
-        assert(is_valid(id));
-        return membership_positions_[id.index()];
+        return at(membership_positions_, id);
     }
   private:
+    template <typename Column>
+    auto at(Column& column, ObjectiveId const id) const -> decltype(column[id.index()]) {
+        assert(is_valid(id));
+        return column[id.index()];
+    }
+
     std::vector<levels::ObjectiveName> names_;
     std::vector<std::string> titles_;
     std::vector<Team> teams_;

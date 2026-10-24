@@ -57,15 +57,7 @@ void Mission::begin(MissionEvaluationContext const& inputs) {
 void Mission::tick(MissionEvaluationContext const& inputs) {
     assert(begun_);
 
-    std::span<RuleId const> const rules{active_rules_};
-
-    for (auto const run : runs_) {
-        if (run.type == ConditionType::ObjectiveResolved) {
-            continue;
-        }
-        // NOLINTNEXTLINE(ioj-loop-view-accessor-call) -- each run selects a different rule range.
-        evaluate_run(run.type, rules.subspan(run.rules.offset, run.rules.count), inputs);
-    }
+    evaluate(active_rules_, inputs);
 
     settle(inputs);
 }
@@ -125,8 +117,6 @@ void Mission::activate(ObjectiveId const id, SimTick const tick) {
         newly_active_.push_back(rule);
     }
 
-    membership_changed_ = true;
-
     auto const composites{data_.objectives.composites(id)};
     auto const composites_end{composites.end()};
 
@@ -147,7 +137,6 @@ void Mission::complete(ObjectiveId const id, ObjectiveOutcome const outcome, Sim
     data_.objectives.membership_position(id) = static_cast<std::uint32_t>(completed_.size());
     completed_.push_back(id);
     data_.objectives.outcome(id) = outcome;
-    membership_changed_ = true;
 
     auto const dependents{data_.objectives.dependents(id)};
     auto const dependents_end{dependents.end()};
@@ -202,7 +191,6 @@ void Mission::resolve(ExprRef const expression, ExprResult const value) {
     propagation_.push_back(expression);
     pending_objectives_.push_back(expression.leaf() ? data_.leaves.owners[index]
                                                     : data_.composites.owners[index]);
-    membership_changed_ = membership_changed_ || expression.leaf();
 }
 void Mission::resolve_rule(RuleId const rule, ExprResult const value) {
     resolve(ExprRef{rule_leaf(rule), true}, value);
@@ -246,29 +234,10 @@ auto Mission::pending_rule(RuleId const rule) const -> bool {
     auto const leaf{rule_leaf(rule)};
     return active(data_.leaves.owners[leaf]) && data_.leaves.results[leaf] == ExprResult::Pending;
 }
-void Mission::rebuild_runs() {
-    if (!membership_changed_) {
-        return;
-    }
-
-    std::erase_if(active_rules_, [&](RuleId const rule) { return !pending_rule(rule); });
-    std::ranges::sort(active_rules_);
-    runs_.clear();
-    auto const count{static_cast<std::uint32_t>(active_rules_.size())};
-
-    for (std::uint32_t index{}; index < count; ++index) {
-        auto const type{active_rules_[index].type()};
-        if (runs_.empty() || runs_.back().type != type) {
-            runs_.push_back({type, {index, 0}});
-        }
-        ++runs_.back().rules.count;
-    }
-
-    membership_changed_ = false;
-}
 void Mission::evaluate(std::span<RuleId const> const scheduled,
-                       MissionEvaluationContext const& inputs) {
-    // Newly activated rules are sorted separately; ordinary ticks use cached runs.
+                       MissionEvaluationContext const& inputs,
+                       bool const activating) {
+    assert(std::ranges::is_sorted(scheduled));
     auto const count{scheduled.size()};
     std::size_t first{};
 
@@ -279,8 +248,10 @@ void Mission::evaluate(std::span<RuleId const> const scheduled,
             ++end;
         }
 
-        // NOLINTNEXTLINE(ioj-loop-view-accessor-call) -- select the current type's rule range.
-        evaluate_run(type, scheduled.subspan(first, end - first), inputs);
+        if (activating || type != ConditionType::ObjectiveResolved) {
+            // NOLINTNEXTLINE(ioj-loop-view-accessor-call) -- select the current type's rule range.
+            evaluate_run(type, scheduled.subspan(first, end - first), inputs);
+        }
         first = end;
     }
 }
@@ -429,11 +400,15 @@ void Mission::evaluate_reached_position(std::span<RuleId const> const run,
 // Settlement
 /* **************************************** */
 void Mission::settle(MissionEvaluationContext const& inputs) {
+    if (newly_active_.empty() && propagation_.empty() && pending_objectives_.empty()) {
+        return;
+    }
+
     while (!newly_active_.empty() || !propagation_.empty() || !pending_objectives_.empty()) {
         if (!newly_active_.empty()) {
             auto rules{std::exchange(newly_active_, {})};
             std::ranges::sort(rules);
-            evaluate(rules, inputs);
+            evaluate(rules, inputs, true);
         }
 
         propagate();
@@ -453,18 +428,19 @@ void Mission::settle(MissionEvaluationContext const& inputs) {
         }
     }
 
-    std::ranges::sort(candidate_results_, [&](std::uint32_t const left, std::uint32_t const right) {
-        auto const& a{data_.team_results[left]};
-        auto const& b{data_.team_results[right]};
-        if (a.team != b.team) {
-            return a.team < b.team;
-        }
+    std::ranges::sort(candidate_results_,
+                      [&](TeamResultIndex const left, TeamResultIndex const right) {
+                          auto const& a{data_.team_results[left]};
+                          auto const& b{data_.team_results[right]};
+                          if (a.team != b.team) {
+                              return a.team < b.team;
+                          }
 
-        if (a.result != b.result) {
-            return a.result == TeamOutcome::Defeat;
-        }
-        return left < right;
-    });
+                          if (a.result != b.result) {
+                              return a.result == TeamOutcome::Defeat;
+                          }
+                          return left < right;
+                      });
 
     for (auto const index : candidate_results_) {
         auto const mapping{data_.team_results[index]};
@@ -477,6 +453,7 @@ void Mission::settle(MissionEvaluationContext const& inputs) {
     }
 
     candidate_results_.clear();
-    rebuild_runs();
+    std::erase_if(active_rules_, [&](RuleId const rule) { return !pending_rule(rule); });
+    std::ranges::sort(active_rules_);
 }
 }

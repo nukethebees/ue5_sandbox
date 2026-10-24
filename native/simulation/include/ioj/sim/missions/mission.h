@@ -2,7 +2,6 @@
 
 #include <ioj/sim/missions/compiled_mission.h>
 #include <ioj/sim/missions/mission_evaluation_context.h>
-#include <ioj/sim/missions/rule_run.h>
 #include <ioj/sim/missions/team_completion.h>
 
 namespace ioj::sim {
@@ -31,7 +30,6 @@ class Mission {
     auto result(ExprRef expression) const -> ExprResult;
 
     auto active_rules() const -> std::span<RuleId const> { return active_rules_; }
-    auto rule_runs() const -> std::span<RuleRun const> { return runs_; }
   private:
     /* **************************************** */
     // Objective progression
@@ -53,8 +51,9 @@ class Mission {
     /* **************************************** */
     auto rule_leaf(RuleId rule) const -> std::uint32_t;
     auto pending_rule(RuleId rule) const -> bool;
-    void rebuild_runs();
-    void evaluate(std::span<RuleId const> scheduled, MissionEvaluationContext const& inputs);
+    void evaluate(std::span<RuleId const> scheduled,
+                  MissionEvaluationContext const& inputs,
+                  bool activating = false);
 
     void evaluate_run(ConditionType type,
                       std::span<RuleId const> run,
@@ -77,13 +76,11 @@ class Mission {
     std::vector<ObjectiveId> completed_;
     std::vector<RuleId> active_rules_;
     std::vector<RuleId> newly_active_;
-    std::vector<RuleRun> runs_;
     std::vector<ExprRef> propagation_;
     std::vector<ObjectiveId> pending_objectives_;
     std::vector<TeamResultIndex> candidate_results_;
     EnumArray<Team, std::optional<TeamOutcome>> team_outcomes_;
     std::vector<TeamCompletion> completions_;
-    bool membership_changed_{};
     bool begun_{};
 };
 }

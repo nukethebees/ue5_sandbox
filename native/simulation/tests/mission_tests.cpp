@@ -210,15 +210,24 @@ TEST_F(MissionTest, RuleRunsSortAndRebuildAfterMembershipChanges) {
     entities.emplace_back();
     auto source{objective("rules", timer(1))};
     source.expressions.push_back({EntityDestroyedExpr{.entity = names[0]}});
-    source.expressions.push_back({AllExpr{.children = {0, 1}}});
-    source.roots[ioj::ObjectiveOutcome::Passed] = 2;
+    source.expressions.push_back(timer(2));
+    source.expressions.push_back({AllExpr{.children = {0, 1, 2}}});
+    source.roots[ioj::ObjectiveOutcome::Passed] = 3;
     start({.objectives = {source}});
-    ASSERT_EQ(mission.rule_runs().size(), 2);
-    EXPECT_EQ(mission.rule_runs()[0].type, ConditionType::EntityDestroyed);
-    EXPECT_EQ(mission.rule_runs()[1].type, ConditionType::TimeElapsed);
+    auto const initial{mission.active_rules()};
+    ASSERT_EQ(initial.size(), 3);
+    EXPECT_TRUE(std::ranges::is_sorted(initial));
+    EXPECT_EQ(initial[0].type(), ConditionType::EntityDestroyed);
+    EXPECT_EQ(initial[1].type(), ConditionType::TimeElapsed);
+    EXPECT_EQ(initial[2].type(), ConditionType::TimeElapsed);
     tick(10);
-    ASSERT_EQ(mission.rule_runs().size(), 1);
-    EXPECT_EQ(mission.rule_runs()[0].rules.count, 1);
+    ASSERT_EQ(mission.active_rules().size(), 2);
+    EXPECT_TRUE(std::ranges::is_sorted(mission.active_rules()));
+    EXPECT_FALSE(mission.outcome(ObjectiveId{0}));
+    tick(20);
+    auto const remaining{mission.active_rules()};
+    ASSERT_EQ(remaining.size(), 1);
+    EXPECT_EQ(remaining[0].type(), ConditionType::EntityDestroyed);
     EXPECT_FALSE(mission.outcome(ObjectiveId{0}));
 }
 
