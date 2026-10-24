@@ -131,6 +131,26 @@ TEST(NativeLevelAuthoringReader, IntegerFieldsRequireExactInt32Values) {
     }
 }
 
+TEST(NativeLevelAuthoringReader, FloatFieldsRejectNonfiniteAndUnrepresentableValues) {
+    for (auto const value : {"0.5", "1e100", "+inf.0", "+nan.0"}) {
+        SCOPED_TRACE(value);
+        auto const result{DefinitionReader{}.read_level_source(std::format(R"(
+          (level :id 'floats :title "Floats" :player 'player
+            :entities (list
+              (entity :id 'player :archetype 'player-fighter :team 'blue :position '(0 0 0))
+              (entity :id 'capital :archetype 'capital-ship :team 'blue :position '(100 0 0)
+                      :initial-spawn-delay {}))))",
+                                                                           value))};
+        if (std::string_view{value} == "0.5") {
+            ASSERT_TRUE(result) << format_diagnostics(result.error());
+            EXPECT_EQ(result->entities()[1].overrides.initial_spawn_delay, 0.5f);
+        } else {
+            ASSERT_FALSE(result);
+            EXPECT_TRUE(has_code(result.error(), DiagnosticCode::InvalidNumber));
+        }
+    }
+}
+
 TEST(NativeSourceSession, PreservesTextAndSeparatesSavedFromAppliedState) {
     TemporaryLevelDirectory directory;
     auto const path{directory.path() / "source.scm"};

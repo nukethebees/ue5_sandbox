@@ -5,18 +5,22 @@
 #include <limits>
 
 namespace ioj::levels::authoring::detail {
-template <typename T>
-using Int32Source =
-    ConstrainedValue<T,
-                     ConstrainedValuePolicy{
-                         [](T const value) {
-                             if (!(value >= std::numeric_limits<std::int32_t>::min() &&
-                                   value <= std::numeric_limits<std::int32_t>::max())) {
-                                 return false;
-                             }
-                             return value == static_cast<std::int32_t>(value);
-                         },
-                         "Expected a 32-bit integer"}>;
+template <typename Target, typename Source>
+using NumericSource =
+    ConstrainedValue<Source,
+                     ConstrainedValuePolicy{[](Source const value) {
+                                                if (!(value >=
+                                                          std::numeric_limits<Target>::lowest() &&
+                                                      value <=
+                                                          std::numeric_limits<Target>::max())) {
+                                                    return false;
+                                                }
+                                                if constexpr (std::integral<Target>) {
+                                                    return value == static_cast<Target>(value);
+                                                }
+                                                return true;
+                                            },
+                                            "Number is outside the destination range"}>;
 
 auto AstParser::record(s7::NodeIndex const node,
                        RecordKind const kind,
@@ -137,7 +141,7 @@ auto AstParser::number(s7::NodeIndex const node, std::string_view const node_pat
 auto AstParser::integer(s7::NodeIndex const node, std::string_view const node_path)
     -> std::int32_t {
     auto const convert{[]<typename T>(T const value) -> std::optional<std::int32_t> {
-        auto const valid{Int32Source<T>::try_make(value)};
+        auto const valid{NumericSource<std::int32_t, T>::try_make(value)};
         return valid ? std::optional{static_cast<std::int32_t>(valid->get())} : std::nullopt;
     }};
     std::optional<std::int32_t> result;
@@ -160,12 +164,14 @@ auto AstParser::integer(s7::NodeIndex const node, std::string_view const node_pa
     return 0;
 }
 auto AstParser::float_number(s7::NodeIndex const node, std::string_view const node_path) -> float {
-    auto const value{number(node, node_path)};
-    if (std::isfinite(value) && std::abs(value) > std::numeric_limits<float>::max()) {
-        error(DiagnosticCode::InvalidNumber, node_path, "Number is outside the float range");
+    auto const value{NumericSource<float, double>::try_make(number(node, node_path))};
+    if (!value) {
+        error(DiagnosticCode::InvalidNumber,
+              node_path,
+              "Expected a finite number in the float range");
         return 0.0f;
     }
-    return static_cast<float>(value);
+    return static_cast<float>(value->get());
 }
 void AstParser::require(std::span<Field const> const fields,
                         Property const property,
