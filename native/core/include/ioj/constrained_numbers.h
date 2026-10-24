@@ -17,7 +17,7 @@ namespace detail {
 
 template <typename Checker, std::size_t MessageSize>
 struct ConstrainedNumberPolicy {
-    Checker check;
+    Checker predicate;
     char message[MessageSize];
 };
 
@@ -49,7 +49,7 @@ class ConstrainedNumber {
     using value_type = T;
 
     constexpr ConstrainedNumber() noexcept
-        requires (policy.check(value_type{}))
+        requires (policy.predicate(value_type{}))
     = default;
 
     // Reject invalid literal values during compilation.
@@ -61,7 +61,7 @@ class ConstrainedNumber {
     }
 
     [[nodiscard]] static constexpr auto valid(value_type const value) noexcept -> bool {
-        return policy.check(value);
+        return policy.predicate(value);
     }
 
     // Require the value to satisfy the policy.
