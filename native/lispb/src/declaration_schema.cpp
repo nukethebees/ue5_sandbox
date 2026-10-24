@@ -177,7 +177,16 @@ auto traverse_references(Store& store, DeclarationHandle declaration, Visitor co
             });
             break;
         case DeclarationKind::fixed_point:
+            break;
         case DeclarationKind::settings_schema:
+            rewrite_row(store.settings_schemas, declaration, [&](auto field, auto) {
+                field(store.settings_schemas.records, [&](auto& values) {
+                    return rewrite_range(store, values, [&](auto& value, std::uint32_t index) {
+                        return value.value != 0 &&
+                               reference(role(TypeReferenceCategory::target, {}, index), value);
+                    });
+                });
+            });
             break;
         case DeclarationKind::integer_scalar:
             rewrite_row(store.integer_scalars, declaration, [&](auto field, auto row) {
@@ -488,8 +497,12 @@ auto generated_cpp_names(Declarations const& declarations, DeclarationHandle dec
         }
         case DeclarationKind::enumeration:
             return {id, strings.intern(name + "Underlying")};
-        case DeclarationKind::packed_value:
         case DeclarationKind::record:
+            if (declarations.records.generate_overrides[declarations.records.index(declaration)]) {
+                return {id, strings.intern(name + "Overrides")};
+            }
+            return {id};
+        case DeclarationKind::packed_value:
         case DeclarationKind::union_type:
         case DeclarationKind::tagged_union:
         case DeclarationKind::static_table:

@@ -35,3 +35,5 @@
 (type native_int32 :spelling "std::int32_t" :header "cstdint" :pass-by value)
 
 (type assertion :spelling "assert" :header "cassert")
+
+(type fixture_optional_int :spelling "std::optional<int>" :header "optional")

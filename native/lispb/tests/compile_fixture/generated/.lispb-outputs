@@ -12,6 +12,7 @@ ReferenceFacade.h
 Representations.h
 RestrictionRows.h
 ScalarValues.h
+SettingsFields.h
 SignatureDefinitions.cpp
 SignatureDefinitions.h
 SignatureFirst.cpp

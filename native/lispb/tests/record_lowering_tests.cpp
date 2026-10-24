@@ -9,6 +9,7 @@
 #include <codegen/schema/schema_version.h>
 #include <lispb/compiler_storage.h>
 #include <lispb/indices.h>
+#include <lispb/schema/source_renderer.h>
 #include <lispb/schema/type_graph.h>
 #include <lispb/strings.h>
 
@@ -49,6 +50,74 @@ TEST(RecordLowering, GeneratesSemanticMembersAndFixedArrays) {
     EXPECT_NE(output.find("struct PROJECT_API Sample"), std::string::npos);
     EXPECT_NE(output.find("Position position;"), std::string::npos);
     EXPECT_NE(output.find("std::array<Value, 3> values;"), std::string::npos);
+}
+
+TEST(RecordLowering, RejectsInvalidSettingsBindingsAndOverrideDependencies) {
+    for (
+        auto const declarations : {
+            R"((record Config (member speed float))
+           (settings-schema Fields :target Config :target-header "Records.h"
+             (section "config" "config" :record Config)))",
+            R"((record Config :generate-overrides true (member speed float)))",
+            R"((record Config :generate-settings true :generate-overrides true
+             (member speed (type-ref float :suffix "&"))))",
+            R"((record Config :generate-settings true :generate-overrides true
+             (member speed (type-ref float :suffix " const"))))",
+            R"((record Child (member speed float))
+           (record Config :generate-settings true :generate-overrides true (member child Child)))",
+            R"((record Config :generate-settings true (member speed float))
+           (settings-schema Fields :target Config :target-header "Records.h"
+             (section "config" "config" :record Config)
+             (field "config.speed" "speed")))",
+            R"((record Config :generate-settings true (member speed float :settings-exclude true))
+           (settings-schema Fields :target Config :target-header "Records.h"
+             (section "config" "config" :record Config)))",
+            R"((record Config :generate-settings true (member speed float :settings-name "")))",
+            R"((record Config :generate-settings true (member child Config))
+           (settings-schema Fields :target Config :target-header "Records.h"
+             (section "config" "config" :record Config)))",
+            R"((record Config :generate-settings true :generate-overrides true (member speed float))
+           (record ConfigOverrides))"}) {
+        SCOPED_TRACE(declarations);
+        CompilerTestContext context;
+        auto manifest{parse_test_manifest(
+            context, std::string{R"((module records :header "Records.h" )"} + declarations + ")")};
+        EXPECT_THROW(static_cast<void>(lower_test_manifest(context, manifest)),
+                     std::invalid_argument);
+    }
+}
+
+TEST(RecordLowering, SettingsMetadataDoesNotChangeOrdinaryRecordOutput) {
+    auto const render{[](std::string_view const options) {
+        CompilerTestContext context;
+        auto manifest{parse_test_manifest(
+            context,
+            std::string{R"((module records :header "Records.h" (record Config )"} +
+                std::string{options} + R"( (member max_speed float :initializer "2.f"))))")};
+        return render_test_manifest(context, manifest).front().content;
+    }};
+    EXPECT_EQ(render(""), render(":generate-settings true"));
+    EXPECT_EQ(render(":generate-settings true"), render(":generate-settings true"));
+}
+
+TEST(RecordLowering, SettingsOptionsSurviveSourceRoundTrip) {
+    CompilerTestContext context;
+    auto const manifest{parse_test_manifest(context, R"(
+        (module records :header "Records.h"
+          (record Config :generate-settings true :generate-overrides true
+            (member max_speed float :initializer "2.f" :settings-name "speed")
+            (member asset float :settings-exclude true))
+          (settings-schema Fields :target Root :target-header "Root.h"
+            (section "config" "config" :record Config)
+            (field "extra" "extra"))))")};
+    auto const source{
+        schema::render_module_source(manifest.declarations, manifest.modules.front())};
+    CompilerTestContext reparsed;
+    auto const round_trip{parse_test_manifest(reparsed, source)};
+    EXPECT_EQ(schema::render_module_source(round_trip.declarations, round_trip.modules.front()),
+              source);
+    EXPECT_EQ(render_test_manifest(context, manifest).front().content,
+              render_test_manifest(reparsed, round_trip).front().content);
 }
 
 TEST(RecordLowering, AllowsEmptyAndRejectsDuplicateAndZeroCountMembers) {

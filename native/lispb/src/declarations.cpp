@@ -119,6 +119,7 @@ void Declarations::clear() {
     umbrella_modules.clear();
     union_alternatives.clear();
     unions.clear();
+    type_ref_items_.clear();
     declaration_handle_items_.clear();
     enum_conversion_items_.clear();
     enumerator_id_items_.clear();

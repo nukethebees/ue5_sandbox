@@ -3,10 +3,69 @@
 
 #pragma once
 
+#include <optional>
+
 namespace codegen_compile_fixture {
 struct ApiPair {
     float x;
 
     float y;
 };
+
+struct EmptySettings {};
+
+struct EmptySettingsOverrides {};
+
+inline void apply_overrides(EmptySettings&, EmptySettingsOverrides const&) {}
+
+struct WeaponSettings {
+    int damage{5};
+
+    float turn_rate{2.f};
+
+    float asset_distance{9.f};
+};
+
+struct WeaponSettingsOverrides {
+    std::optional<int> damage{};
+
+    std::optional<float> turn_rate{};
+};
+
+inline void apply_overrides(WeaponSettings& target, WeaponSettingsOverrides const& overrides) {
+    if (overrides.damage) {
+        target.damage = *overrides.damage;
+    }
+    if (overrides.turn_rate) {
+        target.turn_rate = *overrides.turn_rate;
+    }
+}
+
+struct ActorSettings {
+    int max_health{100};
+
+    WeaponSettings weapon{};
+
+    std::optional<int> optional_limit{3};
+};
+
+struct ActorSettingsOverrides {
+    std::optional<int> max_health{};
+
+    std::optional<codegen_compile_fixture::WeaponSettingsOverrides> weapon{};
+
+    std::optional<std::optional<int>> optional_limit{};
+};
+
+inline void apply_overrides(ActorSettings& target, ActorSettingsOverrides const& overrides) {
+    if (overrides.max_health) {
+        target.max_health = *overrides.max_health;
+    }
+    if (overrides.weapon) {
+        apply_overrides(target.weapon, *overrides.weapon);
+    }
+    if (overrides.optional_limit) {
+        target.optional_limit = *overrides.optional_limit;
+    }
+}
 } // namespace codegen_compile_fixture

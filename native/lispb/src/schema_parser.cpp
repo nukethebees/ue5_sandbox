@@ -1137,7 +1137,7 @@ auto SchemaParser::parse_setting(Declarations& declarations, sexpr::FormId const
 auto SchemaParser::parse_record_member(Declarations& declarations, sexpr::FormId const form)
     -> RecordMemberId {
     Fields const fields{parser_, form, "member", 2};
-    fields.validate({"count", "initializer"}, {"relation"});
+    fields.validate({"count", "initializer", "settings-exclude", "settings-name"}, {"relation"});
     auto const count{fields.optional("count")};
     std::optional<SemanticRelationId> relationship;
     for (auto const declaration_id : fields.declarations()) {
@@ -1171,13 +1171,19 @@ auto SchemaParser::parse_record_member(Declarations& declarations, sexpr::FormId
             : std::optional<std::uint64_t>{unsigned_integer(*count, "record member count")};
     records.relationship[record_index] = relationship;
     records.initializer[record_index] = optional_text_id(fields, "initializer");
+    records.settings_exclude[record_index] = boolean_or(fields, "settings-exclude");
+    records.settings_name[record_index] = optional_text_id(fields, "settings-name");
     return record_id;
 }
 
 auto SchemaParser::parse_record(Declarations& declarations, sexpr::FormId const form)
     -> DeclarationHandle {
     Fields const fields{parser_, form, "record", 1};
-    fields.validate({"export-specifier", "comparison", "comparison-noexcept"},
+    fields.validate({"export-specifier",
+                     "comparison",
+                     "comparison-noexcept",
+                     "generate-settings",
+                     "generate-overrides"},
                     {"member", "function"});
     auto comparison{RecordComparison::none};
     if (auto const value{optional_text(fields, "comparison")}) {
@@ -1208,6 +1214,8 @@ auto SchemaParser::parse_record(Declarations& declarations, sexpr::FormId const 
     records.export_specifier[record_index] = parse_export_specifier(fields);
     records.comparison[record_index] = comparison;
     records.comparison_noexcept[record_index] = boolean_or(fields, "comparison-noexcept");
+    records.generate_settings[record_index] = boolean_or(fields, "generate-settings");
+    records.generate_overrides[record_index] = boolean_or(fields, "generate-overrides");
     records.functions[record_index] = declarations.range(functions);
     return record_id;
 }
@@ -1571,12 +1579,20 @@ auto SchemaParser::parse_optional_presence_bit(Declarations& declarations, sexpr
 auto SchemaParser::parse_settings_schema(Declarations& declarations, sexpr::FormId const form)
     -> DeclarationHandle {
     Fields const fields{parser_, form, "settings-schema", 1};
-    fields.validate({"target", "target-header"}, {"field"});
+    fields.validate({"target", "target-header"}, {"field", "section"});
     std::vector<StringId> paths;
     std::vector<StringId> members;
+    std::vector<TypeRefId> records;
     for (auto const declaration : fields.declarations()) {
-        Fields const field{parser_, declaration, "field", 2};
-        field.validate({});
+        auto const section{syntax_.head(declaration) == "section"};
+        Fields const field{parser_, declaration, section ? "section" : "field", 2};
+        if (section) {
+            field.validate({"record"});
+            records.push_back(parse_type_ref(declarations, field.required("record")));
+        } else {
+            field.validate({});
+            records.push_back({});
+        }
         paths.push_back(parser_.text_id(field.positional(0), "settings field path"));
         members.push_back(parser_.text_id(field.positional(1), "settings member path"));
     }
@@ -1588,6 +1604,7 @@ auto SchemaParser::parse_settings_schema(Declarations& declarations, sexpr::Form
     schemas.target[row] = parser_.identifier(fields.required("target"), "settings target type");
     schemas.target_header[row] =
         parser_.text_id(fields.required("target-header"), "settings target header");
+    schemas.records[row] = declarations.range(records);
     schemas.paths[row] = declarations.range(paths);
     schemas.members[row] = declarations.range(members);
     return result;

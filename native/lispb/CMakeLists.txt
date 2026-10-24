@@ -93,6 +93,7 @@ target_sources(lispb-schema PRIVATE
   src/setting_schemas.cpp
   src/settings_module_schemas.cpp
   src/settings_schema_schemas.cpp
+  src/settings_fields.cpp
   src/soa_mask_dimension_schemas.cpp
   src/soa_member_schemas.cpp
   src/soa_schemas.cpp
@@ -253,6 +254,7 @@ set(CODEGEN_COMPILE_FIXTURE_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/tests/compile_fi
 set(CODEGEN_COMPILE_FIXTURE_OUTPUT "${CODEGEN_COMPILE_FIXTURE_SOURCE}/generated")
 set(CODEGEN_COMPILE_FIXTURE_HEADERS
   "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/Records.h"
+  "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/SettingsFields.h"
   "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/FieldMasks.h"
   "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/RestrictionRows.h"
   "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/ReferenceFacade.h"

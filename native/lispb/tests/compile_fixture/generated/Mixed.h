@@ -9,6 +9,7 @@
 #include <array>
 #include <compare>
 #include <cstdint>
+#include <optional>
 
 namespace codegen_compile_fixture {
 struct ApiPair;
@@ -19,6 +20,20 @@ struct MethodConsumer;
 struct MethodProvider;
 
 union Payload;
+
+struct CrossSettings {
+    ActorSettings actor{};
+};
+
+struct CrossSettingsOverrides {
+    std::optional<codegen_compile_fixture::ActorSettingsOverrides> actor{};
+};
+
+inline void apply_overrides(CrossSettings& target, CrossSettingsOverrides const& overrides) {
+    if (overrides.actor) {
+        apply_overrides(target.actor, *overrides.actor);
+    }
+}
 
 struct DefaultValue {
     int value{7};

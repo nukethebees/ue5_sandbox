@@ -148,7 +148,9 @@ class Declarations {
   private:
     template <typename Id>
     auto item_storage() const -> std::vector<Id> const& {
-        if constexpr (std::same_as<Id, DeclarationHandle>) {
+        if constexpr (std::same_as<Id, TypeRefId>) {
+            return type_ref_items_;
+        } else if constexpr (std::same_as<Id, DeclarationHandle>) {
             return declaration_handle_items_;
         } else if constexpr (std::same_as<Id, EnumConversion>) {
             return enum_conversion_items_;
@@ -201,6 +203,7 @@ class Declarations {
     }
 
     Strings* strings_;
+    std::vector<TypeRefId> type_ref_items_;
     std::vector<DeclarationHandle> declaration_handle_items_;
     std::vector<EnumConversion> enum_conversion_items_;
     std::vector<EnumeratorId> enumerator_id_items_;

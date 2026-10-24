@@ -14,6 +14,8 @@ auto RecordSchemas::append() -> DeclarationHandle {
     auto const index{static_cast<std::uint32_t>(name.size())};
     assert(index < 0x00fffffe);
     name.push_back({});
+    generate_settings.push_back(false);
+    generate_overrides.push_back(false);
     members.push_back({});
     export_specifier.push_back({});
     comparison.push_back(RecordComparison::none);
@@ -27,6 +29,8 @@ auto RecordSchemas::clone(DeclarationHandle id) -> DeclarationHandle {
     auto const result{append()};
     auto const destination{index(result)};
     name[destination] = name[source_index];
+    generate_settings[destination] = generate_settings[source_index];
+    generate_overrides[destination] = generate_overrides[source_index];
     members[destination] = members[source_index];
     export_specifier[destination] = export_specifier[source_index];
     comparison[destination] = comparison[source_index];
@@ -36,6 +40,8 @@ auto RecordSchemas::clone(DeclarationHandle id) -> DeclarationHandle {
 }
 void RecordSchemas::clear() {
     name.clear();
+    generate_settings.clear();
+    generate_overrides.clear();
     members.clear();
     export_specifier.clear();
     comparison.clear();

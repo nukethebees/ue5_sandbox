@@ -46,6 +46,7 @@ target_sources(native-simulation-tests PRIVATE
   support/simulation_fixture.cpp
   deterministic_bias_tests.cpp
   fixed_tick_tests.cpp
+  settings_reader_tests.cpp
   health_table_tests.cpp
   index_span_tests.cpp
   ship_health_tests.cpp

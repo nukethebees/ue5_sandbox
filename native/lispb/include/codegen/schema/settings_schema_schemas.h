@@ -1,6 +1,7 @@
 #pragma once
 
 #include <codegen/schema/declaration_handle.h>
+#include <codegen/schema/indices.h>
 #include <codegen/schema/schema_range.h>
 #include <lispb/indices.h>
 
@@ -17,6 +18,7 @@ struct SettingsSchemaSchemas {
     [[nodiscard]] auto index(DeclarationHandle id) const -> RowIndex;
     void clear();
 
+    std::vector<SchemaRange<TypeRefId>> records;
     std::vector<StringId> name;
     std::vector<StringId> target;
     std::vector<StringId> target_header;

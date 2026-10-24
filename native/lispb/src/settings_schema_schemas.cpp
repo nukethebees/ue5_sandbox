@@ -16,6 +16,7 @@ auto SettingsSchemaSchemas::append() -> DeclarationHandle {
     auto const row{static_cast<RowIndex>(name.size())};
     assert(row < 0x00fffffe);
     name.push_back({});
+    records.push_back({});
     target.push_back({});
     target_header.push_back({});
     paths.push_back({});
@@ -29,6 +30,7 @@ auto SettingsSchemaSchemas::clone(DeclarationHandle const id) -> DeclarationHand
     auto const result{append()};
     auto const destination{index(result)};
     name[destination] = name[source];
+    records[destination] = records[source];
     target[destination] = target[source];
     target_header[destination] = target_header[source];
     paths[destination] = paths[source];
@@ -38,6 +40,7 @@ auto SettingsSchemaSchemas::clone(DeclarationHandle const id) -> DeclarationHand
 
 void SettingsSchemaSchemas::clear() {
     name.clear();
+    records.clear();
     target.clear();
     target_header.clear();
     paths.clear();

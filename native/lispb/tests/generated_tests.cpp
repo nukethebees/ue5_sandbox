@@ -1,5 +1,6 @@
 #include "Generated.h"
 #include "ScalarValues.h"
+#include "SettingsFields.h"
 #include "SignatureDefinitions.h"
 #include <ioj/enum_array.h>
 
@@ -12,6 +13,70 @@
 #include <utility>
 
 namespace codegen_compile_fixture {
+
+TEST(RecordSettings, AppliesPartialLayersAndDistinguishesExplicitEmptyOptional) {
+    ActorSettings target;
+    apply_overrides(
+        target,
+        ActorSettingsOverrides{.max_health = 200, .weapon = WeaponSettingsOverrides{.damage = 20}});
+    EXPECT_EQ(target.max_health, 200);
+    EXPECT_EQ(target.weapon.damage, 20);
+    EXPECT_EQ(target.weapon.turn_rate, 2.f);
+    EXPECT_EQ(target.weapon.asset_distance, 9.f);
+
+    apply_overrides(target,
+                    ActorSettingsOverrides{.max_health = 100,
+                                           .weapon = WeaponSettingsOverrides{.turn_rate = 4.f}});
+    EXPECT_EQ(target.max_health, 100);
+    EXPECT_EQ(target.weapon.damage, 20);
+    EXPECT_EQ(target.weapon.turn_rate, 4.f);
+    EXPECT_EQ(target.optional_limit, 3);
+
+    ActorSettingsOverrides clear;
+    clear.optional_limit.emplace(std::nullopt);
+    apply_overrides(target, clear);
+    EXPECT_FALSE(target.optional_limit);
+    apply_overrides(target, ActorSettingsOverrides{});
+    EXPECT_FALSE(target.optional_limit);
+    apply_overrides(target, ActorSettingsOverrides{.optional_limit = std::optional<int>{3}});
+    EXPECT_EQ(target.optional_limit, 3);
+}
+
+TEST(RecordSettings, DiscoversNestedFieldsAndReusesRecordsAtDifferentPaths) {
+    SettingsTarget target;
+    for (auto const path : {"first.max-health", "second.weapon.damage", "external-value"}) {
+        SCOPED_TRACE(path);
+        auto const field{try_parse_actor_fields_field(path)};
+        ASSERT_TRUE(field);
+        EXPECT_TRUE(visit_actor_fields_field(target, *field, [](auto& value) {
+            if constexpr (std::same_as<std::remove_cvref_t<decltype(value)>, int>) {
+                value = 17;
+                return true;
+            }
+            return false;
+        }));
+    }
+    EXPECT_EQ(target.first.max_health, 17);
+    EXPECT_EQ(target.second.weapon.damage, 17);
+    EXPECT_EQ(target.external_value, 17);
+    EXPECT_EQ(target.first.weapon.damage, 5);
+    EXPECT_TRUE(try_parse_actor_fields_field("first.weapon.turn-speed"));
+    EXPECT_FALSE(try_parse_actor_fields_field("first.weapon.turn-rate"));
+    EXPECT_FALSE(try_parse_actor_fields_field("first.weapon.asset-distance"));
+    EXPECT_FALSE(try_parse_actor_fields_field("unknown"));
+}
+
+TEST(RecordSettings, AppliesCrossNamespaceNestedOverridesAndEmptyPatches) {
+    mixed::CrossSettings target;
+    apply_overrides(
+        target,
+        mixed::CrossSettingsOverrides{
+            .actor = ActorSettingsOverrides{.weapon = WeaponSettingsOverrides{.damage = 41}}});
+    EXPECT_EQ(target.actor.weapon.damage, 41);
+    EXPECT_EQ(target.actor.max_health, 100);
+    EmptySettings empty;
+    apply_overrides(empty, EmptySettingsOverrides{});
+}
 
 auto first::A::make() -> second::B {
     return {};

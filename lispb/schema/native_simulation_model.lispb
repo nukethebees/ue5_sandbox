@@ -138,6 +138,7 @@
   :header-include "ioj/sim/fighters/attack_distance_band.h"
   :namespace ioj::sim
   (record AttackDistanceBand
+    :generate-settings true
     (member minimum_ratio float :initializer "0.4f")
     (member desired_ratio float :initializer "0.5f")
     (member maximum_ratio float :initializer "0.6f")
@@ -148,6 +149,7 @@
   :header-include "ioj/sim/lasers/laser_weapon_sim_config.h"
   :namespace ioj::sim
   (record LaserWeaponSimConfig
+    :generate-settings true
     (member damage std::int32_t :initializer "5")
     (member projectile_speed float :initializer "10000.f")
     (member max_distance float :initializer "10000.f")
@@ -158,6 +160,7 @@
   :header-include "ioj/sim/lasers/laser_sim_config.h"
   :namespace ioj::sim
   (record LaserSimConfig
+    :generate-settings true
     (member n_preallocated_instances std::int32_t :initializer "5000")))
 
 (module native_base_sim_config_overlap_response_config
@@ -165,6 +168,7 @@
   :header-include "ioj/sim/collision/overlap_response_config.h"
   :namespace ioj::sim
   (record OverlapResponseConfig
+    :generate-settings true
     (member damage_per_overlap_detection std::int32_t :initializer "50")))
 
 (module native_base_sim_config_fighter_sim_config
@@ -172,8 +176,9 @@
   :header-include "ioj/sim/fighters/fighter_sim_config.h"
   :namespace ioj::sim
   (record FighterSimConfig
+    :generate-settings true
     (member max_live_fighters std::int32_t :initializer "2000")
-    (member fire_point_distance float :initializer "")
+    (member fire_point_distance float :initializer "" :settings-exclude true)
     (member fire_dot_product_threshold float :initializer "0.95f")
     (member speed float :initializer "2000.f")
     (member turn_speed_unitless float :initializer "1.f")

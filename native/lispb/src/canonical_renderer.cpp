@@ -433,6 +433,8 @@ auto CanonicalRenderer::build_record(codegen::DeclarationHandle const schema) ->
                                   : "three-way"));
     }
     result.flag("comparison-noexcept", records.comparison_noexcept[index]);
+    result.flag("generate-settings", records.generate_settings[index]);
+    result.flag("generate-overrides", records.generate_overrides[index]);
     for (auto const member : items(records.members[index])) {
         result.add(build_aggregate_child(store_.record_members, "member", member));
     }
@@ -616,11 +618,16 @@ auto CanonicalRenderer::build_settings_schema(codegen::DeclarationHandle const s
         .field("target-header", ir_.string(schemas.target_header[index]));
     auto const paths{items(schemas.paths[index])};
     auto const members{items(schemas.members[index])};
+    auto const records{items(schemas.records[index])};
     auto const count{paths.size()};
     for (std::size_t field_index{}; field_index < count; ++field_index) {
-        result.add(
-            ir_.form("field", {ir_.string(paths[field_index]), ir_.string(members[field_index])})
-                .build());
+        auto const section{!records.empty() && records[field_index].value != 0};
+        auto field{ir_.form(section ? "section" : "field",
+                            {ir_.string(paths[field_index]), ir_.string(members[field_index])})};
+        if (section) {
+            field.field("record", build_type_ref(records[field_index]));
+        }
+        result.add(field.build());
     }
     return result.build();
 }

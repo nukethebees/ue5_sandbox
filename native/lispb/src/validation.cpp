@@ -1,6 +1,7 @@
 #include "validation.h"
 
 #include "packed_value_internal.h"
+#include "settings_fields.h"
 #include "soa_body.h"
 
 #include <codegen/ast/cpp_types.h>
@@ -1798,9 +1799,42 @@ class Validator {
             declarations_.records.export_specifier[declarations_.records.index(record)],
             "Record '" + text(declarations_.records.name[declarations_.records.index(record)]) +
                 "' export specifier");
+        auto const row{declarations_.records.index(record)};
+        auto const& records{declarations_.records};
+        auto const& members{declarations_.record_members};
+        if (records.generate_overrides[row] && !records.generate_settings[row]) {
+            throw std::invalid_argument{"Record overrides require :generate-settings true"};
+        }
+        for (auto const id : declarations_.items(records.members[row])) {
+            auto const member{members.index(id)};
+            if (members.settings_name[member]) {
+                require_non_blank_value(*members.settings_name[member], "Settings member name");
+            }
+            if (records.generate_overrides[row] && !members.settings_exclude[member]) {
+                auto const& occurrences{graph_.occurrences()};
+                auto const occurrence{
+                    occurrences.index(graph_.resolved(module_, members.type[member]))};
+                auto const form{occurrences.physical_form[occurrence]};
+                if (form == PhysicalTypeForm::lvalue_reference ||
+                    form == PhysicalTypeForm::rvalue_reference ||
+                    (form == PhysicalTypeForm::value && occurrences.cv_qualified[occurrence])) {
+                    throw std::invalid_argument{"Override members must be assignable values, not "
+                                                "references or const values"};
+                }
+            }
+            if (records.generate_overrides[row] && !members.settings_exclude[member] &&
+                !members.count[member]) {
+                auto const nested{settings_record(graph_, module_, members.type[member])};
+                if (nested &&
+                    !records
+                         .generate_overrides[records.index(graph_.source_declaration(*nested))]) {
+                    throw std::invalid_argument{
+                        "Nested override record requires :generate-overrides true"};
+                }
+            }
+        }
         std::vector<std::string> member_names;
-        member_names.reserve(
-            declarations_.records.members[declarations_.records.index(record)].size());
+        member_names.reserve(records.members[row].size());
         for (auto const member_id : declarations_.items(
                  declarations_.records.members[declarations_.records.index(record)])) {
             auto const member{member_id};
@@ -3401,15 +3435,15 @@ class Validator {
         require_qualified_identifier(schemas.target[row], "Settings target type");
         require_non_blank_value(schemas.target_header[row], "Settings target header");
 
-        auto const schema_paths{declarations_.items(schemas.paths[row])};
-        if (schema_paths.empty()) {
+        auto const schema_fields{settings_fields(graph_, module_, schema)};
+        if (schema_fields.empty()) {
             throw std::invalid_argument{"Settings schema requires at least one field"};
         }
 
         std::set<std::string> paths;
         std::set<std::string> field_names;
-        for (auto const path : schema_paths) {
-            auto const name{text(path)};
+        for (auto const& field : schema_fields) {
+            auto const& name{field.path};
             require_non_blank_value(name, "Settings field path");
             auto const field_name{settings_schema_field_name(name)};
             require_identifier(field_name, "Settings field enum name");
@@ -3417,8 +3451,8 @@ class Validator {
                 throw std::invalid_argument{"Duplicate settings field: " + name};
             }
         }
-        for (auto const member : declarations_.items(schemas.members[row])) {
-            auto path{view(member)};
+        for (auto const& field : schema_fields) {
+            std::string_view path{field.member};
             while (true) {
                 auto const separator{path.find('.')};
                 require_identifier(path.substr(0, separator), "Settings member path");

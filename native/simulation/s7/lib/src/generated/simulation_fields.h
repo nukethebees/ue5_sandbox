@@ -42,6 +42,10 @@ enum class FieldsField : std::uint32_t {
     FightersSeparationStrength,
     FightersSteeringMemoryDuration,
     FightersDenseTrafficNeighbourThreshold,
+    FightersLaserDamage,
+    FightersLaserProjectileSpeed,
+    FightersLaserMaxDistance,
+    FightersLaserFireCooldown,
     FightersHealth,
     FightersAttackRetryCooldown,
     FightersAttackEngagementThreshold,
@@ -68,10 +72,6 @@ enum class FieldsField : std::uint32_t {
     PlayerShipLaserProjectileSpeed,
     PlayerShipLaserMaxDistance,
     PlayerShipLaserFireCooldown,
-    FightersLaserDamage,
-    FightersLaserProjectileSpeed,
-    FightersLaserMaxDistance,
-    FightersLaserFireCooldown,
     TurretsLaserDamage,
     TurretsLaserProjectileSpeed,
     TurretsLaserMaxDistance,
@@ -271,14 +271,14 @@ enum class FieldsField : std::uint32_t {
             if (path == "player-ship.turn-bank-angle-max") {
                 return FieldsField::PlayerShipTurnBankAngleMax;
             }
+            if (path == "fighters.laser.projectile-speed") {
+                return FieldsField::FightersLaserProjectileSpeed;
+            }
             if (path == "hud.player-status-update-period") {
                 return FieldsField::HudPlayerStatusUpdatePeriod;
             }
             if (path == "player-ship.laser.fire-cooldown") {
                 return FieldsField::PlayerShipLaserFireCooldown;
-            }
-            if (path == "fighters.laser.projectile-speed") {
-                return FieldsField::FightersLaserProjectileSpeed;
             }
             return std::nullopt;
         }
@@ -489,6 +489,18 @@ template <typename Callback>
         case FieldsField::FightersDenseTrafficNeighbourThreshold: {
             return callback(target.fighters.dense_traffic_neighbour_threshold);
         }
+        case FieldsField::FightersLaserDamage: {
+            return callback(target.fighters.laser.damage);
+        }
+        case FieldsField::FightersLaserProjectileSpeed: {
+            return callback(target.fighters.laser.projectile_speed);
+        }
+        case FieldsField::FightersLaserMaxDistance: {
+            return callback(target.fighters.laser.max_distance);
+        }
+        case FieldsField::FightersLaserFireCooldown: {
+            return callback(target.fighters.laser.fire_cooldown);
+        }
         case FieldsField::FightersHealth: {
             return callback(target.fighters.health);
         }
@@ -566,18 +578,6 @@ template <typename Callback>
         }
         case FieldsField::PlayerShipLaserFireCooldown: {
             return callback(target.player.laser.fire_cooldown);
-        }
-        case FieldsField::FightersLaserDamage: {
-            return callback(target.fighters.laser.damage);
-        }
-        case FieldsField::FightersLaserProjectileSpeed: {
-            return callback(target.fighters.laser.projectile_speed);
-        }
-        case FieldsField::FightersLaserMaxDistance: {
-            return callback(target.fighters.laser.max_distance);
-        }
-        case FieldsField::FightersLaserFireCooldown: {
-            return callback(target.fighters.laser.fire_cooldown);
         }
         case FieldsField::TurretsLaserDamage: {
             return callback(target.turrets.laser.damage);

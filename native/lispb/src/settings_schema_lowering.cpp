@@ -1,6 +1,7 @@
 #include "declaration_emission.h"
 #include "lowering.h"
 #include "lowering_context.h"
+#include "settings_fields.h"
 #include "string_enum_parser.h"
 
 #include <codegen/ast/cpp_ir.h>
@@ -96,8 +97,15 @@ auto lower_settings_schema(LoweringContext& context, DeclarationHandle const sch
     auto const name{context.text(schemas.name[row])};
     auto const enum_name{name + "Field"};
     auto const stem{settings_schema_function_stem(name)};
-    auto const paths{context.declarations.items(schemas.paths[row])};
-    auto const members{context.declarations.items(schemas.members[row])};
+    auto const fields{settings_fields(context.semantic, context.module, schema)};
+    std::vector<StringId> paths;
+    std::vector<StringId> members;
+    paths.reserve(fields.size());
+    members.reserve(fields.size());
+    for (auto const& field : fields) {
+        paths.push_back(ir.strings.intern(field.path));
+        members.push_back(ir.strings.intern(field.member));
+    }
 
     std::vector<EnumValueId> values;
     values.reserve(paths.size());

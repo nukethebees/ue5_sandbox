@@ -57,6 +57,10 @@ class CanonicalRenderer {
             ir_.form(head, {ir_.atom(columns.name[index]), build_type_ref(columns.type[index])})};
         result.optional_field("count", columns.count[index]);
         if constexpr (std::is_same_v<Child, codegen::RecordMemberId>) {
+            result.flag("settings-exclude", columns.settings_exclude[index]);
+            if (columns.settings_name[index]) {
+                result.field("settings-name", ir_.string(*columns.settings_name[index]));
+            }
             if (columns.initializer[index]) {
                 result.field("initializer", ir_.string(*columns.initializer[index]));
             }

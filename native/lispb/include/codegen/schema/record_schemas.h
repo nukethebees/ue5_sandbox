@@ -18,6 +18,8 @@ struct RecordSchemas {
     [[nodiscard]] auto index(DeclarationHandle id) const -> std::uint32_t;
     void clear();
 
+    std::vector<std::uint8_t> generate_settings;
+    std::vector<std::uint8_t> generate_overrides;
     std::vector<StringId> name;
     std::vector<SchemaRange<RecordMemberId>> members;
     std::vector<StringId> export_specifier;

@@ -64,3 +64,6 @@ with `:enum-array true` inside `unreal-projection`; it is not inherited from the
 See [Semantic type graph](SEMANTIC_TYPE_GRAPH.md) for the shared resolved model consumed by code
 generation and layout tooling. See [ARCHITECTURE.md](ARCHITECTURE.md) for the shared generation
 pipeline and the sibling DSL documents for their language-specific contracts.
+
+Ordinary records can also supply settings field metadata and optional C++ patches. See
+[Record settings](docs/record-settings.md) for section bindings, exclusions and patch semantics.

@@ -13,6 +13,8 @@ auto RecordMemberSchemas::index(RecordMemberId id) const -> std::uint32_t {
 auto RecordMemberSchemas::append() -> RecordMemberId {
     auto const index{static_cast<std::uint32_t>(name.size())};
     name.push_back({});
+    settings_exclude.push_back(false);
+    settings_name.push_back({});
     type.push_back({});
     count.push_back({});
     relationship.push_back({});
@@ -24,6 +26,8 @@ auto RecordMemberSchemas::clone(RecordMemberId id) -> RecordMemberId {
     auto const result{append()};
     auto const destination{index(result)};
     name[destination] = name[source_index];
+    settings_exclude[destination] = settings_exclude[source_index];
+    settings_name[destination] = settings_name[source_index];
     type[destination] = type[source_index];
     count[destination] = count[source_index];
     relationship[destination] = relationship[source_index];
@@ -32,6 +36,8 @@ auto RecordMemberSchemas::clone(RecordMemberId id) -> RecordMemberId {
 }
 void RecordMemberSchemas::clear() {
     name.clear();
+    settings_exclude.clear();
+    settings_name.clear();
     type.clear();
     count.clear();
     relationship.clear();
