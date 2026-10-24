@@ -33,9 +33,10 @@ struct TypeReader<sim::LaserSimConfig> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        std::array<std::string_view, 1> constexpr names{"n-preallocated-instances"};
-        return ioj::try_parse_enum<Field>(name, names);
+        return ioj::try_parse_enum<Field>(name, field_names);
     }
+
+    static constexpr std::array<std::string_view, 1> field_names{"n-preallocated-instances"};
 };
 
 template <>
@@ -59,9 +60,10 @@ struct TypeReader<sim::LaserSimConfigOverrides> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        std::array<std::string_view, 1> constexpr names{"n-preallocated-instances"};
-        return ioj::try_parse_enum<Field>(name, names);
+        return ioj::try_parse_enum<Field>(name, field_names);
     }
+
+    static constexpr std::array<std::string_view, 1> field_names{"n-preallocated-instances"};
 };
 
 inline auto TypeReader<sim::LaserSimConfig>::read(Reader const& reader,

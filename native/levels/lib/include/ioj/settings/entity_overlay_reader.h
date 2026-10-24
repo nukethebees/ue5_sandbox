@@ -3,11 +3,13 @@
 
 #pragma once
 
+#include "ioj/parse_enum.h"
 #include "ioj/s7/field_constraints.h"
 #include "ioj/settings/entity_overlay.h"
 #include "ioj/settings/soft_target_reader.h"
 #include <ioj/s7/field_reader.h>
 
+#include <array>
 #include <optional>
 #include <string_view>
 
@@ -44,75 +46,21 @@ struct TypeReader<settings::EntityOverlay> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        switch (name.size()) {
-            case 7: {
-                if (name == "enabled") {
-                    return Field::enabled;
-                }
-                return std::nullopt;
-            }
-            case 11: {
-                if (name == "soft-target") {
-                    return Field::soft_target;
-                }
-                return std::nullopt;
-            }
-            case 12: {
-                if (name == "inset-pixels") {
-                    return Field::inset_pixels;
-                }
-                return std::nullopt;
-            }
-            case 13: {
-                if (name == "maximum-range") {
-                    return Field::maximum_range;
-                }
-                return std::nullopt;
-            }
-            case 15: {
-                if (name == "bar-size-pixels") {
-                    return Field::bar_size_pixels;
-                }
-                return std::nullopt;
-            }
-            case 17: {
-                if (name == "minimum-bar-scale") {
-                    return Field::minimum_bar_scale;
-                }
-                if (name == "maximum-bar-scale") {
-                    return Field::maximum_bar_scale;
-                }
-                return std::nullopt;
-            }
-            case 20: {
-                if (name == "screen-offset-pixels") {
-                    return Field::screen_offset_pixels;
-                }
-                return std::nullopt;
-            }
-            case 22: {
-                if (name == "objective-frame-pixels") {
-                    return Field::objective_frame_pixels;
-                }
-                return std::nullopt;
-            }
-            case 26: {
-                if (name == "maximum-inset-height-ratio") {
-                    return Field::maximum_inset_height_ratio;
-                }
-                if (name == "objective-bar-height-scale") {
-                    return Field::objective_bar_height_scale;
-                }
-                if (name == "screen-edge-padding-pixels") {
-                    return Field::screen_edge_padding_pixels;
-                }
-                return std::nullopt;
-            }
-            default: {
-                return std::nullopt;
-            }
-        }
+        return ioj::try_parse_enum<Field>(name, field_names);
     }
+
+    static constexpr std::array<std::string_view, 12> field_names{"enabled",
+                                                                  "maximum-range",
+                                                                  "bar-size-pixels",
+                                                                  "screen-offset-pixels",
+                                                                  "minimum-bar-scale",
+                                                                  "maximum-bar-scale",
+                                                                  "inset-pixels",
+                                                                  "maximum-inset-height-ratio",
+                                                                  "objective-frame-pixels",
+                                                                  "objective-bar-height-scale",
+                                                                  "screen-edge-padding-pixels",
+                                                                  "soft-target"};
 };
 
 template <>
@@ -147,75 +95,21 @@ struct TypeReader<settings::EntityOverlayOverrides> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        switch (name.size()) {
-            case 7: {
-                if (name == "enabled") {
-                    return Field::enabled;
-                }
-                return std::nullopt;
-            }
-            case 11: {
-                if (name == "soft-target") {
-                    return Field::soft_target;
-                }
-                return std::nullopt;
-            }
-            case 12: {
-                if (name == "inset-pixels") {
-                    return Field::inset_pixels;
-                }
-                return std::nullopt;
-            }
-            case 13: {
-                if (name == "maximum-range") {
-                    return Field::maximum_range;
-                }
-                return std::nullopt;
-            }
-            case 15: {
-                if (name == "bar-size-pixels") {
-                    return Field::bar_size_pixels;
-                }
-                return std::nullopt;
-            }
-            case 17: {
-                if (name == "minimum-bar-scale") {
-                    return Field::minimum_bar_scale;
-                }
-                if (name == "maximum-bar-scale") {
-                    return Field::maximum_bar_scale;
-                }
-                return std::nullopt;
-            }
-            case 20: {
-                if (name == "screen-offset-pixels") {
-                    return Field::screen_offset_pixels;
-                }
-                return std::nullopt;
-            }
-            case 22: {
-                if (name == "objective-frame-pixels") {
-                    return Field::objective_frame_pixels;
-                }
-                return std::nullopt;
-            }
-            case 26: {
-                if (name == "maximum-inset-height-ratio") {
-                    return Field::maximum_inset_height_ratio;
-                }
-                if (name == "objective-bar-height-scale") {
-                    return Field::objective_bar_height_scale;
-                }
-                if (name == "screen-edge-padding-pixels") {
-                    return Field::screen_edge_padding_pixels;
-                }
-                return std::nullopt;
-            }
-            default: {
-                return std::nullopt;
-            }
-        }
+        return ioj::try_parse_enum<Field>(name, field_names);
     }
+
+    static constexpr std::array<std::string_view, 12> field_names{"enabled",
+                                                                  "maximum-range",
+                                                                  "bar-size-pixels",
+                                                                  "screen-offset-pixels",
+                                                                  "minimum-bar-scale",
+                                                                  "maximum-bar-scale",
+                                                                  "inset-pixels",
+                                                                  "maximum-inset-height-ratio",
+                                                                  "objective-frame-pixels",
+                                                                  "objective-bar-height-scale",
+                                                                  "screen-edge-padding-pixels",
+                                                                  "soft-target"};
 };
 
 inline auto TypeReader<settings::EntityOverlay>::read(Reader const& reader,

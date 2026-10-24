@@ -35,10 +35,13 @@ struct TypeReader<settings::AttackDistanceBandValue> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        std::array<std::string_view, 3> constexpr names{
-            "minimum-ratio", "desired-ratio", "maximum-ratio"};
-        return ioj::try_parse_enum<Field>(name, names);
+        return ioj::try_parse_enum<Field>(name, field_names);
     }
+
+    static constexpr std::array<std::string_view, 3> field_names{
+        "minimum-ratio", "desired-ratio", "maximum-ratio"};
+    static constexpr auto required{
+        required_fields<Field>({Field::minimum, Field::desired, Field::maximum})};
 };
 
 inline auto TypeReader<settings::AttackDistanceBandValue>::read(Reader const& reader,
@@ -81,12 +84,8 @@ inline void TypeReader<settings::AttackDistanceBandValue>::decode(Reader const& 
         append_errors(errors, seen.error());
         return;
     }
-    std::array<std::string_view, 3> constexpr required_names{
-        "minimum-ratio", "desired-ratio", "maximum-ratio"};
-
-    auto constexpr required{required_fields<Field>(required_names)};
     if (mode == ReadMode::Create) {
-        require_fields<Field>(*seen, required, required_names, path, errors);
+        require_fields<Field>(*seen, required, field_names, path, errors);
     }
 }
 

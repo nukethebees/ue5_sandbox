@@ -35,9 +35,11 @@ struct TypeReader<settings::LaserPresentation> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        std::array<std::string_view, 2> constexpr names{"min-cull-distance", "max-cull-distance"};
-        return ioj::try_parse_enum<Field>(name, names);
+        return ioj::try_parse_enum<Field>(name, field_names);
     }
+
+    static constexpr std::array<std::string_view, 2> field_names{"min-cull-distance",
+                                                                 "max-cull-distance"};
 };
 
 template <>
@@ -62,9 +64,11 @@ struct TypeReader<settings::LaserPresentationOverrides> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        std::array<std::string_view, 2> constexpr names{"min-cull-distance", "max-cull-distance"};
-        return ioj::try_parse_enum<Field>(name, names);
+        return ioj::try_parse_enum<Field>(name, field_names);
     }
+
+    static constexpr std::array<std::string_view, 2> field_names{"min-cull-distance",
+                                                                 "max-cull-distance"};
 };
 
 inline auto TypeReader<settings::LaserPresentation>::read(Reader const& reader,

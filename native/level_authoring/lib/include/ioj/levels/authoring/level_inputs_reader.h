@@ -50,69 +50,22 @@ struct TypeReader<levels::authoring::EntityInput> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        switch (name.size()) {
-            case 2: {
-                if (name == "id") {
-                    return Field::id;
-                }
-                return std::nullopt;
-            }
-            case 4: {
-                if (name == "team") {
-                    return Field::team;
-                }
-                return std::nullopt;
-            }
-            case 6: {
-                if (name == "health") {
-                    return Field::health;
-                }
-                if (name == "target") {
-                    return Field::target;
-                }
-                return std::nullopt;
-            }
-            case 8: {
-                if (name == "position") {
-                    return Field::position;
-                }
-                if (name == "rotation") {
-                    return Field::rotation;
-                }
-                if (name == "spawn-at") {
-                    return Field::spawn_at;
-                }
-                return std::nullopt;
-            }
-            case 9: {
-                if (name == "archetype") {
-                    return Field::archetype;
-                }
-                return std::nullopt;
-            }
-            case 12: {
-                if (name == "laser-damage") {
-                    return Field::laser_damage;
-                }
-                return std::nullopt;
-            }
-            case 14: {
-                if (name == "spawn-cooldown") {
-                    return Field::spawn_cooldown;
-                }
-                return std::nullopt;
-            }
-            case 19: {
-                if (name == "initial-spawn-delay") {
-                    return Field::initial_spawn_delay;
-                }
-                return std::nullopt;
-            }
-            default: {
-                return std::nullopt;
-            }
-        }
+        return ioj::try_parse_enum<Field>(name, field_names);
     }
+
+    static constexpr std::array<std::string_view, 11> field_names{"id",
+                                                                  "archetype",
+                                                                  "team",
+                                                                  "position",
+                                                                  "rotation",
+                                                                  "spawn-at",
+                                                                  "health",
+                                                                  "laser-damage",
+                                                                  "initial-spawn-delay",
+                                                                  "spawn-cooldown",
+                                                                  "target"};
+    static constexpr auto required{
+        required_fields<Field>({Field::archetype, Field::team, Field::position})};
 };
 
 template <>
@@ -143,51 +96,12 @@ struct TypeReader<levels::authoring::ObjectiveInput> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        switch (name.size()) {
-            case 2: {
-                if (name == "id") {
-                    return Field::id;
-                }
-                return std::nullopt;
-            }
-            case 4: {
-                if (name == "team") {
-                    return Field::team;
-                }
-                if (name == "pass") {
-                    return Field::pass;
-                }
-                if (name == "fail") {
-                    return Field::fail;
-                }
-                return std::nullopt;
-            }
-            case 5: {
-                if (name == "title") {
-                    return Field::title;
-                }
-                if (name == "nodes") {
-                    return Field::nodes;
-                }
-                return std::nullopt;
-            }
-            case 6: {
-                if (name == "expire") {
-                    return Field::expire;
-                }
-                return std::nullopt;
-            }
-            case 10: {
-                if (name == "depends-on") {
-                    return Field::depends_on;
-                }
-                return std::nullopt;
-            }
-            default: {
-                return std::nullopt;
-            }
-        }
+        return ioj::try_parse_enum<Field>(name, field_names);
     }
+
+    static constexpr std::array<std::string_view, 8> field_names{
+        "id", "title", "team", "nodes", "pass", "fail", "expire", "depends-on"};
+    static constexpr auto required{required_fields<Field>({Field::id, Field::team})};
 };
 
 template <>
@@ -212,9 +126,11 @@ struct TypeReader<levels::authoring::MissionInput> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        std::array<std::string_view, 2> constexpr names{"objectives", "team-results"};
-        return ioj::try_parse_enum<Field>(name, names);
+        return ioj::try_parse_enum<Field>(name, field_names);
     }
+
+    static constexpr std::array<std::string_view, 2> field_names{"objectives", "team-results"};
+    static constexpr auto required{required_fields<Field>({Field::objectives})};
 };
 
 template <>
@@ -248,66 +164,21 @@ struct TypeReader<levels::authoring::LevelInput> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        switch (name.size()) {
-            case 2: {
-                if (name == "id") {
-                    return Field::id;
-                }
-                return std::nullopt;
-            }
-            case 5: {
-                if (name == "title") {
-                    return Field::title;
-                }
-                return std::nullopt;
-            }
-            case 6: {
-                if (name == "unlock") {
-                    return Field::unlock;
-                }
-                if (name == "player") {
-                    return Field::player;
-                }
-                if (name == "camera") {
-                    return Field::camera;
-                }
-                return std::nullopt;
-            }
-            case 7: {
-                if (name == "mission") {
-                    return Field::mission;
-                }
-                return std::nullopt;
-            }
-            case 8: {
-                if (name == "par-time") {
-                    return Field::par_time;
-                }
-                if (name == "settings") {
-                    return Field::settings;
-                }
-                if (name == "entities") {
-                    return Field::entities;
-                }
-                return std::nullopt;
-            }
-            case 11: {
-                if (name == "description") {
-                    return Field::description;
-                }
-                return std::nullopt;
-            }
-            case 14: {
-                if (name == "collision-grid") {
-                    return Field::collision_grid;
-                }
-                return std::nullopt;
-            }
-            default: {
-                return std::nullopt;
-            }
-        }
+        return ioj::try_parse_enum<Field>(name, field_names);
     }
+
+    static constexpr std::array<std::string_view, 11> field_names{"id",
+                                                                  "title",
+                                                                  "description",
+                                                                  "par-time",
+                                                                  "unlock",
+                                                                  "player",
+                                                                  "camera",
+                                                                  "collision-grid",
+                                                                  "settings",
+                                                                  "mission",
+                                                                  "entities"};
+    static constexpr auto required{required_fields<Field>({Field::id, Field::title})};
 };
 
 template <>
@@ -333,9 +204,11 @@ struct TypeReader<levels::authoring::IncludedLevelInput> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        std::array<std::string_view, 3> constexpr names{"path", "value", "error"};
-        return ioj::try_parse_enum<Field>(name, names);
+        return ioj::try_parse_enum<Field>(name, field_names);
     }
+
+    static constexpr std::array<std::string_view, 3> field_names{"path", "value", "error"};
+    static constexpr auto required{required_fields<Field>({Field::path})};
 };
 
 template <>
@@ -361,9 +234,11 @@ struct TypeReader<levels::authoring::IncludedCampaignInput> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        std::array<std::string_view, 3> constexpr names{"path", "value", "error"};
-        return ioj::try_parse_enum<Field>(name, names);
+        return ioj::try_parse_enum<Field>(name, field_names);
     }
+
+    static constexpr std::array<std::string_view, 3> field_names{"path", "value", "error"};
+    static constexpr auto required{required_fields<Field>({Field::path})};
 };
 
 template <>
@@ -388,9 +263,10 @@ struct TypeReader<levels::authoring::CatalogInput> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        std::array<std::string_view, 2> constexpr names{"levels", "campaigns"};
-        return ioj::try_parse_enum<Field>(name, names);
+        return ioj::try_parse_enum<Field>(name, field_names);
     }
+
+    static constexpr std::array<std::string_view, 2> field_names{"levels", "campaigns"};
 };
 
 inline auto TypeReader<levels::authoring::EntityInput>::read(Reader const& reader,
@@ -457,12 +333,8 @@ inline void TypeReader<levels::authoring::EntityInput>::decode(Reader const& rea
         append_errors(errors, seen.error());
         return;
     }
-    std::array<std::string_view, 11> constexpr required_names{
-        "", "archetype", "team", "position", "", "", "", "", "", "", ""};
-
-    auto constexpr required{required_fields<Field>(required_names)};
     if (mode == ReadMode::Create) {
-        require_fields<Field>(*seen, required, required_names, path, errors);
+        require_fields<Field>(*seen, required, field_names, path, errors);
     }
 }
 
@@ -521,11 +393,8 @@ inline void TypeReader<levels::authoring::ObjectiveInput>::decode(Reader const& 
         append_errors(errors, seen.error());
         return;
     }
-    std::array<std::string_view, 8> constexpr required_names{"id", "", "team", "", "", "", "", ""};
-
-    auto constexpr required{required_fields<Field>(required_names)};
     if (mode == ReadMode::Create) {
-        require_fields<Field>(*seen, required, required_names, path, errors);
+        require_fields<Field>(*seen, required, field_names, path, errors);
     }
 }
 
@@ -566,11 +435,8 @@ inline void TypeReader<levels::authoring::MissionInput>::decode(Reader const& re
         append_errors(errors, seen.error());
         return;
     }
-    std::array<std::string_view, 2> constexpr required_names{"objectives", ""};
-
-    auto constexpr required{required_fields<Field>(required_names)};
     if (mode == ReadMode::Create) {
-        require_fields<Field>(*seen, required, required_names, path, errors);
+        require_fields<Field>(*seen, required, field_names, path, errors);
     }
 }
 
@@ -638,12 +504,8 @@ inline void TypeReader<levels::authoring::LevelInput>::decode(Reader const& read
         append_errors(errors, seen.error());
         return;
     }
-    std::array<std::string_view, 11> constexpr required_names{
-        "id", "title", "", "", "", "", "", "", "", "", ""};
-
-    auto constexpr required{required_fields<Field>(required_names)};
     if (mode == ReadMode::Create) {
-        require_fields<Field>(*seen, required, required_names, path, errors);
+        require_fields<Field>(*seen, required, field_names, path, errors);
     }
 }
 
@@ -687,11 +549,8 @@ inline void TypeReader<levels::authoring::IncludedLevelInput>::decode(Reader con
         append_errors(errors, seen.error());
         return;
     }
-    std::array<std::string_view, 3> constexpr required_names{"path", "", ""};
-
-    auto constexpr required{required_fields<Field>(required_names)};
     if (mode == ReadMode::Create) {
-        require_fields<Field>(*seen, required, required_names, path, errors);
+        require_fields<Field>(*seen, required, field_names, path, errors);
     }
 }
 
@@ -736,11 +595,8 @@ inline void
         append_errors(errors, seen.error());
         return;
     }
-    std::array<std::string_view, 3> constexpr required_names{"path", "", ""};
-
-    auto constexpr required{required_fields<Field>(required_names)};
     if (mode == ReadMode::Create) {
-        require_fields<Field>(*seen, required, required_names, path, errors);
+        require_fields<Field>(*seen, required, field_names, path, errors);
     }
 }
 

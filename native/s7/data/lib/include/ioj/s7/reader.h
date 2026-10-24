@@ -13,6 +13,7 @@
 #include <bitset>
 #include <concepts>
 #include <format>
+#include <initializer_list>
 #include <optional>
 #include <type_traits>
 #include <utility>
@@ -393,13 +394,11 @@ using RecordMask = std::conditional_t<(static_cast<std::size_t>(Field::Count) <=
                                       FieldMask<Field>,
                                       LargeFieldMask<Field>>;
 
-template <typename Field, std::size_t N>
-constexpr auto required_fields(std::array<std::string_view, N> const& names) -> RecordMask<Field> {
+template <typename Field>
+constexpr auto required_fields(std::initializer_list<Field> fields) -> RecordMask<Field> {
     RecordMask<Field> required;
-    for (std::size_t i{}; i < N; ++i) {
-        if (!names[i].empty()) {
-            required.set(static_cast<Field>(i));
-        }
+    for (auto const field : fields) {
+        required.set(field);
     }
     return required;
 }

@@ -33,9 +33,10 @@ struct TypeReader<codegen_compile_fixture::UnsupportedReader> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        std::array<std::string_view, 1> constexpr names{"target"};
-        return ioj::try_parse_enum<Field>(name, names);
+        return ioj::try_parse_enum<Field>(name, field_names);
     }
+
+    static constexpr std::array<std::string_view, 1> field_names{"target"};
 };
 
 inline auto TypeReader<codegen_compile_fixture::UnsupportedReader>::read(

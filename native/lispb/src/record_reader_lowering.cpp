@@ -186,29 +186,11 @@ auto fields_body(LoweringContext& context,
                           ? ir.return_stmt(ir.raw_expr("std::unexpected{std::move(errors)}", {}))
                           : ir.return_stmt()})));
 
-        std::vector<std::string> required_names;
-        bool has_required{};
-        for (auto const field : fields) {
-            auto const index{members.index(field)};
-            auto const name{context.text(members.name[index])};
-            auto const required{!overrides && members.s7[index].required};
-            required_names.push_back(
-                std::format("\"{}\"", required ? field_name(context, field) : ""));
-            if (required) {
-                has_required = true;
-            }
-        }
-        if (has_required) {
-            body.add(ir.variable(
-                         std::format("std::array<std::string_view, {}> constexpr", fields.size()),
-                         "required_names",
-                         ir.raw_expr(join(required_names, ", "), {})),
-                     2);
-            body.add(ir.variable("auto constexpr",
-                                 "required",
-                                 ir.raw_expr("required_fields<Field>(required_names)", {})));
+        if (!overrides && std::ranges::any_of(fields, [&](auto const field) {
+                return members.s7[members.index(field)].required;
+            })) {
             auto const check{ir.expr_stmt(ir.raw_expr(
-                "require_fields<Field>(*seen, required, required_names, path, errors)", {}))};
+                "require_fields<Field>(*seen, required, field_names, path, errors)", {}))};
             body.add(constructing ? check
                                   : ir.if_stmt(ir.raw_expr("mode == ReadMode::Create", {}),
                                                ir.block({check})));
@@ -347,7 +329,32 @@ void lower_record_reader(LoweringContext& context,
                            values),
             2);
         declarations.add(
-            lower_string_enum_parser(ir, "parse_field", "Field", "name", entries, true, true));
+            lower_string_enum_parser(
+                ir, "parse_field", "Field", "name", entries, true, true, "field_names"),
+            2);
+
+        std::vector<Expr> names;
+        std::vector<Expr> required;
+        for (auto const field : fields) {
+            auto const index{members.index(field)};
+            names.push_back(ir.string_literal(record_reader::field_name(context, field)));
+            if (!overrides && members.s7[index].required) {
+                required.push_back(ir.named("Field::" + context.text(members.name[index])));
+            }
+        }
+        auto const array_type{ir.types.template_type(
+            ir.types.named("std::array", {ir.types.dependency("std::array", "array")}),
+            {ir.types.named("std::string_view"), ir.types.intern(std::to_string(fields.size()))})};
+        declarations.add(
+            ir.constexpr_member(array_type, ir.strings.intern("field_names"), ir.init_list(names)),
+            1);
+        if (!required.empty()) {
+            declarations.add(ir.constexpr_member(ir.types.intern("auto"),
+                                                 ir.strings.intern("required"),
+                                                 ir.call(ir.named("required_fields<Field>"),
+                                                         {ir.init_list(required)})),
+                             1);
+        }
     }
     auto const specialization{
         ir.record(ir.template_id(ir.named("TypeReader"), {ir.type_reference(value_type)}),

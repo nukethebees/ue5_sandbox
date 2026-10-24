@@ -37,9 +37,11 @@ struct TypeReader<codegen_compile_fixture::ReaderDependency> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        std::array<std::string_view, 1> constexpr names{"child"};
-        return ioj::try_parse_enum<Field>(name, names);
+        return ioj::try_parse_enum<Field>(name, field_names);
     }
+
+    static constexpr std::array<std::string_view, 1> field_names{"child"};
+    static constexpr auto required{required_fields<Field>({Field::child})};
 };
 
 inline auto TypeReader<codegen_compile_fixture::ReaderDependency>::read(Reader const& reader,
@@ -75,10 +77,7 @@ inline auto TypeReader<codegen_compile_fixture::ReaderDependency>::construct(
         append_errors(errors, seen.error());
         return std::unexpected{std::move(errors)};
     }
-    std::array<std::string_view, 1> constexpr required_names{"child"};
-
-    auto constexpr required{required_fields<Field>(required_names)};
-    require_fields<Field>(*seen, required, required_names, path, errors);
+    require_fields<Field>(*seen, required, field_names, path, errors);
     if (!errors.empty()) {
         return std::unexpected{std::move(errors)};
     }
@@ -116,11 +115,8 @@ inline void
         append_errors(errors, seen.error());
         return;
     }
-    std::array<std::string_view, 1> constexpr required_names{"child"};
-
-    auto constexpr required{required_fields<Field>(required_names)};
     if (mode == ReadMode::Create) {
-        require_fields<Field>(*seen, required, required_names, path, errors);
+        require_fields<Field>(*seen, required, field_names, path, errors);
     }
 }
 

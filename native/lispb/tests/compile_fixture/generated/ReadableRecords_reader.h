@@ -33,9 +33,10 @@ struct TypeReader<codegen_compile_fixture::EmptyReadable> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        std::array<std::string_view, 0> constexpr names{};
-        return ioj::try_parse_enum<Field>(name, names);
+        return ioj::try_parse_enum<Field>(name, field_names);
     }
+
+    static constexpr std::array<std::string_view, 0> field_names{};
 };
 
 template <>
@@ -93,9 +94,11 @@ struct TypeReader<codegen_compile_fixture::DefaultReadable> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        std::array<std::string_view, 2> constexpr names{"count", "maybe"};
-        return ioj::try_parse_enum<Field>(name, names);
+        return ioj::try_parse_enum<Field>(name, field_names);
     }
+
+    static constexpr std::array<std::string_view, 2> field_names{"count", "maybe"};
+    static constexpr auto required{required_fields<Field>({Field::count})};
 };
 
 template <>
@@ -119,9 +122,10 @@ struct TypeReader<codegen_compile_fixture::RecursiveReadable> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        std::array<std::string_view, 1> constexpr names{"children"};
-        return ioj::try_parse_enum<Field>(name, names);
+        return ioj::try_parse_enum<Field>(name, field_names);
     }
+
+    static constexpr std::array<std::string_view, 1> field_names{"children"};
 };
 
 template <>
@@ -148,9 +152,11 @@ struct TypeReader<codegen_compile_fixture::BoundedInteger> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        std::array<std::string_view, 1> constexpr names{"value"};
-        return ioj::try_parse_enum<Field>(name, names);
+        return ioj::try_parse_enum<Field>(name, field_names);
     }
+
+    static constexpr std::array<std::string_view, 1> field_names{"value"};
+    static constexpr auto required{required_fields<Field>({Field::value})};
 };
 
 template <>
@@ -178,9 +184,11 @@ struct TypeReader<codegen_compile_fixture::ReadableChild> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        std::array<std::string_view, 2> constexpr names{"name", "count"};
-        return ioj::try_parse_enum<Field>(name, names);
+        return ioj::try_parse_enum<Field>(name, field_names);
     }
+
+    static constexpr std::array<std::string_view, 2> field_names{"name", "count"};
+    static constexpr auto required{required_fields<Field>({Field::name})};
 };
 
 template <>
@@ -215,51 +223,12 @@ struct TypeReader<codegen_compile_fixture::ReadableRecord> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        switch (name.size()) {
-            case 4: {
-                if (name == "mode") {
-                    return Field::mode;
-                }
-                return std::nullopt;
-            }
-            case 5: {
-                if (name == "child") {
-                    return Field::child;
-                }
-                if (name == "maybe") {
-                    return Field::maybe;
-                }
-                if (name == "scale") {
-                    return Field::scale;
-                }
-                if (name == "title") {
-                    return Field::title;
-                }
-                return std::nullopt;
-            }
-            case 6: {
-                if (name == "values") {
-                    return Field::values;
-                }
-                if (name == "offset") {
-                    return Field::offset;
-                }
-                return std::nullopt;
-            }
-            case 7: {
-                if (name == "samples") {
-                    return Field::points;
-                }
-                if (name == "enabled") {
-                    return Field::enabled;
-                }
-                return std::nullopt;
-            }
-            default: {
-                return std::nullopt;
-            }
-        }
+        return ioj::try_parse_enum<Field>(name, field_names);
     }
+
+    static constexpr std::array<std::string_view, 9> field_names{
+        "child", "values", "samples", "enabled", "maybe", "scale", "offset", "title", "mode"};
+    static constexpr auto required{required_fields<Field>({Field::child})};
 };
 
 inline auto TypeReader<codegen_compile_fixture::EmptyReadable>::read(Reader const& reader,
@@ -393,11 +362,8 @@ inline void
         append_errors(errors, seen.error());
         return;
     }
-    std::array<std::string_view, 2> constexpr required_names{"count", ""};
-
-    auto constexpr required{required_fields<Field>(required_names)};
     if (mode == ReadMode::Create) {
-        require_fields<Field>(*seen, required, required_names, path, errors);
+        require_fields<Field>(*seen, required, field_names, path, errors);
     }
 }
 
@@ -472,10 +438,7 @@ inline auto TypeReader<codegen_compile_fixture::BoundedInteger>::construct(
         append_errors(errors, seen.error());
         return std::unexpected{std::move(errors)};
     }
-    std::array<std::string_view, 1> constexpr required_names{"value"};
-
-    auto constexpr required{required_fields<Field>(required_names)};
-    require_fields<Field>(*seen, required, required_names, path, errors);
+    require_fields<Field>(*seen, required, field_names, path, errors);
     if (!errors.empty()) {
         return std::unexpected{std::move(errors)};
     }
@@ -514,11 +477,8 @@ inline void TypeReader<codegen_compile_fixture::BoundedInteger>::decode(Reader c
         append_errors(errors, seen.error());
         return;
     }
-    std::array<std::string_view, 1> constexpr required_names{"value"};
-
-    auto constexpr required{required_fields<Field>(required_names)};
     if (mode == ReadMode::Create) {
-        require_fields<Field>(*seen, required, required_names, path, errors);
+        require_fields<Field>(*seen, required, field_names, path, errors);
     }
 }
 
@@ -559,10 +519,7 @@ inline auto TypeReader<codegen_compile_fixture::ReadableChild>::construct(
         append_errors(errors, seen.error());
         return std::unexpected{std::move(errors)};
     }
-    std::array<std::string_view, 2> constexpr required_names{"name", ""};
-
-    auto constexpr required{required_fields<Field>(required_names)};
-    require_fields<Field>(*seen, required, required_names, path, errors);
+    require_fields<Field>(*seen, required, field_names, path, errors);
     if (!errors.empty()) {
         return std::unexpected{std::move(errors)};
     }
@@ -605,11 +562,8 @@ inline void TypeReader<codegen_compile_fixture::ReadableChild>::decode(Reader co
         append_errors(errors, seen.error());
         return;
     }
-    std::array<std::string_view, 2> constexpr required_names{"name", ""};
-
-    auto constexpr required{required_fields<Field>(required_names)};
     if (mode == ReadMode::Create) {
-        require_fields<Field>(*seen, required, required_names, path, errors);
+        require_fields<Field>(*seen, required, field_names, path, errors);
     }
 }
 
@@ -682,11 +636,7 @@ inline auto TypeReader<codegen_compile_fixture::ReadableRecord>::construct(
         append_errors(errors, seen.error());
         return std::unexpected{std::move(errors)};
     }
-    std::array<std::string_view, 9> constexpr required_names{
-        "child", "", "", "", "", "", "", "", ""};
-
-    auto constexpr required{required_fields<Field>(required_names)};
-    require_fields<Field>(*seen, required, required_names, path, errors);
+    require_fields<Field>(*seen, required, field_names, path, errors);
     if (!errors.empty()) {
         return std::unexpected{std::move(errors)};
     }
@@ -775,12 +725,8 @@ inline void TypeReader<codegen_compile_fixture::ReadableRecord>::decode(Reader c
         append_errors(errors, seen.error());
         return;
     }
-    std::array<std::string_view, 9> constexpr required_names{
-        "child", "", "", "", "", "", "", "", ""};
-
-    auto constexpr required{required_fields<Field>(required_names)};
     if (mode == ReadMode::Create) {
-        require_fields<Field>(*seen, required, required_names, path, errors);
+        require_fields<Field>(*seen, required, field_names, path, errors);
     }
 }
 

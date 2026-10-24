@@ -36,9 +36,11 @@ struct TypeReader<sim::SpinnerSimConfig> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        std::array<std::string_view, 2> constexpr names{"yaw-rotation-speed-degrees", "laser"};
-        return ioj::try_parse_enum<Field>(name, names);
+        return ioj::try_parse_enum<Field>(name, field_names);
     }
+
+    static constexpr std::array<std::string_view, 2> field_names{"yaw-rotation-speed-degrees",
+                                                                 "laser"};
 };
 
 template <>
@@ -63,9 +65,11 @@ struct TypeReader<sim::SpinnerSimConfigOverrides> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        std::array<std::string_view, 2> constexpr names{"yaw-rotation-speed-degrees", "laser"};
-        return ioj::try_parse_enum<Field>(name, names);
+        return ioj::try_parse_enum<Field>(name, field_names);
     }
+
+    static constexpr std::array<std::string_view, 2> field_names{"yaw-rotation-speed-degrees",
+                                                                 "laser"};
 };
 
 inline auto TypeReader<sim::SpinnerSimConfig>::read(Reader const& reader,

@@ -36,9 +36,13 @@ struct TypeReader<levels::LevelCameraDefinition> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        std::array<std::string_view, 3> constexpr names{"look-at", "offset-direction", "distance"};
-        return ioj::try_parse_enum<Field>(name, names);
+        return ioj::try_parse_enum<Field>(name, field_names);
     }
+
+    static constexpr std::array<std::string_view, 3> field_names{
+        "look-at", "offset-direction", "distance"};
+    static constexpr auto required{required_fields<Field>(
+        {Field::target_entity_ids, Field::offset_direction, Field::distance})};
 };
 
 inline auto TypeReader<levels::LevelCameraDefinition>::read(Reader const& reader,
@@ -81,12 +85,8 @@ inline void TypeReader<levels::LevelCameraDefinition>::decode(Reader const& read
         append_errors(errors, seen.error());
         return;
     }
-    std::array<std::string_view, 3> constexpr required_names{
-        "look-at", "offset-direction", "distance"};
-
-    auto constexpr required{required_fields<Field>(required_names)};
     if (mode == ReadMode::Create) {
-        require_fields<Field>(*seen, required, required_names, path, errors);
+        require_fields<Field>(*seen, required, field_names, path, errors);
     }
 }
 

@@ -35,9 +35,10 @@ struct TypeReader<sim::CapitalShipSimConfig> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        std::array<std::string_view, 2> constexpr names{"spawn-delay", "max-health"};
-        return ioj::try_parse_enum<Field>(name, names);
+        return ioj::try_parse_enum<Field>(name, field_names);
     }
+
+    static constexpr std::array<std::string_view, 2> field_names{"spawn-delay", "max-health"};
 };
 
 template <>
@@ -62,9 +63,10 @@ struct TypeReader<sim::CapitalShipSimConfigOverrides> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        std::array<std::string_view, 2> constexpr names{"spawn-delay", "max-health"};
-        return ioj::try_parse_enum<Field>(name, names);
+        return ioj::try_parse_enum<Field>(name, field_names);
     }
+
+    static constexpr std::array<std::string_view, 2> field_names{"spawn-delay", "max-health"};
 };
 
 inline auto TypeReader<sim::CapitalShipSimConfig>::read(Reader const& reader,

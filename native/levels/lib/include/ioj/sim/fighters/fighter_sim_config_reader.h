@@ -3,12 +3,14 @@
 
 #pragma once
 
+#include "ioj/parse_enum.h"
 #include "ioj/s7/field_constraints.h"
 #include "ioj/settings/attack_distance_band_reader.h"
 #include "ioj/sim/fighters/fighter_sim_config.h"
 #include "ioj/sim/lasers/laser_weapon_sim_config_reader.h"
 #include <ioj/s7/field_reader.h>
 
+#include <array>
 #include <optional>
 #include <string_view>
 
@@ -58,129 +60,35 @@ struct TypeReader<sim::FighterSimConfig> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        switch (name.size()) {
-            case 5: {
-                if (name == "speed") {
-                    return Field::speed;
-                }
-                if (name == "laser") {
-                    return Field::laser;
-                }
-                return std::nullopt;
-            }
-            case 6: {
-                if (name == "health") {
-                    return Field::health;
-                }
-                return std::nullopt;
-            }
-            case 16: {
-                if (name == "arrival-distance") {
-                    return Field::arrival_distance;
-                }
-                if (name == "los-check-buffer") {
-                    return Field::los_check_buffer;
-                }
-                if (name == "awareness-radius") {
-                    return Field::awareness_radius;
-                }
-                return std::nullopt;
-            }
-            case 17: {
-                if (name == "max-live-fighters") {
-                    return Field::max_live_fighters;
-                }
-                if (name == "separation-radius") {
-                    return Field::separation_radius;
-                }
-                return std::nullopt;
-            }
-            case 19: {
-                if (name == "turn-speed-unitless") {
-                    return Field::turn_speed_unitless;
-                }
-                if (name == "separation-strength") {
-                    return Field::separation_strength;
-                }
-                return std::nullopt;
-            }
-            case 20: {
-                if (name == "attack-distance-band") {
-                    return Field::attack_distance_band;
-                }
-                return std::nullopt;
-            }
-            case 21: {
-                if (name == "attack-retry-cooldown") {
-                    return Field::attack_retry_cooldown;
-                }
-                return std::nullopt;
-            }
-            case 24: {
-                if (name == "avoidance-lookahead-time") {
-                    return Field::avoidance_lookahead_time;
-                }
-                if (name == "steering-memory-duration") {
-                    return Field::steering_memory_duration;
-                }
-                if (name == "awareness-scan-frequency") {
-                    return Field::awareness_scan_frequency;
-                }
-                return std::nullopt;
-            }
-            case 26: {
-                if (name == "fire-dot-product-threshold") {
-                    return Field::fire_dot_product_threshold;
-                }
-                if (name == "avoidance-update-frequency") {
-                    return Field::avoidance_update_frequency;
-                }
-                if (name == "avoidance-clearance-buffer") {
-                    return Field::avoidance_clearance_buffer;
-                }
-                return std::nullopt;
-            }
-            case 27: {
-                if (name == "attack-engagement-threshold") {
-                    return Field::attack_engagement_threshold;
-                }
-                if (name == "attack-reposition-frequency") {
-                    return Field::attack_reposition_frequency;
-                }
-                return std::nullopt;
-            }
-            case 32: {
-                if (name == "avoidance-clear-update-frequency") {
-                    return Field::avoidance_clear_update_frequency;
-                }
-                return std::nullopt;
-            }
-            case 33: {
-                if (name == "avoidance-active-update-frequency") {
-                    return Field::avoidance_active_update_frequency;
-                }
-                if (name == "dense-traffic-neighbour-threshold") {
-                    return Field::dense_traffic_neighbour_threshold;
-                }
-                return std::nullopt;
-            }
-            case 36: {
-                if (name == "avoidance-immediate-update-frequency") {
-                    return Field::avoidance_immediate_update_frequency;
-                }
-                return std::nullopt;
-            }
-            case 53: {
-                if (name == "minimum-opportunistic-intercept-deviation-dot-product") {
-                    return Field::minimum_opportunistic_intercept_deviation_dot_product;
-                }
-                return std::nullopt;
-            }
-            default: {
-                return std::nullopt;
-            }
-        }
+        return ioj::try_parse_enum<Field>(name, field_names);
     }
+
+    static constexpr std::array<std::string_view, 25> field_names{
+        "max-live-fighters",
+        "fire-dot-product-threshold",
+        "speed",
+        "turn-speed-unitless",
+        "avoidance-clear-update-frequency",
+        "avoidance-update-frequency",
+        "avoidance-active-update-frequency",
+        "avoidance-immediate-update-frequency",
+        "avoidance-lookahead-time",
+        "avoidance-clearance-buffer",
+        "separation-radius",
+        "separation-strength",
+        "steering-memory-duration",
+        "dense-traffic-neighbour-threshold",
+        "laser",
+        "health",
+        "attack-retry-cooldown",
+        "attack-engagement-threshold",
+        "attack-reposition-frequency",
+        "attack-distance-band",
+        "arrival-distance",
+        "los-check-buffer",
+        "awareness-radius",
+        "awareness-scan-frequency",
+        "minimum-opportunistic-intercept-deviation-dot-product"};
 };
 
 template <>
@@ -228,129 +136,35 @@ struct TypeReader<sim::FighterSimConfigOverrides> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        switch (name.size()) {
-            case 5: {
-                if (name == "speed") {
-                    return Field::speed;
-                }
-                if (name == "laser") {
-                    return Field::laser;
-                }
-                return std::nullopt;
-            }
-            case 6: {
-                if (name == "health") {
-                    return Field::health;
-                }
-                return std::nullopt;
-            }
-            case 16: {
-                if (name == "arrival-distance") {
-                    return Field::arrival_distance;
-                }
-                if (name == "los-check-buffer") {
-                    return Field::los_check_buffer;
-                }
-                if (name == "awareness-radius") {
-                    return Field::awareness_radius;
-                }
-                return std::nullopt;
-            }
-            case 17: {
-                if (name == "max-live-fighters") {
-                    return Field::max_live_fighters;
-                }
-                if (name == "separation-radius") {
-                    return Field::separation_radius;
-                }
-                return std::nullopt;
-            }
-            case 19: {
-                if (name == "turn-speed-unitless") {
-                    return Field::turn_speed_unitless;
-                }
-                if (name == "separation-strength") {
-                    return Field::separation_strength;
-                }
-                return std::nullopt;
-            }
-            case 20: {
-                if (name == "attack-distance-band") {
-                    return Field::attack_distance_band;
-                }
-                return std::nullopt;
-            }
-            case 21: {
-                if (name == "attack-retry-cooldown") {
-                    return Field::attack_retry_cooldown;
-                }
-                return std::nullopt;
-            }
-            case 24: {
-                if (name == "avoidance-lookahead-time") {
-                    return Field::avoidance_lookahead_time;
-                }
-                if (name == "steering-memory-duration") {
-                    return Field::steering_memory_duration;
-                }
-                if (name == "awareness-scan-frequency") {
-                    return Field::awareness_scan_frequency;
-                }
-                return std::nullopt;
-            }
-            case 26: {
-                if (name == "fire-dot-product-threshold") {
-                    return Field::fire_dot_product_threshold;
-                }
-                if (name == "avoidance-update-frequency") {
-                    return Field::avoidance_update_frequency;
-                }
-                if (name == "avoidance-clearance-buffer") {
-                    return Field::avoidance_clearance_buffer;
-                }
-                return std::nullopt;
-            }
-            case 27: {
-                if (name == "attack-engagement-threshold") {
-                    return Field::attack_engagement_threshold;
-                }
-                if (name == "attack-reposition-frequency") {
-                    return Field::attack_reposition_frequency;
-                }
-                return std::nullopt;
-            }
-            case 32: {
-                if (name == "avoidance-clear-update-frequency") {
-                    return Field::avoidance_clear_update_frequency;
-                }
-                return std::nullopt;
-            }
-            case 33: {
-                if (name == "avoidance-active-update-frequency") {
-                    return Field::avoidance_active_update_frequency;
-                }
-                if (name == "dense-traffic-neighbour-threshold") {
-                    return Field::dense_traffic_neighbour_threshold;
-                }
-                return std::nullopt;
-            }
-            case 36: {
-                if (name == "avoidance-immediate-update-frequency") {
-                    return Field::avoidance_immediate_update_frequency;
-                }
-                return std::nullopt;
-            }
-            case 53: {
-                if (name == "minimum-opportunistic-intercept-deviation-dot-product") {
-                    return Field::minimum_opportunistic_intercept_deviation_dot_product;
-                }
-                return std::nullopt;
-            }
-            default: {
-                return std::nullopt;
-            }
-        }
+        return ioj::try_parse_enum<Field>(name, field_names);
     }
+
+    static constexpr std::array<std::string_view, 25> field_names{
+        "max-live-fighters",
+        "fire-dot-product-threshold",
+        "speed",
+        "turn-speed-unitless",
+        "avoidance-clear-update-frequency",
+        "avoidance-update-frequency",
+        "avoidance-active-update-frequency",
+        "avoidance-immediate-update-frequency",
+        "avoidance-lookahead-time",
+        "avoidance-clearance-buffer",
+        "separation-radius",
+        "separation-strength",
+        "steering-memory-duration",
+        "dense-traffic-neighbour-threshold",
+        "laser",
+        "health",
+        "attack-retry-cooldown",
+        "attack-engagement-threshold",
+        "attack-reposition-frequency",
+        "attack-distance-band",
+        "arrival-distance",
+        "los-check-buffer",
+        "awareness-radius",
+        "awareness-scan-frequency",
+        "minimum-opportunistic-intercept-deviation-dot-product"};
 };
 
 inline auto TypeReader<sim::FighterSimConfig>::read(Reader const& reader,

@@ -36,9 +36,11 @@ struct TypeReader<codegen_compile_fixture::SettingsTarget> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        std::array<std::string_view, 3> constexpr names{"first", "second", "external-value"};
-        return ioj::try_parse_enum<Field>(name, names);
+        return ioj::try_parse_enum<Field>(name, field_names);
     }
+
+    static constexpr std::array<std::string_view, 3> field_names{
+        "first", "second", "external-value"};
 };
 
 template <>
@@ -64,9 +66,11 @@ struct TypeReader<codegen_compile_fixture::SettingsTargetOverrides> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        std::array<std::string_view, 3> constexpr names{"first", "second", "external-value"};
-        return ioj::try_parse_enum<Field>(name, names);
+        return ioj::try_parse_enum<Field>(name, field_names);
     }
+
+    static constexpr std::array<std::string_view, 3> field_names{
+        "first", "second", "external-value"};
 };
 
 inline auto TypeReader<codegen_compile_fixture::SettingsTarget>::read(Reader const& reader,

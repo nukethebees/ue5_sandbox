@@ -36,10 +36,11 @@ struct TypeReader<sim::OverlapResponseConfig> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        std::array<std::string_view, 3> constexpr names{
-            "damage-per-overlap-detection", "level-size", "cell-size"};
-        return ioj::try_parse_enum<Field>(name, names);
+        return ioj::try_parse_enum<Field>(name, field_names);
     }
+
+    static constexpr std::array<std::string_view, 3> field_names{
+        "damage-per-overlap-detection", "level-size", "cell-size"};
 };
 
 template <>
@@ -65,10 +66,11 @@ struct TypeReader<sim::OverlapResponseConfigOverrides> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        std::array<std::string_view, 3> constexpr names{
-            "damage-per-overlap-detection", "level-size", "cell-size"};
-        return ioj::try_parse_enum<Field>(name, names);
+        return ioj::try_parse_enum<Field>(name, field_names);
     }
+
+    static constexpr std::array<std::string_view, 3> field_names{
+        "damage-per-overlap-detection", "level-size", "cell-size"};
 };
 
 inline auto TypeReader<sim::OverlapResponseConfig>::read(Reader const& reader,

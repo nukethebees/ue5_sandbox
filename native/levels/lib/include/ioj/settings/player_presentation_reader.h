@@ -34,9 +34,10 @@ struct TypeReader<settings::PlayerPresentation> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        std::array<std::string_view, 1> constexpr names{"boost-effect-colour-intensity"};
-        return ioj::try_parse_enum<Field>(name, names);
+        return ioj::try_parse_enum<Field>(name, field_names);
     }
+
+    static constexpr std::array<std::string_view, 1> field_names{"boost-effect-colour-intensity"};
 };
 
 template <>
@@ -60,9 +61,10 @@ struct TypeReader<settings::PlayerPresentationOverrides> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        std::array<std::string_view, 1> constexpr names{"boost-effect-colour-intensity"};
-        return ioj::try_parse_enum<Field>(name, names);
+        return ioj::try_parse_enum<Field>(name, field_names);
     }
+
+    static constexpr std::array<std::string_view, 1> field_names{"boost-effect-colour-intensity"};
 };
 
 inline auto TypeReader<settings::PlayerPresentation>::read(Reader const& reader,

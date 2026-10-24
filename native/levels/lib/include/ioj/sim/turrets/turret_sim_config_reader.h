@@ -38,10 +38,11 @@ struct TypeReader<sim::TurretSimConfig> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        std::array<std::string_view, 4> constexpr names{
-            "detection-radius", "target-refresh-frequency", "laser", "max-health"};
-        return ioj::try_parse_enum<Field>(name, names);
+        return ioj::try_parse_enum<Field>(name, field_names);
     }
+
+    static constexpr std::array<std::string_view, 4> field_names{
+        "detection-radius", "target-refresh-frequency", "laser", "max-health"};
 };
 
 template <>
@@ -68,10 +69,11 @@ struct TypeReader<sim::TurretSimConfigOverrides> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        std::array<std::string_view, 4> constexpr names{
-            "detection-radius", "target-refresh-frequency", "laser", "max-health"};
-        return ioj::try_parse_enum<Field>(name, names);
+        return ioj::try_parse_enum<Field>(name, field_names);
     }
+
+    static constexpr std::array<std::string_view, 4> field_names{
+        "detection-radius", "target-refresh-frequency", "laser", "max-health"};
 };
 
 inline auto TypeReader<sim::TurretSimConfig>::read(Reader const& reader,

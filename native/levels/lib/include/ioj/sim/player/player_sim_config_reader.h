@@ -3,11 +3,13 @@
 
 #pragma once
 
+#include "ioj/parse_enum.h"
 #include "ioj/s7/field_constraints.h"
 #include "ioj/sim/lasers/laser_weapon_sim_config_reader.h"
 #include "ioj/sim/player/player_sim_config.h"
 #include <ioj/s7/field_reader.h>
 
+#include <array>
 #include <optional>
 #include <string_view>
 
@@ -43,72 +45,20 @@ struct TypeReader<sim::PlayerSimConfig> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        switch (name.size()) {
-            case 5: {
-                if (name == "laser") {
-                    return Field::laser;
-                }
-                return std::nullopt;
-            }
-            case 6: {
-                if (name == "health") {
-                    return Field::health;
-                }
-                return std::nullopt;
-            }
-            case 9: {
-                if (name == "yaw-speed") {
-                    return Field::yaw_speed;
-                }
-                return std::nullopt;
-            }
-            case 10: {
-                if (name == "laser-mode") {
-                    return Field::laser_mode;
-                }
-                return std::nullopt;
-            }
-            case 11: {
-                if (name == "pitch-speed") {
-                    return Field::pitch_speed;
-                }
-                return std::nullopt;
-            }
-            case 13: {
-                if (name == "yaw-angle-max") {
-                    return Field::yaw_angle_max;
-                }
-                return std::nullopt;
-            }
-            case 15: {
-                if (name == "pitch-angle-max") {
-                    return Field::pitch_angle_max;
-                }
-                if (name == "turn-bank-speed") {
-                    return Field::turn_bank_speed;
-                }
-                if (name == "laser-fire-rate") {
-                    return Field::laser_fire_rate;
-                }
-                return std::nullopt;
-            }
-            case 17: {
-                if (name == "thrust-energy-max") {
-                    return Field::thrust_energy_max;
-                }
-                return std::nullopt;
-            }
-            case 19: {
-                if (name == "turn-bank-angle-max") {
-                    return Field::turn_bank_angle_max;
-                }
-                return std::nullopt;
-            }
-            default: {
-                return std::nullopt;
-            }
-        }
+        return ioj::try_parse_enum<Field>(name, field_names);
     }
+
+    static constexpr std::array<std::string_view, 11> field_names{"thrust-energy-max",
+                                                                  "pitch-angle-max",
+                                                                  "pitch-speed",
+                                                                  "yaw-angle-max",
+                                                                  "yaw-speed",
+                                                                  "turn-bank-angle-max",
+                                                                  "turn-bank-speed",
+                                                                  "laser",
+                                                                  "health",
+                                                                  "laser-mode",
+                                                                  "laser-fire-rate"};
 };
 
 template <>
@@ -142,72 +92,20 @@ struct TypeReader<sim::PlayerSimConfigOverrides> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        switch (name.size()) {
-            case 5: {
-                if (name == "laser") {
-                    return Field::laser;
-                }
-                return std::nullopt;
-            }
-            case 6: {
-                if (name == "health") {
-                    return Field::health;
-                }
-                return std::nullopt;
-            }
-            case 9: {
-                if (name == "yaw-speed") {
-                    return Field::yaw_speed;
-                }
-                return std::nullopt;
-            }
-            case 10: {
-                if (name == "laser-mode") {
-                    return Field::laser_mode;
-                }
-                return std::nullopt;
-            }
-            case 11: {
-                if (name == "pitch-speed") {
-                    return Field::pitch_speed;
-                }
-                return std::nullopt;
-            }
-            case 13: {
-                if (name == "yaw-angle-max") {
-                    return Field::yaw_angle_max;
-                }
-                return std::nullopt;
-            }
-            case 15: {
-                if (name == "pitch-angle-max") {
-                    return Field::pitch_angle_max;
-                }
-                if (name == "turn-bank-speed") {
-                    return Field::turn_bank_speed;
-                }
-                if (name == "laser-fire-rate") {
-                    return Field::laser_fire_rate;
-                }
-                return std::nullopt;
-            }
-            case 17: {
-                if (name == "thrust-energy-max") {
-                    return Field::thrust_energy_max;
-                }
-                return std::nullopt;
-            }
-            case 19: {
-                if (name == "turn-bank-angle-max") {
-                    return Field::turn_bank_angle_max;
-                }
-                return std::nullopt;
-            }
-            default: {
-                return std::nullopt;
-            }
-        }
+        return ioj::try_parse_enum<Field>(name, field_names);
     }
+
+    static constexpr std::array<std::string_view, 11> field_names{"thrust-energy-max",
+                                                                  "pitch-angle-max",
+                                                                  "pitch-speed",
+                                                                  "yaw-angle-max",
+                                                                  "yaw-speed",
+                                                                  "turn-bank-angle-max",
+                                                                  "turn-bank-speed",
+                                                                  "laser",
+                                                                  "health",
+                                                                  "laser-mode",
+                                                                  "laser-fire-rate"};
 };
 
 inline auto TypeReader<sim::PlayerSimConfig>::read(Reader const& reader,

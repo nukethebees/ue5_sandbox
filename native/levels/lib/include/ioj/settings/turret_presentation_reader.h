@@ -34,9 +34,10 @@ struct TypeReader<settings::TurretPresentation> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        std::array<std::string_view, 1> constexpr names{"death-effect-scale"};
-        return ioj::try_parse_enum<Field>(name, names);
+        return ioj::try_parse_enum<Field>(name, field_names);
     }
+
+    static constexpr std::array<std::string_view, 1> field_names{"death-effect-scale"};
 };
 
 template <>
@@ -60,9 +61,10 @@ struct TypeReader<settings::TurretPresentationOverrides> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        std::array<std::string_view, 1> constexpr names{"death-effect-scale"};
-        return ioj::try_parse_enum<Field>(name, names);
+        return ioj::try_parse_enum<Field>(name, field_names);
     }
+
+    static constexpr std::array<std::string_view, 1> field_names{"death-effect-scale"};
 };
 
 inline auto TypeReader<settings::TurretPresentation>::read(Reader const& reader,

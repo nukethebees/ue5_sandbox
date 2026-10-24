@@ -35,9 +35,11 @@ struct TypeReader<codegen_compile_fixture::RangeValue> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        std::array<std::string_view, 2> constexpr names{"minimum", "maximum"};
-        return ioj::try_parse_enum<Field>(name, names);
+        return ioj::try_parse_enum<Field>(name, field_names);
     }
+
+    static constexpr std::array<std::string_view, 2> field_names{"minimum", "maximum"};
+    static constexpr auto required{required_fields<Field>({Field::minimum, Field::maximum})};
 };
 
 template <>
@@ -62,9 +64,10 @@ struct TypeReader<codegen_compile_fixture::RangeSettings> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        std::array<std::string_view, 2> constexpr names{"range", "enabled"};
-        return ioj::try_parse_enum<Field>(name, names);
+        return ioj::try_parse_enum<Field>(name, field_names);
     }
+
+    static constexpr std::array<std::string_view, 2> field_names{"range", "enabled"};
 };
 
 template <>
@@ -89,9 +92,10 @@ struct TypeReader<codegen_compile_fixture::RangeSettingsOverrides> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        std::array<std::string_view, 2> constexpr names{"range", "enabled"};
-        return ioj::try_parse_enum<Field>(name, names);
+        return ioj::try_parse_enum<Field>(name, field_names);
     }
+
+    static constexpr std::array<std::string_view, 2> field_names{"range", "enabled"};
 };
 
 template <>
@@ -116,9 +120,10 @@ struct TypeReader<codegen_compile_fixture::WeaponSettings> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        std::array<std::string_view, 2> constexpr names{"damage", "turn-speed"};
-        return ioj::try_parse_enum<Field>(name, names);
+        return ioj::try_parse_enum<Field>(name, field_names);
     }
+
+    static constexpr std::array<std::string_view, 2> field_names{"damage", "turn-speed"};
 };
 
 template <>
@@ -143,9 +148,10 @@ struct TypeReader<codegen_compile_fixture::WeaponSettingsOverrides> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        std::array<std::string_view, 2> constexpr names{"damage", "turn-speed"};
-        return ioj::try_parse_enum<Field>(name, names);
+        return ioj::try_parse_enum<Field>(name, field_names);
     }
+
+    static constexpr std::array<std::string_view, 2> field_names{"damage", "turn-speed"};
 };
 
 template <>
@@ -171,9 +177,11 @@ struct TypeReader<codegen_compile_fixture::ActorSettings> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        std::array<std::string_view, 3> constexpr names{"max-health", "weapon", "optional-limit"};
-        return ioj::try_parse_enum<Field>(name, names);
+        return ioj::try_parse_enum<Field>(name, field_names);
     }
+
+    static constexpr std::array<std::string_view, 3> field_names{
+        "max-health", "weapon", "optional-limit"};
 };
 
 template <>
@@ -199,9 +207,11 @@ struct TypeReader<codegen_compile_fixture::ActorSettingsOverrides> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        std::array<std::string_view, 3> constexpr names{"max-health", "weapon", "optional-limit"};
-        return ioj::try_parse_enum<Field>(name, names);
+        return ioj::try_parse_enum<Field>(name, field_names);
     }
+
+    static constexpr std::array<std::string_view, 3> field_names{
+        "max-health", "weapon", "optional-limit"};
 };
 
 inline auto TypeReader<codegen_compile_fixture::RangeValue>::read(Reader const& reader,
@@ -241,11 +251,8 @@ inline void TypeReader<codegen_compile_fixture::RangeValue>::decode(Reader const
         append_errors(errors, seen.error());
         return;
     }
-    std::array<std::string_view, 2> constexpr required_names{"minimum", "maximum"};
-
-    auto constexpr required{required_fields<Field>(required_names)};
     if (mode == ReadMode::Create) {
-        require_fields<Field>(*seen, required, required_names, path, errors);
+        require_fields<Field>(*seen, required, field_names, path, errors);
     }
 }
 

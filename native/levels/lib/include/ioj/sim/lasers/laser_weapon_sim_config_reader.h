@@ -37,10 +37,11 @@ struct TypeReader<sim::LaserWeaponSimConfig> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        std::array<std::string_view, 4> constexpr names{
-            "damage", "projectile-speed", "max-distance", "fire-cooldown"};
-        return ioj::try_parse_enum<Field>(name, names);
+        return ioj::try_parse_enum<Field>(name, field_names);
     }
+
+    static constexpr std::array<std::string_view, 4> field_names{
+        "damage", "projectile-speed", "max-distance", "fire-cooldown"};
 };
 
 template <>
@@ -67,10 +68,11 @@ struct TypeReader<sim::LaserWeaponSimConfigOverrides> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        std::array<std::string_view, 4> constexpr names{
-            "damage", "projectile-speed", "max-distance", "fire-cooldown"};
-        return ioj::try_parse_enum<Field>(name, names);
+        return ioj::try_parse_enum<Field>(name, field_names);
     }
+
+    static constexpr std::array<std::string_view, 4> field_names{
+        "damage", "projectile-speed", "max-distance", "fire-cooldown"};
 };
 
 inline auto TypeReader<sim::LaserWeaponSimConfig>::read(Reader const& reader,

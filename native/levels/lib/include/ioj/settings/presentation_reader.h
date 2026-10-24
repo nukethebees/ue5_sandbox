@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ioj/parse_enum.h"
 #include "ioj/settings/capital_presentation_reader.h"
 #include "ioj/settings/entity_overlay_reader.h"
 #include "ioj/settings/laser_presentation_reader.h"
@@ -12,6 +13,7 @@
 #include "ioj/settings/turret_presentation_reader.h"
 #include <ioj/s7/field_reader.h>
 
+#include <array>
 #include <optional>
 #include <string_view>
 
@@ -42,48 +44,11 @@ struct TypeReader<settings::Presentation> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        switch (name.size()) {
-            case 5: {
-                if (name == "radar") {
-                    return Field::radar;
-                }
-                return std::nullopt;
-            }
-            case 7: {
-                if (name == "turrets") {
-                    return Field::turrets;
-                }
-                return std::nullopt;
-            }
-            case 11: {
-                if (name == "player-ship") {
-                    return Field::player_ship;
-                }
-                return std::nullopt;
-            }
-            case 13: {
-                if (name == "capital-ships") {
-                    return Field::capital_ships;
-                }
-                return std::nullopt;
-            }
-            case 14: {
-                if (name == "entity-overlay") {
-                    return Field::entity_overlay;
-                }
-                return std::nullopt;
-            }
-            case 17: {
-                if (name == "laser-projectiles") {
-                    return Field::laser_projectiles;
-                }
-                return std::nullopt;
-            }
-            default: {
-                return std::nullopt;
-            }
-        }
+        return ioj::try_parse_enum<Field>(name, field_names);
     }
+
+    static constexpr std::array<std::string_view, 6> field_names{
+        "player-ship", "laser-projectiles", "capital-ships", "turrets", "entity-overlay", "radar"};
 };
 
 template <>
@@ -112,48 +77,11 @@ struct TypeReader<settings::PresentationOverrides> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        switch (name.size()) {
-            case 5: {
-                if (name == "radar") {
-                    return Field::radar;
-                }
-                return std::nullopt;
-            }
-            case 7: {
-                if (name == "turrets") {
-                    return Field::turrets;
-                }
-                return std::nullopt;
-            }
-            case 11: {
-                if (name == "player-ship") {
-                    return Field::player_ship;
-                }
-                return std::nullopt;
-            }
-            case 13: {
-                if (name == "capital-ships") {
-                    return Field::capital_ships;
-                }
-                return std::nullopt;
-            }
-            case 14: {
-                if (name == "entity-overlay") {
-                    return Field::entity_overlay;
-                }
-                return std::nullopt;
-            }
-            case 17: {
-                if (name == "laser-projectiles") {
-                    return Field::laser_projectiles;
-                }
-                return std::nullopt;
-            }
-            default: {
-                return std::nullopt;
-            }
-        }
+        return ioj::try_parse_enum<Field>(name, field_names);
     }
+
+    static constexpr std::array<std::string_view, 6> field_names{
+        "player-ship", "laser-projectiles", "capital-ships", "turrets", "entity-overlay", "radar"};
 };
 
 inline auto TypeReader<settings::Presentation>::read(Reader const& reader,

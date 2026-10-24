@@ -3,10 +3,12 @@
 
 #pragma once
 
+#include "ioj/parse_enum.h"
 #include "ioj/s7/field_constraints.h"
 #include "ioj/settings/soft_target.h"
 #include <ioj/s7/field_reader.h>
 
+#include <array>
 #include <optional>
 #include <string_view>
 
@@ -44,81 +46,23 @@ struct TypeReader<settings::SoftTarget> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        switch (name.size()) {
-            case 7: {
-                if (name == "opacity") {
-                    return Field::opacity;
-                }
-                return std::nullopt;
-            }
-            case 14: {
-                if (name == "pulse-duration") {
-                    return Field::pulse_duration;
-                }
-                return std::nullopt;
-            }
-            case 17: {
-                if (name == "fade-out-duration") {
-                    return Field::fade_out_duration;
-                }
-                return std::nullopt;
-            }
-            case 19: {
-                if (name == "pulse-opacity-boost") {
-                    return Field::pulse_opacity_boost;
-                }
-                return std::nullopt;
-            }
-            case 21: {
-                if (name == "minimum-radius-pixels") {
-                    return Field::minimum_radius_pixels;
-                }
-                if (name == "maximum-radius-pixels") {
-                    return Field::maximum_radius_pixels;
-                }
-                if (name == "bounds-padding-pixels") {
-                    return Field::bounds_padding_pixels;
-                }
-                return std::nullopt;
-            }
-            case 23: {
-                if (name == "retention-radius-pixels") {
-                    return Field::retention_radius_pixels;
-                }
-                return std::nullopt;
-            }
-            case 24: {
-                if (name == "centre-tie-radius-pixels") {
-                    return Field::centre_tie_radius_pixels;
-                }
-                if (name == "switch-improvement-ratio") {
-                    return Field::switch_improvement_ratio;
-                }
-                return std::nullopt;
-            }
-            case 25: {
-                if (name == "acquisition-radius-pixels") {
-                    return Field::acquisition_radius_pixels;
-                }
-                return std::nullopt;
-            }
-            case 31: {
-                if (name == "bracket-start-radius-multiplier") {
-                    return Field::bracket_start_radius_multiplier;
-                }
-                return std::nullopt;
-            }
-            case 33: {
-                if (name == "range-transition-start-multiplier") {
-                    return Field::range_transition_start_multiplier;
-                }
-                return std::nullopt;
-            }
-            default: {
-                return std::nullopt;
-            }
-        }
+        return ioj::try_parse_enum<Field>(name, field_names);
     }
+
+    static constexpr std::array<std::string_view, 13> field_names{
+        "acquisition-radius-pixels",
+        "retention-radius-pixels",
+        "centre-tie-radius-pixels",
+        "switch-improvement-ratio",
+        "range-transition-start-multiplier",
+        "minimum-radius-pixels",
+        "maximum-radius-pixels",
+        "bounds-padding-pixels",
+        "bracket-start-radius-multiplier",
+        "opacity",
+        "pulse-opacity-boost",
+        "pulse-duration",
+        "fade-out-duration"};
 };
 
 template <>
@@ -154,81 +98,23 @@ struct TypeReader<settings::SoftTargetOverrides> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        switch (name.size()) {
-            case 7: {
-                if (name == "opacity") {
-                    return Field::opacity;
-                }
-                return std::nullopt;
-            }
-            case 14: {
-                if (name == "pulse-duration") {
-                    return Field::pulse_duration;
-                }
-                return std::nullopt;
-            }
-            case 17: {
-                if (name == "fade-out-duration") {
-                    return Field::fade_out_duration;
-                }
-                return std::nullopt;
-            }
-            case 19: {
-                if (name == "pulse-opacity-boost") {
-                    return Field::pulse_opacity_boost;
-                }
-                return std::nullopt;
-            }
-            case 21: {
-                if (name == "minimum-radius-pixels") {
-                    return Field::minimum_radius_pixels;
-                }
-                if (name == "maximum-radius-pixels") {
-                    return Field::maximum_radius_pixels;
-                }
-                if (name == "bounds-padding-pixels") {
-                    return Field::bounds_padding_pixels;
-                }
-                return std::nullopt;
-            }
-            case 23: {
-                if (name == "retention-radius-pixels") {
-                    return Field::retention_radius_pixels;
-                }
-                return std::nullopt;
-            }
-            case 24: {
-                if (name == "centre-tie-radius-pixels") {
-                    return Field::centre_tie_radius_pixels;
-                }
-                if (name == "switch-improvement-ratio") {
-                    return Field::switch_improvement_ratio;
-                }
-                return std::nullopt;
-            }
-            case 25: {
-                if (name == "acquisition-radius-pixels") {
-                    return Field::acquisition_radius_pixels;
-                }
-                return std::nullopt;
-            }
-            case 31: {
-                if (name == "bracket-start-radius-multiplier") {
-                    return Field::bracket_start_radius_multiplier;
-                }
-                return std::nullopt;
-            }
-            case 33: {
-                if (name == "range-transition-start-multiplier") {
-                    return Field::range_transition_start_multiplier;
-                }
-                return std::nullopt;
-            }
-            default: {
-                return std::nullopt;
-            }
-        }
+        return ioj::try_parse_enum<Field>(name, field_names);
     }
+
+    static constexpr std::array<std::string_view, 13> field_names{
+        "acquisition-radius-pixels",
+        "retention-radius-pixels",
+        "centre-tie-radius-pixels",
+        "switch-improvement-ratio",
+        "range-transition-start-multiplier",
+        "minimum-radius-pixels",
+        "maximum-radius-pixels",
+        "bounds-padding-pixels",
+        "bracket-start-radius-multiplier",
+        "opacity",
+        "pulse-opacity-boost",
+        "pulse-duration",
+        "fade-out-duration"};
 };
 
 inline auto TypeReader<settings::SoftTarget>::read(Reader const& reader,

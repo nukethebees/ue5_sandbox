@@ -36,9 +36,12 @@ struct TypeReader<levels::CampaignDefinition> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        std::array<std::string_view, 3> constexpr names{"id", "title", "levels"};
-        return ioj::try_parse_enum<Field>(name, names);
+        return ioj::try_parse_enum<Field>(name, field_names);
     }
+
+    static constexpr std::array<std::string_view, 3> field_names{"id", "title", "levels"};
+    static constexpr auto required{
+        required_fields<Field>({Field::id, Field::title, Field::level_ids})};
 };
 
 inline auto TypeReader<levels::CampaignDefinition>::read(Reader const& reader,
@@ -81,11 +84,8 @@ inline void TypeReader<levels::CampaignDefinition>::decode(Reader const& reader,
         append_errors(errors, seen.error());
         return;
     }
-    std::array<std::string_view, 3> constexpr required_names{"id", "title", "levels"};
-
-    auto constexpr required{required_fields<Field>(required_names)};
     if (mode == ReadMode::Create) {
-        require_fields<Field>(*seen, required, required_names, path, errors);
+        require_fields<Field>(*seen, required, field_names, path, errors);
     }
 }
 

@@ -3,10 +3,12 @@
 
 #pragma once
 
+#include "ioj/parse_enum.h"
 #include "ioj/s7/field_constraints.h"
 #include "ioj/settings/capital_presentation.h"
 #include <ioj/s7/field_reader.h>
 
+#include <array>
 #include <optional>
 #include <string_view>
 
@@ -37,45 +39,15 @@ struct TypeReader<settings::CapitalPresentation> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        switch (name.size()) {
-            case 16: {
-                if (name == "proxy-arrow-size") {
-                    return Field::proxy_arrow_size;
-                }
-                return std::nullopt;
-            }
-            case 18: {
-                if (name == "n-small-explosions") {
-                    return Field::n_small_explosions;
-                }
-                return std::nullopt;
-            }
-            case 21: {
-                if (name == "large-explosion-delay") {
-                    return Field::large_explosion_delay;
-                }
-                return std::nullopt;
-            }
-            case 23: {
-                if (name == "time-between-explosions") {
-                    return Field::time_between_explosions;
-                }
-                return std::nullopt;
-            }
-            case 25: {
-                if (name == "min-small-explosion-range") {
-                    return Field::min_small_explosion_range;
-                }
-                if (name == "max-small-explosion-range") {
-                    return Field::max_small_explosion_range;
-                }
-                return std::nullopt;
-            }
-            default: {
-                return std::nullopt;
-            }
-        }
+        return ioj::try_parse_enum<Field>(name, field_names);
     }
+
+    static constexpr std::array<std::string_view, 6> field_names{"n-small-explosions",
+                                                                 "time-between-explosions",
+                                                                 "min-small-explosion-range",
+                                                                 "max-small-explosion-range",
+                                                                 "large-explosion-delay",
+                                                                 "proxy-arrow-size"};
 };
 
 template <>
@@ -104,45 +76,15 @@ struct TypeReader<settings::CapitalPresentationOverrides> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        switch (name.size()) {
-            case 16: {
-                if (name == "proxy-arrow-size") {
-                    return Field::proxy_arrow_size;
-                }
-                return std::nullopt;
-            }
-            case 18: {
-                if (name == "n-small-explosions") {
-                    return Field::n_small_explosions;
-                }
-                return std::nullopt;
-            }
-            case 21: {
-                if (name == "large-explosion-delay") {
-                    return Field::large_explosion_delay;
-                }
-                return std::nullopt;
-            }
-            case 23: {
-                if (name == "time-between-explosions") {
-                    return Field::time_between_explosions;
-                }
-                return std::nullopt;
-            }
-            case 25: {
-                if (name == "min-small-explosion-range") {
-                    return Field::min_small_explosion_range;
-                }
-                if (name == "max-small-explosion-range") {
-                    return Field::max_small_explosion_range;
-                }
-                return std::nullopt;
-            }
-            default: {
-                return std::nullopt;
-            }
-        }
+        return ioj::try_parse_enum<Field>(name, field_names);
     }
+
+    static constexpr std::array<std::string_view, 6> field_names{"n-small-explosions",
+                                                                 "time-between-explosions",
+                                                                 "min-small-explosion-range",
+                                                                 "max-small-explosion-range",
+                                                                 "large-explosion-delay",
+                                                                 "proxy-arrow-size"};
 };
 
 inline auto TypeReader<settings::CapitalPresentation>::read(Reader const& reader,

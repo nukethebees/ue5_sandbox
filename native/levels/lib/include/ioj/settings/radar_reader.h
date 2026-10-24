@@ -3,10 +3,12 @@
 
 #pragma once
 
+#include "ioj/parse_enum.h"
 #include "ioj/s7/field_constraints.h"
 #include "ioj/settings/radar.h"
 #include <ioj/s7/field_reader.h>
 
+#include <array>
 #include <optional>
 #include <string_view>
 
@@ -45,87 +47,24 @@ struct TypeReader<settings::Radar> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        switch (name.size()) {
-            case 7: {
-                if (name == "enabled") {
-                    return Field::enabled;
-                }
-                return std::nullopt;
-            }
-            case 12: {
-                if (name == "combat-range") {
-                    return Field::combat_range;
-                }
-                if (name == "grid-opacity") {
-                    return Field::grid_opacity;
-                }
-                return std::nullopt;
-            }
-            case 13: {
-                if (name == "maximum-range") {
-                    return Field::maximum_range;
-                }
-                return std::nullopt;
-            }
-            case 14: {
-                if (name == "tactical-range") {
-                    return Field::tactical_range;
-                }
-                return std::nullopt;
-            }
-            case 16: {
-                if (name == "core-cell-radius") {
-                    return Field::core_cell_radius;
-                }
-                if (name == "glyph-size-scale") {
-                    return Field::glyph_size_scale;
-                }
-                return std::nullopt;
-            }
-            case 18: {
-                if (name == "combat-cell-radius") {
-                    return Field::combat_cell_radius;
-                }
-                return std::nullopt;
-            }
-            case 20: {
-                if (name == "tactical-cell-radius") {
-                    return Field::tactical_cell_radius;
-                }
-                return std::nullopt;
-            }
-            case 21: {
-                if (name == "combat-display-radius") {
-                    return Field::combat_display_radius;
-                }
-                if (name == "strategic-cell-radius") {
-                    return Field::strategic_cell_radius;
-                }
-                return std::nullopt;
-            }
-            case 25: {
-                if (name == "objective-size-multiplier") {
-                    return Field::objective_size_multiplier;
-                }
-                return std::nullopt;
-            }
-            case 29: {
-                if (name == "objective-ring-padding-pixels") {
-                    return Field::objective_ring_padding_pixels;
-                }
-                return std::nullopt;
-            }
-            case 31: {
-                if (name == "objective-ring-thickness-pixels") {
-                    return Field::objective_ring_thickness_pixels;
-                }
-                return std::nullopt;
-            }
-            default: {
-                return std::nullopt;
-            }
-        }
+        return ioj::try_parse_enum<Field>(name, field_names);
     }
+
+    static constexpr std::array<std::string_view, 14> field_names{
+        "enabled",
+        "combat-range",
+        "tactical-range",
+        "maximum-range",
+        "combat-display-radius",
+        "grid-opacity",
+        "core-cell-radius",
+        "combat-cell-radius",
+        "tactical-cell-radius",
+        "strategic-cell-radius",
+        "glyph-size-scale",
+        "objective-size-multiplier",
+        "objective-ring-padding-pixels",
+        "objective-ring-thickness-pixels"};
 };
 
 template <>
@@ -162,87 +101,24 @@ struct TypeReader<settings::RadarOverrides> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        switch (name.size()) {
-            case 7: {
-                if (name == "enabled") {
-                    return Field::enabled;
-                }
-                return std::nullopt;
-            }
-            case 12: {
-                if (name == "combat-range") {
-                    return Field::combat_range;
-                }
-                if (name == "grid-opacity") {
-                    return Field::grid_opacity;
-                }
-                return std::nullopt;
-            }
-            case 13: {
-                if (name == "maximum-range") {
-                    return Field::maximum_range;
-                }
-                return std::nullopt;
-            }
-            case 14: {
-                if (name == "tactical-range") {
-                    return Field::tactical_range;
-                }
-                return std::nullopt;
-            }
-            case 16: {
-                if (name == "core-cell-radius") {
-                    return Field::core_cell_radius;
-                }
-                if (name == "glyph-size-scale") {
-                    return Field::glyph_size_scale;
-                }
-                return std::nullopt;
-            }
-            case 18: {
-                if (name == "combat-cell-radius") {
-                    return Field::combat_cell_radius;
-                }
-                return std::nullopt;
-            }
-            case 20: {
-                if (name == "tactical-cell-radius") {
-                    return Field::tactical_cell_radius;
-                }
-                return std::nullopt;
-            }
-            case 21: {
-                if (name == "combat-display-radius") {
-                    return Field::combat_display_radius;
-                }
-                if (name == "strategic-cell-radius") {
-                    return Field::strategic_cell_radius;
-                }
-                return std::nullopt;
-            }
-            case 25: {
-                if (name == "objective-size-multiplier") {
-                    return Field::objective_size_multiplier;
-                }
-                return std::nullopt;
-            }
-            case 29: {
-                if (name == "objective-ring-padding-pixels") {
-                    return Field::objective_ring_padding_pixels;
-                }
-                return std::nullopt;
-            }
-            case 31: {
-                if (name == "objective-ring-thickness-pixels") {
-                    return Field::objective_ring_thickness_pixels;
-                }
-                return std::nullopt;
-            }
-            default: {
-                return std::nullopt;
-            }
-        }
+        return ioj::try_parse_enum<Field>(name, field_names);
     }
+
+    static constexpr std::array<std::string_view, 14> field_names{
+        "enabled",
+        "combat-range",
+        "tactical-range",
+        "maximum-range",
+        "combat-display-radius",
+        "grid-opacity",
+        "core-cell-radius",
+        "combat-cell-radius",
+        "tactical-cell-radius",
+        "strategic-cell-radius",
+        "glyph-size-scale",
+        "objective-size-multiplier",
+        "objective-ring-padding-pixels",
+        "objective-ring-thickness-pixels"};
 };
 
 inline auto TypeReader<settings::Radar>::read(Reader const& reader,

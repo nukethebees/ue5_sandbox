@@ -36,11 +36,12 @@ struct TypeReader<sim::HudSettings> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        std::array<std::string_view, 3> constexpr names{"player-status-update-period",
-                                                        "entity-count-update-period",
-                                                        "mission-status-update-period"};
-        return ioj::try_parse_enum<Field>(name, names);
+        return ioj::try_parse_enum<Field>(name, field_names);
     }
+
+    static constexpr std::array<std::string_view, 3> field_names{"player-status-update-period",
+                                                                 "entity-count-update-period",
+                                                                 "mission-status-update-period"};
 };
 
 template <>
@@ -66,11 +67,12 @@ struct TypeReader<sim::HudSettingsOverrides> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        std::array<std::string_view, 3> constexpr names{"player-status-update-period",
-                                                        "entity-count-update-period",
-                                                        "mission-status-update-period"};
-        return ioj::try_parse_enum<Field>(name, names);
+        return ioj::try_parse_enum<Field>(name, field_names);
     }
+
+    static constexpr std::array<std::string_view, 3> field_names{"player-status-update-period",
+                                                                 "entity-count-update-period",
+                                                                 "mission-status-update-period"};
 };
 
 inline auto TypeReader<sim::HudSettings>::read(Reader const& reader,

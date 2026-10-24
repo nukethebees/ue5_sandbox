@@ -35,9 +35,10 @@ struct TypeReader<starfield::GenerationSettings> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        std::array<std::string_view, 2> constexpr names{"star-count", "random-seed"};
-        return ioj::try_parse_enum<Field>(name, names);
+        return ioj::try_parse_enum<Field>(name, field_names);
     }
+
+    static constexpr std::array<std::string_view, 2> field_names{"star-count", "random-seed"};
 };
 
 template <>
@@ -62,9 +63,10 @@ struct TypeReader<starfield::GenerationSettingsOverrides> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        std::array<std::string_view, 2> constexpr names{"star-count", "random-seed"};
-        return ioj::try_parse_enum<Field>(name, names);
+        return ioj::try_parse_enum<Field>(name, field_names);
     }
+
+    static constexpr std::array<std::string_view, 2> field_names{"star-count", "random-seed"};
 };
 
 template <>
@@ -92,39 +94,14 @@ struct TypeReader<starfield::StarSettings> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        switch (name.size()) {
-            case 5: {
-                if (name == "scale") {
-                    return Field::scale;
-                }
-                return std::nullopt;
-            }
-            case 15: {
-                if (name == "size-multiplier") {
-                    return Field::size_multiplier;
-                }
-                return std::nullopt;
-            }
-            case 17: {
-                if (name == "global-brightness") {
-                    return Field::global_brightness;
-                }
-                if (name == "parallax-strength") {
-                    return Field::parallax_strength;
-                }
-                return std::nullopt;
-            }
-            case 25: {
-                if (name == "colour-variation-strength") {
-                    return Field::colour_variation_strength;
-                }
-                return std::nullopt;
-            }
-            default: {
-                return std::nullopt;
-            }
-        }
+        return ioj::try_parse_enum<Field>(name, field_names);
     }
+
+    static constexpr std::array<std::string_view, 5> field_names{"scale",
+                                                                 "size-multiplier",
+                                                                 "global-brightness",
+                                                                 "colour-variation-strength",
+                                                                 "parallax-strength"};
 };
 
 template <>
@@ -152,39 +129,14 @@ struct TypeReader<starfield::StarSettingsOverrides> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        switch (name.size()) {
-            case 5: {
-                if (name == "scale") {
-                    return Field::scale;
-                }
-                return std::nullopt;
-            }
-            case 15: {
-                if (name == "size-multiplier") {
-                    return Field::size_multiplier;
-                }
-                return std::nullopt;
-            }
-            case 17: {
-                if (name == "global-brightness") {
-                    return Field::global_brightness;
-                }
-                if (name == "parallax-strength") {
-                    return Field::parallax_strength;
-                }
-                return std::nullopt;
-            }
-            case 25: {
-                if (name == "colour-variation-strength") {
-                    return Field::colour_variation_strength;
-                }
-                return std::nullopt;
-            }
-            default: {
-                return std::nullopt;
-            }
-        }
+        return ioj::try_parse_enum<Field>(name, field_names);
     }
+
+    static constexpr std::array<std::string_view, 5> field_names{"scale",
+                                                                 "size-multiplier",
+                                                                 "global-brightness",
+                                                                 "colour-variation-strength",
+                                                                 "parallax-strength"};
 };
 
 template <>
@@ -209,9 +161,10 @@ struct TypeReader<starfield::GalacticBandSettings> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        std::array<std::string_view, 2> constexpr names{"strength", "width-degrees"};
-        return ioj::try_parse_enum<Field>(name, names);
+        return ioj::try_parse_enum<Field>(name, field_names);
     }
+
+    static constexpr std::array<std::string_view, 2> field_names{"strength", "width-degrees"};
 };
 
 template <>
@@ -236,9 +189,10 @@ struct TypeReader<starfield::GalacticBandSettingsOverrides> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        std::array<std::string_view, 2> constexpr names{"strength", "width-degrees"};
-        return ioj::try_parse_enum<Field>(name, names);
+        return ioj::try_parse_enum<Field>(name, field_names);
     }
+
+    static constexpr std::array<std::string_view, 2> field_names{"strength", "width-degrees"};
 };
 
 template <>
@@ -263,9 +217,10 @@ struct TypeReader<starfield::StellarClusterSettings> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        std::array<std::string_view, 2> constexpr names{"strength", "width-degrees"};
-        return ioj::try_parse_enum<Field>(name, names);
+        return ioj::try_parse_enum<Field>(name, field_names);
     }
+
+    static constexpr std::array<std::string_view, 2> field_names{"strength", "width-degrees"};
 };
 
 template <>
@@ -290,9 +245,10 @@ struct TypeReader<starfield::StellarClusterSettingsOverrides> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        std::array<std::string_view, 2> constexpr names{"strength", "width-degrees"};
-        return ioj::try_parse_enum<Field>(name, names);
+        return ioj::try_parse_enum<Field>(name, field_names);
     }
+
+    static constexpr std::array<std::string_view, 2> field_names{"strength", "width-degrees"};
 };
 
 template <>
@@ -318,10 +274,11 @@ struct TypeReader<starfield::DustLaneSettings> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        std::array<std::string_view, 3> constexpr names{
-            "strength", "width-degrees", "irregularity"};
-        return ioj::try_parse_enum<Field>(name, names);
+        return ioj::try_parse_enum<Field>(name, field_names);
     }
+
+    static constexpr std::array<std::string_view, 3> field_names{
+        "strength", "width-degrees", "irregularity"};
 };
 
 template <>
@@ -347,10 +304,11 @@ struct TypeReader<starfield::DustLaneSettingsOverrides> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        std::array<std::string_view, 3> constexpr names{
-            "strength", "width-degrees", "irregularity"};
-        return ioj::try_parse_enum<Field>(name, names);
+        return ioj::try_parse_enum<Field>(name, field_names);
     }
+
+    static constexpr std::array<std::string_view, 3> field_names{
+        "strength", "width-degrees", "irregularity"};
 };
 
 template <>
@@ -377,10 +335,11 @@ struct TypeReader<starfield::BrightStarSettings> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        std::array<std::string_view, 4> constexpr names{
-            "fraction", "size-multiplier", "brightness-multiplier", "shape-strength"};
-        return ioj::try_parse_enum<Field>(name, names);
+        return ioj::try_parse_enum<Field>(name, field_names);
     }
+
+    static constexpr std::array<std::string_view, 4> field_names{
+        "fraction", "size-multiplier", "brightness-multiplier", "shape-strength"};
 };
 
 template <>
@@ -407,10 +366,11 @@ struct TypeReader<starfield::BrightStarSettingsOverrides> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        std::array<std::string_view, 4> constexpr names{
-            "fraction", "size-multiplier", "brightness-multiplier", "shape-strength"};
-        return ioj::try_parse_enum<Field>(name, names);
+        return ioj::try_parse_enum<Field>(name, field_names);
     }
+
+    static constexpr std::array<std::string_view, 4> field_names{
+        "fraction", "size-multiplier", "brightness-multiplier", "shape-strength"};
 };
 
 template <>
@@ -435,9 +395,10 @@ struct TypeReader<starfield::TwinkleSettings> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        std::array<std::string_view, 2> constexpr names{"strength", "speed"};
-        return ioj::try_parse_enum<Field>(name, names);
+        return ioj::try_parse_enum<Field>(name, field_names);
     }
+
+    static constexpr std::array<std::string_view, 2> field_names{"strength", "speed"};
 };
 
 template <>
@@ -462,9 +423,10 @@ struct TypeReader<starfield::TwinkleSettingsOverrides> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        std::array<std::string_view, 2> constexpr names{"strength", "speed"};
-        return ioj::try_parse_enum<Field>(name, names);
+        return ioj::try_parse_enum<Field>(name, field_names);
     }
+
+    static constexpr std::array<std::string_view, 2> field_names{"strength", "speed"};
 };
 
 template <>
@@ -489,9 +451,10 @@ struct TypeReader<starfield::GalacticHazeSettings> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        std::array<std::string_view, 2> constexpr names{"strength", "width-degrees"};
-        return ioj::try_parse_enum<Field>(name, names);
+        return ioj::try_parse_enum<Field>(name, field_names);
     }
+
+    static constexpr std::array<std::string_view, 2> field_names{"strength", "width-degrees"};
 };
 
 template <>
@@ -516,9 +479,10 @@ struct TypeReader<starfield::GalacticHazeSettingsOverrides> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        std::array<std::string_view, 2> constexpr names{"strength", "width-degrees"};
-        return ioj::try_parse_enum<Field>(name, names);
+        return ioj::try_parse_enum<Field>(name, field_names);
     }
+
+    static constexpr std::array<std::string_view, 2> field_names{"strength", "width-degrees"};
 };
 
 template <>
@@ -543,9 +507,10 @@ struct TypeReader<starfield::GalacticCoreSettings> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        std::array<std::string_view, 2> constexpr names{"strength", "width-degrees"};
-        return ioj::try_parse_enum<Field>(name, names);
+        return ioj::try_parse_enum<Field>(name, field_names);
     }
+
+    static constexpr std::array<std::string_view, 2> field_names{"strength", "width-degrees"};
 };
 
 template <>
@@ -570,9 +535,10 @@ struct TypeReader<starfield::GalacticCoreSettingsOverrides> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        std::array<std::string_view, 2> constexpr names{"strength", "width-degrees"};
-        return ioj::try_parse_enum<Field>(name, names);
+        return ioj::try_parse_enum<Field>(name, field_names);
     }
+
+    static constexpr std::array<std::string_view, 2> field_names{"strength", "width-degrees"};
 };
 
 template <>
@@ -597,9 +563,10 @@ struct TypeReader<starfield::NebularKnotSettings> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        std::array<std::string_view, 2> constexpr names{"strength", "size-degrees"};
-        return ioj::try_parse_enum<Field>(name, names);
+        return ioj::try_parse_enum<Field>(name, field_names);
     }
+
+    static constexpr std::array<std::string_view, 2> field_names{"strength", "size-degrees"};
 };
 
 template <>
@@ -624,9 +591,10 @@ struct TypeReader<starfield::NebularKnotSettingsOverrides> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        std::array<std::string_view, 2> constexpr names{"strength", "size-degrees"};
-        return ioj::try_parse_enum<Field>(name, names);
+        return ioj::try_parse_enum<Field>(name, field_names);
     }
+
+    static constexpr std::array<std::string_view, 2> field_names{"strength", "size-degrees"};
 };
 
 template <>
@@ -659,66 +627,19 @@ struct TypeReader<starfield::Settings> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        switch (name.size()) {
-            case 4: {
-                if (name == "star") {
-                    return Field::star;
-                }
-                return std::nullopt;
-            }
-            case 7: {
-                if (name == "twinkle") {
-                    return Field::twinkle;
-                }
-                return std::nullopt;
-            }
-            case 9: {
-                if (name == "dust-lane") {
-                    return Field::dust_lane;
-                }
-                return std::nullopt;
-            }
-            case 10: {
-                if (name == "generation") {
-                    return Field::generation;
-                }
-                return std::nullopt;
-            }
-            case 11: {
-                if (name == "bright-star") {
-                    return Field::bright_star;
-                }
-                return std::nullopt;
-            }
-            case 12: {
-                if (name == "nebular-knot") {
-                    return Field::nebular_knot;
-                }
-                return std::nullopt;
-            }
-            case 13: {
-                if (name == "galactic-band") {
-                    return Field::galactic_band;
-                }
-                if (name == "galactic-haze") {
-                    return Field::galactic_haze;
-                }
-                if (name == "galactic-core") {
-                    return Field::galactic_core;
-                }
-                return std::nullopt;
-            }
-            case 15: {
-                if (name == "stellar-cluster") {
-                    return Field::stellar_cluster;
-                }
-                return std::nullopt;
-            }
-            default: {
-                return std::nullopt;
-            }
-        }
+        return ioj::try_parse_enum<Field>(name, field_names);
     }
+
+    static constexpr std::array<std::string_view, 10> field_names{"generation",
+                                                                  "star",
+                                                                  "galactic-band",
+                                                                  "stellar-cluster",
+                                                                  "dust-lane",
+                                                                  "bright-star",
+                                                                  "twinkle",
+                                                                  "galactic-haze",
+                                                                  "galactic-core",
+                                                                  "nebular-knot"};
 };
 
 template <>
@@ -751,66 +672,19 @@ struct TypeReader<starfield::SettingsOverrides> {
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
         -> std::optional<Field> {
-        switch (name.size()) {
-            case 4: {
-                if (name == "star") {
-                    return Field::star;
-                }
-                return std::nullopt;
-            }
-            case 7: {
-                if (name == "twinkle") {
-                    return Field::twinkle;
-                }
-                return std::nullopt;
-            }
-            case 9: {
-                if (name == "dust-lane") {
-                    return Field::dust_lane;
-                }
-                return std::nullopt;
-            }
-            case 10: {
-                if (name == "generation") {
-                    return Field::generation;
-                }
-                return std::nullopt;
-            }
-            case 11: {
-                if (name == "bright-star") {
-                    return Field::bright_star;
-                }
-                return std::nullopt;
-            }
-            case 12: {
-                if (name == "nebular-knot") {
-                    return Field::nebular_knot;
-                }
-                return std::nullopt;
-            }
-            case 13: {
-                if (name == "galactic-band") {
-                    return Field::galactic_band;
-                }
-                if (name == "galactic-haze") {
-                    return Field::galactic_haze;
-                }
-                if (name == "galactic-core") {
-                    return Field::galactic_core;
-                }
-                return std::nullopt;
-            }
-            case 15: {
-                if (name == "stellar-cluster") {
-                    return Field::stellar_cluster;
-                }
-                return std::nullopt;
-            }
-            default: {
-                return std::nullopt;
-            }
-        }
+        return ioj::try_parse_enum<Field>(name, field_names);
     }
+
+    static constexpr std::array<std::string_view, 10> field_names{"generation",
+                                                                  "star",
+                                                                  "galactic-band",
+                                                                  "stellar-cluster",
+                                                                  "dust-lane",
+                                                                  "bright-star",
+                                                                  "twinkle",
+                                                                  "galactic-haze",
+                                                                  "galactic-core",
+                                                                  "nebular-knot"};
 };
 
 inline auto TypeReader<starfield::GenerationSettings>::read(Reader const& reader,

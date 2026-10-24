@@ -258,8 +258,8 @@ TEST(GeneratedS7Reader, OverridesEngagedOptionalRecordsWithoutLosingPresence) {
 TEST(GeneratedS7Reader, UsesCompactMasksAndSupportsMoreThan64Fields) {
     enum class Small : std::uint8_t { Required, Optional, Count };
     static_assert(std::same_as<RecordMask<Small>, ioj::FieldMask<Small>>);
-    std::array<std::string_view, 2> constexpr names{"required", ""};
-    auto constexpr required{required_fields<Small>(names)};
+    std::array<std::string_view, 2> constexpr names{"required", "optional"};
+    auto constexpr required{required_fields<Small>({Small::Required})};
     RecordMask<Small> seen;
     AstDiagnostics errors;
     require_fields<Small>(seen, required, names, "record", errors);
@@ -275,7 +275,7 @@ TEST(GeneratedS7Reader, UsesCompactMasksAndSupportsMoreThan64Fields) {
         result.back() = "last";
         return result;
     }()};
-    auto constexpr large_required{required_fields<Large>(large_names)};
+    auto constexpr large_required{required_fields<Large>({Large::Last})};
     RecordMask<Large> large_seen;
     require_fields<Large>(large_seen, large_required, large_names, "record", errors);
     ASSERT_EQ(errors.size(), 1u);
