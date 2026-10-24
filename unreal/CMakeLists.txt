@@ -93,6 +93,8 @@ set(IOJ_UNIT_AUTOMATION_FILTERS
   Sandbox.geometry
   Sandbox.levels
   Sandbox.UnitTests
+  Sandbox.EditorTests
+  SandboxEditor.UnitTests
   SandboxShaders.UnitTests
   SandboxCoreEngine.UnitTests
   SandboxISMC.UnitTests

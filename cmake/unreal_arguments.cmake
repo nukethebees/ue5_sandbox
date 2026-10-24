@@ -8,8 +8,9 @@ function(sandbox_make_automation_filter_expression output_variable)
 endfunction()
 
 function(sandbox_make_automation_exec_commands output_variable filter_expression)
+  # Keep Unreal's startup discovery delay so editor session discovery cannot reset an active run.
   set(${output_variable}
-    "-ExecCmds=Automation Now; RunTests ${filter_expression}; Quit"
+    "-ExecCmds=Automation RunTests ${filter_expression}; Quit"
     PARENT_SCOPE)
 endfunction()
 

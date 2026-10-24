@@ -10,6 +10,7 @@
 #include <CQTest.h>
 #include <ObjectTools.h>
 #include <UObject/Package.h>
+#include <UObject/StrongObjectPtr.h>
 #include <WidgetBlueprint.h>
 
 namespace {
@@ -43,8 +44,10 @@ bool delete_generated_widget(UWidgetBlueprint* const widget_blueprint) {
     return ObjectTools::DeleteAssets(assets_to_delete, false) == assets_to_delete.Num();
 }
 
-UWidgetBlueprintGenerationDataAsset* create_generator() {
-    return NewObject<UWidgetBlueprintGenerationDataAsset>(GetTransientPackage());
+TStrongObjectPtr<UWidgetBlueprintGenerationDataAsset> create_generator() {
+    // Keep the fixture alive across blueprint compilation and garbage collection.
+    return TStrongObjectPtr<UWidgetBlueprintGenerationDataAsset>{
+        NewObject<UWidgetBlueprintGenerationDataAsset>(GetTransientPackage())};
 }
 }
 
@@ -52,7 +55,7 @@ TEST_CLASS(WidgetBlueprintGenerator, "SandboxEditor.UnitTests")
 {
     TEST_METHOD(DefaultRoot)
     {
-        auto* const generator{create_generator()};
+        auto const generator{create_generator()};
         auto& entry{add_test_entry(*generator,
                                    *UWidgetBlueprintGeneratorDefaultRootTestWidget::StaticClass(),
                                    TEXT("WBP_GeneratorDefaultRootTest"))};
@@ -92,7 +95,7 @@ TEST_CLASS(WidgetBlueprintGenerator, "SandboxEditor.UnitTests")
 
     TEST_METHOD(PanelRoot)
     {
-        auto* const generator{create_generator()};
+        auto const generator{create_generator()};
         auto& entry{add_test_entry(*generator,
                                    *UWidgetBlueprintGeneratorPanelRootTestWidget::StaticClass(),
                                    TEXT("WBP_GeneratorPanelRootTest"))};
@@ -150,7 +153,7 @@ TEST_CLASS(WidgetBlueprintGenerator, "SandboxEditor.UnitTests")
     TEST_METHOD(NonPanelRootFails)
     {
         Assert.ExpectError(TEXT("GeneratorRoot properties must derive from UPanelWidget."));
-        auto* const generator{create_generator()};
+        auto const generator{create_generator()};
         auto& entry{add_test_entry(*generator,
                                    *UWidgetBlueprintGeneratorNonPanelRootTestWidget::StaticClass(),
                                    TEXT("WBP_GeneratorNonPanelRootTest"))};
@@ -164,7 +167,7 @@ TEST_CLASS(WidgetBlueprintGenerator, "SandboxEditor.UnitTests")
     TEST_METHOD(MultipleRootsFail)
     {
         Assert.ExpectError(TEXT("are both marked GeneratorRoot."));
-        auto* const generator{create_generator()};
+        auto const generator{create_generator()};
         auto& entry{add_test_entry(*generator,
                                    *UWidgetBlueprintGeneratorMultipleRootTestWidget::StaticClass(),
                                    TEXT("WBP_GeneratorMultipleRootTest"))};
@@ -179,7 +182,7 @@ TEST_CLASS(WidgetBlueprintGenerator, "SandboxEditor.UnitTests")
     TEST_METHOD(ExistingAssetIsNotOverwritten)
     {
         Assert.ExpectError(TEXT("asset already exists"));
-        auto* const generator{create_generator()};
+        auto const generator{create_generator()};
         auto& entry{add_test_entry(*generator,
                                    *UWidgetBlueprintGeneratorDefaultRootTestWidget::StaticClass(),
                                    TEXT("WBP_GeneratorExistingAssetTest"))};

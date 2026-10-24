@@ -5,6 +5,10 @@ sandbox_make_automation_filter_expression(automation_expression
 sandbox_assert_equal("automation filters preserve order"
   "${automation_expression}"
   "StartsWith:Sandbox.UnitTests+StartsWith:Sandbox.LevelTests.PlayerInputSmoke")
+sandbox_make_automation_exec_commands(automation_commands "${automation_expression}")
+sandbox_assert_equal("automation preserves the startup discovery delay"
+  "${automation_commands}"
+  "-ExecCmds=Automation RunTests ${automation_expression}; Quit")
 sandbox_make_space_game_test_arguments(empty_time_scale_arguments "")
 sandbox_assert_list_equal("empty time scale adds no arguments"
   "${empty_time_scale_arguments}" "")
