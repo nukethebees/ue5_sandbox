@@ -9,6 +9,8 @@
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
 #include <SpaceGamePresentation/entities/TestTeamConversion.h>
 
+#include <SandboxCoreEngine/VectorConversion.h>
+
 #include <Camera/CameraActor.h>
 #include <Engine/World.h>
 #include <EngineUtils.h>
@@ -68,7 +70,7 @@ auto spawn_player(UWorld& world,
     auto const team{to_unreal(entity.team)};
     auto const transform{
         FTransform{FRotator{entity.rotation.pitch, entity.rotation.yaw, entity.rotation.roll},
-                   FVector{entity.position.x(), entity.position.y(), entity.position.z()}}};
+                   ioj::to_unreal(entity.position)}};
     auto* const player{
         world.SpawnActorDeferred<ATestSpaceShip>(config.classes.player_ship_class, transform)};
     if (!IsValid(player)) {
@@ -99,13 +101,10 @@ auto initial_camera_transform(levels::LevelDefinition const& definition) -> FTra
     target_positions.Reserve(static_cast<int32>(camera.target_entity_ids.size()));
     for (auto const& target_id : camera.target_entity_ids) {
         auto const position{definition.entity(target_id).position};
-        target_positions.Add(FVector{position.x(), position.y(), position.z()});
+        target_positions.Add(ioj::to_unreal(position));
     }
-    auto const transform{make_observer_camera_transform(target_positions,
-                                                        FVector{camera.offset_direction.x(),
-                                                                camera.offset_direction.y(),
-                                                                camera.offset_direction.z()},
-                                                        camera.distance)};
+    auto const transform{make_observer_camera_transform(
+        target_positions, ioj::to_unreal(camera.offset_direction), camera.distance)};
     check(transform.IsSet());
     return transform->transform;
 }

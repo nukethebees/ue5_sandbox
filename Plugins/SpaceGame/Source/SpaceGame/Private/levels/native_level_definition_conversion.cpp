@@ -67,12 +67,10 @@ auto to_native(FLevelDraft const& definition) -> std::expected<LevelDefinition, 
         auto const& grid{definition.collision_grid.GetValue()};
         LevelCollisionGridDefinition native_grid;
         if (grid.level_size.IsSet()) {
-            auto const size{grid.level_size.GetValue()};
-            native_grid.level_size = Vector3d{size.X, size.Y, size.Z};
+            native_grid.level_size = ioj::to_native(FVector{grid.level_size.GetValue()});
         }
         if (grid.cell_size.IsSet()) {
-            auto const size{grid.cell_size.GetValue()};
-            native_grid.cell_size = Vector3d{size.X, size.Y, size.Z};
+            native_grid.cell_size = ioj::to_native(FVector{grid.cell_size.GetValue()});
         }
         result.collision_grid = MoveTemp(native_grid);
     }
@@ -81,9 +79,7 @@ auto to_native(FLevelDraft const& definition) -> std::expected<LevelDefinition, 
         auto const& camera{definition.camera.GetValue()};
         result.camera = {
             .target_entity_ids = to_ids<EntityId, FLevelEntityId>(camera.target_entity_ids),
-            .offset_direction = {camera.offset_direction.X,
-                                 camera.offset_direction.Y,
-                                 camera.offset_direction.Z},
+            .offset_direction = ioj::to_native(camera.offset_direction),
             .distance = camera.distance,
         };
     }
@@ -107,7 +103,7 @@ auto to_native(FLevelDraft const& definition) -> std::expected<LevelDefinition, 
             .id = EntityId{to_utf8(entity.id.value)},
             .archetype = archetype.value_or(EntityArchetype::PlayerFighter),
             .team = entity.team,
-            .position = {entity.position.X, entity.position.Y, entity.position.Z},
+            .position = ioj::to_native(entity.position),
             .rotation = {entity.rotation.Pitch, entity.rotation.Yaw, entity.rotation.Roll},
             .spawn_time_seconds = entity.spawn_time_seconds,
         });
@@ -160,9 +156,7 @@ auto to_unreal(LevelDefinition const& level) -> FLevelDraft {
         auto const& camera{*definition.camera()};
         builder.set_camera(FLevelCameraDefinition{
             .target_entity_ids = to_unreal_ids<FLevelEntityId>(camera.target_entity_ids),
-            .offset_direction = FVector{camera.offset_direction.x(),
-                                        camera.offset_direction.y(),
-                                        camera.offset_direction.z()},
+            .offset_direction = ioj::to_unreal(camera.offset_direction),
             .distance = camera.distance,
         });
     }
@@ -174,7 +168,7 @@ auto to_unreal(LevelDefinition const& level) -> FLevelDraft {
             .id = FLevelEntityId{to_fname(source.id.value)},
             .archetype = FEntityArchetypeId{to_fname(to_serialized_string(source.archetype))},
             .team = source.team,
-            .position = FVector{source.position.x(), source.position.y(), source.position.z()},
+            .position = ioj::to_unreal(source.position),
             .rotation = FRotator{source.rotation.pitch, source.rotation.yaw, source.rotation.roll},
             .spawn_time_seconds = source.spawn_time_seconds,
         });

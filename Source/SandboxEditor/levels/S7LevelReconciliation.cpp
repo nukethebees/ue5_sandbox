@@ -64,7 +64,7 @@ auto prepare_sync(ULevel const& level,
 
 auto transform(levels::EntitySpawnDefinition const& entity) -> FTransform {
     return FTransform{FRotator{entity.rotation.pitch, entity.rotation.yaw, entity.rotation.roll},
-                      FVector{entity.position.x(), entity.position.y(), entity.position.z()}};
+                      ioj::to_unreal(entity.position)};
 }
 auto name(levels::EntityId const& id) -> FName {
     return FName{to_fstring(id.value)};

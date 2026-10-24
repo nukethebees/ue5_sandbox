@@ -18,6 +18,32 @@
 #include <Misc/Paths.h>
 
 namespace space_save_subsystem {
+template <typename Save, typename Data>
+auto load_slot(FString const& slot, int32 const user_index, Data& data)
+    -> ioj::ESaveProfileLoadResult {
+    if (!UGameplayStatics::DoesSaveGameExist(slot, user_index)) {
+        return ioj::ESaveProfileLoadResult::not_found;
+    }
+    auto* const save{Cast<Save>(UGameplayStatics::LoadGameFromSlot(slot, user_index))};
+    if (!IsValid(save)) {
+        return ioj::ESaveProfileLoadResult::failed;
+    }
+
+    data = save->data;
+    return ioj::ESaveProfileLoadResult::succeeded;
+}
+
+template <typename Save, typename Data>
+auto save_slot(FString const& slot, int32 const user_index, Data const& data) -> bool {
+    auto* const save{Cast<Save>(UGameplayStatics::CreateSaveGameObject(Save::StaticClass()))};
+    if (!IsValid(save)) {
+        return false;
+    }
+
+    save->data = data;
+    return UGameplayStatics::SaveGameToSlot(save, slot, user_index);
+}
+
 void reset_test_profile_command(TArray<FString> const&, UWorld* const world) {
     if (!IsValid(world)) {
         UE_LOG(
@@ -308,59 +334,28 @@ auto USpaceSaveSubsystem::make_storage() -> ioj::FSaveProfileStorage {
 }
 
 auto USpaceSaveSubsystem::make_slot_storage() -> ioj::FSaveProfileStorage {
+    using namespace space_save_subsystem;
     return {
         .with_exclusive_access = [](TFunctionRef<bool()> operation) { return operation(); },
         .load_index =
             [](FSaveProfileIndexData& data) {
-                auto const slot{profile_index_slot_name()};
-                if (!UGameplayStatics::DoesSaveGameExist(slot, user_index)) {
-                    return ioj::ESaveProfileLoadResult::not_found;
-                }
-                auto* const save{Cast<USpaceSaveProfileIndexSaveGame>(
-                    UGameplayStatics::LoadGameFromSlot(slot, user_index))};
-                if (!IsValid(save)) {
-                    return ioj::ESaveProfileLoadResult::failed;
-                }
-                data = save->data;
-                return ioj::ESaveProfileLoadResult::succeeded;
+                return load_slot<USpaceSaveProfileIndexSaveGame>(
+                    profile_index_slot_name(), user_index, data);
             },
         .save_index =
             [](FSaveProfileIndexData const& data) {
-                auto* const save{
-                    Cast<USpaceSaveProfileIndexSaveGame>(UGameplayStatics::CreateSaveGameObject(
-                        USpaceSaveProfileIndexSaveGame::StaticClass()))};
-                if (!IsValid(save)) {
-                    return false;
-                }
-                save->data = data;
-                return UGameplayStatics::SaveGameToSlot(
-                    save, profile_index_slot_name(), user_index);
+                return save_slot<USpaceSaveProfileIndexSaveGame>(
+                    profile_index_slot_name(), user_index, data);
             },
         .load_results =
             [](FString const& profile_id, FSaveProfileResultsData& data) {
-                auto const slot{profile_results_slot_name(profile_id)};
-                if (!UGameplayStatics::DoesSaveGameExist(slot, user_index)) {
-                    return ioj::ESaveProfileLoadResult::not_found;
-                }
-                auto* const save{Cast<USpaceSaveProfileResultsSaveGame>(
-                    UGameplayStatics::LoadGameFromSlot(slot, user_index))};
-                if (!IsValid(save)) {
-                    return ioj::ESaveProfileLoadResult::failed;
-                }
-                data = save->data;
-                return ioj::ESaveProfileLoadResult::succeeded;
+                return load_slot<USpaceSaveProfileResultsSaveGame>(
+                    profile_results_slot_name(profile_id), user_index, data);
             },
         .save_results =
             [](FString const& profile_id, FSaveProfileResultsData const& data) {
-                auto* const save{
-                    Cast<USpaceSaveProfileResultsSaveGame>(UGameplayStatics::CreateSaveGameObject(
-                        USpaceSaveProfileResultsSaveGame::StaticClass()))};
-                if (!IsValid(save)) {
-                    return false;
-                }
-                save->data = data;
-                return UGameplayStatics::SaveGameToSlot(
-                    save, profile_results_slot_name(profile_id), user_index);
+                return save_slot<USpaceSaveProfileResultsSaveGame>(
+                    profile_results_slot_name(profile_id), user_index, data);
             },
         .load_legacy_results = load_legacy_results,
     };

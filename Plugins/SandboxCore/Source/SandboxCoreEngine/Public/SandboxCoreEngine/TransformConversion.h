@@ -3,21 +3,11 @@
 #include <ioj/transform3d.h>
 #include <ioj/vector_value_math.h>
 
+#include <SandboxCoreEngine/VectorConversion.h>
+
 #include <CoreMinimal.h>
 
 namespace ioj {
-inline auto to_native(FVector const value) -> Vector3d {
-    return {value.X, value.Y, value.Z};
-}
-inline auto to_native(FVector2D const value) -> Vector2d {
-    return {value.X, value.Y};
-}
-inline auto to_unreal(Vector3d const value) -> FVector {
-    return {value.x(), value.y(), value.z()};
-}
-inline auto to_unreal(Vector2d const value) -> FVector2D {
-    return {value.x(), value.y()};
-}
 inline auto to_native(FTransform const& value) -> ::ioj::Transform3d {
     auto const rotation{value.GetRotation()};
     return {{rotation.X, rotation.Y, rotation.Z, rotation.W},

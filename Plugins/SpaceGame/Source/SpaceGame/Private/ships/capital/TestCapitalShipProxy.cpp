@@ -9,6 +9,7 @@
 #include <SandboxCoreEngine/actor_utils.h>
 #include <SandboxCoreEngine/collision_settings.h>
 #include <SandboxCoreEngine/uobject_utils.h>
+#include <SandboxCoreEngine/VectorConversion.h>
 
 #include <Components/ArrowComponent.h>
 #include <Components/BoxComponent.h>
@@ -179,9 +180,7 @@ void ATestCapitalShipProxy::draw_fighter_spawn_preview() {
             type,
             ioj::Vector3f{position.X, position.Y, position.Z},
             ioj::Quaternion4f{orientation.X, orientation.Y, orientation.Z, orientation.W})};
-        return FBox3f{
-            FVector3f{native_bounds.min.x(), native_bounds.min.y(), native_bounds.min.z()},
-            FVector3f{native_bounds.max.x(), native_bounds.max.y(), native_bounds.max.z()}};
+        return FBox3f{ioj::to_unreal(native_bounds.min), ioj::to_unreal(native_bounds.max)};
     }};
     auto const bounds{make_world_bounds(ioj::sim::EntityType::CapitalShip,
                                         FVector3f{GetActorLocation()},
