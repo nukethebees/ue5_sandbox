@@ -87,11 +87,8 @@ void run_worldless_simulation_core_regression(tests::SimulationFixture const& co
     harness.timeline.at(lethal_damage_time,
                         [&] { harness.queue_damage(std::array{damaged_handle}, 75); });
     harness.timeline.finish_at(damage_test_end_time);
-    EXPECT_TRUE(harness.run_until_timeline_finished(1.0)) << "Damage lifecycle timeline completes";
-    EXPECT_TRUE(!samples.is_empty()) << "Damage lifecycle samples are recorded";
-    if (samples.is_empty()) {
-        return;
-    }
+    ASSERT_TRUE(harness.run_until_timeline_finished(1.0)) << "Damage lifecycle timeline completes";
+    ASSERT_FALSE(samples.is_empty()) << "Damage lifecycle samples are recorded";
     auto const& initial{samples.value_at(0)};
     auto const& nonlethal{samples.nearest_value(0.10)};
     auto const& lethal{samples.nearest_value(0.22)};
@@ -158,11 +155,8 @@ TEST(WorldlessSpaceGameSimulation, Entities_CollisionOverlapDamagesAndKills) {
                     });
     };
     harness.timeline.finish_after(collision_damage_test::duration);
-    EXPECT_TRUE(harness.run_until_timeline_finished(2.0)) << "Collision damage timeline completes";
-    EXPECT_GT(samples.num(), 2) << "Three collision ticks are recorded";
-    if (::testing::Test::HasFailure()) {
-        return;
-    }
+    ASSERT_TRUE(harness.run_until_timeline_finished(2.0)) << "Collision damage timeline completes";
+    ASSERT_GT(samples.num(), 2) << "Three collision ticks are recorded";
 
     auto const& first{samples.value_at(0)};
     auto const& second{samples.value_at(1)};

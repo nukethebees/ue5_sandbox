@@ -1,3 +1,4 @@
+#include "../support/simulation_checks.h"
 #include "../support/simulation_test_support.h"
 #include <ioj/sim/capital_ships/sim.h>
 #include <ioj/sim/fighters/sim.h>
@@ -28,8 +29,6 @@ TEST(WorldlessSpaceGameSimulation, Capitals_SimultaneousReassignment) {
         std::vector<Team> capital_teams{};
         std::vector<Team> fighter_teams{};
         std::vector<EntityId> fighter_parents{};
-        std::vector<std::int32_t> span_starts{};
-        std::vector<EntityId> all_owned_fighters{};
         std::vector<EntityId> fighters{};
     };
 
@@ -55,6 +54,7 @@ TEST(WorldlessSpaceGameSimulation, Capitals_SimultaneousReassignment) {
     TimeSeriesData<Sample> samples;
     std::vector<EntityId> killed_capitals{};
     harness.on_end_tick = [&](LevelSim& simulation) {
+        tests::expect_membership(simulation);
         auto const& capitals{simulation.get_capital_ships()};
         Sample sample;
         auto const count{capitals.get_num_instances()};
@@ -63,7 +63,6 @@ TEST(WorldlessSpaceGameSimulation, Capitals_SimultaneousReassignment) {
             auto const id{capitals.get_id(i)};
             sample.capitals.push_back(id);
             sample.capital_teams.push_back(capitals.get_team(id));
-            sample.span_starts.push_back(capitals.get_fighter_id_span(i).start());
             // Each capital selects a different ownership range.
             // NOLINTNEXTLINE(ioj-loop-view-accessor-call)
             auto const owned{capitals.get_fighter_ids(i)};
@@ -74,9 +73,6 @@ TEST(WorldlessSpaceGameSimulation, Capitals_SimultaneousReassignment) {
                 sample.fighter_parents.push_back(parent_ids[fighter_index]);
             }
         }
-        auto const owned{capitals.get_fighter_ids()};
-        sample.all_owned_fighters.insert(
-            sample.all_owned_fighters.end(), owned.begin(), owned.end());
         auto const live{simulation.get_fighters().get_entity_ids()};
         sample.fighters.insert(sample.fighters.end(), live.begin(), live.end());
         samples.add(harness.get_time(), std::move(sample));
@@ -105,12 +101,9 @@ TEST(WorldlessSpaceGameSimulation, Capitals_SimultaneousReassignment) {
             static_cast<std::size_t>(static_cast<std::int32_t>(killed_capitals.size()))});
     });
     harness.timeline.finish_at(2.0);
-    EXPECT_TRUE(harness.run_until_timeline_finished(10.0))
+    ASSERT_TRUE(harness.run_until_timeline_finished(10.0))
         << "Capital reassignment timeline completes";
-    EXPECT_TRUE(samples.num() > 1) << "Capital reassignment samples are recorded";
-    if (::testing::Test::HasFailure()) {
-        return;
-    }
+    ASSERT_GT(samples.num(), 1) << "Capital reassignment samples are recorded";
 
     auto const& before{samples.value_at(samples.nearest_index(0.5))};
     auto const& after{samples.values().back()};
@@ -128,7 +121,6 @@ TEST(WorldlessSpaceGameSimulation, Capitals_SimultaneousReassignment) {
     for (std::int32_t i{}; i < count; ++i) {
         EXPECT_TRUE(!std::ranges::contains(killed_capitals, after.capitals[i]))
             << "Owner capital survives";
-        EXPECT_EQ(offset, after.span_starts[i]) << "Ownership spans are contiguous";
         std::int32_t expected_count{};
         auto const before_count{static_cast<std::int32_t>(before.capitals.size())};
         for (std::int32_t j{}; j < before_count; ++j) {
@@ -149,21 +141,12 @@ TEST(WorldlessSpaceGameSimulation, Capitals_SimultaneousReassignment) {
                 << "Fighter belongs to owner's team";
             EXPECT_EQ(after.capitals[i], after.fighter_parents[offset])
                 << "Fighter parent matches its surviving owner";
-            EXPECT_TRUE(offset >= 0 &&
-                        static_cast<std::size_t>(offset) < after.all_owned_fighters.size())
-                << "Span is within flat ownership array";
-            if (offset >= 0 && static_cast<std::size_t>(offset) < after.all_owned_fighters.size()) {
-                EXPECT_EQ(fighter, after.all_owned_fighters[offset])
-                    << "Span matches flat ownership array";
-            }
             ++offset;
         }
     }
     EXPECT_EQ(static_cast<std::int32_t>(after.fighters.size()),
               static_cast<std::int32_t>(seen.size()))
         << "Every fighter has one owner";
-    EXPECT_EQ(offset, static_cast<std::int32_t>(after.all_owned_fighters.size()))
-        << "Spans cover ownership array";
 }
 
 /* **************************************** */

@@ -121,12 +121,9 @@ void run_worldless_laser_lifecycle(tests::SimulationFixture const& config,
     auto const end_time{scenario == LaserLifecycleScenario::Miss ? expiry_test_end_time
                                                                  : collision_test_end_time};
     harness.timeline.finish_at(end_time);
-    EXPECT_TRUE(harness.run_until_timeline_finished(end_time + 0.5))
+    ASSERT_TRUE(harness.run_until_timeline_finished(end_time + 0.5))
         << "Laser lifecycle timeline completes";
-    EXPECT_TRUE(!samples.is_empty()) << "Laser lifecycle samples are recorded";
-    if (samples.is_empty()) {
-        return;
-    }
+    ASSERT_FALSE(samples.is_empty()) << "Laser lifecycle samples are recorded";
 
     auto const expected_spawn_count{
         scenario == LaserLifecycleScenario::SimultaneousLethalHits ? 2u : 1u};

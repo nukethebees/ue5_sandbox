@@ -1,4 +1,5 @@
 #include "support/collision_agent_storage.h"
+#include "support/simulation_checks.h"
 #include <ioj/frame_memory_resource.h>
 #include <ioj/sim/collision/spatial_query_manager.h>
 
@@ -125,8 +126,7 @@ TEST(QueryScratch, ManagerUsesExplicitScratchAndReleasesQueriesWithinEachEpoch) 
             EXPECT_EQ(frame.resource.get_stats().outstanding_allocation_count, 0u);
             EXPECT_EQ(persistent.allocations.load(), persistent_allocations);
         }
-        EXPECT_EQ(frame.resource.get_stats().outstanding_allocation_count, 0u);
-        EXPECT_EQ(frame.resource.get_stats().current_claimed_bytes, 0u);
+        expect_frame_reclaimed(frame.resource.get_stats());
     }
 }
 
@@ -148,8 +148,7 @@ TEST(QueryScratch, PublishedOverlapBatchesSurviveScratchEpochs) {
             EXPECT_FALSE(
                 frame.resource.owns(overlaps.entity_entity_overlaps.first_entities().data()));
         }
-        EXPECT_EQ(frame.resource.get_stats().outstanding_allocation_count, 0u);
-        EXPECT_EQ(frame.resource.get_stats().current_claimed_bytes, 0u);
+        expect_frame_reclaimed(frame.resource.get_stats());
         auto const events{manager.get_aabb_overlap_events()};
         ASSERT_EQ(events.batches.size(), static_cast<std::size_t>(epoch + 1));
         for (int batch{}; batch <= epoch; ++batch) {

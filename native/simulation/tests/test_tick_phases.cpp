@@ -1,4 +1,5 @@
 #include "support/mission_test_support.h"
+#include "support/simulation_checks.h"
 #include <ioj/column_math.h>
 #include <ioj/sim/testing/entity_observations.h>
 #include <ioj/sim/testing/laser_spawns.h>
@@ -312,9 +313,7 @@ TEST(TickPhases, DelayedObjectiveSeesSameTickResolvedDeathWithoutDuplicateOverla
     EXPECT_EQ(changes[0].id, changes[1].id);
     EXPECT_EQ(turret_view.get_death_locations().size(), 1);
     auto const dead_id{changes[1].id};
-    EXPECT_EQ(observe_entity_row(simulation, dead_id), EntityInstanceHandle::invalid_value);
-    EXPECT_FALSE(observe_entity(simulation, dead_id));
-    EXPECT_FALSE(observe_live_entity(simulation, dead_id));
+    expect_entity_unregistered(simulation, dead_id);
     EXPECT_EQ(ledger.count_alive(), 1);
     EXPECT_EQ(capitals.get_health(capitals.get_id(0)), 900);
     EXPECT_EQ(simulation.get_mission().outcome(ioj::sim::ObjectiveId{0}), ObjectiveOutcome::Failed);
@@ -324,8 +323,7 @@ TEST(TickPhases, DelayedObjectiveSeesSameTickResolvedDeathWithoutDuplicateOverla
 
     simulation.advance(simulation.get_clock().get_tick_period());
     EXPECT_EQ(simulation.get_turrets().get_num_instances(), 0);
-    EXPECT_EQ(observe_entity_row(simulation, dead_id), EntityInstanceHandle::invalid_value);
-    EXPECT_FALSE(observe_entity(simulation, dead_id));
+    expect_entity_unregistered(simulation, dead_id);
 }
 
 TEST(TickPhases, ExistingProjectilesUsePreMovementTargetsAndBoundsAdvanceAfterward) {

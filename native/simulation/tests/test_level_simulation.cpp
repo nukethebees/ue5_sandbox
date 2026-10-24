@@ -1,4 +1,5 @@
 #include "support/mission_test_support.h"
+#include "support/simulation_checks.h"
 #include <ioj/column_math.h>
 #include <ioj/levels/authoring/definition_reader.h>
 #include <ioj/sim/collision/world_aabb_operations.h>
@@ -542,9 +543,7 @@ TEST(NativeSimulation, MixedWorldRemovalAndSubsequentSpawnPreserveHealthMappings
     EXPECT_EQ(simulation.get_fighters().get_num_instances(), fighter_count_before - 2);
     EXPECT_EQ(simulation.get_turrets().get_num_instances(), 1);
     EXPECT_TRUE(is_dead(player->get_health().health));
-    EXPECT_EQ(observe_entity_row(simulation, player->unique_entity_id),
-              EntityInstanceHandle::invalid_value);
-    EXPECT_FALSE(observe_entity(simulation, player->unique_entity_id));
+    expect_entity_unregistered(simulation, player->unique_entity_id);
 
     simulation.advance(tick_period);
     expect_health_mappings(simulation);

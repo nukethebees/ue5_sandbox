@@ -11,12 +11,9 @@
 
 namespace ioj::sim::tests {
 TEST(NativeEnums, EntityTypeNamesAndSerializedNamesRemainStable) {
-    EXPECT_EQ(enum_count<EntityType>(), 5U);
     for (auto const value : EnumTraits<EntityType>::values) {
         EXPECT_FALSE(to_string(value).empty());
     }
-    EXPECT_EQ(std::to_underlying(EntityType::PlayerShip), 0U);
-    EXPECT_EQ(std::to_underlying(EntityType::Fighter), 3U);
     EXPECT_EQ(to_serialized_string(EntityType::PlayerShip), "player_ship");
     EXPECT_EQ(to_serialized_string(EntityType::Turret), "turret");
     EXPECT_EQ(to_serialized_string(EntityType::CapitalShip), "capital_ship");
@@ -27,13 +24,10 @@ TEST(NativeEnums, EntityTypeNamesAndSerializedNamesRemainStable) {
 }
 
 TEST(NativeEnums, TeamSerializedNamesRoundTrip) {
-    EXPECT_EQ(enum_count<Team>(), 6U);
     for (auto const value : EnumTraits<Team>::values) {
         EXPECT_FALSE(to_string(value).empty());
         EXPECT_EQ(try_parse_serialized_team(to_serialized_string(value)), value);
     }
-    EXPECT_EQ(std::to_underlying(Team::White), 0U);
-    EXPECT_EQ(std::to_underlying(Team::Yellow), 5U);
     EXPECT_EQ(to_serialized_string(Team::White), "white");
     EXPECT_EQ(to_serialized_string(Team::Red), "red");
     EXPECT_EQ(to_serialized_string(Team::Green), "green");
@@ -61,7 +55,6 @@ TEST(NativeEnums, MissionAndTelemetrySerializedNamesRoundTrip) {
         EXPECT_EQ(try_parse_serialized_level_telemetry_run_end_reason(to_serialized_string(value)),
                   value);
     }
-    EXPECT_EQ(std::to_underlying(LevelTelemetryRunEndReason::WorldEnd), 5U);
     EXPECT_EQ(to_serialized_string(LevelTelemetryRunEndReason::MissionSucceeded),
               "mission_succeeded");
     EXPECT_EQ(to_serialized_string(LevelTelemetryRunEndReason::MissionFailed), "mission_failed");

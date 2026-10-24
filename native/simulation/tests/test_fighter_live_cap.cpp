@@ -1,3 +1,4 @@
+#include "support/simulation_checks.h"
 #include "support/simulation_test_support.h"
 #include <ioj/sim/direct_damage_events.h>
 #include <ioj/sim/entities/health.h>
@@ -349,8 +350,7 @@ TEST(FighterLiveCap, SameTickRemovalAndReconstruction) {
     simulation.advance(simulation.get_clock().get_tick_period());
     EXPECT_EQ(simulation.get_fighters().get_num_instances(), 0)
         << "Dead fighter is removed at the end of Resolution";
-    EXPECT_EQ(observe_entity_row(simulation, original_id), EntityInstanceHandle::invalid_value);
-    EXPECT_FALSE(observe_entity(simulation, original_id));
+    expect_entity_unregistered(simulation, original_id);
     EXPECT_TRUE(simulation.get_capital_ships().get_fighter_ids(0).empty());
     FighterOrderQueue stale_orders;
     stale_orders.add(original_id, FighterOrder{1, 0}, FighterTask::Standby, {});

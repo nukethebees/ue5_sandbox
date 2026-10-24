@@ -98,11 +98,8 @@ void run_worldless_entity_ledger_scenario(tests::SimulationFixture const& config
     };
     harness.timeline.then_after(0.1, [&] { harness.queue_kills(targets, player_id); });
     harness.timeline.finish_at(0.35);
-    EXPECT_TRUE(harness.run_until_timeline_finished(1.0)) << "Player-kill timeline completes";
-    EXPECT_TRUE(!samples.is_empty()) << "Kill samples recorded";
-    if (samples.is_empty()) {
-        return;
-    }
+    ASSERT_TRUE(harness.run_until_timeline_finished(1.0)) << "Player-kill timeline completes";
+    ASSERT_FALSE(samples.is_empty()) << "Kill samples recorded";
     auto const& before{samples.nearest_value(0.05)};
     auto const& after{samples.nearest_value(0.3)};
     auto const& final{samples.nearest_value(0.35)};

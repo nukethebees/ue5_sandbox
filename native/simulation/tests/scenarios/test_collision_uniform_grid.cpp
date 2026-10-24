@@ -244,16 +244,13 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridContainsAllEntityTypes) 
     tests::WorldlessSimulationTest harness{std::move(data)};
     harness.finish_initialisation();
     harness.timeline.finish_at(0.1);
-    EXPECT_TRUE(harness.run_until_timeline_finished(1.0)) << "Collision-grid timeline completes";
+    ASSERT_TRUE(harness.run_until_timeline_finished(1.0)) << "Collision-grid timeline completes";
 
     auto& simulation{harness.get_simulation()};
     auto const* const player{simulation.get_player_ship_simulation()};
     auto const fighter_ids{simulation.get_fighters().get_entity_ids()};
     ASSERT_NE(player, nullptr) << "Collision-grid player ship is available";
-    EXPECT_TRUE(!fighter_ids.empty()) << "Collision-grid fighter is placed";
-    if (::testing::Test::HasFailure()) {
-        return;
-    }
+    ASSERT_FALSE(fighter_ids.empty()) << "Collision-grid fighter is placed";
 
     EnumArray<EntityType, EntityId> expected_ids{};
     expected_ids[EntityType::PlayerShip] = player->unique_entity_id;
@@ -1076,6 +1073,7 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridRebuildLifecycle) {
     Vector3f const moved_location{{150.f, 0.f, 0.f}};
     Vector3f const aabb_half_extents{{10.f, 10.f, 10.f}};
     constexpr float trace_offset{25.f};
+    Vector3f const trace_delta{trace_offset, 0.f, 0.f};
 
     std::array<Vector3f, 1> const initial_locations{{initial_location}};
     TraceFixture fixture{initial_locations, aabb_half_extents};
@@ -1085,8 +1083,8 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridRebuildLifecycle) {
 
     std::array<ExpectedTrace, 1> const initial_cases{{
         {"Repeated rebuild retains entity",
-         {{initial_location.x() - trace_offset, 0.f, 0.f}},
-         {{initial_location.x() + trace_offset, 0.f, 0.f}},
+         initial_location - trace_delta,
+         initial_location + trace_delta,
          1,
          {{initial_location.x() - aabb_half_extents.x(), 0.f, 0.f}}},
     }};
@@ -1100,8 +1098,8 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridRebuildLifecycle) {
         authoritative.owners.rebuild(authoritative.grid, authoritative.aabbs);
         std::array<ExpectedTrace, 1> const owner_cases{{
             {"Rebuild uses owner location without intermediary publication",
-             {{moved_location.x() - trace_offset, 0.f, 0.f}},
-             {{moved_location.x() + trace_offset, 0.f, 0.f}},
+             moved_location - trace_delta,
+             moved_location + trace_delta,
              1,
              {{moved_location.x() - aabb_half_extents.x(), 0.f, 0.f}}},
         }};
@@ -1111,8 +1109,8 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridRebuildLifecycle) {
         authoritative.owners.rebuild(authoritative.grid, authoritative.aabbs);
         std::array<ExpectedTrace, 1> const dead_owner_cases{{
             {"Rebuild removes dead owners before subsequent queries",
-             {{moved_location.x() - trace_offset, 0.f, 0.f}},
-             {{moved_location.x() + trace_offset, 0.f, 0.f}},
+             moved_location - trace_delta,
+             moved_location + trace_delta,
              0},
         }};
         check_traces(authoritative, dead_owner_cases);
@@ -1126,12 +1124,12 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridRebuildLifecycle) {
     fixture.update_entities(moved_locations, alive);
     std::array<ExpectedTrace, 2> const moved_cases{{
         {"Moved entity is removed from old cells",
-         {{initial_location.x() - trace_offset, 0.f, 0.f}},
-         {{initial_location.x() + trace_offset, 0.f, 0.f}},
+         initial_location - trace_delta,
+         initial_location + trace_delta,
          0},
         {"Moved entity is added to new cells",
-         {{moved_location.x() - trace_offset, 0.f, 0.f}},
-         {{moved_location.x() + trace_offset, 0.f, 0.f}},
+         moved_location - trace_delta,
+         moved_location + trace_delta,
          1,
          {{moved_location.x() - aabb_half_extents.x(), 0.f, 0.f}}},
     }};
@@ -1141,8 +1139,8 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridRebuildLifecycle) {
     fixture.update_entities(moved_locations, dead);
     std::array<ExpectedTrace, 1> const dead_cases{{
         {"Dead entity is removed on rebuild",
-         {{moved_location.x() - trace_offset, 0.f, 0.f}},
-         {{moved_location.x() + trace_offset, 0.f, 0.f}},
+         moved_location - trace_delta,
+         moved_location + trace_delta,
          0},
     }};
     check_traces(fixture, dead_cases);

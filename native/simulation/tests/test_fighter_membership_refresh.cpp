@@ -1,3 +1,4 @@
+#include "support/simulation_checks.h"
 #include "support/simulation_test_support.h"
 #include <ioj/column_math.h>
 #include <ioj/sim/testing/entity_observations.h>
@@ -39,7 +40,7 @@ class FighterMembershipRefresh : public ::testing::Test {
         LevelSimTestAccess::set_fighter_parent(simulation, fighters[2], second_parent);
         LevelSimTestAccess::set_fighter_parent(simulation, fighters[3], second_parent);
         EXPECT_GT(refresh(), 0u);
-        expect_membership();
+        expect_membership(simulation);
     }
 
     void spawn(std::uint32_t const count) {
@@ -66,37 +67,9 @@ class FighterMembershipRefresh : public ::testing::Test {
         return memory.get_stats().current_root_claim_count - before;
     }
 
-    void expect_membership() {
-        auto const& capitals{simulation.get_capital_ships()};
-        auto const& fighter_view{simulation.get_fighters()};
-        auto const& entities{fighter_view.get_entities()};
-        std::vector<EntityId> flat;
-        std::uint32_t offset{};
-        auto const capital_count{capitals.get_entities().num()};
-        auto const fighter_count{entities.num()};
-        auto const parent_ids{entities.parent_ids()};
-        auto const capital_ids{capitals.get_entities().entity_ids()};
-        auto const fighter_ids{entities.entity_ids()};
-        auto const healths{fighter_view.get_healths()};
-        for (std::uint32_t capital_index{}; capital_index < capital_count; ++capital_index) {
-            std::vector<EntityId> expected;
-            for (std::uint32_t fighter_index{}; fighter_index < fighter_count; ++fighter_index) {
-                if (is_alive(healths.health(fighter_index)) &&
-                    parent_ids[fighter_index] == capital_ids[capital_index]) {
-                    expected.push_back(fighter_ids[fighter_index]);
-                }
-            }
-            // Each capital owns a different membership subrange.
-            // NOLINTNEXTLINE(ioj-loop-view-accessor-call)
-            auto const actual{simulation.get_capital_ships().get_fighter_ids(capital_index)};
-            EXPECT_TRUE(std::ranges::equal(actual, expected));
-            EXPECT_TRUE(std::ranges::equal(capitals.get_fighter_ids(capital_index), expected));
-            EXPECT_EQ(capitals.get_entities().fighter_id_spans()[capital_index],
-                      (IndexSpan{offset, static_cast<std::uint32_t>(expected.size())}));
-            offset += static_cast<std::uint32_t>(expected.size());
-            flat.insert(flat.end(), expected.begin(), expected.end());
-        }
-        EXPECT_TRUE(std::ranges::equal(simulation.get_capital_ships().get_fighter_ids(), flat));
+    void expect_membership_cached(std::uint64_t const revision) {
+        EXPECT_EQ(simulation.get_fighters().get_membership_revision(), revision);
+        EXPECT_EQ(refresh(), 0u);
     }
 
     void damage(EntityId const victim, Health const amount) {
@@ -133,7 +106,7 @@ TEST_F(FighterMembershipRefresh, RepeatedRefreshesAndUnchangedTickAllocateNothin
     simulation.start();
     simulation.advance(simulation.get_clock().get_tick_period());
     EXPECT_EQ(simulation.get_fighters().get_membership_revision(), revision);
-    expect_membership();
+    expect_membership(simulation);
     EXPECT_EQ(refresh(), 0u);
 }
 
@@ -142,7 +115,7 @@ TEST_F(FighterMembershipRefresh, SpawnCommitsInvalidateAtPreparationBoundary) {
     spawn(2);
     EXPECT_GT(simulation.get_fighters().get_membership_revision(), revision);
     EXPECT_GT(refresh(), 0u);
-    expect_membership();
+    expect_membership(simulation);
     EXPECT_EQ(simulation.get_capital_ships().get_fighter_ids(0).size(), 4u);
     EXPECT_EQ(refresh(), 0u);
 }
@@ -154,14 +127,13 @@ TEST_F(FighterMembershipRefresh, DeathInvalidatesBeforePhysicalRemoval) {
     ASSERT_NE(observe_entity_row(simulation, fighters[0]), EntityInstanceHandle::invalid_value);
     EXPECT_GT(simulation.get_fighters().get_membership_revision(), revision);
     EXPECT_GT(refresh(), 0u);
-    expect_membership();
+    expect_membership(simulation);
     EXPECT_EQ(simulation.get_capital_ships().get_fighter_ids(0).size(), 1u);
     EXPECT_EQ(refresh(), 0u);
     auto const dead_revision{simulation.get_fighters().get_membership_revision()};
     damage(fighters[0], 100);
     resolve();
-    EXPECT_EQ(simulation.get_fighters().get_membership_revision(), dead_revision);
-    EXPECT_EQ(refresh(), 0u);
+    expect_membership_cached(dead_revision);
 }
 
 TEST_F(FighterMembershipRefresh, SwapRemovalPreservesSpansAndStorageOrdering) {
@@ -175,7 +147,7 @@ TEST_F(FighterMembershipRefresh, SwapRemovalPreservesSpansAndStorageOrdering) {
     EXPECT_EQ(simulation.get_fighters().get_membership_revision(), membership_revision);
     EXPECT_GT(simulation.get_fighters().get_layout_revision(), layout_revision);
     EXPECT_GT(refresh(), 0u);
-    expect_membership();
+    expect_membership(simulation);
     EXPECT_EQ(simulation.get_fighters().get_num_instances(), 2);
     EXPECT_EQ(refresh(), 0u);
 }
@@ -183,21 +155,19 @@ TEST_F(FighterMembershipRefresh, SwapRemovalPreservesSpansAndStorageOrdering) {
 TEST_F(FighterMembershipRefresh, ParentReassignmentMovesOnlyLiveMembership) {
     LevelSimTestAccess::set_fighter_parent(simulation, fighters[0], second_parent);
     EXPECT_GT(refresh(), 0u);
-    expect_membership();
+    expect_membership(simulation);
     EXPECT_EQ(simulation.get_capital_ships().get_fighter_ids(0).size(), 1u);
     EXPECT_EQ(simulation.get_capital_ships().get_fighter_ids(1).size(), 3u);
     auto const revision{simulation.get_fighters().get_membership_revision()};
     LevelSimTestAccess::set_fighter_parent(simulation, fighters[0], second_parent);
-    EXPECT_EQ(simulation.get_fighters().get_membership_revision(), revision);
-    EXPECT_EQ(refresh(), 0u);
+    expect_membership_cached(revision);
     damage(fighters[0], 100);
     resolve();
     EXPECT_GT(refresh(), 0u);
     auto const dead_revision{simulation.get_fighters().get_membership_revision()};
     LevelSimTestAccess::set_fighter_parent(simulation, fighters[0], first_parent);
-    EXPECT_EQ(simulation.get_fighters().get_membership_revision(), dead_revision);
-    EXPECT_EQ(refresh(), 0u);
-    expect_membership();
+    expect_membership_cached(dead_revision);
+    expect_membership(simulation);
 }
 
 TEST_F(FighterMembershipRefresh, CapitalDeathReassignsToSurvivingCapitalAndCompactsSpans) {
@@ -208,7 +178,7 @@ TEST_F(FighterMembershipRefresh, CapitalDeathReassignsToSurvivingCapitalAndCompa
     }
     LevelSimTestAccess::remove_dead_ships(simulation);
     EXPECT_GT(refresh(), 0u);
-    expect_membership();
+    expect_membership(simulation);
     auto const index{observe_entity_row(simulation, second_parent)};
     EXPECT_EQ(simulation.get_capital_ships().get_fighter_ids(index).size(), 4u);
     EXPECT_EQ(refresh(), 0u);
@@ -220,7 +190,7 @@ TEST_F(FighterMembershipRefresh, SimultaneousOwnerDeathsOrphanSurvivors) {
     resolve();
     LevelSimTestAccess::remove_dead_ships(simulation);
     EXPECT_GT(refresh(), 0u);
-    expect_membership();
+    expect_membership(simulation);
     EXPECT_TRUE(simulation.get_capital_ships().get_fighter_ids().empty());
     EXPECT_EQ(simulation.get_fighters().get_num_instances(), 4);
     EXPECT_EQ(refresh(), 0u);
@@ -234,7 +204,7 @@ TEST_F(FighterMembershipRefresh, MultipleMutationsNeedOneEventualRebuild) {
     resolve();
     LevelSimTestAccess::remove_dead_ships(simulation);
     EXPECT_GT(refresh(), 0u);
-    expect_membership();
+    expect_membership(simulation);
     EXPECT_EQ(refresh(), 0u);
     EXPECT_EQ(refresh(), 0u);
 }
@@ -250,24 +220,22 @@ TEST_F(FighterMembershipRefresh, PendingReparentingChangesMembershipOnlyWhenComm
     auto const revision{simulation.get_fighters().get_membership_revision()};
     LevelSimTestAccess::queue_fighter_spawns(simulation, spawns.get_const_view());
     LevelSimTestAccess::reassign_pending_fighter_spawns(simulation, first_parent, second_parent);
-    EXPECT_EQ(simulation.get_fighters().get_membership_revision(), revision);
-    EXPECT_EQ(refresh(), 0u);
+    expect_membership_cached(revision);
 
     simulation.start();
     simulation.advance(simulation.get_clock().get_tick_period());
     EXPECT_GT(simulation.get_fighters().get_membership_revision(), revision);
     EXPECT_EQ(simulation.get_fighters().get_num_instances(), 5);
     EXPECT_EQ(simulation.get_capital_ships().get_fighter_ids(1).size(), 3u);
-    expect_membership();
+    expect_membership(simulation);
     EXPECT_EQ(refresh(), 0u);
 }
 
 TEST_F(FighterMembershipRefresh, EmptySpawnCommitDoesNotInvalidate) {
     auto const revision{simulation.get_fighters().get_membership_revision()};
     spawn(0);
-    EXPECT_EQ(simulation.get_fighters().get_membership_revision(), revision);
-    EXPECT_EQ(refresh(), 0u);
-    expect_membership();
+    expect_membership_cached(revision);
+    expect_membership(simulation);
 }
 
 TEST_F(FighterMembershipRefresh, TaskRegroupingPreservesExactListOrderWithoutMembershipChange) {
@@ -278,7 +246,7 @@ TEST_F(FighterMembershipRefresh, TaskRegroupingPreservesExactListOrderWithoutMem
     EXPECT_EQ(simulation.get_fighters().get_membership_revision(), revision);
     EXPECT_GT(simulation.get_fighters().get_layout_revision(), layout);
     EXPECT_GT(refresh(), 0u);
-    expect_membership();
+    expect_membership(simulation);
     auto const owned{simulation.get_capital_ships().get_fighter_ids(0)};
     ASSERT_EQ(owned.size(), 2u);
     EXPECT_EQ(owned[0], fighters[1]);
@@ -300,7 +268,7 @@ TEST_F(FighterMembershipRefresh, UnrelatedWritesAndLayoutWithoutPermutationDoNot
     EXPECT_EQ(simulation.get_fighters().get_membership_revision(), revision);
     EXPECT_EQ(simulation.get_fighters().get_layout_revision(), layout);
     EXPECT_EQ(refresh(), 0u);
-    expect_membership();
+    expect_membership(simulation);
 }
 
 TEST_F(FighterMembershipRefresh, CapitalRemovalWithoutOwnedFightersInvalidatesSpanLayout) {
@@ -310,7 +278,7 @@ TEST_F(FighterMembershipRefresh, CapitalRemovalWithoutOwnedFightersInvalidatesSp
     LevelSimTestAccess::remove_dead_ships(simulation);
     EXPECT_EQ(simulation.get_fighters().get_membership_revision(), revision);
     EXPECT_GT(refresh(), 0u);
-    expect_membership();
+    expect_membership(simulation);
     EXPECT_EQ(refresh(), 0u);
 }
 

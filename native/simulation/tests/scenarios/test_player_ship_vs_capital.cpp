@@ -49,12 +49,9 @@ TEST(WorldlessSpaceGameSimulation, PlayerShip_VersusCapital) {
         samples.add(harness.get_time(), std::move(sample));
     };
     harness.timeline.finish_at(5.6);
-    EXPECT_TRUE(harness.run_until_timeline_finished(6.0))
+    ASSERT_TRUE(harness.run_until_timeline_finished(6.0))
         << "Player-versus-capital timeline completes";
-    EXPECT_TRUE(!samples.is_empty()) << "Player-versus-capital samples are recorded";
-    if (samples.is_empty()) {
-        return;
-    }
+    ASSERT_FALSE(samples.is_empty()) << "Player-versus-capital samples are recorded";
 
     auto const& settled{samples.nearest_value(0.1)};
     auto const& tracked{samples.nearest_value(0.6)};

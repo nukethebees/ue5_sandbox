@@ -1,4 +1,5 @@
 #include "support/collision_agent_storage.h"
+#include "support/simulation_checks.h"
 #include "support/simulation_test_support.h"
 #include <ioj/column_math.h>
 #include <ioj/frame_memory_resource.h>
@@ -53,8 +54,7 @@ struct OverlapFixture {
         }
 
         auto const stats{frame_memory.get_stats()};
-        EXPECT_EQ(stats.outstanding_allocation_count, 0u);
-        EXPECT_EQ(stats.current_claimed_bytes, 0u);
+        expect_frame_reclaimed(stats);
     }
 
     auto spawn(Vector3f const location,
@@ -123,6 +123,12 @@ struct OverlapFixture {
     SpatialQueryManager query_manager;
     collision::EntityAABBs entity_bounds;
 };
+
+void expect_empty_collision_events(collision::AABBOverlapEventsView const& events) {
+    EXPECT_EQ(events.entity_entity_overlaps.num(), 0);
+    EXPECT_EQ(events.entity_static_overlaps.num(), 0);
+    EXPECT_TRUE(events.batches.empty());
+}
 
 void check_single_pair(collision::EntityEntityOverlaps::ConstView const overlaps,
                        EntityId const lhs,
@@ -278,12 +284,8 @@ TEST(EntityAABBOverlaps, RefreshSpatialIndexDoesNotDetectOrAppendEvents) {
         << "Refresh-only updates make entities available to queries";
 
     auto const events{fixture.query_manager.get_aabb_overlap_events()};
-    EXPECT_EQ(events.entity_entity_overlaps.num(), 0)
-        << "Refresh-only updates append no dynamic events";
-    EXPECT_EQ(events.entity_static_overlaps.num(), 0)
-        << "Refresh-only updates append no static events";
-    EXPECT_EQ(static_cast<std::int32_t>(events.batches.size()), 0)
-        << "Refresh-only updates append no event batches";
+    SCOPED_TRACE("Refresh-only updates append no event batches");
+    expect_empty_collision_events(events);
 }
 
 TEST(EntityAABBOverlaps, DetectOverlapsUsesExistingSpatialIndex) {
@@ -625,10 +627,8 @@ TEST(EntityAABBOverlaps, FrameEventResetRetainsStorageAndPassesAppend) {
     fixture.query_manager.reset_frame_collision_events();
 
     auto const reset_events{fixture.query_manager.get_aabb_overlap_events()};
-    EXPECT_EQ(reset_events.entity_entity_overlaps.num(), 0) << "Frame reset clears dynamic events";
-    EXPECT_EQ(reset_events.entity_static_overlaps.num(), 0) << "Frame reset clears static events";
-    EXPECT_EQ(static_cast<std::int32_t>(reset_events.batches.size()), 0)
-        << "Frame reset clears event batches";
+    SCOPED_TRACE("Frame reset clears event batches");
+    expect_empty_collision_events(reset_events);
     EXPECT_TRUE(reset_events.entity_entity_overlaps.first_entities().data() == entity_storage)
         << "Dynamic event storage is retained across reset";
     EXPECT_TRUE(reset_events.entity_static_overlaps.entities().data() == static_storage)
@@ -653,12 +653,8 @@ TEST(EntityAABBOverlaps, FrameEventResetRetainsStorageAndPassesAppend) {
         << "Collision passes retain separate batch metadata";
     fixture.query_manager.reset_frame_collision_events();
     auto const next_frame_events{fixture.query_manager.get_aabb_overlap_events()};
-    EXPECT_EQ(next_frame_events.entity_entity_overlaps.num(), 0)
-        << "The next frame starts without dynamic events";
-    EXPECT_EQ(next_frame_events.entity_static_overlaps.num(), 0)
-        << "The next frame starts without static events";
-    EXPECT_EQ(static_cast<std::int32_t>(next_frame_events.batches.size()), 0)
-        << "The next frame starts without event batches";
+    SCOPED_TRACE("The next frame starts without event batches");
+    expect_empty_collision_events(next_frame_events);
 }
 
 TEST(EntityAABBOverlaps, NullDeadAndRetiredCandidatesAreIgnored) {

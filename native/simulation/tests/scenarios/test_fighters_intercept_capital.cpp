@@ -63,12 +63,9 @@ TEST(WorldlessSpaceGameSimulation, Fighters_InterceptCapital) {
         samples.add(harness.get_time(), std::move(sample));
     };
     harness.timeline.finish_at(20.0);
-    EXPECT_TRUE(harness.run_until_timeline_finished(21.0))
+    ASSERT_TRUE(harness.run_until_timeline_finished(21.0))
         << "Fighter interception timeline completes";
-    EXPECT_TRUE(!samples.is_empty()) << "Fighter interception samples are recorded";
-    if (samples.is_empty()) {
-        return;
-    }
+    ASSERT_FALSE(samples.is_empty()) << "Fighter interception samples are recorded";
 
     auto const& start{samples.nearest_value(2.0 / 60.0)};
     auto const& end{samples.nearest_value(20.0)};

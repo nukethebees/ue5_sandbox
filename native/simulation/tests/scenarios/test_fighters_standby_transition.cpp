@@ -54,12 +54,9 @@ TEST(WorldlessSpaceGameSimulation, Fighters_StandbyTransition) {
     harness.timeline.then_after(8.0, [&] { harness.queue_kills(std::array{enemy}); })
         .then_after(0.1, [] {})
         .finish_after(0.0);
-    EXPECT_TRUE(harness.run_until_timeline_finished(9.0))
+    ASSERT_TRUE(harness.run_until_timeline_finished(9.0))
         << "Standby-transition timeline completes";
-    EXPECT_TRUE(!samples.is_empty()) << "Standby-transition samples are recorded";
-    if (samples.is_empty()) {
-        return;
-    }
+    ASSERT_FALSE(samples.is_empty()) << "Standby-transition samples are recorded";
 
     auto const& before{samples.nearest_value(8.0)};
     auto const& after{samples.nearest_value(8.1)};

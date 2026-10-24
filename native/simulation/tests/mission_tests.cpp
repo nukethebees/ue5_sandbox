@@ -3,6 +3,7 @@
 #include <ioj/sim/entities/entity_ledger.h>
 #include <ioj/sim/missions/compiled_mission.h>
 #include <ioj/sim/missions/mission.h>
+#include <ioj/sim/sim_clock.h>
 
 #include <gtest/gtest.h>
 
