@@ -571,7 +571,6 @@ auto ATestBatchOrchestrator::begin_play() -> bool {
         *world, effective_config->collision_grid, grid_geometry)};
     level_simulation_->set_static_collision(static_bounds);
 
-    telemetry_environment_ = make_level_telemetry_environment(*world);
     level_simulation_->finish_initialisation();
 
     if (presentation_enabled) {
@@ -944,7 +943,6 @@ auto ATestBatchOrchestrator::take_finalized_telemetry_report()
         return {};
     }
     ioj::sim::LevelTelemetryReport report{std::move(record.value())};
-    report.environment = telemetry_environment_;
     report.started_paused = launch_options_.launch_mode == ioj::ELevelLaunchMode::Paused;
     report.opens_telemetry =
         launch_options_.results_navigation == ioj::ELevelResultsNavigation::Telemetry;

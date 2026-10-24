@@ -11,6 +11,3 @@ SPACEGAME_API auto
     make_level_telemetry_run_metadata(UWorld const& world,
                                       FLevelMissionDefinition const& mission_definition)
         -> ::ioj::sim::LevelTelemetryRunMetadata;
-
-SPACEGAME_API auto make_level_telemetry_environment(UWorld const& world)
-    -> ioj::sim::LevelTelemetryEnvironment;

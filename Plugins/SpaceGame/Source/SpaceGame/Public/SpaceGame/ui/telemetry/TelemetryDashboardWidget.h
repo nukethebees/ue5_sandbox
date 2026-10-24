@@ -18,7 +18,6 @@ struct FTelemetryDashboardViewState {
     FString selected_run_id{};
     FString selected_level_filter{TEXT("All levels")};
     int32 unreadable_files{};
-    bool directory_exists{};
     FString error{};
     FText header{};
     FText summary{};

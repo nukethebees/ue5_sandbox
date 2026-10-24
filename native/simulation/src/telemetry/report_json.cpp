@@ -71,7 +71,11 @@ auto read_value(Json const& value, std::string_view const path) -> Value {
         if (!value.is_number()) {
             fail(path, "expected a number");
         }
-        auto const number{value.get<double>()};
+        auto const checked{NonNegativeFinite<double>::try_make(value.get<double>())};
+        if (!checked) {
+            fail(path, "number must be finite and nonnegative");
+        }
+        auto const number{checked->get()};
         if constexpr (std::is_integral_v<Value>) {
             // Reject precision loss before converting an exact JSON integer to double.
             if (value.is_number_unsigned() &&
@@ -91,9 +95,6 @@ auto read_value(Json const& value, std::string_view const path) -> Value {
             }
             return *parsed;
         } else {
-            if (!std::isfinite(number)) {
-                fail(path, "number must be finite");
-            }
             return number;
         }
     }
@@ -225,55 +226,6 @@ void read_series(Json const& parent,
     }
 }
 
-auto write_environment(LevelTelemetryEnvironment const& source) -> Json {
-    return {
-        {"project_name", source.project_name},
-        {"project_version", source.project_version},
-        {"engine_version", source.engine_version},
-        {"build_version", source.build_version},
-        {"build_configuration", source.build_configuration},
-        {"execution_mode", source.execution_mode},
-        {"world_type", source.world_type},
-        {"platform", source.platform},
-        {"host_architecture", source.host_architecture},
-        {"operating_system_version", source.operating_system_version},
-        {"operating_system_subversion", source.operating_system_subversion},
-        {"cpu_vendor", source.cpu_vendor},
-        {"cpu_brand", source.cpu_brand},
-        {"primary_gpu_brand", source.primary_gpu_brand},
-        {"physical_core_count", source.physical_core_count},
-        {"logical_core_count", source.logical_core_count},
-        {"total_physical_memory_bytes", source.total_physical_memory_bytes},
-    };
-}
-
-auto read_environment(Json const& source) -> LevelTelemetryEnvironment {
-    return {
-        .project_name = read_field<std::string>(source, "project_name", "environment"),
-        .project_version = read_field<std::string>(source, "project_version", "environment"),
-        .engine_version = read_field<std::string>(source, "engine_version", "environment"),
-        .build_version = read_field<std::string>(source, "build_version", "environment"),
-        .build_configuration =
-            read_field<std::string>(source, "build_configuration", "environment"),
-        .execution_mode = read_field<std::string>(source, "execution_mode", "environment"),
-        .world_type = read_field<std::string>(source, "world_type", "environment"),
-        .platform = read_field<std::string>(source, "platform", "environment"),
-        .host_architecture = read_field<std::string>(source, "host_architecture", "environment"),
-        .operating_system_version =
-            read_field<std::string>(source, "operating_system_version", "environment"),
-        .operating_system_subversion =
-            read_field<std::string>(source, "operating_system_subversion", "environment"),
-        .cpu_vendor = read_field<std::string>(source, "cpu_vendor", "environment"),
-        .cpu_brand = read_field<std::string>(source, "cpu_brand", "environment"),
-        .physical_core_count =
-            read_field<std::int32_t>(source, "physical_core_count", "environment"),
-        .logical_core_count = read_field<std::int32_t>(source, "logical_core_count", "environment"),
-        .primary_gpu_brand = read_field<std::string>(source, "primary_gpu_brand", "environment"),
-        .total_physical_memory_bytes =
-            read_field<std::uint64_t>(source, "total_physical_memory_bytes", "environment"),
-    };
-}
-
 auto write_combat(telemetry::CombatTelemetryCounters const& source) -> Json {
     return {
         {"spawned", write_counts(source.spawned)},
@@ -364,14 +316,6 @@ auto validate_report(LevelTelemetryReport const& report) -> std::expected<void, 
     if (auto const result{telemetry::validate_level_telemetry_json_record(report.run)}; !result) {
         return result;
     }
-    auto const& environment{report.environment};
-    if (environment.physical_core_count < 0 || environment.logical_core_count < 0) {
-        return std::unexpected{"environment core counts must be nonnegative"};
-    }
-    if (environment.total_physical_memory_bytes > telemetry::max_exact_json_integer) {
-        return std::unexpected{
-            "environment.total_physical_memory_bytes cannot be represented exactly in JSON"};
-    }
     auto const& completion{report.run.completion};
     if (!try_parse_serialized_level_telemetry_run_end_reason(
             to_serialized_string(completion.reason))) {
@@ -398,7 +342,6 @@ auto read_report(Json const& root) -> LevelTelemetryReport {
         read_field<std::string>(timestamps, "launched_utc", "timestamps");
     report.run.completion.completed_utc =
         read_field<std::string>(timestamps, "completed_utc", "timestamps");
-    report.environment = read_environment(required_object(root, "environment", ""));
 
     auto const& simulation{required_object(root, "simulation", "")};
     auto const frequency{
@@ -417,10 +360,6 @@ auto read_report(Json const& root) -> LevelTelemetryReport {
     report.opens_telemetry =
         read_choice(simulation, "results_navigation", "simulation", "telemetry", "none");
     read_simulation(report.presentation_enabled, "presentation_enabled");
-    if (report.presentation_enabled !=
-        read_choice(simulation, "presentation_mode", "simulation", "visual", "simulation_only")) {
-        fail("simulation.presentation_mode", "mode disagrees with presentation_enabled");
-    }
     read_simulation(report.run.metadata.stop_when_battle_resolved, "stop_when_battle_resolved");
     report.run.metadata.requested_duration_seconds =
         read_duration(simulation, "requested_duration_seconds", "simulation");
@@ -442,13 +381,9 @@ auto read_report(Json const& root) -> LevelTelemetryReport {
         sample.completed_tick = read_field<SimTick>(source, "completed_tick", path);
         read_counts(source, "alive", path, sample.alive);
         read_combat(required_object(source, "combat", path), path + ".combat", sample.combat);
-        if (source.contains("active_lasers")) {
-            sample.active_lasers = read_field<std::int32_t>(source, "active_lasers", path);
-        }
-        if (source.contains("lasers_fired")) {
-            sample.lasers_fired = read_field<std::int32_t>(source, "lasers_fired", path);
-        }
-        report.run.battle_samples.push_back(std::move(sample));
+        sample.active_lasers = read_field<std::int32_t>(source, "active_lasers", path);
+        sample.lasers_fired = read_field<std::int32_t>(source, "lasers_fired", path);
+        report.run.battle_samples.push_back(sample);
     }
     return report;
 }
@@ -484,13 +419,11 @@ auto serialize_level_telemetry_report(LevelTelemetryReport const& report)
               {"display_name", metadata.level_display_name}}},
             {"timestamps",
              {{"launched_utc", metadata.launched_utc}, {"completed_utc", result.completed_utc}}},
-            {"environment", write_environment(report.environment)},
             {"simulation",
              {{"tick_rate_hz", report.run.tick_rate_hz.get_hz()},
               {"level_source", metadata.level_source},
               {"settings_source", metadata.settings_source},
               {"launch_state", report.started_paused ? "paused" : "running"},
-              {"presentation_mode", report.presentation_enabled ? "visual" : "simulation_only"},
               {"results_navigation", report.opens_telemetry ? "telemetry" : "none"},
               {"presentation_enabled", report.presentation_enabled},
               {"stop_when_battle_resolved", metadata.stop_when_battle_resolved},
@@ -508,11 +441,7 @@ auto serialize_level_telemetry_report(LevelTelemetryReport const& report)
 auto deserialize_level_telemetry_report(std::string_view const json)
     -> std::expected<LevelTelemetryReport, std::string> {
     try {
-        auto report{read_report(Json::parse(json))};
-        if (auto const valid{validate_report(report)}; !valid) {
-            return std::unexpected{valid.error()};
-        }
-        return report;
+        return read_report(Json::parse(json));
     } catch (ReportParseError const& error) {
         return std::unexpected{error.message};
     } catch (Json::exception const& error) {

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <ioj/sim/telemetry/analysis.h>
 #include <ioj/sim/telemetry/report.h>
 #include <ioj/sim/telemetry/run_end_reason.h>
 
@@ -7,20 +8,7 @@
 
 #include <expected>
 
-enum class ETelemetryDashboardMetric : uint8 {
-    ActiveEntities,
-    PlayerShips,
-    Turrets,
-    CapitalShips,
-    CapitalShipFighters,
-    TubeSpinners,
-    ActiveLasers,
-    SpawnRate,
-    DestructionRate,
-    KillRate,
-    LaserFireRate,
-    COUNT,
-};
+using ETelemetryDashboardMetric = ioj::sim::telemetry::Metric;
 
 struct SPACEGAME_API FTelemetryMetricSeries {
     ETelemetryDashboardMetric metric{ETelemetryDashboardMetric::ActiveEntities};
@@ -96,7 +84,6 @@ class SPACEGAME_API FTelemetryRunCatalog {
     [[nodiscard]] auto get_unreadable_file_count() const noexcept -> int32 {
         return unreadable_file_count_;
     }
-    [[nodiscard]] auto directory_exists() const noexcept -> bool { return directory_exists_; }
     [[nodiscard]] auto get_level_filter() const -> FString const& { return level_filter_; }
   private:
     /* **************************************** */
@@ -116,5 +103,4 @@ class SPACEGAME_API FTelemetryRunCatalog {
     TOptional<ioj::sim::LevelTelemetryReport> baseline_record_{};
     FString selected_error_{};
     int32 unreadable_file_count_{};
-    bool directory_exists_{};
 };

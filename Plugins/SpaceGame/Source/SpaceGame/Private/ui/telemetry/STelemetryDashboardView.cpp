@@ -159,8 +159,7 @@ auto STelemetryDashboardView::build() -> TSharedRef<SWidget> {
 auto STelemetryDashboardView::build_sidebar() -> TSharedRef<SWidget> {
     auto runs{SNew(SVerticalBox)};
     if (state_.runs.IsEmpty()) {
-        auto message{!state_.directory_exists ? TEXT("Telemetry directory has not been created.")
-                                              : TEXT("No runs match the current level filter.")};
+        auto const message{TEXT("No runs match the current level filter.")};
         runs->AddSlot().AutoHeight().Padding(6.0f)[telemetry_dashboard_view::text(
             *style_, FText::FromString(message), EGameTextStyle::BodySecondary)];
     }
@@ -294,7 +293,7 @@ auto STelemetryDashboardView::build_detail() -> TSharedRef<SWidget> {
         ETelemetryDashboardMetric::LaserFireRate,
     };
     static_assert(UE_ARRAY_COUNT(workload_metrics) + UE_ARRAY_COUNT(activity_metrics) ==
-                  static_cast<int32>(ETelemetryDashboardMetric::COUNT));
+                  static_cast<int32>(ETelemetryDashboardMetric::Count));
 
     workload_section_ = telemetry_dashboard_view::metric_section(
         *style_,

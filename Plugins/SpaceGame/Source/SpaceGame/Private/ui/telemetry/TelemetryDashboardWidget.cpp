@@ -122,7 +122,6 @@ void UTelemetryDashboardWidget::rebuild_state() {
     state_.selected_run_id = catalog_.get_selected_run_id();
     state_.selected_level_filter = catalog_.get_level_filter();
     state_.unreadable_files = catalog_.get_unreadable_file_count();
-    state_.directory_exists = catalog_.directory_exists();
     state_.error = catalog_.get_selected_error();
     if (!external_error_.IsEmpty()) {
         state_.error =
@@ -140,8 +139,7 @@ void UTelemetryDashboardWidget::rebuild_state() {
     auto const completion_reason{
         to_fstring(sim::to_serialized_string(record->run.completion.reason))};
     state_.header = FText::FromString(FString::Printf(
-        TEXT("%s\nLAUNCHED // %s    END // %s\nMODE // %s    DURATION // %s\nBUILD // %s    "
-             "PLATFORM // %s\nRUN // %s"),
+        TEXT("%s\nLAUNCHED // %s    END // %s\nMODE // %s    DURATION // %s\nRUN // %s"),
         *level,
         UTF8_TO_TCHAR(record->run.metadata.launched_utc.c_str()),
         *completion_reason,
@@ -150,17 +148,12 @@ void UTelemetryDashboardWidget::rebuild_state() {
             ? *FString::Printf(TEXT("%.3fs"),
                                record->run.metadata.requested_duration_seconds->get_seconds())
             : TEXT("unlimited"),
-        *ioj::to_fstring(record->environment.build_configuration),
-        *ioj::to_fstring(record->environment.platform),
         UTF8_TO_TCHAR(record->run.metadata.run_id.c_str())));
     state_.analysis = analyze_level_telemetry_run(*record);
     auto const* const baseline{catalog_.get_baseline_record()};
     if (baseline) {
         state_.baseline_analysis = analyze_level_telemetry_run(*baseline);
         TArray<FString> warnings;
-        if (baseline->environment.build_version != record->environment.build_version) {
-            warnings.Add(TEXT("different builds"));
-        }
         if (baseline->run.metadata.level_source != record->run.metadata.level_source) {
             warnings.Add(TEXT("different level source"));
         }

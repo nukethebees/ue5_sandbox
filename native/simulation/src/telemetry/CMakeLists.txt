@@ -8,7 +8,6 @@ target_sources(native-simulation PRIVATE
   block_history.cpp
   analysis.cpp
   ../../include/ioj/sim/telemetry/report.h
-  ../../include/ioj/sim/telemetry/report_environment.h
   ../../include/ioj/sim/telemetry/report_json.h
   report.cpp
   report_json.cpp

@@ -32,8 +32,9 @@ TEST_CLASS(TelemetryDashboardAnalysis, "Sandbox.UnitTests")
         auto const analysis{analyze_level_telemetry_run({})};
         TestRunner->TestEqual(TEXT("Every battle metric has a series"),
                               analysis.metrics.Num(),
-                              static_cast<int32>(ETelemetryDashboardMetric::COUNT));
-        for (uint8 value{}; value < static_cast<uint8>(ETelemetryDashboardMetric::COUNT); ++value) {
+                              static_cast<int32>(ETelemetryDashboardMetric::Count));
+        constexpr auto metric_count{static_cast<uint8>(ETelemetryDashboardMetric::Count)};
+        for (uint8 value{}; value < metric_count; ++value) {
             auto const metric{static_cast<ETelemetryDashboardMetric>(value)};
             TestRunner->TestFalse(TEXT("Every metric has a title"),
                                   telemetry_metric_title(metric).IsEmpty());

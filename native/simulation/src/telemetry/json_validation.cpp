@@ -33,30 +33,30 @@ auto parse_json_integer(double const value, std::string_view const path)
     return static_cast<Integer>(value);
 }
 
-template <typename Integer>
-auto validate_json_integer(Integer const value, std::string_view const path, bool const nonnegative)
-    -> std::expected<void, std::string> {
-    static_assert(std::is_integral_v<Integer>);
+template <std::integral Integer>
+using JsonCount =
+    ConstrainedValue<Integer,
+                     ConstrainedValuePolicy{
+                         [](Integer const value) {
+                             return NonNegative<Integer>::valid(value) &&
+                                    static_cast<std::uint64_t>(value) <= max_exact_json_integer;
+                         },
+                         "Count must be nonnegative and exactly representable in JSON"}>;
 
-    if constexpr (std::is_signed_v<Integer>) {
-        if (nonnegative && value < 0) {
-            return std::unexpected{error_at(path, "value must be nonnegative")};
-        }
-    }
-    if constexpr (std::numeric_limits<Integer>::digits > 53) {
-        constexpr auto exact_integer_limit{static_cast<Integer>(max_exact_json_integer)};
-        if (value > exact_integer_limit) {
-            return std::unexpected{error_at(path, "integer cannot be represented exactly in JSON")};
-        }
+template <std::integral Integer>
+auto validate_json_count(Integer const value, std::string_view const path)
+    -> std::expected<void, std::string> {
+    if (!JsonCount<Integer>::valid(value)) {
+        return std::unexpected{
+            error_at(path, "count must be nonnegative and exactly representable in JSON")};
     }
     return {};
 }
 
-auto validate_json_number(double const value, std::string_view const path, bool const nonnegative)
+auto validate_json_count(double const value, std::string_view const path)
     -> std::expected<void, std::string> {
-    if (!is_valid_json_number(value, nonnegative)) {
-        return std::unexpected{error_at(
-            path, !std::isfinite(value) ? "value must be finite" : "value must be nonnegative")};
+    if (!NonNegativeFinite<double>::valid(value)) {
+        return std::unexpected{error_at(path, "value must be finite and nonnegative")};
     }
     return {};
 }
@@ -68,16 +68,9 @@ auto validate_counts(Counts const& source, std::string_view const path)
     for (auto const& row : source) {
         for (auto const value : row) {
             auto const value_path{std::format("{}[{}]", path, index++)};
-            if constexpr (std::is_integral_v<decltype(value)>) {
-                auto const valid{validate_json_integer(value, value_path, true)};
-                if (!valid) {
-                    return valid;
-                }
-            } else {
-                auto const valid{validate_json_number(value, value_path, true)};
-                if (!valid) {
-                    return valid;
-                }
+            auto const valid{validate_json_count(value, value_path)};
+            if (!valid) {
+                return valid;
             }
         }
     }
@@ -92,7 +85,7 @@ auto validate_series(Series const& source, std::string_view const path)
     for (std::uint32_t index{}; index < count; ++index) {
         auto const tick_path{std::format("{}.ticks[{}]", path, index)};
         auto const tick{source.time_at(index)};
-        auto const valid_tick{validate_json_integer(tick, tick_path, true)};
+        auto const valid_tick{validate_json_count(tick, tick_path)};
         if (!valid_tick) {
             return valid_tick;
         }
@@ -101,7 +94,7 @@ auto validate_series(Series const& source, std::string_view const path)
                 error_at(tick_path, "tick coordinates must be strictly increasing")};
         }
         auto const value_path{std::format("{}.values[{}]", path, index)};
-        auto const valid_value{validate_json_integer(source.value_at(index), value_path, true)};
+        auto const valid_value{validate_json_count(source.value_at(index), value_path)};
         if (!valid_value) {
             return valid_value;
         }
@@ -124,8 +117,8 @@ auto parse_json_uint64(double const value, std::string_view const path)
 
 auto validate_level_telemetry_json_record(LevelTelemetryRunRecord const& record)
     -> std::expected<void, std::string> {
-    auto const completed_ticks{validate_json_integer(
-        record.completion.completed_ticks, "completion.completed_ticks", true)};
+    auto const completed_ticks{
+        validate_json_count(record.completion.completed_ticks, "completion.completed_ticks")};
     if (!completed_ticks) {
         return completed_ticks;
     }
@@ -169,20 +162,20 @@ auto validate_level_telemetry_json_record(LevelTelemetryRunRecord const& record)
             return validate_counts(values, std::format("{}.{}", path, name));
         }};
 
-        for (auto const& valid : std::array{
-                 validate_json_integer(sample.completed_tick, path + ".completed_tick", true),
-                 counts(sample.alive, "alive"),
-                 counts(cbt.spawned, "combat.spawned"),
-                 counts(cbt.destroyed, "combat.destroyed"),
-                 counts(cbt.shots, "combat.shots"),
-                 counts(cbt.hits, "combat.hits"),
-                 counts(cbt.damage_dealt, "combat.damage_dealt"),
-                 counts(cbt.damage_received, "combat.damage_received"),
-                 counts(cbt.kills, "combat.kills"),
-                 counts(cbt.losses, "combat.losses"),
-                 counts(cbt.kill_matrix, "combat.kill_matrix"),
-                 validate_json_integer(sample.active_lasers, path + ".active_lasers", true),
-                 validate_json_integer(sample.lasers_fired, path + ".lasers_fired", true)}) {
+        for (auto const& valid :
+             std::array{validate_json_count(sample.completed_tick, path + ".completed_tick"),
+                        counts(sample.alive, "alive"),
+                        counts(cbt.spawned, "combat.spawned"),
+                        counts(cbt.destroyed, "combat.destroyed"),
+                        counts(cbt.shots, "combat.shots"),
+                        counts(cbt.hits, "combat.hits"),
+                        counts(cbt.damage_dealt, "combat.damage_dealt"),
+                        counts(cbt.damage_received, "combat.damage_received"),
+                        counts(cbt.kills, "combat.kills"),
+                        counts(cbt.losses, "combat.losses"),
+                        counts(cbt.kill_matrix, "combat.kill_matrix"),
+                        validate_json_count(sample.active_lasers, path + ".active_lasers"),
+                        validate_json_count(sample.lasers_fired, path + ".lasers_fired")}) {
             if (!valid) {
                 return valid;
             }

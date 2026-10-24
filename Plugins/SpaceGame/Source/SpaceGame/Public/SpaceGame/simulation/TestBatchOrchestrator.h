@@ -257,7 +257,6 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     TOptional<ioj::sim::LevelSim> level_simulation_;
     TOptional<FLevelPresentation> level_presentation_;
     TArray<FTransform> initial_turret_transforms_;
-    ioj::sim::LevelTelemetryEnvironment telemetry_environment_;
     TOptional<ioj::levels::LevelDefinition> level_definition_;
     ioj::FLevelLaunchOptions launch_options_{};
     FString level_source_{};

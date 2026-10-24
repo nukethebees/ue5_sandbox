@@ -91,7 +91,7 @@ auto telemetry_metric_title(ETelemetryDashboardMetric const metric) -> FString {
             return TEXT("Kill rate");
         case ETelemetryDashboardMetric::LaserFireRate:
             return TEXT("Laser-fire rate");
-        case ETelemetryDashboardMetric::COUNT:
+        case ETelemetryDashboardMetric::Count:
             break;
     }
     return {};
@@ -104,7 +104,7 @@ auto telemetry_metric_units(ETelemetryDashboardMetric const metric) -> FString {
         case ETelemetryDashboardMetric::KillRate:
         case ETelemetryDashboardMetric::LaserFireRate:
             return TEXT("/s");
-        case ETelemetryDashboardMetric::COUNT:
+        case ETelemetryDashboardMetric::Count:
             break;
         default:
             return TEXT("count");
@@ -123,16 +123,14 @@ auto analyze_level_telemetry_run(ioj::sim::LevelTelemetryReport const& record)
         .tick_rate_hz = record.run.tick_rate_hz,
         .battle_samples = record.run.battle_samples,
     })};
-    static_assert(static_cast<std::uint8_t>(::ioj::sim::telemetry::Metric::Count) ==
-                  static_cast<std::uint8_t>(ETelemetryDashboardMetric::COUNT));
 
     FTelemetryRunAnalysis result;
     result.metrics.Reserve(static_cast<int32>(native.metrics.size()));
     for (auto const& metric : native.metrics) {
         FTelemetryMetricSeries series{
-            .metric = static_cast<ETelemetryDashboardMetric>(metric.metric),
-            .title = telemetry_metric_title(static_cast<ETelemetryDashboardMetric>(metric.metric)),
-            .units = telemetry_metric_units(static_cast<ETelemetryDashboardMetric>(metric.metric)),
+            .metric = metric.metric,
+            .title = telemetry_metric_title(metric.metric),
+            .units = telemetry_metric_units(metric.metric),
         };
         if (metric.weighted_mean) {
             series.weighted_mean = *metric.weighted_mean;
@@ -175,8 +173,7 @@ void FTelemetryRunCatalog::refresh() {
     auto const previous_selection{selected_run_id_};
     all_.Reset();
     unreadable_file_count_ = 0;
-    directory_exists_ = IFileManager::Get().DirectoryExists(*directory_);
-    if (directory_exists_) {
+    {
         TArray<FString> files;
         IFileManager::Get().FindFiles(
             files, *FPaths::Combine(directory_, TEXT("*.json")), true, false);

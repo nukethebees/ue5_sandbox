@@ -42,9 +42,6 @@ TEST(LevelTelemetryJsonValidation, RoundTripsNativeReportAndMissionCompletion) {
     LevelTelemetryReport report;
     report.run.metadata.run_id = "run-1";
     report.run.metadata.level_display_name = "Convoy \"alpha\"\n\xc3\xa9";
-    report.environment.project_name = "Space Game";
-    report.environment.physical_core_count = 8;
-    report.environment.total_physical_memory_bytes = 32ULL << 30;
     report.presentation_enabled = true;
     report.started_paused = true;
     report.opens_telemetry = true;
@@ -65,14 +62,14 @@ TEST(LevelTelemetryJsonValidation, RoundTripsNativeReportAndMissionCompletion) {
     auto const parsed{deserialize_level_telemetry_report(*serialized)};
     ASSERT_TRUE(parsed.has_value()) << parsed.error();
     EXPECT_EQ(parsed->run.metadata.level_display_name, report.run.metadata.level_display_name);
-    EXPECT_EQ(parsed->environment.project_name, report.environment.project_name);
-    EXPECT_EQ(parsed->environment.total_physical_memory_bytes, 32ULL << 30);
     EXPECT_TRUE(parsed->presentation_enabled);
     EXPECT_TRUE(parsed->started_paused);
     EXPECT_TRUE(parsed->opens_telemetry);
     EXPECT_EQ(parsed->run.tick_rate_hz.get_hz(), 120.0);
     EXPECT_EQ(parsed->run.completion.reason, LevelTelemetryRunEndReason::MissionSucceeded);
     EXPECT_EQ(parsed->run.completion.completed_ticks, 240);
+    EXPECT_EQ(serialized->find("environment"), std::string::npos);
+    EXPECT_EQ(serialized->find("presentation_mode"), std::string::npos);
     EXPECT_EQ(serialized->find("winning_team"), std::string::npos);
     EXPECT_EQ(serialized->find("objective_id"), std::string::npos);
     EXPECT_EQ(parsed->run.tick_series.active_entities.num(), 2);
@@ -80,18 +77,30 @@ TEST(LevelTelemetryJsonValidation, RoundTripsNativeReportAndMissionCompletion) {
     ASSERT_EQ(parsed->run.battle_samples.size(), 1);
     EXPECT_EQ(parsed->run.battle_samples[0].combat.shots, sample.combat.shots);
     EXPECT_EQ(parsed->run.battle_samples[0].combat.damage_dealt, sample.combat.damage_dealt);
+
+    auto const reject_number{[&](std::string const& field, std::string const& replacement) {
+        SCOPED_TRACE(field + " = " + replacement);
+        auto invalid{*serialized};
+        auto const offset{invalid.find(field)};
+        ASSERT_NE(offset, std::string::npos);
+        invalid.replace(offset, field.size(), replacement);
+        EXPECT_FALSE(deserialize_level_telemetry_report(invalid));
+    }};
+    reject_number("\"active_lasers\": 0", "\"active_lasers\": -1");
+    reject_number("\"completed_ticks\": 240", "\"completed_ticks\": 1.5");
+    reject_number("\"completed_ticks\": 240", "\"completed_ticks\": 9007199254740993");
 }
 
 TEST(LevelTelemetryJsonValidation, NativeCodecRejectsInvalidInputAndReturnsErrors) {
     EXPECT_FALSE(deserialize_level_telemetry_report("{").has_value());
     EXPECT_FALSE(deserialize_level_telemetry_report("[]").has_value());
-    EXPECT_FALSE(deserialize_level_telemetry_report(R"({"schema_version":8})").has_value());
+    EXPECT_FALSE(deserialize_level_telemetry_report(R"({"schema_version":10})").has_value());
     LevelTelemetryReport report;
     auto const empty{serialize_level_telemetry_report(report)};
     ASSERT_TRUE(empty.has_value());
     EXPECT_TRUE(deserialize_level_telemetry_report(*empty).has_value());
 
-    for (auto const field : {"launch_state", "results_navigation", "presentation_mode"}) {
+    for (auto const field : {"launch_state", "results_navigation"}) {
         SCOPED_TRACE(field);
         auto invalid{*empty};
         auto const key{'"' + std::string{field} + "\": \""};
@@ -101,9 +110,6 @@ TEST(LevelTelemetryJsonValidation, NativeCodecRejectsInvalidInputAndReturnsError
         EXPECT_FALSE(deserialize_level_telemetry_report(invalid));
     }
 
-    report.environment.physical_core_count = -1;
-    EXPECT_FALSE(serialize_level_telemetry_report(report).has_value());
-    report.environment.physical_core_count = 0;
     report.run.completion.completed_ticks = 9007199254740993ULL;
     EXPECT_FALSE(serialize_level_telemetry_report(report).has_value());
     report.run.completion.completed_ticks = 0;
