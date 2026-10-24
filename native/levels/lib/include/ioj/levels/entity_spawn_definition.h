@@ -11,6 +11,11 @@
 
 namespace ioj::levels {
 struct EntitySpawnOverrides {
+    auto empty() const noexcept -> bool {
+        return !health && !laser_damage && !initial_spawn_delay && !spawn_cooldown &&
+               target_entity_id.empty();
+    }
+
     std::optional<std::int32_t> health{};
     // Apply damage only to static turrets; the remaining fields require a capital ship.
     std::optional<std::int32_t> laser_damage{};
@@ -18,11 +23,6 @@ struct EntitySpawnOverrides {
     std::optional<float> spawn_cooldown{};
     // Name an enemy capital that spawns at or before this ship; empty selects automatically.
     EntityId target_entity_id{};
-
-    auto empty() const noexcept -> bool {
-        return !health && !laser_damage && !initial_spawn_delay && !spawn_cooldown &&
-               target_entity_id.empty();
-    }
 };
 
 struct EntitySpawnDefinition {

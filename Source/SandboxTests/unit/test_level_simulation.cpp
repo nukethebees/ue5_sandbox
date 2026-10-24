@@ -6,7 +6,7 @@
 #include <ioj/sim/levels/level_compilation.h>
 #include <ioj/sim/levels/level_event_manager.h>
 #include <ioj/sim/levels/level_sim.h>
-#include <ioj/sim/missions/mission_compilation.h>
+#include <ioj/sim/missions/compiled_mission.h>
 #include <ioj/sim/telemetry/report_json.h>
 #include <ioj/sim/testing/laser_spawns.h>
 #include <ioj/sim/testing/level_sim_test_access.h>
@@ -116,9 +116,9 @@ auto make_scheduled_battle() -> ::ioj::sim::LevelSimInitData {
         {.objectives = {
              {.id = ioj::levels::ObjectiveName{"primary"},
               .team = ioj::Team::Blue,
-              .expressions = {{ioj::levels::EntityDestroyedExpression{
+              .expressions = {{ioj::levels::EntityDestroyedExpr{
                   .entity = ioj::levels::EntityId{"enemy"}}}},
-              .roots = ioj::levels::ObjectiveRoots{std::array<ioj::levels::ExpressionIndex, 3>{
+              .roots = ioj::levels::ObjectiveRoots{std::array<ioj::levels::ExprIndex, 3>{
                   0, ioj::levels::absent_expression, ioj::levels::absent_expression}}}}});
     auto const definition{ioj::levels::authoring::to_native(builder.finish())};
     check(definition);
@@ -134,13 +134,12 @@ auto make_scheduled_battle() -> ::ioj::sim::LevelSimInitData {
 
 void add_mission(::ioj::sim::LevelSimInitData& data) {
     ioj::levels::MissionDefinition definition{
-        .objectives =
-            {{.id = ioj::levels::ObjectiveName{"primary"},
-              .team = ioj::Team::Green,
-              .expressions = {{ioj::levels::EntityDestroyedExpression{
-                  .entity = ioj::levels::EntityId{"enemy"}}}},
-              .roots = ioj::levels::ObjectiveRoots{std::array<ioj::levels::ExpressionIndex, 3>{
-                  0, ioj::levels::absent_expression, ioj::levels::absent_expression}}}},
+        .objectives = {{.id = ioj::levels::ObjectiveName{"primary"},
+                        .team = ioj::Team::Green,
+                        .expressions = {{ioj::levels::EntityDestroyedExpr{
+                            .entity = ioj::levels::EntityId{"enemy"}}}},
+                        .roots = ioj::levels::ObjectiveRoots{std::array<ioj::levels::ExprIndex, 3>{
+                            0, ioj::levels::absent_expression, ioj::levels::absent_expression}}}},
         .team_results = {
             {.team = ioj::Team::Green,
              .when = {ioj::levels::ObjectiveName{"primary"}, ioj::ObjectiveOutcome::Passed},
@@ -148,7 +147,7 @@ void add_mission(::ioj::sim::LevelSimInitData& data) {
     std::array const ids{ioj::levels::EntityId{"hero"}, ioj::levels::EntityId{"enemy"}};
     ioj::sim::SimClock clock;
     clock.initialise(data.clock_settings);
-    auto compiled{ioj::sim::compile_mission(definition, ids, clock)};
+    auto compiled{ioj::sim::CompiledMission::compile(definition, ids, clock)};
     check(compiled);
     data.mission = std::move(*compiled);
 }
@@ -778,8 +777,7 @@ auto FLevelTelemetryRunRecordTest::RunTest(FString const&) -> bool {
     simulation.finish_initialisation();
     simulation.start();
     simulation.advance(1.0);
-    simulation.set_time_scale(ioj::PositiveFinite<double>::make(4.0));
-    simulation.advance(simulation.get_clock().get_tick_period());
+    simulation.advance(4.0 * simulation.get_clock().get_tick_period());
     simulation.finalize_telemetry_run(::ioj::sim::LevelTelemetryRunEndReason::WorldEnd);
     auto record{simulation.take_finalized_telemetry_run()};
     if (!TestTrue(TEXT("Telemetry JSON fixture produces a run record"), record.has_value())) {

@@ -1,4 +1,4 @@
-#include <ioj/sim/missions/mission_compilation.h>
+#include <ioj/sim/missions/compiled_mission.h>
 #pragma once
 #include "simulation_test_support.h"
 #include <ioj/sim/missions/mission.h>
@@ -7,8 +7,8 @@ namespace ioj::sim::tests {
 inline auto mission_entity(std::uint32_t const index) -> levels::EntityId {
     return levels::EntityId{"entity-" + std::to_string(index)};
 }
-inline auto destroyed(std::uint32_t const index) -> levels::MissionExpression {
-    return {ioj::levels::EntityDestroyedExpression{.entity = mission_entity(index)}};
+inline auto destroyed(std::uint32_t const index) -> levels::MissionExpr {
+    return {ioj::levels::EntityDestroyedExpr{.entity = mission_entity(index)}};
 }
 inline void install_mission(LevelSimInitData& data, levels::ObjectiveDefinition objective) {
     objective.id = ioj::levels::ObjectiveName{"primary"};
@@ -28,7 +28,7 @@ inline void install_mission(LevelSimInitData& data, levels::ObjectiveDefinition 
     }
     SimClock clock;
     clock.initialise(data.clock_settings);
-    auto compiled{compile_mission(definition, names, clock)};
+    auto compiled{CompiledMission::compile(definition, names, clock)};
     ASSERT_TRUE(compiled.has_value());
     data.mission = std::move(*compiled);
 }

@@ -3,7 +3,7 @@
 #include <ioj/column_math.h>
 #include <ioj/rotator_types.h>
 #include <ioj/sim/levels/level_event_schedule.h>
-#include <ioj/sim/missions/mission_compilation.h>
+#include <ioj/sim/missions/compiled_mission.h>
 #include <ioj/sim/sim_clock.h>
 
 #include <algorithm>
@@ -70,6 +70,7 @@ auto compile_level(LevelDefinition const& level,
     auto& schedule{compiled.events.schedule};
     compiled.result_metadata.level_id = definition.metadata().id.value;
     compiled.result_metadata.level_title = definition.metadata().title;
+    compiled.result_metadata.par_time_seconds = definition.metadata().par_time_seconds;
     initialisation.entity_count = static_cast<std::uint32_t>(definition.entities().size());
     if (!definition.player_entity_id().empty()) {
         initialisation.player_entity_index =
@@ -81,7 +82,7 @@ auto compile_level(LevelDefinition const& level,
         for (auto const& entity : definition.entities()) {
             entities.push_back(entity.id);
         }
-        auto mission{sim::compile_mission(*definition.mission(), entities, clock)};
+        auto mission{sim::CompiledMission::compile(*definition.mission(), entities, clock)};
         if (!mission) {
             return std::unexpected{std::move(mission.error())};
         }

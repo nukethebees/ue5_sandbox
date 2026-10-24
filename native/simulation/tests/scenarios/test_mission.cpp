@@ -44,7 +44,7 @@ void run_worldless_mission_scenario(tests::SimulationFixture const& config,
     }
 
     levels::ObjectiveDefinition objective{.team = Team::Green};
-    auto add = [&](levels::MissionExpression expression) {
+    auto add = [&](levels::MissionExpr expression) {
         auto const index{static_cast<std::uint32_t>(objective.expressions.size())};
         objective.expressions.push_back(std::move(expression));
         return index;
@@ -52,14 +52,14 @@ void run_worldless_mission_scenario(tests::SimulationFixture const& config,
     std::vector<std::uint32_t> pass;
     std::vector<std::uint32_t> fail;
     if (needs_kills) {
-        pass.push_back(add({ioj::levels::EntityKillsReachedExpression{
+        pass.push_back(add({ioj::levels::EntityKillsReachedExpr{
             .entities = {tests::mission_entity(hero)},
             .kills = scenario == Scenario::AuthoredKillTarget ? 2u : 1u}}));
     } else {
         auto const seconds{scenario == Scenario::DefenceObjective             ? 10.0
                            : scenario == Scenario::OutcomeCompletionIsLatched ? 0.01
                                                                               : 0.1};
-        pass.push_back(add({ioj::levels::TimeElapsedExpression{
+        pass.push_back(add({ioj::levels::TimeElapsedExpr{
             .seconds = ioj::NonNegativeFinite<double>::make(seconds)}}));
     }
     if (required) {
@@ -68,13 +68,13 @@ void run_worldless_mission_scenario(tests::SimulationFixture const& config,
     fail.push_back(add(tests::destroyed(hero)));
     if (scenario == Scenario::KillEnemiesWithinTime ||
         scenario == Scenario::RequiredKillsTimeElapsed) {
-        fail.push_back(add({ioj::levels::TimeElapsedExpression{
-            .seconds = ioj::NonNegativeFinite<double>::make(0.1)}}));
+        fail.push_back(add(
+            {ioj::levels::TimeElapsedExpr{.seconds = ioj::NonNegativeFinite<double>::make(0.1)}}));
     }
     objective.roots[ioj::ObjectiveOutcome::Passed] =
-        add({ioj::levels::AllExpression{.children = std::move(pass)}});
+        add({ioj::levels::AllExpr{.children = std::move(pass)}});
     objective.roots[ioj::ObjectiveOutcome::Failed] =
-        add({ioj::levels::AnyExpression{.children = std::move(fail)}});
+        add({ioj::levels::AnyExpr{.children = std::move(fail)}});
     tests::install_mission(data, std::move(objective));
 
     tests::WorldlessSimulationTest harness{std::move(data)};

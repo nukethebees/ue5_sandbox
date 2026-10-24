@@ -6,11 +6,12 @@
 #include <ioj/levels/mission_types.h>
 
 namespace ioj::levels {
-struct EntityReachedPositionExpression {
-    static constexpr ExpressionType type{ExpressionType::EntityReachedPosition};
+struct EntityReachedPositionExpr {
+    auto operator==(EntityReachedPositionExpr const&) const -> bool = default;
+
+    static constexpr ExprType type{ExprType::EntityReachedPosition};
     EntityId entity{};
     FiniteVector<double, 3> position{};
     NonNegativeFinite<double> radius{};
-    auto operator==(EntityReachedPositionExpression const&) const -> bool = default;
 };
 }

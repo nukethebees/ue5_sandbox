@@ -8,8 +8,9 @@
 namespace ioj::levels {
 // Store authored objectives and team results; compile these into the runtime mission form.
 struct MissionDefinition {
+    auto operator==(MissionDefinition const&) const -> bool = default;
+
     std::vector<ObjectiveDefinition> objectives{};
     std::vector<TeamResultDefinition> team_results{};
-    auto operator==(MissionDefinition const&) const -> bool = default;
 };
 }

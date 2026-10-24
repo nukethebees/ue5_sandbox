@@ -5,9 +5,10 @@
 
 namespace ioj::levels {
 struct TeamResultDefinition {
+    auto operator==(TeamResultDefinition const&) const -> bool = default;
+
     Team team{Team::White};
     ObjectiveDependency when{};
     TeamOutcome result{TeamOutcome::Victory};
-    auto operator==(TeamResultDefinition const&) const -> bool = default;
 };
 }

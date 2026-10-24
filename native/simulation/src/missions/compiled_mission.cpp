@@ -1,15 +1,16 @@
-#include <ioj/sim/missions/mission_compilation.h>
+#include <ioj/sim/missions/compiled_mission.h>
 
 #include <ioj/levels/mission_validation.h>
+#include <ioj/sim/sim_clock.h>
 
 #include <algorithm>
 #include <limits>
 #include <unordered_map>
 
 namespace ioj::sim {
-auto compile_mission(levels::MissionDefinition const& definition,
-                     std::span<levels::EntityId const> const entities,
-                     SimClock const& clock)
+auto CompiledMission::compile(levels::MissionDefinition const& definition,
+                              std::span<levels::EntityId const> const entities,
+                              SimClock const& clock)
     -> std::expected<CompiledMission, std::vector<std::string>> {
     auto errors{levels::validate_mission(definition, entities)};
     if (!errors.empty()) {
@@ -34,7 +35,7 @@ auto compile_mission(levels::MissionDefinition const& definition,
     std::vector<std::vector<std::uint32_t>> leaf_parents;
     std::vector<std::vector<ActivationNotification>> dependents(count);
     std::vector<std::vector<std::uint32_t>> observers(count);
-    std::vector<std::vector<std::uint32_t>> mappings(count);
+    std::vector<std::vector<TeamResultIndex>> mappings(count);
     auto size = [](auto const& values) { return static_cast<std::uint32_t>(values.size()); };
 
     for (std::uint32_t row{}; row < count; ++row) {
@@ -53,8 +54,7 @@ auto compile_mission(levels::MissionDefinition const& definition,
         std::vector<ExprRef> references;
         references.reserve(source.expressions.size());
         for (auto const& expression : source.expressions) {
-            if (expression.type() == ExpressionType::All ||
-                expression.type() == ExpressionType::Any) {
+            if (expression.type() == ExprType::All || expression.type() == ExprType::Any) {
                 references.emplace_back(size(composites.results), false);
                 composites.results.push_back(ExprResult::Pending);
                 composites.types.push_back(expression.type());
@@ -73,25 +73,24 @@ auto compile_mission(levels::MissionDefinition const& definition,
             leaf_parents.emplace_back();
             ConditionType type{};
             switch (expression.type()) {
-                case ExpressionType::EntityDestroyed: {
+                case ExprType::EntityDestroyed: {
                     auto const& condition{
-                        std::get<levels::EntityDestroyedExpression>(expression.payload)};
+                        std::get<levels::EntityDestroyedExpr>(expression.payload)};
                     type = ConditionType::EntityDestroyed;
                     rules.destroyed_entities.push_back(entity_indices.at(condition.entity));
                     break;
                 }
-                case ExpressionType::EntityReachedPosition: {
+                case ExprType::EntityReachedPosition: {
                     auto const& condition{
-                        std::get<levels::EntityReachedPositionExpression>(expression.payload)};
+                        std::get<levels::EntityReachedPositionExpr>(expression.payload)};
                     type = ConditionType::EntityReachedPosition;
                     rules.reached_entities.push_back(entity_indices.at(condition.entity));
                     rules.positions.push_back(condition.position.get());
                     rules.radius_squared.push_back(condition.radius.get() * condition.radius.get());
                     break;
                 }
-                case ExpressionType::TimeElapsed: {
-                    auto const& condition{
-                        std::get<levels::TimeElapsedExpression>(expression.payload)};
+                case ExprType::TimeElapsed: {
+                    auto const& condition{std::get<levels::TimeElapsedExpr>(expression.payload)};
                     type = ConditionType::TimeElapsed;
                     auto const ticks{condition.seconds.get() * clock.get_tick_rate().get_hz()};
                     if (ticks >= static_cast<double>(std::numeric_limits<SimTick>::max())) {
@@ -102,9 +101,9 @@ auto compile_mission(levels::MissionDefinition const& definition,
                         clock.duration_to_tick_period(Duration::make(condition.seconds.get())));
                     break;
                 }
-                case ExpressionType::ObjectiveResolved: {
+                case ExprType::ObjectiveResolved: {
                     auto const& condition{
-                        std::get<levels::ObjectiveResolvedExpression>(expression.payload)};
+                        std::get<levels::ObjectiveResolvedExpr>(expression.payload)};
                     type = ConditionType::ObjectiveResolved;
                     auto const observed{objectives.at(condition.objective.objective)};
                     observers[observed.index()].push_back(leaf);
@@ -112,9 +111,9 @@ auto compile_mission(levels::MissionDefinition const& definition,
                     rules.observed_outcomes.push_back(condition.objective.outcome);
                     break;
                 }
-                case ExpressionType::EntityKillsReached: {
+                case ExprType::EntityKillsReached: {
                     auto const& condition{
-                        std::get<levels::EntityKillsReachedExpression>(expression.payload)};
+                        std::get<levels::EntityKillsReachedExpr>(expression.payload)};
                     type = ConditionType::EntityKillsReached;
                     rules.kill_sources.push_back(
                         {size(rules.kill_entities), size(condition.entities)});
@@ -127,7 +126,7 @@ auto compile_mission(levels::MissionDefinition const& definition,
                 default:
                     std::unreachable();
             }
-            auto& rule_leaves{rules.leaves[static_cast<std::size_t>(type)]};
+            auto& rule_leaves{rules.leaves[type]};
             leaves.rules.push_back(RuleId{size(rule_leaves), type});
             rule_leaves.push_back(leaf);
         }
@@ -139,8 +138,7 @@ auto compile_mission(levels::MissionDefinition const& definition,
             }
             // NOLINTNEXTLINE(ioj-loop-view-accessor-call) -- children belong to the current node.
             auto const source_children{source.expressions[index].children()};
-            std::vector<levels::ExpressionIndex> children{source_children.begin(),
-                                                          source_children.end()};
+            std::vector<levels::ExprIndex> children{source_children.begin(), source_children.end()};
             std::ranges::sort(children);
             children.erase(std::unique(children.begin(), children.end()), children.end());
             composites.children[parent.index()] = {size(result.children), size(children)};
@@ -165,7 +163,7 @@ auto compile_mission(levels::MissionDefinition const& definition,
     for (auto const& mapping : definition.team_results) {
         auto const owner{objectives.at(mapping.when.objective)};
         mappings[owner.index()].push_back(size(result.team_results));
-        result.team_results.push_back({mapping.team, owner, mapping.when.outcome, mapping.result});
+        result.team_results.push_back({owner, mapping.team, mapping.when.outcome, mapping.result});
     }
     auto flatten = [&](auto const& groups, auto& spans, auto& values) {
         auto const group_count{groups.size()};

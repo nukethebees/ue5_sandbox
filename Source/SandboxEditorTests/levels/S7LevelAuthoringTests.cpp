@@ -900,9 +900,9 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
             .objectives = {
                 {.id = ioj::levels::ObjectiveName{"primary"},
                  .team = ioj::Team::Blue,
-                 .expressions = {{ioj::levels::TimeElapsedExpression{
+                 .expressions = {{ioj::levels::TimeElapsedExpr{
                      .seconds = ioj::NonNegativeFinite<double>::make(1.0)}}},
-                 .roots = ioj::levels::ObjectiveRoots{std::array<ioj::levels::ExpressionIndex, 3>{
+                 .roots = ioj::levels::ObjectiveRoots{std::array<ioj::levels::ExprIndex, 3>{
                      0, ioj::levels::absent_expression, ioj::levels::absent_expression}}}}};
         auto const plan{
             make_plan(*fixture.world->GetCurrentLevel(), *fixture.document, *definition)};

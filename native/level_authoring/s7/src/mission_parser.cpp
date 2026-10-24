@@ -20,7 +20,7 @@ auto dependency(AstParser& parser,
                 std::string const& path) -> ObjectiveDependency {
     auto const values{parser.list(node, path)};
     if (values.size() != 3 || ast.node(values[0]).kind != s7::NodeKind::Keyword ||
-        ast.text(values[0]) != to_serialized_string(ExpressionType::ObjectiveResolved)) {
+        ast.text(values[0]) != to_serialized_string(ExprType::ObjectiveResolved)) {
         parser.error(
             DiagnosticCode::ExpectedRecord, path, "Expected (objective-resolved 'id 'outcome)");
         return {};
@@ -39,7 +39,7 @@ auto position(AstParser& parser, s7::NodeIndex const node, std::string const& pa
 }
 
 struct NamedExpressionDefinition {
-    ExpressionIndex expression;
+    ExprIndex expression;
     s7::NodeIndex value;
 };
 
@@ -65,7 +65,7 @@ class ExpressionReader {
             if (!name) {
                 continue;
             }
-            auto const index{static_cast<ExpressionIndex>(objective_.expressions.size())};
+            auto const index{static_cast<ExprIndex>(objective_.expressions.size())};
             if (!names_.emplace(name->get_ref(), index).second) {
                 parser_.error(
                     DiagnosticCode::DuplicateProperty, path, "Expression names must be unique");
@@ -77,12 +77,12 @@ class ExpressionReader {
         for (auto const definition : definitions) {
             // Keep explicit aliases as one-child conjunctions, including forward references.
             auto const child{read(definition.value, path)};
-            objective_.expressions[definition.expression] = {AllExpression{.children = {child}}};
+            objective_.expressions[definition.expression] = {AllExpr{.children = {child}}};
         }
     }
 
     auto read(s7::NodeIndex const node, std::string const& path, std::uint32_t const depth = 0)
-        -> ExpressionIndex {
+        -> ExprIndex {
         if (depth > 256) {
             parser_.error(DiagnosticCode::LimitExceeded, path, "Expression nesting exceeds 256");
             return absent_expression;
@@ -110,14 +110,14 @@ class ExpressionReader {
             }
             return found->second;
         }
-        auto const type{try_parse_serialized_expression_type(name)};
+        auto const type{try_parse_serialized_expr_type(name)};
         if (!type) {
             parser_.error(DiagnosticCode::UnknownSymbol,
                           path,
                           "Unknown mission expression: " + std::string{name});
             return absent_expression;
         }
-        MissionExpression expression;
+        MissionExpr expression;
         auto const arity = [&](std::size_t const arguments) {
             if (values.size() != arguments + 1) {
                 parser_.error(
@@ -127,26 +127,26 @@ class ExpressionReader {
             return true;
         };
         switch (*type) {
-            case ExpressionType::All:
-            case ExpressionType::Any: {
-                std::vector<ExpressionIndex> children;
+            case ExprType::All:
+            case ExprType::Any: {
+                std::vector<ExprIndex> children;
                 for (auto const child : values.subspan(1)) {
                     children.push_back(read(child, path, depth + 1));
                 }
-                if (*type == ExpressionType::All) {
-                    expression.payload = AllExpression{std::move(children)};
+                if (*type == ExprType::All) {
+                    expression.payload = AllExpr{std::move(children)};
                 } else {
-                    expression.payload = AnyExpression{std::move(children)};
+                    expression.payload = AnyExpr{std::move(children)};
                 }
                 break;
             }
-            case ExpressionType::EntityDestroyed:
+            case ExprType::EntityDestroyed:
                 if (arity(1)) {
                     expression.payload =
-                        EntityDestroyedExpression{parser_.identifier<EntityId>(values[1], path)};
+                        EntityDestroyedExpr{parser_.identifier<EntityId>(values[1], path)};
                 }
                 break;
-            case ExpressionType::EntityReachedPosition:
+            case ExprType::EntityReachedPosition:
                 if (arity(3)) {
                     auto const target{
                         FiniteVector<double, 3>::try_make(position(parser_, values[2], path))};
@@ -157,12 +157,12 @@ class ExpressionReader {
                                       path,
                                       "Position must be finite and radius finite and nonnegative");
                     } else {
-                        expression.payload = EntityReachedPositionExpression{
+                        expression.payload = EntityReachedPositionExpr{
                             parser_.identifier<EntityId>(values[1], path), *target, *radius};
                     }
                 }
                 break;
-            case ExpressionType::TimeElapsed:
+            case ExprType::TimeElapsed:
                 if (arity(1)) {
                     auto const seconds{
                         NonNegativeFinite<double>::try_make(parser_.number(values[1], path))};
@@ -171,15 +171,14 @@ class ExpressionReader {
                                       path,
                                       "Timer must be finite and nonnegative");
                     } else {
-                        expression.payload = TimeElapsedExpression{*seconds};
+                        expression.payload = TimeElapsedExpr{*seconds};
                     }
                 }
                 break;
-            case ExpressionType::ObjectiveResolved:
-                expression.payload =
-                    ObjectiveResolvedExpression{dependency(parser_, ast_, node, path)};
+            case ExprType::ObjectiveResolved:
+                expression.payload = ObjectiveResolvedExpr{dependency(parser_, ast_, node, path)};
                 break;
-            case ExpressionType::EntityKillsReached:
+            case ExprType::EntityKillsReached:
                 if (arity(2)) {
                     auto sources{parser_.ids<EntityId>(values[1], path)};
                     auto const kills{parser_.integer(values[2], path)};
@@ -189,13 +188,13 @@ class ExpressionReader {
                                       path,
                                       "Kill target must fit a nonnegative 32-bit integer");
                     } else {
-                        expression.payload = EntityKillsReachedExpression{
+                        expression.payload = EntityKillsReachedExpr{
                             std::move(sources), static_cast<std::uint32_t>(kills)};
                     }
                 }
                 break;
         }
-        auto const index{static_cast<ExpressionIndex>(objective_.expressions.size())};
+        auto const index{static_cast<ExprIndex>(objective_.expressions.size())};
         objective_.expressions.push_back(std::move(expression));
         return index;
     }
@@ -203,7 +202,7 @@ class ExpressionReader {
     AstParser& parser_;
     s7::Ast const& ast_;
     ObjectiveDefinition& objective_;
-    std::unordered_map<std::string, ExpressionIndex> names_;
+    std::unordered_map<std::string, ExprIndex> names_;
 };
 
 auto objective(AstParser& parser,

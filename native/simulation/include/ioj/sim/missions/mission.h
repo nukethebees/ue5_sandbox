@@ -77,8 +77,8 @@ class Mission {
     std::vector<RuleRun> runs_;
     std::vector<ExprRef> propagation_;
     std::vector<ObjectiveId> pending_objectives_;
-    std::vector<std::uint32_t> candidate_results_;
-    std::array<std::optional<TeamOutcome>, enum_count<Team>()> team_outcomes_{};
+    std::vector<TeamResultIndex> candidate_results_;
+    EnumArray<Team, std::optional<TeamOutcome>> team_outcomes_;
     std::vector<TeamCompletion> completions_;
     bool membership_changed_{};
     bool begun_{};

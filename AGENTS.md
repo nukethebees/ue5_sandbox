@@ -128,7 +128,9 @@ If a new issue invalidates previous validation or requires additional builds/tes
 * Prefer `auto` where the type is obvious.
 * Prefer simple C++ over template metaprogramming.
 * Declare one variable or data member per declaration and per line. Do not combine declarators.
-* Put all member-function declarations before data-member declarations; never interleave them.
+* Order type declarations as constructors, special member functions, operators, ordinary functions,
+  then data members. Keep data members last and use blank lines between these groups.
+* Declare forward declarations before type definitions and separate the groups with a blank line.
 * Keep headers concise. Do not add inline explanatory comments to routine declarations or members.
   Add a comment only for a non-obvious contract that names and types cannot express; put implementation
   explanations in the source file. Do not add comments that restate the code.
@@ -160,7 +162,7 @@ If a new issue invalidates previous validation or requires additional builds/tes
 * In `.cpp` category groups, do not put blank lines between adjacent member-function definitions. Separate categories with blank lines around their banners.
 * When returning `std::expected`, prefer `std::in_place` / `std::unexpect` when they avoid unnecessary copies or moves.
 * For UObject types in a dedicated plugin and namespace, prefer concise names.
-* Avoid anonymous-namespace constants in `.cpp` files because Unreal unity builds can merge translation units. Prefer `inline static constexpr` members or `inline constexpr` constants in a specific named namespace.
+* Avoid anonymous-namespace constants in `.cpp` files because Unreal unity builds can merge translation units. Prefer `static constexpr` members or `inline constexpr` constants in a specific named namespace.
 
 # Code Reuse
 

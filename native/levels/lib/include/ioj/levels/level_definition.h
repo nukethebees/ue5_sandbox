@@ -10,6 +10,15 @@
 namespace ioj::levels {
 // Own a validated definition. Construction verifies values and cross-component references.
 class LevelDefinition {
+    explicit LevelDefinition(LevelDefinitionComponents components)
+        : metadata_{std::move(components.metadata)}
+        , unlock_level_ids_{std::move(components.unlock_level_ids)}
+        , player_entity_id_{std::move(components.player_entity_id)}
+        , camera_{std::move(components.camera)}
+        , collision_grid_{std::move(components.collision_grid)}
+        , mission_{std::move(components.mission)}
+        , entities_{std::move(components.entities)}
+        , settings_{std::move(components.settings)} {}
   public:
     [[nodiscard]] static auto make(LevelDefinitionComponents definition)
         -> std::expected<LevelDefinition, Diagnostics>;
@@ -36,16 +45,6 @@ class LevelDefinition {
     // Require an entity ID belonging to this definition.
     [[nodiscard]] auto entity(EntityId const& id) const -> EntitySpawnDefinition const&;
   private:
-    explicit LevelDefinition(LevelDefinitionComponents components)
-        : metadata_{std::move(components.metadata)}
-        , unlock_level_ids_{std::move(components.unlock_level_ids)}
-        , player_entity_id_{std::move(components.player_entity_id)}
-        , camera_{std::move(components.camera)}
-        , collision_grid_{std::move(components.collision_grid)}
-        , mission_{std::move(components.mission)}
-        , entities_{std::move(components.entities)}
-        , settings_{std::move(components.settings)} {}
-
     LevelMetadata metadata_;
     std::vector<LevelId> unlock_level_ids_;
     EntityId player_entity_id_;

@@ -7,10 +7,11 @@
 #include <vector>
 
 namespace ioj::levels {
-struct EntityKillsReachedExpression {
-    static constexpr ExpressionType type{ExpressionType::EntityKillsReached};
+struct EntityKillsReachedExpr {
+    auto operator==(EntityKillsReachedExpr const&) const -> bool = default;
+
+    static constexpr ExprType type{ExprType::EntityKillsReached};
     std::vector<EntityId> entities{};
     std::uint32_t kills{};
-    auto operator==(EntityKillsReachedExpression const&) const -> bool = default;
 };
 }

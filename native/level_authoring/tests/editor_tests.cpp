@@ -14,7 +14,7 @@ namespace {
 auto timer_mission() -> MissionDefinition {
     ObjectiveDefinition objective{.id = ioj::levels::ObjectiveName{"primary"}, .team = Team::Blue};
     objective.expressions = {
-        {ioj::levels::TimeElapsedExpression{.seconds = ioj::NonNegativeFinite<double>::make(1.0)}}};
+        {ioj::levels::TimeElapsedExpr{.seconds = ioj::NonNegativeFinite<double>::make(1.0)}}};
     objective.roots[ioj::ObjectiveOutcome::Passed] = 0;
     return {.objectives = {objective}};
 }

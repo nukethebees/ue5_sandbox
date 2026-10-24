@@ -54,7 +54,7 @@ auto dsl_source() -> std::string {
                        name,
                        name);
     };
-    for (auto const type : EnumTraits<ExpressionType>::values) {
+    for (auto const type : EnumTraits<ExprType>::values) {
         define_expression(to_serialized_string(type));
     }
     for (auto const syntax : EnumTraits<ExpressionSyntax>::values) {

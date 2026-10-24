@@ -98,10 +98,10 @@ enum class ExprResult : ExprResultUnderlying {
     False,
 };
 
-using ExpressionTypeUnderlying = std::uint8_t;
+using ExprTypeUnderlying = std::uint8_t;
 
 // Logical bit width: 3.
-enum class ExpressionType : ExpressionTypeUnderlying {
+enum class ExprType : ExprTypeUnderlying {
     All,
     Any,
     EntityDestroyed,
@@ -111,76 +111,75 @@ enum class ExpressionType : ExpressionTypeUnderlying {
     EntityKillsReached,
 };
 
-[[nodiscard]] constexpr auto to_serialized_string(ExpressionType const value) noexcept
+[[nodiscard]] constexpr auto to_serialized_string(ExprType const value) noexcept
     -> std::string_view {
     switch (value) {
-        case ExpressionType::All: {
+        case ExprType::All: {
             return "all-of";
         }
-        case ExpressionType::Any: {
+        case ExprType::Any: {
             return "any-of";
         }
-        case ExpressionType::EntityDestroyed: {
+        case ExprType::EntityDestroyed: {
             return "entity-destroyed";
         }
-        case ExpressionType::EntityReachedPosition: {
+        case ExprType::EntityReachedPosition: {
             return "entity-reached-position";
         }
-        case ExpressionType::TimeElapsed: {
+        case ExprType::TimeElapsed: {
             return "time-elapsed";
         }
-        case ExpressionType::ObjectiveResolved: {
+        case ExprType::ObjectiveResolved: {
             return "objective-resolved";
         }
-        case ExpressionType::EntityKillsReached: {
+        case ExprType::EntityKillsReached: {
             return "entity-kills-reached";
         }
         default: {
-            return "<invalid ExpressionType>";
+            return "<invalid ExprType>";
         }
     }
 }
 
-[[nodiscard]] constexpr auto
-    try_parse_serialized_expression_type(std::string_view const value) noexcept
-    -> std::optional<ExpressionType> {
+[[nodiscard]] constexpr auto try_parse_serialized_expr_type(std::string_view const value) noexcept
+    -> std::optional<ExprType> {
     switch (value.size()) {
         case 6: {
             if (value == "all-of") {
-                return ExpressionType::All;
+                return ExprType::All;
             }
             if (value == "any-of") {
-                return ExpressionType::Any;
+                return ExprType::Any;
             }
             return std::nullopt;
         }
         case 12: {
             if (value == "time-elapsed") {
-                return ExpressionType::TimeElapsed;
+                return ExprType::TimeElapsed;
             }
             return std::nullopt;
         }
         case 16: {
             if (value == "entity-destroyed") {
-                return ExpressionType::EntityDestroyed;
+                return ExprType::EntityDestroyed;
             }
             return std::nullopt;
         }
         case 18: {
             if (value == "objective-resolved") {
-                return ExpressionType::ObjectiveResolved;
+                return ExprType::ObjectiveResolved;
             }
             return std::nullopt;
         }
         case 20: {
             if (value == "entity-kills-reached") {
-                return ExpressionType::EntityKillsReached;
+                return ExprType::EntityKillsReached;
             }
             return std::nullopt;
         }
         case 23: {
             if (value == "entity-reached-position") {
-                return ExpressionType::EntityReachedPosition;
+                return ExprType::EntityReachedPosition;
             }
             return std::nullopt;
         }
@@ -207,14 +206,14 @@ template <>
 
 namespace ioj {
 template <>
-struct EnumTraits<::ioj::ExpressionType> {
-    inline static constexpr std::array values{::ioj::ExpressionType::All,
-                                              ::ioj::ExpressionType::Any,
-                                              ::ioj::ExpressionType::EntityDestroyed,
-                                              ::ioj::ExpressionType::EntityReachedPosition,
-                                              ::ioj::ExpressionType::TimeElapsed,
-                                              ::ioj::ExpressionType::ObjectiveResolved,
-                                              ::ioj::ExpressionType::EntityKillsReached};
+struct EnumTraits<::ioj::ExprType> {
+    inline static constexpr std::array values{::ioj::ExprType::All,
+                                              ::ioj::ExprType::Any,
+                                              ::ioj::ExprType::EntityDestroyed,
+                                              ::ioj::ExprType::EntityReachedPosition,
+                                              ::ioj::ExprType::TimeElapsed,
+                                              ::ioj::ExprType::ObjectiveResolved,
+                                              ::ioj::ExprType::EntityKillsReached};
 };
 
 } // namespace ioj

@@ -236,7 +236,7 @@ TEST_CLASS(LevelDefinition, "Sandbox.UnitTests")
     {
         auto definition{ioj::example_levels::make_example_draft()};
         auto& objective{definition.mission->objectives[0]};
-        objective.expressions[0] = {ioj::levels::AllExpression{.children = {0}}};
+        objective.expressions[0] = {ioj::levels::AllExpr{.children = {0}}};
         expect_error(TEXT("Cycle is rejected"),
                      ioj::validate_level(definition),
                      Error::InvalidMissionStructure);
@@ -246,7 +246,7 @@ TEST_CLASS(LevelDefinition, "Sandbox.UnitTests")
     {
         auto definition{ioj::example_levels::make_example_draft()};
         definition.mission->objectives[0].expressions[0] = {
-            ioj::levels::EntityDestroyedExpression{ioj::levels::EntityId{"missing"}}};
+            ioj::levels::EntityDestroyedExpr{ioj::levels::EntityId{"missing"}}};
         expect_error(TEXT("Unknown entity is rejected"),
                      ioj::validate_level(definition),
                      Error::InvalidMissionStructure);

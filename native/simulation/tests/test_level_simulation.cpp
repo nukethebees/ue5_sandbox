@@ -4,7 +4,7 @@
 #include <ioj/sim/collision/world_aabb_operations.h>
 #include <ioj/sim/levels/initial_spawns.h>
 #include <ioj/sim/levels/level_compilation.h>
-#include <ioj/sim/missions/mission_compilation.h>
+#include <ioj/sim/missions/compiled_mission.h>
 #include <ioj/sim/testing/entity_observations.h>
 #include <ioj/sim/testing/laser_spawns.h>
 #include <ioj/sim/testing/level_sim_test_access.h>
@@ -93,9 +93,9 @@ void add_mission(LevelSimInitData& data) {
         data.level_events.schedule.capital_spawns.get_const_view().entity_indices()};
     levels::ObjectiveDefinition objective{.team = Team::Green};
     objective.expressions = {destroyed(entities[1]),
-                             {ioj::levels::EntityKillsReachedExpression{
+                             {ioj::levels::EntityKillsReachedExpr{
                                  .entities = {mission_entity(entities[0])}, .kills = 1}},
-                             {ioj::levels::AllExpression{.children = {0, 1}}}};
+                             {ioj::levels::AllExpr{.children = {0, 1}}}};
     objective.roots[ioj::ObjectiveOutcome::Passed] = 2;
     install_mission(data, std::move(objective));
 }
@@ -159,18 +159,18 @@ TEST(NativeSimulation, PositionConditionsUseLiveSpatialDataAndRemainTerminal) {
     auto data{make_battle()};
     levels::ObjectiveDefinition objective{.team = Team::Green};
     objective.expressions = {
-        {ioj::levels::EntityReachedPositionExpression{
+        {ioj::levels::EntityReachedPositionExpr{
             .entity = mission_entity(0),
             .position = ioj::FiniteVector<double, 3>::make(ioj::Vector3d{-1000.0, 0.0, 0.0}),
             .radius = ioj::NonNegativeFinite<double>::make(1.0)}},
-        {ioj::levels::EntityReachedPositionExpression{
+        {ioj::levels::EntityReachedPositionExpr{
             .entity = mission_entity(1),
             .position = ioj::FiniteVector<double, 3>::make(ioj::Vector3d{-1000.0, 0.0, 0.0}),
             .radius = ioj::NonNegativeFinite<double>::make(1.0)}},
-        {ioj::levels::TimeElapsedExpression{.seconds = ioj::NonNegativeFinite<double>::make(0.1)}},
-        {ioj::levels::AllExpression{.children = {0, 2}}}};
+        {ioj::levels::TimeElapsedExpr{.seconds = ioj::NonNegativeFinite<double>::make(0.1)}},
+        {ioj::levels::AllExpr{.children = {0, 2}}}};
     objective.roots = ioj::levels::ObjectiveRoots{
-        std::array<ioj::levels::ExpressionIndex, 3>{3, 1, levels::absent_expression}};
+        std::array<ioj::levels::ExprIndex, 3>{3, 1, levels::absent_expression}};
     install_mission(data, std::move(objective));
     GameMemory memory;
     LevelSim simulation{memory, std::move(data)};
@@ -236,25 +236,24 @@ TEST(NativeSimulation, LevelCompletionUsesPlayerTeamAndDoesNotCancelOptionalObje
     data.player->team = Team::Green;
     data.player->transform.location = {0.0, 2000.0, 0.0};
     levels::MissionDefinition definition{
-        .objectives =
-            {{.id = ioj::levels::ObjectiveName{"enemy"},
-              .team = Team::White,
-              .expressions = {{ioj::levels::TimeElapsedExpression{
-                  .seconds = ioj::NonNegativeFinite<double>::make(0.0)}}},
-              .roots = ioj::levels::ObjectiveRoots{std::array<ioj::levels::ExpressionIndex, 3>{
-                  0, levels::absent_expression, levels::absent_expression}}},
-             {.id = ioj::levels::ObjectiveName{"player"},
-              .team = Team::Green,
-              .expressions = {{ioj::levels::TimeElapsedExpression{
-                  .seconds = ioj::NonNegativeFinite<double>::make(0.2)}}},
-              .roots = ioj::levels::ObjectiveRoots{std::array<ioj::levels::ExpressionIndex, 3>{
-                  0, levels::absent_expression, levels::absent_expression}}},
-             {.id = ioj::levels::ObjectiveName{"optional"},
-              .team = Team::Green,
-              .expressions = {{ioj::levels::TimeElapsedExpression{
-                  .seconds = ioj::NonNegativeFinite<double>::make(10.0)}}},
-              .roots = ioj::levels::ObjectiveRoots{std::array<ioj::levels::ExpressionIndex, 3>{
-                  0, levels::absent_expression, levels::absent_expression}}}},
+        .objectives = {{.id = ioj::levels::ObjectiveName{"enemy"},
+                        .team = Team::White,
+                        .expressions = {{ioj::levels::TimeElapsedExpr{
+                            .seconds = ioj::NonNegativeFinite<double>::make(0.0)}}},
+                        .roots = ioj::levels::ObjectiveRoots{std::array<ioj::levels::ExprIndex, 3>{
+                            0, levels::absent_expression, levels::absent_expression}}},
+                       {.id = ioj::levels::ObjectiveName{"player"},
+                        .team = Team::Green,
+                        .expressions = {{ioj::levels::TimeElapsedExpr{
+                            .seconds = ioj::NonNegativeFinite<double>::make(0.2)}}},
+                        .roots = ioj::levels::ObjectiveRoots{std::array<ioj::levels::ExprIndex, 3>{
+                            0, levels::absent_expression, levels::absent_expression}}},
+                       {.id = ioj::levels::ObjectiveName{"optional"},
+                        .team = Team::Green,
+                        .expressions = {{ioj::levels::TimeElapsedExpr{
+                            .seconds = ioj::NonNegativeFinite<double>::make(10.0)}}},
+                        .roots = ioj::levels::ObjectiveRoots{std::array<ioj::levels::ExprIndex, 3>{
+                            0, levels::absent_expression, levels::absent_expression}}}},
         .team_results = {{Team::White,
                           {ioj::levels::ObjectiveName{"enemy"}, ObjectiveOutcome::Passed},
                           TeamOutcome::Victory},
@@ -263,7 +262,7 @@ TEST(NativeSimulation, LevelCompletionUsesPlayerTeamAndDoesNotCancelOptionalObje
                           TeamOutcome::Defeat}}};
     SimClock clock;
     clock.initialise(data.clock_settings);
-    auto compiled{compile_mission(definition, {}, clock)};
+    auto compiled{CompiledMission::compile(definition, {}, clock)};
     ASSERT_TRUE(compiled);
     data.mission = std::move(*compiled);
     GameMemory memory;
@@ -774,8 +773,7 @@ TEST(NativeSimulation, LevelTelemetryRunRecordTest) {
         << "Simulation initialization starts telemetry recording";
 
     simulation.advance(1.0);
-    simulation.set_time_scale(ioj::PositiveFinite<double>::make(4.0));
-    simulation.advance(simulation.get_clock().get_tick_period());
+    simulation.advance(4.0 * simulation.get_clock().get_tick_period());
     simulation.finalize_telemetry_run(LevelTelemetryRunEndReason::WorldEnd);
     EXPECT_EQ(simulation.get_state(), OrchestratorState::Running)
         << "Interrupted telemetry finalization does not pause simulation";

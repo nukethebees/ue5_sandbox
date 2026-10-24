@@ -81,7 +81,7 @@ auto Mission::outcome(ObjectiveId const id) const -> std::optional<ObjectiveOutc
 }
 auto Mission::team_outcome(Team const team) const -> std::optional<TeamOutcome> {
     assert(static_cast<std::size_t>(team) < team_outcomes_.size());
-    return team_outcomes_[static_cast<std::size_t>(team)];
+    return team_outcomes_[team];
 }
 auto Mission::result(ExprRef const expression) const -> ExprResult {
     if (!expression.is_valid()) {
@@ -133,8 +133,8 @@ void Mission::activate(ObjectiveId const id, SimTick const tick) {
     for (auto node{composites.start()}; node < composites_end; ++node) {
         if (data_.composites.remaining[node] == 0) {
             resolve(ExprRef{node, false},
-                    data_.composites.types[node] == ExpressionType::All ? ExprResult::True
-                                                                        : ExprResult::False);
+                    data_.composites.types[node] == ExprType::All ? ExprResult::True
+                                                                  : ExprResult::False);
         }
     }
 
@@ -220,7 +220,7 @@ void Mission::propagate() {
             if (data_.composites.results[parent] != ExprResult::Pending) {
                 continue;
             }
-            auto const all{data_.composites.types[parent] == ExpressionType::All};
+            auto const all{data_.composites.types[parent] == ExprType::All};
             if ((all && value == ExprResult::False) || (!all && value == ExprResult::True)) {
                 resolve(ExprRef{parent, false}, value);
             } else {
@@ -240,7 +240,7 @@ void Mission::propagate() {
 // Rule evaluation
 /* **************************************** */
 auto Mission::rule_leaf(RuleId const rule) const -> std::uint32_t {
-    return data_.rules.leaves[static_cast<std::size_t>(rule.type())][rule.index()];
+    return data_.rules.leaves[rule.type()][rule.index()];
 }
 auto Mission::pending_rule(RuleId const rule) const -> bool {
     auto const leaf{rule_leaf(rule)};
@@ -464,7 +464,7 @@ void Mission::settle(MissionInputs const& inputs) {
 
     for (auto const index : candidate_results_) {
         auto const mapping{data_.team_results[index]};
-        auto& outcome{team_outcomes_[static_cast<std::size_t>(mapping.team)]};
+        auto& outcome{team_outcomes_[mapping.team]};
         if (!outcome) {
             outcome = mapping.result;
             completions_.push_back(

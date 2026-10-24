@@ -28,7 +28,7 @@
   (enum ExprResult std::uint8_t
     :native-api true :helpers ()
     (value Pending) (value True) (value False))
-  (enum ExpressionType std::uint8_t
+  (enum ExprType std::uint8_t
     :native-api true :helpers (traits to-serialized-string try-parse-serialized)
     (value All :serialized-name "all-of")
     (value Any :serialized-name "any-of")

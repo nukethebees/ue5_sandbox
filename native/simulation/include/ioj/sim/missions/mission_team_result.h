@@ -6,8 +6,8 @@
 
 namespace ioj::sim {
 struct MissionTeamResult {
-    Team team{};
     ObjectiveId objective{};
+    Team team{};
     ObjectiveOutcome outcome{};
     TeamOutcome result{};
 };

@@ -9,7 +9,7 @@
 #include <ioj/sim/levels/initial_spawns.h>
 #include <ioj/sim/levels/level_compilation.h>
 #include <ioj/sim/levels/level_initialisation_data.h>
-#include <ioj/sim/missions/mission_compilation.h>
+#include <ioj/sim/missions/compiled_mission.h>
 #include <SandboxGameShared/utilities/actor_utils.h>
 #include <SpaceGame/defences/spinners/TestTubeSpinnerProxy.h>
 #include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
@@ -66,7 +66,7 @@ auto compile_proxy_mission(::FLevelMissionDefinition const& definition,
         }
         ids[*index] = levels::EntityId{TCHAR_TO_UTF8(*binding.Key.ToString().ToLower())};
     }
-    auto compiled{sim::compile_mission(definition.objectives, ids, clock)};
+    auto compiled{sim::CompiledMission::compile(definition.objectives, ids, clock)};
     if (!compiled) {
         for (auto const& message : compiled.error()) {
             errors.add(to_fstring(message));

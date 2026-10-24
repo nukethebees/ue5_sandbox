@@ -1,7 +1,5 @@
 #include <ioj/levels/mission_validation.h>
 
-#include <ioj/levels/mission_limits.h>
-
 #include <algorithm>
 #include <cmath>
 #include <format>
@@ -44,6 +42,8 @@ auto has_cycle(std::vector<std::vector<std::uint32_t>> const& edges) -> bool {
 
 auto validate_mission(MissionDefinition const& mission, std::span<EntityId const> const entities)
     -> std::vector<std::string> {
+    constexpr std::uint32_t mission_index_limit{1u << 24};
+
     std::vector<std::string> errors;
     std::unordered_map<ObjectiveName, std::uint32_t> objectives;
     std::unordered_set<EntityId> declared{entities.begin(), entities.end()};
@@ -123,34 +123,31 @@ auto validate_mission(MissionDefinition const& mission, std::span<EntityId const
                 }
             };
             switch (expression.type()) {
-                case ExpressionType::All:
-                case ExpressionType::Any:
+                case ExprType::All:
+                case ExprType::Any:
                     break;
-                case ExpressionType::EntityDestroyed: {
-                    auto const& condition{std::get<EntityDestroyedExpression>(expression.payload)};
+                case ExprType::EntityDestroyed: {
+                    auto const& condition{std::get<EntityDestroyedExpr>(expression.payload)};
                     entity(condition.entity);
                     break;
                 }
-                case ExpressionType::EntityReachedPosition: {
-                    auto const& condition{
-                        std::get<EntityReachedPositionExpression>(expression.payload)};
+                case ExprType::EntityReachedPosition: {
+                    auto const& condition{std::get<EntityReachedPositionExpr>(expression.payload)};
                     entity(condition.entity);
                     if (!std::isfinite(condition.radius.get() * condition.radius.get())) {
                         errors.emplace_back(prefix + "Squared radius exceeds the finite range");
                     }
                     break;
                 }
-                case ExpressionType::TimeElapsed:
+                case ExprType::TimeElapsed:
                     break;
-                case ExpressionType::ObjectiveResolved: {
-                    auto const& condition{
-                        std::get<ObjectiveResolvedExpression>(expression.payload)};
+                case ExprType::ObjectiveResolved: {
+                    auto const& condition{std::get<ObjectiveResolvedExpr>(expression.payload)};
                     reference(condition.objective);
                     break;
                 }
-                case ExpressionType::EntityKillsReached: {
-                    auto const& condition{
-                        std::get<EntityKillsReachedExpression>(expression.payload)};
+                case ExprType::EntityKillsReached: {
+                    auto const& condition{std::get<EntityKillsReachedExpr>(expression.payload)};
                     std::unordered_set<EntityId> sources;
                     for (auto const& id : condition.entities) {
                         entity(id);

@@ -8,12 +8,15 @@
 namespace ioj::levels {
 // Identify an authored symbol; compilation resolves it to a runtime ObjectiveId.
 struct ObjectiveName {
-    std::string value{};
     ObjectiveName() = default;
     explicit ObjectiveName(std::string name)
         : value{std::move(name)} {}
-    auto empty() const noexcept -> bool { return value.empty(); }
+
     auto operator<=>(ObjectiveName const&) const = default;
+
+    auto empty() const noexcept -> bool { return value.empty(); }
+
+    std::string value{};
 };
 }
 

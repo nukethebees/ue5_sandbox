@@ -285,10 +285,10 @@ TEST(TickPhases, DelayedObjectiveSeesSameTickResolvedDeathWithoutDuplicateOverla
         data.level_events.schedule.turret_spawns.get_const_view().entity_indices()[0]};
     levels::ObjectiveDefinition objective{.team = Team::White};
     objective.expressions = {
-        {ioj::levels::TimeElapsedExpression{.seconds = ioj::NonNegativeFinite<double>::make(10)}},
+        {ioj::levels::TimeElapsedExpr{.seconds = ioj::NonNegativeFinite<double>::make(10)}},
         destroyed(capital_index),
         destroyed(turret_index),
-        {ioj::levels::AnyExpression{.children = {1, 2}}}};
+        {ioj::levels::AnyExpr{.children = {1, 2}}}};
     objective.roots[ioj::ObjectiveOutcome::Passed] = 0;
     objective.roots[ioj::ObjectiveOutcome::Failed] = 3;
     install_mission(data, std::move(objective));
@@ -444,10 +444,10 @@ TEST(TickPhases, CapitalDeathPreservesExistingChildrenBeforeMissionEvaluation) {
             {.location = {0.0, 500.0, 0.0}}};
 
         levels::ObjectiveDefinition objective{.team = Team::White};
-        objective.expressions = {destroyed(first),
-                                 {ioj::levels::EntityKillsReachedExpression{
-                                     .entities = {mission_entity(second)}, .kills = 1}},
-                                 {ioj::levels::AllExpression{.children = {0, 1}}}};
+        objective.expressions = {
+            destroyed(first),
+            {ioj::levels::EntityKillsReachedExpr{.entities = {mission_entity(second)}, .kills = 1}},
+            {ioj::levels::AllExpr{.children = {0, 1}}}};
         objective.roots[ioj::ObjectiveOutcome::Passed] = 2;
         install_mission(data, std::move(objective));
 

@@ -18,13 +18,13 @@ struct SyncChange {
 };
 
 struct SyncPlan {
+    [[nodiscard]] auto count(SyncAction action) const -> std::size_t;
+    [[nodiscard]] auto has_changes() const -> bool;
+
     std::vector<SyncChange> changes{};
     bool collision_grid_changed{};
     bool metadata_changed{};
     bool viewpoint_changed{};
     bool mission_changed{};
-
-    [[nodiscard]] auto count(SyncAction action) const -> std::size_t;
-    [[nodiscard]] auto has_changes() const -> bool;
 };
 }

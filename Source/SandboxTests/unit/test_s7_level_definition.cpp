@@ -85,7 +85,7 @@ TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
             TEXT("Spawn time is decoded"), definition.entities()[1].spawn_time_seconds, 1.25);
         TestRunner->TestEqual(
             TEXT("Future entity condition is decoded"),
-            ioj::to_fstring(std::get<ioj::levels::EntityDestroyedExpression>(
+            ioj::to_fstring(std::get<ioj::levels::EntityDestroyedExpr>(
                                 definition.mission()->objectives[0].expressions[0].payload)
                                 .entity.value),
             FString{TEXT("enemy")});
@@ -180,7 +180,7 @@ TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
         auto const result{reader.read_level_source(source)};
         if (TestRunner->TestTrue(TEXT("Timer parses"), result.has_value())) {
             TestRunner->TestEqual(TEXT("Timer duration is decoded"),
-                                  std::get<ioj::levels::TimeElapsedExpression>(
+                                  std::get<ioj::levels::TimeElapsedExpr>(
                                       result->mission()->objectives[0].expressions[0].payload)
                                       .seconds.get(),
                                   45.5);

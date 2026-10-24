@@ -1,8 +1,8 @@
 #include <ioj/levels/authoring/definition_reader.h>
 #include <ioj/levels/mission_validation.h>
 #include <ioj/sim/entities/entity_ledger.h>
+#include <ioj/sim/missions/compiled_mission.h>
 #include <ioj/sim/missions/mission.h>
-#include <ioj/sim/missions/mission_compilation.h>
 
 #include <gtest/gtest.h>
 
@@ -42,23 +42,22 @@ struct MissionTest : testing::Test {
 
     MissionTest() { clock.initialise({.tick_rate = Frequency::make(10.0)}); }
     void start(levels::MissionDefinition const& definition) {
-        auto compiled{compile_mission(definition, names, clock)};
+        auto compiled{CompiledMission::compile(definition, names, clock)};
         ASSERT_TRUE(compiled.has_value()) << (compiled ? "" : compiled.error().front());
         mission = Mission{std::move(*compiled)};
         mission.begin({0, ledger, entities});
     }
     void tick(SimTick const tick) { mission.tick({tick, ledger, entities}); }
 };
-auto timer(double const seconds) -> levels::MissionExpression {
-    return {ioj::levels::TimeElapsedExpression{.seconds =
-                                                   ioj::NonNegativeFinite<double>::make(seconds)}};
+auto timer(double const seconds) -> levels::MissionExpr {
+    return {ioj::levels::TimeElapsedExpr{.seconds = ioj::NonNegativeFinite<double>::make(seconds)}};
 }
-auto observed(std::string id, ObjectiveOutcome const outcome) -> levels::MissionExpression {
-    return {ioj::levels::ObjectiveResolvedExpression{
+auto observed(std::string id, ObjectiveOutcome const outcome) -> levels::MissionExpr {
+    return {ioj::levels::ObjectiveResolvedExpr{
         .objective = {ioj::levels::ObjectiveName{std::move(id)}, outcome}}};
 }
 auto objective(std::string id,
-               levels::MissionExpression expression,
+               levels::MissionExpr expression,
                ObjectiveOutcome const outcome = ObjectiveOutcome::Passed)
     -> levels::ObjectiveDefinition {
     levels::ObjectiveDefinition result{.id = ioj::levels::ObjectiveName{std::move(id)},
@@ -72,9 +71,9 @@ auto objective(std::string id,
 TEST_F(MissionTest, SharedDagPropagatesOnceAndCompletedObjectivesAreTerminal) {
     auto source{objective("shared", timer(1))};
     source.expressions.push_back(timer(2));
-    source.expressions.push_back({ioj::levels::AllExpression{.children = {0, 0, 1}}});
-    source.expressions.push_back({ioj::levels::AnyExpression{.children = {0, 1}}});
-    source.expressions.push_back({ioj::levels::AllExpression{.children = {2, 3}}});
+    source.expressions.push_back({ioj::levels::AllExpr{.children = {0, 0, 1}}});
+    source.expressions.push_back({ioj::levels::AnyExpr{.children = {0, 1}}});
+    source.expressions.push_back({ioj::levels::AllExpr{.children = {2, 3}}});
     source.roots[ioj::ObjectiveOutcome::Passed] = 4;
     start({.objectives = {source}});
     tick(10);
@@ -94,12 +93,13 @@ TEST_F(MissionTest, FalseOutcomeLeavesShortCircuitAndAndResolveOrOnlyAfterAllFal
     auto b{objective("b", timer(2), ObjectiveOutcome::Failed)};
     auto conjunction{objective("and", observed("a", ObjectiveOutcome::Passed))};
     conjunction.expressions.push_back(observed("b", ObjectiveOutcome::Passed));
-    conjunction.expressions.push_back({ioj::levels::AllExpression{.children = {0, 1}}});
+    conjunction.expressions.push_back({ioj::levels::AllExpr{.children = {0, 1}}});
     conjunction.roots[ioj::ObjectiveOutcome::Passed] = 2;
     auto disjunction{conjunction};
     disjunction.id = ioj::levels::ObjectiveName{"or"};
-    disjunction.expressions[2] = {levels::AnyExpression{.children = {0, 1}}};
-    auto compiled{compile_mission({.objectives = {a, b, conjunction, disjunction}}, {}, clock)};
+    disjunction.expressions[2] = {levels::AnyExpr{.children = {0, 1}}};
+    auto compiled{
+        CompiledMission::compile({.objectives = {a, b, conjunction, disjunction}}, {}, clock)};
     ASSERT_TRUE(compiled);
     auto const and_root{compiled->objectives.roots(ObjectiveId{2})[ioj::ObjectiveOutcome::Passed]};
     auto const or_root{compiled->objectives.roots(ObjectiveId{3})[ioj::ObjectiveOutcome::Passed]};
@@ -117,8 +117,8 @@ TEST_F(MissionTest, FalseOutcomeLeavesShortCircuitAndAndResolveOrOnlyAfterAllFal
 TEST_F(MissionTest, ShortCircuitDoesNotDisableSharedLeaf) {
     auto source{objective("shared", timer(0))};
     source.expressions.push_back(timer(2));
-    source.expressions.push_back({ioj::levels::AnyExpression{.children = {0, 1}}});
-    source.expressions.push_back({ioj::levels::AllExpression{.children = {1, 2}}});
+    source.expressions.push_back({ioj::levels::AnyExpr{.children = {0, 1}}});
+    source.expressions.push_back({ioj::levels::AllExpr{.children = {1, 2}}});
     source.roots[ioj::ObjectiveOutcome::Passed] = 3;
     start({.objectives = {source}});
     EXPECT_FALSE(mission.outcome(ioj::sim::ObjectiveId{0}));
@@ -195,8 +195,7 @@ TEST_F(MissionTest, ReciprocalTeamsAndConsumeOnceCompletion) {
 
 TEST_F(MissionTest, RootAndTeamConflictPrecedenceIsDeterministic) {
     auto source{objective("conflict", timer(0))};
-    source.roots =
-        ioj::levels::ObjectiveRoots{std::array<ioj::levels::ExpressionIndex, 3>{0, 0, 0}};
+    source.roots = ioj::levels::ObjectiveRoots{std::array<ioj::levels::ExprIndex, 3>{0, 0, 0}};
     start({.objectives = {source},
            .team_results = {{Team::Blue,
                              {ioj::levels::ObjectiveName{"conflict"}, ObjectiveOutcome::Passed},
@@ -212,8 +211,8 @@ TEST_F(MissionTest, RuleRunsSortAndRebuildAfterMembershipChanges) {
     names.emplace_back("future");
     entities.emplace_back();
     auto source{objective("rules", timer(1))};
-    source.expressions.push_back({ioj::levels::EntityDestroyedExpression{.entity = names[0]}});
-    source.expressions.push_back({ioj::levels::AllExpression{.children = {0, 1}}});
+    source.expressions.push_back({ioj::levels::EntityDestroyedExpr{.entity = names[0]}});
+    source.expressions.push_back({ioj::levels::AllExpr{.children = {0, 1}}});
     source.roots[ioj::ObjectiveOutcome::Passed] = 2;
     start({.objectives = {source}});
     ASSERT_EQ(mission.rule_runs().size(), 2);
@@ -228,16 +227,16 @@ TEST_F(MissionTest, RuleRunsSortAndRebuildAfterMembershipChanges) {
 TEST_F(MissionTest, RejectsStructuralAndActivationCyclesButAllowsObservationCycles) {
     auto a{objective("a", observed("b", ObjectiveOutcome::Passed))};
     auto b{objective("b", observed("a", ObjectiveOutcome::Passed))};
-    EXPECT_TRUE(compile_mission({.objectives = {a, b}}, {}, clock));
+    EXPECT_TRUE(CompiledMission::compile({.objectives = {a, b}}, {}, clock));
     a.dependencies = {{ioj::levels::ObjectiveName{"b"}, ObjectiveOutcome::Passed}};
     b.dependencies = {{ioj::levels::ObjectiveName{"a"}, ObjectiveOutcome::Passed}};
-    EXPECT_FALSE(compile_mission({.objectives = {a, b}}, {}, clock));
+    EXPECT_FALSE(CompiledMission::compile({.objectives = {a, b}}, {}, clock));
     a.dependencies.clear();
-    a.expressions = {{ioj::levels::AllExpression{.children = {1}}},
-                     {ioj::levels::AnyExpression{.children = {0}}}};
-    EXPECT_FALSE(compile_mission({.objectives = {a}}, {}, clock));
-    std::get<levels::AnyExpression>(a.expressions[1].payload).children = {99};
-    EXPECT_FALSE(compile_mission({.objectives = {a}}, {}, clock));
+    a.expressions = {{ioj::levels::AllExpr{.children = {1}}},
+                     {ioj::levels::AnyExpr{.children = {0}}}};
+    EXPECT_FALSE(CompiledMission::compile({.objectives = {a}}, {}, clock));
+    std::get<levels::AnyExpr>(a.expressions[1].payload).children = {99};
+    EXPECT_FALSE(CompiledMission::compile({.objectives = {a}}, {}, clock));
 }
 
 TEST_F(MissionTest, SchemeNamedDagAndOutcomeDependenciesExecuteThroughRuntimeCompiler) {
@@ -307,21 +306,21 @@ TEST_F(MissionTest, RejectsInvalidReferencesParametersAndDuplicatePrerequisites)
     auto b{objective("b", timer(1))};
     b.dependencies = {{ioj::levels::ObjectiveName{"a"}, ObjectiveOutcome::Passed},
                       {ioj::levels::ObjectiveName{"a"}, ObjectiveOutcome::Passed}};
-    EXPECT_FALSE(compile_mission({.objectives = {a, b}}, {}, clock));
-    EXPECT_FALSE(compile_mission({.objectives = {a, a}}, {}, clock));
+    EXPECT_FALSE(CompiledMission::compile({.objectives = {a, b}}, {}, clock));
+    EXPECT_FALSE(CompiledMission::compile({.objectives = {a, a}}, {}, clock));
     b.dependencies = {{ioj::levels::ObjectiveName{"missing"}, ObjectiveOutcome::Passed}};
-    EXPECT_FALSE(compile_mission({.objectives = {a, b}}, {}, clock));
-    EXPECT_FALSE(compile_mission(
+    EXPECT_FALSE(CompiledMission::compile({.objectives = {a, b}}, {}, clock));
+    EXPECT_FALSE(CompiledMission::compile(
         {.objectives = {a},
          .team_results = {{Team::Blue,
                            {ioj::levels::ObjectiveName{"missing"}, ObjectiveOutcome::Passed},
                            TeamOutcome::Victory}}},
         {},
         clock));
-    a.expressions[0] = {ioj::levels::EntityReachedPositionExpression{
+    a.expressions[0] = {ioj::levels::EntityReachedPositionExpr{
         .entity = levels::EntityId{"target"},
         .radius = ioj::NonNegativeFinite<double>::make(std::numeric_limits<double>::max())}};
     names.emplace_back("target");
-    EXPECT_FALSE(compile_mission({.objectives = {a}}, names, clock));
+    EXPECT_FALSE(CompiledMission::compile({.objectives = {a}}, names, clock));
 }
 }

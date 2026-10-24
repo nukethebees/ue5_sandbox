@@ -39,19 +39,18 @@ auto make_example_draft() -> FLevelDraft {
         .rotation = FRotator{0.0, 180.0, 0.0},
     });
     builder.set_mission(levels::MissionDefinition{
-        .objectives =
-            {{.id = destroy_capital,
-              .title = "Destroy the enemy capital",
-              .team = Team::Blue,
-              .expressions = {{ioj::levels::EntityDestroyedExpression{
-                                  .entity = levels::EntityId{"red-capital"}}},
-                              {ioj::levels::EntityDestroyedExpression{.entity = blue_capital}},
-                              {ioj::levels::EntityKillsReachedExpression{
-                                  .entities = {levels::EntityId{"player"}, blue_capital},
-                                  .kills = 2}},
-                              {ioj::levels::AllExpression{.children = {0, 2}}}},
-              .roots = ioj::levels::ObjectiveRoots{std::array<ioj::levels::ExpressionIndex, 3>{
-                  3, 1, levels::absent_expression}}}},
+        .objectives = {{.id = destroy_capital,
+                        .title = "Destroy the enemy capital",
+                        .team = Team::Blue,
+                        .expressions = {{ioj::levels::EntityDestroyedExpr{
+                                            .entity = levels::EntityId{"red-capital"}}},
+                                        {ioj::levels::EntityDestroyedExpr{.entity = blue_capital}},
+                                        {ioj::levels::EntityKillsReachedExpr{
+                                            .entities = {levels::EntityId{"player"}, blue_capital},
+                                            .kills = 2}},
+                                        {ioj::levels::AllExpr{.children = {0, 2}}}},
+                        .roots = ioj::levels::ObjectiveRoots{std::array<ioj::levels::ExprIndex, 3>{
+                            3, 1, levels::absent_expression}}}},
         .team_results = {{.team = Team::Blue,
                           .when = {destroy_capital, ObjectiveOutcome::Passed},
                           .result = TeamOutcome::Victory},
