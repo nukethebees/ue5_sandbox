@@ -3,6 +3,7 @@
 #include <ioj/levels/authoring/definition_catalog.h>
 #include <ioj/levels/authoring/level_parser.h>
 #include <ioj/levels/authoring/settings_parser.h>
+#include <ioj/s7/ast_result.h>
 
 #include <filesystem>
 #include <string_view>
@@ -23,6 +24,8 @@ class DefinitionReader {
     [[nodiscard]] auto read_settings_source(std::string_view source) const -> SettingsReadResult;
     [[nodiscard]] auto read_settings_file(std::filesystem::path const& path) const
         -> SettingsReadResult;
+    [[nodiscard]] auto read_script_file(std::filesystem::path const& path) const
+        -> std::expected<s7::Ast, Diagnostics>;
     // Standalone reads use this reader's import root, or the conventional level/campaign directory.
     [[nodiscard]] auto read_level_file(std::filesystem::path const& path) const
         -> LevelDefinitionReadResult;

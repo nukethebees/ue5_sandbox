@@ -1,13 +1,29 @@
+(module positional_inputs
+  :header "native/level_authoring/lib/include/ioj/levels/authoring/positional_inputs.h"
+  :header-include "ioj/levels/authoring/positional_inputs.h"
+  :namespace ioj::levels::authoring
+  (record NamedExprInput :generate-s7-reader true :s7-tag "expr" :s7-positional true
+    :s7-reader-includes ("ioj/levels/authoring/input_readers.h")
+    (member name @input_objective_name :initializer "")
+    (member value @input_expr :initializer ""))
+  (record UnlockInput :generate-s7-reader true :s7-tag "level-completed" :s7-positional true
+    :s7-reader-includes ("ioj/levels/authoring/identifier_reader.h")
+    (member level @input_level_id :initializer "" :s7-name "level-id"))
+  (record ExprReferenceInput :generate-s7-reader true :s7-tag "expr-ref" :s7-positional true
+    :s7-reader-includes ("ioj/levels/authoring/identifier_reader.h")
+    (member name @input_objective_name :initializer "")))
+
 (module level_inputs
   :header "native/level_authoring/lib/include/ioj/levels/authoring/level_inputs.h"
   :header-include "ioj/levels/authoring/level_inputs.h"
   :namespace ioj::levels::authoring
   (record EntityInput :generate-s7-reader true :s7-tag "entity"
-    :s7-reader-includes ("ioj/levels/authoring/input_readers.h")
+    :s7-reader-includes ("ioj/levels/authoring/input_readers.h"
+                        "ioj/levels/authoring/positional_inputs_reader.h")
     (member id @input_entity_id :initializer "")
-    (member archetype ioj::levels::EntityArchetype :required true)
-    (member team ioj::Team :required true)
-    (member position @native_vector3d :required true)
+    (member archetype ioj::levels::EntityArchetype :initializer "" :required true)
+    (member team ioj::Team :initializer "" :required true)
+    (member position @native_vector3d :initializer "" :required true)
     (member rotation @native_vector3d :initializer "")
     (member spawn_at double :initializer "")
     (member health @input_optional_int :initializer "")
@@ -16,9 +32,9 @@
     (member spawn_cooldown @input_optional_float :initializer "" :finite true)
     (member target @input_entity_id :initializer ""))
   (record ObjectiveInput :generate-s7-reader true :s7-tag "objective"
-    (member id @input_objective_name :required true)
+    (member id @input_objective_name :initializer "" :required true)
     (member title @native_string :initializer "")
-    (member team ioj::Team :required true)
+    (member team ioj::Team :initializer "" :required true)
     (member nodes @input_named_exprs :initializer "")
     (member pass @input_optional_expr :initializer "")
     (member fail @input_optional_expr :initializer "")
@@ -26,13 +42,13 @@
     (member depends_on @input_dependencies :initializer ""))
   (record MissionInput :generate-s7-reader true :s7-tag "mission"
     :s7-reader-includes ("ioj/levels/team_result_definition_reader.h")
-    (member objectives @input_objectives :required true)
+    (member objectives @input_objectives :initializer "" :required true)
     (member team_results @input_team_results :initializer ""))
   (record LevelInput :generate-s7-reader true :s7-tag "level"
     :s7-reader-includes ("ioj/levels/level_camera_definition_reader.h"
                         "ioj/levels/level_collision_grid_definition_reader.h")
-    (member id @input_level_id :required true)
-    (member title @native_string :required true)
+    (member id @input_level_id :initializer "" :required true)
+    (member title @native_string :initializer "" :required true)
     (member description @native_string :initializer "")
     (member par_time @input_optional_float :initializer "" :finite true)
     (member unlock @input_unlocks :initializer "")
@@ -43,12 +59,12 @@
     (member mission @input_mission :initializer "")
     (member entities @input_entities :initializer ""))
   (record IncludedLevelInput :generate-s7-reader true :s7-tag "included-definition"
-    (member path @native_string :required true)
+    (member path @native_string :initializer "" :required true)
     (member value @input_level_value :initializer "")
     (member error @input_optional_string :initializer ""))
   (record IncludedCampaignInput :generate-s7-reader true :s7-tag "included-definition"
     :s7-reader-includes ("ioj/levels/campaign_definition_reader.h")
-    (member path @native_string :required true)
+    (member path @native_string :initializer "" :required true)
     (member value @input_campaign_value :initializer "")
     (member error @input_optional_string :initializer ""))
   (record CatalogInput :generate-s7-reader true :s7-tag "catalog"

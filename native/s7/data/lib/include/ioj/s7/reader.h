@@ -3,6 +3,7 @@
 #include <ioj/ascii.h>
 #include <ioj/constrained_value.h>
 #include <ioj/enum_traits.h>
+#include <ioj/field_mask.h>
 #include <ioj/s7/ast_result.h>
 #include <ioj/try_numeric_cast.h>
 #include <ioj/vector.h>
@@ -46,6 +47,19 @@ class Reader {
 
 template <typename T>
 struct TypeReader;
+
+enum class ReadMode : std::uint8_t { Create, Override };
+
+template <typename T>
+void validate_read(T const& value, std::string_view path, AstDiagnostics& errors);
+
+template <typename T>
+void decode_field(Reader const& reader,
+                  NodeIndex node,
+                  std::string_view path,
+                  T& destination,
+                  ReadMode mode,
+                  AstDiagnostics& errors);
 
 template <typename T>
 concept Readable = requires(Reader const& reader, NodeIndex node, std::string_view path) {
@@ -132,11 +146,12 @@ struct TypeReader<std::string> {
 };
 
 template <typename T>
-    requires (std::is_enum_v<T> &&
-              requires(T value) {
-                  EnumTraits<T>::values;
-                  { to_serialized_string(value) } -> std::convertible_to<std::string_view>;
-              })
+concept SerializedEnum = std::is_enum_v<T> && requires(T value) {
+    EnumTraits<T>::values;
+    { to_serialized_string(value) } -> std::convertible_to<std::string_view>;
+};
+
+template <SerializedEnum T>
 struct TypeReader<T> {
     static auto read(Reader const& reader, NodeIndex const node, std::string_view const path)
         -> ReadResult<T> {
@@ -233,6 +248,33 @@ struct TypeReader<std::array<T, N>> {
 
 template <typename T>
 struct TypeReader<std::optional<T>> {
+    static void decode(Reader const& reader,
+                       NodeIndex node,
+                       std::string_view path,
+                       std::optional<T>& destination,
+                       ReadMode mode,
+                       AstDiagnostics& errors) {
+        if (mode == ReadMode::Override && destination &&
+            !(reader.ast().node(node).kind == NodeKind::Keyword &&
+              reader.ast().text(node) == "none")) {
+            decode_field(reader, node, path, *destination, mode, errors);
+            return;
+        }
+        auto value{read(reader, node, path)};
+        if (value) {
+            destination = std::move(*value);
+        } else {
+            append_errors(errors, std::move(value.error()));
+        }
+    }
+
+    static void
+        validate(std::optional<T> const& value, std::string_view path, AstDiagnostics& errors) {
+        if (value) {
+            validate_read(*value, path, errors);
+        }
+    }
+
     static auto read(Reader const& reader, NodeIndex const node, std::string_view const path)
         -> ReadResult<std::optional<T>> {
         if (reader.ast().node(node).kind == NodeKind::Keyword &&
@@ -271,14 +313,122 @@ void read_field(Reader const& reader,
     }
 }
 
-template <std::size_t N>
-void require_fields(std::bitset<N> const& seen,
+template <typename T>
+void validate_read(T const& value, std::string_view path, AstDiagnostics& errors) {
+    if constexpr (requires { TypeReader<T>::validate(value, path, errors); }) {
+        TypeReader<T>::validate(value, path, errors);
+    }
+}
+
+template <typename T>
+void validate_member(T const& value,
+                     std::string_view path,
+                     std::string_view name,
+                     AstDiagnostics& errors) {
+    if constexpr (requires { TypeReader<T>::validate(value, path, errors); }) {
+        validate_read(value, std::format("{}.{}", path, name), errors);
+    }
+}
+
+template <typename T>
+void decode_field(Reader const& reader,
+                  NodeIndex node,
+                  std::string_view path,
+                  T& destination,
+                  ReadMode mode,
+                  AstDiagnostics& errors) {
+    if constexpr (requires {
+                      TypeReader<T>::decode(reader, node, path, destination, mode, errors);
+                  }) {
+        if (mode == ReadMode::Override && reader.ast().node(node).kind == NodeKind::List) {
+            auto const children{reader.ast().children(node)};
+            if (!children.empty() &&
+                reader.ast().node(children.front()).kind == NodeKind::Keyword &&
+                reader.ast().text(children.front()) == "settings-layers") {
+                for (auto const layer : children.subspan(1)) {
+                    decode_field(reader, layer, path, destination, mode, errors);
+                }
+                return;
+            }
+        }
+        TypeReader<T>::decode(reader, node, path, destination, mode, errors);
+    } else {
+        auto value{read<T>(reader, node, path)};
+        if (value) {
+            destination = std::move(*value);
+        } else {
+            append_errors(errors, std::move(value.error()));
+        }
+    }
+}
+
+template <typename T>
+auto read_override(Reader const& reader, NodeIndex node, std::string_view path, T value)
+    -> ReadResult<T> {
+    AstDiagnostics errors;
+    decode_field(reader, node, path, value, ReadMode::Override, errors);
+    if (errors.empty()) {
+        validate_read(value, path, errors);
+    }
+    if (!errors.empty()) {
+        return std::unexpected{std::move(errors)};
+    }
+    return value;
+}
+
+template <typename Field>
+class LargeFieldMask {
+  public:
+    constexpr void set(Field field) { bits_.set(static_cast<std::size_t>(field)); }
+    [[nodiscard]] constexpr auto has(Field field) const -> bool {
+        return bits_.test(static_cast<std::size_t>(field));
+    }
+    [[nodiscard]] constexpr auto is_empty() const -> bool { return bits_.none(); }
+    [[nodiscard]] constexpr auto excluding(LargeFieldMask const& other) const -> LargeFieldMask {
+        auto result{*this};
+        result.bits_ &= ~other.bits_;
+        return result;
+    }
+  private:
+    std::bitset<static_cast<std::size_t>(Field::Count)> bits_{};
+};
+
+template <typename Field>
+using RecordMask = std::conditional_t<(static_cast<std::size_t>(Field::Count) <= 64),
+                                      FieldMask<Field>,
+                                      LargeFieldMask<Field>>;
+
+template <typename Field, std::size_t N>
+constexpr auto required_fields(std::array<std::string_view, N> const& names) -> RecordMask<Field> {
+    RecordMask<Field> required;
+    for (std::size_t i{}; i < N; ++i) {
+        if (!names[i].empty()) {
+            required.set(static_cast<Field>(i));
+        }
+    }
+    return required;
+}
+
+template <typename Field, std::size_t N>
+void require_fields(RecordMask<Field> const& seen,
+                    RecordMask<Field> const& required,
                     std::array<std::string_view, N> const& names,
                     std::string_view const path,
                     AstDiagnostics& errors) {
+    auto const missing{[&] {
+        if constexpr (N <= 64) {
+            using Storage = typename RecordMask<Field>::storage_type;
+            return RecordMask<Field>{static_cast<Storage>(required.value() & ~seen.value())};
+        } else {
+            return required.excluding(seen);
+        }
+    }()};
+    if (missing.is_empty()) {
+        return;
+    }
     for (std::size_t i{}; i < N; ++i) {
         auto const name{names[i]};
-        if (!name.empty() && !seen.test(i)) {
+        if (missing.has(static_cast<Field>(i))) {
             errors.push_back({AstErrorCode::MissingProperty,
                               std::format("{}.{}", path, name),
                               std::format("Missing required property ':{}'", name)});
@@ -287,13 +437,13 @@ void require_fields(std::bitset<N> const& seen,
 }
 
 // Stream fields once; leave domain-specific dispatch and presence requirements to the caller.
-template <std::size_t N, typename Lookup, typename Visit>
+template <typename Field, typename Lookup, typename Visit>
 auto read_record(Reader const& reader,
                  NodeIndex const node,
                  std::string_view const tag,
                  std::string_view const path,
                  Lookup lookup,
-                 Visit visit) -> ReadResult<std::bitset<N>> {
+                 Visit visit) -> ReadResult<RecordMask<Field>> {
     auto const children{reader.list(node, path)};
     if (!children) {
         return std::unexpected{children.error()};
@@ -304,7 +454,7 @@ auto read_record(Reader const& reader,
         return read_error(
             AstErrorCode::ExpectedRecord, path, std::format("Expected a '{}' record", tag));
     }
-    std::bitset<N> seen;
+    RecordMask<Field> seen;
     AstDiagnostics errors;
     auto const count{children->size()};
     for (std::size_t i{1}; i < count; i += 2) {
@@ -322,19 +472,18 @@ auto read_record(Reader const& reader,
         auto const field{lookup(name)};
         if (!field) {
             errors.push_back({AstErrorCode::UnknownProperty,
-                              location,
+                              std::format("{}.{}", path, name),
                               std::format("Unknown property ':{}'", name)});
             continue;
         }
-        auto const index{static_cast<std::size_t>(*field)};
-        assert(index < N);
-        if (seen.test(index)) {
+        assert(static_cast<std::size_t>(*field) < static_cast<std::size_t>(Field::Count));
+        if (seen.has(*field)) {
             errors.push_back({AstErrorCode::DuplicateProperty,
                               location,
                               std::format("Duplicate property ':{}'", name)});
             continue;
         }
-        seen.set(index);
+        seen.set(*field);
         if (i + 1 < count) {
             visit(*field, (*children)[i + 1], std::format("{}.{}", path, name));
         }
@@ -343,5 +492,51 @@ auto read_record(Reader const& reader,
         return std::unexpected{std::move(errors)};
     }
     return seen;
+}
+
+inline auto positional_arguments(Reader const& reader,
+                                 NodeIndex node,
+                                 std::string_view tag,
+                                 std::string_view path,
+                                 std::size_t count) -> ReadResult<std::span<NodeIndex const>> {
+    auto values{reader.list(node, path)};
+    if (!values) {
+        return values;
+    }
+    auto const& ast{reader.ast()};
+    if (values->empty() || ast.node(values->front()).kind != NodeKind::Keyword ||
+        ast.text(values->front()) != tag) {
+        return read_error(AstErrorCode::ExpectedRecord, path, std::format("Expected '{}'", tag));
+    }
+    if (values->size() != count + 1) {
+        return read_error(
+            AstErrorCode::InvalidType, path, std::format("'{}' requires {} arguments", tag, count));
+    }
+    return values->subspan(1);
+}
+
+template <typename T>
+auto read_generated(Reader const& reader, NodeIndex node, std::string_view path) -> ReadResult<T> {
+    auto result{[&]() -> ReadResult<T> {
+        if constexpr (std::default_initializable<T>) {
+            T value{};
+            AstDiagnostics errors;
+            TypeReader<T>::decode(reader, node, path, value, ReadMode::Create, errors);
+            if (!errors.empty()) {
+                return std::unexpected{std::move(errors)};
+            }
+            return value;
+        } else {
+            return TypeReader<T>::construct(reader, node, path);
+        }
+    }()};
+    if (result) {
+        AstDiagnostics errors;
+        validate_read(*result, path, errors);
+        if (!errors.empty()) {
+            return std::unexpected{std::move(errors)};
+        }
+    }
+    return result;
 }
 }

@@ -14,11 +14,21 @@ struct TypeReader<::ioj::levels::LevelCameraDefinition> {
 
     static ReadResult<value_type>
         read(Reader const& reader, NodeIndex const node, std::string_view const path);
+
+    static void decode(Reader const& reader,
+                       NodeIndex const node,
+                       std::string_view const path,
+                       value_type& result,
+                       ReadMode mode,
+                       AstDiagnostics& errors);
+
+    static void validate(value_type const& result, std::string_view path, AstDiagnostics& errors);
   private:
-    enum class Field : std::size_t {
+    enum class Field : std::uint8_t {
         target_entity_ids,
         offset_direction,
         distance,
+        Count,
     };
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
@@ -40,11 +50,16 @@ inline ReadResult<::ioj::levels::LevelCameraDefinition>
     TypeReader<::ioj::levels::LevelCameraDefinition>::read(Reader const& reader,
                                                            NodeIndex const node,
                                                            std::string_view const path) {
-    AstDiagnostics errors{};
-    std::optional<decltype(value_type::target_entity_ids)> value_target_entity_ids{};
-    std::optional<decltype(value_type::offset_direction)> value_offset_direction{};
-    std::optional<decltype(value_type::distance)> value_distance{};
-    auto const seen{read_record<3>(
+    return read_generated<value_type>(reader, node, path);
+}
+
+inline void TypeReader<::ioj::levels::LevelCameraDefinition>::decode(Reader const& reader,
+                                                                     NodeIndex const node,
+                                                                     std::string_view const path,
+                                                                     value_type& result,
+                                                                     ReadMode mode,
+                                                                     AstDiagnostics& errors) {
+    auto const seen{read_record<Field>(
         reader,
         node,
         "camera",
@@ -52,38 +67,42 @@ inline ReadResult<::ioj::levels::LevelCameraDefinition>
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
             auto const read = [&](auto& destination) {
-                read_field(reader, value, location, destination, errors);
+                decode_field(reader, value, location, destination, mode, errors);
             };
             switch (field) {
                 case Field::target_entity_ids:
-                    read(value_target_entity_ids);
+                    read(result.target_entity_ids);
                     break;
                 case Field::offset_direction:
-                    read(value_offset_direction);
+                    read(result.offset_direction);
                     break;
                 case Field::distance:
-                    read(value_distance);
+                    read(result.distance);
                     break;
+                case Field::Count:
+                    std::unreachable();
             }
         }))};
 
     if (!seen) {
         append_errors(errors, seen.error());
-        return std::unexpected{std::move(errors)};
+        return;
     }
     std::array<std::string_view, 3> constexpr required_names{
         "look-at", "offset-direction", "distance"};
 
-    require_fields(*seen, required_names, path, errors);
-    if (!errors.empty()) {
-        return std::unexpected{std::move(errors)};
+    auto constexpr required{required_fields<Field>(required_names)};
+    if (mode == ReadMode::Create) {
+        require_fields<Field>(*seen, required, required_names, path, errors);
     }
+}
 
-    value_type result{.target_entity_ids = std::move(*value_target_entity_ids),
-                      .offset_direction = std::move(*value_offset_direction),
-                      .distance = std::move(*value_distance)};
-
-    return result;
+inline void TypeReader<::ioj::levels::LevelCameraDefinition>::validate(value_type const& result,
+                                                                       std::string_view path,
+                                                                       AstDiagnostics& errors) {
+    validate_member(result.target_entity_ids, path, "look-at", errors);
+    validate_member(result.offset_direction, path, "offset-direction", errors);
+    validate_member(result.distance, path, "distance", errors);
 }
 
 } // namespace ioj::s7

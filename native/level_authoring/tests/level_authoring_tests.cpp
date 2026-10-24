@@ -190,7 +190,7 @@ TEST(NativeSettings, RetainsStarfieldConversionAndDomainDiagnostics) {
     };
     for (auto const& test :
          {Case{"(star :missing 1)", DiagnosticCode::UnknownProperty, "star.missing"},
-          Case{"(star :scale 1e100)", DiagnosticCode::InvalidType, "star.scale"},
+          Case{"(star :scale 1e100)", DiagnosticCode::InvalidNumber, "star.scale"},
           Case{"(star :scale 0)", DiagnosticCode::InvalidNumber, "star.scale"}}) {
         SCOPED_TRACE(test.section);
         std::ofstream{path} << std::format("(settings :starfield (starfield :star {}))",
@@ -200,6 +200,46 @@ TEST(NativeSettings, RetainsStarfieldConversionAndDomainDiagnostics) {
         ASSERT_EQ(result.error().size(), 1u);
         EXPECT_EQ(result.error().front().code, test.code);
         EXPECT_EQ(result.error().front().node_path, std::format("starfield.{}", test.field));
+        EXPECT_EQ(result.error().front().source_path, path);
+    }
+}
+
+TEST(NativeSettings, ReadsShippedStarfieldSettingsAndValidatesAfterNestedLayers) {
+    auto shipped{read_starfield_settings_file(std::filesystem::path{IOJ_LEVEL_SCRIPTS} /
+                                              "Settings" / "base.scm")};
+    ASSERT_TRUE(shipped) << format_diagnostics(shipped.error());
+    EXPECT_EQ(shipped->generation.star_count, 10000);
+
+    TemporaryLevelDirectory directory;
+    auto const path{directory.path() / "settings.scm"};
+    std::ofstream{path} << R"((settings :starfield (starfield
+      :star (settings-layers
+        (star :scale 0 :size-multiplier 3)
+        (star :scale 1)))))";
+    auto result{read_starfield_settings_file(path)};
+    ASSERT_TRUE(result) << format_diagnostics(result.error());
+    EXPECT_EQ(result->star.scale, 1.f);
+    EXPECT_EQ(result->star.size_multiplier, 3.f);
+}
+
+TEST(NativeSettings, RejectsMalformedStarfieldRecordsAndInvalidEffectiveValues) {
+    TemporaryLevelDirectory directory;
+    auto const path{directory.path() / "settings.scm"};
+    for (auto source :
+         {"(settings :starfield (starfield :star (star :scale 1 :scale 2)))",
+          "(settings :starfield (starfield :star (star :scale)))",
+          "(settings :starfield (starfield :star (twinkle :strength 1)))",
+          "(settings :starfield (starfield :star (star :global-brightness +inf.0)))",
+          "(settings :starfield (starfield :generation (generation :star-count 0)))",
+          "(settings :starfield (starfield :generation (generation :star-count 1000001)))",
+          "(settings :starfield (starfield :bright-star (bright-star :size-multiplier -1)))",
+          "(settings :starfield (starfield :galactic-band (galactic-band :width-degrees 91)))",
+          "(settings :starfield (starfield :nebular-knot (nebular-knot :size-degrees 0)))"}) {
+        SCOPED_TRACE(source);
+        std::ofstream{path} << source;
+        auto result{read_starfield_settings_file(path)};
+        ASSERT_FALSE(result);
+        EXPECT_FALSE(result.error().empty());
         EXPECT_EQ(result.error().front().source_path, path);
     }
 }

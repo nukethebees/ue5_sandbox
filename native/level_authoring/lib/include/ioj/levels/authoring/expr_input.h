@@ -13,12 +13,4 @@ struct ExprInput {
     std::optional<ObjectiveName> reference{};
 };
 
-struct NamedExprInput {
-    ObjectiveName name;
-    ExprInput value;
-};
-
-struct UnlockInput {
-    LevelId level;
-};
 }

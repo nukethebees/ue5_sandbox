@@ -13,9 +13,19 @@ struct TypeReader<::codegen_compile_fixture::UnsupportedReader> {
 
     static ReadResult<value_type>
         read(Reader const& reader, NodeIndex const node, std::string_view const path);
+
+    static void decode(Reader const& reader,
+                       NodeIndex const node,
+                       std::string_view const path,
+                       value_type& result,
+                       ReadMode mode,
+                       AstDiagnostics& errors);
+
+    static void validate(value_type const& result, std::string_view path, AstDiagnostics& errors);
   private:
-    enum class Field : std::size_t {
+    enum class Field : std::uint8_t {
         target,
+        Count,
     };
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
@@ -31,9 +41,17 @@ inline ReadResult<::codegen_compile_fixture::UnsupportedReader>
     TypeReader<::codegen_compile_fixture::UnsupportedReader>::read(Reader const& reader,
                                                                    NodeIndex const node,
                                                                    std::string_view const path) {
-    AstDiagnostics errors{};
-    std::optional<decltype(value_type::target)> value_target{};
-    auto const seen{read_record<1>(
+    return read_generated<value_type>(reader, node, path);
+}
+
+inline void
+    TypeReader<::codegen_compile_fixture::UnsupportedReader>::decode(Reader const& reader,
+                                                                     NodeIndex const node,
+                                                                     std::string_view const path,
+                                                                     value_type& result,
+                                                                     ReadMode mode,
+                                                                     AstDiagnostics& errors) {
+    auto const seen{read_record<Field>(
         reader,
         node,
         "unsupported",
@@ -41,29 +59,26 @@ inline ReadResult<::codegen_compile_fixture::UnsupportedReader>
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
             auto const read = [&](auto& destination) {
-                read_field(reader, value, location, destination, errors);
+                decode_field(reader, value, location, destination, mode, errors);
             };
             switch (field) {
                 case Field::target:
-                    read(value_target);
+                    read(result.target);
                     break;
+                case Field::Count:
+                    std::unreachable();
             }
         }))};
 
     if (!seen) {
         append_errors(errors, seen.error());
-        return std::unexpected{std::move(errors)};
+        return;
     }
-    if (!errors.empty()) {
-        return std::unexpected{std::move(errors)};
-    }
+}
 
-    value_type result{};
-
-    if (value_target) {
-        result.target = std::move(*value_target);
-    }
-    return result;
+inline void TypeReader<::codegen_compile_fixture::UnsupportedReader>::validate(
+    value_type const& result, std::string_view path, AstDiagnostics& errors) {
+    validate_member(result.target, path, "target", errors);
 }
 
 } // namespace ioj::s7

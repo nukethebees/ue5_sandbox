@@ -17,6 +17,7 @@ auto RecordSchemas::append() -> DeclarationHandle {
     generate_settings.push_back(false);
     generate_overrides.push_back(false);
     s7_tag.push_back({});
+    s7_positional.push_back(false);
     s7_reader_includes.push_back({});
     members.push_back({});
     export_specifier.push_back({});
@@ -34,6 +35,7 @@ auto RecordSchemas::clone(DeclarationHandle id) -> DeclarationHandle {
     generate_settings[destination] = generate_settings[source_index];
     generate_overrides[destination] = generate_overrides[source_index];
     s7_tag[destination] = s7_tag[source_index];
+    s7_positional[destination] = s7_positional[source_index];
     s7_reader_includes[destination] = s7_reader_includes[source_index];
     members[destination] = members[source_index];
     export_specifier[destination] = export_specifier[source_index];
@@ -47,6 +49,7 @@ void RecordSchemas::clear() {
     generate_settings.clear();
     generate_overrides.clear();
     s7_tag.clear();
+    s7_positional.clear();
     s7_reader_includes.clear();
     members.clear();
     export_specifier.clear();

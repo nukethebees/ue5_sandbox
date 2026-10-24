@@ -1,31 +1,11 @@
 #include <ioj/levels/authoring/input_readers.h>
 
+#include <ioj/levels/authoring/positional_inputs_reader.h>
+
 namespace ioj::s7 {
 namespace {
 using namespace levels;
 using namespace levels::authoring;
-
-auto arguments(Reader const& reader,
-               NodeIndex node,
-               std::string_view path,
-               std::string_view tag,
-               std::optional<std::size_t> count = {}) -> ReadResult<std::span<NodeIndex const>> {
-    auto values{reader.list(node, path)};
-    if (!values) {
-        return values;
-    }
-    auto const& ast{reader.ast()};
-    if (values->empty() || ast.node(values->front()).kind != NodeKind::Keyword ||
-        ast.text(values->front()) != tag) {
-        return read_error(AstErrorCode::ExpectedRecord, path, std::format("Expected '{}'", tag));
-    }
-    if (count && values->size() != *count + 1) {
-        return read_error(AstErrorCode::InvalidType,
-                          path,
-                          std::format("'{}' requires {} arguments", tag, *count));
-    }
-    return values->subspan(1);
-}
 
 auto read_expr(Reader const& reader, NodeIndex node, std::string_view path, std::size_t depth)
     -> ReadResult<ExprInput> {
@@ -42,10 +22,8 @@ auto read_expr(Reader const& reader, NodeIndex node, std::string_view path, std:
     }
     auto const tag{ast.text(values->front())};
     if (tag == "expr-ref") {
-        return arguments(reader, node, path, tag, 1).and_then([&](auto args) {
-            return s7::read<ObjectiveName>(reader, args[0], path).transform([](auto name) {
-                return ExprInput{.reference = std::move(name)};
-            });
+        return s7::read<ExprReferenceInput>(reader, node, path).transform([](auto reference) {
+            return ExprInput{.reference = std::move(reference.name)};
         });
     }
     auto const type{try_parse_serialized_expr_type(tag)};
@@ -82,7 +60,7 @@ auto read_expr(Reader const& reader, NodeIndex node, std::string_view path, std:
     auto const count{*type == ExprType::EntityReachedPosition
                          ? 3u
                          : (*type == ExprType::EntityKillsReached ? 2u : 1u)};
-    auto const args{arguments(reader, node, path, tag, count)};
+    auto const args{positional_arguments(reader, node, tag, path, count)};
     if (!args) {
         return std::unexpected{args.error()};
     }
@@ -141,50 +119,4 @@ auto TypeReader<levels::authoring::ExprInput>::read(Reader const& reader,
     return read_expr(reader, node, path, 0);
 }
 
-auto TypeReader<levels::ObjectiveDependency>::read(Reader const& reader,
-                                                   NodeIndex node,
-                                                   std::string_view path)
-    -> ReadResult<ObjectiveDependency> {
-    return arguments(reader, node, path, "objective-resolved", 2)
-        .and_then([&](auto args) -> ReadResult<ObjectiveDependency> {
-            auto id{s7::read<ObjectiveName>(reader, args[0], std::format("{}.objective", path))};
-            auto outcome{
-                s7::read<ObjectiveOutcome>(reader, args[1], std::format("{}.outcome", path))};
-            if (!id) {
-                return std::unexpected{std::move(id.error())};
-            }
-            if (!outcome) {
-                return std::unexpected{std::move(outcome.error())};
-            }
-            return ObjectiveDependency{std::move(*id), *outcome};
-        });
-}
-
-auto TypeReader<levels::authoring::NamedExprInput>::read(Reader const& reader,
-                                                         NodeIndex node,
-                                                         std::string_view path)
-    -> ReadResult<NamedExprInput> {
-    return arguments(reader, node, path, "expr", 2)
-        .and_then([&](auto args) -> ReadResult<NamedExprInput> {
-            auto name{s7::read<ObjectiveName>(reader, args[0], std::format("{}.name", path))};
-            auto value{s7::read<ExprInput>(reader, args[1], std::format("{}.value", path))};
-            if (!name) {
-                return std::unexpected{std::move(name.error())};
-            }
-            if (!value) {
-                return std::unexpected{std::move(value.error())};
-            }
-            return NamedExprInput{std::move(*name), std::move(*value)};
-        });
-}
-
-auto TypeReader<levels::authoring::UnlockInput>::read(Reader const& reader,
-                                                      NodeIndex node,
-                                                      std::string_view path)
-    -> ReadResult<UnlockInput> {
-    return arguments(reader, node, path, "level-completed", 1).and_then([&](auto args) {
-        return s7::read<LevelId>(reader, args[0], std::format("{}.level-id", path))
-            .transform([](auto id) { return UnlockInput{std::move(id)}; });
-    });
-}
 }

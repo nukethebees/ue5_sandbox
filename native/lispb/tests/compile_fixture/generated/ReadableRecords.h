@@ -36,6 +36,18 @@ enum class ReaderEnum : ReaderEnumUnderlying {
 
 struct EmptyReadable {};
 
+struct EmptyPositional {};
+
+struct PositionalChild {
+    ioj::NonEmptyString name;
+    int count;
+};
+
+struct DefaultReadable {
+    int count{2};
+    std::optional<int> maybe{7};
+};
+
 struct RecursiveReadable {
     std::vector<codegen_compile_fixture::RecursiveReadable> children{};
 };

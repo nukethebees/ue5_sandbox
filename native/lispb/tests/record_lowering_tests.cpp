@@ -142,9 +142,11 @@ TEST(RecordLowering, ReaderOptionsSurviveRoundTripAndLeaveOrdinaryOutputUnchange
     }};
     auto const ordinary{render("")};
     auto const reader{render(":generate-s7-reader true :s7-tag config")};
+    auto const positional{render(":generate-s7-reader true :s7-tag config :s7-positional true")};
     ASSERT_EQ(ordinary.size(), 1u);
     ASSERT_EQ(reader.size(), 2u);
     EXPECT_EQ(ordinary.front().content, reader.front().content);
+    EXPECT_EQ(ordinary.front().content, positional.front().content);
     EXPECT_EQ(reader.front().content.find("s7/reader"), std::string::npos);
 }
 
@@ -174,6 +176,7 @@ TEST(RecordLowering, RejectsAmbiguousReaderFieldsAndInvalidBounds) {
         auto const declarations :
         {R"((record Config :generate-s7-reader true))",
          R"((record Config :s7-tag config))",
+         R"((record Config :s7-positional true))",
          R"((record Config :generate-s7-reader true :s7-tag config
             (member first int :s7-name same) (member second int :s7-name same)))",
          R"((record Config :generate-s7-reader true :s7-tag config (member value int :s7-name "")))",

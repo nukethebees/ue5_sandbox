@@ -408,6 +408,7 @@ auto CanonicalRenderer::build_record(codegen::DeclarationHandle const schema) ->
     result.flag("generate-settings", records.generate_settings[index]);
     result.flag("generate-overrides", records.generate_overrides[index]);
     result.flag("generate-s7-reader", records.s7_tag[index].has_value());
+    result.flag("s7-positional", records.s7_positional[index]);
     result.optional_field(
         "s7-tag", records.s7_tag[index], [this](auto value) { return ir_.string(value); });
     result.list_field("s7-reader-includes",

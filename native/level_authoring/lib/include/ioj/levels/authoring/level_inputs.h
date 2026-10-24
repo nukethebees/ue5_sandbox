@@ -4,6 +4,7 @@
 #pragma once
 
 #include "ioj/levels/authoring/expr_input.h"
+#include "ioj/levels/authoring/positional_inputs.h"
 #include "ioj/levels/campaign_definition.h"
 #include "ioj/levels/entity_archetype.h"
 #include "ioj/levels/identifiers.h"
@@ -24,9 +25,9 @@
 namespace ioj::levels::authoring {
 struct EntityInput {
     EntityId id{};
-    EntityArchetype archetype;
-    Team team;
-    Vector3d position;
+    EntityArchetype archetype{};
+    Team team{};
+    Vector3d position{};
     Vector3d rotation{};
     double spawn_at{};
     std::optional<std::int32_t> health{};
@@ -37,9 +38,9 @@ struct EntityInput {
 };
 
 struct ObjectiveInput {
-    ObjectiveName id;
+    ObjectiveName id{};
     std::string title{};
-    Team team;
+    Team team{};
     std::vector<ioj::levels::authoring::NamedExprInput> nodes{};
     std::optional<ioj::levels::authoring::ExprInput> pass{};
     std::optional<ioj::levels::authoring::ExprInput> fail{};
@@ -48,13 +49,13 @@ struct ObjectiveInput {
 };
 
 struct MissionInput {
-    std::vector<ioj::levels::authoring::ObjectiveInput> objectives;
+    std::vector<ioj::levels::authoring::ObjectiveInput> objectives{};
     std::vector<ioj::levels::TeamResultDefinition> team_results{};
 };
 
 struct LevelInput {
-    LevelId id;
-    std::string title;
+    LevelId id{};
+    std::string title{};
     std::string description{};
     std::optional<float> par_time{};
     std::optional<std::vector<ioj::levels::authoring::UnlockInput>> unlock{};
@@ -67,13 +68,13 @@ struct LevelInput {
 };
 
 struct IncludedLevelInput {
-    std::string path;
+    std::string path{};
     std::optional<ioj::s7::ReadResult<ioj::levels::authoring::LevelInput>> value{};
     std::optional<std::string> error{};
 };
 
 struct IncludedCampaignInput {
-    std::string path;
+    std::string path{};
     std::optional<ioj::s7::ReadResult<ioj::levels::CampaignDefinition>> value{};
     std::optional<std::string> error{};
 };

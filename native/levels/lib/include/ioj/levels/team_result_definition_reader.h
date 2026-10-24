@@ -4,6 +4,7 @@
 #pragma once
 
 #include "ioj/levels/authoring/input_readers.h"
+#include "ioj/levels/objective_dependency_reader.h"
 #include "ioj/levels/team_result_definition.h"
 #include <ioj/s7/reader.h>
 
@@ -14,11 +15,21 @@ struct TypeReader<::ioj::levels::TeamResultDefinition> {
 
     static ReadResult<value_type>
         read(Reader const& reader, NodeIndex const node, std::string_view const path);
+
+    static void decode(Reader const& reader,
+                       NodeIndex const node,
+                       std::string_view const path,
+                       value_type& result,
+                       ReadMode mode,
+                       AstDiagnostics& errors);
+
+    static void validate(value_type const& result, std::string_view path, AstDiagnostics& errors);
   private:
-    enum class Field : std::size_t {
+    enum class Field : std::uint8_t {
         team,
         when,
         result,
+        Count,
     };
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
@@ -40,11 +51,16 @@ inline ReadResult<::ioj::levels::TeamResultDefinition>
     TypeReader<::ioj::levels::TeamResultDefinition>::read(Reader const& reader,
                                                           NodeIndex const node,
                                                           std::string_view const path) {
-    AstDiagnostics errors{};
-    std::optional<decltype(value_type::team)> value_team{};
-    std::optional<decltype(value_type::when)> value_when{};
-    std::optional<decltype(value_type::result)> value_result{};
-    auto const seen{read_record<3>(
+    return read_generated<value_type>(reader, node, path);
+}
+
+inline void TypeReader<::ioj::levels::TeamResultDefinition>::decode(Reader const& reader,
+                                                                    NodeIndex const node,
+                                                                    std::string_view const path,
+                                                                    value_type& result,
+                                                                    ReadMode mode,
+                                                                    AstDiagnostics& errors) {
+    auto const seen{read_record<Field>(
         reader,
         node,
         "team-result",
@@ -52,37 +68,41 @@ inline ReadResult<::ioj::levels::TeamResultDefinition>
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
             auto const read = [&](auto& destination) {
-                read_field(reader, value, location, destination, errors);
+                decode_field(reader, value, location, destination, mode, errors);
             };
             switch (field) {
                 case Field::team:
-                    read(value_team);
+                    read(result.team);
                     break;
                 case Field::when:
-                    read(value_when);
+                    read(result.when);
                     break;
                 case Field::result:
-                    read(value_result);
+                    read(result.result);
                     break;
+                case Field::Count:
+                    std::unreachable();
             }
         }))};
 
     if (!seen) {
         append_errors(errors, seen.error());
-        return std::unexpected{std::move(errors)};
+        return;
     }
     std::array<std::string_view, 3> constexpr required_names{"team", "when", "result"};
 
-    require_fields(*seen, required_names, path, errors);
-    if (!errors.empty()) {
-        return std::unexpected{std::move(errors)};
+    auto constexpr required{required_fields<Field>(required_names)};
+    if (mode == ReadMode::Create) {
+        require_fields<Field>(*seen, required, required_names, path, errors);
     }
+}
 
-    value_type result{.team = std::move(*value_team),
-                      .when = std::move(*value_when),
-                      .result = std::move(*value_result)};
-
-    return result;
+inline void TypeReader<::ioj::levels::TeamResultDefinition>::validate(value_type const& result,
+                                                                      std::string_view path,
+                                                                      AstDiagnostics& errors) {
+    validate_member(result.team, path, "team", errors);
+    validate_member(result.when, path, "when", errors);
+    validate_member(result.result, path, "result", errors);
 }
 
 } // namespace ioj::s7

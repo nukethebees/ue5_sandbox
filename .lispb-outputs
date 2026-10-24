@@ -16,12 +16,14 @@ Plugins/SpaceGame/Source/SpaceGamePresentation/Public/SpaceGamePresentation/ui/s
 native/core/include/ioj/rotators3f.h
 native/core/include/ioj/vectors3f.h
 native/gfx/lib/include/ioj/gfx/starfield_settings.h
+native/gfx/lib/include/ioj/gfx/starfield_settings_reader.h
 native/ismc/lib/include/ioj/ismc/quat32.h
 native/ismc/lib/include/ioj/ismc/render.h
 native/level_authoring/lib/include/ioj/levels/authoring/grammar.h
 native/level_authoring/lib/include/ioj/levels/authoring/level_inputs.h
 native/level_authoring/lib/include/ioj/levels/authoring/level_inputs_reader.h
-native/level_authoring/s7/src/starfield_fields.h
+native/level_authoring/lib/include/ioj/levels/authoring/positional_inputs.h
+native/level_authoring/lib/include/ioj/levels/authoring/positional_inputs_reader.h
 native/levels/lib/include/ioj/levels/campaign_definition.h
 native/levels/lib/include/ioj/levels/campaign_definition_reader.h
 native/levels/lib/include/ioj/levels/diagnostic_code.h
@@ -31,6 +33,8 @@ native/levels/lib/include/ioj/levels/level_camera_definition_reader.h
 native/levels/lib/include/ioj/levels/level_collision_grid_definition.h
 native/levels/lib/include/ioj/levels/level_collision_grid_definition_reader.h
 native/levels/lib/include/ioj/levels/mission_types.h
+native/levels/lib/include/ioj/levels/objective_dependency.h
+native/levels/lib/include/ioj/levels/objective_dependency_reader.h
 native/levels/lib/include/ioj/levels/team.h
 native/levels/lib/include/ioj/levels/team_result_definition.h
 native/levels/lib/include/ioj/levels/team_result_definition_reader.h

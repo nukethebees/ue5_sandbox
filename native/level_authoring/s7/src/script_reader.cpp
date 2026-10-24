@@ -232,23 +232,22 @@ auto DefinitionReader::read_settings_source(std::string_view const source) const
 
 auto DefinitionReader::read_settings_file(std::filesystem::path const& path) const
     -> SettingsReadResult {
+    return with_source_path(read_script_file(path).and_then(decode_settings), path);
+}
+
+auto DefinitionReader::read_script_file(std::filesystem::path const& path) const
+    -> std::expected<s7::Ast, Diagnostics> {
     auto source{read_source(path)};
     if (!source) {
         return std::unexpected{std::move(source.error())};
     }
     auto const root{script_library_root_.empty() ? std::filesystem::absolute(path).parent_path()
                                                  : script_library_root_};
-    return with_source_path(evaluate(*source, root).and_then(decode_settings), path);
+    return with_source_path(evaluate(*source, root), path);
 }
 auto DefinitionReader::read_level_file(std::filesystem::path const& path) const
     -> LevelDefinitionReadResult {
-    auto source{read_source(path)};
-    if (!source) {
-        return std::unexpected{std::move(source.error())};
-    }
-    auto const root{script_library_root_.empty() ? std::filesystem::absolute(path).parent_path()
-                                                 : script_library_root_};
-    return with_source_path(evaluate(*source, root).and_then(decode_level), path);
+    return with_source_path(read_script_file(path).and_then(decode_level), path);
 }
 auto DefinitionReader::read_campaign_file(std::filesystem::path const& path) const
     -> CampaignDefinitionReadResult {

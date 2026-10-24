@@ -62,6 +62,16 @@
     (member when @input_dependency :initializer "" :required true)
     (member result ioj::TeamOutcome :initializer "TeamOutcome::Victory" :required true)))
 
+(module native_objective_dependency
+  :header "native/levels/lib/include/ioj/levels/objective_dependency.h"
+  :header-include "ioj/levels/objective_dependency.h"
+  :namespace ioj::levels
+  (record ObjectiveDependency :comparison equality
+    :generate-s7-reader true :s7-tag "objective-resolved" :s7-positional true
+    :s7-reader-includes ("ioj/levels/authoring/identifier_reader.h")
+    (member objective @input_objective_name :initializer "")
+    (member outcome ioj::ObjectiveOutcome :initializer "ObjectiveOutcome::Passed")))
+
 (module native_levels_entity_archetype
   :header "native/levels/lib/include/ioj/levels/entity_archetype.h"
   :header-include "ioj/levels/entity_archetype.h"

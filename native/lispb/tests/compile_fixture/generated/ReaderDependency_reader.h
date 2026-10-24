@@ -14,9 +14,22 @@ struct TypeReader<::codegen_compile_fixture::ReaderDependency> {
 
     static ReadResult<value_type>
         read(Reader const& reader, NodeIndex const node, std::string_view const path);
+
+    static ReadResult<value_type>
+        construct(Reader const& reader, NodeIndex const node, std::string_view const path);
+
+    static void decode(Reader const& reader,
+                       NodeIndex const node,
+                       std::string_view const path,
+                       value_type& result,
+                       ReadMode mode,
+                       AstDiagnostics& errors);
+
+    static void validate(value_type const& result, std::string_view path, AstDiagnostics& errors);
   private:
-    enum class Field : std::size_t {
+    enum class Field : std::uint8_t {
         child,
+        Count,
     };
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
@@ -32,9 +45,15 @@ inline ReadResult<::codegen_compile_fixture::ReaderDependency>
     TypeReader<::codegen_compile_fixture::ReaderDependency>::read(Reader const& reader,
                                                                   NodeIndex const node,
                                                                   std::string_view const path) {
+    return read_generated<value_type>(reader, node, path);
+}
+
+inline ReadResult<::codegen_compile_fixture::ReaderDependency>
+    TypeReader<::codegen_compile_fixture::ReaderDependency>::construct(
+        Reader const& reader, NodeIndex const node, std::string_view const path) {
     AstDiagnostics errors{};
     std::optional<decltype(value_type::child)> value_child{};
-    auto const seen{read_record<1>(
+    auto const seen{read_record<Field>(
         reader,
         node,
         "dependent",
@@ -48,6 +67,8 @@ inline ReadResult<::codegen_compile_fixture::ReaderDependency>
                 case Field::child:
                     read(value_child);
                     break;
+                case Field::Count:
+                    std::unreachable();
             }
         }))};
 
@@ -57,7 +78,8 @@ inline ReadResult<::codegen_compile_fixture::ReaderDependency>
     }
     std::array<std::string_view, 1> constexpr required_names{"child"};
 
-    require_fields(*seen, required_names, path, errors);
+    auto constexpr required{required_fields<Field>(required_names)};
+    require_fields<Field>(*seen, required, required_names, path, errors);
     if (!errors.empty()) {
         return std::unexpected{std::move(errors)};
     }
@@ -65,6 +87,49 @@ inline ReadResult<::codegen_compile_fixture::ReaderDependency>
     value_type result{.child = std::move(*value_child)};
 
     return result;
+}
+
+inline void
+    TypeReader<::codegen_compile_fixture::ReaderDependency>::decode(Reader const& reader,
+                                                                    NodeIndex const node,
+                                                                    std::string_view const path,
+                                                                    value_type& result,
+                                                                    ReadMode mode,
+                                                                    AstDiagnostics& errors) {
+    auto const seen{read_record<Field>(
+        reader,
+        node,
+        "dependent",
+        path,
+        parse_field,
+        ([&](Field const field, NodeIndex const value, std::string_view const location) {
+            auto const read = [&](auto& destination) {
+                decode_field(reader, value, location, destination, mode, errors);
+            };
+            switch (field) {
+                case Field::child:
+                    read(result.child);
+                    break;
+                case Field::Count:
+                    std::unreachable();
+            }
+        }))};
+
+    if (!seen) {
+        append_errors(errors, seen.error());
+        return;
+    }
+    std::array<std::string_view, 1> constexpr required_names{"child"};
+
+    auto constexpr required{required_fields<Field>(required_names)};
+    if (mode == ReadMode::Create) {
+        require_fields<Field>(*seen, required, required_names, path, errors);
+    }
+}
+
+inline void TypeReader<::codegen_compile_fixture::ReaderDependency>::validate(
+    value_type const& result, std::string_view path, AstDiagnostics& errors) {
+    validate_member(result.child, path, "child", errors);
 }
 
 } // namespace ioj::s7

@@ -1238,6 +1238,7 @@ auto SchemaParser::parse_record(Declarations& declarations, sexpr::FormId const 
                      "generate-overrides",
                      "generate-s7-reader",
                      "s7-tag",
+                     "s7-positional",
                      "s7-reader-includes"},
                     {"member", "function"});
     auto comparison{RecordComparison::none};
@@ -1273,9 +1274,11 @@ auto SchemaParser::parse_record(Declarations& declarations, sexpr::FormId const 
     records.generate_overrides[record_index] = boolean_or(fields, "generate-overrides");
     if (boolean_or(fields, "generate-s7-reader")) {
         records.s7_tag[record_index] = parser_.text_id(fields.required("s7-tag"), "S7 record tag");
+        records.s7_positional[record_index] = boolean_or(fields, "s7-positional");
         records.s7_reader_includes[record_index] =
             declarations.range(text_id_list_or(fields, "s7-reader-includes"));
-    } else if (fields.optional("s7-tag") || fields.optional("s7-reader-includes")) {
+    } else if (fields.optional("s7-tag") || fields.optional("s7-reader-includes") ||
+               fields.optional("s7-positional")) {
         parser_.fail(form, "S7 reader options require generate-s7-reader true");
     }
     records.functions[record_index] = declarations.range(functions);

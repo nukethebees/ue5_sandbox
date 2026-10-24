@@ -14,11 +14,21 @@ struct TypeReader<::ioj::levels::CampaignDefinition> {
 
     static ReadResult<value_type>
         read(Reader const& reader, NodeIndex const node, std::string_view const path);
+
+    static void decode(Reader const& reader,
+                       NodeIndex const node,
+                       std::string_view const path,
+                       value_type& result,
+                       ReadMode mode,
+                       AstDiagnostics& errors);
+
+    static void validate(value_type const& result, std::string_view path, AstDiagnostics& errors);
   private:
-    enum class Field : std::size_t {
+    enum class Field : std::uint8_t {
         id,
         title,
         level_ids,
+        Count,
     };
 
     [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
@@ -40,11 +50,16 @@ inline ReadResult<::ioj::levels::CampaignDefinition>
     TypeReader<::ioj::levels::CampaignDefinition>::read(Reader const& reader,
                                                         NodeIndex const node,
                                                         std::string_view const path) {
-    AstDiagnostics errors{};
-    std::optional<decltype(value_type::id)> value_id{};
-    std::optional<decltype(value_type::title)> value_title{};
-    std::optional<decltype(value_type::level_ids)> value_level_ids{};
-    auto const seen{read_record<3>(
+    return read_generated<value_type>(reader, node, path);
+}
+
+inline void TypeReader<::ioj::levels::CampaignDefinition>::decode(Reader const& reader,
+                                                                  NodeIndex const node,
+                                                                  std::string_view const path,
+                                                                  value_type& result,
+                                                                  ReadMode mode,
+                                                                  AstDiagnostics& errors) {
+    auto const seen{read_record<Field>(
         reader,
         node,
         "campaign",
@@ -52,37 +67,41 @@ inline ReadResult<::ioj::levels::CampaignDefinition>
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
             auto const read = [&](auto& destination) {
-                read_field(reader, value, location, destination, errors);
+                decode_field(reader, value, location, destination, mode, errors);
             };
             switch (field) {
                 case Field::id:
-                    read(value_id);
+                    read(result.id);
                     break;
                 case Field::title:
-                    read(value_title);
+                    read(result.title);
                     break;
                 case Field::level_ids:
-                    read(value_level_ids);
+                    read(result.level_ids);
                     break;
+                case Field::Count:
+                    std::unreachable();
             }
         }))};
 
     if (!seen) {
         append_errors(errors, seen.error());
-        return std::unexpected{std::move(errors)};
+        return;
     }
     std::array<std::string_view, 3> constexpr required_names{"id", "title", "levels"};
 
-    require_fields(*seen, required_names, path, errors);
-    if (!errors.empty()) {
-        return std::unexpected{std::move(errors)};
+    auto constexpr required{required_fields<Field>(required_names)};
+    if (mode == ReadMode::Create) {
+        require_fields<Field>(*seen, required, required_names, path, errors);
     }
+}
 
-    value_type result{.id = std::move(*value_id),
-                      .title = std::move(*value_title),
-                      .level_ids = std::move(*value_level_ids)};
-
-    return result;
+inline void TypeReader<::ioj::levels::CampaignDefinition>::validate(value_type const& result,
+                                                                    std::string_view path,
+                                                                    AstDiagnostics& errors) {
+    validate_member(result.id, path, "id", errors);
+    validate_member(result.title, path, "title", errors);
+    validate_member(result.level_ids, path, "levels", errors);
 }
 
 } // namespace ioj::s7

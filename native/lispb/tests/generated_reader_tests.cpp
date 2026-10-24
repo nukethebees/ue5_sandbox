@@ -85,7 +85,7 @@ TEST(GeneratedS7Reader, ReportsStructuralAndValueErrorsWithFieldPaths) {
     for (auto const& test :
          {Case{":child (:child)", AstErrorCode::MissingProperty, "record.child.name"},
           Case{":maybe", AstErrorCode::MissingValue, "record[3]"},
-          Case{":unknown 1", AstErrorCode::UnknownProperty, "record[3]"},
+          Case{":unknown 1", AstErrorCode::UnknownProperty, "record.unknown"},
           Case{":enabled #t :enabled #f", AstErrorCode::DuplicateProperty, "record[5]"},
           Case{":scale 0", AstErrorCode::InvalidNumber, "record.scale"},
           Case{":scale +inf.0", AstErrorCode::InvalidNumber, "record.scale"},
@@ -119,10 +119,105 @@ TEST(GeneratedS7Reader, KeepsValueErrorsWhenTheRecordAlsoHasStructuralErrors) {
         R"('(:record :child (:child :name 42) :enabled 7 :extra #t :enabled #f))")};
     ASSERT_FALSE(result);
     EXPECT_EQ(result.error().size(), 4u);
-    for (auto const path : {"record.child.name", "record.enabled", "record[5]", "record[7]"}) {
+    for (auto const path : {"record.child.name", "record.enabled", "record.extra", "record[7]"}) {
         EXPECT_TRUE(std::ranges::any_of(result.error(), [&](auto const& error) {
             return error.node_path == path;
         })) << path;
     }
+}
+
+TEST(GeneratedS7Reader, DecodesFixedPositionalRecordsAndChecksArityAndConstraints) {
+    EXPECT_TRUE(read_source<EmptyPositional>("'(:empty-position)"));
+    EXPECT_FALSE(read_source<EmptyPositional>("'(:empty-position 1)"));
+    auto result{read_source<PositionalChild>(R"('(:position "name" 3))")};
+    ASSERT_TRUE(result);
+    EXPECT_EQ(result->name.get_ref(), "name");
+    EXPECT_EQ(result->count, 3);
+    for (auto source : {R"('(:position "name"))",
+                        R"('(:position "name" 3 4))",
+                        R"('(:wrong "name" 3))",
+                        R"('(:position "" -1))"}) {
+        SCOPED_TRACE(source);
+        EXPECT_FALSE(read_source<PositionalChild>(source));
+    }
+    auto invalid{read_source<PositionalChild>(R"('(:position "name" -1))")};
+    ASSERT_FALSE(invalid);
+    EXPECT_EQ(invalid.error().front().node_path, "record.count");
+}
+
+TEST(GeneratedS7Reader, RequiresFieldsEvenWhenTheRecordHasValidDefaults) {
+    EXPECT_FALSE(read_source<DefaultReadable>("'(:default)"));
+    auto result{read_source<DefaultReadable>("'(:default :count 2)")};
+    ASSERT_TRUE(result);
+    EXPECT_EQ(result->count, 2);
+    EXPECT_EQ(result->maybe, 7);
+    EXPECT_FALSE(read_source<DefaultReadable>("'(:default :count 2 :maybe 1 :maybe 2)"));
+}
+
+TEST(GeneratedS7Reader, OverridesACopyAndPreservesOmittedNestedFields) {
+    auto initial{read_record_source(R"('(:record :child (:child :name "original" :count 5)))")};
+    ASSERT_TRUE(initial);
+    auto const patch{[&](std::string_view source) {
+        Interpreter interpreter;
+        auto ast{interpreter.evaluate_ast(source).value()};
+        return read_override(Reader{ast}, ast.root, "record", *initial);
+    }};
+    auto result{patch("'(:record :child (:child :count 2) :maybe :none)")};
+    ASSERT_TRUE(result);
+    EXPECT_EQ(result->child.name.get_ref(), "original");
+    EXPECT_EQ(result->child.count, 2);
+    EXPECT_FALSE(result->maybe);
+    EXPECT_EQ(result->scale, 1.f);
+    EXPECT_EQ(initial->child.count, 5);
+    EXPECT_EQ(initial->maybe, 7);
+    EXPECT_FALSE(patch("'(:record :child (:child :count -1) :enabled #f)"));
+    EXPECT_FALSE(patch("'(:record :unknown 1)"));
+    EXPECT_TRUE(initial->enabled);
+    EXPECT_EQ(initial->child.count, 5);
+}
+
+TEST(GeneratedS7Reader, OverridesEngagedOptionalRecordsWithoutLosingPresence) {
+    auto child{read_source<ReadableChild>(R"('(:child :name "original" :count 5))").value()};
+    std::optional<ReadableChild> initial{child};
+    Interpreter interpreter;
+    auto ast{interpreter.evaluate_ast("'(:child :count 2)").value()};
+    auto result{read_override(Reader{ast}, ast.root, "child", initial)};
+    ASSERT_TRUE(result);
+    ASSERT_TRUE(*result);
+    EXPECT_EQ((*result)->name.get_ref(), "original");
+    EXPECT_EQ((*result)->count, 2);
+    EXPECT_EQ(initial->count, 5);
+    EXPECT_FALSE(read_override(Reader{ast}, ast.root, "child", std::optional<ReadableChild>{}));
+}
+
+TEST(GeneratedS7Reader, UsesCompactMasksAndSupportsMoreThan64Fields) {
+    enum class Small : std::uint8_t { Required, Optional, Count };
+    static_assert(std::same_as<RecordMask<Small>, ioj::FieldMask<Small>>);
+    std::array<std::string_view, 2> constexpr names{"required", ""};
+    auto constexpr required{required_fields<Small>(names)};
+    RecordMask<Small> seen;
+    AstDiagnostics errors;
+    require_fields<Small>(seen, required, names, "record", errors);
+    ASSERT_EQ(errors.size(), 1u);
+    seen.set(Small::Required);
+    errors.clear();
+    require_fields<Small>(seen, required, names, "record", errors);
+    EXPECT_TRUE(errors.empty());
+
+    enum class Large : std::uint8_t { Last = 64, Count };
+    auto constexpr large_names{[] {
+        std::array<std::string_view, 65> result{};
+        result.back() = "last";
+        return result;
+    }()};
+    auto constexpr large_required{required_fields<Large>(large_names)};
+    RecordMask<Large> large_seen;
+    require_fields<Large>(large_seen, large_required, large_names, "record", errors);
+    ASSERT_EQ(errors.size(), 1u);
+    EXPECT_EQ(errors.front().node_path, "record.last");
+    large_seen.set(Large::Last);
+    errors.clear();
+    require_fields<Large>(large_seen, large_required, large_names, "record", errors);
+    EXPECT_TRUE(errors.empty());
 }
 }

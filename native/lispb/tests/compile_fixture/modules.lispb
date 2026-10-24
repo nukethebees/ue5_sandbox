@@ -4,6 +4,13 @@
   (enum ReaderEnum std::uint8_t :native-api true :helpers (traits to-serialized-string)
     (value Mixed :serialized-name "MixedCase"))
   (record EmptyReadable :generate-s7-reader true :s7-tag "empty")
+  (record EmptyPositional :generate-s7-reader true :s7-tag "empty-position" :s7-positional true)
+  (record PositionalChild :generate-s7-reader true :s7-tag "position" :s7-positional true
+    (member name @reader_nonempty_string :required true)
+    (member count int :nonnegative true))
+  (record DefaultReadable :generate-s7-reader true :s7-tag "default"
+    (member count int :initializer 2 :required true)
+    (member maybe @fixture_optional_int :initializer 7))
   (record RecursiveReadable :generate-s7-reader true :s7-tag "recursive"
     (member children @reader_recursive :initializer ""))
   (record BoundedInteger :generate-s7-reader true :s7-tag "integer"
