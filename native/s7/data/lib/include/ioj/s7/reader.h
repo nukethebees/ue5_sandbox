@@ -18,9 +18,6 @@
 #include <utility>
 
 namespace ioj::s7 {
-template <typename T>
-using ReadResult = std::expected<T, AstDiagnostics>;
-
 [[nodiscard]] inline auto read_error(AstErrorCode const code,
                                      std::string_view const path,
                                      std::string message) -> std::unexpected<AstDiagnostics> {

@@ -206,6 +206,15 @@ template <>
 
 namespace ioj {
 template <>
+struct EnumTraits<::ioj::TeamOutcome> {
+    inline static constexpr std::array values{::ioj::TeamOutcome::Victory,
+                                              ::ioj::TeamOutcome::Defeat};
+};
+
+} // namespace ioj
+
+namespace ioj {
+template <>
 struct EnumTraits<::ioj::ExprType> {
     inline static constexpr std::array values{::ioj::ExprType::All,
                                               ::ioj::ExprType::Any,

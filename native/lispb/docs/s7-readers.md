@@ -46,7 +46,15 @@ Use record `:s7-reader-includes ("CustomReader.h")` for handwritten adapters or 
 hidden inside externally registered container aliases. All readers in one module are
 declared before their definitions, allowing recursive container composition.
 
-Camera, collision-grid and campaign structural readers use this path. Mission graphs,
-reference resolution and archetype validation stay handwritten. Sparse settings and
-`settings-layers` retain authored presence and ordered application; decoding a complete
-record is not a replacement for that patch representation. No writers are generated.
+Level, entity, objective, mission, team-result, catalog/import, camera, collision-grid and
+campaign records use this path. `level_inputs.lispb` describes the script-facing records.
+Decode the complete input first; only then assign entity IDs, resolve objective-local
+expression names, assemble domain definitions and run semantic validation. Processing
+functions receive typed inputs and never access the AST. Positional mission expressions
+use small typed adapters; existing expression payload types carry their decoded values.
+
+Catalog entries capture `ReadResult<T>` so a bad imported definition remains an error
+associated with that file without discarding successful siblings. Sparse settings use a
+typed adapter that retains authored presence and ordered layers. Their existing generated
+field bindings apply those assignments afterward; omitted values never insert defaults.
+No writers are generated.

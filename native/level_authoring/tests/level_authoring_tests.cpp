@@ -1,10 +1,12 @@
 #include <ioj/files.h>
 #include <ioj/levels/authoring/campaign_parser.h>
 #include <ioj/levels/authoring/definition_reader.h>
+#include <ioj/levels/authoring/generated/level_inputs_reader.h>
 #include <ioj/levels/authoring/level_definition_writer.h>
 #include <ioj/levels/authoring/level_parser.h>
 #include <ioj/levels/authoring/source_session.h>
 #include <ioj/levels/catalog_validation.h>
+#include <ioj/s7/interpreter.h>
 
 #include <gtest/gtest.h>
 
@@ -160,6 +162,47 @@ TEST(NativeLevelAuthoringReader, GeneratedRecordsCoexistWithMissionsAndSparseSet
     EXPECT_EQ(settings[1].path, "fighters.speed");
     EXPECT_EQ(std::get<std::int64_t>(settings[0].value), 9000);
     EXPECT_EQ(std::get<std::int64_t>(settings[1].value), 2000);
+}
+
+TEST(NativeLevelAuthoringReader, DecodesTypedInputsBeforeResolvingReferencesOrGeneratingIds) {
+    s7::Interpreter interpreter;
+    auto ast{interpreter.evaluate_ast(R"('(:level :id typed :title "Typed"
+      :entities ((:entity :archetype capital-ship :team blue :position (1 2 3)))
+      :mission (:mission :objectives ((:objective :id wait :team blue
+        :pass (:expr-ref later)
+        :nodes ((:expr later (:time-elapsed 1))))))))")};
+    ASSERT_TRUE(ast);
+    auto const input{s7::read<LevelInput>(s7::Reader{*ast}, ast->root, "level")};
+    ASSERT_TRUE(input);
+    ASSERT_EQ(input->entities.size(), 1u);
+    EXPECT_TRUE(input->entities[0].id.empty());
+    EXPECT_EQ(input->entities[0].position.x(), 1);
+    auto const& objective{input->mission->objectives[0]};
+    EXPECT_EQ(objective.pass->reference, ObjectiveName{"later"});
+    ASSERT_EQ(objective.nodes.size(), 1u);
+    EXPECT_EQ(std::get<TimeElapsedExpr>(objective.nodes[0].value.expression.payload).seconds.get(),
+              1);
+
+    // Decoding does not require a viewpoint or resolve even an unknown expression name.
+    auto unresolved{interpreter.evaluate_ast(R"('(:level :id unknown :title "Unknown"
+      :mission (:mission :objectives ((:objective :id wait :team blue
+        :pass (:expr-ref missing))))))")};
+    ASSERT_TRUE(unresolved);
+    EXPECT_TRUE(s7::read<LevelInput>(s7::Reader{*unresolved}, unresolved->root, "level"));
+    auto const processed{parse_level(*unresolved, unresolved->root)};
+    ASSERT_FALSE(processed);
+    EXPECT_TRUE(has_code(processed.error(), DiagnosticCode::UnknownSymbol));
+}
+
+TEST(NativeLevelAuthoringReader, RejectsMalformedInputBeforeProcessingSymbolicReferences) {
+    auto const result{DefinitionReader{}.read_level_source(R"(
+      (level :id 'invalid :title "Invalid"
+        :mission (mission :objectives (list
+          (objective :id 'wait :team 'unknown :pass (expr-ref 'missing))))))")};
+    ASSERT_FALSE(result);
+    ASSERT_EQ(result.error().size(), 1u);
+    EXPECT_EQ(result.error()[0].code, DiagnosticCode::UnsupportedTeam);
+    EXPECT_EQ(result.error()[0].node_path, "level.mission.objectives[0].team");
 }
 
 TEST(NativeLevelAuthoringReader, FloatFieldsRejectNonfiniteAndUnrepresentableValues) {

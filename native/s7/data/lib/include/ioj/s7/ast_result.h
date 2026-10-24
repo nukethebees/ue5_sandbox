@@ -8,5 +8,7 @@
 
 namespace ioj::s7 {
 using AstDiagnostics = std::vector<AstDiagnostic>;
+template <typename T>
+using ReadResult = std::expected<T, AstDiagnostics>;
 using AstResult = std::expected<Ast, AstDiagnostics>;
 }

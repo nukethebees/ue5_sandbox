@@ -1,5 +1,6 @@
 (module mission_types
   :header "native/levels/lib/include/ioj/levels/mission_types.h"
+  :header-include "ioj/levels/mission_types.h"
   :namespace ioj
   (enum ObjectiveOutcome std::uint8_t
     :native-api true
@@ -16,7 +17,7 @@
     (value Expired :serialized-name "expired"))
   (enum TeamOutcome std::uint8_t
     :native-api true
-    :helpers (to-serialized-string try-parse-serialized)
+    :helpers (traits to-serialized-string try-parse-serialized)
     (unreal-projection ETeamOutcome
       :header "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/missions/TeamOutcome.h"
       :header-include "SpaceGame/missions/TeamOutcome.h"

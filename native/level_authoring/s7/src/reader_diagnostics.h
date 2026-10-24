@@ -43,8 +43,15 @@ inline auto diagnostics(s7::AstDiagnostics errors) -> Diagnostics {
     Diagnostics result;
     result.reserve(errors.size());
     for (auto& error : errors) {
-        result.push_back(
-            {diagnostic_code(error.code), std::move(error.node_path), std::move(error.message)});
+        auto code{diagnostic_code(error.code)};
+        if (error.code == s7::AstErrorCode::UnknownSymbol) {
+            if (error.node_path.ends_with(".team")) {
+                code = DiagnosticCode::UnsupportedTeam;
+            } else if (error.node_path.ends_with(".archetype")) {
+                code = DiagnosticCode::UnsupportedArchetype;
+            }
+        }
+        result.push_back({code, std::move(error.node_path), std::move(error.message)});
     }
     return result;
 }
