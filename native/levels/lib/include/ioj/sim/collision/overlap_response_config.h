@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ioj/apply_override.h"
 #include "ioj/math_types.h"
 
 #include <cstdint>
@@ -25,14 +26,9 @@ struct OverlapResponseConfigOverrides {
 
 inline void apply_overrides(OverlapResponseConfig& target,
                             OverlapResponseConfigOverrides const& overrides) {
-    if (overrides.damage_per_overlap_detection) {
-        target.damage_per_overlap_detection = *overrides.damage_per_overlap_detection;
-    }
-    if (overrides.level_size) {
-        target.level_size = *overrides.level_size;
-    }
-    if (overrides.cell_size) {
-        target.cell_size = *overrides.cell_size;
-    }
+    ioj::apply_override(target.damage_per_overlap_detection,
+                        overrides.damage_per_overlap_detection);
+    ioj::apply_override(target.level_size, overrides.level_size);
+    ioj::apply_override(target.cell_size, overrides.cell_size);
 }
 } // namespace ioj::sim

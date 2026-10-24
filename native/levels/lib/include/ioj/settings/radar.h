@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include "ioj/apply_override.h"
+
 #include <optional>
 
 namespace ioj::settings {
@@ -54,47 +56,21 @@ struct RadarOverrides {
 };
 
 inline void apply_overrides(Radar& target, RadarOverrides const& overrides) {
-    if (overrides.enabled) {
-        target.enabled = *overrides.enabled;
-    }
-    if (overrides.combat_range) {
-        target.combat_range = *overrides.combat_range;
-    }
-    if (overrides.tactical_range) {
-        target.tactical_range = *overrides.tactical_range;
-    }
-    if (overrides.maximum_range) {
-        target.maximum_range = *overrides.maximum_range;
-    }
-    if (overrides.combat_display_radius) {
-        target.combat_display_radius = *overrides.combat_display_radius;
-    }
-    if (overrides.grid_opacity) {
-        target.grid_opacity = *overrides.grid_opacity;
-    }
-    if (overrides.core_cell_radius) {
-        target.core_cell_radius = *overrides.core_cell_radius;
-    }
-    if (overrides.combat_cell_radius) {
-        target.combat_cell_radius = *overrides.combat_cell_radius;
-    }
-    if (overrides.tactical_cell_radius) {
-        target.tactical_cell_radius = *overrides.tactical_cell_radius;
-    }
-    if (overrides.strategic_cell_radius) {
-        target.strategic_cell_radius = *overrides.strategic_cell_radius;
-    }
-    if (overrides.glyph_size_scale) {
-        target.glyph_size_scale = *overrides.glyph_size_scale;
-    }
-    if (overrides.objective_size_multiplier) {
-        target.objective_size_multiplier = *overrides.objective_size_multiplier;
-    }
-    if (overrides.objective_ring_padding_pixels) {
-        target.objective_ring_padding_pixels = *overrides.objective_ring_padding_pixels;
-    }
-    if (overrides.objective_ring_thickness_pixels) {
-        target.objective_ring_thickness_pixels = *overrides.objective_ring_thickness_pixels;
-    }
+    ioj::apply_override(target.enabled, overrides.enabled);
+    ioj::apply_override(target.combat_range, overrides.combat_range);
+    ioj::apply_override(target.tactical_range, overrides.tactical_range);
+    ioj::apply_override(target.maximum_range, overrides.maximum_range);
+    ioj::apply_override(target.combat_display_radius, overrides.combat_display_radius);
+    ioj::apply_override(target.grid_opacity, overrides.grid_opacity);
+    ioj::apply_override(target.core_cell_radius, overrides.core_cell_radius);
+    ioj::apply_override(target.combat_cell_radius, overrides.combat_cell_radius);
+    ioj::apply_override(target.tactical_cell_radius, overrides.tactical_cell_radius);
+    ioj::apply_override(target.strategic_cell_radius, overrides.strategic_cell_radius);
+    ioj::apply_override(target.glyph_size_scale, overrides.glyph_size_scale);
+    ioj::apply_override(target.objective_size_multiplier, overrides.objective_size_multiplier);
+    ioj::apply_override(target.objective_ring_padding_pixels,
+                        overrides.objective_ring_padding_pixels);
+    ioj::apply_override(target.objective_ring_thickness_pixels,
+                        overrides.objective_ring_thickness_pixels);
 }
 } // namespace ioj::settings

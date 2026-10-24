@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ioj/apply_override.h"
 #include "ioj/constrained_value.h"
 
 #include <compile_fixture/range_policy.hpp>
@@ -31,12 +32,8 @@ struct RangeSettingsOverrides {
 };
 
 inline void apply_overrides(RangeSettings& target, RangeSettingsOverrides const& overrides) {
-    if (overrides.range) {
-        target.range = *overrides.range;
-    }
-    if (overrides.enabled) {
-        target.enabled = *overrides.enabled;
-    }
+    ioj::apply_override(target.range, overrides.range);
+    ioj::apply_override(target.enabled, overrides.enabled);
 }
 
 struct ApiPair {
@@ -63,12 +60,8 @@ struct WeaponSettingsOverrides {
 };
 
 inline void apply_overrides(WeaponSettings& target, WeaponSettingsOverrides const& overrides) {
-    if (overrides.damage) {
-        target.damage = *overrides.damage;
-    }
-    if (overrides.turn_rate) {
-        target.turn_rate = *overrides.turn_rate;
-    }
+    ioj::apply_override(target.damage, overrides.damage);
+    ioj::apply_override(target.turn_rate, overrides.turn_rate);
 }
 
 struct ActorSettings {
@@ -86,14 +79,8 @@ struct ActorSettingsOverrides {
 };
 
 inline void apply_overrides(ActorSettings& target, ActorSettingsOverrides const& overrides) {
-    if (overrides.max_health) {
-        target.max_health = *overrides.max_health;
-    }
-    if (overrides.weapon) {
-        apply_overrides(target.weapon, *overrides.weapon);
-    }
-    if (overrides.optional_limit) {
-        target.optional_limit = *overrides.optional_limit;
-    }
+    ioj::apply_override(target.max_health, overrides.max_health);
+    ioj::apply_override(target.weapon, overrides.weapon);
+    ioj::apply_override(target.optional_limit, overrides.optional_limit);
 }
 } // namespace codegen_compile_fixture

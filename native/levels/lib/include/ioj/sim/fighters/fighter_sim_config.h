@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ioj/apply_override.h"
 #include "ioj/settings/attack_distance_band.h"
 #include "ioj/sim/entities/health.h"
 #include "ioj/sim/lasers/laser_weapon_sim_config.h"
@@ -93,82 +94,35 @@ struct FighterSimConfigOverrides {
 };
 
 inline void apply_overrides(FighterSimConfig& target, FighterSimConfigOverrides const& overrides) {
-    if (overrides.max_live_fighters) {
-        target.max_live_fighters = *overrides.max_live_fighters;
-    }
-    if (overrides.fire_dot_product_threshold) {
-        target.fire_dot_product_threshold = *overrides.fire_dot_product_threshold;
-    }
-    if (overrides.speed) {
-        target.speed = *overrides.speed;
-    }
-    if (overrides.turn_speed_unitless) {
-        target.turn_speed_unitless = *overrides.turn_speed_unitless;
-    }
-    if (overrides.avoidance_clear_update_frequency) {
-        target.avoidance_clear_update_frequency = *overrides.avoidance_clear_update_frequency;
-    }
-    if (overrides.avoidance_update_frequency) {
-        target.avoidance_update_frequency = *overrides.avoidance_update_frequency;
-    }
-    if (overrides.avoidance_active_update_frequency) {
-        target.avoidance_active_update_frequency = *overrides.avoidance_active_update_frequency;
-    }
-    if (overrides.avoidance_immediate_update_frequency) {
-        target.avoidance_immediate_update_frequency =
-            *overrides.avoidance_immediate_update_frequency;
-    }
-    if (overrides.avoidance_lookahead_time) {
-        target.avoidance_lookahead_time = *overrides.avoidance_lookahead_time;
-    }
-    if (overrides.avoidance_clearance_buffer) {
-        target.avoidance_clearance_buffer = *overrides.avoidance_clearance_buffer;
-    }
-    if (overrides.separation_radius) {
-        target.separation_radius = *overrides.separation_radius;
-    }
-    if (overrides.separation_strength) {
-        target.separation_strength = *overrides.separation_strength;
-    }
-    if (overrides.steering_memory_duration) {
-        target.steering_memory_duration = *overrides.steering_memory_duration;
-    }
-    if (overrides.dense_traffic_neighbour_threshold) {
-        target.dense_traffic_neighbour_threshold = *overrides.dense_traffic_neighbour_threshold;
-    }
-    if (overrides.laser) {
-        apply_overrides(target.laser, *overrides.laser);
-    }
-    if (overrides.health) {
-        target.health = *overrides.health;
-    }
-    if (overrides.attack_retry_cooldown) {
-        target.attack_retry_cooldown = *overrides.attack_retry_cooldown;
-    }
-    if (overrides.attack_engagement_threshold) {
-        target.attack_engagement_threshold = *overrides.attack_engagement_threshold;
-    }
-    if (overrides.attack_reposition_frequency) {
-        target.attack_reposition_frequency = *overrides.attack_reposition_frequency;
-    }
-    if (overrides.attack_distance_band) {
-        target.attack_distance_band = *overrides.attack_distance_band;
-    }
-    if (overrides.arrival_distance) {
-        target.arrival_distance = *overrides.arrival_distance;
-    }
-    if (overrides.los_check_buffer) {
-        target.los_check_buffer = *overrides.los_check_buffer;
-    }
-    if (overrides.awareness_radius) {
-        target.awareness_radius = *overrides.awareness_radius;
-    }
-    if (overrides.awareness_scan_frequency) {
-        target.awareness_scan_frequency = *overrides.awareness_scan_frequency;
-    }
-    if (overrides.minimum_opportunistic_intercept_deviation_dot_product) {
-        target.minimum_opportunistic_intercept_deviation_dot_product =
-            *overrides.minimum_opportunistic_intercept_deviation_dot_product;
-    }
+    ioj::apply_override(target.max_live_fighters, overrides.max_live_fighters);
+    ioj::apply_override(target.fire_dot_product_threshold, overrides.fire_dot_product_threshold);
+    ioj::apply_override(target.speed, overrides.speed);
+    ioj::apply_override(target.turn_speed_unitless, overrides.turn_speed_unitless);
+    ioj::apply_override(target.avoidance_clear_update_frequency,
+                        overrides.avoidance_clear_update_frequency);
+    ioj::apply_override(target.avoidance_update_frequency, overrides.avoidance_update_frequency);
+    ioj::apply_override(target.avoidance_active_update_frequency,
+                        overrides.avoidance_active_update_frequency);
+    ioj::apply_override(target.avoidance_immediate_update_frequency,
+                        overrides.avoidance_immediate_update_frequency);
+    ioj::apply_override(target.avoidance_lookahead_time, overrides.avoidance_lookahead_time);
+    ioj::apply_override(target.avoidance_clearance_buffer, overrides.avoidance_clearance_buffer);
+    ioj::apply_override(target.separation_radius, overrides.separation_radius);
+    ioj::apply_override(target.separation_strength, overrides.separation_strength);
+    ioj::apply_override(target.steering_memory_duration, overrides.steering_memory_duration);
+    ioj::apply_override(target.dense_traffic_neighbour_threshold,
+                        overrides.dense_traffic_neighbour_threshold);
+    ioj::apply_override(target.laser, overrides.laser);
+    ioj::apply_override(target.health, overrides.health);
+    ioj::apply_override(target.attack_retry_cooldown, overrides.attack_retry_cooldown);
+    ioj::apply_override(target.attack_engagement_threshold, overrides.attack_engagement_threshold);
+    ioj::apply_override(target.attack_reposition_frequency, overrides.attack_reposition_frequency);
+    ioj::apply_override(target.attack_distance_band, overrides.attack_distance_band);
+    ioj::apply_override(target.arrival_distance, overrides.arrival_distance);
+    ioj::apply_override(target.los_check_buffer, overrides.los_check_buffer);
+    ioj::apply_override(target.awareness_radius, overrides.awareness_radius);
+    ioj::apply_override(target.awareness_scan_frequency, overrides.awareness_scan_frequency);
+    ioj::apply_override(target.minimum_opportunistic_intercept_deviation_dot_product,
+                        overrides.minimum_opportunistic_intercept_deviation_dot_product);
 }
 } // namespace ioj::sim

@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include "ioj/apply_override.h"
+
 #include <optional>
 
 namespace ioj::settings {
@@ -16,8 +18,7 @@ struct PlayerPresentationOverrides {
 
 inline void apply_overrides(PlayerPresentation& target,
                             PlayerPresentationOverrides const& overrides) {
-    if (overrides.boost_effect_colour_intensity) {
-        target.boost_effect_colour_intensity = *overrides.boost_effect_colour_intensity;
-    }
+    ioj::apply_override(target.boost_effect_colour_intensity,
+                        overrides.boost_effect_colour_intensity);
 }
 } // namespace ioj::settings

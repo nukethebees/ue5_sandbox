@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ioj/apply_override.h"
 #include "Records.h"
 #include "SignatureSecond.h"
 
@@ -30,9 +31,7 @@ struct CrossSettingsOverrides {
 };
 
 inline void apply_overrides(CrossSettings& target, CrossSettingsOverrides const& overrides) {
-    if (overrides.actor) {
-        apply_overrides(target.actor, *overrides.actor);
-    }
+    ioj::apply_override(target.actor, overrides.actor);
 }
 
 struct DefaultValue {

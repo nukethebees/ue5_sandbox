@@ -118,11 +118,10 @@ auto record_overrides(LoweringContext& context, DeclarationHandle const record)
         auto const field_name{context.text(members.name[index])};
         auto const source{ir.member_access(ir.named("overrides"), field_name)};
         auto const target{ir.member_access(ir.named("target"), field_name)};
-        auto const value{ir.unary(UnaryOperator::dereference, source)};
-        auto const apply{partial
-                             ? ir.expr_stmt(ir.call(ir.named("apply_overrides"), {target, value}))
-                             : ir.assignment(target, value)};
-        statements.push_back(ir.if_stmt(source, ir.block({apply})));
+        statements.push_back(ir.expr_stmt(
+            ir.call(ir.named("ioj::apply_override",
+                             {ir.types.dependency("ioj::apply_override", "ioj/apply_override.h")}),
+                    {target, source})));
     }
     auto const overrides{
         ir.record(ir.strings.intern(override_name), fields.build(), RecordKind::struct_)};

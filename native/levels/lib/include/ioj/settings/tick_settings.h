@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ioj/apply_override.h"
 #include "ioj/constrained_numbers.h"
 #include "ioj/frequency.h"
 
@@ -21,11 +22,7 @@ struct TickSettingsOverrides {
 };
 
 inline void apply_overrides(TickSettings& target, TickSettingsOverrides const& overrides) {
-    if (overrides.tick_rate) {
-        target.tick_rate = *overrides.tick_rate;
-    }
-    if (overrides.time_scale) {
-        target.time_scale = *overrides.time_scale;
-    }
+    ioj::apply_override(target.tick_rate, overrides.tick_rate);
+    ioj::apply_override(target.time_scale, overrides.time_scale);
 }
 } // namespace ioj::settings

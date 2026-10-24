@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ioj/apply_override.h"
 #include "ioj/settings/soft_target.h"
 #include "ioj/vector.h"
 
@@ -51,41 +52,17 @@ struct EntityOverlayOverrides {
 };
 
 inline void apply_overrides(EntityOverlay& target, EntityOverlayOverrides const& overrides) {
-    if (overrides.enabled) {
-        target.enabled = *overrides.enabled;
-    }
-    if (overrides.maximum_range) {
-        target.maximum_range = *overrides.maximum_range;
-    }
-    if (overrides.bar_size_pixels) {
-        target.bar_size_pixels = *overrides.bar_size_pixels;
-    }
-    if (overrides.screen_offset_pixels) {
-        target.screen_offset_pixels = *overrides.screen_offset_pixels;
-    }
-    if (overrides.minimum_bar_scale) {
-        target.minimum_bar_scale = *overrides.minimum_bar_scale;
-    }
-    if (overrides.maximum_bar_scale) {
-        target.maximum_bar_scale = *overrides.maximum_bar_scale;
-    }
-    if (overrides.inset_pixels) {
-        target.inset_pixels = *overrides.inset_pixels;
-    }
-    if (overrides.maximum_inset_height_ratio) {
-        target.maximum_inset_height_ratio = *overrides.maximum_inset_height_ratio;
-    }
-    if (overrides.objective_frame_pixels) {
-        target.objective_frame_pixels = *overrides.objective_frame_pixels;
-    }
-    if (overrides.objective_bar_height_scale) {
-        target.objective_bar_height_scale = *overrides.objective_bar_height_scale;
-    }
-    if (overrides.screen_edge_padding_pixels) {
-        target.screen_edge_padding_pixels = *overrides.screen_edge_padding_pixels;
-    }
-    if (overrides.soft_target) {
-        apply_overrides(target.soft_target, *overrides.soft_target);
-    }
+    ioj::apply_override(target.enabled, overrides.enabled);
+    ioj::apply_override(target.maximum_range, overrides.maximum_range);
+    ioj::apply_override(target.bar_size_pixels, overrides.bar_size_pixels);
+    ioj::apply_override(target.screen_offset_pixels, overrides.screen_offset_pixels);
+    ioj::apply_override(target.minimum_bar_scale, overrides.minimum_bar_scale);
+    ioj::apply_override(target.maximum_bar_scale, overrides.maximum_bar_scale);
+    ioj::apply_override(target.inset_pixels, overrides.inset_pixels);
+    ioj::apply_override(target.maximum_inset_height_ratio, overrides.maximum_inset_height_ratio);
+    ioj::apply_override(target.objective_frame_pixels, overrides.objective_frame_pixels);
+    ioj::apply_override(target.objective_bar_height_scale, overrides.objective_bar_height_scale);
+    ioj::apply_override(target.screen_edge_padding_pixels, overrides.screen_edge_padding_pixels);
+    ioj::apply_override(target.soft_target, overrides.soft_target);
 }
 } // namespace ioj::settings

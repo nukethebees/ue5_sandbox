@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ioj/apply_override.h"
 #include "ioj/math_types.h"
 #include "ioj/sim/entities/health.h"
 #include "ioj/sim/lasers/laser_weapon_sim_config.h"
@@ -29,17 +30,9 @@ struct TurretSimConfigOverrides {
 };
 
 inline void apply_overrides(TurretSimConfig& target, TurretSimConfigOverrides const& overrides) {
-    if (overrides.detection_radius) {
-        target.detection_radius = *overrides.detection_radius;
-    }
-    if (overrides.target_refresh_frequency) {
-        target.target_refresh_frequency = *overrides.target_refresh_frequency;
-    }
-    if (overrides.laser) {
-        apply_overrides(target.laser, *overrides.laser);
-    }
-    if (overrides.max_health) {
-        target.max_health = *overrides.max_health;
-    }
+    ioj::apply_override(target.detection_radius, overrides.detection_radius);
+    ioj::apply_override(target.target_refresh_frequency, overrides.target_refresh_frequency);
+    ioj::apply_override(target.laser, overrides.laser);
+    ioj::apply_override(target.max_health, overrides.max_health);
 }
 } // namespace ioj::sim

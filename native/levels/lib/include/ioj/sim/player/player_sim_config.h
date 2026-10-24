@@ -4,6 +4,7 @@
 #pragma once
 
 #include "fire_rate.h"
+#include "ioj/apply_override.h"
 #include "ioj/constrained_numbers.h"
 #include "ioj/sim/entities/health.h"
 #include "ioj/sim/lasers/laser_weapon_sim_config.h"
@@ -51,38 +52,16 @@ struct PlayerSimConfigOverrides {
 };
 
 inline void apply_overrides(PlayerSimConfig& target, PlayerSimConfigOverrides const& overrides) {
-    if (overrides.thrust_energy_max) {
-        target.thrust_energy_max = *overrides.thrust_energy_max;
-    }
-    if (overrides.pitch_angle_max) {
-        target.pitch_angle_max = *overrides.pitch_angle_max;
-    }
-    if (overrides.pitch_speed) {
-        target.pitch_speed = *overrides.pitch_speed;
-    }
-    if (overrides.yaw_angle_max) {
-        target.yaw_angle_max = *overrides.yaw_angle_max;
-    }
-    if (overrides.yaw_speed) {
-        target.yaw_speed = *overrides.yaw_speed;
-    }
-    if (overrides.turn_bank_angle_max) {
-        target.turn_bank_angle_max = *overrides.turn_bank_angle_max;
-    }
-    if (overrides.turn_bank_speed) {
-        target.turn_bank_speed = *overrides.turn_bank_speed;
-    }
-    if (overrides.laser) {
-        apply_overrides(target.laser, *overrides.laser);
-    }
-    if (overrides.health) {
-        target.health = *overrides.health;
-    }
-    if (overrides.laser_mode) {
-        target.laser_mode = *overrides.laser_mode;
-    }
-    if (overrides.laser_fire_rate) {
-        target.laser_fire_rate = *overrides.laser_fire_rate;
-    }
+    ioj::apply_override(target.thrust_energy_max, overrides.thrust_energy_max);
+    ioj::apply_override(target.pitch_angle_max, overrides.pitch_angle_max);
+    ioj::apply_override(target.pitch_speed, overrides.pitch_speed);
+    ioj::apply_override(target.yaw_angle_max, overrides.yaw_angle_max);
+    ioj::apply_override(target.yaw_speed, overrides.yaw_speed);
+    ioj::apply_override(target.turn_bank_angle_max, overrides.turn_bank_angle_max);
+    ioj::apply_override(target.turn_bank_speed, overrides.turn_bank_speed);
+    ioj::apply_override(target.laser, overrides.laser);
+    ioj::apply_override(target.health, overrides.health);
+    ioj::apply_override(target.laser_mode, overrides.laser_mode);
+    ioj::apply_override(target.laser_fire_rate, overrides.laser_fire_rate);
 }
 } // namespace ioj::sim

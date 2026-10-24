@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include "ioj/apply_override.h"
+
 #include <cstdint>
 #include <optional>
 
@@ -26,17 +28,9 @@ struct LaserWeaponSimConfigOverrides {
 
 inline void apply_overrides(LaserWeaponSimConfig& target,
                             LaserWeaponSimConfigOverrides const& overrides) {
-    if (overrides.damage) {
-        target.damage = *overrides.damage;
-    }
-    if (overrides.projectile_speed) {
-        target.projectile_speed = *overrides.projectile_speed;
-    }
-    if (overrides.max_distance) {
-        target.max_distance = *overrides.max_distance;
-    }
-    if (overrides.fire_cooldown) {
-        target.fire_cooldown = *overrides.fire_cooldown;
-    }
+    ioj::apply_override(target.damage, overrides.damage);
+    ioj::apply_override(target.projectile_speed, overrides.projectile_speed);
+    ioj::apply_override(target.max_distance, overrides.max_distance);
+    ioj::apply_override(target.fire_cooldown, overrides.fire_cooldown);
 }
 } // namespace ioj::sim

@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include "ioj/apply_override.h"
+
 #include <optional>
 
 namespace ioj::sim {
@@ -21,14 +23,9 @@ struct HudSettingsOverrides {
 };
 
 inline void apply_overrides(HudSettings& target, HudSettingsOverrides const& overrides) {
-    if (overrides.player_status_update_period) {
-        target.player_status_update_period = *overrides.player_status_update_period;
-    }
-    if (overrides.entity_count_update_period) {
-        target.entity_count_update_period = *overrides.entity_count_update_period;
-    }
-    if (overrides.mission_status_update_period) {
-        target.mission_status_update_period = *overrides.mission_status_update_period;
-    }
+    ioj::apply_override(target.player_status_update_period, overrides.player_status_update_period);
+    ioj::apply_override(target.entity_count_update_period, overrides.entity_count_update_period);
+    ioj::apply_override(target.mission_status_update_period,
+                        overrides.mission_status_update_period);
 }
 } // namespace ioj::sim

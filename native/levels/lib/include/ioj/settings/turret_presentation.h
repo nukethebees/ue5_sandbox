@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include "ioj/apply_override.h"
+
 #include <optional>
 
 namespace ioj::settings {
@@ -16,8 +18,6 @@ struct TurretPresentationOverrides {
 
 inline void apply_overrides(TurretPresentation& target,
                             TurretPresentationOverrides const& overrides) {
-    if (overrides.death_effect_scale) {
-        target.death_effect_scale = *overrides.death_effect_scale;
-    }
+    ioj::apply_override(target.death_effect_scale, overrides.death_effect_scale);
 }
 } // namespace ioj::settings

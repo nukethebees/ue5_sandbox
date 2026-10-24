@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include "ioj/apply_override.h"
+
 #include <cstdint>
 #include <optional>
 
@@ -16,8 +18,6 @@ struct LaserSimConfigOverrides {
 };
 
 inline void apply_overrides(LaserSimConfig& target, LaserSimConfigOverrides const& overrides) {
-    if (overrides.n_preallocated_instances) {
-        target.n_preallocated_instances = *overrides.n_preallocated_instances;
-    }
+    ioj::apply_override(target.n_preallocated_instances, overrides.n_preallocated_instances);
 }
 } // namespace ioj::sim

@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ioj/apply_override.h"
 #include "ioj/settings/capital_presentation.h"
 #include "ioj/settings/entity_overlay.h"
 #include "ioj/settings/laser_presentation.h"
@@ -37,23 +38,11 @@ struct PresentationOverrides {
 };
 
 inline void apply_overrides(Presentation& target, PresentationOverrides const& overrides) {
-    if (overrides.player_ship) {
-        apply_overrides(target.player_ship, *overrides.player_ship);
-    }
-    if (overrides.laser_projectiles) {
-        apply_overrides(target.laser_projectiles, *overrides.laser_projectiles);
-    }
-    if (overrides.capital_ships) {
-        apply_overrides(target.capital_ships, *overrides.capital_ships);
-    }
-    if (overrides.turrets) {
-        apply_overrides(target.turrets, *overrides.turrets);
-    }
-    if (overrides.entity_overlay) {
-        apply_overrides(target.entity_overlay, *overrides.entity_overlay);
-    }
-    if (overrides.radar) {
-        apply_overrides(target.radar, *overrides.radar);
-    }
+    ioj::apply_override(target.player_ship, overrides.player_ship);
+    ioj::apply_override(target.laser_projectiles, overrides.laser_projectiles);
+    ioj::apply_override(target.capital_ships, overrides.capital_ships);
+    ioj::apply_override(target.turrets, overrides.turrets);
+    ioj::apply_override(target.entity_overlay, overrides.entity_overlay);
+    ioj::apply_override(target.radar, overrides.radar);
 }
 } // namespace ioj::settings

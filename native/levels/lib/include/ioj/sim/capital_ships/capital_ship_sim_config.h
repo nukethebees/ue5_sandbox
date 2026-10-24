@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ioj/apply_override.h"
 #include "ioj/sim/entities/health.h"
 #include "ioj/transform3d.h"
 
@@ -26,11 +27,7 @@ struct CapitalShipSimConfigOverrides {
 
 inline void apply_overrides(CapitalShipSimConfig& target,
                             CapitalShipSimConfigOverrides const& overrides) {
-    if (overrides.spawn_delay) {
-        target.spawn_delay = *overrides.spawn_delay;
-    }
-    if (overrides.max_health) {
-        target.max_health = *overrides.max_health;
-    }
+    ioj::apply_override(target.spawn_delay, overrides.spawn_delay);
+    ioj::apply_override(target.max_health, overrides.max_health);
 }
 } // namespace ioj::sim

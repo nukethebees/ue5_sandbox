@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ioj/apply_override.h"
 #include "ioj/math_types.h"
 
 #include <cstdint>
@@ -34,23 +35,11 @@ struct CapitalPresentationOverrides {
 
 inline void apply_overrides(CapitalPresentation& target,
                             CapitalPresentationOverrides const& overrides) {
-    if (overrides.n_small_explosions) {
-        target.n_small_explosions = *overrides.n_small_explosions;
-    }
-    if (overrides.time_between_explosions) {
-        target.time_between_explosions = *overrides.time_between_explosions;
-    }
-    if (overrides.min_small_explosion_range) {
-        target.min_small_explosion_range = *overrides.min_small_explosion_range;
-    }
-    if (overrides.max_small_explosion_range) {
-        target.max_small_explosion_range = *overrides.max_small_explosion_range;
-    }
-    if (overrides.large_explosion_delay) {
-        target.large_explosion_delay = *overrides.large_explosion_delay;
-    }
-    if (overrides.proxy_arrow_size) {
-        target.proxy_arrow_size = *overrides.proxy_arrow_size;
-    }
+    ioj::apply_override(target.n_small_explosions, overrides.n_small_explosions);
+    ioj::apply_override(target.time_between_explosions, overrides.time_between_explosions);
+    ioj::apply_override(target.min_small_explosion_range, overrides.min_small_explosion_range);
+    ioj::apply_override(target.max_small_explosion_range, overrides.max_small_explosion_range);
+    ioj::apply_override(target.large_explosion_delay, overrides.large_explosion_delay);
+    ioj::apply_override(target.proxy_arrow_size, overrides.proxy_arrow_size);
 }
 } // namespace ioj::settings

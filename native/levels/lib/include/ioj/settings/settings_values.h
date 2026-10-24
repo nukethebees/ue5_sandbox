@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ioj/apply_override.h"
 #include "ioj/gfx/starfield_settings.h"
 #include "ioj/settings/presentation.h"
 #include "ioj/settings/tick_settings.h"
@@ -57,38 +58,16 @@ struct SettingsValuesOverrides {
 };
 
 inline void apply_overrides(SettingsValues& target, SettingsValuesOverrides const& overrides) {
-    if (overrides.tick) {
-        apply_overrides(target.tick, *overrides.tick);
-    }
-    if (overrides.player_ship) {
-        apply_overrides(target.player_ship, *overrides.player_ship);
-    }
-    if (overrides.laser_projectiles) {
-        apply_overrides(target.laser_projectiles, *overrides.laser_projectiles);
-    }
-    if (overrides.capital_ships) {
-        apply_overrides(target.capital_ships, *overrides.capital_ships);
-    }
-    if (overrides.fighters) {
-        apply_overrides(target.fighters, *overrides.fighters);
-    }
-    if (overrides.turrets) {
-        apply_overrides(target.turrets, *overrides.turrets);
-    }
-    if (overrides.tube_spinners) {
-        apply_overrides(target.tube_spinners, *overrides.tube_spinners);
-    }
-    if (overrides.collision_grid) {
-        apply_overrides(target.collision_grid, *overrides.collision_grid);
-    }
-    if (overrides.hud) {
-        apply_overrides(target.hud, *overrides.hud);
-    }
-    if (overrides.presentation) {
-        apply_overrides(target.presentation, *overrides.presentation);
-    }
-    if (overrides.starfield) {
-        apply_overrides(target.starfield, *overrides.starfield);
-    }
+    ioj::apply_override(target.tick, overrides.tick);
+    ioj::apply_override(target.player_ship, overrides.player_ship);
+    ioj::apply_override(target.laser_projectiles, overrides.laser_projectiles);
+    ioj::apply_override(target.capital_ships, overrides.capital_ships);
+    ioj::apply_override(target.fighters, overrides.fighters);
+    ioj::apply_override(target.turrets, overrides.turrets);
+    ioj::apply_override(target.tube_spinners, overrides.tube_spinners);
+    ioj::apply_override(target.collision_grid, overrides.collision_grid);
+    ioj::apply_override(target.hud, overrides.hud);
+    ioj::apply_override(target.presentation, overrides.presentation);
+    ioj::apply_override(target.starfield, overrides.starfield);
 }
 } // namespace ioj::settings

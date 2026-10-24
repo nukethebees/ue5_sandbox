@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include "ioj/apply_override.h"
+
 #include <optional>
 
 namespace ioj::settings {
@@ -19,11 +21,7 @@ struct LaserPresentationOverrides {
 
 inline void apply_overrides(LaserPresentation& target,
                             LaserPresentationOverrides const& overrides) {
-    if (overrides.min_cull_distance) {
-        target.min_cull_distance = *overrides.min_cull_distance;
-    }
-    if (overrides.max_cull_distance) {
-        target.max_cull_distance = *overrides.max_cull_distance;
-    }
+    ioj::apply_override(target.min_cull_distance, overrides.min_cull_distance);
+    ioj::apply_override(target.max_cull_distance, overrides.max_cull_distance);
 }
 } // namespace ioj::settings

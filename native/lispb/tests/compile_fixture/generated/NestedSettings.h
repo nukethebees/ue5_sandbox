@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ioj/apply_override.h"
 #include "Records.h"
 
 #include <optional>
@@ -23,14 +24,8 @@ struct SettingsTargetOverrides {
 };
 
 inline void apply_overrides(SettingsTarget& target, SettingsTargetOverrides const& overrides) {
-    if (overrides.first) {
-        apply_overrides(target.first, *overrides.first);
-    }
-    if (overrides.second) {
-        apply_overrides(target.second, *overrides.second);
-    }
-    if (overrides.external_value) {
-        target.external_value = *overrides.external_value;
-    }
+    ioj::apply_override(target.first, overrides.first);
+    ioj::apply_override(target.second, overrides.second);
+    ioj::apply_override(target.external_value, overrides.external_value);
 }
 } // namespace codegen_compile_fixture

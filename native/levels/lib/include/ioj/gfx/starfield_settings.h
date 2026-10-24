@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include "ioj/apply_override.h"
+
 #include <cstdint>
 #include <optional>
 
@@ -20,12 +22,8 @@ struct GenerationSettingsOverrides {
 
 inline void apply_overrides(GenerationSettings& target,
                             GenerationSettingsOverrides const& overrides) {
-    if (overrides.star_count) {
-        target.star_count = *overrides.star_count;
-    }
-    if (overrides.random_seed) {
-        target.random_seed = *overrides.random_seed;
-    }
+    ioj::apply_override(target.star_count, overrides.star_count);
+    ioj::apply_override(target.random_seed, overrides.random_seed);
 }
 
 struct StarSettings {
@@ -49,21 +47,11 @@ struct StarSettingsOverrides {
 };
 
 inline void apply_overrides(StarSettings& target, StarSettingsOverrides const& overrides) {
-    if (overrides.scale) {
-        target.scale = *overrides.scale;
-    }
-    if (overrides.size_multiplier) {
-        target.size_multiplier = *overrides.size_multiplier;
-    }
-    if (overrides.global_brightness) {
-        target.global_brightness = *overrides.global_brightness;
-    }
-    if (overrides.colour_variation_strength) {
-        target.colour_variation_strength = *overrides.colour_variation_strength;
-    }
-    if (overrides.parallax_strength) {
-        target.parallax_strength = *overrides.parallax_strength;
-    }
+    ioj::apply_override(target.scale, overrides.scale);
+    ioj::apply_override(target.size_multiplier, overrides.size_multiplier);
+    ioj::apply_override(target.global_brightness, overrides.global_brightness);
+    ioj::apply_override(target.colour_variation_strength, overrides.colour_variation_strength);
+    ioj::apply_override(target.parallax_strength, overrides.parallax_strength);
 }
 
 struct GalacticBandSettings {
@@ -79,12 +67,8 @@ struct GalacticBandSettingsOverrides {
 
 inline void apply_overrides(GalacticBandSettings& target,
                             GalacticBandSettingsOverrides const& overrides) {
-    if (overrides.strength) {
-        target.strength = *overrides.strength;
-    }
-    if (overrides.width_degrees) {
-        target.width_degrees = *overrides.width_degrees;
-    }
+    ioj::apply_override(target.strength, overrides.strength);
+    ioj::apply_override(target.width_degrees, overrides.width_degrees);
 }
 
 struct StellarClusterSettings {
@@ -100,12 +84,8 @@ struct StellarClusterSettingsOverrides {
 
 inline void apply_overrides(StellarClusterSettings& target,
                             StellarClusterSettingsOverrides const& overrides) {
-    if (overrides.strength) {
-        target.strength = *overrides.strength;
-    }
-    if (overrides.width_degrees) {
-        target.width_degrees = *overrides.width_degrees;
-    }
+    ioj::apply_override(target.strength, overrides.strength);
+    ioj::apply_override(target.width_degrees, overrides.width_degrees);
 }
 
 struct DustLaneSettings {
@@ -123,15 +103,9 @@ struct DustLaneSettingsOverrides {
 };
 
 inline void apply_overrides(DustLaneSettings& target, DustLaneSettingsOverrides const& overrides) {
-    if (overrides.strength) {
-        target.strength = *overrides.strength;
-    }
-    if (overrides.width_degrees) {
-        target.width_degrees = *overrides.width_degrees;
-    }
-    if (overrides.irregularity) {
-        target.irregularity = *overrides.irregularity;
-    }
+    ioj::apply_override(target.strength, overrides.strength);
+    ioj::apply_override(target.width_degrees, overrides.width_degrees);
+    ioj::apply_override(target.irregularity, overrides.irregularity);
 }
 
 struct BrightStarSettings {
@@ -153,18 +127,10 @@ struct BrightStarSettingsOverrides {
 
 inline void apply_overrides(BrightStarSettings& target,
                             BrightStarSettingsOverrides const& overrides) {
-    if (overrides.fraction) {
-        target.fraction = *overrides.fraction;
-    }
-    if (overrides.size_multiplier) {
-        target.size_multiplier = *overrides.size_multiplier;
-    }
-    if (overrides.brightness_multiplier) {
-        target.brightness_multiplier = *overrides.brightness_multiplier;
-    }
-    if (overrides.shape_strength) {
-        target.shape_strength = *overrides.shape_strength;
-    }
+    ioj::apply_override(target.fraction, overrides.fraction);
+    ioj::apply_override(target.size_multiplier, overrides.size_multiplier);
+    ioj::apply_override(target.brightness_multiplier, overrides.brightness_multiplier);
+    ioj::apply_override(target.shape_strength, overrides.shape_strength);
 }
 
 struct TwinkleSettings {
@@ -179,12 +145,8 @@ struct TwinkleSettingsOverrides {
 };
 
 inline void apply_overrides(TwinkleSettings& target, TwinkleSettingsOverrides const& overrides) {
-    if (overrides.strength) {
-        target.strength = *overrides.strength;
-    }
-    if (overrides.speed) {
-        target.speed = *overrides.speed;
-    }
+    ioj::apply_override(target.strength, overrides.strength);
+    ioj::apply_override(target.speed, overrides.speed);
 }
 
 struct GalacticHazeSettings {
@@ -200,12 +162,8 @@ struct GalacticHazeSettingsOverrides {
 
 inline void apply_overrides(GalacticHazeSettings& target,
                             GalacticHazeSettingsOverrides const& overrides) {
-    if (overrides.strength) {
-        target.strength = *overrides.strength;
-    }
-    if (overrides.width_degrees) {
-        target.width_degrees = *overrides.width_degrees;
-    }
+    ioj::apply_override(target.strength, overrides.strength);
+    ioj::apply_override(target.width_degrees, overrides.width_degrees);
 }
 
 struct GalacticCoreSettings {
@@ -221,12 +179,8 @@ struct GalacticCoreSettingsOverrides {
 
 inline void apply_overrides(GalacticCoreSettings& target,
                             GalacticCoreSettingsOverrides const& overrides) {
-    if (overrides.strength) {
-        target.strength = *overrides.strength;
-    }
-    if (overrides.width_degrees) {
-        target.width_degrees = *overrides.width_degrees;
-    }
+    ioj::apply_override(target.strength, overrides.strength);
+    ioj::apply_override(target.width_degrees, overrides.width_degrees);
 }
 
 struct NebularKnotSettings {
@@ -242,12 +196,8 @@ struct NebularKnotSettingsOverrides {
 
 inline void apply_overrides(NebularKnotSettings& target,
                             NebularKnotSettingsOverrides const& overrides) {
-    if (overrides.strength) {
-        target.strength = *overrides.strength;
-    }
-    if (overrides.size_degrees) {
-        target.size_degrees = *overrides.size_degrees;
-    }
+    ioj::apply_override(target.strength, overrides.strength);
+    ioj::apply_override(target.size_degrees, overrides.size_degrees);
 }
 
 struct Settings {
@@ -286,35 +236,15 @@ struct SettingsOverrides {
 };
 
 inline void apply_overrides(Settings& target, SettingsOverrides const& overrides) {
-    if (overrides.generation) {
-        apply_overrides(target.generation, *overrides.generation);
-    }
-    if (overrides.star) {
-        apply_overrides(target.star, *overrides.star);
-    }
-    if (overrides.galactic_band) {
-        apply_overrides(target.galactic_band, *overrides.galactic_band);
-    }
-    if (overrides.stellar_cluster) {
-        apply_overrides(target.stellar_cluster, *overrides.stellar_cluster);
-    }
-    if (overrides.dust_lane) {
-        apply_overrides(target.dust_lane, *overrides.dust_lane);
-    }
-    if (overrides.bright_star) {
-        apply_overrides(target.bright_star, *overrides.bright_star);
-    }
-    if (overrides.twinkle) {
-        apply_overrides(target.twinkle, *overrides.twinkle);
-    }
-    if (overrides.galactic_haze) {
-        apply_overrides(target.galactic_haze, *overrides.galactic_haze);
-    }
-    if (overrides.galactic_core) {
-        apply_overrides(target.galactic_core, *overrides.galactic_core);
-    }
-    if (overrides.nebular_knot) {
-        apply_overrides(target.nebular_knot, *overrides.nebular_knot);
-    }
+    ioj::apply_override(target.generation, overrides.generation);
+    ioj::apply_override(target.star, overrides.star);
+    ioj::apply_override(target.galactic_band, overrides.galactic_band);
+    ioj::apply_override(target.stellar_cluster, overrides.stellar_cluster);
+    ioj::apply_override(target.dust_lane, overrides.dust_lane);
+    ioj::apply_override(target.bright_star, overrides.bright_star);
+    ioj::apply_override(target.twinkle, overrides.twinkle);
+    ioj::apply_override(target.galactic_haze, overrides.galactic_haze);
+    ioj::apply_override(target.galactic_core, overrides.galactic_core);
+    ioj::apply_override(target.nebular_knot, overrides.nebular_knot);
 }
 } // namespace ioj::starfield

@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ioj/apply_override.h"
 #include "ioj/sim/lasers/fire_point.h"
 #include "ioj/sim/lasers/laser_weapon_sim_config.h"
 
@@ -23,11 +24,7 @@ struct SpinnerSimConfigOverrides {
 };
 
 inline void apply_overrides(SpinnerSimConfig& target, SpinnerSimConfigOverrides const& overrides) {
-    if (overrides.yaw_rotation_speed_degrees) {
-        target.yaw_rotation_speed_degrees = *overrides.yaw_rotation_speed_degrees;
-    }
-    if (overrides.laser) {
-        apply_overrides(target.laser, *overrides.laser);
-    }
+    ioj::apply_override(target.yaw_rotation_speed_degrees, overrides.yaw_rotation_speed_degrees);
+    ioj::apply_override(target.laser, overrides.laser);
 }
 } // namespace ioj::sim
