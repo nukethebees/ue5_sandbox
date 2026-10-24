@@ -196,27 +196,20 @@ void check_traces(TraceFixture const& fixture, std::span<ExpectedTrace const> co
 
     auto const hits{run_traces(fixture, starts, ends)};
     auto const count{static_cast<std::int32_t>(cases.size())};
-    auto const hit_flags{hits.get_const_view().hits()};
+    auto const view{hits.get_const_view().resolve()};
+    auto const hit_flags{view.hits()};
+    auto const entities{view.entities()};
+    auto const locations{view.view_locations()};
     for (std::int32_t i{}; i < count; ++i) {
         auto const& trace_case{cases[i]};
-        std::string const hit_description{" has expected hit flag" +
-                                          ::testing::PrintToString(trace_case.name)};
-        EXPECT_EQ(trace_case.expected_hit, hit_flags[i]) << hit_description;
+        SCOPED_TRACE(trace_case.name);
+        EXPECT_EQ(trace_case.expected_hit, hit_flags[i]);
         if (trace_case.expected_hit == 0 || hit_flags[i] == 0) {
             continue;
         }
 
-        std::string const entity_description{" resolves expected entity" +
-                                             ::testing::PrintToString(trace_case.name)};
-        EXPECT_EQ(fixture.handles[trace_case.expected_entity_index],
-                  hits.get_const_view().entities()[i])
-            << entity_description;
-
-        std::string const location_description{" resolves expected hit location" +
-                                               ::testing::PrintToString(trace_case.name)};
-        EXPECT_LE(size(trace_case.expected_location - hits.get_const_view().view_locations()[i]),
-                  hit_location_tolerance)
-            << location_description;
+        EXPECT_EQ(fixture.handles[trace_case.expected_entity_index], entities[i]);
+        EXPECT_LE(size(trace_case.expected_location - locations[i]), hit_location_tolerance);
     }
 }
 
@@ -317,169 +310,54 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridContainsAllEntityTypes) 
 // Trace scenarios
 /* ------------------------------------------------------------------------------------------ */
 TEST(WorldlessSpaceGameSimulation, Collision_UniformGridTraceHitsAndMisses) {
-    Vector3f const entity_centre{};
-    Vector3f const aabb_half_extents{{10.f, 10.f, 10.f}};
-    Vector3f const left_of_aabb{{-150.f, 0.f, 0.f}};
-    Vector3f const right_of_aabb{{150.f, 0.f, 0.f}};
-    Vector3f const negative_diagonal_start{{-150.f, -150.f, -150.f}};
-    Vector3f const positive_diagonal_end{{150.f, 150.f, 150.f}};
-    Vector3f const off_axis_start{{-150.f, 25.f, 0.f}};
-    Vector3f const off_axis_end{{150.f, 25.f, 0.f}};
-    Vector3f const left_face_contact{{-10.f, 0.f, 0.f}};
-    Vector3f const right_face_contact{{10.f, 0.f, 0.f}};
-    Vector3f const negative_corner_contact{{-10.f, -10.f, -10.f}};
-    Vector3f const unused_miss_location{};
-
-    std::vector<Vector3f> const entity_locations{entity_centre};
-    TraceFixture const fixture{entity_locations, aabb_half_extents};
-
-    std::vector<Vector3f> const starts{
-        left_of_aabb,
-        right_of_aabb,
-        negative_diagonal_start,
-        off_axis_start,
-        entity_centre,
+    TraceFixture const fixture{std::array{Vector3f{}}, {10.f, 10.f, 10.f}};
+    std::array const cases{
+        ExpectedTrace{"Left to right", {-150, 0, 0}, {150, 0, 0}, 1, {-10, 0, 0}},
+        ExpectedTrace{"Right to left", {150, 0, 0}, {-150, 0, 0}, 1, {10, 0, 0}},
+        ExpectedTrace{"Diagonal", {-150, -150, -150}, {150, 150, 150}, 1, {-10, -10, -10}},
+        ExpectedTrace{"Off axis", {-150, 25, 0}, {150, 25, 0}, 0},
+        ExpectedTrace{"Inside origin", {}, {150, 0, 0}, 1, {}},
     };
-    std::vector<Vector3f> const ends{
-        right_of_aabb,
-        left_of_aabb,
-        positive_diagonal_end,
-        off_axis_end,
-        right_of_aabb,
-    };
-    auto const hits{run_traces(fixture, starts, ends)};
-
-    std::array<TraceHit, 5> const expected_hit_flags{1, 1, 1, 0, 1};
-    std::array<Vector3f, 5> const expected_locations{
-        left_face_contact,
-        right_face_contact,
-        negative_corner_contact,
-        unused_miss_location,
-        entity_centre,
-    };
-
-    auto const count{static_cast<std::int32_t>(expected_hit_flags.size())};
-    for (std::int32_t i{}; i < count; ++i) {
-        SCOPED_TRACE(::testing::Message() << "index " << i);
-        EXPECT_EQ(expected_hit_flags[i], hits.get_const_view().hits()[i])
-            << "Trace has expected hit flag";
-        if (expected_hit_flags[i] == 0) {
-            continue;
-        }
-
-        EXPECT_EQ(fixture.handles[0], hits.get_const_view().entities()[i])
-            << "Trace resolves expected entity";
-        EXPECT_LE(size(expected_locations[i] - hits.get_const_view().view_locations()[i]),
-                  hit_location_tolerance)
-            << "Trace resolves expected hit location";
-    }
+    check_traces(fixture, cases);
 }
 
 TEST(WorldlessSpaceGameSimulation, Collision_UniformGridTraceStopsAtEndpoint) {
-    Vector3f const entity_centre{{50.f, 0.f, 0.f}};
-    Vector3f const aabb_half_extents{{10.f, 10.f, 10.f}};
-    Vector3f const trace_start{};
-    Vector3f const trace_endpoint_before_aabb{{20.f, 0.f, 0.f}};
-
-    std::vector<Vector3f> const entity_locations{entity_centre};
-    TraceFixture const fixture{entity_locations, aabb_half_extents};
-    std::vector<Vector3f> const starts{trace_start};
-    std::vector<Vector3f> const ends{trace_endpoint_before_aabb};
-
-    auto const hits{run_traces(fixture, starts, ends)};
-
-    EXPECT_EQ(TraceHit{0}, hits.get_const_view().hits()[0])
-        << "AABB beyond trace endpoint is not hit";
+    TraceFixture const fixture{std::array{Vector3f{50, 0, 0}}, {10, 10, 10}};
+    check_traces(fixture, std::array{ExpectedTrace{"AABB beyond endpoint", {}, {20, 0, 0}, 0}});
 }
 
 TEST(WorldlessSpaceGameSimulation, Collision_UniformGridTraceReturnsNearestHit) {
-    Vector3f const far_entity_centre{{60.f, 0.f, 0.f}};
-    Vector3f const near_entity_centre{{20.f, 0.f, 0.f}};
-    Vector3f const aabb_half_extents{{5.f, 5.f, 5.f}};
-    Vector3f const trace_start{};
-    Vector3f const trace_end{{90.f, 0.f, 0.f}};
-    Vector3f const expected_near_contact{{15.f, 0.f, 0.f}};
-
-    std::vector<Vector3f> const entity_locations{
-        far_entity_centre,
-        near_entity_centre,
-    };
-    TraceFixture const fixture{entity_locations, aabb_half_extents};
-    std::vector<Vector3f> const starts{trace_start};
-    std::vector<Vector3f> const ends{trace_end};
-
-    auto const hits{run_traces(fixture, starts, ends)};
-
-    EXPECT_EQ(TraceHit{1}, hits.get_const_view().hits()[0])
-        << "Trace through two AABBs records a hit";
-    EXPECT_EQ(fixture.handles[1], hits.get_const_view().entities()[0])
-        << "Trace returns nearest intersecting entity";
-    EXPECT_LE(size(expected_near_contact - hits.get_const_view().view_locations()[0]),
-              hit_location_tolerance)
-        << "Trace returns nearest intersection location";
+    TraceFixture const fixture{std::array{Vector3f{60, 0, 0}, Vector3f{20, 0, 0}}, {5, 5, 5}};
+    check_traces(
+        fixture,
+        std::array{ExpectedTrace{"Nearest of two entities", {}, {90, 0, 0}, 1, {15, 0, 0}, 1}});
 }
 
 TEST(WorldlessSpaceGameSimulation, Collision_UniformGridTraceHandlesZeroLengthTraces) {
-    Vector3f const entity_centre{{50.f, 0.f, 0.f}};
-    Vector3f const aabb_half_extents{{10.f, 10.f, 10.f}};
-    Vector3f const point_outside_aabb{};
-
-    std::vector<Vector3f> const entity_locations{entity_centre};
-    TraceFixture const fixture{entity_locations, aabb_half_extents};
-    std::vector<Vector3f> const starts{
-        entity_centre,
-        point_outside_aabb,
-    };
-
-    auto const hits{run_traces(fixture, starts, starts)};
-
-    EXPECT_EQ(TraceHit{1}, hits.get_const_view().hits()[0])
-        << "Stationary point inside AABB records a hit";
-    EXPECT_EQ(fixture.handles[0], hits.get_const_view().entities()[0])
-        << "Stationary point resolves containing entity";
-    EXPECT_LE(size(starts[0] - hits.get_const_view().view_locations()[0]), hit_location_tolerance)
-        << "Stationary point hit location is the trace point";
-    EXPECT_EQ(TraceHit{0}, hits.get_const_view().hits()[1])
-        << "Stationary point outside AABB does not record a hit";
+    TraceFixture const fixture{std::array{Vector3f{50, 0, 0}}, {10, 10, 10}};
+    check_traces(
+        fixture,
+        std::array{ExpectedTrace{"Stationary point inside", {50, 0, 0}, {50, 0, 0}, 1, {50, 0, 0}},
+                   ExpectedTrace{"Stationary point outside", {}, {}, 0}});
 }
 
 TEST(WorldlessSpaceGameSimulation, Collision_UniformGridTraceIncludesNegativeEndpointBoundary) {
-    Vector3f const entity_centre{{-10.f, 0.f, 0.f}};
-    Vector3f const aabb_half_extents{{10.f, 10.f, 10.f}};
-    Vector3f const trace_start{{10.f, 0.f, 0.f}};
-    Vector3f const boundary_contact{};
-
-    std::vector<Vector3f> const entity_locations{entity_centre};
-    TraceFixture const fixture{entity_locations, aabb_half_extents};
-    std::vector<Vector3f> const starts{trace_start};
-    std::vector<Vector3f> const ends{boundary_contact};
-
-    auto const hits{run_traces(fixture, starts, ends)};
-
-    EXPECT_EQ(TraceHit{1}, hits.get_const_view().hits()[0])
-        << "Trace includes AABB touched at endpoint";
-    if (hits.get_const_view().hits()[0] == 0) {
-        return;
-    }
-
-    EXPECT_EQ(fixture.handles[0], hits.get_const_view().entities()[0])
-        << "Endpoint trace resolves touched entity";
-    EXPECT_LE(size(boundary_contact - hits.get_const_view().view_locations()[0]),
-              hit_location_tolerance)
-        << "Endpoint trace returns boundary contact location";
+    TraceFixture const fixture{std::array{Vector3f{-10, 0, 0}}, {10, 10, 10}};
+    check_traces(fixture,
+                 std::array{ExpectedTrace{"Negative endpoint contact", {10, 0, 0}, {}, 1, {}}});
 }
 
 TEST(WorldlessSpaceGameSimulation, Collision_UniformGridTraceAppliesAABBCentre) {
     // A quarter turn moves the offset centre into a different grid cell and swaps X/Y extents.
-    TraceFixture rotated{std::vector<Vector3f>{Vector3f{}},
+    TraceFixture rotated{std::array{Vector3f{}},
                          Vector3f{{20.f, 5.f, 10.f}},
                          Vector3f{{150.f, 0.f, 0.f}},
                          trace_grid_dims,
                          trace_cell_dims,
                          {},
                          Rotator3f{0.f, 90.f, 0.f}};
-    std::vector<Vector3f> const rotated_starts{{{-50.f, 150.f, 0.f}}, {{100.f, 0.f, 0.f}}};
-    std::vector<Vector3f> const rotated_ends{{{50.f, 150.f, 0.f}}, {{200.f, 0.f, 0.f}}};
+    std::array<Vector3f, 2> const rotated_starts{{{{-50.f, 150.f, 0.f}}, {{100.f, 0.f, 0.f}}}};
+    std::array<Vector3f, 2> const rotated_ends{{{{50.f, 150.f, 0.f}}, {{200.f, 0.f, 0.f}}}};
     auto const rotated_hits{run_traces(rotated, rotated_starts, rotated_ends)};
     EXPECT_EQ(TraceHit{1}, rotated_hits.get_const_view().hits()[0])
         << "Trace finds rotated box in its new grid cell";
@@ -498,13 +376,13 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridTraceAppliesAABBCentre) 
     EXPECT_LE(size(Vector3f{{-5.f, 130.f, -10.f}} - collision::min_point_at(cached, 0)), 0.001f)
         << "Visualisation reads the same rotated cached bounds";
 
-    rotated.update_entities(std::vector<Vector3f>{Vector3f{}}, std::vector<std::uint8_t>{1});
+    rotated.update_entities(std::array{Vector3f{}}, std::array{std::uint8_t{1}});
     auto const updated_hits{run_traces(rotated, rotated_starts, rotated_ends)};
     EXPECT_EQ(TraceHit{0}, updated_hits.get_const_view().hits()[0])
         << "Owner rotation update removes old rotated bounds";
     EXPECT_EQ(TraceHit{1}, updated_hits.get_const_view().hits()[1])
         << "Owner rotation update reaches grid queries";
-    rotated.update_entities(std::vector<Vector3f>{Vector3f{}}, std::vector<std::uint8_t>{0});
+    rotated.update_entities(std::array{Vector3f{}}, std::array{std::uint8_t{0}});
     auto const reused_handle{rotated.add_entity(Vector3f{})};
     EXPECT_TRUE(rotated.handles[0] != reused_handle)
         << "Replacement receives a distinct monotonic ID";
@@ -519,10 +397,10 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridTraceAppliesAABBCentre) 
     Vector3f const trace_end{{60.f, 0.f, 0.f}};
     Vector3f const expected_contact{{30.f, 0.f, 0.f}};
 
-    std::vector<Vector3f> const entity_locations{entity_location};
+    std::array<Vector3f, 1> const entity_locations{{entity_location}};
     TraceFixture const fixture{entity_locations, aabb_half_extents, local_aabb_centre};
-    std::vector<Vector3f> const starts{trace_start};
-    std::vector<Vector3f> const ends{trace_end};
+    std::array<Vector3f, 1> const starts{{trace_start}};
+    std::array<Vector3f, 1> const ends{{trace_end}};
 
     auto const hits{run_traces(fixture, starts, ends)};
 
@@ -537,34 +415,34 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridTraceAppliesAABBCentre) 
               hit_location_tolerance)
         << "Trace applies local AABB centre to hit location";
 
-    std::vector<EntityType> const entity_types{
+    std::array<EntityType, 5> const entity_types{{
         EntityType::PlayerShip,
         EntityType::Turret,
         EntityType::CapitalShip,
         EntityType::Fighter,
         EntityType::TubeSpinner,
-    };
-    std::vector<Vector3f> const mixed_locations{
+    }};
+    std::array<Vector3f, 5> const mixed_locations{{
         {{-300.f, 0.f, 0.f}},
         {{-150.f, 0.f, 0.f}},
         {{0.f, 0.f, 0.f}},
         {{150.f, 0.f, 0.f}},
         {{300.f, 0.f, 0.f}},
-    };
-    std::vector<Vector3f> const local_centres{
+    }};
+    std::array<Vector3f, 5> const local_centres{{
         {{5.f, -20.f, 3.f}},
         {{-6.f, -10.f, -2.f}},
         {{0.f, 0.f, 0.f}},
         {{8.f, 10.f, -4.f}},
         {{-9.f, 20.f, 5.f}},
-    };
-    std::vector<Vector3f> const half_extents{
+    }};
+    std::array<Vector3f, 5> const half_extents{{
         {{4.f, 5.f, 6.f}},
         {{7.f, 8.f, 9.f}},
         {{10.f, 11.f, 12.f}},
         {{13.f, 14.f, 15.f}},
         {{16.f, 17.f, 18.f}},
-    };
+    }};
     TraceFixture mixed_fixture{
         mixed_locations, {}, {}, trace_grid_dims, trace_cell_dims, entity_types};
     auto const entity_type_count{static_cast<std::int32_t>(entity_types.size())};
@@ -613,9 +491,9 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridTraceAxisParallelAndOrig
                                      near_parallel_delta *
                                          ((trace_extent - 10.f) / (2.f * trace_extent))};
 
-    std::vector<Vector3f> const entity_locations{entity_centre};
+    std::array<Vector3f, 1> const entity_locations{{entity_centre}};
     TraceFixture const fixture{entity_locations, aabb_half_extents};
-    std::vector<ExpectedTrace> const cases{
+    std::array<ExpectedTrace, 12> const cases{{
         {"Positive X trace through origin",
          {{-trace_extent, 0.f, 0.f}},
          {{trace_extent, 0.f, 0.f}},
@@ -672,7 +550,7 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridTraceAxisParallelAndOrig
          {{-trace_extent, outside_slab, 0.f}},
          {{trace_extent, outside_slab + near_parallel_delta, 0.f}},
          0},
-    };
+    }};
 
     check_traces(fixture, cases);
 }
@@ -684,9 +562,9 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridTraceSurfaceContacts) {
     constexpr float face{10.f};
     constexpr float just_outside_face{10.5f};
 
-    std::vector<Vector3f> const entity_locations{entity_centre};
+    std::array<Vector3f, 1> const entity_locations{{entity_centre}};
     TraceFixture const fixture{entity_locations, aabb_half_extents};
-    std::vector<ExpectedTrace> const cases{
+    std::array<ExpectedTrace, 15> const cases{{
         {"Segment ends on negative X face",
          {{-outside_face, 0.f, 0.f}},
          {{-face, 0.f, 0.f}},
@@ -756,7 +634,7 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridTraceSurfaceContacts) {
          {{just_outside_face, 0.f, 0.f}},
          {{just_outside_face, 0.f, 0.f}},
          0},
-    };
+    }};
 
     check_traces(fixture, cases);
 }
@@ -766,9 +644,9 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridTraceGridBoundaryTravers
     constexpr float trace_extent{150.f};
 
     {
-        std::vector<Vector3f> const entity_locations{{{-10.f, 0.f, 0.f}}};
+        std::array<Vector3f, 1> const entity_locations{{{{-10.f, 0.f, 0.f}}}};
         TraceFixture const fixture{entity_locations, aabb_half_extents};
-        std::vector<ExpectedTrace> const cases{
+        std::array<ExpectedTrace, 3> const cases{{
             {"Y trace lies on X cell plane",
              {{0.f, -trace_extent, 0.f}},
              {{0.f, trace_extent, 0.f}},
@@ -784,14 +662,14 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridTraceGridBoundaryTravers
              {{-trace_extent, 0.f, 0.f}},
              1,
              {{0.f, 0.f, 0.f}}},
-        };
+        }};
         check_traces(fixture, cases);
     }
 
     {
-        std::vector<Vector3f> const entity_locations{{{0.f, -10.f, 0.f}}};
+        std::array<Vector3f, 1> const entity_locations{{{{0.f, -10.f, 0.f}}}};
         TraceFixture const fixture{entity_locations, aabb_half_extents};
-        std::vector<ExpectedTrace> const cases{
+        std::array<ExpectedTrace, 2> const cases{{
             {"X trace lies on Y cell plane",
              {{-trace_extent, 0.f, 0.f}},
              {{trace_extent, 0.f, 0.f}},
@@ -802,14 +680,14 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridTraceGridBoundaryTravers
              {{0.f, 0.f, 0.f}},
              1,
              {{0.f, 0.f, 0.f}}},
-        };
+        }};
         check_traces(fixture, cases);
     }
 
     {
-        std::vector<Vector3f> const entity_locations{{{0.f, 0.f, -10.f}}};
+        std::array<Vector3f, 1> const entity_locations{{{{0.f, 0.f, -10.f}}}};
         TraceFixture const fixture{entity_locations, aabb_half_extents};
-        std::vector<ExpectedTrace> const cases{
+        std::array<ExpectedTrace, 2> const cases{{
             {"X trace lies on Z cell plane",
              {{-trace_extent, 0.f, 0.f}},
              {{trace_extent, 0.f, 0.f}},
@@ -820,14 +698,14 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridTraceGridBoundaryTravers
              {{0.f, 0.f, 0.f}},
              1,
              {{0.f, 0.f, 0.f}}},
-        };
+        }};
         check_traces(fixture, cases);
     }
 
     {
-        std::vector<Vector3f> const entity_locations{{{10.f, -10.f, 0.f}}};
+        std::array<Vector3f, 1> const entity_locations{{{{10.f, -10.f, 0.f}}}};
         TraceFixture const fixture{entity_locations, aabb_half_extents};
-        std::vector<ExpectedTrace> const cases{
+        std::array<ExpectedTrace, 2> const cases{{
             {"Positive diagonal touches entity at cell edge",
              {{-trace_extent, -trace_extent, 0.f}},
              {{trace_extent, trace_extent, 0.f}},
@@ -838,20 +716,20 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridTraceGridBoundaryTravers
              {{-trace_extent, -trace_extent, 0.f}},
              1,
              {{0.f, 0.f, 0.f}}},
-        };
+        }};
         check_traces(fixture, cases);
     }
 
     {
-        std::vector<Vector3f> const entity_locations{{{10.f, -10.f, -10.f}}};
+        std::array<Vector3f, 1> const entity_locations{{{{10.f, -10.f, -10.f}}}};
         TraceFixture const fixture{entity_locations, aabb_half_extents};
-        std::vector<ExpectedTrace> const cases{
+        std::array<ExpectedTrace, 1> const cases{{
             {"Three-axis diagonal touches entity at cell corner",
              {{-trace_extent, -trace_extent, -trace_extent}},
              {{trace_extent, trace_extent, trace_extent}},
              1,
              {{0.f, 0.f, 0.f}}},
-        };
+        }};
         check_traces(fixture, cases);
     }
 }
@@ -861,9 +739,9 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridTraceShortAndNearParalle
     Vector3f const aabb_half_extents{{10.f, 10.f, 10.f}};
     constexpr float face{-10.f};
 
-    std::vector<Vector3f> const entity_locations{entity_centre};
+    std::array<Vector3f, 1> const entity_locations{{entity_centre}};
     TraceFixture const fixture{entity_locations, aabb_half_extents};
-    std::vector<ExpectedTrace> const cases{
+    std::array<ExpectedTrace, 7> const cases{{
         {"Short segment stops before face", {{-20.f, 0.f, 0.f}}, {{-10.5f, 0.f, 0.f}}, 0},
         {"Short segment stops on face",
          {{-20.f, 0.f, 0.f}},
@@ -887,7 +765,7 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridTraceShortAndNearParalle
          {{-1.f, 2.f, 3.f}}},
         {"Very short segment remains outside", {{20.f, 0.f, 0.f}}, {{20.001f, 0.f, 0.f}}, 0},
         {"Segment points away from AABB", {{-20.f, 0.f, 0.f}}, {{-21.f, 0.f, 0.f}}, 0},
-    };
+    }};
 
     check_traces(fixture, cases);
 }
@@ -899,9 +777,9 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridTraceClipsToGridBounds) 
     constexpr float outside_grid{500.f};
     constexpr float distant_outside_grid{20000.f};
 
-    std::vector<Vector3f> const entity_locations{entity_centre};
+    std::array<Vector3f, 1> const entity_locations{{entity_centre}};
     TraceFixture const fixture{entity_locations, aabb_half_extents};
-    std::vector<ExpectedTrace> const cases{
+    std::array<ExpectedTrace, 10> const cases{{
         {"X segment crosses grid from outside",
          {{-outside_grid, 0.f, 0.f}},
          {{outside_grid, 0.f, 0.f}},
@@ -948,7 +826,7 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridTraceClipsToGridBounds) 
          {{distant_outside_grid - 1000.f, 0.f, 0.f}},
          {{distant_outside_grid, 0.f, 0.f}},
          0},
-    };
+    }};
 
     check_traces(fixture, cases);
 }
@@ -959,9 +837,9 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridTraceDegenerateAABBs) {
 
     {
         Vector3f const point_half_extents{};
-        std::vector<Vector3f> const entity_locations{cell_interior};
+        std::array<Vector3f, 1> const entity_locations{{cell_interior}};
         TraceFixture const fixture{entity_locations, point_half_extents};
-        std::vector<ExpectedTrace> const cases{
+        std::array<ExpectedTrace, 3> const cases{{
             {"Trace crosses point AABB in cell interior",
              {{cell_interior.x() - trace_offset, cell_interior.y(), cell_interior.z()}},
              {{cell_interior.x() + trace_offset, cell_interior.y(), cell_interior.z()}},
@@ -972,51 +850,51 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridTraceDegenerateAABBs) {
              {{cell_interior.x() - trace_offset, cell_interior.y() + 1.f, cell_interior.z()}},
              {{cell_interior.x() + trace_offset, cell_interior.y() + 1.f, cell_interior.z()}},
              0},
-        };
+        }};
         check_traces(fixture, cases);
     }
 
     {
         Vector3f const plane_half_extents{{0.f, 10.f, 10.f}};
-        std::vector<Vector3f> const entity_locations{cell_interior};
+        std::array<Vector3f, 1> const entity_locations{{cell_interior}};
         TraceFixture const fixture{entity_locations, plane_half_extents};
-        std::vector<ExpectedTrace> const cases{
+        std::array<ExpectedTrace, 1> const cases{{
             {"Trace crosses plane AABB",
              {{cell_interior.x() - trace_offset, cell_interior.y(), cell_interior.z()}},
              {{cell_interior.x() + trace_offset, cell_interior.y(), cell_interior.z()}},
              1,
              cell_interior},
-        };
+        }};
         check_traces(fixture, cases);
     }
 
     {
         Vector3f const line_half_extents{{10.f, 0.f, 0.f}};
-        std::vector<Vector3f> const entity_locations{cell_interior};
+        std::array<Vector3f, 1> const entity_locations{{cell_interior}};
         TraceFixture const fixture{entity_locations, line_half_extents};
-        std::vector<ExpectedTrace> const cases{
+        std::array<ExpectedTrace, 1> const cases{{
             {"Trace crosses line AABB",
              {{cell_interior.x(), cell_interior.y() - trace_offset, cell_interior.z()}},
              {{cell_interior.x(), cell_interior.y() + trace_offset, cell_interior.z()}},
              1,
              cell_interior},
-        };
+        }};
         check_traces(fixture, cases);
     }
 
     {
         Vector3f const origin{};
         Vector3f const point_half_extents{};
-        std::vector<Vector3f> const entity_locations{origin};
+        std::array<Vector3f, 1> const entity_locations{{origin}};
         TraceFixture const fixture{entity_locations, point_half_extents};
-        std::vector<ExpectedTrace> const cases{
+        std::array<ExpectedTrace, 2> const cases{{
             {"Trace crosses point AABB on grid corner",
              {{-trace_offset, 0.f, 0.f}},
              {{trace_offset, 0.f, 0.f}},
              1,
              origin},
             {"Stationary trace equals point AABB on grid corner", origin, origin, 1, origin},
-        };
+        }};
         check_traces(fixture, cases);
     }
 }
@@ -1028,12 +906,12 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridTraceCrossCellNearestHit
     constexpr float trace_extent{300.f};
 
     {
-        std::vector<Vector3f> const entity_locations{
+        std::array<Vector3f, 2> const entity_locations{{
             positive_entity_centre,
             negative_entity_centre,
-        };
+        }};
         TraceFixture const fixture{entity_locations, aabb_half_extents};
-        std::vector<ExpectedTrace> const cases{
+        std::array<ExpectedTrace, 2> const cases{{
             {"Positive trace returns nearest entity in earlier cell",
              {{-trace_extent, 0.f, 0.f}},
              {{trace_extent, 0.f, 0.f}},
@@ -1046,21 +924,21 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridTraceCrossCellNearestHit
              1,
              {{160.f, 0.f, 0.f}},
              0},
-        };
+        }};
         check_traces(fixture, cases);
     }
 
     {
         Vector3f const wide_aabb_half_extents{{160.f, 10.f, 10.f}};
-        std::vector<Vector3f> const entity_locations{{{0.f, 0.f, 0.f}}};
+        std::array<Vector3f, 1> const entity_locations{{{{0.f, 0.f, 0.f}}}};
         TraceFixture const fixture{entity_locations, wide_aabb_half_extents};
-        std::vector<ExpectedTrace> const cases{
+        std::array<ExpectedTrace, 1> const cases{{
             {"AABB repeated across cells returns one stable contact",
              {{-trace_extent, 0.f, 0.f}},
              {{trace_extent, 0.f, 0.f}},
              1,
              {{-160.f, 0.f, 0.f}}},
-        };
+        }};
         check_traces(fixture, cases);
     }
 }
@@ -1071,10 +949,10 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridTraceVariedGridGeometry)
     Vector3f const entity_centre{{25.f, -30.f, 40.f}};
     Vector3f const aabb_half_extents{{15.f, 20.f, 25.f}};
 
-    std::vector<Vector3f> const entity_locations{entity_centre};
+    std::array<Vector3f, 1> const entity_locations{{entity_centre}};
     TraceFixture const fixture{
         entity_locations, aabb_half_extents, Vector3f{}, fixture_grid_dims, fixture_cell_dims};
-    std::vector<ExpectedTrace> const cases{
+    std::array<ExpectedTrace, 4> const cases{{
         {"Positive X trace in nonuniform grid",
          {{-190.f, -30.f, 40.f}},
          {{190.f, -30.f, 40.f}},
@@ -1094,29 +972,29 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridTraceVariedGridGeometry)
          {{-190.f, -5.f, 40.f}},
          {{190.f, -5.f, 40.f}},
          0},
-    };
+    }};
     check_traces(fixture, cases);
 
     Vector3f const boundary_entity_centre{{-55.f, -30.f, 40.f}};
-    std::vector<Vector3f> const boundary_entity_locations{boundary_entity_centre};
+    std::array<Vector3f, 1> const boundary_entity_locations{{boundary_entity_centre}};
     TraceFixture const boundary_fixture{boundary_entity_locations,
                                         aabb_half_extents,
                                         Vector3f{},
                                         fixture_grid_dims,
                                         fixture_cell_dims};
-    std::vector<ExpectedTrace> const boundary_cases{
+    std::array<ExpectedTrace, 1> const boundary_cases{{
         {"Trace follows cell boundary in odd nonuniform grid",
          {{-40.f, -300.f, 40.f}},
          {{-40.f, 300.f, 40.f}},
          1,
          {{-40.f, -50.f, 40.f}}},
-    };
+    }};
     check_traces(boundary_fixture, boundary_cases);
 
     collision::CellCoord const single_cell_grid_dims{1, 1, 1};
     Vector3f const single_cell_dims{{100.f, 120.f, 140.f}};
     Vector3f const single_cell_half_extents{{10.f, 10.f, 10.f}};
-    std::vector<Vector3f> const single_cell_locations{Vector3f{}};
+    std::array<Vector3f, 1> const single_cell_locations{{Vector3f{}}};
     TraceFixture const single_cell_fixture{single_cell_locations,
                                            single_cell_half_extents,
                                            Vector3f{},
@@ -1126,7 +1004,7 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridTraceVariedGridGeometry)
     EXPECT_EQ(1, static_cast<std::int32_t>(single_cell_fixture.grid.get_cell_entities({}).size()))
         << "Single-cell grid contains its entity";
 
-    std::vector<ExpectedTrace> const single_cell_cases{
+    std::array<ExpectedTrace, 4> const single_cell_cases{{
         {"Diagonal trace crosses single-cell grid",
          {{-100.f, -100.f, -100.f}},
          {{100.f, 100.f, 100.f}},
@@ -1142,7 +1020,7 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridTraceVariedGridGeometry)
          {{50.f, -20.f, 0.f}},
          {{50.f, 20.f, 0.f}},
          0},
-    };
+    }};
     check_traces(single_cell_fixture, single_cell_cases);
 }
 
@@ -1158,9 +1036,9 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridTraceBoundaryPrecision) 
         std::nextafter(negative_face, -std::numeric_limits<float>::infinity())};
     auto const after_negative_face{std::nextafter(negative_face, 0.f)};
 
-    std::vector<Vector3f> const entity_locations{entity_centre};
+    std::array<Vector3f, 1> const entity_locations{{entity_centre}};
     TraceFixture const fixture{entity_locations, aabb_half_extents};
-    std::vector<ExpectedTrace> const cases{
+    std::array<ExpectedTrace, 6> const cases{{
         {"Parallel trace exactly on face",
          {{-trace_extent, face, 0.f}},
          {{trace_extent, face, 0.f}},
@@ -1189,7 +1067,7 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridTraceBoundaryPrecision) 
          {{after_negative_face, 0.f, 0.f}},
          1,
          {{negative_face, 0.f, 0.f}}},
-    };
+    }};
     check_traces(fixture, cases);
 }
 
@@ -1199,19 +1077,19 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridRebuildLifecycle) {
     Vector3f const aabb_half_extents{{10.f, 10.f, 10.f}};
     constexpr float trace_offset{25.f};
 
-    std::vector<Vector3f> const initial_locations{initial_location};
+    std::array<Vector3f, 1> const initial_locations{{initial_location}};
     TraceFixture fixture{initial_locations, aabb_half_extents};
     for (std::int32_t rebuild{}; rebuild < 4; ++rebuild) {
         fixture.owners.rebuild(fixture.grid, fixture.aabbs);
     }
 
-    std::vector<ExpectedTrace> const initial_cases{
+    std::array<ExpectedTrace, 1> const initial_cases{{
         {"Repeated rebuild retains entity",
          {{initial_location.x() - trace_offset, 0.f, 0.f}},
          {{initial_location.x() + trace_offset, 0.f, 0.f}},
          1,
          {{initial_location.x() - aabb_half_extents.x(), 0.f, 0.f}}},
-    };
+    }};
     check_traces(fixture, initial_cases);
 
     {
@@ -1220,33 +1098,33 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridRebuildLifecycle) {
         set_vector(owner.view_locations(), 0, moved_location);
         check_traces(authoritative, initial_cases);
         authoritative.owners.rebuild(authoritative.grid, authoritative.aabbs);
-        std::vector<ExpectedTrace> const owner_cases{
+        std::array<ExpectedTrace, 1> const owner_cases{{
             {"Rebuild uses owner location without intermediary publication",
              {{moved_location.x() - trace_offset, 0.f, 0.f}},
              {{moved_location.x() + trace_offset, 0.f, 0.f}},
              1,
              {{moved_location.x() - aabb_half_extents.x(), 0.f, 0.f}}},
-        };
+        }};
         check_traces(authoritative, owner_cases);
         authoritative.owners.health_table.get_view<EntityType::CapitalShip>(owner.num())
             .set_health(0, 0);
         authoritative.owners.rebuild(authoritative.grid, authoritative.aabbs);
-        std::vector<ExpectedTrace> const dead_owner_cases{
+        std::array<ExpectedTrace, 1> const dead_owner_cases{{
             {"Rebuild removes dead owners before subsequent queries",
              {{moved_location.x() - trace_offset, 0.f, 0.f}},
              {{moved_location.x() + trace_offset, 0.f, 0.f}},
              0},
-        };
+        }};
         check_traces(authoritative, dead_owner_cases);
         auto const overlaps{authoritative.grid.count_overlaps(
             {moved_location - aabb_half_extents, moved_location + aabb_half_extents}, {})};
         EXPECT_EQ(overlaps.entities, 0u) << "Dead owner is excluded from cached overlaps";
     }
 
-    std::vector<Vector3f> const moved_locations{moved_location};
-    std::vector<std::uint8_t> const alive{std::uint8_t{1}};
+    std::array<Vector3f, 1> const moved_locations{{moved_location}};
+    std::array<std::uint8_t, 1> const alive{{std::uint8_t{1}}};
     fixture.update_entities(moved_locations, alive);
-    std::vector<ExpectedTrace> const moved_cases{
+    std::array<ExpectedTrace, 2> const moved_cases{{
         {"Moved entity is removed from old cells",
          {{initial_location.x() - trace_offset, 0.f, 0.f}},
          {{initial_location.x() + trace_offset, 0.f, 0.f}},
@@ -1256,17 +1134,17 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridRebuildLifecycle) {
          {{moved_location.x() + trace_offset, 0.f, 0.f}},
          1,
          {{moved_location.x() - aabb_half_extents.x(), 0.f, 0.f}}},
-    };
+    }};
     check_traces(fixture, moved_cases);
 
-    std::vector<std::uint8_t> const dead{std::uint8_t{0}};
+    std::array<std::uint8_t, 1> const dead{{std::uint8_t{0}}};
     fixture.update_entities(moved_locations, dead);
-    std::vector<ExpectedTrace> const dead_cases{
+    std::array<ExpectedTrace, 1> const dead_cases{{
         {"Dead entity is removed on rebuild",
          {{moved_location.x() - trace_offset, 0.f, 0.f}},
          {{moved_location.x() + trace_offset, 0.f, 0.f}},
          0},
-    };
+    }};
     check_traces(fixture, dead_cases);
 
     Vector3f const replacement_location{{250.f, 0.f, 0.f}};
@@ -1275,12 +1153,12 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridRebuildLifecycle) {
     EXPECT_TRUE(old_handle != replacement_handle)
         << "Replacement entity receives a distinct monotonic ID";
 
-    std::vector<Vector3f> const replacement_starts{
+    std::array<Vector3f, 1> const replacement_starts{{
         {{replacement_location.x() - trace_offset, 0.f, 0.f}},
-    };
-    std::vector<Vector3f> const replacement_ends{
+    }};
+    std::array<Vector3f, 1> const replacement_ends{{
         {{replacement_location.x() + trace_offset, 0.f, 0.f}},
-    };
+    }};
     auto const replacement_hits{run_traces(fixture, replacement_starts, replacement_ends)};
     EXPECT_EQ(TraceHit{1}, replacement_hits.get_const_view().hits()[0])
         << "Replacement entity is added on rebuild";
@@ -1289,15 +1167,16 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridRebuildLifecycle) {
             << "Trace resolves replacement generation";
     }
 
-    std::vector<Vector3f> const sparse_locations{
+    std::array<Vector3f, 3> const sparse_locations{{
         {{-250.f, 0.f, 0.f}},
         {{0.f, 0.f, 0.f}},
         {{250.f, 0.f, 0.f}},
-    };
+    }};
     TraceFixture sparse_fixture{sparse_locations, aabb_half_extents};
-    std::vector<std::uint8_t> const sparse_alive{std::uint8_t{1}, std::uint8_t{0}, std::uint8_t{1}};
+    std::array<std::uint8_t, 3> const sparse_alive{
+        {std::uint8_t{1}, std::uint8_t{0}, std::uint8_t{1}}};
     sparse_fixture.update_entities(sparse_locations, sparse_alive);
-    std::vector<ExpectedTrace> const sparse_cases{
+    std::array<ExpectedTrace, 3> const sparse_cases{{
         {"Live entity before dead slot remains traceable",
          {{-250.f - trace_offset, 0.f, 0.f}},
          {{-250.f + trace_offset, 0.f, 0.f}},
@@ -1314,7 +1193,7 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridRebuildLifecycle) {
          1,
          {{250.f - aabb_half_extents.x(), 0.f, 0.f}},
          2},
-    };
+    }};
     check_traces(sparse_fixture, sparse_cases);
 
     Vector3f const sparse_replacement_location{{0.f, 200.f, 0.f}};
@@ -1323,12 +1202,12 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridRebuildLifecycle) {
     EXPECT_TRUE(sparse_old_handle != sparse_replacement_handle)
         << "Sparse replacement receives a distinct monotonic ID";
 
-    std::vector<Vector3f> const sparse_replacement_starts{
+    std::array<Vector3f, 1> const sparse_replacement_starts{{
         sparse_replacement_location - Vector3f{{0.f, trace_offset, 0.f}},
-    };
-    std::vector<Vector3f> const sparse_replacement_ends{
+    }};
+    std::array<Vector3f, 1> const sparse_replacement_ends{{
         sparse_replacement_location + Vector3f{{0.f, trace_offset, 0.f}},
-    };
+    }};
     auto const sparse_replacement_hits{
         run_traces(sparse_fixture, sparse_replacement_starts, sparse_replacement_ends)};
     EXPECT_EQ(TraceHit{1}, sparse_replacement_hits.get_const_view().hits()[0])
@@ -1438,8 +1317,8 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridTraceDeterministicRefere
 
 TEST(WorldlessSpaceGameSimulation, Collision_UniformGridTraceInvarianceProperties) {
     TraceFixture tied{std::vector<Vector3f>{Vector3f{}, Vector3f{}}, {{10.f, 10.f, 10.f}}};
-    std::vector<Vector3f> const tied_starts{{{-20.f, 0.f, 0.f}}};
-    std::vector<Vector3f> const tied_ends{{{20.f, 0.f, 0.f}}};
+    std::array<Vector3f, 1> const tied_starts{{{{-20.f, 0.f, 0.f}}}};
+    std::array<Vector3f, 1> const tied_ends{{{{20.f, 0.f, 0.f}}}};
     auto const expected_id{tied.handles[0]};
     auto const first_tied_hits{run_traces(tied, tied_starts, tied_ends)};
     EXPECT_EQ(first_tied_hits.get_const_view().entities()[0], expected_id);
@@ -1454,27 +1333,27 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridTraceInvariancePropertie
 
     Vector3f const aabb_half_extents{{18.f, 22.f, 15.f}};
     Vector3f const local_aabb_centre{{4.f, -3.f, 5.f}};
-    std::vector<Vector3f> const entity_locations{
+    std::array<Vector3f, 3> const entity_locations{{
         {{-220.f, -40.f, 10.f}},
         {{35.f, 70.f, -20.f}},
         {{210.f, -120.f, 80.f}},
-    };
-    std::vector<Vector3f> const starts{
+    }};
+    std::array<Vector3f, 6> const starts{{
         {{-280.f, -43.f, 15.f}},
         {{-21.f, 67.f, -15.f}},
         {{154.f, -123.f, 85.f}},
         {{-280.f, 150.f, 15.f}},
         {{35.f, -200.f, -15.f}},
         {{-300.f, -300.f, -300.f}},
-    };
-    std::vector<Vector3f> const ends{
+    }};
+    std::array<Vector3f, 6> const ends{{
         {{-160.f, -43.f, 15.f}},
         {{99.f, 67.f, -15.f}},
         {{274.f, -123.f, 85.f}},
         {{-160.f, 150.f, 15.f}},
         {{35.f, -100.f, -15.f}},
         {{-250.f, -250.f, -250.f}},
-    };
+    }};
 
     TraceFixture const baseline_fixture{entity_locations, aabb_half_extents, local_aabb_centre};
     auto const baseline_hits{run_traces(baseline_fixture, starts, ends)};
@@ -1537,11 +1416,11 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridTraceInvariancePropertie
             << "Trace permutation preserves location";
     }
 
-    std::vector<Vector3f> const reversed_entity_locations{
+    std::array<Vector3f, 3> const reversed_entity_locations{{
         entity_locations[2],
         entity_locations[1],
         entity_locations[0],
-    };
+    }};
     TraceFixture const reversed_fixture{
         reversed_entity_locations, aabb_half_extents, local_aabb_centre};
     auto const reversed_hits{run_traces(reversed_fixture, starts, ends)};
@@ -1591,21 +1470,21 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridTraceInvariancePropertie
 
 TEST(WorldlessSpaceGameSimulation, Collision_UniformGridTraceEmptyBatchesAndOutputReuse) {
     Vector3f const aabb_half_extents{{10.f, 10.f, 10.f}};
-    std::vector<Vector3f> const no_entities;
+    std::array<Vector3f, 0> const no_entities{};
     TraceFixture const empty_fixture{no_entities, aabb_half_extents};
-    std::vector<Vector3f> const no_traces;
+    std::array<Vector3f, 0> const no_traces{};
     auto const no_results{run_traces(empty_fixture, no_traces, no_traces)};
     EXPECT_EQ(0, no_results.num()) << "Empty grid accepts empty trace batch";
 
-    std::vector<Vector3f> const miss_starts{{{-20.f, 0.f, 0.f}}, {{0.f, -20.f, 0.f}}};
-    std::vector<Vector3f> const miss_ends{{{20.f, 0.f, 0.f}}, {{0.f, 20.f, 0.f}}};
+    std::array<Vector3f, 2> const miss_starts{{{{-20.f, 0.f, 0.f}}, {{0.f, -20.f, 0.f}}}};
+    std::array<Vector3f, 2> const miss_ends{{{{20.f, 0.f, 0.f}}, {{0.f, 20.f, 0.f}}}};
     auto const empty_grid_hits{run_traces(empty_fixture, miss_starts, miss_ends)};
     EXPECT_EQ(TraceHit{0}, empty_grid_hits.get_const_view().hits()[0])
         << "Empty grid misses first trace";
     EXPECT_EQ(TraceHit{0}, empty_grid_hits.get_const_view().hits()[1])
         << "Empty grid misses second trace";
 
-    std::vector<Vector3f> const entity_locations{Vector3f{}};
+    std::array<Vector3f, 1> const entity_locations{{Vector3f{}}};
     TraceFixture const populated_fixture{entity_locations, aabb_half_extents};
     auto const empty_batch_hits{run_traces(populated_fixture, no_traces, no_traces)};
     EXPECT_EQ(0, empty_batch_hits.num()) << "Populated grid accepts empty trace batch";
@@ -1647,17 +1526,17 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridDenseAndWideAABBs) {
               static_cast<std::int32_t>(dense_fixture.grid.get_cell_entities(dense_cell).size()))
         << "Dense cell retains every entity";
 
-    std::vector<ExpectedTrace> const dense_cases{
+    std::array<ExpectedTrace, 1> const dense_cases{{
         {"Trace resolves dense cell",
          {{20.f, 25.f, 25.f}},
          {{30.f, 25.f, 25.f}},
          1,
          {{24.f, 25.f, 25.f}}},
-    };
+    }};
     check_traces(dense_fixture, dense_cases);
 
     Vector3f const wide_half_extents{{160.f, 160.f, 160.f}};
-    std::vector<Vector3f> const wide_locations{Vector3f{}};
+    std::array<Vector3f, 1> const wide_locations{{Vector3f{}}};
     TraceFixture const wide_fixture{wide_locations, wide_half_extents};
     auto const [min_coord, max_coord]{
         wide_fixture.grid.to_cell_coord_bounds(-wide_half_extents, wide_half_extents)};
@@ -1676,13 +1555,13 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridDenseAndWideAABBs) {
     }
     EXPECT_EQ(64, membership_count) << "Three-axis AABB occupies every covered cell";
 
-    std::vector<ExpectedTrace> const wide_cases{
+    std::array<ExpectedTrace, 1> const wide_cases{{
         {"Diagonal trace resolves three-axis multi-cell AABB",
          {{-300.f, -300.f, -300.f}},
          {{300.f, 300.f, 300.f}},
          1,
          {{-160.f, -160.f, -160.f}}},
-    };
+    }};
     check_traces(wide_fixture, wide_cases);
 }
 
@@ -1692,10 +1571,10 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridTraceProductionScale) {
     Vector3f const aabb_half_extents{{1000.f, 1000.f, 1000.f}};
     Vector3f const negative_entity{{-999000.f, 0.f, 0.f}};
     Vector3f const positive_entity{{999000.f, 0.f, 0.f}};
-    std::vector<Vector3f> const entity_locations{negative_entity, positive_entity};
+    std::array<Vector3f, 2> const entity_locations{{negative_entity, positive_entity}};
     TraceFixture const fixture{
         entity_locations, aabb_half_extents, Vector3f{}, grid_dims, cell_dims};
-    std::vector<ExpectedTrace> const cases{
+    std::array<ExpectedTrace, 6> const cases{{
         {"Trace starts on negative production grid boundary",
          {{-grid_boundary, 0.f, 0.f}},
          {{-990000.f, 0.f, 0.f}},
@@ -1728,14 +1607,14 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridTraceProductionScale) {
          {{grid_boundary + 10000.f, 0.f, 0.f}},
          {{grid_boundary, 0.f, 0.f}},
          0},
-    };
+    }};
     check_traces(fixture, cases);
 }
 
 TEST(WorldlessSpaceGameSimulation, Collision_UniformGridStaticGeometry) {
     Vector3f const dynamic_location{{100.f, 0.f, 0.f}};
     Vector3f const half_extents{{10.f, 10.f, 10.f}};
-    std::vector<Vector3f> const dynamic_locations{dynamic_location};
+    std::array<Vector3f, 1> const dynamic_locations{{dynamic_location}};
     TraceFixture fixture{dynamic_locations, half_extents};
 
     auto set_static_aabb{[&fixture](Vector3f const min_point, Vector3f const max_point) {
@@ -1743,8 +1622,8 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridStaticGeometry) {
         collision::add(static_aabbs, min_point, max_point);
         fixture.grid.set_static_aabbs(std::move(static_aabbs));
     }};
-    std::vector<Vector3f> const starts{{{-200.f, 0.f, 0.f}}};
-    std::vector<Vector3f> const ends{{{200.f, 0.f, 0.f}}};
+    std::array<Vector3f, 1> const starts{{{{-200.f, 0.f, 0.f}}}};
+    std::array<Vector3f, 1> const ends{{{{200.f, 0.f, 0.f}}}};
 
     set_static_aabb({{-60.f, -10.f, -10.f}}, {{-40.f, 10.f, 10.f}});
     auto static_hits{run_traces(fixture, starts, ends)};
@@ -1758,8 +1637,8 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridStaticGeometry) {
         << "Static hit reports nearest entry point";
 
     set_static_aabb({{-60.f, 100.f, -10.f}}, {{-40.f, 120.f, 10.f}});
-    std::vector<Vector3f> const offset_starts{{{-200.f, 80.f, 0.f}}};
-    std::vector<Vector3f> const offset_ends{{{200.f, 80.f, 0.f}}};
+    std::array<Vector3f, 1> const offset_starts{{{{-200.f, 80.f, 0.f}}}};
+    std::array<Vector3f, 1> const offset_ends{{{{200.f, 80.f, 0.f}}}};
     auto const offset_hits{run_traces(fixture, offset_starts, offset_ends)};
     EXPECT_EQ(TraceHit{0}, offset_hits.get_const_view().hits()[0])
         << "Offset line misses static geometry";
@@ -1771,8 +1650,8 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridStaticGeometry) {
               hit_location_tolerance)
         << "AABB sweep reports expanded entry point";
 
-    std::vector<Vector3f> const fighter_locations{{{-100.f, 0.f, 0.f}}};
-    std::vector<EntityType> const fighter_types{EntityType::Fighter};
+    std::array<Vector3f, 1> const fighter_locations{{{{-100.f, 0.f, 0.f}}}};
+    std::array<EntityType, 1> const fighter_types{{EntityType::Fighter}};
     TraceFixture fighter_fixture{fighter_locations,
                                  half_extents,
                                  Vector3f{},
@@ -1815,7 +1694,7 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridStaticGeometry) {
               dynamic_hits.get_const_view().static_geometry_indices()[0])
         << "Dynamic hit clears static identity";
 
-    std::vector<EntityId> const ignored_entities{fixture.handles[0]};
+    std::array<EntityId, 1> const ignored_entities{{fixture.handles[0]}};
     auto const ignored_dynamic_hits{run_traces(fixture, starts, ends, ignored_entities)};
     EXPECT_TRUE(!ignored_dynamic_hits.get_const_view().entities()[0].is_valid())
         << "Ignored dynamic entity is not returned";
