@@ -52,7 +52,11 @@ impl Repo {
         cmd
     }
     pub fn environment(&self, cmd: &mut Command) {
-        cmd.env("GIT_CONFIG_NOSYSTEM", "1")
+        // Give temporary repositories their own configuration, including under test runners
+        // that inject Git configuration. Guardrail tests add explicit overrides afterward.
+        cmd.env_remove("GIT_CONFIG_COUNT")
+            .env_remove("GIT_CONFIG_PARAMETERS")
+            .env("GIT_CONFIG_NOSYSTEM", "1")
             .env("GIT_CONFIG_GLOBAL", self.root.join("empty-config"))
             .env("GIT_TERMINAL_PROMPT", "0")
             .env("GIT_EDITOR", "true");
