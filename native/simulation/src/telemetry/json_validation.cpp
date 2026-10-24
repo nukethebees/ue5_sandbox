@@ -164,18 +164,23 @@ auto validate_level_telemetry_json_record(LevelTelemetryRunRecord const& record)
     for (std::uint32_t index{}; index < sample_count; ++index) {
         auto const& sample{record.battle_samples[index]};
         auto const path{std::format("battle_samples[{}]", index)};
+        auto const& cbt{sample.combat};
+        auto const counts{[&path](auto const& values, std::string_view const name) {
+            return validate_counts(values, std::format("{}.{}", path, name));
+        }};
+
         for (auto const& valid : std::array{
                  validate_json_integer(sample.completed_tick, path + ".completed_tick", true),
-                 validate_counts(sample.alive, path + ".alive"),
-                 validate_counts(sample.combat.spawned, path + ".combat.spawned"),
-                 validate_counts(sample.combat.destroyed, path + ".combat.destroyed"),
-                 validate_counts(sample.combat.shots, path + ".combat.shots"),
-                 validate_counts(sample.combat.hits, path + ".combat.hits"),
-                 validate_counts(sample.combat.damage_dealt, path + ".combat.damage_dealt"),
-                 validate_counts(sample.combat.damage_received, path + ".combat.damage_received"),
-                 validate_counts(sample.combat.kills, path + ".combat.kills"),
-                 validate_counts(sample.combat.losses, path + ".combat.losses"),
-                 validate_counts(sample.combat.kill_matrix, path + ".combat.kill_matrix"),
+                 counts(sample.alive, "alive"),
+                 counts(cbt.spawned, "combat.spawned"),
+                 counts(cbt.destroyed, "combat.destroyed"),
+                 counts(cbt.shots, "combat.shots"),
+                 counts(cbt.hits, "combat.hits"),
+                 counts(cbt.damage_dealt, "combat.damage_dealt"),
+                 counts(cbt.damage_received, "combat.damage_received"),
+                 counts(cbt.kills, "combat.kills"),
+                 counts(cbt.losses, "combat.losses"),
+                 counts(cbt.kill_matrix, "combat.kill_matrix"),
                  validate_json_integer(sample.active_lasers, path + ".active_lasers", true),
                  validate_json_integer(sample.lasers_fired, path + ".lasers_fired", true)}) {
             if (!valid) {

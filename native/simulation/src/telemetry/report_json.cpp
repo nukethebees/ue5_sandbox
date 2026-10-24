@@ -394,19 +394,16 @@ auto read_report(Json const& root) -> LevelTelemetryReport {
         fail("simulation.tick_rate_hz", "frequency must be finite and at least 1e-300 Hz");
     }
     report.tick_rate_hz = *frequency;
-    report.metadata.level_source =
-        read_field<std::string>(simulation, "level_source", "simulation");
-    report.metadata.settings_source =
-        read_field<std::string>(simulation, "settings_source", "simulation");
-    report.launch_state = read_field<std::string>(simulation, "launch_state", "simulation");
-    report.presentation_mode =
-        read_field<std::string>(simulation, "presentation_mode", "simulation");
-    report.results_navigation =
-        read_field<std::string>(simulation, "results_navigation", "simulation");
-    report.presentation_enabled =
-        read_field<bool>(simulation, "presentation_enabled", "simulation");
-    report.metadata.stop_when_battle_resolved =
-        read_field<bool>(simulation, "stop_when_battle_resolved", "simulation");
+    auto const read_simulation{[&simulation]<typename T>(T& field, std::string_view const name) {
+        field = read_field<T>(simulation, name, "simulation");
+    }};
+    read_simulation(report.metadata.level_source, "level_source");
+    read_simulation(report.metadata.settings_source, "settings_source");
+    read_simulation(report.launch_state, "launch_state");
+    read_simulation(report.presentation_mode, "presentation_mode");
+    read_simulation(report.results_navigation, "results_navigation");
+    read_simulation(report.presentation_enabled, "presentation_enabled");
+    read_simulation(report.metadata.stop_when_battle_resolved, "stop_when_battle_resolved");
     report.metadata.requested_duration_seconds =
         read_duration(simulation, "requested_duration_seconds", "simulation");
 

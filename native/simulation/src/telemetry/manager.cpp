@@ -75,7 +75,7 @@ void LevelTelemetryManager::initialise() {
     update_current_state();
     sample_series();
 
-    sample_battle_state(true);
+    sample_battle_state();
     state_ = State::Recording;
 }
 
@@ -418,14 +418,10 @@ auto LevelTelemetryManager::materialize_tick_series() const -> LevelTelemetryTic
     return result;
 }
 
-void LevelTelemetryManager::sample_battle_state(bool const force) {
+void LevelTelemetryManager::sample_battle_state() {
     auto const tick{clock_.get_completed_ticks()};
     auto& samples{battle_samples_};
-    if (!force && !samples.empty() && samples.back().completed_tick == tick) {
-        return;
-    }
-
-    if (force && !samples.empty() && samples.back().completed_tick == tick) {
+    if (!samples.empty() && samples.back().completed_tick == tick) {
         samples.pop_back();
     }
 
@@ -462,13 +458,13 @@ auto LevelTelemetryManager::take_finalized_run(Frequency const tick_rate_hz)
 
     state_ = State::RecordTaken;
 
-    LevelTelemetryRunRecord result;
-    result.metadata = std::move(metadata_);
-    result.tick_rate_hz = tick_rate_hz;
-    result.completion = std::move(completion_);
-    result.tick_series = materialize_tick_series();
-    result.battle_samples = std::move(battle_samples_);
-    return result;
+    return LevelTelemetryRunRecord{
+        .metadata = std::move(metadata_),
+        .tick_rate_hz = tick_rate_hz,
+        .completion = std::move(completion_),
+        .tick_series = materialize_tick_series(),
+        .battle_samples = std::move(battle_samples_),
+    };
 }
 
 void LevelTelemetryManager::finalize(LevelTelemetryRunEndReason const reason) {
@@ -480,7 +476,7 @@ void LevelTelemetryManager::finalize(LevelTelemetryRunEndReason const reason) {
 
     update_current_state();
     sample_series();
-    sample_battle_state(true);
+    sample_battle_state();
 
     completion_.reason = reason;
     completion_.completed_utc = level_telemetry_detail::utc_now_iso8601();

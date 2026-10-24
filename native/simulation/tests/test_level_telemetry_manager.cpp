@@ -167,6 +167,19 @@ TEST(LevelTelemetryManager, RecordsAndReusesHistory) {
         EXPECT_GE(value, 0);
     }
 
+    telemetry_manager.tick();
+    entity_ledger.record_spawns(EntityType::Fighter, Team::Red, Health{1}, ids);
+    telemetry_manager.finalize(LevelTelemetryRunEndReason::WorldEnd);
+    auto const record{telemetry_manager.take_finalized_run(clock.get_tick_rate())};
+    ASSERT_TRUE(record);
+    auto const& samples{record->battle_samples};
+    ASSERT_EQ(samples.size(), 3);
+    EXPECT_EQ(samples.back().completed_tick, SimTick{3});
+    EXPECT_EQ(samples.back()
+                  .alive[std::to_underlying(Team::Red)][std::to_underlying(EntityType::Fighter)],
+              2);
+    EXPECT_FALSE(telemetry_manager.take_finalized_run(clock.get_tick_rate()));
+
     LevelTelemetryManager boundary_manager{
         clock,
         entity_ledger,

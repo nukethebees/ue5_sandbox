@@ -1,5 +1,6 @@
 #pragma once
 
+#include <ioj/constrained_numbers.h>
 #include <ioj/sim/telemetry/run_record.h>
 
 #include <cmath>
@@ -14,7 +15,7 @@ inline constexpr std::uint64_t max_exact_json_integer{9007199254740992ULL};
 
 [[nodiscard]] inline auto is_valid_json_number(double const value, bool const nonnegative) noexcept
     -> bool {
-    return std::isfinite(value) && (!nonnegative || value >= 0.0);
+    return nonnegative ? NonNegativeFinite<double>::valid(value) : std::isfinite(value);
 }
 
 [[nodiscard]] auto parse_json_int32(double value, std::string_view path)

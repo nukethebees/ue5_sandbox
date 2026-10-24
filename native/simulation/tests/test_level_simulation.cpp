@@ -226,36 +226,29 @@ TEST(NativeSimulation, SchemeFutureEntityAndLateObserverProgressThroughLevelSimu
 }
 
 TEST(NativeSimulation, LevelCompletionUsesPlayerTeamAndDoesNotCancelOptionalObjectives) {
+    using namespace levels;
+    auto const timed_objective{[](std::string name, Team const team, double const seconds) {
+        ObjectiveDefinition objective{.id = ObjectiveName{std::move(name)}, .team = team};
+        objective.expressions = {
+            {TimeElapsedExpr{.seconds = NonNegativeFinite<double>::make(seconds)}}};
+        objective.roots[ObjectiveOutcome::Passed] = 0;
+        return objective;
+    }};
+
     auto data{make_battle()};
     data.clock_settings.tick_rate = Frequency::make(10.0);
     add_player_spawn(data, {});
     data.player->team = Team::Green;
     data.player->transform.location = {0.0, 2000.0, 0.0};
-    levels::MissionDefinition definition{
-        .objectives = {{.id = ioj::levels::ObjectiveName{"enemy"},
-                        .team = Team::White,
-                        .expressions = {{ioj::levels::TimeElapsedExpr{
-                            .seconds = ioj::NonNegativeFinite<double>::make(0.0)}}},
-                        .roots = ioj::levels::ObjectiveRoots{std::array<ioj::levels::ExprIndex, 3>{
-                            0, levels::absent_expression, levels::absent_expression}}},
-                       {.id = ioj::levels::ObjectiveName{"player"},
-                        .team = Team::Green,
-                        .expressions = {{ioj::levels::TimeElapsedExpr{
-                            .seconds = ioj::NonNegativeFinite<double>::make(0.2)}}},
-                        .roots = ioj::levels::ObjectiveRoots{std::array<ioj::levels::ExprIndex, 3>{
-                            0, levels::absent_expression, levels::absent_expression}}},
-                       {.id = ioj::levels::ObjectiveName{"optional"},
-                        .team = Team::Green,
-                        .expressions = {{ioj::levels::TimeElapsedExpr{
-                            .seconds = ioj::NonNegativeFinite<double>::make(10.0)}}},
-                        .roots = ioj::levels::ObjectiveRoots{std::array<ioj::levels::ExprIndex, 3>{
-                            0, levels::absent_expression, levels::absent_expression}}}},
-        .team_results = {{Team::White,
-                          {ioj::levels::ObjectiveName{"enemy"}, ObjectiveOutcome::Passed},
-                          TeamOutcome::Victory},
-                         {Team::Green,
-                          {ioj::levels::ObjectiveName{"player"}, ObjectiveOutcome::Passed},
-                          TeamOutcome::Defeat}}};
+    MissionDefinition definition{
+        .objectives = {timed_objective("enemy", Team::White, 0.0),
+                       timed_objective("player", Team::Green, 0.2),
+                       timed_objective("optional", Team::Green, 10.0)},
+        .team_results = {
+            {Team::White, {ObjectiveName{"enemy"}, ObjectiveOutcome::Passed}, TeamOutcome::Victory},
+            {Team::Green,
+             {ObjectiveName{"player"}, ObjectiveOutcome::Passed},
+             TeamOutcome::Defeat}}};
     SimClock clock;
     clock.initialise(data.clock_settings);
     auto compiled{CompiledMission::compile(definition, {}, clock)};
@@ -289,14 +282,15 @@ TEST(NativeSimulation, LevelSimTelemetryCompletionTest) {
     LevelSim simulation{simulation_memory, std::move(data)};
     simulation.finish_initialisation();
     simulation.start();
-    auto const dt{simulation.get_clock().get_tick_period()};
+    auto const& clock{simulation.get_clock()};
+    auto const dt{clock.get_tick_period()};
     simulation.advance(dt * 1.25);
     simulation.stop_run_if_requested(true, Duration::make(dt * 2.0));
     EXPECT_EQ(simulation.get_state(), OrchestratorState::Running)
         << "Two living teams and time remaining keep the run active";
     simulation.stop_run_if_requested(false, Duration::make(dt));
     EXPECT_EQ(simulation.get_state(), OrchestratorState::Paused) << "Completed run is paused";
-    EXPECT_EQ(simulation.get_clock().get_completed_ticks(), std::uint64_t{1})
+    EXPECT_EQ(clock.get_completed_ticks(), std::uint64_t{1})
         << "Only one simulation tick completes";
     auto const record{simulation.take_finalized_telemetry_run()};
     ASSERT_TRUE(record.has_value()) << "Completion yields a telemetry record";
@@ -309,11 +303,11 @@ TEST(NativeSimulation, LevelSimTelemetryCompletionTest) {
     EXPECT_FALSE(simulation.take_finalized_telemetry_run().has_value())
         << "Completion is consumed once";
     simulation.advance(dt * 10.0);
-    EXPECT_EQ(simulation.get_clock().get_completed_ticks(), std::uint64_t{1})
+    EXPECT_EQ(clock.get_completed_ticks(), std::uint64_t{1})
         << "Completed simulation ignores paused time";
     simulation.start();
     simulation.advance(dt * 2.0);
-    EXPECT_EQ(simulation.get_clock().get_completed_ticks(), std::uint64_t{3})
+    EXPECT_EQ(clock.get_completed_ticks(), std::uint64_t{3})
         << "Restart continues simulation without accumulating paused time";
     EXPECT_NEAR(simulation.get_read_access().interpolation_alpha(), 0.25, 1.e-9)
         << "Completion and restart preserve the accumulated fractional tick";
@@ -378,19 +372,16 @@ TEST(NativeSimulation, LaserFrameOutputsTest) {
     simulation.start();
     simulation.advance(0.425);
     auto const frame{simulation.get_read_access()};
-    EXPECT_EQ(frame.get_lasers().get_num_instances(), 0)
-        << "Impacted lasers leave authoritative storage";
-    EXPECT_EQ(frame.get_lasers().get_hits().num(), 2)
-        << "Both impacts survive the final empty fixed tick";
-    EXPECT_EQ(frame.get_lasers().get_hit_ticks().size(), std::size_t{2})
-        << "Impact tick indices remain aligned";
-    if (frame.get_lasers().get_hit_ticks().size() == 2) {
-        EXPECT_EQ(frame.get_lasers().get_hit_ticks()[0], std::uint64_t{1})
-            << "First impact keeps its deterministic tick";
-        EXPECT_EQ(frame.get_lasers().get_hit_ticks()[1], std::uint64_t{2})
-            << "Second impact keeps its deterministic tick";
-        EXPECT_TRUE((frame.get_lasers().get_hits().sources()[0] ==
-                     LaserSource{Team::Green, EntityType::Fighter}))
+    auto const& lasers{frame.get_lasers()};
+    auto const hit_ticks{lasers.get_hit_ticks()};
+    EXPECT_EQ(lasers.get_num_instances(), 0) << "Impacted lasers leave authoritative storage";
+    EXPECT_EQ(lasers.get_hits().num(), 2) << "Both impacts survive the final empty fixed tick";
+    EXPECT_EQ(hit_ticks.size(), std::size_t{2}) << "Impact tick indices remain aligned";
+    if (hit_ticks.size() == 2) {
+        EXPECT_EQ(hit_ticks[0], std::uint64_t{1}) << "First impact keeps its deterministic tick";
+        EXPECT_EQ(hit_ticks[1], std::uint64_t{2}) << "Second impact keeps its deterministic tick";
+        EXPECT_TRUE(
+            (lasers.get_hits().sources()[0] == LaserSource{Team::Green, EntityType::Fighter}))
             << "Neutral source is retained after removal";
     }
     simulation.advance(0.0);
@@ -525,19 +516,17 @@ TEST(NativeSimulation, MixedWorldRemovalAndSubsequentSpawnPreserveHealthMappings
     std::array<EntityId, 6> victims{};
     {
         auto const before{simulation.get_read_access()};
-        ASSERT_GE(before.get_fighters().get_entities().num(), 4);
-        ASSERT_EQ(before.get_turrets().get_entities().num(), 3);
-        fighter_count_before = before.get_fighters().get_entities().num();
+        auto const fighters{before.get_fighters().get_entities()};
+        auto const turrets{before.get_turrets().get_entities()};
+        ASSERT_GE(fighters.num(), 4);
+        ASSERT_EQ(turrets.num(), 3);
+        fighter_count_before = fighters.num();
         victims = {
             simulation.get_capital_ships().get_id(0),
-            before.get_fighters().get_entities().entity_ids()[0],
-            before.get_fighters()
-                .get_entities()
-                .entity_ids()[before.get_fighters().get_entities().num() - 1],
-            before.get_turrets().get_entities().entity_ids()[0],
-            before.get_turrets()
-                .get_entities()
-                .entity_ids()[before.get_turrets().get_entities().num() - 1],
+            fighters.entity_ids()[0],
+            fighters.entity_ids()[fighters.num() - 1],
+            turrets.entity_ids()[0],
+            turrets.entity_ids()[turrets.num() - 1],
             player->unique_entity_id,
         };
     }
@@ -571,9 +560,10 @@ TEST(NativeSimulation, LevelSimReconstructionTest) {
     simulation.emplace(simulation_memory, std::move(first_data));
     simulation->finish_initialisation();
     simulation->start();
-    simulation->advance(simulation->get_clock().get_tick_period());
+    auto const tick_period{simulation->get_clock().get_tick_period()};
+    simulation->advance(tick_period);
     kill_enemy(*simulation);
-    simulation->advance(simulation->get_clock().get_tick_period());
+    simulation->advance(tick_period);
     simulation.reset();
     auto second_data{make_battle()};
     add_mission(second_data);
@@ -765,7 +755,8 @@ TEST(NativeSimulation, LevelTelemetryRunRecordTest) {
         << "Simulation initialization starts telemetry recording";
 
     simulation.advance(1.0);
-    simulation.advance(4.0 * simulation.get_clock().get_tick_period());
+    auto const& clock{simulation.get_clock()};
+    simulation.advance(4.0 * clock.get_tick_period());
     simulation.finalize_telemetry_run(LevelTelemetryRunEndReason::WorldEnd);
     EXPECT_EQ(simulation.get_state(), OrchestratorState::Running)
         << "Interrupted telemetry finalization does not pause simulation";
@@ -776,17 +767,16 @@ TEST(NativeSimulation, LevelTelemetryRunRecordTest) {
         << "A finalized run record is yielded only once";
     EXPECT_EQ(record->completion.reason, LevelTelemetryRunEndReason::WorldEnd)
         << "Completion preserves its end reason";
-    EXPECT_EQ(record->completion.completed_ticks, simulation.get_clock().get_completed_ticks())
+    EXPECT_EQ(record->completion.completed_ticks, clock.get_completed_ticks())
         << "Completion preserves completed ticks";
     auto const& battle{record->battle_samples};
     ASSERT_GE(battle.size(), 3);
     EXPECT_EQ(battle.front().completed_tick, SimTick{0});
-    EXPECT_EQ(battle.back().completed_tick, simulation.get_clock().get_completed_ticks());
+    EXPECT_EQ(battle.back().completed_tick, clock.get_completed_ticks());
     EXPECT_DOUBLE_EQ(static_cast<double>(battle.back().completed_tick) /
                          record->tick_rate_hz.get_hz(),
-                     simulation.get_clock().get_simulation_time());
-    EXPECT_DOUBLE_EQ(record->tick_rate_hz.get_hz(),
-                     simulation.get_clock().get_tick_rate().get_hz());
+                     clock.get_simulation_time());
+    EXPECT_DOUBLE_EQ(record->tick_rate_hz.get_hz(), clock.get_tick_rate().get_hz());
 
     auto const& series{record->tick_series};
     EXPECT_EQ(series.active_entities.num(), 1) << "An unchanged entity count is only stored once";

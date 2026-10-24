@@ -90,7 +90,7 @@ class LevelTelemetryManager {
     void update_current_state();
     void sample_live_series();
     void sample_series();
-    void sample_battle_state(bool force = false);
+    void sample_battle_state();
     auto append_history_row(tick_type completed_tick) -> telemetry::HistoryRows::View;
 
     /* **************************************** */
