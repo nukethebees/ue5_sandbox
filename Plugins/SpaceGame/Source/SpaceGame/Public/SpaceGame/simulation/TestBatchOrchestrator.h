@@ -211,7 +211,6 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     // Mission and telemetry
     /* **************************************** */
     void process_mission_result();
-    void process_battle_run_end();
     void handle_telemetry_persisted(FString run_id, FString error);
     void persist_finalized_telemetry_run();
 

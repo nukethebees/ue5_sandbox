@@ -2,6 +2,7 @@
 #include <ioj/column_math.h>
 #include <ioj/levels/authoring/definition_reader.h>
 #include <ioj/sim/collision/world_aabb_operations.h>
+#include <ioj/sim/levels/initial_spawns.h>
 #include <ioj/sim/levels/level_compilation.h>
 #include <ioj/sim/testing/entity_observations.h>
 #include <ioj/sim/testing/laser_spawns.h>
@@ -53,10 +54,22 @@ auto make_battle() -> LevelSimInitData {
     data.collision.grid_geometry = {{16, 16, 4}, {{1000.f, 1000.f, 1000.f}}};
     data.lasers.n_preallocated_instances = 16;
     data.capital_ships.fighter_spawn_slots = 0;
-    add_capital_spawn(
-        data, {{-1000.f, 0.f, 0.f}}, Team::Green, invalid_level_entity_index, 60.f, 60.f, 100);
-    add_capital_spawn(
-        data, {{1000.f, 0.f, 0.f}}, Team::White, invalid_level_entity_index, 60.f, 60.f, 100);
+    data.level_events.initialisation.entity_count = 2;
+    std::array capitals{InitialCapital{.entity = 0,
+                                       .location = {{-1000.f, 0.f, 0.f}},
+                                       .rotation = {},
+                                       .team = Team::Green,
+                                       .health = 100,
+                                       .initial_spawn_delay = 60.f,
+                                       .spawn_cooldown = 60.f},
+                        InitialCapital{.entity = 1,
+                                       .location = {{1000.f, 0.f, 0.f}},
+                                       .rotation = {},
+                                       .team = Team::White,
+                                       .health = 100,
+                                       .initial_spawn_delay = 60.f,
+                                       .spawn_cooldown = 60.f}};
+    initialise_spawns(data, capitals, {}, {});
     for (auto const type : EnumTraits<EntityType>::values) {
         data.collision.entity_bounds.set_half_extents(type, {{10.f, 10.f, 10.f}});
     }
@@ -262,7 +275,10 @@ TEST(NativeSimulation, LevelSimTelemetryCompletionTest) {
     simulation.start();
     auto const dt{simulation.get_clock().get_tick_period()};
     simulation.advance(dt * 1.25);
-    simulation.complete_telemetry_run(LevelTelemetryRunEndReason::DurationReached, Team::Green);
+    simulation.complete_run_if_requested(true, Duration::make(dt * 2.0));
+    EXPECT_EQ(simulation.get_state(), OrchestratorState::Running)
+        << "Two living teams and time remaining keep the run active";
+    simulation.complete_run_if_requested(false, Duration::make(dt));
     EXPECT_EQ(simulation.get_state(), OrchestratorState::Paused) << "Completed run is paused";
     EXPECT_EQ(simulation.get_clock().get_completed_ticks(), std::uint64_t{1})
         << "Only one simulation tick completes";
@@ -270,8 +286,8 @@ TEST(NativeSimulation, LevelSimTelemetryCompletionTest) {
     ASSERT_TRUE(record.has_value()) << "Completion yields a telemetry record";
     EXPECT_EQ(record->completion.reason, LevelTelemetryRunEndReason::DurationReached)
         << "Completion reason is retained";
-    EXPECT_TRUE(record->completion.winning_team == std::optional{Team::Green})
-        << "Winning team is retained";
+    EXPECT_FALSE(record->completion.winning_team.has_value())
+        << "A time limit does not declare a winning team";
     EXPECT_EQ(record->completion.completed_ticks, std::uint64_t{1})
         << "Completion records the current tick";
     EXPECT_FALSE(simulation.take_finalized_telemetry_run().has_value())

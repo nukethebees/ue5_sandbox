@@ -849,7 +849,12 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
     if (level_simulation_->get_clock().get_completed_ticks() != previous_tick) {
         end_tick_test_hook.ExecuteIfBound(*this);
         process_mission_result();
-        process_battle_run_end();
+        level_simulation_->complete_run_if_requested(
+            launch_options_.stop_when_battle_resolved,
+            launch_options_.simulated_duration_seconds.IsSet()
+                ? std::optional{ioj::Duration::make(
+                      launch_options_.simulated_duration_seconds.GetValue())}
+                : std::nullopt);
     }
     persist_finalized_telemetry_run();
 }
@@ -1011,39 +1016,6 @@ void ATestBatchOrchestrator::process_mission_result() {
          .persisted = persisted,
          .par_time_seconds = par_time_seconds,
          .new_best_time = new_best_time});
-}
-void ATestBatchOrchestrator::process_battle_run_end() {
-    if (!level_simulation_.IsSet() ||
-        level_simulation_->get_level_telemetry_manager().get_state() !=
-            ioj::sim::LevelTelemetryManager::State::Recording) {
-        return;
-    }
-
-    if (launch_options_.stop_when_battle_resolved &&
-        !level_simulation_->has_future_authored_spawns()) {
-        auto const alive_by_team{get_entity_ledger().count_alive_per_team()};
-        int32 living_team_count{};
-        std::optional<ioj::Team> winner;
-        constexpr int32 team_count{ioj::enum_count<ETestTeam>()};
-        for (int32 team_index{}; team_index < team_count; ++team_index) {
-            if (alive_by_team[team_index] > 0) {
-                ++living_team_count;
-                winner = static_cast<ioj::Team>(team_index);
-            }
-        }
-        if (living_team_count <= 1) {
-            level_simulation_->complete_telemetry_run(
-                ioj::sim::LevelTelemetryRunEndReason::BattleResolved,
-                living_team_count == 1 ? winner : std::nullopt);
-            return;
-        }
-    }
-
-    if (launch_options_.simulated_duration_seconds.IsSet() &&
-        get_simulation_time() >= launch_options_.simulated_duration_seconds.GetValue()) {
-        level_simulation_->complete_telemetry_run(
-            ioj::sim::LevelTelemetryRunEndReason::DurationReached);
-    }
 }
 void ATestBatchOrchestrator::handle_telemetry_persisted(FString run_id, FString error) {
     if (launch_options_.results_navigation != ioj::ELevelResultsNavigation::Telemetry) {

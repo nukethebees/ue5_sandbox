@@ -84,6 +84,9 @@ struct LevelSim {
     // Pauses without resetting either tick accumulator.
     void complete_telemetry_run(LevelTelemetryRunEndReason reason,
                                 std::optional<Team> winning_team = {});
+    // Evaluate after consuming mission results so mission completion takes precedence.
+    void complete_run_if_requested(bool stop_when_battle_resolved,
+                                   std::optional<Duration> duration);
     // Consumes the result and marks telemetry terminal without pausing.
     auto take_mission_result() -> std::optional<LevelMissionResult>;
     auto take_finalized_telemetry_run() -> std::optional<LevelTelemetryRunRecord>;
