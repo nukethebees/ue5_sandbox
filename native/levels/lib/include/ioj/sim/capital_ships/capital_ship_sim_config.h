@@ -21,7 +21,6 @@ struct CapitalShipSimConfig {
 
 struct CapitalShipSimConfigOverrides {
     std::optional<float> spawn_delay{};
-
     std::optional<Health> max_health{};
 };
 

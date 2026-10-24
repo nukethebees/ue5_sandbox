@@ -27,7 +27,6 @@ struct RangeSettings {
 
 struct RangeSettingsOverrides {
     std::optional<Range> range{};
-
     std::optional<bool> enabled{};
 };
 
@@ -55,7 +54,6 @@ struct WeaponSettings {
 
 struct WeaponSettingsOverrides {
     std::optional<int> damage{};
-
     std::optional<float> turn_rate{};
 };
 
@@ -72,9 +70,7 @@ struct ActorSettings {
 
 struct ActorSettingsOverrides {
     std::optional<int> max_health{};
-
     std::optional<codegen_compile_fixture::WeaponSettingsOverrides> weapon{};
-
     std::optional<std::optional<int>> optional_limit{};
 };
 

@@ -27,31 +27,18 @@ struct Radar {
 
 struct RadarOverrides {
     std::optional<bool> enabled{};
-
     std::optional<float> combat_range{};
-
     std::optional<float> tactical_range{};
-
     std::optional<float> maximum_range{};
-
     std::optional<float> combat_display_radius{};
-
     std::optional<float> grid_opacity{};
-
     std::optional<float> core_cell_radius{};
-
     std::optional<float> combat_cell_radius{};
-
     std::optional<float> tactical_cell_radius{};
-
     std::optional<float> strategic_cell_radius{};
-
     std::optional<float> glyph_size_scale{};
-
     std::optional<float> objective_size_multiplier{};
-
     std::optional<float> objective_ring_padding_pixels{};
-
     std::optional<float> objective_ring_thickness_pixels{};
 };
 

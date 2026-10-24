@@ -19,7 +19,6 @@ struct SpinnerSimConfig {
 
 struct SpinnerSimConfigOverrides {
     std::optional<float> yaw_rotation_speed_degrees{};
-
     std::optional<ioj::sim::LaserWeaponSimConfigOverrides> laser{};
 };
 

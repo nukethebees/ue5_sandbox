@@ -15,7 +15,6 @@ struct LaserPresentation {
 
 struct LaserPresentationOverrides {
     std::optional<float> min_cull_distance{};
-
     std::optional<float> max_cull_distance{};
 };
 

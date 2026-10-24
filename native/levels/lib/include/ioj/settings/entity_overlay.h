@@ -27,27 +27,16 @@ struct EntityOverlay {
 
 struct EntityOverlayOverrides {
     std::optional<bool> enabled{};
-
     std::optional<float> maximum_range{};
-
     std::optional<ioj::Vector<double, 2>> bar_size_pixels{};
-
     std::optional<ioj::Vector<double, 2>> screen_offset_pixels{};
-
     std::optional<float> minimum_bar_scale{};
-
     std::optional<float> maximum_bar_scale{};
-
     std::optional<float> inset_pixels{};
-
     std::optional<float> maximum_inset_height_ratio{};
-
     std::optional<float> objective_frame_pixels{};
-
     std::optional<float> objective_bar_height_scale{};
-
     std::optional<float> screen_edge_padding_pixels{};
-
     std::optional<ioj::settings::SoftTargetOverrides> soft_target{};
 };
 

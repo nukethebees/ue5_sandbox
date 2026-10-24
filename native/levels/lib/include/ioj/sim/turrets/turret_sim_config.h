@@ -21,11 +21,8 @@ struct TurretSimConfig {
 
 struct TurretSimConfigOverrides {
     std::optional<float> detection_radius{};
-
     std::optional<float> target_refresh_frequency{};
-
     std::optional<ioj::sim::LaserWeaponSimConfigOverrides> laser{};
-
     std::optional<Health> max_health{};
 };
 

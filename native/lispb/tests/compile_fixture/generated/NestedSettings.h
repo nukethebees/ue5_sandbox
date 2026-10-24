@@ -17,9 +17,7 @@ struct SettingsTarget {
 
 struct SettingsTargetOverrides {
     std::optional<codegen_compile_fixture::ActorSettingsOverrides> first{};
-
     std::optional<codegen_compile_fixture::ActorSettingsOverrides> second{};
-
     std::optional<int> external_value{};
 };
 

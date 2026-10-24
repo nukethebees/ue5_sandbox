@@ -43,53 +43,29 @@ struct FighterSimConfig {
 
 struct FighterSimConfigOverrides {
     std::optional<std::int32_t> max_live_fighters{};
-
     std::optional<float> fire_dot_product_threshold{};
-
     std::optional<float> speed{};
-
     std::optional<float> turn_speed_unitless{};
-
     std::optional<float> avoidance_clear_update_frequency{};
-
     std::optional<float> avoidance_update_frequency{};
-
     std::optional<float> avoidance_active_update_frequency{};
-
     std::optional<float> avoidance_immediate_update_frequency{};
-
     std::optional<float> avoidance_lookahead_time{};
-
     std::optional<float> avoidance_clearance_buffer{};
-
     std::optional<float> separation_radius{};
-
     std::optional<float> separation_strength{};
-
     std::optional<float> steering_memory_duration{};
-
     std::optional<std::int32_t> dense_traffic_neighbour_threshold{};
-
     std::optional<ioj::sim::LaserWeaponSimConfigOverrides> laser{};
-
     std::optional<Health> health{};
-
     std::optional<float> attack_retry_cooldown{};
-
     std::optional<float> attack_engagement_threshold{};
-
     std::optional<float> attack_reposition_frequency{};
-
     std::optional<settings::AttackDistanceBand> attack_distance_band{};
-
     std::optional<float> arrival_distance{};
-
     std::optional<float> los_check_buffer{};
-
     std::optional<float> awareness_radius{};
-
     std::optional<float> awareness_scan_frequency{};
-
     std::optional<float> minimum_opportunistic_intercept_deviation_dot_product{};
 };
 

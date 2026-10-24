@@ -21,15 +21,10 @@ struct CapitalPresentation {
 
 struct CapitalPresentationOverrides {
     std::optional<std::int32_t> n_small_explosions{};
-
     std::optional<float> time_between_explosions{};
-
     std::optional<Vector3f> min_small_explosion_range{};
-
     std::optional<Vector3f> max_small_explosion_range{};
-
     std::optional<float> large_explosion_delay{};
-
     std::optional<float> proxy_arrow_size{};
 };
 

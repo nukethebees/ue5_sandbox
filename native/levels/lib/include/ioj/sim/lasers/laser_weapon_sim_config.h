@@ -18,11 +18,8 @@ struct LaserWeaponSimConfig {
 
 struct LaserWeaponSimConfigOverrides {
     std::optional<std::int32_t> damage{};
-
     std::optional<float> projectile_speed{};
-
     std::optional<float> max_distance{};
-
     std::optional<float> fire_cooldown{};
 };
 

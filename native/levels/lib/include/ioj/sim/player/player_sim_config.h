@@ -29,25 +29,15 @@ struct PlayerSimConfig {
 
 struct PlayerSimConfigOverrides {
     std::optional<ioj::PositiveFinite<float>> thrust_energy_max{};
-
     std::optional<float> pitch_angle_max{};
-
     std::optional<float> pitch_speed{};
-
     std::optional<float> yaw_angle_max{};
-
     std::optional<float> yaw_speed{};
-
     std::optional<float> turn_bank_angle_max{};
-
     std::optional<float> turn_bank_speed{};
-
     std::optional<ioj::sim::LaserWeaponSimConfigOverrides> laser{};
-
     std::optional<Health> health{};
-
     std::optional<ShipLaserMode> laser_mode{};
-
     std::optional<ShipFireRate> laser_fire_rate{};
 };
 

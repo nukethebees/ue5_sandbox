@@ -16,9 +16,7 @@ struct HudSettings {
 
 struct HudSettingsOverrides {
     std::optional<float> player_status_update_period{};
-
     std::optional<float> entity_count_update_period{};
-
     std::optional<float> mission_status_update_period{};
 };
 

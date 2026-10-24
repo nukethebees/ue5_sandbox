@@ -16,7 +16,6 @@ struct GenerationSettings {
 
 struct GenerationSettingsOverrides {
     std::optional<std::int32_t> star_count{};
-
     std::optional<std::int32_t> random_seed{};
 };
 
@@ -36,13 +35,9 @@ struct StarSettings {
 
 struct StarSettingsOverrides {
     std::optional<float> scale{};
-
     std::optional<float> size_multiplier{};
-
     std::optional<float> global_brightness{};
-
     std::optional<float> colour_variation_strength{};
-
     std::optional<float> parallax_strength{};
 };
 
@@ -61,7 +56,6 @@ struct GalacticBandSettings {
 
 struct GalacticBandSettingsOverrides {
     std::optional<float> strength{};
-
     std::optional<float> width_degrees{};
 };
 
@@ -78,7 +72,6 @@ struct StellarClusterSettings {
 
 struct StellarClusterSettingsOverrides {
     std::optional<float> strength{};
-
     std::optional<float> width_degrees{};
 };
 
@@ -96,9 +89,7 @@ struct DustLaneSettings {
 
 struct DustLaneSettingsOverrides {
     std::optional<float> strength{};
-
     std::optional<float> width_degrees{};
-
     std::optional<float> irregularity{};
 };
 
@@ -117,11 +108,8 @@ struct BrightStarSettings {
 
 struct BrightStarSettingsOverrides {
     std::optional<float> fraction{};
-
     std::optional<float> size_multiplier{};
-
     std::optional<float> brightness_multiplier{};
-
     std::optional<float> shape_strength{};
 };
 
@@ -140,7 +128,6 @@ struct TwinkleSettings {
 
 struct TwinkleSettingsOverrides {
     std::optional<float> strength{};
-
     std::optional<float> speed{};
 };
 
@@ -156,7 +143,6 @@ struct GalacticHazeSettings {
 
 struct GalacticHazeSettingsOverrides {
     std::optional<float> strength{};
-
     std::optional<float> width_degrees{};
 };
 
@@ -173,7 +159,6 @@ struct GalacticCoreSettings {
 
 struct GalacticCoreSettingsOverrides {
     std::optional<float> strength{};
-
     std::optional<float> width_degrees{};
 };
 
@@ -190,7 +175,6 @@ struct NebularKnotSettings {
 
 struct NebularKnotSettingsOverrides {
     std::optional<float> strength{};
-
     std::optional<float> size_degrees{};
 };
 
@@ -215,23 +199,14 @@ struct Settings {
 
 struct SettingsOverrides {
     std::optional<ioj::starfield::GenerationSettingsOverrides> generation{};
-
     std::optional<ioj::starfield::StarSettingsOverrides> star{};
-
     std::optional<ioj::starfield::GalacticBandSettingsOverrides> galactic_band{};
-
     std::optional<ioj::starfield::StellarClusterSettingsOverrides> stellar_cluster{};
-
     std::optional<ioj::starfield::DustLaneSettingsOverrides> dust_lane{};
-
     std::optional<ioj::starfield::BrightStarSettingsOverrides> bright_star{};
-
     std::optional<ioj::starfield::TwinkleSettingsOverrides> twinkle{};
-
     std::optional<ioj::starfield::GalacticHazeSettingsOverrides> galactic_haze{};
-
     std::optional<ioj::starfield::GalacticCoreSettingsOverrides> galactic_core{};
-
     std::optional<ioj::starfield::NebularKnotSettingsOverrides> nebular_knot{};
 };
 

@@ -17,7 +17,6 @@ struct TickSettings {
 
 struct TickSettingsOverrides {
     std::optional<Frequency> tick_rate{};
-
     std::optional<ioj::PositiveFinite<double>> time_scale{};
 };
 

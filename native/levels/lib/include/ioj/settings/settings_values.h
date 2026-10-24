@@ -35,25 +35,15 @@ struct SettingsValues {
 
 struct SettingsValuesOverrides {
     std::optional<ioj::settings::TickSettingsOverrides> tick{};
-
     std::optional<ioj::sim::PlayerSimConfigOverrides> player_ship{};
-
     std::optional<ioj::sim::LaserSimConfigOverrides> laser_projectiles{};
-
     std::optional<ioj::sim::CapitalShipSimConfigOverrides> capital_ships{};
-
     std::optional<ioj::sim::FighterSimConfigOverrides> fighters{};
-
     std::optional<ioj::sim::TurretSimConfigOverrides> turrets{};
-
     std::optional<ioj::sim::SpinnerSimConfigOverrides> tube_spinners{};
-
     std::optional<ioj::sim::OverlapResponseConfigOverrides> collision_grid{};
-
     std::optional<ioj::sim::HudSettingsOverrides> hud{};
-
     std::optional<ioj::settings::PresentationOverrides> presentation{};
-
     std::optional<ioj::starfield::SettingsOverrides> starfield{};
 };
 

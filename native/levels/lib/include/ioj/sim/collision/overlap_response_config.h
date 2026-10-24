@@ -18,9 +18,7 @@ struct OverlapResponseConfig {
 
 struct OverlapResponseConfigOverrides {
     std::optional<std::int32_t> damage_per_overlap_detection{};
-
     std::optional<Vector3f> level_size{};
-
     std::optional<Vector3f> cell_size{};
 };
 

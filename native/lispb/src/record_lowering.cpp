@@ -109,11 +109,13 @@ auto record_overrides(LoweringContext& context, DeclarationHandle const record)
                 type, context.text(context.semantic.cpp_spelling(*nested)) + "Overrides");
         }
         fields.add(ir.instance_member(
-            ir.types.template_type(
-                ir.types.named("std::optional", {ir.types.dependency("std::optional", "optional")}),
-                {type}),
-            members.name[index],
-            ir.literal("")));
+                       ir.types.template_type(
+                           ir.types.named("std::optional",
+                                          {ir.types.dependency("std::optional", "optional")}),
+                           {type}),
+                       members.name[index],
+                       ir.literal("")),
+                   1);
 
         auto const field_name{context.text(members.name[index])};
         auto const source{ir.member_access(ir.named("overrides"), field_name)};

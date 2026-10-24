@@ -26,29 +26,17 @@ struct SoftTarget {
 
 struct SoftTargetOverrides {
     std::optional<float> acquisition_radius_pixels{};
-
     std::optional<float> retention_radius_pixels{};
-
     std::optional<float> centre_tie_radius_pixels{};
-
     std::optional<float> switch_improvement_ratio{};
-
     std::optional<float> range_transition_start_multiplier{};
-
     std::optional<float> minimum_radius_pixels{};
-
     std::optional<float> maximum_radius_pixels{};
-
     std::optional<float> bounds_padding_pixels{};
-
     std::optional<float> bracket_start_radius_multiplier{};
-
     std::optional<float> opacity{};
-
     std::optional<float> pulse_opacity_boost{};
-
     std::optional<float> pulse_duration{};
-
     std::optional<float> fade_out_duration{};
 };
 

@@ -25,15 +25,10 @@ struct Presentation {
 
 struct PresentationOverrides {
     std::optional<ioj::settings::PlayerPresentationOverrides> player_ship{};
-
     std::optional<ioj::settings::LaserPresentationOverrides> laser_projectiles{};
-
     std::optional<ioj::settings::CapitalPresentationOverrides> capital_ships{};
-
     std::optional<ioj::settings::TurretPresentationOverrides> turrets{};
-
     std::optional<ioj::settings::EntityOverlayOverrides> entity_overlay{};
-
     std::optional<ioj::settings::RadarOverrides> radar{};
 };
 
