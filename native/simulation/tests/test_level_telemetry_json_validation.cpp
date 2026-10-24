@@ -34,10 +34,10 @@ TEST(LevelTelemetryJsonValidation, RejectsInvalidRecordInvariants) {
     record.completion.mission_outcome = TeamOutcome::Victory;
     record.completion.objective_outcome = ObjectiveOutcome::Passed;
     EXPECT_FALSE(validate_level_telemetry_json_record(record).has_value());
-    record.completion.objective_id = "primary";
+    record.completion.decisive_objective_id = "primary";
     EXPECT_TRUE(validate_level_telemetry_json_record(record).has_value());
     record.completion = {};
-    record.completion.objective_id = "orphan";
+    record.completion.decisive_objective_id = "orphan";
     EXPECT_FALSE(validate_level_telemetry_json_record(record).has_value());
     record.completion = {};
 

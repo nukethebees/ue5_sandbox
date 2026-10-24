@@ -226,7 +226,7 @@ TEST(NativeSimulation, SchemeFutureEntityAndLateObserverProgressThroughLevelSimu
     EXPECT_EQ(simulation.get_mission().outcome(ioj::sim::ObjectiveId{0}), ObjectiveOutcome::Passed);
     EXPECT_EQ(simulation.get_mission().outcome(ioj::sim::ObjectiveId{1}), ObjectiveOutcome::Passed);
     EXPECT_EQ(simulation.get_mission().team_outcome(Team::Green), TeamOutcome::Victory);
-    EXPECT_FALSE(simulation.take_mission_result());
+    EXPECT_FALSE(simulation.take_player_team_completion());
 }
 
 TEST(NativeSimulation, LevelCompletionUsesPlayerTeamAndDoesNotCancelOptionalObjectives) {
@@ -270,19 +270,26 @@ TEST(NativeSimulation, LevelCompletionUsesPlayerTeamAndDoesNotCancelOptionalObje
     GameMemory memory;
     LevelSim simulation{memory, std::move(data)};
     simulation.finish_initialisation();
-    EXPECT_FALSE(simulation.take_mission_result());
+    EXPECT_FALSE(simulation.take_player_team_completion());
     simulation.start();
-    simulation.advance(0.2);
-    auto const result{simulation.take_mission_result()};
+    simulation.advance(0.4);
+    auto const result{simulation.take_player_team_completion()};
     ASSERT_TRUE(result);
-    EXPECT_FALSE(result->save_results);
+    EXPECT_FALSE(simulation.get_result_metadata().save_results);
     EXPECT_EQ(result->team, Team::Green);
     EXPECT_EQ(result->outcome, TeamOutcome::Defeat);
     EXPECT_EQ(result->objective_outcome, ObjectiveOutcome::Passed);
-    EXPECT_EQ(result->objective_id, "player");
-    EXPECT_NEAR(result->elapsed_seconds, 0.2, 1.e-7);
+    EXPECT_EQ(simulation.get_mission().objectives().name(result->objective).value, "player");
+    EXPECT_EQ(result->tick, 2);
     EXPECT_EQ(simulation.get_mission().active_objectives().size(), 1);
-    EXPECT_FALSE(simulation.take_mission_result());
+    EXPECT_FALSE(simulation.take_player_team_completion());
+
+    auto const record{simulation.take_finalized_telemetry_run()};
+    ASSERT_TRUE(record);
+    EXPECT_EQ(record->completion.decisive_objective_id, "player");
+    EXPECT_EQ(record->completion.completed_ticks, 4);
+    ASSERT_TRUE(record->completion.mission_elapsed_seconds);
+    EXPECT_NEAR(record->completion.mission_elapsed_seconds->get_seconds(), 0.2, 1.e-7);
 }
 
 TEST(NativeSimulation, LevelSimTelemetryCompletionTest) {
@@ -343,7 +350,7 @@ TEST(NativeSimulation, LevelTelemetryMissionCompletionTest) {
     kill_enemy(simulation);
     simulation.advance(dt);
 
-    auto const mission_result{simulation.take_mission_result()};
+    auto const mission_result{simulation.take_player_team_completion()};
     EXPECT_EQ(simulation.get_state(), OrchestratorState::Running)
         << "Taking the mission result does not pause simulation";
     ASSERT_TRUE(mission_result.has_value()) << "Simulation yields the completed mission";
@@ -589,7 +596,7 @@ TEST(NativeSimulation, LevelSimReconstructionTest) {
         << "Fresh ledger contains both entities";
     EXPECT_EQ(simulation->get_entity_ledger().get_num_unique_ids_issued(), 2)
         << "Fresh ledger has no prior history";
-    EXPECT_FALSE(simulation->take_mission_result().has_value())
+    EXPECT_FALSE(simulation->take_player_team_completion().has_value())
         << "No pending result survives reconstruction";
 }
 
@@ -726,10 +733,11 @@ TEST(NativeSimulation, WorldlessLevelSimulationTest) {
     EXPECT_EQ(first.get_capital_ships().get_num_instances(), 1)
         << "Damage removes only the first battle's enemy";
     EXPECT_EQ(second.get_capital_ships().get_num_instances(), 2) << "Other battle is unaffected";
-    auto result{first.take_mission_result()};
+    auto result{first.take_player_team_completion()};
     EXPECT_FALSE(result.has_value()) << "Playerless simulation does not choose a player's outcome";
     EXPECT_EQ(first.get_mission().team_outcome(Team::Green), TeamOutcome::Victory);
-    EXPECT_FALSE(first.take_mission_result().has_value()) << "Mission result is delivered once";
+    EXPECT_FALSE(first.take_player_team_completion().has_value())
+        << "Mission result is delivered once";
     first.pause();
     auto const paused_ticks{first.get_clock().get_completed_ticks()};
     first.advance(dt);

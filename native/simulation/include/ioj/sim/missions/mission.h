@@ -14,9 +14,7 @@ class Mission {
     Mission() = default;
     explicit Mission(CompiledMission definition);
 
-    // Call once after initial spawns. Zero-duration roots can resolve during begin.
     void begin(MissionInputs const& inputs);
-    // Requires begin() and nondecreasing simulation ticks.
     void tick(MissionInputs const& inputs);
 
     /* **************************************** */
@@ -28,7 +26,6 @@ class Mission {
     auto inactive_objectives() const -> std::span<ObjectiveId const> { return inactive_; }
     auto completed_objectives() const -> std::span<ObjectiveId const> { return completed_; }
 
-    // A missing outcome means unresolved, including inactive objectives. IDs must be in range.
     auto outcome(ObjectiveId id) const -> std::optional<ObjectiveOutcome>;
     auto team_outcome(Team team) const -> std::optional<TeamOutcome>;
     auto result(ExprRef expression) const -> ExprResult;
@@ -47,7 +44,6 @@ class Mission {
     /* **************************************** */
     // Expression propagation
     /* **************************************** */
-    void mark_dirty(ObjectiveId id);
     void resolve(ExprRef expression, ExprResult value);
     void resolve_rule(RuleId rule, ExprResult value);
     void propagate();
@@ -60,7 +56,6 @@ class Mission {
     void rebuild_runs();
     void evaluate(std::span<RuleId const> scheduled, MissionInputs const& inputs);
 
-    // Each run contains only rules of the supplied condition type.
     void evaluate_run(ConditionType type, std::span<RuleId const> run, MissionInputs const& inputs);
     void evaluate_destroyed(std::span<RuleId const> run, MissionInputs const& inputs);
     void evaluate_elapsed(std::span<RuleId const> run, MissionInputs const& inputs);
@@ -74,11 +69,14 @@ class Mission {
     void settle(MissionInputs const& inputs);
 
     CompiledMission data_;
-    std::vector<ObjectiveId> inactive_, active_, completed_;
-    std::vector<RuleId> active_rules_, newly_active_;
+    std::vector<ObjectiveId> inactive_;
+    std::vector<ObjectiveId> active_;
+    std::vector<ObjectiveId> completed_;
+    std::vector<RuleId> active_rules_;
+    std::vector<RuleId> newly_active_;
     std::vector<RuleRun> runs_;
     std::vector<ExprRef> propagation_;
-    std::vector<ObjectiveId> dirty_;
+    std::vector<ObjectiveId> pending_objectives_;
     std::vector<std::uint32_t> candidate_results_;
     std::array<std::optional<TeamOutcome>, enum_count<Team>()> team_outcomes_{};
     std::vector<TeamCompletion> completions_;

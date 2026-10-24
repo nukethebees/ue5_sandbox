@@ -1,7 +1,7 @@
 #include "ioj/sim/telemetry/manager.h"
 
 #include <ioj/sim/lasers/sim.h>
-#include <ioj/sim/missions/mission_result.h>
+#include <ioj/sim/missions/team_completion.h>
 #include <ioj/sim/sim_clock.h>
 
 #include <algorithm>
@@ -454,16 +454,17 @@ void LevelTelemetryManager::set_run_metadata(LevelTelemetryRunMetadata metadata)
 /* **************************************** */
 // Completion and finalization
 /* **************************************** */
-void LevelTelemetryManager::mark_mission_terminal(LevelMissionResult const& result) {
+void LevelTelemetryManager::mark_mission_terminal(TeamCompletion const& result,
+                                                  std::string_view const objective_name) {
     auto const reason{result.outcome == TeamOutcome::Victory
                           ? LevelTelemetryRunEndReason::MissionSucceeded
                           : LevelTelemetryRunEndReason::MissionFailed};
-    finalize_run(reason, &result);
+    finalize_run(reason, &result, objective_name);
 }
 
 void LevelTelemetryManager::finalize(LevelTelemetryRunEndReason const reason,
                                      std::optional<Team> winning_team) {
-    finalize_run(reason, nullptr, winning_team);
+    finalize_run(reason, nullptr, {}, winning_team);
 }
 
 auto LevelTelemetryManager::take_finalized_run(Frequency const tick_rate_hz)
@@ -484,7 +485,8 @@ auto LevelTelemetryManager::take_finalized_run(Frequency const tick_rate_hz)
 }
 
 void LevelTelemetryManager::finalize_run(LevelTelemetryRunEndReason const reason,
-                                         LevelMissionResult const* const mission_result,
+                                         TeamCompletion const* const mission_result,
+                                         std::string_view const objective_name,
                                          std::optional<Team> winning_team) {
     if (state_ != State::Recording) {
         return;
@@ -504,12 +506,13 @@ void LevelTelemetryManager::finalize_run(LevelTelemetryRunEndReason const reason
     if (mission_result != nullptr) {
         completion_.mission_team = mission_result->team;
         completion_.mission_outcome = mission_result->outcome;
-        completion_.objective_id = mission_result->objective_id;
+        completion_.decisive_objective_id = objective_name;
         completion_.objective_outcome = mission_result->objective_outcome;
         if (mission_result->outcome == TeamOutcome::Victory) {
             completion_.winning_team = mission_result->team;
         }
-        completion_.mission_elapsed_seconds = Duration::make(mission_result->elapsed_seconds);
+        completion_.mission_elapsed_seconds =
+            Duration::make(simulation_time(mission_result->tick, clock_.get_tick_period()));
     }
 
     state_ = State::Finalized;

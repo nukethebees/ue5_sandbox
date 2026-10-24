@@ -17,6 +17,5 @@ void Objectives::resize(std::size_t const count) {
     outcomes_.resize(count);
     activation_ticks_.resize(count, std::numeric_limits<SimTick>::max());
     membership_positions_.resize(count);
-    dirty_flags_.resize(count);
 }
 }

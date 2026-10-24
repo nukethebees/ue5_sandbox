@@ -15,7 +15,6 @@
 #include <ioj/sim/levels/level_sim_init_data.h>
 #include <ioj/sim/memory/game_memory.h>
 #include <ioj/sim/missions/mission.h>
-#include <ioj/sim/missions/mission_result.h>
 #include <ioj/sim/overlap_handler.h>
 #include <ioj/sim/player/command_interface.h>
 #include <ioj/sim/player/sim.h>
@@ -89,7 +88,7 @@ struct LevelSim {
     void complete_run_if_requested(bool stop_when_battle_resolved,
                                    std::optional<Duration> duration);
     // Consumes the result and marks telemetry terminal without pausing.
-    auto take_mission_result() -> std::optional<LevelMissionResult>;
+    auto take_player_team_completion() -> std::optional<TeamCompletion>;
     auto take_finalized_telemetry_run() -> std::optional<LevelTelemetryRunRecord>;
 
     /* **************************************** */
@@ -116,6 +115,7 @@ struct LevelSim {
     auto get_entity_ledger() const -> EntityLedger const& { return entity_ledger_; }
     auto get_entity_tables() const -> EntityTables const& { return entity_tables_; }
     auto get_mission() const -> Mission const& { return mission_; }
+    auto get_result_metadata() const -> LevelResultMetadata const& { return result_metadata_; }
     auto get_level_id() const -> std::string const& { return result_metadata_.level_id; }
     auto get_level_title() const -> std::string const& { return result_metadata_.level_title; }
     auto get_spatial_query_manager() const -> SpatialQueryManager const& { return query_manager_; }
@@ -157,11 +157,8 @@ struct LevelSim {
     turrets::Sim turrets_simulation_;
     spinners::Sim spinners_simulation_;
 
-    void update_mission_result();
     Mission mission_;
-    std::optional<Team> player_team_{};
     LevelResultMetadata result_metadata_;
-    std::optional<LevelMissionResult> mission_result_{};
     LevelEventManager event_manager_;
     LevelTelemetryManager level_telemetry_manager_;
 };

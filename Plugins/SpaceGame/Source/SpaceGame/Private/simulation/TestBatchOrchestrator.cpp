@@ -962,26 +962,32 @@ auto ATestBatchOrchestrator::make_presentation_resources() const -> FLevelPresen
 // Mission and telemetry
 /* **************************************** */
 void ATestBatchOrchestrator::process_mission_result() {
-    auto result{level_simulation_->take_mission_result()};
+    auto result{level_simulation_->take_player_team_completion()};
     if (!result.has_value()) {
         return;
     }
+
+    auto const& metadata{level_simulation_->get_result_metadata()};
+    auto const& objective_name{
+        level_simulation_->get_mission().objectives().name(result->objective).value};
+    auto const elapsed_seconds{static_cast<float>(
+        ioj::sim::simulation_time(result->tick, level_simulation_->get_clock().get_tick_period()))};
+
     TOptional<float> par_time_seconds;
     if (level_definition_.IsSet() && level_definition_->metadata().par_time_seconds) {
         par_time_seconds = *level_definition_->metadata().par_time_seconds;
     }
     bool persisted{};
     bool new_best_time{};
-    if (result->save_results) {
+    if (metadata.save_results) {
         auto* game_instance{GetGameInstance()};
         auto* saves{USpaceSaveSubsystem::get(game_instance)};
         if (IsValid(saves)) {
             if (result->outcome == ioj::TeamOutcome::Victory) {
                 auto const previous_progress{saves->get_level_progress(
-                    ioj::FLevelId{FName{UTF8_TO_TCHAR(result->level_id.c_str())}})};
-                new_best_time =
-                    previous_progress.best_completion_time_seconds < 0.0f ||
-                    result->elapsed_seconds < previous_progress.best_completion_time_seconds;
+                    ioj::FLevelId{FName{UTF8_TO_TCHAR(metadata.level_id.c_str())}})};
+                new_best_time = previous_progress.best_completion_time_seconds < 0.0f ||
+                                elapsed_seconds < previous_progress.best_completion_time_seconds;
             }
 
             int32 team_kills{};
@@ -992,13 +998,13 @@ void ATestBatchOrchestrator::process_mission_result() {
             }
             FScoreRecord const record{
                 .date = FDateTime::Now(),
-                .level_name = FName{UTF8_TO_TCHAR(result->level_id.c_str())},
+                .level_name = FName{UTF8_TO_TCHAR(metadata.level_id.c_str())},
                 .team = ioj::to_unreal(result->team),
                 .outcome = ioj::to_unreal(result->outcome),
-                .objective_id = UTF8_TO_TCHAR(result->objective_id.c_str()),
+                .objective_id = UTF8_TO_TCHAR(objective_name.c_str()),
                 .objective_outcome = ioj::to_unreal(result->objective_outcome),
                 .kills = team_kills,
-                .time_seconds = result->elapsed_seconds,
+                .time_seconds = elapsed_seconds,
             };
             persisted = saves->save_score_record(record);
             new_best_time = persisted && new_best_time;
@@ -1009,10 +1015,10 @@ void ATestBatchOrchestrator::process_mission_result() {
         }
     }
     on_mission_completed.Broadcast(
-        {.level_id = FName{UTF8_TO_TCHAR(result->level_id.c_str())},
-         .level_display_name = UTF8_TO_TCHAR(result->level_display_name.c_str()),
+        {.level_id = FName{UTF8_TO_TCHAR(metadata.level_id.c_str())},
+         .level_display_name = UTF8_TO_TCHAR(metadata.level_title.c_str()),
          .state = ioj::to_unreal(result->outcome),
-         .objective_id = UTF8_TO_TCHAR(result->objective_id.c_str()),
+         .objective_id = UTF8_TO_TCHAR(objective_name.c_str()),
          .persisted = persisted,
          .par_time_seconds = par_time_seconds,
          .new_best_time = new_best_time});

@@ -12,11 +12,12 @@
 #include <cstdint>
 #include <optional>
 #include <span>
+#include <string_view>
 #include <vector>
 
 namespace ioj::sim {
 
-struct LevelMissionResult;
+struct TeamCompletion;
 struct SimClock;
 struct LevelTelemetryManagerTestAccess;
 
@@ -60,7 +61,7 @@ class LevelTelemetryManager {
     /* **************************************** */
     // Requires Uninitialised or Recording.
     void set_run_metadata(LevelTelemetryRunMetadata metadata);
-    void mark_mission_terminal(LevelMissionResult const& result);
+    void mark_mission_terminal(TeamCompletion const& result, std::string_view objective_name);
     void finalize(LevelTelemetryRunEndReason reason, std::optional<Team> winning_team = {});
     // Returns empty unless the record awaits extraction.
     auto take_finalized_run(Frequency tick_rate_hz) -> std::optional<LevelTelemetryRunRecord>;
@@ -98,7 +99,8 @@ class LevelTelemetryManager {
     // Finalization
     /* **************************************** */
     void finalize_run(LevelTelemetryRunEndReason reason,
-                      LevelMissionResult const* mission_result,
+                      TeamCompletion const* mission_result,
+                      std::string_view objective_name,
                       std::optional<Team> winning_team = {});
 
     /* **************************************** */

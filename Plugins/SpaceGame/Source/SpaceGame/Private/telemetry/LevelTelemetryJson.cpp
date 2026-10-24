@@ -534,7 +534,7 @@ auto validate_serialized_report(FLevelTelemetryReport const& record)
     auto const mission_values{record.completion.mission_team.has_value()};
     if (mission_values != record.completion.mission_outcome.has_value() ||
         mission_values != record.completion.objective_outcome.has_value() ||
-        mission_values == record.completion.objective_id.empty()) {
+        mission_values == record.completion.decisive_objective_id.empty()) {
         return std::unexpected{
             FString{TEXT("completion mission team, team outcome, objective id and objective "
                          "outcome must be provided together")}};
@@ -868,7 +868,7 @@ auto deserialize_level_telemetry_run(FString const& json)
         if (objective_id.IsEmpty()) {
             return std::unexpected{FString{TEXT("completion.objective_id must be nonempty")}};
         }
-        result.completion.objective_id = TCHAR_TO_UTF8(*objective_id);
+        result.completion.decisive_objective_id = TCHAR_TO_UTF8(*objective_id);
         result.completion.mission_team = ioj::to_native(team);
         result.completion.mission_outcome = ioj::to_native(team_outcome);
         result.completion.objective_outcome = ioj::to_native(objective_outcome);
@@ -1096,7 +1096,7 @@ auto serialize_level_telemetry_run(FLevelTelemetryReport const& record) -> FStri
     completion->SetStringField(TEXT("reason"), serialized_name(record.completion.reason));
     if (record.completion.mission_team.has_value()) {
         completion->SetStringField(TEXT("objective_id"),
-                                   ioj::to_fstring(record.completion.objective_id));
+                                   ioj::to_fstring(record.completion.decisive_objective_id));
         completion->SetStringField(TEXT("mission_team"),
                                    serialized_name(record.completion.mission_team.value()));
         completion->SetStringField(TEXT("mission_outcome"),

@@ -14,7 +14,7 @@ struct LevelTelemetryRunCompletion {
     std::string completed_utc{};
     std::optional<Team> mission_team{};
     std::optional<TeamOutcome> mission_outcome{};
-    std::string objective_id{};
+    std::string decisive_objective_id{};
     std::optional<ObjectiveOutcome> objective_outcome{};
     std::optional<Duration> mission_elapsed_seconds{};
     SimTick completed_ticks{};

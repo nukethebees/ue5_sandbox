@@ -1,6 +1,8 @@
 #include <ioj/sim/telemetry/json_validation.h>
 
+#include <array>
 #include <cmath>
+#include <format>
 #include <limits>
 #include <type_traits>
 
@@ -10,7 +12,7 @@ namespace {
 constexpr double exact_json_integer_limit{9007199254740992.0};
 
 auto error_at(std::string_view const path, std::string_view const detail) -> std::string {
-    return std::string{path} + ": " + std::string{detail};
+    return std::format("{}: {}", path, detail);
 }
 
 template <typename Integer>
@@ -66,7 +68,7 @@ auto validate_counts(Counts const& source, std::string_view const path)
     std::int32_t index{};
     for (auto const& row : source) {
         for (auto const value : row) {
-            auto const value_path{std::string{path} + "[" + std::to_string(index++) + "]"};
+            auto const value_path{std::format("{}[{}]", path, index++)};
             if constexpr (std::is_integral_v<decltype(value)>) {
                 auto const valid{validate_json_integer(value, value_path, true)};
                 if (!valid) {
@@ -89,7 +91,7 @@ auto validate_series(Series const& source, std::string_view const path)
     auto const count{source.num()};
     SimTick previous_tick{};
     for (std::uint32_t index{}; index < count; ++index) {
-        auto const tick_path{std::string{path} + ".ticks[" + std::to_string(index) + "]"};
+        auto const tick_path{std::format("{}.ticks[{}]", path, index)};
         auto const tick{source.time_at(index)};
         auto const valid_tick{validate_json_integer(tick, tick_path, true)};
         if (!valid_tick) {
@@ -99,7 +101,7 @@ auto validate_series(Series const& source, std::string_view const path)
             return std::unexpected{
                 error_at(tick_path, "tick coordinates must be strictly increasing")};
         }
-        auto const value_path{std::string{path} + ".values[" + std::to_string(index) + "]"};
+        auto const value_path{std::format("{}.values[{}]", path, index)};
         auto const valid_value{validate_json_integer(source.value_at(index), value_path, true)};
         if (!valid_value) {
             return valid_value;
@@ -126,7 +128,7 @@ auto validate_level_telemetry_json_record(LevelTelemetryRunRecord const& record)
     auto const mission_values{record.completion.mission_team.has_value()};
     if (mission_values != record.completion.mission_outcome.has_value() ||
         mission_values != record.completion.objective_outcome.has_value() ||
-        mission_values == record.completion.objective_id.empty()) {
+        mission_values == record.completion.decisive_objective_id.empty()) {
         return std::unexpected{"completion mission team, outcome, objective id and objective "
                                "outcome must be provided together"};
     }
@@ -135,34 +137,32 @@ auto validate_level_telemetry_json_record(LevelTelemetryRunRecord const& record)
     if (!completed_ticks) {
         return completed_ticks;
     }
-#define VALIDATE_SERIES(field)                                                              \
-    do {                                                                                    \
-        auto const valid{validate_series(record.tick_series.field, "tick_series." #field)}; \
-        if (!valid) {                                                                       \
-            return valid;                                                                   \
-        }                                                                                   \
-    } while (false)
-    VALIDATE_SERIES(active_entities);
-    VALIDATE_SERIES(spawned_entities);
-    VALIDATE_SERIES(destroyed_entities);
-    VALIDATE_SERIES(kills);
-    VALIDATE_SERIES(active_lasers);
-    VALIDATE_SERIES(lasers_fired);
-#undef VALIDATE_SERIES
+    for (auto const& valid : std::array{
+             validate_series(record.tick_series.active_entities, "tick_series.active_entities"),
+             validate_series(record.tick_series.spawned_entities, "tick_series.spawned_entities"),
+             validate_series(record.tick_series.destroyed_entities,
+                             "tick_series.destroyed_entities"),
+             validate_series(record.tick_series.kills, "tick_series.kills"),
+             validate_series(record.tick_series.active_lasers, "tick_series.active_lasers"),
+             validate_series(record.tick_series.lasers_fired, "tick_series.lasers_fired")}) {
+        if (!valid) {
+            return valid;
+        }
+    }
+
     for (std::int32_t type{}; type < LevelTelemetryTickSeries::entity_type_count; ++type) {
         auto const valid{
             validate_series(record.tick_series.active_entities_by_type[type],
-                            "tick_series.active_entities_by_type[" + std::to_string(type) + "]")};
+                            std::format("tick_series.active_entities_by_type[{}]", type))};
         if (!valid) {
             return valid;
         }
     }
     for (std::int32_t team{}; team < LevelTelemetryTickSeries::team_count; ++team) {
         for (std::int32_t type{}; type < LevelTelemetryTickSeries::entity_type_count; ++type) {
-            auto const valid{
-                validate_series(record.tick_series.active_entities_by_team_and_type[team][type],
-                                "tick_series.active_entities_by_team_and_type[" +
-                                    std::to_string(team) + "][" + std::to_string(type) + "]")};
+            auto const valid{validate_series(
+                record.tick_series.active_entities_by_team_and_type[team][type],
+                std::format("tick_series.active_entities_by_team_and_type[{}][{}]", team, type))};
             if (!valid) {
                 return valid;
             }
@@ -171,42 +171,24 @@ auto validate_level_telemetry_json_record(LevelTelemetryRunRecord const& record)
     auto const sample_count{static_cast<std::uint32_t>(record.battle_samples.size())};
     for (std::uint32_t index{}; index < sample_count; ++index) {
         auto const& sample{record.battle_samples[index]};
-        auto const path{"battle_samples[" + std::to_string(index) + "]"};
-        auto const tick{
-            validate_json_integer(sample.completed_tick, path + ".completed_tick", true)};
-        auto const alive{validate_counts(sample.alive, path + ".alive")};
-        auto const spawned{validate_counts(sample.combat.spawned, path + ".combat.spawned")};
-        auto const destroyed{validate_counts(sample.combat.destroyed, path + ".combat.destroyed")};
-        auto const shots{validate_counts(sample.combat.shots, path + ".combat.shots")};
-        auto const hits{validate_counts(sample.combat.hits, path + ".combat.hits")};
-        auto const damage_dealt{
-            validate_counts(sample.combat.damage_dealt, path + ".combat.damage_dealt")};
-        auto const damage_received{
-            validate_counts(sample.combat.damage_received, path + ".combat.damage_received")};
-        auto const kills{validate_counts(sample.combat.kills, path + ".combat.kills")};
-        auto const losses{validate_counts(sample.combat.losses, path + ".combat.losses")};
-        auto const kill_matrix{
-            validate_counts(sample.combat.kill_matrix, path + ".combat.kill_matrix")};
-        auto const active_lasers{
-            validate_json_integer(sample.active_lasers, path + ".active_lasers", true)};
-        auto const lasers_fired{
-            validate_json_integer(sample.lasers_fired, path + ".lasers_fired", true)};
-        if (!tick || !alive || !spawned || !destroyed || !shots || !hits || !damage_dealt ||
-            !damage_received || !kills || !losses || !kill_matrix || !active_lasers ||
-            !lasers_fired) {
-            return std::unexpected{!tick              ? tick.error()
-                                   : !alive           ? alive.error()
-                                   : !spawned         ? spawned.error()
-                                   : !destroyed       ? destroyed.error()
-                                   : !shots           ? shots.error()
-                                   : !hits            ? hits.error()
-                                   : !damage_dealt    ? damage_dealt.error()
-                                   : !damage_received ? damage_received.error()
-                                   : !kills           ? kills.error()
-                                   : !losses          ? losses.error()
-                                   : !kill_matrix     ? kill_matrix.error()
-                                   : !active_lasers   ? active_lasers.error()
-                                                      : lasers_fired.error()};
+        auto const path{std::format("battle_samples[{}]", index)};
+        for (auto const& valid : std::array{
+                 validate_json_integer(sample.completed_tick, path + ".completed_tick", true),
+                 validate_counts(sample.alive, path + ".alive"),
+                 validate_counts(sample.combat.spawned, path + ".combat.spawned"),
+                 validate_counts(sample.combat.destroyed, path + ".combat.destroyed"),
+                 validate_counts(sample.combat.shots, path + ".combat.shots"),
+                 validate_counts(sample.combat.hits, path + ".combat.hits"),
+                 validate_counts(sample.combat.damage_dealt, path + ".combat.damage_dealt"),
+                 validate_counts(sample.combat.damage_received, path + ".combat.damage_received"),
+                 validate_counts(sample.combat.kills, path + ".combat.kills"),
+                 validate_counts(sample.combat.losses, path + ".combat.losses"),
+                 validate_counts(sample.combat.kill_matrix, path + ".combat.kill_matrix"),
+                 validate_json_integer(sample.active_lasers, path + ".active_lasers", true),
+                 validate_json_integer(sample.lasers_fired, path + ".lasers_fired", true)}) {
+            if (!valid) {
+                return valid;
+            }
         }
     }
     return {};

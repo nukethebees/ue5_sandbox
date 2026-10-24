@@ -121,14 +121,6 @@ class Objectives {
         assert(id.index() < size());
         return membership_positions_[id.index()];
     }
-    auto dirty(ObjectiveId id) -> std::uint8_t& {
-        assert(id.index() < size());
-        return dirty_flags_[id.index()];
-    }
-    auto dirty(ObjectiveId id) const -> std::uint8_t {
-        assert(id.index() < size());
-        return dirty_flags_[id.index()];
-    }
   private:
     std::vector<levels::ObjectiveName> names_;
     std::vector<std::string> titles_;
@@ -143,6 +135,5 @@ class Objectives {
     std::vector<std::optional<ObjectiveOutcome>> outcomes_;
     std::vector<SimTick> activation_ticks_;
     std::vector<std::uint32_t> membership_positions_;
-    std::vector<std::uint8_t> dirty_flags_;
 };
 }

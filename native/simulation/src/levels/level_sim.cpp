@@ -80,7 +80,6 @@ void LevelSim::finish_initialisation() {
         FrameScratchScope scratch_scope{frame_memory_};
         mission_.begin(
             {0, entity_ledger_, event_manager_.get_entity_ids(), &query_manager_, &frame_memory_});
-        update_mission_result();
     }
 
     state_ = OrchestratorState::Paused;
@@ -111,7 +110,9 @@ void LevelSim::configure_subsystems(LevelSimInitData const& data) {
     // Configure subsystems
     lasers_simulation_.set_config(data.lasers);
     capital_ships_simulation_.set_config(data.capital_ships);
-    auto const teams{event_manager_.get_participating_teams(player_team_)};
+    auto const player_team{player_ship_simulation_ ? std::optional{player_ship_simulation_->team}
+                                                   : std::nullopt};
+    auto const teams{event_manager_.get_participating_teams(player_team)};
     fighters_simulation_.set_config(
         data.fighters,
         {.participating_teams = teams,
@@ -124,7 +125,6 @@ void LevelSim::configure_player(player::PlayerSpawnData const& spawn) {
     auto& player{player_ship_simulation_.emplace(clock_, entity_ledger_, entity_tables_)};
 
     player.configure(spawn);
-    player_team_ = spawn.team;
 }
 void LevelSim::initialise_spatial_queries(LevelSimInitData& data) {
     // Configure collision queries and buffers
@@ -208,30 +208,16 @@ void LevelSim::complete_run_if_requested(bool stop_when_battle_resolved,
         complete_telemetry_run(LevelTelemetryRunEndReason::DurationReached);
     }
 }
-auto LevelSim::take_mission_result() -> std::optional<LevelMissionResult> {
-    auto result{std::exchange(mission_result_, {})};
-    if (!result.has_value()) {
-        return std::nullopt;
-    }
-
-    level_telemetry_manager_.mark_mission_terminal(*result);
-    return result;
-}
-void LevelSim::update_mission_result() {
+auto LevelSim::take_player_team_completion() -> std::optional<TeamCompletion> {
     for (auto const completion : mission_.take_completions()) {
-        if (player_team_ && completion.team == *player_team_) {
-            mission_result_ = LevelMissionResult{
-                .level_id = result_metadata_.level_id,
-                .level_display_name = result_metadata_.level_title,
-                .team = completion.team,
-                .outcome = completion.outcome,
-                .objective_id = mission_.objectives().name(completion.objective).value,
-                .objective_outcome = completion.objective_outcome,
-                .elapsed_seconds =
-                    static_cast<float>(simulation_time(completion.tick, clock_.get_tick_period())),
-                .save_results = result_metadata_.save_results};
+        if (player_ship_simulation_ && completion.team == player_ship_simulation_->team) {
+            level_telemetry_manager_.mark_mission_terminal(
+                completion, mission_.objectives().name(completion.objective).value);
+            return completion;
         }
     }
+
+    return std::nullopt;
 }
 
 auto LevelSim::take_finalized_telemetry_run() -> std::optional<LevelTelemetryRunRecord> {
@@ -466,7 +452,6 @@ void LevelSim::advance(time_type const dt) {
                                event_manager_.get_entity_ids(),
                                &query_manager_,
                                &frame_memory_});
-                update_mission_result();
             }
 
             // Clean up entities and indexes

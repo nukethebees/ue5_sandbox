@@ -138,7 +138,7 @@ void Mission::activate(ObjectiveId const id, SimTick const tick) {
         }
     }
 
-    mark_dirty(id);
+    pending_objectives_.push_back(id);
 }
 void Mission::complete(ObjectiveId const id, ObjectiveOutcome const outcome, SimTick const tick) {
     assert(active(id));
@@ -190,13 +190,6 @@ void Mission::complete(ObjectiveId const id, ObjectiveOutcome const outcome, Sim
 /* **************************************** */
 // Expression propagation
 /* **************************************** */
-void Mission::mark_dirty(ObjectiveId const id) {
-    // Queue each objective once while its changed expressions propagate.
-    if (!data_.objectives.dirty(id)) {
-        data_.objectives.dirty(id) = 1;
-        dirty_.push_back(id);
-    }
-}
 void Mission::resolve(ExprRef const expression, ExprResult const value) {
     assert(value != ExprResult::Pending);
 
@@ -207,7 +200,8 @@ void Mission::resolve(ExprRef const expression, ExprResult const value) {
     }
     values[index] = value;
     propagation_.push_back(expression);
-    mark_dirty(expression.leaf() ? data_.leaves.owners[index] : data_.composites.owners[index]);
+    pending_objectives_.push_back(expression.leaf() ? data_.leaves.owners[index]
+                                                    : data_.composites.owners[index]);
     membership_changed_ = membership_changed_ || expression.leaf();
 }
 void Mission::resolve_rule(RuleId const rule, ExprResult const value) {
@@ -431,7 +425,7 @@ void Mission::evaluate_reached_position(std::span<RuleId const> const run,
 // Settlement
 /* **************************************** */
 void Mission::settle(MissionInputs const& inputs) {
-    while (!newly_active_.empty() || !propagation_.empty() || !dirty_.empty()) {
+    while (!newly_active_.empty() || !propagation_.empty() || !pending_objectives_.empty()) {
         if (!newly_active_.empty()) {
             auto rules{std::exchange(newly_active_, {})};
             std::ranges::sort(rules);
@@ -439,10 +433,9 @@ void Mission::settle(MissionInputs const& inputs) {
         }
 
         propagate();
-        auto dirty{std::exchange(dirty_, {})};
-        std::ranges::sort(dirty);
-        for (auto const id : dirty) {
-            data_.objectives.dirty(id) = 0;
+        auto pending{std::exchange(pending_objectives_, {})};
+        std::ranges::sort(pending);
+        for (auto const id : pending) {
             if (!active(id)) {
                 continue;
             }
