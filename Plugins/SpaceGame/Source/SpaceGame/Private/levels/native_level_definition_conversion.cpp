@@ -1,5 +1,8 @@
 #include <SpaceGame/levels/native_level_definition_conversion.h>
 
+#include <SpaceGamePresentation/integration/TransformConversion.h>
+#include <SpaceGamePresentation/integration/VectorConversion.h>
+
 #include <SandboxCoreEngine/strings.h>
 
 #include <algorithm>
@@ -137,14 +140,10 @@ auto to_unreal(LevelDefinition const& level) -> FLevelDraft {
         auto const& grid{*definition.collision_grid()};
         FLevelCollisionGridDefinition unreal_grid;
         if (grid.level_size) {
-            unreal_grid.level_size = FVector3f{static_cast<float>(grid.level_size->x()),
-                                               static_cast<float>(grid.level_size->y()),
-                                               static_cast<float>(grid.level_size->z())};
+            unreal_grid.level_size = ioj::to_unreal(to_float(*grid.level_size));
         }
         if (grid.cell_size) {
-            unreal_grid.cell_size = FVector3f{static_cast<float>(grid.cell_size->x()),
-                                              static_cast<float>(grid.cell_size->y()),
-                                              static_cast<float>(grid.cell_size->z())};
+            unreal_grid.cell_size = ioj::to_unreal(to_float(*grid.cell_size));
         }
         builder.set_collision_grid(unreal_grid);
     }

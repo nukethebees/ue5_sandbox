@@ -1,4 +1,4 @@
-#include "SandboxISMCBenchmarkResult.h"
+#include "../SandboxISMCBenchmarkResult.h"
 
 #include "Editor/UnrealEdEngine.h"
 #include "HAL/PlatformTime.h"

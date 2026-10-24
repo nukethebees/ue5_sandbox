@@ -184,6 +184,8 @@ If a new issue invalidates previous validation or requires additional builds/tes
 * Do not run AddressSanitizer (ASAN) builds or tests unless the user explicitly requests them.
   ASAN is not a default validation, readiness, or integration requirement.
 * Only create tests when explicitly asked.
+* Keep automated tests and fixtures in `tests/` subdirectories or dedicated Unreal test modules,
+  separate from production implementations.
 * Keep all Rust test implementations, fixtures, and test helpers in each crate's `tests/`
   directory, not inline or in files under `src/`. Unit tests that need private access may use
   `#[cfg(test)]` and `#[path = "../tests/<module>/mod.rs"]` declarations in source modules.

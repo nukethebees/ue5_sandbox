@@ -2,6 +2,9 @@
 
 namespace ioj::example_levels {
 auto make_example_draft() -> FLevelDraft {
+    levels::EntityId const blue_capital{"blue-capital"};
+    levels::ObjectiveName const destroy_capital{"destroy-capital"};
+
     FLevelBuilder builder;
     builder.set_metadata(FLevelMetadata{
         .id = FLevelId{FName{TEXT("native-example")}},
@@ -36,28 +39,25 @@ auto make_example_draft() -> FLevelDraft {
         .rotation = FRotator{0.0, 180.0, 0.0},
     });
     builder.set_mission(levels::MissionDefinition{
-        .objectives = {{.id = ioj::levels::ObjectiveName{"destroy-capital"},
-                        .title = "Destroy the enemy capital",
-                        .team = Team::Blue,
-                        .expressions = {{ioj::levels::EntityDestroyedExpression{
-                                            .entity = levels::EntityId{"red-capital"}}},
-                                        {ioj::levels::EntityDestroyedExpression{
-                                            .entity = levels::EntityId{"blue-capital"}}},
-                                        {ioj::levels::EntityKillsReachedExpression{
-                                            .entities = {levels::EntityId{"player"},
-                                                         levels::EntityId{"blue-capital"}},
-                                            .kills = 2}},
-                                        {ioj::levels::AllExpression{.children = {0, 2}}}},
-                        .roots =
-                            ioj::levels::ObjectiveRoots{std::array<ioj::levels::ExpressionIndex, 3>{
-                                3, 1, levels::absent_expression}}}},
-        .team_results = {
-            {.team = Team::Blue,
-             .when = {ioj::levels::ObjectiveName{"destroy-capital"}, ObjectiveOutcome::Passed},
-             .result = TeamOutcome::Victory},
-            {.team = Team::Blue,
-             .when = {ioj::levels::ObjectiveName{"destroy-capital"}, ObjectiveOutcome::Failed},
-             .result = TeamOutcome::Defeat}}});
+        .objectives =
+            {{.id = destroy_capital,
+              .title = "Destroy the enemy capital",
+              .team = Team::Blue,
+              .expressions = {{ioj::levels::EntityDestroyedExpression{
+                                  .entity = levels::EntityId{"red-capital"}}},
+                              {ioj::levels::EntityDestroyedExpression{.entity = blue_capital}},
+                              {ioj::levels::EntityKillsReachedExpression{
+                                  .entities = {levels::EntityId{"player"}, blue_capital},
+                                  .kills = 2}},
+                              {ioj::levels::AllExpression{.children = {0, 2}}}},
+              .roots = ioj::levels::ObjectiveRoots{std::array<ioj::levels::ExpressionIndex, 3>{
+                  3, 1, levels::absent_expression}}}},
+        .team_results = {{.team = Team::Blue,
+                          .when = {destroy_capital, ObjectiveOutcome::Passed},
+                          .result = TeamOutcome::Victory},
+                         {.team = Team::Blue,
+                          .when = {destroy_capital, ObjectiveOutcome::Failed},
+                          .result = TeamOutcome::Defeat}}});
     return builder.finish();
 }
 }
