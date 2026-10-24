@@ -4,6 +4,7 @@
 #include <ioj/levels/authoring/identifier_reader.h>
 #include <ioj/levels/objective_dependency_reader.h>
 #include <ioj/settings/settings.h>
+#include <ioj/settings/settings_values_reader.h>
 
 namespace ioj::s7 {
 // Capture per-entry failures so catalogs retain successfully decoded siblings.
@@ -21,9 +22,4 @@ struct TypeReader<levels::authoring::ExprInput> {
         -> ReadResult<levels::authoring::ExprInput>;
 };
 
-template <>
-struct TypeReader<settings::Settings> {
-    static auto read(Reader const& reader, NodeIndex node, std::string_view path)
-        -> ReadResult<settings::Settings>;
-};
 }

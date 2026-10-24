@@ -121,7 +121,6 @@ struct TypeReader<::codegen_compile_fixture::WeaponSettings> {
     enum class Field : std::uint8_t {
         damage,
         turn_rate,
-        asset_distance,
         Count,
     };
 
@@ -132,9 +131,6 @@ struct TypeReader<::codegen_compile_fixture::WeaponSettings> {
         }
         if (name == "turn-speed") {
             return Field::turn_rate;
-        }
-        if (name == "asset-distance") {
-            return Field::asset_distance;
         }
         return std::nullopt;
     }
@@ -346,7 +342,7 @@ inline void
 inline ReadResult<::codegen_compile_fixture::RangeSettingsOverrides>
     TypeReader<::codegen_compile_fixture::RangeSettingsOverrides>::read(
         Reader const& reader, NodeIndex const node, std::string_view const path) {
-    return read_generated<value_type>(reader, node, path);
+    return read_override(reader, node, path, value_type{});
 }
 
 inline void TypeReader<::codegen_compile_fixture::RangeSettingsOverrides>::decode(
@@ -425,9 +421,6 @@ inline void
                 case Field::turn_rate:
                     read(result.turn_rate);
                     break;
-                case Field::asset_distance:
-                    read(result.asset_distance);
-                    break;
                 case Field::Count:
                     std::unreachable();
             }
@@ -442,7 +435,7 @@ inline void
 inline ReadResult<::codegen_compile_fixture::WeaponSettingsOverrides>
     TypeReader<::codegen_compile_fixture::WeaponSettingsOverrides>::read(
         Reader const& reader, NodeIndex const node, std::string_view const path) {
-    return read_generated<value_type>(reader, node, path);
+    return read_override(reader, node, path, value_type{});
 }
 
 inline void TypeReader<::codegen_compile_fixture::WeaponSettingsOverrides>::decode(
@@ -538,7 +531,7 @@ inline void
 inline ReadResult<::codegen_compile_fixture::ActorSettingsOverrides>
     TypeReader<::codegen_compile_fixture::ActorSettingsOverrides>::read(
         Reader const& reader, NodeIndex const node, std::string_view const path) {
-    return read_generated<value_type>(reader, node, path);
+    return read_override(reader, node, path, value_type{});
 }
 
 inline void TypeReader<::codegen_compile_fixture::ActorSettingsOverrides>::decode(

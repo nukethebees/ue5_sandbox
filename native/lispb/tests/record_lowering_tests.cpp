@@ -53,34 +53,20 @@ TEST(RecordLowering, GeneratesSemanticMembersAndFixedArrays) {
 }
 
 TEST(RecordLowering, RejectsInvalidSettingsBindingsAndOverrideDependencies) {
-    for (
-        auto const declarations : {
-            R"((record Config (member speed float))
-           (settings-schema Fields :target Config :target-header "Records.h"
-             (section "config" "config" :record Config)))",
-            R"((record Config :generate-overrides true (member speed float)))",
-            R"((record Config :generate-settings true :generate-overrides true
+    for (auto const declarations :
+         {R"((record Config :generate-overrides true (member speed float)))",
+          R"((record Config :generate-settings true :generate-overrides true
              (member speed (type-ref float :suffix "&"))))",
-            R"((record Config :generate-settings true :generate-overrides true
+          R"((record Config :generate-settings true :generate-overrides true
              (member speed (type-ref float :suffix " const"))))",
-            R"((record Child (member speed float))
+          R"((record Child (member speed float))
            (record Config :generate-settings true :generate-overrides true (member child Child)))",
-            R"((record Config :generate-settings true (member speed float))
-           (settings-schema Fields :target Config :target-header "Records.h"
-             (section "config" "config" :record Config)
-             (field "config.speed" "speed")))",
-            R"((record Config :generate-settings true (member speed float :settings-exclude true))
-           (settings-schema Fields :target Config :target-header "Records.h"
-             (section "config" "config" :record Config)))",
-            R"((record Config :generate-settings true (member speed float :settings-name "")))",
-            R"((record Config :generate-settings true (member child Config))
-           (settings-schema Fields :target Config :target-header "Records.h"
-             (section "config" "config" :record Config)))",
-            R"((record Config :generate-settings true :generate-overrides true (member speed float))
+          R"((record Config :generate-settings true (member speed float :settings-name "")))",
+          R"((record Config :generate-settings true :generate-overrides true (member speed float))
            (record ConfigOverrides))",
-            R"((record Config :constraint-policy example::policy)
+          R"((record Config :constraint-policy example::policy)
            (record ConfigValue))",
-            R"((record Config :constraint-policy example::policy
+          R"((record Config :constraint-policy example::policy
                 :generate-settings true :generate-overrides true))"}) {
         SCOPED_TRACE(declarations);
         CompilerTestContext context;
@@ -115,9 +101,7 @@ TEST(RecordLowering, SettingsOptionsSurviveSourceRoundTrip) {
             :generate-s7-reader true :s7-tag "range"
             (member minimum int :initializer 0 :required true)
             (member maximum int :initializer 1 :required true))
-          (settings-schema Fields :target Root :target-header "Root.h"
-            (section "config" "config" :record Config)
-            (field "extra" "extra"))))")};
+))")};
     auto const source{
         schema::render_module_source(manifest.declarations, manifest.modules.front())};
     CompilerTestContext reparsed;

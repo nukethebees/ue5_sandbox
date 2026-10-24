@@ -1,0 +1,90 @@
+(module tick_settings
+  :header "native/levels/lib/include/ioj/settings/tick_settings.h"
+  :header-include "ioj/settings/tick_settings.h"
+  :namespace ioj::settings
+  (record TickSettings :generate-settings true :generate-overrides true
+    :generate-s7-reader true :s7-tag "tick"
+    :s7-reader-includes ("ioj/s7/frequency_reader.h")
+    (member tick_rate @settings_frequency :initializer 60.0)
+    (member time_scale @settings_positive_double :initializer 1.0)))
+
+(module player_sim_config
+  :header "native/levels/lib/include/ioj/sim/player/player_sim_config.h"
+  :header-include "ioj/sim/player/player_sim_config.h"
+  :namespace ioj::sim
+  (record PlayerSimConfig :generate-settings true :generate-overrides true
+    :generate-s7-reader true :s7-tag "player-ship"
+    (member thrust_energy_max @settings_positive_float :initializer 1.f)
+    (member pitch_angle_max float :initializer 30.f :finite true)
+    (member pitch_speed float :initializer 3.f :finite true)
+    (member yaw_angle_max float :initializer 30.f :finite true)
+    (member yaw_speed float :initializer 3.f :finite true)
+    (member turn_bank_angle_max float :initializer 30.f :finite true)
+    (member turn_bank_speed float :initializer 2.f :finite true)
+    (member laser ioj::sim::LaserWeaponSimConfig :initializer "")
+    (member health @native_health :initializer 1000)
+    (member laser_mode ioj::sim::ShipLaserMode :initializer "ShipLaserMode::Single")
+    (member laser_fire_rate ioj::sim::ShipFireRate :initializer "ShipFireRate::FullAuto")))
+
+(module capital_ship_sim_config
+  :prelude ("#include <vector>")
+  :header "native/levels/lib/include/ioj/sim/capital_ships/capital_ship_sim_config.h"
+  :header-include "ioj/sim/capital_ships/capital_ship_sim_config.h"
+  :namespace ioj::sim
+  (record CapitalShipSimConfig :generate-settings true :generate-overrides true
+    :generate-s7-reader true :s7-tag "capital-ships"
+    (member spawn_delay float :initializer 5.f :finite true)
+    (member fighter_spawn_slots std::int32_t :initializer "" :settings-exclude true)
+    (member fighter_spawn_slots_relative_transforms @settings_spawn_transforms :initializer "" :settings-exclude true)
+    (member max_health @native_health :initializer 5000)))
+
+(module turret_sim_config
+  :header "native/levels/lib/include/ioj/sim/turrets/turret_sim_config.h"
+  :header-include "ioj/sim/turrets/turret_sim_config.h"
+  :namespace ioj::sim
+  (record TurretSimConfig :generate-settings true :generate-overrides true
+    :generate-s7-reader true :s7-tag "turrets"
+    (member detection_radius float :initializer 3000.f :finite true)
+    (member target_refresh_frequency float :initializer 5.f :finite true)
+    (member fire_point_offset @native_vector_3f :initializer "" :settings-exclude true)
+    (member laser ioj::sim::LaserWeaponSimConfig :initializer "")
+    (member max_health @native_health :initializer 20)))
+
+(module spinner_sim_config
+  :prelude ("#include <vector>")
+  :header "native/levels/lib/include/ioj/sim/spinners/spinner_sim_config.h"
+  :header-include "ioj/sim/spinners/spinner_sim_config.h"
+  :namespace ioj::sim
+  (record SpinnerSimConfig :generate-settings true :generate-overrides true
+    :generate-s7-reader true :s7-tag "tube-spinners"
+    (member fire_point_offsets @settings_fire_points :initializer "" :settings-exclude true)
+    (member yaw_rotation_speed_degrees float :initializer 66.f :finite true)
+    (member laser ioj::sim::LaserWeaponSimConfig :initializer "")))
+
+(module hud_settings
+  :header "native/levels/lib/include/ioj/sim/levels/hud_settings.h"
+  :header-include "ioj/sim/levels/hud_settings.h"
+  :namespace ioj::sim
+  (record HudSettings :generate-settings true :generate-overrides true
+    :generate-s7-reader true :s7-tag "hud"
+    (member player_status_update_period float :initializer 0.25f :finite true :nonnegative true)
+    (member entity_count_update_period float :initializer 0.25f :finite true :nonnegative true)
+    (member mission_status_update_period float :initializer 0.25f :finite true :nonnegative true)))
+
+(module settings_values
+  :header "native/levels/lib/include/ioj/settings/settings_values.h"
+  :header-include "ioj/settings/settings_values.h"
+  :namespace ioj::settings
+  (record SettingsValues :generate-settings true :generate-overrides true
+    :generate-s7-reader true :s7-tag "settings"
+    (member tick ioj::settings::TickSettings :initializer "")
+    (member player_ship ioj::sim::PlayerSimConfig :initializer "")
+    (member laser_projectiles ioj::sim::LaserSimConfig :initializer "")
+    (member capital_ships ioj::sim::CapitalShipSimConfig :initializer "")
+    (member fighters ioj::sim::FighterSimConfig :initializer "")
+    (member turrets ioj::sim::TurretSimConfig :initializer "")
+    (member tube_spinners ioj::sim::SpinnerSimConfig :initializer "")
+    (member collision_grid ioj::sim::OverlapResponseConfig :initializer "")
+    (member hud ioj::sim::HudSettings :initializer "")
+    (member presentation ioj::settings::Presentation :initializer "")
+    (member starfield ioj::starfield::Settings :initializer "")))

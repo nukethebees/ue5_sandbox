@@ -92,8 +92,7 @@ target_sources(lispb-schema PRIVATE
   src/setting_control_schemas.cpp
   src/setting_schemas.cpp
   src/settings_module_schemas.cpp
-  src/settings_schema_schemas.cpp
-  src/settings_fields.cpp
+  src/record_settings.cpp
   src/soa_mask_dimension_schemas.cpp
   src/soa_member_schemas.cpp
   src/soa_schemas.cpp
@@ -201,7 +200,6 @@ target_sources(codegen-lib PRIVATE
   src/lowering_utils.cpp
   src/module_assembly.cpp
   src/settings_lowering.cpp
-  src/settings_schema_lowering.cpp
   src/string_enum_parser.cpp
   src/soa_lowering.cpp
   src/soa_api.cpp
@@ -255,7 +253,8 @@ set(CODEGEN_COMPILE_FIXTURE_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/tests/compile_fi
 set(CODEGEN_COMPILE_FIXTURE_OUTPUT "${CODEGEN_COMPILE_FIXTURE_SOURCE}/generated")
 set(CODEGEN_COMPILE_FIXTURE_HEADERS
   "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/Records.h"
-  "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/SettingsFields.h"
+  "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/NestedSettings.h"
+  "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/NestedSettings_reader.h"
   "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/FieldMasks.h"
   "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/RestrictionRows.h"
   "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/ReferenceFacade.h"

@@ -311,9 +311,6 @@ class TypeGraphBuilder {
                 if (!names.insert(name).second) {
                     throw std::invalid_argument{"Duplicate declaration name: " + str(name)};
                 }
-                if (!codegen::has_primary_semantic_type(source)) {
-                    continue;
-                }
                 auto const definition{[&]() -> TypeDefinitionId {
                     auto const value{source};
                     switch (value.kind()) {

@@ -204,7 +204,7 @@ inline ReadResult<::ioj::settings::CapitalPresentationOverrides>
     TypeReader<::ioj::settings::CapitalPresentationOverrides>::read(Reader const& reader,
                                                                     NodeIndex const node,
                                                                     std::string_view const path) {
-    return read_generated<value_type>(reader, node, path);
+    return read_override(reader, node, path, value_type{});
 }
 
 inline void

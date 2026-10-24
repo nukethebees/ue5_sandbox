@@ -3,6 +3,8 @@ FieldMasks.h
 Generated.h
 InlineFacade.h
 Mixed.h
+NestedSettings.h
+NestedSettings_reader.h
 PackedEnums.h
 PackedValues.h
 PlainEnums.cpp
@@ -17,7 +19,6 @@ ReferenceFacade.h
 Representations.h
 RestrictionRows.h
 ScalarValues.h
-SettingsFields.h
 SignatureDefinitions.cpp
 SignatureDefinitions.h
 SignatureFirst.cpp

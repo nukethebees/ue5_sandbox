@@ -57,8 +57,9 @@ auto reader_fields(LoweringContext& context, DeclarationHandle record, bool over
     auto const& records{declarations.records};
     std::vector<RecordMemberId> result;
     for (auto field : declarations.items(records.members[records.index(record)])) {
-        if (!overrides || !declarations.record_members
-                               .settings_exclude[declarations.record_members.index(field)]) {
+        if ((!overrides && !records.generate_settings[records.index(record)]) ||
+            !declarations.record_members
+                 .settings_exclude[declarations.record_members.index(field)]) {
             result.push_back(field);
         }
     }
@@ -323,7 +324,9 @@ void lower_record_reader(LoweringContext& context,
         "read",
         "ReadResult<value_type>",
         read_parameters,
-        {ir.return_stmt(ir.raw_expr("read_generated<value_type>(reader, node, path)", {}))});
+        {ir.return_stmt(ir.raw_expr(overrides ? "read_override(reader, node, path, value_type{})"
+                                              : "read_generated<value_type>(reader, node, path)",
+                                    {}))});
     if (!overrides && std::ranges::any_of(fields, [&](auto field) {
             auto const index{members.index(field)};
             return !members.initializer[index].has_value();

@@ -111,7 +111,6 @@ class SchemaParser {
     auto parse_record_member(Declarations& declarations, sexpr::FormId const form)
         -> RecordMemberId;
     auto parse_record(Declarations& declarations, sexpr::FormId const form) -> DeclarationHandle;
-    auto parse_settings_schema(Declarations& declarations, sexpr::FormId form) -> DeclarationHandle;
     auto parse_union_alternative(Declarations& declarations, sexpr::FormId const form)
         -> UnionAlternativeId;
     auto parse_union(Declarations& declarations, sexpr::FormId const form) -> DeclarationHandle;

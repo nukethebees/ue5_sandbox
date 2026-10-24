@@ -90,45 +90,64 @@ static_assert(std::is_same_v<decltype(std::declval<LevelDefinition&>().entities(
                              std::vector<EntitySpawnDefinition> const&>);
 
 TEST(NativeSettings, PreservesExactIntegersAndRejectsOutOfRangeConversions) {
-    using settings::Setting;
+    s7::Interpreter interpreter;
+    auto const assign{[&]<typename T>(std::string_view source, T& target) {
+        auto ast{interpreter.evaluate_ast(source)};
+        if (!ast) {
+            return false;
+        }
+        auto result{s7::read_override(s7::Reader{*ast}, ast->root, "value", target)};
+        if (!result) {
+            return false;
+        }
+        target = *result;
+        return true;
+    }};
     auto const maximum{std::numeric_limits<std::int64_t>::max()};
     std::int64_t integer{};
-    ASSERT_TRUE((Setting{"", maximum}.assign(integer)));
+    ASSERT_TRUE((assign(std::to_string(maximum), integer)));
     EXPECT_EQ(integer, maximum);
-    ASSERT_TRUE((Setting{"", std::int64_t{9007199254740993}}.assign(integer)));
+    ASSERT_TRUE((assign("9007199254740993", integer)));
     EXPECT_EQ(integer, 9007199254740993);
 
-    for (auto const invalid : {0x1p63,
-                               -0x1.0000000000001p63,
-                               1.5,
-                               std::numeric_limits<double>::infinity(),
-                               std::numeric_limits<double>::quiet_NaN()}) {
+    for (auto const invalid :
+         {"9223372036854775808.0", "-9223372036854777856.0", "1.5", "+inf.0", "+nan.0"}) {
         SCOPED_TRACE(invalid);
-        EXPECT_FALSE((Setting{"", invalid}.assign(integer)));
+        EXPECT_FALSE((assign(invalid, integer)));
         EXPECT_EQ(integer, 9007199254740993);
     }
-    ASSERT_TRUE((Setting{"", -0x1p63}.assign(integer)));
+    ASSERT_TRUE((assign("-9223372036854775808", integer)));
     EXPECT_EQ(integer, std::numeric_limits<std::int64_t>::min());
 
     std::uint64_t unsigned_integer{7};
-    EXPECT_FALSE((Setting{"", 0x1p64}.assign(unsigned_integer)));
-    EXPECT_FALSE((Setting{"", std::int64_t{-1}}.assign(unsigned_integer)));
+    EXPECT_FALSE((assign("18446744073709551616.0", unsigned_integer)));
+    EXPECT_FALSE((assign("-1", unsigned_integer)));
     EXPECT_EQ(unsigned_integer, 7u);
-    float real{3.f};
-    EXPECT_FALSE((Setting{"", 1e100}.assign(real)));
-    EXPECT_FALSE((Setting{"", std::numeric_limits<double>::infinity()}.assign(real)));
-    EXPECT_EQ(real, 3.f);
+    PositiveFinite<float> real{3.f};
+    EXPECT_FALSE((assign("1e100", real)));
+    EXPECT_FALSE((assign("+inf.0", real)));
+    EXPECT_EQ(real.get(), 3.f);
 }
 
 TEST(NativeSettings, AssignsWholeVectorsOnlyAfterEveryComponentConverts) {
     Vector3f target{1.f, 2.f, 3.f};
-    auto assign{[&](std::vector<double> values) {
-        return settings::Setting{"", std::move(values)}.assign(target);
+    s7::Interpreter interpreter;
+    auto assign{[&](std::string_view source) {
+        auto ast{interpreter.evaluate_ast(source)};
+        if (!ast) {
+            return false;
+        }
+        auto result{s7::read_override(s7::Reader{*ast}, ast->root, "vector", target)};
+        if (!result) {
+            return false;
+        }
+        target = *result;
+        return true;
     }};
-    EXPECT_FALSE(assign({4, 5}));
-    EXPECT_FALSE(assign({4, 5, 1e100}));
+    EXPECT_FALSE(assign("'(4 5)"));
+    EXPECT_FALSE(assign("'(4 5 1e100)"));
     EXPECT_EQ(target, (Vector3f{1.f, 2.f, 3.f}));
-    ASSERT_TRUE(assign({4, 5, 6}));
+    ASSERT_TRUE(assign("'(4 5 6)"));
     EXPECT_EQ(target, (Vector3f{4.f, 5.f, 6.f}));
 }
 
@@ -193,7 +212,7 @@ TEST(NativeSettings, DecodesPresentationOverridesBeforeApplyingThemToNativeValue
           :player-ship (player-ship :boost-effect-colour-intensity 75)
           :entity-overlay (settings-section 'entity-overlay :soft-target (settings-section 'soft-target :pulse-duration 0.3))))))")};
     ASSERT_TRUE(source) << format_diagnostics(source.error());
-    EXPECT_TRUE(source->assignments.empty());
+    EXPECT_FALSE(source->fighters);
     ASSERT_TRUE(source->presentation);
     auto const& patch{*source->presentation};
     EXPECT_FALSE(patch.laser_projectiles);
@@ -389,12 +408,10 @@ TEST(NativeLevelAuthoringReader, GeneratedRecordsCoexistWithMissionsAndSparseSet
     ASSERT_TRUE(level->mission());
     ASSERT_EQ(level->mission()->objectives.size(), 1u);
     EXPECT_EQ(level->mission()->objectives.front().id, ObjectiveName{"wait"});
-    auto const& settings{level->settings().assignments};
-    ASSERT_EQ(settings.size(), 2u);
-    EXPECT_EQ(settings[0].path, "fighters.speed");
-    EXPECT_EQ(settings[1].path, "fighters.speed");
-    EXPECT_EQ(std::get<std::int64_t>(settings[0].value), 9000);
-    EXPECT_EQ(std::get<std::int64_t>(settings[1].value), 2000);
+    auto const& settings{level->settings()};
+    ASSERT_TRUE(settings.fighters);
+    EXPECT_EQ(settings.fighters->speed, 2000);
+    EXPECT_FALSE(settings.fighters->health);
 }
 
 TEST(NativeLevelAuthoringReader, DecodesTypedInputsBeforeResolvingReferencesOrGeneratingIds) {

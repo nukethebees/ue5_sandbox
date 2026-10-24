@@ -150,7 +150,7 @@ void ATestSpaceShip::set_team(ETestTeam const new_team) noexcept {
 void ATestSpaceShip::set_actor_config(FPlayerShipConfig const* const new_config) noexcept {
     actor_config = new_config;
     if (new_config && !bound_simulation) {
-        initial_ = new_config->initial;
+        initial_ = new_config->simulation;
     }
     if (new_config && bound_simulation) {
         commands().set_config(new_config->simulation);

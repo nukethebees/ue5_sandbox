@@ -16,8 +16,7 @@
     (value tagged_union)
     (value soa)
     (value static_table)
-    (value facade)
-    (value settings_schema)))
+    (value facade)))
 
 (module compiler_packed_field_kind
   :header "packed_field_kind.h"

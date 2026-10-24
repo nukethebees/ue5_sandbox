@@ -6,6 +6,7 @@
 #include <ioj/sim/collision/overlap_response_config.h>
 #include <ioj/sim/fighters/fighter_sim_config.h>
 #include <ioj/sim/lasers/laser_sim_config.h>
+#include <ioj/sim/levels/hud_settings.h>
 #include <ioj/sim/player/fire_rate.h>
 #include <ioj/sim/player/player_sim_config.h>
 #include <ioj/sim/player/ship_laser_mode.h>
@@ -18,30 +19,15 @@ namespace player {
 struct PlayerSpawnData;
 }
 
-struct HudSettings {
-    float player_status_update_period{0.25f};
-    float entity_count_update_period{0.25f};
-    float mission_status_update_period{0.25f};
-};
-
-struct PlayerInitialSettings {
-    Health health{1000};
-    ShipLaserMode laser_mode{ShipLaserMode::Single};
-    ShipFireRate laser_fire_rate{ShipFireRate::FullAuto};
-};
-
 struct SimulationSettings {
     settings::TickSettings clock{};
     PlayerSimConfig player{};
-    PlayerInitialSettings player_initial{};
     LaserSimConfig lasers{};
     CapitalShipSimConfig capital_ships{};
     FighterSimConfig fighters{};
     TurretSimConfig turrets{};
     SpinnerSimConfig spinners{};
     OverlapResponseConfig overlap_response{};
-    Vector3f collision_grid_size{2000000.f, 2000000.f, 100000.f};
-    Vector3f collision_cell_size{5000.f, 5000.f, 20000.f};
     HudSettings hud{};
 };
 

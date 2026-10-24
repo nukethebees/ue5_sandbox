@@ -1,6 +1,7 @@
 #include <ioj/s7/interpreter.h>
 
 #include <gtest/gtest.h>
+#include <NestedSettings_reader.h>
 #include <ReaderDependency_reader.h>
 #include <Records_reader.h>
 
@@ -283,5 +284,26 @@ TEST(GeneratedS7Reader, UsesCompactMasksAndSupportsMoreThan64Fields) {
     errors.clear();
     require_fields<Large>(large_seen, large_required, large_names, "record", errors);
     EXPECT_TRUE(errors.empty());
+}
+}
+
+namespace lispb::tests {
+TEST(RecordSettings, DiscoversNestedFieldsAndReusesRecordsAtDifferentPaths) {
+    auto patch{read_source<SettingsTargetOverrides>(R"('(:settings
+      :first (:actor :max-health 17)
+      :second (:actor :weapon (:weapon :damage 17 :turn-speed 4))
+      :external-value 17))")};
+    ASSERT_TRUE(patch);
+    SettingsTarget target;
+    apply_overrides(target, *patch);
+    EXPECT_EQ(target.first.max_health, 17);
+    EXPECT_EQ(target.second.weapon.damage, 17);
+    EXPECT_EQ(target.external_value, 17);
+    EXPECT_EQ(target.first.weapon.damage, 5);
+    EXPECT_EQ(target.second.weapon.turn_rate, 4);
+    EXPECT_FALSE(read_source<WeaponSettingsOverrides>("'(:weapon :turn-rate 1)"));
+    EXPECT_FALSE(read_source<WeaponSettingsOverrides>("'(:weapon :asset-distance 1)"));
+    EXPECT_FALSE(read_source<WeaponSettings>("'(:weapon :asset-distance 1)"));
+    EXPECT_FALSE(read_source<SettingsTargetOverrides>("'(:settings :unknown 1)"));
 }
 }

@@ -120,9 +120,6 @@ auto renamed(Declarations& store, DeclarationHandle original, std::string_view n
         case DeclarationKind::facade:
             assign(store.facades);
             break;
-        case DeclarationKind::settings_schema:
-            assign(store.settings_schemas);
-            break;
     }
     return result;
 }

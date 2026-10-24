@@ -88,7 +88,6 @@ class CanonicalRenderer {
     auto build_soa(codegen::DeclarationHandle schema) -> Expr;
     auto build_static_table(codegen::DeclarationHandle schema) -> Expr;
     auto build_facade(codegen::DeclarationHandle schema) -> Expr;
-    auto build_settings_schema(codegen::DeclarationHandle schema) -> Expr;
     auto build_declaration_schema(codegen::DeclarationHandle declaration) -> Expr;
     auto build_module(codegen::ModuleHandle module) -> Expr;
     void build_settings_module(codegen::sexpr::FormBuilder& result, codegen::ModuleHandle module);

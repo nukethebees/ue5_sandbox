@@ -40,7 +40,6 @@ struct SPACEGAMEPRESENTATION_API FPlayerShipConfig {
     ioj::settings::PlayerPresentation presentation;
 
     ioj::sim::PlayerSimConfig simulation;
-    ioj::sim::PlayerInitialSettings initial;
 
     UPROPERTY(EditAnywhere, Category = "Visuals")
     FLinearColor engine_colour{FLinearColor::Blue};

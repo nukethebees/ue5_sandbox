@@ -1643,40 +1643,6 @@ auto SchemaParser::parse_optional_presence_bit(Declarations& declarations, sexpr
     return record_id;
 }
 
-auto SchemaParser::parse_settings_schema(Declarations& declarations, sexpr::FormId const form)
-    -> DeclarationHandle {
-    Fields const fields{parser_, form, "settings-schema", 1};
-    fields.validate({"target", "target-header"}, {"field", "section"});
-    std::vector<StringId> paths;
-    std::vector<StringId> members;
-    std::vector<TypeRefId> records;
-    for (auto const declaration : fields.declarations()) {
-        auto const section{syntax_.head(declaration) == "section"};
-        Fields const field{parser_, declaration, section ? "section" : "field", 2};
-        if (section) {
-            field.validate({"record"});
-            records.push_back(parse_type_ref(declarations, field.required("record")));
-        } else {
-            field.validate({});
-            records.push_back({});
-        }
-        paths.push_back(parser_.text_id(field.positional(0), "settings field path"));
-        members.push_back(parser_.text_id(field.positional(1), "settings member path"));
-    }
-
-    auto& schemas{declarations.settings_schemas};
-    auto const result{schemas.append()};
-    auto const row{schemas.index(result)};
-    schemas.name[row] = parser_.identifier(fields.positional(0), "settings schema name");
-    schemas.target[row] = parser_.identifier(fields.required("target"), "settings target type");
-    schemas.target_header[row] =
-        parser_.text_id(fields.required("target-header"), "settings target header");
-    schemas.records[row] = declarations.range(records);
-    schemas.paths[row] = declarations.range(paths);
-    schemas.members[row] = declarations.range(members);
-    return result;
-}
-
 auto SchemaParser::parse_normal_declaration(Declarations& declarations, sexpr::FormId const form)
     -> DeclarationHandle {
     auto const head{syntax_.head(form)};
@@ -1725,9 +1691,6 @@ auto SchemaParser::parse_normal_declaration(Declarations& declarations, sexpr::F
     if (head == "facade") {
         return parse_facade(declarations, form);
     }
-    if (head == "settings-schema") {
-        return parse_settings_schema(declarations, form);
-    }
     parser_.fail(form, "unknown normal module declaration '" + std::string{head} + "'");
 }
 
@@ -1758,8 +1721,7 @@ auto SchemaParser::parse_module(Declarations& declarations, sexpr::FormId const 
                          "struct",
                          "layout",
                          "table",
-                         "facade",
-                         "settings-schema"});
+                         "facade"});
         auto& modules{declarations.normal_modules};
         auto const module{modules.append()};
         auto const module_index{modules.index(module)};

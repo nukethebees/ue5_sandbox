@@ -25,7 +25,6 @@ enum class DeclarationKind : DeclarationKindUnderlying {
     soa,
     static_table,
     facade,
-    settings_schema,
 };
 
 } // namespace lispb::codegen

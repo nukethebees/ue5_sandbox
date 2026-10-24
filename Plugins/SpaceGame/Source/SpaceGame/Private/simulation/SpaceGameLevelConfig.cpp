@@ -98,7 +98,6 @@ void USpaceGameLevelConfig::apply_presentation(
 void USpaceGameLevelConfig::apply_settings(ioj::sim::SimulationSettings const& settings) {
     overlap_response = settings.overlap_response;
     player_ship.simulation = settings.player;
-    player_ship.initial = settings.player_initial;
     laser_projectiles.simulation = settings.lasers;
     capital_ships.simulation = settings.capital_ships;
     capital_ships.simulation.fighter_spawn_slots =
@@ -106,8 +105,8 @@ void USpaceGameLevelConfig::apply_settings(ioj::sim::SimulationSettings const& s
     fighters.simulation = settings.fighters;
     turrets.simulation = settings.turrets;
     tube_spinners.simulation = settings.spinners;
-    collision_grid.grid_size = ioj::to_unreal(settings.collision_grid_size);
-    collision_grid.cell_size = ioj::to_unreal(settings.collision_cell_size);
+    collision_grid.grid_size = ioj::to_unreal(settings.overlap_response.level_size);
+    collision_grid.cell_size = ioj::to_unreal(settings.overlap_response.cell_size);
 }
 
 auto USpaceGameLevelConfig::is_valid(bool const require_presentation) const noexcept -> bool {

@@ -147,64 +147,70 @@
     (member maximum float :initializer 0.6f :s7-name "maximum-ratio" :required true)))
 
 (module native_base_sim_config_laser_weapon_sim_config
-  :header "native/simulation/include/ioj/sim/lasers/laser_weapon_sim_config.h"
+  :header "native/levels/lib/include/ioj/sim/lasers/laser_weapon_sim_config.h"
   :header-include "ioj/sim/lasers/laser_weapon_sim_config.h"
   :namespace ioj::sim
   (record LaserWeaponSimConfig
-    :generate-settings true
+    :generate-settings true :generate-overrides true
+    :generate-s7-reader true :s7-tag "laser"
     (member damage std::int32_t :initializer "5")
-    (member projectile_speed float :initializer "10000.f")
-    (member max_distance float :initializer "10000.f")
-    (member fire_cooldown float :initializer "0.33f")))
+    (member projectile_speed float :initializer "10000.f" :finite true)
+    (member max_distance float :initializer "10000.f" :finite true)
+    (member fire_cooldown float :initializer "0.33f" :finite true)))
 
 (module native_base_sim_config_laser_sim_config
-  :header "native/simulation/include/ioj/sim/lasers/laser_sim_config.h"
+  :header "native/levels/lib/include/ioj/sim/lasers/laser_sim_config.h"
   :header-include "ioj/sim/lasers/laser_sim_config.h"
   :namespace ioj::sim
   (record LaserSimConfig
-    :generate-settings true
+    :generate-settings true :generate-overrides true
+    :generate-s7-reader true :s7-tag "laser-projectiles"
     (member n_preallocated_instances std::int32_t :initializer "5000")))
 
 (module native_base_sim_config_overlap_response_config
-  :header "native/simulation/include/ioj/sim/collision/overlap_response_config.h"
+  :header "native/levels/lib/include/ioj/sim/collision/overlap_response_config.h"
   :header-include "ioj/sim/collision/overlap_response_config.h"
   :namespace ioj::sim
   (record OverlapResponseConfig
-    :generate-settings true
-    (member damage_per_overlap_detection std::int32_t :initializer "50")))
+    :generate-settings true :generate-overrides true
+    :generate-s7-reader true :s7-tag "collision-grid"
+    (member damage_per_overlap_detection std::int32_t :initializer 50)
+    (member level_size @native_vector_3f :initializer "2000000.f, 2000000.f, 100000.f" :finite true)
+    (member cell_size @native_vector_3f :initializer "5000.f, 5000.f, 20000.f" :finite true)))
 
 (module native_base_sim_config_fighter_sim_config
-  :header "native/simulation/include/ioj/sim/fighters/fighter_sim_config.h"
+  :header "native/levels/lib/include/ioj/sim/fighters/fighter_sim_config.h"
   :header-include "ioj/sim/fighters/fighter_sim_config.h"
   :namespace ioj::sim
   (record FighterSimConfig
-    :generate-settings true
+    :generate-settings true :generate-overrides true
+    :generate-s7-reader true :s7-tag "fighters"
     (member max_live_fighters std::int32_t :initializer "2000")
     (member fire_point_distance float :initializer "" :settings-exclude true)
-    (member fire_dot_product_threshold float :initializer "0.95f")
-    (member speed float :initializer "2000.f")
-    (member turn_speed_unitless float :initializer "1.f")
-    (member avoidance_clear_update_frequency float :initializer "2.f")
-    (member avoidance_update_frequency float :initializer "5.f")
-    (member avoidance_active_update_frequency float :initializer "12.f")
-    (member avoidance_immediate_update_frequency float :initializer "30.f")
-    (member avoidance_lookahead_time float :initializer "1.f")
-    (member avoidance_clearance_buffer float :initializer "100.f")
-    (member separation_radius float :initializer "2000.f")
-    (member separation_strength float :initializer "1.f")
-    (member steering_memory_duration float :initializer "0.75f")
+    (member fire_dot_product_threshold float :initializer "0.95f" :finite true)
+    (member speed float :initializer "2000.f" :finite true)
+    (member turn_speed_unitless float :initializer "1.f" :finite true)
+    (member avoidance_clear_update_frequency float :initializer "2.f" :finite true)
+    (member avoidance_update_frequency float :initializer "5.f" :finite true)
+    (member avoidance_active_update_frequency float :initializer "12.f" :finite true)
+    (member avoidance_immediate_update_frequency float :initializer "30.f" :finite true)
+    (member avoidance_lookahead_time float :initializer "1.f" :finite true)
+    (member avoidance_clearance_buffer float :initializer "100.f" :finite true)
+    (member separation_radius float :initializer "2000.f" :finite true)
+    (member separation_strength float :initializer "1.f" :finite true)
+    (member steering_memory_duration float :initializer "0.75f" :finite true)
     (member dense_traffic_neighbour_threshold std::int32_t :initializer "4")
     (member laser ioj::sim::LaserWeaponSimConfig :initializer "")
     (member health @native_health :initializer "50")
-    (member attack_retry_cooldown float :initializer "0.15f")
-    (member attack_engagement_threshold float :initializer "5000.f")
-    (member attack_reposition_frequency float :initializer "10.f")
+    (member attack_retry_cooldown float :initializer "0.15f" :finite true)
+    (member attack_engagement_threshold float :initializer "5000.f" :finite true)
+    (member attack_reposition_frequency float :initializer "10.f" :finite true)
     (member attack_distance_band ioj::settings::AttackDistanceBand :initializer "")
-    (member arrival_distance float :initializer "500.f")
-    (member los_check_buffer float :initializer "100.f")
-    (member awareness_radius float :initializer "10000.f")
-    (member awareness_scan_frequency float :initializer "6.f")
-    (member minimum_opportunistic_intercept_deviation_dot_product float :initializer "0.5f")))
+    (member arrival_distance float :initializer "500.f" :finite true)
+    (member los_check_buffer float :initializer "100.f" :finite true)
+    (member awareness_radius float :initializer "10000.f" :finite true)
+    (member awareness_scan_frequency float :initializer "6.f" :finite true)
+    (member minimum_opportunistic_intercept_deviation_dot_product float :initializer "0.5f" :finite true)))
 
 (module native_player_flight_model_data
   :header "native/simulation/include/ioj/sim/player/flight_model_data.h"

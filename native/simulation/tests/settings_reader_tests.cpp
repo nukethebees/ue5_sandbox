@@ -20,7 +20,7 @@ TEST(SimulationSettingsReader, AppliesSparseNestedLayersIncludingExplicitDefault
         (settings :fighters (fighters :speed {} :laser (laser :damage 31)))))",
                                                             defaults.fighters.speed))};
     ASSERT_TRUE(source);
-    EXPECT_EQ(source->assignments.size(), 6);
+    EXPECT_FALSE(source->player_ship);
     auto const resolved{s7::resolve_simulation_settings(*source)};
     ASSERT_TRUE(resolved) << resolved.error().front().message;
     EXPECT_EQ(resolved->fighters.speed, defaults.fighters.speed);
@@ -123,16 +123,17 @@ TEST(SimulationSettingsReader, RetainsUnknownFieldConversionAndFinalValidationEr
                UnknownProperty,
                "fighters.fire-point-distance"},
           Case{"(settings :fighters (fighters :speed 'fast))", InvalidType, "fighters.speed"},
-          Case{"(settings :fighters (fighters :speed 1e100))", InvalidType, "fighters.speed"},
-          Case{"(settings :fighters (fighters :health 1.5))", InvalidType, "fighters.health"},
+          Case{"(settings :fighters (fighters :speed 1e100))", InvalidNumber, "fighters.speed"},
+          Case{"(settings :fighters (fighters :health 1.5))", InvalidNumber, "fighters.health"},
           Case{"(settings :fighters (fighters :health -1))", InvalidNumber, "fighters.health"},
           Case{"(settings :tick (tick :time-scale 0))", InvalidNumber, "tick.time-scale"},
           Case{"(settings :tick (tick :tick-rate 0))", InvalidNumber, "tick.tick-rate"},
           Case{"(settings :tick (tick :tick-rate -1))", InvalidNumber, "tick.tick-rate"}}) {
         SCOPED_TRACE(test.source);
         auto const source{DefinitionReader{}.read_settings_source(test.source)};
-        ASSERT_TRUE(source);
-        auto const resolved{s7::resolve_simulation_settings(*source)};
+        auto const resolved{source
+                                ? s7::resolve_simulation_settings(*source)
+                                : s7::SimulationSettingsReadResult{std::unexpect, source.error()}};
         ASSERT_FALSE(resolved);
         ASSERT_FALSE(resolved.error().empty());
         EXPECT_EQ(resolved.error().front().code, test.code);

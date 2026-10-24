@@ -11,8 +11,6 @@ auto Declarations::clone(DeclarationHandle id) -> DeclarationHandle {
             return enums.clone(id);
         case DeclarationKind::facade:
             return facades.clone(id);
-        case DeclarationKind::settings_schema:
-            return settings_schemas.clone(id);
         case DeclarationKind::fixed_point:
             return fixed_points.clone(id);
         case DeclarationKind::integer_scalar:
@@ -105,7 +103,6 @@ void Declarations::clear() {
     setting_controls.clear();
     settings.clear();
     settings_modules.clear();
-    settings_schemas.clear();
     soa_mask_dimensions.clear();
     soa_members.clear();
     soas.clear();

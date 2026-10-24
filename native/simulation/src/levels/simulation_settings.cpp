@@ -50,7 +50,7 @@ auto validate_settings(SimulationSettings const& settings)
         }
     };
 
-    positive(settings.player_initial.health, "player-ship.health");
+    positive(settings.player.health, "player-ship.health");
     nonnegative(settings.lasers.n_preallocated_instances,
                 "laser-projectiles.n-preallocated-instances");
     nonnegative(settings.fighters.max_live_fighters, "fighters.max-live-fighters");
@@ -108,9 +108,9 @@ auto validate_settings(SimulationSettings const& settings)
     laser("turrets", settings.turrets.laser);
     laser("tube-spinners", settings.spinners.laser);
 
-    auto const dimensions{collision::calculate_grid_dimensions(settings.collision_grid_size,
-                                                               settings.collision_cell_size)};
-    check(collision::is_configured({dimensions, settings.collision_cell_size}),
+    auto const dimensions{collision::calculate_grid_dimensions(
+        settings.overlap_response.level_size, settings.overlap_response.cell_size)};
+    check(collision::is_configured({dimensions, settings.overlap_response.cell_size}),
           "collision-grid",
           "Expected positive grid dimensions with a representable cell count");
     nonnegative(settings.hud.player_status_update_period, "hud.player-status-update-period");
@@ -147,9 +147,9 @@ void apply_settings(SimulationSettings const& settings, LevelSimInitData& target
     target.spinners.fire_point_offsets = std::move(spinner_fire_points);
 
     target.collision.grid_geometry = {
-        collision::calculate_grid_dimensions(settings.collision_grid_size,
-                                             settings.collision_cell_size),
-        settings.collision_cell_size};
+        collision::calculate_grid_dimensions(settings.overlap_response.level_size,
+                                             settings.overlap_response.cell_size),
+        settings.overlap_response.cell_size};
     if (target.player) {
         apply_settings(settings, *target.player);
     }
@@ -157,8 +157,8 @@ void apply_settings(SimulationSettings const& settings, LevelSimInitData& target
 
 void apply_settings(SimulationSettings const& settings, player::PlayerSpawnData& target) {
     target.config = settings.player;
-    target.health = ShipHealth{settings.player_initial.health};
-    target.laser_mode = settings.player_initial.laser_mode;
-    target.laser_fire_rate = settings.player_initial.laser_fire_rate;
+    target.health = ShipHealth{settings.player.health};
+    target.laser_mode = settings.player.laser_mode;
+    target.laser_fire_rate = settings.player.laser_fire_rate;
 }
 }

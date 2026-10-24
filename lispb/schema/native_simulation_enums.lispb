@@ -11,11 +11,11 @@
     (value EmergencyBrake :value "3")))
 
 (module native_ship_laser_mode
-  :header "native/simulation/include/ioj/sim/player/ship_laser_mode.h"
+  :header "native/levels/lib/include/ioj/sim/player/ship_laser_mode.h"
   :namespace ioj::sim
   (enum ShipLaserMode @native_uint8
     :native-api true
-    :helpers (try-parse-serialized)
+    :helpers (traits to-serialized-string try-parse-serialized)
     (value Single :value "0" :display-name "Single" :serialized-name "single")
     (value Double :value "1" :display-name "Double" :serialized-name "double")
     (value Hyper :value "2" :display-name "Hyper" :serialized-name "hyper")))
@@ -29,11 +29,11 @@
     (value burst :value "1")))
 
 (module native_ship_fire_rate
-  :header "native/simulation/include/ioj/sim/player/fire_rate.h"
+  :header "native/levels/lib/include/ioj/sim/player/fire_rate.h"
   :namespace ioj::sim
   (enum ShipFireRate @native_uint8
     :native-api true
-    :helpers (to-string try-parse-serialized)
+    :helpers (traits to-string to-serialized-string try-parse-serialized)
     :enum-array true
     (unreal-projection ETestShipFireRate
       :header "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/ships/player/TestShipFireRate.h"

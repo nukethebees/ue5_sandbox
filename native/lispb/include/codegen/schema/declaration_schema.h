@@ -16,9 +16,7 @@ namespace lispb::codegen {
 
 class Declarations;
 
-auto declaration_head(DeclarationHandle declaration) -> std::string_view;
 auto declaration_name(Declarations const& declarations, DeclarationHandle declaration) -> StringId;
-auto has_primary_semantic_type(DeclarationHandle declaration) -> bool;
 void visit_type_references(
     Declarations const& declarations,
     DeclarationHandle declaration,

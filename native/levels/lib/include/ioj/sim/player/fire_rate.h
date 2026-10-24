@@ -5,6 +5,7 @@
 
 #include "ioj/enum_traits.h"
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <optional>
@@ -36,6 +37,24 @@ enum class ShipFireRate : ShipFireRateUnderlying {
     return "<invalid ShipFireRate>";
 }
 
+[[nodiscard]] constexpr auto to_serialized_string(ShipFireRate const value) noexcept
+    -> std::string_view {
+    switch (value) {
+        case ShipFireRate::Single: {
+            return "single";
+        }
+        case ShipFireRate::Burst3: {
+            return "burst3";
+        }
+        case ShipFireRate::FullAuto: {
+            return "full-auto";
+        }
+        default: {
+            return "<invalid ShipFireRate>";
+        }
+    }
+}
+
 [[nodiscard]] constexpr auto
     try_parse_serialized_ship_fire_rate(std::string_view const value) noexcept
     -> std::optional<ShipFireRate> {
@@ -53,6 +72,13 @@ enum class ShipFireRate : ShipFireRateUnderlying {
 
 } // namespace ioj::sim
 namespace ioj {
+template <>
+struct EnumTraits<::ioj::sim::ShipFireRate> {
+    inline static constexpr std::array values{::ioj::sim::ShipFireRate::Single,
+                                              ::ioj::sim::ShipFireRate::Burst3,
+                                              ::ioj::sim::ShipFireRate::FullAuto};
+};
+
 template <>
 [[nodiscard]] constexpr auto enum_count<::ioj::sim::ShipFireRate>() noexcept -> std::size_t {
     return 3;

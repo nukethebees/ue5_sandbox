@@ -1,6 +1,6 @@
 #include "Generated.h"
+#include "Records.h"
 #include "ScalarValues.h"
-#include "SettingsFields.h"
 #include "SignatureDefinitions.h"
 #include <ioj/enum_array.h>
 
@@ -40,30 +40,6 @@ TEST(RecordSettings, AppliesPartialLayersAndDistinguishesExplicitEmptyOptional) 
     EXPECT_FALSE(target.optional_limit);
     apply_overrides(target, ActorSettingsOverrides{.optional_limit = std::optional<int>{3}});
     EXPECT_EQ(target.optional_limit, 3);
-}
-
-TEST(RecordSettings, DiscoversNestedFieldsAndReusesRecordsAtDifferentPaths) {
-    SettingsTarget target;
-    for (auto const path : {"first.max-health", "second.weapon.damage", "external-value"}) {
-        SCOPED_TRACE(path);
-        auto const field{try_parse_actor_fields_field(path)};
-        ASSERT_TRUE(field);
-        EXPECT_TRUE(visit_actor_fields_field(target, *field, [](auto& value) {
-            if constexpr (std::same_as<std::remove_cvref_t<decltype(value)>, int>) {
-                value = 17;
-                return true;
-            }
-            return false;
-        }));
-    }
-    EXPECT_EQ(target.first.max_health, 17);
-    EXPECT_EQ(target.second.weapon.damage, 17);
-    EXPECT_EQ(target.external_value, 17);
-    EXPECT_EQ(target.first.weapon.damage, 5);
-    EXPECT_TRUE(try_parse_actor_fields_field("first.weapon.turn-speed"));
-    EXPECT_FALSE(try_parse_actor_fields_field("first.weapon.turn-rate"));
-    EXPECT_FALSE(try_parse_actor_fields_field("first.weapon.asset-distance"));
-    EXPECT_FALSE(try_parse_actor_fields_field("unknown"));
 }
 
 TEST(RecordSettings, AppliesCrossNamespaceNestedOverridesAndEmptyPatches) {

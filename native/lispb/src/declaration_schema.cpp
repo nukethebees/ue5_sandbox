@@ -185,16 +185,6 @@ auto traverse_references(Store& store, DeclarationHandle declaration, Visitor co
             break;
         case DeclarationKind::fixed_point:
             break;
-        case DeclarationKind::settings_schema:
-            rewrite_row(store.settings_schemas, declaration, [&](auto field, auto) {
-                field(store.settings_schemas.records, [&](auto& values) {
-                    return rewrite_range(store, values, [&](auto& value, std::uint32_t index) {
-                        return value.value != 0 &&
-                               reference(role(TypeReferenceCategory::target, {}, index), value);
-                    });
-                });
-            });
-            break;
         case DeclarationKind::integer_scalar:
             rewrite_row(store.integer_scalars, declaration, [&](auto field, auto row) {
                 static_cast<void>(row);
@@ -364,48 +354,6 @@ auto soa_namespace_name(std::string_view const name) -> std::string {
     return result;
 }
 
-auto declaration_head(DeclarationHandle declaration) -> std::string_view {
-    switch (declaration.kind()) {
-        case DeclarationKind::enumeration:
-            return "enum";
-        case DeclarationKind::integer_scalar:
-            return "integer-scalar";
-        case DeclarationKind::linear_quantized:
-            return "linear-quantized";
-        case DeclarationKind::integer_varint:
-            return "integer-varint";
-        case DeclarationKind::fixed_point:
-            return "fixed-point";
-        case DeclarationKind::mini_float:
-            return "mini-float";
-        case DeclarationKind::optional_sentinel:
-            return "optional-sentinel";
-        case DeclarationKind::optional_presence_bit:
-            return "optional-presence-bit";
-        case DeclarationKind::packed_value:
-            return "packed-value";
-        case DeclarationKind::record:
-            return "record";
-        case DeclarationKind::union_type:
-            return "union";
-        case DeclarationKind::tagged_union:
-            return "tagged-union";
-        case DeclarationKind::soa:
-            return "struct";
-        case DeclarationKind::static_table:
-            return "table";
-        case DeclarationKind::facade:
-            return "facade";
-        case DeclarationKind::settings_schema:
-            return "settings-schema";
-    }
-    std::unreachable();
-}
-
-auto has_primary_semantic_type(DeclarationHandle declaration) -> bool {
-    return declaration.kind() != DeclarationKind::settings_schema;
-}
-
 void visit_type_references(
     Declarations const& declarations,
     DeclarationHandle declaration,
@@ -434,8 +382,6 @@ auto declaration_name(Declarations const& declarations, DeclarationHandle declar
             return name(declarations.enums);
         case DeclarationKind::facade:
             return name(declarations.facades);
-        case DeclarationKind::settings_schema:
-            return name(declarations.settings_schemas);
         case DeclarationKind::fixed_point:
             return name(declarations.fixed_points);
         case DeclarationKind::integer_scalar:
@@ -473,12 +419,6 @@ auto generated_cpp_names(Declarations const& declarations, DeclarationHandle dec
     auto const id{declaration_name(declarations, declaration)};
     auto const name{text(id)};
     switch (declaration.kind()) {
-        case DeclarationKind::settings_schema: {
-            auto const stem{settings_schema_function_stem(name)};
-            return {strings.intern(name + "Field"),
-                    strings.intern("try_parse_" + stem + "_field"),
-                    strings.intern("visit_" + stem + "_field")};
-        }
         case DeclarationKind::enumeration:
             return {id, strings.intern(name + "Underlying")};
         case DeclarationKind::record:

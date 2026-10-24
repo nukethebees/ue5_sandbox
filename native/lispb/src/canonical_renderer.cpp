@@ -592,27 +592,6 @@ auto CanonicalRenderer::build_facade(codegen::DeclarationHandle const schema) ->
     }
     return result.build();
 }
-auto CanonicalRenderer::build_settings_schema(codegen::DeclarationHandle const schema) -> Expr {
-    auto const& schemas{store_.settings_schemas};
-    auto const index{schemas.index(schema)};
-    auto result{ir_.form("settings-schema", {ir_.atom(schemas.name[index])})};
-    result.field("target", ir_.atom(schemas.target[index]))
-        .field("target-header", ir_.string(schemas.target_header[index]));
-    auto const paths{items(schemas.paths[index])};
-    auto const members{items(schemas.members[index])};
-    auto const records{items(schemas.records[index])};
-    auto const count{paths.size()};
-    for (std::size_t field_index{}; field_index < count; ++field_index) {
-        auto const section{!records.empty() && records[field_index].value != 0};
-        auto field{ir_.form(section ? "section" : "field",
-                            {ir_.string(paths[field_index]), ir_.string(members[field_index])})};
-        if (section) {
-            field.field("record", build_type_ref(records[field_index]));
-        }
-        result.add(field.build());
-    }
-    return result.build();
-}
 auto CanonicalRenderer::build_declaration_schema(codegen::DeclarationHandle const declaration)
     -> Expr {
     switch (declaration.kind()) {
@@ -646,8 +625,6 @@ auto CanonicalRenderer::build_declaration_schema(codegen::DeclarationHandle cons
             return build_static_table(declaration);
         case codegen::DeclarationKind::facade:
             return build_facade(declaration);
-        case codegen::DeclarationKind::settings_schema:
-            return build_settings_schema(declaration);
         default:
             std::unreachable();
     }

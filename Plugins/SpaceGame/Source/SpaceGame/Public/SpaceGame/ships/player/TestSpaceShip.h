@@ -166,7 +166,7 @@ class SPACEGAME_API ATestSpaceShip
     UPROPERTY(EditAnywhere, Category = "Sandbox|Niagara", meta = (AllowPrivateAccess))
     UNiagaraComponent* boost_engine_effect{nullptr};
 
-    ioj::sim::PlayerInitialSettings initial_;
+    ioj::sim::PlayerSimConfig initial_;
 
     UPROPERTY(EditAnywhere, Category = "Sandbox|Logging", meta = (AllowPrivateAccess))
     FActorLoggingConfig log_config{1.f};

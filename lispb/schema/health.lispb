@@ -1,5 +1,5 @@
 (module health
-  :header "native/simulation/include/ioj/sim/entities/health_type.h"
+  :header "native/levels/lib/include/ioj/sim/entities/health_type.h"
   :namespace ioj::sim
   (integer-scalar Health
     :signed true

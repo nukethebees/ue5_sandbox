@@ -34,9 +34,9 @@ auto make_worldless_player_spawn(USpaceGameLevelConfig const& config, FTransform
     check(player);
     auto result{player->make_spawn_data()};
     result.config = config.player_ship.simulation;
-    result.health = {config.player_ship.initial.health, config.player_ship.initial.health};
-    result.laser_mode = config.player_ship.initial.laser_mode;
-    result.laser_fire_rate = config.player_ship.initial.laser_fire_rate;
+    result.health = {config.player_ship.simulation.health, config.player_ship.simulation.health};
+    result.laser_mode = config.player_ship.simulation.laser_mode;
+    result.laser_fire_rate = config.player_ship.simulation.laser_fire_rate;
     result.transform = to_native(transform);
     return result;
 }

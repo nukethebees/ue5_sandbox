@@ -1,7 +1,7 @@
 #include "validation.h"
 
 #include "packed_value_internal.h"
-#include "settings_fields.h"
+#include "record_settings.h"
 #include "soa_body.h"
 
 #include <codegen/ast/cpp_types.h>
@@ -3436,42 +3436,6 @@ class Validator {
         }
     }
 
-    void validate_settings_schema(DeclarationHandle const schema) {
-        auto const& schemas{declarations_.settings_schemas};
-        auto const row{schemas.index(schema)};
-        require_identifier(schemas.name[row], "Settings schema name");
-        require_qualified_identifier(schemas.target[row], "Settings target type");
-        require_non_blank_value(schemas.target_header[row], "Settings target header");
-
-        auto const schema_fields{settings_fields(graph_, module_, schema)};
-        if (schema_fields.empty()) {
-            throw std::invalid_argument{"Settings schema requires at least one field"};
-        }
-
-        std::set<std::string> paths;
-        std::set<std::string> field_names;
-        for (auto const& field : schema_fields) {
-            auto const& name{field.path};
-            require_non_blank_value(name, "Settings field path");
-            auto const field_name{settings_schema_field_name(name)};
-            require_identifier(field_name, "Settings field enum name");
-            if (!paths.insert(name).second || !field_names.insert(field_name).second) {
-                throw std::invalid_argument{"Duplicate settings field: " + name};
-            }
-        }
-        for (auto const& field : schema_fields) {
-            std::string_view path{field.member};
-            while (true) {
-                auto const separator{path.find('.')};
-                require_identifier(path.substr(0, separator), "Settings member path");
-                if (separator == std::string_view::npos) {
-                    break;
-                }
-                path.remove_prefix(separator + 1);
-            }
-        }
-    }
-
     void validate_normal_module(lispb::codegen::ModuleHandle const& module,
                                 Manifest const& manifest,
                                 std::map<std::string, DeclarationHandle>& generated_names) {
@@ -3524,9 +3488,6 @@ class Validator {
             [&]() {
                 auto const value{declaration};
                 switch (value.kind()) {
-                    case lispb::codegen::DeclarationKind::settings_schema:
-                        validate_settings_schema(value);
-                        break;
                     case lispb::codegen::DeclarationKind::enumeration: {
 
                         validate_enum(value, module, manifest.types);

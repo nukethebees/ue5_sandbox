@@ -18,6 +18,10 @@
 #include <utility>
 
 namespace ioj::s7 {
+inline auto field_path(std::string_view path, std::string_view name) -> std::string {
+    return path.empty() ? std::string{name} : std::format("{}.{}", path, name);
+}
+
 template <typename T, typename Read, typename... Checks>
 void read_checked(
     T& destination, std::string_view path, AstDiagnostics& errors, Read read, Checks... checks) {
@@ -323,25 +327,27 @@ void decode_field(Reader const& reader,
     if constexpr (requires {
                       TypeReader<T>::decode(reader, node, path, destination, mode, errors);
                   }) {
-        if (mode == ReadMode::Override && reader.ast().node(node).kind == NodeKind::List) {
-            auto const children{reader.ast().children(node)};
-            if (!children.empty() &&
-                reader.ast().node(children.front()).kind == NodeKind::Keyword &&
-                reader.ast().text(children.front()) == "settings-layers") {
-                for (auto const layer : children.subspan(1)) {
-                    decode_field(reader, layer, path, destination, mode, errors);
+        if (mode == ReadMode::Override) {
+            if (reader.ast().node(node).kind == NodeKind::List) {
+                auto const children{reader.ast().children(node)};
+                if (!children.empty() &&
+                    reader.ast().node(children.front()).kind == NodeKind::Keyword &&
+                    reader.ast().text(children.front()) == "settings-layers") {
+                    for (auto const layer : children.subspan(1)) {
+                        decode_field(reader, layer, path, destination, mode, errors);
+                    }
+                    return;
                 }
-                return;
             }
+            TypeReader<T>::decode(reader, node, path, destination, mode, errors);
+            return;
         }
-        TypeReader<T>::decode(reader, node, path, destination, mode, errors);
+    }
+    auto value{read<T>(reader, node, path)};
+    if (value) {
+        destination = std::move(*value);
     } else {
-        auto value{read<T>(reader, node, path)};
-        if (value) {
-            destination = std::move(*value);
-        } else {
-            append_errors(errors, std::move(value.error()));
-        }
+        append_errors(errors, std::move(value.error()));
     }
 }
 
@@ -429,7 +435,7 @@ void require_fields(RecordMask<Field> const& seen,
         auto const name{names[i]};
         if (missing.has(static_cast<Field>(i))) {
             errors.push_back({AstErrorCode::MissingProperty,
-                              std::format("{}.{}", path, name),
+                              field_path(path, name),
                               std::format("Missing required property ':{}'", name)});
         }
     }
@@ -471,7 +477,7 @@ auto read_record(Reader const& reader,
         auto const field{lookup(name)};
         if (!field) {
             errors.push_back({AstErrorCode::UnknownProperty,
-                              std::format("{}.{}", path, name),
+                              field_path(path, name),
                               std::format("Unknown property ':{}'", name)});
             continue;
         }
@@ -484,7 +490,7 @@ auto read_record(Reader const& reader,
         }
         seen.set(*field);
         if (i + 1 < count) {
-            visit(*field, (*children)[i + 1], std::format("{}.{}", path, name));
+            visit(*field, (*children)[i + 1], field_path(path, name));
         }
     }
     if (!errors.empty()) {

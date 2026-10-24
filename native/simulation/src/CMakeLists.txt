@@ -7,10 +7,6 @@ target_sources(native-simulation PRIVATE
   ../include/ioj/sim/entities/entity_lookup_table.h
   ../include/ioj/sim/entities/entity_type_runs.h
   ../include/ioj/sim/player/player_spatial_data.h
-  ../include/ioj/sim/lasers/laser_weapon_sim_config.h
-  ../include/ioj/sim/lasers/laser_sim_config.h
-  ../include/ioj/sim/collision/overlap_response_config.h
-  ../include/ioj/sim/fighters/fighter_sim_config.h
   ../include/ioj/sim/batch_operations.h
   ../include/ioj/sim/capital_ships/capital_entity_data.h
   ../include/ioj/sim/collision/collision_events.h
@@ -69,11 +65,6 @@ target_sources(native-simulation PRIVATE
   ../include/ioj/sim/player/ship_flight_model.h
   ../include/ioj/sim/entities/ship_health.h
   ../include/ioj/sim/sim_clock.h
-  ../include/ioj/sim/player/player_sim_config.h
-  ../include/ioj/sim/turrets/turret_sim_config.h
-  ../include/ioj/sim/spinners/spinner_sim_config.h
-  ../include/ioj/sim/capital_ships/capital_ship_sim_config.h
-  ../include/ioj/sim/lasers/fire_point.h
   ../include/ioj/sim/sim_state.h
   ../include/ioj/sim/sim_tick.h
   ../include/ioj/sim/sim_time.h

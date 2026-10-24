@@ -66,15 +66,14 @@
     (member weapon WeaponSettings :initializer "")
     (member optional_limit @fixture_optional_int :initializer "3")))
 
-(module record_settings_fields
-  :header "SettingsFields.h"
+(module nested_settings_fixture
+  :header "NestedSettings.h"
   :namespace codegen_compile_fixture
-  (settings-schema ActorFields
-    :target codegen_compile_fixture::SettingsTarget
-    :target-header "compile_fixture/settings_target.hpp"
-    (section "first" "first" :record codegen_compile_fixture::ActorSettings)
-    (section "second" "second" :record codegen_compile_fixture::ActorSettings)
-    (field "external-value" "external_value")))
+  (record SettingsTarget :generate-settings true :generate-overrides true
+    :generate-s7-reader true :s7-tag "settings"
+    (member first codegen_compile_fixture::ActorSettings :initializer "")
+    (member second codegen_compile_fixture::ActorSettings :initializer "")
+    (member external_value int :initializer 0)))
 
 (module field_masks_fixture
   :header "FieldMasks.h"

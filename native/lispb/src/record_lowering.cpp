@@ -3,7 +3,7 @@
 #include "lowering_context.h"
 #include "lowering_utils.h"
 #include "record_reader_lowering.h"
-#include "settings_fields.h"
+#include "record_settings.h"
 
 #include <codegen/ast/cpp_ir.h>
 #include <codegen/ast/cpp_types.h>

@@ -37,7 +37,6 @@
 #include <codegen/schema/setting_control_schemas.h>
 #include <codegen/schema/setting_schemas.h>
 #include <codegen/schema/settings_module_schemas.h>
-#include <codegen/schema/settings_schema_schemas.h>
 #include <codegen/schema/soa_mask_dimension_schemas.h>
 #include <codegen/schema/soa_member_schemas.h>
 #include <codegen/schema/soa_schemas.h>
@@ -131,7 +130,6 @@ class Declarations {
     SettingControlSchemas setting_controls;
     SettingSchemas settings;
     SettingsModuleSchemas settings_modules;
-    SettingsSchemaSchemas settings_schemas;
     SoaMaskDimensionSchemas soa_mask_dimensions;
     SoaMemberSchemas soa_members;
     SoaSchemas soas;

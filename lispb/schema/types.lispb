@@ -369,3 +369,11 @@
 (type input_campaign_value :spelling "std::optional<ioj::s7::ReadResult<ioj::levels::CampaignDefinition>>" :header "ioj/levels/campaign_definition.h")
 (type input_levels :spelling "std::vector<ioj::s7::ReadResult<ioj::levels::authoring::IncludedLevelInput>>" :header "vector")
 (type input_campaigns :spelling "std::vector<ioj::s7::ReadResult<ioj::levels::authoring::IncludedCampaignInput>>" :header "vector")
+
+(type settings_frequency :spelling "ioj::Frequency" :header "ioj/frequency.h")
+(type settings_positive_double :spelling "ioj::PositiveFinite<double>" :header "ioj/constrained_numbers.h")
+(type settings_positive_float :spelling "ioj::PositiveFinite<float>" :header "ioj/constrained_numbers.h")
+(type settings_spawn_transforms :spelling "std::vector<ioj::Transform3d>"
+  :header "ioj/transform3d.h")
+(type settings_fire_points :spelling "std::vector<ioj::sim::FirePoint>"
+  :header "ioj/sim/lasers/fire_point.h")
