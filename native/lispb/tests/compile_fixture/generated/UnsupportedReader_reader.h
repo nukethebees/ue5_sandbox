@@ -9,9 +9,9 @@
 namespace ioj::s7 {
 template <>
 struct TypeReader<::codegen_compile_fixture::UnsupportedReader> {
-    using Value = ::codegen_compile_fixture::UnsupportedReader;
+    using value_type = ::codegen_compile_fixture::UnsupportedReader;
 
-    static ReadResult<Value>
+    static ReadResult<value_type>
         read(Reader const& reader, NodeIndex const node, std::string_view const path);
   private:
     enum class Field : std::size_t {
@@ -32,7 +32,7 @@ inline ReadResult<::codegen_compile_fixture::UnsupportedReader>
                                                                    NodeIndex const node,
                                                                    std::string_view const path) {
     AstDiagnostics errors{};
-    std::optional<decltype(Value::target)> value_target{};
+    std::optional<decltype(value_type::target)> value_target{};
     auto const seen{read_record<1>(
         reader,
         node,
@@ -40,9 +40,12 @@ inline ReadResult<::codegen_compile_fixture::UnsupportedReader>
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
+            auto const read = [&](auto& destination) {
+                read_field(reader, value, location, destination, errors);
+            };
             switch (field) {
                 case Field::target:
-                    read_field(reader, value, location, value_target, errors);
+                    read(value_target);
                     break;
             }
         }))};
@@ -55,7 +58,7 @@ inline ReadResult<::codegen_compile_fixture::UnsupportedReader>
         return std::unexpected{std::move(errors)};
     }
 
-    Value result{};
+    value_type result{};
 
     if (value_target) {
         result.target = std::move(*value_target);

@@ -9,9 +9,9 @@
 namespace ioj::s7 {
 template <>
 struct TypeReader<::ioj::levels::LevelCollisionGridDefinition> {
-    using Value = ::ioj::levels::LevelCollisionGridDefinition;
+    using value_type = ::ioj::levels::LevelCollisionGridDefinition;
 
-    static ReadResult<Value>
+    static ReadResult<value_type>
         read(Reader const& reader, NodeIndex const node, std::string_view const path);
   private:
     enum class Field : std::size_t {
@@ -36,8 +36,8 @@ inline ReadResult<::ioj::levels::LevelCollisionGridDefinition>
                                                                   NodeIndex const node,
                                                                   std::string_view const path) {
     AstDiagnostics errors{};
-    std::optional<decltype(Value::level_size)> value_level_size{};
-    std::optional<decltype(Value::cell_size)> value_cell_size{};
+    std::optional<decltype(value_type::level_size)> value_level_size{};
+    std::optional<decltype(value_type::cell_size)> value_cell_size{};
     auto const seen{read_record<2>(
         reader,
         node,
@@ -45,12 +45,15 @@ inline ReadResult<::ioj::levels::LevelCollisionGridDefinition>
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
+            auto const read = [&](auto& destination) {
+                read_field(reader, value, location, destination, errors);
+            };
             switch (field) {
                 case Field::level_size:
-                    read_field(reader, value, location, value_level_size, errors);
+                    read(value_level_size);
                     break;
                 case Field::cell_size:
-                    read_field(reader, value, location, value_cell_size, errors);
+                    read(value_cell_size);
                     break;
             }
         }))};
@@ -63,7 +66,7 @@ inline ReadResult<::ioj::levels::LevelCollisionGridDefinition>
         return std::unexpected{std::move(errors)};
     }
 
-    Value result{};
+    value_type result{};
 
     if (value_level_size) {
         result.level_size = std::move(*value_level_size);

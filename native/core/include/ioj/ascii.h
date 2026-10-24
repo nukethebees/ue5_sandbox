@@ -33,4 +33,8 @@ namespace ioj {
 [[nodiscard]] constexpr auto blank(std::string_view const value) noexcept -> bool {
     return std::ranges::all_of(value, ioj::isspace);
 }
+[[nodiscard]] constexpr auto equals_ignore_case(std::string_view const lhs,
+                                                std::string_view const rhs) noexcept -> bool {
+    return std::ranges::equal(lhs, rhs, std::ranges::equal_to{}, ioj::tolower, ioj::tolower);
+}
 }

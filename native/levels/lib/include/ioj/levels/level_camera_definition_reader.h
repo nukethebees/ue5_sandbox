@@ -10,9 +10,9 @@
 namespace ioj::s7 {
 template <>
 struct TypeReader<::ioj::levels::LevelCameraDefinition> {
-    using Value = ::ioj::levels::LevelCameraDefinition;
+    using value_type = ::ioj::levels::LevelCameraDefinition;
 
-    static ReadResult<Value>
+    static ReadResult<value_type>
         read(Reader const& reader, NodeIndex const node, std::string_view const path);
   private:
     enum class Field : std::size_t {
@@ -41,9 +41,9 @@ inline ReadResult<::ioj::levels::LevelCameraDefinition>
                                                            NodeIndex const node,
                                                            std::string_view const path) {
     AstDiagnostics errors{};
-    std::optional<decltype(Value::target_entity_ids)> value_target_entity_ids{};
-    std::optional<decltype(Value::offset_direction)> value_offset_direction{};
-    std::optional<decltype(Value::distance)> value_distance{};
+    std::optional<decltype(value_type::target_entity_ids)> value_target_entity_ids{};
+    std::optional<decltype(value_type::offset_direction)> value_offset_direction{};
+    std::optional<decltype(value_type::distance)> value_distance{};
     auto const seen{read_record<3>(
         reader,
         node,
@@ -51,15 +51,18 @@ inline ReadResult<::ioj::levels::LevelCameraDefinition>
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
+            auto const read = [&](auto& destination) {
+                read_field(reader, value, location, destination, errors);
+            };
             switch (field) {
                 case Field::target_entity_ids:
-                    read_field(reader, value, location, value_target_entity_ids, errors);
+                    read(value_target_entity_ids);
                     break;
                 case Field::offset_direction:
-                    read_field(reader, value, location, value_offset_direction, errors);
+                    read(value_offset_direction);
                     break;
                 case Field::distance:
-                    read_field(reader, value, location, value_distance, errors);
+                    read(value_distance);
                     break;
             }
         }))};
@@ -68,28 +71,17 @@ inline ReadResult<::ioj::levels::LevelCameraDefinition>
         append_errors(errors, seen.error());
         return std::unexpected{std::move(errors)};
     }
-    if (!seen->test(0)) {
-        errors.push_back((AstDiagnostic{AstErrorCode::MissingProperty,
-                                        std::string{path} + ".look-at",
-                                        "Missing required property ':look-at'"}));
-    }
-    if (!seen->test(1)) {
-        errors.push_back((AstDiagnostic{AstErrorCode::MissingProperty,
-                                        std::string{path} + ".offset-direction",
-                                        "Missing required property ':offset-direction'"}));
-    }
-    if (!seen->test(2)) {
-        errors.push_back((AstDiagnostic{AstErrorCode::MissingProperty,
-                                        std::string{path} + ".distance",
-                                        "Missing required property ':distance'"}));
-    }
+    std::array<std::string_view, 3> constexpr required_names{
+        "look-at", "offset-direction", "distance"};
+
+    require_fields(*seen, required_names, path, errors);
     if (!errors.empty()) {
         return std::unexpected{std::move(errors)};
     }
 
-    Value result{.target_entity_ids = std::move(*value_target_entity_ids),
-                 .offset_direction = std::move(*value_offset_direction),
-                 .distance = std::move(*value_distance)};
+    value_type result{.target_entity_ids = std::move(*value_target_entity_ids),
+                      .offset_direction = std::move(*value_offset_direction),
+                      .distance = std::move(*value_distance)};
 
     return result;
 }

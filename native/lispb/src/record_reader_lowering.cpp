@@ -70,18 +70,17 @@ auto read_body(LoweringContext& context,
     for (auto const field : fields) {
         auto const name{context.text(members.name[members.index(field)])};
         body.add(ir.variable(
-            "std::optional<decltype(Value::" + name + ")>", "value_" + name, ir.literal("")));
+            "std::optional<decltype(value_type::" + name + ")>", "value_" + name, ir.literal("")));
     }
 
     // The IR has no lambda node; keep only the streaming callback's syntax textual.
     std::string visitor{"[&](Field const field, NodeIndex const value, std::string_view const "
-                        "location) {\nswitch (field) {\n"};
+                        "location) {\nauto const read = [&](auto& destination) {\n"
+                        "read_field(reader, value, location, destination, errors);\n};\n"
+                        "switch (field) {\n"};
     for (auto const field : fields) {
         auto const name{context.text(members.name[members.index(field)])};
-        visitor += std::format(
-            "case Field::{}: read_field(reader, value, location, value_{}, errors); break;\n",
-            name,
-            name);
+        visitor += std::format("case Field::{}: read(value_{}); break;\n", name, name);
     }
     visitor += "}\n}";
     if (fields.empty()) {
@@ -103,31 +102,30 @@ auto read_body(LoweringContext& context,
                   ir.return_stmt(ir.raw_expr("std::unexpected{std::move(errors)}", {}))})));
 
     std::vector<std::string> initializers;
-    std::size_t ordinal{};
+    std::vector<std::string> required_names;
     for (auto const field : fields) {
         auto const index{members.index(field)};
         auto const name{context.text(members.name[index])};
-        if (members.s7[index].required) {
-            body.add(ir.if_stmt(
-                ir.raw_expr(std::format("!seen->test({})", ordinal), {}),
-                ir.block({ir.expr_stmt(ir.call(
-                    ir.named("errors.push_back"),
-                    {ir.raw_expr(
-                        std::format(
-                            "AstDiagnostic{{AstErrorCode::MissingProperty, std::string{{path}} + "
-                            "\".{}\", \"Missing required property ':{}'\"}}",
-                            field_name(context, field),
-                            field_name(context, field)),
-                        {})}))})));
+        auto const required{members.s7[index].required};
+        required_names.push_back(std::format("\"{}\"", required ? field_name(context, field) : ""));
+        if (required) {
             initializers.push_back("." + name + " = std::move(*value_" + name + ")");
         }
-        ++ordinal;
+    }
+    if (!initializers.empty()) {
+        body.add(
+            ir.variable(std::format("std::array<std::string_view, {}> constexpr", fields.size()),
+                        "required_names",
+                        ir.raw_expr(join(required_names, ", "), {})),
+            2);
+        body.add(
+            ir.expr_stmt(ir.raw_expr("require_fields(*seen, required_names, path, errors)", {})));
     }
     auto const return_errors{ir.if_stmt(
         ir.raw_expr("!errors.empty()", {}),
         ir.block({ir.return_stmt(ir.raw_expr("std::unexpected{std::move(errors)}", {}))}))};
     body.add(return_errors, 2);
-    body.add(ir.variable("Value", "result", ir.raw_expr(join(initializers, ",\n"), {})), 2);
+    body.add(ir.variable("value_type", "result", ir.raw_expr(join(initializers, ",\n"), {})), 2);
     bool has_constraints{};
     for (auto const field : fields) {
         auto const index{members.index(field)};
@@ -218,8 +216,9 @@ void lower_record_reader(LoweringContext& context,
         entries.push_back({key, "Field::" + context.text(member)});
     }
     NodeListBuilder declarations{ir};
-    declarations.add(ir.using_declaration(ir.strings.intern("Value"), ir.types.intern(name)), 2);
-    auto const function{record_reader::read_function(ir, "read", "Value")};
+    declarations.add(ir.using_declaration(ir.strings.intern("value_type"), ir.types.intern(name)),
+                     2);
+    auto const function{record_reader::read_function(ir, "read", "value_type")};
     ir.set_function_receiver(function, FunctionReceiver::static_);
     declarations.add(ir.header_function(function), 2);
     declarations.add(ir.access(Access::private_), 1);

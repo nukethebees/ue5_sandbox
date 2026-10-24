@@ -10,9 +10,9 @@
 namespace ioj::s7 {
 template <>
 struct TypeReader<::codegen_compile_fixture::ReaderDependency> {
-    using Value = ::codegen_compile_fixture::ReaderDependency;
+    using value_type = ::codegen_compile_fixture::ReaderDependency;
 
-    static ReadResult<Value>
+    static ReadResult<value_type>
         read(Reader const& reader, NodeIndex const node, std::string_view const path);
   private:
     enum class Field : std::size_t {
@@ -33,7 +33,7 @@ inline ReadResult<::codegen_compile_fixture::ReaderDependency>
                                                                   NodeIndex const node,
                                                                   std::string_view const path) {
     AstDiagnostics errors{};
-    std::optional<decltype(Value::child)> value_child{};
+    std::optional<decltype(value_type::child)> value_child{};
     auto const seen{read_record<1>(
         reader,
         node,
@@ -41,9 +41,12 @@ inline ReadResult<::codegen_compile_fixture::ReaderDependency>
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
+            auto const read = [&](auto& destination) {
+                read_field(reader, value, location, destination, errors);
+            };
             switch (field) {
                 case Field::child:
-                    read_field(reader, value, location, value_child, errors);
+                    read(value_child);
                     break;
             }
         }))};
@@ -52,16 +55,14 @@ inline ReadResult<::codegen_compile_fixture::ReaderDependency>
         append_errors(errors, seen.error());
         return std::unexpected{std::move(errors)};
     }
-    if (!seen->test(0)) {
-        errors.push_back((AstDiagnostic{AstErrorCode::MissingProperty,
-                                        std::string{path} + ".child",
-                                        "Missing required property ':child'"}));
-    }
+    std::array<std::string_view, 1> constexpr required_names{"child"};
+
+    require_fields(*seen, required_names, path, errors);
     if (!errors.empty()) {
         return std::unexpected{std::move(errors)};
     }
 
-    Value result{.child = std::move(*value_child)};
+    value_type result{.child = std::move(*value_child)};
 
     return result;
 }

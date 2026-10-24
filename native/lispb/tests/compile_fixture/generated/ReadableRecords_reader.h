@@ -10,9 +10,9 @@
 namespace ioj::s7 {
 template <>
 struct TypeReader<::codegen_compile_fixture::EmptyReadable> {
-    using Value = ::codegen_compile_fixture::EmptyReadable;
+    using value_type = ::codegen_compile_fixture::EmptyReadable;
 
-    static ReadResult<Value>
+    static ReadResult<value_type>
         read(Reader const& reader, NodeIndex const node, std::string_view const path);
   private:
     enum class Field : std::size_t {
@@ -28,9 +28,9 @@ struct TypeReader<::codegen_compile_fixture::EmptyReadable> {
 
 template <>
 struct TypeReader<::codegen_compile_fixture::RecursiveReadable> {
-    using Value = ::codegen_compile_fixture::RecursiveReadable;
+    using value_type = ::codegen_compile_fixture::RecursiveReadable;
 
-    static ReadResult<Value>
+    static ReadResult<value_type>
         read(Reader const& reader, NodeIndex const node, std::string_view const path);
   private:
     enum class Field : std::size_t {
@@ -48,9 +48,9 @@ struct TypeReader<::codegen_compile_fixture::RecursiveReadable> {
 
 template <>
 struct TypeReader<::codegen_compile_fixture::BoundedInteger> {
-    using Value = ::codegen_compile_fixture::BoundedInteger;
+    using value_type = ::codegen_compile_fixture::BoundedInteger;
 
-    static ReadResult<Value>
+    static ReadResult<value_type>
         read(Reader const& reader, NodeIndex const node, std::string_view const path);
   private:
     enum class Field : std::size_t {
@@ -68,9 +68,9 @@ struct TypeReader<::codegen_compile_fixture::BoundedInteger> {
 
 template <>
 struct TypeReader<::codegen_compile_fixture::ReadableChild> {
-    using Value = ::codegen_compile_fixture::ReadableChild;
+    using value_type = ::codegen_compile_fixture::ReadableChild;
 
-    static ReadResult<Value>
+    static ReadResult<value_type>
         read(Reader const& reader, NodeIndex const node, std::string_view const path);
   private:
     enum class Field : std::size_t {
@@ -92,9 +92,9 @@ struct TypeReader<::codegen_compile_fixture::ReadableChild> {
 
 template <>
 struct TypeReader<::codegen_compile_fixture::ReadableRecord> {
-    using Value = ::codegen_compile_fixture::ReadableRecord;
+    using value_type = ::codegen_compile_fixture::ReadableRecord;
 
-    static ReadResult<Value>
+    static ReadResult<value_type>
         read(Reader const& reader, NodeIndex const node, std::string_view const path);
   private:
     enum class Field : std::size_t {
@@ -174,7 +174,7 @@ inline ReadResult<::codegen_compile_fixture::EmptyReadable>
         return std::unexpected{std::move(errors)};
     }
 
-    Value result{};
+    value_type result{};
 
     return result;
 }
@@ -184,7 +184,7 @@ inline ReadResult<::codegen_compile_fixture::RecursiveReadable>
                                                                    NodeIndex const node,
                                                                    std::string_view const path) {
     AstDiagnostics errors{};
-    std::optional<decltype(Value::children)> value_children{};
+    std::optional<decltype(value_type::children)> value_children{};
     auto const seen{read_record<1>(
         reader,
         node,
@@ -192,9 +192,12 @@ inline ReadResult<::codegen_compile_fixture::RecursiveReadable>
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
+            auto const read = [&](auto& destination) {
+                read_field(reader, value, location, destination, errors);
+            };
             switch (field) {
                 case Field::children:
-                    read_field(reader, value, location, value_children, errors);
+                    read(value_children);
                     break;
             }
         }))};
@@ -207,7 +210,7 @@ inline ReadResult<::codegen_compile_fixture::RecursiveReadable>
         return std::unexpected{std::move(errors)};
     }
 
-    Value result{};
+    value_type result{};
 
     if (value_children) {
         result.children = std::move(*value_children);
@@ -220,7 +223,7 @@ inline ReadResult<::codegen_compile_fixture::BoundedInteger>
                                                                 NodeIndex const node,
                                                                 std::string_view const path) {
     AstDiagnostics errors{};
-    std::optional<decltype(Value::value)> value_value{};
+    std::optional<decltype(value_type::value)> value_value{};
     auto const seen{read_record<1>(
         reader,
         node,
@@ -228,9 +231,12 @@ inline ReadResult<::codegen_compile_fixture::BoundedInteger>
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
+            auto const read = [&](auto& destination) {
+                read_field(reader, value, location, destination, errors);
+            };
             switch (field) {
                 case Field::value:
-                    read_field(reader, value, location, value_value, errors);
+                    read(value_value);
                     break;
             }
         }))};
@@ -239,16 +245,14 @@ inline ReadResult<::codegen_compile_fixture::BoundedInteger>
         append_errors(errors, seen.error());
         return std::unexpected{std::move(errors)};
     }
-    if (!seen->test(0)) {
-        errors.push_back((AstDiagnostic{AstErrorCode::MissingProperty,
-                                        std::string{path} + ".value",
-                                        "Missing required property ':value'"}));
-    }
+    std::array<std::string_view, 1> constexpr required_names{"value"};
+
+    require_fields(*seen, required_names, path, errors);
     if (!errors.empty()) {
         return std::unexpected{std::move(errors)};
     }
 
-    Value result{.value = std::move(*value_value)};
+    value_type result{.value = std::move(*value_value)};
 
     if (!constraints::minimum(result.value, (-9223372036854775807LL - 1LL))) {
         errors.push_back((AstDiagnostic{AstErrorCode::InvalidNumber,
@@ -272,8 +276,8 @@ inline ReadResult<::codegen_compile_fixture::ReadableChild>
                                                                NodeIndex const node,
                                                                std::string_view const path) {
     AstDiagnostics errors{};
-    std::optional<decltype(Value::name)> value_name{};
-    std::optional<decltype(Value::count)> value_count{};
+    std::optional<decltype(value_type::name)> value_name{};
+    std::optional<decltype(value_type::count)> value_count{};
     auto const seen{read_record<2>(
         reader,
         node,
@@ -281,12 +285,15 @@ inline ReadResult<::codegen_compile_fixture::ReadableChild>
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
+            auto const read = [&](auto& destination) {
+                read_field(reader, value, location, destination, errors);
+            };
             switch (field) {
                 case Field::name:
-                    read_field(reader, value, location, value_name, errors);
+                    read(value_name);
                     break;
                 case Field::count:
-                    read_field(reader, value, location, value_count, errors);
+                    read(value_count);
                     break;
             }
         }))};
@@ -295,16 +302,14 @@ inline ReadResult<::codegen_compile_fixture::ReadableChild>
         append_errors(errors, seen.error());
         return std::unexpected{std::move(errors)};
     }
-    if (!seen->test(0)) {
-        errors.push_back((AstDiagnostic{AstErrorCode::MissingProperty,
-                                        std::string{path} + ".name",
-                                        "Missing required property ':name'"}));
-    }
+    std::array<std::string_view, 2> constexpr required_names{"name", ""};
+
+    require_fields(*seen, required_names, path, errors);
     if (!errors.empty()) {
         return std::unexpected{std::move(errors)};
     }
 
-    Value result{.name = std::move(*value_name)};
+    value_type result{.name = std::move(*value_name)};
 
     if (value_count) {
         result.count = std::move(*value_count);
@@ -326,15 +331,15 @@ inline ReadResult<::codegen_compile_fixture::ReadableRecord>
                                                                 NodeIndex const node,
                                                                 std::string_view const path) {
     AstDiagnostics errors{};
-    std::optional<decltype(Value::child)> value_child{};
-    std::optional<decltype(Value::values)> value_values{};
-    std::optional<decltype(Value::points)> value_points{};
-    std::optional<decltype(Value::enabled)> value_enabled{};
-    std::optional<decltype(Value::maybe)> value_maybe{};
-    std::optional<decltype(Value::scale)> value_scale{};
-    std::optional<decltype(Value::offset)> value_offset{};
-    std::optional<decltype(Value::title)> value_title{};
-    std::optional<decltype(Value::mode)> value_mode{};
+    std::optional<decltype(value_type::child)> value_child{};
+    std::optional<decltype(value_type::values)> value_values{};
+    std::optional<decltype(value_type::points)> value_points{};
+    std::optional<decltype(value_type::enabled)> value_enabled{};
+    std::optional<decltype(value_type::maybe)> value_maybe{};
+    std::optional<decltype(value_type::scale)> value_scale{};
+    std::optional<decltype(value_type::offset)> value_offset{};
+    std::optional<decltype(value_type::title)> value_title{};
+    std::optional<decltype(value_type::mode)> value_mode{};
     auto const seen{read_record<9>(
         reader,
         node,
@@ -342,33 +347,36 @@ inline ReadResult<::codegen_compile_fixture::ReadableRecord>
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
+            auto const read = [&](auto& destination) {
+                read_field(reader, value, location, destination, errors);
+            };
             switch (field) {
                 case Field::child:
-                    read_field(reader, value, location, value_child, errors);
+                    read(value_child);
                     break;
                 case Field::values:
-                    read_field(reader, value, location, value_values, errors);
+                    read(value_values);
                     break;
                 case Field::points:
-                    read_field(reader, value, location, value_points, errors);
+                    read(value_points);
                     break;
                 case Field::enabled:
-                    read_field(reader, value, location, value_enabled, errors);
+                    read(value_enabled);
                     break;
                 case Field::maybe:
-                    read_field(reader, value, location, value_maybe, errors);
+                    read(value_maybe);
                     break;
                 case Field::scale:
-                    read_field(reader, value, location, value_scale, errors);
+                    read(value_scale);
                     break;
                 case Field::offset:
-                    read_field(reader, value, location, value_offset, errors);
+                    read(value_offset);
                     break;
                 case Field::title:
-                    read_field(reader, value, location, value_title, errors);
+                    read(value_title);
                     break;
                 case Field::mode:
-                    read_field(reader, value, location, value_mode, errors);
+                    read(value_mode);
                     break;
             }
         }))};
@@ -377,16 +385,15 @@ inline ReadResult<::codegen_compile_fixture::ReadableRecord>
         append_errors(errors, seen.error());
         return std::unexpected{std::move(errors)};
     }
-    if (!seen->test(0)) {
-        errors.push_back((AstDiagnostic{AstErrorCode::MissingProperty,
-                                        std::string{path} + ".child",
-                                        "Missing required property ':child'"}));
-    }
+    std::array<std::string_view, 9> constexpr required_names{
+        "child", "", "", "", "", "", "", "", ""};
+
+    require_fields(*seen, required_names, path, errors);
     if (!errors.empty()) {
         return std::unexpected{std::move(errors)};
     }
 
-    Value result{.child = std::move(*value_child)};
+    value_type result{.child = std::move(*value_child)};
 
     if (value_values) {
         result.values = std::move(*value_values);

@@ -145,10 +145,7 @@ struct TypeReader<T> {
             return std::unexpected{name.error()};
         }
         for (auto const value : EnumTraits<T>::values) {
-            if (std::ranges::equal(std::string_view{to_serialized_string(value)},
-                                   *name,
-                                   std::ranges::equal_to{},
-                                   ioj::tolower)) {
+            if (equals_ignore_case(to_serialized_string(value), *name)) {
                 return value;
             }
         }
@@ -271,6 +268,21 @@ void read_field(Reader const& reader,
         destination.emplace(std::move(*value));
     } else {
         append_errors(errors, std::move(value.error()));
+    }
+}
+
+template <std::size_t N>
+void require_fields(std::bitset<N> const& seen,
+                    std::array<std::string_view, N> const& names,
+                    std::string_view const path,
+                    AstDiagnostics& errors) {
+    for (std::size_t i{}; i < N; ++i) {
+        auto const name{names[i]};
+        if (!name.empty() && !seen.test(i)) {
+            errors.push_back({AstErrorCode::MissingProperty,
+                              std::format("{}.{}", path, name),
+                              std::format("Missing required property ':{}'", name)});
+        }
     }
 }
 

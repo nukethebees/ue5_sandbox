@@ -10,9 +10,9 @@
 namespace ioj::s7 {
 template <>
 struct TypeReader<::ioj::levels::CampaignDefinition> {
-    using Value = ::ioj::levels::CampaignDefinition;
+    using value_type = ::ioj::levels::CampaignDefinition;
 
-    static ReadResult<Value>
+    static ReadResult<value_type>
         read(Reader const& reader, NodeIndex const node, std::string_view const path);
   private:
     enum class Field : std::size_t {
@@ -41,9 +41,9 @@ inline ReadResult<::ioj::levels::CampaignDefinition>
                                                         NodeIndex const node,
                                                         std::string_view const path) {
     AstDiagnostics errors{};
-    std::optional<decltype(Value::id)> value_id{};
-    std::optional<decltype(Value::title)> value_title{};
-    std::optional<decltype(Value::level_ids)> value_level_ids{};
+    std::optional<decltype(value_type::id)> value_id{};
+    std::optional<decltype(value_type::title)> value_title{};
+    std::optional<decltype(value_type::level_ids)> value_level_ids{};
     auto const seen{read_record<3>(
         reader,
         node,
@@ -51,15 +51,18 @@ inline ReadResult<::ioj::levels::CampaignDefinition>
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
+            auto const read = [&](auto& destination) {
+                read_field(reader, value, location, destination, errors);
+            };
             switch (field) {
                 case Field::id:
-                    read_field(reader, value, location, value_id, errors);
+                    read(value_id);
                     break;
                 case Field::title:
-                    read_field(reader, value, location, value_title, errors);
+                    read(value_title);
                     break;
                 case Field::level_ids:
-                    read_field(reader, value, location, value_level_ids, errors);
+                    read(value_level_ids);
                     break;
             }
         }))};
@@ -68,28 +71,16 @@ inline ReadResult<::ioj::levels::CampaignDefinition>
         append_errors(errors, seen.error());
         return std::unexpected{std::move(errors)};
     }
-    if (!seen->test(0)) {
-        errors.push_back((AstDiagnostic{AstErrorCode::MissingProperty,
-                                        std::string{path} + ".id",
-                                        "Missing required property ':id'"}));
-    }
-    if (!seen->test(1)) {
-        errors.push_back((AstDiagnostic{AstErrorCode::MissingProperty,
-                                        std::string{path} + ".title",
-                                        "Missing required property ':title'"}));
-    }
-    if (!seen->test(2)) {
-        errors.push_back((AstDiagnostic{AstErrorCode::MissingProperty,
-                                        std::string{path} + ".levels",
-                                        "Missing required property ':levels'"}));
-    }
+    std::array<std::string_view, 3> constexpr required_names{"id", "title", "levels"};
+
+    require_fields(*seen, required_names, path, errors);
     if (!errors.empty()) {
         return std::unexpected{std::move(errors)};
     }
 
-    Value result{.id = std::move(*value_id),
-                 .title = std::move(*value_title),
-                 .level_ids = std::move(*value_level_ids)};
+    value_type result{.id = std::move(*value_id),
+                      .title = std::move(*value_title),
+                      .level_ids = std::move(*value_level_ids)};
 
     return result;
 }

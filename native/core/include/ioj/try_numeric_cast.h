@@ -1,17 +1,16 @@
 #pragma once
 
+#include <ioj/numeric.h>
+
 #include <cmath>
-#include <concepts>
 #include <limits>
 #include <optional>
 #include <utility>
 
 namespace ioj {
 // Preserve nonfinite floating values; callers impose domain-specific finite constraints.
-template <typename To, typename From>
-    requires ((std::integral<To> || std::floating_point<To>) &&
-              (std::integral<From> || std::floating_point<From>) && !std::same_as<To, bool> &&
-              !std::same_as<From, bool>)
+template <Numeric To, Numeric From>
+    requires (!std::same_as<To, bool> && !std::same_as<From, bool>)
 [[nodiscard]] auto try_numeric_cast(From const value) -> std::optional<To> {
     if constexpr (std::integral<To> && std::integral<From>) {
         if (!std::in_range<To>(value)) {

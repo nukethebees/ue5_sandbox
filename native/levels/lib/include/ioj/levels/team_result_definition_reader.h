@@ -10,9 +10,9 @@
 namespace ioj::s7 {
 template <>
 struct TypeReader<::ioj::levels::TeamResultDefinition> {
-    using Value = ::ioj::levels::TeamResultDefinition;
+    using value_type = ::ioj::levels::TeamResultDefinition;
 
-    static ReadResult<Value>
+    static ReadResult<value_type>
         read(Reader const& reader, NodeIndex const node, std::string_view const path);
   private:
     enum class Field : std::size_t {
@@ -41,9 +41,9 @@ inline ReadResult<::ioj::levels::TeamResultDefinition>
                                                           NodeIndex const node,
                                                           std::string_view const path) {
     AstDiagnostics errors{};
-    std::optional<decltype(Value::team)> value_team{};
-    std::optional<decltype(Value::when)> value_when{};
-    std::optional<decltype(Value::result)> value_result{};
+    std::optional<decltype(value_type::team)> value_team{};
+    std::optional<decltype(value_type::when)> value_when{};
+    std::optional<decltype(value_type::result)> value_result{};
     auto const seen{read_record<3>(
         reader,
         node,
@@ -51,15 +51,18 @@ inline ReadResult<::ioj::levels::TeamResultDefinition>
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
+            auto const read = [&](auto& destination) {
+                read_field(reader, value, location, destination, errors);
+            };
             switch (field) {
                 case Field::team:
-                    read_field(reader, value, location, value_team, errors);
+                    read(value_team);
                     break;
                 case Field::when:
-                    read_field(reader, value, location, value_when, errors);
+                    read(value_when);
                     break;
                 case Field::result:
-                    read_field(reader, value, location, value_result, errors);
+                    read(value_result);
                     break;
             }
         }))};
@@ -68,28 +71,16 @@ inline ReadResult<::ioj::levels::TeamResultDefinition>
         append_errors(errors, seen.error());
         return std::unexpected{std::move(errors)};
     }
-    if (!seen->test(0)) {
-        errors.push_back((AstDiagnostic{AstErrorCode::MissingProperty,
-                                        std::string{path} + ".team",
-                                        "Missing required property ':team'"}));
-    }
-    if (!seen->test(1)) {
-        errors.push_back((AstDiagnostic{AstErrorCode::MissingProperty,
-                                        std::string{path} + ".when",
-                                        "Missing required property ':when'"}));
-    }
-    if (!seen->test(2)) {
-        errors.push_back((AstDiagnostic{AstErrorCode::MissingProperty,
-                                        std::string{path} + ".result",
-                                        "Missing required property ':result'"}));
-    }
+    std::array<std::string_view, 3> constexpr required_names{"team", "when", "result"};
+
+    require_fields(*seen, required_names, path, errors);
     if (!errors.empty()) {
         return std::unexpected{std::move(errors)};
     }
 
-    Value result{.team = std::move(*value_team),
-                 .when = std::move(*value_when),
-                 .result = std::move(*value_result)};
+    value_type result{.team = std::move(*value_team),
+                      .when = std::move(*value_when),
+                      .result = std::move(*value_result)};
 
     return result;
 }
