@@ -10,6 +10,8 @@
 
 namespace ioj::sim::telemetry {
 
+inline constexpr std::uint64_t max_exact_json_integer{9007199254740992ULL};
+
 [[nodiscard]] inline auto is_valid_json_number(double const value, bool const nonnegative) noexcept
     -> bool {
     return std::isfinite(value) && (!nonnegative || value >= 0.0);

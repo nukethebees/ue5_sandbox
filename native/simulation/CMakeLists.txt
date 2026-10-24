@@ -48,6 +48,7 @@ foreach(native_simulation_target IN LISTS native_simulation_targets)
       "$<$<BOOL:${IOJ_WITH_TRACY}>:sandbox::profiling-api>"
     PRIVATE
       ioj::core_pch
+      nlohmann_json::nlohmann_json
       ${simulation_profiling_libraries}
       "$<$<BOOL:${IOJ_WITH_UNREAL}>:ioj::unreal_avx2>"
   )

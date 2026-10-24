@@ -9,8 +9,6 @@
 namespace ioj::sim::telemetry {
 namespace {
 
-constexpr double exact_json_integer_limit{9007199254740992.0};
-
 auto error_at(std::string_view const path, std::string_view const detail) -> std::string {
     return std::format("{}: {}", path, detail);
 }
@@ -27,6 +25,7 @@ auto parse_json_integer(double const value, std::string_view const path)
         return std::unexpected{error_at(path, "number is outside the required integer range")};
     }
     if constexpr (std::numeric_limits<Integer>::digits > 53) {
+        constexpr auto exact_json_integer_limit{static_cast<double>(max_exact_json_integer)};
         if (value < -exact_json_integer_limit || value > exact_json_integer_limit) {
             return std::unexpected{error_at(path, "integer cannot be represented exactly in JSON")};
         }
@@ -45,7 +44,7 @@ auto validate_json_integer(Integer const value, std::string_view const path, boo
         }
     }
     if constexpr (std::numeric_limits<Integer>::digits > 53) {
-        constexpr auto exact_integer_limit{static_cast<Integer>(9007199254740992ULL)};
+        constexpr auto exact_integer_limit{static_cast<Integer>(max_exact_json_integer)};
         if (value > exact_integer_limit) {
             return std::unexpected{error_at(path, "integer cannot be represented exactly in JSON")};
         }

@@ -7,5 +7,10 @@ target_sources(native-simulation PRIVATE
   ../../include/ioj/sim/telemetry/run_record.h
   block_history.cpp
   analysis.cpp
+  ../../include/ioj/sim/telemetry/report.h
+  ../../include/ioj/sim/telemetry/report_environment.h
+  ../../include/ioj/sim/telemetry/report_json.h
+  report.cpp
+  report_json.cpp
   json_validation.cpp
 )
