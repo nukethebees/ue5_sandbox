@@ -4,7 +4,6 @@
 #pragma once
 
 #include "ioj/gfx/starfield_settings_reader.h"
-#include "ioj/parse_enum.h"
 #include "ioj/s7/record_reader.h"
 #include "ioj/settings/presentation_reader.h"
 #include "ioj/settings/settings_values.h"
@@ -20,7 +19,6 @@
 #include <ioj/s7/field_reader.h>
 
 #include <array>
-#include <optional>
 #include <string_view>
 
 namespace ioj::s7 {
@@ -32,57 +30,52 @@ struct TypeReader<settings::SettingsValues> : RecordReader<settings::SettingsVal
                        value_type& result,
                        ReadMode mode,
                        AstDiagnostics& errors) {
-        auto const seen{read_record<Field>(
-            reader,
-            node,
-            "settings",
-            path,
-            parse_field,
-            ([&](Field const field, NodeIndex const value, std::string_view const location) {
-                FieldReader const read{reader, value, location, errors, mode};
-                switch (field) {
-                    case Field::tick:
-                        read(result.tick);
-                        break;
-                    case Field::player_ship:
-                        read(result.player_ship);
-                        break;
-                    case Field::laser_projectiles:
-                        read(result.laser_projectiles);
-                        break;
-                    case Field::capital_ships:
-                        read(result.capital_ships);
-                        break;
-                    case Field::fighters:
-                        read(result.fighters);
-                        break;
-                    case Field::turrets:
-                        read(result.turrets);
-                        break;
-                    case Field::tube_spinners:
-                        read(result.tube_spinners);
-                        break;
-                    case Field::collision_grid:
-                        read(result.collision_grid);
-                        break;
-                    case Field::hud:
-                        read(result.hud);
-                        break;
-                    case Field::presentation:
-                        read(result.presentation);
-                        break;
-                    case Field::starfield:
-                        read(result.starfield);
-                        break;
-                    case Field::Count:
-                        std::unreachable();
-                }
-            }))};
-
-        if (!seen) {
-            append_errors(errors, seen.error());
-            return;
-        }
+        decode_record<Field>(reader,
+                             node,
+                             "settings",
+                             path,
+                             field_names,
+                             mode,
+                             errors,
+                             ([&](Field const field, FieldReader const& read) {
+                                 switch (field) {
+                                     case Field::tick:
+                                         read(result.tick);
+                                         break;
+                                     case Field::player_ship:
+                                         read(result.player_ship);
+                                         break;
+                                     case Field::laser_projectiles:
+                                         read(result.laser_projectiles);
+                                         break;
+                                     case Field::capital_ships:
+                                         read(result.capital_ships);
+                                         break;
+                                     case Field::fighters:
+                                         read(result.fighters);
+                                         break;
+                                     case Field::turrets:
+                                         read(result.turrets);
+                                         break;
+                                     case Field::tube_spinners:
+                                         read(result.tube_spinners);
+                                         break;
+                                     case Field::collision_grid:
+                                         read(result.collision_grid);
+                                         break;
+                                     case Field::hud:
+                                         read(result.hud);
+                                         break;
+                                     case Field::presentation:
+                                         read(result.presentation);
+                                         break;
+                                     case Field::starfield:
+                                         read(result.starfield);
+                                         break;
+                                     case Field::Count:
+                                         std::unreachable();
+                                 }
+                             }));
     }
   private:
     enum class Field : std::uint8_t {
@@ -99,11 +92,6 @@ struct TypeReader<settings::SettingsValues> : RecordReader<settings::SettingsVal
         starfield,
         Count,
     };
-
-    [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
-        -> std::optional<Field> {
-        return ioj::try_parse_enum<Field>(name, field_names);
-    }
 
     static constexpr std::array<std::string_view, 11> field_names{"tick",
                                                                   "player-ship",
@@ -127,57 +115,52 @@ struct TypeReader<settings::SettingsValuesOverrides>
                        value_type& result,
                        ReadMode,
                        AstDiagnostics& errors) {
-        auto const seen{read_record<Field>(
-            reader,
-            node,
-            "settings",
-            path,
-            parse_field,
-            ([&](Field const field, NodeIndex const value, std::string_view const location) {
-                FieldReader const read{reader, value, location, errors};
-                switch (field) {
-                    case Field::tick:
-                        read.patch(result.tick);
-                        break;
-                    case Field::player_ship:
-                        read.patch(result.player_ship);
-                        break;
-                    case Field::laser_projectiles:
-                        read.patch(result.laser_projectiles);
-                        break;
-                    case Field::capital_ships:
-                        read.patch(result.capital_ships);
-                        break;
-                    case Field::fighters:
-                        read.patch(result.fighters);
-                        break;
-                    case Field::turrets:
-                        read.patch(result.turrets);
-                        break;
-                    case Field::tube_spinners:
-                        read.patch(result.tube_spinners);
-                        break;
-                    case Field::collision_grid:
-                        read.patch(result.collision_grid);
-                        break;
-                    case Field::hud:
-                        read.patch(result.hud);
-                        break;
-                    case Field::presentation:
-                        read.patch(result.presentation);
-                        break;
-                    case Field::starfield:
-                        read.patch(result.starfield);
-                        break;
-                    case Field::Count:
-                        std::unreachable();
-                }
-            }))};
-
-        if (!seen) {
-            append_errors(errors, seen.error());
-            return;
-        }
+        decode_record<Field>(reader,
+                             node,
+                             "settings",
+                             path,
+                             field_names,
+                             ReadMode::Override,
+                             errors,
+                             ([&](Field const field, FieldReader const& read) {
+                                 switch (field) {
+                                     case Field::tick:
+                                         read.patch(result.tick);
+                                         break;
+                                     case Field::player_ship:
+                                         read.patch(result.player_ship);
+                                         break;
+                                     case Field::laser_projectiles:
+                                         read.patch(result.laser_projectiles);
+                                         break;
+                                     case Field::capital_ships:
+                                         read.patch(result.capital_ships);
+                                         break;
+                                     case Field::fighters:
+                                         read.patch(result.fighters);
+                                         break;
+                                     case Field::turrets:
+                                         read.patch(result.turrets);
+                                         break;
+                                     case Field::tube_spinners:
+                                         read.patch(result.tube_spinners);
+                                         break;
+                                     case Field::collision_grid:
+                                         read.patch(result.collision_grid);
+                                         break;
+                                     case Field::hud:
+                                         read.patch(result.hud);
+                                         break;
+                                     case Field::presentation:
+                                         read.patch(result.presentation);
+                                         break;
+                                     case Field::starfield:
+                                         read.patch(result.starfield);
+                                         break;
+                                     case Field::Count:
+                                         std::unreachable();
+                                 }
+                             }));
     }
   private:
     enum class Field : std::uint8_t {
@@ -194,11 +177,6 @@ struct TypeReader<settings::SettingsValuesOverrides>
         starfield,
         Count,
     };
-
-    [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
-        -> std::optional<Field> {
-        return ioj::try_parse_enum<Field>(name, field_names);
-    }
 
     static constexpr std::array<std::string_view, 11> field_names{"tick",
                                                                   "player-ship",

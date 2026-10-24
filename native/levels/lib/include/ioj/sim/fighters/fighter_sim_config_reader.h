@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "ioj/parse_enum.h"
 #include "ioj/s7/field_constraints.h"
 #include "ioj/s7/record_reader.h"
 #include "ioj/settings/attack_distance_band_reader.h"
@@ -12,7 +11,6 @@
 #include <ioj/s7/field_reader.h>
 
 #include <array>
-#include <optional>
 #include <string_view>
 
 namespace ioj::s7 {
@@ -24,14 +22,15 @@ struct TypeReader<sim::FighterSimConfig> : RecordReader<sim::FighterSimConfig> {
                        value_type& result,
                        ReadMode mode,
                        AstDiagnostics& errors) {
-        auto const seen{read_record<Field>(
+        decode_record<Field>(
             reader,
             node,
             "fighters",
             path,
-            parse_field,
-            ([&](Field const field, NodeIndex const value, std::string_view const location) {
-                FieldReader const read{reader, value, location, errors, mode};
+            field_names,
+            mode,
+            errors,
+            ([&](Field const field, FieldReader const& read) {
                 switch (field) {
                     case Field::max_live_fighters:
                         read(result.max_live_fighters);
@@ -112,12 +111,7 @@ struct TypeReader<sim::FighterSimConfig> : RecordReader<sim::FighterSimConfig> {
                     case Field::Count:
                         std::unreachable();
                 }
-            }))};
-
-        if (!seen) {
-            append_errors(errors, seen.error());
-            return;
-        }
+            }));
     }
   private:
     enum class Field : std::uint8_t {
@@ -148,11 +142,6 @@ struct TypeReader<sim::FighterSimConfig> : RecordReader<sim::FighterSimConfig> {
         minimum_opportunistic_intercept_deviation_dot_product,
         Count,
     };
-
-    [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
-        -> std::optional<Field> {
-        return ioj::try_parse_enum<Field>(name, field_names);
-    }
 
     static constexpr std::array<std::string_view, 25> field_names{
         "max-live-fighters",
@@ -191,14 +180,15 @@ struct TypeReader<sim::FighterSimConfigOverrides>
                        value_type& result,
                        ReadMode,
                        AstDiagnostics& errors) {
-        auto const seen{read_record<Field>(
+        decode_record<Field>(
             reader,
             node,
             "fighters",
             path,
-            parse_field,
-            ([&](Field const field, NodeIndex const value, std::string_view const location) {
-                FieldReader const read{reader, value, location, errors};
+            field_names,
+            ReadMode::Override,
+            errors,
+            ([&](Field const field, FieldReader const& read) {
                 switch (field) {
                     case Field::max_live_fighters:
                         read.patch(result.max_live_fighters);
@@ -280,12 +270,7 @@ struct TypeReader<sim::FighterSimConfigOverrides>
                     case Field::Count:
                         std::unreachable();
                 }
-            }))};
-
-        if (!seen) {
-            append_errors(errors, seen.error());
-            return;
-        }
+            }));
     }
   private:
     enum class Field : std::uint8_t {
@@ -316,11 +301,6 @@ struct TypeReader<sim::FighterSimConfigOverrides>
         minimum_opportunistic_intercept_deviation_dot_product,
         Count,
     };
-
-    [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
-        -> std::optional<Field> {
-        return ioj::try_parse_enum<Field>(name, field_names);
-    }
 
     static constexpr std::array<std::string_view, 25> field_names{
         "max-live-fighters",

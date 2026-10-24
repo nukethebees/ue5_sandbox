@@ -3,14 +3,12 @@
 
 #pragma once
 
-#include "ioj/parse_enum.h"
 #include "ioj/s7/field_constraints.h"
 #include "ioj/s7/record_reader.h"
 #include "ioj/settings/capital_presentation.h"
 #include <ioj/s7/field_reader.h>
 
 #include <array>
-#include <optional>
 #include <string_view>
 
 namespace ioj::s7 {
@@ -22,14 +20,15 @@ struct TypeReader<settings::CapitalPresentation> : RecordReader<settings::Capita
                        value_type& result,
                        ReadMode mode,
                        AstDiagnostics& errors) {
-        auto const seen{read_record<Field>(
+        decode_record<Field>(
             reader,
             node,
             "capital-ships",
             path,
-            parse_field,
-            ([&](Field const field, NodeIndex const value, std::string_view const location) {
-                FieldReader const read{reader, value, location, errors, mode};
+            field_names,
+            mode,
+            errors,
+            ([&](Field const field, FieldReader const& read) {
                 switch (field) {
                     case Field::n_small_explosions:
                         read(result.n_small_explosions);
@@ -52,12 +51,7 @@ struct TypeReader<settings::CapitalPresentation> : RecordReader<settings::Capita
                     case Field::Count:
                         std::unreachable();
                 }
-            }))};
-
-        if (!seen) {
-            append_errors(errors, seen.error());
-            return;
-        }
+            }));
     }
   private:
     enum class Field : std::uint8_t {
@@ -69,11 +63,6 @@ struct TypeReader<settings::CapitalPresentation> : RecordReader<settings::Capita
         proxy_arrow_size,
         Count,
     };
-
-    [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
-        -> std::optional<Field> {
-        return ioj::try_parse_enum<Field>(name, field_names);
-    }
 
     static constexpr std::array<std::string_view, 6> field_names{"n-small-explosions",
                                                                  "time-between-explosions",
@@ -92,14 +81,15 @@ struct TypeReader<settings::CapitalPresentationOverrides>
                        value_type& result,
                        ReadMode,
                        AstDiagnostics& errors) {
-        auto const seen{read_record<Field>(
+        decode_record<Field>(
             reader,
             node,
             "capital-ships",
             path,
-            parse_field,
-            ([&](Field const field, NodeIndex const value, std::string_view const location) {
-                FieldReader const read{reader, value, location, errors};
+            field_names,
+            ReadMode::Override,
+            errors,
+            ([&](Field const field, FieldReader const& read) {
                 switch (field) {
                     case Field::n_small_explosions:
                         read.patch(result.n_small_explosions);
@@ -122,12 +112,7 @@ struct TypeReader<settings::CapitalPresentationOverrides>
                     case Field::Count:
                         std::unreachable();
                 }
-            }))};
-
-        if (!seen) {
-            append_errors(errors, seen.error());
-            return;
-        }
+            }));
     }
   private:
     enum class Field : std::uint8_t {
@@ -139,11 +124,6 @@ struct TypeReader<settings::CapitalPresentationOverrides>
         proxy_arrow_size,
         Count,
     };
-
-    [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
-        -> std::optional<Field> {
-        return ioj::try_parse_enum<Field>(name, field_names);
-    }
 
     static constexpr std::array<std::string_view, 6> field_names{"n-small-explosions",
                                                                  "time-between-explosions",

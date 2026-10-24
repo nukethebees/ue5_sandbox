@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "ioj/parse_enum.h"
 #include "ioj/s7/record_reader.h"
 #include "ioj/settings/capital_presentation_reader.h"
 #include "ioj/settings/entity_overlay_reader.h"
@@ -15,7 +14,6 @@
 #include <ioj/s7/field_reader.h>
 
 #include <array>
-#include <optional>
 #include <string_view>
 
 namespace ioj::s7 {
@@ -27,42 +25,37 @@ struct TypeReader<settings::Presentation> : RecordReader<settings::Presentation>
                        value_type& result,
                        ReadMode mode,
                        AstDiagnostics& errors) {
-        auto const seen{read_record<Field>(
-            reader,
-            node,
-            "presentation",
-            path,
-            parse_field,
-            ([&](Field const field, NodeIndex const value, std::string_view const location) {
-                FieldReader const read{reader, value, location, errors, mode};
-                switch (field) {
-                    case Field::player_ship:
-                        read(result.player_ship);
-                        break;
-                    case Field::laser_projectiles:
-                        read(result.laser_projectiles);
-                        break;
-                    case Field::capital_ships:
-                        read(result.capital_ships);
-                        break;
-                    case Field::turrets:
-                        read(result.turrets);
-                        break;
-                    case Field::entity_overlay:
-                        read(result.entity_overlay);
-                        break;
-                    case Field::radar:
-                        read(result.radar);
-                        break;
-                    case Field::Count:
-                        std::unreachable();
-                }
-            }))};
-
-        if (!seen) {
-            append_errors(errors, seen.error());
-            return;
-        }
+        decode_record<Field>(reader,
+                             node,
+                             "presentation",
+                             path,
+                             field_names,
+                             mode,
+                             errors,
+                             ([&](Field const field, FieldReader const& read) {
+                                 switch (field) {
+                                     case Field::player_ship:
+                                         read(result.player_ship);
+                                         break;
+                                     case Field::laser_projectiles:
+                                         read(result.laser_projectiles);
+                                         break;
+                                     case Field::capital_ships:
+                                         read(result.capital_ships);
+                                         break;
+                                     case Field::turrets:
+                                         read(result.turrets);
+                                         break;
+                                     case Field::entity_overlay:
+                                         read(result.entity_overlay);
+                                         break;
+                                     case Field::radar:
+                                         read(result.radar);
+                                         break;
+                                     case Field::Count:
+                                         std::unreachable();
+                                 }
+                             }));
     }
   private:
     enum class Field : std::uint8_t {
@@ -74,11 +67,6 @@ struct TypeReader<settings::Presentation> : RecordReader<settings::Presentation>
         radar,
         Count,
     };
-
-    [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
-        -> std::optional<Field> {
-        return ioj::try_parse_enum<Field>(name, field_names);
-    }
 
     static constexpr std::array<std::string_view, 6> field_names{
         "player-ship", "laser-projectiles", "capital-ships", "turrets", "entity-overlay", "radar"};
@@ -93,42 +81,37 @@ struct TypeReader<settings::PresentationOverrides>
                        value_type& result,
                        ReadMode,
                        AstDiagnostics& errors) {
-        auto const seen{read_record<Field>(
-            reader,
-            node,
-            "presentation",
-            path,
-            parse_field,
-            ([&](Field const field, NodeIndex const value, std::string_view const location) {
-                FieldReader const read{reader, value, location, errors};
-                switch (field) {
-                    case Field::player_ship:
-                        read.patch(result.player_ship);
-                        break;
-                    case Field::laser_projectiles:
-                        read.patch(result.laser_projectiles);
-                        break;
-                    case Field::capital_ships:
-                        read.patch(result.capital_ships);
-                        break;
-                    case Field::turrets:
-                        read.patch(result.turrets);
-                        break;
-                    case Field::entity_overlay:
-                        read.patch(result.entity_overlay);
-                        break;
-                    case Field::radar:
-                        read.patch(result.radar);
-                        break;
-                    case Field::Count:
-                        std::unreachable();
-                }
-            }))};
-
-        if (!seen) {
-            append_errors(errors, seen.error());
-            return;
-        }
+        decode_record<Field>(reader,
+                             node,
+                             "presentation",
+                             path,
+                             field_names,
+                             ReadMode::Override,
+                             errors,
+                             ([&](Field const field, FieldReader const& read) {
+                                 switch (field) {
+                                     case Field::player_ship:
+                                         read.patch(result.player_ship);
+                                         break;
+                                     case Field::laser_projectiles:
+                                         read.patch(result.laser_projectiles);
+                                         break;
+                                     case Field::capital_ships:
+                                         read.patch(result.capital_ships);
+                                         break;
+                                     case Field::turrets:
+                                         read.patch(result.turrets);
+                                         break;
+                                     case Field::entity_overlay:
+                                         read.patch(result.entity_overlay);
+                                         break;
+                                     case Field::radar:
+                                         read.patch(result.radar);
+                                         break;
+                                     case Field::Count:
+                                         std::unreachable();
+                                 }
+                             }));
     }
   private:
     enum class Field : std::uint8_t {
@@ -140,11 +123,6 @@ struct TypeReader<settings::PresentationOverrides>
         radar,
         Count,
     };
-
-    [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
-        -> std::optional<Field> {
-        return ioj::try_parse_enum<Field>(name, field_names);
-    }
 
     static constexpr std::array<std::string_view, 6> field_names{
         "player-ship", "laser-projectiles", "capital-ships", "turrets", "entity-overlay", "radar"};

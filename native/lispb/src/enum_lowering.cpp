@@ -558,9 +558,8 @@ auto native_enum_parsers(LoweringContext& context, DeclarationHandle const schem
 
         auto const prefix{helper == NativeEnumHelper::try_parse ? "try_parse_"
                                                                 : "try_parse_serialized_"};
-        parsers.add(lower_string_enum_parser(
-                        ir, prefix + snake_name, name, "value", entries, false, indexed),
-                    2);
+        parsers.add(
+            lower_string_enum_parser(ir, prefix + snake_name, name, "value", entries, indexed), 2);
     }
     return parsers.build();
 }

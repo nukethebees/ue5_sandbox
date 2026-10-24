@@ -3,14 +3,12 @@
 
 #pragma once
 
-#include "ioj/parse_enum.h"
 #include "ioj/s7/field_constraints.h"
 #include "ioj/s7/record_reader.h"
 #include "ReadableRecords.h"
 #include <ioj/s7/field_reader.h>
 
 #include <array>
-#include <optional>
 #include <string_view>
 
 namespace ioj::s7 {
@@ -21,25 +19,16 @@ struct TypeReader<codegen_compile_fixture::EmptyReadable>
                        NodeIndex const node,
                        std::string_view const path,
                        value_type&,
-                       ReadMode,
+                       ReadMode mode,
                        AstDiagnostics& errors) {
-        auto const seen{read_record<Field>(
-            reader, node, "empty", path, parse_field, ([](Field, NodeIndex, std::string_view) {}))};
-
-        if (!seen) {
-            append_errors(errors, seen.error());
-            return;
-        }
+        decode_record<Field>(
+            reader, node, "empty", path, field_names, mode, errors, ([](Field, FieldReader const&) {
+            }));
     }
   private:
     enum class Field : std::uint8_t {
         Count,
     };
-
-    [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
-        -> std::optional<Field> {
-        return ioj::try_parse_enum<Field>(name, field_names);
-    }
 
     static constexpr std::array<std::string_view, 0> field_names{};
 };
@@ -117,33 +106,26 @@ struct TypeReader<codegen_compile_fixture::DefaultReadable>
                        value_type& result,
                        ReadMode mode,
                        AstDiagnostics& errors) {
-        auto const seen{read_record<Field>(
-            reader,
-            node,
-            "default",
-            path,
-            parse_field,
-            ([&](Field const field, NodeIndex const value, std::string_view const location) {
-                FieldReader const read{reader, value, location, errors, mode};
-                switch (field) {
-                    case Field::count:
-                        read(result.count);
-                        break;
-                    case Field::maybe:
-                        read(result.maybe);
-                        break;
-                    case Field::Count:
-                        std::unreachable();
-                }
-            }))};
-
-        if (!seen) {
-            append_errors(errors, seen.error());
-            return;
-        }
-        if (mode == ReadMode::Create) {
-            require_fields<Field>(*seen, required, field_names, path, errors);
-        }
+        decode_record<Field>(reader,
+                             node,
+                             "default",
+                             path,
+                             field_names,
+                             mode,
+                             errors,
+                             ([&](Field const field, FieldReader const& read) {
+                                 switch (field) {
+                                     case Field::count:
+                                         read(result.count);
+                                         break;
+                                     case Field::maybe:
+                                         read(result.maybe);
+                                         break;
+                                     case Field::Count:
+                                         std::unreachable();
+                                 }
+                             }),
+                             required);
     }
   private:
     enum class Field : std::uint8_t {
@@ -151,11 +133,6 @@ struct TypeReader<codegen_compile_fixture::DefaultReadable>
         maybe,
         Count,
     };
-
-    [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
-        -> std::optional<Field> {
-        return ioj::try_parse_enum<Field>(name, field_names);
-    }
 
     static constexpr std::array<std::string_view, 2> field_names{"count", "maybe"};
     static constexpr auto required{required_fields<Field>({Field::count})};
@@ -170,38 +147,28 @@ struct TypeReader<codegen_compile_fixture::RecursiveReadable>
                        value_type& result,
                        ReadMode mode,
                        AstDiagnostics& errors) {
-        auto const seen{read_record<Field>(
-            reader,
-            node,
-            "recursive",
-            path,
-            parse_field,
-            ([&](Field const field, NodeIndex const value, std::string_view const location) {
-                FieldReader const read{reader, value, location, errors, mode};
-                switch (field) {
-                    case Field::children:
-                        read(result.children);
-                        break;
-                    case Field::Count:
-                        std::unreachable();
-                }
-            }))};
-
-        if (!seen) {
-            append_errors(errors, seen.error());
-            return;
-        }
+        decode_record<Field>(reader,
+                             node,
+                             "recursive",
+                             path,
+                             field_names,
+                             mode,
+                             errors,
+                             ([&](Field const field, FieldReader const& read) {
+                                 switch (field) {
+                                     case Field::children:
+                                         read(result.children);
+                                         break;
+                                     case Field::Count:
+                                         std::unreachable();
+                                 }
+                             }));
     }
   private:
     enum class Field : std::uint8_t {
         children,
         Count,
     };
-
-    [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
-        -> std::optional<Field> {
-        return ioj::try_parse_enum<Field>(name, field_names);
-    }
 
     static constexpr std::array<std::string_view, 1> field_names{"children"};
 };
@@ -213,30 +180,26 @@ struct TypeReader<codegen_compile_fixture::BoundedInteger>
         construct(Reader const& reader, NodeIndex const node, std::string_view const path) {
         AstDiagnostics errors{};
         std::optional<decltype(value_type::value)> value_value{};
-        auto const seen{read_record<Field>(
-            reader,
-            node,
-            "integer",
-            path,
-            parse_field,
-            ([&](Field const field, NodeIndex const value, std::string_view const location) {
-                FieldReader const read{reader, value, location, errors};
-                switch (field) {
-                    case Field::value:
-                        read.construct(value_value,
-                                       constraints::minimum((-9223372036854775807LL - 1LL)),
-                                       constraints::maximum(9223372036854775806ULL));
-                        break;
-                    case Field::Count:
-                        std::unreachable();
-                }
-            }))};
-
-        if (!seen) {
-            append_errors(errors, seen.error());
-            return std::unexpected{std::move(errors)};
-        }
-        require_fields<Field>(*seen, required, field_names, path, errors);
+        decode_record<Field>(reader,
+                             node,
+                             "integer",
+                             path,
+                             field_names,
+                             ReadMode::Create,
+                             errors,
+                             ([&](Field const field, FieldReader const& read) {
+                                 switch (field) {
+                                     case Field::value:
+                                         read.construct(
+                                             value_value,
+                                             constraints::minimum((-9223372036854775807LL - 1LL)),
+                                             constraints::maximum(9223372036854775806ULL));
+                                         break;
+                                     case Field::Count:
+                                         std::unreachable();
+                                 }
+                             }),
+                             required);
         if (!errors.empty()) {
             return std::unexpected{std::move(errors)};
         }
@@ -252,43 +215,31 @@ struct TypeReader<codegen_compile_fixture::BoundedInteger>
                        value_type& result,
                        ReadMode mode,
                        AstDiagnostics& errors) {
-        auto const seen{read_record<Field>(
-            reader,
-            node,
-            "integer",
-            path,
-            parse_field,
-            ([&](Field const field, NodeIndex const value, std::string_view const location) {
-                FieldReader const read{reader, value, location, errors, mode};
-                switch (field) {
-                    case Field::value:
-                        read(result.value,
-                             constraints::minimum((-9223372036854775807LL - 1LL)),
-                             constraints::maximum(9223372036854775806ULL));
-                        break;
-                    case Field::Count:
-                        std::unreachable();
-                }
-            }))};
-
-        if (!seen) {
-            append_errors(errors, seen.error());
-            return;
-        }
-        if (mode == ReadMode::Create) {
-            require_fields<Field>(*seen, required, field_names, path, errors);
-        }
+        decode_record<Field>(reader,
+                             node,
+                             "integer",
+                             path,
+                             field_names,
+                             mode,
+                             errors,
+                             ([&](Field const field, FieldReader const& read) {
+                                 switch (field) {
+                                     case Field::value:
+                                         read(result.value,
+                                              constraints::minimum((-9223372036854775807LL - 1LL)),
+                                              constraints::maximum(9223372036854775806ULL));
+                                         break;
+                                     case Field::Count:
+                                         std::unreachable();
+                                 }
+                             }),
+                             required);
     }
   private:
     enum class Field : std::uint8_t {
         value,
         Count,
     };
-
-    [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
-        -> std::optional<Field> {
-        return ioj::try_parse_enum<Field>(name, field_names);
-    }
 
     static constexpr std::array<std::string_view, 1> field_names{"value"};
     static constexpr auto required{required_fields<Field>({Field::value})};
@@ -302,31 +253,26 @@ struct TypeReader<codegen_compile_fixture::ReadableChild>
         AstDiagnostics errors{};
         std::optional<decltype(value_type::name)> value_name{};
         std::optional<decltype(value_type::count)> value_count{};
-        auto const seen{read_record<Field>(
-            reader,
-            node,
-            "child",
-            path,
-            parse_field,
-            ([&](Field const field, NodeIndex const value, std::string_view const location) {
-                FieldReader const read{reader, value, location, errors};
-                switch (field) {
-                    case Field::name:
-                        read.construct(value_name);
-                        break;
-                    case Field::count:
-                        read.construct(value_count, constraints::nonnegative);
-                        break;
-                    case Field::Count:
-                        std::unreachable();
-                }
-            }))};
-
-        if (!seen) {
-            append_errors(errors, seen.error());
-            return std::unexpected{std::move(errors)};
-        }
-        require_fields<Field>(*seen, required, field_names, path, errors);
+        decode_record<Field>(reader,
+                             node,
+                             "child",
+                             path,
+                             field_names,
+                             ReadMode::Create,
+                             errors,
+                             ([&](Field const field, FieldReader const& read) {
+                                 switch (field) {
+                                     case Field::name:
+                                         read.construct(value_name);
+                                         break;
+                                     case Field::count:
+                                         read.construct(value_count, constraints::nonnegative);
+                                         break;
+                                     case Field::Count:
+                                         std::unreachable();
+                                 }
+                             }),
+                             required);
         if (!errors.empty()) {
             return std::unexpected{std::move(errors)};
         }
@@ -345,33 +291,26 @@ struct TypeReader<codegen_compile_fixture::ReadableChild>
                        value_type& result,
                        ReadMode mode,
                        AstDiagnostics& errors) {
-        auto const seen{read_record<Field>(
-            reader,
-            node,
-            "child",
-            path,
-            parse_field,
-            ([&](Field const field, NodeIndex const value, std::string_view const location) {
-                FieldReader const read{reader, value, location, errors, mode};
-                switch (field) {
-                    case Field::name:
-                        read(result.name);
-                        break;
-                    case Field::count:
-                        read(result.count, constraints::nonnegative);
-                        break;
-                    case Field::Count:
-                        std::unreachable();
-                }
-            }))};
-
-        if (!seen) {
-            append_errors(errors, seen.error());
-            return;
-        }
-        if (mode == ReadMode::Create) {
-            require_fields<Field>(*seen, required, field_names, path, errors);
-        }
+        decode_record<Field>(reader,
+                             node,
+                             "child",
+                             path,
+                             field_names,
+                             mode,
+                             errors,
+                             ([&](Field const field, FieldReader const& read) {
+                                 switch (field) {
+                                     case Field::name:
+                                         read(result.name);
+                                         break;
+                                     case Field::count:
+                                         read(result.count, constraints::nonnegative);
+                                         break;
+                                     case Field::Count:
+                                         std::unreachable();
+                                 }
+                             }),
+                             required);
     }
   private:
     enum class Field : std::uint8_t {
@@ -379,11 +318,6 @@ struct TypeReader<codegen_compile_fixture::ReadableChild>
         count,
         Count,
     };
-
-    [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
-        -> std::optional<Field> {
-        return ioj::try_parse_enum<Field>(name, field_names);
-    }
 
     static constexpr std::array<std::string_view, 2> field_names{"name", "count"};
     static constexpr auto required{required_fields<Field>({Field::name})};
@@ -404,56 +338,52 @@ struct TypeReader<codegen_compile_fixture::ReadableRecord>
         std::optional<decltype(value_type::offset)> value_offset{};
         std::optional<decltype(value_type::title)> value_title{};
         std::optional<decltype(value_type::mode)> value_mode{};
-        auto const seen{read_record<Field>(
-            reader,
-            node,
-            "record",
-            path,
-            parse_field,
-            ([&](Field const field, NodeIndex const value, std::string_view const location) {
-                FieldReader const read{reader, value, location, errors};
-                switch (field) {
-                    case Field::child:
-                        read.construct(value_child);
-                        break;
-                    case Field::values:
-                        read.construct(value_values);
-                        break;
-                    case Field::points:
-                        read.construct(value_points);
-                        break;
-                    case Field::enabled:
-                        read.construct(value_enabled);
-                        break;
-                    case Field::maybe:
-                        read.construct(value_maybe);
-                        break;
-                    case Field::scale:
-                        read.construct(value_scale,
-                                       constraints::positive,
-                                       constraints::finite,
-                                       constraints::minimum(5.00000000000000000e-01),
-                                       constraints::maximum(5ULL));
-                        break;
-                    case Field::offset:
-                        read.construct(value_offset, constraints::nonzero);
-                        break;
-                    case Field::title:
-                        read.construct(value_title, constraints::nonempty);
-                        break;
-                    case Field::mode:
-                        read.construct(value_mode);
-                        break;
-                    case Field::Count:
-                        std::unreachable();
-                }
-            }))};
-
-        if (!seen) {
-            append_errors(errors, seen.error());
-            return std::unexpected{std::move(errors)};
-        }
-        require_fields<Field>(*seen, required, field_names, path, errors);
+        decode_record<Field>(reader,
+                             node,
+                             "record",
+                             path,
+                             field_names,
+                             ReadMode::Create,
+                             errors,
+                             ([&](Field const field, FieldReader const& read) {
+                                 switch (field) {
+                                     case Field::child:
+                                         read.construct(value_child);
+                                         break;
+                                     case Field::values:
+                                         read.construct(value_values);
+                                         break;
+                                     case Field::points:
+                                         read.construct(value_points);
+                                         break;
+                                     case Field::enabled:
+                                         read.construct(value_enabled);
+                                         break;
+                                     case Field::maybe:
+                                         read.construct(value_maybe);
+                                         break;
+                                     case Field::scale:
+                                         read.construct(
+                                             value_scale,
+                                             constraints::positive,
+                                             constraints::finite,
+                                             constraints::minimum(5.00000000000000000e-01),
+                                             constraints::maximum(5ULL));
+                                         break;
+                                     case Field::offset:
+                                         read.construct(value_offset, constraints::nonzero);
+                                         break;
+                                     case Field::title:
+                                         read.construct(value_title, constraints::nonempty);
+                                         break;
+                                     case Field::mode:
+                                         read.construct(value_mode);
+                                         break;
+                                     case Field::Count:
+                                         std::unreachable();
+                                 }
+                             }),
+                             required);
         if (!errors.empty()) {
             return std::unexpected{std::move(errors)};
         }
@@ -493,58 +423,51 @@ struct TypeReader<codegen_compile_fixture::ReadableRecord>
                        value_type& result,
                        ReadMode mode,
                        AstDiagnostics& errors) {
-        auto const seen{read_record<Field>(
-            reader,
-            node,
-            "record",
-            path,
-            parse_field,
-            ([&](Field const field, NodeIndex const value, std::string_view const location) {
-                FieldReader const read{reader, value, location, errors, mode};
-                switch (field) {
-                    case Field::child:
-                        read(result.child);
-                        break;
-                    case Field::values:
-                        read(result.values);
-                        break;
-                    case Field::points:
-                        read(result.points);
-                        break;
-                    case Field::enabled:
-                        read(result.enabled);
-                        break;
-                    case Field::maybe:
-                        read(result.maybe);
-                        break;
-                    case Field::scale:
-                        read(result.scale,
-                             constraints::positive,
-                             constraints::finite,
-                             constraints::minimum(5.00000000000000000e-01),
-                             constraints::maximum(5ULL));
-                        break;
-                    case Field::offset:
-                        read(result.offset, constraints::nonzero);
-                        break;
-                    case Field::title:
-                        read(result.title, constraints::nonempty);
-                        break;
-                    case Field::mode:
-                        read(result.mode);
-                        break;
-                    case Field::Count:
-                        std::unreachable();
-                }
-            }))};
-
-        if (!seen) {
-            append_errors(errors, seen.error());
-            return;
-        }
-        if (mode == ReadMode::Create) {
-            require_fields<Field>(*seen, required, field_names, path, errors);
-        }
+        decode_record<Field>(reader,
+                             node,
+                             "record",
+                             path,
+                             field_names,
+                             mode,
+                             errors,
+                             ([&](Field const field, FieldReader const& read) {
+                                 switch (field) {
+                                     case Field::child:
+                                         read(result.child);
+                                         break;
+                                     case Field::values:
+                                         read(result.values);
+                                         break;
+                                     case Field::points:
+                                         read(result.points);
+                                         break;
+                                     case Field::enabled:
+                                         read(result.enabled);
+                                         break;
+                                     case Field::maybe:
+                                         read(result.maybe);
+                                         break;
+                                     case Field::scale:
+                                         read(result.scale,
+                                              constraints::positive,
+                                              constraints::finite,
+                                              constraints::minimum(5.00000000000000000e-01),
+                                              constraints::maximum(5ULL));
+                                         break;
+                                     case Field::offset:
+                                         read(result.offset, constraints::nonzero);
+                                         break;
+                                     case Field::title:
+                                         read(result.title, constraints::nonempty);
+                                         break;
+                                     case Field::mode:
+                                         read(result.mode);
+                                         break;
+                                     case Field::Count:
+                                         std::unreachable();
+                                 }
+                             }),
+                             required);
     }
   private:
     enum class Field : std::uint8_t {
@@ -559,11 +482,6 @@ struct TypeReader<codegen_compile_fixture::ReadableRecord>
         mode,
         Count,
     };
-
-    [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
-        -> std::optional<Field> {
-        return ioj::try_parse_enum<Field>(name, field_names);
-    }
 
     static constexpr std::array<std::string_view, 9> field_names{
         "child", "values", "samples", "enabled", "maybe", "scale", "offset", "title", "mode"};

@@ -5,12 +5,10 @@
 
 #include "ioj/levels/authoring/identifier_reader.h"
 #include "ioj/levels/level_camera_definition.h"
-#include "ioj/parse_enum.h"
 #include "ioj/s7/record_reader.h"
 #include <ioj/s7/field_reader.h>
 
 #include <array>
-#include <optional>
 #include <string_view>
 
 namespace ioj::s7 {
@@ -22,36 +20,29 @@ struct TypeReader<levels::LevelCameraDefinition> : RecordReader<levels::LevelCam
                        value_type& result,
                        ReadMode mode,
                        AstDiagnostics& errors) {
-        auto const seen{read_record<Field>(
-            reader,
-            node,
-            "camera",
-            path,
-            parse_field,
-            ([&](Field const field, NodeIndex const value, std::string_view const location) {
-                FieldReader const read{reader, value, location, errors, mode};
-                switch (field) {
-                    case Field::target_entity_ids:
-                        read(result.target_entity_ids);
-                        break;
-                    case Field::offset_direction:
-                        read(result.offset_direction);
-                        break;
-                    case Field::distance:
-                        read(result.distance);
-                        break;
-                    case Field::Count:
-                        std::unreachable();
-                }
-            }))};
-
-        if (!seen) {
-            append_errors(errors, seen.error());
-            return;
-        }
-        if (mode == ReadMode::Create) {
-            require_fields<Field>(*seen, required, field_names, path, errors);
-        }
+        decode_record<Field>(reader,
+                             node,
+                             "camera",
+                             path,
+                             field_names,
+                             mode,
+                             errors,
+                             ([&](Field const field, FieldReader const& read) {
+                                 switch (field) {
+                                     case Field::target_entity_ids:
+                                         read(result.target_entity_ids);
+                                         break;
+                                     case Field::offset_direction:
+                                         read(result.offset_direction);
+                                         break;
+                                     case Field::distance:
+                                         read(result.distance);
+                                         break;
+                                     case Field::Count:
+                                         std::unreachable();
+                                 }
+                             }),
+                             required);
     }
   private:
     enum class Field : std::uint8_t {
@@ -60,11 +51,6 @@ struct TypeReader<levels::LevelCameraDefinition> : RecordReader<levels::LevelCam
         distance,
         Count,
     };
-
-    [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
-        -> std::optional<Field> {
-        return ioj::try_parse_enum<Field>(name, field_names);
-    }
 
     static constexpr std::array<std::string_view, 3> field_names{
         "look-at", "offset-direction", "distance"};

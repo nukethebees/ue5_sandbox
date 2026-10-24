@@ -3,14 +3,12 @@
 
 #pragma once
 
-#include "ioj/parse_enum.h"
 #include "ioj/s7/field_constraints.h"
 #include "ioj/s7/record_reader.h"
 #include "Records.h"
 #include <ioj/s7/field_reader.h>
 
 #include <array>
-#include <optional>
 #include <string_view>
 
 namespace ioj::s7 {
@@ -23,33 +21,26 @@ struct TypeReader<codegen_compile_fixture::RangeValue>
                        value_type& result,
                        ReadMode mode,
                        AstDiagnostics& errors) {
-        auto const seen{read_record<Field>(
-            reader,
-            node,
-            "range",
-            path,
-            parse_field,
-            ([&](Field const field, NodeIndex const value, std::string_view const location) {
-                FieldReader const read{reader, value, location, errors, mode};
-                switch (field) {
-                    case Field::minimum:
-                        read(result.minimum);
-                        break;
-                    case Field::maximum:
-                        read(result.maximum);
-                        break;
-                    case Field::Count:
-                        std::unreachable();
-                }
-            }))};
-
-        if (!seen) {
-            append_errors(errors, seen.error());
-            return;
-        }
-        if (mode == ReadMode::Create) {
-            require_fields<Field>(*seen, required, field_names, path, errors);
-        }
+        decode_record<Field>(reader,
+                             node,
+                             "range",
+                             path,
+                             field_names,
+                             mode,
+                             errors,
+                             ([&](Field const field, FieldReader const& read) {
+                                 switch (field) {
+                                     case Field::minimum:
+                                         read(result.minimum);
+                                         break;
+                                     case Field::maximum:
+                                         read(result.maximum);
+                                         break;
+                                     case Field::Count:
+                                         std::unreachable();
+                                 }
+                             }),
+                             required);
     }
   private:
     enum class Field : std::uint8_t {
@@ -57,11 +48,6 @@ struct TypeReader<codegen_compile_fixture::RangeValue>
         maximum,
         Count,
     };
-
-    [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
-        -> std::optional<Field> {
-        return ioj::try_parse_enum<Field>(name, field_names);
-    }
 
     static constexpr std::array<std::string_view, 2> field_names{"minimum", "maximum"};
     static constexpr auto required{required_fields<Field>({Field::minimum, Field::maximum})};
@@ -76,30 +62,25 @@ struct TypeReader<codegen_compile_fixture::RangeSettings>
                        value_type& result,
                        ReadMode mode,
                        AstDiagnostics& errors) {
-        auto const seen{read_record<Field>(
-            reader,
-            node,
-            "ranges",
-            path,
-            parse_field,
-            ([&](Field const field, NodeIndex const value, std::string_view const location) {
-                FieldReader const read{reader, value, location, errors, mode};
-                switch (field) {
-                    case Field::range:
-                        read(result.range);
-                        break;
-                    case Field::enabled:
-                        read(result.enabled);
-                        break;
-                    case Field::Count:
-                        std::unreachable();
-                }
-            }))};
-
-        if (!seen) {
-            append_errors(errors, seen.error());
-            return;
-        }
+        decode_record<Field>(reader,
+                             node,
+                             "ranges",
+                             path,
+                             field_names,
+                             mode,
+                             errors,
+                             ([&](Field const field, FieldReader const& read) {
+                                 switch (field) {
+                                     case Field::range:
+                                         read(result.range);
+                                         break;
+                                     case Field::enabled:
+                                         read(result.enabled);
+                                         break;
+                                     case Field::Count:
+                                         std::unreachable();
+                                 }
+                             }));
     }
   private:
     enum class Field : std::uint8_t {
@@ -107,11 +88,6 @@ struct TypeReader<codegen_compile_fixture::RangeSettings>
         enabled,
         Count,
     };
-
-    [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
-        -> std::optional<Field> {
-        return ioj::try_parse_enum<Field>(name, field_names);
-    }
 
     static constexpr std::array<std::string_view, 2> field_names{"range", "enabled"};
 };
@@ -125,30 +101,25 @@ struct TypeReader<codegen_compile_fixture::RangeSettingsOverrides>
                        value_type& result,
                        ReadMode,
                        AstDiagnostics& errors) {
-        auto const seen{read_record<Field>(
-            reader,
-            node,
-            "ranges",
-            path,
-            parse_field,
-            ([&](Field const field, NodeIndex const value, std::string_view const location) {
-                FieldReader const read{reader, value, location, errors};
-                switch (field) {
-                    case Field::range:
-                        read.patch(result.range);
-                        break;
-                    case Field::enabled:
-                        read.patch(result.enabled);
-                        break;
-                    case Field::Count:
-                        std::unreachable();
-                }
-            }))};
-
-        if (!seen) {
-            append_errors(errors, seen.error());
-            return;
-        }
+        decode_record<Field>(reader,
+                             node,
+                             "ranges",
+                             path,
+                             field_names,
+                             ReadMode::Override,
+                             errors,
+                             ([&](Field const field, FieldReader const& read) {
+                                 switch (field) {
+                                     case Field::range:
+                                         read.patch(result.range);
+                                         break;
+                                     case Field::enabled:
+                                         read.patch(result.enabled);
+                                         break;
+                                     case Field::Count:
+                                         std::unreachable();
+                                 }
+                             }));
     }
   private:
     enum class Field : std::uint8_t {
@@ -156,11 +127,6 @@ struct TypeReader<codegen_compile_fixture::RangeSettingsOverrides>
         enabled,
         Count,
     };
-
-    [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
-        -> std::optional<Field> {
-        return ioj::try_parse_enum<Field>(name, field_names);
-    }
 
     static constexpr std::array<std::string_view, 2> field_names{"range", "enabled"};
 };
@@ -174,30 +140,25 @@ struct TypeReader<codegen_compile_fixture::WeaponSettings>
                        value_type& result,
                        ReadMode mode,
                        AstDiagnostics& errors) {
-        auto const seen{read_record<Field>(
-            reader,
-            node,
-            "weapon",
-            path,
-            parse_field,
-            ([&](Field const field, NodeIndex const value, std::string_view const location) {
-                FieldReader const read{reader, value, location, errors, mode};
-                switch (field) {
-                    case Field::damage:
-                        read(result.damage, constraints::nonnegative);
-                        break;
-                    case Field::turn_rate:
-                        read(result.turn_rate);
-                        break;
-                    case Field::Count:
-                        std::unreachable();
-                }
-            }))};
-
-        if (!seen) {
-            append_errors(errors, seen.error());
-            return;
-        }
+        decode_record<Field>(reader,
+                             node,
+                             "weapon",
+                             path,
+                             field_names,
+                             mode,
+                             errors,
+                             ([&](Field const field, FieldReader const& read) {
+                                 switch (field) {
+                                     case Field::damage:
+                                         read(result.damage, constraints::nonnegative);
+                                         break;
+                                     case Field::turn_rate:
+                                         read(result.turn_rate);
+                                         break;
+                                     case Field::Count:
+                                         std::unreachable();
+                                 }
+                             }));
     }
   private:
     enum class Field : std::uint8_t {
@@ -205,11 +166,6 @@ struct TypeReader<codegen_compile_fixture::WeaponSettings>
         turn_rate,
         Count,
     };
-
-    [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
-        -> std::optional<Field> {
-        return ioj::try_parse_enum<Field>(name, field_names);
-    }
 
     static constexpr std::array<std::string_view, 2> field_names{"damage", "turn-speed"};
 };
@@ -223,30 +179,25 @@ struct TypeReader<codegen_compile_fixture::WeaponSettingsOverrides>
                        value_type& result,
                        ReadMode,
                        AstDiagnostics& errors) {
-        auto const seen{read_record<Field>(
-            reader,
-            node,
-            "weapon",
-            path,
-            parse_field,
-            ([&](Field const field, NodeIndex const value, std::string_view const location) {
-                FieldReader const read{reader, value, location, errors};
-                switch (field) {
-                    case Field::damage:
-                        read.patch(result.damage, constraints::nonnegative);
-                        break;
-                    case Field::turn_rate:
-                        read.patch(result.turn_rate);
-                        break;
-                    case Field::Count:
-                        std::unreachable();
-                }
-            }))};
-
-        if (!seen) {
-            append_errors(errors, seen.error());
-            return;
-        }
+        decode_record<Field>(reader,
+                             node,
+                             "weapon",
+                             path,
+                             field_names,
+                             ReadMode::Override,
+                             errors,
+                             ([&](Field const field, FieldReader const& read) {
+                                 switch (field) {
+                                     case Field::damage:
+                                         read.patch(result.damage, constraints::nonnegative);
+                                         break;
+                                     case Field::turn_rate:
+                                         read.patch(result.turn_rate);
+                                         break;
+                                     case Field::Count:
+                                         std::unreachable();
+                                 }
+                             }));
     }
   private:
     enum class Field : std::uint8_t {
@@ -254,11 +205,6 @@ struct TypeReader<codegen_compile_fixture::WeaponSettingsOverrides>
         turn_rate,
         Count,
     };
-
-    [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
-        -> std::optional<Field> {
-        return ioj::try_parse_enum<Field>(name, field_names);
-    }
 
     static constexpr std::array<std::string_view, 2> field_names{"damage", "turn-speed"};
 };
@@ -272,33 +218,28 @@ struct TypeReader<codegen_compile_fixture::ActorSettings>
                        value_type& result,
                        ReadMode mode,
                        AstDiagnostics& errors) {
-        auto const seen{read_record<Field>(
-            reader,
-            node,
-            "actor",
-            path,
-            parse_field,
-            ([&](Field const field, NodeIndex const value, std::string_view const location) {
-                FieldReader const read{reader, value, location, errors, mode};
-                switch (field) {
-                    case Field::max_health:
-                        read(result.max_health);
-                        break;
-                    case Field::weapon:
-                        read(result.weapon);
-                        break;
-                    case Field::optional_limit:
-                        read(result.optional_limit);
-                        break;
-                    case Field::Count:
-                        std::unreachable();
-                }
-            }))};
-
-        if (!seen) {
-            append_errors(errors, seen.error());
-            return;
-        }
+        decode_record<Field>(reader,
+                             node,
+                             "actor",
+                             path,
+                             field_names,
+                             mode,
+                             errors,
+                             ([&](Field const field, FieldReader const& read) {
+                                 switch (field) {
+                                     case Field::max_health:
+                                         read(result.max_health);
+                                         break;
+                                     case Field::weapon:
+                                         read(result.weapon);
+                                         break;
+                                     case Field::optional_limit:
+                                         read(result.optional_limit);
+                                         break;
+                                     case Field::Count:
+                                         std::unreachable();
+                                 }
+                             }));
     }
   private:
     enum class Field : std::uint8_t {
@@ -307,11 +248,6 @@ struct TypeReader<codegen_compile_fixture::ActorSettings>
         optional_limit,
         Count,
     };
-
-    [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
-        -> std::optional<Field> {
-        return ioj::try_parse_enum<Field>(name, field_names);
-    }
 
     static constexpr std::array<std::string_view, 3> field_names{
         "max-health", "weapon", "optional-limit"};
@@ -326,33 +262,28 @@ struct TypeReader<codegen_compile_fixture::ActorSettingsOverrides>
                        value_type& result,
                        ReadMode,
                        AstDiagnostics& errors) {
-        auto const seen{read_record<Field>(
-            reader,
-            node,
-            "actor",
-            path,
-            parse_field,
-            ([&](Field const field, NodeIndex const value, std::string_view const location) {
-                FieldReader const read{reader, value, location, errors};
-                switch (field) {
-                    case Field::max_health:
-                        read.patch(result.max_health);
-                        break;
-                    case Field::weapon:
-                        read.patch(result.weapon);
-                        break;
-                    case Field::optional_limit:
-                        read.patch(result.optional_limit);
-                        break;
-                    case Field::Count:
-                        std::unreachable();
-                }
-            }))};
-
-        if (!seen) {
-            append_errors(errors, seen.error());
-            return;
-        }
+        decode_record<Field>(reader,
+                             node,
+                             "actor",
+                             path,
+                             field_names,
+                             ReadMode::Override,
+                             errors,
+                             ([&](Field const field, FieldReader const& read) {
+                                 switch (field) {
+                                     case Field::max_health:
+                                         read.patch(result.max_health);
+                                         break;
+                                     case Field::weapon:
+                                         read.patch(result.weapon);
+                                         break;
+                                     case Field::optional_limit:
+                                         read.patch(result.optional_limit);
+                                         break;
+                                     case Field::Count:
+                                         std::unreachable();
+                                 }
+                             }));
     }
   private:
     enum class Field : std::uint8_t {
@@ -361,11 +292,6 @@ struct TypeReader<codegen_compile_fixture::ActorSettingsOverrides>
         optional_limit,
         Count,
     };
-
-    [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
-        -> std::optional<Field> {
-        return ioj::try_parse_enum<Field>(name, field_names);
-    }
 
     static constexpr std::array<std::string_view, 3> field_names{
         "max-health", "weapon", "optional-limit"};

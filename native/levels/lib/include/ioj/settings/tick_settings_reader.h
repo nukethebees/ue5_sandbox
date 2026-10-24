@@ -3,14 +3,12 @@
 
 #pragma once
 
-#include "ioj/parse_enum.h"
 #include "ioj/s7/frequency_reader.h"
 #include "ioj/s7/record_reader.h"
 #include "ioj/settings/tick_settings.h"
 #include <ioj/s7/field_reader.h>
 
 #include <array>
-#include <optional>
 #include <string_view>
 
 namespace ioj::s7 {
@@ -22,30 +20,25 @@ struct TypeReader<settings::TickSettings> : RecordReader<settings::TickSettings>
                        value_type& result,
                        ReadMode mode,
                        AstDiagnostics& errors) {
-        auto const seen{read_record<Field>(
-            reader,
-            node,
-            "tick",
-            path,
-            parse_field,
-            ([&](Field const field, NodeIndex const value, std::string_view const location) {
-                FieldReader const read{reader, value, location, errors, mode};
-                switch (field) {
-                    case Field::tick_rate:
-                        read(result.tick_rate);
-                        break;
-                    case Field::time_scale:
-                        read(result.time_scale);
-                        break;
-                    case Field::Count:
-                        std::unreachable();
-                }
-            }))};
-
-        if (!seen) {
-            append_errors(errors, seen.error());
-            return;
-        }
+        decode_record<Field>(reader,
+                             node,
+                             "tick",
+                             path,
+                             field_names,
+                             mode,
+                             errors,
+                             ([&](Field const field, FieldReader const& read) {
+                                 switch (field) {
+                                     case Field::tick_rate:
+                                         read(result.tick_rate);
+                                         break;
+                                     case Field::time_scale:
+                                         read(result.time_scale);
+                                         break;
+                                     case Field::Count:
+                                         std::unreachable();
+                                 }
+                             }));
     }
   private:
     enum class Field : std::uint8_t {
@@ -53,11 +46,6 @@ struct TypeReader<settings::TickSettings> : RecordReader<settings::TickSettings>
         time_scale,
         Count,
     };
-
-    [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
-        -> std::optional<Field> {
-        return ioj::try_parse_enum<Field>(name, field_names);
-    }
 
     static constexpr std::array<std::string_view, 2> field_names{"tick-rate", "time-scale"};
 };
@@ -71,30 +59,25 @@ struct TypeReader<settings::TickSettingsOverrides>
                        value_type& result,
                        ReadMode,
                        AstDiagnostics& errors) {
-        auto const seen{read_record<Field>(
-            reader,
-            node,
-            "tick",
-            path,
-            parse_field,
-            ([&](Field const field, NodeIndex const value, std::string_view const location) {
-                FieldReader const read{reader, value, location, errors};
-                switch (field) {
-                    case Field::tick_rate:
-                        read.patch(result.tick_rate);
-                        break;
-                    case Field::time_scale:
-                        read.patch(result.time_scale);
-                        break;
-                    case Field::Count:
-                        std::unreachable();
-                }
-            }))};
-
-        if (!seen) {
-            append_errors(errors, seen.error());
-            return;
-        }
+        decode_record<Field>(reader,
+                             node,
+                             "tick",
+                             path,
+                             field_names,
+                             ReadMode::Override,
+                             errors,
+                             ([&](Field const field, FieldReader const& read) {
+                                 switch (field) {
+                                     case Field::tick_rate:
+                                         read.patch(result.tick_rate);
+                                         break;
+                                     case Field::time_scale:
+                                         read.patch(result.time_scale);
+                                         break;
+                                     case Field::Count:
+                                         std::unreachable();
+                                 }
+                             }));
     }
   private:
     enum class Field : std::uint8_t {
@@ -102,11 +85,6 @@ struct TypeReader<settings::TickSettingsOverrides>
         time_scale,
         Count,
     };
-
-    [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
-        -> std::optional<Field> {
-        return ioj::try_parse_enum<Field>(name, field_names);
-    }
 
     static constexpr std::array<std::string_view, 2> field_names{"tick-rate", "time-scale"};
 };

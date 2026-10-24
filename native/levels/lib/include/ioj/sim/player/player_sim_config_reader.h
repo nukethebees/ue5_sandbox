@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "ioj/parse_enum.h"
 #include "ioj/s7/field_constraints.h"
 #include "ioj/s7/record_reader.h"
 #include "ioj/sim/lasers/laser_weapon_sim_config_reader.h"
@@ -11,7 +10,6 @@
 #include <ioj/s7/field_reader.h>
 
 #include <array>
-#include <optional>
 #include <string_view>
 
 namespace ioj::s7 {
@@ -23,57 +21,52 @@ struct TypeReader<sim::PlayerSimConfig> : RecordReader<sim::PlayerSimConfig> {
                        value_type& result,
                        ReadMode mode,
                        AstDiagnostics& errors) {
-        auto const seen{read_record<Field>(
-            reader,
-            node,
-            "player-ship",
-            path,
-            parse_field,
-            ([&](Field const field, NodeIndex const value, std::string_view const location) {
-                FieldReader const read{reader, value, location, errors, mode};
-                switch (field) {
-                    case Field::thrust_energy_max:
-                        read(result.thrust_energy_max);
-                        break;
-                    case Field::pitch_angle_max:
-                        read(result.pitch_angle_max, constraints::finite);
-                        break;
-                    case Field::pitch_speed:
-                        read(result.pitch_speed, constraints::finite);
-                        break;
-                    case Field::yaw_angle_max:
-                        read(result.yaw_angle_max, constraints::finite);
-                        break;
-                    case Field::yaw_speed:
-                        read(result.yaw_speed, constraints::finite);
-                        break;
-                    case Field::turn_bank_angle_max:
-                        read(result.turn_bank_angle_max, constraints::finite);
-                        break;
-                    case Field::turn_bank_speed:
-                        read(result.turn_bank_speed, constraints::finite);
-                        break;
-                    case Field::laser:
-                        read(result.laser);
-                        break;
-                    case Field::health:
-                        read(result.health);
-                        break;
-                    case Field::laser_mode:
-                        read(result.laser_mode);
-                        break;
-                    case Field::laser_fire_rate:
-                        read(result.laser_fire_rate);
-                        break;
-                    case Field::Count:
-                        std::unreachable();
-                }
-            }))};
-
-        if (!seen) {
-            append_errors(errors, seen.error());
-            return;
-        }
+        decode_record<Field>(reader,
+                             node,
+                             "player-ship",
+                             path,
+                             field_names,
+                             mode,
+                             errors,
+                             ([&](Field const field, FieldReader const& read) {
+                                 switch (field) {
+                                     case Field::thrust_energy_max:
+                                         read(result.thrust_energy_max);
+                                         break;
+                                     case Field::pitch_angle_max:
+                                         read(result.pitch_angle_max, constraints::finite);
+                                         break;
+                                     case Field::pitch_speed:
+                                         read(result.pitch_speed, constraints::finite);
+                                         break;
+                                     case Field::yaw_angle_max:
+                                         read(result.yaw_angle_max, constraints::finite);
+                                         break;
+                                     case Field::yaw_speed:
+                                         read(result.yaw_speed, constraints::finite);
+                                         break;
+                                     case Field::turn_bank_angle_max:
+                                         read(result.turn_bank_angle_max, constraints::finite);
+                                         break;
+                                     case Field::turn_bank_speed:
+                                         read(result.turn_bank_speed, constraints::finite);
+                                         break;
+                                     case Field::laser:
+                                         read(result.laser);
+                                         break;
+                                     case Field::health:
+                                         read(result.health);
+                                         break;
+                                     case Field::laser_mode:
+                                         read(result.laser_mode);
+                                         break;
+                                     case Field::laser_fire_rate:
+                                         read(result.laser_fire_rate);
+                                         break;
+                                     case Field::Count:
+                                         std::unreachable();
+                                 }
+                             }));
     }
   private:
     enum class Field : std::uint8_t {
@@ -90,11 +83,6 @@ struct TypeReader<sim::PlayerSimConfig> : RecordReader<sim::PlayerSimConfig> {
         laser_fire_rate,
         Count,
     };
-
-    [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
-        -> std::optional<Field> {
-        return ioj::try_parse_enum<Field>(name, field_names);
-    }
 
     static constexpr std::array<std::string_view, 11> field_names{"thrust-energy-max",
                                                                   "pitch-angle-max",
@@ -118,57 +106,53 @@ struct TypeReader<sim::PlayerSimConfigOverrides>
                        value_type& result,
                        ReadMode,
                        AstDiagnostics& errors) {
-        auto const seen{read_record<Field>(
-            reader,
-            node,
-            "player-ship",
-            path,
-            parse_field,
-            ([&](Field const field, NodeIndex const value, std::string_view const location) {
-                FieldReader const read{reader, value, location, errors};
-                switch (field) {
-                    case Field::thrust_energy_max:
-                        read.patch(result.thrust_energy_max);
-                        break;
-                    case Field::pitch_angle_max:
-                        read.patch(result.pitch_angle_max, constraints::finite);
-                        break;
-                    case Field::pitch_speed:
-                        read.patch(result.pitch_speed, constraints::finite);
-                        break;
-                    case Field::yaw_angle_max:
-                        read.patch(result.yaw_angle_max, constraints::finite);
-                        break;
-                    case Field::yaw_speed:
-                        read.patch(result.yaw_speed, constraints::finite);
-                        break;
-                    case Field::turn_bank_angle_max:
-                        read.patch(result.turn_bank_angle_max, constraints::finite);
-                        break;
-                    case Field::turn_bank_speed:
-                        read.patch(result.turn_bank_speed, constraints::finite);
-                        break;
-                    case Field::laser:
-                        read.patch(result.laser);
-                        break;
-                    case Field::health:
-                        read.patch(result.health);
-                        break;
-                    case Field::laser_mode:
-                        read.patch(result.laser_mode);
-                        break;
-                    case Field::laser_fire_rate:
-                        read.patch(result.laser_fire_rate);
-                        break;
-                    case Field::Count:
-                        std::unreachable();
-                }
-            }))};
-
-        if (!seen) {
-            append_errors(errors, seen.error());
-            return;
-        }
+        decode_record<Field>(reader,
+                             node,
+                             "player-ship",
+                             path,
+                             field_names,
+                             ReadMode::Override,
+                             errors,
+                             ([&](Field const field, FieldReader const& read) {
+                                 switch (field) {
+                                     case Field::thrust_energy_max:
+                                         read.patch(result.thrust_energy_max);
+                                         break;
+                                     case Field::pitch_angle_max:
+                                         read.patch(result.pitch_angle_max, constraints::finite);
+                                         break;
+                                     case Field::pitch_speed:
+                                         read.patch(result.pitch_speed, constraints::finite);
+                                         break;
+                                     case Field::yaw_angle_max:
+                                         read.patch(result.yaw_angle_max, constraints::finite);
+                                         break;
+                                     case Field::yaw_speed:
+                                         read.patch(result.yaw_speed, constraints::finite);
+                                         break;
+                                     case Field::turn_bank_angle_max:
+                                         read.patch(result.turn_bank_angle_max,
+                                                    constraints::finite);
+                                         break;
+                                     case Field::turn_bank_speed:
+                                         read.patch(result.turn_bank_speed, constraints::finite);
+                                         break;
+                                     case Field::laser:
+                                         read.patch(result.laser);
+                                         break;
+                                     case Field::health:
+                                         read.patch(result.health);
+                                         break;
+                                     case Field::laser_mode:
+                                         read.patch(result.laser_mode);
+                                         break;
+                                     case Field::laser_fire_rate:
+                                         read.patch(result.laser_fire_rate);
+                                         break;
+                                     case Field::Count:
+                                         std::unreachable();
+                                 }
+                             }));
     }
   private:
     enum class Field : std::uint8_t {
@@ -185,11 +169,6 @@ struct TypeReader<sim::PlayerSimConfigOverrides>
         laser_fire_rate,
         Count,
     };
-
-    [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
-        -> std::optional<Field> {
-        return ioj::try_parse_enum<Field>(name, field_names);
-    }
 
     static constexpr std::array<std::string_view, 11> field_names{"thrust-energy-max",
                                                                   "pitch-angle-max",

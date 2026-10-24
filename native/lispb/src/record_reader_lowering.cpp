@@ -3,7 +3,6 @@
 #include "declaration_emission.h"
 #include "lowering_context.h"
 #include "lowering_utils.h"
-#include "string_enum_parser.h"
 
 #include <codegen/ast/cpp_ir.h>
 #include <codegen/ast/cpp_types.h>
@@ -152,10 +151,8 @@ auto fields_body(LoweringContext& context,
         }
     } else {
         // The IR has no lambda node; keep only the streaming callback's syntax textual.
-        auto visitor{std::format(
-            "[&](Field const field, NodeIndex const value, std::string_view const location) {{\n"
-            "FieldReader const read{{reader, value, location, errors{}}};\nswitch (field) {{\n",
-            read_mode)};
+        std::string visitor{
+            "[&](Field const field, FieldReader const& read) {\nswitch (field) {\n"};
         for (auto const field : fields) {
             auto const name{context.text(members.name[members.index(field)])};
             auto const destination{(constructing ? "value_" : "result.") + name};
@@ -167,34 +164,24 @@ auto fields_body(LoweringContext& context,
         }
         visitor += "case Field::Count: std::unreachable();\n}\n}";
         if (fields.empty()) {
-            visitor = "[](Field, NodeIndex, std::string_view) {}";
+            visitor = "[](Field, FieldReader const&) {}";
         }
-        body.add(ir.variable("auto const",
-                             "seen",
-                             ir.call(ir.named("read_record<Field>"),
-                                     {ir.named("reader"),
-                                      ir.named("node"),
-                                      ir.string_literal(context.text(*records.s7_tag[row])),
-                                      ir.named("path"),
-                                      ir.named("parse_field"),
-                                      ir.raw_expr(visitor, {})})),
-                 2);
-        body.add(ir.if_stmt(
-            ir.raw_expr("!seen", {}),
-            ir.block({ir.expr_stmt(ir.raw_expr("append_errors(errors, seen.error())", {})),
-                      constructing
-                          ? ir.return_stmt(ir.raw_expr("std::unexpected{std::move(errors)}", {}))
-                          : ir.return_stmt()})));
-
+        std::vector<Expr> arguments{ir.named("reader"),
+                                    ir.named("node"),
+                                    ir.string_literal(context.text(*records.s7_tag[row])),
+                                    ir.named("path"),
+                                    ir.named("field_names"),
+                                    ir.named(constructing ? "ReadMode::Create"
+                                             : overrides  ? "ReadMode::Override"
+                                                          : "mode"),
+                                    ir.named("errors"),
+                                    ir.raw_expr(visitor, {})};
         if (!overrides && std::ranges::any_of(fields, [&](auto const field) {
                 return members.s7[members.index(field)].required;
             })) {
-            auto const check{ir.expr_stmt(ir.raw_expr(
-                "require_fields<Field>(*seen, required, field_names, path, errors)", {}))};
-            body.add(constructing ? check
-                                  : ir.if_stmt(ir.raw_expr("mode == ReadMode::Create", {}),
-                                               ir.block({check})));
+            arguments.push_back(ir.named("required"));
         }
+        body.add(ir.expr_stmt(ir.call(ir.named("decode_record<Field>"), arguments)));
     }
     if (!constructing) {
         return body.build();
@@ -252,7 +239,6 @@ void lower_record_reader(LoweringContext& context,
         emission.reader_includes.push_back(ir.strings.intern("ioj/s7/field_constraints.h"));
     }
     std::vector<EnumValueId> values;
-    std::vector<StringEnumEntry> entries;
     std::set<std::string> keys;
     for (auto const field : fields) {
         auto const member{members.name[members.index(field)]};
@@ -267,7 +253,6 @@ void lower_record_reader(LoweringContext& context,
             throw std::invalid_argument{"Duplicate S7 field name: " + key};
         }
         values.push_back(ir.enumerator(member));
-        entries.push_back({key, "Field::" + context.text(member)});
     }
     NodeListBuilder declarations{ir};
     auto const includes{context.declarations.items(records.s7_reader_includes[row])};
@@ -299,7 +284,8 @@ void lower_record_reader(LoweringContext& context,
     }
     auto decode_parameters{read_parameters};
     decode_parameters.push_back(ir.parameter("value_type&", empty ? "" : "result"));
-    decode_parameters.push_back(ir.parameter("ReadMode", empty || overrides ? "" : "mode"));
+    decode_parameters.push_back(
+        ir.parameter("ReadMode", overrides || (empty && records.s7_positional[row]) ? "" : "mode"));
     decode_parameters.push_back(ir.parameter("AstDiagnostics&", "errors"));
     add_function("decode",
                  "void",
@@ -313,11 +299,6 @@ void lower_record_reader(LoweringContext& context,
                            ir.types.intern(values.size() <= 256 ? "std::uint8_t" : "std::uint32_t"),
                            values),
             2);
-        declarations.add(
-            lower_string_enum_parser(
-                ir, "parse_field", "Field", "name", entries, true, true, "field_names"),
-            2);
-
         std::vector<Expr> names;
         std::vector<Expr> required;
         for (auto const field : fields) {
@@ -329,7 +310,9 @@ void lower_record_reader(LoweringContext& context,
         }
         auto const array_type{ir.types.template_type(
             ir.types.named("std::array", {ir.types.dependency("std::array", "array")}),
-            {ir.types.named("std::string_view"), ir.types.intern(std::to_string(fields.size()))})};
+            {ir.types.named("std::string_view",
+                            {ir.types.dependency("std::string_view", "string_view")}),
+             ir.types.intern(std::to_string(fields.size()))})};
         declarations.add(
             ir.constexpr_member(array_type, ir.strings.intern("field_names"), ir.init_list(names)),
             1);

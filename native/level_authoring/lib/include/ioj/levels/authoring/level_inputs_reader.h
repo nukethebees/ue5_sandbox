@@ -10,13 +10,11 @@
 #include "ioj/levels/level_camera_definition_reader.h"
 #include "ioj/levels/level_collision_grid_definition_reader.h"
 #include "ioj/levels/team_result_definition_reader.h"
-#include "ioj/parse_enum.h"
 #include "ioj/s7/field_constraints.h"
 #include "ioj/s7/record_reader.h"
 #include <ioj/s7/field_reader.h>
 
 #include <array>
-#include <optional>
 #include <string_view>
 
 namespace ioj::s7 {
@@ -28,60 +26,53 @@ struct TypeReader<levels::authoring::EntityInput> : RecordReader<levels::authori
                        value_type& result,
                        ReadMode mode,
                        AstDiagnostics& errors) {
-        auto const seen{read_record<Field>(
-            reader,
-            node,
-            "entity",
-            path,
-            parse_field,
-            ([&](Field const field, NodeIndex const value, std::string_view const location) {
-                FieldReader const read{reader, value, location, errors, mode};
-                switch (field) {
-                    case Field::id:
-                        read(result.id);
-                        break;
-                    case Field::archetype:
-                        read(result.archetype);
-                        break;
-                    case Field::team:
-                        read(result.team);
-                        break;
-                    case Field::position:
-                        read(result.position);
-                        break;
-                    case Field::rotation:
-                        read(result.rotation);
-                        break;
-                    case Field::spawn_at:
-                        read(result.spawn_at);
-                        break;
-                    case Field::health:
-                        read(result.health);
-                        break;
-                    case Field::laser_damage:
-                        read(result.laser_damage);
-                        break;
-                    case Field::initial_spawn_delay:
-                        read(result.initial_spawn_delay, constraints::finite);
-                        break;
-                    case Field::spawn_cooldown:
-                        read(result.spawn_cooldown, constraints::finite);
-                        break;
-                    case Field::target:
-                        read(result.target);
-                        break;
-                    case Field::Count:
-                        std::unreachable();
-                }
-            }))};
-
-        if (!seen) {
-            append_errors(errors, seen.error());
-            return;
-        }
-        if (mode == ReadMode::Create) {
-            require_fields<Field>(*seen, required, field_names, path, errors);
-        }
+        decode_record<Field>(reader,
+                             node,
+                             "entity",
+                             path,
+                             field_names,
+                             mode,
+                             errors,
+                             ([&](Field const field, FieldReader const& read) {
+                                 switch (field) {
+                                     case Field::id:
+                                         read(result.id);
+                                         break;
+                                     case Field::archetype:
+                                         read(result.archetype);
+                                         break;
+                                     case Field::team:
+                                         read(result.team);
+                                         break;
+                                     case Field::position:
+                                         read(result.position);
+                                         break;
+                                     case Field::rotation:
+                                         read(result.rotation);
+                                         break;
+                                     case Field::spawn_at:
+                                         read(result.spawn_at);
+                                         break;
+                                     case Field::health:
+                                         read(result.health);
+                                         break;
+                                     case Field::laser_damage:
+                                         read(result.laser_damage);
+                                         break;
+                                     case Field::initial_spawn_delay:
+                                         read(result.initial_spawn_delay, constraints::finite);
+                                         break;
+                                     case Field::spawn_cooldown:
+                                         read(result.spawn_cooldown, constraints::finite);
+                                         break;
+                                     case Field::target:
+                                         read(result.target);
+                                         break;
+                                     case Field::Count:
+                                         std::unreachable();
+                                 }
+                             }),
+                             required);
     }
   private:
     enum class Field : std::uint8_t {
@@ -98,11 +89,6 @@ struct TypeReader<levels::authoring::EntityInput> : RecordReader<levels::authori
         target,
         Count,
     };
-
-    [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
-        -> std::optional<Field> {
-        return ioj::try_parse_enum<Field>(name, field_names);
-    }
 
     static constexpr std::array<std::string_view, 11> field_names{"id",
                                                                   "archetype",
@@ -128,51 +114,44 @@ struct TypeReader<levels::authoring::ObjectiveInput>
                        value_type& result,
                        ReadMode mode,
                        AstDiagnostics& errors) {
-        auto const seen{read_record<Field>(
-            reader,
-            node,
-            "objective",
-            path,
-            parse_field,
-            ([&](Field const field, NodeIndex const value, std::string_view const location) {
-                FieldReader const read{reader, value, location, errors, mode};
-                switch (field) {
-                    case Field::id:
-                        read(result.id);
-                        break;
-                    case Field::title:
-                        read(result.title);
-                        break;
-                    case Field::team:
-                        read(result.team);
-                        break;
-                    case Field::nodes:
-                        read(result.nodes);
-                        break;
-                    case Field::pass:
-                        read(result.pass);
-                        break;
-                    case Field::fail:
-                        read(result.fail);
-                        break;
-                    case Field::expire:
-                        read(result.expire);
-                        break;
-                    case Field::depends_on:
-                        read(result.depends_on);
-                        break;
-                    case Field::Count:
-                        std::unreachable();
-                }
-            }))};
-
-        if (!seen) {
-            append_errors(errors, seen.error());
-            return;
-        }
-        if (mode == ReadMode::Create) {
-            require_fields<Field>(*seen, required, field_names, path, errors);
-        }
+        decode_record<Field>(reader,
+                             node,
+                             "objective",
+                             path,
+                             field_names,
+                             mode,
+                             errors,
+                             ([&](Field const field, FieldReader const& read) {
+                                 switch (field) {
+                                     case Field::id:
+                                         read(result.id);
+                                         break;
+                                     case Field::title:
+                                         read(result.title);
+                                         break;
+                                     case Field::team:
+                                         read(result.team);
+                                         break;
+                                     case Field::nodes:
+                                         read(result.nodes);
+                                         break;
+                                     case Field::pass:
+                                         read(result.pass);
+                                         break;
+                                     case Field::fail:
+                                         read(result.fail);
+                                         break;
+                                     case Field::expire:
+                                         read(result.expire);
+                                         break;
+                                     case Field::depends_on:
+                                         read(result.depends_on);
+                                         break;
+                                     case Field::Count:
+                                         std::unreachable();
+                                 }
+                             }),
+                             required);
     }
   private:
     enum class Field : std::uint8_t {
@@ -187,11 +166,6 @@ struct TypeReader<levels::authoring::ObjectiveInput>
         Count,
     };
 
-    [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
-        -> std::optional<Field> {
-        return ioj::try_parse_enum<Field>(name, field_names);
-    }
-
     static constexpr std::array<std::string_view, 8> field_names{
         "id", "title", "team", "nodes", "pass", "fail", "expire", "depends-on"};
     static constexpr auto required{required_fields<Field>({Field::id, Field::team})};
@@ -205,33 +179,26 @@ struct TypeReader<levels::authoring::MissionInput> : RecordReader<levels::author
                        value_type& result,
                        ReadMode mode,
                        AstDiagnostics& errors) {
-        auto const seen{read_record<Field>(
-            reader,
-            node,
-            "mission",
-            path,
-            parse_field,
-            ([&](Field const field, NodeIndex const value, std::string_view const location) {
-                FieldReader const read{reader, value, location, errors, mode};
-                switch (field) {
-                    case Field::objectives:
-                        read(result.objectives);
-                        break;
-                    case Field::team_results:
-                        read(result.team_results);
-                        break;
-                    case Field::Count:
-                        std::unreachable();
-                }
-            }))};
-
-        if (!seen) {
-            append_errors(errors, seen.error());
-            return;
-        }
-        if (mode == ReadMode::Create) {
-            require_fields<Field>(*seen, required, field_names, path, errors);
-        }
+        decode_record<Field>(reader,
+                             node,
+                             "mission",
+                             path,
+                             field_names,
+                             mode,
+                             errors,
+                             ([&](Field const field, FieldReader const& read) {
+                                 switch (field) {
+                                     case Field::objectives:
+                                         read(result.objectives);
+                                         break;
+                                     case Field::team_results:
+                                         read(result.team_results);
+                                         break;
+                                     case Field::Count:
+                                         std::unreachable();
+                                 }
+                             }),
+                             required);
     }
   private:
     enum class Field : std::uint8_t {
@@ -239,11 +206,6 @@ struct TypeReader<levels::authoring::MissionInput> : RecordReader<levels::author
         team_results,
         Count,
     };
-
-    [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
-        -> std::optional<Field> {
-        return ioj::try_parse_enum<Field>(name, field_names);
-    }
 
     static constexpr std::array<std::string_view, 2> field_names{"objectives", "team-results"};
     static constexpr auto required{required_fields<Field>({Field::objectives})};
@@ -257,60 +219,53 @@ struct TypeReader<levels::authoring::LevelInput> : RecordReader<levels::authorin
                        value_type& result,
                        ReadMode mode,
                        AstDiagnostics& errors) {
-        auto const seen{read_record<Field>(
-            reader,
-            node,
-            "level",
-            path,
-            parse_field,
-            ([&](Field const field, NodeIndex const value, std::string_view const location) {
-                FieldReader const read{reader, value, location, errors, mode};
-                switch (field) {
-                    case Field::id:
-                        read(result.id);
-                        break;
-                    case Field::title:
-                        read(result.title);
-                        break;
-                    case Field::description:
-                        read(result.description);
-                        break;
-                    case Field::par_time:
-                        read(result.par_time, constraints::finite);
-                        break;
-                    case Field::unlock:
-                        read(result.unlock);
-                        break;
-                    case Field::player:
-                        read(result.player);
-                        break;
-                    case Field::camera:
-                        read(result.camera);
-                        break;
-                    case Field::collision_grid:
-                        read(result.collision_grid);
-                        break;
-                    case Field::settings:
-                        read(result.settings);
-                        break;
-                    case Field::mission:
-                        read(result.mission);
-                        break;
-                    case Field::entities:
-                        read(result.entities);
-                        break;
-                    case Field::Count:
-                        std::unreachable();
-                }
-            }))};
-
-        if (!seen) {
-            append_errors(errors, seen.error());
-            return;
-        }
-        if (mode == ReadMode::Create) {
-            require_fields<Field>(*seen, required, field_names, path, errors);
-        }
+        decode_record<Field>(reader,
+                             node,
+                             "level",
+                             path,
+                             field_names,
+                             mode,
+                             errors,
+                             ([&](Field const field, FieldReader const& read) {
+                                 switch (field) {
+                                     case Field::id:
+                                         read(result.id);
+                                         break;
+                                     case Field::title:
+                                         read(result.title);
+                                         break;
+                                     case Field::description:
+                                         read(result.description);
+                                         break;
+                                     case Field::par_time:
+                                         read(result.par_time, constraints::finite);
+                                         break;
+                                     case Field::unlock:
+                                         read(result.unlock);
+                                         break;
+                                     case Field::player:
+                                         read(result.player);
+                                         break;
+                                     case Field::camera:
+                                         read(result.camera);
+                                         break;
+                                     case Field::collision_grid:
+                                         read(result.collision_grid);
+                                         break;
+                                     case Field::settings:
+                                         read(result.settings);
+                                         break;
+                                     case Field::mission:
+                                         read(result.mission);
+                                         break;
+                                     case Field::entities:
+                                         read(result.entities);
+                                         break;
+                                     case Field::Count:
+                                         std::unreachable();
+                                 }
+                             }),
+                             required);
     }
   private:
     enum class Field : std::uint8_t {
@@ -327,11 +282,6 @@ struct TypeReader<levels::authoring::LevelInput> : RecordReader<levels::authorin
         entities,
         Count,
     };
-
-    [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
-        -> std::optional<Field> {
-        return ioj::try_parse_enum<Field>(name, field_names);
-    }
 
     static constexpr std::array<std::string_view, 11> field_names{"id",
                                                                   "title",
@@ -356,36 +306,29 @@ struct TypeReader<levels::authoring::IncludedLevelInput>
                        value_type& result,
                        ReadMode mode,
                        AstDiagnostics& errors) {
-        auto const seen{read_record<Field>(
-            reader,
-            node,
-            "included-definition",
-            path,
-            parse_field,
-            ([&](Field const field, NodeIndex const value, std::string_view const location) {
-                FieldReader const read{reader, value, location, errors, mode};
-                switch (field) {
-                    case Field::path:
-                        read(result.path);
-                        break;
-                    case Field::value:
-                        read(result.value);
-                        break;
-                    case Field::error:
-                        read(result.error);
-                        break;
-                    case Field::Count:
-                        std::unreachable();
-                }
-            }))};
-
-        if (!seen) {
-            append_errors(errors, seen.error());
-            return;
-        }
-        if (mode == ReadMode::Create) {
-            require_fields<Field>(*seen, required, field_names, path, errors);
-        }
+        decode_record<Field>(reader,
+                             node,
+                             "included-definition",
+                             path,
+                             field_names,
+                             mode,
+                             errors,
+                             ([&](Field const field, FieldReader const& read) {
+                                 switch (field) {
+                                     case Field::path:
+                                         read(result.path);
+                                         break;
+                                     case Field::value:
+                                         read(result.value);
+                                         break;
+                                     case Field::error:
+                                         read(result.error);
+                                         break;
+                                     case Field::Count:
+                                         std::unreachable();
+                                 }
+                             }),
+                             required);
     }
   private:
     enum class Field : std::uint8_t {
@@ -394,11 +337,6 @@ struct TypeReader<levels::authoring::IncludedLevelInput>
         error,
         Count,
     };
-
-    [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
-        -> std::optional<Field> {
-        return ioj::try_parse_enum<Field>(name, field_names);
-    }
 
     static constexpr std::array<std::string_view, 3> field_names{"path", "value", "error"};
     static constexpr auto required{required_fields<Field>({Field::path})};
@@ -413,36 +351,29 @@ struct TypeReader<levels::authoring::IncludedCampaignInput>
                        value_type& result,
                        ReadMode mode,
                        AstDiagnostics& errors) {
-        auto const seen{read_record<Field>(
-            reader,
-            node,
-            "included-definition",
-            path,
-            parse_field,
-            ([&](Field const field, NodeIndex const value, std::string_view const location) {
-                FieldReader const read{reader, value, location, errors, mode};
-                switch (field) {
-                    case Field::path:
-                        read(result.path);
-                        break;
-                    case Field::value:
-                        read(result.value);
-                        break;
-                    case Field::error:
-                        read(result.error);
-                        break;
-                    case Field::Count:
-                        std::unreachable();
-                }
-            }))};
-
-        if (!seen) {
-            append_errors(errors, seen.error());
-            return;
-        }
-        if (mode == ReadMode::Create) {
-            require_fields<Field>(*seen, required, field_names, path, errors);
-        }
+        decode_record<Field>(reader,
+                             node,
+                             "included-definition",
+                             path,
+                             field_names,
+                             mode,
+                             errors,
+                             ([&](Field const field, FieldReader const& read) {
+                                 switch (field) {
+                                     case Field::path:
+                                         read(result.path);
+                                         break;
+                                     case Field::value:
+                                         read(result.value);
+                                         break;
+                                     case Field::error:
+                                         read(result.error);
+                                         break;
+                                     case Field::Count:
+                                         std::unreachable();
+                                 }
+                             }),
+                             required);
     }
   private:
     enum class Field : std::uint8_t {
@@ -451,11 +382,6 @@ struct TypeReader<levels::authoring::IncludedCampaignInput>
         error,
         Count,
     };
-
-    [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
-        -> std::optional<Field> {
-        return ioj::try_parse_enum<Field>(name, field_names);
-    }
 
     static constexpr std::array<std::string_view, 3> field_names{"path", "value", "error"};
     static constexpr auto required{required_fields<Field>({Field::path})};
@@ -469,30 +395,25 @@ struct TypeReader<levels::authoring::CatalogInput> : RecordReader<levels::author
                        value_type& result,
                        ReadMode mode,
                        AstDiagnostics& errors) {
-        auto const seen{read_record<Field>(
-            reader,
-            node,
-            "catalog",
-            path,
-            parse_field,
-            ([&](Field const field, NodeIndex const value, std::string_view const location) {
-                FieldReader const read{reader, value, location, errors, mode};
-                switch (field) {
-                    case Field::levels:
-                        read(result.levels);
-                        break;
-                    case Field::campaigns:
-                        read(result.campaigns);
-                        break;
-                    case Field::Count:
-                        std::unreachable();
-                }
-            }))};
-
-        if (!seen) {
-            append_errors(errors, seen.error());
-            return;
-        }
+        decode_record<Field>(reader,
+                             node,
+                             "catalog",
+                             path,
+                             field_names,
+                             mode,
+                             errors,
+                             ([&](Field const field, FieldReader const& read) {
+                                 switch (field) {
+                                     case Field::levels:
+                                         read(result.levels);
+                                         break;
+                                     case Field::campaigns:
+                                         read(result.campaigns);
+                                         break;
+                                     case Field::Count:
+                                         std::unreachable();
+                                 }
+                             }));
     }
   private:
     enum class Field : std::uint8_t {
@@ -500,11 +421,6 @@ struct TypeReader<levels::authoring::CatalogInput> : RecordReader<levels::author
         campaigns,
         Count,
     };
-
-    [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
-        -> std::optional<Field> {
-        return ioj::try_parse_enum<Field>(name, field_names);
-    }
 
     static constexpr std::array<std::string_view, 2> field_names{"levels", "campaigns"};
 };
