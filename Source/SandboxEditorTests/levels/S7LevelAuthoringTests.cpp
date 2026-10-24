@@ -36,6 +36,7 @@
 #include <Misc/Paths.h>
 #include <Tests/AutomationEditorCommon.h>
 #include <Toolkits/BaseToolkit.h>
+#include <UObject/UnrealType.h>
 #include <Widgets/Docking/SDockTab.h>
 
 #include <expected>
@@ -256,6 +257,19 @@ void assert_stale_preview_does_not_apply(TTestRunner& test_runner,
 
 TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
 {
+    TEST_METHOD(MetadataIsAuthoredInTheScript)
+    {
+        auto const* type{AS7LevelAuthoringDocument::StaticClass()};
+        for (auto const name : {TEXT("level_id"), TEXT("title"), TEXT("description")}) {
+            auto const* property{type->FindPropertyByName(name)};
+            if (!TestRunner->TestNotNull(name, property)) {
+                return;
+            }
+            TestRunner->TestFalse(FString::Printf(TEXT("%s has no duplicate details editor"), name),
+                                  property->HasAnyPropertyFlags(CPF_Edit));
+        }
+    }
+
     TEST_METHOD(NewDocumentAndGameRuntimeUseTheSameCanonicalBase)
     {
         auto* const world{FAutomationEditorCommonUtils::CreateNewMap()};

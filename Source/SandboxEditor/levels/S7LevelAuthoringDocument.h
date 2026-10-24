@@ -73,13 +73,13 @@ class SANDBOXEDITOR_API AS7LevelAuthoringDocument final : public AInfo {
     UPROPERTY()
     FString synchronized_scene_source{};
 
-    UPROPERTY(EditAnywhere, Category = "Level")
+    UPROPERTY()
     FName level_id{NAME_None};
 
-    UPROPERTY(EditAnywhere, Category = "Level")
+    UPROPERTY()
     FString title{};
 
-    UPROPERTY(EditAnywhere, Category = "Level", meta = (MultiLine = "true"))
+    UPROPERTY()
     FString description{};
 
     UPROPERTY(
