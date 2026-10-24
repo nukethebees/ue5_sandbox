@@ -9,36 +9,41 @@
 #include <ioj/s7/field_reader.h>
 
 #include <array>
+#include <concepts>
 #include <string_view>
 
 namespace ioj::s7 {
-template <>
-struct TypeReader<sim::CapitalShipSimConfig> : RecordReader<sim::CapitalShipSimConfig> {
+template <typename T>
+    requires std::same_as<T, sim::CapitalShipSimConfig> ||
+             std::same_as<T, sim::CapitalShipSimConfigOverrides>
+struct TypeReader<T> : RecordReader<T, sim::CapitalShipSimConfigOverrides> {
+    using value_type = T;
+
     static void decode(Reader const& reader,
                        NodeIndex const node,
                        std::string_view const path,
                        value_type& result,
                        ReadMode mode,
                        AstDiagnostics& errors) {
-        decode_record<Field>(reader,
-                             node,
-                             "capital-ships",
-                             path,
-                             field_names,
-                             mode,
-                             errors,
-                             ([&](Field const field, FieldReader const& read) {
-                                 switch (field) {
-                                     case Field::spawn_delay:
-                                         read(result.spawn_delay, constraints::finite);
-                                         break;
-                                     case Field::max_health:
-                                         read(result.max_health);
-                                         break;
-                                     case Field::Count:
-                                         std::unreachable();
-                                 }
-                             }));
+        decode_record<Field, is_patch>(reader,
+                                       node,
+                                       "capital-ships",
+                                       path,
+                                       field_names,
+                                       mode,
+                                       errors,
+                                       ([&](Field const field, auto const& read) {
+                                           switch (field) {
+                                               case Field::spawn_delay:
+                                                   read(result.spawn_delay, constraints::finite);
+                                                   break;
+                                               case Field::max_health:
+                                                   read(result.max_health);
+                                                   break;
+                                               case Field::Count:
+                                                   std::unreachable();
+                                           }
+                                       }));
     }
   private:
     enum class Field : std::uint8_t {
@@ -48,45 +53,7 @@ struct TypeReader<sim::CapitalShipSimConfig> : RecordReader<sim::CapitalShipSimC
     };
 
     static constexpr std::array<std::string_view, 2> field_names{"spawn-delay", "max-health"};
-};
-
-template <>
-struct TypeReader<sim::CapitalShipSimConfigOverrides>
-    : RecordReader<sim::CapitalShipSimConfigOverrides, ReadMode::Override> {
-    static void decode(Reader const& reader,
-                       NodeIndex const node,
-                       std::string_view const path,
-                       value_type& result,
-                       ReadMode,
-                       AstDiagnostics& errors) {
-        decode_record<Field>(reader,
-                             node,
-                             "capital-ships",
-                             path,
-                             field_names,
-                             ReadMode::Override,
-                             errors,
-                             ([&](Field const field, FieldReader const& read) {
-                                 switch (field) {
-                                     case Field::spawn_delay:
-                                         read.patch(result.spawn_delay, constraints::finite);
-                                         break;
-                                     case Field::max_health:
-                                         read.patch(result.max_health);
-                                         break;
-                                     case Field::Count:
-                                         std::unreachable();
-                                 }
-                             }));
-    }
-  private:
-    enum class Field : std::uint8_t {
-        spawn_delay,
-        max_health,
-        Count,
-    };
-
-    static constexpr std::array<std::string_view, 2> field_names{"spawn-delay", "max-health"};
+    static constexpr bool is_patch{std::same_as<T, ioj::sim::CapitalShipSimConfigOverrides>};
 };
 
 } // namespace ioj::s7

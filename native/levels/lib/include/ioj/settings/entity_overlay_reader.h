@@ -10,18 +10,23 @@
 #include <ioj/s7/field_reader.h>
 
 #include <array>
+#include <concepts>
 #include <string_view>
 
 namespace ioj::s7 {
-template <>
-struct TypeReader<settings::EntityOverlay> : RecordReader<settings::EntityOverlay> {
+template <typename T>
+    requires std::same_as<T, settings::EntityOverlay> ||
+             std::same_as<T, settings::EntityOverlayOverrides>
+struct TypeReader<T> : RecordReader<T, settings::EntityOverlayOverrides> {
+    using value_type = T;
+
     static void decode(Reader const& reader,
                        NodeIndex const node,
                        std::string_view const path,
                        value_type& result,
                        ReadMode mode,
                        AstDiagnostics& errors) {
-        decode_record<Field>(
+        decode_record<Field, is_patch>(
             reader,
             node,
             "entity-overlay",
@@ -29,7 +34,7 @@ struct TypeReader<settings::EntityOverlay> : RecordReader<settings::EntityOverla
             field_names,
             mode,
             errors,
-            ([&](Field const field, FieldReader const& read) {
+            ([&](Field const field, auto const& read) {
                 switch (field) {
                     case Field::enabled:
                         read(result.enabled);
@@ -101,97 +106,7 @@ struct TypeReader<settings::EntityOverlay> : RecordReader<settings::EntityOverla
                                                                   "objective-bar-height-scale",
                                                                   "screen-edge-padding-pixels",
                                                                   "soft-target"};
-};
-
-template <>
-struct TypeReader<settings::EntityOverlayOverrides>
-    : RecordReader<settings::EntityOverlayOverrides, ReadMode::Override> {
-    static void decode(Reader const& reader,
-                       NodeIndex const node,
-                       std::string_view const path,
-                       value_type& result,
-                       ReadMode,
-                       AstDiagnostics& errors) {
-        decode_record<Field>(
-            reader,
-            node,
-            "entity-overlay",
-            path,
-            field_names,
-            ReadMode::Override,
-            errors,
-            ([&](Field const field, FieldReader const& read) {
-                switch (field) {
-                    case Field::enabled:
-                        read.patch(result.enabled);
-                        break;
-                    case Field::maximum_range:
-                        read.patch(result.maximum_range, constraints::finite);
-                        break;
-                    case Field::bar_size_pixels:
-                        read.patch(result.bar_size_pixels, constraints::finite);
-                        break;
-                    case Field::screen_offset_pixels:
-                        read.patch(result.screen_offset_pixels, constraints::finite);
-                        break;
-                    case Field::minimum_bar_scale:
-                        read.patch(result.minimum_bar_scale, constraints::finite);
-                        break;
-                    case Field::maximum_bar_scale:
-                        read.patch(result.maximum_bar_scale, constraints::finite);
-                        break;
-                    case Field::inset_pixels:
-                        read.patch(result.inset_pixels, constraints::finite);
-                        break;
-                    case Field::maximum_inset_height_ratio:
-                        read.patch(result.maximum_inset_height_ratio, constraints::finite);
-                        break;
-                    case Field::objective_frame_pixels:
-                        read.patch(result.objective_frame_pixels, constraints::finite);
-                        break;
-                    case Field::objective_bar_height_scale:
-                        read.patch(result.objective_bar_height_scale, constraints::finite);
-                        break;
-                    case Field::screen_edge_padding_pixels:
-                        read.patch(result.screen_edge_padding_pixels, constraints::finite);
-                        break;
-                    case Field::soft_target:
-                        read.patch(result.soft_target);
-                        break;
-                    case Field::Count:
-                        std::unreachable();
-                }
-            }));
-    }
-  private:
-    enum class Field : std::uint8_t {
-        enabled,
-        maximum_range,
-        bar_size_pixels,
-        screen_offset_pixels,
-        minimum_bar_scale,
-        maximum_bar_scale,
-        inset_pixels,
-        maximum_inset_height_ratio,
-        objective_frame_pixels,
-        objective_bar_height_scale,
-        screen_edge_padding_pixels,
-        soft_target,
-        Count,
-    };
-
-    static constexpr std::array<std::string_view, 12> field_names{"enabled",
-                                                                  "maximum-range",
-                                                                  "bar-size-pixels",
-                                                                  "screen-offset-pixels",
-                                                                  "minimum-bar-scale",
-                                                                  "maximum-bar-scale",
-                                                                  "inset-pixels",
-                                                                  "maximum-inset-height-ratio",
-                                                                  "objective-frame-pixels",
-                                                                  "objective-bar-height-scale",
-                                                                  "screen-edge-padding-pixels",
-                                                                  "soft-target"};
+    static constexpr bool is_patch{std::same_as<T, ioj::settings::EntityOverlayOverrides>};
 };
 
 } // namespace ioj::s7

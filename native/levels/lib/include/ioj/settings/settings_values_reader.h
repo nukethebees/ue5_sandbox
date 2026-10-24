@@ -19,63 +19,68 @@
 #include <ioj/s7/field_reader.h>
 
 #include <array>
+#include <concepts>
 #include <string_view>
 
 namespace ioj::s7 {
-template <>
-struct TypeReader<settings::SettingsValues> : RecordReader<settings::SettingsValues> {
+template <typename T>
+    requires std::same_as<T, settings::SettingsValues> ||
+             std::same_as<T, settings::SettingsValuesOverrides>
+struct TypeReader<T> : RecordReader<T, settings::SettingsValuesOverrides> {
+    using value_type = T;
+
     static void decode(Reader const& reader,
                        NodeIndex const node,
                        std::string_view const path,
                        value_type& result,
                        ReadMode mode,
                        AstDiagnostics& errors) {
-        decode_record<Field>(reader,
-                             node,
-                             "settings",
-                             path,
-                             field_names,
-                             mode,
-                             errors,
-                             ([&](Field const field, FieldReader const& read) {
-                                 switch (field) {
-                                     case Field::tick:
-                                         read(result.tick);
-                                         break;
-                                     case Field::player_ship:
-                                         read(result.player_ship);
-                                         break;
-                                     case Field::laser_projectiles:
-                                         read(result.laser_projectiles);
-                                         break;
-                                     case Field::capital_ships:
-                                         read(result.capital_ships);
-                                         break;
-                                     case Field::fighters:
-                                         read(result.fighters);
-                                         break;
-                                     case Field::turrets:
-                                         read(result.turrets);
-                                         break;
-                                     case Field::tube_spinners:
-                                         read(result.tube_spinners);
-                                         break;
-                                     case Field::collision_grid:
-                                         read(result.collision_grid);
-                                         break;
-                                     case Field::hud:
-                                         read(result.hud);
-                                         break;
-                                     case Field::presentation:
-                                         read(result.presentation);
-                                         break;
-                                     case Field::starfield:
-                                         read(result.starfield);
-                                         break;
-                                     case Field::Count:
-                                         std::unreachable();
-                                 }
-                             }));
+        decode_record<Field, is_patch>(reader,
+                                       node,
+                                       "settings",
+                                       path,
+                                       field_names,
+                                       mode,
+                                       errors,
+                                       ([&](Field const field, auto const& read) {
+                                           switch (field) {
+                                               case Field::tick:
+                                                   read(result.tick);
+                                                   break;
+                                               case Field::player_ship:
+                                                   read(result.player_ship);
+                                                   break;
+                                               case Field::laser_projectiles:
+                                                   read(result.laser_projectiles);
+                                                   break;
+                                               case Field::capital_ships:
+                                                   read(result.capital_ships);
+                                                   break;
+                                               case Field::fighters:
+                                                   read(result.fighters);
+                                                   break;
+                                               case Field::turrets:
+                                                   read(result.turrets);
+                                                   break;
+                                               case Field::tube_spinners:
+                                                   read(result.tube_spinners);
+                                                   break;
+                                               case Field::collision_grid:
+                                                   read(result.collision_grid);
+                                                   break;
+                                               case Field::hud:
+                                                   read(result.hud);
+                                                   break;
+                                               case Field::presentation:
+                                                   read(result.presentation);
+                                                   break;
+                                               case Field::starfield:
+                                                   read(result.starfield);
+                                                   break;
+                                               case Field::Count:
+                                                   std::unreachable();
+                                           }
+                                       }));
     }
   private:
     enum class Field : std::uint8_t {
@@ -104,91 +109,7 @@ struct TypeReader<settings::SettingsValues> : RecordReader<settings::SettingsVal
                                                                   "hud",
                                                                   "presentation",
                                                                   "starfield"};
-};
-
-template <>
-struct TypeReader<settings::SettingsValuesOverrides>
-    : RecordReader<settings::SettingsValuesOverrides, ReadMode::Override> {
-    static void decode(Reader const& reader,
-                       NodeIndex const node,
-                       std::string_view const path,
-                       value_type& result,
-                       ReadMode,
-                       AstDiagnostics& errors) {
-        decode_record<Field>(reader,
-                             node,
-                             "settings",
-                             path,
-                             field_names,
-                             ReadMode::Override,
-                             errors,
-                             ([&](Field const field, FieldReader const& read) {
-                                 switch (field) {
-                                     case Field::tick:
-                                         read.patch(result.tick);
-                                         break;
-                                     case Field::player_ship:
-                                         read.patch(result.player_ship);
-                                         break;
-                                     case Field::laser_projectiles:
-                                         read.patch(result.laser_projectiles);
-                                         break;
-                                     case Field::capital_ships:
-                                         read.patch(result.capital_ships);
-                                         break;
-                                     case Field::fighters:
-                                         read.patch(result.fighters);
-                                         break;
-                                     case Field::turrets:
-                                         read.patch(result.turrets);
-                                         break;
-                                     case Field::tube_spinners:
-                                         read.patch(result.tube_spinners);
-                                         break;
-                                     case Field::collision_grid:
-                                         read.patch(result.collision_grid);
-                                         break;
-                                     case Field::hud:
-                                         read.patch(result.hud);
-                                         break;
-                                     case Field::presentation:
-                                         read.patch(result.presentation);
-                                         break;
-                                     case Field::starfield:
-                                         read.patch(result.starfield);
-                                         break;
-                                     case Field::Count:
-                                         std::unreachable();
-                                 }
-                             }));
-    }
-  private:
-    enum class Field : std::uint8_t {
-        tick,
-        player_ship,
-        laser_projectiles,
-        capital_ships,
-        fighters,
-        turrets,
-        tube_spinners,
-        collision_grid,
-        hud,
-        presentation,
-        starfield,
-        Count,
-    };
-
-    static constexpr std::array<std::string_view, 11> field_names{"tick",
-                                                                  "player-ship",
-                                                                  "laser-projectiles",
-                                                                  "capital-ships",
-                                                                  "fighters",
-                                                                  "turrets",
-                                                                  "tube-spinners",
-                                                                  "collision-grid",
-                                                                  "hud",
-                                                                  "presentation",
-                                                                  "starfield"};
+    static constexpr bool is_patch{std::same_as<T, ioj::settings::SettingsValuesOverrides>};
 };
 
 } // namespace ioj::s7

@@ -9,34 +9,39 @@
 #include <ioj/s7/field_reader.h>
 
 #include <array>
+#include <concepts>
 #include <string_view>
 
 namespace ioj::s7 {
-template <>
-struct TypeReader<settings::PlayerPresentation> : RecordReader<settings::PlayerPresentation> {
+template <typename T>
+    requires std::same_as<T, settings::PlayerPresentation> ||
+             std::same_as<T, settings::PlayerPresentationOverrides>
+struct TypeReader<T> : RecordReader<T, settings::PlayerPresentationOverrides> {
+    using value_type = T;
+
     static void decode(Reader const& reader,
                        NodeIndex const node,
                        std::string_view const path,
                        value_type& result,
                        ReadMode mode,
                        AstDiagnostics& errors) {
-        decode_record<Field>(reader,
-                             node,
-                             "player-ship",
-                             path,
-                             field_names,
-                             mode,
-                             errors,
-                             ([&](Field const field, FieldReader const& read) {
-                                 switch (field) {
-                                     case Field::boost_effect_colour_intensity:
-                                         read(result.boost_effect_colour_intensity,
-                                              constraints::finite);
-                                         break;
-                                     case Field::Count:
-                                         std::unreachable();
-                                 }
-                             }));
+        decode_record<Field, is_patch>(reader,
+                                       node,
+                                       "player-ship",
+                                       path,
+                                       field_names,
+                                       mode,
+                                       errors,
+                                       ([&](Field const field, auto const& read) {
+                                           switch (field) {
+                                               case Field::boost_effect_colour_intensity:
+                                                   read(result.boost_effect_colour_intensity,
+                                                        constraints::finite);
+                                                   break;
+                                               case Field::Count:
+                                                   std::unreachable();
+                                           }
+                                       }));
     }
   private:
     enum class Field : std::uint8_t {
@@ -45,42 +50,7 @@ struct TypeReader<settings::PlayerPresentation> : RecordReader<settings::PlayerP
     };
 
     static constexpr std::array<std::string_view, 1> field_names{"boost-effect-colour-intensity"};
-};
-
-template <>
-struct TypeReader<settings::PlayerPresentationOverrides>
-    : RecordReader<settings::PlayerPresentationOverrides, ReadMode::Override> {
-    static void decode(Reader const& reader,
-                       NodeIndex const node,
-                       std::string_view const path,
-                       value_type& result,
-                       ReadMode,
-                       AstDiagnostics& errors) {
-        decode_record<Field>(reader,
-                             node,
-                             "player-ship",
-                             path,
-                             field_names,
-                             ReadMode::Override,
-                             errors,
-                             ([&](Field const field, FieldReader const& read) {
-                                 switch (field) {
-                                     case Field::boost_effect_colour_intensity:
-                                         read.patch(result.boost_effect_colour_intensity,
-                                                    constraints::finite);
-                                         break;
-                                     case Field::Count:
-                                         std::unreachable();
-                                 }
-                             }));
-    }
-  private:
-    enum class Field : std::uint8_t {
-        boost_effect_colour_intensity,
-        Count,
-    };
-
-    static constexpr std::array<std::string_view, 1> field_names{"boost-effect-colour-intensity"};
+    static constexpr bool is_patch{std::same_as<T, ioj::settings::PlayerPresentationOverrides>};
 };
 
 } // namespace ioj::s7

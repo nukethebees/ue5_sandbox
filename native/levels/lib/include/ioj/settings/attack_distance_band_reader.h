@@ -27,7 +27,7 @@ struct TypeReader<settings::AttackDistanceBandValue>
                              field_names,
                              mode,
                              errors,
-                             ([&](Field const field, FieldReader const& read) {
+                             ([&](Field const field, auto const& read) {
                                  switch (field) {
                                      case Field::minimum:
                                          read(result.minimum);

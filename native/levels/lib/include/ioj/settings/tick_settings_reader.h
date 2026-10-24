@@ -9,36 +9,41 @@
 #include <ioj/s7/field_reader.h>
 
 #include <array>
+#include <concepts>
 #include <string_view>
 
 namespace ioj::s7 {
-template <>
-struct TypeReader<settings::TickSettings> : RecordReader<settings::TickSettings> {
+template <typename T>
+    requires std::same_as<T, settings::TickSettings> ||
+             std::same_as<T, settings::TickSettingsOverrides>
+struct TypeReader<T> : RecordReader<T, settings::TickSettingsOverrides> {
+    using value_type = T;
+
     static void decode(Reader const& reader,
                        NodeIndex const node,
                        std::string_view const path,
                        value_type& result,
                        ReadMode mode,
                        AstDiagnostics& errors) {
-        decode_record<Field>(reader,
-                             node,
-                             "tick",
-                             path,
-                             field_names,
-                             mode,
-                             errors,
-                             ([&](Field const field, FieldReader const& read) {
-                                 switch (field) {
-                                     case Field::tick_rate:
-                                         read(result.tick_rate);
-                                         break;
-                                     case Field::time_scale:
-                                         read(result.time_scale);
-                                         break;
-                                     case Field::Count:
-                                         std::unreachable();
-                                 }
-                             }));
+        decode_record<Field, is_patch>(reader,
+                                       node,
+                                       "tick",
+                                       path,
+                                       field_names,
+                                       mode,
+                                       errors,
+                                       ([&](Field const field, auto const& read) {
+                                           switch (field) {
+                                               case Field::tick_rate:
+                                                   read(result.tick_rate);
+                                                   break;
+                                               case Field::time_scale:
+                                                   read(result.time_scale);
+                                                   break;
+                                               case Field::Count:
+                                                   std::unreachable();
+                                           }
+                                       }));
     }
   private:
     enum class Field : std::uint8_t {
@@ -48,45 +53,7 @@ struct TypeReader<settings::TickSettings> : RecordReader<settings::TickSettings>
     };
 
     static constexpr std::array<std::string_view, 2> field_names{"tick-rate", "time-scale"};
-};
-
-template <>
-struct TypeReader<settings::TickSettingsOverrides>
-    : RecordReader<settings::TickSettingsOverrides, ReadMode::Override> {
-    static void decode(Reader const& reader,
-                       NodeIndex const node,
-                       std::string_view const path,
-                       value_type& result,
-                       ReadMode,
-                       AstDiagnostics& errors) {
-        decode_record<Field>(reader,
-                             node,
-                             "tick",
-                             path,
-                             field_names,
-                             ReadMode::Override,
-                             errors,
-                             ([&](Field const field, FieldReader const& read) {
-                                 switch (field) {
-                                     case Field::tick_rate:
-                                         read.patch(result.tick_rate);
-                                         break;
-                                     case Field::time_scale:
-                                         read.patch(result.time_scale);
-                                         break;
-                                     case Field::Count:
-                                         std::unreachable();
-                                 }
-                             }));
-    }
-  private:
-    enum class Field : std::uint8_t {
-        tick_rate,
-        time_scale,
-        Count,
-    };
-
-    static constexpr std::array<std::string_view, 2> field_names{"tick-rate", "time-scale"};
+    static constexpr bool is_patch{std::same_as<T, ioj::settings::TickSettingsOverrides>};
 };
 
 } // namespace ioj::s7

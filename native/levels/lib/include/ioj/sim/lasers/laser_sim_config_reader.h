@@ -8,33 +8,37 @@
 #include <ioj/s7/field_reader.h>
 
 #include <array>
+#include <concepts>
 #include <string_view>
 
 namespace ioj::s7 {
-template <>
-struct TypeReader<sim::LaserSimConfig> : RecordReader<sim::LaserSimConfig> {
+template <typename T>
+    requires std::same_as<T, sim::LaserSimConfig> || std::same_as<T, sim::LaserSimConfigOverrides>
+struct TypeReader<T> : RecordReader<T, sim::LaserSimConfigOverrides> {
+    using value_type = T;
+
     static void decode(Reader const& reader,
                        NodeIndex const node,
                        std::string_view const path,
                        value_type& result,
                        ReadMode mode,
                        AstDiagnostics& errors) {
-        decode_record<Field>(reader,
-                             node,
-                             "laser-projectiles",
-                             path,
-                             field_names,
-                             mode,
-                             errors,
-                             ([&](Field const field, FieldReader const& read) {
-                                 switch (field) {
-                                     case Field::n_preallocated_instances:
-                                         read(result.n_preallocated_instances);
-                                         break;
-                                     case Field::Count:
-                                         std::unreachable();
-                                 }
-                             }));
+        decode_record<Field, is_patch>(reader,
+                                       node,
+                                       "laser-projectiles",
+                                       path,
+                                       field_names,
+                                       mode,
+                                       errors,
+                                       ([&](Field const field, auto const& read) {
+                                           switch (field) {
+                                               case Field::n_preallocated_instances:
+                                                   read(result.n_preallocated_instances);
+                                                   break;
+                                               case Field::Count:
+                                                   std::unreachable();
+                                           }
+                                       }));
     }
   private:
     enum class Field : std::uint8_t {
@@ -43,41 +47,7 @@ struct TypeReader<sim::LaserSimConfig> : RecordReader<sim::LaserSimConfig> {
     };
 
     static constexpr std::array<std::string_view, 1> field_names{"n-preallocated-instances"};
-};
-
-template <>
-struct TypeReader<sim::LaserSimConfigOverrides>
-    : RecordReader<sim::LaserSimConfigOverrides, ReadMode::Override> {
-    static void decode(Reader const& reader,
-                       NodeIndex const node,
-                       std::string_view const path,
-                       value_type& result,
-                       ReadMode,
-                       AstDiagnostics& errors) {
-        decode_record<Field>(reader,
-                             node,
-                             "laser-projectiles",
-                             path,
-                             field_names,
-                             ReadMode::Override,
-                             errors,
-                             ([&](Field const field, FieldReader const& read) {
-                                 switch (field) {
-                                     case Field::n_preallocated_instances:
-                                         read.patch(result.n_preallocated_instances);
-                                         break;
-                                     case Field::Count:
-                                         std::unreachable();
-                                 }
-                             }));
-    }
-  private:
-    enum class Field : std::uint8_t {
-        n_preallocated_instances,
-        Count,
-    };
-
-    static constexpr std::array<std::string_view, 1> field_names{"n-preallocated-instances"};
+    static constexpr bool is_patch{std::same_as<T, ioj::sim::LaserSimConfigOverrides>};
 };
 
 } // namespace ioj::s7

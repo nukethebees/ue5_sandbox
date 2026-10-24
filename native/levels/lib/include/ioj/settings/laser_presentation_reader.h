@@ -9,36 +9,42 @@
 #include <ioj/s7/field_reader.h>
 
 #include <array>
+#include <concepts>
 #include <string_view>
 
 namespace ioj::s7 {
-template <>
-struct TypeReader<settings::LaserPresentation> : RecordReader<settings::LaserPresentation> {
+template <typename T>
+    requires std::same_as<T, settings::LaserPresentation> ||
+             std::same_as<T, settings::LaserPresentationOverrides>
+struct TypeReader<T> : RecordReader<T, settings::LaserPresentationOverrides> {
+    using value_type = T;
+
     static void decode(Reader const& reader,
                        NodeIndex const node,
                        std::string_view const path,
                        value_type& result,
                        ReadMode mode,
                        AstDiagnostics& errors) {
-        decode_record<Field>(reader,
-                             node,
-                             "laser-projectiles",
-                             path,
-                             field_names,
-                             mode,
-                             errors,
-                             ([&](Field const field, FieldReader const& read) {
-                                 switch (field) {
-                                     case Field::min_cull_distance:
-                                         read(result.min_cull_distance, constraints::finite);
-                                         break;
-                                     case Field::max_cull_distance:
-                                         read(result.max_cull_distance, constraints::finite);
-                                         break;
-                                     case Field::Count:
-                                         std::unreachable();
-                                 }
-                             }));
+        decode_record<Field, is_patch>(
+            reader,
+            node,
+            "laser-projectiles",
+            path,
+            field_names,
+            mode,
+            errors,
+            ([&](Field const field, auto const& read) {
+                switch (field) {
+                    case Field::min_cull_distance:
+                        read(result.min_cull_distance, constraints::finite);
+                        break;
+                    case Field::max_cull_distance:
+                        read(result.max_cull_distance, constraints::finite);
+                        break;
+                    case Field::Count:
+                        std::unreachable();
+                }
+            }));
     }
   private:
     enum class Field : std::uint8_t {
@@ -49,46 +55,7 @@ struct TypeReader<settings::LaserPresentation> : RecordReader<settings::LaserPre
 
     static constexpr std::array<std::string_view, 2> field_names{"min-cull-distance",
                                                                  "max-cull-distance"};
-};
-
-template <>
-struct TypeReader<settings::LaserPresentationOverrides>
-    : RecordReader<settings::LaserPresentationOverrides, ReadMode::Override> {
-    static void decode(Reader const& reader,
-                       NodeIndex const node,
-                       std::string_view const path,
-                       value_type& result,
-                       ReadMode,
-                       AstDiagnostics& errors) {
-        decode_record<Field>(reader,
-                             node,
-                             "laser-projectiles",
-                             path,
-                             field_names,
-                             ReadMode::Override,
-                             errors,
-                             ([&](Field const field, FieldReader const& read) {
-                                 switch (field) {
-                                     case Field::min_cull_distance:
-                                         read.patch(result.min_cull_distance, constraints::finite);
-                                         break;
-                                     case Field::max_cull_distance:
-                                         read.patch(result.max_cull_distance, constraints::finite);
-                                         break;
-                                     case Field::Count:
-                                         std::unreachable();
-                                 }
-                             }));
-    }
-  private:
-    enum class Field : std::uint8_t {
-        min_cull_distance,
-        max_cull_distance,
-        Count,
-    };
-
-    static constexpr std::array<std::string_view, 2> field_names{"min-cull-distance",
-                                                                 "max-cull-distance"};
+    static constexpr bool is_patch{std::same_as<T, ioj::settings::LaserPresentationOverrides>};
 };
 
 } // namespace ioj::s7

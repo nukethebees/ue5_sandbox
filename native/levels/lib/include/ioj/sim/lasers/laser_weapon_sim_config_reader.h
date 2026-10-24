@@ -9,42 +9,48 @@
 #include <ioj/s7/field_reader.h>
 
 #include <array>
+#include <concepts>
 #include <string_view>
 
 namespace ioj::s7 {
-template <>
-struct TypeReader<sim::LaserWeaponSimConfig> : RecordReader<sim::LaserWeaponSimConfig> {
+template <typename T>
+    requires std::same_as<T, sim::LaserWeaponSimConfig> ||
+             std::same_as<T, sim::LaserWeaponSimConfigOverrides>
+struct TypeReader<T> : RecordReader<T, sim::LaserWeaponSimConfigOverrides> {
+    using value_type = T;
+
     static void decode(Reader const& reader,
                        NodeIndex const node,
                        std::string_view const path,
                        value_type& result,
                        ReadMode mode,
                        AstDiagnostics& errors) {
-        decode_record<Field>(reader,
-                             node,
-                             "laser",
-                             path,
-                             field_names,
-                             mode,
-                             errors,
-                             ([&](Field const field, FieldReader const& read) {
-                                 switch (field) {
-                                     case Field::damage:
-                                         read(result.damage);
-                                         break;
-                                     case Field::projectile_speed:
-                                         read(result.projectile_speed, constraints::finite);
-                                         break;
-                                     case Field::max_distance:
-                                         read(result.max_distance, constraints::finite);
-                                         break;
-                                     case Field::fire_cooldown:
-                                         read(result.fire_cooldown, constraints::finite);
-                                         break;
-                                     case Field::Count:
-                                         std::unreachable();
-                                 }
-                             }));
+        decode_record<Field, is_patch>(reader,
+                                       node,
+                                       "laser",
+                                       path,
+                                       field_names,
+                                       mode,
+                                       errors,
+                                       ([&](Field const field, auto const& read) {
+                                           switch (field) {
+                                               case Field::damage:
+                                                   read(result.damage);
+                                                   break;
+                                               case Field::projectile_speed:
+                                                   read(result.projectile_speed,
+                                                        constraints::finite);
+                                                   break;
+                                               case Field::max_distance:
+                                                   read(result.max_distance, constraints::finite);
+                                                   break;
+                                               case Field::fire_cooldown:
+                                                   read(result.fire_cooldown, constraints::finite);
+                                                   break;
+                                               case Field::Count:
+                                                   std::unreachable();
+                                           }
+                                       }));
     }
   private:
     enum class Field : std::uint8_t {
@@ -57,54 +63,7 @@ struct TypeReader<sim::LaserWeaponSimConfig> : RecordReader<sim::LaserWeaponSimC
 
     static constexpr std::array<std::string_view, 4> field_names{
         "damage", "projectile-speed", "max-distance", "fire-cooldown"};
-};
-
-template <>
-struct TypeReader<sim::LaserWeaponSimConfigOverrides>
-    : RecordReader<sim::LaserWeaponSimConfigOverrides, ReadMode::Override> {
-    static void decode(Reader const& reader,
-                       NodeIndex const node,
-                       std::string_view const path,
-                       value_type& result,
-                       ReadMode,
-                       AstDiagnostics& errors) {
-        decode_record<Field>(reader,
-                             node,
-                             "laser",
-                             path,
-                             field_names,
-                             ReadMode::Override,
-                             errors,
-                             ([&](Field const field, FieldReader const& read) {
-                                 switch (field) {
-                                     case Field::damage:
-                                         read.patch(result.damage);
-                                         break;
-                                     case Field::projectile_speed:
-                                         read.patch(result.projectile_speed, constraints::finite);
-                                         break;
-                                     case Field::max_distance:
-                                         read.patch(result.max_distance, constraints::finite);
-                                         break;
-                                     case Field::fire_cooldown:
-                                         read.patch(result.fire_cooldown, constraints::finite);
-                                         break;
-                                     case Field::Count:
-                                         std::unreachable();
-                                 }
-                             }));
-    }
-  private:
-    enum class Field : std::uint8_t {
-        damage,
-        projectile_speed,
-        max_distance,
-        fire_cooldown,
-        Count,
-    };
-
-    static constexpr std::array<std::string_view, 4> field_names{
-        "damage", "projectile-speed", "max-distance", "fire-cooldown"};
+    static constexpr bool is_patch{std::same_as<T, ioj::sim::LaserWeaponSimConfigOverrides>};
 };
 
 } // namespace ioj::s7

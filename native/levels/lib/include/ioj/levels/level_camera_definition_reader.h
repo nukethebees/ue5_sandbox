@@ -27,7 +27,7 @@ struct TypeReader<levels::LevelCameraDefinition> : RecordReader<levels::LevelCam
                              field_names,
                              mode,
                              errors,
-                             ([&](Field const field, FieldReader const& read) {
+                             ([&](Field const field, auto const& read) {
                                  switch (field) {
                                      case Field::target_entity_ids:
                                          read(result.target_entity_ids);

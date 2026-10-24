@@ -10,42 +10,47 @@
 #include <ioj/s7/field_reader.h>
 
 #include <array>
+#include <concepts>
 #include <string_view>
 
 namespace ioj::s7 {
-template <>
-struct TypeReader<sim::TurretSimConfig> : RecordReader<sim::TurretSimConfig> {
+template <typename T>
+    requires std::same_as<T, sim::TurretSimConfig> || std::same_as<T, sim::TurretSimConfigOverrides>
+struct TypeReader<T> : RecordReader<T, sim::TurretSimConfigOverrides> {
+    using value_type = T;
+
     static void decode(Reader const& reader,
                        NodeIndex const node,
                        std::string_view const path,
                        value_type& result,
                        ReadMode mode,
                        AstDiagnostics& errors) {
-        decode_record<Field>(reader,
-                             node,
-                             "turrets",
-                             path,
-                             field_names,
-                             mode,
-                             errors,
-                             ([&](Field const field, FieldReader const& read) {
-                                 switch (field) {
-                                     case Field::detection_radius:
-                                         read(result.detection_radius, constraints::finite);
-                                         break;
-                                     case Field::target_refresh_frequency:
-                                         read(result.target_refresh_frequency, constraints::finite);
-                                         break;
-                                     case Field::laser:
-                                         read(result.laser);
-                                         break;
-                                     case Field::max_health:
-                                         read(result.max_health);
-                                         break;
-                                     case Field::Count:
-                                         std::unreachable();
-                                 }
-                             }));
+        decode_record<Field, is_patch>(
+            reader,
+            node,
+            "turrets",
+            path,
+            field_names,
+            mode,
+            errors,
+            ([&](Field const field, auto const& read) {
+                switch (field) {
+                    case Field::detection_radius:
+                        read(result.detection_radius, constraints::finite);
+                        break;
+                    case Field::target_refresh_frequency:
+                        read(result.target_refresh_frequency, constraints::finite);
+                        break;
+                    case Field::laser:
+                        read(result.laser);
+                        break;
+                    case Field::max_health:
+                        read(result.max_health);
+                        break;
+                    case Field::Count:
+                        std::unreachable();
+                }
+            }));
     }
   private:
     enum class Field : std::uint8_t {
@@ -58,55 +63,7 @@ struct TypeReader<sim::TurretSimConfig> : RecordReader<sim::TurretSimConfig> {
 
     static constexpr std::array<std::string_view, 4> field_names{
         "detection-radius", "target-refresh-frequency", "laser", "max-health"};
-};
-
-template <>
-struct TypeReader<sim::TurretSimConfigOverrides>
-    : RecordReader<sim::TurretSimConfigOverrides, ReadMode::Override> {
-    static void decode(Reader const& reader,
-                       NodeIndex const node,
-                       std::string_view const path,
-                       value_type& result,
-                       ReadMode,
-                       AstDiagnostics& errors) {
-        decode_record<Field>(reader,
-                             node,
-                             "turrets",
-                             path,
-                             field_names,
-                             ReadMode::Override,
-                             errors,
-                             ([&](Field const field, FieldReader const& read) {
-                                 switch (field) {
-                                     case Field::detection_radius:
-                                         read.patch(result.detection_radius, constraints::finite);
-                                         break;
-                                     case Field::target_refresh_frequency:
-                                         read.patch(result.target_refresh_frequency,
-                                                    constraints::finite);
-                                         break;
-                                     case Field::laser:
-                                         read.patch(result.laser);
-                                         break;
-                                     case Field::max_health:
-                                         read.patch(result.max_health);
-                                         break;
-                                     case Field::Count:
-                                         std::unreachable();
-                                 }
-                             }));
-    }
-  private:
-    enum class Field : std::uint8_t {
-        detection_radius,
-        target_refresh_frequency,
-        laser,
-        max_health,
-        Count,
-    };
-
-    static constexpr std::array<std::string_view, 4> field_names{
-        "detection-radius", "target-refresh-frequency", "laser", "max-health"};
+    static constexpr bool is_patch{std::same_as<T, ioj::sim::TurretSimConfigOverrides>};
 };
 
 } // namespace ioj::s7

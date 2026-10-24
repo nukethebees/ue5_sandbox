@@ -15,7 +15,8 @@
     (member children @reader_recursive :initializer ""))
   (record BoundedInteger :generate-s7-reader true :s7-tag "integer"
     (member value std::int64_t :required true :minimum -9223372036854775808 :maximum 9223372036854775806))
-  (record ReadableChild :generate-s7-reader true :s7-tag "child"
+  (record ReadableChild :generate-settings true :generate-overrides true
+    :generate-s7-reader true :s7-tag "child"
     (member name @reader_nonempty_string :required true)
     (member count int :initializer "2" :nonnegative true))
   (record ReadableRecord :generate-s7-reader true :s7-tag "record"
@@ -57,7 +58,7 @@
   (record EmptySettings :generate-settings true :generate-overrides true)
   (record WeaponSettings :generate-settings true :generate-overrides true
     :generate-s7-reader true :s7-tag "weapon"
-    (member damage int :initializer "5" :nonnegative true)
+    (member damage int :initializer "5" :required true :nonnegative true)
     (member turn_rate float :initializer "2.f" :settings-name "turn-speed")
     (member asset_distance float :initializer "9.f" :settings-exclude true))
   (record ActorSettings :generate-settings true :generate-overrides true

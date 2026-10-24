@@ -9,40 +9,44 @@
 #include <ioj/s7/field_reader.h>
 
 #include <array>
+#include <concepts>
 #include <string_view>
 
 namespace ioj::s7 {
-template <>
-struct TypeReader<codegen_compile_fixture::SettingsTarget>
-    : RecordReader<codegen_compile_fixture::SettingsTarget> {
+template <typename T>
+    requires std::same_as<T, codegen_compile_fixture::SettingsTarget> ||
+             std::same_as<T, codegen_compile_fixture::SettingsTargetOverrides>
+struct TypeReader<T> : RecordReader<T, codegen_compile_fixture::SettingsTargetOverrides> {
+    using value_type = T;
+
     static void decode(Reader const& reader,
                        NodeIndex const node,
                        std::string_view const path,
                        value_type& result,
                        ReadMode mode,
                        AstDiagnostics& errors) {
-        decode_record<Field>(reader,
-                             node,
-                             "settings",
-                             path,
-                             field_names,
-                             mode,
-                             errors,
-                             ([&](Field const field, FieldReader const& read) {
-                                 switch (field) {
-                                     case Field::first:
-                                         read(result.first);
-                                         break;
-                                     case Field::second:
-                                         read(result.second);
-                                         break;
-                                     case Field::external_value:
-                                         read(result.external_value);
-                                         break;
-                                     case Field::Count:
-                                         std::unreachable();
-                                 }
-                             }));
+        decode_record<Field, is_patch>(reader,
+                                       node,
+                                       "settings",
+                                       path,
+                                       field_names,
+                                       mode,
+                                       errors,
+                                       ([&](Field const field, auto const& read) {
+                                           switch (field) {
+                                               case Field::first:
+                                                   read(result.first);
+                                                   break;
+                                               case Field::second:
+                                                   read(result.second);
+                                                   break;
+                                               case Field::external_value:
+                                                   read(result.external_value);
+                                                   break;
+                                               case Field::Count:
+                                                   std::unreachable();
+                                           }
+                                       }));
     }
   private:
     enum class Field : std::uint8_t {
@@ -54,50 +58,8 @@ struct TypeReader<codegen_compile_fixture::SettingsTarget>
 
     static constexpr std::array<std::string_view, 3> field_names{
         "first", "second", "external-value"};
-};
-
-template <>
-struct TypeReader<codegen_compile_fixture::SettingsTargetOverrides>
-    : RecordReader<codegen_compile_fixture::SettingsTargetOverrides, ReadMode::Override> {
-    static void decode(Reader const& reader,
-                       NodeIndex const node,
-                       std::string_view const path,
-                       value_type& result,
-                       ReadMode,
-                       AstDiagnostics& errors) {
-        decode_record<Field>(reader,
-                             node,
-                             "settings",
-                             path,
-                             field_names,
-                             ReadMode::Override,
-                             errors,
-                             ([&](Field const field, FieldReader const& read) {
-                                 switch (field) {
-                                     case Field::first:
-                                         read.patch(result.first);
-                                         break;
-                                     case Field::second:
-                                         read.patch(result.second);
-                                         break;
-                                     case Field::external_value:
-                                         read.patch(result.external_value);
-                                         break;
-                                     case Field::Count:
-                                         std::unreachable();
-                                 }
-                             }));
-    }
-  private:
-    enum class Field : std::uint8_t {
-        first,
-        second,
-        external_value,
-        Count,
-    };
-
-    static constexpr std::array<std::string_view, 3> field_names{
-        "first", "second", "external-value"};
+    static constexpr bool is_patch{
+        std::same_as<T, codegen_compile_fixture::SettingsTargetOverrides>};
 };
 
 } // namespace ioj::s7

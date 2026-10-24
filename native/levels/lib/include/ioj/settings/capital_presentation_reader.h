@@ -9,18 +9,23 @@
 #include <ioj/s7/field_reader.h>
 
 #include <array>
+#include <concepts>
 #include <string_view>
 
 namespace ioj::s7 {
-template <>
-struct TypeReader<settings::CapitalPresentation> : RecordReader<settings::CapitalPresentation> {
+template <typename T>
+    requires std::same_as<T, settings::CapitalPresentation> ||
+             std::same_as<T, settings::CapitalPresentationOverrides>
+struct TypeReader<T> : RecordReader<T, settings::CapitalPresentationOverrides> {
+    using value_type = T;
+
     static void decode(Reader const& reader,
                        NodeIndex const node,
                        std::string_view const path,
                        value_type& result,
                        ReadMode mode,
                        AstDiagnostics& errors) {
-        decode_record<Field>(
+        decode_record<Field, is_patch>(
             reader,
             node,
             "capital-ships",
@@ -28,7 +33,7 @@ struct TypeReader<settings::CapitalPresentation> : RecordReader<settings::Capita
             field_names,
             mode,
             errors,
-            ([&](Field const field, FieldReader const& read) {
+            ([&](Field const field, auto const& read) {
                 switch (field) {
                     case Field::n_small_explosions:
                         read(result.n_small_explosions);
@@ -70,67 +75,7 @@ struct TypeReader<settings::CapitalPresentation> : RecordReader<settings::Capita
                                                                  "max-small-explosion-range",
                                                                  "large-explosion-delay",
                                                                  "proxy-arrow-size"};
-};
-
-template <>
-struct TypeReader<settings::CapitalPresentationOverrides>
-    : RecordReader<settings::CapitalPresentationOverrides, ReadMode::Override> {
-    static void decode(Reader const& reader,
-                       NodeIndex const node,
-                       std::string_view const path,
-                       value_type& result,
-                       ReadMode,
-                       AstDiagnostics& errors) {
-        decode_record<Field>(
-            reader,
-            node,
-            "capital-ships",
-            path,
-            field_names,
-            ReadMode::Override,
-            errors,
-            ([&](Field const field, FieldReader const& read) {
-                switch (field) {
-                    case Field::n_small_explosions:
-                        read.patch(result.n_small_explosions);
-                        break;
-                    case Field::time_between_explosions:
-                        read.patch(result.time_between_explosions, constraints::finite);
-                        break;
-                    case Field::min_small_explosion_range:
-                        read.patch(result.min_small_explosion_range, constraints::finite);
-                        break;
-                    case Field::max_small_explosion_range:
-                        read.patch(result.max_small_explosion_range, constraints::finite);
-                        break;
-                    case Field::large_explosion_delay:
-                        read.patch(result.large_explosion_delay, constraints::finite);
-                        break;
-                    case Field::proxy_arrow_size:
-                        read.patch(result.proxy_arrow_size, constraints::finite);
-                        break;
-                    case Field::Count:
-                        std::unreachable();
-                }
-            }));
-    }
-  private:
-    enum class Field : std::uint8_t {
-        n_small_explosions,
-        time_between_explosions,
-        min_small_explosion_range,
-        max_small_explosion_range,
-        large_explosion_delay,
-        proxy_arrow_size,
-        Count,
-    };
-
-    static constexpr std::array<std::string_view, 6> field_names{"n-small-explosions",
-                                                                 "time-between-explosions",
-                                                                 "min-small-explosion-range",
-                                                                 "max-small-explosion-range",
-                                                                 "large-explosion-delay",
-                                                                 "proxy-arrow-size"};
+    static constexpr bool is_patch{std::same_as<T, ioj::settings::CapitalPresentationOverrides>};
 };
 
 } // namespace ioj::s7

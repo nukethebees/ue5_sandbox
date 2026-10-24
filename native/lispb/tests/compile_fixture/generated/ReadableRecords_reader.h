@@ -9,6 +9,7 @@
 #include <ioj/s7/field_reader.h>
 
 #include <array>
+#include <concepts>
 #include <string_view>
 
 namespace ioj::s7 {
@@ -22,8 +23,7 @@ struct TypeReader<codegen_compile_fixture::EmptyReadable>
                        ReadMode mode,
                        AstDiagnostics& errors) {
         decode_record<Field>(
-            reader, node, "empty", path, field_names, mode, errors, ([](Field, FieldReader const&) {
-            }));
+            reader, node, "empty", path, field_names, mode, errors, ([](Field, auto const&) {}));
     }
   private:
     enum class Field : std::uint8_t {
@@ -113,7 +113,7 @@ struct TypeReader<codegen_compile_fixture::DefaultReadable>
                              field_names,
                              mode,
                              errors,
-                             ([&](Field const field, FieldReader const& read) {
+                             ([&](Field const field, auto const& read) {
                                  switch (field) {
                                      case Field::count:
                                          read(result.count);
@@ -154,7 +154,7 @@ struct TypeReader<codegen_compile_fixture::RecursiveReadable>
                              field_names,
                              mode,
                              errors,
-                             ([&](Field const field, FieldReader const& read) {
+                             ([&](Field const field, auto const& read) {
                                  switch (field) {
                                      case Field::children:
                                          read(result.children);
@@ -187,7 +187,7 @@ struct TypeReader<codegen_compile_fixture::BoundedInteger>
                              field_names,
                              ReadMode::Create,
                              errors,
-                             ([&](Field const field, FieldReader const& read) {
+                             ([&](Field const field, auto const& read) {
                                  switch (field) {
                                      case Field::value:
                                          read.construct(
@@ -222,7 +222,7 @@ struct TypeReader<codegen_compile_fixture::BoundedInteger>
                              field_names,
                              mode,
                              errors,
-                             ([&](Field const field, FieldReader const& read) {
+                             ([&](Field const field, auto const& read) {
                                  switch (field) {
                                      case Field::value:
                                          read(result.value,
@@ -245,9 +245,12 @@ struct TypeReader<codegen_compile_fixture::BoundedInteger>
     static constexpr auto required{required_fields<Field>({Field::value})};
 };
 
-template <>
-struct TypeReader<codegen_compile_fixture::ReadableChild>
-    : RecordReader<codegen_compile_fixture::ReadableChild> {
+template <typename T>
+    requires std::same_as<T, codegen_compile_fixture::ReadableChild> ||
+             std::same_as<T, codegen_compile_fixture::ReadableChildOverrides>
+struct TypeReader<T> : RecordReader<T, codegen_compile_fixture::ReadableChildOverrides> {
+    using value_type = T;
+
     static ReadResult<value_type>
         construct(Reader const& reader, NodeIndex const node, std::string_view const path) {
         AstDiagnostics errors{};
@@ -260,7 +263,7 @@ struct TypeReader<codegen_compile_fixture::ReadableChild>
                              field_names,
                              ReadMode::Create,
                              errors,
-                             ([&](Field const field, FieldReader const& read) {
+                             ([&](Field const field, auto const& read) {
                                  switch (field) {
                                      case Field::name:
                                          read.construct(value_name);
@@ -291,26 +294,26 @@ struct TypeReader<codegen_compile_fixture::ReadableChild>
                        value_type& result,
                        ReadMode mode,
                        AstDiagnostics& errors) {
-        decode_record<Field>(reader,
-                             node,
-                             "child",
-                             path,
-                             field_names,
-                             mode,
-                             errors,
-                             ([&](Field const field, FieldReader const& read) {
-                                 switch (field) {
-                                     case Field::name:
-                                         read(result.name);
-                                         break;
-                                     case Field::count:
-                                         read(result.count, constraints::nonnegative);
-                                         break;
-                                     case Field::Count:
-                                         std::unreachable();
-                                 }
-                             }),
-                             required);
+        decode_record<Field, is_patch>(reader,
+                                       node,
+                                       "child",
+                                       path,
+                                       field_names,
+                                       mode,
+                                       errors,
+                                       ([&](Field const field, auto const& read) {
+                                           switch (field) {
+                                               case Field::name:
+                                                   read(result.name);
+                                                   break;
+                                               case Field::count:
+                                                   read(result.count, constraints::nonnegative);
+                                                   break;
+                                               case Field::Count:
+                                                   std::unreachable();
+                                           }
+                                       }),
+                                       required);
     }
   private:
     enum class Field : std::uint8_t {
@@ -321,6 +324,8 @@ struct TypeReader<codegen_compile_fixture::ReadableChild>
 
     static constexpr std::array<std::string_view, 2> field_names{"name", "count"};
     static constexpr auto required{required_fields<Field>({Field::name})};
+    static constexpr bool is_patch{
+        std::same_as<T, codegen_compile_fixture::ReadableChildOverrides>};
 };
 
 template <>
@@ -345,7 +350,7 @@ struct TypeReader<codegen_compile_fixture::ReadableRecord>
                              field_names,
                              ReadMode::Create,
                              errors,
-                             ([&](Field const field, FieldReader const& read) {
+                             ([&](Field const field, auto const& read) {
                                  switch (field) {
                                      case Field::child:
                                          read.construct(value_child);
@@ -430,7 +435,7 @@ struct TypeReader<codegen_compile_fixture::ReadableRecord>
                              field_names,
                              mode,
                              errors,
-                             ([&](Field const field, FieldReader const& read) {
+                             ([&](Field const field, auto const& read) {
                                  switch (field) {
                                      case Field::child:
                                          read(result.child);

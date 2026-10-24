@@ -9,18 +9,22 @@
 #include <ioj/s7/field_reader.h>
 
 #include <array>
+#include <concepts>
 #include <string_view>
 
 namespace ioj::s7 {
-template <>
-struct TypeReader<settings::Radar> : RecordReader<settings::Radar> {
+template <typename T>
+    requires std::same_as<T, settings::Radar> || std::same_as<T, settings::RadarOverrides>
+struct TypeReader<T> : RecordReader<T, settings::RadarOverrides> {
+    using value_type = T;
+
     static void decode(Reader const& reader,
                        NodeIndex const node,
                        std::string_view const path,
                        value_type& result,
                        ReadMode mode,
                        AstDiagnostics& errors) {
-        decode_record<Field>(
+        decode_record<Field, is_patch>(
             reader,
             node,
             "radar",
@@ -28,7 +32,7 @@ struct TypeReader<settings::Radar> : RecordReader<settings::Radar> {
             field_names,
             mode,
             errors,
-            ([&](Field const field, FieldReader const& read) {
+            ([&](Field const field, auto const& read) {
                 switch (field) {
                     case Field::enabled:
                         read(result.enabled);
@@ -111,108 +115,7 @@ struct TypeReader<settings::Radar> : RecordReader<settings::Radar> {
         "objective-size-multiplier",
         "objective-ring-padding-pixels",
         "objective-ring-thickness-pixels"};
-};
-
-template <>
-struct TypeReader<settings::RadarOverrides>
-    : RecordReader<settings::RadarOverrides, ReadMode::Override> {
-    static void decode(Reader const& reader,
-                       NodeIndex const node,
-                       std::string_view const path,
-                       value_type& result,
-                       ReadMode,
-                       AstDiagnostics& errors) {
-        decode_record<Field>(
-            reader,
-            node,
-            "radar",
-            path,
-            field_names,
-            ReadMode::Override,
-            errors,
-            ([&](Field const field, FieldReader const& read) {
-                switch (field) {
-                    case Field::enabled:
-                        read.patch(result.enabled);
-                        break;
-                    case Field::combat_range:
-                        read.patch(result.combat_range, constraints::finite);
-                        break;
-                    case Field::tactical_range:
-                        read.patch(result.tactical_range, constraints::finite);
-                        break;
-                    case Field::maximum_range:
-                        read.patch(result.maximum_range, constraints::finite);
-                        break;
-                    case Field::combat_display_radius:
-                        read.patch(result.combat_display_radius, constraints::finite);
-                        break;
-                    case Field::grid_opacity:
-                        read.patch(result.grid_opacity, constraints::finite);
-                        break;
-                    case Field::core_cell_radius:
-                        read.patch(result.core_cell_radius, constraints::finite);
-                        break;
-                    case Field::combat_cell_radius:
-                        read.patch(result.combat_cell_radius, constraints::finite);
-                        break;
-                    case Field::tactical_cell_radius:
-                        read.patch(result.tactical_cell_radius, constraints::finite);
-                        break;
-                    case Field::strategic_cell_radius:
-                        read.patch(result.strategic_cell_radius, constraints::finite);
-                        break;
-                    case Field::glyph_size_scale:
-                        read.patch(result.glyph_size_scale, constraints::finite);
-                        break;
-                    case Field::objective_size_multiplier:
-                        read.patch(result.objective_size_multiplier, constraints::finite);
-                        break;
-                    case Field::objective_ring_padding_pixels:
-                        read.patch(result.objective_ring_padding_pixels, constraints::finite);
-                        break;
-                    case Field::objective_ring_thickness_pixels:
-                        read.patch(result.objective_ring_thickness_pixels, constraints::finite);
-                        break;
-                    case Field::Count:
-                        std::unreachable();
-                }
-            }));
-    }
-  private:
-    enum class Field : std::uint8_t {
-        enabled,
-        combat_range,
-        tactical_range,
-        maximum_range,
-        combat_display_radius,
-        grid_opacity,
-        core_cell_radius,
-        combat_cell_radius,
-        tactical_cell_radius,
-        strategic_cell_radius,
-        glyph_size_scale,
-        objective_size_multiplier,
-        objective_ring_padding_pixels,
-        objective_ring_thickness_pixels,
-        Count,
-    };
-
-    static constexpr std::array<std::string_view, 14> field_names{
-        "enabled",
-        "combat-range",
-        "tactical-range",
-        "maximum-range",
-        "combat-display-radius",
-        "grid-opacity",
-        "core-cell-radius",
-        "combat-cell-radius",
-        "tactical-cell-radius",
-        "strategic-cell-radius",
-        "glyph-size-scale",
-        "objective-size-multiplier",
-        "objective-ring-padding-pixels",
-        "objective-ring-thickness-pixels"};
+    static constexpr bool is_patch{std::same_as<T, ioj::settings::RadarOverrides>};
 };
 
 } // namespace ioj::s7

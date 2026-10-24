@@ -28,7 +28,7 @@ struct TypeReader<levels::TeamResultDefinition> : RecordReader<levels::TeamResul
                              field_names,
                              mode,
                              errors,
-                             ([&](Field const field, FieldReader const& read) {
+                             ([&](Field const field, auto const& read) {
                                  switch (field) {
                                      case Field::team:
                                          read(result.team);

@@ -3,6 +3,7 @@
 #include <ioj/s7/reader.h>
 
 namespace ioj::s7 {
+template <bool Patch = false>
 class FieldReader {
   public:
     FieldReader(Reader const& reader,
@@ -20,7 +21,13 @@ class FieldReader {
     void operator()(T& destination, Checks const&... checks) const {
         read_checked(
             destination,
-            [&] { decode_field(reader_, node_, path_, destination, mode_, errors_); },
+            [&] {
+                if constexpr (Patch) {
+                    decode_patch_field(reader_, node_, path_, destination, errors_);
+                } else {
+                    decode_field(reader_, node_, path_, destination, mode_, errors_);
+                }
+            },
             checks...);
     }
 
@@ -29,14 +36,6 @@ class FieldReader {
         read_checked(
             destination,
             [&] { read_field(reader_, node_, path_, destination, errors_); },
-            checks...);
-    }
-
-    template <typename T, typename... Checks>
-    void patch(std::optional<T>& destination, Checks const&... checks) const {
-        read_checked(
-            destination,
-            [&] { decode_patch_field(reader_, node_, path_, destination, errors_); },
             checks...);
     }
   private:

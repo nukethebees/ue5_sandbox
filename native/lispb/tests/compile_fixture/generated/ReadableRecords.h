@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ioj/apply_override.h"
 #include "ioj/constrained_strings.h"
 #include "ioj/enum_traits.h"
 #include "PlainEnums.h"
@@ -60,6 +61,16 @@ struct ReadableChild {
     ioj::NonEmptyString name;
     int count{2};
 };
+
+struct ReadableChildOverrides {
+    std::optional<ioj::NonEmptyString> name{};
+    std::optional<int> count{};
+};
+
+inline void apply_overrides(ReadableChild& target, ReadableChildOverrides const& overrides) {
+    ioj::apply_override(target.name, overrides.name);
+    ioj::apply_override(target.count, overrides.count);
+}
 
 struct ReadableRecord {
     ReadableChild child;

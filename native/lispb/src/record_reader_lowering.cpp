@@ -50,13 +50,13 @@ auto field_name(LoweringContext& context, RecordMemberId const member) -> std::s
     return name;
 }
 
-auto reader_fields(LoweringContext& context, DeclarationHandle record, bool overrides)
+auto reader_fields(LoweringContext& context, DeclarationHandle record)
     -> std::vector<RecordMemberId> {
     auto const& declarations{context.declarations};
     auto const& records{declarations.records};
     std::vector<RecordMemberId> result;
     for (auto field : declarations.items(records.members[records.index(record)])) {
-        if ((!overrides && !records.generate_settings[records.index(record)]) ||
+        if (!records.generate_settings[records.index(record)] ||
             !declarations.record_members
                  .settings_exclude[declarations.record_members.index(field)]) {
             result.push_back(field);
@@ -95,15 +95,13 @@ auto constraint_arguments(LoweringContext& context, RecordMemberId field) -> std
     return checks;
 }
 
-auto fields_body(LoweringContext& context,
-                 DeclarationHandle const record,
-                 bool const constructing,
-                 bool overrides) -> Nodes {
+auto fields_body(LoweringContext& context, DeclarationHandle const record, bool const constructing)
+    -> Nodes {
     auto& ir{context.ir};
     auto const& records{context.declarations.records};
     auto const row{records.index(record)};
     auto const& members{context.declarations.record_members};
-    auto const fields{reader_fields(context, record, overrides)};
+    auto const fields{reader_fields(context, record)};
     auto const positional{records.s7_positional[row] != 0};
     NodeListBuilder body{ir};
     if (constructing) {
@@ -116,8 +114,9 @@ auto fields_body(LoweringContext& context,
         }
     }
 
-    auto const read_method{overrides ? ".patch" : constructing ? ".construct" : ""};
-    auto const read_mode{overrides || constructing ? "" : ", mode"};
+    auto const read_method{constructing ? ".construct" : ""};
+    auto const read_mode{constructing ? "" : ", mode"};
+    auto const patch{records.generate_overrides[row] && !constructing};
     if (positional) {
         body.add(ir.variable(
                      "auto const",
@@ -139,8 +138,9 @@ auto fields_body(LoweringContext& context,
             auto const destination{(constructing ? "value_" : "result.") + name};
             auto const path{
                 std::format("std::string{{path}} + \".{}\"", field_name(context, field))};
-            body.add(ir.raw(std::format("FieldReader{{reader, (*arguments)[{}], {}, errors{}}}"
+            body.add(ir.raw(std::format("FieldReader{}{{reader, (*arguments)[{}], {}, errors{}}}"
                                         "{}({}{});\n",
+                                        patch ? "<is_patch>" : "",
                                         index++,
                                         path,
                                         read_mode,
@@ -151,8 +151,7 @@ auto fields_body(LoweringContext& context,
         }
     } else {
         // The IR has no lambda node; keep only the streaming callback's syntax textual.
-        std::string visitor{
-            "[&](Field const field, FieldReader const& read) {\nswitch (field) {\n"};
+        std::string visitor{"[&](Field const field, auto const& read) {\nswitch (field) {\n"};
         for (auto const field : fields) {
             auto const name{context.text(members.name[members.index(field)])};
             auto const destination{(constructing ? "value_" : "result.") + name};
@@ -164,24 +163,24 @@ auto fields_body(LoweringContext& context,
         }
         visitor += "case Field::Count: std::unreachable();\n}\n}";
         if (fields.empty()) {
-            visitor = "[](Field, FieldReader const&) {}";
+            visitor = "[](Field, auto const&) {}";
         }
         std::vector<Expr> arguments{ir.named("reader"),
                                     ir.named("node"),
                                     ir.string_literal(context.text(*records.s7_tag[row])),
                                     ir.named("path"),
                                     ir.named("field_names"),
-                                    ir.named(constructing ? "ReadMode::Create"
-                                             : overrides  ? "ReadMode::Override"
-                                                          : "mode"),
+                                    ir.named(constructing ? "ReadMode::Create" : "mode"),
                                     ir.named("errors"),
                                     ir.raw_expr(visitor, {})};
-        if (!overrides && std::ranges::any_of(fields, [&](auto const field) {
+        if (std::ranges::any_of(fields, [&](auto const field) {
                 return members.s7[members.index(field)].required;
             })) {
             arguments.push_back(ir.named("required"));
         }
-        body.add(ir.expr_stmt(ir.call(ir.named("decode_record<Field>"), arguments)));
+        body.add(ir.expr_stmt(
+            ir.call(ir.named(patch ? "decode_record<Field, is_patch>" : "decode_record<Field>"),
+                    arguments)));
     }
     if (!constructing) {
         return body.build();
@@ -218,18 +217,23 @@ auto fields_body(LoweringContext& context,
 
 void lower_record_reader(LoweringContext& context,
                          DeclarationHandle const record,
-                         DeclarationEmission& emission,
-                         bool overrides) {
+                         DeclarationEmission& emission) {
     auto& ir{context.ir};
     auto const& records{context.declarations.records};
     auto const row{records.index(record)};
-    auto const fields{record_reader::reader_fields(context, record, overrides)};
+    auto const fields{record_reader::reader_fields(context, record)};
     auto const empty{fields.empty()};
+    auto const paired{records.generate_overrides[row] != 0};
     auto const type{context.semantic.find_declared(context.module, records.name[row]).value()};
-    auto const value_type{ir.types.named(context.text(context.semantic.cpp_spelling(type)) +
-                                         (overrides                        ? "Overrides"
-                                          : records.constraint_policy[row] ? "Value"
-                                                                           : ""))};
+    auto const name{context.text(context.semantic.cpp_spelling(type))};
+    auto const config_type{ir.types.named(name + (records.constraint_policy[row] ? "Value" : ""))};
+    auto const value_type{paired ? ir.types.named("T") : config_type};
+    auto const patch_type{ir.types.named(name + "Overrides")};
+    auto const same_type{[&](CppTypeId other) {
+        return ir.template_id(
+            ir.named("std::same_as", {ir.types.dependency("std::same_as", "concepts")}),
+            {ir.type_reference(value_type), ir.type_reference(other)});
+    }};
     auto const& members{context.declarations.record_members};
     if (std::ranges::any_of(fields, [&](auto field) {
             auto const& options{members.s7[members.index(field)]};
@@ -255,6 +259,9 @@ void lower_record_reader(LoweringContext& context,
         values.push_back(ir.enumerator(member));
     }
     NodeListBuilder declarations{ir};
+    if (paired) {
+        declarations.add(ir.using_declaration(ir.strings.intern("value_type"), value_type), 2);
+    }
     auto const includes{context.declarations.items(records.s7_reader_includes[row])};
     emission.reader_includes.insert(
         emission.reader_includes.end(), includes.begin(), includes.end());
@@ -273,26 +280,26 @@ void lower_record_reader(LoweringContext& context,
         ir.parameter("Reader const&", "reader"),
         ir.parameter("NodeIndex const", "node"),
         ir.parameter("std::string_view const", "path")};
-    if (!overrides && std::ranges::any_of(fields, [&](auto field) {
+    if (std::ranges::any_of(fields, [&](auto field) {
             auto const index{members.index(field)};
             return !members.initializer[index].has_value();
         })) {
         add_function("construct",
                      "ReadResult<value_type>",
                      read_parameters,
-                     record_reader::fields_body(context, record, true, false));
+                     record_reader::fields_body(context, record, true));
     }
     auto decode_parameters{read_parameters};
     decode_parameters.push_back(ir.parameter("value_type&", empty ? "" : "result"));
     decode_parameters.push_back(
-        ir.parameter("ReadMode", overrides || (empty && records.s7_positional[row]) ? "" : "mode"));
+        ir.parameter("ReadMode", empty && records.s7_positional[row] ? "" : "mode"));
     decode_parameters.push_back(ir.parameter("AstDiagnostics&", "errors"));
-    add_function("decode",
-                 "void",
-                 decode_parameters,
-                 record_reader::fields_body(context, record, false, overrides));
-    if (!records.s7_positional[row]) {
+    add_function(
+        "decode", "void", decode_parameters, record_reader::fields_body(context, record, false));
+    if (paired || !records.s7_positional[row]) {
         declarations.add(ir.access(Access::private_), 1);
+    }
+    if (!records.s7_positional[row]) {
         values.push_back(ir.enumerator(ir.strings.intern("Count")));
         declarations.add(
             ir.enumeration(ir.strings.intern("Field"),
@@ -304,7 +311,7 @@ void lower_record_reader(LoweringContext& context,
         for (auto const field : fields) {
             auto const index{members.index(field)};
             names.push_back(ir.string_literal(record_reader::field_name(context, field)));
-            if (!overrides && members.s7[index].required) {
+            if (members.s7[index].required) {
                 required.push_back(ir.named("Field::" + context.text(members.name[index])));
             }
         }
@@ -324,13 +331,28 @@ void lower_record_reader(LoweringContext& context,
                              1);
         }
     }
+    if (paired) {
+        declarations.add(ir.constexpr_member(ir.types.intern("bool"),
+                                             ir.strings.intern("is_patch"),
+                                             same_type(patch_type)),
+                         1);
+    }
     auto const specialization{
         ir.record(ir.template_id(ir.named("TypeReader"), {ir.type_reference(value_type)}),
                   declarations.build())};
-    ir.set_record_template(specialization, ir.template_specialization());
+    if (paired) {
+        ir.set_record_template(
+            specialization,
+            ir.template_declaration({ir.type_template_parameter(ir.strings.intern("T"))}));
+        ir.set_record_requires_clause(
+            specialization,
+            ir.binary(BinaryOperator::logical_or, same_type(config_type), same_type(patch_type)));
+    } else {
+        ir.set_record_template(specialization, ir.template_specialization());
+    }
     std::vector<CppTypeId> base_arguments{value_type};
-    if (overrides) {
-        base_arguments.push_back(ir.types.intern("ReadMode::Override"));
+    if (paired) {
+        base_arguments.push_back(patch_type);
     }
     ir.set_record_bases(
         specialization,

@@ -159,9 +159,6 @@ auto lower_record(LoweringContext& context, DeclarationHandle schema) -> Declara
     }
     if (records.s7_tag[records.index(schema)]) {
         lower_record_reader(context, schema, result);
-        if (records.generate_overrides[records.index(schema)]) {
-            lower_record_reader(context, schema, result, true);
-        }
     }
     return result;
 }

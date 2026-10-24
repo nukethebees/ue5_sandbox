@@ -58,6 +58,19 @@ TEST(GeneratedS7Reader, ConstrainedRecordsValidateAndOverrideAsWholeValues) {
 }
 
 TEST(GeneratedS7Reader, ReadsSparseTypedOverridesWithNestedLayersAndExplicitEmptyValues) {
+    auto missing{read_source<WeaponSettings>("'(:weapon)")};
+    ASSERT_FALSE(missing);
+    EXPECT_EQ(missing.error().front().node_path, "record.damage");
+    auto complete{read_source<WeaponSettings>("'(:weapon :damage 0)")};
+    ASSERT_TRUE(complete);
+    EXPECT_EQ(complete->damage, 0);
+    EXPECT_EQ(complete->turn_rate, 2.f);
+
+    auto partial{read_source<ReadableChildOverrides>("'(:child :count 0)")};
+    ASSERT_TRUE(partial);
+    EXPECT_FALSE(partial->name);
+    EXPECT_EQ(partial->count, 0);
+
     Interpreter interpreter;
     auto ast{interpreter.evaluate_ast(R"('(:settings-layers
       (:actor :max-health 200 :weapon (:weapon :damage 17 :turn-speed 9))

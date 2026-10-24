@@ -10,37 +10,42 @@
 #include <ioj/s7/field_reader.h>
 
 #include <array>
+#include <concepts>
 #include <string_view>
 
 namespace ioj::s7 {
-template <>
-struct TypeReader<sim::SpinnerSimConfig> : RecordReader<sim::SpinnerSimConfig> {
+template <typename T>
+    requires std::same_as<T, sim::SpinnerSimConfig> ||
+             std::same_as<T, sim::SpinnerSimConfigOverrides>
+struct TypeReader<T> : RecordReader<T, sim::SpinnerSimConfigOverrides> {
+    using value_type = T;
+
     static void decode(Reader const& reader,
                        NodeIndex const node,
                        std::string_view const path,
                        value_type& result,
                        ReadMode mode,
                        AstDiagnostics& errors) {
-        decode_record<Field>(reader,
-                             node,
-                             "tube-spinners",
-                             path,
-                             field_names,
-                             mode,
-                             errors,
-                             ([&](Field const field, FieldReader const& read) {
-                                 switch (field) {
-                                     case Field::yaw_rotation_speed_degrees:
-                                         read(result.yaw_rotation_speed_degrees,
-                                              constraints::finite);
-                                         break;
-                                     case Field::laser:
-                                         read(result.laser);
-                                         break;
-                                     case Field::Count:
-                                         std::unreachable();
-                                 }
-                             }));
+        decode_record<Field, is_patch>(reader,
+                                       node,
+                                       "tube-spinners",
+                                       path,
+                                       field_names,
+                                       mode,
+                                       errors,
+                                       ([&](Field const field, auto const& read) {
+                                           switch (field) {
+                                               case Field::yaw_rotation_speed_degrees:
+                                                   read(result.yaw_rotation_speed_degrees,
+                                                        constraints::finite);
+                                                   break;
+                                               case Field::laser:
+                                                   read(result.laser);
+                                                   break;
+                                               case Field::Count:
+                                                   std::unreachable();
+                                           }
+                                       }));
     }
   private:
     enum class Field : std::uint8_t {
@@ -51,47 +56,7 @@ struct TypeReader<sim::SpinnerSimConfig> : RecordReader<sim::SpinnerSimConfig> {
 
     static constexpr std::array<std::string_view, 2> field_names{"yaw-rotation-speed-degrees",
                                                                  "laser"};
-};
-
-template <>
-struct TypeReader<sim::SpinnerSimConfigOverrides>
-    : RecordReader<sim::SpinnerSimConfigOverrides, ReadMode::Override> {
-    static void decode(Reader const& reader,
-                       NodeIndex const node,
-                       std::string_view const path,
-                       value_type& result,
-                       ReadMode,
-                       AstDiagnostics& errors) {
-        decode_record<Field>(reader,
-                             node,
-                             "tube-spinners",
-                             path,
-                             field_names,
-                             ReadMode::Override,
-                             errors,
-                             ([&](Field const field, FieldReader const& read) {
-                                 switch (field) {
-                                     case Field::yaw_rotation_speed_degrees:
-                                         read.patch(result.yaw_rotation_speed_degrees,
-                                                    constraints::finite);
-                                         break;
-                                     case Field::laser:
-                                         read.patch(result.laser);
-                                         break;
-                                     case Field::Count:
-                                         std::unreachable();
-                                 }
-                             }));
-    }
-  private:
-    enum class Field : std::uint8_t {
-        yaw_rotation_speed_degrees,
-        laser,
-        Count,
-    };
-
-    static constexpr std::array<std::string_view, 2> field_names{"yaw-rotation-speed-degrees",
-                                                                 "laser"};
+    static constexpr bool is_patch{std::same_as<T, ioj::sim::SpinnerSimConfigOverrides>};
 };
 
 } // namespace ioj::s7

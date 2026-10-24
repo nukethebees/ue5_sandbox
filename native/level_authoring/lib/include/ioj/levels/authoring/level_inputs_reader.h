@@ -33,7 +33,7 @@ struct TypeReader<levels::authoring::EntityInput> : RecordReader<levels::authori
                              field_names,
                              mode,
                              errors,
-                             ([&](Field const field, FieldReader const& read) {
+                             ([&](Field const field, auto const& read) {
                                  switch (field) {
                                      case Field::id:
                                          read(result.id);
@@ -121,7 +121,7 @@ struct TypeReader<levels::authoring::ObjectiveInput>
                              field_names,
                              mode,
                              errors,
-                             ([&](Field const field, FieldReader const& read) {
+                             ([&](Field const field, auto const& read) {
                                  switch (field) {
                                      case Field::id:
                                          read(result.id);
@@ -186,7 +186,7 @@ struct TypeReader<levels::authoring::MissionInput> : RecordReader<levels::author
                              field_names,
                              mode,
                              errors,
-                             ([&](Field const field, FieldReader const& read) {
+                             ([&](Field const field, auto const& read) {
                                  switch (field) {
                                      case Field::objectives:
                                          read(result.objectives);
@@ -226,7 +226,7 @@ struct TypeReader<levels::authoring::LevelInput> : RecordReader<levels::authorin
                              field_names,
                              mode,
                              errors,
-                             ([&](Field const field, FieldReader const& read) {
+                             ([&](Field const field, auto const& read) {
                                  switch (field) {
                                      case Field::id:
                                          read(result.id);
@@ -313,7 +313,7 @@ struct TypeReader<levels::authoring::IncludedLevelInput>
                              field_names,
                              mode,
                              errors,
-                             ([&](Field const field, FieldReader const& read) {
+                             ([&](Field const field, auto const& read) {
                                  switch (field) {
                                      case Field::path:
                                          read(result.path);
@@ -358,7 +358,7 @@ struct TypeReader<levels::authoring::IncludedCampaignInput>
                              field_names,
                              mode,
                              errors,
-                             ([&](Field const field, FieldReader const& read) {
+                             ([&](Field const field, auto const& read) {
                                  switch (field) {
                                      case Field::path:
                                          read(result.path);
@@ -402,7 +402,7 @@ struct TypeReader<levels::authoring::CatalogInput> : RecordReader<levels::author
                              field_names,
                              mode,
                              errors,
-                             ([&](Field const field, FieldReader const& read) {
+                             ([&](Field const field, auto const& read) {
                                  switch (field) {
                                      case Field::levels:
                                          read(result.levels);

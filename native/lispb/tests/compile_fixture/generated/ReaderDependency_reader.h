@@ -26,7 +26,7 @@ struct TypeReader<codegen_compile_fixture::ReaderDependency>
                              field_names,
                              ReadMode::Create,
                              errors,
-                             ([&](Field const field, FieldReader const& read) {
+                             ([&](Field const field, auto const& read) {
                                  switch (field) {
                                      case Field::child:
                                          read.construct(value_child);
@@ -58,7 +58,7 @@ struct TypeReader<codegen_compile_fixture::ReaderDependency>
                              field_names,
                              mode,
                              errors,
-                             ([&](Field const field, FieldReader const& read) {
+                             ([&](Field const field, auto const& read) {
                                  switch (field) {
                                      case Field::child:
                                          read(result.child);

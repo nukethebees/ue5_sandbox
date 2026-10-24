@@ -27,7 +27,7 @@ struct TypeReader<codegen_compile_fixture::UnsupportedReader>
                              field_names,
                              mode,
                              errors,
-                             ([&](Field const field, FieldReader const& read) {
+                             ([&](Field const field, auto const& read) {
                                  switch (field) {
                                      case Field::target:
                                          read(result.target);

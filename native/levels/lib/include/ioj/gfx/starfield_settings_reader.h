@@ -9,38 +9,43 @@
 #include <ioj/s7/field_reader.h>
 
 #include <array>
+#include <concepts>
 #include <string_view>
 
 namespace ioj::s7 {
-template <>
-struct TypeReader<starfield::GenerationSettings> : RecordReader<starfield::GenerationSettings> {
+template <typename T>
+    requires std::same_as<T, starfield::GenerationSettings> ||
+             std::same_as<T, starfield::GenerationSettingsOverrides>
+struct TypeReader<T> : RecordReader<T, starfield::GenerationSettingsOverrides> {
+    using value_type = T;
+
     static void decode(Reader const& reader,
                        NodeIndex const node,
                        std::string_view const path,
                        value_type& result,
                        ReadMode mode,
                        AstDiagnostics& errors) {
-        decode_record<Field>(reader,
-                             node,
-                             "generation",
-                             path,
-                             field_names,
-                             mode,
-                             errors,
-                             ([&](Field const field, FieldReader const& read) {
-                                 switch (field) {
-                                     case Field::star_count:
-                                         read(result.star_count,
-                                              constraints::minimum(1ULL),
-                                              constraints::maximum(1000000ULL));
-                                         break;
-                                     case Field::random_seed:
-                                         read(result.random_seed);
-                                         break;
-                                     case Field::Count:
-                                         std::unreachable();
-                                 }
-                             }));
+        decode_record<Field, is_patch>(reader,
+                                       node,
+                                       "generation",
+                                       path,
+                                       field_names,
+                                       mode,
+                                       errors,
+                                       ([&](Field const field, auto const& read) {
+                                           switch (field) {
+                                               case Field::star_count:
+                                                   read(result.star_count,
+                                                        constraints::minimum(1ULL),
+                                                        constraints::maximum(1000000ULL));
+                                                   break;
+                                               case Field::random_seed:
+                                                   read(result.random_seed);
+                                                   break;
+                                               case Field::Count:
+                                                   std::unreachable();
+                                           }
+                                       }));
     }
   private:
     enum class Field : std::uint8_t {
@@ -50,58 +55,22 @@ struct TypeReader<starfield::GenerationSettings> : RecordReader<starfield::Gener
     };
 
     static constexpr std::array<std::string_view, 2> field_names{"star-count", "random-seed"};
+    static constexpr bool is_patch{std::same_as<T, ioj::starfield::GenerationSettingsOverrides>};
 };
 
-template <>
-struct TypeReader<starfield::GenerationSettingsOverrides>
-    : RecordReader<starfield::GenerationSettingsOverrides, ReadMode::Override> {
-    static void decode(Reader const& reader,
-                       NodeIndex const node,
-                       std::string_view const path,
-                       value_type& result,
-                       ReadMode,
-                       AstDiagnostics& errors) {
-        decode_record<Field>(reader,
-                             node,
-                             "generation",
-                             path,
-                             field_names,
-                             ReadMode::Override,
-                             errors,
-                             ([&](Field const field, FieldReader const& read) {
-                                 switch (field) {
-                                     case Field::star_count:
-                                         read.patch(result.star_count,
-                                                    constraints::minimum(1ULL),
-                                                    constraints::maximum(1000000ULL));
-                                         break;
-                                     case Field::random_seed:
-                                         read.patch(result.random_seed);
-                                         break;
-                                     case Field::Count:
-                                         std::unreachable();
-                                 }
-                             }));
-    }
-  private:
-    enum class Field : std::uint8_t {
-        star_count,
-        random_seed,
-        Count,
-    };
+template <typename T>
+    requires std::same_as<T, starfield::StarSettings> ||
+             std::same_as<T, starfield::StarSettingsOverrides>
+struct TypeReader<T> : RecordReader<T, starfield::StarSettingsOverrides> {
+    using value_type = T;
 
-    static constexpr std::array<std::string_view, 2> field_names{"star-count", "random-seed"};
-};
-
-template <>
-struct TypeReader<starfield::StarSettings> : RecordReader<starfield::StarSettings> {
     static void decode(Reader const& reader,
                        NodeIndex const node,
                        std::string_view const path,
                        value_type& result,
                        ReadMode mode,
                        AstDiagnostics& errors) {
-        decode_record<Field>(
+        decode_record<Field, is_patch>(
             reader,
             node,
             "star",
@@ -109,7 +78,7 @@ struct TypeReader<starfield::StarSettings> : RecordReader<starfield::StarSetting
             field_names,
             mode,
             errors,
-            ([&](Field const field, FieldReader const& read) {
+            ([&](Field const field, auto const& read) {
                 switch (field) {
                     case Field::scale:
                         read(result.scale, constraints::positive, constraints::finite);
@@ -146,95 +115,43 @@ struct TypeReader<starfield::StarSettings> : RecordReader<starfield::StarSetting
                                                                  "global-brightness",
                                                                  "colour-variation-strength",
                                                                  "parallax-strength"};
+    static constexpr bool is_patch{std::same_as<T, ioj::starfield::StarSettingsOverrides>};
 };
 
-template <>
-struct TypeReader<starfield::StarSettingsOverrides>
-    : RecordReader<starfield::StarSettingsOverrides, ReadMode::Override> {
-    static void decode(Reader const& reader,
-                       NodeIndex const node,
-                       std::string_view const path,
-                       value_type& result,
-                       ReadMode,
-                       AstDiagnostics& errors) {
-        decode_record<Field>(
-            reader,
-            node,
-            "star",
-            path,
-            field_names,
-            ReadMode::Override,
-            errors,
-            ([&](Field const field, FieldReader const& read) {
-                switch (field) {
-                    case Field::scale:
-                        read.patch(result.scale, constraints::positive, constraints::finite);
-                        break;
-                    case Field::size_multiplier:
-                        read.patch(
-                            result.size_multiplier, constraints::nonnegative, constraints::finite);
-                        break;
-                    case Field::global_brightness:
-                        read.patch(result.global_brightness, constraints::finite);
-                        break;
-                    case Field::colour_variation_strength:
-                        read.patch(result.colour_variation_strength, constraints::finite);
-                        break;
-                    case Field::parallax_strength:
-                        read.patch(result.parallax_strength, constraints::finite);
-                        break;
-                    case Field::Count:
-                        std::unreachable();
-                }
-            }));
-    }
-  private:
-    enum class Field : std::uint8_t {
-        scale,
-        size_multiplier,
-        global_brightness,
-        colour_variation_strength,
-        parallax_strength,
-        Count,
-    };
+template <typename T>
+    requires std::same_as<T, starfield::GalacticBandSettings> ||
+             std::same_as<T, starfield::GalacticBandSettingsOverrides>
+struct TypeReader<T> : RecordReader<T, starfield::GalacticBandSettingsOverrides> {
+    using value_type = T;
 
-    static constexpr std::array<std::string_view, 5> field_names{"scale",
-                                                                 "size-multiplier",
-                                                                 "global-brightness",
-                                                                 "colour-variation-strength",
-                                                                 "parallax-strength"};
-};
-
-template <>
-struct TypeReader<starfield::GalacticBandSettings> : RecordReader<starfield::GalacticBandSettings> {
     static void decode(Reader const& reader,
                        NodeIndex const node,
                        std::string_view const path,
                        value_type& result,
                        ReadMode mode,
                        AstDiagnostics& errors) {
-        decode_record<Field>(reader,
-                             node,
-                             "galactic-band",
-                             path,
-                             field_names,
-                             mode,
-                             errors,
-                             ([&](Field const field, FieldReader const& read) {
-                                 switch (field) {
-                                     case Field::strength:
-                                         read(result.strength, constraints::finite);
-                                         break;
-                                     case Field::width_degrees:
-                                         read(result.width_degrees,
-                                              constraints::positive,
-                                              constraints::finite,
-                                              constraints::maximum(90ULL));
-                                         break;
-                                     case Field::Count:
-                                         std::unreachable();
-                                 }
-                             }));
+        decode_record<Field, is_patch>(reader,
+                                       node,
+                                       "galactic-band",
+                                       path,
+                                       field_names,
+                                       mode,
+                                       errors,
+                                       ([&](Field const field, auto const& read) {
+                                           switch (field) {
+                                               case Field::strength:
+                                                   read(result.strength, constraints::finite);
+                                                   break;
+                                               case Field::width_degrees:
+                                                   read(result.width_degrees,
+                                                        constraints::positive,
+                                                        constraints::finite,
+                                                        constraints::maximum(90ULL));
+                                                   break;
+                                               case Field::Count:
+                                                   std::unreachable();
+                                           }
+                                       }));
     }
   private:
     enum class Field : std::uint8_t {
@@ -244,60 +161,22 @@ struct TypeReader<starfield::GalacticBandSettings> : RecordReader<starfield::Gal
     };
 
     static constexpr std::array<std::string_view, 2> field_names{"strength", "width-degrees"};
+    static constexpr bool is_patch{std::same_as<T, ioj::starfield::GalacticBandSettingsOverrides>};
 };
 
-template <>
-struct TypeReader<starfield::GalacticBandSettingsOverrides>
-    : RecordReader<starfield::GalacticBandSettingsOverrides, ReadMode::Override> {
-    static void decode(Reader const& reader,
-                       NodeIndex const node,
-                       std::string_view const path,
-                       value_type& result,
-                       ReadMode,
-                       AstDiagnostics& errors) {
-        decode_record<Field>(reader,
-                             node,
-                             "galactic-band",
-                             path,
-                             field_names,
-                             ReadMode::Override,
-                             errors,
-                             ([&](Field const field, FieldReader const& read) {
-                                 switch (field) {
-                                     case Field::strength:
-                                         read.patch(result.strength, constraints::finite);
-                                         break;
-                                     case Field::width_degrees:
-                                         read.patch(result.width_degrees,
-                                                    constraints::positive,
-                                                    constraints::finite,
-                                                    constraints::maximum(90ULL));
-                                         break;
-                                     case Field::Count:
-                                         std::unreachable();
-                                 }
-                             }));
-    }
-  private:
-    enum class Field : std::uint8_t {
-        strength,
-        width_degrees,
-        Count,
-    };
+template <typename T>
+    requires std::same_as<T, starfield::StellarClusterSettings> ||
+             std::same_as<T, starfield::StellarClusterSettingsOverrides>
+struct TypeReader<T> : RecordReader<T, starfield::StellarClusterSettingsOverrides> {
+    using value_type = T;
 
-    static constexpr std::array<std::string_view, 2> field_names{"strength", "width-degrees"};
-};
-
-template <>
-struct TypeReader<starfield::StellarClusterSettings>
-    : RecordReader<starfield::StellarClusterSettings> {
     static void decode(Reader const& reader,
                        NodeIndex const node,
                        std::string_view const path,
                        value_type& result,
                        ReadMode mode,
                        AstDiagnostics& errors) {
-        decode_record<Field>(
+        decode_record<Field, is_patch>(
             reader,
             node,
             "stellar-cluster",
@@ -305,7 +184,7 @@ struct TypeReader<starfield::StellarClusterSettings>
             field_names,
             mode,
             errors,
-            ([&](Field const field, FieldReader const& read) {
+            ([&](Field const field, auto const& read) {
                 switch (field) {
                     case Field::strength:
                         read(result.strength, constraints::finite);
@@ -326,58 +205,23 @@ struct TypeReader<starfield::StellarClusterSettings>
     };
 
     static constexpr std::array<std::string_view, 2> field_names{"strength", "width-degrees"};
+    static constexpr bool is_patch{
+        std::same_as<T, ioj::starfield::StellarClusterSettingsOverrides>};
 };
 
-template <>
-struct TypeReader<starfield::StellarClusterSettingsOverrides>
-    : RecordReader<starfield::StellarClusterSettingsOverrides, ReadMode::Override> {
-    static void decode(Reader const& reader,
-                       NodeIndex const node,
-                       std::string_view const path,
-                       value_type& result,
-                       ReadMode,
-                       AstDiagnostics& errors) {
-        decode_record<Field>(reader,
-                             node,
-                             "stellar-cluster",
-                             path,
-                             field_names,
-                             ReadMode::Override,
-                             errors,
-                             ([&](Field const field, FieldReader const& read) {
-                                 switch (field) {
-                                     case Field::strength:
-                                         read.patch(result.strength, constraints::finite);
-                                         break;
-                                     case Field::width_degrees:
-                                         read.patch(result.width_degrees,
-                                                    constraints::positive,
-                                                    constraints::finite);
-                                         break;
-                                     case Field::Count:
-                                         std::unreachable();
-                                 }
-                             }));
-    }
-  private:
-    enum class Field : std::uint8_t {
-        strength,
-        width_degrees,
-        Count,
-    };
+template <typename T>
+    requires std::same_as<T, starfield::DustLaneSettings> ||
+             std::same_as<T, starfield::DustLaneSettingsOverrides>
+struct TypeReader<T> : RecordReader<T, starfield::DustLaneSettingsOverrides> {
+    using value_type = T;
 
-    static constexpr std::array<std::string_view, 2> field_names{"strength", "width-degrees"};
-};
-
-template <>
-struct TypeReader<starfield::DustLaneSettings> : RecordReader<starfield::DustLaneSettings> {
     static void decode(Reader const& reader,
                        NodeIndex const node,
                        std::string_view const path,
                        value_type& result,
                        ReadMode mode,
                        AstDiagnostics& errors) {
-        decode_record<Field>(
+        decode_record<Field, is_patch>(
             reader,
             node,
             "dust-lane",
@@ -385,7 +229,7 @@ struct TypeReader<starfield::DustLaneSettings> : RecordReader<starfield::DustLan
             field_names,
             mode,
             errors,
-            ([&](Field const field, FieldReader const& read) {
+            ([&](Field const field, auto const& read) {
                 switch (field) {
                     case Field::strength:
                         read(result.strength, constraints::finite);
@@ -411,63 +255,22 @@ struct TypeReader<starfield::DustLaneSettings> : RecordReader<starfield::DustLan
 
     static constexpr std::array<std::string_view, 3> field_names{
         "strength", "width-degrees", "irregularity"};
+    static constexpr bool is_patch{std::same_as<T, ioj::starfield::DustLaneSettingsOverrides>};
 };
 
-template <>
-struct TypeReader<starfield::DustLaneSettingsOverrides>
-    : RecordReader<starfield::DustLaneSettingsOverrides, ReadMode::Override> {
-    static void decode(Reader const& reader,
-                       NodeIndex const node,
-                       std::string_view const path,
-                       value_type& result,
-                       ReadMode,
-                       AstDiagnostics& errors) {
-        decode_record<Field>(reader,
-                             node,
-                             "dust-lane",
-                             path,
-                             field_names,
-                             ReadMode::Override,
-                             errors,
-                             ([&](Field const field, FieldReader const& read) {
-                                 switch (field) {
-                                     case Field::strength:
-                                         read.patch(result.strength, constraints::finite);
-                                         break;
-                                     case Field::width_degrees:
-                                         read.patch(result.width_degrees,
-                                                    constraints::positive,
-                                                    constraints::finite);
-                                         break;
-                                     case Field::irregularity:
-                                         read.patch(result.irregularity, constraints::finite);
-                                         break;
-                                     case Field::Count:
-                                         std::unreachable();
-                                 }
-                             }));
-    }
-  private:
-    enum class Field : std::uint8_t {
-        strength,
-        width_degrees,
-        irregularity,
-        Count,
-    };
+template <typename T>
+    requires std::same_as<T, starfield::BrightStarSettings> ||
+             std::same_as<T, starfield::BrightStarSettingsOverrides>
+struct TypeReader<T> : RecordReader<T, starfield::BrightStarSettingsOverrides> {
+    using value_type = T;
 
-    static constexpr std::array<std::string_view, 3> field_names{
-        "strength", "width-degrees", "irregularity"};
-};
-
-template <>
-struct TypeReader<starfield::BrightStarSettings> : RecordReader<starfield::BrightStarSettings> {
     static void decode(Reader const& reader,
                        NodeIndex const node,
                        std::string_view const path,
                        value_type& result,
                        ReadMode mode,
                        AstDiagnostics& errors) {
-        decode_record<Field>(
+        decode_record<Field, is_patch>(
             reader,
             node,
             "bright-star",
@@ -475,7 +278,7 @@ struct TypeReader<starfield::BrightStarSettings> : RecordReader<starfield::Brigh
             field_names,
             mode,
             errors,
-            ([&](Field const field, FieldReader const& read) {
+            ([&](Field const field, auto const& read) {
                 switch (field) {
                     case Field::fraction:
                         read(result.fraction, constraints::finite);
@@ -505,85 +308,40 @@ struct TypeReader<starfield::BrightStarSettings> : RecordReader<starfield::Brigh
 
     static constexpr std::array<std::string_view, 4> field_names{
         "fraction", "size-multiplier", "brightness-multiplier", "shape-strength"};
+    static constexpr bool is_patch{std::same_as<T, ioj::starfield::BrightStarSettingsOverrides>};
 };
 
-template <>
-struct TypeReader<starfield::BrightStarSettingsOverrides>
-    : RecordReader<starfield::BrightStarSettingsOverrides, ReadMode::Override> {
-    static void decode(Reader const& reader,
-                       NodeIndex const node,
-                       std::string_view const path,
-                       value_type& result,
-                       ReadMode,
-                       AstDiagnostics& errors) {
-        decode_record<Field>(
-            reader,
-            node,
-            "bright-star",
-            path,
-            field_names,
-            ReadMode::Override,
-            errors,
-            ([&](Field const field, FieldReader const& read) {
-                switch (field) {
-                    case Field::fraction:
-                        read.patch(result.fraction, constraints::finite);
-                        break;
-                    case Field::size_multiplier:
-                        read.patch(
-                            result.size_multiplier, constraints::nonnegative, constraints::finite);
-                        break;
-                    case Field::brightness_multiplier:
-                        read.patch(result.brightness_multiplier, constraints::finite);
-                        break;
-                    case Field::shape_strength:
-                        read.patch(result.shape_strength, constraints::finite);
-                        break;
-                    case Field::Count:
-                        std::unreachable();
-                }
-            }));
-    }
-  private:
-    enum class Field : std::uint8_t {
-        fraction,
-        size_multiplier,
-        brightness_multiplier,
-        shape_strength,
-        Count,
-    };
+template <typename T>
+    requires std::same_as<T, starfield::TwinkleSettings> ||
+             std::same_as<T, starfield::TwinkleSettingsOverrides>
+struct TypeReader<T> : RecordReader<T, starfield::TwinkleSettingsOverrides> {
+    using value_type = T;
 
-    static constexpr std::array<std::string_view, 4> field_names{
-        "fraction", "size-multiplier", "brightness-multiplier", "shape-strength"};
-};
-
-template <>
-struct TypeReader<starfield::TwinkleSettings> : RecordReader<starfield::TwinkleSettings> {
     static void decode(Reader const& reader,
                        NodeIndex const node,
                        std::string_view const path,
                        value_type& result,
                        ReadMode mode,
                        AstDiagnostics& errors) {
-        decode_record<Field>(reader,
-                             node,
-                             "twinkle",
-                             path,
-                             field_names,
-                             mode,
-                             errors,
-                             ([&](Field const field, FieldReader const& read) {
-                                 switch (field) {
-                                     case Field::strength:
-                                         read(result.strength, constraints::finite);
-                                         break;
-                                     case Field::speed:
-                                         read(result.speed, constraints::finite);
-                                         break;
-                                     case Field::Count:
-                                         std::unreachable();
-                                 }
-                             }));
+        decode_record<Field, is_patch>(reader,
+                                       node,
+                                       "twinkle",
+                                       path,
+                                       field_names,
+                                       mode,
+                                       errors,
+                                       ([&](Field const field, auto const& read) {
+                                           switch (field) {
+                                               case Field::strength:
+                                                   read(result.strength, constraints::finite);
+                                                   break;
+                                               case Field::speed:
+                                                   read(result.speed, constraints::finite);
+                                                   break;
+                                               case Field::Count:
+                                                   std::unreachable();
+                                           }
+                                       }));
     }
   private:
     enum class Field : std::uint8_t {
@@ -593,56 +351,22 @@ struct TypeReader<starfield::TwinkleSettings> : RecordReader<starfield::TwinkleS
     };
 
     static constexpr std::array<std::string_view, 2> field_names{"strength", "speed"};
+    static constexpr bool is_patch{std::same_as<T, ioj::starfield::TwinkleSettingsOverrides>};
 };
 
-template <>
-struct TypeReader<starfield::TwinkleSettingsOverrides>
-    : RecordReader<starfield::TwinkleSettingsOverrides, ReadMode::Override> {
-    static void decode(Reader const& reader,
-                       NodeIndex const node,
-                       std::string_view const path,
-                       value_type& result,
-                       ReadMode,
-                       AstDiagnostics& errors) {
-        decode_record<Field>(reader,
-                             node,
-                             "twinkle",
-                             path,
-                             field_names,
-                             ReadMode::Override,
-                             errors,
-                             ([&](Field const field, FieldReader const& read) {
-                                 switch (field) {
-                                     case Field::strength:
-                                         read.patch(result.strength, constraints::finite);
-                                         break;
-                                     case Field::speed:
-                                         read.patch(result.speed, constraints::finite);
-                                         break;
-                                     case Field::Count:
-                                         std::unreachable();
-                                 }
-                             }));
-    }
-  private:
-    enum class Field : std::uint8_t {
-        strength,
-        speed,
-        Count,
-    };
+template <typename T>
+    requires std::same_as<T, starfield::GalacticHazeSettings> ||
+             std::same_as<T, starfield::GalacticHazeSettingsOverrides>
+struct TypeReader<T> : RecordReader<T, starfield::GalacticHazeSettingsOverrides> {
+    using value_type = T;
 
-    static constexpr std::array<std::string_view, 2> field_names{"strength", "speed"};
-};
-
-template <>
-struct TypeReader<starfield::GalacticHazeSettings> : RecordReader<starfield::GalacticHazeSettings> {
     static void decode(Reader const& reader,
                        NodeIndex const node,
                        std::string_view const path,
                        value_type& result,
                        ReadMode mode,
                        AstDiagnostics& errors) {
-        decode_record<Field>(
+        decode_record<Field, is_patch>(
             reader,
             node,
             "galactic-haze",
@@ -650,7 +374,7 @@ struct TypeReader<starfield::GalacticHazeSettings> : RecordReader<starfield::Gal
             field_names,
             mode,
             errors,
-            ([&](Field const field, FieldReader const& read) {
+            ([&](Field const field, auto const& read) {
                 switch (field) {
                     case Field::strength:
                         read(result.strength, constraints::finite);
@@ -671,58 +395,22 @@ struct TypeReader<starfield::GalacticHazeSettings> : RecordReader<starfield::Gal
     };
 
     static constexpr std::array<std::string_view, 2> field_names{"strength", "width-degrees"};
+    static constexpr bool is_patch{std::same_as<T, ioj::starfield::GalacticHazeSettingsOverrides>};
 };
 
-template <>
-struct TypeReader<starfield::GalacticHazeSettingsOverrides>
-    : RecordReader<starfield::GalacticHazeSettingsOverrides, ReadMode::Override> {
-    static void decode(Reader const& reader,
-                       NodeIndex const node,
-                       std::string_view const path,
-                       value_type& result,
-                       ReadMode,
-                       AstDiagnostics& errors) {
-        decode_record<Field>(reader,
-                             node,
-                             "galactic-haze",
-                             path,
-                             field_names,
-                             ReadMode::Override,
-                             errors,
-                             ([&](Field const field, FieldReader const& read) {
-                                 switch (field) {
-                                     case Field::strength:
-                                         read.patch(result.strength, constraints::finite);
-                                         break;
-                                     case Field::width_degrees:
-                                         read.patch(result.width_degrees,
-                                                    constraints::positive,
-                                                    constraints::finite);
-                                         break;
-                                     case Field::Count:
-                                         std::unreachable();
-                                 }
-                             }));
-    }
-  private:
-    enum class Field : std::uint8_t {
-        strength,
-        width_degrees,
-        Count,
-    };
+template <typename T>
+    requires std::same_as<T, starfield::GalacticCoreSettings> ||
+             std::same_as<T, starfield::GalacticCoreSettingsOverrides>
+struct TypeReader<T> : RecordReader<T, starfield::GalacticCoreSettingsOverrides> {
+    using value_type = T;
 
-    static constexpr std::array<std::string_view, 2> field_names{"strength", "width-degrees"};
-};
-
-template <>
-struct TypeReader<starfield::GalacticCoreSettings> : RecordReader<starfield::GalacticCoreSettings> {
     static void decode(Reader const& reader,
                        NodeIndex const node,
                        std::string_view const path,
                        value_type& result,
                        ReadMode mode,
                        AstDiagnostics& errors) {
-        decode_record<Field>(
+        decode_record<Field, is_patch>(
             reader,
             node,
             "galactic-core",
@@ -730,7 +418,7 @@ struct TypeReader<starfield::GalacticCoreSettings> : RecordReader<starfield::Gal
             field_names,
             mode,
             errors,
-            ([&](Field const field, FieldReader const& read) {
+            ([&](Field const field, auto const& read) {
                 switch (field) {
                     case Field::strength:
                         read(result.strength, constraints::finite);
@@ -751,58 +439,22 @@ struct TypeReader<starfield::GalacticCoreSettings> : RecordReader<starfield::Gal
     };
 
     static constexpr std::array<std::string_view, 2> field_names{"strength", "width-degrees"};
+    static constexpr bool is_patch{std::same_as<T, ioj::starfield::GalacticCoreSettingsOverrides>};
 };
 
-template <>
-struct TypeReader<starfield::GalacticCoreSettingsOverrides>
-    : RecordReader<starfield::GalacticCoreSettingsOverrides, ReadMode::Override> {
-    static void decode(Reader const& reader,
-                       NodeIndex const node,
-                       std::string_view const path,
-                       value_type& result,
-                       ReadMode,
-                       AstDiagnostics& errors) {
-        decode_record<Field>(reader,
-                             node,
-                             "galactic-core",
-                             path,
-                             field_names,
-                             ReadMode::Override,
-                             errors,
-                             ([&](Field const field, FieldReader const& read) {
-                                 switch (field) {
-                                     case Field::strength:
-                                         read.patch(result.strength, constraints::finite);
-                                         break;
-                                     case Field::width_degrees:
-                                         read.patch(result.width_degrees,
-                                                    constraints::positive,
-                                                    constraints::finite);
-                                         break;
-                                     case Field::Count:
-                                         std::unreachable();
-                                 }
-                             }));
-    }
-  private:
-    enum class Field : std::uint8_t {
-        strength,
-        width_degrees,
-        Count,
-    };
+template <typename T>
+    requires std::same_as<T, starfield::NebularKnotSettings> ||
+             std::same_as<T, starfield::NebularKnotSettingsOverrides>
+struct TypeReader<T> : RecordReader<T, starfield::NebularKnotSettingsOverrides> {
+    using value_type = T;
 
-    static constexpr std::array<std::string_view, 2> field_names{"strength", "width-degrees"};
-};
-
-template <>
-struct TypeReader<starfield::NebularKnotSettings> : RecordReader<starfield::NebularKnotSettings> {
     static void decode(Reader const& reader,
                        NodeIndex const node,
                        std::string_view const path,
                        value_type& result,
                        ReadMode mode,
                        AstDiagnostics& errors) {
-        decode_record<Field>(
+        decode_record<Field, is_patch>(
             reader,
             node,
             "nebular-knot",
@@ -810,7 +462,7 @@ struct TypeReader<starfield::NebularKnotSettings> : RecordReader<starfield::Nebu
             field_names,
             mode,
             errors,
-            ([&](Field const field, FieldReader const& read) {
+            ([&](Field const field, auto const& read) {
                 switch (field) {
                     case Field::strength:
                         read(result.strength, constraints::finite);
@@ -831,99 +483,63 @@ struct TypeReader<starfield::NebularKnotSettings> : RecordReader<starfield::Nebu
     };
 
     static constexpr std::array<std::string_view, 2> field_names{"strength", "size-degrees"};
+    static constexpr bool is_patch{std::same_as<T, ioj::starfield::NebularKnotSettingsOverrides>};
 };
 
-template <>
-struct TypeReader<starfield::NebularKnotSettingsOverrides>
-    : RecordReader<starfield::NebularKnotSettingsOverrides, ReadMode::Override> {
-    static void decode(Reader const& reader,
-                       NodeIndex const node,
-                       std::string_view const path,
-                       value_type& result,
-                       ReadMode,
-                       AstDiagnostics& errors) {
-        decode_record<Field>(
-            reader,
-            node,
-            "nebular-knot",
-            path,
-            field_names,
-            ReadMode::Override,
-            errors,
-            ([&](Field const field, FieldReader const& read) {
-                switch (field) {
-                    case Field::strength:
-                        read.patch(result.strength, constraints::finite);
-                        break;
-                    case Field::size_degrees:
-                        read.patch(result.size_degrees, constraints::positive, constraints::finite);
-                        break;
-                    case Field::Count:
-                        std::unreachable();
-                }
-            }));
-    }
-  private:
-    enum class Field : std::uint8_t {
-        strength,
-        size_degrees,
-        Count,
-    };
+template <typename T>
+    requires std::same_as<T, starfield::Settings> || std::same_as<T, starfield::SettingsOverrides>
+struct TypeReader<T> : RecordReader<T, starfield::SettingsOverrides> {
+    using value_type = T;
 
-    static constexpr std::array<std::string_view, 2> field_names{"strength", "size-degrees"};
-};
-
-template <>
-struct TypeReader<starfield::Settings> : RecordReader<starfield::Settings> {
     static void decode(Reader const& reader,
                        NodeIndex const node,
                        std::string_view const path,
                        value_type& result,
                        ReadMode mode,
                        AstDiagnostics& errors) {
-        decode_record<Field>(reader,
-                             node,
-                             "starfield",
-                             path,
-                             field_names,
-                             mode,
-                             errors,
-                             ([&](Field const field, FieldReader const& read) {
-                                 switch (field) {
-                                     case Field::generation:
-                                         read(result.generation);
-                                         break;
-                                     case Field::star:
-                                         read(result.star);
-                                         break;
-                                     case Field::galactic_band:
-                                         read(result.galactic_band);
-                                         break;
-                                     case Field::stellar_cluster:
-                                         read(result.stellar_cluster);
-                                         break;
-                                     case Field::dust_lane:
-                                         read(result.dust_lane);
-                                         break;
-                                     case Field::bright_star:
-                                         read(result.bright_star);
-                                         break;
-                                     case Field::twinkle:
-                                         read(result.twinkle);
-                                         break;
-                                     case Field::galactic_haze:
-                                         read(result.galactic_haze);
-                                         break;
-                                     case Field::galactic_core:
-                                         read(result.galactic_core);
-                                         break;
-                                     case Field::nebular_knot:
-                                         read(result.nebular_knot);
-                                         break;
-                                     case Field::Count:
-                                         std::unreachable();
-                                 }
-                             }));
+        decode_record<Field, is_patch>(reader,
+                                       node,
+                                       "starfield",
+                                       path,
+                                       field_names,
+                                       mode,
+                                       errors,
+                                       ([&](Field const field, auto const& read) {
+                                           switch (field) {
+                                               case Field::generation:
+                                                   read(result.generation);
+                                                   break;
+                                               case Field::star:
+                                                   read(result.star);
+                                                   break;
+                                               case Field::galactic_band:
+                                                   read(result.galactic_band);
+                                                   break;
+                                               case Field::stellar_cluster:
+                                                   read(result.stellar_cluster);
+                                                   break;
+                                               case Field::dust_lane:
+                                                   read(result.dust_lane);
+                                                   break;
+                                               case Field::bright_star:
+                                                   read(result.bright_star);
+                                                   break;
+                                               case Field::twinkle:
+                                                   read(result.twinkle);
+                                                   break;
+                                               case Field::galactic_haze:
+                                                   read(result.galactic_haze);
+                                                   break;
+                                               case Field::galactic_core:
+                                                   read(result.galactic_core);
+                                                   break;
+                                               case Field::nebular_knot:
+                                                   read(result.nebular_knot);
+                                                   break;
+                                               case Field::Count:
+                                                   std::unreachable();
+                                           }
+                                       }));
     }
   private:
     enum class Field : std::uint8_t {
@@ -950,86 +566,7 @@ struct TypeReader<starfield::Settings> : RecordReader<starfield::Settings> {
                                                                   "galactic-haze",
                                                                   "galactic-core",
                                                                   "nebular-knot"};
-};
-
-template <>
-struct TypeReader<starfield::SettingsOverrides>
-    : RecordReader<starfield::SettingsOverrides, ReadMode::Override> {
-    static void decode(Reader const& reader,
-                       NodeIndex const node,
-                       std::string_view const path,
-                       value_type& result,
-                       ReadMode,
-                       AstDiagnostics& errors) {
-        decode_record<Field>(reader,
-                             node,
-                             "starfield",
-                             path,
-                             field_names,
-                             ReadMode::Override,
-                             errors,
-                             ([&](Field const field, FieldReader const& read) {
-                                 switch (field) {
-                                     case Field::generation:
-                                         read.patch(result.generation);
-                                         break;
-                                     case Field::star:
-                                         read.patch(result.star);
-                                         break;
-                                     case Field::galactic_band:
-                                         read.patch(result.galactic_band);
-                                         break;
-                                     case Field::stellar_cluster:
-                                         read.patch(result.stellar_cluster);
-                                         break;
-                                     case Field::dust_lane:
-                                         read.patch(result.dust_lane);
-                                         break;
-                                     case Field::bright_star:
-                                         read.patch(result.bright_star);
-                                         break;
-                                     case Field::twinkle:
-                                         read.patch(result.twinkle);
-                                         break;
-                                     case Field::galactic_haze:
-                                         read.patch(result.galactic_haze);
-                                         break;
-                                     case Field::galactic_core:
-                                         read.patch(result.galactic_core);
-                                         break;
-                                     case Field::nebular_knot:
-                                         read.patch(result.nebular_knot);
-                                         break;
-                                     case Field::Count:
-                                         std::unreachable();
-                                 }
-                             }));
-    }
-  private:
-    enum class Field : std::uint8_t {
-        generation,
-        star,
-        galactic_band,
-        stellar_cluster,
-        dust_lane,
-        bright_star,
-        twinkle,
-        galactic_haze,
-        galactic_core,
-        nebular_knot,
-        Count,
-    };
-
-    static constexpr std::array<std::string_view, 10> field_names{"generation",
-                                                                  "star",
-                                                                  "galactic-band",
-                                                                  "stellar-cluster",
-                                                                  "dust-lane",
-                                                                  "bright-star",
-                                                                  "twinkle",
-                                                                  "galactic-haze",
-                                                                  "galactic-core",
-                                                                  "nebular-knot"};
+    static constexpr bool is_patch{std::same_as<T, ioj::starfield::SettingsOverrides>};
 };
 
 } // namespace ioj::s7

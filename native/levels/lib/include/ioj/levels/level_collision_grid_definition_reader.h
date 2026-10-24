@@ -27,7 +27,7 @@ struct TypeReader<levels::LevelCollisionGridDefinition>
                              field_names,
                              mode,
                              errors,
-                             ([&](Field const field, FieldReader const& read) {
+                             ([&](Field const field, auto const& read) {
                                  switch (field) {
                                      case Field::level_size:
                                          read(result.level_size);

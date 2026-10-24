@@ -27,7 +27,7 @@ struct TypeReader<levels::CampaignDefinition> : RecordReader<levels::CampaignDef
                              field_names,
                              mode,
                              errors,
-                             ([&](Field const field, FieldReader const& read) {
+                             ([&](Field const field, auto const& read) {
                                  switch (field) {
                                      case Field::id:
                                          read(result.id);
