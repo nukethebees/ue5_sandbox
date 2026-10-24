@@ -6,6 +6,7 @@
 #include <vector>
 
 namespace ioj::levels {
+// Store authored objectives and team results; compile these into the runtime mission form.
 struct MissionDefinition {
     std::vector<ObjectiveDefinition> objectives{};
     std::vector<TeamResultDefinition> team_results{};

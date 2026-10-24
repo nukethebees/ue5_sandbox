@@ -110,9 +110,9 @@ void LevelSim::finish_initialisation() {
         level_id_ = std::move(configuration->level_id);
         level_title_ = std::move(configuration->level_title);
         save_mission_results_ = configuration->save_results;
-        mission_.initialise(std::move(configuration->definition));
+        mission_ = Mission{std::move(configuration->definition)};
     } else {
-        mission_.initialise({});
+        mission_ = Mission{};
     }
     {
         FrameScratchScope scratch_scope{frame_memory_};

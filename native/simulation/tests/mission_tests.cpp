@@ -44,7 +44,7 @@ struct MissionTest : testing::Test {
     void start(levels::MissionDefinition const& definition) {
         auto compiled{compile_mission(definition, names, clock)};
         ASSERT_TRUE(compiled.has_value()) << (compiled ? "" : compiled.error().front());
-        mission.initialise(std::move(*compiled));
+        mission = Mission{std::move(*compiled)};
         mission.begin({0, ledger, entities});
     }
     void tick(SimTick const tick) { mission.tick({tick, ledger, entities}); }
@@ -103,7 +103,7 @@ TEST_F(MissionTest, FalseOutcomeLeavesShortCircuitAndAndResolveOrOnlyAfterAllFal
     ASSERT_TRUE(compiled);
     auto const and_root{compiled->objectives.roots(ObjectiveId{2})[ioj::ObjectiveOutcome::Passed]};
     auto const or_root{compiled->objectives.roots(ObjectiveId{3})[ioj::ObjectiveOutcome::Passed]};
-    mission.initialise(std::move(*compiled));
+    mission = Mission{std::move(*compiled)};
     mission.begin({0, ledger, {}});
     tick(10);
     EXPECT_EQ(mission.result(and_root), ExprResult::False);
