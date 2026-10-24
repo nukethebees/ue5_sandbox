@@ -57,7 +57,9 @@ auto read_function(CppIR& ir, std::string const& name, std::string const& type) 
     return function;
 }
 
-auto read_body(LoweringContext& context, DeclarationHandle const record) -> Nodes {
+auto read_body(LoweringContext& context,
+               DeclarationHandle const record,
+               DeclarationEmission& emission) -> Nodes {
     auto& ir{context.ir};
     auto const& records{context.declarations.records};
     auto const row{records.index(record)};
@@ -126,6 +128,7 @@ auto read_body(LoweringContext& context, DeclarationHandle const record) -> Node
         ir.block({ir.return_stmt(ir.raw_expr("std::unexpected{std::move(errors)}", {}))}))};
     body.add(return_errors, 2);
     body.add(ir.variable("Value", "result", ir.raw_expr(join(initializers, ",\n"), {})), 2);
+    bool has_constraints{};
     for (auto const field : fields) {
         auto const index{members.index(field)};
         auto const name{context.text(members.name[index])};
@@ -138,6 +141,7 @@ auto read_body(LoweringContext& context, DeclarationHandle const record) -> Node
         }
         auto const constraint =
             [&](std::string const& check, std::string const& message, bool const numeric = true) {
+                has_constraints = true;
                 body.add(ir.if_stmt(
                     ir.raw_expr("!constraints::" + check, {}),
                     ir.block({ir.expr_stmt(
@@ -176,7 +180,10 @@ auto read_body(LoweringContext& context, DeclarationHandle const record) -> Node
                 "Value is above the maximum");
         }
     }
-    body.add(return_errors, 2);
+    if (has_constraints) {
+        emission.reader_includes.push_back(ir.strings.intern("ioj/s7/field_constraints.h"));
+        body.add(return_errors, 2);
+    }
     body.add(ir.return_stmt(ir.named("result")));
     return body.build();
 }
@@ -226,10 +233,10 @@ void lower_record_reader(LoweringContext& context,
     auto const definition{record_reader::read_function(ir, reader_name + "::read", name)};
     ir.function_flags(definition).set_is_inline(true);
     ir.function_flags(definition).set_define_in_header(true);
-    ir.set_function_body(definition, record_reader::read_body(context, record));
-    emission.reader_definitions.push_back(ir.header_function(definition));
     auto const includes{context.declarations.items(records.s7_reader_includes[row])};
     emission.reader_includes.assign(includes.begin(), includes.end());
+    ir.set_function_body(definition, record_reader::read_body(context, record, emission));
+    emission.reader_definitions.push_back(ir.header_function(definition));
     for (auto const dependency : context.semantic.dependencies_of(type)) {
         auto const declaration{context.semantic.source_declaration(dependency)};
         auto const module{context.semantic.module(dependency)};

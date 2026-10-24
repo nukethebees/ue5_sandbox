@@ -15,6 +15,7 @@ Plugins/SpaceGame/Source/SpaceGamePresentation/Public/SpaceGamePresentation/enti
 Plugins/SpaceGame/Source/SpaceGamePresentation/Public/SpaceGamePresentation/ui/style/GameUiStyleTypes.h
 native/core/include/ioj/rotators3f.h
 native/core/include/ioj/vectors3f.h
+native/gfx/lib/include/ioj/gfx/starfield_settings.h
 native/ismc/lib/include/ioj/ismc/quat32.h
 native/ismc/lib/include/ioj/ismc/render.h
 native/level_authoring/lib/include/ioj/levels/authoring/generated/level_inputs.h
@@ -31,6 +32,8 @@ native/levels/lib/include/ioj/levels/level_collision_grid_definition.h
 native/levels/lib/include/ioj/levels/level_collision_grid_definition_reader.h
 native/levels/lib/include/ioj/levels/mission_types.h
 native/levels/lib/include/ioj/levels/team.h
+native/levels/lib/include/ioj/levels/team_result_definition.h
+native/levels/lib/include/ioj/levels/team_result_definition_reader.h
 native/simulation/include/ioj/sim/capital_ships/capital_entity_data.h
 native/simulation/include/ioj/sim/capital_ships/phase_interface.h
 native/simulation/include/ioj/sim/collision/cell_coord_bounds.h

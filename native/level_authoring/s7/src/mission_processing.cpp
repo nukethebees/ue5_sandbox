@@ -88,9 +88,7 @@ auto process_mission(MissionInput input, std::string_view path)
         root(source.expire, ObjectiveOutcome::Expired, "expire");
         result.objectives.push_back(std::move(objective));
     }
-    for (auto& mapping : input.team_results) {
-        result.team_results.push_back({mapping.team, std::move(mapping.when), mapping.result});
-    }
+    result.team_results = std::move(input.team_results);
     if (!errors.empty()) {
         return std::unexpected{std::move(errors)};
     }

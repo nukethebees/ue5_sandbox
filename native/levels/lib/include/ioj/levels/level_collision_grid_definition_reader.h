@@ -4,7 +4,6 @@
 #pragma once
 
 #include "ioj/levels/level_collision_grid_definition.h"
-#include <ioj/s7/field_constraints.h>
 #include <ioj/s7/reader.h>
 
 namespace ioj::s7 {
@@ -72,10 +71,6 @@ inline ReadResult<::ioj::levels::LevelCollisionGridDefinition>
     if (value_cell_size) {
         result.cell_size = std::move(*value_cell_size);
     }
-    if (!errors.empty()) {
-        return std::unexpected{std::move(errors)};
-    }
-
     return result;
 }
 

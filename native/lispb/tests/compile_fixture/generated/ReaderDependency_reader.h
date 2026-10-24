@@ -5,7 +5,6 @@
 
 #include "ReadableRecords_reader.h"
 #include "ReaderDependency.h"
-#include <ioj/s7/field_constraints.h>
 #include <ioj/s7/reader.h>
 
 namespace ioj::s7 {
@@ -63,10 +62,6 @@ inline ReadResult<::codegen_compile_fixture::ReaderDependency>
     }
 
     Value result{.child = std::move(*value_child)};
-
-    if (!errors.empty()) {
-        return std::unexpected{std::move(errors)};
-    }
 
     return result;
 }

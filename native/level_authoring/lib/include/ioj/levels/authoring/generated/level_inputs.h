@@ -9,10 +9,10 @@
 #include "ioj/levels/identifiers.h"
 #include "ioj/levels/level_camera_definition.h"
 #include "ioj/levels/level_collision_grid_definition.h"
-#include "ioj/levels/mission_types.h"
 #include "ioj/levels/objective_dependency.h"
 #include "ioj/levels/objective_name.h"
 #include "ioj/levels/team.h"
+#include "ioj/levels/team_result_definition.h"
 #include "ioj/s7/ast_result.h"
 #include "ioj/settings/settings.h"
 #include "ioj/vector_value_math.h"
@@ -47,15 +47,9 @@ struct ObjectiveInput {
     std::vector<ioj::levels::ObjectiveDependency> depends_on{};
 };
 
-struct TeamResultInput {
-    Team team;
-    ObjectiveDependency when;
-    TeamOutcome result;
-};
-
 struct MissionInput {
     std::vector<ioj::levels::authoring::ObjectiveInput> objectives;
-    std::vector<ioj::levels::authoring::TeamResultInput> team_results{};
+    std::vector<ioj::levels::TeamResultDefinition> team_results{};
 };
 
 struct LevelInput {

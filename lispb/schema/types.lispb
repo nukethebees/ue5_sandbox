@@ -357,7 +357,7 @@
 (type input_dependencies :spelling "std::vector<ioj::levels::ObjectiveDependency>" :header "ioj/levels/objective_dependency.h")
 (type input_dependency :spelling "ioj::levels::ObjectiveDependency" :header "ioj/levels/objective_dependency.h")
 (type input_objectives :spelling "std::vector<ioj::levels::authoring::ObjectiveInput>" :header "vector")
-(type input_team_results :spelling "std::vector<ioj::levels::authoring::TeamResultInput>" :header "vector")
+(type input_team_results :spelling "std::vector<ioj::levels::TeamResultDefinition>" :header "ioj/levels/team_result_definition.h")
 (type input_entities :spelling "std::vector<ioj::levels::authoring::EntityInput>" :header "vector")
 (type input_mission :spelling "std::optional<ioj::levels::authoring::MissionInput>" :header "optional")
 (type input_camera :spelling "std::optional<ioj::levels::LevelCameraDefinition>" :header "ioj/levels/level_camera_definition.h")

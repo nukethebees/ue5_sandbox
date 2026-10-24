@@ -5,7 +5,6 @@
 
 #include "ioj/levels/authoring/identifier_reader.h"
 #include "ioj/levels/campaign_definition.h"
-#include <ioj/s7/field_constraints.h>
 #include <ioj/s7/reader.h>
 
 namespace ioj::s7 {
@@ -91,10 +90,6 @@ inline ReadResult<::ioj::levels::CampaignDefinition>
     Value result{.id = std::move(*value_id),
                  .title = std::move(*value_title),
                  .level_ids = std::move(*value_level_ids)};
-
-    if (!errors.empty()) {
-        return std::unexpected{std::move(errors)};
-    }
 
     return result;
 }

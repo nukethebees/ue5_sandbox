@@ -4,7 +4,6 @@
 #pragma once
 
 #include "UnsupportedReader.h"
-#include <ioj/s7/field_constraints.h>
 #include <ioj/s7/reader.h>
 
 namespace ioj::s7 {
@@ -61,10 +60,6 @@ inline ReadResult<::codegen_compile_fixture::UnsupportedReader>
     if (value_target) {
         result.target = std::move(*value_target);
     }
-    if (!errors.empty()) {
-        return std::unexpected{std::move(errors)};
-    }
-
     return result;
 }
 

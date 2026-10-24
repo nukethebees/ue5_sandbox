@@ -24,11 +24,8 @@
     (member fail @input_optional_expr :initializer "")
     (member expire @input_optional_expr :initializer "")
     (member depends_on @input_dependencies :initializer ""))
-  (record TeamResultInput :generate-s7-reader true :s7-tag "team-result"
-    (member team ioj::Team :required true)
-    (member when @input_dependency :required true)
-    (member result ioj::TeamOutcome :required true))
   (record MissionInput :generate-s7-reader true :s7-tag "mission"
+    :s7-reader-includes ("ioj/levels/team_result_definition_reader.h")
     (member objectives @input_objectives :required true)
     (member team_results @input_team_results :initializer ""))
   (record LevelInput :generate-s7-reader true :s7-tag "level"

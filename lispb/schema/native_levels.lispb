@@ -51,6 +51,17 @@
     (value Orange :value "4" :serialized-name "orange")
     (value Yellow :value "5" :serialized-name "yellow")))
 
+(module native_team_result
+  :header "native/levels/lib/include/ioj/levels/team_result_definition.h"
+  :header-include "ioj/levels/team_result_definition.h"
+  :namespace ioj::levels
+  (record TeamResultDefinition :comparison equality
+    :generate-s7-reader true :s7-tag "team-result"
+    :s7-reader-includes ("ioj/levels/authoring/input_readers.h")
+    (member team ioj::Team :initializer "Team::White" :required true)
+    (member when @input_dependency :initializer "" :required true)
+    (member result ioj::TeamOutcome :initializer "TeamOutcome::Victory" :required true)))
+
 (module native_levels_entity_archetype
   :header "native/levels/lib/include/ioj/levels/entity_archetype.h"
   :header-include "ioj/levels/entity_archetype.h"

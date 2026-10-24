@@ -3,8 +3,8 @@
 
 #pragma once
 
+#include "ioj/s7/field_constraints.h"
 #include "ReadableRecords.h"
-#include <ioj/s7/field_constraints.h>
 #include <ioj/s7/reader.h>
 
 namespace ioj::s7 {
@@ -176,10 +176,6 @@ inline ReadResult<::codegen_compile_fixture::EmptyReadable>
 
     Value result{};
 
-    if (!errors.empty()) {
-        return std::unexpected{std::move(errors)};
-    }
-
     return result;
 }
 
@@ -216,10 +212,6 @@ inline ReadResult<::codegen_compile_fixture::RecursiveReadable>
     if (value_children) {
         result.children = std::move(*value_children);
     }
-    if (!errors.empty()) {
-        return std::unexpected{std::move(errors)};
-    }
-
     return result;
 }
 

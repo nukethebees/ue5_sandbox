@@ -5,7 +5,6 @@
 
 #include "ioj/levels/authoring/identifier_reader.h"
 #include "ioj/levels/level_camera_definition.h"
-#include <ioj/s7/field_constraints.h>
 #include <ioj/s7/reader.h>
 
 namespace ioj::s7 {
@@ -91,10 +90,6 @@ inline ReadResult<::ioj::levels::LevelCameraDefinition>
     Value result{.target_entity_ids = std::move(*value_target_entity_ids),
                  .offset_direction = std::move(*value_offset_direction),
                  .distance = std::move(*value_distance)};
-
-    if (!errors.empty()) {
-        return std::unexpected{std::move(errors)};
-    }
 
     return result;
 }

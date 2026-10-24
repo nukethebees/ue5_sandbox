@@ -224,8 +224,6 @@ auto assemble_module(LoweringContext& context,
         reader.add(
             ir.include(ir.strings.intern(source_include(context, settings)), IncludeStyle::quoted));
         reader.add(ir.include(ir.strings.intern("ioj/s7/reader.h"), IncludeStyle::system));
-        reader.add(
-            ir.include(ir.strings.intern("ioj/s7/field_constraints.h"), IncludeStyle::system));
         for (auto const include : reader_includes) {
             reader.add(ir.include(include, IncludeStyle::quoted));
         }

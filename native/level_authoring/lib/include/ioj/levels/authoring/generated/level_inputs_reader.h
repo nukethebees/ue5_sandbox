@@ -8,7 +8,8 @@
 #include "ioj/levels/campaign_definition_reader.h"
 #include "ioj/levels/level_camera_definition_reader.h"
 #include "ioj/levels/level_collision_grid_definition_reader.h"
-#include <ioj/s7/field_constraints.h>
+#include "ioj/levels/team_result_definition_reader.h"
+#include "ioj/s7/field_constraints.h"
 #include <ioj/s7/reader.h>
 
 namespace ioj::s7 {
@@ -164,34 +165,6 @@ struct TypeReader<::ioj::levels::authoring::ObjectiveInput> {
                 return std::nullopt;
             }
         }
-    }
-};
-
-template <>
-struct TypeReader<::ioj::levels::authoring::TeamResultInput> {
-    using Value = ::ioj::levels::authoring::TeamResultInput;
-
-    static ReadResult<Value>
-        read(Reader const& reader, NodeIndex const node, std::string_view const path);
-  private:
-    enum class Field : std::size_t {
-        team,
-        when,
-        result,
-    };
-
-    [[nodiscard]] static constexpr auto parse_field(std::string_view const name) noexcept
-        -> std::optional<Field> {
-        if (name == "team") {
-            return Field::team;
-        }
-        if (name == "when") {
-            return Field::when;
-        }
-        if (name == "result") {
-            return Field::result;
-        }
-        return std::nullopt;
     }
 };
 
@@ -598,72 +571,6 @@ inline ReadResult<::ioj::levels::authoring::ObjectiveInput>
     if (value_depends_on) {
         result.depends_on = std::move(*value_depends_on);
     }
-    if (!errors.empty()) {
-        return std::unexpected{std::move(errors)};
-    }
-
-    return result;
-}
-
-inline ReadResult<::ioj::levels::authoring::TeamResultInput>
-    TypeReader<::ioj::levels::authoring::TeamResultInput>::read(Reader const& reader,
-                                                                NodeIndex const node,
-                                                                std::string_view const path) {
-    AstDiagnostics errors{};
-    std::optional<decltype(Value::team)> value_team{};
-    std::optional<decltype(Value::when)> value_when{};
-    std::optional<decltype(Value::result)> value_result{};
-    auto const seen{read_record<3>(
-        reader,
-        node,
-        "team-result",
-        path,
-        parse_field,
-        ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            switch (field) {
-                case Field::team:
-                    read_field(reader, value, location, value_team, errors);
-                    break;
-                case Field::when:
-                    read_field(reader, value, location, value_when, errors);
-                    break;
-                case Field::result:
-                    read_field(reader, value, location, value_result, errors);
-                    break;
-            }
-        }))};
-
-    if (!seen) {
-        append_errors(errors, seen.error());
-        return std::unexpected{std::move(errors)};
-    }
-    if (!seen->test(0)) {
-        errors.push_back((AstDiagnostic{AstErrorCode::MissingProperty,
-                                        std::string{path} + ".team",
-                                        "Missing required property ':team'"}));
-    }
-    if (!seen->test(1)) {
-        errors.push_back((AstDiagnostic{AstErrorCode::MissingProperty,
-                                        std::string{path} + ".when",
-                                        "Missing required property ':when'"}));
-    }
-    if (!seen->test(2)) {
-        errors.push_back((AstDiagnostic{AstErrorCode::MissingProperty,
-                                        std::string{path} + ".result",
-                                        "Missing required property ':result'"}));
-    }
-    if (!errors.empty()) {
-        return std::unexpected{std::move(errors)};
-    }
-
-    Value result{.team = std::move(*value_team),
-                 .when = std::move(*value_when),
-                 .result = std::move(*value_result)};
-
-    if (!errors.empty()) {
-        return std::unexpected{std::move(errors)};
-    }
-
     return result;
 }
 
@@ -709,10 +616,6 @@ inline ReadResult<::ioj::levels::authoring::MissionInput>
     if (value_team_results) {
         result.team_results = std::move(*value_team_results);
     }
-    if (!errors.empty()) {
-        return std::unexpected{std::move(errors)};
-    }
-
     return result;
 }
 
@@ -884,10 +787,6 @@ inline ReadResult<::ioj::levels::authoring::IncludedLevelInput>
     if (value_error) {
         result.error = std::move(*value_error);
     }
-    if (!errors.empty()) {
-        return std::unexpected{std::move(errors)};
-    }
-
     return result;
 }
 
@@ -940,10 +839,6 @@ inline ReadResult<::ioj::levels::authoring::IncludedCampaignInput>
     if (value_error) {
         result.error = std::move(*value_error);
     }
-    if (!errors.empty()) {
-        return std::unexpected{std::move(errors)};
-    }
-
     return result;
 }
 
@@ -987,10 +882,6 @@ inline ReadResult<::ioj::levels::authoring::CatalogInput>
     if (value_campaigns) {
         result.campaigns = std::move(*value_campaigns);
     }
-    if (!errors.empty()) {
-        return std::unexpected{std::move(errors)};
-    }
-
     return result;
 }
 
