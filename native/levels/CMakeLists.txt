@@ -4,6 +4,7 @@ target_sources(native-levels
     lib/src/level_definition.cpp
     lib/src/entity_validation.cpp
     lib/src/mission_validation.cpp
+    lib/src/objective_validation.cpp
     lib/src/camera_validation.cpp
     lib/src/collision_grid_validation.cpp
     lib/src/campaign_definition.cpp

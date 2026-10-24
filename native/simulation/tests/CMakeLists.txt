@@ -2,6 +2,7 @@ add_native_simulation_test(native-simulation-tests)
 target_sources(native-simulation-tests PRIVATE
   entity_lookup_tables_tests.cpp
   entity_ledger_tests.cpp
+  mission_tests.cpp
   entity_id_tests.cpp
   entity_instance_handle_tests.cpp
   enum_tests.cpp

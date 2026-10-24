@@ -108,6 +108,8 @@ target_sources(native-simulation PRIVATE
   levels/level_sim.cpp
   telemetry/manager.cpp
   missions/mission_manager.cpp
+  missions/mission.cpp
+  missions/mission_compilation.cpp
   overlap_handler.cpp
   levels/reference_level_simulation_data.cpp
   player/ship_flight_model.cpp

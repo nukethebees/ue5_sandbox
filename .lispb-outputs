@@ -24,6 +24,7 @@ native/level_authoring/s7/src/generated/starfield_fields.h
 native/levels/lib/include/ioj/levels/diagnostic_code.h
 native/levels/lib/include/ioj/levels/entity_archetype.h
 native/levels/lib/include/ioj/levels/level_mission_mode.h
+native/levels/lib/include/ioj/levels/mission_types.h
 native/levels/lib/include/ioj/levels/team.h
 native/simulation/include/ioj/sim/capital_ships/capital_entity_data.h
 native/simulation/include/ioj/sim/capital_ships/phase_interface.h
