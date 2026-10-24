@@ -264,16 +264,16 @@ auto LevelSim::take_mission_result() -> std::optional<LevelMissionResult> {
 void LevelSim::update_mission_result() {
     for (auto const completion : mission_.take_completions()) {
         if (player_team_ && completion.team == *player_team_) {
-            mission_result_ =
-                LevelMissionResult{.level_id = level_id_,
-                                   .level_display_name = level_title_,
-                                   .team = completion.team,
-                                   .outcome = completion.outcome,
-                                   .objective_id = mission_.objectives()[completion.objective].id,
-                                   .objective_outcome = completion.objective_outcome,
-                                   .elapsed_seconds = static_cast<float>(
-                                       simulation_time(completion.tick, clock_.get_tick_period())),
-                                   .save_results = save_mission_results_};
+            mission_result_ = LevelMissionResult{
+                .level_id = level_id_,
+                .level_display_name = level_title_,
+                .team = completion.team,
+                .outcome = completion.outcome,
+                .objective_id = mission_.objectives().name(completion.objective).value,
+                .objective_outcome = completion.objective_outcome,
+                .elapsed_seconds =
+                    static_cast<float>(simulation_time(completion.tick, clock_.get_tick_period())),
+                .save_results = save_mission_results_};
         }
     }
 }
@@ -505,6 +505,8 @@ void LevelSim::advance(time_type const dt) {
                 FrameScratchScope scratch_scope{frame_memory_};
                 mission_.tick({clock_.completed_ticks + 1,
                                entity_ledger_,
+                               // Spawning updates identities each tick.
+                               // NOLINTNEXTLINE(ioj-loop-view-accessor-call)
                                event_manager_.get_entity_ids(),
                                &query_manager_,
                                &frame_memory_});

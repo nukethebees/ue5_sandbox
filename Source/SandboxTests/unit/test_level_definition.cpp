@@ -246,7 +246,7 @@ TEST_CLASS(LevelDefinition, "Sandbox.UnitTests")
     {
         auto definition{ioj::example_levels::make_example_draft()};
         auto& objective{definition.mission->objectives[0]};
-        objective.expressions[0] = {.type = ioj::ExpressionType::All, .children = {0}};
+        objective.expressions[0] = {ioj::levels::AllExpression{.children = {0}}};
         TestRunner->TestTrue(
             TEXT("Cycle is rejected"),
             contains_error(ioj::validate_level(definition),
@@ -256,7 +256,8 @@ TEST_CLASS(LevelDefinition, "Sandbox.UnitTests")
     TEST_METHOD(MissionEntityReferencesAreValidated)
     {
         auto definition{ioj::example_levels::make_example_draft()};
-        definition.mission->objectives[0].expressions[0].entity = ioj::levels::EntityId{"missing"};
+        definition.mission->objectives[0].expressions[0] = {
+            ioj::levels::EntityDestroyedExpression{ioj::levels::EntityId{"missing"}}};
         TestRunner->TestTrue(
             TEXT("Unknown entity is rejected"),
             contains_error(ioj::validate_level(definition),

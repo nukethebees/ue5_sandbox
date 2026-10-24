@@ -12,7 +12,9 @@ void run_worldless_mission_scenario(tests::SimulationFixture const& config,
     data.capital_ships.fighter_spawn_slots_relative_transforms.clear();
     auto const hero{tests::add_capital_spawn(
         data, {{-2000, 0, 0}}, Team::Green, invalid_level_entity_index, 60.f, 60.f)};
-    std::optional<std::uint32_t> ordinary, required, second;
+    std::optional<std::uint32_t> ordinary;
+    std::optional<std::uint32_t> required;
+    std::optional<std::uint32_t> second;
     auto const needs_kills{
         scenario == Scenario::KillEnemies || scenario == Scenario::KillEnemiesWithinTime ||
         scenario == Scenario::RequiredKillsObjective || scenario == Scenario::AuthoredKillTarget};
@@ -36,16 +38,18 @@ void run_worldless_mission_scenario(tests::SimulationFixture const& config,
         objective.expressions.push_back(std::move(expression));
         return index;
     };
-    std::vector<std::uint32_t> pass, fail;
+    std::vector<std::uint32_t> pass;
+    std::vector<std::uint32_t> fail;
     if (needs_kills) {
-        pass.push_back(add({.type = ExpressionType::EntityKillsReached,
-                            .entities = {tests::mission_entity(hero)},
-                            .kills = scenario == Scenario::AuthoredKillTarget ? 2u : 1u}));
+        pass.push_back(add({ioj::levels::EntityKillsReachedExpression{
+            .entities = {tests::mission_entity(hero)},
+            .kills = scenario == Scenario::AuthoredKillTarget ? 2u : 1u}}));
     } else {
         auto const seconds{scenario == Scenario::DefenceObjective             ? 10.0
                            : scenario == Scenario::OutcomeCompletionIsLatched ? 0.01
                                                                               : 0.1};
-        pass.push_back(add({.type = ExpressionType::TimeElapsed, .seconds = seconds}));
+        pass.push_back(add({ioj::levels::TimeElapsedExpression{
+            .seconds = ioj::NonNegativeFinite<double>::make(seconds)}}));
     }
     if (required) {
         pass.push_back(add(tests::destroyed(*required)));
@@ -53,10 +57,13 @@ void run_worldless_mission_scenario(tests::SimulationFixture const& config,
     fail.push_back(add(tests::destroyed(hero)));
     if (scenario == Scenario::KillEnemiesWithinTime ||
         scenario == Scenario::RequiredKillsTimeElapsed) {
-        fail.push_back(add({.type = ExpressionType::TimeElapsed, .seconds = 0.1}));
+        fail.push_back(add({ioj::levels::TimeElapsedExpression{
+            .seconds = ioj::NonNegativeFinite<double>::make(0.1)}}));
     }
-    objective.roots[0] = add({.type = ExpressionType::All, .children = std::move(pass)});
-    objective.roots[1] = add({.type = ExpressionType::Any, .children = std::move(fail)});
+    objective.roots[ioj::ObjectiveOutcome::Passed] =
+        add({ioj::levels::AllExpression{.children = std::move(pass)}});
+    objective.roots[ioj::ObjectiveOutcome::Failed] =
+        add({ioj::levels::AnyExpression{.children = std::move(fail)}});
     tests::install_mission(data, std::move(objective));
 
     tests::WorldlessSimulationTest harness{std::move(data)};
@@ -88,17 +95,17 @@ void run_worldless_mission_scenario(tests::SimulationFixture const& config,
     auto gated{false};
     harness.on_end_tick = [&](LevelSim&) {
         if (simulation.get_clock().get_simulation_time() >= 0.1 &&
-            !simulation.get_mission().outcome(0)) {
+            !simulation.get_mission().outcome(ioj::sim::ObjectiveId{0})) {
             gated = true;
         }
     };
     harness.timeline.finish_at(0.3);
-    EXPECT_FALSE(simulation.get_mission().outcome(0));
+    EXPECT_FALSE(simulation.get_mission().outcome(ioj::sim::ObjectiveId{0}));
     ASSERT_TRUE(harness.run_until_timeline_finished(1.0));
     auto const failed{scenario == Scenario::DefenceObjective ||
                       scenario == Scenario::KillEnemiesWithinTime ||
                       scenario == Scenario::RequiredKillsTimeElapsed};
-    EXPECT_EQ(simulation.get_mission().outcome(0),
+    EXPECT_EQ(simulation.get_mission().outcome(ioj::sim::ObjectiveId{0}),
               failed ? ObjectiveOutcome::Failed : ObjectiveOutcome::Passed);
     EXPECT_EQ(simulation.get_mission().team_outcome(Team::Green),
               failed ? TeamOutcome::Defeat : TeamOutcome::Victory);

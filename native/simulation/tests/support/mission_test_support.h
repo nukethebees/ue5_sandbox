@@ -1,3 +1,4 @@
+#include <ioj/sim/missions/mission_compilation.h>
 #pragma once
 #include "simulation_test_support.h"
 #include <ioj/sim/missions/mission.h>
@@ -7,15 +8,19 @@ inline auto mission_entity(std::uint32_t const index) -> levels::EntityId {
     return levels::EntityId{"entity-" + std::to_string(index)};
 }
 inline auto destroyed(std::uint32_t const index) -> levels::MissionExpression {
-    return {.type = ExpressionType::EntityDestroyed, .entity = mission_entity(index)};
+    return {ioj::levels::EntityDestroyedExpression{.entity = mission_entity(index)}};
 }
 inline void install_mission(LevelSimInitData& data, levels::ObjectiveDefinition objective) {
-    objective.id = "primary";
+    objective.id = ioj::levels::ObjectiveName{"primary"};
     auto const team{objective.team};
     levels::MissionDefinition definition{
         .objectives = {std::move(objective)},
-        .team_results = {{team, {"primary", ObjectiveOutcome::Passed}, TeamOutcome::Victory},
-                         {team, {"primary", ObjectiveOutcome::Failed}, TeamOutcome::Defeat}}};
+        .team_results = {{team,
+                          {ioj::levels::ObjectiveName{"primary"}, ObjectiveOutcome::Passed},
+                          TeamOutcome::Victory},
+                         {team,
+                          {ioj::levels::ObjectiveName{"primary"}, ObjectiveOutcome::Failed},
+                          TeamOutcome::Defeat}}};
     std::vector<levels::EntityId> names;
     auto const count{data.level_events.initialisation.entity_count};
     for (std::uint32_t index{}; index < count; ++index) {

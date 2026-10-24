@@ -6,6 +6,7 @@
 #include <ioj/sim/levels/level_compilation.h>
 #include <ioj/sim/levels/level_event_manager.h>
 #include <ioj/sim/levels/level_sim.h>
+#include <ioj/sim/missions/mission_compilation.h>
 #include <ioj/sim/testing/laser_spawns.h>
 #include <ioj/sim/testing/level_sim_test_access.h>
 #include <SandboxTests/support/SimulationTestAssets.h>
@@ -117,11 +118,12 @@ auto make_scheduled_battle() -> ::ioj::sim::LevelSimInitData {
     });
     builder.set_mission(
         {.objectives = {
-             {.id = "primary",
+             {.id = ioj::levels::ObjectiveName{"primary"},
               .team = ioj::Team::Blue,
-              .expressions = {{.type = ioj::ExpressionType::EntityDestroyed,
-                               .entity = ioj::levels::EntityId{"enemy"}}},
-              .roots = {0, ioj::levels::absent_expression, ioj::levels::absent_expression}}}});
+              .expressions = {{ioj::levels::EntityDestroyedExpression{
+                  .entity = ioj::levels::EntityId{"enemy"}}}},
+              .roots = ioj::levels::ObjectiveRoots{std::array<ioj::levels::ExpressionIndex, 3>{
+                  0, ioj::levels::absent_expression, ioj::levels::absent_expression}}}}});
     auto const definition{ioj::levels::authoring::to_native(builder.finish())};
     check(definition);
     ::ioj::sim::SimClock clock;
@@ -135,14 +137,16 @@ auto make_scheduled_battle() -> ::ioj::sim::LevelSimInitData {
 void add_mission(::ioj::sim::LevelSimInitData& data) {
     ioj::levels::MissionDefinition definition{
         .objectives =
-            {{.id = "primary",
+            {{.id = ioj::levels::ObjectiveName{"primary"},
               .team = ioj::Team::Green,
-              .expressions = {{.type = ioj::ExpressionType::EntityDestroyed,
-                               .entity = ioj::levels::EntityId{"enemy"}}},
-              .roots = {0, ioj::levels::absent_expression, ioj::levels::absent_expression}}},
-        .team_results = {{.team = ioj::Team::Green,
-                          .when = {"primary", ioj::ObjectiveOutcome::Passed},
-                          .result = ioj::TeamOutcome::Victory}}};
+              .expressions = {{ioj::levels::EntityDestroyedExpression{
+                  .entity = ioj::levels::EntityId{"enemy"}}}},
+              .roots = ioj::levels::ObjectiveRoots{std::array<ioj::levels::ExpressionIndex, 3>{
+                  0, ioj::levels::absent_expression, ioj::levels::absent_expression}}}},
+        .team_results = {
+            {.team = ioj::Team::Green,
+             .when = {ioj::levels::ObjectiveName{"primary"}, ioj::ObjectiveOutcome::Passed},
+             .result = ioj::TeamOutcome::Victory}}};
     std::array const ids{ioj::levels::EntityId{"hero"}, ioj::levels::EntityId{"enemy"}};
     ioj::sim::SimClock clock;
     clock.initialise(data.clock_settings);
@@ -176,7 +180,7 @@ auto FLevelSimScheduledEventsTest::RunTest(FString const&) -> bool {
               simulation.get_capital_ships().get_num_instances(),
               1);
     TestTrue(TEXT("Future objectives prevent early completion"),
-             !simulation.get_mission().outcome(0).has_value());
+             !simulation.get_mission().outcome(ioj::sim::ObjectiveId{0}).has_value());
 
     simulation.start();
     auto const dt{simulation.get_clock().get_tick_period()};
@@ -191,11 +195,12 @@ auto FLevelSimScheduledEventsTest::RunTest(FString const&) -> bool {
               simulation.get_capital_ships().get_num_instances(),
               2);
     TestFalse(TEXT("Spawn alone does not complete the objective"),
-              simulation.get_mission().outcome(0).has_value());
+              simulation.get_mission().outcome(ioj::sim::ObjectiveId{0}).has_value());
     kill_enemy(simulation);
     simulation.advance(dt);
     TestTrue(TEXT("Destruction completes the objective"),
-             simulation.get_mission().outcome(0) == ioj::ObjectiveOutcome::Passed);
+             simulation.get_mission().outcome(ioj::sim::ObjectiveId{0}) ==
+                 ioj::ObjectiveOutcome::Passed);
     return true;
 }
 

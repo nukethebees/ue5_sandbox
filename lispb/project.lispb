@@ -36,6 +36,7 @@
       "lispb/schema/native_simulation_model.lispb"
       "lispb/schema/native_levels.lispb"
       "lispb/schema/mission_types.lispb"
+      "lispb/schema/mission_handles.lispb"
       "lispb/schema/level_authoring_grammar.lispb"
       "lispb/schema/s7_simulation_settings.lispb"
       "lispb/schema/s7_starfield_settings.lispb"

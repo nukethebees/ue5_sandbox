@@ -9,6 +9,7 @@
 #include <ioj/sim/levels/initial_spawns.h>
 #include <ioj/sim/levels/level_compilation.h>
 #include <ioj/sim/levels/level_initialisation_data.h>
+#include <ioj/sim/missions/mission_compilation.h>
 #include <SpaceGame/defences/spinners/TestTubeSpinnerProxy.h>
 #include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
 #include <SpaceGame/entities/TestEntity.h>

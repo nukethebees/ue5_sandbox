@@ -334,3 +334,7 @@
 (type player_resolution_inputs
   :spelling "ResolutionInputs"
   :header "ioj/sim/player/phase_inputs.h")
+(type mission_condition_type
+  :spelling "ioj::sim::ConditionType"
+  :header "ioj/sim/missions/condition_type.h"
+  :pass-by value)

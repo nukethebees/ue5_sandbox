@@ -3,6 +3,10 @@
 
 #pragma once
 
+#include "ioj/enum_traits.h"
+
+#include <array>
+#include <cstddef>
 #include <cstdint>
 #include <optional>
 #include <string_view>
@@ -186,4 +190,17 @@ enum class ExpressionType : ExpressionTypeUnderlying {
     }
 }
 
+} // namespace ioj
+namespace ioj {
+template <>
+struct EnumTraits<::ioj::ObjectiveOutcome> {
+    inline static constexpr std::array values{::ioj::ObjectiveOutcome::Passed,
+                                              ::ioj::ObjectiveOutcome::Failed,
+                                              ::ioj::ObjectiveOutcome::Expired};
+};
+
+template <>
+[[nodiscard]] constexpr auto enum_count<::ioj::ObjectiveOutcome>() noexcept -> std::size_t {
+    return 3;
+}
 } // namespace ioj

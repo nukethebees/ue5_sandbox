@@ -19,9 +19,10 @@
 namespace ioj::levels::authoring::tests {
 namespace {
 auto timer_mission() -> MissionDefinition {
-    ObjectiveDefinition objective{.id = "primary", .team = Team::Blue};
-    objective.expressions = {{.type = ExpressionType::TimeElapsed, .seconds = 1.0}};
-    objective.roots[0] = 0;
+    ObjectiveDefinition objective{.id = ioj::levels::ObjectiveName{"primary"}, .team = Team::Blue};
+    objective.expressions = {
+        {ioj::levels::TimeElapsedExpression{.seconds = ioj::NonNegativeFinite<double>::make(1.0)}}};
+    objective.roots[ioj::ObjectiveOutcome::Passed] = 0;
     return {.objectives = {objective}};
 }
 
@@ -587,7 +588,7 @@ TEST(NativeLevelAuthoringWriter, RejectsObjectiveEditingWithoutDiscardingMission
     auto const source{emit_source(definition)};
     ASSERT_FALSE(source);
     EXPECT_EQ(source.error()[0].code, DiagnosticCode::UnsupportedEditorFeature);
-    EXPECT_EQ(definition.mission->objectives[0].id, "primary");
+    EXPECT_EQ(definition.mission->objectives[0].id, ObjectiveName{"primary"});
 }
 TEST(NativeLevelAuthoringWriter, ReportsUnsupportedEditorFeatures) {
     auto definition{make_level("unsupported")};

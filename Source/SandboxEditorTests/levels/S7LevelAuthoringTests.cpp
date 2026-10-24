@@ -898,10 +898,12 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         }
         definition->mission = ioj::levels::MissionDefinition{
             .objectives = {
-                {.id = "primary",
+                {.id = ioj::levels::ObjectiveName{"primary"},
                  .team = ioj::Team::Blue,
-                 .expressions = {{.type = ioj::ExpressionType::TimeElapsed, .seconds = 1.0}},
-                 .roots = {0, ioj::levels::absent_expression, ioj::levels::absent_expression}}}};
+                 .expressions = {{ioj::levels::TimeElapsedExpression{
+                     .seconds = ioj::NonNegativeFinite<double>::make(1.0)}}},
+                 .roots = ioj::levels::ObjectiveRoots{std::array<ioj::levels::ExpressionIndex, 3>{
+                     0, ioj::levels::absent_expression, ioj::levels::absent_expression}}}}};
         auto const plan{
             make_plan(*fixture.world->GetCurrentLevel(), *fixture.document, *definition)};
         TestRunner->TestFalse(TEXT("Unsupported graphs cannot be applied lossily"),

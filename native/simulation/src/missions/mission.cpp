@@ -7,30 +7,26 @@
 
 #include <algorithm>
 #include <limits>
-#include <numeric>
 
 namespace ioj::sim {
 void Mission::initialise(CompiledMission definition) {
     *this = Mission{};
     data_ = std::move(definition);
     auto const count{data_.objectives.size()};
-    inactive_.resize(count);
-    std::iota(inactive_.begin(), inactive_.end(), ObjectiveId{});
-    membership_positions_ = inactive_;
-    outcomes_.resize(count);
-    activation_ticks_.resize(count, std::numeric_limits<SimTick>::max());
-    dirty_flags_.resize(count);
-    prerequisites_.reserve(count);
-    for (auto const& objective : data_.objectives) {
-        prerequisites_.push_back(objective.prerequisites);
+    inactive_.reserve(count);
+    for (std::uint32_t index{}; index < count; ++index) {
+        ObjectiveId const id{index};
+        inactive_.push_back(id);
+        data_.objectives.membership_position(id) = index;
     }
 }
 void Mission::begin(MissionInputs const& inputs) {
     assert(!begun_);
     begun_ = true;
     auto const count{data_.objectives.size()};
-    for (ObjectiveId id{}; id < count; ++id) {
-        if (prerequisites_[id] == 0) {
+    for (std::uint32_t index{}; index < count; ++index) {
+        ObjectiveId const id{index};
+        if (data_.objectives.prerequisites(id) == 0) {
             activate(id, inputs.tick);
         }
     }
@@ -38,18 +34,18 @@ void Mission::begin(MissionInputs const& inputs) {
 }
 void Mission::tick(MissionInputs const& inputs) {
     assert(begun_);
+    std::span<RuleId const> const rules{active_rules_};
     for (auto const run : runs_) {
         if (run.type == ConditionType::ObjectiveResolved) {
             continue;
         }
-        evaluate(std::span<RuleId const>{active_rules_}.subspan(run.rules.offset, run.rules.count),
-                 inputs);
+        // NOLINTNEXTLINE(ioj-loop-view-accessor-call) -- each run selects a different rule range.
+        evaluate(rules.subspan(run.rules.offset, run.rules.count), inputs);
     }
     settle(inputs);
 }
 auto Mission::outcome(ObjectiveId const id) const -> std::optional<ObjectiveOutcome> {
-    assert(id < outcomes_.size());
-    return outcomes_[id];
+    return data_.objectives.outcome(id);
 }
 auto Mission::team_outcome(Team const team) const -> std::optional<TeamOutcome> {
     assert(static_cast<std::size_t>(team) < team_outcomes_.size());
@@ -59,10 +55,11 @@ auto Mission::take_completions() -> std::vector<TeamCompletion> {
     return std::exchange(completions_, {});
 }
 auto Mission::active(ObjectiveId const id) const -> bool {
-    return activation_ticks_[id] != std::numeric_limits<SimTick>::max() && !outcomes_[id];
+    return data_.objectives.activation_tick(id) != std::numeric_limits<SimTick>::max() &&
+           !data_.objectives.outcome(id);
 }
 auto Mission::result(ExprRef const expression) const -> ExprResult {
-    if (!expression.valid()) {
+    if (!expression.is_valid()) {
         return ExprResult::False;
     }
     auto const& results{expression.leaf() ? data_.leaves.results : data_.composites.results};
@@ -77,28 +74,32 @@ auto Mission::pending_rule(RuleId const rule) const -> bool {
     return active(data_.leaves.owners[leaf]) && data_.leaves.results[leaf] == ExprResult::Pending;
 }
 void Mission::remove_member(std::vector<ObjectiveId>& collection, ObjectiveId const id) {
-    auto const position{membership_positions_[id]};
+    auto const position{data_.objectives.membership_position(id)};
     assert(position < collection.size() && collection[position] == id);
     collection[position] = collection.back();
-    membership_positions_[collection.back()] = position;
+    data_.objectives.membership_position(collection.back()) = position;
     collection.pop_back();
 }
 void Mission::activate(ObjectiveId const id, SimTick const tick) {
-    assert(!outcomes_[id] && activation_ticks_[id] == std::numeric_limits<SimTick>::max());
+    assert(!data_.objectives.outcome(id) &&
+           data_.objectives.activation_tick(id) == std::numeric_limits<SimTick>::max());
     remove_member(inactive_, id);
-    membership_positions_[id] = static_cast<std::uint32_t>(active_.size());
+    data_.objectives.membership_position(id) = static_cast<std::uint32_t>(active_.size());
     active_.push_back(id);
-    activation_ticks_[id] = tick;
-    auto const& objective{data_.objectives[id]};
-    for (auto leaf{objective.leaves.start()}; leaf < objective.leaves.end(); ++leaf) {
+    data_.objectives.activation_tick(id) = tick;
+    auto const leaves{data_.objectives.leaves(id)};
+    auto const leaves_end{leaves.end()};
+    for (auto leaf{leaves.start()}; leaf < leaves_end; ++leaf) {
         auto const rule{data_.leaves.rules[leaf]};
         active_rules_.push_back(rule);
         newly_active_.push_back(rule);
     }
     membership_changed_ = true;
-    for (auto node{objective.composites.start()}; node < objective.composites.end(); ++node) {
+    auto const composites{data_.objectives.composites(id)};
+    auto const composites_end{composites.end()};
+    for (auto node{composites.start()}; node < composites_end; ++node) {
         if (data_.composites.remaining[node] == 0) {
-            resolve({node},
+            resolve(ExprRef{node, false},
                     data_.composites.types[node] == ExpressionType::All ? ExprResult::True
                                                                         : ExprResult::False);
         }
@@ -106,8 +107,8 @@ void Mission::activate(ObjectiveId const id, SimTick const tick) {
     mark_dirty(id);
 }
 void Mission::mark_dirty(ObjectiveId const id) {
-    if (!dirty_flags_[id]) {
-        dirty_flags_[id] = 1;
+    if (!data_.objectives.dirty(id)) {
+        data_.objectives.dirty(id) = 1;
         dirty_.push_back(id);
     }
 }
@@ -124,24 +125,26 @@ void Mission::resolve(ExprRef const expression, ExprResult const value) {
     membership_changed_ = membership_changed_ || expression.leaf();
 }
 void Mission::propagate() {
+    // NOLINTNEXTLINE(ioj-loop-condition-call) -- propagation appends newly resolved parents.
     for (std::size_t index{}; index < propagation_.size(); ++index) {
         auto const child{propagation_[index]};
         auto const value{result(child)};
         auto const parents{child.leaf() ? data_.leaves.parents[child.index()]
                                         : data_.composites.parents[child.index()]};
-        for (auto edge{parents.start()}; edge < parents.end(); ++edge) {
+        auto const parents_end{parents.end()};
+        for (auto edge{parents.start()}; edge < parents_end; ++edge) {
             auto const parent{data_.parents[edge]};
             if (data_.composites.results[parent] != ExprResult::Pending) {
                 continue;
             }
             auto const all{data_.composites.types[parent] == ExpressionType::All};
             if ((all && value == ExprResult::False) || (!all && value == ExprResult::True)) {
-                resolve({parent}, value);
+                resolve(ExprRef{parent, false}, value);
             } else {
                 auto& remaining{data_.composites.remaining[parent]};
                 assert(remaining > 0);
                 if (--remaining == 0) {
-                    resolve({parent}, all ? ExprResult::True : ExprResult::False);
+                    resolve(ExprRef{parent, false}, all ? ExprResult::True : ExprResult::False);
                 }
             }
         }
@@ -151,32 +154,36 @@ void Mission::propagate() {
 void Mission::complete(ObjectiveId const id, ObjectiveOutcome const outcome, SimTick const tick) {
     assert(active(id));
     remove_member(active_, id);
-    membership_positions_[id] = static_cast<std::uint32_t>(completed_.size());
+    data_.objectives.membership_position(id) = static_cast<std::uint32_t>(completed_.size());
     completed_.push_back(id);
-    outcomes_[id] = outcome;
+    data_.objectives.outcome(id) = outcome;
     membership_changed_ = true;
-    auto const& objective{data_.objectives[id]};
-    for (auto index{objective.dependents.start()}; index < objective.dependents.end(); ++index) {
+    auto const dependents{data_.objectives.dependents(id)};
+    auto const dependents_end{dependents.end()};
+    for (auto index{dependents.start()}; index < dependents_end; ++index) {
         auto const dependency{data_.dependents[index]};
         if (dependency.outcome == outcome) {
-            auto& remaining{prerequisites_[dependency.dependent]};
+            auto& remaining{data_.objectives.prerequisites(dependency.dependent)};
             assert(remaining > 0);
             if (--remaining == 0) {
                 activate(dependency.dependent, tick);
             }
         }
     }
-    for (auto index{objective.observers.start()}; index < objective.observers.end(); ++index) {
+    auto const observers{data_.objectives.observers(id)};
+    auto const observers_end{observers.end()};
+    for (auto index{observers.start()}; index < observers_end; ++index) {
         auto const leaf{data_.observers[index]};
         if (active(data_.leaves.owners[leaf])) {
             auto const rule{data_.leaves.rules[leaf]};
-            resolve({ExprRef::leaf_bit | leaf},
+            resolve(ExprRef{leaf, true},
                     data_.rules.observed_outcomes[rule.index()] == outcome ? ExprResult::True
                                                                            : ExprResult::False);
         }
     }
-    for (auto index{objective.team_results.start()}; index < objective.team_results.end();
-         ++index) {
+    auto const team_results{data_.objectives.team_results(id)};
+    auto const team_results_end{team_results.end()};
+    for (auto index{team_results.start()}; index < team_results_end; ++index) {
         auto const mapping{data_.result_indices[index]};
         if (data_.team_results[mapping].outcome == outcome) {
             candidate_results_.push_back(mapping);
@@ -214,7 +221,7 @@ void Mission::evaluate(std::span<RuleId const> const scheduled, MissionInputs co
         return history.life_state()[row] != LifeState::Alive;
     };
     auto finish = [&](RuleId const rule, ExprResult const value) {
-        resolve({ExprRef::leaf_bit | rule_leaf(rule)}, value);
+        resolve(ExprRef{rule_leaf(rule), true}, value);
     };
     // Newly activated rules are sorted separately; ordinary ticks use cached runs.
     std::size_t first{};
@@ -224,6 +231,7 @@ void Mission::evaluate(std::span<RuleId const> const scheduled, MissionInputs co
         while (end < scheduled.size() && scheduled[end].type() == type) {
             ++end;
         }
+        // NOLINTNEXTLINE(ioj-loop-view-accessor-call) -- each condition type owns a distinct range.
         auto const run{scheduled.subspan(first, end - first)};
         switch (type) {
             case ConditionType::EntityDestroyed:
@@ -240,7 +248,7 @@ void Mission::evaluate(std::span<RuleId const> const scheduled, MissionInputs co
                 for (auto const rule : run) {
                     if (pending_rule(rule)) {
                         auto const activated{
-                            activation_ticks_[data_.leaves.owners[rule_leaf(rule)]]};
+                            data_.objectives.activation_tick(data_.leaves.owners[rule_leaf(rule)])};
                         assert(inputs.tick >= activated);
                         if (inputs.tick - activated >= rules.durations[rule.index()]) {
                             finish(rule, ExprResult::True);
@@ -252,7 +260,8 @@ void Mission::evaluate(std::span<RuleId const> const scheduled, MissionInputs co
                 // Resolve once on activation; subsequent changes arrive via reverse observers.
                 for (auto const rule : run) {
                     if (pending_rule(rule)) {
-                        auto const outcome{outcomes_[rules.observed_objectives[rule.index()]]};
+                        auto const outcome{
+                            data_.objectives.outcome(rules.observed_objectives[rule.index()])};
                         if (outcome) {
                             finish(rule,
                                    *outcome == rules.observed_outcomes[rule.index()]
@@ -269,7 +278,8 @@ void Mission::evaluate(std::span<RuleId const> const scheduled, MissionInputs co
                     }
                     std::uint64_t kills{};
                     auto const sources{rules.kill_sources[rule.index()]};
-                    for (auto index{sources.start()}; index < sources.end(); ++index) {
+                    auto const sources_end{sources.end()};
+                    for (auto index{sources.start()}; index < sources_end; ++index) {
                         auto const id{entity(rules.kill_entities[index])};
                         if (id.is_valid()) {
                             kills += inputs.ledger.get_kills(id);
@@ -307,7 +317,11 @@ void Mission::evaluate(std::span<RuleId const> const scheduled, MissionInputs co
                 positions.add_uninitialised(live_count);
                 auto const output{positions.get_view().resolve()};
                 inputs.spatial->copy_entity_locations(
-                    std::span<EntityId const>{ids.data(), live_count}, output, inputs.scratch);
+                    // The current run determines the live IDs.
+                    // NOLINTNEXTLINE(ioj-loop-view-construction)
+                    std::span<EntityId const>{ids.data(), live_count},
+                    output,
+                    inputs.scratch);
                 for (std::uint32_t row{}; row < live_count; ++row) {
                     auto const rule{live_rules[row]};
                     auto const position{output[row]};
@@ -336,14 +350,14 @@ void Mission::settle(MissionInputs const& inputs) {
         auto dirty{std::exchange(dirty_, {})};
         std::ranges::sort(dirty);
         for (auto const id : dirty) {
-            dirty_flags_[id] = 0;
+            data_.objectives.dirty(id) = 0;
             if (!active(id)) {
                 continue;
             }
-            auto const& roots{data_.objectives[id].roots};
-            for (std::uint32_t root{}; root < roots.size(); ++root) {
+            auto const& roots{data_.objectives.roots(id)};
+            for (auto const root : EnumTraits<ObjectiveOutcome>::values) {
                 if (result(roots[root]) == ExprResult::True) {
-                    complete(id, static_cast<ObjectiveOutcome>(root), inputs.tick);
+                    complete(id, root, inputs.tick);
                     break;
                 }
             }

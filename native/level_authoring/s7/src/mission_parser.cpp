@@ -1,5 +1,6 @@
 #include "mission_parser.h"
 
+#include <limits>
 #include <unordered_map>
 
 namespace ioj::levels::authoring::detail {
@@ -24,7 +25,7 @@ auto dependency(AstParser& parser,
             DiagnosticCode::ExpectedRecord, path, "Expected (objective-resolved 'id 'outcome)");
         return {};
     }
-    return {parser.symbol(values[1], path), outcome(parser, values[2], path)};
+    return {ObjectiveName{parser.symbol(values[1], path)}, outcome(parser, values[2], path)};
 }
 auto position(AstParser& parser, s7::NodeIndex const node, std::string const& path) -> Vector3d {
     auto const values{parser.list(node, path)};
@@ -69,7 +70,7 @@ class ExpressionReader {
         for (auto const [index, value] : definitions) {
             // Keep explicit aliases as one-child conjunctions, including forward references.
             auto const child{read(value, path)};
-            objective_.expressions[index] = {.type = ExpressionType::All, .children = {child}};
+            objective_.expressions[index] = {AllExpression{.children = {child}}};
         }
     }
 
@@ -105,7 +106,7 @@ class ExpressionReader {
                           "Unknown mission expression: " + std::string{name});
             return absent_expression;
         }
-        MissionExpression expression{.type = *type};
+        MissionExpression expression;
         auto const arity = [&](std::size_t const arguments) {
             if (values.size() != arguments + 1) {
                 parser_.error(
@@ -116,40 +117,69 @@ class ExpressionReader {
         };
         switch (*type) {
             case ExpressionType::All:
-            case ExpressionType::Any:
+            case ExpressionType::Any: {
+                std::vector<ExpressionIndex> children;
                 for (auto const child : values.subspan(1)) {
-                    expression.children.push_back(read(child, path, depth + 1));
+                    children.push_back(read(child, path, depth + 1));
+                }
+                if (*type == ExpressionType::All) {
+                    expression.payload = AllExpression{std::move(children)};
+                } else {
+                    expression.payload = AnyExpression{std::move(children)};
                 }
                 break;
+            }
             case ExpressionType::EntityDestroyed:
                 if (arity(1)) {
-                    expression.entity = EntityId{parser_.symbol(values[1], path)};
+                    expression.payload =
+                        EntityDestroyedExpression{EntityId{parser_.symbol(values[1], path)}};
                 }
                 break;
             case ExpressionType::EntityReachedPosition:
                 if (arity(3)) {
-                    expression.entity = EntityId{parser_.symbol(values[1], path)};
-                    expression.position = position(parser_, values[2], path);
-                    expression.radius = parser_.number(values[3], path);
+                    auto const target{
+                        FiniteVector<double, 3>::try_make(position(parser_, values[2], path))};
+                    auto const radius{
+                        NonNegativeFinite<double>::try_make(parser_.number(values[3], path))};
+                    if (!target || !radius) {
+                        parser_.error(DiagnosticCode::InvalidNumber,
+                                      path,
+                                      "Position must be finite and radius finite and nonnegative");
+                    } else {
+                        expression.payload = EntityReachedPositionExpression{
+                            EntityId{parser_.symbol(values[1], path)}, *target, *radius};
+                    }
                 }
                 break;
             case ExpressionType::TimeElapsed:
                 if (arity(1)) {
-                    expression.seconds = parser_.number(values[1], path);
+                    auto const seconds{
+                        NonNegativeFinite<double>::try_make(parser_.number(values[1], path))};
+                    if (!seconds) {
+                        parser_.error(DiagnosticCode::InvalidNumber,
+                                      path,
+                                      "Timer must be finite and nonnegative");
+                    } else {
+                        expression.payload = TimeElapsedExpression{*seconds};
+                    }
                 }
                 break;
             case ExpressionType::ObjectiveResolved:
-                expression.objective = dependency(parser_, ast_, node, path);
+                expression.payload =
+                    ObjectiveResolvedExpression{dependency(parser_, ast_, node, path)};
                 break;
             case ExpressionType::EntityKillsReached:
                 if (arity(2)) {
-                    expression.entities = parser_.ids<EntityId>(values[1], path);
+                    auto sources{parser_.ids<EntityId>(values[1], path)};
                     auto const kills{parser_.integer(values[2], path)};
-                    if (kills < 0) {
-                        parser_.error(
-                            DiagnosticCode::InvalidNumber, path, "Kill target must be nonnegative");
+                    if (kills < 0 || static_cast<std::uint64_t>(kills) >
+                                         std::numeric_limits<std::uint32_t>::max()) {
+                        parser_.error(DiagnosticCode::InvalidNumber,
+                                      path,
+                                      "Kill target must fit a nonnegative 32-bit integer");
                     } else {
-                        expression.kills = static_cast<std::uint32_t>(kills);
+                        expression.payload = EntityKillsReachedExpression{
+                            std::move(sources), static_cast<std::uint32_t>(kills)};
                     }
                 }
                 break;
@@ -180,7 +210,7 @@ auto objective(AstParser& parser,
     for (auto const& field : fields) {
         switch (field.property) {
             case Property::Id:
-                result.id = parser.symbol(field.value, field.node_path);
+                result.id = ObjectiveName{parser.symbol(field.value, field.node_path)};
                 break;
             case Property::Title:
                 result.title = parser.string(field.value, field.node_path);
@@ -191,13 +221,16 @@ auto objective(AstParser& parser,
             case Property::Nodes:
                 break;
             case Property::Pass:
-                result.roots[0] = expressions.read(field.value, field.node_path);
+                result.roots[ObjectiveOutcome::Passed] =
+                    expressions.read(field.value, field.node_path);
                 break;
             case Property::Fail:
-                result.roots[1] = expressions.read(field.value, field.node_path);
+                result.roots[ObjectiveOutcome::Failed] =
+                    expressions.read(field.value, field.node_path);
                 break;
             case Property::Expire:
-                result.roots[2] = expressions.read(field.value, field.node_path);
+                result.roots[ObjectiveOutcome::Expired] =
+                    expressions.read(field.value, field.node_path);
                 break;
             case Property::DependsOn:
                 for (auto const value : parser.list(field.value, field.node_path)) {

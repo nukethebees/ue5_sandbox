@@ -284,12 +284,13 @@ TEST(TickPhases, DelayedObjectiveSeesSameTickResolvedDeathWithoutDuplicateOverla
     auto const turret_index{
         data.level_events.schedule.turret_spawns.get_const_view().entity_indices()[0]};
     levels::ObjectiveDefinition objective{.team = Team::White};
-    objective.expressions = {{.type = ExpressionType::TimeElapsed, .seconds = 10},
-                             destroyed(capital_index),
-                             destroyed(turret_index),
-                             {.type = ExpressionType::Any, .children = {1, 2}}};
-    objective.roots[0] = 0;
-    objective.roots[1] = 3;
+    objective.expressions = {
+        {ioj::levels::TimeElapsedExpression{.seconds = ioj::NonNegativeFinite<double>::make(10)}},
+        destroyed(capital_index),
+        destroyed(turret_index),
+        {ioj::levels::AnyExpression{.children = {1, 2}}}};
+    objective.roots[ioj::ObjectiveOutcome::Passed] = 0;
+    objective.roots[ioj::ObjectiveOutcome::Failed] = 3;
     install_mission(data, std::move(objective));
 
     GameMemory simulation_memory;
@@ -315,7 +316,7 @@ TEST(TickPhases, DelayedObjectiveSeesSameTickResolvedDeathWithoutDuplicateOverla
     EXPECT_FALSE(observe_live_entity(simulation, dead_id));
     EXPECT_EQ(ledger.count_alive(), 1);
     EXPECT_EQ(capitals.get_health(capitals.get_id(0)), 900);
-    EXPECT_EQ(simulation.get_mission().outcome(0), ObjectiveOutcome::Failed);
+    EXPECT_EQ(simulation.get_mission().outcome(ioj::sim::ObjectiveId{0}), ObjectiveOutcome::Failed);
 
     auto const& queries{simulation.get_spatial_query_manager()};
     EXPECT_EQ(queries.get_aabb_overlap_events().entity_entity_overlaps.num(), 1);
@@ -444,11 +445,10 @@ TEST(TickPhases, CapitalDeathPreservesExistingChildrenBeforeMissionEvaluation) {
 
         levels::ObjectiveDefinition objective{.team = Team::White};
         objective.expressions = {destroyed(first),
-                                 {.type = ExpressionType::EntityKillsReached,
-                                  .entities = {mission_entity(second)},
-                                  .kills = 1},
-                                 {.type = ExpressionType::All, .children = {0, 1}}};
-        objective.roots[0] = 2;
+                                 {ioj::levels::EntityKillsReachedExpression{
+                                     .entities = {mission_entity(second)}, .kills = 1}},
+                                 {ioj::levels::AllExpression{.children = {0, 1}}}};
+        objective.roots[ioj::ObjectiveOutcome::Passed] = 2;
         install_mission(data, std::move(objective));
 
         GameMemory simulation_memory;
@@ -492,7 +492,8 @@ TEST(TickPhases, CapitalDeathPreservesExistingChildrenBeforeMissionEvaluation) {
         EXPECT_EQ(observe_entity_row(simulation, victim), EntityInstanceHandle::invalid_value);
         EXPECT_EQ(observe_entity_row(simulation, killer), 0);
         EXPECT_EQ(ledger.count_alive(), kill_tick == 1 ? 1 : 3);
-        EXPECT_EQ(simulation.get_mission().outcome(0), ObjectiveOutcome::Passed);
+        EXPECT_EQ(simulation.get_mission().outcome(ioj::sim::ObjectiveId{0}),
+                  ObjectiveOutcome::Passed);
         if (kill_tick == 2) {
             auto const fighter_ids{fighter_sim.get_entity_ids()};
             auto const fighter_parents{fighter_sim.get_parent_ids()};

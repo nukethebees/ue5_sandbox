@@ -3,7 +3,8 @@
   :namespace ioj
   (enum ObjectiveOutcome std::uint8_t
     :native-api true
-    :helpers (to-serialized-string try-parse-serialized)
+    :enum-array true
+    :helpers (traits to-serialized-string try-parse-serialized)
     (unreal-projection EObjectiveOutcome
       :header "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/missions/ObjectiveOutcome.h"
       :header-include "SpaceGame/missions/ObjectiveOutcome.h"

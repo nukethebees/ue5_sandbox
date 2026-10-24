@@ -853,7 +853,7 @@ void FHUDManager::update_radar(FRegisteredHud& registration) {
 bool FHUDManager::collect_mission_data() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::collect_mission_data);
     check(mission);
-    if (mission->objectives().empty()) {
+    if (mission->objectives().size() == 0) {
         return false;
     }
 
@@ -869,14 +869,13 @@ void FHUDManager::read_mission_data(ioj::hud_manager::FMissionDataCache& out) co
     out.active = static_cast<int32>(mission->active_objectives().size());
     out.completed = static_cast<int32>(mission->completed_objectives().size());
     out.inactive = static_cast<int32>(mission->inactive_objectives().size());
+    auto const& objectives{mission->objectives()};
     for (auto const id : mission->active_objectives()) {
-        auto const& objective{mission->objectives()[id]};
         if (!out.active_titles.IsEmpty()) {
             out.active_titles += TEXT(" / ");
         }
-        out.active_titles += ioj::to_fstring(ioj::to_string(objective.team)) + TEXT(": ");
-        out.active_titles +=
-            ioj::to_fstring(objective.title.empty() ? objective.id : objective.title);
+        out.active_titles += ioj::to_fstring(ioj::to_string(objectives.team(id))) + TEXT(": ");
+        out.active_titles += ioj::to_fstring(objectives.title(id));
     }
 }
 bool FHUDManager::collect_entity_count_data() {

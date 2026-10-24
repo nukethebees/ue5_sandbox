@@ -70,6 +70,10 @@ native/simulation/include/ioj/sim/levels/level_event_count.h
 native/simulation/include/ioj/sim/levels/level_spawn_groups.h
 native/simulation/include/ioj/sim/levels/level_spinner_spawn_events.h
 native/simulation/include/ioj/sim/levels/level_turret_spawn_events.h
+native/simulation/include/ioj/sim/missions/condition_type.h
+native/simulation/include/ioj/sim/missions/expr_ref.h
+native/simulation/include/ioj/sim/missions/objective_id.h
+native/simulation/include/ioj/sim/missions/rule_id.h
 native/simulation/include/ioj/sim/player/command_interface.h
 native/simulation/include/ioj/sim/player/fire_rate.h
 native/simulation/include/ioj/sim/player/flight_model_controller_state.h

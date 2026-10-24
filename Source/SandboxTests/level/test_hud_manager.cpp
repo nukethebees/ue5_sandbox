@@ -1,5 +1,6 @@
 #include "test_hud_manager_scenario.h"
 #include <ioj/sim/capital_ships/sim.h>
+#include <ioj/sim/missions/mission_compilation.h>
 #include <ioj/time_series_data.h>
 #include <SandboxTests/support/level_checks.h>
 #include <SandboxTests/support/SoftTestAssertions.h>
@@ -28,13 +29,16 @@
 namespace ioj {
 namespace {
 auto defence_objectives() -> levels::MissionDefinition {
-    return {.objectives = {{.id = "defence",
-                            .title = "Hold position",
-                            .team = Team::Blue,
-                            .expressions = {{.type = ExpressionType::TimeElapsed, .seconds = 0.2},
-                                            {.type = ExpressionType::EntityDestroyed,
-                                             .entity = levels::EntityId{"defended"}}},
-                            .roots = {0, 1, levels::absent_expression}}}};
+    return {.objectives = {
+                {.id = ioj::levels::ObjectiveName{"defence"},
+                 .title = "Hold position",
+                 .team = Team::Blue,
+                 .expressions = {{ioj::levels::TimeElapsedExpression{
+                                     .seconds = ioj::NonNegativeFinite<double>::make(0.2)}},
+                                 {ioj::levels::EntityDestroyedExpression{
+                                     .entity = levels::EntityId{"defended"}}}},
+                 .roots = ioj::levels::ObjectiveRoots{std::array<ioj::levels::ExpressionIndex, 3>{
+                     0, 1, levels::absent_expression}}}}};
 }
 auto count_worldless_hud_entities(FHUDManager const& manager) -> int32 {
     int32 count{};
@@ -158,7 +162,7 @@ void run_worldless_hud_manager_scenario(FAutomationTestBase& test,
         checks.are_equal(1, hud.get_mission_data().completed, TEXT("Resolved objective is cached"));
         checks.are_equal(
             0, hud.get_mission_data().active, TEXT("Resolved objective is no longer active"));
-        checks.is_true(mission.outcome(0) == ObjectiveOutcome::Failed,
+        checks.is_true(mission.outcome(ioj::sim::ObjectiveId{0}) == ObjectiveOutcome::Failed,
                        TEXT("Defence objective fails"));
     } else if (needs_player) {
         auto const& player_status{hud.get_player_status_data()};
@@ -169,7 +173,7 @@ void run_worldless_hud_manager_scenario(FAutomationTestBase& test,
                          TEXT("Kill data source records the player kill"));
     } else {
         checks.are_equal(1, hud.get_mission_data().completed, TEXT("Timer objective resolves"));
-        checks.is_true(mission.outcome(0) == ObjectiveOutcome::Passed,
+        checks.is_true(mission.outcome(ioj::sim::ObjectiveId{0}) == ObjectiveOutcome::Passed,
                        TEXT("Timer objective passes"));
     }
 }

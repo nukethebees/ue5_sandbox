@@ -1,5 +1,7 @@
 #include <ioj/levels/mission_validation.h>
 
+#include <ioj/levels/mission_limits.h>
+
 #include <algorithm>
 #include <cmath>
 #include <format>
@@ -43,17 +45,17 @@ auto has_cycle(std::vector<std::vector<std::uint32_t>> const& edges) -> bool {
 auto validate_mission(MissionDefinition const& mission, std::span<EntityId const> const entities)
     -> std::vector<std::string> {
     std::vector<std::string> errors;
-    std::unordered_map<std::string, std::uint32_t> objectives;
+    std::unordered_map<ObjectiveName, std::uint32_t> objectives;
     std::unordered_set<EntityId> declared{entities.begin(), entities.end()};
     auto const count{mission.objectives.size()};
-    if (count >= (1u << 24)) {
+    if (count >= mission_index_limit) {
         errors.emplace_back("Too many objectives");
         return errors;
     }
     for (std::uint32_t index{}; index < count; ++index) {
         auto const& objective{mission.objectives[index]};
         if (objective.id.empty() || !objectives.emplace(objective.id, index).second) {
-            errors.emplace_back("Objective IDs must be nonempty and unique: " + objective.id);
+            errors.emplace_back("Objective IDs must be nonempty and unique: " + objective.id.value);
         }
     }
     auto valid_team = [&](Team const team) {
@@ -62,10 +64,12 @@ auto validate_mission(MissionDefinition const& mission, std::span<EntityId const
         }
     };
     auto reference = [&](ObjectiveDependency const& dependency) -> bool {
-        auto const valid{objectives.contains(dependency.objective) &&
-                         static_cast<unsigned>(dependency.outcome) < 3};
+        auto const valid{
+            objectives.contains(dependency.objective) &&
+            std::ranges::contains(EnumTraits<ObjectiveOutcome>::values, dependency.outcome)};
         if (!valid) {
-            errors.emplace_back("Invalid objective outcome reference: " + dependency.objective);
+            errors.emplace_back("Invalid objective outcome reference: " +
+                                dependency.objective.value);
         }
         return valid;
     };
@@ -73,15 +77,16 @@ auto validate_mission(MissionDefinition const& mission, std::span<EntityId const
     std::uint64_t expression_count{};
     for (std::uint32_t index{}; index < count; ++index) {
         auto const& objective{mission.objectives[index]};
-        auto const prefix{std::format("Objective '{}': ", objective.id)};
+        auto const prefix{std::format("Objective '{}': ", objective.id.value)};
         valid_team(objective.team);
         expression_count += objective.expressions.size();
-        if (expression_count >= (1u << 24)) {
+        if (expression_count >= mission_index_limit) {
             errors.emplace_back("Too many mission expressions for packed rule indices");
             return errors;
         }
         auto has_root{false};
-        for (auto const root : objective.roots) {
+        for (auto const outcome : EnumTraits<ObjectiveOutcome>::values) {
+            auto const root{objective.roots[outcome]};
             if (root != absent_expression) {
                 has_root = true;
                 if (root >= objective.expressions.size()) {
@@ -92,7 +97,7 @@ auto validate_mission(MissionDefinition const& mission, std::span<EntityId const
         if (!has_root) {
             errors.emplace_back(prefix + "At least one outcome root is required");
         }
-        std::unordered_set<std::string> prerequisites;
+        std::unordered_set<ObjectiveName> prerequisites;
         for (auto const& dependency : objective.dependencies) {
             if (reference(dependency)) {
                 dependencies[index].push_back(objectives.at(dependency.objective));
@@ -105,10 +110,8 @@ auto validate_mission(MissionDefinition const& mission, std::span<EntityId const
         auto const expression_size{objective.expressions.size()};
         for (std::uint32_t node{}; node < expression_size; ++node) {
             auto const& expression{objective.expressions[node]};
-            auto const composite{expression.type == ExpressionType::All ||
-                                 expression.type == ExpressionType::Any};
-            for (auto const child : expression.children) {
-                if (!composite || child >= expression_size) {
+            for (auto const child : expression.children()) {
+                if (child >= expression_size) {
                     errors.emplace_back(prefix + "Invalid local expression child");
                 } else {
                     edges[node].push_back(child);
@@ -119,47 +122,47 @@ auto validate_mission(MissionDefinition const& mission, std::span<EntityId const
                     errors.emplace_back(prefix + "Undeclared entity: " + id.value);
                 }
             };
-            switch (expression.type) {
+            switch (expression.type()) {
                 case ExpressionType::All:
                 case ExpressionType::Any:
                     break;
-                case ExpressionType::EntityDestroyed:
-                    entity(expression.entity);
+                case ExpressionType::EntityDestroyed: {
+                    auto const& condition{std::get<EntityDestroyedExpression>(expression.payload)};
+                    entity(condition.entity);
                     break;
-                case ExpressionType::EntityReachedPosition:
-                    entity(expression.entity);
-                    if (!std::isfinite(expression.radius * expression.radius) ||
-                        expression.radius < 0 || !std::isfinite(expression.position.x()) ||
-                        !std::isfinite(expression.position.y()) ||
-                        !std::isfinite(expression.position.z())) {
-                        errors.emplace_back(
-                            prefix + "Position and nonnegative squared radius must be finite");
+                }
+                case ExpressionType::EntityReachedPosition: {
+                    auto const& condition{
+                        std::get<EntityReachedPositionExpression>(expression.payload)};
+                    entity(condition.entity);
+                    if (!std::isfinite(condition.radius.get() * condition.radius.get())) {
+                        errors.emplace_back(prefix + "Squared radius exceeds the finite range");
                     }
                     break;
+                }
                 case ExpressionType::TimeElapsed:
-                    if (!std::isfinite(expression.seconds) || expression.seconds < 0) {
-                        errors.emplace_back(prefix + "Timer must be finite and nonnegative");
-                    }
                     break;
-                case ExpressionType::ObjectiveResolved:
-                    reference(expression.objective);
+                case ExpressionType::ObjectiveResolved: {
+                    auto const& condition{
+                        std::get<ObjectiveResolvedExpression>(expression.payload)};
+                    reference(condition.objective);
                     break;
+                }
                 case ExpressionType::EntityKillsReached: {
+                    auto const& condition{
+                        std::get<EntityKillsReachedExpression>(expression.payload)};
                     std::unordered_set<EntityId> sources;
-                    for (auto const& id : expression.entities) {
+                    for (auto const& id : condition.entities) {
                         entity(id);
                         if (!sources.insert(id).second) {
                             errors.emplace_back(prefix + "Duplicate kill source");
                         }
                     }
-                    if (expression.entities.empty()) {
+                    if (condition.entities.empty()) {
                         errors.emplace_back(prefix + "Kill condition requires source entities");
                     }
                     break;
                 }
-                default:
-                    errors.emplace_back(prefix + "Invalid expression type");
-                    break;
             }
         }
         if (mission_validation_detail::has_cycle(edges)) {
