@@ -5,6 +5,7 @@
 
 #include "ioj/parse_enum.h"
 #include "ioj/s7/field_constraints.h"
+#include "ioj/s7/record_reader.h"
 #include "ioj/sim/lasers/laser_weapon_sim_config_reader.h"
 #include "ioj/sim/spinners/spinner_sim_config.h"
 #include <ioj/s7/field_reader.h>
@@ -15,18 +16,38 @@
 
 namespace ioj::s7 {
 template <>
-struct TypeReader<sim::SpinnerSimConfig> {
-    using value_type = sim::SpinnerSimConfig;
-
-    static ReadResult<value_type>
-        read(Reader const& reader, NodeIndex const node, std::string_view const path);
-
+struct TypeReader<sim::SpinnerSimConfig> : RecordReader<sim::SpinnerSimConfig> {
     static void decode(Reader const& reader,
                        NodeIndex const node,
                        std::string_view const path,
                        value_type& result,
                        ReadMode mode,
-                       AstDiagnostics& errors);
+                       AstDiagnostics& errors) {
+        auto const seen{read_record<Field>(
+            reader,
+            node,
+            "tube-spinners",
+            path,
+            parse_field,
+            ([&](Field const field, NodeIndex const value, std::string_view const location) {
+                FieldReader const read{reader, value, location, errors, mode};
+                switch (field) {
+                    case Field::yaw_rotation_speed_degrees:
+                        read(result.yaw_rotation_speed_degrees, constraints::finite);
+                        break;
+                    case Field::laser:
+                        read(result.laser);
+                        break;
+                    case Field::Count:
+                        std::unreachable();
+                }
+            }))};
+
+        if (!seen) {
+            append_errors(errors, seen.error());
+            return;
+        }
+    }
   private:
     enum class Field : std::uint8_t {
         yaw_rotation_speed_degrees,
@@ -44,18 +65,39 @@ struct TypeReader<sim::SpinnerSimConfig> {
 };
 
 template <>
-struct TypeReader<sim::SpinnerSimConfigOverrides> {
-    using value_type = sim::SpinnerSimConfigOverrides;
-
-    static ReadResult<value_type>
-        read(Reader const& reader, NodeIndex const node, std::string_view const path);
-
+struct TypeReader<sim::SpinnerSimConfigOverrides>
+    : RecordReader<sim::SpinnerSimConfigOverrides, ReadMode::Override> {
     static void decode(Reader const& reader,
                        NodeIndex const node,
                        std::string_view const path,
                        value_type& result,
                        ReadMode,
-                       AstDiagnostics& errors);
+                       AstDiagnostics& errors) {
+        auto const seen{read_record<Field>(
+            reader,
+            node,
+            "tube-spinners",
+            path,
+            parse_field,
+            ([&](Field const field, NodeIndex const value, std::string_view const location) {
+                FieldReader const read{reader, value, location, errors};
+                switch (field) {
+                    case Field::yaw_rotation_speed_degrees:
+                        read.patch(result.yaw_rotation_speed_degrees, constraints::finite);
+                        break;
+                    case Field::laser:
+                        read.patch(result.laser);
+                        break;
+                    case Field::Count:
+                        std::unreachable();
+                }
+            }))};
+
+        if (!seen) {
+            append_errors(errors, seen.error());
+            return;
+        }
+    }
   private:
     enum class Field : std::uint8_t {
         yaw_rotation_speed_degrees,
@@ -71,83 +113,5 @@ struct TypeReader<sim::SpinnerSimConfigOverrides> {
     static constexpr std::array<std::string_view, 2> field_names{"yaw-rotation-speed-degrees",
                                                                  "laser"};
 };
-
-inline auto TypeReader<sim::SpinnerSimConfig>::read(Reader const& reader,
-                                                    NodeIndex const node,
-                                                    std::string_view const path)
-    -> ReadResult<value_type> {
-    return read_generated<value_type>(reader, node, path);
-}
-
-inline void TypeReader<sim::SpinnerSimConfig>::decode(Reader const& reader,
-                                                      NodeIndex const node,
-                                                      std::string_view const path,
-                                                      value_type& result,
-                                                      ReadMode mode,
-                                                      AstDiagnostics& errors) {
-    auto const seen{read_record<Field>(
-        reader,
-        node,
-        "tube-spinners",
-        path,
-        parse_field,
-        ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            FieldReader const read{reader, value, location, errors, mode};
-            switch (field) {
-                case Field::yaw_rotation_speed_degrees:
-                    read(result.yaw_rotation_speed_degrees, constraints::finite);
-                    break;
-                case Field::laser:
-                    read(result.laser);
-                    break;
-                case Field::Count:
-                    std::unreachable();
-            }
-        }))};
-
-    if (!seen) {
-        append_errors(errors, seen.error());
-        return;
-    }
-}
-
-inline auto TypeReader<sim::SpinnerSimConfigOverrides>::read(Reader const& reader,
-                                                             NodeIndex const node,
-                                                             std::string_view const path)
-    -> ReadResult<value_type> {
-    return read_override(reader, node, path, value_type{});
-}
-
-inline void TypeReader<sim::SpinnerSimConfigOverrides>::decode(Reader const& reader,
-                                                               NodeIndex const node,
-                                                               std::string_view const path,
-                                                               value_type& result,
-                                                               ReadMode,
-                                                               AstDiagnostics& errors) {
-    auto const seen{read_record<Field>(
-        reader,
-        node,
-        "tube-spinners",
-        path,
-        parse_field,
-        ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            FieldReader const read{reader, value, location, errors};
-            switch (field) {
-                case Field::yaw_rotation_speed_degrees:
-                    read.patch(result.yaw_rotation_speed_degrees, constraints::finite);
-                    break;
-                case Field::laser:
-                    read.patch(result.laser);
-                    break;
-                case Field::Count:
-                    std::unreachable();
-            }
-        }))};
-
-    if (!seen) {
-        append_errors(errors, seen.error());
-        return;
-    }
-}
 
 } // namespace ioj::s7

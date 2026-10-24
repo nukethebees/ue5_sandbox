@@ -5,6 +5,7 @@
 
 #include "ioj/parse_enum.h"
 #include "ioj/s7/field_constraints.h"
+#include "ioj/s7/record_reader.h"
 #include "ioj/settings/soft_target.h"
 #include <ioj/s7/field_reader.h>
 
@@ -14,18 +15,71 @@
 
 namespace ioj::s7 {
 template <>
-struct TypeReader<settings::SoftTarget> {
-    using value_type = settings::SoftTarget;
-
-    static ReadResult<value_type>
-        read(Reader const& reader, NodeIndex const node, std::string_view const path);
-
+struct TypeReader<settings::SoftTarget> : RecordReader<settings::SoftTarget> {
     static void decode(Reader const& reader,
                        NodeIndex const node,
                        std::string_view const path,
                        value_type& result,
                        ReadMode mode,
-                       AstDiagnostics& errors);
+                       AstDiagnostics& errors) {
+        auto const seen{read_record<Field>(
+            reader,
+            node,
+            "soft-target",
+            path,
+            parse_field,
+            ([&](Field const field, NodeIndex const value, std::string_view const location) {
+                FieldReader const read{reader, value, location, errors, mode};
+                switch (field) {
+                    case Field::acquisition_radius_pixels:
+                        read(result.acquisition_radius_pixels, constraints::finite);
+                        break;
+                    case Field::retention_radius_pixels:
+                        read(result.retention_radius_pixels, constraints::finite);
+                        break;
+                    case Field::centre_tie_radius_pixels:
+                        read(result.centre_tie_radius_pixels, constraints::finite);
+                        break;
+                    case Field::switch_improvement_ratio:
+                        read(result.switch_improvement_ratio, constraints::finite);
+                        break;
+                    case Field::range_transition_start_multiplier:
+                        read(result.range_transition_start_multiplier, constraints::finite);
+                        break;
+                    case Field::minimum_radius_pixels:
+                        read(result.minimum_radius_pixels, constraints::finite);
+                        break;
+                    case Field::maximum_radius_pixels:
+                        read(result.maximum_radius_pixels, constraints::finite);
+                        break;
+                    case Field::bounds_padding_pixels:
+                        read(result.bounds_padding_pixels, constraints::finite);
+                        break;
+                    case Field::bracket_start_radius_multiplier:
+                        read(result.bracket_start_radius_multiplier, constraints::finite);
+                        break;
+                    case Field::opacity:
+                        read(result.opacity, constraints::finite);
+                        break;
+                    case Field::pulse_opacity_boost:
+                        read(result.pulse_opacity_boost, constraints::finite);
+                        break;
+                    case Field::pulse_duration:
+                        read(result.pulse_duration, constraints::finite);
+                        break;
+                    case Field::fade_out_duration:
+                        read(result.fade_out_duration, constraints::finite);
+                        break;
+                    case Field::Count:
+                        std::unreachable();
+                }
+            }))};
+
+        if (!seen) {
+            append_errors(errors, seen.error());
+            return;
+        }
+    }
   private:
     enum class Field : std::uint8_t {
         acquisition_radius_pixels,
@@ -66,18 +120,72 @@ struct TypeReader<settings::SoftTarget> {
 };
 
 template <>
-struct TypeReader<settings::SoftTargetOverrides> {
-    using value_type = settings::SoftTargetOverrides;
-
-    static ReadResult<value_type>
-        read(Reader const& reader, NodeIndex const node, std::string_view const path);
-
+struct TypeReader<settings::SoftTargetOverrides>
+    : RecordReader<settings::SoftTargetOverrides, ReadMode::Override> {
     static void decode(Reader const& reader,
                        NodeIndex const node,
                        std::string_view const path,
                        value_type& result,
                        ReadMode,
-                       AstDiagnostics& errors);
+                       AstDiagnostics& errors) {
+        auto const seen{read_record<Field>(
+            reader,
+            node,
+            "soft-target",
+            path,
+            parse_field,
+            ([&](Field const field, NodeIndex const value, std::string_view const location) {
+                FieldReader const read{reader, value, location, errors};
+                switch (field) {
+                    case Field::acquisition_radius_pixels:
+                        read.patch(result.acquisition_radius_pixels, constraints::finite);
+                        break;
+                    case Field::retention_radius_pixels:
+                        read.patch(result.retention_radius_pixels, constraints::finite);
+                        break;
+                    case Field::centre_tie_radius_pixels:
+                        read.patch(result.centre_tie_radius_pixels, constraints::finite);
+                        break;
+                    case Field::switch_improvement_ratio:
+                        read.patch(result.switch_improvement_ratio, constraints::finite);
+                        break;
+                    case Field::range_transition_start_multiplier:
+                        read.patch(result.range_transition_start_multiplier, constraints::finite);
+                        break;
+                    case Field::minimum_radius_pixels:
+                        read.patch(result.minimum_radius_pixels, constraints::finite);
+                        break;
+                    case Field::maximum_radius_pixels:
+                        read.patch(result.maximum_radius_pixels, constraints::finite);
+                        break;
+                    case Field::bounds_padding_pixels:
+                        read.patch(result.bounds_padding_pixels, constraints::finite);
+                        break;
+                    case Field::bracket_start_radius_multiplier:
+                        read.patch(result.bracket_start_radius_multiplier, constraints::finite);
+                        break;
+                    case Field::opacity:
+                        read.patch(result.opacity, constraints::finite);
+                        break;
+                    case Field::pulse_opacity_boost:
+                        read.patch(result.pulse_opacity_boost, constraints::finite);
+                        break;
+                    case Field::pulse_duration:
+                        read.patch(result.pulse_duration, constraints::finite);
+                        break;
+                    case Field::fade_out_duration:
+                        read.patch(result.fade_out_duration, constraints::finite);
+                        break;
+                    case Field::Count:
+                        std::unreachable();
+                }
+            }))};
+
+        if (!seen) {
+            append_errors(errors, seen.error());
+            return;
+        }
+    }
   private:
     enum class Field : std::uint8_t {
         acquisition_radius_pixels,
@@ -116,149 +224,5 @@ struct TypeReader<settings::SoftTargetOverrides> {
         "pulse-duration",
         "fade-out-duration"};
 };
-
-inline auto TypeReader<settings::SoftTarget>::read(Reader const& reader,
-                                                   NodeIndex const node,
-                                                   std::string_view const path)
-    -> ReadResult<value_type> {
-    return read_generated<value_type>(reader, node, path);
-}
-
-inline void TypeReader<settings::SoftTarget>::decode(Reader const& reader,
-                                                     NodeIndex const node,
-                                                     std::string_view const path,
-                                                     value_type& result,
-                                                     ReadMode mode,
-                                                     AstDiagnostics& errors) {
-    auto const seen{read_record<Field>(
-        reader,
-        node,
-        "soft-target",
-        path,
-        parse_field,
-        ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            FieldReader const read{reader, value, location, errors, mode};
-            switch (field) {
-                case Field::acquisition_radius_pixels:
-                    read(result.acquisition_radius_pixels, constraints::finite);
-                    break;
-                case Field::retention_radius_pixels:
-                    read(result.retention_radius_pixels, constraints::finite);
-                    break;
-                case Field::centre_tie_radius_pixels:
-                    read(result.centre_tie_radius_pixels, constraints::finite);
-                    break;
-                case Field::switch_improvement_ratio:
-                    read(result.switch_improvement_ratio, constraints::finite);
-                    break;
-                case Field::range_transition_start_multiplier:
-                    read(result.range_transition_start_multiplier, constraints::finite);
-                    break;
-                case Field::minimum_radius_pixels:
-                    read(result.minimum_radius_pixels, constraints::finite);
-                    break;
-                case Field::maximum_radius_pixels:
-                    read(result.maximum_radius_pixels, constraints::finite);
-                    break;
-                case Field::bounds_padding_pixels:
-                    read(result.bounds_padding_pixels, constraints::finite);
-                    break;
-                case Field::bracket_start_radius_multiplier:
-                    read(result.bracket_start_radius_multiplier, constraints::finite);
-                    break;
-                case Field::opacity:
-                    read(result.opacity, constraints::finite);
-                    break;
-                case Field::pulse_opacity_boost:
-                    read(result.pulse_opacity_boost, constraints::finite);
-                    break;
-                case Field::pulse_duration:
-                    read(result.pulse_duration, constraints::finite);
-                    break;
-                case Field::fade_out_duration:
-                    read(result.fade_out_duration, constraints::finite);
-                    break;
-                case Field::Count:
-                    std::unreachable();
-            }
-        }))};
-
-    if (!seen) {
-        append_errors(errors, seen.error());
-        return;
-    }
-}
-
-inline auto TypeReader<settings::SoftTargetOverrides>::read(Reader const& reader,
-                                                            NodeIndex const node,
-                                                            std::string_view const path)
-    -> ReadResult<value_type> {
-    return read_override(reader, node, path, value_type{});
-}
-
-inline void TypeReader<settings::SoftTargetOverrides>::decode(Reader const& reader,
-                                                              NodeIndex const node,
-                                                              std::string_view const path,
-                                                              value_type& result,
-                                                              ReadMode,
-                                                              AstDiagnostics& errors) {
-    auto const seen{read_record<Field>(
-        reader,
-        node,
-        "soft-target",
-        path,
-        parse_field,
-        ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            FieldReader const read{reader, value, location, errors};
-            switch (field) {
-                case Field::acquisition_radius_pixels:
-                    read.patch(result.acquisition_radius_pixels, constraints::finite);
-                    break;
-                case Field::retention_radius_pixels:
-                    read.patch(result.retention_radius_pixels, constraints::finite);
-                    break;
-                case Field::centre_tie_radius_pixels:
-                    read.patch(result.centre_tie_radius_pixels, constraints::finite);
-                    break;
-                case Field::switch_improvement_ratio:
-                    read.patch(result.switch_improvement_ratio, constraints::finite);
-                    break;
-                case Field::range_transition_start_multiplier:
-                    read.patch(result.range_transition_start_multiplier, constraints::finite);
-                    break;
-                case Field::minimum_radius_pixels:
-                    read.patch(result.minimum_radius_pixels, constraints::finite);
-                    break;
-                case Field::maximum_radius_pixels:
-                    read.patch(result.maximum_radius_pixels, constraints::finite);
-                    break;
-                case Field::bounds_padding_pixels:
-                    read.patch(result.bounds_padding_pixels, constraints::finite);
-                    break;
-                case Field::bracket_start_radius_multiplier:
-                    read.patch(result.bracket_start_radius_multiplier, constraints::finite);
-                    break;
-                case Field::opacity:
-                    read.patch(result.opacity, constraints::finite);
-                    break;
-                case Field::pulse_opacity_boost:
-                    read.patch(result.pulse_opacity_boost, constraints::finite);
-                    break;
-                case Field::pulse_duration:
-                    read.patch(result.pulse_duration, constraints::finite);
-                    break;
-                case Field::fade_out_duration:
-                    read.patch(result.fade_out_duration, constraints::finite);
-                    break;
-                case Field::Count:
-                    std::unreachable();
-            }
-        }))};
-
-    if (!seen) {
-        append_errors(errors, seen.error());
-        return;
-    }
-}
 
 } // namespace ioj::s7

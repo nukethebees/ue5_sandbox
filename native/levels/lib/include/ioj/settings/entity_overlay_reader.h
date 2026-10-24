@@ -5,6 +5,7 @@
 
 #include "ioj/parse_enum.h"
 #include "ioj/s7/field_constraints.h"
+#include "ioj/s7/record_reader.h"
 #include "ioj/settings/entity_overlay.h"
 #include "ioj/settings/soft_target_reader.h"
 #include <ioj/s7/field_reader.h>
@@ -15,18 +16,68 @@
 
 namespace ioj::s7 {
 template <>
-struct TypeReader<settings::EntityOverlay> {
-    using value_type = settings::EntityOverlay;
-
-    static ReadResult<value_type>
-        read(Reader const& reader, NodeIndex const node, std::string_view const path);
-
+struct TypeReader<settings::EntityOverlay> : RecordReader<settings::EntityOverlay> {
     static void decode(Reader const& reader,
                        NodeIndex const node,
                        std::string_view const path,
                        value_type& result,
                        ReadMode mode,
-                       AstDiagnostics& errors);
+                       AstDiagnostics& errors) {
+        auto const seen{read_record<Field>(
+            reader,
+            node,
+            "entity-overlay",
+            path,
+            parse_field,
+            ([&](Field const field, NodeIndex const value, std::string_view const location) {
+                FieldReader const read{reader, value, location, errors, mode};
+                switch (field) {
+                    case Field::enabled:
+                        read(result.enabled);
+                        break;
+                    case Field::maximum_range:
+                        read(result.maximum_range, constraints::finite);
+                        break;
+                    case Field::bar_size_pixels:
+                        read(result.bar_size_pixels, constraints::finite);
+                        break;
+                    case Field::screen_offset_pixels:
+                        read(result.screen_offset_pixels, constraints::finite);
+                        break;
+                    case Field::minimum_bar_scale:
+                        read(result.minimum_bar_scale, constraints::finite);
+                        break;
+                    case Field::maximum_bar_scale:
+                        read(result.maximum_bar_scale, constraints::finite);
+                        break;
+                    case Field::inset_pixels:
+                        read(result.inset_pixels, constraints::finite);
+                        break;
+                    case Field::maximum_inset_height_ratio:
+                        read(result.maximum_inset_height_ratio, constraints::finite);
+                        break;
+                    case Field::objective_frame_pixels:
+                        read(result.objective_frame_pixels, constraints::finite);
+                        break;
+                    case Field::objective_bar_height_scale:
+                        read(result.objective_bar_height_scale, constraints::finite);
+                        break;
+                    case Field::screen_edge_padding_pixels:
+                        read(result.screen_edge_padding_pixels, constraints::finite);
+                        break;
+                    case Field::soft_target:
+                        read(result.soft_target);
+                        break;
+                    case Field::Count:
+                        std::unreachable();
+                }
+            }))};
+
+        if (!seen) {
+            append_errors(errors, seen.error());
+            return;
+        }
+    }
   private:
     enum class Field : std::uint8_t {
         enabled,
@@ -64,18 +115,69 @@ struct TypeReader<settings::EntityOverlay> {
 };
 
 template <>
-struct TypeReader<settings::EntityOverlayOverrides> {
-    using value_type = settings::EntityOverlayOverrides;
-
-    static ReadResult<value_type>
-        read(Reader const& reader, NodeIndex const node, std::string_view const path);
-
+struct TypeReader<settings::EntityOverlayOverrides>
+    : RecordReader<settings::EntityOverlayOverrides, ReadMode::Override> {
     static void decode(Reader const& reader,
                        NodeIndex const node,
                        std::string_view const path,
                        value_type& result,
                        ReadMode,
-                       AstDiagnostics& errors);
+                       AstDiagnostics& errors) {
+        auto const seen{read_record<Field>(
+            reader,
+            node,
+            "entity-overlay",
+            path,
+            parse_field,
+            ([&](Field const field, NodeIndex const value, std::string_view const location) {
+                FieldReader const read{reader, value, location, errors};
+                switch (field) {
+                    case Field::enabled:
+                        read.patch(result.enabled);
+                        break;
+                    case Field::maximum_range:
+                        read.patch(result.maximum_range, constraints::finite);
+                        break;
+                    case Field::bar_size_pixels:
+                        read.patch(result.bar_size_pixels, constraints::finite);
+                        break;
+                    case Field::screen_offset_pixels:
+                        read.patch(result.screen_offset_pixels, constraints::finite);
+                        break;
+                    case Field::minimum_bar_scale:
+                        read.patch(result.minimum_bar_scale, constraints::finite);
+                        break;
+                    case Field::maximum_bar_scale:
+                        read.patch(result.maximum_bar_scale, constraints::finite);
+                        break;
+                    case Field::inset_pixels:
+                        read.patch(result.inset_pixels, constraints::finite);
+                        break;
+                    case Field::maximum_inset_height_ratio:
+                        read.patch(result.maximum_inset_height_ratio, constraints::finite);
+                        break;
+                    case Field::objective_frame_pixels:
+                        read.patch(result.objective_frame_pixels, constraints::finite);
+                        break;
+                    case Field::objective_bar_height_scale:
+                        read.patch(result.objective_bar_height_scale, constraints::finite);
+                        break;
+                    case Field::screen_edge_padding_pixels:
+                        read.patch(result.screen_edge_padding_pixels, constraints::finite);
+                        break;
+                    case Field::soft_target:
+                        read.patch(result.soft_target);
+                        break;
+                    case Field::Count:
+                        std::unreachable();
+                }
+            }))};
+
+        if (!seen) {
+            append_errors(errors, seen.error());
+            return;
+        }
+    }
   private:
     enum class Field : std::uint8_t {
         enabled,
@@ -111,143 +213,5 @@ struct TypeReader<settings::EntityOverlayOverrides> {
                                                                   "screen-edge-padding-pixels",
                                                                   "soft-target"};
 };
-
-inline auto TypeReader<settings::EntityOverlay>::read(Reader const& reader,
-                                                      NodeIndex const node,
-                                                      std::string_view const path)
-    -> ReadResult<value_type> {
-    return read_generated<value_type>(reader, node, path);
-}
-
-inline void TypeReader<settings::EntityOverlay>::decode(Reader const& reader,
-                                                        NodeIndex const node,
-                                                        std::string_view const path,
-                                                        value_type& result,
-                                                        ReadMode mode,
-                                                        AstDiagnostics& errors) {
-    auto const seen{read_record<Field>(
-        reader,
-        node,
-        "entity-overlay",
-        path,
-        parse_field,
-        ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            FieldReader const read{reader, value, location, errors, mode};
-            switch (field) {
-                case Field::enabled:
-                    read(result.enabled);
-                    break;
-                case Field::maximum_range:
-                    read(result.maximum_range, constraints::finite);
-                    break;
-                case Field::bar_size_pixels:
-                    read(result.bar_size_pixels, constraints::finite);
-                    break;
-                case Field::screen_offset_pixels:
-                    read(result.screen_offset_pixels, constraints::finite);
-                    break;
-                case Field::minimum_bar_scale:
-                    read(result.minimum_bar_scale, constraints::finite);
-                    break;
-                case Field::maximum_bar_scale:
-                    read(result.maximum_bar_scale, constraints::finite);
-                    break;
-                case Field::inset_pixels:
-                    read(result.inset_pixels, constraints::finite);
-                    break;
-                case Field::maximum_inset_height_ratio:
-                    read(result.maximum_inset_height_ratio, constraints::finite);
-                    break;
-                case Field::objective_frame_pixels:
-                    read(result.objective_frame_pixels, constraints::finite);
-                    break;
-                case Field::objective_bar_height_scale:
-                    read(result.objective_bar_height_scale, constraints::finite);
-                    break;
-                case Field::screen_edge_padding_pixels:
-                    read(result.screen_edge_padding_pixels, constraints::finite);
-                    break;
-                case Field::soft_target:
-                    read(result.soft_target);
-                    break;
-                case Field::Count:
-                    std::unreachable();
-            }
-        }))};
-
-    if (!seen) {
-        append_errors(errors, seen.error());
-        return;
-    }
-}
-
-inline auto TypeReader<settings::EntityOverlayOverrides>::read(Reader const& reader,
-                                                               NodeIndex const node,
-                                                               std::string_view const path)
-    -> ReadResult<value_type> {
-    return read_override(reader, node, path, value_type{});
-}
-
-inline void TypeReader<settings::EntityOverlayOverrides>::decode(Reader const& reader,
-                                                                 NodeIndex const node,
-                                                                 std::string_view const path,
-                                                                 value_type& result,
-                                                                 ReadMode,
-                                                                 AstDiagnostics& errors) {
-    auto const seen{read_record<Field>(
-        reader,
-        node,
-        "entity-overlay",
-        path,
-        parse_field,
-        ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            FieldReader const read{reader, value, location, errors};
-            switch (field) {
-                case Field::enabled:
-                    read.patch(result.enabled);
-                    break;
-                case Field::maximum_range:
-                    read.patch(result.maximum_range, constraints::finite);
-                    break;
-                case Field::bar_size_pixels:
-                    read.patch(result.bar_size_pixels, constraints::finite);
-                    break;
-                case Field::screen_offset_pixels:
-                    read.patch(result.screen_offset_pixels, constraints::finite);
-                    break;
-                case Field::minimum_bar_scale:
-                    read.patch(result.minimum_bar_scale, constraints::finite);
-                    break;
-                case Field::maximum_bar_scale:
-                    read.patch(result.maximum_bar_scale, constraints::finite);
-                    break;
-                case Field::inset_pixels:
-                    read.patch(result.inset_pixels, constraints::finite);
-                    break;
-                case Field::maximum_inset_height_ratio:
-                    read.patch(result.maximum_inset_height_ratio, constraints::finite);
-                    break;
-                case Field::objective_frame_pixels:
-                    read.patch(result.objective_frame_pixels, constraints::finite);
-                    break;
-                case Field::objective_bar_height_scale:
-                    read.patch(result.objective_bar_height_scale, constraints::finite);
-                    break;
-                case Field::screen_edge_padding_pixels:
-                    read.patch(result.screen_edge_padding_pixels, constraints::finite);
-                    break;
-                case Field::soft_target:
-                    read.patch(result.soft_target);
-                    break;
-                case Field::Count:
-                    std::unreachable();
-            }
-        }))};
-
-    if (!seen) {
-        append_errors(errors, seen.error());
-        return;
-    }
-}
 
 } // namespace ioj::s7

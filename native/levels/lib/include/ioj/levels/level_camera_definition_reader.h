@@ -6,6 +6,7 @@
 #include "ioj/levels/authoring/identifier_reader.h"
 #include "ioj/levels/level_camera_definition.h"
 #include "ioj/parse_enum.h"
+#include "ioj/s7/record_reader.h"
 #include <ioj/s7/field_reader.h>
 
 #include <array>
@@ -14,18 +15,44 @@
 
 namespace ioj::s7 {
 template <>
-struct TypeReader<levels::LevelCameraDefinition> {
-    using value_type = levels::LevelCameraDefinition;
-
-    static ReadResult<value_type>
-        read(Reader const& reader, NodeIndex const node, std::string_view const path);
-
+struct TypeReader<levels::LevelCameraDefinition> : RecordReader<levels::LevelCameraDefinition> {
     static void decode(Reader const& reader,
                        NodeIndex const node,
                        std::string_view const path,
                        value_type& result,
                        ReadMode mode,
-                       AstDiagnostics& errors);
+                       AstDiagnostics& errors) {
+        auto const seen{read_record<Field>(
+            reader,
+            node,
+            "camera",
+            path,
+            parse_field,
+            ([&](Field const field, NodeIndex const value, std::string_view const location) {
+                FieldReader const read{reader, value, location, errors, mode};
+                switch (field) {
+                    case Field::target_entity_ids:
+                        read(result.target_entity_ids);
+                        break;
+                    case Field::offset_direction:
+                        read(result.offset_direction);
+                        break;
+                    case Field::distance:
+                        read(result.distance);
+                        break;
+                    case Field::Count:
+                        std::unreachable();
+                }
+            }))};
+
+        if (!seen) {
+            append_errors(errors, seen.error());
+            return;
+        }
+        if (mode == ReadMode::Create) {
+            require_fields<Field>(*seen, required, field_names, path, errors);
+        }
+    }
   private:
     enum class Field : std::uint8_t {
         target_entity_ids,
@@ -44,50 +71,5 @@ struct TypeReader<levels::LevelCameraDefinition> {
     static constexpr auto required{required_fields<Field>(
         {Field::target_entity_ids, Field::offset_direction, Field::distance})};
 };
-
-inline auto TypeReader<levels::LevelCameraDefinition>::read(Reader const& reader,
-                                                            NodeIndex const node,
-                                                            std::string_view const path)
-    -> ReadResult<value_type> {
-    return read_generated<value_type>(reader, node, path);
-}
-
-inline void TypeReader<levels::LevelCameraDefinition>::decode(Reader const& reader,
-                                                              NodeIndex const node,
-                                                              std::string_view const path,
-                                                              value_type& result,
-                                                              ReadMode mode,
-                                                              AstDiagnostics& errors) {
-    auto const seen{read_record<Field>(
-        reader,
-        node,
-        "camera",
-        path,
-        parse_field,
-        ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            FieldReader const read{reader, value, location, errors, mode};
-            switch (field) {
-                case Field::target_entity_ids:
-                    read(result.target_entity_ids);
-                    break;
-                case Field::offset_direction:
-                    read(result.offset_direction);
-                    break;
-                case Field::distance:
-                    read(result.distance);
-                    break;
-                case Field::Count:
-                    std::unreachable();
-            }
-        }))};
-
-    if (!seen) {
-        append_errors(errors, seen.error());
-        return;
-    }
-    if (mode == ReadMode::Create) {
-        require_fields<Field>(*seen, required, field_names, path, errors);
-    }
-}
 
 } // namespace ioj::s7

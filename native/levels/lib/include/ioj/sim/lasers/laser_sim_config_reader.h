@@ -4,6 +4,7 @@
 #pragma once
 
 #include "ioj/parse_enum.h"
+#include "ioj/s7/record_reader.h"
 #include "ioj/sim/lasers/laser_sim_config.h"
 #include <ioj/s7/field_reader.h>
 
@@ -13,18 +14,35 @@
 
 namespace ioj::s7 {
 template <>
-struct TypeReader<sim::LaserSimConfig> {
-    using value_type = sim::LaserSimConfig;
-
-    static ReadResult<value_type>
-        read(Reader const& reader, NodeIndex const node, std::string_view const path);
-
+struct TypeReader<sim::LaserSimConfig> : RecordReader<sim::LaserSimConfig> {
     static void decode(Reader const& reader,
                        NodeIndex const node,
                        std::string_view const path,
                        value_type& result,
                        ReadMode mode,
-                       AstDiagnostics& errors);
+                       AstDiagnostics& errors) {
+        auto const seen{read_record<Field>(
+            reader,
+            node,
+            "laser-projectiles",
+            path,
+            parse_field,
+            ([&](Field const field, NodeIndex const value, std::string_view const location) {
+                FieldReader const read{reader, value, location, errors, mode};
+                switch (field) {
+                    case Field::n_preallocated_instances:
+                        read(result.n_preallocated_instances);
+                        break;
+                    case Field::Count:
+                        std::unreachable();
+                }
+            }))};
+
+        if (!seen) {
+            append_errors(errors, seen.error());
+            return;
+        }
+    }
   private:
     enum class Field : std::uint8_t {
         n_preallocated_instances,
@@ -40,18 +58,36 @@ struct TypeReader<sim::LaserSimConfig> {
 };
 
 template <>
-struct TypeReader<sim::LaserSimConfigOverrides> {
-    using value_type = sim::LaserSimConfigOverrides;
-
-    static ReadResult<value_type>
-        read(Reader const& reader, NodeIndex const node, std::string_view const path);
-
+struct TypeReader<sim::LaserSimConfigOverrides>
+    : RecordReader<sim::LaserSimConfigOverrides, ReadMode::Override> {
     static void decode(Reader const& reader,
                        NodeIndex const node,
                        std::string_view const path,
                        value_type& result,
                        ReadMode,
-                       AstDiagnostics& errors);
+                       AstDiagnostics& errors) {
+        auto const seen{read_record<Field>(
+            reader,
+            node,
+            "laser-projectiles",
+            path,
+            parse_field,
+            ([&](Field const field, NodeIndex const value, std::string_view const location) {
+                FieldReader const read{reader, value, location, errors};
+                switch (field) {
+                    case Field::n_preallocated_instances:
+                        read.patch(result.n_preallocated_instances);
+                        break;
+                    case Field::Count:
+                        std::unreachable();
+                }
+            }))};
+
+        if (!seen) {
+            append_errors(errors, seen.error());
+            return;
+        }
+    }
   private:
     enum class Field : std::uint8_t {
         n_preallocated_instances,
@@ -65,77 +101,5 @@ struct TypeReader<sim::LaserSimConfigOverrides> {
 
     static constexpr std::array<std::string_view, 1> field_names{"n-preallocated-instances"};
 };
-
-inline auto TypeReader<sim::LaserSimConfig>::read(Reader const& reader,
-                                                  NodeIndex const node,
-                                                  std::string_view const path)
-    -> ReadResult<value_type> {
-    return read_generated<value_type>(reader, node, path);
-}
-
-inline void TypeReader<sim::LaserSimConfig>::decode(Reader const& reader,
-                                                    NodeIndex const node,
-                                                    std::string_view const path,
-                                                    value_type& result,
-                                                    ReadMode mode,
-                                                    AstDiagnostics& errors) {
-    auto const seen{read_record<Field>(
-        reader,
-        node,
-        "laser-projectiles",
-        path,
-        parse_field,
-        ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            FieldReader const read{reader, value, location, errors, mode};
-            switch (field) {
-                case Field::n_preallocated_instances:
-                    read(result.n_preallocated_instances);
-                    break;
-                case Field::Count:
-                    std::unreachable();
-            }
-        }))};
-
-    if (!seen) {
-        append_errors(errors, seen.error());
-        return;
-    }
-}
-
-inline auto TypeReader<sim::LaserSimConfigOverrides>::read(Reader const& reader,
-                                                           NodeIndex const node,
-                                                           std::string_view const path)
-    -> ReadResult<value_type> {
-    return read_override(reader, node, path, value_type{});
-}
-
-inline void TypeReader<sim::LaserSimConfigOverrides>::decode(Reader const& reader,
-                                                             NodeIndex const node,
-                                                             std::string_view const path,
-                                                             value_type& result,
-                                                             ReadMode,
-                                                             AstDiagnostics& errors) {
-    auto const seen{read_record<Field>(
-        reader,
-        node,
-        "laser-projectiles",
-        path,
-        parse_field,
-        ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            FieldReader const read{reader, value, location, errors};
-            switch (field) {
-                case Field::n_preallocated_instances:
-                    read.patch(result.n_preallocated_instances);
-                    break;
-                case Field::Count:
-                    std::unreachable();
-            }
-        }))};
-
-    if (!seen) {
-        append_errors(errors, seen.error());
-        return;
-    }
-}
 
 } // namespace ioj::s7

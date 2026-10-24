@@ -5,6 +5,7 @@
 
 #include "ioj/parse_enum.h"
 #include "ioj/s7/field_constraints.h"
+#include "ioj/s7/record_reader.h"
 #include "ioj/settings/player_presentation.h"
 #include <ioj/s7/field_reader.h>
 
@@ -14,18 +15,35 @@
 
 namespace ioj::s7 {
 template <>
-struct TypeReader<settings::PlayerPresentation> {
-    using value_type = settings::PlayerPresentation;
-
-    static ReadResult<value_type>
-        read(Reader const& reader, NodeIndex const node, std::string_view const path);
-
+struct TypeReader<settings::PlayerPresentation> : RecordReader<settings::PlayerPresentation> {
     static void decode(Reader const& reader,
                        NodeIndex const node,
                        std::string_view const path,
                        value_type& result,
                        ReadMode mode,
-                       AstDiagnostics& errors);
+                       AstDiagnostics& errors) {
+        auto const seen{read_record<Field>(
+            reader,
+            node,
+            "player-ship",
+            path,
+            parse_field,
+            ([&](Field const field, NodeIndex const value, std::string_view const location) {
+                FieldReader const read{reader, value, location, errors, mode};
+                switch (field) {
+                    case Field::boost_effect_colour_intensity:
+                        read(result.boost_effect_colour_intensity, constraints::finite);
+                        break;
+                    case Field::Count:
+                        std::unreachable();
+                }
+            }))};
+
+        if (!seen) {
+            append_errors(errors, seen.error());
+            return;
+        }
+    }
   private:
     enum class Field : std::uint8_t {
         boost_effect_colour_intensity,
@@ -41,18 +59,36 @@ struct TypeReader<settings::PlayerPresentation> {
 };
 
 template <>
-struct TypeReader<settings::PlayerPresentationOverrides> {
-    using value_type = settings::PlayerPresentationOverrides;
-
-    static ReadResult<value_type>
-        read(Reader const& reader, NodeIndex const node, std::string_view const path);
-
+struct TypeReader<settings::PlayerPresentationOverrides>
+    : RecordReader<settings::PlayerPresentationOverrides, ReadMode::Override> {
     static void decode(Reader const& reader,
                        NodeIndex const node,
                        std::string_view const path,
                        value_type& result,
                        ReadMode,
-                       AstDiagnostics& errors);
+                       AstDiagnostics& errors) {
+        auto const seen{read_record<Field>(
+            reader,
+            node,
+            "player-ship",
+            path,
+            parse_field,
+            ([&](Field const field, NodeIndex const value, std::string_view const location) {
+                FieldReader const read{reader, value, location, errors};
+                switch (field) {
+                    case Field::boost_effect_colour_intensity:
+                        read.patch(result.boost_effect_colour_intensity, constraints::finite);
+                        break;
+                    case Field::Count:
+                        std::unreachable();
+                }
+            }))};
+
+        if (!seen) {
+            append_errors(errors, seen.error());
+            return;
+        }
+    }
   private:
     enum class Field : std::uint8_t {
         boost_effect_colour_intensity,
@@ -66,77 +102,5 @@ struct TypeReader<settings::PlayerPresentationOverrides> {
 
     static constexpr std::array<std::string_view, 1> field_names{"boost-effect-colour-intensity"};
 };
-
-inline auto TypeReader<settings::PlayerPresentation>::read(Reader const& reader,
-                                                           NodeIndex const node,
-                                                           std::string_view const path)
-    -> ReadResult<value_type> {
-    return read_generated<value_type>(reader, node, path);
-}
-
-inline void TypeReader<settings::PlayerPresentation>::decode(Reader const& reader,
-                                                             NodeIndex const node,
-                                                             std::string_view const path,
-                                                             value_type& result,
-                                                             ReadMode mode,
-                                                             AstDiagnostics& errors) {
-    auto const seen{read_record<Field>(
-        reader,
-        node,
-        "player-ship",
-        path,
-        parse_field,
-        ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            FieldReader const read{reader, value, location, errors, mode};
-            switch (field) {
-                case Field::boost_effect_colour_intensity:
-                    read(result.boost_effect_colour_intensity, constraints::finite);
-                    break;
-                case Field::Count:
-                    std::unreachable();
-            }
-        }))};
-
-    if (!seen) {
-        append_errors(errors, seen.error());
-        return;
-    }
-}
-
-inline auto TypeReader<settings::PlayerPresentationOverrides>::read(Reader const& reader,
-                                                                    NodeIndex const node,
-                                                                    std::string_view const path)
-    -> ReadResult<value_type> {
-    return read_override(reader, node, path, value_type{});
-}
-
-inline void TypeReader<settings::PlayerPresentationOverrides>::decode(Reader const& reader,
-                                                                      NodeIndex const node,
-                                                                      std::string_view const path,
-                                                                      value_type& result,
-                                                                      ReadMode,
-                                                                      AstDiagnostics& errors) {
-    auto const seen{read_record<Field>(
-        reader,
-        node,
-        "player-ship",
-        path,
-        parse_field,
-        ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            FieldReader const read{reader, value, location, errors};
-            switch (field) {
-                case Field::boost_effect_colour_intensity:
-                    read.patch(result.boost_effect_colour_intensity, constraints::finite);
-                    break;
-                case Field::Count:
-                    std::unreachable();
-            }
-        }))};
-
-    if (!seen) {
-        append_errors(errors, seen.error());
-        return;
-    }
-}
 
 } // namespace ioj::s7

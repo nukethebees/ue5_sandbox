@@ -4,6 +4,7 @@
 #pragma once
 
 #include "ioj/parse_enum.h"
+#include "ioj/s7/record_reader.h"
 #include "ReadableRecords_reader.h"
 #include "ReaderDependency.h"
 #include <ioj/s7/field_reader.h>
@@ -14,21 +15,74 @@
 
 namespace ioj::s7 {
 template <>
-struct TypeReader<codegen_compile_fixture::ReaderDependency> {
-    using value_type = codegen_compile_fixture::ReaderDependency;
-
+struct TypeReader<codegen_compile_fixture::ReaderDependency>
+    : RecordReader<codegen_compile_fixture::ReaderDependency> {
     static ReadResult<value_type>
-        read(Reader const& reader, NodeIndex const node, std::string_view const path);
+        construct(Reader const& reader, NodeIndex const node, std::string_view const path) {
+        AstDiagnostics errors{};
+        std::optional<decltype(value_type::child)> value_child{};
+        auto const seen{read_record<Field>(
+            reader,
+            node,
+            "dependent",
+            path,
+            parse_field,
+            ([&](Field const field, NodeIndex const value, std::string_view const location) {
+                FieldReader const read{reader, value, location, errors};
+                switch (field) {
+                    case Field::child:
+                        read.construct(value_child);
+                        break;
+                    case Field::Count:
+                        std::unreachable();
+                }
+            }))};
 
-    static ReadResult<value_type>
-        construct(Reader const& reader, NodeIndex const node, std::string_view const path);
+        if (!seen) {
+            append_errors(errors, seen.error());
+            return std::unexpected{std::move(errors)};
+        }
+        require_fields<Field>(*seen, required, field_names, path, errors);
+        if (!errors.empty()) {
+            return std::unexpected{std::move(errors)};
+        }
+
+        value_type result{.child = std::move(*value_child)};
+
+        return result;
+    }
 
     static void decode(Reader const& reader,
                        NodeIndex const node,
                        std::string_view const path,
                        value_type& result,
                        ReadMode mode,
-                       AstDiagnostics& errors);
+                       AstDiagnostics& errors) {
+        auto const seen{read_record<Field>(
+            reader,
+            node,
+            "dependent",
+            path,
+            parse_field,
+            ([&](Field const field, NodeIndex const value, std::string_view const location) {
+                FieldReader const read{reader, value, location, errors, mode};
+                switch (field) {
+                    case Field::child:
+                        read(result.child);
+                        break;
+                    case Field::Count:
+                        std::unreachable();
+                }
+            }))};
+
+        if (!seen) {
+            append_errors(errors, seen.error());
+            return;
+        }
+        if (mode == ReadMode::Create) {
+            require_fields<Field>(*seen, required, field_names, path, errors);
+        }
+    }
   private:
     enum class Field : std::uint8_t {
         child,
@@ -43,81 +97,5 @@ struct TypeReader<codegen_compile_fixture::ReaderDependency> {
     static constexpr std::array<std::string_view, 1> field_names{"child"};
     static constexpr auto required{required_fields<Field>({Field::child})};
 };
-
-inline auto TypeReader<codegen_compile_fixture::ReaderDependency>::read(Reader const& reader,
-                                                                        NodeIndex const node,
-                                                                        std::string_view const path)
-    -> ReadResult<value_type> {
-    return read_generated<value_type>(reader, node, path);
-}
-
-inline auto TypeReader<codegen_compile_fixture::ReaderDependency>::construct(
-    Reader const& reader, NodeIndex const node, std::string_view const path)
-    -> ReadResult<value_type> {
-    AstDiagnostics errors{};
-    std::optional<decltype(value_type::child)> value_child{};
-    auto const seen{read_record<Field>(
-        reader,
-        node,
-        "dependent",
-        path,
-        parse_field,
-        ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            FieldReader const read{reader, value, location, errors};
-            switch (field) {
-                case Field::child:
-                    read.construct(value_child);
-                    break;
-                case Field::Count:
-                    std::unreachable();
-            }
-        }))};
-
-    if (!seen) {
-        append_errors(errors, seen.error());
-        return std::unexpected{std::move(errors)};
-    }
-    require_fields<Field>(*seen, required, field_names, path, errors);
-    if (!errors.empty()) {
-        return std::unexpected{std::move(errors)};
-    }
-
-    value_type result{.child = std::move(*value_child)};
-
-    return result;
-}
-
-inline void
-    TypeReader<codegen_compile_fixture::ReaderDependency>::decode(Reader const& reader,
-                                                                  NodeIndex const node,
-                                                                  std::string_view const path,
-                                                                  value_type& result,
-                                                                  ReadMode mode,
-                                                                  AstDiagnostics& errors) {
-    auto const seen{read_record<Field>(
-        reader,
-        node,
-        "dependent",
-        path,
-        parse_field,
-        ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            FieldReader const read{reader, value, location, errors, mode};
-            switch (field) {
-                case Field::child:
-                    read(result.child);
-                    break;
-                case Field::Count:
-                    std::unreachable();
-            }
-        }))};
-
-    if (!seen) {
-        append_errors(errors, seen.error());
-        return;
-    }
-    if (mode == ReadMode::Create) {
-        require_fields<Field>(*seen, required, field_names, path, errors);
-    }
-}
 
 } // namespace ioj::s7

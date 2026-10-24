@@ -4,6 +4,7 @@
 #pragma once
 
 #include "ioj/parse_enum.h"
+#include "ioj/s7/record_reader.h"
 #include "ioj/settings/attack_distance_band.h"
 #include <ioj/s7/field_reader.h>
 
@@ -13,18 +14,45 @@
 
 namespace ioj::s7 {
 template <>
-struct TypeReader<settings::AttackDistanceBandValue> {
-    using value_type = settings::AttackDistanceBandValue;
-
-    static ReadResult<value_type>
-        read(Reader const& reader, NodeIndex const node, std::string_view const path);
-
+struct TypeReader<settings::AttackDistanceBandValue>
+    : RecordReader<settings::AttackDistanceBandValue> {
     static void decode(Reader const& reader,
                        NodeIndex const node,
                        std::string_view const path,
                        value_type& result,
                        ReadMode mode,
-                       AstDiagnostics& errors);
+                       AstDiagnostics& errors) {
+        auto const seen{read_record<Field>(
+            reader,
+            node,
+            "attack-distance-band",
+            path,
+            parse_field,
+            ([&](Field const field, NodeIndex const value, std::string_view const location) {
+                FieldReader const read{reader, value, location, errors, mode};
+                switch (field) {
+                    case Field::minimum:
+                        read(result.minimum);
+                        break;
+                    case Field::desired:
+                        read(result.desired);
+                        break;
+                    case Field::maximum:
+                        read(result.maximum);
+                        break;
+                    case Field::Count:
+                        std::unreachable();
+                }
+            }))};
+
+        if (!seen) {
+            append_errors(errors, seen.error());
+            return;
+        }
+        if (mode == ReadMode::Create) {
+            require_fields<Field>(*seen, required, field_names, path, errors);
+        }
+    }
   private:
     enum class Field : std::uint8_t {
         minimum,
@@ -43,50 +71,5 @@ struct TypeReader<settings::AttackDistanceBandValue> {
     static constexpr auto required{
         required_fields<Field>({Field::minimum, Field::desired, Field::maximum})};
 };
-
-inline auto TypeReader<settings::AttackDistanceBandValue>::read(Reader const& reader,
-                                                                NodeIndex const node,
-                                                                std::string_view const path)
-    -> ReadResult<value_type> {
-    return read_generated<value_type>(reader, node, path);
-}
-
-inline void TypeReader<settings::AttackDistanceBandValue>::decode(Reader const& reader,
-                                                                  NodeIndex const node,
-                                                                  std::string_view const path,
-                                                                  value_type& result,
-                                                                  ReadMode mode,
-                                                                  AstDiagnostics& errors) {
-    auto const seen{read_record<Field>(
-        reader,
-        node,
-        "attack-distance-band",
-        path,
-        parse_field,
-        ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            FieldReader const read{reader, value, location, errors, mode};
-            switch (field) {
-                case Field::minimum:
-                    read(result.minimum);
-                    break;
-                case Field::desired:
-                    read(result.desired);
-                    break;
-                case Field::maximum:
-                    read(result.maximum);
-                    break;
-                case Field::Count:
-                    std::unreachable();
-            }
-        }))};
-
-    if (!seen) {
-        append_errors(errors, seen.error());
-        return;
-    }
-    if (mode == ReadMode::Create) {
-        require_fields<Field>(*seen, required, field_names, path, errors);
-    }
-}
 
 } // namespace ioj::s7

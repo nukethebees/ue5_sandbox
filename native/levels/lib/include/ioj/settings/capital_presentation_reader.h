@@ -5,6 +5,7 @@
 
 #include "ioj/parse_enum.h"
 #include "ioj/s7/field_constraints.h"
+#include "ioj/s7/record_reader.h"
 #include "ioj/settings/capital_presentation.h"
 #include <ioj/s7/field_reader.h>
 
@@ -14,18 +15,50 @@
 
 namespace ioj::s7 {
 template <>
-struct TypeReader<settings::CapitalPresentation> {
-    using value_type = settings::CapitalPresentation;
-
-    static ReadResult<value_type>
-        read(Reader const& reader, NodeIndex const node, std::string_view const path);
-
+struct TypeReader<settings::CapitalPresentation> : RecordReader<settings::CapitalPresentation> {
     static void decode(Reader const& reader,
                        NodeIndex const node,
                        std::string_view const path,
                        value_type& result,
                        ReadMode mode,
-                       AstDiagnostics& errors);
+                       AstDiagnostics& errors) {
+        auto const seen{read_record<Field>(
+            reader,
+            node,
+            "capital-ships",
+            path,
+            parse_field,
+            ([&](Field const field, NodeIndex const value, std::string_view const location) {
+                FieldReader const read{reader, value, location, errors, mode};
+                switch (field) {
+                    case Field::n_small_explosions:
+                        read(result.n_small_explosions);
+                        break;
+                    case Field::time_between_explosions:
+                        read(result.time_between_explosions, constraints::finite);
+                        break;
+                    case Field::min_small_explosion_range:
+                        read(result.min_small_explosion_range, constraints::finite);
+                        break;
+                    case Field::max_small_explosion_range:
+                        read(result.max_small_explosion_range, constraints::finite);
+                        break;
+                    case Field::large_explosion_delay:
+                        read(result.large_explosion_delay, constraints::finite);
+                        break;
+                    case Field::proxy_arrow_size:
+                        read(result.proxy_arrow_size, constraints::finite);
+                        break;
+                    case Field::Count:
+                        std::unreachable();
+                }
+            }))};
+
+        if (!seen) {
+            append_errors(errors, seen.error());
+            return;
+        }
+    }
   private:
     enum class Field : std::uint8_t {
         n_small_explosions,
@@ -51,18 +84,51 @@ struct TypeReader<settings::CapitalPresentation> {
 };
 
 template <>
-struct TypeReader<settings::CapitalPresentationOverrides> {
-    using value_type = settings::CapitalPresentationOverrides;
-
-    static ReadResult<value_type>
-        read(Reader const& reader, NodeIndex const node, std::string_view const path);
-
+struct TypeReader<settings::CapitalPresentationOverrides>
+    : RecordReader<settings::CapitalPresentationOverrides, ReadMode::Override> {
     static void decode(Reader const& reader,
                        NodeIndex const node,
                        std::string_view const path,
                        value_type& result,
                        ReadMode,
-                       AstDiagnostics& errors);
+                       AstDiagnostics& errors) {
+        auto const seen{read_record<Field>(
+            reader,
+            node,
+            "capital-ships",
+            path,
+            parse_field,
+            ([&](Field const field, NodeIndex const value, std::string_view const location) {
+                FieldReader const read{reader, value, location, errors};
+                switch (field) {
+                    case Field::n_small_explosions:
+                        read.patch(result.n_small_explosions);
+                        break;
+                    case Field::time_between_explosions:
+                        read.patch(result.time_between_explosions, constraints::finite);
+                        break;
+                    case Field::min_small_explosion_range:
+                        read.patch(result.min_small_explosion_range, constraints::finite);
+                        break;
+                    case Field::max_small_explosion_range:
+                        read.patch(result.max_small_explosion_range, constraints::finite);
+                        break;
+                    case Field::large_explosion_delay:
+                        read.patch(result.large_explosion_delay, constraints::finite);
+                        break;
+                    case Field::proxy_arrow_size:
+                        read.patch(result.proxy_arrow_size, constraints::finite);
+                        break;
+                    case Field::Count:
+                        std::unreachable();
+                }
+            }))};
+
+        if (!seen) {
+            append_errors(errors, seen.error());
+            return;
+        }
+    }
   private:
     enum class Field : std::uint8_t {
         n_small_explosions,
@@ -86,107 +152,5 @@ struct TypeReader<settings::CapitalPresentationOverrides> {
                                                                  "large-explosion-delay",
                                                                  "proxy-arrow-size"};
 };
-
-inline auto TypeReader<settings::CapitalPresentation>::read(Reader const& reader,
-                                                            NodeIndex const node,
-                                                            std::string_view const path)
-    -> ReadResult<value_type> {
-    return read_generated<value_type>(reader, node, path);
-}
-
-inline void TypeReader<settings::CapitalPresentation>::decode(Reader const& reader,
-                                                              NodeIndex const node,
-                                                              std::string_view const path,
-                                                              value_type& result,
-                                                              ReadMode mode,
-                                                              AstDiagnostics& errors) {
-    auto const seen{read_record<Field>(
-        reader,
-        node,
-        "capital-ships",
-        path,
-        parse_field,
-        ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            FieldReader const read{reader, value, location, errors, mode};
-            switch (field) {
-                case Field::n_small_explosions:
-                    read(result.n_small_explosions);
-                    break;
-                case Field::time_between_explosions:
-                    read(result.time_between_explosions, constraints::finite);
-                    break;
-                case Field::min_small_explosion_range:
-                    read(result.min_small_explosion_range, constraints::finite);
-                    break;
-                case Field::max_small_explosion_range:
-                    read(result.max_small_explosion_range, constraints::finite);
-                    break;
-                case Field::large_explosion_delay:
-                    read(result.large_explosion_delay, constraints::finite);
-                    break;
-                case Field::proxy_arrow_size:
-                    read(result.proxy_arrow_size, constraints::finite);
-                    break;
-                case Field::Count:
-                    std::unreachable();
-            }
-        }))};
-
-    if (!seen) {
-        append_errors(errors, seen.error());
-        return;
-    }
-}
-
-inline auto TypeReader<settings::CapitalPresentationOverrides>::read(Reader const& reader,
-                                                                     NodeIndex const node,
-                                                                     std::string_view const path)
-    -> ReadResult<value_type> {
-    return read_override(reader, node, path, value_type{});
-}
-
-inline void TypeReader<settings::CapitalPresentationOverrides>::decode(Reader const& reader,
-                                                                       NodeIndex const node,
-                                                                       std::string_view const path,
-                                                                       value_type& result,
-                                                                       ReadMode,
-                                                                       AstDiagnostics& errors) {
-    auto const seen{read_record<Field>(
-        reader,
-        node,
-        "capital-ships",
-        path,
-        parse_field,
-        ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            FieldReader const read{reader, value, location, errors};
-            switch (field) {
-                case Field::n_small_explosions:
-                    read.patch(result.n_small_explosions);
-                    break;
-                case Field::time_between_explosions:
-                    read.patch(result.time_between_explosions, constraints::finite);
-                    break;
-                case Field::min_small_explosion_range:
-                    read.patch(result.min_small_explosion_range, constraints::finite);
-                    break;
-                case Field::max_small_explosion_range:
-                    read.patch(result.max_small_explosion_range, constraints::finite);
-                    break;
-                case Field::large_explosion_delay:
-                    read.patch(result.large_explosion_delay, constraints::finite);
-                    break;
-                case Field::proxy_arrow_size:
-                    read.patch(result.proxy_arrow_size, constraints::finite);
-                    break;
-                case Field::Count:
-                    std::unreachable();
-            }
-        }))};
-
-    if (!seen) {
-        append_errors(errors, seen.error());
-        return;
-    }
-}
 
 } // namespace ioj::s7

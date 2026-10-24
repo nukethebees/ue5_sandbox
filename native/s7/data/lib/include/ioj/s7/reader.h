@@ -509,18 +509,4 @@ inline auto positional_arguments(Reader const& reader,
     return values->subspan(1);
 }
 
-template <typename T>
-auto read_generated(Reader const& reader, NodeIndex node, std::string_view path) -> ReadResult<T> {
-    if constexpr (std::default_initializable<T>) {
-        T value{};
-        AstDiagnostics errors;
-        TypeReader<T>::decode(reader, node, path, value, ReadMode::Create, errors);
-        if (!errors.empty()) {
-            return std::unexpected{std::move(errors)};
-        }
-        return value;
-    } else {
-        return TypeReader<T>::construct(reader, node, path);
-    }
-}
 }

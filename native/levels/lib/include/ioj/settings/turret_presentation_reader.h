@@ -5,6 +5,7 @@
 
 #include "ioj/parse_enum.h"
 #include "ioj/s7/field_constraints.h"
+#include "ioj/s7/record_reader.h"
 #include "ioj/settings/turret_presentation.h"
 #include <ioj/s7/field_reader.h>
 
@@ -14,18 +15,35 @@
 
 namespace ioj::s7 {
 template <>
-struct TypeReader<settings::TurretPresentation> {
-    using value_type = settings::TurretPresentation;
-
-    static ReadResult<value_type>
-        read(Reader const& reader, NodeIndex const node, std::string_view const path);
-
+struct TypeReader<settings::TurretPresentation> : RecordReader<settings::TurretPresentation> {
     static void decode(Reader const& reader,
                        NodeIndex const node,
                        std::string_view const path,
                        value_type& result,
                        ReadMode mode,
-                       AstDiagnostics& errors);
+                       AstDiagnostics& errors) {
+        auto const seen{read_record<Field>(
+            reader,
+            node,
+            "turrets",
+            path,
+            parse_field,
+            ([&](Field const field, NodeIndex const value, std::string_view const location) {
+                FieldReader const read{reader, value, location, errors, mode};
+                switch (field) {
+                    case Field::death_effect_scale:
+                        read(result.death_effect_scale, constraints::finite);
+                        break;
+                    case Field::Count:
+                        std::unreachable();
+                }
+            }))};
+
+        if (!seen) {
+            append_errors(errors, seen.error());
+            return;
+        }
+    }
   private:
     enum class Field : std::uint8_t {
         death_effect_scale,
@@ -41,18 +59,36 @@ struct TypeReader<settings::TurretPresentation> {
 };
 
 template <>
-struct TypeReader<settings::TurretPresentationOverrides> {
-    using value_type = settings::TurretPresentationOverrides;
-
-    static ReadResult<value_type>
-        read(Reader const& reader, NodeIndex const node, std::string_view const path);
-
+struct TypeReader<settings::TurretPresentationOverrides>
+    : RecordReader<settings::TurretPresentationOverrides, ReadMode::Override> {
     static void decode(Reader const& reader,
                        NodeIndex const node,
                        std::string_view const path,
                        value_type& result,
                        ReadMode,
-                       AstDiagnostics& errors);
+                       AstDiagnostics& errors) {
+        auto const seen{read_record<Field>(
+            reader,
+            node,
+            "turrets",
+            path,
+            parse_field,
+            ([&](Field const field, NodeIndex const value, std::string_view const location) {
+                FieldReader const read{reader, value, location, errors};
+                switch (field) {
+                    case Field::death_effect_scale:
+                        read.patch(result.death_effect_scale, constraints::finite);
+                        break;
+                    case Field::Count:
+                        std::unreachable();
+                }
+            }))};
+
+        if (!seen) {
+            append_errors(errors, seen.error());
+            return;
+        }
+    }
   private:
     enum class Field : std::uint8_t {
         death_effect_scale,
@@ -66,77 +102,5 @@ struct TypeReader<settings::TurretPresentationOverrides> {
 
     static constexpr std::array<std::string_view, 1> field_names{"death-effect-scale"};
 };
-
-inline auto TypeReader<settings::TurretPresentation>::read(Reader const& reader,
-                                                           NodeIndex const node,
-                                                           std::string_view const path)
-    -> ReadResult<value_type> {
-    return read_generated<value_type>(reader, node, path);
-}
-
-inline void TypeReader<settings::TurretPresentation>::decode(Reader const& reader,
-                                                             NodeIndex const node,
-                                                             std::string_view const path,
-                                                             value_type& result,
-                                                             ReadMode mode,
-                                                             AstDiagnostics& errors) {
-    auto const seen{read_record<Field>(
-        reader,
-        node,
-        "turrets",
-        path,
-        parse_field,
-        ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            FieldReader const read{reader, value, location, errors, mode};
-            switch (field) {
-                case Field::death_effect_scale:
-                    read(result.death_effect_scale, constraints::finite);
-                    break;
-                case Field::Count:
-                    std::unreachable();
-            }
-        }))};
-
-    if (!seen) {
-        append_errors(errors, seen.error());
-        return;
-    }
-}
-
-inline auto TypeReader<settings::TurretPresentationOverrides>::read(Reader const& reader,
-                                                                    NodeIndex const node,
-                                                                    std::string_view const path)
-    -> ReadResult<value_type> {
-    return read_override(reader, node, path, value_type{});
-}
-
-inline void TypeReader<settings::TurretPresentationOverrides>::decode(Reader const& reader,
-                                                                      NodeIndex const node,
-                                                                      std::string_view const path,
-                                                                      value_type& result,
-                                                                      ReadMode,
-                                                                      AstDiagnostics& errors) {
-    auto const seen{read_record<Field>(
-        reader,
-        node,
-        "turrets",
-        path,
-        parse_field,
-        ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            FieldReader const read{reader, value, location, errors};
-            switch (field) {
-                case Field::death_effect_scale:
-                    read.patch(result.death_effect_scale, constraints::finite);
-                    break;
-                case Field::Count:
-                    std::unreachable();
-            }
-        }))};
-
-    if (!seen) {
-        append_errors(errors, seen.error());
-        return;
-    }
-}
 
 } // namespace ioj::s7

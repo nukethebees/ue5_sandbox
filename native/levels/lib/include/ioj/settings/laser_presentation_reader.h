@@ -5,6 +5,7 @@
 
 #include "ioj/parse_enum.h"
 #include "ioj/s7/field_constraints.h"
+#include "ioj/s7/record_reader.h"
 #include "ioj/settings/laser_presentation.h"
 #include <ioj/s7/field_reader.h>
 
@@ -14,18 +15,38 @@
 
 namespace ioj::s7 {
 template <>
-struct TypeReader<settings::LaserPresentation> {
-    using value_type = settings::LaserPresentation;
-
-    static ReadResult<value_type>
-        read(Reader const& reader, NodeIndex const node, std::string_view const path);
-
+struct TypeReader<settings::LaserPresentation> : RecordReader<settings::LaserPresentation> {
     static void decode(Reader const& reader,
                        NodeIndex const node,
                        std::string_view const path,
                        value_type& result,
                        ReadMode mode,
-                       AstDiagnostics& errors);
+                       AstDiagnostics& errors) {
+        auto const seen{read_record<Field>(
+            reader,
+            node,
+            "laser-projectiles",
+            path,
+            parse_field,
+            ([&](Field const field, NodeIndex const value, std::string_view const location) {
+                FieldReader const read{reader, value, location, errors, mode};
+                switch (field) {
+                    case Field::min_cull_distance:
+                        read(result.min_cull_distance, constraints::finite);
+                        break;
+                    case Field::max_cull_distance:
+                        read(result.max_cull_distance, constraints::finite);
+                        break;
+                    case Field::Count:
+                        std::unreachable();
+                }
+            }))};
+
+        if (!seen) {
+            append_errors(errors, seen.error());
+            return;
+        }
+    }
   private:
     enum class Field : std::uint8_t {
         min_cull_distance,
@@ -43,18 +64,39 @@ struct TypeReader<settings::LaserPresentation> {
 };
 
 template <>
-struct TypeReader<settings::LaserPresentationOverrides> {
-    using value_type = settings::LaserPresentationOverrides;
-
-    static ReadResult<value_type>
-        read(Reader const& reader, NodeIndex const node, std::string_view const path);
-
+struct TypeReader<settings::LaserPresentationOverrides>
+    : RecordReader<settings::LaserPresentationOverrides, ReadMode::Override> {
     static void decode(Reader const& reader,
                        NodeIndex const node,
                        std::string_view const path,
                        value_type& result,
                        ReadMode,
-                       AstDiagnostics& errors);
+                       AstDiagnostics& errors) {
+        auto const seen{read_record<Field>(
+            reader,
+            node,
+            "laser-projectiles",
+            path,
+            parse_field,
+            ([&](Field const field, NodeIndex const value, std::string_view const location) {
+                FieldReader const read{reader, value, location, errors};
+                switch (field) {
+                    case Field::min_cull_distance:
+                        read.patch(result.min_cull_distance, constraints::finite);
+                        break;
+                    case Field::max_cull_distance:
+                        read.patch(result.max_cull_distance, constraints::finite);
+                        break;
+                    case Field::Count:
+                        std::unreachable();
+                }
+            }))};
+
+        if (!seen) {
+            append_errors(errors, seen.error());
+            return;
+        }
+    }
   private:
     enum class Field : std::uint8_t {
         min_cull_distance,
@@ -70,83 +112,5 @@ struct TypeReader<settings::LaserPresentationOverrides> {
     static constexpr std::array<std::string_view, 2> field_names{"min-cull-distance",
                                                                  "max-cull-distance"};
 };
-
-inline auto TypeReader<settings::LaserPresentation>::read(Reader const& reader,
-                                                          NodeIndex const node,
-                                                          std::string_view const path)
-    -> ReadResult<value_type> {
-    return read_generated<value_type>(reader, node, path);
-}
-
-inline void TypeReader<settings::LaserPresentation>::decode(Reader const& reader,
-                                                            NodeIndex const node,
-                                                            std::string_view const path,
-                                                            value_type& result,
-                                                            ReadMode mode,
-                                                            AstDiagnostics& errors) {
-    auto const seen{read_record<Field>(
-        reader,
-        node,
-        "laser-projectiles",
-        path,
-        parse_field,
-        ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            FieldReader const read{reader, value, location, errors, mode};
-            switch (field) {
-                case Field::min_cull_distance:
-                    read(result.min_cull_distance, constraints::finite);
-                    break;
-                case Field::max_cull_distance:
-                    read(result.max_cull_distance, constraints::finite);
-                    break;
-                case Field::Count:
-                    std::unreachable();
-            }
-        }))};
-
-    if (!seen) {
-        append_errors(errors, seen.error());
-        return;
-    }
-}
-
-inline auto TypeReader<settings::LaserPresentationOverrides>::read(Reader const& reader,
-                                                                   NodeIndex const node,
-                                                                   std::string_view const path)
-    -> ReadResult<value_type> {
-    return read_override(reader, node, path, value_type{});
-}
-
-inline void TypeReader<settings::LaserPresentationOverrides>::decode(Reader const& reader,
-                                                                     NodeIndex const node,
-                                                                     std::string_view const path,
-                                                                     value_type& result,
-                                                                     ReadMode,
-                                                                     AstDiagnostics& errors) {
-    auto const seen{read_record<Field>(
-        reader,
-        node,
-        "laser-projectiles",
-        path,
-        parse_field,
-        ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            FieldReader const read{reader, value, location, errors};
-            switch (field) {
-                case Field::min_cull_distance:
-                    read.patch(result.min_cull_distance, constraints::finite);
-                    break;
-                case Field::max_cull_distance:
-                    read.patch(result.max_cull_distance, constraints::finite);
-                    break;
-                case Field::Count:
-                    std::unreachable();
-            }
-        }))};
-
-    if (!seen) {
-        append_errors(errors, seen.error());
-        return;
-    }
-}
 
 } // namespace ioj::s7

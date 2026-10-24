@@ -21,7 +21,6 @@ struct DeclarationEmission {
     Nodes source_global;
     Nodes source_tail;
     Nodes reader_declarations;
-    Nodes reader_definitions;
     std::vector<StringId> reader_includes;
     std::vector<ModuleId> additional_modules;
     std::optional<std::string> tail_namespace;

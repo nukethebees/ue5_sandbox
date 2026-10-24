@@ -7,6 +7,7 @@
 #include "ioj/levels/objective_dependency_reader.h"
 #include "ioj/levels/team_result_definition.h"
 #include "ioj/parse_enum.h"
+#include "ioj/s7/record_reader.h"
 #include <ioj/s7/field_reader.h>
 
 #include <array>
@@ -15,18 +16,44 @@
 
 namespace ioj::s7 {
 template <>
-struct TypeReader<levels::TeamResultDefinition> {
-    using value_type = levels::TeamResultDefinition;
-
-    static ReadResult<value_type>
-        read(Reader const& reader, NodeIndex const node, std::string_view const path);
-
+struct TypeReader<levels::TeamResultDefinition> : RecordReader<levels::TeamResultDefinition> {
     static void decode(Reader const& reader,
                        NodeIndex const node,
                        std::string_view const path,
                        value_type& result,
                        ReadMode mode,
-                       AstDiagnostics& errors);
+                       AstDiagnostics& errors) {
+        auto const seen{read_record<Field>(
+            reader,
+            node,
+            "team-result",
+            path,
+            parse_field,
+            ([&](Field const field, NodeIndex const value, std::string_view const location) {
+                FieldReader const read{reader, value, location, errors, mode};
+                switch (field) {
+                    case Field::team:
+                        read(result.team);
+                        break;
+                    case Field::when:
+                        read(result.when);
+                        break;
+                    case Field::result:
+                        read(result.result);
+                        break;
+                    case Field::Count:
+                        std::unreachable();
+                }
+            }))};
+
+        if (!seen) {
+            append_errors(errors, seen.error());
+            return;
+        }
+        if (mode == ReadMode::Create) {
+            require_fields<Field>(*seen, required, field_names, path, errors);
+        }
+    }
   private:
     enum class Field : std::uint8_t {
         team,
@@ -44,50 +71,5 @@ struct TypeReader<levels::TeamResultDefinition> {
     static constexpr auto required{
         required_fields<Field>({Field::team, Field::when, Field::result})};
 };
-
-inline auto TypeReader<levels::TeamResultDefinition>::read(Reader const& reader,
-                                                           NodeIndex const node,
-                                                           std::string_view const path)
-    -> ReadResult<value_type> {
-    return read_generated<value_type>(reader, node, path);
-}
-
-inline void TypeReader<levels::TeamResultDefinition>::decode(Reader const& reader,
-                                                             NodeIndex const node,
-                                                             std::string_view const path,
-                                                             value_type& result,
-                                                             ReadMode mode,
-                                                             AstDiagnostics& errors) {
-    auto const seen{read_record<Field>(
-        reader,
-        node,
-        "team-result",
-        path,
-        parse_field,
-        ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            FieldReader const read{reader, value, location, errors, mode};
-            switch (field) {
-                case Field::team:
-                    read(result.team);
-                    break;
-                case Field::when:
-                    read(result.when);
-                    break;
-                case Field::result:
-                    read(result.result);
-                    break;
-                case Field::Count:
-                    std::unreachable();
-            }
-        }))};
-
-    if (!seen) {
-        append_errors(errors, seen.error());
-        return;
-    }
-    if (mode == ReadMode::Create) {
-        require_fields<Field>(*seen, required, field_names, path, errors);
-    }
-}
 
 } // namespace ioj::s7

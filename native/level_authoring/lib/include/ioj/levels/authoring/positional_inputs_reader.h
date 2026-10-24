@@ -6,120 +6,69 @@
 #include "ioj/levels/authoring/identifier_reader.h"
 #include "ioj/levels/authoring/input_readers.h"
 #include "ioj/levels/authoring/positional_inputs.h"
+#include "ioj/s7/record_reader.h"
 #include <ioj/s7/field_reader.h>
 
 namespace ioj::s7 {
 template <>
-struct TypeReader<levels::authoring::NamedExprInput> {
-    using value_type = levels::authoring::NamedExprInput;
-
-    static ReadResult<value_type>
-        read(Reader const& reader, NodeIndex const node, std::string_view const path);
-
+struct TypeReader<levels::authoring::NamedExprInput>
+    : RecordReader<levels::authoring::NamedExprInput> {
     static void decode(Reader const& reader,
                        NodeIndex const node,
                        std::string_view const path,
                        value_type& result,
                        ReadMode mode,
-                       AstDiagnostics& errors);
+                       AstDiagnostics& errors) {
+        auto const arguments{positional_arguments(reader, node, "expr", path, 2)};
+
+        if (!arguments) {
+            append_errors(errors, arguments.error());
+            return;
+        }
+        FieldReader{reader, (*arguments)[0], std::string{path} + ".name", errors, mode}(
+            result.name);
+        FieldReader{reader, (*arguments)[1], std::string{path} + ".value", errors, mode}(
+            result.value);
+    }
 };
 
 template <>
-struct TypeReader<levels::authoring::UnlockInput> {
-    using value_type = levels::authoring::UnlockInput;
-
-    static ReadResult<value_type>
-        read(Reader const& reader, NodeIndex const node, std::string_view const path);
-
+struct TypeReader<levels::authoring::UnlockInput> : RecordReader<levels::authoring::UnlockInput> {
     static void decode(Reader const& reader,
                        NodeIndex const node,
                        std::string_view const path,
                        value_type& result,
                        ReadMode mode,
-                       AstDiagnostics& errors);
+                       AstDiagnostics& errors) {
+        auto const arguments{positional_arguments(reader, node, "level-completed", path, 1)};
+
+        if (!arguments) {
+            append_errors(errors, arguments.error());
+            return;
+        }
+        FieldReader{reader, (*arguments)[0], std::string{path} + ".level-id", errors, mode}(
+            result.level);
+    }
 };
 
 template <>
-struct TypeReader<levels::authoring::ExprReferenceInput> {
-    using value_type = levels::authoring::ExprReferenceInput;
-
-    static ReadResult<value_type>
-        read(Reader const& reader, NodeIndex const node, std::string_view const path);
-
+struct TypeReader<levels::authoring::ExprReferenceInput>
+    : RecordReader<levels::authoring::ExprReferenceInput> {
     static void decode(Reader const& reader,
                        NodeIndex const node,
                        std::string_view const path,
                        value_type& result,
                        ReadMode mode,
-                       AstDiagnostics& errors);
+                       AstDiagnostics& errors) {
+        auto const arguments{positional_arguments(reader, node, "expr-ref", path, 1)};
+
+        if (!arguments) {
+            append_errors(errors, arguments.error());
+            return;
+        }
+        FieldReader{reader, (*arguments)[0], std::string{path} + ".name", errors, mode}(
+            result.name);
+    }
 };
-
-inline auto TypeReader<levels::authoring::NamedExprInput>::read(Reader const& reader,
-                                                                NodeIndex const node,
-                                                                std::string_view const path)
-    -> ReadResult<value_type> {
-    return read_generated<value_type>(reader, node, path);
-}
-
-inline void TypeReader<levels::authoring::NamedExprInput>::decode(Reader const& reader,
-                                                                  NodeIndex const node,
-                                                                  std::string_view const path,
-                                                                  value_type& result,
-                                                                  ReadMode mode,
-                                                                  AstDiagnostics& errors) {
-    auto const arguments{positional_arguments(reader, node, "expr", path, 2)};
-
-    if (!arguments) {
-        append_errors(errors, arguments.error());
-        return;
-    }
-    FieldReader{reader, (*arguments)[0], std::string{path} + ".name", errors, mode}(result.name);
-    FieldReader{reader, (*arguments)[1], std::string{path} + ".value", errors, mode}(result.value);
-}
-
-inline auto TypeReader<levels::authoring::UnlockInput>::read(Reader const& reader,
-                                                             NodeIndex const node,
-                                                             std::string_view const path)
-    -> ReadResult<value_type> {
-    return read_generated<value_type>(reader, node, path);
-}
-
-inline void TypeReader<levels::authoring::UnlockInput>::decode(Reader const& reader,
-                                                               NodeIndex const node,
-                                                               std::string_view const path,
-                                                               value_type& result,
-                                                               ReadMode mode,
-                                                               AstDiagnostics& errors) {
-    auto const arguments{positional_arguments(reader, node, "level-completed", path, 1)};
-
-    if (!arguments) {
-        append_errors(errors, arguments.error());
-        return;
-    }
-    FieldReader{reader, (*arguments)[0], std::string{path} + ".level-id", errors, mode}(
-        result.level);
-}
-
-inline auto TypeReader<levels::authoring::ExprReferenceInput>::read(Reader const& reader,
-                                                                    NodeIndex const node,
-                                                                    std::string_view const path)
-    -> ReadResult<value_type> {
-    return read_generated<value_type>(reader, node, path);
-}
-
-inline void TypeReader<levels::authoring::ExprReferenceInput>::decode(Reader const& reader,
-                                                                      NodeIndex const node,
-                                                                      std::string_view const path,
-                                                                      value_type& result,
-                                                                      ReadMode mode,
-                                                                      AstDiagnostics& errors) {
-    auto const arguments{positional_arguments(reader, node, "expr-ref", path, 1)};
-
-    if (!arguments) {
-        append_errors(errors, arguments.error());
-        return;
-    }
-    FieldReader{reader, (*arguments)[0], std::string{path} + ".name", errors, mode}(result.name);
-}
 
 } // namespace ioj::s7

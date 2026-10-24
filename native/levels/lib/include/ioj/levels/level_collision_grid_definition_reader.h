@@ -5,6 +5,7 @@
 
 #include "ioj/levels/level_collision_grid_definition.h"
 #include "ioj/parse_enum.h"
+#include "ioj/s7/record_reader.h"
 #include <ioj/s7/field_reader.h>
 
 #include <array>
@@ -13,18 +14,39 @@
 
 namespace ioj::s7 {
 template <>
-struct TypeReader<levels::LevelCollisionGridDefinition> {
-    using value_type = levels::LevelCollisionGridDefinition;
-
-    static ReadResult<value_type>
-        read(Reader const& reader, NodeIndex const node, std::string_view const path);
-
+struct TypeReader<levels::LevelCollisionGridDefinition>
+    : RecordReader<levels::LevelCollisionGridDefinition> {
     static void decode(Reader const& reader,
                        NodeIndex const node,
                        std::string_view const path,
                        value_type& result,
                        ReadMode mode,
-                       AstDiagnostics& errors);
+                       AstDiagnostics& errors) {
+        auto const seen{read_record<Field>(
+            reader,
+            node,
+            "collision-grid",
+            path,
+            parse_field,
+            ([&](Field const field, NodeIndex const value, std::string_view const location) {
+                FieldReader const read{reader, value, location, errors, mode};
+                switch (field) {
+                    case Field::level_size:
+                        read(result.level_size);
+                        break;
+                    case Field::cell_size:
+                        read(result.cell_size);
+                        break;
+                    case Field::Count:
+                        std::unreachable();
+                }
+            }))};
+
+        if (!seen) {
+            append_errors(errors, seen.error());
+            return;
+        }
+    }
   private:
     enum class Field : std::uint8_t {
         level_size,
@@ -39,44 +61,5 @@ struct TypeReader<levels::LevelCollisionGridDefinition> {
 
     static constexpr std::array<std::string_view, 2> field_names{"level-size", "cell-size"};
 };
-
-inline auto TypeReader<levels::LevelCollisionGridDefinition>::read(Reader const& reader,
-                                                                   NodeIndex const node,
-                                                                   std::string_view const path)
-    -> ReadResult<value_type> {
-    return read_generated<value_type>(reader, node, path);
-}
-
-inline void TypeReader<levels::LevelCollisionGridDefinition>::decode(Reader const& reader,
-                                                                     NodeIndex const node,
-                                                                     std::string_view const path,
-                                                                     value_type& result,
-                                                                     ReadMode mode,
-                                                                     AstDiagnostics& errors) {
-    auto const seen{read_record<Field>(
-        reader,
-        node,
-        "collision-grid",
-        path,
-        parse_field,
-        ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            FieldReader const read{reader, value, location, errors, mode};
-            switch (field) {
-                case Field::level_size:
-                    read(result.level_size);
-                    break;
-                case Field::cell_size:
-                    read(result.cell_size);
-                    break;
-                case Field::Count:
-                    std::unreachable();
-            }
-        }))};
-
-    if (!seen) {
-        append_errors(errors, seen.error());
-        return;
-    }
-}
 
 } // namespace ioj::s7

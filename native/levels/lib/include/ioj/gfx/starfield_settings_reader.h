@@ -6,6 +6,7 @@
 #include "ioj/gfx/starfield_settings.h"
 #include "ioj/parse_enum.h"
 #include "ioj/s7/field_constraints.h"
+#include "ioj/s7/record_reader.h"
 #include <ioj/s7/field_reader.h>
 
 #include <array>
@@ -14,18 +15,40 @@
 
 namespace ioj::s7 {
 template <>
-struct TypeReader<starfield::GenerationSettings> {
-    using value_type = starfield::GenerationSettings;
-
-    static ReadResult<value_type>
-        read(Reader const& reader, NodeIndex const node, std::string_view const path);
-
+struct TypeReader<starfield::GenerationSettings> : RecordReader<starfield::GenerationSettings> {
     static void decode(Reader const& reader,
                        NodeIndex const node,
                        std::string_view const path,
                        value_type& result,
                        ReadMode mode,
-                       AstDiagnostics& errors);
+                       AstDiagnostics& errors) {
+        auto const seen{read_record<Field>(
+            reader,
+            node,
+            "generation",
+            path,
+            parse_field,
+            ([&](Field const field, NodeIndex const value, std::string_view const location) {
+                FieldReader const read{reader, value, location, errors, mode};
+                switch (field) {
+                    case Field::star_count:
+                        read(result.star_count,
+                             constraints::minimum(1ULL),
+                             constraints::maximum(1000000ULL));
+                        break;
+                    case Field::random_seed:
+                        read(result.random_seed);
+                        break;
+                    case Field::Count:
+                        std::unreachable();
+                }
+            }))};
+
+        if (!seen) {
+            append_errors(errors, seen.error());
+            return;
+        }
+    }
   private:
     enum class Field : std::uint8_t {
         star_count,
@@ -42,18 +65,41 @@ struct TypeReader<starfield::GenerationSettings> {
 };
 
 template <>
-struct TypeReader<starfield::GenerationSettingsOverrides> {
-    using value_type = starfield::GenerationSettingsOverrides;
-
-    static ReadResult<value_type>
-        read(Reader const& reader, NodeIndex const node, std::string_view const path);
-
+struct TypeReader<starfield::GenerationSettingsOverrides>
+    : RecordReader<starfield::GenerationSettingsOverrides, ReadMode::Override> {
     static void decode(Reader const& reader,
                        NodeIndex const node,
                        std::string_view const path,
                        value_type& result,
                        ReadMode,
-                       AstDiagnostics& errors);
+                       AstDiagnostics& errors) {
+        auto const seen{read_record<Field>(
+            reader,
+            node,
+            "generation",
+            path,
+            parse_field,
+            ([&](Field const field, NodeIndex const value, std::string_view const location) {
+                FieldReader const read{reader, value, location, errors};
+                switch (field) {
+                    case Field::star_count:
+                        read.patch(result.star_count,
+                                   constraints::minimum(1ULL),
+                                   constraints::maximum(1000000ULL));
+                        break;
+                    case Field::random_seed:
+                        read.patch(result.random_seed);
+                        break;
+                    case Field::Count:
+                        std::unreachable();
+                }
+            }))};
+
+        if (!seen) {
+            append_errors(errors, seen.error());
+            return;
+        }
+    }
   private:
     enum class Field : std::uint8_t {
         star_count,
@@ -70,18 +116,47 @@ struct TypeReader<starfield::GenerationSettingsOverrides> {
 };
 
 template <>
-struct TypeReader<starfield::StarSettings> {
-    using value_type = starfield::StarSettings;
-
-    static ReadResult<value_type>
-        read(Reader const& reader, NodeIndex const node, std::string_view const path);
-
+struct TypeReader<starfield::StarSettings> : RecordReader<starfield::StarSettings> {
     static void decode(Reader const& reader,
                        NodeIndex const node,
                        std::string_view const path,
                        value_type& result,
                        ReadMode mode,
-                       AstDiagnostics& errors);
+                       AstDiagnostics& errors) {
+        auto const seen{read_record<Field>(
+            reader,
+            node,
+            "star",
+            path,
+            parse_field,
+            ([&](Field const field, NodeIndex const value, std::string_view const location) {
+                FieldReader const read{reader, value, location, errors, mode};
+                switch (field) {
+                    case Field::scale:
+                        read(result.scale, constraints::positive, constraints::finite);
+                        break;
+                    case Field::size_multiplier:
+                        read(result.size_multiplier, constraints::nonnegative, constraints::finite);
+                        break;
+                    case Field::global_brightness:
+                        read(result.global_brightness, constraints::finite);
+                        break;
+                    case Field::colour_variation_strength:
+                        read(result.colour_variation_strength, constraints::finite);
+                        break;
+                    case Field::parallax_strength:
+                        read(result.parallax_strength, constraints::finite);
+                        break;
+                    case Field::Count:
+                        std::unreachable();
+                }
+            }))};
+
+        if (!seen) {
+            append_errors(errors, seen.error());
+            return;
+        }
+    }
   private:
     enum class Field : std::uint8_t {
         scale,
@@ -105,18 +180,49 @@ struct TypeReader<starfield::StarSettings> {
 };
 
 template <>
-struct TypeReader<starfield::StarSettingsOverrides> {
-    using value_type = starfield::StarSettingsOverrides;
-
-    static ReadResult<value_type>
-        read(Reader const& reader, NodeIndex const node, std::string_view const path);
-
+struct TypeReader<starfield::StarSettingsOverrides>
+    : RecordReader<starfield::StarSettingsOverrides, ReadMode::Override> {
     static void decode(Reader const& reader,
                        NodeIndex const node,
                        std::string_view const path,
                        value_type& result,
                        ReadMode,
-                       AstDiagnostics& errors);
+                       AstDiagnostics& errors) {
+        auto const seen{read_record<Field>(
+            reader,
+            node,
+            "star",
+            path,
+            parse_field,
+            ([&](Field const field, NodeIndex const value, std::string_view const location) {
+                FieldReader const read{reader, value, location, errors};
+                switch (field) {
+                    case Field::scale:
+                        read.patch(result.scale, constraints::positive, constraints::finite);
+                        break;
+                    case Field::size_multiplier:
+                        read.patch(
+                            result.size_multiplier, constraints::nonnegative, constraints::finite);
+                        break;
+                    case Field::global_brightness:
+                        read.patch(result.global_brightness, constraints::finite);
+                        break;
+                    case Field::colour_variation_strength:
+                        read.patch(result.colour_variation_strength, constraints::finite);
+                        break;
+                    case Field::parallax_strength:
+                        read.patch(result.parallax_strength, constraints::finite);
+                        break;
+                    case Field::Count:
+                        std::unreachable();
+                }
+            }))};
+
+        if (!seen) {
+            append_errors(errors, seen.error());
+            return;
+        }
+    }
   private:
     enum class Field : std::uint8_t {
         scale,
@@ -140,18 +246,41 @@ struct TypeReader<starfield::StarSettingsOverrides> {
 };
 
 template <>
-struct TypeReader<starfield::GalacticBandSettings> {
-    using value_type = starfield::GalacticBandSettings;
-
-    static ReadResult<value_type>
-        read(Reader const& reader, NodeIndex const node, std::string_view const path);
-
+struct TypeReader<starfield::GalacticBandSettings> : RecordReader<starfield::GalacticBandSettings> {
     static void decode(Reader const& reader,
                        NodeIndex const node,
                        std::string_view const path,
                        value_type& result,
                        ReadMode mode,
-                       AstDiagnostics& errors);
+                       AstDiagnostics& errors) {
+        auto const seen{read_record<Field>(
+            reader,
+            node,
+            "galactic-band",
+            path,
+            parse_field,
+            ([&](Field const field, NodeIndex const value, std::string_view const location) {
+                FieldReader const read{reader, value, location, errors, mode};
+                switch (field) {
+                    case Field::strength:
+                        read(result.strength, constraints::finite);
+                        break;
+                    case Field::width_degrees:
+                        read(result.width_degrees,
+                             constraints::positive,
+                             constraints::finite,
+                             constraints::maximum(90ULL));
+                        break;
+                    case Field::Count:
+                        std::unreachable();
+                }
+            }))};
+
+        if (!seen) {
+            append_errors(errors, seen.error());
+            return;
+        }
+    }
   private:
     enum class Field : std::uint8_t {
         strength,
@@ -168,18 +297,42 @@ struct TypeReader<starfield::GalacticBandSettings> {
 };
 
 template <>
-struct TypeReader<starfield::GalacticBandSettingsOverrides> {
-    using value_type = starfield::GalacticBandSettingsOverrides;
-
-    static ReadResult<value_type>
-        read(Reader const& reader, NodeIndex const node, std::string_view const path);
-
+struct TypeReader<starfield::GalacticBandSettingsOverrides>
+    : RecordReader<starfield::GalacticBandSettingsOverrides, ReadMode::Override> {
     static void decode(Reader const& reader,
                        NodeIndex const node,
                        std::string_view const path,
                        value_type& result,
                        ReadMode,
-                       AstDiagnostics& errors);
+                       AstDiagnostics& errors) {
+        auto const seen{read_record<Field>(
+            reader,
+            node,
+            "galactic-band",
+            path,
+            parse_field,
+            ([&](Field const field, NodeIndex const value, std::string_view const location) {
+                FieldReader const read{reader, value, location, errors};
+                switch (field) {
+                    case Field::strength:
+                        read.patch(result.strength, constraints::finite);
+                        break;
+                    case Field::width_degrees:
+                        read.patch(result.width_degrees,
+                                   constraints::positive,
+                                   constraints::finite,
+                                   constraints::maximum(90ULL));
+                        break;
+                    case Field::Count:
+                        std::unreachable();
+                }
+            }))};
+
+        if (!seen) {
+            append_errors(errors, seen.error());
+            return;
+        }
+    }
   private:
     enum class Field : std::uint8_t {
         strength,
@@ -196,18 +349,39 @@ struct TypeReader<starfield::GalacticBandSettingsOverrides> {
 };
 
 template <>
-struct TypeReader<starfield::StellarClusterSettings> {
-    using value_type = starfield::StellarClusterSettings;
-
-    static ReadResult<value_type>
-        read(Reader const& reader, NodeIndex const node, std::string_view const path);
-
+struct TypeReader<starfield::StellarClusterSettings>
+    : RecordReader<starfield::StellarClusterSettings> {
     static void decode(Reader const& reader,
                        NodeIndex const node,
                        std::string_view const path,
                        value_type& result,
                        ReadMode mode,
-                       AstDiagnostics& errors);
+                       AstDiagnostics& errors) {
+        auto const seen{read_record<Field>(
+            reader,
+            node,
+            "stellar-cluster",
+            path,
+            parse_field,
+            ([&](Field const field, NodeIndex const value, std::string_view const location) {
+                FieldReader const read{reader, value, location, errors, mode};
+                switch (field) {
+                    case Field::strength:
+                        read(result.strength, constraints::finite);
+                        break;
+                    case Field::width_degrees:
+                        read(result.width_degrees, constraints::positive, constraints::finite);
+                        break;
+                    case Field::Count:
+                        std::unreachable();
+                }
+            }))};
+
+        if (!seen) {
+            append_errors(errors, seen.error());
+            return;
+        }
+    }
   private:
     enum class Field : std::uint8_t {
         strength,
@@ -224,18 +398,40 @@ struct TypeReader<starfield::StellarClusterSettings> {
 };
 
 template <>
-struct TypeReader<starfield::StellarClusterSettingsOverrides> {
-    using value_type = starfield::StellarClusterSettingsOverrides;
-
-    static ReadResult<value_type>
-        read(Reader const& reader, NodeIndex const node, std::string_view const path);
-
+struct TypeReader<starfield::StellarClusterSettingsOverrides>
+    : RecordReader<starfield::StellarClusterSettingsOverrides, ReadMode::Override> {
     static void decode(Reader const& reader,
                        NodeIndex const node,
                        std::string_view const path,
                        value_type& result,
                        ReadMode,
-                       AstDiagnostics& errors);
+                       AstDiagnostics& errors) {
+        auto const seen{read_record<Field>(
+            reader,
+            node,
+            "stellar-cluster",
+            path,
+            parse_field,
+            ([&](Field const field, NodeIndex const value, std::string_view const location) {
+                FieldReader const read{reader, value, location, errors};
+                switch (field) {
+                    case Field::strength:
+                        read.patch(result.strength, constraints::finite);
+                        break;
+                    case Field::width_degrees:
+                        read.patch(
+                            result.width_degrees, constraints::positive, constraints::finite);
+                        break;
+                    case Field::Count:
+                        std::unreachable();
+                }
+            }))};
+
+        if (!seen) {
+            append_errors(errors, seen.error());
+            return;
+        }
+    }
   private:
     enum class Field : std::uint8_t {
         strength,
@@ -252,18 +448,41 @@ struct TypeReader<starfield::StellarClusterSettingsOverrides> {
 };
 
 template <>
-struct TypeReader<starfield::DustLaneSettings> {
-    using value_type = starfield::DustLaneSettings;
-
-    static ReadResult<value_type>
-        read(Reader const& reader, NodeIndex const node, std::string_view const path);
-
+struct TypeReader<starfield::DustLaneSettings> : RecordReader<starfield::DustLaneSettings> {
     static void decode(Reader const& reader,
                        NodeIndex const node,
                        std::string_view const path,
                        value_type& result,
                        ReadMode mode,
-                       AstDiagnostics& errors);
+                       AstDiagnostics& errors) {
+        auto const seen{read_record<Field>(
+            reader,
+            node,
+            "dust-lane",
+            path,
+            parse_field,
+            ([&](Field const field, NodeIndex const value, std::string_view const location) {
+                FieldReader const read{reader, value, location, errors, mode};
+                switch (field) {
+                    case Field::strength:
+                        read(result.strength, constraints::finite);
+                        break;
+                    case Field::width_degrees:
+                        read(result.width_degrees, constraints::positive, constraints::finite);
+                        break;
+                    case Field::irregularity:
+                        read(result.irregularity, constraints::finite);
+                        break;
+                    case Field::Count:
+                        std::unreachable();
+                }
+            }))};
+
+        if (!seen) {
+            append_errors(errors, seen.error());
+            return;
+        }
+    }
   private:
     enum class Field : std::uint8_t {
         strength,
@@ -282,18 +501,43 @@ struct TypeReader<starfield::DustLaneSettings> {
 };
 
 template <>
-struct TypeReader<starfield::DustLaneSettingsOverrides> {
-    using value_type = starfield::DustLaneSettingsOverrides;
-
-    static ReadResult<value_type>
-        read(Reader const& reader, NodeIndex const node, std::string_view const path);
-
+struct TypeReader<starfield::DustLaneSettingsOverrides>
+    : RecordReader<starfield::DustLaneSettingsOverrides, ReadMode::Override> {
     static void decode(Reader const& reader,
                        NodeIndex const node,
                        std::string_view const path,
                        value_type& result,
                        ReadMode,
-                       AstDiagnostics& errors);
+                       AstDiagnostics& errors) {
+        auto const seen{read_record<Field>(
+            reader,
+            node,
+            "dust-lane",
+            path,
+            parse_field,
+            ([&](Field const field, NodeIndex const value, std::string_view const location) {
+                FieldReader const read{reader, value, location, errors};
+                switch (field) {
+                    case Field::strength:
+                        read.patch(result.strength, constraints::finite);
+                        break;
+                    case Field::width_degrees:
+                        read.patch(
+                            result.width_degrees, constraints::positive, constraints::finite);
+                        break;
+                    case Field::irregularity:
+                        read.patch(result.irregularity, constraints::finite);
+                        break;
+                    case Field::Count:
+                        std::unreachable();
+                }
+            }))};
+
+        if (!seen) {
+            append_errors(errors, seen.error());
+            return;
+        }
+    }
   private:
     enum class Field : std::uint8_t {
         strength,
@@ -312,18 +556,44 @@ struct TypeReader<starfield::DustLaneSettingsOverrides> {
 };
 
 template <>
-struct TypeReader<starfield::BrightStarSettings> {
-    using value_type = starfield::BrightStarSettings;
-
-    static ReadResult<value_type>
-        read(Reader const& reader, NodeIndex const node, std::string_view const path);
-
+struct TypeReader<starfield::BrightStarSettings> : RecordReader<starfield::BrightStarSettings> {
     static void decode(Reader const& reader,
                        NodeIndex const node,
                        std::string_view const path,
                        value_type& result,
                        ReadMode mode,
-                       AstDiagnostics& errors);
+                       AstDiagnostics& errors) {
+        auto const seen{read_record<Field>(
+            reader,
+            node,
+            "bright-star",
+            path,
+            parse_field,
+            ([&](Field const field, NodeIndex const value, std::string_view const location) {
+                FieldReader const read{reader, value, location, errors, mode};
+                switch (field) {
+                    case Field::fraction:
+                        read(result.fraction, constraints::finite);
+                        break;
+                    case Field::size_multiplier:
+                        read(result.size_multiplier, constraints::nonnegative, constraints::finite);
+                        break;
+                    case Field::brightness_multiplier:
+                        read(result.brightness_multiplier, constraints::finite);
+                        break;
+                    case Field::shape_strength:
+                        read(result.shape_strength, constraints::finite);
+                        break;
+                    case Field::Count:
+                        std::unreachable();
+                }
+            }))};
+
+        if (!seen) {
+            append_errors(errors, seen.error());
+            return;
+        }
+    }
   private:
     enum class Field : std::uint8_t {
         fraction,
@@ -343,18 +613,46 @@ struct TypeReader<starfield::BrightStarSettings> {
 };
 
 template <>
-struct TypeReader<starfield::BrightStarSettingsOverrides> {
-    using value_type = starfield::BrightStarSettingsOverrides;
-
-    static ReadResult<value_type>
-        read(Reader const& reader, NodeIndex const node, std::string_view const path);
-
+struct TypeReader<starfield::BrightStarSettingsOverrides>
+    : RecordReader<starfield::BrightStarSettingsOverrides, ReadMode::Override> {
     static void decode(Reader const& reader,
                        NodeIndex const node,
                        std::string_view const path,
                        value_type& result,
                        ReadMode,
-                       AstDiagnostics& errors);
+                       AstDiagnostics& errors) {
+        auto const seen{read_record<Field>(
+            reader,
+            node,
+            "bright-star",
+            path,
+            parse_field,
+            ([&](Field const field, NodeIndex const value, std::string_view const location) {
+                FieldReader const read{reader, value, location, errors};
+                switch (field) {
+                    case Field::fraction:
+                        read.patch(result.fraction, constraints::finite);
+                        break;
+                    case Field::size_multiplier:
+                        read.patch(
+                            result.size_multiplier, constraints::nonnegative, constraints::finite);
+                        break;
+                    case Field::brightness_multiplier:
+                        read.patch(result.brightness_multiplier, constraints::finite);
+                        break;
+                    case Field::shape_strength:
+                        read.patch(result.shape_strength, constraints::finite);
+                        break;
+                    case Field::Count:
+                        std::unreachable();
+                }
+            }))};
+
+        if (!seen) {
+            append_errors(errors, seen.error());
+            return;
+        }
+    }
   private:
     enum class Field : std::uint8_t {
         fraction,
@@ -374,18 +672,38 @@ struct TypeReader<starfield::BrightStarSettingsOverrides> {
 };
 
 template <>
-struct TypeReader<starfield::TwinkleSettings> {
-    using value_type = starfield::TwinkleSettings;
-
-    static ReadResult<value_type>
-        read(Reader const& reader, NodeIndex const node, std::string_view const path);
-
+struct TypeReader<starfield::TwinkleSettings> : RecordReader<starfield::TwinkleSettings> {
     static void decode(Reader const& reader,
                        NodeIndex const node,
                        std::string_view const path,
                        value_type& result,
                        ReadMode mode,
-                       AstDiagnostics& errors);
+                       AstDiagnostics& errors) {
+        auto const seen{read_record<Field>(
+            reader,
+            node,
+            "twinkle",
+            path,
+            parse_field,
+            ([&](Field const field, NodeIndex const value, std::string_view const location) {
+                FieldReader const read{reader, value, location, errors, mode};
+                switch (field) {
+                    case Field::strength:
+                        read(result.strength, constraints::finite);
+                        break;
+                    case Field::speed:
+                        read(result.speed, constraints::finite);
+                        break;
+                    case Field::Count:
+                        std::unreachable();
+                }
+            }))};
+
+        if (!seen) {
+            append_errors(errors, seen.error());
+            return;
+        }
+    }
   private:
     enum class Field : std::uint8_t {
         strength,
@@ -402,18 +720,39 @@ struct TypeReader<starfield::TwinkleSettings> {
 };
 
 template <>
-struct TypeReader<starfield::TwinkleSettingsOverrides> {
-    using value_type = starfield::TwinkleSettingsOverrides;
-
-    static ReadResult<value_type>
-        read(Reader const& reader, NodeIndex const node, std::string_view const path);
-
+struct TypeReader<starfield::TwinkleSettingsOverrides>
+    : RecordReader<starfield::TwinkleSettingsOverrides, ReadMode::Override> {
     static void decode(Reader const& reader,
                        NodeIndex const node,
                        std::string_view const path,
                        value_type& result,
                        ReadMode,
-                       AstDiagnostics& errors);
+                       AstDiagnostics& errors) {
+        auto const seen{read_record<Field>(
+            reader,
+            node,
+            "twinkle",
+            path,
+            parse_field,
+            ([&](Field const field, NodeIndex const value, std::string_view const location) {
+                FieldReader const read{reader, value, location, errors};
+                switch (field) {
+                    case Field::strength:
+                        read.patch(result.strength, constraints::finite);
+                        break;
+                    case Field::speed:
+                        read.patch(result.speed, constraints::finite);
+                        break;
+                    case Field::Count:
+                        std::unreachable();
+                }
+            }))};
+
+        if (!seen) {
+            append_errors(errors, seen.error());
+            return;
+        }
+    }
   private:
     enum class Field : std::uint8_t {
         strength,
@@ -430,18 +769,38 @@ struct TypeReader<starfield::TwinkleSettingsOverrides> {
 };
 
 template <>
-struct TypeReader<starfield::GalacticHazeSettings> {
-    using value_type = starfield::GalacticHazeSettings;
-
-    static ReadResult<value_type>
-        read(Reader const& reader, NodeIndex const node, std::string_view const path);
-
+struct TypeReader<starfield::GalacticHazeSettings> : RecordReader<starfield::GalacticHazeSettings> {
     static void decode(Reader const& reader,
                        NodeIndex const node,
                        std::string_view const path,
                        value_type& result,
                        ReadMode mode,
-                       AstDiagnostics& errors);
+                       AstDiagnostics& errors) {
+        auto const seen{read_record<Field>(
+            reader,
+            node,
+            "galactic-haze",
+            path,
+            parse_field,
+            ([&](Field const field, NodeIndex const value, std::string_view const location) {
+                FieldReader const read{reader, value, location, errors, mode};
+                switch (field) {
+                    case Field::strength:
+                        read(result.strength, constraints::finite);
+                        break;
+                    case Field::width_degrees:
+                        read(result.width_degrees, constraints::positive, constraints::finite);
+                        break;
+                    case Field::Count:
+                        std::unreachable();
+                }
+            }))};
+
+        if (!seen) {
+            append_errors(errors, seen.error());
+            return;
+        }
+    }
   private:
     enum class Field : std::uint8_t {
         strength,
@@ -458,18 +817,40 @@ struct TypeReader<starfield::GalacticHazeSettings> {
 };
 
 template <>
-struct TypeReader<starfield::GalacticHazeSettingsOverrides> {
-    using value_type = starfield::GalacticHazeSettingsOverrides;
-
-    static ReadResult<value_type>
-        read(Reader const& reader, NodeIndex const node, std::string_view const path);
-
+struct TypeReader<starfield::GalacticHazeSettingsOverrides>
+    : RecordReader<starfield::GalacticHazeSettingsOverrides, ReadMode::Override> {
     static void decode(Reader const& reader,
                        NodeIndex const node,
                        std::string_view const path,
                        value_type& result,
                        ReadMode,
-                       AstDiagnostics& errors);
+                       AstDiagnostics& errors) {
+        auto const seen{read_record<Field>(
+            reader,
+            node,
+            "galactic-haze",
+            path,
+            parse_field,
+            ([&](Field const field, NodeIndex const value, std::string_view const location) {
+                FieldReader const read{reader, value, location, errors};
+                switch (field) {
+                    case Field::strength:
+                        read.patch(result.strength, constraints::finite);
+                        break;
+                    case Field::width_degrees:
+                        read.patch(
+                            result.width_degrees, constraints::positive, constraints::finite);
+                        break;
+                    case Field::Count:
+                        std::unreachable();
+                }
+            }))};
+
+        if (!seen) {
+            append_errors(errors, seen.error());
+            return;
+        }
+    }
   private:
     enum class Field : std::uint8_t {
         strength,
@@ -486,18 +867,38 @@ struct TypeReader<starfield::GalacticHazeSettingsOverrides> {
 };
 
 template <>
-struct TypeReader<starfield::GalacticCoreSettings> {
-    using value_type = starfield::GalacticCoreSettings;
-
-    static ReadResult<value_type>
-        read(Reader const& reader, NodeIndex const node, std::string_view const path);
-
+struct TypeReader<starfield::GalacticCoreSettings> : RecordReader<starfield::GalacticCoreSettings> {
     static void decode(Reader const& reader,
                        NodeIndex const node,
                        std::string_view const path,
                        value_type& result,
                        ReadMode mode,
-                       AstDiagnostics& errors);
+                       AstDiagnostics& errors) {
+        auto const seen{read_record<Field>(
+            reader,
+            node,
+            "galactic-core",
+            path,
+            parse_field,
+            ([&](Field const field, NodeIndex const value, std::string_view const location) {
+                FieldReader const read{reader, value, location, errors, mode};
+                switch (field) {
+                    case Field::strength:
+                        read(result.strength, constraints::finite);
+                        break;
+                    case Field::width_degrees:
+                        read(result.width_degrees, constraints::positive, constraints::finite);
+                        break;
+                    case Field::Count:
+                        std::unreachable();
+                }
+            }))};
+
+        if (!seen) {
+            append_errors(errors, seen.error());
+            return;
+        }
+    }
   private:
     enum class Field : std::uint8_t {
         strength,
@@ -514,18 +915,40 @@ struct TypeReader<starfield::GalacticCoreSettings> {
 };
 
 template <>
-struct TypeReader<starfield::GalacticCoreSettingsOverrides> {
-    using value_type = starfield::GalacticCoreSettingsOverrides;
-
-    static ReadResult<value_type>
-        read(Reader const& reader, NodeIndex const node, std::string_view const path);
-
+struct TypeReader<starfield::GalacticCoreSettingsOverrides>
+    : RecordReader<starfield::GalacticCoreSettingsOverrides, ReadMode::Override> {
     static void decode(Reader const& reader,
                        NodeIndex const node,
                        std::string_view const path,
                        value_type& result,
                        ReadMode,
-                       AstDiagnostics& errors);
+                       AstDiagnostics& errors) {
+        auto const seen{read_record<Field>(
+            reader,
+            node,
+            "galactic-core",
+            path,
+            parse_field,
+            ([&](Field const field, NodeIndex const value, std::string_view const location) {
+                FieldReader const read{reader, value, location, errors};
+                switch (field) {
+                    case Field::strength:
+                        read.patch(result.strength, constraints::finite);
+                        break;
+                    case Field::width_degrees:
+                        read.patch(
+                            result.width_degrees, constraints::positive, constraints::finite);
+                        break;
+                    case Field::Count:
+                        std::unreachable();
+                }
+            }))};
+
+        if (!seen) {
+            append_errors(errors, seen.error());
+            return;
+        }
+    }
   private:
     enum class Field : std::uint8_t {
         strength,
@@ -542,18 +965,38 @@ struct TypeReader<starfield::GalacticCoreSettingsOverrides> {
 };
 
 template <>
-struct TypeReader<starfield::NebularKnotSettings> {
-    using value_type = starfield::NebularKnotSettings;
-
-    static ReadResult<value_type>
-        read(Reader const& reader, NodeIndex const node, std::string_view const path);
-
+struct TypeReader<starfield::NebularKnotSettings> : RecordReader<starfield::NebularKnotSettings> {
     static void decode(Reader const& reader,
                        NodeIndex const node,
                        std::string_view const path,
                        value_type& result,
                        ReadMode mode,
-                       AstDiagnostics& errors);
+                       AstDiagnostics& errors) {
+        auto const seen{read_record<Field>(
+            reader,
+            node,
+            "nebular-knot",
+            path,
+            parse_field,
+            ([&](Field const field, NodeIndex const value, std::string_view const location) {
+                FieldReader const read{reader, value, location, errors, mode};
+                switch (field) {
+                    case Field::strength:
+                        read(result.strength, constraints::finite);
+                        break;
+                    case Field::size_degrees:
+                        read(result.size_degrees, constraints::positive, constraints::finite);
+                        break;
+                    case Field::Count:
+                        std::unreachable();
+                }
+            }))};
+
+        if (!seen) {
+            append_errors(errors, seen.error());
+            return;
+        }
+    }
   private:
     enum class Field : std::uint8_t {
         strength,
@@ -570,18 +1013,39 @@ struct TypeReader<starfield::NebularKnotSettings> {
 };
 
 template <>
-struct TypeReader<starfield::NebularKnotSettingsOverrides> {
-    using value_type = starfield::NebularKnotSettingsOverrides;
-
-    static ReadResult<value_type>
-        read(Reader const& reader, NodeIndex const node, std::string_view const path);
-
+struct TypeReader<starfield::NebularKnotSettingsOverrides>
+    : RecordReader<starfield::NebularKnotSettingsOverrides, ReadMode::Override> {
     static void decode(Reader const& reader,
                        NodeIndex const node,
                        std::string_view const path,
                        value_type& result,
                        ReadMode,
-                       AstDiagnostics& errors);
+                       AstDiagnostics& errors) {
+        auto const seen{read_record<Field>(
+            reader,
+            node,
+            "nebular-knot",
+            path,
+            parse_field,
+            ([&](Field const field, NodeIndex const value, std::string_view const location) {
+                FieldReader const read{reader, value, location, errors};
+                switch (field) {
+                    case Field::strength:
+                        read.patch(result.strength, constraints::finite);
+                        break;
+                    case Field::size_degrees:
+                        read.patch(result.size_degrees, constraints::positive, constraints::finite);
+                        break;
+                    case Field::Count:
+                        std::unreachable();
+                }
+            }))};
+
+        if (!seen) {
+            append_errors(errors, seen.error());
+            return;
+        }
+    }
   private:
     enum class Field : std::uint8_t {
         strength,
@@ -598,18 +1062,62 @@ struct TypeReader<starfield::NebularKnotSettingsOverrides> {
 };
 
 template <>
-struct TypeReader<starfield::Settings> {
-    using value_type = starfield::Settings;
-
-    static ReadResult<value_type>
-        read(Reader const& reader, NodeIndex const node, std::string_view const path);
-
+struct TypeReader<starfield::Settings> : RecordReader<starfield::Settings> {
     static void decode(Reader const& reader,
                        NodeIndex const node,
                        std::string_view const path,
                        value_type& result,
                        ReadMode mode,
-                       AstDiagnostics& errors);
+                       AstDiagnostics& errors) {
+        auto const seen{read_record<Field>(
+            reader,
+            node,
+            "starfield",
+            path,
+            parse_field,
+            ([&](Field const field, NodeIndex const value, std::string_view const location) {
+                FieldReader const read{reader, value, location, errors, mode};
+                switch (field) {
+                    case Field::generation:
+                        read(result.generation);
+                        break;
+                    case Field::star:
+                        read(result.star);
+                        break;
+                    case Field::galactic_band:
+                        read(result.galactic_band);
+                        break;
+                    case Field::stellar_cluster:
+                        read(result.stellar_cluster);
+                        break;
+                    case Field::dust_lane:
+                        read(result.dust_lane);
+                        break;
+                    case Field::bright_star:
+                        read(result.bright_star);
+                        break;
+                    case Field::twinkle:
+                        read(result.twinkle);
+                        break;
+                    case Field::galactic_haze:
+                        read(result.galactic_haze);
+                        break;
+                    case Field::galactic_core:
+                        read(result.galactic_core);
+                        break;
+                    case Field::nebular_knot:
+                        read(result.nebular_knot);
+                        break;
+                    case Field::Count:
+                        std::unreachable();
+                }
+            }))};
+
+        if (!seen) {
+            append_errors(errors, seen.error());
+            return;
+        }
+    }
   private:
     enum class Field : std::uint8_t {
         generation,
@@ -643,18 +1151,63 @@ struct TypeReader<starfield::Settings> {
 };
 
 template <>
-struct TypeReader<starfield::SettingsOverrides> {
-    using value_type = starfield::SettingsOverrides;
-
-    static ReadResult<value_type>
-        read(Reader const& reader, NodeIndex const node, std::string_view const path);
-
+struct TypeReader<starfield::SettingsOverrides>
+    : RecordReader<starfield::SettingsOverrides, ReadMode::Override> {
     static void decode(Reader const& reader,
                        NodeIndex const node,
                        std::string_view const path,
                        value_type& result,
                        ReadMode,
-                       AstDiagnostics& errors);
+                       AstDiagnostics& errors) {
+        auto const seen{read_record<Field>(
+            reader,
+            node,
+            "starfield",
+            path,
+            parse_field,
+            ([&](Field const field, NodeIndex const value, std::string_view const location) {
+                FieldReader const read{reader, value, location, errors};
+                switch (field) {
+                    case Field::generation:
+                        read.patch(result.generation);
+                        break;
+                    case Field::star:
+                        read.patch(result.star);
+                        break;
+                    case Field::galactic_band:
+                        read.patch(result.galactic_band);
+                        break;
+                    case Field::stellar_cluster:
+                        read.patch(result.stellar_cluster);
+                        break;
+                    case Field::dust_lane:
+                        read.patch(result.dust_lane);
+                        break;
+                    case Field::bright_star:
+                        read.patch(result.bright_star);
+                        break;
+                    case Field::twinkle:
+                        read.patch(result.twinkle);
+                        break;
+                    case Field::galactic_haze:
+                        read.patch(result.galactic_haze);
+                        break;
+                    case Field::galactic_core:
+                        read.patch(result.galactic_core);
+                        break;
+                    case Field::nebular_knot:
+                        read.patch(result.nebular_knot);
+                        break;
+                    case Field::Count:
+                        std::unreachable();
+                }
+            }))};
+
+        if (!seen) {
+            append_errors(errors, seen.error());
+            return;
+        }
+    }
   private:
     enum class Field : std::uint8_t {
         generation,
@@ -686,962 +1239,5 @@ struct TypeReader<starfield::SettingsOverrides> {
                                                                   "galactic-core",
                                                                   "nebular-knot"};
 };
-
-inline auto TypeReader<starfield::GenerationSettings>::read(Reader const& reader,
-                                                            NodeIndex const node,
-                                                            std::string_view const path)
-    -> ReadResult<value_type> {
-    return read_generated<value_type>(reader, node, path);
-}
-
-inline void TypeReader<starfield::GenerationSettings>::decode(Reader const& reader,
-                                                              NodeIndex const node,
-                                                              std::string_view const path,
-                                                              value_type& result,
-                                                              ReadMode mode,
-                                                              AstDiagnostics& errors) {
-    auto const seen{read_record<Field>(
-        reader,
-        node,
-        "generation",
-        path,
-        parse_field,
-        ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            FieldReader const read{reader, value, location, errors, mode};
-            switch (field) {
-                case Field::star_count:
-                    read(result.star_count,
-                         constraints::minimum(1ULL),
-                         constraints::maximum(1000000ULL));
-                    break;
-                case Field::random_seed:
-                    read(result.random_seed);
-                    break;
-                case Field::Count:
-                    std::unreachable();
-            }
-        }))};
-
-    if (!seen) {
-        append_errors(errors, seen.error());
-        return;
-    }
-}
-
-inline auto TypeReader<starfield::GenerationSettingsOverrides>::read(Reader const& reader,
-                                                                     NodeIndex const node,
-                                                                     std::string_view const path)
-    -> ReadResult<value_type> {
-    return read_override(reader, node, path, value_type{});
-}
-
-inline void TypeReader<starfield::GenerationSettingsOverrides>::decode(Reader const& reader,
-                                                                       NodeIndex const node,
-                                                                       std::string_view const path,
-                                                                       value_type& result,
-                                                                       ReadMode,
-                                                                       AstDiagnostics& errors) {
-    auto const seen{read_record<Field>(
-        reader,
-        node,
-        "generation",
-        path,
-        parse_field,
-        ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            FieldReader const read{reader, value, location, errors};
-            switch (field) {
-                case Field::star_count:
-                    read.patch(result.star_count,
-                               constraints::minimum(1ULL),
-                               constraints::maximum(1000000ULL));
-                    break;
-                case Field::random_seed:
-                    read.patch(result.random_seed);
-                    break;
-                case Field::Count:
-                    std::unreachable();
-            }
-        }))};
-
-    if (!seen) {
-        append_errors(errors, seen.error());
-        return;
-    }
-}
-
-inline auto TypeReader<starfield::StarSettings>::read(Reader const& reader,
-                                                      NodeIndex const node,
-                                                      std::string_view const path)
-    -> ReadResult<value_type> {
-    return read_generated<value_type>(reader, node, path);
-}
-
-inline void TypeReader<starfield::StarSettings>::decode(Reader const& reader,
-                                                        NodeIndex const node,
-                                                        std::string_view const path,
-                                                        value_type& result,
-                                                        ReadMode mode,
-                                                        AstDiagnostics& errors) {
-    auto const seen{read_record<Field>(
-        reader,
-        node,
-        "star",
-        path,
-        parse_field,
-        ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            FieldReader const read{reader, value, location, errors, mode};
-            switch (field) {
-                case Field::scale:
-                    read(result.scale, constraints::positive, constraints::finite);
-                    break;
-                case Field::size_multiplier:
-                    read(result.size_multiplier, constraints::nonnegative, constraints::finite);
-                    break;
-                case Field::global_brightness:
-                    read(result.global_brightness, constraints::finite);
-                    break;
-                case Field::colour_variation_strength:
-                    read(result.colour_variation_strength, constraints::finite);
-                    break;
-                case Field::parallax_strength:
-                    read(result.parallax_strength, constraints::finite);
-                    break;
-                case Field::Count:
-                    std::unreachable();
-            }
-        }))};
-
-    if (!seen) {
-        append_errors(errors, seen.error());
-        return;
-    }
-}
-
-inline auto TypeReader<starfield::StarSettingsOverrides>::read(Reader const& reader,
-                                                               NodeIndex const node,
-                                                               std::string_view const path)
-    -> ReadResult<value_type> {
-    return read_override(reader, node, path, value_type{});
-}
-
-inline void TypeReader<starfield::StarSettingsOverrides>::decode(Reader const& reader,
-                                                                 NodeIndex const node,
-                                                                 std::string_view const path,
-                                                                 value_type& result,
-                                                                 ReadMode,
-                                                                 AstDiagnostics& errors) {
-    auto const seen{read_record<Field>(
-        reader,
-        node,
-        "star",
-        path,
-        parse_field,
-        ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            FieldReader const read{reader, value, location, errors};
-            switch (field) {
-                case Field::scale:
-                    read.patch(result.scale, constraints::positive, constraints::finite);
-                    break;
-                case Field::size_multiplier:
-                    read.patch(
-                        result.size_multiplier, constraints::nonnegative, constraints::finite);
-                    break;
-                case Field::global_brightness:
-                    read.patch(result.global_brightness, constraints::finite);
-                    break;
-                case Field::colour_variation_strength:
-                    read.patch(result.colour_variation_strength, constraints::finite);
-                    break;
-                case Field::parallax_strength:
-                    read.patch(result.parallax_strength, constraints::finite);
-                    break;
-                case Field::Count:
-                    std::unreachable();
-            }
-        }))};
-
-    if (!seen) {
-        append_errors(errors, seen.error());
-        return;
-    }
-}
-
-inline auto TypeReader<starfield::GalacticBandSettings>::read(Reader const& reader,
-                                                              NodeIndex const node,
-                                                              std::string_view const path)
-    -> ReadResult<value_type> {
-    return read_generated<value_type>(reader, node, path);
-}
-
-inline void TypeReader<starfield::GalacticBandSettings>::decode(Reader const& reader,
-                                                                NodeIndex const node,
-                                                                std::string_view const path,
-                                                                value_type& result,
-                                                                ReadMode mode,
-                                                                AstDiagnostics& errors) {
-    auto const seen{read_record<Field>(
-        reader,
-        node,
-        "galactic-band",
-        path,
-        parse_field,
-        ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            FieldReader const read{reader, value, location, errors, mode};
-            switch (field) {
-                case Field::strength:
-                    read(result.strength, constraints::finite);
-                    break;
-                case Field::width_degrees:
-                    read(result.width_degrees,
-                         constraints::positive,
-                         constraints::finite,
-                         constraints::maximum(90ULL));
-                    break;
-                case Field::Count:
-                    std::unreachable();
-            }
-        }))};
-
-    if (!seen) {
-        append_errors(errors, seen.error());
-        return;
-    }
-}
-
-inline auto TypeReader<starfield::GalacticBandSettingsOverrides>::read(Reader const& reader,
-                                                                       NodeIndex const node,
-                                                                       std::string_view const path)
-    -> ReadResult<value_type> {
-    return read_override(reader, node, path, value_type{});
-}
-
-inline void
-    TypeReader<starfield::GalacticBandSettingsOverrides>::decode(Reader const& reader,
-                                                                 NodeIndex const node,
-                                                                 std::string_view const path,
-                                                                 value_type& result,
-                                                                 ReadMode,
-                                                                 AstDiagnostics& errors) {
-    auto const seen{read_record<Field>(
-        reader,
-        node,
-        "galactic-band",
-        path,
-        parse_field,
-        ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            FieldReader const read{reader, value, location, errors};
-            switch (field) {
-                case Field::strength:
-                    read.patch(result.strength, constraints::finite);
-                    break;
-                case Field::width_degrees:
-                    read.patch(result.width_degrees,
-                               constraints::positive,
-                               constraints::finite,
-                               constraints::maximum(90ULL));
-                    break;
-                case Field::Count:
-                    std::unreachable();
-            }
-        }))};
-
-    if (!seen) {
-        append_errors(errors, seen.error());
-        return;
-    }
-}
-
-inline auto TypeReader<starfield::StellarClusterSettings>::read(Reader const& reader,
-                                                                NodeIndex const node,
-                                                                std::string_view const path)
-    -> ReadResult<value_type> {
-    return read_generated<value_type>(reader, node, path);
-}
-
-inline void TypeReader<starfield::StellarClusterSettings>::decode(Reader const& reader,
-                                                                  NodeIndex const node,
-                                                                  std::string_view const path,
-                                                                  value_type& result,
-                                                                  ReadMode mode,
-                                                                  AstDiagnostics& errors) {
-    auto const seen{read_record<Field>(
-        reader,
-        node,
-        "stellar-cluster",
-        path,
-        parse_field,
-        ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            FieldReader const read{reader, value, location, errors, mode};
-            switch (field) {
-                case Field::strength:
-                    read(result.strength, constraints::finite);
-                    break;
-                case Field::width_degrees:
-                    read(result.width_degrees, constraints::positive, constraints::finite);
-                    break;
-                case Field::Count:
-                    std::unreachable();
-            }
-        }))};
-
-    if (!seen) {
-        append_errors(errors, seen.error());
-        return;
-    }
-}
-
-inline auto TypeReader<starfield::StellarClusterSettingsOverrides>::read(
-    Reader const& reader, NodeIndex const node, std::string_view const path)
-    -> ReadResult<value_type> {
-    return read_override(reader, node, path, value_type{});
-}
-
-inline void
-    TypeReader<starfield::StellarClusterSettingsOverrides>::decode(Reader const& reader,
-                                                                   NodeIndex const node,
-                                                                   std::string_view const path,
-                                                                   value_type& result,
-                                                                   ReadMode,
-                                                                   AstDiagnostics& errors) {
-    auto const seen{read_record<Field>(
-        reader,
-        node,
-        "stellar-cluster",
-        path,
-        parse_field,
-        ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            FieldReader const read{reader, value, location, errors};
-            switch (field) {
-                case Field::strength:
-                    read.patch(result.strength, constraints::finite);
-                    break;
-                case Field::width_degrees:
-                    read.patch(result.width_degrees, constraints::positive, constraints::finite);
-                    break;
-                case Field::Count:
-                    std::unreachable();
-            }
-        }))};
-
-    if (!seen) {
-        append_errors(errors, seen.error());
-        return;
-    }
-}
-
-inline auto TypeReader<starfield::DustLaneSettings>::read(Reader const& reader,
-                                                          NodeIndex const node,
-                                                          std::string_view const path)
-    -> ReadResult<value_type> {
-    return read_generated<value_type>(reader, node, path);
-}
-
-inline void TypeReader<starfield::DustLaneSettings>::decode(Reader const& reader,
-                                                            NodeIndex const node,
-                                                            std::string_view const path,
-                                                            value_type& result,
-                                                            ReadMode mode,
-                                                            AstDiagnostics& errors) {
-    auto const seen{read_record<Field>(
-        reader,
-        node,
-        "dust-lane",
-        path,
-        parse_field,
-        ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            FieldReader const read{reader, value, location, errors, mode};
-            switch (field) {
-                case Field::strength:
-                    read(result.strength, constraints::finite);
-                    break;
-                case Field::width_degrees:
-                    read(result.width_degrees, constraints::positive, constraints::finite);
-                    break;
-                case Field::irregularity:
-                    read(result.irregularity, constraints::finite);
-                    break;
-                case Field::Count:
-                    std::unreachable();
-            }
-        }))};
-
-    if (!seen) {
-        append_errors(errors, seen.error());
-        return;
-    }
-}
-
-inline auto TypeReader<starfield::DustLaneSettingsOverrides>::read(Reader const& reader,
-                                                                   NodeIndex const node,
-                                                                   std::string_view const path)
-    -> ReadResult<value_type> {
-    return read_override(reader, node, path, value_type{});
-}
-
-inline void TypeReader<starfield::DustLaneSettingsOverrides>::decode(Reader const& reader,
-                                                                     NodeIndex const node,
-                                                                     std::string_view const path,
-                                                                     value_type& result,
-                                                                     ReadMode,
-                                                                     AstDiagnostics& errors) {
-    auto const seen{read_record<Field>(
-        reader,
-        node,
-        "dust-lane",
-        path,
-        parse_field,
-        ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            FieldReader const read{reader, value, location, errors};
-            switch (field) {
-                case Field::strength:
-                    read.patch(result.strength, constraints::finite);
-                    break;
-                case Field::width_degrees:
-                    read.patch(result.width_degrees, constraints::positive, constraints::finite);
-                    break;
-                case Field::irregularity:
-                    read.patch(result.irregularity, constraints::finite);
-                    break;
-                case Field::Count:
-                    std::unreachable();
-            }
-        }))};
-
-    if (!seen) {
-        append_errors(errors, seen.error());
-        return;
-    }
-}
-
-inline auto TypeReader<starfield::BrightStarSettings>::read(Reader const& reader,
-                                                            NodeIndex const node,
-                                                            std::string_view const path)
-    -> ReadResult<value_type> {
-    return read_generated<value_type>(reader, node, path);
-}
-
-inline void TypeReader<starfield::BrightStarSettings>::decode(Reader const& reader,
-                                                              NodeIndex const node,
-                                                              std::string_view const path,
-                                                              value_type& result,
-                                                              ReadMode mode,
-                                                              AstDiagnostics& errors) {
-    auto const seen{read_record<Field>(
-        reader,
-        node,
-        "bright-star",
-        path,
-        parse_field,
-        ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            FieldReader const read{reader, value, location, errors, mode};
-            switch (field) {
-                case Field::fraction:
-                    read(result.fraction, constraints::finite);
-                    break;
-                case Field::size_multiplier:
-                    read(result.size_multiplier, constraints::nonnegative, constraints::finite);
-                    break;
-                case Field::brightness_multiplier:
-                    read(result.brightness_multiplier, constraints::finite);
-                    break;
-                case Field::shape_strength:
-                    read(result.shape_strength, constraints::finite);
-                    break;
-                case Field::Count:
-                    std::unreachable();
-            }
-        }))};
-
-    if (!seen) {
-        append_errors(errors, seen.error());
-        return;
-    }
-}
-
-inline auto TypeReader<starfield::BrightStarSettingsOverrides>::read(Reader const& reader,
-                                                                     NodeIndex const node,
-                                                                     std::string_view const path)
-    -> ReadResult<value_type> {
-    return read_override(reader, node, path, value_type{});
-}
-
-inline void TypeReader<starfield::BrightStarSettingsOverrides>::decode(Reader const& reader,
-                                                                       NodeIndex const node,
-                                                                       std::string_view const path,
-                                                                       value_type& result,
-                                                                       ReadMode,
-                                                                       AstDiagnostics& errors) {
-    auto const seen{read_record<Field>(
-        reader,
-        node,
-        "bright-star",
-        path,
-        parse_field,
-        ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            FieldReader const read{reader, value, location, errors};
-            switch (field) {
-                case Field::fraction:
-                    read.patch(result.fraction, constraints::finite);
-                    break;
-                case Field::size_multiplier:
-                    read.patch(
-                        result.size_multiplier, constraints::nonnegative, constraints::finite);
-                    break;
-                case Field::brightness_multiplier:
-                    read.patch(result.brightness_multiplier, constraints::finite);
-                    break;
-                case Field::shape_strength:
-                    read.patch(result.shape_strength, constraints::finite);
-                    break;
-                case Field::Count:
-                    std::unreachable();
-            }
-        }))};
-
-    if (!seen) {
-        append_errors(errors, seen.error());
-        return;
-    }
-}
-
-inline auto TypeReader<starfield::TwinkleSettings>::read(Reader const& reader,
-                                                         NodeIndex const node,
-                                                         std::string_view const path)
-    -> ReadResult<value_type> {
-    return read_generated<value_type>(reader, node, path);
-}
-
-inline void TypeReader<starfield::TwinkleSettings>::decode(Reader const& reader,
-                                                           NodeIndex const node,
-                                                           std::string_view const path,
-                                                           value_type& result,
-                                                           ReadMode mode,
-                                                           AstDiagnostics& errors) {
-    auto const seen{read_record<Field>(
-        reader,
-        node,
-        "twinkle",
-        path,
-        parse_field,
-        ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            FieldReader const read{reader, value, location, errors, mode};
-            switch (field) {
-                case Field::strength:
-                    read(result.strength, constraints::finite);
-                    break;
-                case Field::speed:
-                    read(result.speed, constraints::finite);
-                    break;
-                case Field::Count:
-                    std::unreachable();
-            }
-        }))};
-
-    if (!seen) {
-        append_errors(errors, seen.error());
-        return;
-    }
-}
-
-inline auto TypeReader<starfield::TwinkleSettingsOverrides>::read(Reader const& reader,
-                                                                  NodeIndex const node,
-                                                                  std::string_view const path)
-    -> ReadResult<value_type> {
-    return read_override(reader, node, path, value_type{});
-}
-
-inline void TypeReader<starfield::TwinkleSettingsOverrides>::decode(Reader const& reader,
-                                                                    NodeIndex const node,
-                                                                    std::string_view const path,
-                                                                    value_type& result,
-                                                                    ReadMode,
-                                                                    AstDiagnostics& errors) {
-    auto const seen{read_record<Field>(
-        reader,
-        node,
-        "twinkle",
-        path,
-        parse_field,
-        ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            FieldReader const read{reader, value, location, errors};
-            switch (field) {
-                case Field::strength:
-                    read.patch(result.strength, constraints::finite);
-                    break;
-                case Field::speed:
-                    read.patch(result.speed, constraints::finite);
-                    break;
-                case Field::Count:
-                    std::unreachable();
-            }
-        }))};
-
-    if (!seen) {
-        append_errors(errors, seen.error());
-        return;
-    }
-}
-
-inline auto TypeReader<starfield::GalacticHazeSettings>::read(Reader const& reader,
-                                                              NodeIndex const node,
-                                                              std::string_view const path)
-    -> ReadResult<value_type> {
-    return read_generated<value_type>(reader, node, path);
-}
-
-inline void TypeReader<starfield::GalacticHazeSettings>::decode(Reader const& reader,
-                                                                NodeIndex const node,
-                                                                std::string_view const path,
-                                                                value_type& result,
-                                                                ReadMode mode,
-                                                                AstDiagnostics& errors) {
-    auto const seen{read_record<Field>(
-        reader,
-        node,
-        "galactic-haze",
-        path,
-        parse_field,
-        ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            FieldReader const read{reader, value, location, errors, mode};
-            switch (field) {
-                case Field::strength:
-                    read(result.strength, constraints::finite);
-                    break;
-                case Field::width_degrees:
-                    read(result.width_degrees, constraints::positive, constraints::finite);
-                    break;
-                case Field::Count:
-                    std::unreachable();
-            }
-        }))};
-
-    if (!seen) {
-        append_errors(errors, seen.error());
-        return;
-    }
-}
-
-inline auto TypeReader<starfield::GalacticHazeSettingsOverrides>::read(Reader const& reader,
-                                                                       NodeIndex const node,
-                                                                       std::string_view const path)
-    -> ReadResult<value_type> {
-    return read_override(reader, node, path, value_type{});
-}
-
-inline void
-    TypeReader<starfield::GalacticHazeSettingsOverrides>::decode(Reader const& reader,
-                                                                 NodeIndex const node,
-                                                                 std::string_view const path,
-                                                                 value_type& result,
-                                                                 ReadMode,
-                                                                 AstDiagnostics& errors) {
-    auto const seen{read_record<Field>(
-        reader,
-        node,
-        "galactic-haze",
-        path,
-        parse_field,
-        ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            FieldReader const read{reader, value, location, errors};
-            switch (field) {
-                case Field::strength:
-                    read.patch(result.strength, constraints::finite);
-                    break;
-                case Field::width_degrees:
-                    read.patch(result.width_degrees, constraints::positive, constraints::finite);
-                    break;
-                case Field::Count:
-                    std::unreachable();
-            }
-        }))};
-
-    if (!seen) {
-        append_errors(errors, seen.error());
-        return;
-    }
-}
-
-inline auto TypeReader<starfield::GalacticCoreSettings>::read(Reader const& reader,
-                                                              NodeIndex const node,
-                                                              std::string_view const path)
-    -> ReadResult<value_type> {
-    return read_generated<value_type>(reader, node, path);
-}
-
-inline void TypeReader<starfield::GalacticCoreSettings>::decode(Reader const& reader,
-                                                                NodeIndex const node,
-                                                                std::string_view const path,
-                                                                value_type& result,
-                                                                ReadMode mode,
-                                                                AstDiagnostics& errors) {
-    auto const seen{read_record<Field>(
-        reader,
-        node,
-        "galactic-core",
-        path,
-        parse_field,
-        ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            FieldReader const read{reader, value, location, errors, mode};
-            switch (field) {
-                case Field::strength:
-                    read(result.strength, constraints::finite);
-                    break;
-                case Field::width_degrees:
-                    read(result.width_degrees, constraints::positive, constraints::finite);
-                    break;
-                case Field::Count:
-                    std::unreachable();
-            }
-        }))};
-
-    if (!seen) {
-        append_errors(errors, seen.error());
-        return;
-    }
-}
-
-inline auto TypeReader<starfield::GalacticCoreSettingsOverrides>::read(Reader const& reader,
-                                                                       NodeIndex const node,
-                                                                       std::string_view const path)
-    -> ReadResult<value_type> {
-    return read_override(reader, node, path, value_type{});
-}
-
-inline void
-    TypeReader<starfield::GalacticCoreSettingsOverrides>::decode(Reader const& reader,
-                                                                 NodeIndex const node,
-                                                                 std::string_view const path,
-                                                                 value_type& result,
-                                                                 ReadMode,
-                                                                 AstDiagnostics& errors) {
-    auto const seen{read_record<Field>(
-        reader,
-        node,
-        "galactic-core",
-        path,
-        parse_field,
-        ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            FieldReader const read{reader, value, location, errors};
-            switch (field) {
-                case Field::strength:
-                    read.patch(result.strength, constraints::finite);
-                    break;
-                case Field::width_degrees:
-                    read.patch(result.width_degrees, constraints::positive, constraints::finite);
-                    break;
-                case Field::Count:
-                    std::unreachable();
-            }
-        }))};
-
-    if (!seen) {
-        append_errors(errors, seen.error());
-        return;
-    }
-}
-
-inline auto TypeReader<starfield::NebularKnotSettings>::read(Reader const& reader,
-                                                             NodeIndex const node,
-                                                             std::string_view const path)
-    -> ReadResult<value_type> {
-    return read_generated<value_type>(reader, node, path);
-}
-
-inline void TypeReader<starfield::NebularKnotSettings>::decode(Reader const& reader,
-                                                               NodeIndex const node,
-                                                               std::string_view const path,
-                                                               value_type& result,
-                                                               ReadMode mode,
-                                                               AstDiagnostics& errors) {
-    auto const seen{read_record<Field>(
-        reader,
-        node,
-        "nebular-knot",
-        path,
-        parse_field,
-        ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            FieldReader const read{reader, value, location, errors, mode};
-            switch (field) {
-                case Field::strength:
-                    read(result.strength, constraints::finite);
-                    break;
-                case Field::size_degrees:
-                    read(result.size_degrees, constraints::positive, constraints::finite);
-                    break;
-                case Field::Count:
-                    std::unreachable();
-            }
-        }))};
-
-    if (!seen) {
-        append_errors(errors, seen.error());
-        return;
-    }
-}
-
-inline auto TypeReader<starfield::NebularKnotSettingsOverrides>::read(Reader const& reader,
-                                                                      NodeIndex const node,
-                                                                      std::string_view const path)
-    -> ReadResult<value_type> {
-    return read_override(reader, node, path, value_type{});
-}
-
-inline void TypeReader<starfield::NebularKnotSettingsOverrides>::decode(Reader const& reader,
-                                                                        NodeIndex const node,
-                                                                        std::string_view const path,
-                                                                        value_type& result,
-                                                                        ReadMode,
-                                                                        AstDiagnostics& errors) {
-    auto const seen{read_record<Field>(
-        reader,
-        node,
-        "nebular-knot",
-        path,
-        parse_field,
-        ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            FieldReader const read{reader, value, location, errors};
-            switch (field) {
-                case Field::strength:
-                    read.patch(result.strength, constraints::finite);
-                    break;
-                case Field::size_degrees:
-                    read.patch(result.size_degrees, constraints::positive, constraints::finite);
-                    break;
-                case Field::Count:
-                    std::unreachable();
-            }
-        }))};
-
-    if (!seen) {
-        append_errors(errors, seen.error());
-        return;
-    }
-}
-
-inline auto TypeReader<starfield::Settings>::read(Reader const& reader,
-                                                  NodeIndex const node,
-                                                  std::string_view const path)
-    -> ReadResult<value_type> {
-    return read_generated<value_type>(reader, node, path);
-}
-
-inline void TypeReader<starfield::Settings>::decode(Reader const& reader,
-                                                    NodeIndex const node,
-                                                    std::string_view const path,
-                                                    value_type& result,
-                                                    ReadMode mode,
-                                                    AstDiagnostics& errors) {
-    auto const seen{read_record<Field>(
-        reader,
-        node,
-        "starfield",
-        path,
-        parse_field,
-        ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            FieldReader const read{reader, value, location, errors, mode};
-            switch (field) {
-                case Field::generation:
-                    read(result.generation);
-                    break;
-                case Field::star:
-                    read(result.star);
-                    break;
-                case Field::galactic_band:
-                    read(result.galactic_band);
-                    break;
-                case Field::stellar_cluster:
-                    read(result.stellar_cluster);
-                    break;
-                case Field::dust_lane:
-                    read(result.dust_lane);
-                    break;
-                case Field::bright_star:
-                    read(result.bright_star);
-                    break;
-                case Field::twinkle:
-                    read(result.twinkle);
-                    break;
-                case Field::galactic_haze:
-                    read(result.galactic_haze);
-                    break;
-                case Field::galactic_core:
-                    read(result.galactic_core);
-                    break;
-                case Field::nebular_knot:
-                    read(result.nebular_knot);
-                    break;
-                case Field::Count:
-                    std::unreachable();
-            }
-        }))};
-
-    if (!seen) {
-        append_errors(errors, seen.error());
-        return;
-    }
-}
-
-inline auto TypeReader<starfield::SettingsOverrides>::read(Reader const& reader,
-                                                           NodeIndex const node,
-                                                           std::string_view const path)
-    -> ReadResult<value_type> {
-    return read_override(reader, node, path, value_type{});
-}
-
-inline void TypeReader<starfield::SettingsOverrides>::decode(Reader const& reader,
-                                                             NodeIndex const node,
-                                                             std::string_view const path,
-                                                             value_type& result,
-                                                             ReadMode,
-                                                             AstDiagnostics& errors) {
-    auto const seen{read_record<Field>(
-        reader,
-        node,
-        "starfield",
-        path,
-        parse_field,
-        ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            FieldReader const read{reader, value, location, errors};
-            switch (field) {
-                case Field::generation:
-                    read.patch(result.generation);
-                    break;
-                case Field::star:
-                    read.patch(result.star);
-                    break;
-                case Field::galactic_band:
-                    read.patch(result.galactic_band);
-                    break;
-                case Field::stellar_cluster:
-                    read.patch(result.stellar_cluster);
-                    break;
-                case Field::dust_lane:
-                    read.patch(result.dust_lane);
-                    break;
-                case Field::bright_star:
-                    read.patch(result.bright_star);
-                    break;
-                case Field::twinkle:
-                    read.patch(result.twinkle);
-                    break;
-                case Field::galactic_haze:
-                    read.patch(result.galactic_haze);
-                    break;
-                case Field::galactic_core:
-                    read.patch(result.galactic_core);
-                    break;
-                case Field::nebular_knot:
-                    read.patch(result.nebular_knot);
-                    break;
-                case Field::Count:
-                    std::unreachable();
-            }
-        }))};
-
-    if (!seen) {
-        append_errors(errors, seen.error());
-        return;
-    }
-}
 
 } // namespace ioj::s7

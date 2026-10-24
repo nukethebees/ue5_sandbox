@@ -5,6 +5,7 @@
 
 #include "ioj/parse_enum.h"
 #include "ioj/s7/field_constraints.h"
+#include "ioj/s7/record_reader.h"
 #include "ioj/settings/radar.h"
 #include <ioj/s7/field_reader.h>
 
@@ -14,18 +15,74 @@
 
 namespace ioj::s7 {
 template <>
-struct TypeReader<settings::Radar> {
-    using value_type = settings::Radar;
-
-    static ReadResult<value_type>
-        read(Reader const& reader, NodeIndex const node, std::string_view const path);
-
+struct TypeReader<settings::Radar> : RecordReader<settings::Radar> {
     static void decode(Reader const& reader,
                        NodeIndex const node,
                        std::string_view const path,
                        value_type& result,
                        ReadMode mode,
-                       AstDiagnostics& errors);
+                       AstDiagnostics& errors) {
+        auto const seen{read_record<Field>(
+            reader,
+            node,
+            "radar",
+            path,
+            parse_field,
+            ([&](Field const field, NodeIndex const value, std::string_view const location) {
+                FieldReader const read{reader, value, location, errors, mode};
+                switch (field) {
+                    case Field::enabled:
+                        read(result.enabled);
+                        break;
+                    case Field::combat_range:
+                        read(result.combat_range, constraints::finite);
+                        break;
+                    case Field::tactical_range:
+                        read(result.tactical_range, constraints::finite);
+                        break;
+                    case Field::maximum_range:
+                        read(result.maximum_range, constraints::finite);
+                        break;
+                    case Field::combat_display_radius:
+                        read(result.combat_display_radius, constraints::finite);
+                        break;
+                    case Field::grid_opacity:
+                        read(result.grid_opacity, constraints::finite);
+                        break;
+                    case Field::core_cell_radius:
+                        read(result.core_cell_radius, constraints::finite);
+                        break;
+                    case Field::combat_cell_radius:
+                        read(result.combat_cell_radius, constraints::finite);
+                        break;
+                    case Field::tactical_cell_radius:
+                        read(result.tactical_cell_radius, constraints::finite);
+                        break;
+                    case Field::strategic_cell_radius:
+                        read(result.strategic_cell_radius, constraints::finite);
+                        break;
+                    case Field::glyph_size_scale:
+                        read(result.glyph_size_scale, constraints::finite);
+                        break;
+                    case Field::objective_size_multiplier:
+                        read(result.objective_size_multiplier, constraints::finite);
+                        break;
+                    case Field::objective_ring_padding_pixels:
+                        read(result.objective_ring_padding_pixels, constraints::finite);
+                        break;
+                    case Field::objective_ring_thickness_pixels:
+                        read(result.objective_ring_thickness_pixels, constraints::finite);
+                        break;
+                    case Field::Count:
+                        std::unreachable();
+                }
+            }))};
+
+        if (!seen) {
+            append_errors(errors, seen.error());
+            return;
+        }
+    }
   private:
     enum class Field : std::uint8_t {
         enabled,
@@ -68,18 +125,75 @@ struct TypeReader<settings::Radar> {
 };
 
 template <>
-struct TypeReader<settings::RadarOverrides> {
-    using value_type = settings::RadarOverrides;
-
-    static ReadResult<value_type>
-        read(Reader const& reader, NodeIndex const node, std::string_view const path);
-
+struct TypeReader<settings::RadarOverrides>
+    : RecordReader<settings::RadarOverrides, ReadMode::Override> {
     static void decode(Reader const& reader,
                        NodeIndex const node,
                        std::string_view const path,
                        value_type& result,
                        ReadMode,
-                       AstDiagnostics& errors);
+                       AstDiagnostics& errors) {
+        auto const seen{read_record<Field>(
+            reader,
+            node,
+            "radar",
+            path,
+            parse_field,
+            ([&](Field const field, NodeIndex const value, std::string_view const location) {
+                FieldReader const read{reader, value, location, errors};
+                switch (field) {
+                    case Field::enabled:
+                        read.patch(result.enabled);
+                        break;
+                    case Field::combat_range:
+                        read.patch(result.combat_range, constraints::finite);
+                        break;
+                    case Field::tactical_range:
+                        read.patch(result.tactical_range, constraints::finite);
+                        break;
+                    case Field::maximum_range:
+                        read.patch(result.maximum_range, constraints::finite);
+                        break;
+                    case Field::combat_display_radius:
+                        read.patch(result.combat_display_radius, constraints::finite);
+                        break;
+                    case Field::grid_opacity:
+                        read.patch(result.grid_opacity, constraints::finite);
+                        break;
+                    case Field::core_cell_radius:
+                        read.patch(result.core_cell_radius, constraints::finite);
+                        break;
+                    case Field::combat_cell_radius:
+                        read.patch(result.combat_cell_radius, constraints::finite);
+                        break;
+                    case Field::tactical_cell_radius:
+                        read.patch(result.tactical_cell_radius, constraints::finite);
+                        break;
+                    case Field::strategic_cell_radius:
+                        read.patch(result.strategic_cell_radius, constraints::finite);
+                        break;
+                    case Field::glyph_size_scale:
+                        read.patch(result.glyph_size_scale, constraints::finite);
+                        break;
+                    case Field::objective_size_multiplier:
+                        read.patch(result.objective_size_multiplier, constraints::finite);
+                        break;
+                    case Field::objective_ring_padding_pixels:
+                        read.patch(result.objective_ring_padding_pixels, constraints::finite);
+                        break;
+                    case Field::objective_ring_thickness_pixels:
+                        read.patch(result.objective_ring_thickness_pixels, constraints::finite);
+                        break;
+                    case Field::Count:
+                        std::unreachable();
+                }
+            }))};
+
+        if (!seen) {
+            append_errors(errors, seen.error());
+            return;
+        }
+    }
   private:
     enum class Field : std::uint8_t {
         enabled,
@@ -120,155 +234,5 @@ struct TypeReader<settings::RadarOverrides> {
         "objective-ring-padding-pixels",
         "objective-ring-thickness-pixels"};
 };
-
-inline auto TypeReader<settings::Radar>::read(Reader const& reader,
-                                              NodeIndex const node,
-                                              std::string_view const path)
-    -> ReadResult<value_type> {
-    return read_generated<value_type>(reader, node, path);
-}
-
-inline void TypeReader<settings::Radar>::decode(Reader const& reader,
-                                                NodeIndex const node,
-                                                std::string_view const path,
-                                                value_type& result,
-                                                ReadMode mode,
-                                                AstDiagnostics& errors) {
-    auto const seen{read_record<Field>(
-        reader,
-        node,
-        "radar",
-        path,
-        parse_field,
-        ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            FieldReader const read{reader, value, location, errors, mode};
-            switch (field) {
-                case Field::enabled:
-                    read(result.enabled);
-                    break;
-                case Field::combat_range:
-                    read(result.combat_range, constraints::finite);
-                    break;
-                case Field::tactical_range:
-                    read(result.tactical_range, constraints::finite);
-                    break;
-                case Field::maximum_range:
-                    read(result.maximum_range, constraints::finite);
-                    break;
-                case Field::combat_display_radius:
-                    read(result.combat_display_radius, constraints::finite);
-                    break;
-                case Field::grid_opacity:
-                    read(result.grid_opacity, constraints::finite);
-                    break;
-                case Field::core_cell_radius:
-                    read(result.core_cell_radius, constraints::finite);
-                    break;
-                case Field::combat_cell_radius:
-                    read(result.combat_cell_radius, constraints::finite);
-                    break;
-                case Field::tactical_cell_radius:
-                    read(result.tactical_cell_radius, constraints::finite);
-                    break;
-                case Field::strategic_cell_radius:
-                    read(result.strategic_cell_radius, constraints::finite);
-                    break;
-                case Field::glyph_size_scale:
-                    read(result.glyph_size_scale, constraints::finite);
-                    break;
-                case Field::objective_size_multiplier:
-                    read(result.objective_size_multiplier, constraints::finite);
-                    break;
-                case Field::objective_ring_padding_pixels:
-                    read(result.objective_ring_padding_pixels, constraints::finite);
-                    break;
-                case Field::objective_ring_thickness_pixels:
-                    read(result.objective_ring_thickness_pixels, constraints::finite);
-                    break;
-                case Field::Count:
-                    std::unreachable();
-            }
-        }))};
-
-    if (!seen) {
-        append_errors(errors, seen.error());
-        return;
-    }
-}
-
-inline auto TypeReader<settings::RadarOverrides>::read(Reader const& reader,
-                                                       NodeIndex const node,
-                                                       std::string_view const path)
-    -> ReadResult<value_type> {
-    return read_override(reader, node, path, value_type{});
-}
-
-inline void TypeReader<settings::RadarOverrides>::decode(Reader const& reader,
-                                                         NodeIndex const node,
-                                                         std::string_view const path,
-                                                         value_type& result,
-                                                         ReadMode,
-                                                         AstDiagnostics& errors) {
-    auto const seen{read_record<Field>(
-        reader,
-        node,
-        "radar",
-        path,
-        parse_field,
-        ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            FieldReader const read{reader, value, location, errors};
-            switch (field) {
-                case Field::enabled:
-                    read.patch(result.enabled);
-                    break;
-                case Field::combat_range:
-                    read.patch(result.combat_range, constraints::finite);
-                    break;
-                case Field::tactical_range:
-                    read.patch(result.tactical_range, constraints::finite);
-                    break;
-                case Field::maximum_range:
-                    read.patch(result.maximum_range, constraints::finite);
-                    break;
-                case Field::combat_display_radius:
-                    read.patch(result.combat_display_radius, constraints::finite);
-                    break;
-                case Field::grid_opacity:
-                    read.patch(result.grid_opacity, constraints::finite);
-                    break;
-                case Field::core_cell_radius:
-                    read.patch(result.core_cell_radius, constraints::finite);
-                    break;
-                case Field::combat_cell_radius:
-                    read.patch(result.combat_cell_radius, constraints::finite);
-                    break;
-                case Field::tactical_cell_radius:
-                    read.patch(result.tactical_cell_radius, constraints::finite);
-                    break;
-                case Field::strategic_cell_radius:
-                    read.patch(result.strategic_cell_radius, constraints::finite);
-                    break;
-                case Field::glyph_size_scale:
-                    read.patch(result.glyph_size_scale, constraints::finite);
-                    break;
-                case Field::objective_size_multiplier:
-                    read.patch(result.objective_size_multiplier, constraints::finite);
-                    break;
-                case Field::objective_ring_padding_pixels:
-                    read.patch(result.objective_ring_padding_pixels, constraints::finite);
-                    break;
-                case Field::objective_ring_thickness_pixels:
-                    read.patch(result.objective_ring_thickness_pixels, constraints::finite);
-                    break;
-                case Field::Count:
-                    std::unreachable();
-            }
-        }))};
-
-    if (!seen) {
-        append_errors(errors, seen.error());
-        return;
-    }
-}
 
 } // namespace ioj::s7

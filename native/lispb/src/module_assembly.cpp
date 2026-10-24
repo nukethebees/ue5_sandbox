@@ -64,7 +64,6 @@ auto assemble_module(LoweringContext& context,
     NodeListBuilder source_global{ir};
     NodeListBuilder source_tail{ir};
     NodeListBuilder reader_declarations{ir};
-    NodeListBuilder reader_definitions{ir};
     std::vector<StringId> reader_includes;
     bool has_header{};
     bool has_source{};
@@ -77,7 +76,6 @@ auto assemble_module(LoweringContext& context,
     for (auto& emission : emissions) {
         if (!emission.reader_declarations.empty()) {
             reader_declarations.append(std::move(emission.reader_declarations)).new_lines(2);
-            reader_definitions.append(std::move(emission.reader_definitions)).new_lines(2);
             for (auto const include : emission.reader_includes) {
                 if (std::ranges::find(reader_includes, include) == reader_includes.end()) {
                     reader_includes.push_back(include);
@@ -229,8 +227,6 @@ auto assemble_module(LoweringContext& context,
             reader.add(ir.include(include, IncludeStyle::quoted));
         }
         reader.new_lines(2);
-        auto definitions{reader_definitions.build()};
-        reader_nodes.insert(reader_nodes.end(), definitions.begin(), definitions.end());
         reader.add(ir.namespace_node(ir.strings.intern("ioj::s7"), reader_nodes));
         auto const reader_path{
             reader_header_path(context.text(settings_store.header[settings_row]))};

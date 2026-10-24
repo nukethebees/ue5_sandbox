@@ -5,47 +5,29 @@
 
 #include "ioj/levels/authoring/identifier_reader.h"
 #include "ioj/levels/objective_dependency.h"
+#include "ioj/s7/record_reader.h"
 #include <ioj/s7/field_reader.h>
 
 namespace ioj::s7 {
 template <>
-struct TypeReader<levels::ObjectiveDependency> {
-    using value_type = levels::ObjectiveDependency;
-
-    static ReadResult<value_type>
-        read(Reader const& reader, NodeIndex const node, std::string_view const path);
-
+struct TypeReader<levels::ObjectiveDependency> : RecordReader<levels::ObjectiveDependency> {
     static void decode(Reader const& reader,
                        NodeIndex const node,
                        std::string_view const path,
                        value_type& result,
                        ReadMode mode,
-                       AstDiagnostics& errors);
-};
+                       AstDiagnostics& errors) {
+        auto const arguments{positional_arguments(reader, node, "objective-resolved", path, 2)};
 
-inline auto TypeReader<levels::ObjectiveDependency>::read(Reader const& reader,
-                                                          NodeIndex const node,
-                                                          std::string_view const path)
-    -> ReadResult<value_type> {
-    return read_generated<value_type>(reader, node, path);
-}
-
-inline void TypeReader<levels::ObjectiveDependency>::decode(Reader const& reader,
-                                                            NodeIndex const node,
-                                                            std::string_view const path,
-                                                            value_type& result,
-                                                            ReadMode mode,
-                                                            AstDiagnostics& errors) {
-    auto const arguments{positional_arguments(reader, node, "objective-resolved", path, 2)};
-
-    if (!arguments) {
-        append_errors(errors, arguments.error());
-        return;
+        if (!arguments) {
+            append_errors(errors, arguments.error());
+            return;
+        }
+        FieldReader{reader, (*arguments)[0], std::string{path} + ".objective", errors, mode}(
+            result.objective);
+        FieldReader{reader, (*arguments)[1], std::string{path} + ".outcome", errors, mode}(
+            result.outcome);
     }
-    FieldReader{reader, (*arguments)[0], std::string{path} + ".objective", errors, mode}(
-        result.objective);
-    FieldReader{reader, (*arguments)[1], std::string{path} + ".outcome", errors, mode}(
-        result.outcome);
-}
+};
 
 } // namespace ioj::s7

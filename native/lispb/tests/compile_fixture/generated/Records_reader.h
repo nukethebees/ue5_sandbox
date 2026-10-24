@@ -5,6 +5,7 @@
 
 #include "ioj/parse_enum.h"
 #include "ioj/s7/field_constraints.h"
+#include "ioj/s7/record_reader.h"
 #include "Records.h"
 #include <ioj/s7/field_reader.h>
 
@@ -14,18 +15,42 @@
 
 namespace ioj::s7 {
 template <>
-struct TypeReader<codegen_compile_fixture::RangeValue> {
-    using value_type = codegen_compile_fixture::RangeValue;
-
-    static ReadResult<value_type>
-        read(Reader const& reader, NodeIndex const node, std::string_view const path);
-
+struct TypeReader<codegen_compile_fixture::RangeValue>
+    : RecordReader<codegen_compile_fixture::RangeValue> {
     static void decode(Reader const& reader,
                        NodeIndex const node,
                        std::string_view const path,
                        value_type& result,
                        ReadMode mode,
-                       AstDiagnostics& errors);
+                       AstDiagnostics& errors) {
+        auto const seen{read_record<Field>(
+            reader,
+            node,
+            "range",
+            path,
+            parse_field,
+            ([&](Field const field, NodeIndex const value, std::string_view const location) {
+                FieldReader const read{reader, value, location, errors, mode};
+                switch (field) {
+                    case Field::minimum:
+                        read(result.minimum);
+                        break;
+                    case Field::maximum:
+                        read(result.maximum);
+                        break;
+                    case Field::Count:
+                        std::unreachable();
+                }
+            }))};
+
+        if (!seen) {
+            append_errors(errors, seen.error());
+            return;
+        }
+        if (mode == ReadMode::Create) {
+            require_fields<Field>(*seen, required, field_names, path, errors);
+        }
+    }
   private:
     enum class Field : std::uint8_t {
         minimum,
@@ -43,18 +68,39 @@ struct TypeReader<codegen_compile_fixture::RangeValue> {
 };
 
 template <>
-struct TypeReader<codegen_compile_fixture::RangeSettings> {
-    using value_type = codegen_compile_fixture::RangeSettings;
-
-    static ReadResult<value_type>
-        read(Reader const& reader, NodeIndex const node, std::string_view const path);
-
+struct TypeReader<codegen_compile_fixture::RangeSettings>
+    : RecordReader<codegen_compile_fixture::RangeSettings> {
     static void decode(Reader const& reader,
                        NodeIndex const node,
                        std::string_view const path,
                        value_type& result,
                        ReadMode mode,
-                       AstDiagnostics& errors);
+                       AstDiagnostics& errors) {
+        auto const seen{read_record<Field>(
+            reader,
+            node,
+            "ranges",
+            path,
+            parse_field,
+            ([&](Field const field, NodeIndex const value, std::string_view const location) {
+                FieldReader const read{reader, value, location, errors, mode};
+                switch (field) {
+                    case Field::range:
+                        read(result.range);
+                        break;
+                    case Field::enabled:
+                        read(result.enabled);
+                        break;
+                    case Field::Count:
+                        std::unreachable();
+                }
+            }))};
+
+        if (!seen) {
+            append_errors(errors, seen.error());
+            return;
+        }
+    }
   private:
     enum class Field : std::uint8_t {
         range,
@@ -71,18 +117,39 @@ struct TypeReader<codegen_compile_fixture::RangeSettings> {
 };
 
 template <>
-struct TypeReader<codegen_compile_fixture::RangeSettingsOverrides> {
-    using value_type = codegen_compile_fixture::RangeSettingsOverrides;
-
-    static ReadResult<value_type>
-        read(Reader const& reader, NodeIndex const node, std::string_view const path);
-
+struct TypeReader<codegen_compile_fixture::RangeSettingsOverrides>
+    : RecordReader<codegen_compile_fixture::RangeSettingsOverrides, ReadMode::Override> {
     static void decode(Reader const& reader,
                        NodeIndex const node,
                        std::string_view const path,
                        value_type& result,
                        ReadMode,
-                       AstDiagnostics& errors);
+                       AstDiagnostics& errors) {
+        auto const seen{read_record<Field>(
+            reader,
+            node,
+            "ranges",
+            path,
+            parse_field,
+            ([&](Field const field, NodeIndex const value, std::string_view const location) {
+                FieldReader const read{reader, value, location, errors};
+                switch (field) {
+                    case Field::range:
+                        read.patch(result.range);
+                        break;
+                    case Field::enabled:
+                        read.patch(result.enabled);
+                        break;
+                    case Field::Count:
+                        std::unreachable();
+                }
+            }))};
+
+        if (!seen) {
+            append_errors(errors, seen.error());
+            return;
+        }
+    }
   private:
     enum class Field : std::uint8_t {
         range,
@@ -99,18 +166,39 @@ struct TypeReader<codegen_compile_fixture::RangeSettingsOverrides> {
 };
 
 template <>
-struct TypeReader<codegen_compile_fixture::WeaponSettings> {
-    using value_type = codegen_compile_fixture::WeaponSettings;
-
-    static ReadResult<value_type>
-        read(Reader const& reader, NodeIndex const node, std::string_view const path);
-
+struct TypeReader<codegen_compile_fixture::WeaponSettings>
+    : RecordReader<codegen_compile_fixture::WeaponSettings> {
     static void decode(Reader const& reader,
                        NodeIndex const node,
                        std::string_view const path,
                        value_type& result,
                        ReadMode mode,
-                       AstDiagnostics& errors);
+                       AstDiagnostics& errors) {
+        auto const seen{read_record<Field>(
+            reader,
+            node,
+            "weapon",
+            path,
+            parse_field,
+            ([&](Field const field, NodeIndex const value, std::string_view const location) {
+                FieldReader const read{reader, value, location, errors, mode};
+                switch (field) {
+                    case Field::damage:
+                        read(result.damage, constraints::nonnegative);
+                        break;
+                    case Field::turn_rate:
+                        read(result.turn_rate);
+                        break;
+                    case Field::Count:
+                        std::unreachable();
+                }
+            }))};
+
+        if (!seen) {
+            append_errors(errors, seen.error());
+            return;
+        }
+    }
   private:
     enum class Field : std::uint8_t {
         damage,
@@ -127,18 +215,39 @@ struct TypeReader<codegen_compile_fixture::WeaponSettings> {
 };
 
 template <>
-struct TypeReader<codegen_compile_fixture::WeaponSettingsOverrides> {
-    using value_type = codegen_compile_fixture::WeaponSettingsOverrides;
-
-    static ReadResult<value_type>
-        read(Reader const& reader, NodeIndex const node, std::string_view const path);
-
+struct TypeReader<codegen_compile_fixture::WeaponSettingsOverrides>
+    : RecordReader<codegen_compile_fixture::WeaponSettingsOverrides, ReadMode::Override> {
     static void decode(Reader const& reader,
                        NodeIndex const node,
                        std::string_view const path,
                        value_type& result,
                        ReadMode,
-                       AstDiagnostics& errors);
+                       AstDiagnostics& errors) {
+        auto const seen{read_record<Field>(
+            reader,
+            node,
+            "weapon",
+            path,
+            parse_field,
+            ([&](Field const field, NodeIndex const value, std::string_view const location) {
+                FieldReader const read{reader, value, location, errors};
+                switch (field) {
+                    case Field::damage:
+                        read.patch(result.damage, constraints::nonnegative);
+                        break;
+                    case Field::turn_rate:
+                        read.patch(result.turn_rate);
+                        break;
+                    case Field::Count:
+                        std::unreachable();
+                }
+            }))};
+
+        if (!seen) {
+            append_errors(errors, seen.error());
+            return;
+        }
+    }
   private:
     enum class Field : std::uint8_t {
         damage,
@@ -155,18 +264,42 @@ struct TypeReader<codegen_compile_fixture::WeaponSettingsOverrides> {
 };
 
 template <>
-struct TypeReader<codegen_compile_fixture::ActorSettings> {
-    using value_type = codegen_compile_fixture::ActorSettings;
-
-    static ReadResult<value_type>
-        read(Reader const& reader, NodeIndex const node, std::string_view const path);
-
+struct TypeReader<codegen_compile_fixture::ActorSettings>
+    : RecordReader<codegen_compile_fixture::ActorSettings> {
     static void decode(Reader const& reader,
                        NodeIndex const node,
                        std::string_view const path,
                        value_type& result,
                        ReadMode mode,
-                       AstDiagnostics& errors);
+                       AstDiagnostics& errors) {
+        auto const seen{read_record<Field>(
+            reader,
+            node,
+            "actor",
+            path,
+            parse_field,
+            ([&](Field const field, NodeIndex const value, std::string_view const location) {
+                FieldReader const read{reader, value, location, errors, mode};
+                switch (field) {
+                    case Field::max_health:
+                        read(result.max_health);
+                        break;
+                    case Field::weapon:
+                        read(result.weapon);
+                        break;
+                    case Field::optional_limit:
+                        read(result.optional_limit);
+                        break;
+                    case Field::Count:
+                        std::unreachable();
+                }
+            }))};
+
+        if (!seen) {
+            append_errors(errors, seen.error());
+            return;
+        }
+    }
   private:
     enum class Field : std::uint8_t {
         max_health,
@@ -185,18 +318,42 @@ struct TypeReader<codegen_compile_fixture::ActorSettings> {
 };
 
 template <>
-struct TypeReader<codegen_compile_fixture::ActorSettingsOverrides> {
-    using value_type = codegen_compile_fixture::ActorSettingsOverrides;
-
-    static ReadResult<value_type>
-        read(Reader const& reader, NodeIndex const node, std::string_view const path);
-
+struct TypeReader<codegen_compile_fixture::ActorSettingsOverrides>
+    : RecordReader<codegen_compile_fixture::ActorSettingsOverrides, ReadMode::Override> {
     static void decode(Reader const& reader,
                        NodeIndex const node,
                        std::string_view const path,
                        value_type& result,
                        ReadMode,
-                       AstDiagnostics& errors);
+                       AstDiagnostics& errors) {
+        auto const seen{read_record<Field>(
+            reader,
+            node,
+            "actor",
+            path,
+            parse_field,
+            ([&](Field const field, NodeIndex const value, std::string_view const location) {
+                FieldReader const read{reader, value, location, errors};
+                switch (field) {
+                    case Field::max_health:
+                        read.patch(result.max_health);
+                        break;
+                    case Field::weapon:
+                        read.patch(result.weapon);
+                        break;
+                    case Field::optional_limit:
+                        read.patch(result.optional_limit);
+                        break;
+                    case Field::Count:
+                        std::unreachable();
+                }
+            }))};
+
+        if (!seen) {
+            append_errors(errors, seen.error());
+            return;
+        }
+    }
   private:
     enum class Field : std::uint8_t {
         max_health,
@@ -213,287 +370,5 @@ struct TypeReader<codegen_compile_fixture::ActorSettingsOverrides> {
     static constexpr std::array<std::string_view, 3> field_names{
         "max-health", "weapon", "optional-limit"};
 };
-
-inline auto TypeReader<codegen_compile_fixture::RangeValue>::read(Reader const& reader,
-                                                                  NodeIndex const node,
-                                                                  std::string_view const path)
-    -> ReadResult<value_type> {
-    return read_generated<value_type>(reader, node, path);
-}
-
-inline void TypeReader<codegen_compile_fixture::RangeValue>::decode(Reader const& reader,
-                                                                    NodeIndex const node,
-                                                                    std::string_view const path,
-                                                                    value_type& result,
-                                                                    ReadMode mode,
-                                                                    AstDiagnostics& errors) {
-    auto const seen{read_record<Field>(
-        reader,
-        node,
-        "range",
-        path,
-        parse_field,
-        ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            FieldReader const read{reader, value, location, errors, mode};
-            switch (field) {
-                case Field::minimum:
-                    read(result.minimum);
-                    break;
-                case Field::maximum:
-                    read(result.maximum);
-                    break;
-                case Field::Count:
-                    std::unreachable();
-            }
-        }))};
-
-    if (!seen) {
-        append_errors(errors, seen.error());
-        return;
-    }
-    if (mode == ReadMode::Create) {
-        require_fields<Field>(*seen, required, field_names, path, errors);
-    }
-}
-
-inline auto TypeReader<codegen_compile_fixture::RangeSettings>::read(Reader const& reader,
-                                                                     NodeIndex const node,
-                                                                     std::string_view const path)
-    -> ReadResult<value_type> {
-    return read_generated<value_type>(reader, node, path);
-}
-
-inline void TypeReader<codegen_compile_fixture::RangeSettings>::decode(Reader const& reader,
-                                                                       NodeIndex const node,
-                                                                       std::string_view const path,
-                                                                       value_type& result,
-                                                                       ReadMode mode,
-                                                                       AstDiagnostics& errors) {
-    auto const seen{read_record<Field>(
-        reader,
-        node,
-        "ranges",
-        path,
-        parse_field,
-        ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            FieldReader const read{reader, value, location, errors, mode};
-            switch (field) {
-                case Field::range:
-                    read(result.range);
-                    break;
-                case Field::enabled:
-                    read(result.enabled);
-                    break;
-                case Field::Count:
-                    std::unreachable();
-            }
-        }))};
-
-    if (!seen) {
-        append_errors(errors, seen.error());
-        return;
-    }
-}
-
-inline auto TypeReader<codegen_compile_fixture::RangeSettingsOverrides>::read(
-    Reader const& reader, NodeIndex const node, std::string_view const path)
-    -> ReadResult<value_type> {
-    return read_override(reader, node, path, value_type{});
-}
-
-inline void
-    TypeReader<codegen_compile_fixture::RangeSettingsOverrides>::decode(Reader const& reader,
-                                                                        NodeIndex const node,
-                                                                        std::string_view const path,
-                                                                        value_type& result,
-                                                                        ReadMode,
-                                                                        AstDiagnostics& errors) {
-    auto const seen{read_record<Field>(
-        reader,
-        node,
-        "ranges",
-        path,
-        parse_field,
-        ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            FieldReader const read{reader, value, location, errors};
-            switch (field) {
-                case Field::range:
-                    read.patch(result.range);
-                    break;
-                case Field::enabled:
-                    read.patch(result.enabled);
-                    break;
-                case Field::Count:
-                    std::unreachable();
-            }
-        }))};
-
-    if (!seen) {
-        append_errors(errors, seen.error());
-        return;
-    }
-}
-
-inline auto TypeReader<codegen_compile_fixture::WeaponSettings>::read(Reader const& reader,
-                                                                      NodeIndex const node,
-                                                                      std::string_view const path)
-    -> ReadResult<value_type> {
-    return read_generated<value_type>(reader, node, path);
-}
-
-inline void TypeReader<codegen_compile_fixture::WeaponSettings>::decode(Reader const& reader,
-                                                                        NodeIndex const node,
-                                                                        std::string_view const path,
-                                                                        value_type& result,
-                                                                        ReadMode mode,
-                                                                        AstDiagnostics& errors) {
-    auto const seen{read_record<Field>(
-        reader,
-        node,
-        "weapon",
-        path,
-        parse_field,
-        ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            FieldReader const read{reader, value, location, errors, mode};
-            switch (field) {
-                case Field::damage:
-                    read(result.damage, constraints::nonnegative);
-                    break;
-                case Field::turn_rate:
-                    read(result.turn_rate);
-                    break;
-                case Field::Count:
-                    std::unreachable();
-            }
-        }))};
-
-    if (!seen) {
-        append_errors(errors, seen.error());
-        return;
-    }
-}
-
-inline auto TypeReader<codegen_compile_fixture::WeaponSettingsOverrides>::read(
-    Reader const& reader, NodeIndex const node, std::string_view const path)
-    -> ReadResult<value_type> {
-    return read_override(reader, node, path, value_type{});
-}
-
-inline void TypeReader<codegen_compile_fixture::WeaponSettingsOverrides>::decode(
-    Reader const& reader,
-    NodeIndex const node,
-    std::string_view const path,
-    value_type& result,
-    ReadMode,
-    AstDiagnostics& errors) {
-    auto const seen{read_record<Field>(
-        reader,
-        node,
-        "weapon",
-        path,
-        parse_field,
-        ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            FieldReader const read{reader, value, location, errors};
-            switch (field) {
-                case Field::damage:
-                    read.patch(result.damage, constraints::nonnegative);
-                    break;
-                case Field::turn_rate:
-                    read.patch(result.turn_rate);
-                    break;
-                case Field::Count:
-                    std::unreachable();
-            }
-        }))};
-
-    if (!seen) {
-        append_errors(errors, seen.error());
-        return;
-    }
-}
-
-inline auto TypeReader<codegen_compile_fixture::ActorSettings>::read(Reader const& reader,
-                                                                     NodeIndex const node,
-                                                                     std::string_view const path)
-    -> ReadResult<value_type> {
-    return read_generated<value_type>(reader, node, path);
-}
-
-inline void TypeReader<codegen_compile_fixture::ActorSettings>::decode(Reader const& reader,
-                                                                       NodeIndex const node,
-                                                                       std::string_view const path,
-                                                                       value_type& result,
-                                                                       ReadMode mode,
-                                                                       AstDiagnostics& errors) {
-    auto const seen{read_record<Field>(
-        reader,
-        node,
-        "actor",
-        path,
-        parse_field,
-        ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            FieldReader const read{reader, value, location, errors, mode};
-            switch (field) {
-                case Field::max_health:
-                    read(result.max_health);
-                    break;
-                case Field::weapon:
-                    read(result.weapon);
-                    break;
-                case Field::optional_limit:
-                    read(result.optional_limit);
-                    break;
-                case Field::Count:
-                    std::unreachable();
-            }
-        }))};
-
-    if (!seen) {
-        append_errors(errors, seen.error());
-        return;
-    }
-}
-
-inline auto TypeReader<codegen_compile_fixture::ActorSettingsOverrides>::read(
-    Reader const& reader, NodeIndex const node, std::string_view const path)
-    -> ReadResult<value_type> {
-    return read_override(reader, node, path, value_type{});
-}
-
-inline void
-    TypeReader<codegen_compile_fixture::ActorSettingsOverrides>::decode(Reader const& reader,
-                                                                        NodeIndex const node,
-                                                                        std::string_view const path,
-                                                                        value_type& result,
-                                                                        ReadMode,
-                                                                        AstDiagnostics& errors) {
-    auto const seen{read_record<Field>(
-        reader,
-        node,
-        "actor",
-        path,
-        parse_field,
-        ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            FieldReader const read{reader, value, location, errors};
-            switch (field) {
-                case Field::max_health:
-                    read.patch(result.max_health);
-                    break;
-                case Field::weapon:
-                    read.patch(result.weapon);
-                    break;
-                case Field::optional_limit:
-                    read.patch(result.optional_limit);
-                    break;
-                case Field::Count:
-                    std::unreachable();
-            }
-        }))};
-
-    if (!seen) {
-        append_errors(errors, seen.error());
-        return;
-    }
-}
 
 } // namespace ioj::s7

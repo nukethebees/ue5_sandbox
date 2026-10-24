@@ -5,6 +5,7 @@
 
 #include "ioj/parse_enum.h"
 #include "ioj/s7/frequency_reader.h"
+#include "ioj/s7/record_reader.h"
 #include "ioj/settings/tick_settings.h"
 #include <ioj/s7/field_reader.h>
 
@@ -14,18 +15,38 @@
 
 namespace ioj::s7 {
 template <>
-struct TypeReader<settings::TickSettings> {
-    using value_type = settings::TickSettings;
-
-    static ReadResult<value_type>
-        read(Reader const& reader, NodeIndex const node, std::string_view const path);
-
+struct TypeReader<settings::TickSettings> : RecordReader<settings::TickSettings> {
     static void decode(Reader const& reader,
                        NodeIndex const node,
                        std::string_view const path,
                        value_type& result,
                        ReadMode mode,
-                       AstDiagnostics& errors);
+                       AstDiagnostics& errors) {
+        auto const seen{read_record<Field>(
+            reader,
+            node,
+            "tick",
+            path,
+            parse_field,
+            ([&](Field const field, NodeIndex const value, std::string_view const location) {
+                FieldReader const read{reader, value, location, errors, mode};
+                switch (field) {
+                    case Field::tick_rate:
+                        read(result.tick_rate);
+                        break;
+                    case Field::time_scale:
+                        read(result.time_scale);
+                        break;
+                    case Field::Count:
+                        std::unreachable();
+                }
+            }))};
+
+        if (!seen) {
+            append_errors(errors, seen.error());
+            return;
+        }
+    }
   private:
     enum class Field : std::uint8_t {
         tick_rate,
@@ -42,18 +63,39 @@ struct TypeReader<settings::TickSettings> {
 };
 
 template <>
-struct TypeReader<settings::TickSettingsOverrides> {
-    using value_type = settings::TickSettingsOverrides;
-
-    static ReadResult<value_type>
-        read(Reader const& reader, NodeIndex const node, std::string_view const path);
-
+struct TypeReader<settings::TickSettingsOverrides>
+    : RecordReader<settings::TickSettingsOverrides, ReadMode::Override> {
     static void decode(Reader const& reader,
                        NodeIndex const node,
                        std::string_view const path,
                        value_type& result,
                        ReadMode,
-                       AstDiagnostics& errors);
+                       AstDiagnostics& errors) {
+        auto const seen{read_record<Field>(
+            reader,
+            node,
+            "tick",
+            path,
+            parse_field,
+            ([&](Field const field, NodeIndex const value, std::string_view const location) {
+                FieldReader const read{reader, value, location, errors};
+                switch (field) {
+                    case Field::tick_rate:
+                        read.patch(result.tick_rate);
+                        break;
+                    case Field::time_scale:
+                        read.patch(result.time_scale);
+                        break;
+                    case Field::Count:
+                        std::unreachable();
+                }
+            }))};
+
+        if (!seen) {
+            append_errors(errors, seen.error());
+            return;
+        }
+    }
   private:
     enum class Field : std::uint8_t {
         tick_rate,
@@ -68,83 +110,5 @@ struct TypeReader<settings::TickSettingsOverrides> {
 
     static constexpr std::array<std::string_view, 2> field_names{"tick-rate", "time-scale"};
 };
-
-inline auto TypeReader<settings::TickSettings>::read(Reader const& reader,
-                                                     NodeIndex const node,
-                                                     std::string_view const path)
-    -> ReadResult<value_type> {
-    return read_generated<value_type>(reader, node, path);
-}
-
-inline void TypeReader<settings::TickSettings>::decode(Reader const& reader,
-                                                       NodeIndex const node,
-                                                       std::string_view const path,
-                                                       value_type& result,
-                                                       ReadMode mode,
-                                                       AstDiagnostics& errors) {
-    auto const seen{read_record<Field>(
-        reader,
-        node,
-        "tick",
-        path,
-        parse_field,
-        ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            FieldReader const read{reader, value, location, errors, mode};
-            switch (field) {
-                case Field::tick_rate:
-                    read(result.tick_rate);
-                    break;
-                case Field::time_scale:
-                    read(result.time_scale);
-                    break;
-                case Field::Count:
-                    std::unreachable();
-            }
-        }))};
-
-    if (!seen) {
-        append_errors(errors, seen.error());
-        return;
-    }
-}
-
-inline auto TypeReader<settings::TickSettingsOverrides>::read(Reader const& reader,
-                                                              NodeIndex const node,
-                                                              std::string_view const path)
-    -> ReadResult<value_type> {
-    return read_override(reader, node, path, value_type{});
-}
-
-inline void TypeReader<settings::TickSettingsOverrides>::decode(Reader const& reader,
-                                                                NodeIndex const node,
-                                                                std::string_view const path,
-                                                                value_type& result,
-                                                                ReadMode,
-                                                                AstDiagnostics& errors) {
-    auto const seen{read_record<Field>(
-        reader,
-        node,
-        "tick",
-        path,
-        parse_field,
-        ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            FieldReader const read{reader, value, location, errors};
-            switch (field) {
-                case Field::tick_rate:
-                    read.patch(result.tick_rate);
-                    break;
-                case Field::time_scale:
-                    read.patch(result.time_scale);
-                    break;
-                case Field::Count:
-                    std::unreachable();
-            }
-        }))};
-
-    if (!seen) {
-        append_errors(errors, seen.error());
-        return;
-    }
-}
 
 } // namespace ioj::s7

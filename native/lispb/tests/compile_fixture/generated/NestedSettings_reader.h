@@ -4,6 +4,7 @@
 #pragma once
 
 #include "ioj/parse_enum.h"
+#include "ioj/s7/record_reader.h"
 #include "NestedSettings.h"
 #include "Records_reader.h"
 #include <ioj/s7/field_reader.h>
@@ -14,18 +15,42 @@
 
 namespace ioj::s7 {
 template <>
-struct TypeReader<codegen_compile_fixture::SettingsTarget> {
-    using value_type = codegen_compile_fixture::SettingsTarget;
-
-    static ReadResult<value_type>
-        read(Reader const& reader, NodeIndex const node, std::string_view const path);
-
+struct TypeReader<codegen_compile_fixture::SettingsTarget>
+    : RecordReader<codegen_compile_fixture::SettingsTarget> {
     static void decode(Reader const& reader,
                        NodeIndex const node,
                        std::string_view const path,
                        value_type& result,
                        ReadMode mode,
-                       AstDiagnostics& errors);
+                       AstDiagnostics& errors) {
+        auto const seen{read_record<Field>(
+            reader,
+            node,
+            "settings",
+            path,
+            parse_field,
+            ([&](Field const field, NodeIndex const value, std::string_view const location) {
+                FieldReader const read{reader, value, location, errors, mode};
+                switch (field) {
+                    case Field::first:
+                        read(result.first);
+                        break;
+                    case Field::second:
+                        read(result.second);
+                        break;
+                    case Field::external_value:
+                        read(result.external_value);
+                        break;
+                    case Field::Count:
+                        std::unreachable();
+                }
+            }))};
+
+        if (!seen) {
+            append_errors(errors, seen.error());
+            return;
+        }
+    }
   private:
     enum class Field : std::uint8_t {
         first,
@@ -44,18 +69,42 @@ struct TypeReader<codegen_compile_fixture::SettingsTarget> {
 };
 
 template <>
-struct TypeReader<codegen_compile_fixture::SettingsTargetOverrides> {
-    using value_type = codegen_compile_fixture::SettingsTargetOverrides;
-
-    static ReadResult<value_type>
-        read(Reader const& reader, NodeIndex const node, std::string_view const path);
-
+struct TypeReader<codegen_compile_fixture::SettingsTargetOverrides>
+    : RecordReader<codegen_compile_fixture::SettingsTargetOverrides, ReadMode::Override> {
     static void decode(Reader const& reader,
                        NodeIndex const node,
                        std::string_view const path,
                        value_type& result,
                        ReadMode,
-                       AstDiagnostics& errors);
+                       AstDiagnostics& errors) {
+        auto const seen{read_record<Field>(
+            reader,
+            node,
+            "settings",
+            path,
+            parse_field,
+            ([&](Field const field, NodeIndex const value, std::string_view const location) {
+                FieldReader const read{reader, value, location, errors};
+                switch (field) {
+                    case Field::first:
+                        read.patch(result.first);
+                        break;
+                    case Field::second:
+                        read.patch(result.second);
+                        break;
+                    case Field::external_value:
+                        read.patch(result.external_value);
+                        break;
+                    case Field::Count:
+                        std::unreachable();
+                }
+            }))};
+
+        if (!seen) {
+            append_errors(errors, seen.error());
+            return;
+        }
+    }
   private:
     enum class Field : std::uint8_t {
         first,
@@ -72,89 +121,5 @@ struct TypeReader<codegen_compile_fixture::SettingsTargetOverrides> {
     static constexpr std::array<std::string_view, 3> field_names{
         "first", "second", "external-value"};
 };
-
-inline auto TypeReader<codegen_compile_fixture::SettingsTarget>::read(Reader const& reader,
-                                                                      NodeIndex const node,
-                                                                      std::string_view const path)
-    -> ReadResult<value_type> {
-    return read_generated<value_type>(reader, node, path);
-}
-
-inline void TypeReader<codegen_compile_fixture::SettingsTarget>::decode(Reader const& reader,
-                                                                        NodeIndex const node,
-                                                                        std::string_view const path,
-                                                                        value_type& result,
-                                                                        ReadMode mode,
-                                                                        AstDiagnostics& errors) {
-    auto const seen{read_record<Field>(
-        reader,
-        node,
-        "settings",
-        path,
-        parse_field,
-        ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            FieldReader const read{reader, value, location, errors, mode};
-            switch (field) {
-                case Field::first:
-                    read(result.first);
-                    break;
-                case Field::second:
-                    read(result.second);
-                    break;
-                case Field::external_value:
-                    read(result.external_value);
-                    break;
-                case Field::Count:
-                    std::unreachable();
-            }
-        }))};
-
-    if (!seen) {
-        append_errors(errors, seen.error());
-        return;
-    }
-}
-
-inline auto TypeReader<codegen_compile_fixture::SettingsTargetOverrides>::read(
-    Reader const& reader, NodeIndex const node, std::string_view const path)
-    -> ReadResult<value_type> {
-    return read_override(reader, node, path, value_type{});
-}
-
-inline void TypeReader<codegen_compile_fixture::SettingsTargetOverrides>::decode(
-    Reader const& reader,
-    NodeIndex const node,
-    std::string_view const path,
-    value_type& result,
-    ReadMode,
-    AstDiagnostics& errors) {
-    auto const seen{read_record<Field>(
-        reader,
-        node,
-        "settings",
-        path,
-        parse_field,
-        ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            FieldReader const read{reader, value, location, errors};
-            switch (field) {
-                case Field::first:
-                    read.patch(result.first);
-                    break;
-                case Field::second:
-                    read.patch(result.second);
-                    break;
-                case Field::external_value:
-                    read.patch(result.external_value);
-                    break;
-                case Field::Count:
-                    std::unreachable();
-            }
-        }))};
-
-    if (!seen) {
-        append_errors(errors, seen.error());
-        return;
-    }
-}
 
 } // namespace ioj::s7

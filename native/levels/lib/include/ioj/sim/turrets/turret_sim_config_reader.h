@@ -5,6 +5,7 @@
 
 #include "ioj/parse_enum.h"
 #include "ioj/s7/field_constraints.h"
+#include "ioj/s7/record_reader.h"
 #include "ioj/sim/lasers/laser_weapon_sim_config_reader.h"
 #include "ioj/sim/turrets/turret_sim_config.h"
 #include <ioj/s7/field_reader.h>
@@ -15,18 +16,44 @@
 
 namespace ioj::s7 {
 template <>
-struct TypeReader<sim::TurretSimConfig> {
-    using value_type = sim::TurretSimConfig;
-
-    static ReadResult<value_type>
-        read(Reader const& reader, NodeIndex const node, std::string_view const path);
-
+struct TypeReader<sim::TurretSimConfig> : RecordReader<sim::TurretSimConfig> {
     static void decode(Reader const& reader,
                        NodeIndex const node,
                        std::string_view const path,
                        value_type& result,
                        ReadMode mode,
-                       AstDiagnostics& errors);
+                       AstDiagnostics& errors) {
+        auto const seen{read_record<Field>(
+            reader,
+            node,
+            "turrets",
+            path,
+            parse_field,
+            ([&](Field const field, NodeIndex const value, std::string_view const location) {
+                FieldReader const read{reader, value, location, errors, mode};
+                switch (field) {
+                    case Field::detection_radius:
+                        read(result.detection_radius, constraints::finite);
+                        break;
+                    case Field::target_refresh_frequency:
+                        read(result.target_refresh_frequency, constraints::finite);
+                        break;
+                    case Field::laser:
+                        read(result.laser);
+                        break;
+                    case Field::max_health:
+                        read(result.max_health);
+                        break;
+                    case Field::Count:
+                        std::unreachable();
+                }
+            }))};
+
+        if (!seen) {
+            append_errors(errors, seen.error());
+            return;
+        }
+    }
   private:
     enum class Field : std::uint8_t {
         detection_radius,
@@ -46,18 +73,45 @@ struct TypeReader<sim::TurretSimConfig> {
 };
 
 template <>
-struct TypeReader<sim::TurretSimConfigOverrides> {
-    using value_type = sim::TurretSimConfigOverrides;
-
-    static ReadResult<value_type>
-        read(Reader const& reader, NodeIndex const node, std::string_view const path);
-
+struct TypeReader<sim::TurretSimConfigOverrides>
+    : RecordReader<sim::TurretSimConfigOverrides, ReadMode::Override> {
     static void decode(Reader const& reader,
                        NodeIndex const node,
                        std::string_view const path,
                        value_type& result,
                        ReadMode,
-                       AstDiagnostics& errors);
+                       AstDiagnostics& errors) {
+        auto const seen{read_record<Field>(
+            reader,
+            node,
+            "turrets",
+            path,
+            parse_field,
+            ([&](Field const field, NodeIndex const value, std::string_view const location) {
+                FieldReader const read{reader, value, location, errors};
+                switch (field) {
+                    case Field::detection_radius:
+                        read.patch(result.detection_radius, constraints::finite);
+                        break;
+                    case Field::target_refresh_frequency:
+                        read.patch(result.target_refresh_frequency, constraints::finite);
+                        break;
+                    case Field::laser:
+                        read.patch(result.laser);
+                        break;
+                    case Field::max_health:
+                        read.patch(result.max_health);
+                        break;
+                    case Field::Count:
+                        std::unreachable();
+                }
+            }))};
+
+        if (!seen) {
+            append_errors(errors, seen.error());
+            return;
+        }
+    }
   private:
     enum class Field : std::uint8_t {
         detection_radius,
@@ -75,95 +129,5 @@ struct TypeReader<sim::TurretSimConfigOverrides> {
     static constexpr std::array<std::string_view, 4> field_names{
         "detection-radius", "target-refresh-frequency", "laser", "max-health"};
 };
-
-inline auto TypeReader<sim::TurretSimConfig>::read(Reader const& reader,
-                                                   NodeIndex const node,
-                                                   std::string_view const path)
-    -> ReadResult<value_type> {
-    return read_generated<value_type>(reader, node, path);
-}
-
-inline void TypeReader<sim::TurretSimConfig>::decode(Reader const& reader,
-                                                     NodeIndex const node,
-                                                     std::string_view const path,
-                                                     value_type& result,
-                                                     ReadMode mode,
-                                                     AstDiagnostics& errors) {
-    auto const seen{read_record<Field>(
-        reader,
-        node,
-        "turrets",
-        path,
-        parse_field,
-        ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            FieldReader const read{reader, value, location, errors, mode};
-            switch (field) {
-                case Field::detection_radius:
-                    read(result.detection_radius, constraints::finite);
-                    break;
-                case Field::target_refresh_frequency:
-                    read(result.target_refresh_frequency, constraints::finite);
-                    break;
-                case Field::laser:
-                    read(result.laser);
-                    break;
-                case Field::max_health:
-                    read(result.max_health);
-                    break;
-                case Field::Count:
-                    std::unreachable();
-            }
-        }))};
-
-    if (!seen) {
-        append_errors(errors, seen.error());
-        return;
-    }
-}
-
-inline auto TypeReader<sim::TurretSimConfigOverrides>::read(Reader const& reader,
-                                                            NodeIndex const node,
-                                                            std::string_view const path)
-    -> ReadResult<value_type> {
-    return read_override(reader, node, path, value_type{});
-}
-
-inline void TypeReader<sim::TurretSimConfigOverrides>::decode(Reader const& reader,
-                                                              NodeIndex const node,
-                                                              std::string_view const path,
-                                                              value_type& result,
-                                                              ReadMode,
-                                                              AstDiagnostics& errors) {
-    auto const seen{read_record<Field>(
-        reader,
-        node,
-        "turrets",
-        path,
-        parse_field,
-        ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            FieldReader const read{reader, value, location, errors};
-            switch (field) {
-                case Field::detection_radius:
-                    read.patch(result.detection_radius, constraints::finite);
-                    break;
-                case Field::target_refresh_frequency:
-                    read.patch(result.target_refresh_frequency, constraints::finite);
-                    break;
-                case Field::laser:
-                    read.patch(result.laser);
-                    break;
-                case Field::max_health:
-                    read.patch(result.max_health);
-                    break;
-                case Field::Count:
-                    std::unreachable();
-            }
-        }))};
-
-    if (!seen) {
-        append_errors(errors, seen.error());
-        return;
-    }
-}
 
 } // namespace ioj::s7

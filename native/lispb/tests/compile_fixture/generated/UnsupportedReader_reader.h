@@ -4,6 +4,7 @@
 #pragma once
 
 #include "ioj/parse_enum.h"
+#include "ioj/s7/record_reader.h"
 #include "UnsupportedReader.h"
 #include <ioj/s7/field_reader.h>
 
@@ -13,18 +14,36 @@
 
 namespace ioj::s7 {
 template <>
-struct TypeReader<codegen_compile_fixture::UnsupportedReader> {
-    using value_type = codegen_compile_fixture::UnsupportedReader;
-
-    static ReadResult<value_type>
-        read(Reader const& reader, NodeIndex const node, std::string_view const path);
-
+struct TypeReader<codegen_compile_fixture::UnsupportedReader>
+    : RecordReader<codegen_compile_fixture::UnsupportedReader> {
     static void decode(Reader const& reader,
                        NodeIndex const node,
                        std::string_view const path,
                        value_type& result,
                        ReadMode mode,
-                       AstDiagnostics& errors);
+                       AstDiagnostics& errors) {
+        auto const seen{read_record<Field>(
+            reader,
+            node,
+            "unsupported",
+            path,
+            parse_field,
+            ([&](Field const field, NodeIndex const value, std::string_view const location) {
+                FieldReader const read{reader, value, location, errors, mode};
+                switch (field) {
+                    case Field::target:
+                        read(result.target);
+                        break;
+                    case Field::Count:
+                        std::unreachable();
+                }
+            }))};
+
+        if (!seen) {
+            append_errors(errors, seen.error());
+            return;
+        }
+    }
   private:
     enum class Field : std::uint8_t {
         target,
@@ -38,41 +57,5 @@ struct TypeReader<codegen_compile_fixture::UnsupportedReader> {
 
     static constexpr std::array<std::string_view, 1> field_names{"target"};
 };
-
-inline auto TypeReader<codegen_compile_fixture::UnsupportedReader>::read(
-    Reader const& reader, NodeIndex const node, std::string_view const path)
-    -> ReadResult<value_type> {
-    return read_generated<value_type>(reader, node, path);
-}
-
-inline void
-    TypeReader<codegen_compile_fixture::UnsupportedReader>::decode(Reader const& reader,
-                                                                   NodeIndex const node,
-                                                                   std::string_view const path,
-                                                                   value_type& result,
-                                                                   ReadMode mode,
-                                                                   AstDiagnostics& errors) {
-    auto const seen{read_record<Field>(
-        reader,
-        node,
-        "unsupported",
-        path,
-        parse_field,
-        ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            FieldReader const read{reader, value, location, errors, mode};
-            switch (field) {
-                case Field::target:
-                    read(result.target);
-                    break;
-                case Field::Count:
-                    std::unreachable();
-            }
-        }))};
-
-    if (!seen) {
-        append_errors(errors, seen.error());
-        return;
-    }
-}
 
 } // namespace ioj::s7

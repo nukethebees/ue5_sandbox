@@ -243,8 +243,6 @@ void lower_record_reader(LoweringContext& context,
                                          (overrides                        ? "Overrides"
                                           : records.constraint_policy[row] ? "Value"
                                                                            : ""))};
-    auto const reader_type{
-        ir.types.template_type(ir.types.named("ioj::s7::TypeReader"), {value_type})};
     auto const& members{context.declarations.record_members};
     if (std::ranges::any_of(fields, [&](auto field) {
             auto const& options{members.s7[members.index(field)]};
@@ -272,7 +270,6 @@ void lower_record_reader(LoweringContext& context,
         entries.push_back({key, "Field::" + context.text(member)});
     }
     NodeListBuilder declarations{ir};
-    declarations.add(ir.using_declaration(ir.strings.intern("value_type"), value_type), 2);
     auto const includes{context.declarations.items(records.s7_reader_includes[row])};
     emission.reader_includes.insert(
         emission.reader_includes.end(), includes.begin(), includes.end());
@@ -283,26 +280,14 @@ void lower_record_reader(LoweringContext& context,
         auto const function{ir.function(method, return_type)};
         ir.set_function_parameters(function, parameters);
         ir.set_function_receiver(function, FunctionReceiver::static_);
-        declarations.add(ir.header_function(function), 2);
-        ir.function_flags(function).set_is_inline(true);
         ir.set_function_body(function, body);
-        emission.reader_definitions.push_back(
-            ir.definition(function,
-                          reader_type,
-                          return_type == "void" ? ReturnSyntax::direct : ReturnSyntax::trailing,
-                          true));
+        ir.function_flags(function).set_define_in_header(true);
+        declarations.add(ir.header_function(function), 2);
     }};
     std::vector<FunctionParameterId> const read_parameters{
         ir.parameter("Reader const&", "reader"),
         ir.parameter("NodeIndex const", "node"),
         ir.parameter("std::string_view const", "path")};
-    add_function(
-        "read",
-        "ReadResult<value_type>",
-        read_parameters,
-        {ir.return_stmt(ir.raw_expr(overrides ? "read_override(reader, node, path, value_type{})"
-                                              : "read_generated<value_type>(reader, node, path)",
-                                    {}))});
     if (!overrides && std::ranges::any_of(fields, [&](auto field) {
             auto const index{members.index(field)};
             return !members.initializer[index].has_value();
@@ -360,6 +345,16 @@ void lower_record_reader(LoweringContext& context,
         ir.record(ir.template_id(ir.named("TypeReader"), {ir.type_reference(value_type)}),
                   declarations.build())};
     ir.set_record_template(specialization, ir.template_specialization());
+    std::vector<CppTypeId> base_arguments{value_type};
+    if (overrides) {
+        base_arguments.push_back(ir.types.intern("ReadMode::Override"));
+    }
+    ir.set_record_bases(
+        specialization,
+        {ir.types.template_type(ir.types.named("ioj::s7::RecordReader",
+                                               {ir.types.dependency("ioj::s7::RecordReader",
+                                                                    "ioj/s7/record_reader.h")}),
+                                base_arguments)});
     emission.reader_declarations.push_back(specialization);
 
     for (auto const dependency : context.semantic.dependencies_of(type)) {
