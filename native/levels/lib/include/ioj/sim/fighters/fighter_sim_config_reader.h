@@ -7,7 +7,7 @@
 #include "ioj/settings/attack_distance_band_reader.h"
 #include "ioj/sim/fighters/fighter_sim_config.h"
 #include "ioj/sim/lasers/laser_weapon_sim_config_reader.h"
-#include <ioj/s7/reader.h>
+#include <ioj/s7/field_reader.h>
 
 namespace ioj::s7 {
 template <>
@@ -370,14 +370,7 @@ inline void TypeReader<sim::FighterSimConfig>::decode(Reader const& reader,
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination, auto... checks) {
-                read_checked(
-                    destination,
-                    location,
-                    errors,
-                    [&] { decode_field(reader, value, location, destination, mode, errors); },
-                    checks...);
-            }};
+            FieldReader const read{reader, value, location, errors, mode};
             switch (field) {
                 case Field::max_live_fighters:
                     read(result.max_live_fighters);
@@ -486,90 +479,83 @@ inline void TypeReader<sim::FighterSimConfigOverrides>::decode(Reader const& rea
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination, auto... checks) {
-                read_checked(
-                    destination,
-                    location,
-                    errors,
-                    [&] { decode_patch_field(reader, value, location, destination, errors); },
-                    checks...);
-            }};
+            FieldReader const read{reader, value, location, errors};
             switch (field) {
                 case Field::max_live_fighters:
-                    read(result.max_live_fighters);
+                    read.patch(result.max_live_fighters);
                     break;
                 case Field::fire_dot_product_threshold:
-                    read(result.fire_dot_product_threshold, constraints::finite);
+                    read.patch(result.fire_dot_product_threshold, constraints::finite);
                     break;
                 case Field::speed:
-                    read(result.speed, constraints::finite);
+                    read.patch(result.speed, constraints::finite);
                     break;
                 case Field::turn_speed_unitless:
-                    read(result.turn_speed_unitless, constraints::finite);
+                    read.patch(result.turn_speed_unitless, constraints::finite);
                     break;
                 case Field::avoidance_clear_update_frequency:
-                    read(result.avoidance_clear_update_frequency, constraints::finite);
+                    read.patch(result.avoidance_clear_update_frequency, constraints::finite);
                     break;
                 case Field::avoidance_update_frequency:
-                    read(result.avoidance_update_frequency, constraints::finite);
+                    read.patch(result.avoidance_update_frequency, constraints::finite);
                     break;
                 case Field::avoidance_active_update_frequency:
-                    read(result.avoidance_active_update_frequency, constraints::finite);
+                    read.patch(result.avoidance_active_update_frequency, constraints::finite);
                     break;
                 case Field::avoidance_immediate_update_frequency:
-                    read(result.avoidance_immediate_update_frequency, constraints::finite);
+                    read.patch(result.avoidance_immediate_update_frequency, constraints::finite);
                     break;
                 case Field::avoidance_lookahead_time:
-                    read(result.avoidance_lookahead_time, constraints::finite);
+                    read.patch(result.avoidance_lookahead_time, constraints::finite);
                     break;
                 case Field::avoidance_clearance_buffer:
-                    read(result.avoidance_clearance_buffer, constraints::finite);
+                    read.patch(result.avoidance_clearance_buffer, constraints::finite);
                     break;
                 case Field::separation_radius:
-                    read(result.separation_radius, constraints::finite);
+                    read.patch(result.separation_radius, constraints::finite);
                     break;
                 case Field::separation_strength:
-                    read(result.separation_strength, constraints::finite);
+                    read.patch(result.separation_strength, constraints::finite);
                     break;
                 case Field::steering_memory_duration:
-                    read(result.steering_memory_duration, constraints::finite);
+                    read.patch(result.steering_memory_duration, constraints::finite);
                     break;
                 case Field::dense_traffic_neighbour_threshold:
-                    read(result.dense_traffic_neighbour_threshold);
+                    read.patch(result.dense_traffic_neighbour_threshold);
                     break;
                 case Field::laser:
-                    read(result.laser);
+                    read.patch(result.laser);
                     break;
                 case Field::health:
-                    read(result.health);
+                    read.patch(result.health);
                     break;
                 case Field::attack_retry_cooldown:
-                    read(result.attack_retry_cooldown, constraints::finite);
+                    read.patch(result.attack_retry_cooldown, constraints::finite);
                     break;
                 case Field::attack_engagement_threshold:
-                    read(result.attack_engagement_threshold, constraints::finite);
+                    read.patch(result.attack_engagement_threshold, constraints::finite);
                     break;
                 case Field::attack_reposition_frequency:
-                    read(result.attack_reposition_frequency, constraints::finite);
+                    read.patch(result.attack_reposition_frequency, constraints::finite);
                     break;
                 case Field::attack_distance_band:
-                    read(result.attack_distance_band);
+                    read.patch(result.attack_distance_band);
                     break;
                 case Field::arrival_distance:
-                    read(result.arrival_distance, constraints::finite);
+                    read.patch(result.arrival_distance, constraints::finite);
                     break;
                 case Field::los_check_buffer:
-                    read(result.los_check_buffer, constraints::finite);
+                    read.patch(result.los_check_buffer, constraints::finite);
                     break;
                 case Field::awareness_radius:
-                    read(result.awareness_radius, constraints::finite);
+                    read.patch(result.awareness_radius, constraints::finite);
                     break;
                 case Field::awareness_scan_frequency:
-                    read(result.awareness_scan_frequency, constraints::finite);
+                    read.patch(result.awareness_scan_frequency, constraints::finite);
                     break;
                 case Field::minimum_opportunistic_intercept_deviation_dot_product:
-                    read(result.minimum_opportunistic_intercept_deviation_dot_product,
-                         constraints::finite);
+                    read.patch(result.minimum_opportunistic_intercept_deviation_dot_product,
+                               constraints::finite);
                     break;
                 case Field::Count:
                     std::unreachable();

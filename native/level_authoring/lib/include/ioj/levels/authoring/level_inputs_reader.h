@@ -11,7 +11,7 @@
 #include "ioj/levels/level_collision_grid_definition_reader.h"
 #include "ioj/levels/team_result_definition_reader.h"
 #include "ioj/s7/field_constraints.h"
-#include <ioj/s7/reader.h>
+#include <ioj/s7/field_reader.h>
 
 namespace ioj::s7 {
 template <>
@@ -434,14 +434,7 @@ inline void TypeReader<levels::authoring::EntityInput>::decode(Reader const& rea
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination, auto... checks) {
-                read_checked(
-                    destination,
-                    location,
-                    errors,
-                    [&] { decode_field(reader, value, location, destination, mode, errors); },
-                    checks...);
-            }};
+            FieldReader const read{reader, value, location, errors, mode};
             switch (field) {
                 case Field::id:
                     read(result.id);
@@ -514,14 +507,7 @@ inline void TypeReader<levels::authoring::ObjectiveInput>::decode(Reader const& 
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination, auto... checks) {
-                read_checked(
-                    destination,
-                    location,
-                    errors,
-                    [&] { decode_field(reader, value, location, destination, mode, errors); },
-                    checks...);
-            }};
+            FieldReader const read{reader, value, location, errors, mode};
             switch (field) {
                 case Field::id:
                     read(result.id);
@@ -584,14 +570,7 @@ inline void TypeReader<levels::authoring::MissionInput>::decode(Reader const& re
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination, auto... checks) {
-                read_checked(
-                    destination,
-                    location,
-                    errors,
-                    [&] { decode_field(reader, value, location, destination, mode, errors); },
-                    checks...);
-            }};
+            FieldReader const read{reader, value, location, errors, mode};
             switch (field) {
                 case Field::objectives:
                     read(result.objectives);
@@ -636,14 +615,7 @@ inline void TypeReader<levels::authoring::LevelInput>::decode(Reader const& read
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination, auto... checks) {
-                read_checked(
-                    destination,
-                    location,
-                    errors,
-                    [&] { decode_field(reader, value, location, destination, mode, errors); },
-                    checks...);
-            }};
+            FieldReader const read{reader, value, location, errors, mode};
             switch (field) {
                 case Field::id:
                     read(result.id);
@@ -716,14 +688,7 @@ inline void TypeReader<levels::authoring::IncludedLevelInput>::decode(Reader con
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination, auto... checks) {
-                read_checked(
-                    destination,
-                    location,
-                    errors,
-                    [&] { decode_field(reader, value, location, destination, mode, errors); },
-                    checks...);
-            }};
+            FieldReader const read{reader, value, location, errors, mode};
             switch (field) {
                 case Field::path:
                     read(result.path);
@@ -772,14 +737,7 @@ inline void
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination, auto... checks) {
-                read_checked(
-                    destination,
-                    location,
-                    errors,
-                    [&] { decode_field(reader, value, location, destination, mode, errors); },
-                    checks...);
-            }};
+            FieldReader const read{reader, value, location, errors, mode};
             switch (field) {
                 case Field::path:
                     read(result.path);
@@ -827,14 +785,7 @@ inline void TypeReader<levels::authoring::CatalogInput>::decode(Reader const& re
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination, auto... checks) {
-                read_checked(
-                    destination,
-                    location,
-                    errors,
-                    [&] { decode_field(reader, value, location, destination, mode, errors); },
-                    checks...);
-            }};
+            FieldReader const read{reader, value, location, errors, mode};
             switch (field) {
                 case Field::levels:
                     read(result.levels);

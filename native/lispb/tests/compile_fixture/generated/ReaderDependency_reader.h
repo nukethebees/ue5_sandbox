@@ -5,7 +5,7 @@
 
 #include "ReadableRecords_reader.h"
 #include "ReaderDependency.h"
-#include <ioj/s7/reader.h>
+#include <ioj/s7/field_reader.h>
 
 namespace ioj::s7 {
 template <>
@@ -58,17 +58,10 @@ inline auto TypeReader<codegen_compile_fixture::ReaderDependency>::construct(
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination, auto... checks) {
-                read_checked(
-                    destination,
-                    location,
-                    errors,
-                    [&] { read_field(reader, value, location, destination, errors); },
-                    checks...);
-            }};
+            FieldReader const read{reader, value, location, errors};
             switch (field) {
                 case Field::child:
-                    read(value_child);
+                    read.construct(value_child);
                     break;
                 case Field::Count:
                     std::unreachable();
@@ -106,14 +99,7 @@ inline void
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination, auto... checks) {
-                read_checked(
-                    destination,
-                    location,
-                    errors,
-                    [&] { decode_field(reader, value, location, destination, mode, errors); },
-                    checks...);
-            }};
+            FieldReader const read{reader, value, location, errors, mode};
             switch (field) {
                 case Field::child:
                     read(result.child);

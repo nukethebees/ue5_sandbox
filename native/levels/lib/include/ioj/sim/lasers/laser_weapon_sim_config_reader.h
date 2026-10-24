@@ -5,7 +5,7 @@
 
 #include "ioj/s7/field_constraints.h"
 #include "ioj/sim/lasers/laser_weapon_sim_config.h"
-#include <ioj/s7/reader.h>
+#include <ioj/s7/field_reader.h>
 
 namespace ioj::s7 {
 template <>
@@ -108,14 +108,7 @@ inline void TypeReader<sim::LaserWeaponSimConfig>::decode(Reader const& reader,
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination, auto... checks) {
-                read_checked(
-                    destination,
-                    location,
-                    errors,
-                    [&] { decode_field(reader, value, location, destination, mode, errors); },
-                    checks...);
-            }};
+            FieldReader const read{reader, value, location, errors, mode};
             switch (field) {
                 case Field::damage:
                     read(result.damage);
@@ -160,26 +153,19 @@ inline void TypeReader<sim::LaserWeaponSimConfigOverrides>::decode(Reader const&
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination, auto... checks) {
-                read_checked(
-                    destination,
-                    location,
-                    errors,
-                    [&] { decode_patch_field(reader, value, location, destination, errors); },
-                    checks...);
-            }};
+            FieldReader const read{reader, value, location, errors};
             switch (field) {
                 case Field::damage:
-                    read(result.damage);
+                    read.patch(result.damage);
                     break;
                 case Field::projectile_speed:
-                    read(result.projectile_speed, constraints::finite);
+                    read.patch(result.projectile_speed, constraints::finite);
                     break;
                 case Field::max_distance:
-                    read(result.max_distance, constraints::finite);
+                    read.patch(result.max_distance, constraints::finite);
                     break;
                 case Field::fire_cooldown:
-                    read(result.fire_cooldown, constraints::finite);
+                    read.patch(result.fire_cooldown, constraints::finite);
                     break;
                 case Field::Count:
                     std::unreachable();

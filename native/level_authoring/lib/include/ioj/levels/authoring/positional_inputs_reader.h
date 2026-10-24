@@ -6,7 +6,7 @@
 #include "ioj/levels/authoring/identifier_reader.h"
 #include "ioj/levels/authoring/input_readers.h"
 #include "ioj/levels/authoring/positional_inputs.h"
-#include <ioj/s7/reader.h>
+#include <ioj/s7/field_reader.h>
 
 namespace ioj::s7 {
 template <>
@@ -67,24 +67,14 @@ inline void TypeReader<levels::authoring::NamedExprInput>::decode(Reader const& 
                                                                   value_type& result,
                                                                   ReadMode mode,
                                                                   AstDiagnostics& errors) {
-    auto const read{
-        [&](auto& destination, NodeIndex value, std::string_view location, auto... checks) {
-            read_checked(
-                destination,
-                location,
-                errors,
-                [&] { decode_field(reader, value, location, destination, mode, errors); },
-                checks...);
-        }};
-
     auto const arguments{positional_arguments(reader, node, "expr", path, 2)};
 
     if (!arguments) {
         append_errors(errors, arguments.error());
         return;
     }
-    read(result.name, (*arguments)[0], std::string{path} + ".name");
-    read(result.value, (*arguments)[1], std::string{path} + ".value");
+    FieldReader{reader, (*arguments)[0], std::string{path} + ".name", errors, mode}(result.name);
+    FieldReader{reader, (*arguments)[1], std::string{path} + ".value", errors, mode}(result.value);
 }
 
 inline auto TypeReader<levels::authoring::UnlockInput>::read(Reader const& reader,
@@ -100,23 +90,14 @@ inline void TypeReader<levels::authoring::UnlockInput>::decode(Reader const& rea
                                                                value_type& result,
                                                                ReadMode mode,
                                                                AstDiagnostics& errors) {
-    auto const read{
-        [&](auto& destination, NodeIndex value, std::string_view location, auto... checks) {
-            read_checked(
-                destination,
-                location,
-                errors,
-                [&] { decode_field(reader, value, location, destination, mode, errors); },
-                checks...);
-        }};
-
     auto const arguments{positional_arguments(reader, node, "level-completed", path, 1)};
 
     if (!arguments) {
         append_errors(errors, arguments.error());
         return;
     }
-    read(result.level, (*arguments)[0], std::string{path} + ".level-id");
+    FieldReader{reader, (*arguments)[0], std::string{path} + ".level-id", errors, mode}(
+        result.level);
 }
 
 inline auto TypeReader<levels::authoring::ExprReferenceInput>::read(Reader const& reader,
@@ -132,23 +113,13 @@ inline void TypeReader<levels::authoring::ExprReferenceInput>::decode(Reader con
                                                                       value_type& result,
                                                                       ReadMode mode,
                                                                       AstDiagnostics& errors) {
-    auto const read{
-        [&](auto& destination, NodeIndex value, std::string_view location, auto... checks) {
-            read_checked(
-                destination,
-                location,
-                errors,
-                [&] { decode_field(reader, value, location, destination, mode, errors); },
-                checks...);
-        }};
-
     auto const arguments{positional_arguments(reader, node, "expr-ref", path, 1)};
 
     if (!arguments) {
         append_errors(errors, arguments.error());
         return;
     }
-    read(result.name, (*arguments)[0], std::string{path} + ".name");
+    FieldReader{reader, (*arguments)[0], std::string{path} + ".name", errors, mode}(result.name);
 }
 
 } // namespace ioj::s7

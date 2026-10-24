@@ -6,7 +6,7 @@
 #include "ioj/s7/field_constraints.h"
 #include "ioj/sim/lasers/laser_weapon_sim_config_reader.h"
 #include "ioj/sim/spinners/spinner_sim_config.h"
-#include <ioj/s7/reader.h>
+#include <ioj/s7/field_reader.h>
 
 namespace ioj::s7 {
 template <>
@@ -93,14 +93,7 @@ inline void TypeReader<sim::SpinnerSimConfig>::decode(Reader const& reader,
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination, auto... checks) {
-                read_checked(
-                    destination,
-                    location,
-                    errors,
-                    [&] { decode_field(reader, value, location, destination, mode, errors); },
-                    checks...);
-            }};
+            FieldReader const read{reader, value, location, errors, mode};
             switch (field) {
                 case Field::yaw_rotation_speed_degrees:
                     read(result.yaw_rotation_speed_degrees, constraints::finite);
@@ -139,20 +132,13 @@ inline void TypeReader<sim::SpinnerSimConfigOverrides>::decode(Reader const& rea
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination, auto... checks) {
-                read_checked(
-                    destination,
-                    location,
-                    errors,
-                    [&] { decode_patch_field(reader, value, location, destination, errors); },
-                    checks...);
-            }};
+            FieldReader const read{reader, value, location, errors};
             switch (field) {
                 case Field::yaw_rotation_speed_degrees:
-                    read(result.yaw_rotation_speed_degrees, constraints::finite);
+                    read.patch(result.yaw_rotation_speed_degrees, constraints::finite);
                     break;
                 case Field::laser:
-                    read(result.laser);
+                    read.patch(result.laser);
                     break;
                 case Field::Count:
                     std::unreachable();

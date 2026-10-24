@@ -5,7 +5,7 @@
 
 #include "ioj/s7/field_constraints.h"
 #include "ReadableRecords.h"
-#include <ioj/s7/reader.h>
+#include <ioj/s7/field_reader.h>
 
 namespace ioj::s7 {
 template <>
@@ -328,24 +328,15 @@ inline auto TypeReader<codegen_compile_fixture::PositionalChild>::construct(
     AstDiagnostics errors{};
     std::optional<decltype(value_type::name)> value_name{};
     std::optional<decltype(value_type::count)> value_count{};
-    auto const read{
-        [&](auto& destination, NodeIndex value, std::string_view location, auto... checks) {
-            read_checked(
-                destination,
-                location,
-                errors,
-                [&] { read_field(reader, value, location, destination, errors); },
-                checks...);
-        }};
-
     auto const arguments{positional_arguments(reader, node, "position", path, 2)};
 
     if (!arguments) {
         append_errors(errors, arguments.error());
         return std::unexpected{std::move(errors)};
     }
-    read(value_name, (*arguments)[0], std::string{path} + ".name");
-    read(value_count, (*arguments)[1], std::string{path} + ".count", constraints::nonnegative);
+    FieldReader{reader, (*arguments)[0], std::string{path} + ".name", errors}.construct(value_name);
+    FieldReader{reader, (*arguments)[1], std::string{path} + ".count", errors}.construct(
+        value_count, constraints::nonnegative);
     if (!errors.empty()) {
         return std::unexpected{std::move(errors)};
     }
@@ -362,24 +353,15 @@ inline void
                                                                  value_type& result,
                                                                  ReadMode mode,
                                                                  AstDiagnostics& errors) {
-    auto const read{
-        [&](auto& destination, NodeIndex value, std::string_view location, auto... checks) {
-            read_checked(
-                destination,
-                location,
-                errors,
-                [&] { decode_field(reader, value, location, destination, mode, errors); },
-                checks...);
-        }};
-
     auto const arguments{positional_arguments(reader, node, "position", path, 2)};
 
     if (!arguments) {
         append_errors(errors, arguments.error());
         return;
     }
-    read(result.name, (*arguments)[0], std::string{path} + ".name");
-    read(result.count, (*arguments)[1], std::string{path} + ".count", constraints::nonnegative);
+    FieldReader{reader, (*arguments)[0], std::string{path} + ".name", errors, mode}(result.name);
+    FieldReader{reader, (*arguments)[1], std::string{path} + ".count", errors, mode}(
+        result.count, constraints::nonnegative);
 }
 
 inline auto TypeReader<codegen_compile_fixture::DefaultReadable>::read(Reader const& reader,
@@ -403,14 +385,7 @@ inline void
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination, auto... checks) {
-                read_checked(
-                    destination,
-                    location,
-                    errors,
-                    [&] { decode_field(reader, value, location, destination, mode, errors); },
-                    checks...);
-            }};
+            FieldReader const read{reader, value, location, errors, mode};
             switch (field) {
                 case Field::count:
                     read(result.count);
@@ -455,14 +430,7 @@ inline void
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination, auto... checks) {
-                read_checked(
-                    destination,
-                    location,
-                    errors,
-                    [&] { decode_field(reader, value, location, destination, mode, errors); },
-                    checks...);
-            }};
+            FieldReader const read{reader, value, location, errors, mode};
             switch (field) {
                 case Field::children:
                     read(result.children);
@@ -497,19 +465,12 @@ inline auto TypeReader<codegen_compile_fixture::BoundedInteger>::construct(
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination, auto... checks) {
-                read_checked(
-                    destination,
-                    location,
-                    errors,
-                    [&] { read_field(reader, value, location, destination, errors); },
-                    checks...);
-            }};
+            FieldReader const read{reader, value, location, errors};
             switch (field) {
                 case Field::value:
-                    read(value_value,
-                         constraints::minimum((-9223372036854775807LL - 1LL)),
-                         constraints::maximum(9223372036854775806ULL));
+                    read.construct(value_value,
+                                   constraints::minimum((-9223372036854775807LL - 1LL)),
+                                   constraints::maximum(9223372036854775806ULL));
                     break;
                 case Field::Count:
                     std::unreachable();
@@ -546,14 +507,7 @@ inline void TypeReader<codegen_compile_fixture::BoundedInteger>::decode(Reader c
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination, auto... checks) {
-                read_checked(
-                    destination,
-                    location,
-                    errors,
-                    [&] { decode_field(reader, value, location, destination, mode, errors); },
-                    checks...);
-            }};
+            FieldReader const read{reader, value, location, errors, mode};
             switch (field) {
                 case Field::value:
                     read(result.value,
@@ -597,20 +551,13 @@ inline auto TypeReader<codegen_compile_fixture::ReadableChild>::construct(
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination, auto... checks) {
-                read_checked(
-                    destination,
-                    location,
-                    errors,
-                    [&] { read_field(reader, value, location, destination, errors); },
-                    checks...);
-            }};
+            FieldReader const read{reader, value, location, errors};
             switch (field) {
                 case Field::name:
-                    read(value_name);
+                    read.construct(value_name);
                     break;
                 case Field::count:
-                    read(value_count, constraints::nonnegative);
+                    read.construct(value_count, constraints::nonnegative);
                     break;
                 case Field::Count:
                     std::unreachable();
@@ -650,14 +597,7 @@ inline void TypeReader<codegen_compile_fixture::ReadableChild>::decode(Reader co
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination, auto... checks) {
-                read_checked(
-                    destination,
-                    location,
-                    errors,
-                    [&] { decode_field(reader, value, location, destination, mode, errors); },
-                    checks...);
-            }};
+            FieldReader const read{reader, value, location, errors, mode};
             switch (field) {
                 case Field::name:
                     read(result.name);
@@ -709,45 +649,38 @@ inline auto TypeReader<codegen_compile_fixture::ReadableRecord>::construct(
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination, auto... checks) {
-                read_checked(
-                    destination,
-                    location,
-                    errors,
-                    [&] { read_field(reader, value, location, destination, errors); },
-                    checks...);
-            }};
+            FieldReader const read{reader, value, location, errors};
             switch (field) {
                 case Field::child:
-                    read(value_child);
+                    read.construct(value_child);
                     break;
                 case Field::values:
-                    read(value_values);
+                    read.construct(value_values);
                     break;
                 case Field::points:
-                    read(value_points);
+                    read.construct(value_points);
                     break;
                 case Field::enabled:
-                    read(value_enabled);
+                    read.construct(value_enabled);
                     break;
                 case Field::maybe:
-                    read(value_maybe);
+                    read.construct(value_maybe);
                     break;
                 case Field::scale:
-                    read(value_scale,
-                         constraints::positive,
-                         constraints::finite,
-                         constraints::minimum(5.00000000000000000e-01),
-                         constraints::maximum(5ULL));
+                    read.construct(value_scale,
+                                   constraints::positive,
+                                   constraints::finite,
+                                   constraints::minimum(5.00000000000000000e-01),
+                                   constraints::maximum(5ULL));
                     break;
                 case Field::offset:
-                    read(value_offset, constraints::nonzero);
+                    read.construct(value_offset, constraints::nonzero);
                     break;
                 case Field::title:
-                    read(value_title, constraints::nonempty);
+                    read.construct(value_title, constraints::nonempty);
                     break;
                 case Field::mode:
-                    read(value_mode);
+                    read.construct(value_mode);
                     break;
                 case Field::Count:
                     std::unreachable();
@@ -809,14 +742,7 @@ inline void TypeReader<codegen_compile_fixture::ReadableRecord>::decode(Reader c
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination, auto... checks) {
-                read_checked(
-                    destination,
-                    location,
-                    errors,
-                    [&] { decode_field(reader, value, location, destination, mode, errors); },
-                    checks...);
-            }};
+            FieldReader const read{reader, value, location, errors, mode};
             switch (field) {
                 case Field::child:
                     read(result.child);

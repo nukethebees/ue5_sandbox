@@ -5,7 +5,7 @@
 
 #include "ioj/s7/field_constraints.h"
 #include "ioj/settings/capital_presentation.h"
-#include <ioj/s7/reader.h>
+#include <ioj/s7/field_reader.h>
 
 namespace ioj::s7 {
 template <>
@@ -162,14 +162,7 @@ inline void TypeReader<settings::CapitalPresentation>::decode(Reader const& read
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination, auto... checks) {
-                read_checked(
-                    destination,
-                    location,
-                    errors,
-                    [&] { decode_field(reader, value, location, destination, mode, errors); },
-                    checks...);
-            }};
+            FieldReader const read{reader, value, location, errors, mode};
             switch (field) {
                 case Field::n_small_explosions:
                     read(result.n_small_explosions);
@@ -220,32 +213,25 @@ inline void TypeReader<settings::CapitalPresentationOverrides>::decode(Reader co
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination, auto... checks) {
-                read_checked(
-                    destination,
-                    location,
-                    errors,
-                    [&] { decode_patch_field(reader, value, location, destination, errors); },
-                    checks...);
-            }};
+            FieldReader const read{reader, value, location, errors};
             switch (field) {
                 case Field::n_small_explosions:
-                    read(result.n_small_explosions);
+                    read.patch(result.n_small_explosions);
                     break;
                 case Field::time_between_explosions:
-                    read(result.time_between_explosions, constraints::finite);
+                    read.patch(result.time_between_explosions, constraints::finite);
                     break;
                 case Field::min_small_explosion_range:
-                    read(result.min_small_explosion_range, constraints::finite);
+                    read.patch(result.min_small_explosion_range, constraints::finite);
                     break;
                 case Field::max_small_explosion_range:
-                    read(result.max_small_explosion_range, constraints::finite);
+                    read.patch(result.max_small_explosion_range, constraints::finite);
                     break;
                 case Field::large_explosion_delay:
-                    read(result.large_explosion_delay, constraints::finite);
+                    read.patch(result.large_explosion_delay, constraints::finite);
                     break;
                 case Field::proxy_arrow_size:
-                    read(result.proxy_arrow_size, constraints::finite);
+                    read.patch(result.proxy_arrow_size, constraints::finite);
                     break;
                 case Field::Count:
                     std::unreachable();

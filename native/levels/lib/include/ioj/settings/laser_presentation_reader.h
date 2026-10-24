@@ -5,7 +5,7 @@
 
 #include "ioj/s7/field_constraints.h"
 #include "ioj/settings/laser_presentation.h"
-#include <ioj/s7/reader.h>
+#include <ioj/s7/field_reader.h>
 
 namespace ioj::s7 {
 template <>
@@ -92,14 +92,7 @@ inline void TypeReader<settings::LaserPresentation>::decode(Reader const& reader
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination, auto... checks) {
-                read_checked(
-                    destination,
-                    location,
-                    errors,
-                    [&] { decode_field(reader, value, location, destination, mode, errors); },
-                    checks...);
-            }};
+            FieldReader const read{reader, value, location, errors, mode};
             switch (field) {
                 case Field::min_cull_distance:
                     read(result.min_cull_distance, constraints::finite);
@@ -138,20 +131,13 @@ inline void TypeReader<settings::LaserPresentationOverrides>::decode(Reader cons
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination, auto... checks) {
-                read_checked(
-                    destination,
-                    location,
-                    errors,
-                    [&] { decode_patch_field(reader, value, location, destination, errors); },
-                    checks...);
-            }};
+            FieldReader const read{reader, value, location, errors};
             switch (field) {
                 case Field::min_cull_distance:
-                    read(result.min_cull_distance, constraints::finite);
+                    read.patch(result.min_cull_distance, constraints::finite);
                     break;
                 case Field::max_cull_distance:
-                    read(result.max_cull_distance, constraints::finite);
+                    read.patch(result.max_cull_distance, constraints::finite);
                     break;
                 case Field::Count:
                     std::unreachable();

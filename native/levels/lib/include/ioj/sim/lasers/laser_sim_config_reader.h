@@ -4,7 +4,7 @@
 #pragma once
 
 #include "ioj/sim/lasers/laser_sim_config.h"
-#include <ioj/s7/reader.h>
+#include <ioj/s7/field_reader.h>
 
 namespace ioj::s7 {
 template <>
@@ -83,14 +83,7 @@ inline void TypeReader<sim::LaserSimConfig>::decode(Reader const& reader,
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination, auto... checks) {
-                read_checked(
-                    destination,
-                    location,
-                    errors,
-                    [&] { decode_field(reader, value, location, destination, mode, errors); },
-                    checks...);
-            }};
+            FieldReader const read{reader, value, location, errors, mode};
             switch (field) {
                 case Field::n_preallocated_instances:
                     read(result.n_preallocated_instances);
@@ -126,17 +119,10 @@ inline void TypeReader<sim::LaserSimConfigOverrides>::decode(Reader const& reade
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination, auto... checks) {
-                read_checked(
-                    destination,
-                    location,
-                    errors,
-                    [&] { decode_patch_field(reader, value, location, destination, errors); },
-                    checks...);
-            }};
+            FieldReader const read{reader, value, location, errors};
             switch (field) {
                 case Field::n_preallocated_instances:
-                    read(result.n_preallocated_instances);
+                    read.patch(result.n_preallocated_instances);
                     break;
                 case Field::Count:
                     std::unreachable();

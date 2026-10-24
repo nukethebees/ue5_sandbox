@@ -5,7 +5,7 @@
 
 #include "ioj/levels/authoring/identifier_reader.h"
 #include "ioj/levels/objective_dependency.h"
-#include <ioj/s7/reader.h>
+#include <ioj/s7/field_reader.h>
 
 namespace ioj::s7 {
 template <>
@@ -36,24 +36,16 @@ inline void TypeReader<levels::ObjectiveDependency>::decode(Reader const& reader
                                                             value_type& result,
                                                             ReadMode mode,
                                                             AstDiagnostics& errors) {
-    auto const read{
-        [&](auto& destination, NodeIndex value, std::string_view location, auto... checks) {
-            read_checked(
-                destination,
-                location,
-                errors,
-                [&] { decode_field(reader, value, location, destination, mode, errors); },
-                checks...);
-        }};
-
     auto const arguments{positional_arguments(reader, node, "objective-resolved", path, 2)};
 
     if (!arguments) {
         append_errors(errors, arguments.error());
         return;
     }
-    read(result.objective, (*arguments)[0], std::string{path} + ".objective");
-    read(result.outcome, (*arguments)[1], std::string{path} + ".outcome");
+    FieldReader{reader, (*arguments)[0], std::string{path} + ".objective", errors, mode}(
+        result.objective);
+    FieldReader{reader, (*arguments)[1], std::string{path} + ".outcome", errors, mode}(
+        result.outcome);
 }
 
 } // namespace ioj::s7

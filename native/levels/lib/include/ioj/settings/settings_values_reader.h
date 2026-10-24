@@ -15,7 +15,7 @@
 #include "ioj/sim/player/player_sim_config_reader.h"
 #include "ioj/sim/spinners/spinner_sim_config_reader.h"
 #include "ioj/sim/turrets/turret_sim_config_reader.h"
-#include <ioj/s7/reader.h>
+#include <ioj/s7/field_reader.h>
 
 namespace ioj::s7 {
 template <>
@@ -242,14 +242,7 @@ inline void TypeReader<settings::SettingsValues>::decode(Reader const& reader,
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination, auto... checks) {
-                read_checked(
-                    destination,
-                    location,
-                    errors,
-                    [&] { decode_field(reader, value, location, destination, mode, errors); },
-                    checks...);
-            }};
+            FieldReader const read{reader, value, location, errors, mode};
             switch (field) {
                 case Field::tick:
                     read(result.tick);
@@ -315,47 +308,40 @@ inline void TypeReader<settings::SettingsValuesOverrides>::decode(Reader const& 
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination, auto... checks) {
-                read_checked(
-                    destination,
-                    location,
-                    errors,
-                    [&] { decode_patch_field(reader, value, location, destination, errors); },
-                    checks...);
-            }};
+            FieldReader const read{reader, value, location, errors};
             switch (field) {
                 case Field::tick:
-                    read(result.tick);
+                    read.patch(result.tick);
                     break;
                 case Field::player_ship:
-                    read(result.player_ship);
+                    read.patch(result.player_ship);
                     break;
                 case Field::laser_projectiles:
-                    read(result.laser_projectiles);
+                    read.patch(result.laser_projectiles);
                     break;
                 case Field::capital_ships:
-                    read(result.capital_ships);
+                    read.patch(result.capital_ships);
                     break;
                 case Field::fighters:
-                    read(result.fighters);
+                    read.patch(result.fighters);
                     break;
                 case Field::turrets:
-                    read(result.turrets);
+                    read.patch(result.turrets);
                     break;
                 case Field::tube_spinners:
-                    read(result.tube_spinners);
+                    read.patch(result.tube_spinners);
                     break;
                 case Field::collision_grid:
-                    read(result.collision_grid);
+                    read.patch(result.collision_grid);
                     break;
                 case Field::hud:
-                    read(result.hud);
+                    read.patch(result.hud);
                     break;
                 case Field::presentation:
-                    read(result.presentation);
+                    read.patch(result.presentation);
                     break;
                 case Field::starfield:
-                    read(result.starfield);
+                    read.patch(result.starfield);
                     break;
                 case Field::Count:
                     std::unreachable();

@@ -5,7 +5,7 @@
 
 #include "NestedSettings.h"
 #include "Records_reader.h"
-#include <ioj/s7/reader.h>
+#include <ioj/s7/field_reader.h>
 
 namespace ioj::s7 {
 template <>
@@ -100,14 +100,7 @@ inline void TypeReader<codegen_compile_fixture::SettingsTarget>::decode(Reader c
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination, auto... checks) {
-                read_checked(
-                    destination,
-                    location,
-                    errors,
-                    [&] { decode_field(reader, value, location, destination, mode, errors); },
-                    checks...);
-            }};
+            FieldReader const read{reader, value, location, errors, mode};
             switch (field) {
                 case Field::first:
                     read(result.first);
@@ -149,23 +142,16 @@ inline void TypeReader<codegen_compile_fixture::SettingsTargetOverrides>::decode
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination, auto... checks) {
-                read_checked(
-                    destination,
-                    location,
-                    errors,
-                    [&] { decode_patch_field(reader, value, location, destination, errors); },
-                    checks...);
-            }};
+            FieldReader const read{reader, value, location, errors};
             switch (field) {
                 case Field::first:
-                    read(result.first);
+                    read.patch(result.first);
                     break;
                 case Field::second:
-                    read(result.second);
+                    read.patch(result.second);
                     break;
                 case Field::external_value:
-                    read(result.external_value);
+                    read.patch(result.external_value);
                     break;
                 case Field::Count:
                     std::unreachable();

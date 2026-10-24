@@ -5,7 +5,7 @@
 
 #include "ioj/s7/frequency_reader.h"
 #include "ioj/settings/tick_settings.h"
-#include <ioj/s7/reader.h>
+#include <ioj/s7/field_reader.h>
 
 namespace ioj::s7 {
 template <>
@@ -92,14 +92,7 @@ inline void TypeReader<settings::TickSettings>::decode(Reader const& reader,
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination, auto... checks) {
-                read_checked(
-                    destination,
-                    location,
-                    errors,
-                    [&] { decode_field(reader, value, location, destination, mode, errors); },
-                    checks...);
-            }};
+            FieldReader const read{reader, value, location, errors, mode};
             switch (field) {
                 case Field::tick_rate:
                     read(result.tick_rate);
@@ -138,20 +131,13 @@ inline void TypeReader<settings::TickSettingsOverrides>::decode(Reader const& re
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination, auto... checks) {
-                read_checked(
-                    destination,
-                    location,
-                    errors,
-                    [&] { decode_patch_field(reader, value, location, destination, errors); },
-                    checks...);
-            }};
+            FieldReader const read{reader, value, location, errors};
             switch (field) {
                 case Field::tick_rate:
-                    read(result.tick_rate);
+                    read.patch(result.tick_rate);
                     break;
                 case Field::time_scale:
-                    read(result.time_scale);
+                    read.patch(result.time_scale);
                     break;
                 case Field::Count:
                     std::unreachable();

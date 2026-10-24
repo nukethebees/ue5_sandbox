@@ -5,7 +5,7 @@
 
 #include "ioj/s7/field_constraints.h"
 #include "Records.h"
-#include <ioj/s7/reader.h>
+#include <ioj/s7/field_reader.h>
 
 namespace ioj::s7 {
 template <>
@@ -260,14 +260,7 @@ inline void TypeReader<codegen_compile_fixture::RangeValue>::decode(Reader const
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination, auto... checks) {
-                read_checked(
-                    destination,
-                    location,
-                    errors,
-                    [&] { decode_field(reader, value, location, destination, mode, errors); },
-                    checks...);
-            }};
+            FieldReader const read{reader, value, location, errors, mode};
             switch (field) {
                 case Field::minimum:
                     read(result.minimum);
@@ -312,14 +305,7 @@ inline void TypeReader<codegen_compile_fixture::RangeSettings>::decode(Reader co
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination, auto... checks) {
-                read_checked(
-                    destination,
-                    location,
-                    errors,
-                    [&] { decode_field(reader, value, location, destination, mode, errors); },
-                    checks...);
-            }};
+            FieldReader const read{reader, value, location, errors, mode};
             switch (field) {
                 case Field::range:
                     read(result.range);
@@ -358,20 +344,13 @@ inline void
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination, auto... checks) {
-                read_checked(
-                    destination,
-                    location,
-                    errors,
-                    [&] { decode_patch_field(reader, value, location, destination, errors); },
-                    checks...);
-            }};
+            FieldReader const read{reader, value, location, errors};
             switch (field) {
                 case Field::range:
-                    read(result.range);
+                    read.patch(result.range);
                     break;
                 case Field::enabled:
-                    read(result.enabled);
+                    read.patch(result.enabled);
                     break;
                 case Field::Count:
                     std::unreachable();
@@ -404,14 +383,7 @@ inline void TypeReader<codegen_compile_fixture::WeaponSettings>::decode(Reader c
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination, auto... checks) {
-                read_checked(
-                    destination,
-                    location,
-                    errors,
-                    [&] { decode_field(reader, value, location, destination, mode, errors); },
-                    checks...);
-            }};
+            FieldReader const read{reader, value, location, errors, mode};
             switch (field) {
                 case Field::damage:
                     read(result.damage, constraints::nonnegative);
@@ -450,20 +422,13 @@ inline void TypeReader<codegen_compile_fixture::WeaponSettingsOverrides>::decode
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination, auto... checks) {
-                read_checked(
-                    destination,
-                    location,
-                    errors,
-                    [&] { decode_patch_field(reader, value, location, destination, errors); },
-                    checks...);
-            }};
+            FieldReader const read{reader, value, location, errors};
             switch (field) {
                 case Field::damage:
-                    read(result.damage, constraints::nonnegative);
+                    read.patch(result.damage, constraints::nonnegative);
                     break;
                 case Field::turn_rate:
-                    read(result.turn_rate);
+                    read.patch(result.turn_rate);
                     break;
                 case Field::Count:
                     std::unreachable();
@@ -496,14 +461,7 @@ inline void TypeReader<codegen_compile_fixture::ActorSettings>::decode(Reader co
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination, auto... checks) {
-                read_checked(
-                    destination,
-                    location,
-                    errors,
-                    [&] { decode_field(reader, value, location, destination, mode, errors); },
-                    checks...);
-            }};
+            FieldReader const read{reader, value, location, errors, mode};
             switch (field) {
                 case Field::max_health:
                     read(result.max_health);
@@ -545,23 +503,16 @@ inline void
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination, auto... checks) {
-                read_checked(
-                    destination,
-                    location,
-                    errors,
-                    [&] { decode_patch_field(reader, value, location, destination, errors); },
-                    checks...);
-            }};
+            FieldReader const read{reader, value, location, errors};
             switch (field) {
                 case Field::max_health:
-                    read(result.max_health);
+                    read.patch(result.max_health);
                     break;
                 case Field::weapon:
-                    read(result.weapon);
+                    read.patch(result.weapon);
                     break;
                 case Field::optional_limit:
-                    read(result.optional_limit);
+                    read.patch(result.optional_limit);
                     break;
                 case Field::Count:
                     std::unreachable();

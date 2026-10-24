@@ -5,7 +5,7 @@
 
 #include "ioj/s7/field_constraints.h"
 #include "ioj/sim/levels/hud_settings.h"
-#include <ioj/s7/reader.h>
+#include <ioj/s7/field_reader.h>
 
 namespace ioj::s7 {
 template <>
@@ -100,14 +100,7 @@ inline void TypeReader<sim::HudSettings>::decode(Reader const& reader,
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination, auto... checks) {
-                read_checked(
-                    destination,
-                    location,
-                    errors,
-                    [&] { decode_field(reader, value, location, destination, mode, errors); },
-                    checks...);
-            }};
+            FieldReader const read{reader, value, location, errors, mode};
             switch (field) {
                 case Field::player_status_update_period:
                     read(result.player_status_update_period,
@@ -155,29 +148,22 @@ inline void TypeReader<sim::HudSettingsOverrides>::decode(Reader const& reader,
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination, auto... checks) {
-                read_checked(
-                    destination,
-                    location,
-                    errors,
-                    [&] { decode_patch_field(reader, value, location, destination, errors); },
-                    checks...);
-            }};
+            FieldReader const read{reader, value, location, errors};
             switch (field) {
                 case Field::player_status_update_period:
-                    read(result.player_status_update_period,
-                         constraints::nonnegative,
-                         constraints::finite);
+                    read.patch(result.player_status_update_period,
+                               constraints::nonnegative,
+                               constraints::finite);
                     break;
                 case Field::entity_count_update_period:
-                    read(result.entity_count_update_period,
-                         constraints::nonnegative,
-                         constraints::finite);
+                    read.patch(result.entity_count_update_period,
+                               constraints::nonnegative,
+                               constraints::finite);
                     break;
                 case Field::mission_status_update_period:
-                    read(result.mission_status_update_period,
-                         constraints::nonnegative,
-                         constraints::finite);
+                    read.patch(result.mission_status_update_period,
+                               constraints::nonnegative,
+                               constraints::finite);
                     break;
                 case Field::Count:
                     std::unreachable();

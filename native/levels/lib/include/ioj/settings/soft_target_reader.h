@@ -5,7 +5,7 @@
 
 #include "ioj/s7/field_constraints.h"
 #include "ioj/settings/soft_target.h"
-#include <ioj/s7/reader.h>
+#include <ioj/s7/field_reader.h>
 
 namespace ioj::s7 {
 template <>
@@ -248,14 +248,7 @@ inline void TypeReader<settings::SoftTarget>::decode(Reader const& reader,
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination, auto... checks) {
-                read_checked(
-                    destination,
-                    location,
-                    errors,
-                    [&] { decode_field(reader, value, location, destination, mode, errors); },
-                    checks...);
-            }};
+            FieldReader const read{reader, value, location, errors, mode};
             switch (field) {
                 case Field::acquisition_radius_pixels:
                     read(result.acquisition_radius_pixels, constraints::finite);
@@ -327,53 +320,46 @@ inline void TypeReader<settings::SoftTargetOverrides>::decode(Reader const& read
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination, auto... checks) {
-                read_checked(
-                    destination,
-                    location,
-                    errors,
-                    [&] { decode_patch_field(reader, value, location, destination, errors); },
-                    checks...);
-            }};
+            FieldReader const read{reader, value, location, errors};
             switch (field) {
                 case Field::acquisition_radius_pixels:
-                    read(result.acquisition_radius_pixels, constraints::finite);
+                    read.patch(result.acquisition_radius_pixels, constraints::finite);
                     break;
                 case Field::retention_radius_pixels:
-                    read(result.retention_radius_pixels, constraints::finite);
+                    read.patch(result.retention_radius_pixels, constraints::finite);
                     break;
                 case Field::centre_tie_radius_pixels:
-                    read(result.centre_tie_radius_pixels, constraints::finite);
+                    read.patch(result.centre_tie_radius_pixels, constraints::finite);
                     break;
                 case Field::switch_improvement_ratio:
-                    read(result.switch_improvement_ratio, constraints::finite);
+                    read.patch(result.switch_improvement_ratio, constraints::finite);
                     break;
                 case Field::range_transition_start_multiplier:
-                    read(result.range_transition_start_multiplier, constraints::finite);
+                    read.patch(result.range_transition_start_multiplier, constraints::finite);
                     break;
                 case Field::minimum_radius_pixels:
-                    read(result.minimum_radius_pixels, constraints::finite);
+                    read.patch(result.minimum_radius_pixels, constraints::finite);
                     break;
                 case Field::maximum_radius_pixels:
-                    read(result.maximum_radius_pixels, constraints::finite);
+                    read.patch(result.maximum_radius_pixels, constraints::finite);
                     break;
                 case Field::bounds_padding_pixels:
-                    read(result.bounds_padding_pixels, constraints::finite);
+                    read.patch(result.bounds_padding_pixels, constraints::finite);
                     break;
                 case Field::bracket_start_radius_multiplier:
-                    read(result.bracket_start_radius_multiplier, constraints::finite);
+                    read.patch(result.bracket_start_radius_multiplier, constraints::finite);
                     break;
                 case Field::opacity:
-                    read(result.opacity, constraints::finite);
+                    read.patch(result.opacity, constraints::finite);
                     break;
                 case Field::pulse_opacity_boost:
-                    read(result.pulse_opacity_boost, constraints::finite);
+                    read.patch(result.pulse_opacity_boost, constraints::finite);
                     break;
                 case Field::pulse_duration:
-                    read(result.pulse_duration, constraints::finite);
+                    read.patch(result.pulse_duration, constraints::finite);
                     break;
                 case Field::fade_out_duration:
-                    read(result.fade_out_duration, constraints::finite);
+                    read.patch(result.fade_out_duration, constraints::finite);
                     break;
                 case Field::Count:
                     std::unreachable();

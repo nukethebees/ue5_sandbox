@@ -117,18 +117,8 @@ auto fields_body(LoweringContext& context,
         }
     }
 
-    auto const read_value{
-        overrides      ? "decode_patch_field(reader, value, location, destination, errors)"
-        : constructing ? "read_field(reader, value, location, destination, errors)"
-                       : "decode_field(reader, value, location, destination, mode, errors)"};
-    auto const read_callback{
-        std::format("[&](auto& destination{}, auto... checks) {{\n"
-                    "read_checked(destination, location, errors, [&] {{ {}; }}, checks...);\n}}",
-                    positional ? ", NodeIndex value, std::string_view location" : "",
-                    read_value)};
-    if (positional && !fields.empty()) {
-        body.add(ir.variable("auto const", "read", ir.raw_expr(read_callback, {})), 2);
-    }
+    auto const read_method{overrides ? ".patch" : constructing ? ".construct" : ""};
+    auto const read_mode{overrides || constructing ? "" : ", mode"};
     if (positional) {
         body.add(ir.variable(
                      "auto const",
@@ -150,23 +140,28 @@ auto fields_body(LoweringContext& context,
             auto const destination{(constructing ? "value_" : "result.") + name};
             auto const path{
                 std::format("std::string{{path}} + \".{}\"", field_name(context, field))};
-            body.add(ir.raw(std::format("read({}, (*arguments)[{}], {}{});\n",
-                                        destination,
+            body.add(ir.raw(std::format("FieldReader{{reader, (*arguments)[{}], {}, errors{}}}"
+                                        "{}({}{});\n",
                                         index++,
                                         path,
+                                        read_mode,
+                                        read_method,
+                                        destination,
                                         constraint_arguments(context, field)),
                             {}));
         }
     } else {
         // The IR has no lambda node; keep only the streaming callback's syntax textual.
-        std::string visitor{"[&](Field const field, NodeIndex const value, std::string_view const "
-                            "location) {\nauto const read{"};
-        visitor += read_callback + "};\nswitch (field) {\n";
+        auto visitor{std::format(
+            "[&](Field const field, NodeIndex const value, std::string_view const location) {{\n"
+            "FieldReader const read{{reader, value, location, errors{}}};\nswitch (field) {{\n",
+            read_mode)};
         for (auto const field : fields) {
             auto const name{context.text(members.name[members.index(field)])};
             auto const destination{(constructing ? "value_" : "result.") + name};
-            visitor += std::format("case Field::{}: read({}{}); break;\n",
+            visitor += std::format("case Field::{}: read{}({}{}); break;\n",
                                    name,
+                                   read_method,
                                    destination,
                                    constraint_arguments(context, field));
         }

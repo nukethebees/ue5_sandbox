@@ -5,7 +5,7 @@
 
 #include "ioj/s7/field_constraints.h"
 #include "ioj/settings/radar.h"
-#include <ioj/s7/reader.h>
+#include <ioj/s7/field_reader.h>
 
 namespace ioj::s7 {
 template <>
@@ -262,14 +262,7 @@ inline void TypeReader<settings::Radar>::decode(Reader const& reader,
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination, auto... checks) {
-                read_checked(
-                    destination,
-                    location,
-                    errors,
-                    [&] { decode_field(reader, value, location, destination, mode, errors); },
-                    checks...);
-            }};
+            FieldReader const read{reader, value, location, errors, mode};
             switch (field) {
                 case Field::enabled:
                     read(result.enabled);
@@ -344,56 +337,49 @@ inline void TypeReader<settings::RadarOverrides>::decode(Reader const& reader,
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination, auto... checks) {
-                read_checked(
-                    destination,
-                    location,
-                    errors,
-                    [&] { decode_patch_field(reader, value, location, destination, errors); },
-                    checks...);
-            }};
+            FieldReader const read{reader, value, location, errors};
             switch (field) {
                 case Field::enabled:
-                    read(result.enabled);
+                    read.patch(result.enabled);
                     break;
                 case Field::combat_range:
-                    read(result.combat_range, constraints::finite);
+                    read.patch(result.combat_range, constraints::finite);
                     break;
                 case Field::tactical_range:
-                    read(result.tactical_range, constraints::finite);
+                    read.patch(result.tactical_range, constraints::finite);
                     break;
                 case Field::maximum_range:
-                    read(result.maximum_range, constraints::finite);
+                    read.patch(result.maximum_range, constraints::finite);
                     break;
                 case Field::combat_display_radius:
-                    read(result.combat_display_radius, constraints::finite);
+                    read.patch(result.combat_display_radius, constraints::finite);
                     break;
                 case Field::grid_opacity:
-                    read(result.grid_opacity, constraints::finite);
+                    read.patch(result.grid_opacity, constraints::finite);
                     break;
                 case Field::core_cell_radius:
-                    read(result.core_cell_radius, constraints::finite);
+                    read.patch(result.core_cell_radius, constraints::finite);
                     break;
                 case Field::combat_cell_radius:
-                    read(result.combat_cell_radius, constraints::finite);
+                    read.patch(result.combat_cell_radius, constraints::finite);
                     break;
                 case Field::tactical_cell_radius:
-                    read(result.tactical_cell_radius, constraints::finite);
+                    read.patch(result.tactical_cell_radius, constraints::finite);
                     break;
                 case Field::strategic_cell_radius:
-                    read(result.strategic_cell_radius, constraints::finite);
+                    read.patch(result.strategic_cell_radius, constraints::finite);
                     break;
                 case Field::glyph_size_scale:
-                    read(result.glyph_size_scale, constraints::finite);
+                    read.patch(result.glyph_size_scale, constraints::finite);
                     break;
                 case Field::objective_size_multiplier:
-                    read(result.objective_size_multiplier, constraints::finite);
+                    read.patch(result.objective_size_multiplier, constraints::finite);
                     break;
                 case Field::objective_ring_padding_pixels:
-                    read(result.objective_ring_padding_pixels, constraints::finite);
+                    read.patch(result.objective_ring_padding_pixels, constraints::finite);
                     break;
                 case Field::objective_ring_thickness_pixels:
-                    read(result.objective_ring_thickness_pixels, constraints::finite);
+                    read.patch(result.objective_ring_thickness_pixels, constraints::finite);
                     break;
                 case Field::Count:
                     std::unreachable();

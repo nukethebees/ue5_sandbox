@@ -6,7 +6,7 @@
 #include "ioj/s7/field_constraints.h"
 #include "ioj/sim/lasers/laser_weapon_sim_config_reader.h"
 #include "ioj/sim/player/player_sim_config.h"
-#include <ioj/s7/reader.h>
+#include <ioj/s7/field_reader.h>
 
 namespace ioj::s7 {
 template <>
@@ -227,14 +227,7 @@ inline void TypeReader<sim::PlayerSimConfig>::decode(Reader const& reader,
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination, auto... checks) {
-                read_checked(
-                    destination,
-                    location,
-                    errors,
-                    [&] { decode_field(reader, value, location, destination, mode, errors); },
-                    checks...);
-            }};
+            FieldReader const read{reader, value, location, errors, mode};
             switch (field) {
                 case Field::thrust_energy_max:
                     read(result.thrust_energy_max);
@@ -300,47 +293,40 @@ inline void TypeReader<sim::PlayerSimConfigOverrides>::decode(Reader const& read
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination, auto... checks) {
-                read_checked(
-                    destination,
-                    location,
-                    errors,
-                    [&] { decode_patch_field(reader, value, location, destination, errors); },
-                    checks...);
-            }};
+            FieldReader const read{reader, value, location, errors};
             switch (field) {
                 case Field::thrust_energy_max:
-                    read(result.thrust_energy_max);
+                    read.patch(result.thrust_energy_max);
                     break;
                 case Field::pitch_angle_max:
-                    read(result.pitch_angle_max, constraints::finite);
+                    read.patch(result.pitch_angle_max, constraints::finite);
                     break;
                 case Field::pitch_speed:
-                    read(result.pitch_speed, constraints::finite);
+                    read.patch(result.pitch_speed, constraints::finite);
                     break;
                 case Field::yaw_angle_max:
-                    read(result.yaw_angle_max, constraints::finite);
+                    read.patch(result.yaw_angle_max, constraints::finite);
                     break;
                 case Field::yaw_speed:
-                    read(result.yaw_speed, constraints::finite);
+                    read.patch(result.yaw_speed, constraints::finite);
                     break;
                 case Field::turn_bank_angle_max:
-                    read(result.turn_bank_angle_max, constraints::finite);
+                    read.patch(result.turn_bank_angle_max, constraints::finite);
                     break;
                 case Field::turn_bank_speed:
-                    read(result.turn_bank_speed, constraints::finite);
+                    read.patch(result.turn_bank_speed, constraints::finite);
                     break;
                 case Field::laser:
-                    read(result.laser);
+                    read.patch(result.laser);
                     break;
                 case Field::health:
-                    read(result.health);
+                    read.patch(result.health);
                     break;
                 case Field::laser_mode:
-                    read(result.laser_mode);
+                    read.patch(result.laser_mode);
                     break;
                 case Field::laser_fire_rate:
-                    read(result.laser_fire_rate);
+                    read.patch(result.laser_fire_rate);
                     break;
                 case Field::Count:
                     std::unreachable();

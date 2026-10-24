@@ -22,16 +22,6 @@ inline auto field_path(std::string_view path, std::string_view name) -> std::str
     return path.empty() ? std::string{name} : std::format("{}.{}", path, name);
 }
 
-template <typename T, typename Read, typename... Checks>
-void read_checked(
-    T& destination, std::string_view path, AstDiagnostics& errors, Read read, Checks... checks) {
-    auto const error_count{errors.size()};
-    read();
-    if (errors.size() == error_count) {
-        (checks.validate(destination, path, errors), ...);
-    }
-}
-
 [[nodiscard]] inline auto read_error(AstErrorCode const code,
                                      std::string_view const path,
                                      std::string message) -> std::unexpected<AstDiagnostics> {

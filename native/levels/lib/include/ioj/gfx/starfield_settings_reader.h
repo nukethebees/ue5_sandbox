@@ -5,7 +5,7 @@
 
 #include "ioj/gfx/starfield_settings.h"
 #include "ioj/s7/field_constraints.h"
-#include <ioj/s7/reader.h>
+#include <ioj/s7/field_reader.h>
 
 namespace ioj::s7 {
 template <>
@@ -932,14 +932,7 @@ inline void TypeReader<starfield::GenerationSettings>::decode(Reader const& read
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination, auto... checks) {
-                read_checked(
-                    destination,
-                    location,
-                    errors,
-                    [&] { decode_field(reader, value, location, destination, mode, errors); },
-                    checks...);
-            }};
+            FieldReader const read{reader, value, location, errors, mode};
             switch (field) {
                 case Field::star_count:
                     read(result.star_count,
@@ -980,22 +973,15 @@ inline void TypeReader<starfield::GenerationSettingsOverrides>::decode(Reader co
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination, auto... checks) {
-                read_checked(
-                    destination,
-                    location,
-                    errors,
-                    [&] { decode_patch_field(reader, value, location, destination, errors); },
-                    checks...);
-            }};
+            FieldReader const read{reader, value, location, errors};
             switch (field) {
                 case Field::star_count:
-                    read(result.star_count,
-                         constraints::minimum(1ULL),
-                         constraints::maximum(1000000ULL));
+                    read.patch(result.star_count,
+                               constraints::minimum(1ULL),
+                               constraints::maximum(1000000ULL));
                     break;
                 case Field::random_seed:
-                    read(result.random_seed);
+                    read.patch(result.random_seed);
                     break;
                 case Field::Count:
                     std::unreachable();
@@ -1028,14 +1014,7 @@ inline void TypeReader<starfield::StarSettings>::decode(Reader const& reader,
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination, auto... checks) {
-                read_checked(
-                    destination,
-                    location,
-                    errors,
-                    [&] { decode_field(reader, value, location, destination, mode, errors); },
-                    checks...);
-            }};
+            FieldReader const read{reader, value, location, errors, mode};
             switch (field) {
                 case Field::scale:
                     read(result.scale, constraints::positive, constraints::finite);
@@ -1083,29 +1062,23 @@ inline void TypeReader<starfield::StarSettingsOverrides>::decode(Reader const& r
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination, auto... checks) {
-                read_checked(
-                    destination,
-                    location,
-                    errors,
-                    [&] { decode_patch_field(reader, value, location, destination, errors); },
-                    checks...);
-            }};
+            FieldReader const read{reader, value, location, errors};
             switch (field) {
                 case Field::scale:
-                    read(result.scale, constraints::positive, constraints::finite);
+                    read.patch(result.scale, constraints::positive, constraints::finite);
                     break;
                 case Field::size_multiplier:
-                    read(result.size_multiplier, constraints::nonnegative, constraints::finite);
+                    read.patch(
+                        result.size_multiplier, constraints::nonnegative, constraints::finite);
                     break;
                 case Field::global_brightness:
-                    read(result.global_brightness, constraints::finite);
+                    read.patch(result.global_brightness, constraints::finite);
                     break;
                 case Field::colour_variation_strength:
-                    read(result.colour_variation_strength, constraints::finite);
+                    read.patch(result.colour_variation_strength, constraints::finite);
                     break;
                 case Field::parallax_strength:
-                    read(result.parallax_strength, constraints::finite);
+                    read.patch(result.parallax_strength, constraints::finite);
                     break;
                 case Field::Count:
                     std::unreachable();
@@ -1138,14 +1111,7 @@ inline void TypeReader<starfield::GalacticBandSettings>::decode(Reader const& re
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination, auto... checks) {
-                read_checked(
-                    destination,
-                    location,
-                    errors,
-                    [&] { decode_field(reader, value, location, destination, mode, errors); },
-                    checks...);
-            }};
+            FieldReader const read{reader, value, location, errors, mode};
             switch (field) {
                 case Field::strength:
                     read(result.strength, constraints::finite);
@@ -1188,23 +1154,16 @@ inline void
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination, auto... checks) {
-                read_checked(
-                    destination,
-                    location,
-                    errors,
-                    [&] { decode_patch_field(reader, value, location, destination, errors); },
-                    checks...);
-            }};
+            FieldReader const read{reader, value, location, errors};
             switch (field) {
                 case Field::strength:
-                    read(result.strength, constraints::finite);
+                    read.patch(result.strength, constraints::finite);
                     break;
                 case Field::width_degrees:
-                    read(result.width_degrees,
-                         constraints::positive,
-                         constraints::finite,
-                         constraints::maximum(90ULL));
+                    read.patch(result.width_degrees,
+                               constraints::positive,
+                               constraints::finite,
+                               constraints::maximum(90ULL));
                     break;
                 case Field::Count:
                     std::unreachable();
@@ -1237,14 +1196,7 @@ inline void TypeReader<starfield::StellarClusterSettings>::decode(Reader const& 
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination, auto... checks) {
-                read_checked(
-                    destination,
-                    location,
-                    errors,
-                    [&] { decode_field(reader, value, location, destination, mode, errors); },
-                    checks...);
-            }};
+            FieldReader const read{reader, value, location, errors, mode};
             switch (field) {
                 case Field::strength:
                     read(result.strength, constraints::finite);
@@ -1283,20 +1235,13 @@ inline void
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination, auto... checks) {
-                read_checked(
-                    destination,
-                    location,
-                    errors,
-                    [&] { decode_patch_field(reader, value, location, destination, errors); },
-                    checks...);
-            }};
+            FieldReader const read{reader, value, location, errors};
             switch (field) {
                 case Field::strength:
-                    read(result.strength, constraints::finite);
+                    read.patch(result.strength, constraints::finite);
                     break;
                 case Field::width_degrees:
-                    read(result.width_degrees, constraints::positive, constraints::finite);
+                    read.patch(result.width_degrees, constraints::positive, constraints::finite);
                     break;
                 case Field::Count:
                     std::unreachable();
@@ -1329,14 +1274,7 @@ inline void TypeReader<starfield::DustLaneSettings>::decode(Reader const& reader
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination, auto... checks) {
-                read_checked(
-                    destination,
-                    location,
-                    errors,
-                    [&] { decode_field(reader, value, location, destination, mode, errors); },
-                    checks...);
-            }};
+            FieldReader const read{reader, value, location, errors, mode};
             switch (field) {
                 case Field::strength:
                     read(result.strength, constraints::finite);
@@ -1378,23 +1316,16 @@ inline void TypeReader<starfield::DustLaneSettingsOverrides>::decode(Reader cons
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination, auto... checks) {
-                read_checked(
-                    destination,
-                    location,
-                    errors,
-                    [&] { decode_patch_field(reader, value, location, destination, errors); },
-                    checks...);
-            }};
+            FieldReader const read{reader, value, location, errors};
             switch (field) {
                 case Field::strength:
-                    read(result.strength, constraints::finite);
+                    read.patch(result.strength, constraints::finite);
                     break;
                 case Field::width_degrees:
-                    read(result.width_degrees, constraints::positive, constraints::finite);
+                    read.patch(result.width_degrees, constraints::positive, constraints::finite);
                     break;
                 case Field::irregularity:
-                    read(result.irregularity, constraints::finite);
+                    read.patch(result.irregularity, constraints::finite);
                     break;
                 case Field::Count:
                     std::unreachable();
@@ -1427,14 +1358,7 @@ inline void TypeReader<starfield::BrightStarSettings>::decode(Reader const& read
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination, auto... checks) {
-                read_checked(
-                    destination,
-                    location,
-                    errors,
-                    [&] { decode_field(reader, value, location, destination, mode, errors); },
-                    checks...);
-            }};
+            FieldReader const read{reader, value, location, errors, mode};
             switch (field) {
                 case Field::fraction:
                     read(result.fraction, constraints::finite);
@@ -1479,26 +1403,20 @@ inline void TypeReader<starfield::BrightStarSettingsOverrides>::decode(Reader co
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination, auto... checks) {
-                read_checked(
-                    destination,
-                    location,
-                    errors,
-                    [&] { decode_patch_field(reader, value, location, destination, errors); },
-                    checks...);
-            }};
+            FieldReader const read{reader, value, location, errors};
             switch (field) {
                 case Field::fraction:
-                    read(result.fraction, constraints::finite);
+                    read.patch(result.fraction, constraints::finite);
                     break;
                 case Field::size_multiplier:
-                    read(result.size_multiplier, constraints::nonnegative, constraints::finite);
+                    read.patch(
+                        result.size_multiplier, constraints::nonnegative, constraints::finite);
                     break;
                 case Field::brightness_multiplier:
-                    read(result.brightness_multiplier, constraints::finite);
+                    read.patch(result.brightness_multiplier, constraints::finite);
                     break;
                 case Field::shape_strength:
-                    read(result.shape_strength, constraints::finite);
+                    read.patch(result.shape_strength, constraints::finite);
                     break;
                 case Field::Count:
                     std::unreachable();
@@ -1531,14 +1449,7 @@ inline void TypeReader<starfield::TwinkleSettings>::decode(Reader const& reader,
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination, auto... checks) {
-                read_checked(
-                    destination,
-                    location,
-                    errors,
-                    [&] { decode_field(reader, value, location, destination, mode, errors); },
-                    checks...);
-            }};
+            FieldReader const read{reader, value, location, errors, mode};
             switch (field) {
                 case Field::strength:
                     read(result.strength, constraints::finite);
@@ -1577,20 +1488,13 @@ inline void TypeReader<starfield::TwinkleSettingsOverrides>::decode(Reader const
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination, auto... checks) {
-                read_checked(
-                    destination,
-                    location,
-                    errors,
-                    [&] { decode_patch_field(reader, value, location, destination, errors); },
-                    checks...);
-            }};
+            FieldReader const read{reader, value, location, errors};
             switch (field) {
                 case Field::strength:
-                    read(result.strength, constraints::finite);
+                    read.patch(result.strength, constraints::finite);
                     break;
                 case Field::speed:
-                    read(result.speed, constraints::finite);
+                    read.patch(result.speed, constraints::finite);
                     break;
                 case Field::Count:
                     std::unreachable();
@@ -1623,14 +1527,7 @@ inline void TypeReader<starfield::GalacticHazeSettings>::decode(Reader const& re
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination, auto... checks) {
-                read_checked(
-                    destination,
-                    location,
-                    errors,
-                    [&] { decode_field(reader, value, location, destination, mode, errors); },
-                    checks...);
-            }};
+            FieldReader const read{reader, value, location, errors, mode};
             switch (field) {
                 case Field::strength:
                     read(result.strength, constraints::finite);
@@ -1670,20 +1567,13 @@ inline void
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination, auto... checks) {
-                read_checked(
-                    destination,
-                    location,
-                    errors,
-                    [&] { decode_patch_field(reader, value, location, destination, errors); },
-                    checks...);
-            }};
+            FieldReader const read{reader, value, location, errors};
             switch (field) {
                 case Field::strength:
-                    read(result.strength, constraints::finite);
+                    read.patch(result.strength, constraints::finite);
                     break;
                 case Field::width_degrees:
-                    read(result.width_degrees, constraints::positive, constraints::finite);
+                    read.patch(result.width_degrees, constraints::positive, constraints::finite);
                     break;
                 case Field::Count:
                     std::unreachable();
@@ -1716,14 +1606,7 @@ inline void TypeReader<starfield::GalacticCoreSettings>::decode(Reader const& re
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination, auto... checks) {
-                read_checked(
-                    destination,
-                    location,
-                    errors,
-                    [&] { decode_field(reader, value, location, destination, mode, errors); },
-                    checks...);
-            }};
+            FieldReader const read{reader, value, location, errors, mode};
             switch (field) {
                 case Field::strength:
                     read(result.strength, constraints::finite);
@@ -1763,20 +1646,13 @@ inline void
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination, auto... checks) {
-                read_checked(
-                    destination,
-                    location,
-                    errors,
-                    [&] { decode_patch_field(reader, value, location, destination, errors); },
-                    checks...);
-            }};
+            FieldReader const read{reader, value, location, errors};
             switch (field) {
                 case Field::strength:
-                    read(result.strength, constraints::finite);
+                    read.patch(result.strength, constraints::finite);
                     break;
                 case Field::width_degrees:
-                    read(result.width_degrees, constraints::positive, constraints::finite);
+                    read.patch(result.width_degrees, constraints::positive, constraints::finite);
                     break;
                 case Field::Count:
                     std::unreachable();
@@ -1809,14 +1685,7 @@ inline void TypeReader<starfield::NebularKnotSettings>::decode(Reader const& rea
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination, auto... checks) {
-                read_checked(
-                    destination,
-                    location,
-                    errors,
-                    [&] { decode_field(reader, value, location, destination, mode, errors); },
-                    checks...);
-            }};
+            FieldReader const read{reader, value, location, errors, mode};
             switch (field) {
                 case Field::strength:
                     read(result.strength, constraints::finite);
@@ -1855,20 +1724,13 @@ inline void TypeReader<starfield::NebularKnotSettingsOverrides>::decode(Reader c
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination, auto... checks) {
-                read_checked(
-                    destination,
-                    location,
-                    errors,
-                    [&] { decode_patch_field(reader, value, location, destination, errors); },
-                    checks...);
-            }};
+            FieldReader const read{reader, value, location, errors};
             switch (field) {
                 case Field::strength:
-                    read(result.strength, constraints::finite);
+                    read.patch(result.strength, constraints::finite);
                     break;
                 case Field::size_degrees:
-                    read(result.size_degrees, constraints::positive, constraints::finite);
+                    read.patch(result.size_degrees, constraints::positive, constraints::finite);
                     break;
                 case Field::Count:
                     std::unreachable();
@@ -1901,14 +1763,7 @@ inline void TypeReader<starfield::Settings>::decode(Reader const& reader,
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination, auto... checks) {
-                read_checked(
-                    destination,
-                    location,
-                    errors,
-                    [&] { decode_field(reader, value, location, destination, mode, errors); },
-                    checks...);
-            }};
+            FieldReader const read{reader, value, location, errors, mode};
             switch (field) {
                 case Field::generation:
                     read(result.generation);
@@ -1971,44 +1826,37 @@ inline void TypeReader<starfield::SettingsOverrides>::decode(Reader const& reade
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination, auto... checks) {
-                read_checked(
-                    destination,
-                    location,
-                    errors,
-                    [&] { decode_patch_field(reader, value, location, destination, errors); },
-                    checks...);
-            }};
+            FieldReader const read{reader, value, location, errors};
             switch (field) {
                 case Field::generation:
-                    read(result.generation);
+                    read.patch(result.generation);
                     break;
                 case Field::star:
-                    read(result.star);
+                    read.patch(result.star);
                     break;
                 case Field::galactic_band:
-                    read(result.galactic_band);
+                    read.patch(result.galactic_band);
                     break;
                 case Field::stellar_cluster:
-                    read(result.stellar_cluster);
+                    read.patch(result.stellar_cluster);
                     break;
                 case Field::dust_lane:
-                    read(result.dust_lane);
+                    read.patch(result.dust_lane);
                     break;
                 case Field::bright_star:
-                    read(result.bright_star);
+                    read.patch(result.bright_star);
                     break;
                 case Field::twinkle:
-                    read(result.twinkle);
+                    read.patch(result.twinkle);
                     break;
                 case Field::galactic_haze:
-                    read(result.galactic_haze);
+                    read.patch(result.galactic_haze);
                     break;
                 case Field::galactic_core:
-                    read(result.galactic_core);
+                    read.patch(result.galactic_core);
                     break;
                 case Field::nebular_knot:
-                    read(result.nebular_knot);
+                    read.patch(result.nebular_knot);
                     break;
                 case Field::Count:
                     std::unreachable();

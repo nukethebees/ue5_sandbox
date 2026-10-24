@@ -6,7 +6,7 @@
 #include "ioj/s7/field_constraints.h"
 #include "ioj/sim/lasers/laser_weapon_sim_config_reader.h"
 #include "ioj/sim/turrets/turret_sim_config.h"
-#include <ioj/s7/reader.h>
+#include <ioj/s7/field_reader.h>
 
 namespace ioj::s7 {
 template <>
@@ -109,14 +109,7 @@ inline void TypeReader<sim::TurretSimConfig>::decode(Reader const& reader,
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination, auto... checks) {
-                read_checked(
-                    destination,
-                    location,
-                    errors,
-                    [&] { decode_field(reader, value, location, destination, mode, errors); },
-                    checks...);
-            }};
+            FieldReader const read{reader, value, location, errors, mode};
             switch (field) {
                 case Field::detection_radius:
                     read(result.detection_radius, constraints::finite);
@@ -161,26 +154,19 @@ inline void TypeReader<sim::TurretSimConfigOverrides>::decode(Reader const& read
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination, auto... checks) {
-                read_checked(
-                    destination,
-                    location,
-                    errors,
-                    [&] { decode_patch_field(reader, value, location, destination, errors); },
-                    checks...);
-            }};
+            FieldReader const read{reader, value, location, errors};
             switch (field) {
                 case Field::detection_radius:
-                    read(result.detection_radius, constraints::finite);
+                    read.patch(result.detection_radius, constraints::finite);
                     break;
                 case Field::target_refresh_frequency:
-                    read(result.target_refresh_frequency, constraints::finite);
+                    read.patch(result.target_refresh_frequency, constraints::finite);
                     break;
                 case Field::laser:
-                    read(result.laser);
+                    read.patch(result.laser);
                     break;
                 case Field::max_health:
-                    read(result.max_health);
+                    read.patch(result.max_health);
                     break;
                 case Field::Count:
                     std::unreachable();

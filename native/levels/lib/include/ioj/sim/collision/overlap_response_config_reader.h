@@ -5,7 +5,7 @@
 
 #include "ioj/s7/field_constraints.h"
 #include "ioj/sim/collision/overlap_response_config.h"
-#include <ioj/s7/reader.h>
+#include <ioj/s7/field_reader.h>
 
 namespace ioj::s7 {
 template <>
@@ -100,14 +100,7 @@ inline void TypeReader<sim::OverlapResponseConfig>::decode(Reader const& reader,
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination, auto... checks) {
-                read_checked(
-                    destination,
-                    location,
-                    errors,
-                    [&] { decode_field(reader, value, location, destination, mode, errors); },
-                    checks...);
-            }};
+            FieldReader const read{reader, value, location, errors, mode};
             switch (field) {
                 case Field::damage_per_overlap_detection:
                     read(result.damage_per_overlap_detection);
@@ -149,23 +142,16 @@ inline void TypeReader<sim::OverlapResponseConfigOverrides>::decode(Reader const
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination, auto... checks) {
-                read_checked(
-                    destination,
-                    location,
-                    errors,
-                    [&] { decode_patch_field(reader, value, location, destination, errors); },
-                    checks...);
-            }};
+            FieldReader const read{reader, value, location, errors};
             switch (field) {
                 case Field::damage_per_overlap_detection:
-                    read(result.damage_per_overlap_detection);
+                    read.patch(result.damage_per_overlap_detection);
                     break;
                 case Field::level_size:
-                    read(result.level_size, constraints::finite);
+                    read.patch(result.level_size, constraints::finite);
                     break;
                 case Field::cell_size:
-                    read(result.cell_size, constraints::finite);
+                    read.patch(result.cell_size, constraints::finite);
                     break;
                 case Field::Count:
                     std::unreachable();

@@ -6,7 +6,7 @@
 #include "ioj/levels/authoring/input_readers.h"
 #include "ioj/levels/objective_dependency_reader.h"
 #include "ioj/levels/team_result_definition.h"
-#include <ioj/s7/reader.h>
+#include <ioj/s7/field_reader.h>
 
 namespace ioj::s7 {
 template <>
@@ -65,14 +65,7 @@ inline void TypeReader<levels::TeamResultDefinition>::decode(Reader const& reade
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination, auto... checks) {
-                read_checked(
-                    destination,
-                    location,
-                    errors,
-                    [&] { decode_field(reader, value, location, destination, mode, errors); },
-                    checks...);
-            }};
+            FieldReader const read{reader, value, location, errors, mode};
             switch (field) {
                 case Field::team:
                     read(result.team);
