@@ -12,7 +12,7 @@ namespace lispb::codegen::ir {
 
 struct FunctionNodes {
     std::vector<FunctionId> function;
-    std::vector<std::optional<StringId>> owner;
+    std::vector<std::optional<CppTypeId>> owner;
     std::vector<std::uint8_t> declaration;
     std::vector<std::uint8_t> is_header;
     std::vector<std::optional<ReturnSyntax>> return_syntax;

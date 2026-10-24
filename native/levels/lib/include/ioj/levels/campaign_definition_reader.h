@@ -9,8 +9,8 @@
 
 namespace ioj::s7 {
 template <>
-struct TypeReader<::ioj::levels::CampaignDefinition> {
-    using value_type = ::ioj::levels::CampaignDefinition;
+struct TypeReader<levels::CampaignDefinition> {
+    using value_type = levels::CampaignDefinition;
 
     static ReadResult<value_type>
         read(Reader const& reader, NodeIndex const node, std::string_view const path);
@@ -44,19 +44,19 @@ struct TypeReader<::ioj::levels::CampaignDefinition> {
     }
 };
 
-inline ReadResult<::ioj::levels::CampaignDefinition>
-    TypeReader<::ioj::levels::CampaignDefinition>::read(Reader const& reader,
-                                                        NodeIndex const node,
-                                                        std::string_view const path) {
+inline auto TypeReader<levels::CampaignDefinition>::read(Reader const& reader,
+                                                         NodeIndex const node,
+                                                         std::string_view const path)
+    -> ReadResult<value_type> {
     return read_generated<value_type>(reader, node, path);
 }
 
-inline void TypeReader<::ioj::levels::CampaignDefinition>::decode(Reader const& reader,
-                                                                  NodeIndex const node,
-                                                                  std::string_view const path,
-                                                                  value_type& result,
-                                                                  ReadMode mode,
-                                                                  AstDiagnostics& errors) {
+inline void TypeReader<levels::CampaignDefinition>::decode(Reader const& reader,
+                                                           NodeIndex const node,
+                                                           std::string_view const path,
+                                                           value_type& result,
+                                                           ReadMode mode,
+                                                           AstDiagnostics& errors) {
     auto const seen{read_record<Field>(
         reader,
         node,

@@ -15,8 +15,8 @@
 
 namespace ioj::s7 {
 template <>
-struct TypeReader<::ioj::levels::authoring::EntityInput> {
-    using value_type = ::ioj::levels::authoring::EntityInput;
+struct TypeReader<levels::authoring::EntityInput> {
+    using value_type = levels::authoring::EntityInput;
 
     static ReadResult<value_type>
         read(Reader const& reader, NodeIndex const node, std::string_view const path);
@@ -111,8 +111,8 @@ struct TypeReader<::ioj::levels::authoring::EntityInput> {
 };
 
 template <>
-struct TypeReader<::ioj::levels::authoring::ObjectiveInput> {
-    using value_type = ::ioj::levels::authoring::ObjectiveInput;
+struct TypeReader<levels::authoring::ObjectiveInput> {
+    using value_type = levels::authoring::ObjectiveInput;
 
     static ReadResult<value_type>
         read(Reader const& reader, NodeIndex const node, std::string_view const path);
@@ -186,8 +186,8 @@ struct TypeReader<::ioj::levels::authoring::ObjectiveInput> {
 };
 
 template <>
-struct TypeReader<::ioj::levels::authoring::MissionInput> {
-    using value_type = ::ioj::levels::authoring::MissionInput;
+struct TypeReader<levels::authoring::MissionInput> {
+    using value_type = levels::authoring::MissionInput;
 
     static ReadResult<value_type>
         read(Reader const& reader, NodeIndex const node, std::string_view const path);
@@ -218,8 +218,8 @@ struct TypeReader<::ioj::levels::authoring::MissionInput> {
 };
 
 template <>
-struct TypeReader<::ioj::levels::authoring::LevelInput> {
-    using value_type = ::ioj::levels::authoring::LevelInput;
+struct TypeReader<levels::authoring::LevelInput> {
+    using value_type = levels::authoring::LevelInput;
 
     static ReadResult<value_type>
         read(Reader const& reader, NodeIndex const node, std::string_view const path);
@@ -311,8 +311,8 @@ struct TypeReader<::ioj::levels::authoring::LevelInput> {
 };
 
 template <>
-struct TypeReader<::ioj::levels::authoring::IncludedLevelInput> {
-    using value_type = ::ioj::levels::authoring::IncludedLevelInput;
+struct TypeReader<levels::authoring::IncludedLevelInput> {
+    using value_type = levels::authoring::IncludedLevelInput;
 
     static ReadResult<value_type>
         read(Reader const& reader, NodeIndex const node, std::string_view const path);
@@ -347,8 +347,8 @@ struct TypeReader<::ioj::levels::authoring::IncludedLevelInput> {
 };
 
 template <>
-struct TypeReader<::ioj::levels::authoring::IncludedCampaignInput> {
-    using value_type = ::ioj::levels::authoring::IncludedCampaignInput;
+struct TypeReader<levels::authoring::IncludedCampaignInput> {
+    using value_type = levels::authoring::IncludedCampaignInput;
 
     static ReadResult<value_type>
         read(Reader const& reader, NodeIndex const node, std::string_view const path);
@@ -383,8 +383,8 @@ struct TypeReader<::ioj::levels::authoring::IncludedCampaignInput> {
 };
 
 template <>
-struct TypeReader<::ioj::levels::authoring::CatalogInput> {
-    using value_type = ::ioj::levels::authoring::CatalogInput;
+struct TypeReader<levels::authoring::CatalogInput> {
+    using value_type = levels::authoring::CatalogInput;
 
     static ReadResult<value_type>
         read(Reader const& reader, NodeIndex const node, std::string_view const path);
@@ -414,19 +414,19 @@ struct TypeReader<::ioj::levels::authoring::CatalogInput> {
     }
 };
 
-inline ReadResult<::ioj::levels::authoring::EntityInput>
-    TypeReader<::ioj::levels::authoring::EntityInput>::read(Reader const& reader,
-                                                            NodeIndex const node,
-                                                            std::string_view const path) {
+inline auto TypeReader<levels::authoring::EntityInput>::read(Reader const& reader,
+                                                             NodeIndex const node,
+                                                             std::string_view const path)
+    -> ReadResult<value_type> {
     return read_generated<value_type>(reader, node, path);
 }
 
-inline void TypeReader<::ioj::levels::authoring::EntityInput>::decode(Reader const& reader,
-                                                                      NodeIndex const node,
-                                                                      std::string_view const path,
-                                                                      value_type& result,
-                                                                      ReadMode mode,
-                                                                      AstDiagnostics& errors) {
+inline void TypeReader<levels::authoring::EntityInput>::decode(Reader const& reader,
+                                                               NodeIndex const node,
+                                                               std::string_view const path,
+                                                               value_type& result,
+                                                               ReadMode mode,
+                                                               AstDiagnostics& errors) {
     auto const seen{read_record<Field>(
         reader,
         node,
@@ -494,20 +494,19 @@ inline void TypeReader<::ioj::levels::authoring::EntityInput>::decode(Reader con
     }
 }
 
-inline ReadResult<::ioj::levels::authoring::ObjectiveInput>
-    TypeReader<::ioj::levels::authoring::ObjectiveInput>::read(Reader const& reader,
-                                                               NodeIndex const node,
-                                                               std::string_view const path) {
+inline auto TypeReader<levels::authoring::ObjectiveInput>::read(Reader const& reader,
+                                                                NodeIndex const node,
+                                                                std::string_view const path)
+    -> ReadResult<value_type> {
     return read_generated<value_type>(reader, node, path);
 }
 
-inline void
-    TypeReader<::ioj::levels::authoring::ObjectiveInput>::decode(Reader const& reader,
-                                                                 NodeIndex const node,
-                                                                 std::string_view const path,
-                                                                 value_type& result,
-                                                                 ReadMode mode,
-                                                                 AstDiagnostics& errors) {
+inline void TypeReader<levels::authoring::ObjectiveInput>::decode(Reader const& reader,
+                                                                  NodeIndex const node,
+                                                                  std::string_view const path,
+                                                                  value_type& result,
+                                                                  ReadMode mode,
+                                                                  AstDiagnostics& errors) {
     auto const seen{read_record<Field>(
         reader,
         node,
@@ -565,19 +564,19 @@ inline void
     }
 }
 
-inline ReadResult<::ioj::levels::authoring::MissionInput>
-    TypeReader<::ioj::levels::authoring::MissionInput>::read(Reader const& reader,
-                                                             NodeIndex const node,
-                                                             std::string_view const path) {
+inline auto TypeReader<levels::authoring::MissionInput>::read(Reader const& reader,
+                                                              NodeIndex const node,
+                                                              std::string_view const path)
+    -> ReadResult<value_type> {
     return read_generated<value_type>(reader, node, path);
 }
 
-inline void TypeReader<::ioj::levels::authoring::MissionInput>::decode(Reader const& reader,
-                                                                       NodeIndex const node,
-                                                                       std::string_view const path,
-                                                                       value_type& result,
-                                                                       ReadMode mode,
-                                                                       AstDiagnostics& errors) {
+inline void TypeReader<levels::authoring::MissionInput>::decode(Reader const& reader,
+                                                                NodeIndex const node,
+                                                                std::string_view const path,
+                                                                value_type& result,
+                                                                ReadMode mode,
+                                                                AstDiagnostics& errors) {
     auto const seen{read_record<Field>(
         reader,
         node,
@@ -617,19 +616,19 @@ inline void TypeReader<::ioj::levels::authoring::MissionInput>::decode(Reader co
     }
 }
 
-inline ReadResult<::ioj::levels::authoring::LevelInput>
-    TypeReader<::ioj::levels::authoring::LevelInput>::read(Reader const& reader,
-                                                           NodeIndex const node,
-                                                           std::string_view const path) {
+inline auto TypeReader<levels::authoring::LevelInput>::read(Reader const& reader,
+                                                            NodeIndex const node,
+                                                            std::string_view const path)
+    -> ReadResult<value_type> {
     return read_generated<value_type>(reader, node, path);
 }
 
-inline void TypeReader<::ioj::levels::authoring::LevelInput>::decode(Reader const& reader,
-                                                                     NodeIndex const node,
-                                                                     std::string_view const path,
-                                                                     value_type& result,
-                                                                     ReadMode mode,
-                                                                     AstDiagnostics& errors) {
+inline void TypeReader<levels::authoring::LevelInput>::decode(Reader const& reader,
+                                                              NodeIndex const node,
+                                                              std::string_view const path,
+                                                              value_type& result,
+                                                              ReadMode mode,
+                                                              AstDiagnostics& errors) {
     auto const seen{read_record<Field>(
         reader,
         node,
@@ -697,76 +696,19 @@ inline void TypeReader<::ioj::levels::authoring::LevelInput>::decode(Reader cons
     }
 }
 
-inline ReadResult<::ioj::levels::authoring::IncludedLevelInput>
-    TypeReader<::ioj::levels::authoring::IncludedLevelInput>::read(Reader const& reader,
-                                                                   NodeIndex const node,
-                                                                   std::string_view const path) {
+inline auto TypeReader<levels::authoring::IncludedLevelInput>::read(Reader const& reader,
+                                                                    NodeIndex const node,
+                                                                    std::string_view const path)
+    -> ReadResult<value_type> {
     return read_generated<value_type>(reader, node, path);
 }
 
-inline void
-    TypeReader<::ioj::levels::authoring::IncludedLevelInput>::decode(Reader const& reader,
-                                                                     NodeIndex const node,
-                                                                     std::string_view const path,
-                                                                     value_type& result,
-                                                                     ReadMode mode,
-                                                                     AstDiagnostics& errors) {
-    auto const seen{read_record<Field>(
-        reader,
-        node,
-        "included-definition",
-        path,
-        parse_field,
-        ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read{[&](auto& destination, auto... checks) {
-                read_checked(
-                    destination,
-                    location,
-                    errors,
-                    [&] { decode_field(reader, value, location, destination, mode, errors); },
-                    checks...);
-            }};
-            switch (field) {
-                case Field::path:
-                    read(result.path);
-                    break;
-                case Field::value:
-                    read(result.value);
-                    break;
-                case Field::error:
-                    read(result.error);
-                    break;
-                case Field::Count:
-                    std::unreachable();
-            }
-        }))};
-
-    if (!seen) {
-        append_errors(errors, seen.error());
-        return;
-    }
-    std::array<std::string_view, 3> constexpr required_names{"path", "", ""};
-
-    auto constexpr required{required_fields<Field>(required_names)};
-    if (mode == ReadMode::Create) {
-        require_fields<Field>(*seen, required, required_names, path, errors);
-    }
-}
-
-inline ReadResult<::ioj::levels::authoring::IncludedCampaignInput>
-    TypeReader<::ioj::levels::authoring::IncludedCampaignInput>::read(Reader const& reader,
+inline void TypeReader<levels::authoring::IncludedLevelInput>::decode(Reader const& reader,
                                                                       NodeIndex const node,
-                                                                      std::string_view const path) {
-    return read_generated<value_type>(reader, node, path);
-}
-
-inline void
-    TypeReader<::ioj::levels::authoring::IncludedCampaignInput>::decode(Reader const& reader,
-                                                                        NodeIndex const node,
-                                                                        std::string_view const path,
-                                                                        value_type& result,
-                                                                        ReadMode mode,
-                                                                        AstDiagnostics& errors) {
+                                                                      std::string_view const path,
+                                                                      value_type& result,
+                                                                      ReadMode mode,
+                                                                      AstDiagnostics& errors) {
     auto const seen{read_record<Field>(
         reader,
         node,
@@ -809,19 +751,75 @@ inline void
     }
 }
 
-inline ReadResult<::ioj::levels::authoring::CatalogInput>
-    TypeReader<::ioj::levels::authoring::CatalogInput>::read(Reader const& reader,
-                                                             NodeIndex const node,
-                                                             std::string_view const path) {
+inline auto TypeReader<levels::authoring::IncludedCampaignInput>::read(Reader const& reader,
+                                                                       NodeIndex const node,
+                                                                       std::string_view const path)
+    -> ReadResult<value_type> {
     return read_generated<value_type>(reader, node, path);
 }
 
-inline void TypeReader<::ioj::levels::authoring::CatalogInput>::decode(Reader const& reader,
-                                                                       NodeIndex const node,
-                                                                       std::string_view const path,
-                                                                       value_type& result,
-                                                                       ReadMode mode,
-                                                                       AstDiagnostics& errors) {
+inline void
+    TypeReader<levels::authoring::IncludedCampaignInput>::decode(Reader const& reader,
+                                                                 NodeIndex const node,
+                                                                 std::string_view const path,
+                                                                 value_type& result,
+                                                                 ReadMode mode,
+                                                                 AstDiagnostics& errors) {
+    auto const seen{read_record<Field>(
+        reader,
+        node,
+        "included-definition",
+        path,
+        parse_field,
+        ([&](Field const field, NodeIndex const value, std::string_view const location) {
+            auto const read{[&](auto& destination, auto... checks) {
+                read_checked(
+                    destination,
+                    location,
+                    errors,
+                    [&] { decode_field(reader, value, location, destination, mode, errors); },
+                    checks...);
+            }};
+            switch (field) {
+                case Field::path:
+                    read(result.path);
+                    break;
+                case Field::value:
+                    read(result.value);
+                    break;
+                case Field::error:
+                    read(result.error);
+                    break;
+                case Field::Count:
+                    std::unreachable();
+            }
+        }))};
+
+    if (!seen) {
+        append_errors(errors, seen.error());
+        return;
+    }
+    std::array<std::string_view, 3> constexpr required_names{"path", "", ""};
+
+    auto constexpr required{required_fields<Field>(required_names)};
+    if (mode == ReadMode::Create) {
+        require_fields<Field>(*seen, required, required_names, path, errors);
+    }
+}
+
+inline auto TypeReader<levels::authoring::CatalogInput>::read(Reader const& reader,
+                                                              NodeIndex const node,
+                                                              std::string_view const path)
+    -> ReadResult<value_type> {
+    return read_generated<value_type>(reader, node, path);
+}
+
+inline void TypeReader<levels::authoring::CatalogInput>::decode(Reader const& reader,
+                                                                NodeIndex const node,
+                                                                std::string_view const path,
+                                                                value_type& result,
+                                                                ReadMode mode,
+                                                                AstDiagnostics& errors) {
     auto const seen{read_record<Field>(
         reader,
         node,

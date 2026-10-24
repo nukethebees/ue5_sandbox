@@ -14,8 +14,8 @@
 
 namespace ioj::s7 {
 template <>
-struct TypeReader<::ioj::settings::Presentation> {
-    using value_type = ::ioj::settings::Presentation;
+struct TypeReader<settings::Presentation> {
+    using value_type = settings::Presentation;
 
     static ReadResult<value_type>
         read(Reader const& reader, NodeIndex const node, std::string_view const path);
@@ -84,8 +84,8 @@ struct TypeReader<::ioj::settings::Presentation> {
 };
 
 template <>
-struct TypeReader<::ioj::settings::PresentationOverrides> {
-    using value_type = ::ioj::settings::PresentationOverrides;
+struct TypeReader<settings::PresentationOverrides> {
+    using value_type = settings::PresentationOverrides;
 
     static ReadResult<value_type>
         read(Reader const& reader, NodeIndex const node, std::string_view const path);
@@ -153,17 +153,19 @@ struct TypeReader<::ioj::settings::PresentationOverrides> {
     }
 };
 
-inline ReadResult<::ioj::settings::Presentation> TypeReader<::ioj::settings::Presentation>::read(
-    Reader const& reader, NodeIndex const node, std::string_view const path) {
+inline auto TypeReader<settings::Presentation>::read(Reader const& reader,
+                                                     NodeIndex const node,
+                                                     std::string_view const path)
+    -> ReadResult<value_type> {
     return read_generated<value_type>(reader, node, path);
 }
 
-inline void TypeReader<::ioj::settings::Presentation>::decode(Reader const& reader,
-                                                              NodeIndex const node,
-                                                              std::string_view const path,
-                                                              value_type& result,
-                                                              ReadMode mode,
-                                                              AstDiagnostics& errors) {
+inline void TypeReader<settings::Presentation>::decode(Reader const& reader,
+                                                       NodeIndex const node,
+                                                       std::string_view const path,
+                                                       value_type& result,
+                                                       ReadMode mode,
+                                                       AstDiagnostics& errors) {
     auto const seen{read_record<Field>(
         reader,
         node,
@@ -209,19 +211,19 @@ inline void TypeReader<::ioj::settings::Presentation>::decode(Reader const& read
     }
 }
 
-inline ReadResult<::ioj::settings::PresentationOverrides>
-    TypeReader<::ioj::settings::PresentationOverrides>::read(Reader const& reader,
-                                                             NodeIndex const node,
-                                                             std::string_view const path) {
+inline auto TypeReader<settings::PresentationOverrides>::read(Reader const& reader,
+                                                              NodeIndex const node,
+                                                              std::string_view const path)
+    -> ReadResult<value_type> {
     return read_override(reader, node, path, value_type{});
 }
 
-inline void TypeReader<::ioj::settings::PresentationOverrides>::decode(Reader const& reader,
-                                                                       NodeIndex const node,
-                                                                       std::string_view const path,
-                                                                       value_type& result,
-                                                                       ReadMode,
-                                                                       AstDiagnostics& errors) {
+inline void TypeReader<settings::PresentationOverrides>::decode(Reader const& reader,
+                                                                NodeIndex const node,
+                                                                std::string_view const path,
+                                                                value_type& result,
+                                                                ReadMode,
+                                                                AstDiagnostics& errors) {
     auto const seen{read_record<Field>(
         reader,
         node,

@@ -8,8 +8,8 @@
 
 namespace ioj::s7 {
 template <>
-struct TypeReader<::ioj::settings::AttackDistanceBandValue> {
-    using value_type = ::ioj::settings::AttackDistanceBandValue;
+struct TypeReader<settings::AttackDistanceBandValue> {
+    using value_type = settings::AttackDistanceBandValue;
 
     static ReadResult<value_type>
         read(Reader const& reader, NodeIndex const node, std::string_view const path);
@@ -43,20 +43,19 @@ struct TypeReader<::ioj::settings::AttackDistanceBandValue> {
     }
 };
 
-inline ReadResult<::ioj::settings::AttackDistanceBandValue>
-    TypeReader<::ioj::settings::AttackDistanceBandValue>::read(Reader const& reader,
-                                                               NodeIndex const node,
-                                                               std::string_view const path) {
+inline auto TypeReader<settings::AttackDistanceBandValue>::read(Reader const& reader,
+                                                                NodeIndex const node,
+                                                                std::string_view const path)
+    -> ReadResult<value_type> {
     return read_generated<value_type>(reader, node, path);
 }
 
-inline void
-    TypeReader<::ioj::settings::AttackDistanceBandValue>::decode(Reader const& reader,
-                                                                 NodeIndex const node,
-                                                                 std::string_view const path,
-                                                                 value_type& result,
-                                                                 ReadMode mode,
-                                                                 AstDiagnostics& errors) {
+inline void TypeReader<settings::AttackDistanceBandValue>::decode(Reader const& reader,
+                                                                  NodeIndex const node,
+                                                                  std::string_view const path,
+                                                                  value_type& result,
+                                                                  ReadMode mode,
+                                                                  AstDiagnostics& errors) {
     auto const seen{read_record<Field>(
         reader,
         node,

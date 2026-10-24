@@ -322,7 +322,7 @@ class CppIR {
     auto declaration(FunctionId function) -> NodeId;
     auto header_function(FunctionId function) -> NodeId;
     auto definition(FunctionId function,
-                    std::optional<StringId> owner = {},
+                    std::optional<CppTypeId> owner = {},
                     std::optional<ReturnSyntax> syntax = {},
                     bool header = false) -> NodeId;
     auto named(std::string_view value, std::span<TypeDependencyId const> dependencies = {}) -> Expr;
@@ -385,7 +385,7 @@ class CppIR {
     ir::TypeReferenceExprs type_reference_exprs_;
     ir::ParenthesizedExprs parenthesized_exprs_;
     auto function_node(FunctionId function,
-                       std::optional<StringId> owner,
+                       std::optional<CppTypeId> owner,
                        bool declaration,
                        bool header,
                        std::optional<ReturnSyntax> return_syntax) -> NodeId;

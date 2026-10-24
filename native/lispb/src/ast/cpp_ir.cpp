@@ -570,7 +570,7 @@ void CppIR::set_parameter_type(FunctionParameterId parameter, CppTypeId type) {
 }
 
 auto CppIR::function_node(FunctionId function,
-                          std::optional<StringId> owner,
+                          std::optional<CppTypeId> owner,
                           bool declaration,
                           bool header,
                           std::optional<ReturnSyntax> return_syntax) -> NodeId {
@@ -608,7 +608,7 @@ auto CppIR::header_function(FunctionId function) -> NodeId {
 }
 
 auto CppIR::definition(FunctionId function,
-                       std::optional<StringId> owner,
+                       std::optional<CppTypeId> owner,
                        std::optional<ReturnSyntax> syntax,
                        bool header) -> NodeId {
     return function_node(function, owner, false, header, syntax);
@@ -1045,6 +1045,9 @@ void CppIR::collect_dependencies(NodeId node, std::vector<TypeDependencyId>& res
             break;
         case NodeKind::function: {
             auto const id{function_nodes_.function[i].value};
+            if (auto const owner{function_nodes_.owner[i]}) {
+                type(*owner);
+            }
             collect_dependencies(functions_.name[id], result);
             collect_dependencies(functions_.template_declaration[id], result);
             if (auto const clause{functions_.requires_clause[id]}) {

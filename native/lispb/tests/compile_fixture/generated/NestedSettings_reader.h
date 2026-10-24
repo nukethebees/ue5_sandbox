@@ -9,8 +9,8 @@
 
 namespace ioj::s7 {
 template <>
-struct TypeReader<::codegen_compile_fixture::SettingsTarget> {
-    using value_type = ::codegen_compile_fixture::SettingsTarget;
+struct TypeReader<codegen_compile_fixture::SettingsTarget> {
+    using value_type = codegen_compile_fixture::SettingsTarget;
 
     static ReadResult<value_type>
         read(Reader const& reader, NodeIndex const node, std::string_view const path);
@@ -45,8 +45,8 @@ struct TypeReader<::codegen_compile_fixture::SettingsTarget> {
 };
 
 template <>
-struct TypeReader<::codegen_compile_fixture::SettingsTargetOverrides> {
-    using value_type = ::codegen_compile_fixture::SettingsTargetOverrides;
+struct TypeReader<codegen_compile_fixture::SettingsTargetOverrides> {
+    using value_type = codegen_compile_fixture::SettingsTargetOverrides;
 
     static ReadResult<value_type>
         read(Reader const& reader, NodeIndex const node, std::string_view const path);
@@ -80,20 +80,19 @@ struct TypeReader<::codegen_compile_fixture::SettingsTargetOverrides> {
     }
 };
 
-inline ReadResult<::codegen_compile_fixture::SettingsTarget>
-    TypeReader<::codegen_compile_fixture::SettingsTarget>::read(Reader const& reader,
-                                                                NodeIndex const node,
-                                                                std::string_view const path) {
+inline auto TypeReader<codegen_compile_fixture::SettingsTarget>::read(Reader const& reader,
+                                                                      NodeIndex const node,
+                                                                      std::string_view const path)
+    -> ReadResult<value_type> {
     return read_generated<value_type>(reader, node, path);
 }
 
-inline void
-    TypeReader<::codegen_compile_fixture::SettingsTarget>::decode(Reader const& reader,
-                                                                  NodeIndex const node,
-                                                                  std::string_view const path,
-                                                                  value_type& result,
-                                                                  ReadMode mode,
-                                                                  AstDiagnostics& errors) {
+inline void TypeReader<codegen_compile_fixture::SettingsTarget>::decode(Reader const& reader,
+                                                                        NodeIndex const node,
+                                                                        std::string_view const path,
+                                                                        value_type& result,
+                                                                        ReadMode mode,
+                                                                        AstDiagnostics& errors) {
     auto const seen{read_record<Field>(
         reader,
         node,
@@ -130,13 +129,13 @@ inline void
     }
 }
 
-inline ReadResult<::codegen_compile_fixture::SettingsTargetOverrides>
-    TypeReader<::codegen_compile_fixture::SettingsTargetOverrides>::read(
-        Reader const& reader, NodeIndex const node, std::string_view const path) {
+inline auto TypeReader<codegen_compile_fixture::SettingsTargetOverrides>::read(
+    Reader const& reader, NodeIndex const node, std::string_view const path)
+    -> ReadResult<value_type> {
     return read_override(reader, node, path, value_type{});
 }
 
-inline void TypeReader<::codegen_compile_fixture::SettingsTargetOverrides>::decode(
+inline void TypeReader<codegen_compile_fixture::SettingsTargetOverrides>::decode(
     Reader const& reader,
     NodeIndex const node,
     std::string_view const path,

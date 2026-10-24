@@ -484,7 +484,7 @@ TEST(Ast, RendersDeclarationsAndOutOfLineDefinitionsFromOneSpec) {
 
     EXPECT_EQ(renderer.render(ir.declaration(function)),
               "void set(int32 const value = 0) noexcept;");
-    EXPECT_EQ(renderer.render(ir.definition(function, ir.store_text("FValue"))),
+    EXPECT_EQ(renderer.render(ir.definition(function, types.intern("FValue"))),
               "void FValue::set(int32 const value) noexcept {\n"
               "    stored = value;\n"
               "}");
@@ -550,7 +550,7 @@ TEST(Ast, RendersQualifiedTrailingReturnAndDefaultedConstructor) {
 
     auto const constructor{ir.constructor(ir.strings.intern("FValue"))};
     ir.set_function_defaulted(constructor);
-    EXPECT_EQ(renderer.render(ir.definition(constructor, ir.store_text("FValue"))),
+    EXPECT_EQ(renderer.render(ir.definition(constructor, ir.types.intern("FValue"))),
               "FValue::FValue() = default;");
 }
 
@@ -559,7 +559,7 @@ TEST(Ast, RejectsOutOfLineDeletedFunction) {
     auto& ir{context.ir};
     auto const function{ir.function(ir.strings.intern("removed"), ir.types.intern("void"))};
     ir.set_function_deleted(function);
-    EXPECT_THROW(ir.definition(function, ir.store_text("FValue")), std::invalid_argument);
+    EXPECT_THROW(ir.definition(function, ir.types.intern("FValue")), std::invalid_argument);
 }
 
 TEST(Ast, TypeOperationsAreStronglyTyped) {
@@ -619,7 +619,7 @@ TEST(Ast, AppliesStaticAndDefaultArgumentRulesToFunctionForms) {
         "        return value;\n"
         "    }\n"
         "};");
-    EXPECT_EQ(renderer.render(ir.definition(function, ir.store_text("FValue"))),
+    EXPECT_EQ(renderer.render(ir.definition(function, ir.types.intern("FValue"))),
               "int32 FValue::make(int32 const value) {\n"
               "    return value;\n"
               "}");
@@ -805,7 +805,7 @@ TEST(Ast, UsesTemplateAndMemberScopesInSignaturesAndExpressions) {
         ir.record(ir.strings.intern("Holder"),
                   {ir.using_declaration(ir.strings.intern("Token"), ir.types.intern("int")),
                    ir.declaration(make)})};
-    auto const definition{ir.definition(make, ir.store_text("Holder"))};
+    auto const definition{ir.definition(make, ir.types.intern("Holder"))};
     auto const output{renderer.render_nodes(
         std::vector<NodeId>{in_namespace(ir, "a", record), in_namespace(ir, "a", definition)},
         {},
@@ -893,7 +893,7 @@ TEST(Ast, ResolvesNestedClassOwnersAndForwardDeclaredInjectedNames) {
     auto const output{CppRenderer{ir}.render(
         ir.namespace_node(ir.strings.intern("a"),
                           {outer,
-                           ir.definition(make, ir.store_text("Outer::Inner")),
+                           ir.definition(make, ir.types.intern("Outer::Inner")),
                            ir.forward_declaration(ir.strings.intern("Self")),
                            self}))};
 

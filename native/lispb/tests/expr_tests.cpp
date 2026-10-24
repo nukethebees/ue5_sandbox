@@ -132,12 +132,14 @@ TEST(Expr, PreservesBitwiseAndShiftPrecedence) {
     auto const masked{ir.binary(BinaryOperator::bitwise_and, value, bit)};
     EXPECT_EQ(renderer.render(ir.binary(BinaryOperator::not_equal, masked, ir.literal("0"))),
               "(value & bit(field)) != 0");
-    EXPECT_EQ(renderer.render(ir.binary(BinaryOperator::bitwise_and, value,
-                                        ir.unary(UnaryOperator::bitwise_not, bit))),
+    EXPECT_EQ(renderer.render(ir.binary(
+                  BinaryOperator::bitwise_and, value, ir.unary(UnaryOperator::bitwise_not, bit))),
               "value & ~bit(field)");
     auto const combined{ir.binary(BinaryOperator::bitwise_or, value, bit)};
-    EXPECT_EQ(renderer.render(ir.binary(BinaryOperator::shift_left, combined,
-                                        ir.binary(BinaryOperator::add, ir.named("index"), ir.literal("1")))),
+    EXPECT_EQ(renderer.render(
+                  ir.binary(BinaryOperator::shift_left,
+                            combined,
+                            ir.binary(BinaryOperator::add, ir.named("index"), ir.literal("1")))),
               "(value | bit(field)) << index + 1");
     EXPECT_EQ(renderer.render(ir.unary(UnaryOperator::bitwise_not, combined)),
               "~(value | bit(field))");
@@ -163,7 +165,7 @@ TEST(Ast, RendersRefQualifiedMethodsAndInlineOutOfLineConstructors) {
     ir.function_flags(constructor_spec).set_is_inline(true);
     ir.function_flags(constructor_spec).set_define_in_header(true);
     ir.function_formatting(constructor_spec) = {.body_layout = FunctionBodyLayout::compact};
-    auto const constructor{ir.definition(constructor_spec, ir.store_text("View"), {}, true)};
+    auto const constructor{ir.definition(constructor_spec, ir.types.intern("View"), {}, true)};
     EXPECT_EQ(renderer.render(constructor), "inline View::View() {  }");
 }
 

@@ -9,8 +9,8 @@
 
 namespace ioj::s7 {
 template <>
-struct TypeReader<::ioj::levels::LevelCameraDefinition> {
-    using value_type = ::ioj::levels::LevelCameraDefinition;
+struct TypeReader<levels::LevelCameraDefinition> {
+    using value_type = levels::LevelCameraDefinition;
 
     static ReadResult<value_type>
         read(Reader const& reader, NodeIndex const node, std::string_view const path);
@@ -44,19 +44,19 @@ struct TypeReader<::ioj::levels::LevelCameraDefinition> {
     }
 };
 
-inline ReadResult<::ioj::levels::LevelCameraDefinition>
-    TypeReader<::ioj::levels::LevelCameraDefinition>::read(Reader const& reader,
-                                                           NodeIndex const node,
-                                                           std::string_view const path) {
+inline auto TypeReader<levels::LevelCameraDefinition>::read(Reader const& reader,
+                                                            NodeIndex const node,
+                                                            std::string_view const path)
+    -> ReadResult<value_type> {
     return read_generated<value_type>(reader, node, path);
 }
 
-inline void TypeReader<::ioj::levels::LevelCameraDefinition>::decode(Reader const& reader,
-                                                                     NodeIndex const node,
-                                                                     std::string_view const path,
-                                                                     value_type& result,
-                                                                     ReadMode mode,
-                                                                     AstDiagnostics& errors) {
+inline void TypeReader<levels::LevelCameraDefinition>::decode(Reader const& reader,
+                                                              NodeIndex const node,
+                                                              std::string_view const path,
+                                                              value_type& result,
+                                                              ReadMode mode,
+                                                              AstDiagnostics& errors) {
     auto const seen{read_record<Field>(
         reader,
         node,

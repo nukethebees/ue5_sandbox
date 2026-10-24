@@ -139,9 +139,10 @@ auto lower_facade_impl(LoweringContext& context, DeclarationHandle facade) -> De
     ir.set_record_export_specifier(declaration_node, facades.export_specifier[row]);
     NodeListBuilder definitions{ir};
     if (definitions_in_source) {
-        definitions.add(ir.definition(binding, facades.name[row]));
+        auto const owner{ir.types.intern(context.text(facades.name[row]))};
+        definitions.add(ir.definition(binding, owner));
         for (auto const method : methods) {
-            definitions.new_lines(2).add(ir.definition(method, facades.name[row]));
+            definitions.new_lines(2).add(ir.definition(method, owner));
         }
     }
     return {.header = {std::move(declaration_node)}, .source = definitions.build()};

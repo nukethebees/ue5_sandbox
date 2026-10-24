@@ -9,8 +9,8 @@
 
 namespace ioj::s7 {
 template <>
-struct TypeReader<::ioj::settings::TurretPresentation> {
-    using value_type = ::ioj::settings::TurretPresentation;
+struct TypeReader<settings::TurretPresentation> {
+    using value_type = settings::TurretPresentation;
 
     static ReadResult<value_type>
         read(Reader const& reader, NodeIndex const node, std::string_view const path);
@@ -37,8 +37,8 @@ struct TypeReader<::ioj::settings::TurretPresentation> {
 };
 
 template <>
-struct TypeReader<::ioj::settings::TurretPresentationOverrides> {
-    using value_type = ::ioj::settings::TurretPresentationOverrides;
+struct TypeReader<settings::TurretPresentationOverrides> {
+    using value_type = settings::TurretPresentationOverrides;
 
     static ReadResult<value_type>
         read(Reader const& reader, NodeIndex const node, std::string_view const path);
@@ -64,19 +64,19 @@ struct TypeReader<::ioj::settings::TurretPresentationOverrides> {
     }
 };
 
-inline ReadResult<::ioj::settings::TurretPresentation>
-    TypeReader<::ioj::settings::TurretPresentation>::read(Reader const& reader,
-                                                          NodeIndex const node,
-                                                          std::string_view const path) {
+inline auto TypeReader<settings::TurretPresentation>::read(Reader const& reader,
+                                                           NodeIndex const node,
+                                                           std::string_view const path)
+    -> ReadResult<value_type> {
     return read_generated<value_type>(reader, node, path);
 }
 
-inline void TypeReader<::ioj::settings::TurretPresentation>::decode(Reader const& reader,
-                                                                    NodeIndex const node,
-                                                                    std::string_view const path,
-                                                                    value_type& result,
-                                                                    ReadMode mode,
-                                                                    AstDiagnostics& errors) {
+inline void TypeReader<settings::TurretPresentation>::decode(Reader const& reader,
+                                                             NodeIndex const node,
+                                                             std::string_view const path,
+                                                             value_type& result,
+                                                             ReadMode mode,
+                                                             AstDiagnostics& errors) {
     auto const seen{read_record<Field>(
         reader,
         node,
@@ -107,20 +107,19 @@ inline void TypeReader<::ioj::settings::TurretPresentation>::decode(Reader const
     }
 }
 
-inline ReadResult<::ioj::settings::TurretPresentationOverrides>
-    TypeReader<::ioj::settings::TurretPresentationOverrides>::read(Reader const& reader,
-                                                                   NodeIndex const node,
-                                                                   std::string_view const path) {
+inline auto TypeReader<settings::TurretPresentationOverrides>::read(Reader const& reader,
+                                                                    NodeIndex const node,
+                                                                    std::string_view const path)
+    -> ReadResult<value_type> {
     return read_override(reader, node, path, value_type{});
 }
 
-inline void
-    TypeReader<::ioj::settings::TurretPresentationOverrides>::decode(Reader const& reader,
-                                                                     NodeIndex const node,
-                                                                     std::string_view const path,
-                                                                     value_type& result,
-                                                                     ReadMode,
-                                                                     AstDiagnostics& errors) {
+inline void TypeReader<settings::TurretPresentationOverrides>::decode(Reader const& reader,
+                                                                      NodeIndex const node,
+                                                                      std::string_view const path,
+                                                                      value_type& result,
+                                                                      ReadMode,
+                                                                      AstDiagnostics& errors) {
     auto const seen{read_record<Field>(
         reader,
         node,

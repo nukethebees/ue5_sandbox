@@ -9,8 +9,8 @@
 
 namespace ioj::s7 {
 template <>
-struct TypeReader<::ioj::sim::CapitalShipSimConfig> {
-    using value_type = ::ioj::sim::CapitalShipSimConfig;
+struct TypeReader<sim::CapitalShipSimConfig> {
+    using value_type = sim::CapitalShipSimConfig;
 
     static ReadResult<value_type>
         read(Reader const& reader, NodeIndex const node, std::string_view const path);
@@ -41,8 +41,8 @@ struct TypeReader<::ioj::sim::CapitalShipSimConfig> {
 };
 
 template <>
-struct TypeReader<::ioj::sim::CapitalShipSimConfigOverrides> {
-    using value_type = ::ioj::sim::CapitalShipSimConfigOverrides;
+struct TypeReader<sim::CapitalShipSimConfigOverrides> {
+    using value_type = sim::CapitalShipSimConfigOverrides;
 
     static ReadResult<value_type>
         read(Reader const& reader, NodeIndex const node, std::string_view const path);
@@ -72,19 +72,19 @@ struct TypeReader<::ioj::sim::CapitalShipSimConfigOverrides> {
     }
 };
 
-inline ReadResult<::ioj::sim::CapitalShipSimConfig>
-    TypeReader<::ioj::sim::CapitalShipSimConfig>::read(Reader const& reader,
-                                                       NodeIndex const node,
-                                                       std::string_view const path) {
+inline auto TypeReader<sim::CapitalShipSimConfig>::read(Reader const& reader,
+                                                        NodeIndex const node,
+                                                        std::string_view const path)
+    -> ReadResult<value_type> {
     return read_generated<value_type>(reader, node, path);
 }
 
-inline void TypeReader<::ioj::sim::CapitalShipSimConfig>::decode(Reader const& reader,
-                                                                 NodeIndex const node,
-                                                                 std::string_view const path,
-                                                                 value_type& result,
-                                                                 ReadMode mode,
-                                                                 AstDiagnostics& errors) {
+inline void TypeReader<sim::CapitalShipSimConfig>::decode(Reader const& reader,
+                                                          NodeIndex const node,
+                                                          std::string_view const path,
+                                                          value_type& result,
+                                                          ReadMode mode,
+                                                          AstDiagnostics& errors) {
     auto const seen{read_record<Field>(
         reader,
         node,
@@ -118,20 +118,19 @@ inline void TypeReader<::ioj::sim::CapitalShipSimConfig>::decode(Reader const& r
     }
 }
 
-inline ReadResult<::ioj::sim::CapitalShipSimConfigOverrides>
-    TypeReader<::ioj::sim::CapitalShipSimConfigOverrides>::read(Reader const& reader,
-                                                                NodeIndex const node,
-                                                                std::string_view const path) {
+inline auto TypeReader<sim::CapitalShipSimConfigOverrides>::read(Reader const& reader,
+                                                                 NodeIndex const node,
+                                                                 std::string_view const path)
+    -> ReadResult<value_type> {
     return read_override(reader, node, path, value_type{});
 }
 
-inline void
-    TypeReader<::ioj::sim::CapitalShipSimConfigOverrides>::decode(Reader const& reader,
-                                                                  NodeIndex const node,
-                                                                  std::string_view const path,
-                                                                  value_type& result,
-                                                                  ReadMode,
-                                                                  AstDiagnostics& errors) {
+inline void TypeReader<sim::CapitalShipSimConfigOverrides>::decode(Reader const& reader,
+                                                                   NodeIndex const node,
+                                                                   std::string_view const path,
+                                                                   value_type& result,
+                                                                   ReadMode,
+                                                                   AstDiagnostics& errors) {
     auto const seen{read_record<Field>(
         reader,
         node,

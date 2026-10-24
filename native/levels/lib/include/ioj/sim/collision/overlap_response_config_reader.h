@@ -9,8 +9,8 @@
 
 namespace ioj::s7 {
 template <>
-struct TypeReader<::ioj::sim::OverlapResponseConfig> {
-    using value_type = ::ioj::sim::OverlapResponseConfig;
+struct TypeReader<sim::OverlapResponseConfig> {
+    using value_type = sim::OverlapResponseConfig;
 
     static ReadResult<value_type>
         read(Reader const& reader, NodeIndex const node, std::string_view const path);
@@ -45,8 +45,8 @@ struct TypeReader<::ioj::sim::OverlapResponseConfig> {
 };
 
 template <>
-struct TypeReader<::ioj::sim::OverlapResponseConfigOverrides> {
-    using value_type = ::ioj::sim::OverlapResponseConfigOverrides;
+struct TypeReader<sim::OverlapResponseConfigOverrides> {
+    using value_type = sim::OverlapResponseConfigOverrides;
 
     static ReadResult<value_type>
         read(Reader const& reader, NodeIndex const node, std::string_view const path);
@@ -80,19 +80,19 @@ struct TypeReader<::ioj::sim::OverlapResponseConfigOverrides> {
     }
 };
 
-inline ReadResult<::ioj::sim::OverlapResponseConfig>
-    TypeReader<::ioj::sim::OverlapResponseConfig>::read(Reader const& reader,
-                                                        NodeIndex const node,
-                                                        std::string_view const path) {
+inline auto TypeReader<sim::OverlapResponseConfig>::read(Reader const& reader,
+                                                         NodeIndex const node,
+                                                         std::string_view const path)
+    -> ReadResult<value_type> {
     return read_generated<value_type>(reader, node, path);
 }
 
-inline void TypeReader<::ioj::sim::OverlapResponseConfig>::decode(Reader const& reader,
-                                                                  NodeIndex const node,
-                                                                  std::string_view const path,
-                                                                  value_type& result,
-                                                                  ReadMode mode,
-                                                                  AstDiagnostics& errors) {
+inline void TypeReader<sim::OverlapResponseConfig>::decode(Reader const& reader,
+                                                           NodeIndex const node,
+                                                           std::string_view const path,
+                                                           value_type& result,
+                                                           ReadMode mode,
+                                                           AstDiagnostics& errors) {
     auto const seen{read_record<Field>(
         reader,
         node,
@@ -129,20 +129,19 @@ inline void TypeReader<::ioj::sim::OverlapResponseConfig>::decode(Reader const& 
     }
 }
 
-inline ReadResult<::ioj::sim::OverlapResponseConfigOverrides>
-    TypeReader<::ioj::sim::OverlapResponseConfigOverrides>::read(Reader const& reader,
-                                                                 NodeIndex const node,
-                                                                 std::string_view const path) {
+inline auto TypeReader<sim::OverlapResponseConfigOverrides>::read(Reader const& reader,
+                                                                  NodeIndex const node,
+                                                                  std::string_view const path)
+    -> ReadResult<value_type> {
     return read_override(reader, node, path, value_type{});
 }
 
-inline void
-    TypeReader<::ioj::sim::OverlapResponseConfigOverrides>::decode(Reader const& reader,
-                                                                   NodeIndex const node,
-                                                                   std::string_view const path,
-                                                                   value_type& result,
-                                                                   ReadMode,
-                                                                   AstDiagnostics& errors) {
+inline void TypeReader<sim::OverlapResponseConfigOverrides>::decode(Reader const& reader,
+                                                                    NodeIndex const node,
+                                                                    std::string_view const path,
+                                                                    value_type& result,
+                                                                    ReadMode,
+                                                                    AstDiagnostics& errors) {
     auto const seen{read_record<Field>(
         reader,
         node,

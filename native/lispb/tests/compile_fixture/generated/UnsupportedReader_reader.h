@@ -8,8 +8,8 @@
 
 namespace ioj::s7 {
 template <>
-struct TypeReader<::codegen_compile_fixture::UnsupportedReader> {
-    using value_type = ::codegen_compile_fixture::UnsupportedReader;
+struct TypeReader<codegen_compile_fixture::UnsupportedReader> {
+    using value_type = codegen_compile_fixture::UnsupportedReader;
 
     static ReadResult<value_type>
         read(Reader const& reader, NodeIndex const node, std::string_view const path);
@@ -35,20 +35,19 @@ struct TypeReader<::codegen_compile_fixture::UnsupportedReader> {
     }
 };
 
-inline ReadResult<::codegen_compile_fixture::UnsupportedReader>
-    TypeReader<::codegen_compile_fixture::UnsupportedReader>::read(Reader const& reader,
-                                                                   NodeIndex const node,
-                                                                   std::string_view const path) {
+inline auto TypeReader<codegen_compile_fixture::UnsupportedReader>::read(
+    Reader const& reader, NodeIndex const node, std::string_view const path)
+    -> ReadResult<value_type> {
     return read_generated<value_type>(reader, node, path);
 }
 
 inline void
-    TypeReader<::codegen_compile_fixture::UnsupportedReader>::decode(Reader const& reader,
-                                                                     NodeIndex const node,
-                                                                     std::string_view const path,
-                                                                     value_type& result,
-                                                                     ReadMode mode,
-                                                                     AstDiagnostics& errors) {
+    TypeReader<codegen_compile_fixture::UnsupportedReader>::decode(Reader const& reader,
+                                                                   NodeIndex const node,
+                                                                   std::string_view const path,
+                                                                   value_type& result,
+                                                                   ReadMode mode,
+                                                                   AstDiagnostics& errors) {
     auto const seen{read_record<Field>(
         reader,
         node,

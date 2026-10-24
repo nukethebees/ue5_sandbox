@@ -9,8 +9,8 @@
 
 namespace ioj::s7 {
 template <>
-struct TypeReader<::ioj::settings::SoftTarget> {
-    using value_type = ::ioj::settings::SoftTarget;
+struct TypeReader<settings::SoftTarget> {
+    using value_type = settings::SoftTarget;
 
     static ReadResult<value_type>
         read(Reader const& reader, NodeIndex const node, std::string_view const path);
@@ -119,8 +119,8 @@ struct TypeReader<::ioj::settings::SoftTarget> {
 };
 
 template <>
-struct TypeReader<::ioj::settings::SoftTargetOverrides> {
-    using value_type = ::ioj::settings::SoftTargetOverrides;
+struct TypeReader<settings::SoftTargetOverrides> {
+    using value_type = settings::SoftTargetOverrides;
 
     static ReadResult<value_type>
         read(Reader const& reader, NodeIndex const node, std::string_view const path);
@@ -228,17 +228,19 @@ struct TypeReader<::ioj::settings::SoftTargetOverrides> {
     }
 };
 
-inline ReadResult<::ioj::settings::SoftTarget> TypeReader<::ioj::settings::SoftTarget>::read(
-    Reader const& reader, NodeIndex const node, std::string_view const path) {
+inline auto TypeReader<settings::SoftTarget>::read(Reader const& reader,
+                                                   NodeIndex const node,
+                                                   std::string_view const path)
+    -> ReadResult<value_type> {
     return read_generated<value_type>(reader, node, path);
 }
 
-inline void TypeReader<::ioj::settings::SoftTarget>::decode(Reader const& reader,
-                                                            NodeIndex const node,
-                                                            std::string_view const path,
-                                                            value_type& result,
-                                                            ReadMode mode,
-                                                            AstDiagnostics& errors) {
+inline void TypeReader<settings::SoftTarget>::decode(Reader const& reader,
+                                                     NodeIndex const node,
+                                                     std::string_view const path,
+                                                     value_type& result,
+                                                     ReadMode mode,
+                                                     AstDiagnostics& errors) {
     auto const seen{read_record<Field>(
         reader,
         node,
@@ -305,19 +307,19 @@ inline void TypeReader<::ioj::settings::SoftTarget>::decode(Reader const& reader
     }
 }
 
-inline ReadResult<::ioj::settings::SoftTargetOverrides>
-    TypeReader<::ioj::settings::SoftTargetOverrides>::read(Reader const& reader,
-                                                           NodeIndex const node,
-                                                           std::string_view const path) {
+inline auto TypeReader<settings::SoftTargetOverrides>::read(Reader const& reader,
+                                                            NodeIndex const node,
+                                                            std::string_view const path)
+    -> ReadResult<value_type> {
     return read_override(reader, node, path, value_type{});
 }
 
-inline void TypeReader<::ioj::settings::SoftTargetOverrides>::decode(Reader const& reader,
-                                                                     NodeIndex const node,
-                                                                     std::string_view const path,
-                                                                     value_type& result,
-                                                                     ReadMode,
-                                                                     AstDiagnostics& errors) {
+inline void TypeReader<settings::SoftTargetOverrides>::decode(Reader const& reader,
+                                                              NodeIndex const node,
+                                                              std::string_view const path,
+                                                              value_type& result,
+                                                              ReadMode,
+                                                              AstDiagnostics& errors) {
     auto const seen{read_record<Field>(
         reader,
         node,

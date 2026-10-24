@@ -9,8 +9,8 @@
 
 namespace ioj::s7 {
 template <>
-struct TypeReader<::ioj::settings::LaserPresentation> {
-    using value_type = ::ioj::settings::LaserPresentation;
+struct TypeReader<settings::LaserPresentation> {
+    using value_type = settings::LaserPresentation;
 
     static ReadResult<value_type>
         read(Reader const& reader, NodeIndex const node, std::string_view const path);
@@ -41,8 +41,8 @@ struct TypeReader<::ioj::settings::LaserPresentation> {
 };
 
 template <>
-struct TypeReader<::ioj::settings::LaserPresentationOverrides> {
-    using value_type = ::ioj::settings::LaserPresentationOverrides;
+struct TypeReader<settings::LaserPresentationOverrides> {
+    using value_type = settings::LaserPresentationOverrides;
 
     static ReadResult<value_type>
         read(Reader const& reader, NodeIndex const node, std::string_view const path);
@@ -72,19 +72,19 @@ struct TypeReader<::ioj::settings::LaserPresentationOverrides> {
     }
 };
 
-inline ReadResult<::ioj::settings::LaserPresentation>
-    TypeReader<::ioj::settings::LaserPresentation>::read(Reader const& reader,
-                                                         NodeIndex const node,
-                                                         std::string_view const path) {
+inline auto TypeReader<settings::LaserPresentation>::read(Reader const& reader,
+                                                          NodeIndex const node,
+                                                          std::string_view const path)
+    -> ReadResult<value_type> {
     return read_generated<value_type>(reader, node, path);
 }
 
-inline void TypeReader<::ioj::settings::LaserPresentation>::decode(Reader const& reader,
-                                                                   NodeIndex const node,
-                                                                   std::string_view const path,
-                                                                   value_type& result,
-                                                                   ReadMode mode,
-                                                                   AstDiagnostics& errors) {
+inline void TypeReader<settings::LaserPresentation>::decode(Reader const& reader,
+                                                            NodeIndex const node,
+                                                            std::string_view const path,
+                                                            value_type& result,
+                                                            ReadMode mode,
+                                                            AstDiagnostics& errors) {
     auto const seen{read_record<Field>(
         reader,
         node,
@@ -118,20 +118,19 @@ inline void TypeReader<::ioj::settings::LaserPresentation>::decode(Reader const&
     }
 }
 
-inline ReadResult<::ioj::settings::LaserPresentationOverrides>
-    TypeReader<::ioj::settings::LaserPresentationOverrides>::read(Reader const& reader,
-                                                                  NodeIndex const node,
-                                                                  std::string_view const path) {
+inline auto TypeReader<settings::LaserPresentationOverrides>::read(Reader const& reader,
+                                                                   NodeIndex const node,
+                                                                   std::string_view const path)
+    -> ReadResult<value_type> {
     return read_override(reader, node, path, value_type{});
 }
 
-inline void
-    TypeReader<::ioj::settings::LaserPresentationOverrides>::decode(Reader const& reader,
-                                                                    NodeIndex const node,
-                                                                    std::string_view const path,
-                                                                    value_type& result,
-                                                                    ReadMode,
-                                                                    AstDiagnostics& errors) {
+inline void TypeReader<settings::LaserPresentationOverrides>::decode(Reader const& reader,
+                                                                     NodeIndex const node,
+                                                                     std::string_view const path,
+                                                                     value_type& result,
+                                                                     ReadMode,
+                                                                     AstDiagnostics& errors) {
     auto const seen{read_record<Field>(
         reader,
         node,

@@ -9,8 +9,8 @@
 
 namespace ioj::s7 {
 template <>
-struct TypeReader<::ioj::levels::ObjectiveDependency> {
-    using value_type = ::ioj::levels::ObjectiveDependency;
+struct TypeReader<levels::ObjectiveDependency> {
+    using value_type = levels::ObjectiveDependency;
 
     static ReadResult<value_type>
         read(Reader const& reader, NodeIndex const node, std::string_view const path);
@@ -23,19 +23,19 @@ struct TypeReader<::ioj::levels::ObjectiveDependency> {
                        AstDiagnostics& errors);
 };
 
-inline ReadResult<::ioj::levels::ObjectiveDependency>
-    TypeReader<::ioj::levels::ObjectiveDependency>::read(Reader const& reader,
-                                                         NodeIndex const node,
-                                                         std::string_view const path) {
+inline auto TypeReader<levels::ObjectiveDependency>::read(Reader const& reader,
+                                                          NodeIndex const node,
+                                                          std::string_view const path)
+    -> ReadResult<value_type> {
     return read_generated<value_type>(reader, node, path);
 }
 
-inline void TypeReader<::ioj::levels::ObjectiveDependency>::decode(Reader const& reader,
-                                                                   NodeIndex const node,
-                                                                   std::string_view const path,
-                                                                   value_type& result,
-                                                                   ReadMode mode,
-                                                                   AstDiagnostics& errors) {
+inline void TypeReader<levels::ObjectiveDependency>::decode(Reader const& reader,
+                                                            NodeIndex const node,
+                                                            std::string_view const path,
+                                                            value_type& result,
+                                                            ReadMode mode,
+                                                            AstDiagnostics& errors) {
     auto const read{
         [&](auto& destination, NodeIndex value, std::string_view location, auto... checks) {
             read_checked(

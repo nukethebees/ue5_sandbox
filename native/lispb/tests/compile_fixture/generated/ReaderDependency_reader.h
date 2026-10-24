@@ -9,8 +9,8 @@
 
 namespace ioj::s7 {
 template <>
-struct TypeReader<::codegen_compile_fixture::ReaderDependency> {
-    using value_type = ::codegen_compile_fixture::ReaderDependency;
+struct TypeReader<codegen_compile_fixture::ReaderDependency> {
+    using value_type = codegen_compile_fixture::ReaderDependency;
 
     static ReadResult<value_type>
         read(Reader const& reader, NodeIndex const node, std::string_view const path);
@@ -39,16 +39,16 @@ struct TypeReader<::codegen_compile_fixture::ReaderDependency> {
     }
 };
 
-inline ReadResult<::codegen_compile_fixture::ReaderDependency>
-    TypeReader<::codegen_compile_fixture::ReaderDependency>::read(Reader const& reader,
-                                                                  NodeIndex const node,
-                                                                  std::string_view const path) {
+inline auto TypeReader<codegen_compile_fixture::ReaderDependency>::read(Reader const& reader,
+                                                                        NodeIndex const node,
+                                                                        std::string_view const path)
+    -> ReadResult<value_type> {
     return read_generated<value_type>(reader, node, path);
 }
 
-inline ReadResult<::codegen_compile_fixture::ReaderDependency>
-    TypeReader<::codegen_compile_fixture::ReaderDependency>::construct(
-        Reader const& reader, NodeIndex const node, std::string_view const path) {
+inline auto TypeReader<codegen_compile_fixture::ReaderDependency>::construct(
+    Reader const& reader, NodeIndex const node, std::string_view const path)
+    -> ReadResult<value_type> {
     AstDiagnostics errors{};
     std::optional<decltype(value_type::child)> value_child{};
     auto const seen{read_record<Field>(
@@ -93,12 +93,12 @@ inline ReadResult<::codegen_compile_fixture::ReaderDependency>
 }
 
 inline void
-    TypeReader<::codegen_compile_fixture::ReaderDependency>::decode(Reader const& reader,
-                                                                    NodeIndex const node,
-                                                                    std::string_view const path,
-                                                                    value_type& result,
-                                                                    ReadMode mode,
-                                                                    AstDiagnostics& errors) {
+    TypeReader<codegen_compile_fixture::ReaderDependency>::decode(Reader const& reader,
+                                                                  NodeIndex const node,
+                                                                  std::string_view const path,
+                                                                  value_type& result,
+                                                                  ReadMode mode,
+                                                                  AstDiagnostics& errors) {
     auto const seen{read_record<Field>(
         reader,
         node,

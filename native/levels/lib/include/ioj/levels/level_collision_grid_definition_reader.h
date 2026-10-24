@@ -8,8 +8,8 @@
 
 namespace ioj::s7 {
 template <>
-struct TypeReader<::ioj::levels::LevelCollisionGridDefinition> {
-    using value_type = ::ioj::levels::LevelCollisionGridDefinition;
+struct TypeReader<levels::LevelCollisionGridDefinition> {
+    using value_type = levels::LevelCollisionGridDefinition;
 
     static ReadResult<value_type>
         read(Reader const& reader, NodeIndex const node, std::string_view const path);
@@ -39,20 +39,19 @@ struct TypeReader<::ioj::levels::LevelCollisionGridDefinition> {
     }
 };
 
-inline ReadResult<::ioj::levels::LevelCollisionGridDefinition>
-    TypeReader<::ioj::levels::LevelCollisionGridDefinition>::read(Reader const& reader,
-                                                                  NodeIndex const node,
-                                                                  std::string_view const path) {
+inline auto TypeReader<levels::LevelCollisionGridDefinition>::read(Reader const& reader,
+                                                                   NodeIndex const node,
+                                                                   std::string_view const path)
+    -> ReadResult<value_type> {
     return read_generated<value_type>(reader, node, path);
 }
 
-inline void
-    TypeReader<::ioj::levels::LevelCollisionGridDefinition>::decode(Reader const& reader,
-                                                                    NodeIndex const node,
-                                                                    std::string_view const path,
-                                                                    value_type& result,
-                                                                    ReadMode mode,
-                                                                    AstDiagnostics& errors) {
+inline void TypeReader<levels::LevelCollisionGridDefinition>::decode(Reader const& reader,
+                                                                     NodeIndex const node,
+                                                                     std::string_view const path,
+                                                                     value_type& result,
+                                                                     ReadMode mode,
+                                                                     AstDiagnostics& errors) {
     auto const seen{read_record<Field>(
         reader,
         node,

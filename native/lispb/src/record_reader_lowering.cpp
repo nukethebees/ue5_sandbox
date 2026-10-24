@@ -262,11 +262,12 @@ void lower_record_reader(LoweringContext& context,
     auto const fields{record_reader::reader_fields(context, record, overrides)};
     auto const empty{fields.empty()};
     auto const type{context.semantic.find_declared(context.module, records.name[row]).value()};
-    auto const name{"::" + context.text(context.semantic.cpp_spelling(type)) +
-                    (overrides                        ? "Overrides"
-                     : records.constraint_policy[row] ? "Value"
-                                                      : "")};
-    auto const reader_name{"TypeReader<" + name + ">"};
+    auto const value_type{ir.types.named(context.text(context.semantic.cpp_spelling(type)) +
+                                         (overrides                        ? "Overrides"
+                                          : records.constraint_policy[row] ? "Value"
+                                                                           : ""))};
+    auto const reader_type{
+        ir.types.template_type(ir.types.named("ioj::s7::TypeReader"), {value_type})};
     auto const& members{context.declarations.record_members};
     if (std::ranges::any_of(fields, [&](auto field) {
             auto const& options{members.s7[members.index(field)]};
@@ -294,8 +295,7 @@ void lower_record_reader(LoweringContext& context,
         entries.push_back({key, "Field::" + context.text(member)});
     }
     NodeListBuilder declarations{ir};
-    declarations.add(ir.using_declaration(ir.strings.intern("value_type"), ir.types.intern(name)),
-                     2);
+    declarations.add(ir.using_declaration(ir.strings.intern("value_type"), value_type), 2);
     auto const includes{context.declarations.items(records.s7_reader_includes[row])};
     emission.reader_includes.insert(
         emission.reader_includes.end(), includes.begin(), includes.end());
@@ -307,14 +307,13 @@ void lower_record_reader(LoweringContext& context,
         ir.set_function_parameters(function, parameters);
         ir.set_function_receiver(function, FunctionReceiver::static_);
         declarations.add(ir.header_function(function), 2);
-        auto const definition{ir.function(
-            reader_name + "::" + method,
-            return_type == "ReadResult<value_type>" ? "ReadResult<" + name + ">" : return_type)};
-        ir.set_function_parameters(definition, parameters);
-        ir.function_flags(definition).set_is_inline(true);
-        ir.function_flags(definition).set_define_in_header(true);
-        ir.set_function_body(definition, body);
-        emission.reader_definitions.push_back(ir.header_function(definition));
+        ir.function_flags(function).set_is_inline(true);
+        ir.set_function_body(function, body);
+        emission.reader_definitions.push_back(
+            ir.definition(function,
+                          reader_type,
+                          return_type == "void" ? ReturnSyntax::direct : ReturnSyntax::trailing,
+                          true));
     }};
     std::vector<FunctionParameterId> const read_parameters{
         ir.parameter("Reader const&", "reader"),
@@ -355,7 +354,9 @@ void lower_record_reader(LoweringContext& context,
         declarations.add(
             lower_string_enum_parser(ir, "parse_field", "Field", "name", entries, true));
     }
-    auto const specialization{ir.record(ir.strings.intern(reader_name), declarations.build())};
+    auto const specialization{
+        ir.record(ir.template_id(ir.named("TypeReader"), {ir.type_reference(value_type)}),
+                  declarations.build())};
     ir.set_record_template(specialization, ir.template_specialization());
     emission.reader_declarations.push_back(specialization);
 

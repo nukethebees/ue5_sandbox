@@ -9,8 +9,8 @@
 
 namespace ioj::s7 {
 template <>
-struct TypeReader<::ioj::settings::Radar> {
-    using value_type = ::ioj::settings::Radar;
+struct TypeReader<settings::Radar> {
+    using value_type = settings::Radar;
 
     static ReadResult<value_type>
         read(Reader const& reader, NodeIndex const node, std::string_view const path);
@@ -126,8 +126,8 @@ struct TypeReader<::ioj::settings::Radar> {
 };
 
 template <>
-struct TypeReader<::ioj::settings::RadarOverrides> {
-    using value_type = ::ioj::settings::RadarOverrides;
+struct TypeReader<settings::RadarOverrides> {
+    using value_type = settings::RadarOverrides;
 
     static ReadResult<value_type>
         read(Reader const& reader, NodeIndex const node, std::string_view const path);
@@ -242,17 +242,19 @@ struct TypeReader<::ioj::settings::RadarOverrides> {
     }
 };
 
-inline ReadResult<::ioj::settings::Radar> TypeReader<::ioj::settings::Radar>::read(
-    Reader const& reader, NodeIndex const node, std::string_view const path) {
+inline auto TypeReader<settings::Radar>::read(Reader const& reader,
+                                              NodeIndex const node,
+                                              std::string_view const path)
+    -> ReadResult<value_type> {
     return read_generated<value_type>(reader, node, path);
 }
 
-inline void TypeReader<::ioj::settings::Radar>::decode(Reader const& reader,
-                                                       NodeIndex const node,
-                                                       std::string_view const path,
-                                                       value_type& result,
-                                                       ReadMode mode,
-                                                       AstDiagnostics& errors) {
+inline void TypeReader<settings::Radar>::decode(Reader const& reader,
+                                                NodeIndex const node,
+                                                std::string_view const path,
+                                                value_type& result,
+                                                ReadMode mode,
+                                                AstDiagnostics& errors) {
     auto const seen{read_record<Field>(
         reader,
         node,
@@ -322,19 +324,19 @@ inline void TypeReader<::ioj::settings::Radar>::decode(Reader const& reader,
     }
 }
 
-inline ReadResult<::ioj::settings::RadarOverrides>
-    TypeReader<::ioj::settings::RadarOverrides>::read(Reader const& reader,
-                                                      NodeIndex const node,
-                                                      std::string_view const path) {
+inline auto TypeReader<settings::RadarOverrides>::read(Reader const& reader,
+                                                       NodeIndex const node,
+                                                       std::string_view const path)
+    -> ReadResult<value_type> {
     return read_override(reader, node, path, value_type{});
 }
 
-inline void TypeReader<::ioj::settings::RadarOverrides>::decode(Reader const& reader,
-                                                                NodeIndex const node,
-                                                                std::string_view const path,
-                                                                value_type& result,
-                                                                ReadMode,
-                                                                AstDiagnostics& errors) {
+inline void TypeReader<settings::RadarOverrides>::decode(Reader const& reader,
+                                                         NodeIndex const node,
+                                                         std::string_view const path,
+                                                         value_type& result,
+                                                         ReadMode,
+                                                         AstDiagnostics& errors) {
     auto const seen{read_record<Field>(
         reader,
         node,

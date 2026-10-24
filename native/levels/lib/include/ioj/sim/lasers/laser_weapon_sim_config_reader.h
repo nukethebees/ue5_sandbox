@@ -9,8 +9,8 @@
 
 namespace ioj::s7 {
 template <>
-struct TypeReader<::ioj::sim::LaserWeaponSimConfig> {
-    using value_type = ::ioj::sim::LaserWeaponSimConfig;
+struct TypeReader<sim::LaserWeaponSimConfig> {
+    using value_type = sim::LaserWeaponSimConfig;
 
     static ReadResult<value_type>
         read(Reader const& reader, NodeIndex const node, std::string_view const path);
@@ -49,8 +49,8 @@ struct TypeReader<::ioj::sim::LaserWeaponSimConfig> {
 };
 
 template <>
-struct TypeReader<::ioj::sim::LaserWeaponSimConfigOverrides> {
-    using value_type = ::ioj::sim::LaserWeaponSimConfigOverrides;
+struct TypeReader<sim::LaserWeaponSimConfigOverrides> {
+    using value_type = sim::LaserWeaponSimConfigOverrides;
 
     static ReadResult<value_type>
         read(Reader const& reader, NodeIndex const node, std::string_view const path);
@@ -88,19 +88,19 @@ struct TypeReader<::ioj::sim::LaserWeaponSimConfigOverrides> {
     }
 };
 
-inline ReadResult<::ioj::sim::LaserWeaponSimConfig>
-    TypeReader<::ioj::sim::LaserWeaponSimConfig>::read(Reader const& reader,
-                                                       NodeIndex const node,
-                                                       std::string_view const path) {
+inline auto TypeReader<sim::LaserWeaponSimConfig>::read(Reader const& reader,
+                                                        NodeIndex const node,
+                                                        std::string_view const path)
+    -> ReadResult<value_type> {
     return read_generated<value_type>(reader, node, path);
 }
 
-inline void TypeReader<::ioj::sim::LaserWeaponSimConfig>::decode(Reader const& reader,
-                                                                 NodeIndex const node,
-                                                                 std::string_view const path,
-                                                                 value_type& result,
-                                                                 ReadMode mode,
-                                                                 AstDiagnostics& errors) {
+inline void TypeReader<sim::LaserWeaponSimConfig>::decode(Reader const& reader,
+                                                          NodeIndex const node,
+                                                          std::string_view const path,
+                                                          value_type& result,
+                                                          ReadMode mode,
+                                                          AstDiagnostics& errors) {
     auto const seen{read_record<Field>(
         reader,
         node,
@@ -140,20 +140,19 @@ inline void TypeReader<::ioj::sim::LaserWeaponSimConfig>::decode(Reader const& r
     }
 }
 
-inline ReadResult<::ioj::sim::LaserWeaponSimConfigOverrides>
-    TypeReader<::ioj::sim::LaserWeaponSimConfigOverrides>::read(Reader const& reader,
-                                                                NodeIndex const node,
-                                                                std::string_view const path) {
+inline auto TypeReader<sim::LaserWeaponSimConfigOverrides>::read(Reader const& reader,
+                                                                 NodeIndex const node,
+                                                                 std::string_view const path)
+    -> ReadResult<value_type> {
     return read_override(reader, node, path, value_type{});
 }
 
-inline void
-    TypeReader<::ioj::sim::LaserWeaponSimConfigOverrides>::decode(Reader const& reader,
-                                                                  NodeIndex const node,
-                                                                  std::string_view const path,
-                                                                  value_type& result,
-                                                                  ReadMode,
-                                                                  AstDiagnostics& errors) {
+inline void TypeReader<sim::LaserWeaponSimConfigOverrides>::decode(Reader const& reader,
+                                                                   NodeIndex const node,
+                                                                   std::string_view const path,
+                                                                   value_type& result,
+                                                                   ReadMode,
+                                                                   AstDiagnostics& errors) {
     auto const seen{read_record<Field>(
         reader,
         node,

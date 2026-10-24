@@ -808,13 +808,13 @@ auto CppRenderer::signature(std::uint32_t index,
         output += ' ';
     }
     if (owner) {
-        output += ir_.strings.view(*owner);
+        append_type(output, *owner);
         output += "::";
     }
     append_expr(output, ir_.functions_.name[id], context);
     state.current = enclosing;
     if (owner) {
-        state.current = record_environment(ir_.strings.view(*owner));
+        state.current = record_environment(ir_.types.spelling(*owner));
     }
     auto const function_environment{
         state.environments.append(state.current, EnvironmentKind::function)};

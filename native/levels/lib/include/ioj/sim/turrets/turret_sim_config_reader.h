@@ -10,8 +10,8 @@
 
 namespace ioj::s7 {
 template <>
-struct TypeReader<::ioj::sim::TurretSimConfig> {
-    using value_type = ::ioj::sim::TurretSimConfig;
+struct TypeReader<sim::TurretSimConfig> {
+    using value_type = sim::TurretSimConfig;
 
     static ReadResult<value_type>
         read(Reader const& reader, NodeIndex const node, std::string_view const path);
@@ -50,8 +50,8 @@ struct TypeReader<::ioj::sim::TurretSimConfig> {
 };
 
 template <>
-struct TypeReader<::ioj::sim::TurretSimConfigOverrides> {
-    using value_type = ::ioj::sim::TurretSimConfigOverrides;
+struct TypeReader<sim::TurretSimConfigOverrides> {
+    using value_type = sim::TurretSimConfigOverrides;
 
     static ReadResult<value_type>
         read(Reader const& reader, NodeIndex const node, std::string_view const path);
@@ -89,17 +89,19 @@ struct TypeReader<::ioj::sim::TurretSimConfigOverrides> {
     }
 };
 
-inline ReadResult<::ioj::sim::TurretSimConfig> TypeReader<::ioj::sim::TurretSimConfig>::read(
-    Reader const& reader, NodeIndex const node, std::string_view const path) {
+inline auto TypeReader<sim::TurretSimConfig>::read(Reader const& reader,
+                                                   NodeIndex const node,
+                                                   std::string_view const path)
+    -> ReadResult<value_type> {
     return read_generated<value_type>(reader, node, path);
 }
 
-inline void TypeReader<::ioj::sim::TurretSimConfig>::decode(Reader const& reader,
-                                                            NodeIndex const node,
-                                                            std::string_view const path,
-                                                            value_type& result,
-                                                            ReadMode mode,
-                                                            AstDiagnostics& errors) {
+inline void TypeReader<sim::TurretSimConfig>::decode(Reader const& reader,
+                                                     NodeIndex const node,
+                                                     std::string_view const path,
+                                                     value_type& result,
+                                                     ReadMode mode,
+                                                     AstDiagnostics& errors) {
     auto const seen{read_record<Field>(
         reader,
         node,
@@ -139,19 +141,19 @@ inline void TypeReader<::ioj::sim::TurretSimConfig>::decode(Reader const& reader
     }
 }
 
-inline ReadResult<::ioj::sim::TurretSimConfigOverrides>
-    TypeReader<::ioj::sim::TurretSimConfigOverrides>::read(Reader const& reader,
-                                                           NodeIndex const node,
-                                                           std::string_view const path) {
+inline auto TypeReader<sim::TurretSimConfigOverrides>::read(Reader const& reader,
+                                                            NodeIndex const node,
+                                                            std::string_view const path)
+    -> ReadResult<value_type> {
     return read_override(reader, node, path, value_type{});
 }
 
-inline void TypeReader<::ioj::sim::TurretSimConfigOverrides>::decode(Reader const& reader,
-                                                                     NodeIndex const node,
-                                                                     std::string_view const path,
-                                                                     value_type& result,
-                                                                     ReadMode,
-                                                                     AstDiagnostics& errors) {
+inline void TypeReader<sim::TurretSimConfigOverrides>::decode(Reader const& reader,
+                                                              NodeIndex const node,
+                                                              std::string_view const path,
+                                                              value_type& result,
+                                                              ReadMode,
+                                                              AstDiagnostics& errors) {
     auto const seen{read_record<Field>(
         reader,
         node,

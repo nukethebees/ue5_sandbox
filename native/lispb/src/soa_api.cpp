@@ -365,7 +365,7 @@ auto lower_soa_api(LoweringContext& parent_context,
                 header.add(ir.declaration(id)).new_lines(1);
                 source
                     .add(ir.definition(id,
-                                       ir.strings.intern(type_name),
+                                       ir.types.intern(type_name),
                                        use_trailing_return ? ReturnSyntax::trailing
                                                            : ir.function_return_syntax(spec)))
                     .new_lines(2);

@@ -9,8 +9,8 @@
 
 namespace ioj::s7 {
 template <>
-struct TypeReader<::codegen_compile_fixture::EmptyReadable> {
-    using value_type = ::codegen_compile_fixture::EmptyReadable;
+struct TypeReader<codegen_compile_fixture::EmptyReadable> {
+    using value_type = codegen_compile_fixture::EmptyReadable;
 
     static ReadResult<value_type>
         read(Reader const& reader, NodeIndex const node, std::string_view const path);
@@ -34,8 +34,8 @@ struct TypeReader<::codegen_compile_fixture::EmptyReadable> {
 };
 
 template <>
-struct TypeReader<::codegen_compile_fixture::EmptyPositional> {
-    using value_type = ::codegen_compile_fixture::EmptyPositional;
+struct TypeReader<codegen_compile_fixture::EmptyPositional> {
+    using value_type = codegen_compile_fixture::EmptyPositional;
 
     static ReadResult<value_type>
         read(Reader const& reader, NodeIndex const node, std::string_view const path);
@@ -49,8 +49,8 @@ struct TypeReader<::codegen_compile_fixture::EmptyPositional> {
 };
 
 template <>
-struct TypeReader<::codegen_compile_fixture::PositionalChild> {
-    using value_type = ::codegen_compile_fixture::PositionalChild;
+struct TypeReader<codegen_compile_fixture::PositionalChild> {
+    using value_type = codegen_compile_fixture::PositionalChild;
 
     static ReadResult<value_type>
         read(Reader const& reader, NodeIndex const node, std::string_view const path);
@@ -67,8 +67,8 @@ struct TypeReader<::codegen_compile_fixture::PositionalChild> {
 };
 
 template <>
-struct TypeReader<::codegen_compile_fixture::DefaultReadable> {
-    using value_type = ::codegen_compile_fixture::DefaultReadable;
+struct TypeReader<codegen_compile_fixture::DefaultReadable> {
+    using value_type = codegen_compile_fixture::DefaultReadable;
 
     static ReadResult<value_type>
         read(Reader const& reader, NodeIndex const node, std::string_view const path);
@@ -99,8 +99,8 @@ struct TypeReader<::codegen_compile_fixture::DefaultReadable> {
 };
 
 template <>
-struct TypeReader<::codegen_compile_fixture::RecursiveReadable> {
-    using value_type = ::codegen_compile_fixture::RecursiveReadable;
+struct TypeReader<codegen_compile_fixture::RecursiveReadable> {
+    using value_type = codegen_compile_fixture::RecursiveReadable;
 
     static ReadResult<value_type>
         read(Reader const& reader, NodeIndex const node, std::string_view const path);
@@ -127,8 +127,8 @@ struct TypeReader<::codegen_compile_fixture::RecursiveReadable> {
 };
 
 template <>
-struct TypeReader<::codegen_compile_fixture::BoundedInteger> {
-    using value_type = ::codegen_compile_fixture::BoundedInteger;
+struct TypeReader<codegen_compile_fixture::BoundedInteger> {
+    using value_type = codegen_compile_fixture::BoundedInteger;
 
     static ReadResult<value_type>
         read(Reader const& reader, NodeIndex const node, std::string_view const path);
@@ -158,8 +158,8 @@ struct TypeReader<::codegen_compile_fixture::BoundedInteger> {
 };
 
 template <>
-struct TypeReader<::codegen_compile_fixture::ReadableChild> {
-    using value_type = ::codegen_compile_fixture::ReadableChild;
+struct TypeReader<codegen_compile_fixture::ReadableChild> {
+    using value_type = codegen_compile_fixture::ReadableChild;
 
     static ReadResult<value_type>
         read(Reader const& reader, NodeIndex const node, std::string_view const path);
@@ -193,8 +193,8 @@ struct TypeReader<::codegen_compile_fixture::ReadableChild> {
 };
 
 template <>
-struct TypeReader<::codegen_compile_fixture::ReadableRecord> {
-    using value_type = ::codegen_compile_fixture::ReadableRecord;
+struct TypeReader<codegen_compile_fixture::ReadableRecord> {
+    using value_type = codegen_compile_fixture::ReadableRecord;
 
     static ReadResult<value_type>
         read(Reader const& reader, NodeIndex const node, std::string_view const path);
@@ -271,20 +271,19 @@ struct TypeReader<::codegen_compile_fixture::ReadableRecord> {
     }
 };
 
-inline ReadResult<::codegen_compile_fixture::EmptyReadable>
-    TypeReader<::codegen_compile_fixture::EmptyReadable>::read(Reader const& reader,
-                                                               NodeIndex const node,
-                                                               std::string_view const path) {
+inline auto TypeReader<codegen_compile_fixture::EmptyReadable>::read(Reader const& reader,
+                                                                     NodeIndex const node,
+                                                                     std::string_view const path)
+    -> ReadResult<value_type> {
     return read_generated<value_type>(reader, node, path);
 }
 
-inline void
-    TypeReader<::codegen_compile_fixture::EmptyReadable>::decode(Reader const& reader,
-                                                                 NodeIndex const node,
-                                                                 std::string_view const path,
-                                                                 value_type&,
-                                                                 ReadMode,
-                                                                 AstDiagnostics& errors) {
+inline void TypeReader<codegen_compile_fixture::EmptyReadable>::decode(Reader const& reader,
+                                                                       NodeIndex const node,
+                                                                       std::string_view const path,
+                                                                       value_type&,
+                                                                       ReadMode,
+                                                                       AstDiagnostics& errors) {
     auto const seen{read_record<Field>(
         reader, node, "empty", path, parse_field, ([](Field, NodeIndex, std::string_view) {}))};
 
@@ -294,20 +293,20 @@ inline void
     }
 }
 
-inline ReadResult<::codegen_compile_fixture::EmptyPositional>
-    TypeReader<::codegen_compile_fixture::EmptyPositional>::read(Reader const& reader,
-                                                                 NodeIndex const node,
-                                                                 std::string_view const path) {
+inline auto TypeReader<codegen_compile_fixture::EmptyPositional>::read(Reader const& reader,
+                                                                       NodeIndex const node,
+                                                                       std::string_view const path)
+    -> ReadResult<value_type> {
     return read_generated<value_type>(reader, node, path);
 }
 
 inline void
-    TypeReader<::codegen_compile_fixture::EmptyPositional>::decode(Reader const& reader,
-                                                                   NodeIndex const node,
-                                                                   std::string_view const path,
-                                                                   value_type&,
-                                                                   ReadMode,
-                                                                   AstDiagnostics& errors) {
+    TypeReader<codegen_compile_fixture::EmptyPositional>::decode(Reader const& reader,
+                                                                 NodeIndex const node,
+                                                                 std::string_view const path,
+                                                                 value_type&,
+                                                                 ReadMode,
+                                                                 AstDiagnostics& errors) {
     auto const arguments{positional_arguments(reader, node, "empty-position", path, 0)};
 
     if (!arguments) {
@@ -316,17 +315,16 @@ inline void
     }
 }
 
-inline ReadResult<::codegen_compile_fixture::PositionalChild>
-    TypeReader<::codegen_compile_fixture::PositionalChild>::read(Reader const& reader,
-                                                                 NodeIndex const node,
-                                                                 std::string_view const path) {
+inline auto TypeReader<codegen_compile_fixture::PositionalChild>::read(Reader const& reader,
+                                                                       NodeIndex const node,
+                                                                       std::string_view const path)
+    -> ReadResult<value_type> {
     return read_generated<value_type>(reader, node, path);
 }
 
-inline ReadResult<::codegen_compile_fixture::PositionalChild>
-    TypeReader<::codegen_compile_fixture::PositionalChild>::construct(Reader const& reader,
-                                                                      NodeIndex const node,
-                                                                      std::string_view const path) {
+inline auto TypeReader<codegen_compile_fixture::PositionalChild>::construct(
+    Reader const& reader, NodeIndex const node, std::string_view const path)
+    -> ReadResult<value_type> {
     AstDiagnostics errors{};
     std::optional<decltype(value_type::name)> value_name{};
     std::optional<decltype(value_type::count)> value_count{};
@@ -358,12 +356,12 @@ inline ReadResult<::codegen_compile_fixture::PositionalChild>
 }
 
 inline void
-    TypeReader<::codegen_compile_fixture::PositionalChild>::decode(Reader const& reader,
-                                                                   NodeIndex const node,
-                                                                   std::string_view const path,
-                                                                   value_type& result,
-                                                                   ReadMode mode,
-                                                                   AstDiagnostics& errors) {
+    TypeReader<codegen_compile_fixture::PositionalChild>::decode(Reader const& reader,
+                                                                 NodeIndex const node,
+                                                                 std::string_view const path,
+                                                                 value_type& result,
+                                                                 ReadMode mode,
+                                                                 AstDiagnostics& errors) {
     auto const read{
         [&](auto& destination, NodeIndex value, std::string_view location, auto... checks) {
             read_checked(
@@ -384,20 +382,20 @@ inline void
     read(result.count, (*arguments)[1], std::string{path} + ".count", constraints::nonnegative);
 }
 
-inline ReadResult<::codegen_compile_fixture::DefaultReadable>
-    TypeReader<::codegen_compile_fixture::DefaultReadable>::read(Reader const& reader,
-                                                                 NodeIndex const node,
-                                                                 std::string_view const path) {
+inline auto TypeReader<codegen_compile_fixture::DefaultReadable>::read(Reader const& reader,
+                                                                       NodeIndex const node,
+                                                                       std::string_view const path)
+    -> ReadResult<value_type> {
     return read_generated<value_type>(reader, node, path);
 }
 
 inline void
-    TypeReader<::codegen_compile_fixture::DefaultReadable>::decode(Reader const& reader,
-                                                                   NodeIndex const node,
-                                                                   std::string_view const path,
-                                                                   value_type& result,
-                                                                   ReadMode mode,
-                                                                   AstDiagnostics& errors) {
+    TypeReader<codegen_compile_fixture::DefaultReadable>::decode(Reader const& reader,
+                                                                 NodeIndex const node,
+                                                                 std::string_view const path,
+                                                                 value_type& result,
+                                                                 ReadMode mode,
+                                                                 AstDiagnostics& errors) {
     auto const seen{read_record<Field>(
         reader,
         node,
@@ -437,20 +435,19 @@ inline void
     }
 }
 
-inline ReadResult<::codegen_compile_fixture::RecursiveReadable>
-    TypeReader<::codegen_compile_fixture::RecursiveReadable>::read(Reader const& reader,
-                                                                   NodeIndex const node,
-                                                                   std::string_view const path) {
+inline auto TypeReader<codegen_compile_fixture::RecursiveReadable>::read(
+    Reader const& reader, NodeIndex const node, std::string_view const path)
+    -> ReadResult<value_type> {
     return read_generated<value_type>(reader, node, path);
 }
 
 inline void
-    TypeReader<::codegen_compile_fixture::RecursiveReadable>::decode(Reader const& reader,
-                                                                     NodeIndex const node,
-                                                                     std::string_view const path,
-                                                                     value_type& result,
-                                                                     ReadMode mode,
-                                                                     AstDiagnostics& errors) {
+    TypeReader<codegen_compile_fixture::RecursiveReadable>::decode(Reader const& reader,
+                                                                   NodeIndex const node,
+                                                                   std::string_view const path,
+                                                                   value_type& result,
+                                                                   ReadMode mode,
+                                                                   AstDiagnostics& errors) {
     auto const seen{read_record<Field>(
         reader,
         node,
@@ -481,17 +478,16 @@ inline void
     }
 }
 
-inline ReadResult<::codegen_compile_fixture::BoundedInteger>
-    TypeReader<::codegen_compile_fixture::BoundedInteger>::read(Reader const& reader,
-                                                                NodeIndex const node,
-                                                                std::string_view const path) {
+inline auto TypeReader<codegen_compile_fixture::BoundedInteger>::read(Reader const& reader,
+                                                                      NodeIndex const node,
+                                                                      std::string_view const path)
+    -> ReadResult<value_type> {
     return read_generated<value_type>(reader, node, path);
 }
 
-inline ReadResult<::codegen_compile_fixture::BoundedInteger>
-    TypeReader<::codegen_compile_fixture::BoundedInteger>::construct(Reader const& reader,
-                                                                     NodeIndex const node,
-                                                                     std::string_view const path) {
+inline auto TypeReader<codegen_compile_fixture::BoundedInteger>::construct(
+    Reader const& reader, NodeIndex const node, std::string_view const path)
+    -> ReadResult<value_type> {
     AstDiagnostics errors{};
     std::optional<decltype(value_type::value)> value_value{};
     auto const seen{read_record<Field>(
@@ -537,13 +533,12 @@ inline ReadResult<::codegen_compile_fixture::BoundedInteger>
     return result;
 }
 
-inline void
-    TypeReader<::codegen_compile_fixture::BoundedInteger>::decode(Reader const& reader,
-                                                                  NodeIndex const node,
-                                                                  std::string_view const path,
-                                                                  value_type& result,
-                                                                  ReadMode mode,
-                                                                  AstDiagnostics& errors) {
+inline void TypeReader<codegen_compile_fixture::BoundedInteger>::decode(Reader const& reader,
+                                                                        NodeIndex const node,
+                                                                        std::string_view const path,
+                                                                        value_type& result,
+                                                                        ReadMode mode,
+                                                                        AstDiagnostics& errors) {
     auto const seen{read_record<Field>(
         reader,
         node,
@@ -582,17 +577,16 @@ inline void
     }
 }
 
-inline ReadResult<::codegen_compile_fixture::ReadableChild>
-    TypeReader<::codegen_compile_fixture::ReadableChild>::read(Reader const& reader,
-                                                               NodeIndex const node,
-                                                               std::string_view const path) {
+inline auto TypeReader<codegen_compile_fixture::ReadableChild>::read(Reader const& reader,
+                                                                     NodeIndex const node,
+                                                                     std::string_view const path)
+    -> ReadResult<value_type> {
     return read_generated<value_type>(reader, node, path);
 }
 
-inline ReadResult<::codegen_compile_fixture::ReadableChild>
-    TypeReader<::codegen_compile_fixture::ReadableChild>::construct(Reader const& reader,
-                                                                    NodeIndex const node,
-                                                                    std::string_view const path) {
+inline auto TypeReader<codegen_compile_fixture::ReadableChild>::construct(
+    Reader const& reader, NodeIndex const node, std::string_view const path)
+    -> ReadResult<value_type> {
     AstDiagnostics errors{};
     std::optional<decltype(value_type::name)> value_name{};
     std::optional<decltype(value_type::count)> value_count{};
@@ -643,13 +637,12 @@ inline ReadResult<::codegen_compile_fixture::ReadableChild>
     return result;
 }
 
-inline void
-    TypeReader<::codegen_compile_fixture::ReadableChild>::decode(Reader const& reader,
-                                                                 NodeIndex const node,
-                                                                 std::string_view const path,
-                                                                 value_type& result,
-                                                                 ReadMode mode,
-                                                                 AstDiagnostics& errors) {
+inline void TypeReader<codegen_compile_fixture::ReadableChild>::decode(Reader const& reader,
+                                                                       NodeIndex const node,
+                                                                       std::string_view const path,
+                                                                       value_type& result,
+                                                                       ReadMode mode,
+                                                                       AstDiagnostics& errors) {
     auto const seen{read_record<Field>(
         reader,
         node,
@@ -689,17 +682,16 @@ inline void
     }
 }
 
-inline ReadResult<::codegen_compile_fixture::ReadableRecord>
-    TypeReader<::codegen_compile_fixture::ReadableRecord>::read(Reader const& reader,
-                                                                NodeIndex const node,
-                                                                std::string_view const path) {
+inline auto TypeReader<codegen_compile_fixture::ReadableRecord>::read(Reader const& reader,
+                                                                      NodeIndex const node,
+                                                                      std::string_view const path)
+    -> ReadResult<value_type> {
     return read_generated<value_type>(reader, node, path);
 }
 
-inline ReadResult<::codegen_compile_fixture::ReadableRecord>
-    TypeReader<::codegen_compile_fixture::ReadableRecord>::construct(Reader const& reader,
-                                                                     NodeIndex const node,
-                                                                     std::string_view const path) {
+inline auto TypeReader<codegen_compile_fixture::ReadableRecord>::construct(
+    Reader const& reader, NodeIndex const node, std::string_view const path)
+    -> ReadResult<value_type> {
     AstDiagnostics errors{};
     std::optional<decltype(value_type::child)> value_child{};
     std::optional<decltype(value_type::values)> value_values{};
@@ -804,13 +796,12 @@ inline ReadResult<::codegen_compile_fixture::ReadableRecord>
     return result;
 }
 
-inline void
-    TypeReader<::codegen_compile_fixture::ReadableRecord>::decode(Reader const& reader,
-                                                                  NodeIndex const node,
-                                                                  std::string_view const path,
-                                                                  value_type& result,
-                                                                  ReadMode mode,
-                                                                  AstDiagnostics& errors) {
+inline void TypeReader<codegen_compile_fixture::ReadableRecord>::decode(Reader const& reader,
+                                                                        NodeIndex const node,
+                                                                        std::string_view const path,
+                                                                        value_type& result,
+                                                                        ReadMode mode,
+                                                                        AstDiagnostics& errors) {
     auto const seen{read_record<Field>(
         reader,
         node,

@@ -9,8 +9,8 @@
 
 namespace ioj::s7 {
 template <>
-struct TypeReader<::ioj::settings::PlayerPresentation> {
-    using value_type = ::ioj::settings::PlayerPresentation;
+struct TypeReader<settings::PlayerPresentation> {
+    using value_type = settings::PlayerPresentation;
 
     static ReadResult<value_type>
         read(Reader const& reader, NodeIndex const node, std::string_view const path);
@@ -37,8 +37,8 @@ struct TypeReader<::ioj::settings::PlayerPresentation> {
 };
 
 template <>
-struct TypeReader<::ioj::settings::PlayerPresentationOverrides> {
-    using value_type = ::ioj::settings::PlayerPresentationOverrides;
+struct TypeReader<settings::PlayerPresentationOverrides> {
+    using value_type = settings::PlayerPresentationOverrides;
 
     static ReadResult<value_type>
         read(Reader const& reader, NodeIndex const node, std::string_view const path);
@@ -64,19 +64,19 @@ struct TypeReader<::ioj::settings::PlayerPresentationOverrides> {
     }
 };
 
-inline ReadResult<::ioj::settings::PlayerPresentation>
-    TypeReader<::ioj::settings::PlayerPresentation>::read(Reader const& reader,
-                                                          NodeIndex const node,
-                                                          std::string_view const path) {
+inline auto TypeReader<settings::PlayerPresentation>::read(Reader const& reader,
+                                                           NodeIndex const node,
+                                                           std::string_view const path)
+    -> ReadResult<value_type> {
     return read_generated<value_type>(reader, node, path);
 }
 
-inline void TypeReader<::ioj::settings::PlayerPresentation>::decode(Reader const& reader,
-                                                                    NodeIndex const node,
-                                                                    std::string_view const path,
-                                                                    value_type& result,
-                                                                    ReadMode mode,
-                                                                    AstDiagnostics& errors) {
+inline void TypeReader<settings::PlayerPresentation>::decode(Reader const& reader,
+                                                             NodeIndex const node,
+                                                             std::string_view const path,
+                                                             value_type& result,
+                                                             ReadMode mode,
+                                                             AstDiagnostics& errors) {
     auto const seen{read_record<Field>(
         reader,
         node,
@@ -107,20 +107,19 @@ inline void TypeReader<::ioj::settings::PlayerPresentation>::decode(Reader const
     }
 }
 
-inline ReadResult<::ioj::settings::PlayerPresentationOverrides>
-    TypeReader<::ioj::settings::PlayerPresentationOverrides>::read(Reader const& reader,
-                                                                   NodeIndex const node,
-                                                                   std::string_view const path) {
+inline auto TypeReader<settings::PlayerPresentationOverrides>::read(Reader const& reader,
+                                                                    NodeIndex const node,
+                                                                    std::string_view const path)
+    -> ReadResult<value_type> {
     return read_override(reader, node, path, value_type{});
 }
 
-inline void
-    TypeReader<::ioj::settings::PlayerPresentationOverrides>::decode(Reader const& reader,
-                                                                     NodeIndex const node,
-                                                                     std::string_view const path,
-                                                                     value_type& result,
-                                                                     ReadMode,
-                                                                     AstDiagnostics& errors) {
+inline void TypeReader<settings::PlayerPresentationOverrides>::decode(Reader const& reader,
+                                                                      NodeIndex const node,
+                                                                      std::string_view const path,
+                                                                      value_type& result,
+                                                                      ReadMode,
+                                                                      AstDiagnostics& errors) {
     auto const seen{read_record<Field>(
         reader,
         node,
