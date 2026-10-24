@@ -37,6 +37,64 @@ TEST(NativeSoa, CountColumnDoesNotCollideWithViewRowCount) {
     EXPECT_EQ(owner.count()[0], 41U);
 }
 
+template <typename T>
+concept CanSetCount = requires(T&& value) { std::forward<T>(value).set(0U, 1U); };
+
+TEST(NativeSoa, FlatRowsPreserveTypedMemberFunctionsAndReceiverQualifiers) {
+    static_assert(CanSetCount<Counts&> && CanSetCount<Counts>);
+    static_assert(!CanSetCount<Counts const&>);
+    static_assert(CanSetCount<counts::View const&>);
+    static_assert(CanSetCount<counts::ResolvedView const&>);
+    static_assert(!CanSetCount<counts::ConstView>);
+    static_assert(!CanSetCount<counts::ResolvedConstView>);
+
+    auto const add{static_cast<std::uint32_t (Counts::*)(std::uint32_t)>(&Counts::add)};
+    auto const set{static_cast<void (Counts::*)(std::uint32_t, std::uint32_t)>(&Counts::set)};
+    auto const set_view{static_cast<void (counts::View::*)(std::uint32_t, std::uint32_t) const>(
+        &counts::View::set)};
+    Counts owner;
+    EXPECT_EQ((owner.*add)(3U), 0U);
+    (owner.*set)(0U, 5U);
+    auto const view{owner.get_view()};
+    (view.*set_view)(0U, 7U);
+    EXPECT_EQ(owner.count()[0], 7U);
+    view.resolve().set(0, 11U);
+    EXPECT_EQ(owner.count()[0], 11U);
+    EXPECT_DEATH(view.set(1, 0), "");
+    EXPECT_DEATH(view.resolve().set(1, 0), "");
+
+    PairRows pairs;
+    pairs.add({13.0f, 17.0f}, nullptr);
+    EXPECT_EQ(pairs.pairs()[0].x, 13.0f);
+    EXPECT_EQ(pairs.pointers()[0], nullptr);
+}
+
+TEST(NativeSoa, FlatInsertionFailurePreservesStorageAndLiveRows) {
+    pmr_test_support::AllocationState state;
+    pmr_test_support::CountingResource resource{state};
+    Counts owner{resource};
+    owner.add(19U);
+    owner.set_num(owner.capacity());
+    auto const capacity{owner.capacity()};
+    auto const* data{owner.count().data()};
+    auto const allocations{state.allocations};
+
+    state.reject_allocation = true;
+    EXPECT_THROW(owner.add(owner.count()[0]), std::bad_alloc);
+    EXPECT_EQ(owner.num(), capacity);
+    EXPECT_EQ(owner.capacity(), capacity);
+    EXPECT_EQ(owner.count().data(), data);
+    EXPECT_EQ(owner.count()[0], 19U);
+    EXPECT_EQ(state.allocations, allocations);
+
+    state.reject_allocation = false;
+    EXPECT_EQ(owner.add(owner.count()[0]), capacity);
+    EXPECT_EQ(owner.count()[capacity], 19U);
+    EXPECT_EQ(state.allocations, allocations + 1);
+    owner.add(23U);
+    EXPECT_EQ(state.allocations, allocations + 1);
+}
+
 TEST(NativeSoa, PmrResourcesAndMoves) {
     pmr_test_support::verify_pmr_owner<SingleRows>(
         [](SingleRows& owner) -> auto& { return owner.get_view().values()[0]; });
@@ -365,6 +423,10 @@ TEST(NativeSoa, ScalarInsertionAndAssignmentPreserveNestedColumnsAcrossGrowth) {
     owner.get_view().set(first, 7.0f, ApiMask{}, 8.0f, 9.0f);
     EXPECT_EQ(owner.values()[first], 7.0f);
     EXPECT_EQ(owner.view_positions()[first].x, 8.0f);
+    auto const positions{owner.view_positions()};
+    positions.set(first, positions.ys()[first], positions.xs()[first]);
+    EXPECT_EQ(positions.xs()[first], 9.0f);
+    EXPECT_EQ(positions.ys()[first], 8.0f);
     static_assert(std::is_same_v<decltype(std::as_const(owner).values()), std::span<float const>>);
 }
 

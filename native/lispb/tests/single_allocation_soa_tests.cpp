@@ -79,6 +79,9 @@ TEST(SingleAllocationSoa, RowOperationsUseNestedEquivalentValues) {
     EXPECT_NE(output.find("set(index, (value.x), (value.y));"), std::string::npos);
     EXPECT_NE(output.find("size_type add(std::int32_t const new_ids, Point const new_points)"),
               std::string::npos);
+    EXPECT_NE(output.find("using Base::set;"), std::string::npos);
+    EXPECT_NE(output.find("using RowOperations::add;"), std::string::npos);
+    EXPECT_EQ(output.find("points().xs()[index] = new_points_xs;"), std::string::npos);
 }
 
 auto schemas() -> std::string {
@@ -97,6 +100,29 @@ auto render(std::string_view declarations) -> std::string {
                             R"((module test :header "Test.h" :source "Test.cpp" )" +
                                 std::string{declarations} + ")"))};
     return files.front().content;
+}
+
+TEST(SingleAllocationSoa, AuthoredRowFunctionsSuppressAutomaticOverloads) {
+    struct Case {
+        std::string_view function;
+        bool owner_operations;
+        bool view_operations;
+        bool automatic_add;
+    };
+    for (auto const& test :
+         {Case{"(function set void (parameter value float) :body (\"\"))", false, true, false},
+          Case{"(function add void (parameter value float) :body (\"\"))", true, true, false},
+          Case{"(mutable-view-function set void (parameter value float) :body (\"\"))",
+               true,
+               false,
+               true}}) {
+        SCOPED_TRACE(test.function);
+        auto const output{
+            render("(struct Rows (member values array float) " + std::string{test.function} + ")")};
+        EXPECT_EQ(output.contains("OwnerRowOperations<"), test.owner_operations);
+        EXPECT_EQ(output.contains("ViewRowOperations<"), test.view_operations);
+        EXPECT_EQ(output.contains("using RowOperations::add;"), test.automatic_add);
+    }
 }
 
 auto changed(std::string_view from, std::string_view to) -> std::string {
