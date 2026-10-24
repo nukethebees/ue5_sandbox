@@ -1,7 +1,8 @@
 #pragma once
 
 #include <ioj/constrained_numbers.h>
-#include <ioj/vector_value_math.h>
+#include <ioj/constrained_strings.h>
+#include <ioj/constrained_vectors.h>
 
 #include <cmath>
 #include <limits>
@@ -61,20 +62,27 @@ auto nonzero(T const& value) -> bool {
 }
 template <typename T>
 auto positive(T const& value) -> bool {
-    return check(value, []<typename U>(U const& number) { return Positive<U>::valid(number); });
+    return check(value, []<typename U>(U const& number) {
+        return Positive<U>::try_make(number).has_value();
+    });
 }
 template <typename T>
 auto nonnegative(T const& value) -> bool {
-    return check(value, []<typename U>(U const& number) { return NonNegative<U>::valid(number); });
+    return check(value, []<typename U>(U const& number) {
+        return NonNegative<U>::try_make(number).has_value();
+    });
 }
 template <typename T>
 auto finite(T const& value) -> bool {
     return check(value, []<typename U>(U const& number) {
-        static_assert(std::is_arithmetic_v<U> && !std::same_as<U, bool>,
-                      "finite requires a number");
-        if constexpr (std::floating_point<U>) {
+        if constexpr (requires { number.elements; }) {
+            return ConstrainedValue<U, ioj::detail::finite_vector_policy>::try_make(number)
+                .has_value();
+        } else if constexpr (std::floating_point<U>) {
             return std::isfinite(number);
         } else {
+            static_assert(std::integral<U> && !std::same_as<U, bool>,
+                          "finite requires a number or vector");
             return true;
         }
     });
@@ -83,14 +91,10 @@ template <typename T>
 auto nonempty(T const& value) -> bool {
     return check(value, []<typename U>(U const& text) {
         static_assert(std::same_as<U, std::string>, "nonempty requires a string");
-        return !text.empty();
+        return NonEmptyString::try_make(text).has_value();
     });
 }
 
-template <std::floating_point T, std::size_t N>
-auto finite(Vector<T, N> const& value) -> bool {
-    return is_finite(value);
-}
 template <typename T, typename Bound>
 auto minimum(T const& value, Bound const bound) -> bool {
     return check(value, [bound]<typename U>(U const& number) {

@@ -163,7 +163,7 @@ struct SPACEGAMEPRESENTATION_API FHUDManager {
                     sim::player::Sim const* new_player_ship,
                     FLevelVisualConfig const& level_config,
                     FEntityOverlaySettings const& entity_overlay_settings,
-                    FRadarSettings const& radar_settings,
+                    ioj::settings::Radar const& radar_settings,
                     UInstancedStaticMeshComponent* soft_target_instances = nullptr);
     void deactivate();
     void advance(double dt);
@@ -299,7 +299,7 @@ struct SPACEGAMEPRESENTATION_API FHUDManager {
     TWeakObjectPtr<UInstancedStaticMeshComponent> soft_target_instances_;
     float soft_target_mesh_vertical_radius_{0.0f};
     bool warned_multiple_world_target_views_{false};
-    FRadarSettings radar_settings_;
+    ioj::settings::Radar radar_settings_;
     FRadarStyle radar_style_;
     FRadarContactColours radar_contact_colours_;
 

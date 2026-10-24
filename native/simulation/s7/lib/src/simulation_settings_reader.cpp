@@ -75,7 +75,7 @@ auto assign(settings::Setting const& setting, ShipFireRate& target)
 auto apply_settings(settings::Settings const& settings, SimulationSettingsInput& target)
     -> std::expected<void, levels::Diagnostics> {
     levels::Diagnostics errors;
-    for (auto const& setting : settings) {
+    for (auto const& setting : settings.assignments) {
         auto const field{simulation_fields::try_parse_fields_field(setting.path)};
         if (field) {
             std::optional<levels::DiagnosticCode> error;
@@ -93,7 +93,7 @@ auto apply_settings(settings::Settings const& settings, SimulationSettingsInput&
             }
         } else {
             auto const section{std::string_view{setting.path}.substr(0, setting.path.find('.'))};
-            if (section != "presentation" && section != "starfield") {
+            if (section != "starfield") {
                 errors.emplace_back(levels::DiagnosticCode::UnknownProperty,
                                     setting.path,
                                     "Unknown simulation setting");

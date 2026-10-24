@@ -20,8 +20,6 @@ struct TypeReader<::ioj::levels::LevelCollisionGridDefinition> {
                        value_type& result,
                        ReadMode mode,
                        AstDiagnostics& errors);
-
-    static void validate(value_type const& result, std::string_view path, AstDiagnostics& errors);
   private:
     enum class Field : std::uint8_t {
         level_size,
@@ -55,6 +53,12 @@ inline void
                                                                     value_type& result,
                                                                     ReadMode mode,
                                                                     AstDiagnostics& errors) {
+    auto const read{[&](auto& destination, NodeIndex value, std::string_view location) {
+        auto const error_count{errors.size()};
+        decode_field(reader, value, location, destination, mode, errors);
+        return errors.size() == error_count;
+    }};
+
     auto const seen{read_record<Field>(
         reader,
         node,
@@ -62,15 +66,12 @@ inline void
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read = [&](auto& destination) {
-                decode_field(reader, value, location, destination, mode, errors);
-            };
             switch (field) {
                 case Field::level_size:
-                    read(result.level_size);
+                    read(result.level_size, value, location);
                     break;
                 case Field::cell_size:
-                    read(result.cell_size);
+                    read(result.cell_size, value, location);
                     break;
                 case Field::Count:
                     std::unreachable();
@@ -81,12 +82,6 @@ inline void
         append_errors(errors, seen.error());
         return;
     }
-}
-
-inline void TypeReader<::ioj::levels::LevelCollisionGridDefinition>::validate(
-    value_type const& result, std::string_view path, AstDiagnostics& errors) {
-    validate_member(result.level_size, path, "level-size", errors);
-    validate_member(result.cell_size, path, "cell-size", errors);
 }
 
 } // namespace ioj::s7

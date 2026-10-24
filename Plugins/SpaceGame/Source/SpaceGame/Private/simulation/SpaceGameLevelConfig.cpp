@@ -80,6 +80,21 @@ auto FCollisionGridConfig::is_valid() const noexcept -> bool {
     return collision_grid_dimensions_are_valid(*this) && collision_class_lists_are_valid(*this);
 }
 
+void USpaceGameLevelConfig::apply_presentation(
+    ioj::settings::PresentationOverrides const& settings) {
+    auto const apply{[](auto& target, auto const& patch) {
+        if (patch) {
+            apply_overrides(target, *patch);
+        }
+    }};
+    apply(player_ship.presentation, settings.player_ship);
+    apply(laser_projectiles.presentation, settings.laser_projectiles);
+    apply(capital_ships.presentation, settings.capital_ships);
+    apply(turrets.presentation, settings.turrets);
+    apply(entity_overlay.values, settings.entity_overlay);
+    apply(radar, settings.radar);
+}
+
 void USpaceGameLevelConfig::apply_settings(ioj::sim::SimulationSettings const& settings) {
     overlap_response = settings.overlap_response;
     player_ship.simulation = settings.player;
@@ -115,12 +130,13 @@ void USpaceGameLevelConfig::get_validation_errors(TArray<FString>& errors,
         REQUIRE_CONFIG(capital_ships.team_visual_data, "capital_ships.team_visual_data is null");
         REQUIRE_CONFIG(fighters.team_visual_data, "fighters.team_visual_data is null");
         REQUIRE_CONFIG(turrets.team_visual_data, "turrets.team_visual_data is null");
-        REQUIRE_CONFIG(!entity_overlay.enabled || entity_overlay.soft_target.mesh,
+        REQUIRE_CONFIG(!entity_overlay.values.enabled || entity_overlay.soft_target.mesh,
                        "entity_overlay.soft_target.mesh is null");
-        REQUIRE_CONFIG(!entity_overlay.enabled || entity_overlay.soft_target.material,
+        REQUIRE_CONFIG(!entity_overlay.values.enabled || entity_overlay.soft_target.material,
                        "entity_overlay.soft_target.material is null");
     }
-    REQUIRE_CONFIG(laser_projectiles.max_cull_distance >= laser_projectiles.min_cull_distance,
+    REQUIRE_CONFIG(laser_projectiles.presentation.max_cull_distance >=
+                       laser_projectiles.presentation.min_cull_distance,
                    "laser_projectiles cull distance range is invalid");
     REQUIRE_CONFIG(capital_ships.mesh, "capital_ships.mesh is null");
     REQUIRE_CONFIG(fighters.mesh, "fighters.mesh is null");

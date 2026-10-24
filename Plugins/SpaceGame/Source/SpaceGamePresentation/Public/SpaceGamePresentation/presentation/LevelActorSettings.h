@@ -1,4 +1,8 @@
 #pragma once
+#include <ioj/settings/capital_presentation.h>
+#include <ioj/settings/laser_presentation.h>
+#include <ioj/settings/player_presentation.h>
+#include <ioj/settings/turret_presentation.h>
 #include <ioj/sim/capital_ships/capital_ship_sim_config.h>
 #include <ioj/sim/fighters/fighter_sim_config.h>
 #include <ioj/sim/lasers/laser_sim_config.h>
@@ -6,7 +10,6 @@
 #include <ioj/sim/player/player_sim_config.h>
 #include <ioj/sim/spinners/spinner_sim_config.h>
 #include <ioj/sim/turrets/turret_sim_config.h>
-#include <SpaceGamePresentation/config/BarrelRollConfig.h>
 #include <SpaceGamePresentation/presentation/LevelPresentationSettings.h>
 #include <SpaceGamePresentation/support/DrawDebugConfig.h>
 #include <SpaceGameRendering/SparkBurstStyle.h>
@@ -34,10 +37,10 @@ USTRUCT(BlueprintType)
 struct SPACEGAMEPRESENTATION_API FPlayerShipConfig {
     GENERATED_BODY()
 
+    ioj::settings::PlayerPresentation presentation;
+
     ioj::sim::PlayerSimConfig simulation;
     ioj::sim::PlayerInitialSettings initial;
-
-    float boost_effect_colour_intensity{75.f};
 
     UPROPERTY(EditAnywhere, Category = "Visuals")
     FLinearColor engine_colour{FLinearColor::Blue};
@@ -47,13 +50,13 @@ struct SPACEGAMEPRESENTATION_API FPlayerShipConfig {
 
     UPROPERTY(EditAnywhere, Category = "Visuals")
     TObjectPtr<UTestTeamVisualData> team_visual_data{nullptr};
-
-    FBarrelRollConfig barrel_roll_config;
 };
 
 USTRUCT(BlueprintType)
 struct SPACEGAMEPRESENTATION_API FLaserProjectileConfig {
     GENERATED_BODY()
+
+    ioj::settings::LaserPresentation presentation;
 
     ioj::sim::LaserSimConfig simulation;
 
@@ -63,10 +66,6 @@ struct SPACEGAMEPRESENTATION_API FLaserProjectileConfig {
     UPROPERTY(EditAnywhere, Category = "Visuals")
     TObjectPtr<UMaterialInterface> material{nullptr};
 
-    float min_cull_distance{0.f};
-
-    float max_cull_distance{50000.f};
-
     UPROPERTY(EditAnywhere, Category = "Visuals|Sparks", meta = (ShowOnlyInnerProperties))
     FSparkBurstStyle impact_sparks;
 };
@@ -74,6 +73,8 @@ struct SPACEGAMEPRESENTATION_API FLaserProjectileConfig {
 USTRUCT(BlueprintType)
 struct SPACEGAMEPRESENTATION_API FCapitalShipConfig {
     GENERATED_BODY()
+
+    ioj::settings::CapitalPresentation presentation;
 
     ioj::sim::CapitalShipSimConfig simulation;
 
@@ -86,22 +87,12 @@ struct SPACEGAMEPRESENTATION_API FCapitalShipConfig {
     UPROPERTY(EditAnywhere, Category = "Visuals")
     TObjectPtr<UNiagaraSystem> small_death_explosion{nullptr};
 
-    int32 n_small_explosions{6};
-
-    float time_between_explosions{0.1f};
-
-    FVector3f min_small_explosion_range{FVector3f::ZeroVector};
-
-    FVector3f max_small_explosion_range{FVector3f::OneVector};
-
     UPROPERTY(EditAnywhere, Category = "Visuals")
     TObjectPtr<UNiagaraSystem> main_death_explosion{nullptr};
 
     UPROPERTY(EditAnywhere, Category = "Visuals")
     ECapitalShipMainExplosionDelayMode main_explosion_delay_mode{
         ECapitalShipMainExplosionDelayMode::AfterSmallExplosions};
-
-    float large_explosion_delay{0.f};
 
     UPROPERTY(EditAnywhere, Category = "Visuals")
     TObjectPtr<UTestTeamVisualData> team_visual_data{nullptr};
@@ -117,8 +108,6 @@ struct SPACEGAMEPRESENTATION_API FCapitalShipConfig {
 
     UPROPERTY(EditAnywhere, Category = "Debug")
     FVector debug_status_text_offset{0.0, 0.0, 500.0};
-
-    float proxy_arrow_size{5.f};
 };
 
 USTRUCT(BlueprintType)
@@ -141,6 +130,8 @@ USTRUCT(BlueprintType)
 struct SPACEGAMEPRESENTATION_API FTurretConfig {
     GENERATED_BODY()
 
+    ioj::settings::TurretPresentation presentation;
+
     ioj::sim::TurretSimConfig simulation;
 
     UPROPERTY(EditAnywhere, Category = "Visuals")
@@ -151,8 +142,6 @@ struct SPACEGAMEPRESENTATION_API FTurretConfig {
 
     UPROPERTY(EditAnywhere, Category = "Visuals")
     FVector death_effect_offset{FVector::ZeroVector};
-
-    float death_effect_scale{1.f};
 
     UPROPERTY(EditAnywhere, Category = "Visuals")
     TObjectPtr<UTestTeamVisualData> team_visual_data{nullptr};
@@ -200,6 +189,6 @@ struct SPACEGAMEPRESENTATION_API FLevelVisualConfig {
     bool turret_debug_targets{};
     bool turret_debug_entities{};
     FEntityOverlaySettings entity_overlay;
-    FRadarSettings radar;
+    ioj::settings::Radar radar;
     FSparkRendererSettings sparks;
 };

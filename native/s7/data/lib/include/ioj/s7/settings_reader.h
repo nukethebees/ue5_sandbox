@@ -71,9 +71,6 @@ auto read_settings(Reader const& reader, NodeIndex node, std::string_view sectio
             decode_field(reader, layer, section, value, ReadMode::Override, errors);
         },
         errors);
-    if (errors.empty()) {
-        validate_read(value, section, errors);
-    }
     if (!errors.empty()) {
         return std::unexpected{std::move(errors)};
     }

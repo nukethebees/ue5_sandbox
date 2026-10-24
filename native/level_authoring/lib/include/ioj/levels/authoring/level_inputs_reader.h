@@ -27,8 +27,6 @@ struct TypeReader<::ioj::levels::authoring::EntityInput> {
                        value_type& result,
                        ReadMode mode,
                        AstDiagnostics& errors);
-
-    static void validate(value_type const& result, std::string_view path, AstDiagnostics& errors);
   private:
     enum class Field : std::uint8_t {
         id,
@@ -125,8 +123,6 @@ struct TypeReader<::ioj::levels::authoring::ObjectiveInput> {
                        value_type& result,
                        ReadMode mode,
                        AstDiagnostics& errors);
-
-    static void validate(value_type const& result, std::string_view path, AstDiagnostics& errors);
   private:
     enum class Field : std::uint8_t {
         id,
@@ -202,8 +198,6 @@ struct TypeReader<::ioj::levels::authoring::MissionInput> {
                        value_type& result,
                        ReadMode mode,
                        AstDiagnostics& errors);
-
-    static void validate(value_type const& result, std::string_view path, AstDiagnostics& errors);
   private:
     enum class Field : std::uint8_t {
         objectives,
@@ -236,8 +230,6 @@ struct TypeReader<::ioj::levels::authoring::LevelInput> {
                        value_type& result,
                        ReadMode mode,
                        AstDiagnostics& errors);
-
-    static void validate(value_type const& result, std::string_view path, AstDiagnostics& errors);
   private:
     enum class Field : std::uint8_t {
         id,
@@ -331,8 +323,6 @@ struct TypeReader<::ioj::levels::authoring::IncludedLevelInput> {
                        value_type& result,
                        ReadMode mode,
                        AstDiagnostics& errors);
-
-    static void validate(value_type const& result, std::string_view path, AstDiagnostics& errors);
   private:
     enum class Field : std::uint8_t {
         path,
@@ -369,8 +359,6 @@ struct TypeReader<::ioj::levels::authoring::IncludedCampaignInput> {
                        value_type& result,
                        ReadMode mode,
                        AstDiagnostics& errors);
-
-    static void validate(value_type const& result, std::string_view path, AstDiagnostics& errors);
   private:
     enum class Field : std::uint8_t {
         path,
@@ -407,8 +395,6 @@ struct TypeReader<::ioj::levels::authoring::CatalogInput> {
                        value_type& result,
                        ReadMode mode,
                        AstDiagnostics& errors);
-
-    static void validate(value_type const& result, std::string_view path, AstDiagnostics& errors);
   private:
     enum class Field : std::uint8_t {
         levels,
@@ -441,6 +427,12 @@ inline void TypeReader<::ioj::levels::authoring::EntityInput>::decode(Reader con
                                                                       value_type& result,
                                                                       ReadMode mode,
                                                                       AstDiagnostics& errors) {
+    auto const read{[&](auto& destination, NodeIndex value, std::string_view location) {
+        auto const error_count{errors.size()};
+        decode_field(reader, value, location, destination, mode, errors);
+        return errors.size() == error_count;
+    }};
+
     auto const seen{read_record<Field>(
         reader,
         node,
@@ -448,42 +440,51 @@ inline void TypeReader<::ioj::levels::authoring::EntityInput>::decode(Reader con
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read = [&](auto& destination) {
-                decode_field(reader, value, location, destination, mode, errors);
-            };
             switch (field) {
                 case Field::id:
-                    read(result.id);
+                    read(result.id, value, location);
                     break;
                 case Field::archetype:
-                    read(result.archetype);
+                    read(result.archetype, value, location);
                     break;
                 case Field::team:
-                    read(result.team);
+                    read(result.team, value, location);
                     break;
                 case Field::position:
-                    read(result.position);
+                    read(result.position, value, location);
                     break;
                 case Field::rotation:
-                    read(result.rotation);
+                    read(result.rotation, value, location);
                     break;
                 case Field::spawn_at:
-                    read(result.spawn_at);
+                    read(result.spawn_at, value, location);
                     break;
                 case Field::health:
-                    read(result.health);
+                    read(result.health, value, location);
                     break;
                 case Field::laser_damage:
-                    read(result.laser_damage);
+                    read(result.laser_damage, value, location);
                     break;
                 case Field::initial_spawn_delay:
-                    read(result.initial_spawn_delay);
+                    if (read(result.initial_spawn_delay, value, location)) {
+                        if (!constraints::finite(result.initial_spawn_delay)) {
+                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
+                                                           std::string{location},
+                                                           "Expected a finite value"});
+                        }
+                    }
                     break;
                 case Field::spawn_cooldown:
-                    read(result.spawn_cooldown);
+                    if (read(result.spawn_cooldown, value, location)) {
+                        if (!constraints::finite(result.spawn_cooldown)) {
+                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
+                                                           std::string{location},
+                                                           "Expected a finite value"});
+                        }
+                    }
                     break;
                 case Field::target:
-                    read(result.target);
+                    read(result.target, value, location);
                     break;
                 case Field::Count:
                     std::unreachable();
@@ -503,32 +504,6 @@ inline void TypeReader<::ioj::levels::authoring::EntityInput>::decode(Reader con
     }
 }
 
-inline void TypeReader<::ioj::levels::authoring::EntityInput>::validate(value_type const& result,
-                                                                        std::string_view path,
-                                                                        AstDiagnostics& errors) {
-    validate_member(result.id, path, "id", errors);
-    validate_member(result.archetype, path, "archetype", errors);
-    validate_member(result.team, path, "team", errors);
-    validate_member(result.position, path, "position", errors);
-    validate_member(result.rotation, path, "rotation", errors);
-    validate_member(result.spawn_at, path, "spawn-at", errors);
-    validate_member(result.health, path, "health", errors);
-    validate_member(result.laser_damage, path, "laser-damage", errors);
-    validate_member(result.initial_spawn_delay, path, "initial-spawn-delay", errors);
-    if (!constraints::finite(result.initial_spawn_delay)) {
-        errors.push_back((AstDiagnostic{AstErrorCode::InvalidNumber,
-                                        std::string{path} + ".initial-spawn-delay",
-                                        "Expected a finite value"}));
-    }
-    validate_member(result.spawn_cooldown, path, "spawn-cooldown", errors);
-    if (!constraints::finite(result.spawn_cooldown)) {
-        errors.push_back((AstDiagnostic{AstErrorCode::InvalidNumber,
-                                        std::string{path} + ".spawn-cooldown",
-                                        "Expected a finite value"}));
-    }
-    validate_member(result.target, path, "target", errors);
-}
-
 inline ReadResult<::ioj::levels::authoring::ObjectiveInput>
     TypeReader<::ioj::levels::authoring::ObjectiveInput>::read(Reader const& reader,
                                                                NodeIndex const node,
@@ -543,6 +518,12 @@ inline void
                                                                  value_type& result,
                                                                  ReadMode mode,
                                                                  AstDiagnostics& errors) {
+    auto const read{[&](auto& destination, NodeIndex value, std::string_view location) {
+        auto const error_count{errors.size()};
+        decode_field(reader, value, location, destination, mode, errors);
+        return errors.size() == error_count;
+    }};
+
     auto const seen{read_record<Field>(
         reader,
         node,
@@ -550,33 +531,30 @@ inline void
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read = [&](auto& destination) {
-                decode_field(reader, value, location, destination, mode, errors);
-            };
             switch (field) {
                 case Field::id:
-                    read(result.id);
+                    read(result.id, value, location);
                     break;
                 case Field::title:
-                    read(result.title);
+                    read(result.title, value, location);
                     break;
                 case Field::team:
-                    read(result.team);
+                    read(result.team, value, location);
                     break;
                 case Field::nodes:
-                    read(result.nodes);
+                    read(result.nodes, value, location);
                     break;
                 case Field::pass:
-                    read(result.pass);
+                    read(result.pass, value, location);
                     break;
                 case Field::fail:
-                    read(result.fail);
+                    read(result.fail, value, location);
                     break;
                 case Field::expire:
-                    read(result.expire);
+                    read(result.expire, value, location);
                     break;
                 case Field::depends_on:
-                    read(result.depends_on);
+                    read(result.depends_on, value, location);
                     break;
                 case Field::Count:
                     std::unreachable();
@@ -595,19 +573,6 @@ inline void
     }
 }
 
-inline void TypeReader<::ioj::levels::authoring::ObjectiveInput>::validate(value_type const& result,
-                                                                           std::string_view path,
-                                                                           AstDiagnostics& errors) {
-    validate_member(result.id, path, "id", errors);
-    validate_member(result.title, path, "title", errors);
-    validate_member(result.team, path, "team", errors);
-    validate_member(result.nodes, path, "nodes", errors);
-    validate_member(result.pass, path, "pass", errors);
-    validate_member(result.fail, path, "fail", errors);
-    validate_member(result.expire, path, "expire", errors);
-    validate_member(result.depends_on, path, "depends-on", errors);
-}
-
 inline ReadResult<::ioj::levels::authoring::MissionInput>
     TypeReader<::ioj::levels::authoring::MissionInput>::read(Reader const& reader,
                                                              NodeIndex const node,
@@ -621,6 +586,12 @@ inline void TypeReader<::ioj::levels::authoring::MissionInput>::decode(Reader co
                                                                        value_type& result,
                                                                        ReadMode mode,
                                                                        AstDiagnostics& errors) {
+    auto const read{[&](auto& destination, NodeIndex value, std::string_view location) {
+        auto const error_count{errors.size()};
+        decode_field(reader, value, location, destination, mode, errors);
+        return errors.size() == error_count;
+    }};
+
     auto const seen{read_record<Field>(
         reader,
         node,
@@ -628,15 +599,12 @@ inline void TypeReader<::ioj::levels::authoring::MissionInput>::decode(Reader co
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read = [&](auto& destination) {
-                decode_field(reader, value, location, destination, mode, errors);
-            };
             switch (field) {
                 case Field::objectives:
-                    read(result.objectives);
+                    read(result.objectives, value, location);
                     break;
                 case Field::team_results:
-                    read(result.team_results);
+                    read(result.team_results, value, location);
                     break;
                 case Field::Count:
                     std::unreachable();
@@ -655,13 +623,6 @@ inline void TypeReader<::ioj::levels::authoring::MissionInput>::decode(Reader co
     }
 }
 
-inline void TypeReader<::ioj::levels::authoring::MissionInput>::validate(value_type const& result,
-                                                                         std::string_view path,
-                                                                         AstDiagnostics& errors) {
-    validate_member(result.objectives, path, "objectives", errors);
-    validate_member(result.team_results, path, "team-results", errors);
-}
-
 inline ReadResult<::ioj::levels::authoring::LevelInput>
     TypeReader<::ioj::levels::authoring::LevelInput>::read(Reader const& reader,
                                                            NodeIndex const node,
@@ -675,6 +636,12 @@ inline void TypeReader<::ioj::levels::authoring::LevelInput>::decode(Reader cons
                                                                      value_type& result,
                                                                      ReadMode mode,
                                                                      AstDiagnostics& errors) {
+    auto const read{[&](auto& destination, NodeIndex value, std::string_view location) {
+        auto const error_count{errors.size()};
+        decode_field(reader, value, location, destination, mode, errors);
+        return errors.size() == error_count;
+    }};
+
     auto const seen{read_record<Field>(
         reader,
         node,
@@ -682,42 +649,45 @@ inline void TypeReader<::ioj::levels::authoring::LevelInput>::decode(Reader cons
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read = [&](auto& destination) {
-                decode_field(reader, value, location, destination, mode, errors);
-            };
             switch (field) {
                 case Field::id:
-                    read(result.id);
+                    read(result.id, value, location);
                     break;
                 case Field::title:
-                    read(result.title);
+                    read(result.title, value, location);
                     break;
                 case Field::description:
-                    read(result.description);
+                    read(result.description, value, location);
                     break;
                 case Field::par_time:
-                    read(result.par_time);
+                    if (read(result.par_time, value, location)) {
+                        if (!constraints::finite(result.par_time)) {
+                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
+                                                           std::string{location},
+                                                           "Expected a finite value"});
+                        }
+                    }
                     break;
                 case Field::unlock:
-                    read(result.unlock);
+                    read(result.unlock, value, location);
                     break;
                 case Field::player:
-                    read(result.player);
+                    read(result.player, value, location);
                     break;
                 case Field::camera:
-                    read(result.camera);
+                    read(result.camera, value, location);
                     break;
                 case Field::collision_grid:
-                    read(result.collision_grid);
+                    read(result.collision_grid, value, location);
                     break;
                 case Field::settings:
-                    read(result.settings);
+                    read(result.settings, value, location);
                     break;
                 case Field::mission:
-                    read(result.mission);
+                    read(result.mission, value, location);
                     break;
                 case Field::entities:
-                    read(result.entities);
+                    read(result.entities, value, location);
                     break;
                 case Field::Count:
                     std::unreachable();
@@ -737,27 +707,6 @@ inline void TypeReader<::ioj::levels::authoring::LevelInput>::decode(Reader cons
     }
 }
 
-inline void TypeReader<::ioj::levels::authoring::LevelInput>::validate(value_type const& result,
-                                                                       std::string_view path,
-                                                                       AstDiagnostics& errors) {
-    validate_member(result.id, path, "id", errors);
-    validate_member(result.title, path, "title", errors);
-    validate_member(result.description, path, "description", errors);
-    validate_member(result.par_time, path, "par-time", errors);
-    if (!constraints::finite(result.par_time)) {
-        errors.push_back((AstDiagnostic{AstErrorCode::InvalidNumber,
-                                        std::string{path} + ".par-time",
-                                        "Expected a finite value"}));
-    }
-    validate_member(result.unlock, path, "unlock", errors);
-    validate_member(result.player, path, "player", errors);
-    validate_member(result.camera, path, "camera", errors);
-    validate_member(result.collision_grid, path, "collision-grid", errors);
-    validate_member(result.settings, path, "settings", errors);
-    validate_member(result.mission, path, "mission", errors);
-    validate_member(result.entities, path, "entities", errors);
-}
-
 inline ReadResult<::ioj::levels::authoring::IncludedLevelInput>
     TypeReader<::ioj::levels::authoring::IncludedLevelInput>::read(Reader const& reader,
                                                                    NodeIndex const node,
@@ -772,6 +721,12 @@ inline void
                                                                      value_type& result,
                                                                      ReadMode mode,
                                                                      AstDiagnostics& errors) {
+    auto const read{[&](auto& destination, NodeIndex value, std::string_view location) {
+        auto const error_count{errors.size()};
+        decode_field(reader, value, location, destination, mode, errors);
+        return errors.size() == error_count;
+    }};
+
     auto const seen{read_record<Field>(
         reader,
         node,
@@ -779,18 +734,15 @@ inline void
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read = [&](auto& destination) {
-                decode_field(reader, value, location, destination, mode, errors);
-            };
             switch (field) {
                 case Field::path:
-                    read(result.path);
+                    read(result.path, value, location);
                     break;
                 case Field::value:
-                    read(result.value);
+                    read(result.value, value, location);
                     break;
                 case Field::error:
-                    read(result.error);
+                    read(result.error, value, location);
                     break;
                 case Field::Count:
                     std::unreachable();
@@ -807,13 +759,6 @@ inline void
     if (mode == ReadMode::Create) {
         require_fields<Field>(*seen, required, required_names, path, errors);
     }
-}
-
-inline void TypeReader<::ioj::levels::authoring::IncludedLevelInput>::validate(
-    value_type const& result, std::string_view path, AstDiagnostics& errors) {
-    validate_member(result.path, path, "path", errors);
-    validate_member(result.value, path, "value", errors);
-    validate_member(result.error, path, "error", errors);
 }
 
 inline ReadResult<::ioj::levels::authoring::IncludedCampaignInput>
@@ -830,6 +775,12 @@ inline void
                                                                         value_type& result,
                                                                         ReadMode mode,
                                                                         AstDiagnostics& errors) {
+    auto const read{[&](auto& destination, NodeIndex value, std::string_view location) {
+        auto const error_count{errors.size()};
+        decode_field(reader, value, location, destination, mode, errors);
+        return errors.size() == error_count;
+    }};
+
     auto const seen{read_record<Field>(
         reader,
         node,
@@ -837,18 +788,15 @@ inline void
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read = [&](auto& destination) {
-                decode_field(reader, value, location, destination, mode, errors);
-            };
             switch (field) {
                 case Field::path:
-                    read(result.path);
+                    read(result.path, value, location);
                     break;
                 case Field::value:
-                    read(result.value);
+                    read(result.value, value, location);
                     break;
                 case Field::error:
-                    read(result.error);
+                    read(result.error, value, location);
                     break;
                 case Field::Count:
                     std::unreachable();
@@ -867,13 +815,6 @@ inline void
     }
 }
 
-inline void TypeReader<::ioj::levels::authoring::IncludedCampaignInput>::validate(
-    value_type const& result, std::string_view path, AstDiagnostics& errors) {
-    validate_member(result.path, path, "path", errors);
-    validate_member(result.value, path, "value", errors);
-    validate_member(result.error, path, "error", errors);
-}
-
 inline ReadResult<::ioj::levels::authoring::CatalogInput>
     TypeReader<::ioj::levels::authoring::CatalogInput>::read(Reader const& reader,
                                                              NodeIndex const node,
@@ -887,6 +828,12 @@ inline void TypeReader<::ioj::levels::authoring::CatalogInput>::decode(Reader co
                                                                        value_type& result,
                                                                        ReadMode mode,
                                                                        AstDiagnostics& errors) {
+    auto const read{[&](auto& destination, NodeIndex value, std::string_view location) {
+        auto const error_count{errors.size()};
+        decode_field(reader, value, location, destination, mode, errors);
+        return errors.size() == error_count;
+    }};
+
     auto const seen{read_record<Field>(
         reader,
         node,
@@ -894,15 +841,12 @@ inline void TypeReader<::ioj::levels::authoring::CatalogInput>::decode(Reader co
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read = [&](auto& destination) {
-                decode_field(reader, value, location, destination, mode, errors);
-            };
             switch (field) {
                 case Field::levels:
-                    read(result.levels);
+                    read(result.levels, value, location);
                     break;
                 case Field::campaigns:
-                    read(result.campaigns);
+                    read(result.campaigns, value, location);
                     break;
                 case Field::Count:
                     std::unreachable();
@@ -913,13 +857,6 @@ inline void TypeReader<::ioj::levels::authoring::CatalogInput>::decode(Reader co
         append_errors(errors, seen.error());
         return;
     }
-}
-
-inline void TypeReader<::ioj::levels::authoring::CatalogInput>::validate(value_type const& result,
-                                                                         std::string_view path,
-                                                                         AstDiagnostics& errors) {
-    validate_member(result.levels, path, "levels", errors);
-    validate_member(result.campaigns, path, "campaigns", errors);
 }
 
 } // namespace ioj::s7

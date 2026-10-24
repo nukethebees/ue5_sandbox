@@ -34,7 +34,8 @@ void FCapitalPresentation::set_niagara_spawner(FDelayedNiagaraSpawns& spawner) {
 void FCapitalPresentation::ValidateOptionalAssets() const {
     check(actor_config);
 
-    if (actor_config->n_small_explosions > 0 && !IsValid(actor_config->small_death_explosion)) {
+    if (actor_config->presentation.n_small_explosions > 0 &&
+        !IsValid(actor_config->small_death_explosion)) {
         UE_LOG(LogSandbox,
                Warning,
                TEXT("FCapitalPresentation optional asset is missing: small_death_explosion"));
@@ -164,7 +165,7 @@ void FCapitalPresentation::trigger_death_effects(ioj::sim::EntityLedger const& l
     auto const has_small_death_explosion{IsValid(small_death_explosion)};
     auto const has_main_death_explosion{IsValid(main_death_explosion)};
 
-    if ((!has_small_death_explosion || actor_config->n_small_explosions <= 0) &&
+    if ((!has_small_death_explosion || actor_config->presentation.n_small_explosions <= 0) &&
         !has_main_death_explosion) {
         return;
     }
@@ -175,11 +176,11 @@ void FCapitalPresentation::trigger_death_effects(ioj::sim::EntityLedger const& l
         return;
     }
 
-    auto const n_small_explosions{actor_config->n_small_explosions};
-    auto const time_between_explosions{actor_config->time_between_explosions};
-    auto const min_range{actor_config->min_small_explosion_range};
-    auto const max_range{actor_config->max_small_explosion_range};
-    auto main_explosion_delay{actor_config->large_explosion_delay};
+    auto const n_small_explosions{actor_config->presentation.n_small_explosions};
+    auto const time_between_explosions{actor_config->presentation.time_between_explosions};
+    auto const min_range{actor_config->presentation.min_small_explosion_range};
+    auto const max_range{actor_config->presentation.max_small_explosion_range};
+    auto main_explosion_delay{actor_config->presentation.large_explosion_delay};
     if (actor_config->main_explosion_delay_mode ==
             ECapitalShipMainExplosionDelayMode::AfterSmallExplosions &&
         has_small_death_explosion && n_small_explosions > 1) {
@@ -206,9 +207,9 @@ void FCapitalPresentation::trigger_death_effects(ioj::sim::EntityLedger const& l
                     current_delay += time_between_explosions;
                 }
                 auto const offset{FVector{
-                    FMath::FRandRange(min_range.X, max_range.X),
-                    FMath::FRandRange(min_range.Y, max_range.Y),
-                    FMath::FRandRange(min_range.Z, max_range.Z),
+                    FMath::FRandRange(min_range.x(), max_range.x()),
+                    FMath::FRandRange(min_range.y(), max_range.y()),
+                    FMath::FRandRange(min_range.z(), max_range.z()),
                 }};
                 spawn_systems.Add(small_death_explosion);
                 spawn_locations.Add(base_location + offset);

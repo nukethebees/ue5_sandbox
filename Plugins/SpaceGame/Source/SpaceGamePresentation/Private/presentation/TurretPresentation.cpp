@@ -158,7 +158,7 @@ void FTurretPresentation::trigger_death_effects() {
         return;
     }
 
-    FVector const scale{actor_config->death_effect_scale};
+    FVector const scale{actor_config->presentation.death_effect_scale};
     FVector const location_offset{actor_config->death_effect_offset};
 
     for (int32 i{0}; i < n; ++i) {

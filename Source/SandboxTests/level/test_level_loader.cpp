@@ -46,7 +46,7 @@ void FLevelLoaderCameraScenario::load_fixture() {
     auto* const resources{duplicate_level_config(*original_config_, orchestrator)};
     checks.is_true(orchestrator.set_level_config(*resources),
                    TEXT("Loader resources are assigned"));
-    resources->entity_overlay.enabled = true;
+    resources->entity_overlay.values.enabled = true;
     resources->entity_overlay.soft_target.mesh = nullptr;
     resources->entity_overlay.soft_target.material = nullptr;
     checks.is_true(!resources->is_valid(), TEXT("Unresolved overlay requires missing resources"));
@@ -74,14 +74,15 @@ void FLevelLoaderCameraScenario::load_fixture() {
         {.metadata = native.metadata(),
          .camera = native.camera(),
          .entities = native.entities(),
-         .settings = {{"presentation.entity-overlay.enabled", false}}})};
+         .settings = {.presentation = settings::PresentationOverrides{
+                          .entity_overlay = settings::EntityOverlayOverrides{.enabled = false}}}})};
     SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
     check(resolved);
     auto const load_result{loader.load(*resolved)};
     if (!checks.is_true(static_cast<bool>(load_result), TEXT("Playerless definition loads"))) {
         return;
     }
-    checks.is_true(!orchestrator.get_level_config()->entity_overlay.enabled,
+    checks.is_true(!orchestrator.get_level_config()->entity_overlay.values.enabled,
                    TEXT("Level override disables overlay before resource validation"));
 
     checks.are_equal(

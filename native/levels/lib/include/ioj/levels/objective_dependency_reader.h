@@ -21,8 +21,6 @@ struct TypeReader<::ioj::levels::ObjectiveDependency> {
                        value_type& result,
                        ReadMode mode,
                        AstDiagnostics& errors);
-
-    static void validate(value_type const& result, std::string_view path, AstDiagnostics& errors);
 };
 
 inline ReadResult<::ioj::levels::ObjectiveDependency>
@@ -38,23 +36,20 @@ inline void TypeReader<::ioj::levels::ObjectiveDependency>::decode(Reader const&
                                                                    value_type& result,
                                                                    ReadMode mode,
                                                                    AstDiagnostics& errors) {
+    auto const read{[&](auto& destination, NodeIndex value, std::string_view location) {
+        auto const error_count{errors.size()};
+        decode_field(reader, value, location, destination, mode, errors);
+        return errors.size() == error_count;
+    }};
+
     auto const arguments{positional_arguments(reader, node, "objective-resolved", path, 2)};
 
     if (!arguments) {
         append_errors(errors, arguments.error());
         return;
     }
-    decode_field(
-        reader, (*arguments)[0], std::string{path} + ".objective", result.objective, mode, errors);
-    decode_field(
-        reader, (*arguments)[1], std::string{path} + ".outcome", result.outcome, mode, errors);
-}
-
-inline void TypeReader<::ioj::levels::ObjectiveDependency>::validate(value_type const& result,
-                                                                     std::string_view path,
-                                                                     AstDiagnostics& errors) {
-    validate_member(result.objective, path, "objective", errors);
-    validate_member(result.outcome, path, "outcome", errors);
+    read(result.objective, (*arguments)[0], std::string{path} + ".objective");
+    read(result.outcome, (*arguments)[1], std::string{path} + ".outcome");
 }
 
 } // namespace ioj::s7

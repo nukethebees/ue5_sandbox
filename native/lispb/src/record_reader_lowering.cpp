@@ -65,6 +65,54 @@ auto reader_fields(LoweringContext& context, DeclarationHandle record, bool over
     return result;
 }
 
+auto checked_read(LoweringContext& context,
+                  RecordMemberId field,
+                  std::string const& destination,
+                  std::string const& read,
+                  std::string const& path) -> std::string {
+    auto const& members{context.declarations.record_members};
+    auto const& options{members.s7[members.index(field)]};
+    std::string checks;
+    auto const constraint{[&](std::string const& check,
+                              std::string_view message,
+                              std::string_view code = "InvalidNumber") {
+        checks += std::format(
+            "if (!constraints::{}) {{\nerrors.push_back(AstDiagnostic{{AstErrorCode::{}, "
+            "std::string{{{}}}, \"{}\"}});\n}}\n",
+            check,
+            code,
+            path,
+            message);
+    }};
+    if (options.nonzero) {
+        constraint(std::format("nonzero({})", destination), "Expected a nonzero value");
+    }
+    if (options.positive) {
+        constraint(std::format("positive({})", destination), "Expected a positive value");
+    }
+    if (options.nonnegative) {
+        constraint(std::format("nonnegative({})", destination), "Expected a nonnegative value");
+    }
+    if (options.finite) {
+        constraint(std::format("finite({})", destination), "Expected a finite value");
+    }
+    if (options.nonempty) {
+        constraint(
+            std::format("nonempty({})", destination), "Expected a nonempty string", "InvalidType");
+    }
+    if (options.minimum) {
+        constraint(
+            std::format("minimum({}, {})", destination, bound_literal(context, *options.minimum)),
+            "Value is below the minimum");
+    }
+    if (options.maximum) {
+        constraint(
+            std::format("maximum({}, {})", destination, bound_literal(context, *options.maximum)),
+            "Value is above the maximum");
+    }
+    return checks.empty() ? read + ";\n" : std::format("if ({}) {{\n{}}}\n", read, checks);
+}
+
 auto fields_body(LoweringContext& context,
                  DeclarationHandle const record,
                  bool const constructing,
@@ -90,6 +138,13 @@ auto fields_body(LoweringContext& context,
         overrides      ? "decode_patch_field(reader, value, location, destination, errors)"
         : constructing ? "read_field(reader, value, location, destination, errors)"
                        : "decode_field(reader, value, location, destination, mode, errors)"};
+    auto const read_callback{std::format(
+        "[&](auto& destination, NodeIndex value, std::string_view location) {{\n"
+        "auto const error_count{{errors.size()}};\n{};\nreturn errors.size() == error_count;\n}}",
+        read_value)};
+    if (!fields.empty()) {
+        body.add(ir.variable("auto const", "read", ir.raw_expr(read_callback, {})), 2);
+    }
     if (positional) {
         body.add(ir.variable(
                      "auto const",
@@ -108,30 +163,33 @@ auto fields_body(LoweringContext& context,
         std::size_t index{};
         for (auto const field : fields) {
             auto const name{context.text(members.name[members.index(field)])};
-            body.add(ir.expr_stmt(ir.raw_expr(
-                std::format(
-                    "{}(reader, (*arguments)[{}], std::string{{path}} + \".{}\", {}{}, {}errors)",
-                    overrides      ? "decode_patch_field"
-                    : constructing ? "read_field"
-                                   : "decode_field",
-                    index++,
-                    field_name(context, field),
-                    constructing ? "value_" : "result.",
-                    name,
-                    constructing || overrides ? "" : "mode, "),
-                {})));
+            auto const destination{(constructing ? "value_" : "result.") + name};
+            auto const path{
+                std::format("std::string{{path}} + \".{}\"", field_name(context, field))};
+            body.add(ir.raw(
+                checked_read(
+                    context,
+                    field,
+                    destination,
+                    std::format("read({}, (*arguments)[{}], {})", destination, index++, path),
+                    path),
+                {}));
         }
     } else {
         // The IR has no lambda node; keep only the streaming callback's syntax textual.
         std::string visitor{"[&](Field const field, NodeIndex const value, std::string_view const "
-                            "location) {\nauto const read = [&](auto& destination) {\n"};
-        visitor += std::string{read_value} + ";\n};\nswitch (field) {\n";
+                            "location) {\nswitch (field) {\n"};
         for (auto const field : fields) {
             auto const name{context.text(members.name[members.index(field)])};
-            visitor += std::format("case Field::{}: read({}{}); break;\n",
-                                   name,
-                                   constructing ? "value_" : "result.",
-                                   name);
+            auto const destination{(constructing ? "value_" : "result.") + name};
+            visitor +=
+                std::format("case Field::{}: {}break;\n",
+                            name,
+                            checked_read(context,
+                                         field,
+                                         destination,
+                                         std::format("read({}, value, location)", destination),
+                                         "location"));
         }
         visitor += "case Field::Count: std::unreachable();\n}\n}";
         if (fields.empty()) {
@@ -213,67 +271,6 @@ auto fields_body(LoweringContext& context,
     return body.build();
 }
 
-auto validation_body(LoweringContext& context,
-                     DeclarationHandle record,
-                     DeclarationEmission& emission,
-                     bool overrides) -> Nodes {
-    auto& ir{context.ir};
-    auto const& members{context.declarations.record_members};
-    NodeListBuilder body{ir};
-    for (auto const field : reader_fields(context, record, overrides)) {
-        auto const index{members.index(field)};
-        auto const name{context.text(members.name[index])};
-        auto const& options{members.s7[index]};
-        body.add(
-            ir.expr_stmt(ir.raw_expr(std::format("validate_member(result.{}, path, \"{}\", errors)",
-                                                 name,
-                                                 field_name(context, field)),
-                                     {})));
-        auto const constraint = [&](std::string const& check,
-                                    std::string const& message,
-                                    bool const numeric = true) {
-            emission.reader_includes.push_back(ir.strings.intern("ioj/s7/field_constraints.h"));
-            body.add(ir.if_stmt(
-                ir.raw_expr((overrides ? "result." + name + " && " : "") + "!constraints::" + check,
-                            {}),
-                ir.block({ir.expr_stmt(
-                    ir.call(ir.named("errors.push_back"),
-                            {ir.raw_expr(std::format("AstDiagnostic{{AstErrorCode::{}, "
-                                                     "std::string{{path}} + \".{}\", \"{}\"}}",
-                                                     numeric ? "InvalidNumber" : "InvalidType",
-                                                     field_name(context, field),
-                                                     message),
-                                         {})}))})));
-        };
-        auto const value{(overrides ? "*result." : "result.") + name};
-        if (options.nonzero) {
-            constraint(std::format("nonzero({})", value), "Expected a nonzero value");
-        }
-        if (options.positive) {
-            constraint(std::format("positive({})", value), "Expected a positive value");
-        }
-        if (options.nonnegative) {
-            constraint(std::format("nonnegative({})", value), "Expected a nonnegative value");
-        }
-        if (options.finite) {
-            constraint(std::format("finite({})", value), "Expected a finite value");
-        }
-        if (options.nonempty) {
-            constraint(std::format("nonempty({})", value), "Expected a nonempty string", false);
-        }
-        if (options.minimum) {
-            constraint(
-                std::format("minimum({}, {})", value, bound_literal(context, *options.minimum)),
-                "Value is below the minimum");
-        }
-        if (options.maximum) {
-            constraint(
-                std::format("maximum({}, {})", value, bound_literal(context, *options.maximum)),
-                "Value is above the maximum");
-        }
-    }
-    return body.build();
-}
 }
 
 void lower_record_reader(LoweringContext& context,
@@ -290,6 +287,13 @@ void lower_record_reader(LoweringContext& context,
                     (overrides ? "Overrides" : "")};
     auto const reader_name{"TypeReader<" + name + ">"};
     auto const& members{context.declarations.record_members};
+    if (std::ranges::any_of(fields, [&](auto field) {
+            auto const& options{members.s7[members.index(field)]};
+            return options.nonzero || options.positive || options.nonnegative || options.finite ||
+                   options.nonempty || options.minimum || options.maximum;
+        })) {
+        emission.reader_includes.push_back(ir.strings.intern("ioj/s7/field_constraints.h"));
+    }
     std::vector<EnumValueId> values;
     std::vector<StringEnumEntry> entries;
     std::set<std::string> keys;
@@ -357,12 +361,6 @@ void lower_record_reader(LoweringContext& context,
                  "void",
                  decode_parameters,
                  record_reader::fields_body(context, record, false, overrides));
-    add_function("validate",
-                 "void",
-                 {ir.parameter("value_type const&", empty ? "" : "result"),
-                  ir.parameter("std::string_view", empty ? "" : "path"),
-                  ir.parameter("AstDiagnostics&", empty ? "" : "errors")},
-                 record_reader::validation_body(context, record, emission, overrides));
     if (!records.s7_positional[row]) {
         declarations.add(ir.access(Access::private_), 1);
         values.push_back(ir.enumerator(ir.strings.intern("Count")));

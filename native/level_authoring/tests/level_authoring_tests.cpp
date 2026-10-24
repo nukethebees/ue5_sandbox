@@ -180,6 +180,77 @@ TEST(NativeSettings, DerivesStarfieldBindingsAndPreservesSparseLayers) {
     EXPECT_EQ(result->nebular_knot.size_degrees, 25);
 }
 
+TEST(NativeSettings, DecodesPresentationOverridesBeforeApplyingThemToNativeValues) {
+    auto const source{DefinitionReader{}.read_settings_source(R"(
+      (settings-layers
+        (settings :presentation (presentation
+          :player-ship (player-ship :boost-effect-colour-intensity 80)
+          :entity-overlay (settings-section 'entity-overlay :enabled #f :bar-size-pixels '(32 6)
+                           :soft-target (settings-section 'soft-target :opacity 0.5))
+          :capital-ships (capital-ships :n-small-explosions 3)
+          :radar (settings-section 'radar :combat-range 150000)))
+        (settings :presentation (presentation
+          :player-ship (player-ship :boost-effect-colour-intensity 75)
+          :entity-overlay (settings-section 'entity-overlay :soft-target (settings-section 'soft-target :pulse-duration 0.3))))))")};
+    ASSERT_TRUE(source) << format_diagnostics(source.error());
+    EXPECT_TRUE(source->assignments.empty());
+    ASSERT_TRUE(source->presentation);
+    auto const& patch{*source->presentation};
+    EXPECT_FALSE(patch.laser_projectiles);
+    settings::Presentation target;
+    target.entity_overlay.maximum_range = 4000;
+    apply_overrides(target, patch);
+    EXPECT_EQ(target.player_ship.boost_effect_colour_intensity, 75);
+    EXPECT_FALSE(target.entity_overlay.enabled);
+    EXPECT_EQ(target.entity_overlay.maximum_range, 4000);
+    EXPECT_EQ(target.entity_overlay.bar_size_pixels, (Vector<double, 2>{32, 6}));
+    EXPECT_EQ(target.entity_overlay.soft_target.opacity, 0.5f);
+    EXPECT_EQ(target.entity_overlay.soft_target.pulse_duration, 0.3f);
+    EXPECT_EQ(target.capital_ships.n_small_explosions, 3);
+    EXPECT_EQ(target.radar.combat_range, 150000);
+}
+
+TEST(NativeSettings, RejectsMalformedPresentationAtTheTypedDecodingBoundary) {
+    for (auto const value : {"3", "#f", "'(1 2)", "'( :radar )"}) {
+        EXPECT_FALSE(DefinitionReader{}.read_settings_source(
+            std::format("(settings :presentation {})", value)))
+            << value;
+    }
+
+    struct Case {
+        std::string_view fields;
+        DiagnosticCode code;
+        std::string_view path;
+    };
+    for (auto const& test :
+         {Case{":radar (settings-section 'radar :unknown 3)",
+               DiagnosticCode::UnknownProperty,
+               "presentation.radar.unknown"},
+          Case{":radar (settings-section 'radar :enabled 1)",
+               DiagnosticCode::InvalidType,
+               "presentation.radar.enabled"},
+          Case{":radar (settings-section 'radar :enabled #t :enabled #f)",
+               DiagnosticCode::DuplicateProperty,
+               "presentation.radar[3]"},
+          Case{":capital-ships (capital-ships :n-small-explosions 1.5)",
+               DiagnosticCode::InvalidNumber,
+               "presentation.capital-ships.n-small-explosions"},
+          Case{":capital-ships (capital-ships :min-small-explosion-range '(1 2 1e100))",
+               DiagnosticCode::InvalidNumber,
+               "presentation.capital-ships.min-small-explosion-range[2]"},
+          Case{":entity-overlay (settings-section 'entity-overlay :bar-size-pixels '(1 +inf.0))",
+               DiagnosticCode::InvalidNumber,
+               "presentation.entity-overlay.bar-size-pixels"}}) {
+        SCOPED_TRACE(test.fields);
+        auto const result{DefinitionReader{}.read_settings_source(
+            std::format("(settings :presentation (presentation {}))", test.fields))};
+        ASSERT_FALSE(result);
+        ASSERT_FALSE(result.error().empty());
+        EXPECT_EQ(result.error().front().code, test.code);
+        EXPECT_EQ(result.error().front().node_path, test.path);
+    }
+}
+
 TEST(NativeSettings, RetainsStarfieldConversionAndDomainDiagnostics) {
     TemporaryLevelDirectory directory;
     auto const path{directory.path() / "settings.scm"};
@@ -204,7 +275,7 @@ TEST(NativeSettings, RetainsStarfieldConversionAndDomainDiagnostics) {
     }
 }
 
-TEST(NativeSettings, ReadsShippedStarfieldSettingsAndValidatesAfterNestedLayers) {
+TEST(NativeSettings, ReadsShippedStarfieldSettingsAndValidatesEachNestedLayer) {
     auto shipped{read_starfield_settings_file(std::filesystem::path{IOJ_LEVEL_SCRIPTS} /
                                               "Settings" / "base.scm")};
     ASSERT_TRUE(shipped) << format_diagnostics(shipped.error());
@@ -214,12 +285,18 @@ TEST(NativeSettings, ReadsShippedStarfieldSettingsAndValidatesAfterNestedLayers)
     auto const path{directory.path() / "settings.scm"};
     std::ofstream{path} << R"((settings :starfield (starfield
       :star (settings-layers
-        (star :scale 0 :size-multiplier 3)
+        (star :scale 2 :size-multiplier 3)
         (star :scale 1)))))";
     auto result{read_starfield_settings_file(path)};
     ASSERT_TRUE(result) << format_diagnostics(result.error());
     EXPECT_EQ(result->star.scale, 1.f);
     EXPECT_EQ(result->star.size_multiplier, 3.f);
+
+    std::ofstream{path} << R"((settings :starfield (starfield
+      :star (settings-layers (star :scale 0) (star :scale 1)))))";
+    result = read_starfield_settings_file(path);
+    ASSERT_FALSE(result);
+    EXPECT_EQ(result.error().front().node_path, "starfield.star.scale");
 }
 
 TEST(NativeSettings, RejectsMalformedStarfieldRecordsAndInvalidEffectiveValues) {
@@ -312,7 +389,7 @@ TEST(NativeLevelAuthoringReader, GeneratedRecordsCoexistWithMissionsAndSparseSet
     ASSERT_TRUE(level->mission());
     ASSERT_EQ(level->mission()->objectives.size(), 1u);
     EXPECT_EQ(level->mission()->objectives.front().id, ObjectiveName{"wait"});
-    auto const& settings{level->settings()};
+    auto const& settings{level->settings().assignments};
     ASSERT_EQ(settings.size(), 2u);
     EXPECT_EQ(settings[0].path, "fighters.speed");
     EXPECT_EQ(settings[1].path, "fighters.speed");

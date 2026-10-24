@@ -58,8 +58,8 @@ auto nearly_equal(FVector3f const lhs, FVector3f const rhs) -> bool {
     return lhs.Equals(rhs, 0.0001f);
 }
 
-auto linear_settings(float const maximum_range = 100.0f) -> FRadarSettings {
-    FRadarSettings settings;
+auto linear_settings(float const maximum_range = 100.0f) -> ioj::settings::Radar {
+    ioj::settings::Radar settings;
     settings.combat_range = maximum_range * 0.25f;
     settings.tactical_range = maximum_range * 0.5f;
     settings.maximum_range = maximum_range;
@@ -67,8 +67,8 @@ auto linear_settings(float const maximum_range = 100.0f) -> FRadarSettings {
     return sanitize_radar_settings(settings);
 }
 
-auto nonlinear_settings() -> FRadarSettings {
-    FRadarSettings settings;
+auto nonlinear_settings() -> ioj::settings::Radar {
+    ioj::settings::Radar settings;
     settings.combat_range = 100.0f;
     settings.tactical_range = 400.0f;
     settings.maximum_range = 2000.0f;

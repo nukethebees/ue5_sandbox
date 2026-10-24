@@ -1,6 +1,5 @@
 #include <SpaceGame/s7/GameSettingsReader.h>
 
-#include "s7/presentation_fields.h"
 #include <ioj/files.h>
 #include <ioj/levels/authoring/definition_reader.h>
 #include <ioj/levels/level_definition.h>
@@ -8,33 +7,6 @@
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 
 #include <Misc/Paths.h>
-
-namespace ioj::s7::game_settings_reader {
-auto apply_presentation_settings(ioj::settings::Settings const& settings,
-                                 USpaceGameLevelConfig& target)
-    -> std::expected<void, ioj::levels::Diagnostics> {
-    for (auto const& setting : settings) {
-        if (!setting.path.starts_with("presentation.")) {
-            continue;
-        }
-
-        auto const field{presentation_fields::try_parse_fields_field(setting.path)};
-        auto const valid{field && presentation_fields::visit_fields_field(
-                                      target, *field, [&](auto& target_field) {
-                                          return setting.assign(target_field);
-                                      })};
-        if (!valid) {
-            return std::unexpected{
-                ioj::levels::Diagnostics{{field ? ioj::levels::DiagnosticCode::InvalidType
-                                                : ioj::levels::DiagnosticCode::UnknownProperty,
-                                          setting.path,
-                                          field ? "Presentation setting has an incompatible value"
-                                                : "Unknown presentation setting"}}};
-        }
-    }
-    return {};
-}
-}
 
 auto read_game_settings(FStringView const path,
                         ioj::levels::LevelDefinition const* const level,
@@ -73,14 +45,11 @@ auto read_game_settings(FStringView const path,
     check(config);
     config->apply_settings(*simulation);
 
-    auto presentation{
-        ioj::s7::game_settings_reader::apply_presentation_settings(*assignments, *config)};
-    if (presentation && level) {
-        presentation =
-            ioj::s7::game_settings_reader::apply_presentation_settings(level->settings(), *config);
+    if (assignments->presentation) {
+        config->apply_presentation(*assignments->presentation);
     }
-    if (!presentation) {
-        return report_errors(presentation.error());
+    if (level && level->settings().presentation) {
+        config->apply_presentation(*level->settings().presentation);
     }
 
     return FLoadedGameSettings{.config = config,

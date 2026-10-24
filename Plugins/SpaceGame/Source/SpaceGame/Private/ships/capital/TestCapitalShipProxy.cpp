@@ -323,7 +323,7 @@ void ATestCapitalShipProxy::save_configuration_to_asset() {
     for (auto const slot : fighter_spawn_slots) {
         capital_config.fighter_spawn_slots_relative_transforms.Add(
             slot->GetComponentTransform().GetRelativeTransform(spawn_frame));
-        capital_config.proxy_arrow_size = slot->ArrowSize;
+        capital_config.presentation.proxy_arrow_size = slot->ArrowSize;
     }
     level_config_asset->MarkPackageDirty();
     update_spawn_configuration_status();
@@ -377,7 +377,7 @@ void ATestCapitalShipProxy::apply_spawn_configuration(USpaceGameLevelConfig& con
 
         spawn_point->SetWorldTransform(actor_config->fighter_spawn_slots_relative_transforms[i] *
                                        spawn_frame);
-        spawn_point->SetArrowSize(actor_config->proxy_arrow_size);
+        spawn_point->SetArrowSize(actor_config->presentation.proxy_arrow_size);
     }
     MarkPackageDirty();
     update_spawn_configuration_status();

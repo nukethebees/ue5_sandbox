@@ -85,11 +85,7 @@
 
   :presentation (presentation
     :player-ship (settings-section 'player-ship
-      :boost-effect-colour-intensity 75
-      :barrel-roll (settings-section 'barrel-roll
-        :roll-speed 1080
-        :roll-duration 0.66
-        :roll-cooldown 0.33))
+      :boost-effect-colour-intensity 75)
     :laser-projectiles (settings-section 'laser-projectiles
       :min-cull-distance 0
       :max-cull-distance 50000)

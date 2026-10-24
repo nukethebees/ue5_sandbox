@@ -51,9 +51,6 @@ struct TypeReader;
 enum class ReadMode : std::uint8_t { Create, Override };
 
 template <typename T>
-void validate_read(T const& value, std::string_view path, AstDiagnostics& errors);
-
-template <typename T>
 void decode_field(Reader const& reader,
                   NodeIndex node,
                   std::string_view path,
@@ -268,13 +265,6 @@ struct TypeReader<std::optional<T>> {
         }
     }
 
-    static void
-        validate(std::optional<T> const& value, std::string_view path, AstDiagnostics& errors) {
-        if (value) {
-            validate_read(*value, path, errors);
-        }
-    }
-
     static auto read(Reader const& reader, NodeIndex const node, std::string_view const path)
         -> ReadResult<std::optional<T>> {
         if (reader.ast().node(node).kind == NodeKind::Keyword &&
@@ -310,23 +300,6 @@ void read_field(Reader const& reader,
         destination.emplace(std::move(*value));
     } else {
         append_errors(errors, std::move(value.error()));
-    }
-}
-
-template <typename T>
-void validate_read(T const& value, std::string_view path, AstDiagnostics& errors) {
-    if constexpr (requires { TypeReader<T>::validate(value, path, errors); }) {
-        TypeReader<T>::validate(value, path, errors);
-    }
-}
-
-template <typename T>
-void validate_member(T const& value,
-                     std::string_view path,
-                     std::string_view name,
-                     AstDiagnostics& errors) {
-    if constexpr (requires { TypeReader<T>::validate(value, path, errors); }) {
-        validate_read(value, std::format("{}.{}", path, name), errors);
     }
 }
 
@@ -386,9 +359,6 @@ auto read_override(Reader const& reader, NodeIndex node, std::string_view path, 
     -> ReadResult<T> {
     AstDiagnostics errors;
     decode_field(reader, node, path, value, ReadMode::Override, errors);
-    if (errors.empty()) {
-        validate_read(value, path, errors);
-    }
     if (!errors.empty()) {
         return std::unexpected{std::move(errors)};
     }
@@ -536,26 +506,16 @@ inline auto positional_arguments(Reader const& reader,
 
 template <typename T>
 auto read_generated(Reader const& reader, NodeIndex node, std::string_view path) -> ReadResult<T> {
-    auto result{[&]() -> ReadResult<T> {
-        if constexpr (std::default_initializable<T>) {
-            T value{};
-            AstDiagnostics errors;
-            TypeReader<T>::decode(reader, node, path, value, ReadMode::Create, errors);
-            if (!errors.empty()) {
-                return std::unexpected{std::move(errors)};
-            }
-            return value;
-        } else {
-            return TypeReader<T>::construct(reader, node, path);
-        }
-    }()};
-    if (result) {
+    if constexpr (std::default_initializable<T>) {
+        T value{};
         AstDiagnostics errors;
-        validate_read(*result, path, errors);
+        TypeReader<T>::decode(reader, node, path, value, ReadMode::Create, errors);
         if (!errors.empty()) {
             return std::unexpected{std::move(errors)};
         }
+        return value;
+    } else {
+        return TypeReader<T>::construct(reader, node, path);
     }
-    return result;
 }
 }

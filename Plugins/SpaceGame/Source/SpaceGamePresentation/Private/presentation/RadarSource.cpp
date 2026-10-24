@@ -75,7 +75,7 @@ auto draw_priority(ERadarContactFlags const contact_flags) -> int32 {
     return 0;
 }
 
-auto curve_parameter(FRadarSettings const& settings) -> float {
+auto curve_parameter(ioj::settings::Radar const& settings) -> float {
     auto const normalized_combat{settings.combat_range / settings.maximum_range};
     if (normalized_combat >= 1.0f || settings.combat_display_radius <= normalized_combat) {
         return 0.0f;
@@ -88,12 +88,13 @@ auto map_distance(float const normalized_distance, float const curve) -> float {
     return ((1.0f + curve) * normalized_distance) / (1.0f + curve * normalized_distance);
 }
 
-auto to_radar_display_radius(float const world_distance, FRadarSettings const& settings) -> float {
+auto to_radar_display_radius(float const world_distance, ioj::settings::Radar const& settings)
+    -> float {
     return map_distance(world_distance / settings.maximum_range, curve_parameter(settings));
 }
 
 auto to_radar_position(FVector3f const local_delta,
-                       FRadarSettings const& settings,
+                       ioj::settings::Radar const& settings,
                        float const curve) -> FVector3f {
     FVector2f const planar{local_delta.X, local_delta.Y};
     auto const planar_distance{planar.Size()};
@@ -113,12 +114,13 @@ auto to_radar_position(FVector3f const local_delta,
         mapped_planar.X, mapped_planar.Y, local_delta.Z < 0.0f ? -mapped_height : mapped_height};
 }
 
-auto to_radar_position(FVector3f const local_delta, FRadarSettings const& settings) -> FVector3f {
+auto to_radar_position(FVector3f const local_delta, ioj::settings::Radar const& settings)
+    -> FVector3f {
     return to_radar_position(local_delta, settings, curve_parameter(settings));
 }
 } // namespace ioj::radar_source
 
-auto sanitize_radar_settings(FRadarSettings settings) -> FRadarSettings {
+auto sanitize_radar_settings(ioj::settings::Radar settings) -> ioj::settings::Radar {
     settings.maximum_range = FMath::Max(settings.maximum_range, UE_SMALL_NUMBER);
     settings.combat_range =
         FMath::Clamp(settings.combat_range, UE_SMALL_NUMBER, settings.maximum_range);
@@ -154,7 +156,7 @@ auto collect_radar_instances(std::span<::ioj::presentation::AgentDisplayBatch co
                              FTransform const& player_transform,
                              ::ioj::sim::EntityId const player_id,
                              ETestTeam const player_team,
-                             FRadarSettings const& settings,
+                             ioj::settings::Radar const& settings,
                              FRadarFrame& output_frame) -> FRadarCollectionResult {
     TRACE_CPUPROFILER_EVENT_SCOPE(Radar::CollectAgentSource);
     check(objective_roles.Num() == ::ioj::presentation::display_entity_count(batches));

@@ -21,8 +21,6 @@ struct TypeReader<::ioj::levels::LevelCameraDefinition> {
                        value_type& result,
                        ReadMode mode,
                        AstDiagnostics& errors);
-
-    static void validate(value_type const& result, std::string_view path, AstDiagnostics& errors);
   private:
     enum class Field : std::uint8_t {
         target_entity_ids,
@@ -59,6 +57,12 @@ inline void TypeReader<::ioj::levels::LevelCameraDefinition>::decode(Reader cons
                                                                      value_type& result,
                                                                      ReadMode mode,
                                                                      AstDiagnostics& errors) {
+    auto const read{[&](auto& destination, NodeIndex value, std::string_view location) {
+        auto const error_count{errors.size()};
+        decode_field(reader, value, location, destination, mode, errors);
+        return errors.size() == error_count;
+    }};
+
     auto const seen{read_record<Field>(
         reader,
         node,
@@ -66,18 +70,15 @@ inline void TypeReader<::ioj::levels::LevelCameraDefinition>::decode(Reader cons
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read = [&](auto& destination) {
-                decode_field(reader, value, location, destination, mode, errors);
-            };
             switch (field) {
                 case Field::target_entity_ids:
-                    read(result.target_entity_ids);
+                    read(result.target_entity_ids, value, location);
                     break;
                 case Field::offset_direction:
-                    read(result.offset_direction);
+                    read(result.offset_direction, value, location);
                     break;
                 case Field::distance:
-                    read(result.distance);
+                    read(result.distance, value, location);
                     break;
                 case Field::Count:
                     std::unreachable();
@@ -95,14 +96,6 @@ inline void TypeReader<::ioj::levels::LevelCameraDefinition>::decode(Reader cons
     if (mode == ReadMode::Create) {
         require_fields<Field>(*seen, required, required_names, path, errors);
     }
-}
-
-inline void TypeReader<::ioj::levels::LevelCameraDefinition>::validate(value_type const& result,
-                                                                       std::string_view path,
-                                                                       AstDiagnostics& errors) {
-    validate_member(result.target_entity_ids, path, "look-at", errors);
-    validate_member(result.offset_direction, path, "offset-direction", errors);
-    validate_member(result.distance, path, "distance", errors);
 }
 
 } // namespace ioj::s7

@@ -54,7 +54,7 @@ void FHUDManager::initialise(sim::Mission const& new_mission,
                              sim::player::Sim const* const new_player_ship,
                              FLevelVisualConfig const& level_config,
                              FEntityOverlaySettings const& entity_overlay_settings,
-                             FRadarSettings const& radar_settings,
+                             ioj::settings::Radar const& radar_settings,
                              UInstancedStaticMeshComponent* const soft_target_instances) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::initialise);
     update_timers.reset();
@@ -119,20 +119,22 @@ void FHUDManager::initialise(sim::Mission const& new_mission,
     auto const capital_radius{
         spatial_query_manager->get_entity_type_radius(sim::EntityType::CapitalShip)};
     entity_overlay_style_ = {
-        .bar_size_pixels = FVector2f{entity_overlay_settings.bar_size_pixels},
-        .screen_offset_pixels = FVector2f{entity_overlay_settings.screen_offset_pixels},
+        .bar_size_pixels =
+            FVector2f{ioj::to_unreal(entity_overlay_settings.values.bar_size_pixels)},
+        .screen_offset_pixels =
+            FVector2f{ioj::to_unreal(entity_overlay_settings.values.screen_offset_pixels)},
         .minimum_world_radius = FMath::Min(fighter_radius, capital_radius),
         .maximum_world_radius = FMath::Max(fighter_radius, capital_radius),
-        .minimum_bar_scale = FMath::Max(entity_overlay_settings.minimum_bar_scale, 0.01f),
+        .minimum_bar_scale = FMath::Max(entity_overlay_settings.values.minimum_bar_scale, 0.01f),
         .maximum_bar_scale =
-            FMath::Max(entity_overlay_settings.maximum_bar_scale,
-                       FMath::Max(entity_overlay_settings.minimum_bar_scale, 0.01f)),
-        .inset_pixels = entity_overlay_settings.inset_pixels,
-        .maximum_inset_height_ratio = entity_overlay_settings.maximum_inset_height_ratio,
+            FMath::Max(entity_overlay_settings.values.maximum_bar_scale,
+                       FMath::Max(entity_overlay_settings.values.minimum_bar_scale, 0.01f)),
+        .inset_pixels = entity_overlay_settings.values.inset_pixels,
+        .maximum_inset_height_ratio = entity_overlay_settings.values.maximum_inset_height_ratio,
         .objective_bar_height_scale =
-            FMath::Clamp(entity_overlay_settings.objective_bar_height_scale, 1.0f, 2.0f),
-        .objective_frame_pixels = entity_overlay_settings.objective_frame_pixels,
-        .screen_edge_padding_pixels = entity_overlay_settings.screen_edge_padding_pixels,
+            FMath::Clamp(entity_overlay_settings.values.objective_bar_height_scale, 1.0f, 2.0f),
+        .objective_frame_pixels = entity_overlay_settings.values.objective_frame_pixels,
+        .screen_edge_padding_pixels = entity_overlay_settings.values.screen_edge_padding_pixels,
         .background_color = entity_overlay_settings.background_color,
         .fill_color = entity_overlay_settings.fill_color,
     };
@@ -150,22 +152,26 @@ void FHUDManager::initialise(sim::Mission const& new_mission,
         .turret = level_config.turrets.simulation.max_health,
     };
     soft_target_selection_settings_ = {
-        .acquisition_radius_pixels = entity_overlay_settings.soft_target.acquisition_radius_pixels,
-        .retention_radius_pixels = entity_overlay_settings.soft_target.retention_radius_pixels,
-        .centre_tie_radius_pixels = entity_overlay_settings.soft_target.centre_tie_radius_pixels,
-        .switch_improvement_ratio = entity_overlay_settings.soft_target.switch_improvement_ratio,
+        .acquisition_radius_pixels =
+            entity_overlay_settings.values.soft_target.acquisition_radius_pixels,
+        .retention_radius_pixels =
+            entity_overlay_settings.values.soft_target.retention_radius_pixels,
+        .centre_tie_radius_pixels =
+            entity_overlay_settings.values.soft_target.centre_tie_radius_pixels,
+        .switch_improvement_ratio =
+            entity_overlay_settings.values.soft_target.switch_improvement_ratio,
         .range_transition_start_multiplier =
-            entity_overlay_settings.soft_target.range_transition_start_multiplier,
+            entity_overlay_settings.values.soft_target.range_transition_start_multiplier,
         .minimum_indicator_radius_pixels =
-            entity_overlay_settings.soft_target.minimum_radius_pixels,
+            entity_overlay_settings.values.soft_target.minimum_radius_pixels,
         .maximum_indicator_radius_pixels =
-            entity_overlay_settings.soft_target.maximum_radius_pixels,
-        .bounds_padding_pixels = entity_overlay_settings.soft_target.bounds_padding_pixels,
+            entity_overlay_settings.values.soft_target.maximum_radius_pixels,
+        .bounds_padding_pixels = entity_overlay_settings.values.soft_target.bounds_padding_pixels,
     };
     soft_target_pulse_duration_ =
-        FMath::Max(entity_overlay_settings.soft_target.pulse_duration, 0.0f);
+        FMath::Max(entity_overlay_settings.values.soft_target.pulse_duration, 0.0f);
     soft_target_fade_out_duration_ =
-        FMath::Max(entity_overlay_settings.soft_target.fade_out_duration, 0.0f);
+        FMath::Max(entity_overlay_settings.values.soft_target.fade_out_duration, 0.0f);
     top_killer_ids_buffer.Reset();
     entity_overlay_objective_roles_.Reset();
     top_killer_ids_buffer.Reserve(entity_ledger->get_num_unique_ids_issued());
@@ -190,7 +196,7 @@ void FHUDManager::initialise(sim::Mission const& new_mission,
         if (IsValid(ship_hud)) {
             ship_hud->set_radar_style(radar_style_);
         }
-        if (entity_overlay_settings_.enabled) {
+        if (entity_overlay_settings_.values.enabled) {
             hud->set_entity_overlay_frame_store(registration.entity_overlay_frame_store);
         } else {
             hud->set_entity_overlay_frame_store({});
@@ -315,7 +321,7 @@ void FHUDManager::register_hud(USimulationHudWidget& hud) {
     registration.entity_overlay_frame_store =
         MakeShared<FEntityOverlayFrameStore, ESPMode::ThreadSafe>();
     hud.set_entity_overlay_style(entity_overlay_style_);
-    if (state == EHUDManagerState::Active && entity_overlay_settings_.enabled) {
+    if (state == EHUDManagerState::Active && entity_overlay_settings_.values.enabled) {
         hud.set_entity_overlay_frame_store(registration.entity_overlay_frame_store);
     } else {
         hud.set_entity_overlay_frame_store({});
@@ -330,10 +336,10 @@ void FHUDManager::register_hud(USimulationHudWidget& hud) {
     if (state == EHUDManagerState::Active) {
         synchronise_hud(hud);
         // Registration can precede the first HUD tick, or follow new simulation spawns.
-        if (entity_overlay_settings_.enabled || radar_settings_.enabled) {
+        if (entity_overlay_settings_.values.enabled || radar_settings_.enabled) {
             update_entity_overlay_objective_roles();
         }
-        if (entity_overlay_settings_.enabled) {
+        if (entity_overlay_settings_.values.enabled) {
             auto const render_world_target{
                 registration.ship_hud.IsValid() &&
                 registered_huds.IndexOfByPredicate([](FRegisteredHud const& candidate) {
@@ -395,12 +401,12 @@ void FHUDManager::update_entity_overlays(float const delta_seconds) {
     TRACE_COUNTER_SET(SandboxEntityOverlayUploadBytes, 0);
     clear_world_soft_targets();
     if (registered_huds.IsEmpty() ||
-        (!entity_overlay_settings_.enabled && !radar_settings_.enabled)) {
+        (!entity_overlay_settings_.values.enabled && !radar_settings_.enabled)) {
         return;
     }
 
     update_entity_overlay_objective_roles();
-    if (!entity_overlay_settings_.enabled) {
+    if (!entity_overlay_settings_.values.enabled) {
         return;
     }
     auto world_target_rendered{false};
@@ -510,20 +516,20 @@ void FHUDManager::update_entity_overlay(FRegisteredHud& registration,
     if (registration.ship_hud.IsValid() && validate_player_ship_for_collection()) {
         auto const firing_transform{player_ship->get_middle_socket()};
         auto const camera_transform{FRotationMatrix{camera_rotation}};
-        soft_target =
-            select_soft_target(batches,
-                               spatial_query_manager->get_entity_type_radii(),
-                               entity_overlay_objective_roles_,
-                               {.view = overlay_view,
-                                .aim_origin = FVector3f{to_unreal(firing_transform.location)},
-                                .aim_direction = FVector3f{to_unreal(firing_transform.forward())},
-                                .camera_right = FVector3f{camera_transform.GetUnitAxis(EAxis::Y)},
-                                .camera_up = FVector3f{camera_transform.GetUnitAxis(EAxis::Z)},
-                                .player_team = to_unreal(player_ship->team),
-                                .effective_weapon_range = player_ship->get_laser_effective_range(),
-                                .maximum_overlay_range = entity_overlay_settings_.maximum_range},
-                               soft_target_selection_settings_,
-                               registration.soft_target.entity);
+        soft_target = select_soft_target(
+            batches,
+            spatial_query_manager->get_entity_type_radii(),
+            entity_overlay_objective_roles_,
+            {.view = overlay_view,
+             .aim_origin = FVector3f{to_unreal(firing_transform.location)},
+             .aim_direction = FVector3f{to_unreal(firing_transform.forward())},
+             .camera_right = FVector3f{camera_transform.GetUnitAxis(EAxis::Y)},
+             .camera_up = FVector3f{camera_transform.GetUnitAxis(EAxis::Z)},
+             .player_team = to_unreal(player_ship->team),
+             .effective_weapon_range = player_ship->get_laser_effective_range(),
+             .maximum_overlay_range = entity_overlay_settings_.values.maximum_range},
+            soft_target_selection_settings_,
+            registration.soft_target.entity);
     }
 
     // Gather active, fading and newly selected positions from fresh owner rows.
@@ -650,7 +656,7 @@ void FHUDManager::update_entity_overlay(FRegisteredHud& registration,
                                          entity_overlay_team_colours_,
                                          entity_overlay_maximum_health_,
                                          overlay_view.camera_origin,
-                                         entity_overlay_settings_.maximum_range,
+                                         entity_overlay_settings_.values.maximum_range,
                                          frame.instances,
                                          registration.entity_overlay_collector)};
     registration.entity_overlay_frame_store->publish();
@@ -662,7 +668,7 @@ void FHUDManager::update_entity_overlay(FRegisteredHud& registration,
 }
 
 void FHUDManager::configure_world_soft_target_renderer() {
-    if (!entity_overlay_settings_.enabled) {
+    if (!entity_overlay_settings_.values.enabled) {
         if (auto* const instances{soft_target_instances_.Get()}; IsValid(instances)) {
             instances->ClearInstances();
             instances->SetVisibility(false);
@@ -740,7 +746,8 @@ void FHUDManager::add_world_soft_target(TOptional<FVector> const& target_locatio
     auto const target_fit_radius{indicator_radius_pixels * world_units_per_pixel};
     auto const clamped_range_alpha{FMath::Clamp(range_alpha, 0.0f, 1.0f)};
     auto const closing_scale{FMath::Lerp(
-        FMath::Max(entity_overlay_settings_.soft_target.bracket_start_radius_multiplier, 1.0f),
+        FMath::Max(entity_overlay_settings_.values.soft_target.bracket_start_radius_multiplier,
+                   1.0f),
         1.0f,
         clamped_range_alpha)};
     auto const uniform_scale{target_fit_radius * closing_scale / soft_target_mesh_vertical_radius_};
@@ -767,8 +774,8 @@ void FHUDManager::add_world_soft_target(TOptional<FVector> const& target_locatio
     auto const color_alpha{smooth_range * smooth_range};
     auto const color{FMath::Lerp(neutral_color, in_range_color, color_alpha)};
     auto const opacity{
-        FMath::Clamp((entity_overlay_settings_.soft_target.opacity +
-                      pulse * entity_overlay_settings_.soft_target.pulse_opacity_boost) *
+        FMath::Clamp((entity_overlay_settings_.values.soft_target.opacity +
+                      pulse * entity_overlay_settings_.values.soft_target.pulse_opacity_boost) *
                          visibility * color.A,
                      0.0f,
                      1.0f)};

@@ -21,8 +21,6 @@ struct TypeReader<::codegen_compile_fixture::WeaponSettings> {
                        value_type& result,
                        ReadMode mode,
                        AstDiagnostics& errors);
-
-    static void validate(value_type const& result, std::string_view path, AstDiagnostics& errors);
   private:
     enum class Field : std::uint8_t {
         damage,
@@ -59,8 +57,6 @@ struct TypeReader<::codegen_compile_fixture::WeaponSettingsOverrides> {
                        value_type& result,
                        ReadMode,
                        AstDiagnostics& errors);
-
-    static void validate(value_type const& result, std::string_view path, AstDiagnostics& errors);
   private:
     enum class Field : std::uint8_t {
         damage,
@@ -93,8 +89,6 @@ struct TypeReader<::codegen_compile_fixture::ActorSettings> {
                        value_type& result,
                        ReadMode mode,
                        AstDiagnostics& errors);
-
-    static void validate(value_type const& result, std::string_view path, AstDiagnostics& errors);
   private:
     enum class Field : std::uint8_t {
         max_health,
@@ -131,8 +125,6 @@ struct TypeReader<::codegen_compile_fixture::ActorSettingsOverrides> {
                        value_type& result,
                        ReadMode,
                        AstDiagnostics& errors);
-
-    static void validate(value_type const& result, std::string_view path, AstDiagnostics& errors);
   private:
     enum class Field : std::uint8_t {
         max_health,
@@ -170,6 +162,12 @@ inline void
                                                                   value_type& result,
                                                                   ReadMode mode,
                                                                   AstDiagnostics& errors) {
+    auto const read{[&](auto& destination, NodeIndex value, std::string_view location) {
+        auto const error_count{errors.size()};
+        decode_field(reader, value, location, destination, mode, errors);
+        return errors.size() == error_count;
+    }};
+
     auto const seen{read_record<Field>(
         reader,
         node,
@@ -177,18 +175,21 @@ inline void
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read = [&](auto& destination) {
-                decode_field(reader, value, location, destination, mode, errors);
-            };
             switch (field) {
                 case Field::damage:
-                    read(result.damage);
+                    if (read(result.damage, value, location)) {
+                        if (!constraints::nonnegative(result.damage)) {
+                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
+                                                           std::string{location},
+                                                           "Expected a nonnegative value"});
+                        }
+                    }
                     break;
                 case Field::turn_rate:
-                    read(result.turn_rate);
+                    read(result.turn_rate, value, location);
                     break;
                 case Field::asset_distance:
-                    read(result.asset_distance);
+                    read(result.asset_distance, value, location);
                     break;
                 case Field::Count:
                     std::unreachable();
@@ -199,18 +200,6 @@ inline void
         append_errors(errors, seen.error());
         return;
     }
-}
-
-inline void TypeReader<::codegen_compile_fixture::WeaponSettings>::validate(
-    value_type const& result, std::string_view path, AstDiagnostics& errors) {
-    validate_member(result.damage, path, "damage", errors);
-    if (!constraints::nonnegative(result.damage)) {
-        errors.push_back((AstDiagnostic{AstErrorCode::InvalidNumber,
-                                        std::string{path} + ".damage",
-                                        "Expected a nonnegative value"}));
-    }
-    validate_member(result.turn_rate, path, "turn-speed", errors);
-    validate_member(result.asset_distance, path, "asset-distance", errors);
 }
 
 inline ReadResult<::codegen_compile_fixture::WeaponSettingsOverrides>
@@ -226,6 +215,12 @@ inline void TypeReader<::codegen_compile_fixture::WeaponSettingsOverrides>::deco
     value_type& result,
     ReadMode,
     AstDiagnostics& errors) {
+    auto const read{[&](auto& destination, NodeIndex value, std::string_view location) {
+        auto const error_count{errors.size()};
+        decode_patch_field(reader, value, location, destination, errors);
+        return errors.size() == error_count;
+    }};
+
     auto const seen{read_record<Field>(
         reader,
         node,
@@ -233,15 +228,18 @@ inline void TypeReader<::codegen_compile_fixture::WeaponSettingsOverrides>::deco
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read = [&](auto& destination) {
-                decode_patch_field(reader, value, location, destination, errors);
-            };
             switch (field) {
                 case Field::damage:
-                    read(result.damage);
+                    if (read(result.damage, value, location)) {
+                        if (!constraints::nonnegative(result.damage)) {
+                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
+                                                           std::string{location},
+                                                           "Expected a nonnegative value"});
+                        }
+                    }
                     break;
                 case Field::turn_rate:
-                    read(result.turn_rate);
+                    read(result.turn_rate, value, location);
                     break;
                 case Field::Count:
                     std::unreachable();
@@ -252,17 +250,6 @@ inline void TypeReader<::codegen_compile_fixture::WeaponSettingsOverrides>::deco
         append_errors(errors, seen.error());
         return;
     }
-}
-
-inline void TypeReader<::codegen_compile_fixture::WeaponSettingsOverrides>::validate(
-    value_type const& result, std::string_view path, AstDiagnostics& errors) {
-    validate_member(result.damage, path, "damage", errors);
-    if (result.damage && !constraints::nonnegative(*result.damage)) {
-        errors.push_back((AstDiagnostic{AstErrorCode::InvalidNumber,
-                                        std::string{path} + ".damage",
-                                        "Expected a nonnegative value"}));
-    }
-    validate_member(result.turn_rate, path, "turn-speed", errors);
 }
 
 inline ReadResult<::codegen_compile_fixture::ActorSettings>
@@ -279,6 +266,12 @@ inline void
                                                                  value_type& result,
                                                                  ReadMode mode,
                                                                  AstDiagnostics& errors) {
+    auto const read{[&](auto& destination, NodeIndex value, std::string_view location) {
+        auto const error_count{errors.size()};
+        decode_field(reader, value, location, destination, mode, errors);
+        return errors.size() == error_count;
+    }};
+
     auto const seen{read_record<Field>(
         reader,
         node,
@@ -286,18 +279,15 @@ inline void
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read = [&](auto& destination) {
-                decode_field(reader, value, location, destination, mode, errors);
-            };
             switch (field) {
                 case Field::max_health:
-                    read(result.max_health);
+                    read(result.max_health, value, location);
                     break;
                 case Field::weapon:
-                    read(result.weapon);
+                    read(result.weapon, value, location);
                     break;
                 case Field::optional_limit:
-                    read(result.optional_limit);
+                    read(result.optional_limit, value, location);
                     break;
                 case Field::Count:
                     std::unreachable();
@@ -308,14 +298,6 @@ inline void
         append_errors(errors, seen.error());
         return;
     }
-}
-
-inline void TypeReader<::codegen_compile_fixture::ActorSettings>::validate(value_type const& result,
-                                                                           std::string_view path,
-                                                                           AstDiagnostics& errors) {
-    validate_member(result.max_health, path, "max-health", errors);
-    validate_member(result.weapon, path, "weapon", errors);
-    validate_member(result.optional_limit, path, "optional-limit", errors);
 }
 
 inline ReadResult<::codegen_compile_fixture::ActorSettingsOverrides>
@@ -331,6 +313,12 @@ inline void TypeReader<::codegen_compile_fixture::ActorSettingsOverrides>::decod
     value_type& result,
     ReadMode,
     AstDiagnostics& errors) {
+    auto const read{[&](auto& destination, NodeIndex value, std::string_view location) {
+        auto const error_count{errors.size()};
+        decode_patch_field(reader, value, location, destination, errors);
+        return errors.size() == error_count;
+    }};
+
     auto const seen{read_record<Field>(
         reader,
         node,
@@ -338,18 +326,15 @@ inline void TypeReader<::codegen_compile_fixture::ActorSettingsOverrides>::decod
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read = [&](auto& destination) {
-                decode_patch_field(reader, value, location, destination, errors);
-            };
             switch (field) {
                 case Field::max_health:
-                    read(result.max_health);
+                    read(result.max_health, value, location);
                     break;
                 case Field::weapon:
-                    read(result.weapon);
+                    read(result.weapon, value, location);
                     break;
                 case Field::optional_limit:
-                    read(result.optional_limit);
+                    read(result.optional_limit, value, location);
                     break;
                 case Field::Count:
                     std::unreachable();
@@ -360,13 +345,6 @@ inline void TypeReader<::codegen_compile_fixture::ActorSettingsOverrides>::decod
         append_errors(errors, seen.error());
         return;
     }
-}
-
-inline void TypeReader<::codegen_compile_fixture::ActorSettingsOverrides>::validate(
-    value_type const& result, std::string_view path, AstDiagnostics& errors) {
-    validate_member(result.max_health, path, "max-health", errors);
-    validate_member(result.weapon, path, "weapon", errors);
-    validate_member(result.optional_limit, path, "optional-limit", errors);
 }
 
 } // namespace ioj::s7

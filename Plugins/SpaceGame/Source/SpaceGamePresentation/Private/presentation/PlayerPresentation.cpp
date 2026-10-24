@@ -23,12 +23,12 @@ FPlayerPresentation::FPlayerPresentation(FPlayerPresentationResources resources,
     }
     resources_.pulse->SetColorParameter(TEXT("colour"), config.engine_colour);
     resources_.pulse->SetFloatParameter(TEXT("ring_colour_intensity"),
-                                        config.boost_effect_colour_intensity);
+                                        config.presentation.boost_effect_colour_intensity);
     resources_.pulse->SetFloatParameter(TEXT("sparks_colour_intensity"),
-                                        config.boost_effect_colour_intensity);
+                                        config.presentation.boost_effect_colour_intensity);
     resources_.engine->SetColorParameter(TEXT("colour"), config.engine_colour);
     resources_.engine->SetFloatParameter(TEXT("sparks_colour_intensity"),
-                                         config.boost_effect_colour_intensity);
+                                         config.presentation.boost_effect_colour_intensity);
     resources_.space_dust->apply_settings(config.space_dust);
     tick(initial_state);
 }

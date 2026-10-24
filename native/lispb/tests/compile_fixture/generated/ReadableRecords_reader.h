@@ -21,8 +21,6 @@ struct TypeReader<::codegen_compile_fixture::EmptyReadable> {
                        value_type&,
                        ReadMode,
                        AstDiagnostics& errors);
-
-    static void validate(value_type const&, std::string_view, AstDiagnostics&);
   private:
     enum class Field : std::uint8_t {
         Count,
@@ -48,8 +46,6 @@ struct TypeReader<::codegen_compile_fixture::EmptyPositional> {
                        value_type&,
                        ReadMode,
                        AstDiagnostics& errors);
-
-    static void validate(value_type const&, std::string_view, AstDiagnostics&);
 };
 
 template <>
@@ -68,8 +64,6 @@ struct TypeReader<::codegen_compile_fixture::PositionalChild> {
                        value_type& result,
                        ReadMode mode,
                        AstDiagnostics& errors);
-
-    static void validate(value_type const& result, std::string_view path, AstDiagnostics& errors);
 };
 
 template <>
@@ -85,8 +79,6 @@ struct TypeReader<::codegen_compile_fixture::DefaultReadable> {
                        value_type& result,
                        ReadMode mode,
                        AstDiagnostics& errors);
-
-    static void validate(value_type const& result, std::string_view path, AstDiagnostics& errors);
   private:
     enum class Field : std::uint8_t {
         count,
@@ -119,8 +111,6 @@ struct TypeReader<::codegen_compile_fixture::RecursiveReadable> {
                        value_type& result,
                        ReadMode mode,
                        AstDiagnostics& errors);
-
-    static void validate(value_type const& result, std::string_view path, AstDiagnostics& errors);
   private:
     enum class Field : std::uint8_t {
         children,
@@ -152,8 +142,6 @@ struct TypeReader<::codegen_compile_fixture::BoundedInteger> {
                        value_type& result,
                        ReadMode mode,
                        AstDiagnostics& errors);
-
-    static void validate(value_type const& result, std::string_view path, AstDiagnostics& errors);
   private:
     enum class Field : std::uint8_t {
         value,
@@ -185,8 +173,6 @@ struct TypeReader<::codegen_compile_fixture::ReadableChild> {
                        value_type& result,
                        ReadMode mode,
                        AstDiagnostics& errors);
-
-    static void validate(value_type const& result, std::string_view path, AstDiagnostics& errors);
   private:
     enum class Field : std::uint8_t {
         name,
@@ -222,8 +208,6 @@ struct TypeReader<::codegen_compile_fixture::ReadableRecord> {
                        value_type& result,
                        ReadMode mode,
                        AstDiagnostics& errors);
-
-    static void validate(value_type const& result, std::string_view path, AstDiagnostics& errors);
   private:
     enum class Field : std::uint8_t {
         child,
@@ -310,10 +294,6 @@ inline void
     }
 }
 
-inline void TypeReader<::codegen_compile_fixture::EmptyReadable>::validate(value_type const&,
-                                                                           std::string_view,
-                                                                           AstDiagnostics&) {}
-
 inline ReadResult<::codegen_compile_fixture::EmptyPositional>
     TypeReader<::codegen_compile_fixture::EmptyPositional>::read(Reader const& reader,
                                                                  NodeIndex const node,
@@ -336,10 +316,6 @@ inline void
     }
 }
 
-inline void TypeReader<::codegen_compile_fixture::EmptyPositional>::validate(value_type const&,
-                                                                             std::string_view,
-                                                                             AstDiagnostics&) {}
-
 inline ReadResult<::codegen_compile_fixture::PositionalChild>
     TypeReader<::codegen_compile_fixture::PositionalChild>::read(Reader const& reader,
                                                                  NodeIndex const node,
@@ -354,14 +330,26 @@ inline ReadResult<::codegen_compile_fixture::PositionalChild>
     AstDiagnostics errors{};
     std::optional<decltype(value_type::name)> value_name{};
     std::optional<decltype(value_type::count)> value_count{};
+    auto const read{[&](auto& destination, NodeIndex value, std::string_view location) {
+        auto const error_count{errors.size()};
+        read_field(reader, value, location, destination, errors);
+        return errors.size() == error_count;
+    }};
+
     auto const arguments{positional_arguments(reader, node, "position", path, 2)};
 
     if (!arguments) {
         append_errors(errors, arguments.error());
         return std::unexpected{std::move(errors)};
     }
-    read_field(reader, (*arguments)[0], std::string{path} + ".name", value_name, errors);
-    read_field(reader, (*arguments)[1], std::string{path} + ".count", value_count, errors);
+    read(value_name, (*arguments)[0], std::string{path} + ".name");
+    if (read(value_count, (*arguments)[1], std::string{path} + ".count")) {
+        if (!constraints::nonnegative(value_count)) {
+            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
+                                           std::string{std::string{path} + ".count"},
+                                           "Expected a nonnegative value"});
+        }
+    }
     if (!errors.empty()) {
         return std::unexpected{std::move(errors)};
     }
@@ -378,24 +366,25 @@ inline void
                                                                    value_type& result,
                                                                    ReadMode mode,
                                                                    AstDiagnostics& errors) {
+    auto const read{[&](auto& destination, NodeIndex value, std::string_view location) {
+        auto const error_count{errors.size()};
+        decode_field(reader, value, location, destination, mode, errors);
+        return errors.size() == error_count;
+    }};
+
     auto const arguments{positional_arguments(reader, node, "position", path, 2)};
 
     if (!arguments) {
         append_errors(errors, arguments.error());
         return;
     }
-    decode_field(reader, (*arguments)[0], std::string{path} + ".name", result.name, mode, errors);
-    decode_field(reader, (*arguments)[1], std::string{path} + ".count", result.count, mode, errors);
-}
-
-inline void TypeReader<::codegen_compile_fixture::PositionalChild>::validate(
-    value_type const& result, std::string_view path, AstDiagnostics& errors) {
-    validate_member(result.name, path, "name", errors);
-    validate_member(result.count, path, "count", errors);
-    if (!constraints::nonnegative(result.count)) {
-        errors.push_back((AstDiagnostic{AstErrorCode::InvalidNumber,
-                                        std::string{path} + ".count",
-                                        "Expected a nonnegative value"}));
+    read(result.name, (*arguments)[0], std::string{path} + ".name");
+    if (read(result.count, (*arguments)[1], std::string{path} + ".count")) {
+        if (!constraints::nonnegative(result.count)) {
+            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
+                                           std::string{std::string{path} + ".count"},
+                                           "Expected a nonnegative value"});
+        }
     }
 }
 
@@ -413,6 +402,12 @@ inline void
                                                                    value_type& result,
                                                                    ReadMode mode,
                                                                    AstDiagnostics& errors) {
+    auto const read{[&](auto& destination, NodeIndex value, std::string_view location) {
+        auto const error_count{errors.size()};
+        decode_field(reader, value, location, destination, mode, errors);
+        return errors.size() == error_count;
+    }};
+
     auto const seen{read_record<Field>(
         reader,
         node,
@@ -420,15 +415,12 @@ inline void
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read = [&](auto& destination) {
-                decode_field(reader, value, location, destination, mode, errors);
-            };
             switch (field) {
                 case Field::count:
-                    read(result.count);
+                    read(result.count, value, location);
                     break;
                 case Field::maybe:
-                    read(result.maybe);
+                    read(result.maybe, value, location);
                     break;
                 case Field::Count:
                     std::unreachable();
@@ -447,12 +439,6 @@ inline void
     }
 }
 
-inline void TypeReader<::codegen_compile_fixture::DefaultReadable>::validate(
-    value_type const& result, std::string_view path, AstDiagnostics& errors) {
-    validate_member(result.count, path, "count", errors);
-    validate_member(result.maybe, path, "maybe", errors);
-}
-
 inline ReadResult<::codegen_compile_fixture::RecursiveReadable>
     TypeReader<::codegen_compile_fixture::RecursiveReadable>::read(Reader const& reader,
                                                                    NodeIndex const node,
@@ -467,6 +453,12 @@ inline void
                                                                      value_type& result,
                                                                      ReadMode mode,
                                                                      AstDiagnostics& errors) {
+    auto const read{[&](auto& destination, NodeIndex value, std::string_view location) {
+        auto const error_count{errors.size()};
+        decode_field(reader, value, location, destination, mode, errors);
+        return errors.size() == error_count;
+    }};
+
     auto const seen{read_record<Field>(
         reader,
         node,
@@ -474,12 +466,9 @@ inline void
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read = [&](auto& destination) {
-                decode_field(reader, value, location, destination, mode, errors);
-            };
             switch (field) {
                 case Field::children:
-                    read(result.children);
+                    read(result.children, value, location);
                     break;
                 case Field::Count:
                     std::unreachable();
@@ -490,11 +479,6 @@ inline void
         append_errors(errors, seen.error());
         return;
     }
-}
-
-inline void TypeReader<::codegen_compile_fixture::RecursiveReadable>::validate(
-    value_type const& result, std::string_view path, AstDiagnostics& errors) {
-    validate_member(result.children, path, "children", errors);
 }
 
 inline ReadResult<::codegen_compile_fixture::BoundedInteger>
@@ -510,6 +494,12 @@ inline ReadResult<::codegen_compile_fixture::BoundedInteger>
                                                                      std::string_view const path) {
     AstDiagnostics errors{};
     std::optional<decltype(value_type::value)> value_value{};
+    auto const read{[&](auto& destination, NodeIndex value, std::string_view location) {
+        auto const error_count{errors.size()};
+        read_field(reader, value, location, destination, errors);
+        return errors.size() == error_count;
+    }};
+
     auto const seen{read_record<Field>(
         reader,
         node,
@@ -517,12 +507,20 @@ inline ReadResult<::codegen_compile_fixture::BoundedInteger>
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read = [&](auto& destination) {
-                read_field(reader, value, location, destination, errors);
-            };
             switch (field) {
                 case Field::value:
-                    read(value_value);
+                    if (read(value_value, value, location)) {
+                        if (!constraints::minimum(value_value, (-9223372036854775807LL - 1LL))) {
+                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
+                                                           std::string{location},
+                                                           "Value is below the minimum"});
+                        }
+                        if (!constraints::maximum(value_value, 9223372036854775806ULL)) {
+                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
+                                                           std::string{location},
+                                                           "Value is above the maximum"});
+                        }
+                    }
                     break;
                 case Field::Count:
                     std::unreachable();
@@ -553,6 +551,12 @@ inline void
                                                                   value_type& result,
                                                                   ReadMode mode,
                                                                   AstDiagnostics& errors) {
+    auto const read{[&](auto& destination, NodeIndex value, std::string_view location) {
+        auto const error_count{errors.size()};
+        decode_field(reader, value, location, destination, mode, errors);
+        return errors.size() == error_count;
+    }};
+
     auto const seen{read_record<Field>(
         reader,
         node,
@@ -560,12 +564,20 @@ inline void
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read = [&](auto& destination) {
-                decode_field(reader, value, location, destination, mode, errors);
-            };
             switch (field) {
                 case Field::value:
-                    read(result.value);
+                    if (read(result.value, value, location)) {
+                        if (!constraints::minimum(result.value, (-9223372036854775807LL - 1LL))) {
+                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
+                                                           std::string{location},
+                                                           "Value is below the minimum"});
+                        }
+                        if (!constraints::maximum(result.value, 9223372036854775806ULL)) {
+                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
+                                                           std::string{location},
+                                                           "Value is above the maximum"});
+                        }
+                    }
                     break;
                 case Field::Count:
                     std::unreachable();
@@ -584,21 +596,6 @@ inline void
     }
 }
 
-inline void TypeReader<::codegen_compile_fixture::BoundedInteger>::validate(
-    value_type const& result, std::string_view path, AstDiagnostics& errors) {
-    validate_member(result.value, path, "value", errors);
-    if (!constraints::minimum(result.value, (-9223372036854775807LL - 1LL))) {
-        errors.push_back((AstDiagnostic{AstErrorCode::InvalidNumber,
-                                        std::string{path} + ".value",
-                                        "Value is below the minimum"}));
-    }
-    if (!constraints::maximum(result.value, 9223372036854775806ULL)) {
-        errors.push_back((AstDiagnostic{AstErrorCode::InvalidNumber,
-                                        std::string{path} + ".value",
-                                        "Value is above the maximum"}));
-    }
-}
-
 inline ReadResult<::codegen_compile_fixture::ReadableChild>
     TypeReader<::codegen_compile_fixture::ReadableChild>::read(Reader const& reader,
                                                                NodeIndex const node,
@@ -613,6 +610,12 @@ inline ReadResult<::codegen_compile_fixture::ReadableChild>
     AstDiagnostics errors{};
     std::optional<decltype(value_type::name)> value_name{};
     std::optional<decltype(value_type::count)> value_count{};
+    auto const read{[&](auto& destination, NodeIndex value, std::string_view location) {
+        auto const error_count{errors.size()};
+        read_field(reader, value, location, destination, errors);
+        return errors.size() == error_count;
+    }};
+
     auto const seen{read_record<Field>(
         reader,
         node,
@@ -620,15 +623,18 @@ inline ReadResult<::codegen_compile_fixture::ReadableChild>
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read = [&](auto& destination) {
-                read_field(reader, value, location, destination, errors);
-            };
             switch (field) {
                 case Field::name:
-                    read(value_name);
+                    read(value_name, value, location);
                     break;
                 case Field::count:
-                    read(value_count);
+                    if (read(value_count, value, location)) {
+                        if (!constraints::nonnegative(value_count)) {
+                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
+                                                           std::string{location},
+                                                           "Expected a nonnegative value"});
+                        }
+                    }
                     break;
                 case Field::Count:
                     std::unreachable();
@@ -662,6 +668,12 @@ inline void
                                                                  value_type& result,
                                                                  ReadMode mode,
                                                                  AstDiagnostics& errors) {
+    auto const read{[&](auto& destination, NodeIndex value, std::string_view location) {
+        auto const error_count{errors.size()};
+        decode_field(reader, value, location, destination, mode, errors);
+        return errors.size() == error_count;
+    }};
+
     auto const seen{read_record<Field>(
         reader,
         node,
@@ -669,15 +681,18 @@ inline void
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read = [&](auto& destination) {
-                decode_field(reader, value, location, destination, mode, errors);
-            };
             switch (field) {
                 case Field::name:
-                    read(result.name);
+                    read(result.name, value, location);
                     break;
                 case Field::count:
-                    read(result.count);
+                    if (read(result.count, value, location)) {
+                        if (!constraints::nonnegative(result.count)) {
+                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
+                                                           std::string{location},
+                                                           "Expected a nonnegative value"});
+                        }
+                    }
                     break;
                 case Field::Count:
                     std::unreachable();
@@ -693,18 +708,6 @@ inline void
     auto constexpr required{required_fields<Field>(required_names)};
     if (mode == ReadMode::Create) {
         require_fields<Field>(*seen, required, required_names, path, errors);
-    }
-}
-
-inline void TypeReader<::codegen_compile_fixture::ReadableChild>::validate(value_type const& result,
-                                                                           std::string_view path,
-                                                                           AstDiagnostics& errors) {
-    validate_member(result.name, path, "name", errors);
-    validate_member(result.count, path, "count", errors);
-    if (!constraints::nonnegative(result.count)) {
-        errors.push_back((AstDiagnostic{AstErrorCode::InvalidNumber,
-                                        std::string{path} + ".count",
-                                        "Expected a nonnegative value"}));
     }
 }
 
@@ -729,6 +732,12 @@ inline ReadResult<::codegen_compile_fixture::ReadableRecord>
     std::optional<decltype(value_type::offset)> value_offset{};
     std::optional<decltype(value_type::title)> value_title{};
     std::optional<decltype(value_type::mode)> value_mode{};
+    auto const read{[&](auto& destination, NodeIndex value, std::string_view location) {
+        auto const error_count{errors.size()};
+        read_field(reader, value, location, destination, errors);
+        return errors.size() == error_count;
+    }};
+
     auto const seen{read_record<Field>(
         reader,
         node,
@@ -736,36 +745,66 @@ inline ReadResult<::codegen_compile_fixture::ReadableRecord>
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read = [&](auto& destination) {
-                read_field(reader, value, location, destination, errors);
-            };
             switch (field) {
                 case Field::child:
-                    read(value_child);
+                    read(value_child, value, location);
                     break;
                 case Field::values:
-                    read(value_values);
+                    read(value_values, value, location);
                     break;
                 case Field::points:
-                    read(value_points);
+                    read(value_points, value, location);
                     break;
                 case Field::enabled:
-                    read(value_enabled);
+                    read(value_enabled, value, location);
                     break;
                 case Field::maybe:
-                    read(value_maybe);
+                    read(value_maybe, value, location);
                     break;
                 case Field::scale:
-                    read(value_scale);
+                    if (read(value_scale, value, location)) {
+                        if (!constraints::positive(value_scale)) {
+                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
+                                                           std::string{location},
+                                                           "Expected a positive value"});
+                        }
+                        if (!constraints::finite(value_scale)) {
+                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
+                                                           std::string{location},
+                                                           "Expected a finite value"});
+                        }
+                        if (!constraints::minimum(value_scale, 5.00000000000000000e-01)) {
+                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
+                                                           std::string{location},
+                                                           "Value is below the minimum"});
+                        }
+                        if (!constraints::maximum(value_scale, 5ULL)) {
+                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
+                                                           std::string{location},
+                                                           "Value is above the maximum"});
+                        }
+                    }
                     break;
                 case Field::offset:
-                    read(value_offset);
+                    if (read(value_offset, value, location)) {
+                        if (!constraints::nonzero(value_offset)) {
+                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
+                                                           std::string{location},
+                                                           "Expected a nonzero value"});
+                        }
+                    }
                     break;
                 case Field::title:
-                    read(value_title);
+                    if (read(value_title, value, location)) {
+                        if (!constraints::nonempty(value_title)) {
+                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidType,
+                                                           std::string{location},
+                                                           "Expected a nonempty string"});
+                        }
+                    }
                     break;
                 case Field::mode:
-                    read(value_mode);
+                    read(value_mode, value, location);
                     break;
                 case Field::Count:
                     std::unreachable();
@@ -821,6 +860,12 @@ inline void
                                                                   value_type& result,
                                                                   ReadMode mode,
                                                                   AstDiagnostics& errors) {
+    auto const read{[&](auto& destination, NodeIndex value, std::string_view location) {
+        auto const error_count{errors.size()};
+        decode_field(reader, value, location, destination, mode, errors);
+        return errors.size() == error_count;
+    }};
+
     auto const seen{read_record<Field>(
         reader,
         node,
@@ -828,36 +873,66 @@ inline void
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read = [&](auto& destination) {
-                decode_field(reader, value, location, destination, mode, errors);
-            };
             switch (field) {
                 case Field::child:
-                    read(result.child);
+                    read(result.child, value, location);
                     break;
                 case Field::values:
-                    read(result.values);
+                    read(result.values, value, location);
                     break;
                 case Field::points:
-                    read(result.points);
+                    read(result.points, value, location);
                     break;
                 case Field::enabled:
-                    read(result.enabled);
+                    read(result.enabled, value, location);
                     break;
                 case Field::maybe:
-                    read(result.maybe);
+                    read(result.maybe, value, location);
                     break;
                 case Field::scale:
-                    read(result.scale);
+                    if (read(result.scale, value, location)) {
+                        if (!constraints::positive(result.scale)) {
+                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
+                                                           std::string{location},
+                                                           "Expected a positive value"});
+                        }
+                        if (!constraints::finite(result.scale)) {
+                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
+                                                           std::string{location},
+                                                           "Expected a finite value"});
+                        }
+                        if (!constraints::minimum(result.scale, 5.00000000000000000e-01)) {
+                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
+                                                           std::string{location},
+                                                           "Value is below the minimum"});
+                        }
+                        if (!constraints::maximum(result.scale, 5ULL)) {
+                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
+                                                           std::string{location},
+                                                           "Value is above the maximum"});
+                        }
+                    }
                     break;
                 case Field::offset:
-                    read(result.offset);
+                    if (read(result.offset, value, location)) {
+                        if (!constraints::nonzero(result.offset)) {
+                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidNumber,
+                                                           std::string{location},
+                                                           "Expected a nonzero value"});
+                        }
+                    }
                     break;
                 case Field::title:
-                    read(result.title);
+                    if (read(result.title, value, location)) {
+                        if (!constraints::nonempty(result.title)) {
+                            errors.push_back(AstDiagnostic{AstErrorCode::InvalidType,
+                                                           std::string{location},
+                                                           "Expected a nonempty string"});
+                        }
+                    }
                     break;
                 case Field::mode:
-                    read(result.mode);
+                    read(result.mode, value, location);
                     break;
                 case Field::Count:
                     std::unreachable();
@@ -875,48 +950,6 @@ inline void
     if (mode == ReadMode::Create) {
         require_fields<Field>(*seen, required, required_names, path, errors);
     }
-}
-
-inline void TypeReader<::codegen_compile_fixture::ReadableRecord>::validate(
-    value_type const& result, std::string_view path, AstDiagnostics& errors) {
-    validate_member(result.child, path, "child", errors);
-    validate_member(result.values, path, "values", errors);
-    validate_member(result.points, path, "samples", errors);
-    validate_member(result.enabled, path, "enabled", errors);
-    validate_member(result.maybe, path, "maybe", errors);
-    validate_member(result.scale, path, "scale", errors);
-    if (!constraints::positive(result.scale)) {
-        errors.push_back((AstDiagnostic{AstErrorCode::InvalidNumber,
-                                        std::string{path} + ".scale",
-                                        "Expected a positive value"}));
-    }
-    if (!constraints::finite(result.scale)) {
-        errors.push_back((AstDiagnostic{
-            AstErrorCode::InvalidNumber, std::string{path} + ".scale", "Expected a finite value"}));
-    }
-    if (!constraints::minimum(result.scale, 5.00000000000000000e-01)) {
-        errors.push_back((AstDiagnostic{AstErrorCode::InvalidNumber,
-                                        std::string{path} + ".scale",
-                                        "Value is below the minimum"}));
-    }
-    if (!constraints::maximum(result.scale, 5ULL)) {
-        errors.push_back((AstDiagnostic{AstErrorCode::InvalidNumber,
-                                        std::string{path} + ".scale",
-                                        "Value is above the maximum"}));
-    }
-    validate_member(result.offset, path, "offset", errors);
-    if (!constraints::nonzero(result.offset)) {
-        errors.push_back((AstDiagnostic{AstErrorCode::InvalidNumber,
-                                        std::string{path} + ".offset",
-                                        "Expected a nonzero value"}));
-    }
-    validate_member(result.title, path, "title", errors);
-    if (!constraints::nonempty(result.title)) {
-        errors.push_back((AstDiagnostic{AstErrorCode::InvalidType,
-                                        std::string{path} + ".title",
-                                        "Expected a nonempty string"}));
-    }
-    validate_member(result.mode, path, "mode", errors);
 }
 
 } // namespace ioj::s7

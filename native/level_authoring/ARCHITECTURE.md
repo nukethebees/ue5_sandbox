@@ -77,21 +77,21 @@ rejects par-time, unlock criteria, objective missions, and settings layers. Obje
 remain authored in S7; the scene editor cannot infer or rewrite them from entity roles.
 
 Settings constructors return records, and `settings-layers` groups records in application order.
-`parse_settings` flattens nested records into owned `ioj::settings::Setting` assignments with
-dotted paths and scalar/numeric-vector values. It preserves order and field presence; there
-is no default-filled patch mirror or interpreter state in runtime configuration. Level definitions
-retain their optional settings assignments. The native simulation resolver applies them directly
-to existing simulation structs; presentation consumers apply their own sections. Unknown fields
-and type mismatches are configuration errors at the owning consumer. Asset-derived geometry
-and Unreal resource references remain at the Unreal boundary.
+`parse_settings` decodes presentation sections into generated `PresentationOverrides`.
+Optional patch fields preserve authored presence even when a level is decoded before its base
+configuration. Generated application merges base and level patches into ordinary native values.
+Unreal resource references and colours remain in the engine structs beside those values.
+Unknown presentation fields and malformed values fail during decoding.
+Simulation still uses owned `ioj::settings::Setting` assignments with dotted paths and
+scalar/numeric-vector values, applied by its resolver before final domain validation.
 
 AST parsers, Scheme file readers and serializers live under `s7/src/`. General authoring code
 such as scene reconciliation and source sessions remains under `lib/src/`. The AST-only and
 interpreter-backed libraries keep their existing dependency boundaries.
 
 Lispb `settings-schema` declarations generate field-name enums, keyword lookup and typed member
-dispatch beside the S7 readers. The readers default-construct native settings, assign supplied
-fields through that dispatch and then validate domain constraints. Generated adapters stay
+dispatch for the remaining simulation consumer. Its reader default-constructs native settings, assigns supplied
+fields through that dispatch and then validates domain constraints. Generated adapters stay
 separate from runtime types; simulation and presentation code consume resolved settings.
 
 Ordinary records with matching script/domain layouts (camera, grid, campaign, team result)
@@ -103,20 +103,16 @@ only when construction is necessary. Presence masks distinguish omissions indepe
 member values. Fixed positional readers handle named expressions, references, dependencies
 and unlock criteria. Expression recursion, leaf selection and reference resolution remain explicit.
 
-Sparse settings retain their owned assignment representation: one level may contain native,
-Unreal sections consumed at different times. These consumers still use generated field bindings.
-Replacing that path must preserve authored presence, layer order and separately consumed sections. The generic
-settings walker contains no per-setting field lists; those are generated from the schemas.
+The remaining simulation assignment representation preserves authored presence and layer order.
+The generic settings walker contains no per-setting field lists; those are generated from the schemas.
 Structural record readers and settings bindings share Lispb's keyword lookup generation; their numeric conversions
 share `try_numeric_cast`, with flattened settings rejecting nonfinite values at assignment.
 Starfield now reads directly into generated native records: an outer section/layer traversal
-calls the same typed decoder as ordinary records, then validates effective values. Its old
+calls the same typed decoder as ordinary records, checking each supplied field immediately. Its old
 field bindings and handwritten constraint chain are removed. `read_override` applies a partial
 record to a copy, leaving the caller's instance untouched on failure.
 
-`settings-schema` remains only for simulation and Unreal presentation consumers. Moving plain
-presentation data into native readable records and migrating simulation's root bindings would
-allow those mappings and the flattened-assignment pipeline to be removed. This is not a reason
-to move asset references out of Unreal: engine resources can stay in a separate adapter. UI
-widgets, including colour pickers, can edit native values without owning their configuration.
-Cross-field rules such as attack-distance bands must still validate after all override layers.
+`settings-schema` remains only for simulation. Retiring it also requires migrating the simulation
+root bindings and its sparse level patches without coupling level definitions to runtime simulation.
+The immutable attack-distance band must still be constructed after all override layers.
+Its intermediate triples can be invalid even when the final effective triple is valid.

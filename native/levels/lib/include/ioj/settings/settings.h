@@ -1,5 +1,6 @@
 #pragma once
 
+#include <ioj/settings/presentation.h>
 #include <ioj/try_numeric_cast.h>
 #include <ioj/vector.h>
 
@@ -75,10 +76,6 @@ auto assign_vector(SettingValue const& value, Vector<T, N>& target) -> bool {
     return assign_components(value, target, N);
 }
 
-template <IndexedComponents T>
-auto assign_vector(SettingValue const& value, T& target) -> bool {
-    return assign_components(value, target, T::NumComponents);
-}
 }
 
 struct Setting {
@@ -101,5 +98,10 @@ struct Setting {
 };
 
 // Apply assignments in order; omitted fields retain their existing values.
-using Settings = std::vector<Setting>;
+struct Settings {
+    [[nodiscard]] auto empty() const -> bool { return assignments.empty() && !presentation; }
+
+    std::vector<Setting> assignments;
+    std::optional<PresentationOverrides> presentation;
+};
 }

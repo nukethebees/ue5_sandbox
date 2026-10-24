@@ -19,7 +19,7 @@ TEST(SimulationSettingsReader, AppliesSparseNestedLayersIncludingExplicitDefault
         (settings :fighters (fighters :speed {} :laser (laser :damage 31)))))",
                                                             defaults.fighters.speed))};
     ASSERT_TRUE(source);
-    EXPECT_EQ(source->size(), 6);
+    EXPECT_EQ(source->assignments.size(), 6);
     auto const resolved{s7::resolve_simulation_settings(*source)};
     ASSERT_TRUE(resolved) << resolved.error().front().message;
     EXPECT_EQ(resolved->fighters.speed, defaults.fighters.speed);

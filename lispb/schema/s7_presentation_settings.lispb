@@ -1,58 +1,118 @@
-(module s7_presentation_settings
-  :header "Plugins/SpaceGame/Source/SpaceGame/Private/s7/presentation_fields.h"
-  :header-include "s7/presentation_fields.h"
-  :namespace ioj::s7::presentation_fields
-  (settings-schema Fields
-    :target USpaceGameLevelConfig
-    :target-header "SpaceGame/simulation/SpaceGameLevelConfig.h"
-    (field "presentation.player-ship.boost-effect-colour-intensity" "player_ship.boost_effect_colour_intensity")
-    (field "presentation.player-ship.barrel-roll.roll-speed" "player_ship.barrel_roll_config.roll_speed")
-    (field "presentation.player-ship.barrel-roll.roll-duration" "player_ship.barrel_roll_config.roll_duration")
-    (field "presentation.player-ship.barrel-roll.roll-cooldown" "player_ship.barrel_roll_config.roll_cooldown")
-    (field "presentation.laser-projectiles.min-cull-distance" "laser_projectiles.min_cull_distance")
-    (field "presentation.laser-projectiles.max-cull-distance" "laser_projectiles.max_cull_distance")
-    (field "presentation.capital-ships.n-small-explosions" "capital_ships.n_small_explosions")
-    (field "presentation.capital-ships.time-between-explosions" "capital_ships.time_between_explosions")
-    (field "presentation.capital-ships.min-small-explosion-range" "capital_ships.min_small_explosion_range")
-    (field "presentation.capital-ships.max-small-explosion-range" "capital_ships.max_small_explosion_range")
-    (field "presentation.capital-ships.large-explosion-delay" "capital_ships.large_explosion_delay")
-    (field "presentation.capital-ships.proxy-arrow-size" "capital_ships.proxy_arrow_size")
-    (field "presentation.turrets.death-effect-scale" "turrets.death_effect_scale")
-    (field "presentation.entity-overlay.enabled" "entity_overlay.enabled")
-    (field "presentation.entity-overlay.maximum-range" "entity_overlay.maximum_range")
-    (field "presentation.entity-overlay.bar-size-pixels" "entity_overlay.bar_size_pixels")
-    (field "presentation.entity-overlay.screen-offset-pixels" "entity_overlay.screen_offset_pixels")
-    (field "presentation.entity-overlay.minimum-bar-scale" "entity_overlay.minimum_bar_scale")
-    (field "presentation.entity-overlay.maximum-bar-scale" "entity_overlay.maximum_bar_scale")
-    (field "presentation.entity-overlay.inset-pixels" "entity_overlay.inset_pixels")
-    (field "presentation.entity-overlay.maximum-inset-height-ratio" "entity_overlay.maximum_inset_height_ratio")
-    (field "presentation.entity-overlay.objective-frame-pixels" "entity_overlay.objective_frame_pixels")
-    (field "presentation.entity-overlay.objective-bar-height-scale" "entity_overlay.objective_bar_height_scale")
-    (field "presentation.entity-overlay.screen-edge-padding-pixels" "entity_overlay.screen_edge_padding_pixels")
-    (field "presentation.entity-overlay.soft-target.acquisition-radius-pixels" "entity_overlay.soft_target.acquisition_radius_pixels")
-    (field "presentation.entity-overlay.soft-target.retention-radius-pixels" "entity_overlay.soft_target.retention_radius_pixels")
-    (field "presentation.entity-overlay.soft-target.centre-tie-radius-pixels" "entity_overlay.soft_target.centre_tie_radius_pixels")
-    (field "presentation.entity-overlay.soft-target.switch-improvement-ratio" "entity_overlay.soft_target.switch_improvement_ratio")
-    (field "presentation.entity-overlay.soft-target.range-transition-start-multiplier" "entity_overlay.soft_target.range_transition_start_multiplier")
-    (field "presentation.entity-overlay.soft-target.minimum-radius-pixels" "entity_overlay.soft_target.minimum_radius_pixels")
-    (field "presentation.entity-overlay.soft-target.maximum-radius-pixels" "entity_overlay.soft_target.maximum_radius_pixels")
-    (field "presentation.entity-overlay.soft-target.bounds-padding-pixels" "entity_overlay.soft_target.bounds_padding_pixels")
-    (field "presentation.entity-overlay.soft-target.bracket-start-radius-multiplier" "entity_overlay.soft_target.bracket_start_radius_multiplier")
-    (field "presentation.entity-overlay.soft-target.opacity" "entity_overlay.soft_target.opacity")
-    (field "presentation.entity-overlay.soft-target.pulse-opacity-boost" "entity_overlay.soft_target.pulse_opacity_boost")
-    (field "presentation.entity-overlay.soft-target.pulse-duration" "entity_overlay.soft_target.pulse_duration")
-    (field "presentation.entity-overlay.soft-target.fade-out-duration" "entity_overlay.soft_target.fade_out_duration")
-    (field "presentation.radar.enabled" "radar.enabled")
-    (field "presentation.radar.combat-range" "radar.combat_range")
-    (field "presentation.radar.tactical-range" "radar.tactical_range")
-    (field "presentation.radar.maximum-range" "radar.maximum_range")
-    (field "presentation.radar.combat-display-radius" "radar.combat_display_radius")
-    (field "presentation.radar.grid-opacity" "radar.grid_opacity")
-    (field "presentation.radar.core-cell-radius" "radar.core_cell_radius")
-    (field "presentation.radar.combat-cell-radius" "radar.combat_cell_radius")
-    (field "presentation.radar.tactical-cell-radius" "radar.tactical_cell_radius")
-    (field "presentation.radar.strategic-cell-radius" "radar.strategic_cell_radius")
-    (field "presentation.radar.glyph-size-scale" "radar.glyph_size_scale")
-    (field "presentation.radar.objective-size-multiplier" "radar.objective_size_multiplier")
-    (field "presentation.radar.objective-ring-padding-pixels" "radar.objective_ring_padding_pixels")
-    (field "presentation.radar.objective-ring-thickness-pixels" "radar.objective_ring_thickness_pixels")))
+(module presentation_player
+  :header "native/levels/lib/include/ioj/settings/player_presentation.h"
+  :header-include "ioj/settings/player_presentation.h"
+  :namespace ioj::settings
+  (record PlayerPresentation
+    :generate-settings true :generate-overrides true
+    :generate-s7-reader true :s7-tag "player-ship"
+    (member boost_effect_colour_intensity float :initializer 75.f :finite true)))
+
+(module presentation_lasers
+  :header "native/levels/lib/include/ioj/settings/laser_presentation.h"
+  :header-include "ioj/settings/laser_presentation.h"
+  :namespace ioj::settings
+  (record LaserPresentation
+    :generate-settings true :generate-overrides true
+    :generate-s7-reader true :s7-tag "laser-projectiles"
+    (member min_cull_distance float :initializer 0.f :finite true)
+    (member max_cull_distance float :initializer 50000.f :finite true)))
+
+(module presentation_capitals
+  :header "native/levels/lib/include/ioj/settings/capital_presentation.h"
+  :header-include "ioj/settings/capital_presentation.h"
+  :namespace ioj::settings
+  (record CapitalPresentation
+    :generate-settings true :generate-overrides true
+    :generate-s7-reader true :s7-tag "capital-ships"
+    (member n_small_explosions std::int32_t :initializer 6)
+    (member time_between_explosions float :initializer 0.1f :finite true)
+    (member min_small_explosion_range @native_vector_3f :initializer "" :finite true)
+    (member max_small_explosion_range @native_vector_3f :initializer "1.f, 1.f, 1.f" :finite true)
+    (member large_explosion_delay float :initializer 0.f :finite true)
+    (member proxy_arrow_size float :initializer 5.f :finite true)))
+
+(module presentation_turrets
+  :header "native/levels/lib/include/ioj/settings/turret_presentation.h"
+  :header-include "ioj/settings/turret_presentation.h"
+  :namespace ioj::settings
+  (record TurretPresentation
+    :generate-settings true :generate-overrides true
+    :generate-s7-reader true :s7-tag "turrets"
+    (member death_effect_scale float :initializer 1.f :finite true)))
+
+(module presentation_soft_target
+  :header "native/levels/lib/include/ioj/settings/soft_target.h"
+  :header-include "ioj/settings/soft_target.h"
+  :namespace ioj::settings
+  (record SoftTarget
+    :generate-settings true :generate-overrides true
+    :generate-s7-reader true :s7-tag "soft-target"
+    (member acquisition_radius_pixels float :initializer 72.f :finite true)
+    (member retention_radius_pixels float :initializer 96.f :finite true)
+    (member centre_tie_radius_pixels float :initializer 4.f :finite true)
+    (member switch_improvement_ratio float :initializer 0.75f :finite true)
+    (member range_transition_start_multiplier float :initializer 4.f :finite true)
+    (member minimum_radius_pixels float :initializer 28.f :finite true)
+    (member maximum_radius_pixels float :initializer 96.f :finite true)
+    (member bounds_padding_pixels float :initializer 10.f :finite true)
+    (member bracket_start_radius_multiplier float :initializer 2.5f :finite true)
+    (member opacity float :initializer 0.70f :finite true)
+    (member pulse_opacity_boost float :initializer 0.08f :finite true)
+    (member pulse_duration float :initializer 0.15f :finite true)
+    (member fade_out_duration float :initializer 0.15f :finite true)))
+
+(module presentation_entity_overlay
+  :header "native/levels/lib/include/ioj/settings/entity_overlay.h"
+  :header-include "ioj/settings/entity_overlay.h"
+  :namespace ioj::settings
+  (record EntityOverlay
+    :generate-settings true :generate-overrides true
+    :generate-s7-reader true :s7-tag "entity-overlay"
+    (member enabled bool :initializer true)
+    (member maximum_range float :initializer 1000000.f :finite true)
+    (member bar_size_pixels @settings_vector2d :initializer "64.0, 8.0" :finite true)
+    (member screen_offset_pixels @settings_vector2d :initializer "0.0, -24.0" :finite true)
+    (member minimum_bar_scale float :initializer 0.5f :finite true)
+    (member maximum_bar_scale float :initializer 2.f :finite true)
+    (member inset_pixels float :initializer 1.f :finite true)
+    (member maximum_inset_height_ratio float :initializer 0.4f :finite true)
+    (member objective_frame_pixels float :initializer 3.f :finite true)
+    (member objective_bar_height_scale float :initializer 1.4f :finite true)
+    (member screen_edge_padding_pixels float :initializer 12.f :finite true)
+    (member soft_target ioj::settings::SoftTarget :initializer "")))
+
+(module presentation_radar
+  :header "native/levels/lib/include/ioj/settings/radar.h"
+  :header-include "ioj/settings/radar.h"
+  :namespace ioj::settings
+  (record Radar
+    :generate-settings true :generate-overrides true
+    :generate-s7-reader true :s7-tag "radar"
+    (member enabled bool :initializer true)
+    (member combat_range float :initializer 100000.f :finite true)
+    (member tactical_range float :initializer 400000.f :finite true)
+    (member maximum_range float :initializer 2000000.f :finite true)
+    (member combat_display_radius float :initializer 0.45f :finite true)
+    (member grid_opacity float :initializer 0.55f :finite true)
+    (member core_cell_radius float :initializer 0.18f :finite true)
+    (member combat_cell_radius float :initializer 0.075f :finite true)
+    (member tactical_cell_radius float :initializer 0.045f :finite true)
+    (member strategic_cell_radius float :initializer 0.025f :finite true)
+    (member glyph_size_scale float :initializer 1.f :finite true)
+    (member objective_size_multiplier float :initializer 1.2f :finite true)
+    (member objective_ring_padding_pixels float :initializer 3.f :finite true)
+    (member objective_ring_thickness_pixels float :initializer 1.25f :finite true)))
+
+(module presentation_settings
+  :header "native/levels/lib/include/ioj/settings/presentation.h"
+  :header-include "ioj/settings/presentation.h"
+  :namespace ioj::settings
+  (record Presentation
+    :generate-settings true :generate-overrides true
+    :generate-s7-reader true :s7-tag "presentation"
+    (member player_ship ioj::settings::PlayerPresentation :initializer "")
+    (member laser_projectiles ioj::settings::LaserPresentation :initializer "")
+    (member capital_ships ioj::settings::CapitalPresentation :initializer "")
+    (member turrets ioj::settings::TurretPresentation :initializer "")
+    (member entity_overlay ioj::settings::EntityOverlay :initializer "")
+    (member radar ioj::settings::Radar :initializer "")))

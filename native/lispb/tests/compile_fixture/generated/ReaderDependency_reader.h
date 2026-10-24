@@ -24,8 +24,6 @@ struct TypeReader<::codegen_compile_fixture::ReaderDependency> {
                        value_type& result,
                        ReadMode mode,
                        AstDiagnostics& errors);
-
-    static void validate(value_type const& result, std::string_view path, AstDiagnostics& errors);
   private:
     enum class Field : std::uint8_t {
         child,
@@ -53,6 +51,12 @@ inline ReadResult<::codegen_compile_fixture::ReaderDependency>
         Reader const& reader, NodeIndex const node, std::string_view const path) {
     AstDiagnostics errors{};
     std::optional<decltype(value_type::child)> value_child{};
+    auto const read{[&](auto& destination, NodeIndex value, std::string_view location) {
+        auto const error_count{errors.size()};
+        read_field(reader, value, location, destination, errors);
+        return errors.size() == error_count;
+    }};
+
     auto const seen{read_record<Field>(
         reader,
         node,
@@ -60,12 +64,9 @@ inline ReadResult<::codegen_compile_fixture::ReaderDependency>
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read = [&](auto& destination) {
-                read_field(reader, value, location, destination, errors);
-            };
             switch (field) {
                 case Field::child:
-                    read(value_child);
+                    read(value_child, value, location);
                     break;
                 case Field::Count:
                     std::unreachable();
@@ -96,6 +97,12 @@ inline void
                                                                     value_type& result,
                                                                     ReadMode mode,
                                                                     AstDiagnostics& errors) {
+    auto const read{[&](auto& destination, NodeIndex value, std::string_view location) {
+        auto const error_count{errors.size()};
+        decode_field(reader, value, location, destination, mode, errors);
+        return errors.size() == error_count;
+    }};
+
     auto const seen{read_record<Field>(
         reader,
         node,
@@ -103,12 +110,9 @@ inline void
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read = [&](auto& destination) {
-                decode_field(reader, value, location, destination, mode, errors);
-            };
             switch (field) {
                 case Field::child:
-                    read(result.child);
+                    read(result.child, value, location);
                     break;
                 case Field::Count:
                     std::unreachable();
@@ -125,11 +129,6 @@ inline void
     if (mode == ReadMode::Create) {
         require_fields<Field>(*seen, required, required_names, path, errors);
     }
-}
-
-inline void TypeReader<::codegen_compile_fixture::ReaderDependency>::validate(
-    value_type const& result, std::string_view path, AstDiagnostics& errors) {
-    validate_member(result.child, path, "child", errors);
 }
 
 } // namespace ioj::s7

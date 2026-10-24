@@ -22,8 +22,6 @@ struct TypeReader<::ioj::levels::authoring::NamedExprInput> {
                        value_type& result,
                        ReadMode mode,
                        AstDiagnostics& errors);
-
-    static void validate(value_type const& result, std::string_view path, AstDiagnostics& errors);
 };
 
 template <>
@@ -39,8 +37,6 @@ struct TypeReader<::ioj::levels::authoring::UnlockInput> {
                        value_type& result,
                        ReadMode mode,
                        AstDiagnostics& errors);
-
-    static void validate(value_type const& result, std::string_view path, AstDiagnostics& errors);
 };
 
 template <>
@@ -56,8 +52,6 @@ struct TypeReader<::ioj::levels::authoring::ExprReferenceInput> {
                        value_type& result,
                        ReadMode mode,
                        AstDiagnostics& errors);
-
-    static void validate(value_type const& result, std::string_view path, AstDiagnostics& errors);
 };
 
 inline ReadResult<::ioj::levels::authoring::NamedExprInput>
@@ -74,21 +68,20 @@ inline void
                                                                  value_type& result,
                                                                  ReadMode mode,
                                                                  AstDiagnostics& errors) {
+    auto const read{[&](auto& destination, NodeIndex value, std::string_view location) {
+        auto const error_count{errors.size()};
+        decode_field(reader, value, location, destination, mode, errors);
+        return errors.size() == error_count;
+    }};
+
     auto const arguments{positional_arguments(reader, node, "expr", path, 2)};
 
     if (!arguments) {
         append_errors(errors, arguments.error());
         return;
     }
-    decode_field(reader, (*arguments)[0], std::string{path} + ".name", result.name, mode, errors);
-    decode_field(reader, (*arguments)[1], std::string{path} + ".value", result.value, mode, errors);
-}
-
-inline void TypeReader<::ioj::levels::authoring::NamedExprInput>::validate(value_type const& result,
-                                                                           std::string_view path,
-                                                                           AstDiagnostics& errors) {
-    validate_member(result.name, path, "name", errors);
-    validate_member(result.value, path, "value", errors);
+    read(result.name, (*arguments)[0], std::string{path} + ".name");
+    read(result.value, (*arguments)[1], std::string{path} + ".value");
 }
 
 inline ReadResult<::ioj::levels::authoring::UnlockInput>
@@ -104,20 +97,19 @@ inline void TypeReader<::ioj::levels::authoring::UnlockInput>::decode(Reader con
                                                                       value_type& result,
                                                                       ReadMode mode,
                                                                       AstDiagnostics& errors) {
+    auto const read{[&](auto& destination, NodeIndex value, std::string_view location) {
+        auto const error_count{errors.size()};
+        decode_field(reader, value, location, destination, mode, errors);
+        return errors.size() == error_count;
+    }};
+
     auto const arguments{positional_arguments(reader, node, "level-completed", path, 1)};
 
     if (!arguments) {
         append_errors(errors, arguments.error());
         return;
     }
-    decode_field(
-        reader, (*arguments)[0], std::string{path} + ".level-id", result.level, mode, errors);
-}
-
-inline void TypeReader<::ioj::levels::authoring::UnlockInput>::validate(value_type const& result,
-                                                                        std::string_view path,
-                                                                        AstDiagnostics& errors) {
-    validate_member(result.level, path, "level-id", errors);
+    read(result.level, (*arguments)[0], std::string{path} + ".level-id");
 }
 
 inline ReadResult<::ioj::levels::authoring::ExprReferenceInput>
@@ -134,18 +126,19 @@ inline void
                                                                      value_type& result,
                                                                      ReadMode mode,
                                                                      AstDiagnostics& errors) {
+    auto const read{[&](auto& destination, NodeIndex value, std::string_view location) {
+        auto const error_count{errors.size()};
+        decode_field(reader, value, location, destination, mode, errors);
+        return errors.size() == error_count;
+    }};
+
     auto const arguments{positional_arguments(reader, node, "expr-ref", path, 1)};
 
     if (!arguments) {
         append_errors(errors, arguments.error());
         return;
     }
-    decode_field(reader, (*arguments)[0], std::string{path} + ".name", result.name, mode, errors);
-}
-
-inline void TypeReader<::ioj::levels::authoring::ExprReferenceInput>::validate(
-    value_type const& result, std::string_view path, AstDiagnostics& errors) {
-    validate_member(result.name, path, "name", errors);
+    read(result.name, (*arguments)[0], std::string{path} + ".name");
 }
 
 } // namespace ioj::s7

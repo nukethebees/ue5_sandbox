@@ -18,15 +18,14 @@ struct SPACEGAMEPRESENTATION_API FRadarCollectionResult {
     int32 visible_count{0};
 };
 
-[[nodiscard]] SPACEGAMEPRESENTATION_API auto sanitize_radar_settings(FRadarSettings settings)
-    -> FRadarSettings;
+[[nodiscard]] SPACEGAMEPRESENTATION_API auto sanitize_radar_settings(ioj::settings::Radar settings)
+    -> ioj::settings::Radar;
 
 namespace ioj::radar_source {
-[[nodiscard]] SPACEGAMEPRESENTATION_API auto to_radar_display_radius(float world_distance,
-                                                                     FRadarSettings const& settings)
-    -> float;
+[[nodiscard]] SPACEGAMEPRESENTATION_API auto
+    to_radar_display_radius(float world_distance, ioj::settings::Radar const& settings) -> float;
 [[nodiscard]] SPACEGAMEPRESENTATION_API auto to_radar_position(FVector3f local_delta,
-                                                               FRadarSettings const& settings)
+                                                               ioj::settings::Radar const& settings)
     -> FVector3f;
 }
 
@@ -37,5 +36,5 @@ namespace ioj::radar_source {
                             FTransform const& player_transform,
                             ::ioj::sim::EntityId player_id,
                             ETestTeam player_team,
-                            FRadarSettings const& settings,
+                            ioj::settings::Radar const& settings,
                             FRadarFrame& output_frame) -> FRadarCollectionResult;

@@ -1,7 +1,7 @@
 #pragma once
 
+#include <ioj/settings/presentation.h>
 #include <ioj/sim/levels/simulation_settings.h>
-#include <SpaceGamePresentation/config/BarrelRollConfig.h>
 #include <SpaceGamePresentation/presentation/LevelActorSettings.h>
 #include <SpaceGamePresentation/presentation/LevelPresentationSettings.h>
 #include <SpaceGamePresentation/support/DrawDebugConfig.h>
@@ -109,6 +109,7 @@ class SPACEGAME_API USpaceGameLevelConfig : public UDataAsset {
                 sparks};
     }
     void apply_settings(ioj::sim::SimulationSettings const& settings);
+    void apply_presentation(ioj::settings::PresentationOverrides const& settings);
     ioj::sim::OverlapResponseConfig overlap_response;
     [[nodiscard]] auto is_valid(bool require_presentation = true) const noexcept -> bool;
     void get_validation_errors(TArray<FString>& errors, bool require_presentation = true) const;
@@ -163,7 +164,7 @@ class SPACEGAME_API USpaceGameLevelConfig : public UDataAsset {
     UPROPERTY(EditAnywhere, Category = "UI", meta = (ShowOnlyInnerProperties))
     FEntityOverlaySettings entity_overlay;
 
-    FRadarSettings radar;
+    ioj::settings::Radar radar;
 
     UPROPERTY(EditAnywhere, Category = "Sparks", meta = (ShowOnlyInnerProperties))
     FSparkRendererSettings sparks;

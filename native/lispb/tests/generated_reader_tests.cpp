@@ -141,10 +141,11 @@ TEST(GeneratedS7Reader, ReportsStructuralAndValueErrorsWithFieldPaths) {
 
 TEST(GeneratedS7Reader, KeepsValueErrorsWhenTheRecordAlsoHasStructuralErrors) {
     auto const result{read_record_source(
-        R"('(:record :child (:child :name 42) :enabled 7 :extra #t :enabled #f))")};
+        R"('(:record :child (:child :name 42) :enabled 7 :extra #t :enabled #f :scale 0))")};
     ASSERT_FALSE(result);
-    EXPECT_EQ(result.error().size(), 4u);
-    for (auto const path : {"record.child.name", "record.enabled", "record.extra", "record[7]"}) {
+    EXPECT_EQ(result.error().size(), 6u);
+    for (auto const path :
+         {"record.child.name", "record.enabled", "record.extra", "record[7]", "record.scale"}) {
         EXPECT_TRUE(std::ranges::any_of(result.error(), [&](auto const& error) {
             return error.node_path == path;
         })) << path;

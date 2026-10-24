@@ -2,6 +2,7 @@
 
 #include "reader_diagnostics.h"
 #include <ioj/levels/authoring/input_readers.h>
+#include <ioj/settings/presentation_reader.h>
 
 #include <format>
 #include <unordered_set>
@@ -21,24 +22,29 @@ void append_value(s7::Reader const& reader,
                   s7::NodeIndex const value,
                   std::string const& path,
                   settings::Settings& result) {
+    if (path == "presentation") {
+        flatten_record(reader, errors, ast, value, path, result);
+        return;
+    }
+
     switch (ast.node(value).kind) {
         case s7::NodeKind::Boolean:
-            result.emplace_back(path, ast.boolean(value));
+            result.assignments.emplace_back(path, ast.boolean(value));
             break;
         case s7::NodeKind::Integer:
-            result.emplace_back(path, ast.integer(value));
+            result.assignments.emplace_back(path, ast.integer(value));
             break;
         case s7::NodeKind::Real:
         case s7::NodeKind::Ratio:
             if (auto number{reader.number(value, path)}) {
-                result.emplace_back(path, *number);
+                result.assignments.emplace_back(path, *number);
             } else {
                 s7::append_errors(errors, std::move(number.error()));
             }
             break;
         case s7::NodeKind::String:
         case s7::NodeKind::Symbol:
-            result.emplace_back(path, std::string{ast.text(value)});
+            result.assignments.emplace_back(path, std::string{ast.text(value)});
             break;
         case s7::NodeKind::List: {
             auto const children{ast.children(value)};
@@ -48,7 +54,7 @@ void append_value(s7::Reader const& reader,
             }
 
             if (auto numbers{s7::read<std::vector<double>>(reader, value, path)}) {
-                result.emplace_back(path, std::move(*numbers));
+                result.assignments.emplace_back(path, std::move(*numbers));
             } else {
                 s7::append_errors(errors, std::move(numbers.error()));
             }
@@ -109,6 +115,14 @@ void flatten_record(s7::Reader const& reader,
     }
 
     auto const kind{ast.text(values[0])};
+    if (prefix == "presentation" || (prefix.empty() && kind == "presentation")) {
+        if (!result.presentation) {
+            result.presentation.emplace();
+        }
+        s7::decode_field(
+            reader, node, "presentation", *result.presentation, s7::ReadMode::Override, errors);
+        return;
+    }
     if (kind == "settings-layers") {
         for (auto const layer : values.subspan(1)) {
             flatten_record(reader, errors, ast, layer, prefix, result);

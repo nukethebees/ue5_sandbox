@@ -1,3 +1,4 @@
+#include <ioj/levels/authoring/definition_reader.h>
 #include <ioj/sim/collision/entity_world_bounds.h>
 #include <SandboxTests/support/SimulationTestAssets.h>
 #include <SpaceGame/s7/GameSettingsReader.h>
@@ -12,6 +13,7 @@
 #include <Misc/Paths.h>
 #include <UObject/Package.h>
 
+#include <format>
 #include <limits>
 
 TEST_CLASS(SpaceGameLevelConfig, "Sandbox.UnitTests")
@@ -94,25 +96,42 @@ TEST_CLASS(SpaceGameLevelConfig, "Sandbox.UnitTests")
         if (!TestRunner->TestNotNull(TEXT("Default level config loads"), resources)) {
             return;
         }
-        auto load = [&](std::string_view const path, std::vector<double> values) {
-            auto const definition{ioj::levels::LevelDefinition::make(
-                {.metadata = {.id = ioj::levels::LevelId{"vector-settings"},
-                              .title = "Vector settings"},
-                 .player_entity_id = ioj::levels::EntityId{"player"},
-                 .entities = {{.id = ioj::levels::EntityId{"player"}}},
-                 .settings = {{std::string{path}, std::move(values)}}})};
-            check(definition);
+        auto load = [&](std::string_view const path,
+                        std::vector<double> values) -> std::expected<void, FString> {
+            std::string components;
+            for (double value : values) {
+                components += std::isnan(value) ? "+nan.0 "
+                            : std::isinf(value) ? "+inf.0 "
+                                                : std::format("{} ", value);
+            }
+            auto const overlay{path.find("entity-overlay") != std::string_view::npos};
+            auto definition{ioj::levels::authoring::DefinitionReader{}.read_level_source(
+                std::format(R"((level :id 'vector-settings :title "Vector settings"
+                  :player 'player :entities (list
+                    (entity :id 'player :archetype 'player-fighter :team 'blue :position '(0 0 0)))
+                  :settings (settings :presentation (presentation :{} (settings-section '{} :{} '({}))))))",
+                            overlay ? "entity-overlay" : "capital-ships",
+                            overlay ? "entity-overlay" : "capital-ships",
+                            overlay ? "bar-size-pixels" : "min-small-explosion-range",
+                            components))};
+            if (!definition) {
+                return std::unexpected{FString{
+                    UTF8_TO_TCHAR(ioj::levels::format_diagnostics(definition.error()).c_str())}};
+            }
             return read_game_settings(TEXT("LevelScripts/Settings/base.scm"),
                                       &*definition,
                                       *resources,
-                                      GetTransientPackage());
+                                      GetTransientPackage())
+                .transform([](auto const&) {});
         };
         for (auto const path : {"presentation.entity-overlay.bar-size-pixels",
                                 "presentation.capital-ships.min-small-explosion-range"}) {
             auto const count{
                 std::string_view{path}.find("entity-overlay") != std::string_view::npos ? 2u : 3u};
             auto const valid{load(path, std::vector<double>(count, 2.5))};
-            TestRunner->TestTrue(TEXT("Finite vector components are accepted"), valid.has_value());
+            TestRunner->TestTrue(valid ? TEXT("Finite vector components are accepted")
+                                       : *valid.error(),
+                                 valid.has_value());
             for (auto const invalid : {std::numeric_limits<double>::infinity(),
                                        std::numeric_limits<double>::quiet_NaN()}) {
                 for (std::size_t index{}; index < count; ++index) {

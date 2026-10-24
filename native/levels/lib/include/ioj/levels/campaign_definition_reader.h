@@ -21,8 +21,6 @@ struct TypeReader<::ioj::levels::CampaignDefinition> {
                        value_type& result,
                        ReadMode mode,
                        AstDiagnostics& errors);
-
-    static void validate(value_type const& result, std::string_view path, AstDiagnostics& errors);
   private:
     enum class Field : std::uint8_t {
         id,
@@ -59,6 +57,12 @@ inline void TypeReader<::ioj::levels::CampaignDefinition>::decode(Reader const& 
                                                                   value_type& result,
                                                                   ReadMode mode,
                                                                   AstDiagnostics& errors) {
+    auto const read{[&](auto& destination, NodeIndex value, std::string_view location) {
+        auto const error_count{errors.size()};
+        decode_field(reader, value, location, destination, mode, errors);
+        return errors.size() == error_count;
+    }};
+
     auto const seen{read_record<Field>(
         reader,
         node,
@@ -66,18 +70,15 @@ inline void TypeReader<::ioj::levels::CampaignDefinition>::decode(Reader const& 
         path,
         parse_field,
         ([&](Field const field, NodeIndex const value, std::string_view const location) {
-            auto const read = [&](auto& destination) {
-                decode_field(reader, value, location, destination, mode, errors);
-            };
             switch (field) {
                 case Field::id:
-                    read(result.id);
+                    read(result.id, value, location);
                     break;
                 case Field::title:
-                    read(result.title);
+                    read(result.title, value, location);
                     break;
                 case Field::level_ids:
-                    read(result.level_ids);
+                    read(result.level_ids, value, location);
                     break;
                 case Field::Count:
                     std::unreachable();
@@ -94,14 +95,6 @@ inline void TypeReader<::ioj::levels::CampaignDefinition>::decode(Reader const& 
     if (mode == ReadMode::Create) {
         require_fields<Field>(*seen, required, required_names, path, errors);
     }
-}
-
-inline void TypeReader<::ioj::levels::CampaignDefinition>::validate(value_type const& result,
-                                                                    std::string_view path,
-                                                                    AstDiagnostics& errors) {
-    validate_member(result.id, path, "id", errors);
-    validate_member(result.title, path, "title", errors);
-    validate_member(result.level_ids, path, "levels", errors);
 }
 
 } // namespace ioj::s7

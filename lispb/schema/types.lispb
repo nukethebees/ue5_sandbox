@@ -365,6 +365,7 @@
 (type input_grid :spelling "std::optional<ioj::levels::LevelCollisionGridDefinition>" :header "ioj/levels/level_collision_grid_definition.h")
 (type input_unlocks :spelling "std::optional<std::vector<ioj::levels::authoring::UnlockInput>>" :header "ioj/levels/authoring/positional_inputs.h")
 (type input_settings :spelling "ioj::settings::Settings" :header "ioj/settings/settings.h")
+(type settings_vector2d :spelling "ioj::Vector<double, 2>" :header "ioj/vector.h")
 (type input_level_value :spelling "std::optional<ioj::s7::ReadResult<ioj::levels::authoring::LevelInput>>" :header "ioj/s7/ast_result.h")
 (type input_campaign_value :spelling "std::optional<ioj::s7::ReadResult<ioj::levels::CampaignDefinition>>" :header "ioj/levels/campaign_definition.h")
 (type input_levels :spelling "std::vector<ioj::s7::ReadResult<ioj::levels::authoring::IncludedLevelInput>>" :header "vector")
