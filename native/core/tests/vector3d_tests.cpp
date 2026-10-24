@@ -7,6 +7,40 @@
 #include <limits>
 
 namespace numeric_conversion_test {
+template <auto Count>
+struct IndexedSource {
+    constexpr auto operator[](int const index) const -> double { return index + 0.25; }
+
+    static constexpr auto NumComponents{Count};
+};
+struct ReferenceSource {
+    constexpr auto operator[](std::size_t const index) const -> float const& {
+        return values[index];
+    }
+
+    static constexpr unsigned NumComponents{3};
+    float values[3]{1.f, 2.f, 3.f};
+};
+struct RuntimeCount {
+    auto operator[](int) const -> double;
+
+    static int NumComponents;
+};
+struct NonIntegralCount {
+    auto operator[](int) const -> double;
+
+    static constexpr double NumComponents{3.0};
+};
+struct MutableOnlySource {
+    auto operator[](int) -> double;
+
+    static constexpr int NumComponents{3};
+};
+struct NonNumericSource {
+    auto operator[](int) const -> void*;
+
+    static constexpr int NumComponents{3};
+};
 struct Fields {
     double x{1.25};
     double y{2.5};
@@ -57,11 +91,7 @@ TEST(NativeCoreVector3d, ExplicitStructuralConversionsPreserveComponentsAndDefau
     using namespace ioj;
     using namespace numeric_conversion_test;
     auto const check{[]<typename Source>(Source const source) {
-        static_assert(!std::is_convertible_v<Source, Vector3f>);
         static_assert(!std::is_convertible_v<Source, Quaternion4f>);
-        EXPECT_EQ((Vector<float, 1>{source}), (Vector<float, 1>{1.25f}));
-        EXPECT_EQ(Vector2f{source}, (Vector2f{1.25f, 2.5f}));
-        EXPECT_EQ(Vector3f{source}, (Vector3f{1.25f, 2.5f, 3.75f}));
         EXPECT_EQ(Quaternion4f{source}, (Quaternion4f{1.25f, 2.5f, 3.75f, 4.5f}));
     }};
     check(Fields{});
@@ -74,7 +104,47 @@ TEST(NativeCoreVector3d, ExplicitStructuralConversionsPreserveComponentsAndDefau
     static_assert(!std::is_constructible_v<Vector3f, Vector2f>);
     static_assert(std::is_trivially_copyable_v<Quaternion4f>);
     static_assert(sizeof(Quaternion4f) == 16 && alignof(Quaternion4f) == 16);
-    static_assert(Vector3f{UpperFields{}}.z() == 3.75f);
+    static_assert(Quaternion4f{UpperFields{}}.z() == 3.75f);
+}
+
+TEST(NativeCoreVector3d, IndexedConversionsPreserveDimensionsAndDeduceScalarTypes) {
+    using namespace ioj;
+    using namespace numeric_conversion_test;
+    auto const check{[]<int N>() {
+        constexpr IndexedSource<N> source;
+        constexpr Vector<float, N> converted{source};
+        constexpr Vector deduced{source};
+        static_assert(std::same_as<std::remove_cv_t<decltype(deduced)>, Vector<double, N>>);
+        static_assert(!std::is_convertible_v<IndexedSource<N>, Vector<float, N>>);
+        static_assert(converted[N - 1] == N - 0.75f);
+        auto const count{converted.elements.size()};
+        for (std::size_t i{}; i < count; ++i) {
+            EXPECT_EQ(converted[i], deduced[i]) << "component " << i;
+            EXPECT_EQ(converted[i], static_cast<float>(i) + 0.25f);
+        }
+    }};
+    check.operator()<1>();
+    check.operator()<2>();
+    check.operator()<3>();
+    check.operator()<4>();
+    check.operator()<7>();
+
+    constexpr Vector from_reference{ReferenceSource{}};
+    static_assert(std::same_as<std::remove_cv_t<decltype(from_reference)>, Vector3f>);
+    EXPECT_EQ(from_reference, (Vector3f{1.f, 2.f, 3.f}));
+    EXPECT_EQ(Vector3d{from_reference}, (Vector3d{1., 2., 3.}));
+    EXPECT_EQ(Vector{from_reference}, from_reference);
+    EXPECT_EQ((Vector{std::array{1.f, 2.f, 3.f}}), from_reference);
+
+    static_assert(!std::is_constructible_v<Vector3f, Vector2f>);
+    static_assert(!std::is_constructible_v<Vector2f, Vector3f>);
+    static_assert(!std::is_constructible_v<Vector3f, Fields>);
+    static_assert(!std::is_constructible_v<Vector3f, NonNumericSource>);
+    static_assert(!IndexedComponents<RuntimeCount>);
+    static_assert(!IndexedComponents<NonIntegralCount>);
+    static_assert(!IndexedComponents<MutableOnlySource>);
+    static_assert(!IndexedComponents<IndexedSource<0>>);
+    static_assert(!IndexedComponents<IndexedSource<-1>>);
 }
 
 TEST(NativeCoreVector3d, ExplicitEulerConversionsDelegateToComponentConstruction) {

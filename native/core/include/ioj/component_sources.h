@@ -2,66 +2,47 @@
 
 #include <concepts>
 #include <cstddef>
+#include <type_traits>
 
 namespace ioj {
-template <typename Source, typename T, std::size_t N>
+template <typename Source>
+concept IndexedComponents = requires(Source const& value) {
+    requires std::integral<std::remove_cv_t<decltype(Source::NumComponents)>>;
+    typename std::integral_constant<std::size_t, Source::NumComponents>;
+    requires (Source::NumComponents > 0);
+    value[0];
+};
+
+template <typename Source, typename T>
 concept CoordinateMembers = requires(Source const& value) {
-    requires (N > 0 && N <= 4);
     { value.x } -> std::convertible_to<T>;
-    requires (N <= 1 || requires {
-        { value.y } -> std::convertible_to<T>;
-    });
-    requires (N <= 2 || requires {
-        { value.z } -> std::convertible_to<T>;
-    });
-    requires (N <= 3 || requires {
-        { value.w } -> std::convertible_to<T>;
-    });
+    { value.y } -> std::convertible_to<T>;
+    { value.z } -> std::convertible_to<T>;
+    { value.w } -> std::convertible_to<T>;
 };
 
-template <typename Source, typename T, std::size_t N>
+template <typename Source, typename T>
 concept CoordinateAccessors = requires(Source const& value) {
-    requires (N > 0 && N <= 4);
     { value.x() } -> std::convertible_to<T>;
-    requires (N <= 1 || requires {
-        { value.y() } -> std::convertible_to<T>;
-    });
-    requires (N <= 2 || requires {
-        { value.z() } -> std::convertible_to<T>;
-    });
-    requires (N <= 3 || requires {
-        { value.w() } -> std::convertible_to<T>;
-    });
+    { value.y() } -> std::convertible_to<T>;
+    { value.z() } -> std::convertible_to<T>;
+    { value.w() } -> std::convertible_to<T>;
 };
 
-template <typename Source, typename T, std::size_t N>
+template <typename Source, typename T>
 concept UppercaseCoordinateMembers = requires(Source const& value) {
-    requires (N > 0 && N <= 4);
     { value.X } -> std::convertible_to<T>;
-    requires (N <= 1 || requires {
-        { value.Y } -> std::convertible_to<T>;
-    });
-    requires (N <= 2 || requires {
-        { value.Z } -> std::convertible_to<T>;
-    });
-    requires (N <= 3 || requires {
-        { value.W } -> std::convertible_to<T>;
-    });
+    { value.Y } -> std::convertible_to<T>;
+    { value.Z } -> std::convertible_to<T>;
+    { value.W } -> std::convertible_to<T>;
 };
 
-template <typename Source, typename T, std::size_t N>
+template <typename Source, typename T>
 concept UppercaseCoordinateAccessors = requires(Source const& value) {
-    requires (N > 0 && N <= 4);
     { value.X() } -> std::convertible_to<T>;
-    requires (N <= 1 || requires {
-        { value.Y() } -> std::convertible_to<T>;
-    });
-    requires (N <= 2 || requires {
-        { value.Z() } -> std::convertible_to<T>;
-    });
-    requires (N <= 3 || requires {
-        { value.W() } -> std::convertible_to<T>;
-    });
+    { value.Y() } -> std::convertible_to<T>;
+    { value.Z() } -> std::convertible_to<T>;
+    { value.W() } -> std::convertible_to<T>;
 };
 
 template <typename Source, typename T>

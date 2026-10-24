@@ -6,6 +6,7 @@
 #include <cassert>
 #include <compare>
 #include <cstddef>
+#include <utility>
 
 namespace ioj {
 template <typename T, std::size_t N>
@@ -20,86 +21,22 @@ struct Vector {
     constexpr Vector(Values... values)
         : elements{static_cast<T>(values)...} {}
 
-    template <typename Source>
-        requires (N == 1 && CoordinateMembers<Source, T, N>)
+    template <IndexedComponents Source>
+        requires (Source::NumComponents == N &&
+                  std::convertible_to<decltype(std::declval<Source const&>()[0]), T>)
     explicit constexpr Vector(Source const& value)
-        : Vector{value.x} {}
+        : Vector{value,
+                 std::make_integer_sequence<std::remove_cv_t<decltype(Source::NumComponents)>,
+                                            Source::NumComponents>{}} {}
 
-    template <typename Source>
-        requires (N == 2 && CoordinateMembers<Source, T, N>)
-    explicit constexpr Vector(Source const& value)
-        : Vector{value.x, value.y} {}
-
-    template <typename Source>
-        requires (N == 3 && CoordinateMembers<Source, T, N>)
-    explicit constexpr Vector(Source const& value)
-        : Vector{value.x, value.y, value.z} {}
-
-    template <typename Source>
-        requires (N == 4 && CoordinateMembers<Source, T, N>)
-    explicit constexpr Vector(Source const& value)
-        : Vector{value.x, value.y, value.z, value.w} {}
-
-    template <typename Source>
-        requires (N == 1 && CoordinateAccessors<Source, T, N>)
-    explicit constexpr Vector(Source const& value)
-        : Vector{value.x()} {}
-
-    template <typename Source>
-        requires (N == 2 && CoordinateAccessors<Source, T, N>)
-    explicit constexpr Vector(Source const& value)
-        : Vector{value.x(), value.y()} {}
-
-    template <typename Source>
-        requires (N == 3 && CoordinateAccessors<Source, T, N>)
-    explicit constexpr Vector(Source const& value)
-        : Vector{value.x(), value.y(), value.z()} {}
-
-    template <typename Source>
-        requires (N == 4 && CoordinateAccessors<Source, T, N>)
-    explicit constexpr Vector(Source const& value)
-        : Vector{value.x(), value.y(), value.z(), value.w()} {}
-
-    template <typename Source>
-        requires (N == 1 && UppercaseCoordinateMembers<Source, T, N>)
-    explicit constexpr Vector(Source const& value)
-        : Vector{value.X} {}
-
-    template <typename Source>
-        requires (N == 2 && UppercaseCoordinateMembers<Source, T, N>)
-    explicit constexpr Vector(Source const& value)
-        : Vector{value.X, value.Y} {}
-
-    template <typename Source>
-        requires (N == 3 && UppercaseCoordinateMembers<Source, T, N>)
-    explicit constexpr Vector(Source const& value)
-        : Vector{value.X, value.Y, value.Z} {}
-
-    template <typename Source>
-        requires (N == 4 && UppercaseCoordinateMembers<Source, T, N>)
-    explicit constexpr Vector(Source const& value)
-        : Vector{value.X, value.Y, value.Z, value.W} {}
-
-    template <typename Source>
-        requires (N == 1 && UppercaseCoordinateAccessors<Source, T, N>)
-    explicit constexpr Vector(Source const& value)
-        : Vector{value.X()} {}
-
-    template <typename Source>
-        requires (N == 2 && UppercaseCoordinateAccessors<Source, T, N>)
-    explicit constexpr Vector(Source const& value)
-        : Vector{value.X(), value.Y()} {}
-
-    template <typename Source>
-        requires (N == 3 && UppercaseCoordinateAccessors<Source, T, N>)
-    explicit constexpr Vector(Source const& value)
-        : Vector{value.X(), value.Y(), value.Z()} {}
-
-    template <typename Source>
-        requires (N == 4 && UppercaseCoordinateAccessors<Source, T, N>)
-    explicit constexpr Vector(Source const& value)
-        : Vector{value.X(), value.Y(), value.Z(), value.W()} {}
-
+    template <std::convertible_to<T> U>
+    explicit constexpr Vector(Vector<U, N> const& value)
+        : Vector{value, std::make_index_sequence<N>{}} {}
+  private:
+    template <typename Source, typename Index, Index... I>
+    constexpr Vector(Source const& value, std::integer_sequence<Index, I...>)
+        : Vector{value[I]...} {}
+  public:
     auto operator<=>(Vector const&) const = default;
 
     // Require an index within the component array.
@@ -154,6 +91,10 @@ struct Vector {
 
     std::array<T, N> elements{};
 };
+
+template <IndexedComponents Source>
+Vector(Source const&) -> Vector<std::remove_cvref_t<decltype(std::declval<Source const&>()[0])>,
+                                static_cast<std::size_t>(Source::NumComponents)>;
 
 using Vector2f = Vector<float, 2>;
 using Vector3f = Vector<float, 3>;

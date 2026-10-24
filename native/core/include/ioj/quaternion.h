@@ -12,11 +12,24 @@ struct alignas(std::same_as<T, float> ? 16 : alignof(T)) Quaternion {
         : components{values} {}
 
     template <typename Source>
-        requires (CoordinateMembers<Source, T, 4> || CoordinateAccessors<Source, T, 4> ||
-                  UppercaseCoordinateMembers<Source, T, 4> ||
-                  UppercaseCoordinateAccessors<Source, T, 4>)
+        requires CoordinateMembers<Source, T>
     explicit constexpr Quaternion(Source const& value)
-        : components{value} {}
+        : components{value.x, value.y, value.z, value.w} {}
+
+    template <typename Source>
+        requires CoordinateAccessors<Source, T>
+    explicit constexpr Quaternion(Source const& value)
+        : components{value.x(), value.y(), value.z(), value.w()} {}
+
+    template <typename Source>
+        requires UppercaseCoordinateMembers<Source, T>
+    explicit constexpr Quaternion(Source const& value)
+        : components{value.X, value.Y, value.Z, value.W} {}
+
+    template <typename Source>
+        requires UppercaseCoordinateAccessors<Source, T>
+    explicit constexpr Quaternion(Source const& value)
+        : components{value.X(), value.Y(), value.Z(), value.W()} {}
 
     auto operator<=>(Quaternion const&) const = default;
     constexpr auto x() noexcept -> T& { return components.x(); }
