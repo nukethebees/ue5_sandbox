@@ -3,6 +3,7 @@
 #include <ioj/levels/authoring/definition_reader.h>
 #include <ioj/levels/authoring/editor_support.h>
 #include <ioj/levels/authoring/grammar.h>
+#include <ioj/s7/source_format.h>
 
 #include <codegen/sexpr/form_builder.h>
 #include <codegen/sexpr/sexpr_renderer.h>
@@ -66,7 +67,8 @@ auto evaluated_value(SExprIR& ir, s7::Ast const& ast, s7::NodeIndex const node) 
         case s7::NodeKind::String:
             return ir.string(ast.text(node));
         case s7::NodeKind::Boolean:
-            return ir.atom(ast.boolean(node) ? "#t" : "#f");
+            return ir.atom(ast.boolean(node) ? s7::literals::true_value
+                                             : s7::literals::false_value);
         case s7::NodeKind::Integer:
             return ir.atom(ast.integer(node));
         case s7::NodeKind::Ratio: {
@@ -74,7 +76,7 @@ auto evaluated_value(SExprIR& ir, s7::Ast const& ast, s7::NodeIndex const node) 
             return ir.atom(std::format("{}/{}", ratio.numerator, ratio.denominator));
         }
         case s7::NodeKind::Real:
-            return ir.atom(std::format("{}", ast.real(node)));
+            return ir.atom(s7::format_real(ast.real(node)));
     }
     std::unreachable();
 }

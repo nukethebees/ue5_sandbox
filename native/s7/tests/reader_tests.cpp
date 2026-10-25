@@ -3,6 +3,7 @@
 #include <ioj/s7/field_constraints.h>
 #include <ioj/s7/interpreter.h>
 #include <ioj/s7/reader.h>
+#include <ioj/s7/source_format.h>
 #include <ioj/testing/structural_diff.h>
 
 #include <gtest/gtest.h>
@@ -40,6 +41,30 @@ TEST(SchemeReader, ChecksNumericConversionBeforeCasting) {
     EXPECT_FALSE(read_source<float>("1e100"));
     EXPECT_FLOAT_EQ(*read_source<float>("1/4"), 0.25f);
     EXPECT_TRUE(std::isinf(*read_source<double>("+inf.0")));
+
+    Interpreter interpreter;
+    for (auto const value : {0.0,
+                             -0.0,
+                             1.0,
+                             -1.25,
+                             std::numeric_limits<double>::max(),
+                             std::numeric_limits<double>::infinity(),
+                             -std::numeric_limits<double>::infinity(),
+                             std::numeric_limits<double>::quiet_NaN()}) {
+        auto const source{format_real(value)};
+        SCOPED_TRACE(source);
+        auto const ast{interpreter.evaluate_ast(source)};
+        ASSERT_TRUE(ast);
+        ASSERT_EQ(ast->node(ast->root).kind, NodeKind::Real);
+        auto const actual{ast->real(ast->root)};
+        if (std::isnan(value)) {
+            EXPECT_TRUE(std::isnan(actual));
+        } else {
+            EXPECT_EQ(actual, value);
+            EXPECT_EQ(std::signbit(actual), std::signbit(value));
+        }
+    }
+    EXPECT_EQ(format_real(std::numeric_limits<double>::denorm_min()), "5e-324");
 }
 
 TEST(SchemeReader, ReadsConstrainedValuesWithoutInvalidDefaults) {

@@ -4,6 +4,7 @@ target_sources(native-s7-data
   PRIVATE
     src/ast.cpp
     src/reader.cpp
+    src/source_format.cpp
 )
 target_include_directories(native-s7-data
   PUBLIC
