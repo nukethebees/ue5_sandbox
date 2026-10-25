@@ -114,7 +114,6 @@ target_sources(lispb-schema PRIVATE
   src/module_query.cpp
   src/manifest.cpp
   src/packed_integer_value.cpp
-  src/semantic_relation_kind.cpp
   src/semantic_relation_unit.cpp
   src/type_reference_role.cpp
   src/type_registry.cpp
@@ -166,9 +165,9 @@ target_link_libraries(lispb-schema
   PUBLIC
     sandbox::native_defaults
     lispb-syntax
+    native-core-headers
   PRIVATE
     lispb-paths
-    native-core-headers
     lispb-sexpr-output
 )
 ioj_enable_warnings(lispb-schema CODEGEN)
@@ -439,6 +438,10 @@ set_tests_properties(CodegenCliReportsMissingProject PROPERTIES
 )
 
 add_custom_target(generate-code
+  COMMAND "$<TARGET_FILE:lispb>" generate
+    --project "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
+    --build-root "${CMAKE_BINARY_DIR}"
+    --target compiler-ir
   COMMAND "$<TARGET_FILE:lispb>" generate
     --project "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
     --build-root "${CMAKE_BINARY_DIR}"

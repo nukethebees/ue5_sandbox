@@ -1,4 +1,13 @@
 lispb-outputs-v1
 declaration_kind.h
+enum_conversion.h
+enum_reflection.h
+floating_point_format.h
+integer_scalar_cpp_emission.h
+integer_varint_encoding.h
 packed_field_kind.h
+record_comparison.h
+semantic_relation_kind.h
+setting_apply_mode.h
+setting_control_kind.h
 soa_member_kind.h

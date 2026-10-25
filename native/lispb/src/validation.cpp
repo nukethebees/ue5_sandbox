@@ -1268,10 +1268,9 @@ class Validator {
                 if (requires_integer &&
                     declarations_.packed_fields.kind[declarations_.packed_fields.index(*field)] !=
                         PackedFieldKind::unsigned_integer) {
-                    throw std::invalid_argument{
-                        field_context + " relationship '" +
-                        std::string{semantic_relation_kind_name(relation_kind)} +
-                        "' requires an unsigned integer field"};
+                    throw std::invalid_argument{field_context + " relationship '" +
+                                                std::string{to_serialized_string(relation_kind)} +
+                                                "' requires an unsigned integer field"};
                 }
                 if (relation_kind == SemanticRelationKind::discriminates &&
                     declarations_.packed_fields.kind[declarations_.packed_fields.index(*field)] !=
@@ -2184,10 +2183,9 @@ class Validator {
                                          relation_kind == SemanticRelationKind::offset_into};
             if (requires_unsigned && declarations_.integer_scalars
                                          .signedness[declarations_.integer_scalars.index(scalar)]) {
-                throw std::invalid_argument{
-                    context + " relationship '" +
-                    std::string{semantic_relation_kind_name(relation_kind)} +
-                    "' requires an unsigned integer scalar"};
+                throw std::invalid_argument{context + " relationship '" +
+                                            std::string{to_serialized_string(relation_kind)} +
+                                            "' requires an unsigned integer scalar"};
             }
         }
 

@@ -44,7 +44,7 @@ void append_edge_label(std::vector<std::string>& labels, std::string value) {
 }
 auto relationship_label(TypeGraph const& types, lispb::schema::RelationshipId const relationship)
     -> std::string {
-    auto result{std::string{lispb::codegen::semantic_relation_kind_name(
+    auto result{std::string{lispb::codegen::to_serialized_string(
         types.relationships().kind[types.relationships().index(relationship)])}};
     if (types.relationships().unit[types.relationships().index(relationship)].has_value()) {
         result += " (";

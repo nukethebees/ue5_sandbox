@@ -150,7 +150,7 @@ auto CanonicalRenderer::build_enum_unreal_projection(
     result.flag("enum-array", projections.enum_array[index]);
     if (projections.reflection[index] != codegen::EnumReflection::uenum) {
         result.field("reflection",
-                     ir_.atom(codegen::enum_reflection_name(projections.reflection[index])));
+                     ir_.atom(codegen::to_serialized_string(projections.reflection[index])));
     }
     return result.build();
 }
@@ -169,13 +169,13 @@ auto CanonicalRenderer::build_enum(codegen::DeclarationHandle const schema) -> E
     }
     if (enums.reflection[index] != codegen::EnumReflection::none) {
         result.field("reflection",
-                     ir_.atom(codegen::enum_reflection_name(enums.reflection[index])));
+                     ir_.atom(codegen::to_serialized_string(enums.reflection[index])));
     }
     result.flag("enum-array", enums.enum_array[index]);
     result.optional_field(
         "count", enums.count[index], [this](auto value) { return ir_.atom(value); });
     result.list_field("conversions", items(enums.conversions[index]), [this](auto conversion) {
-        return ir_.atom(codegen::enum_conversion_name(conversion));
+        return ir_.atom(codegen::to_serialized_string(conversion));
     });
     if (enums.export_specifier[index].value != 0) {
         result.field("export-specifier", ir_.atom(enums.export_specifier[index]));
@@ -236,7 +236,7 @@ auto CanonicalRenderer::build_semantic_relation(codegen::SemanticRelationId cons
     auto const& relations{store_.semantic_relations};
     auto const index{relations.index(relationship)};
     auto result{ir_.form("relation",
-                         {ir_.atom(semantic_relation_kind_name(relations.kind[index])),
+                         {ir_.atom(to_serialized_string(relations.kind[index])),
                           build_type_ref(relations.target[index])})};
     if (relations.unit[index].has_value()) {
         result.field("unit", ir_.atom(semantic_relation_unit_name(*relations.unit[index])));
@@ -321,8 +321,7 @@ auto CanonicalRenderer::build_integer_scalar(codegen::DeclarationHandle const sc
                scalars.bit_width[index].has_value() ? ir_.atom(*scalars.bit_width[index])
                                                     : ir_.atoms.automatic);
     if (scalars.cpp_emission[index] != codegen::IntegerScalarCppEmission::none) {
-        result.field("cpp-emission",
-                     ir_.atom(integer_scalar_cpp_emission_name(scalars.cpp_emission[index])));
+        result.field("cpp-emission", ir_.atom(to_serialized_string(scalars.cpp_emission[index])));
     }
     result.optional_field(
         "cpp-type", scalars.cpp_type[index], [this](auto value) { return build_type_ref(value); });
@@ -349,7 +348,7 @@ auto CanonicalRenderer::build_integer_varint(codegen::DeclarationHandle const sc
     auto const index{values.index(schema)};
     return ir_.form("integer-varint", {ir_.atom(values.name[index])})
         .field("source", build_type_ref(values.source[index]))
-        .field("encoding", ir_.atom(integer_varint_encoding_name(values.encoding[index])))
+        .field("encoding", ir_.atom(to_serialized_string(values.encoding[index])))
         .build();
 }
 auto CanonicalRenderer::build_fixed_point(codegen::DeclarationHandle const schema) -> Expr {
@@ -571,7 +570,8 @@ auto CanonicalRenderer::build_facade(codegen::DeclarationHandle const schema) ->
     }
     result.list_field("friends", items(facades.friends[index]), string);
     if (facades.friend_kind[index] != codegen::RecordKind::class_) {
-        result.field("friend-kind", ir_.atom(codegen::record_keyword(facades.friend_kind[index])));
+        result.field("friend-kind",
+                     ir_.atom(codegen::to_serialized_string(facades.friend_kind[index])));
     }
     result.flag("definitions-in-source", facades.definitions_in_source[index]);
     if (facades.reference_target[index]) {

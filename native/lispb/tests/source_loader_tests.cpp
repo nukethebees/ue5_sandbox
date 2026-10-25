@@ -698,7 +698,7 @@ TEST(SourceLoader, ScalarEmissionOnlyEstablishesRepresentationForAliases) {
                             IntegerScalarCppEmission::constants,
                             IntegerScalarCppEmission::constants_with_names,
                             IntegerScalarCppEmission::alias}) {
-        auto const name{std::string{integer_scalar_cpp_emission_name(mode)}};
+        auto const name{std::string{to_serialized_string(mode)}};
         SCOPED_TRACE(name);
         TemporaryManifest files;
         files.write_root(
@@ -2388,12 +2388,13 @@ TEST(SourceLoader, OrdinarySoaPreservesLogicalApi) {
 
 TEST(SourceLoader, RejectsRemovedSoaOptions) {
     TemporaryManifest files;
-    for (auto const declaration : {"(struct Rows :single-allocation-allocator Allocator (member "
-                                   "ids array int))",
-                                   "(struct Rows (member ids array int) (single-allocation Owner "
-                                   "(variant Pool Allocator)))",
-                                   "(struct Rows :view-name Values (member ids array int))",
-                                   "(struct Rows :const-view-name ConstValues (member ids array int))"}) {
+    for (auto const declaration :
+         {"(struct Rows :single-allocation-allocator Allocator (member "
+          "ids array int))",
+          "(struct Rows (member ids array int) (single-allocation Owner "
+          "(variant Pool Allocator)))",
+          "(struct Rows :view-name Values (member ids array int))",
+          "(struct Rows :const-view-name ConstValues (member ids array int))"}) {
         files.write_root(std::string{"(module api :header \"Api.h\" "} + declaration + ")");
         EXPECT_THROW(files.load(), lispb::codegen::sexpr::SourceError);
     }

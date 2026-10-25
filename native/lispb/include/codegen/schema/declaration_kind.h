@@ -4,6 +4,8 @@
 #pragma once
 
 #include <cstdint>
+#include <optional>
+#include <string_view>
 
 namespace lispb::codegen {
 using DeclarationKindUnderlying = std::uint8_t;
@@ -26,5 +28,90 @@ enum class DeclarationKind : DeclarationKindUnderlying {
     static_table,
     facade,
 };
+
+[[nodiscard]] constexpr auto
+    try_parse_serialized_declaration_kind(std::string_view const value) noexcept
+    -> std::optional<DeclarationKind> {
+    switch (value.size()) {
+        case 4: {
+            if (value == "enum") {
+                return DeclarationKind::enumeration;
+            }
+            return std::nullopt;
+        }
+        case 5: {
+            if (value == "union") {
+                return DeclarationKind::union_type;
+            }
+            if (value == "table") {
+                return DeclarationKind::static_table;
+            }
+            return std::nullopt;
+        }
+        case 6: {
+            if (value == "record") {
+                return DeclarationKind::record;
+            }
+            if (value == "struct") {
+                return DeclarationKind::soa;
+            }
+            if (value == "facade") {
+                return DeclarationKind::facade;
+            }
+            return std::nullopt;
+        }
+        case 10: {
+            if (value == "mini-float") {
+                return DeclarationKind::mini_float;
+            }
+            return std::nullopt;
+        }
+        case 11: {
+            if (value == "fixed-point") {
+                return DeclarationKind::fixed_point;
+            }
+            return std::nullopt;
+        }
+        case 12: {
+            if (value == "packed-value") {
+                return DeclarationKind::packed_value;
+            }
+            if (value == "tagged-union") {
+                return DeclarationKind::tagged_union;
+            }
+            return std::nullopt;
+        }
+        case 14: {
+            if (value == "integer-scalar") {
+                return DeclarationKind::integer_scalar;
+            }
+            if (value == "integer-varint") {
+                return DeclarationKind::integer_varint;
+            }
+            return std::nullopt;
+        }
+        case 16: {
+            if (value == "linear-quantized") {
+                return DeclarationKind::linear_quantized;
+            }
+            return std::nullopt;
+        }
+        case 17: {
+            if (value == "optional-sentinel") {
+                return DeclarationKind::optional_sentinel;
+            }
+            return std::nullopt;
+        }
+        case 21: {
+            if (value == "optional-presence-bit") {
+                return DeclarationKind::optional_presence_bit;
+            }
+            return std::nullopt;
+        }
+        default: {
+            return std::nullopt;
+        }
+    }
+}
 
 } // namespace lispb::codegen

@@ -4,6 +4,7 @@
 #pragma once
 
 #include <cstdint>
+#include <optional>
 #include <string_view>
 
 namespace lispb::codegen {
@@ -42,6 +43,52 @@ enum class PackedFieldKind : PackedFieldKindUnderlying {
         }
         default: {
             return "<invalid PackedFieldKind>";
+        }
+    }
+}
+
+[[nodiscard]] constexpr auto
+    try_parse_serialized_packed_field_kind(std::string_view const value) noexcept
+    -> std::optional<PackedFieldKind> {
+    switch (value.size()) {
+        case 4: {
+            if (value == "enum") {
+                return PackedFieldKind::enumeration;
+            }
+            return std::nullopt;
+        }
+        case 6: {
+            if (value == "signed") {
+                return PackedFieldKind::signed_integer;
+            }
+            return std::nullopt;
+        }
+        case 8: {
+            if (value == "unsigned") {
+                return PackedFieldKind::unsigned_integer;
+            }
+            return std::nullopt;
+        }
+        case 10: {
+            if (value == "mini-float") {
+                return PackedFieldKind::mini_float;
+            }
+            return std::nullopt;
+        }
+        case 11: {
+            if (value == "fixed-point") {
+                return PackedFieldKind::fixed_point;
+            }
+            return std::nullopt;
+        }
+        case 16: {
+            if (value == "linear-quantized") {
+                return PackedFieldKind::linear_quantized;
+            }
+            return std::nullopt;
+        }
+        default: {
+            return std::nullopt;
         }
     }
 }

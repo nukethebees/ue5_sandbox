@@ -1,3 +1,32 @@
+(module compiler_type_operation
+  :header "type_operation.h"
+  :namespace lispb::codegen
+  (enum TypeOperation std::uint8_t
+    :native-api true
+    :helpers (to-serialized-string try-parse-serialized)
+    (value add_element :serialized-name "add-element")
+    (value remove_at_swap :serialized-name "remove-at-swap")
+    (value set_element :serialized-name "set-element")))
+
+(module compiler_record_kind
+  :header "record_kind.h"
+  :namespace lispb::codegen
+  (enum RecordKind std::uint8_t
+    :native-api true
+    :helpers (to-serialized-string try-parse-serialized)
+    (value struct_ :serialized-name "struct")
+    (value class_ :serialized-name "class")
+    (value union_ :serialized-name "union")))
+
+(module compiler_parameter_passing
+  :header "parameter_passing.h"
+  :namespace lispb::codegen
+  (enum ParameterPassing std::uint8_t
+    :native-api true
+    :helpers (try-parse-serialized)
+    (value const_reference :serialized-name "const-ref")
+    (value value :serialized-name "value")))
+
 (module compiler_node_kind
   :header "node_kind.h"
   :namespace lispb::codegen

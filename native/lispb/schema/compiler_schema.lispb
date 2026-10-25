@@ -2,28 +2,30 @@
   :header "declaration_kind.h"
   :namespace lispb::codegen
   (enum DeclarationKind std::uint8_t
-    (value enumeration)
-    (value integer_scalar)
-    (value linear_quantized)
-    (value integer_varint)
-    (value fixed_point)
-    (value mini_float)
-    (value optional_sentinel)
-    (value optional_presence_bit)
-    (value packed_value)
-    (value record)
-    (value union_type)
-    (value tagged_union)
-    (value soa)
-    (value static_table)
-    (value facade)))
+    :native-api true
+    :helpers (try-parse-serialized)
+    (value enumeration :serialized-name "enum")
+    (value integer_scalar :serialized-name "integer-scalar")
+    (value linear_quantized :serialized-name "linear-quantized")
+    (value integer_varint :serialized-name "integer-varint")
+    (value fixed_point :serialized-name "fixed-point")
+    (value mini_float :serialized-name "mini-float")
+    (value optional_sentinel :serialized-name "optional-sentinel")
+    (value optional_presence_bit :serialized-name "optional-presence-bit")
+    (value packed_value :serialized-name "packed-value")
+    (value record :serialized-name "record")
+    (value union_type :serialized-name "union")
+    (value tagged_union :serialized-name "tagged-union")
+    (value soa :serialized-name "struct")
+    (value static_table :serialized-name "table")
+    (value facade :serialized-name "facade")))
 
 (module compiler_packed_field_kind
   :header "packed_field_kind.h"
   :namespace lispb::codegen
   (enum PackedFieldKind std::uint8_t
     :native-api true
-    :helpers (to-serialized-string)
+    :helpers (to-serialized-string try-parse-serialized)
     (value unsigned_integer :serialized-name "unsigned")
     (value signed_integer :serialized-name "signed")
     (value enumeration :serialized-name "enum")
@@ -39,3 +41,107 @@
     :helpers (to-serialized-string)
     (value array :serialized-name "array")
     (value nested :serialized-name "nested")))
+
+(module compiler_floating_point_format
+  :header "floating_point_format.h"
+  :namespace lispb::codegen
+  (enum FloatingPointFormat std::uint8_t
+    :native-api true
+    :helpers (try-parse-serialized)
+    (value ieee754_binary16 :serialized-name "ieee754-binary16")
+    (value ieee754_binary32 :serialized-name "ieee754-binary32")
+    (value ieee754_binary64 :serialized-name "ieee754-binary64")))
+
+(module compiler_integer_varint_encoding
+  :header "integer_varint_encoding.h"
+  :namespace lispb::codegen
+  (enum IntegerVarintEncoding std::uint8_t
+    :native-api true
+    :helpers (to-serialized-string try-parse-serialized)
+    (value unsigned_varint :serialized-name "unsigned")
+    (value signed_varint :serialized-name "signed")
+    (value zigzag_varint :serialized-name "zigzag")))
+
+(module compiler_integer_scalar_cpp_emission
+  :header "integer_scalar_cpp_emission.h"
+  :namespace lispb::codegen
+  (enum IntegerScalarCppEmission std::uint8_t
+    :native-api true
+    :helpers (to-serialized-string try-parse-serialized)
+    (value none :serialized-name "none")
+    (value constants :serialized-name "constants")
+    (value constants_with_names :serialized-name "constants-with-names")
+    (value alias :serialized-name "alias")))
+
+(module compiler_record_comparison
+  :header "record_comparison.h"
+  :namespace lispb::codegen
+  (enum RecordComparison std::uint8_t
+    :native-api true
+    :helpers (try-parse-serialized)
+    (value none :serialized-name "none")
+    (value equality :serialized-name "equality")
+    (value three_way :serialized-name "three-way")))
+
+(module compiler_setting_control_kind
+  :header "setting_control_kind.h"
+  :namespace lispb::codegen
+  (enum SettingControlKind std::uint8_t
+    :native-api true
+    :helpers (try-parse-serialized)
+    (value toggle :serialized-name "toggle")
+    (value choice :serialized-name "choice")
+    (value float_range :serialized-name "float-range")
+    (value integer_range :serialized-name "integer-range")
+    (value custom :serialized-name "custom")))
+
+(module compiler_setting_apply_mode
+  :header "setting_apply_mode.h"
+  :namespace lispb::codegen
+  (enum SettingApplyMode std::uint8_t
+    :native-api true
+    :helpers (try-parse-serialized)
+    (value immediate :serialized-name "immediate")
+    (value deferred :serialized-name "deferred")
+    (value confirm :serialized-name "confirm")))
+
+(module compiler_enum_reflection
+  :header "enum_reflection.h"
+  :namespace lispb::codegen
+  (enum EnumReflection std::uint8_t
+    :native-api true
+    :helpers (to-serialized-string try-parse-serialized)
+    (value none :serialized-name "none")
+    (value uenum :serialized-name "uenum")
+    (value blueprint :serialized-name "blueprint")))
+
+(module compiler_semantic_relation_kind
+  :header "semantic_relation_kind.h"
+  :namespace lispb::codegen
+  (enum SemanticRelationKind std::uint8_t
+    :native-api true
+    :helpers (to-serialized-string try-parse-serialized)
+    (value index_into :serialized-name "index_into")
+    (value count_of :serialized-name "count_of")
+    (value offset_into :serialized-name "offset_into")
+    (value discriminates :serialized-name "discriminates")
+    (value contains :serialized-name "contains")
+    (value member_of :serialized-name "member_of")
+    (value quantises :serialized-name "quantises")
+    (value encoded_as :serialized-name "encoded_as")
+    (value references :serialized-name "references")))
+
+(module compiler_enum_conversion
+  :header "enum_conversion.h"
+  :namespace lispb::codegen
+  (enum EnumConversion std::uint8_t
+    :native-api true
+    :helpers (to-serialized-string try-parse-serialized)
+    (value lex_to_string :serialized-name "lex-to-string")
+    (value string_view :serialized-name "string-view")
+    (value string :serialized-name "string")
+    (value lex_to_display_string :serialized-name "lex-to-display-string")
+    (value display_string_view :serialized-name "display-string-view")
+    (value display_string :serialized-name "display-string")
+    (value lex_to_serialized_string :serialized-name "lex-to-serialized-string")
+    (value try_parse_serialized :serialized-name "try-parse-serialized")))

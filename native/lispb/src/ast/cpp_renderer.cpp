@@ -1171,7 +1171,7 @@ void CppRenderer::append_node(std::string& output, NodeId node, RenderContext co
         case NodeKind::forward_declaration:
             template_prefix(ir_.forward_declaration_nodes_.template_declaration[i]);
             indent();
-            output += record_keyword(ir_.forward_declaration_nodes_.kind[i]);
+            output += to_serialized_string(ir_.forward_declaration_nodes_.kind[i]);
             output += ' ';
             text(ir_.forward_declaration_nodes_.name[i]);
             output += ';';
@@ -1184,7 +1184,7 @@ void CppRenderer::append_node(std::string& output, NodeId node, RenderContext co
                 friend_type.value != 0) {
                 type(friend_type);
             } else {
-                output += record_keyword(ir_.friend_declaration_nodes_.kind[i]);
+                output += to_serialized_string(ir_.friend_declaration_nodes_.kind[i]);
                 output += ' ';
                 text(ir_.friend_declaration_nodes_.name[i]);
             }
@@ -1304,7 +1304,7 @@ void CppRenderer::append_node(std::string& output, NodeId node, RenderContext co
                 }
             }
             indent();
-            output += record_keyword(ir_.struct_nodes_.record_kind[i]);
+            output += to_serialized_string(ir_.struct_nodes_.record_kind[i]);
             if (auto const specifier{ir_.struct_nodes_.export_specifier[i]}; specifier.value != 0) {
                 output += ' ';
                 output += ir_.strings.view(specifier);

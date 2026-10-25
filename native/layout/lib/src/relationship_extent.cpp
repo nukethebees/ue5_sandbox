@@ -21,8 +21,8 @@
 
 namespace ioj::layout::analysis_detail {
 using lispb::codegen::PackedIntegerValue;
-using lispb::codegen::semantic_relation_kind_name;
 using lispb::codegen::SemanticRelationKind;
+using lispb::codegen::to_serialized_string;
 
 auto relationship_extent_requirement(std::uint64_t const extent,
                                      bool const includes_terminal_count,
@@ -199,8 +199,7 @@ auto analyze_unsigned_relationship_extent(
                                      declarations.packed_named_codes
                                          .name[declarations.packed_named_codes.index(code)])} +
                                  "' collides with the live values required by its '" +
-                                 std::string{semantic_relation_kind_name(kind)} +
-                                 "' target extent."});
+                                 std::string{to_serialized_string(kind)} + "' target extent."});
         }
     }
 
@@ -224,7 +223,7 @@ auto analyze_unsigned_relationship_extent(
     if (!result.width_sufficient) {
         analysis.report({DiagnosticSeverity::error,
                          std::string{context} + " uses " + std::to_string(width) +
-                             " bits but its '" + std::string{semantic_relation_kind_name(kind)} +
+                             " bits but its '" + std::string{to_serialized_string(kind)} +
                              "' target extent requires at least " +
                              std::to_string(result.minimum_required_bits) + " bits."});
     }
@@ -234,7 +233,7 @@ auto analyze_unsigned_relationship_extent(
         analysis.report({DiagnosticSeverity::error,
                          std::string{context} +
                              " semantic range does not cover the live values required by its '" +
-                             std::string{semantic_relation_kind_name(kind)} + "' target extent."});
+                             std::string{to_serialized_string(kind)} + "' target extent."});
     }
     return result;
 }
