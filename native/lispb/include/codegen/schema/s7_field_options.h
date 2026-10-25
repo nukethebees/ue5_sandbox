@@ -10,6 +10,7 @@ struct S7FieldOptions {
     std::optional<StringId> minimum;
     std::optional<StringId> maximum;
     bool required{};
+    bool exclude{};
     bool nonzero{};
     bool positive{};
     bool nonnegative{};

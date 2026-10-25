@@ -15,7 +15,6 @@ auto RecordSchemas::append() -> DeclarationHandle {
     assert(index < 0x00fffffe);
     name.push_back({});
     constraint_policy.push_back({});
-    generate_settings.push_back(false);
     generate_visitor.push_back(false);
     s7_tag.push_back({});
     s7_positional.push_back(false);
@@ -34,7 +33,6 @@ auto RecordSchemas::clone(DeclarationHandle id) -> DeclarationHandle {
     auto const destination{index(result)};
     name[destination] = name[source_index];
     constraint_policy[destination] = constraint_policy[source_index];
-    generate_settings[destination] = generate_settings[source_index];
     generate_visitor[destination] = generate_visitor[source_index];
     s7_tag[destination] = s7_tag[source_index];
     s7_positional[destination] = s7_positional[source_index];
@@ -49,7 +47,6 @@ auto RecordSchemas::clone(DeclarationHandle id) -> DeclarationHandle {
 void RecordSchemas::clear() {
     name.clear();
     constraint_policy.clear();
-    generate_settings.clear();
     generate_visitor.clear();
     s7_tag.clear();
     s7_positional.clear();

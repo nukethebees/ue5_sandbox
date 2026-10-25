@@ -1141,8 +1141,7 @@ auto SchemaParser::parse_record_member(Declarations& declarations, sexpr::FormId
     Fields const fields{parser_, form, "member", 2};
     fields.validate({"count",
                      "initializer",
-                     "settings-exclude",
-                     "settings-name",
+                     "s7-exclude",
                      "s7-name",
                      "required",
                      "nonzero",
@@ -1186,10 +1185,9 @@ auto SchemaParser::parse_record_member(Declarations& declarations, sexpr::FormId
             : std::optional<std::uint64_t>{unsigned_integer(*count, "record member count")};
     records.relationship[record_index] = relationship;
     records.initializer[record_index] = optional_text_id(fields, "initializer");
-    records.settings_exclude[record_index] = boolean_or(fields, "settings-exclude");
-    records.settings_name[record_index] = optional_text_id(fields, "settings-name");
     auto& s7{records.s7[record_index]};
     s7.name = optional_text_id(fields, "s7-name");
+    s7.exclude = boolean_or(fields, "s7-exclude");
     s7.required = boolean_or(fields, "required");
     s7.nonzero = boolean_or(fields, "nonzero");
     s7.positive = boolean_or(fields, "positive");
@@ -1235,7 +1233,6 @@ auto SchemaParser::parse_record(Declarations& declarations, sexpr::FormId const 
                      "constraint-policy",
                      "comparison",
                      "comparison-noexcept",
-                     "generate-settings",
                      "generate-visitor",
                      "generate-s7-reader",
                      "s7-tag",
@@ -1272,7 +1269,6 @@ auto SchemaParser::parse_record(Declarations& declarations, sexpr::FormId const 
     records.comparison[record_index] = comparison;
     records.comparison_noexcept[record_index] = boolean_or(fields, "comparison-noexcept");
     records.constraint_policy[record_index] = optional_identifier(fields, "constraint-policy");
-    records.generate_settings[record_index] = boolean_or(fields, "generate-settings");
     records.generate_visitor[record_index] = boolean_or(fields, "generate-visitor");
     if (boolean_or(fields, "generate-s7-reader")) {
         records.s7_tag[record_index] = parser_.text_id(fields.required("s7-tag"), "S7 record tag");

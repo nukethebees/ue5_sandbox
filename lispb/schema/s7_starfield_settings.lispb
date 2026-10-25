@@ -2,43 +2,43 @@
   :header "native/levels/lib/include/ioj/gfx/starfield_settings.h"
   :header-include "ioj/gfx/starfield_settings.h"
   :namespace ioj::starfield
-  (record GenerationSettings :generate-settings true :generate-visitor true :generate-s7-reader true :s7-tag "generation"
+  (record GenerationSettings :generate-visitor true :generate-s7-reader true :s7-tag "generation"
     (member star_count @native_int32 :initializer 10000 :minimum 1 :maximum 1000000)
     (member random_seed @native_int32 :initializer 1337))
-  (record StarSettings :generate-settings true :generate-visitor true :generate-s7-reader true :s7-tag "star"
+  (record StarSettings :generate-visitor true :generate-s7-reader true :s7-tag "star"
     (member scale float :initializer 1.0f :finite true :positive true)
     (member size_multiplier float :initializer 1.0f :finite true :nonnegative true)
     (member global_brightness float :initializer 8.0f :finite true)
     (member colour_variation_strength float :initializer 0.35f :finite true)
     (member parallax_strength float :initializer 0.01f :finite true))
-  (record GalacticBandSettings :generate-settings true :generate-visitor true :generate-s7-reader true :s7-tag "galactic-band"
+  (record GalacticBandSettings :generate-visitor true :generate-s7-reader true :s7-tag "galactic-band"
     (member strength float :initializer 0.65f :finite true)
     (member width_degrees float :initializer 15.0f :finite true :positive true :maximum 90))
-  (record StellarClusterSettings :generate-settings true :generate-visitor true :generate-s7-reader true :s7-tag "stellar-cluster"
+  (record StellarClusterSettings :generate-visitor true :generate-s7-reader true :s7-tag "stellar-cluster"
     (member strength float :initializer 0.12f :finite true)
     (member width_degrees float :initializer 4.0f :finite true :positive true))
-  (record DustLaneSettings :generate-settings true :generate-visitor true :generate-s7-reader true :s7-tag "dust-lane"
+  (record DustLaneSettings :generate-visitor true :generate-s7-reader true :s7-tag "dust-lane"
     (member strength float :initializer 0.9f :finite true)
     (member width_degrees float :initializer 5.0f :finite true :positive true)
     (member irregularity float :initializer 0.7f :finite true))
-  (record BrightStarSettings :generate-settings true :generate-visitor true :generate-s7-reader true :s7-tag "bright-star"
+  (record BrightStarSettings :generate-visitor true :generate-s7-reader true :s7-tag "bright-star"
     (member fraction float :initializer 0.01f :finite true)
     (member size_multiplier float :initializer 1.75f :finite true :nonnegative true)
     (member brightness_multiplier float :initializer 2.0f :finite true)
     (member shape_strength float :initializer 0.25f :finite true))
-  (record TwinkleSettings :generate-settings true :generate-visitor true :generate-s7-reader true :s7-tag "twinkle"
+  (record TwinkleSettings :generate-visitor true :generate-s7-reader true :s7-tag "twinkle"
     (member strength float :initializer 0.1f :finite true)
     (member speed float :initializer 0.35f :finite true))
-  (record GalacticHazeSettings :generate-settings true :generate-visitor true :generate-s7-reader true :s7-tag "galactic-haze"
+  (record GalacticHazeSettings :generate-visitor true :generate-s7-reader true :s7-tag "galactic-haze"
     (member strength float :initializer 0.15f :finite true)
     (member width_degrees float :initializer 18.0f :finite true :positive true))
-  (record GalacticCoreSettings :generate-settings true :generate-visitor true :generate-s7-reader true :s7-tag "galactic-core"
+  (record GalacticCoreSettings :generate-visitor true :generate-s7-reader true :s7-tag "galactic-core"
     (member strength float :initializer 0.65f :finite true)
     (member width_degrees float :initializer 32.0f :finite true :positive true))
-  (record NebularKnotSettings :generate-settings true :generate-visitor true :generate-s7-reader true :s7-tag "nebular-knot"
+  (record NebularKnotSettings :generate-visitor true :generate-s7-reader true :s7-tag "nebular-knot"
     (member strength float :initializer 0.18f :finite true)
     (member size_degrees float :initializer 9.0f :finite true :positive true))
-  (record Settings :generate-settings true :generate-visitor true :generate-s7-reader true :s7-tag "starfield"
+  (record Settings :generate-visitor true :generate-s7-reader true :s7-tag "starfield"
     (member generation GenerationSettings :initializer "")
     (member star StarSettings :initializer "")
     (member galactic_band GalacticBandSettings :initializer "")

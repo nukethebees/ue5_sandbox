@@ -1829,8 +1829,8 @@ class Validator {
         }
         for (auto const id : declarations_.items(records.members[row])) {
             auto const member{members.index(id)};
-            if (members.settings_name[member]) {
-                require_non_blank_value(*members.settings_name[member], "Settings member name");
+            if (members.s7[member].name) {
+                require_non_blank_value(*members.s7[member].name, "S7 member name");
             }
         }
         std::vector<std::string> member_names;

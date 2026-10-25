@@ -3,11 +3,11 @@
 Keep fields, types and defaults in ordinary records:
 
 ```lisp
-(record Weapon :generate-settings true
+(record Weapon
   :generate-s7-reader true :s7-tag "weapon"
   (member damage float :initializer 5.f :nonnegative true)
-  (member turn_rate float :initializer 2.f :settings-name "turn-speed")
-  (member socket_distance float :initializer 0.f :settings-exclude true))
+  (member turn_rate float :initializer 2.f :s7-name "turn-speed")
+  (member socket_distance float :initializer 0.f :s7-exclude true))
 ```
 
 This generates the ordinary `Weapon` and its typed S7 reader. Configuration records contain
@@ -19,9 +19,9 @@ existing configuration. Nested records retain omitted members; other types repla
 whole value. An omitted optional-valued member remains unchanged; `:none` clears it.
 An invalid layer returns diagnostics without modifying the caller's original value.
 
-Underscores become hyphens in external names. `:settings-name` customizes the name.
-`:settings-exclude true` omits asset-derived members from readers.
-Records without settings options retain their existing generated output.
+Underscores become hyphens in external names. `:s7-name` customizes the name.
+`:s7-exclude true` omits members from readers while retaining their C++ storage and defaults.
+Settings use ordinary records and readers; there is no separate settings-record category.
 
 Simulation, presentation and starfield settings use these typed readers. `settings-layers`
 applies patches in order, validating supplied fields as they are decoded. Simulation's

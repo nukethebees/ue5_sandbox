@@ -55,7 +55,7 @@ TEST(RecordLowering, GeneratesSemanticMembersAndFixedArrays) {
 
 TEST(RecordLowering, RejectsInvalidSettingsBindingsAndConstrainedNames) {
     for (auto const declarations :
-         {R"((record Config :generate-settings true (member speed float :settings-name "")))",
+         {R"((record Config (member speed float :s7-name "")))",
           R"((record Config :constraint-policy example::policy) (record ConfigValue))",
           R"((record Config :generate-visitor true (member Field int)))",
           R"((record Config :generate-visitor true (member Count int)))",
@@ -72,33 +72,39 @@ TEST(RecordLowering, RejectsInvalidSettingsBindingsAndConstrainedNames) {
 }
 
 TEST(RecordLowering, RejectsRemovedOverrideGenerationOption) {
-    CompilerTestContext context;
-    EXPECT_THROW(
-        static_cast<void>(parse_test_manifest(
-            context,
-            R"((module records :header "Records.h" (record Config :generate-overrides true)))")),
-        sexpr::SourceError);
+    for (auto const declaration : {"(record Config :generate-overrides true)",
+                                   "(record Config :generate-settings true)",
+                                   "(record Config (member value int :settings-exclude true))",
+                                   "(record Config (member value int :settings-name value))"}) {
+        SCOPED_TRACE(declaration);
+        CompilerTestContext context;
+        EXPECT_THROW(
+            static_cast<void>(parse_test_manifest(
+                context, std::format("(module records :header Records.h {})", declaration))),
+            sexpr::SourceError);
+    }
 }
 
 TEST(RecordLowering, SettingsMetadataDoesNotChangeOrdinaryRecordOutput) {
     auto const render{[](std::string_view const options) {
         CompilerTestContext context;
-        auto manifest{parse_test_manifest(
-            context,
-            std::string{R"((module records :header "Records.h" (record Config )"} +
-                std::string{options} + R"( (member max_speed float :initializer "2.f"))))")};
+        auto manifest{
+            parse_test_manifest(context,
+                                std::format(R"((module records :header "Records.h" (record Config
+                (member max_speed float :initializer 2.f {}))))",
+                                            options))};
         return render_test_manifest(context, manifest).front().content;
     }};
-    EXPECT_EQ(render(""), render(":generate-settings true"));
+    EXPECT_EQ(render(""), render(":s7-exclude true :s7-name speed"));
 }
 
 TEST(RecordLowering, SettingsOptionsSurviveSourceRoundTrip) {
     CompilerTestContext context;
     auto const manifest{parse_test_manifest(context, R"(
         (module records :header "Records.h"
-          (record Config :generate-settings true :generate-visitor true
-            (member max_speed float :initializer "2.f" :settings-name "speed")
-            (member asset float :settings-exclude true))
+          (record Config :generate-visitor true
+            (member max_speed float :initializer "2.f" :s7-name "speed")
+            (member asset float :s7-exclude true))
           (record Range :constraint-policy example::policy
             :generate-s7-reader true :s7-tag "range"
             (member minimum int :initializer 0 :required true)

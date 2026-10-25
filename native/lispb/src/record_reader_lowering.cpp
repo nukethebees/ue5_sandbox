@@ -43,9 +43,6 @@ auto field_name(LoweringContext& context, RecordMemberId const member) -> std::s
     if (members.s7[row].name) {
         return context.text(*members.s7[row].name);
     }
-    if (members.settings_name[row]) {
-        return context.text(*members.settings_name[row]);
-    }
     auto name{context.text(members.name[row])};
     std::ranges::replace(name, '_', '-');
     return name;
@@ -57,9 +54,7 @@ auto reader_fields(LoweringContext& context, DeclarationHandle record)
     auto const& records{declarations.records};
     std::vector<RecordMemberId> result;
     for (auto field : declarations.items(records.members[records.index(record)])) {
-        if (!records.generate_settings[records.index(record)] ||
-            !declarations.record_members
-                 .settings_exclude[declarations.record_members.index(field)]) {
+        if (!declarations.record_members.s7[declarations.record_members.index(field)].exclude) {
             result.push_back(field);
         }
     }

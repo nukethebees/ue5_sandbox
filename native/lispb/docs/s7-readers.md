@@ -96,8 +96,8 @@ creating a previously absent optional record still requires its required fields.
 collections replace their entire value. `:none` explicitly clears an optional.
 
 Settings use the same concrete record and reader for creation and subsequent layers.
-`:generate-settings true` enables `:settings-exclude` for asset-derived members and
-`:settings-name` for external naming. `:s7-name` takes precedence; otherwise names use hyphens.
+`:s7-exclude true` excludes a member from decoding without changing its C++ storage or default.
+`:s7-name` sets the external name; otherwise underscores become hyphens.
 Load base settings before decoding level settings into a copy. No sparse companion structs,
 patch-reader specializations or generated `apply_overrides` functions are needed.
 

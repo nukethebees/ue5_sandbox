@@ -408,7 +408,6 @@ auto CanonicalRenderer::build_record(codegen::DeclarationHandle const schema) ->
     result.optional_field("constraint-policy",
                           records.constraint_policy[index],
                           [this](auto value) { return ir_.atom(value); });
-    result.flag("generate-settings", records.generate_settings[index]);
     result.flag("generate-visitor", records.generate_visitor[index]);
     result.flag("generate-s7-reader", records.s7_tag[index].has_value());
     result.flag("s7-positional", records.s7_positional[index]);

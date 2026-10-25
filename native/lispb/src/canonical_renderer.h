@@ -67,10 +67,7 @@ class CanonicalRenderer {
             auto const number{[this](StringId value) { return ir_.atom(value); }};
             result.optional_field("minimum", s7.minimum, number);
             result.optional_field("maximum", s7.maximum, number);
-            result.flag("settings-exclude", columns.settings_exclude[index]);
-            if (columns.settings_name[index]) {
-                result.field("settings-name", ir_.string(*columns.settings_name[index]));
-            }
+            result.flag("s7-exclude", s7.exclude);
             if (columns.initializer[index]) {
                 result.field("initializer", ir_.string(*columns.initializer[index]));
             }

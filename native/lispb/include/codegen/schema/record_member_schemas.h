@@ -16,8 +16,6 @@ struct RecordMemberSchemas {
     [[nodiscard]] auto index(RecordMemberId id) const -> std::uint32_t;
     void clear();
 
-    std::vector<std::uint8_t> settings_exclude;
-    std::vector<std::optional<StringId>> settings_name;
     std::vector<S7FieldOptions> s7;
     std::vector<StringId> name;
     std::vector<TypeRefId> type;
