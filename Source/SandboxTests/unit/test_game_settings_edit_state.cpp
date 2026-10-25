@@ -83,16 +83,17 @@ TEST_CLASS(GameSettingsEditState, "Sandbox.UnitTests")
 
         ioj::FGameSettingsEditState state;
         state.begin(initial, initial);
+        auto expected{state.applied()};
+        expected.mouse_turn_sensitivity = 1.5f;
+
         state.set_setting(ioj::EGameSetting::Resolution,
                           ioj::FGameSettingValue{FIntPoint{1280, 720}});
         state.set_setting(ioj::EGameSetting::MouseTurnSensitivity, ioj::FGameSettingValue{1.5f});
         state.commit_setting(ioj::EGameSetting::MouseTurnSensitivity);
         state.cancel();
 
-        TestRunner->TestTrue(TEXT("Reverting display restores its previous resolution"),
-                             state.pending().resolution == initial.resolution);
-        TestRunner->TestTrue(TEXT("Reverting display retains applied input response"),
-                             FMath::IsNearlyEqual(state.pending().mouse_turn_sensitivity, 1.5f));
+        TestRunner->TestTrue(TEXT("Reverting display preserves only the applied controls change"),
+                             state.pending() == expected);
         TestRunner->TestFalse(TEXT("Applied controls and reverted display leave clean state"),
                               state.is_dirty());
     }
@@ -143,33 +144,31 @@ TEST_CLASS(GameSettingsEditState, "Sandbox.UnitTests")
         state.set_setting(ioj::EGameSetting::OverallQuality,
                           ioj::FGameSettingValue{ioj::EGameGraphicsPreset::High});
 
-        auto const& preset{state.pending()};
-        TestRunner->TestTrue(TEXT("The selected preset is reported"),
-                             preset.overall_quality == ioj::EGameGraphicsPreset::High);
-        TestRunner->TestTrue(TEXT("The preset updates every player-facing scalability group"),
-                             preset.view_distance_quality == ioj::EGameQualityLevel::High &&
-                                 preset.aa_quality == ioj::EGameQualityLevel::High &&
-                                 preset.shadow_quality == ioj::EGameQualityLevel::High &&
-                                 preset.global_illumination_quality ==
-                                     ioj::EGameQualityLevel::High &&
-                                 preset.reflections_quality == ioj::EGameQualityLevel::High &&
-                                 preset.post_processing_quality == ioj::EGameQualityLevel::High &&
-                                 preset.texture_quality == ioj::EGameQualityLevel::High &&
-                                 preset.effects_quality == ioj::EGameQualityLevel::High &&
-                                 preset.shading_quality == ioj::EGameQualityLevel::High);
-        TestRunner->TestTrue(TEXT("Independent graphics controls are unchanged"),
-                             FMath::IsNearlyEqual(preset.resolution_scale, 73.0f) &&
-                                 !preset.bloom && preset.motion_blur);
+        auto expected{applied};
+        expected.overall_quality = ioj::EGameGraphicsPreset::High;
+        expected.view_distance_quality = ioj::EGameQualityLevel::High;
+        expected.aa_quality = ioj::EGameQualityLevel::High;
+        expected.shadow_quality = ioj::EGameQualityLevel::High;
+        expected.global_illumination_quality = ioj::EGameQualityLevel::High;
+        expected.reflections_quality = ioj::EGameQualityLevel::High;
+        expected.post_processing_quality = ioj::EGameQualityLevel::High;
+        expected.texture_quality = ioj::EGameQualityLevel::High;
+        expected.effects_quality = ioj::EGameQualityLevel::High;
+        expected.shading_quality = ioj::EGameQualityLevel::High;
+        TestRunner->TestTrue(TEXT("The preset changes only its quality groups"),
+                             state.pending() == expected);
 
         state.set_setting(ioj::EGameSetting::ShadowQuality,
                           ioj::FGameSettingValue{ioj::EGameQualityLevel::Medium});
+        expected.shadow_quality = ioj::EGameQualityLevel::Medium;
+        expected.overall_quality = ioj::EGameGraphicsPreset::Custom;
         TestRunner->TestTrue(TEXT("Changing one quality group produces a custom preset"),
-                             state.pending().overall_quality == ioj::EGameGraphicsPreset::Custom);
+                             state.pending() == expected);
 
         state.set_setting(ioj::EGameSetting::OverallQuality,
                           ioj::FGameSettingValue{ioj::EGameGraphicsPreset::Custom});
-        TestRunner->TestTrue(TEXT("Selecting Custom preserves the individual quality values"),
-                             state.pending().shadow_quality == ioj::EGameQualityLevel::Medium);
+        TestRunner->TestTrue(TEXT("Selecting Custom preserves all settings"),
+                             state.pending() == expected);
     }
 
     TEST_METHOD(ControlSettingsDeclareDeviceOwnership)
@@ -259,14 +258,8 @@ TEST_CLASS(GameSettingsEditState, "Sandbox.UnitTests")
         loadout.profiles[1].customized = true;
         user_settings->set_flight_model_loadout(loadout);
         auto const restored{user_settings->flight_model_loadout()};
-        TestRunner->TestTrue(TEXT("Fighter tuning survives a settings round trip"),
-                             restored.profiles[1] == loadout.profiles[1]);
-        TestRunner->TestTrue(TEXT("Other slots retain their own defaults"),
-                             restored.profiles[0] == loadout.profiles[0] &&
-                                 restored.profiles[2] == loadout.profiles[2] &&
-                                 restored.profiles[3] == loadout.profiles[3]);
-        TestRunner->TestTrue(TEXT("Saved configuration does not change the active slot"),
-                             restored.initial_slot == ioj::sim::player::FlightModelSlot::First);
+        TestRunner->TestTrue(TEXT("Flight-model loadout survives a settings round trip"),
+                             restored == loadout);
     }
 
     TEST_METHOD(FlightModelCodecRejectsCorruptData)
