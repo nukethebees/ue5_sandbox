@@ -49,6 +49,8 @@ struct DiffResult {
 
 class DiffContext;
 
+using DiffPathComponent = std::variant<std::string_view, std::size_t>;
+
 template <typename T>
 void diff_value(T const& expected, T const& actual, DiffContext& context);
 
@@ -58,14 +60,12 @@ class DiffContext {
         : result_{result} {}
 
     template <typename T>
-    void diff(std::variant<std::string_view, std::size_t> component,
-              T const& expected,
-              T const& actual) {
+    void diff(DiffPathComponent component, T const& expected, T const& actual) {
         path_.push_back(component);
         struct RestorePath {
             ~RestorePath() { path.pop_back(); }
 
-            std::vector<std::variant<std::string_view, std::size_t>>& path;
+            std::vector<DiffPathComponent>& path;
         } restore{path_};
         diff_value(expected, actual, *this);
     }
@@ -104,7 +104,7 @@ class DiffContext {
     }
 
     DiffResult& result_;
-    std::vector<std::variant<std::string_view, std::size_t>> path_;
+    std::vector<DiffPathComponent> path_;
 };
 
 namespace diff_detail {
