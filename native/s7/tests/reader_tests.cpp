@@ -8,6 +8,9 @@
 
 #include <gtest/gtest.h>
 
+#include <string_view>
+#include <vector>
+
 namespace ioj::s7::tests {
 using ioj::testing::structurally_equal;
 template <typename T>
@@ -20,28 +23,98 @@ auto read_source(std::string_view const source) -> ReadResult<T> {
     return read<T>(Reader{*ast}, ast->root, "test");
 }
 
-TEST(SchemeReader, ChecksNumericConversionBeforeCasting) {
-    EXPECT_EQ(*read_source<std::int64_t>("9007199254740993"), INT64_C(9007199254740993));
-    EXPECT_EQ(*read_source<std::int64_t>("-9223372036854775808"),
-              std::numeric_limits<std::int64_t>::min());
-    EXPECT_EQ(*read_source<std::int32_t>("4294967294/2"), std::numeric_limits<std::int32_t>::max());
-    EXPECT_EQ(*read_source<std::uint64_t>("18446744073709549568.0"),
-              UINT64_C(18446744073709549568));
-    for (auto const source :
-         {"2147483648", "-2147483649", "1.5", "3/2", "+nan.0", "+inf.0", "#t"}) {
-        SCOPED_TRACE(source);
-        auto const result{read_source<std::int32_t>(source)};
-        ASSERT_FALSE(result);
-        EXPECT_EQ(result.error().front().code, AstErrorCode::InvalidNumber);
-        EXPECT_EQ(result.error().front().node_path, "test");
-    }
-    EXPECT_FALSE(read_source<std::int64_t>("9223372036854775808.0"));
-    EXPECT_FALSE(read_source<std::uint64_t>("18446744073709551616.0"));
-    EXPECT_FALSE(read_source<std::uint64_t>("-1"));
-    EXPECT_FALSE(read_source<float>("1e100"));
-    EXPECT_FLOAT_EQ(*read_source<float>("1/4"), 0.25f);
-    EXPECT_TRUE(std::isinf(*read_source<double>("+inf.0")));
+enum class NumericType { Int32, Int64, UInt64, Float, Double };
 
+struct NumericReaderCase {
+    char const* name;
+    NumericType type;
+    std::vector<std::string_view> accepted;
+    std::vector<std::string_view> rejected;
+    AstErrorCode error_code{AstErrorCode::InvalidNumber};
+};
+
+template <typename T>
+void check_numeric_sources(NumericReaderCase const& test, bool const accepted) {
+    auto const& sources{accepted ? test.accepted : test.rejected};
+    for (auto const source : sources) {
+        SCOPED_TRACE(source);
+        auto const result{read_source<T>(source)};
+        EXPECT_EQ(result.has_value(), accepted);
+        if (!accepted && !result) {
+            ASSERT_EQ(result.error().size(), 1u);
+            EXPECT_EQ(result.error().front().code, test.error_code);
+            EXPECT_EQ(result.error().front().node_path, "test");
+        }
+    }
+}
+
+void check_numeric_sources(NumericReaderCase const& test, bool const accepted) {
+    switch (test.type) {
+        case NumericType::Int32:
+            return check_numeric_sources<std::int32_t>(test, accepted);
+        case NumericType::Int64:
+            return check_numeric_sources<std::int64_t>(test, accepted);
+        case NumericType::UInt64:
+            return check_numeric_sources<std::uint64_t>(test, accepted);
+        case NumericType::Float:
+            return check_numeric_sources<float>(test, accepted);
+        case NumericType::Double:
+            return check_numeric_sources<double>(test, accepted);
+    }
+}
+
+using SchemeNumericReader = ::testing::TestWithParam<NumericReaderCase>;
+
+TEST_P(SchemeNumericReader, AcceptsValidSources) {
+    check_numeric_sources(GetParam(), true);
+}
+
+TEST_P(SchemeNumericReader, RejectsInvalidSources) {
+    check_numeric_sources(GetParam(), false);
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    NumericConversions,
+    SchemeNumericReader,
+    ::testing::Values(NumericReaderCase{"Int32",
+                                        NumericType::Int32,
+                                        {"4294967294/2"},
+                                        {"2147483648",
+                                         "-2147483649",
+                                         "1.5",
+                                         "3/2",
+                                         literals::nan,
+                                         literals::positive_infinity,
+                                         literals::true_value}},
+                      NumericReaderCase{"Int64",
+                                        NumericType::Int64,
+                                        {"9007199254740993", "-9223372036854775808"},
+                                        {"9223372036854775808.0"}},
+                      NumericReaderCase{"UInt64",
+                                        NumericType::UInt64,
+                                        {"18446744073709549568.0"},
+                                        {"18446744073709551616.0", "-1"}},
+                      NumericReaderCase{"Float", NumericType::Float, {"1/4"}, {"1e100"}},
+                      NumericReaderCase{
+                          "Double",
+                          NumericType::Double,
+                          {literals::positive_infinity, literals::negative_infinity, literals::nan},
+                          {literals::true_value},
+                          AstErrorCode::InvalidType}),
+    [](auto const& info) { return info.param.name; });
+
+TEST(SchemeReader, PreservesNumericValues) {
+    EXPECT_EQ(read_source<std::int64_t>("9007199254740993"), INT64_C(9007199254740993));
+    EXPECT_EQ(read_source<std::int64_t>("-9223372036854775808"),
+              std::numeric_limits<std::int64_t>::min());
+    EXPECT_EQ(read_source<std::int32_t>("4294967294/2"), std::numeric_limits<std::int32_t>::max());
+    EXPECT_EQ(read_source<std::uint64_t>("18446744073709549568.0"), UINT64_C(18446744073709549568));
+    EXPECT_EQ(read_source<float>("1/4"), 0.25f);
+    EXPECT_EQ(read_source<double>(literals::positive_infinity),
+              std::numeric_limits<double>::infinity());
+}
+
+TEST(SchemeSourceFormatting, PreservesRealValuesAndTypes) {
     Interpreter interpreter;
     for (auto const value : {0.0,
                              -0.0,
@@ -72,14 +145,14 @@ TEST(SchemeReader, ReadsConstrainedValuesWithoutInvalidDefaults) {
     ASSERT_TRUE(positive);
     EXPECT_EQ(positive->get(), 0.25f);
     EXPECT_FALSE(read_source<PositiveFinite<float>>("0"));
-    EXPECT_FALSE(read_source<PositiveFinite<float>>("+inf.0"));
+    EXPECT_FALSE(read_source<PositiveFinite<float>>(literals::positive_infinity));
     EXPECT_EQ(read_source<NonNegative<int>>("0")->get(), 0);
     EXPECT_FALSE(read_source<NonNegative<int>>("-1"));
     EXPECT_EQ(read_source<NonEmptyString>("\"name\"")->get_ref(), "name");
     EXPECT_FALSE(read_source<NonEmptyString>("\"\""));
     EXPECT_FALSE(read_source<std::string>("'name"));
     EXPECT_FALSE(read_source<bool>("0"));
-    EXPECT_FALSE(*read_source<bool>("#f"));
+    EXPECT_FALSE(*read_source<bool>(literals::false_value));
 }
 
 TEST(SchemeReader, ComposesContainersAndDistinguishesAbsence) {
@@ -92,7 +165,7 @@ TEST(SchemeReader, ComposesContainersAndDistinguishesAbsence) {
     EXPECT_TRUE(read_source<std::vector<int>>("'()")->empty());
     EXPECT_TRUE((read_source<std::array<int, 0>>("'()")));
     EXPECT_FALSE((read_source<std::array<int, 2>>("'(1)")));
-    auto const boolean{read_source<std::optional<bool>>("#f")};
+    auto const boolean{read_source<std::optional<bool>>(literals::false_value)};
     ASSERT_TRUE(boolean);
     EXPECT_PRED_FORMAT2(structurally_equal, std::optional{false}, *boolean);
     auto const empty{read_source<std::optional<std::vector<int>>>("'()")};

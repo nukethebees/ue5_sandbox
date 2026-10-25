@@ -9,6 +9,7 @@
 #include <ioj/levels/authoring/starfield_reader.h>
 #include <ioj/levels/catalog_validation.h>
 #include <ioj/s7/interpreter.h>
+#include <ioj/s7/source_format.h>
 #include <ioj/testing/files.h>
 #include <ioj/testing/structural_diff.h>
 
@@ -114,8 +115,12 @@ TEST(NativeSettings, PreservesExactIntegersAndRejectsOutOfRangeConversions) {
     ASSERT_TRUE((assign("9007199254740993", integer)));
     EXPECT_EQ(integer, 9007199254740993);
 
-    for (auto const invalid :
-         {"9223372036854775808.0", "-9223372036854777856.0", "1.5", "+inf.0", "+nan.0"}) {
+    constexpr std::string_view invalid_sources[]{"9223372036854775808.0",
+                                                 "-9223372036854777856.0",
+                                                 "1.5",
+                                                 s7::literals::positive_infinity,
+                                                 s7::literals::nan};
+    for (auto const invalid : invalid_sources) {
         SCOPED_TRACE(invalid);
         EXPECT_FALSE((assign(invalid, integer)));
         EXPECT_EQ(integer, 9007199254740993);
@@ -129,7 +134,7 @@ TEST(NativeSettings, PreservesExactIntegersAndRejectsOutOfRangeConversions) {
     EXPECT_EQ(unsigned_integer, 7u);
     PositiveFinite<float> real{3.f};
     EXPECT_FALSE((assign("1e100", real)));
-    EXPECT_FALSE((assign("+inf.0", real)));
+    EXPECT_FALSE((assign(s7::literals::positive_infinity, real)));
     EXPECT_EQ(real.get(), 3.f);
 }
 
@@ -437,14 +442,15 @@ TEST(NativeLevelAuthoringReader, IntegerFieldsRequireExactInt32Values) {
         ASSERT_TRUE(result);
         EXPECT_EQ(result->entities()[0].overrides.health, std::numeric_limits<std::int32_t>::max());
     }
-    for (auto const value : {"2147483648",
-                             "2147483648.0",
-                             "-2147483649",
-                             "3/2",
-                             "1.5",
-                             "+nan.0",
-                             "+inf.0",
-                             "\"123\""}) {
+    constexpr std::string_view invalid_sources[]{"2147483648",
+                                                 "2147483648.0",
+                                                 "-2147483649",
+                                                 "3/2",
+                                                 "1.5",
+                                                 s7::literals::nan,
+                                                 s7::literals::positive_infinity,
+                                                 "\"123\""};
+    for (auto const value : invalid_sources) {
         SCOPED_TRACE(value);
         auto const result{read(value)};
         ASSERT_FALSE(result);
@@ -516,7 +522,9 @@ TEST(NativeLevelAuthoringReader, RejectsMalformedInputBeforeProcessingSymbolicRe
 }
 
 TEST(NativeLevelAuthoringReader, FloatFieldsRejectNonfiniteAndUnrepresentableValues) {
-    for (auto const value : {"0.5", "1e100", "+inf.0", "+nan.0"}) {
+    constexpr std::string_view sources[]{
+        "0.5", "1e100", s7::literals::positive_infinity, s7::literals::nan};
+    for (auto const value : sources) {
         SCOPED_TRACE(value);
         auto const result{DefinitionReader{}.read_level_source(std::format(R"(
           (level :id 'floats :title "Floats" :player 'player
@@ -525,7 +533,7 @@ TEST(NativeLevelAuthoringReader, FloatFieldsRejectNonfiniteAndUnrepresentableVal
               (entity :id 'capital :archetype 'capital-ship :team 'blue :position '(100 0 0)
                       :initial-spawn-delay {}))))",
                                                                            value))};
-        if (std::string_view{value} == "0.5") {
+        if (value == "0.5") {
             ASSERT_TRUE(result) << format_diagnostics(result.error());
             EXPECT_EQ(result->entities()[1].overrides.initial_spawn_delay, 0.5f);
         } else {
