@@ -29,10 +29,8 @@ void assign_generated_entity_ids(std::vector<EntitySpawnDefinition>& entities) {
                                 [static_cast<std::size_t>(entity.archetype)]};
         // Reserve explicit IDs before generating names, including IDs on later entities.
         do {
-            entity.id = EntityId{std::format("{}-{}-{}",
-                                             to_serialized_string(entity.team),
-                                             to_serialized_string(entity.archetype),
-                                             index++)};
+            entity.id =
+                EntityId{std::format("{:s}-{:s}-{}", entity.team, entity.archetype, index++)};
         } while (!used_ids.insert(entity.id).second);
     }
 }

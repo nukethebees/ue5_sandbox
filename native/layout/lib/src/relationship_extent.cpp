@@ -23,7 +23,6 @@
 namespace ioj::layout::analysis_detail {
 using lispb::codegen::PackedIntegerValue;
 using lispb::codegen::SemanticRelationKind;
-using lispb::codegen::to_serialized_string;
 
 auto relationship_extent_requirement(std::uint64_t const extent,
                                      bool const includes_terminal_count,
@@ -197,12 +196,12 @@ auto analyze_unsigned_relationship_extent(
             analysis.report(
                 {DiagnosticSeverity::error,
                  std::format("{} sentinel code '{}' collides with the live values required by its "
-                             "'{}' target extent.",
+                             "'{:s}' target extent.",
                              context,
                              declarations.strings().view(
                                  declarations.packed_named_codes
                                      .name[declarations.packed_named_codes.index(code)]),
-                             to_serialized_string(kind))});
+                             kind)});
         }
     }
 
@@ -226,10 +225,10 @@ auto analyze_unsigned_relationship_extent(
     if (!result.width_sufficient) {
         analysis.report(
             {DiagnosticSeverity::error,
-             std::format("{} uses {} bits but its '{}' target extent requires at least {} bits.",
+             std::format("{} uses {} bits but its '{:s}' target extent requires at least {} bits.",
                          context,
                          width,
-                         to_serialized_string(kind),
+                         kind,
                          result.minimum_required_bits)});
     }
     if (has_live_value && minimum_value.has_value() && maximum_value.has_value() &&
@@ -237,9 +236,9 @@ auto analyze_unsigned_relationship_extent(
          maximum_value->magnitude < maximum_live_value)) {
         analysis.report({DiagnosticSeverity::error,
                          std::format("{} semantic range does not cover the live values required by "
-                                     "its '{}' target extent.",
+                                     "its '{:s}' target extent.",
                                      context,
-                                     to_serialized_string(kind))});
+                                     kind)});
     }
     return result;
 }

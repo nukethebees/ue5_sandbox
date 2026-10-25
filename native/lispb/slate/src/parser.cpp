@@ -246,8 +246,8 @@ class Parser {
             auto const parameter{document_.parameters.names[index]};
             if (parameter_states_.at(parameter).uses == 0) {
                 fail(document_.parameters.spans[index],
-                     std::format("unused {} parameter '{}'",
-                                 to_serialized_string(document_.parameters.kinds[index]),
+                     std::format("unused {:s} parameter '{}'",
+                                 document_.parameters.kinds[index],
                                  syntax_.strings().view(parameter)));
             }
         }

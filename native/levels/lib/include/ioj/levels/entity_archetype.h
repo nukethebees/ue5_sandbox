@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ioj/enum_formatter.h"
 #include "ioj/enum_traits.h"
 #include "ioj/parse_enum.h"
 
@@ -20,6 +21,22 @@ enum class EntityArchetype : EntityArchetypeUnderlying {
     CapitalShip,
     StaticTurret,
 };
+
+[[nodiscard]] constexpr auto to_string(EntityArchetype const value) noexcept -> std::string_view {
+    switch (value) {
+        case EntityArchetype::PlayerFighter: {
+            return "PlayerFighter";
+        }
+        case EntityArchetype::CapitalShip: {
+            return "CapitalShip";
+        }
+        case EntityArchetype::StaticTurret: {
+            return "StaticTurret";
+        }
+    }
+
+    return "<invalid EntityArchetype>";
+}
 
 [[nodiscard]] constexpr auto to_serialized_string(EntityArchetype const value) noexcept
     -> std::string_view {
@@ -57,3 +74,8 @@ struct EnumTraits<::ioj::levels::EntityArchetype> {
 };
 
 } // namespace ioj
+namespace std {
+template <>
+struct formatter<::ioj::levels::EntityArchetype>
+    : ioj::EnumFormatter<::ioj::levels::EntityArchetype> {};
+} // namespace std

@@ -1798,8 +1798,7 @@ auto SchemaParser::parse_type_definition(sexpr::FormId const form, TypeRegistry&
                                       "type operation",
                                       try_parse_serialized_type_operation)};
         if (cpp_types.operation(type, kind).has_value()) {
-            parser_.fail(declaration,
-                         std::format("duplicate type operation '{}'", to_serialized_string(kind)));
+            parser_.fail(declaration, std::format("duplicate type operation '{:s}'", kind));
         }
         auto passing{ParameterPassing::const_reference};
         if (kind != TypeOperation::remove_at_swap) {

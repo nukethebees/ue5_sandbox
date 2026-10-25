@@ -121,9 +121,9 @@ auto emit_editor_level_source(LevelDefinition const& level)
                 }
                 ++group_end;
             }
-            entities.add(ir.comment(std::format("Team: {} | Archetype: {} | Count: {}",
-                                                to_serialized_string(entity.team),
-                                                to_serialized_string(entity.archetype),
+            entities.add(ir.comment(std::format("Team: {:s} | Archetype: {:s} | Count: {}",
+                                                entity.team,
+                                                entity.archetype,
                                                 group_end - position)));
         }
         auto entity_form{ir.form(RecordKind::Entity)};

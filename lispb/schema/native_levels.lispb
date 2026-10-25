@@ -35,7 +35,7 @@
   :namespace ioj
   (enum Team @native_uint8
     :native-api true
-    :helpers (to-string traits to-serialized-string try-parse-serialized)
+    :helpers (to-string traits to-serialized-string try-parse-serialized formatter)
     :enum-array true
     (unreal-projection ETestTeam
       :enum-array true
@@ -78,7 +78,7 @@
   :namespace ioj::levels
   (enum EntityArchetype std::uint8_t
     :native-api true
-    :helpers (traits to-serialized-string try-parse-serialized)
+    :helpers (to-string traits to-serialized-string try-parse-serialized formatter)
     (value PlayerFighter :serialized-name "player-fighter")
     (value CapitalShip :serialized-name "capital-ship")
     (value StaticTurret :serialized-name "static-turret")))

@@ -120,7 +120,7 @@
   :namespace lispb::codegen
   (enum SemanticRelationKind std::uint8_t
     :native-api true
-    :helpers (to-serialized-string try-parse-serialized)
+    :helpers (to-string to-serialized-string try-parse-serialized formatter)
     (value index_into :serialized-name "index_into")
     (value count_of :serialized-name "count_of")
     (value offset_into :serialized-name "offset_into")

@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include "ioj/enum_formatter.h"
+
 #include <cstdint>
 #include <optional>
 #include <string_view>
@@ -22,6 +24,41 @@ enum class SemanticRelationKind : SemanticRelationKindUnderlying {
     encoded_as,
     references,
 };
+
+[[nodiscard]] constexpr auto to_string(SemanticRelationKind const value) noexcept
+    -> std::string_view {
+    switch (value) {
+        case SemanticRelationKind::index_into: {
+            return "index_into";
+        }
+        case SemanticRelationKind::count_of: {
+            return "count_of";
+        }
+        case SemanticRelationKind::offset_into: {
+            return "offset_into";
+        }
+        case SemanticRelationKind::discriminates: {
+            return "discriminates";
+        }
+        case SemanticRelationKind::contains: {
+            return "contains";
+        }
+        case SemanticRelationKind::member_of: {
+            return "member_of";
+        }
+        case SemanticRelationKind::quantises: {
+            return "quantises";
+        }
+        case SemanticRelationKind::encoded_as: {
+            return "encoded_as";
+        }
+        case SemanticRelationKind::references: {
+            return "references";
+        }
+    }
+
+    return "<invalid SemanticRelationKind>";
+}
 
 [[nodiscard]] constexpr auto to_serialized_string(SemanticRelationKind const value) noexcept
     -> std::string_view {
@@ -112,3 +149,8 @@ enum class SemanticRelationKind : SemanticRelationKindUnderlying {
 }
 
 } // namespace lispb::codegen
+namespace std {
+template <>
+struct formatter<::lispb::codegen::SemanticRelationKind>
+    : ioj::EnumFormatter<::lispb::codegen::SemanticRelationKind> {};
+} // namespace std

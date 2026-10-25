@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ioj/enum_formatter.h"
 #include "ioj/enum_traits.h"
 
 #include <array>
@@ -131,3 +132,7 @@ template <>
     return 6;
 }
 } // namespace ioj
+namespace std {
+template <>
+struct formatter<::ioj::Team> : ioj::EnumFormatter<::ioj::Team> {};
+} // namespace std

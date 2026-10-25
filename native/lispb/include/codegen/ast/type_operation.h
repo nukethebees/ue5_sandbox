@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ioj/enum_formatter.h"
 #include "ioj/parse_enum.h"
 
 #include <array>
@@ -19,6 +20,22 @@ enum class TypeOperation : TypeOperationUnderlying {
     remove_at_swap,
     set_element,
 };
+
+[[nodiscard]] constexpr auto to_string(TypeOperation const value) noexcept -> std::string_view {
+    switch (value) {
+        case TypeOperation::add_element: {
+            return "add_element";
+        }
+        case TypeOperation::remove_at_swap: {
+            return "remove_at_swap";
+        }
+        case TypeOperation::set_element: {
+            return "set_element";
+        }
+    }
+
+    return "<invalid TypeOperation>";
+}
 
 [[nodiscard]] constexpr auto to_serialized_string(TypeOperation const value) noexcept
     -> std::string_view {
@@ -46,3 +63,8 @@ enum class TypeOperation : TypeOperationUnderlying {
 }
 
 } // namespace lispb::codegen
+namespace std {
+template <>
+struct formatter<::lispb::codegen::TypeOperation>
+    : ioj::EnumFormatter<::lispb::codegen::TypeOperation> {};
+} // namespace std
