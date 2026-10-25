@@ -4,6 +4,7 @@
 #include "lowering_utils.h"
 #include "string_enum_parser.h"
 #include <ioj/ascii.h>
+#include <ioj/format_writer.h>
 
 #include <codegen/ast/binary_operator.h>
 #include <codegen/ast/cpp_files.h>
@@ -37,6 +38,7 @@
 #include <cstddef>
 #include <filesystem>
 #include <format>
+#include <limits>
 #include <optional>
 #include <stdexcept>
 #include <string>
@@ -124,90 +126,101 @@ auto lookup_function(LoweringContext& context,
     return function;
 }
 
-auto exact_lookup(LoweringContext& context, ModuleSettingsId settings, DeclarationHandle schema)
-    -> FunctionId {
-    auto& ir{context.ir};
+auto packed_enum_strings(LoweringContext& context,
+                         ModuleSettingsId settings,
+                         DeclarationHandle schema,
+                         std::string_view category,
+                         bool wide) -> NodeId {
     auto const& enums{context.declarations.enums};
     auto const& enumerators{context.declarations.enumerators};
-    auto const row{enums.index(schema)};
-    auto const enum_name{qualified_enum_name(context, settings, schema)};
-    auto const name{context.text(enums.name[row])};
-    NodeListBuilder body{ir};
-    std::vector<SwitchCaseId> cases;
-    for (auto const value : context.declarations.items(enums.values[row])) {
+    auto const& domains{context.semantic.enum_domains()};
+    auto const domain{domains.find(schema)};
+    auto const declared_values{context.declarations.items(enums.values[schema])};
+    std::vector<EnumeratorId> values(declared_values.size());
+    auto const value_count{declared_values.size()};
+    for (std::size_t ordinal{}; ordinal < value_count; ++ordinal) {
+        values[domains.code(domain, ordinal)->magnitude] = declared_values[ordinal];
+    }
+    auto const name{context.text(enums.name[schema])};
+    auto const qualified{"::" + qualified_enum_name(context, settings, schema)};
+    std::string blob;
+    std::vector<std::size_t> offsets{0};
+    std::vector<std::size_t> wide_offsets{0};
+    for (auto const value : values) {
         auto const value_name{context.text(enumerators.name[value])};
-        cases.push_back(ir.switch_case(ir.named(enum_name + "::" + value_name),
-                                       ir.block({ir.return_stmt(text_literal(ir, value_name))})));
+        auto text{category == "Serialized"
+                      ? context.optional_text(enumerators.serialized_name[value])
+                            .value_or("<invalid " + name + ">")
+                  : category == "Display"
+                      ? context.optional_text(enumerators.display_name[value]).value_or(value_name)
+                      : value_name};
+        auto next{offsets.back()};
+        auto wide_next{wide_offsets.back()};
+        // Preserve the old null-terminated literal conversion, including embedded nulls.
+        text.resize(text.find('\0') == std::string::npos ? text.size() : text.find('\0'));
+        blob += text;
+        blob += '\0';
+        if (wide) {
+            for (unsigned char const byte : text) {
+                if ((byte & 0xc0) != 0x80) {
+                    ++next;
+                    wide_next += byte >= 0xf0 ? 2 : 1;
+                }
+            }
+            ++next;
+            ++wide_next;
+        } else {
+            next += text.size() + 1;
+            wide_next = next;
+        }
+        offsets.push_back(next);
+        wide_offsets.push_back(wide_next);
     }
-    body.add(ir.switch_stmt(ir.named("value"), std::move(cases)), 2)
-        .add(ir.raw("ensureMsgf(false,\n"
-                    "           TEXT(\"Unhandled " +
-                    name +
-                    " value: %lld\"),\n"
-                    "           static_cast<int64>(value));"),
-             1)
-        .add(ir.return_stmt(text_literal(ir, "<invalid " + name + ">")));
-    return lookup_function(context, schema, enum_name, "name", body.build());
+    auto const maximum{wide_offsets.back()};
+    if (maximum > std::numeric_limits<std::uint32_t>::max()) {
+        throw std::length_error{"Enum string table exceeds uint32_t offsets"};
+    }
+    auto const bits{maximum <= 255 ? 8 : maximum <= 65535 ? 16 : 32};
+    if (!blob.empty()) {
+        blob.pop_back();
+    }
+    auto const literal{[wide](std::string_view text) {
+        auto result{std::format("\"{}\"", escape_cpp_string(text))};
+        return wide ? std::format("TEXT({})", result) : result;
+    }};
+    std::string output;
+    ioj::FormatWriter write{std::back_inserter(output)};
+    write("template <>\ninline constexpr auto ioj::enum_strings<{}, ioj::{}>{{\n    "
+          "ioj::PackedStrings{{\n        {},\n        std::array<std::uint{}_t, {}>{{",
+          qualified,
+          category,
+          literal(blob),
+          bits,
+          offsets.size());
+    auto const count{offsets.size()};
+    for (std::size_t i{}; i < count; ++i) {
+        if (i != 0) {
+            output += ", ";
+        }
+        if (wide && offsets[i] != wide_offsets[i]) {
+            write("(sizeof(TCHAR) == 2 ? {} : {})", wide_offsets[i], offsets[i]);
+        } else {
+            write("{}", offsets[i]);
+        }
+    }
+    output += "}}};";
+    return context.ir.raw(
+        output, {context.ir.types.dependency("ioj::PackedStrings", "ioj/enum_strings.h")});
 }
 
-auto display_lookup(LoweringContext& context, ModuleSettingsId settings, DeclarationHandle schema)
-    -> FunctionId {
-    auto& ir{context.ir};
-    auto const& enums{context.declarations.enums};
-    auto const& enumerators{context.declarations.enumerators};
-    auto const row{enums.index(schema)};
-    auto const enum_name{qualified_enum_name(context, settings, schema)};
-    std::vector<SwitchCaseId> cases;
-    for (auto const value : context.declarations.items(enums.values[row])) {
-        auto const value_row{enumerators.index(value)};
-        auto const display_name{enumerators.display_name[value_row]};
-        if (!display_name) {
-            continue;
-        }
-        cases.push_back(ir.switch_case(
-            ir.named(enum_name + "::" + context.text(enumerators.name[value_row])),
-            ir.block({ir.return_stmt(text_literal(ir, context.text(*display_name)))})));
-    }
-    NodeListBuilder body{ir};
-    if (!cases.empty()) {
-        cases.push_back(ir.switch_case(std::nullopt, ir.block({ir.break_stmt()})));
-        body.add(ir.switch_stmt(ir.named("value"), std::move(cases)), 2);
-    }
-    body.add(ir.return_stmt(
-        ir.call(ir.named(internal_name(context, schema, "name")), {ir.named("value")})));
-    return lookup_function(context, schema, enum_name, "display_name", body.build());
-}
-
-auto serialized_lookup(LoweringContext& context,
-                       ModuleSettingsId settings,
-                       DeclarationHandle schema) -> FunctionId {
-    auto& ir{context.ir};
-    auto const& enums{context.declarations.enums};
-    auto const& enumerators{context.declarations.enumerators};
-    auto const row{enums.index(schema)};
-    auto const enum_name{qualified_enum_name(context, settings, schema)};
-    auto const name{context.text(enums.name[row])};
-    NodeListBuilder body{ir};
-    std::vector<SwitchCaseId> cases;
-    for (auto const value : context.declarations.items(enums.values[row])) {
-        auto const value_row{enumerators.index(value)};
-        auto const serialized_name{enumerators.serialized_name[value_row]};
-        if (!serialized_name) {
-            continue;
-        }
-        cases.push_back(ir.switch_case(
-            ir.named(enum_name + "::" + context.text(enumerators.name[value_row])),
-            ir.block({ir.return_stmt(text_literal(ir, context.text(*serialized_name)))})));
-    }
-    body.add(ir.switch_stmt(ir.named("value"), std::move(cases)), 2)
-        .add(ir.raw("ensureMsgf(false,\n"
-                    "           TEXT(\"Unhandled serialized " +
-                    name +
-                    " value: %lld\"),\n"
-                    "           static_cast<int64>(value));"),
-             1)
-        .add(ir.return_stmt(text_literal(ir, "<invalid " + name + ">")));
-    return lookup_function(context, schema, enum_name, "serialized_name", body.build());
+auto string_lookup(LoweringContext& context,
+                   ModuleSettingsId settings,
+                   DeclarationHandle schema,
+                   std::string_view category,
+                   std::string_view suffix) -> FunctionId {
+    auto const qualified{qualified_enum_name(context, settings, schema)};
+    auto body{std::format("return ioj::enum_string<ioj::{}>(value).data();", category)};
+    return lookup_function(context, schema, qualified, suffix, {context.ir.raw(body)});
 }
 
 auto serialized_parser(LoweringContext& context,
@@ -430,62 +443,6 @@ auto enum_bit_width_comment(LoweringContext& context, DeclarationHandle const sc
               : "Logical bit width depends on the enumerator expressions.");
 }
 
-auto native_enum_string_function(LoweringContext& context,
-                                 DeclarationHandle const schema,
-                                 NativeEnumHelper const helper) -> NodeId {
-    auto& ir{context.ir};
-    auto const& enums{context.declarations.enums};
-    auto const row{enums.index(schema)};
-    auto const name{context.text(enums.name[row])};
-    auto const& enumerators{context.declarations.enumerators};
-    auto const serialized{helper == NativeEnumHelper::to_serialized_string};
-    auto const display{helper == NativeEnumHelper::to_display_string};
-    auto const function_name{serialized ? "to_serialized_string"
-                             : display  ? "to_display_string"
-                                        : "to_string"};
-
-    std::vector<SwitchCaseId> cases;
-    for (auto const value : context.declarations.items(enums.values[row])) {
-        auto const value_row{enumerators.index(value)};
-        if (serialized && !enumerators.serialized_name[value_row]) {
-            continue;
-        }
-        auto const value_name{context.text(enumerators.name[value_row])};
-        auto const text{
-            serialized ? context.text(*enumerators.serialized_name[value_row])
-            : display
-                ? context.optional_text(enumerators.display_name[value_row]).value_or(value_name)
-                : value_name};
-        cases.push_back(ir.switch_case(ir.named(name + "::" + value_name),
-                                       ir.block({ir.return_stmt(ir.string_literal(text))})));
-    }
-
-    auto const invalid{ir.return_stmt(ir.string_literal("<invalid " + name + ">"))};
-    if (serialized) {
-        cases.push_back(ir.switch_case({}, ir.block({invalid})));
-    }
-    NodeListBuilder body{ir};
-    body.add(ir.switch_stmt(ir.named("value"), cases), serialized ? 1 : 2);
-    if (!serialized) {
-        body.add(invalid);
-    }
-
-    auto const function{ir.function(function_name, "auto")};
-    ir.set_function_return_type(
-        function,
-        ir.types.intern("std::string_view",
-                        {ir.types.dependency("std::string_view", "string_view")}),
-        ReturnSyntax::trailing);
-    ir.set_function_parameters(function, {ir.parameter(name + " const", "value")});
-    auto& flags{ir.function_flags(function)};
-    flags.set_define_in_header(true);
-    flags.set_is_constexpr(true);
-    flags.set_is_nodiscard(true);
-    ir.set_function_noexcept(function);
-    ir.set_function_body(function, body.build());
-    return ir.header_function(function);
-}
-
 auto native_enum_declaration(LoweringContext& context, DeclarationHandle const schema) -> Nodes {
     auto& ir{context.ir};
     auto const& enums{context.declarations.enums};
@@ -510,7 +467,14 @@ auto native_enum_declaration(LoweringContext& context, DeclarationHandle const s
                               NativeEnumHelper::to_display_string,
                               NativeEnumHelper::to_serialized_string}) {
         if (std::ranges::contains(helpers, helper)) {
-            declarations.add(native_enum_string_function(context, schema, helper), 2);
+            auto const name{helper == NativeEnumHelper::to_string ? "to_string"
+                            : helper == NativeEnumHelper::to_display_string
+                                ? "to_display_string"
+                                : "to_serialized_string"};
+            declarations.add(ir.using_import(ir.types.named(
+                                 std::format("ioj::{}", name),
+                                 {ir.types.dependency("ioj::enum_strings", "ioj/enum_strings.h")})),
+                             1);
         }
     }
     return declarations.build();
@@ -778,6 +742,18 @@ auto lower_enum(LoweringContext& context,
             emission.header_global = {ir.namespace_node(
                 ir.strings.intern("ioj"), native_enum_traits(context, settings, schema))};
         }
+        auto const helpers{context.declarations.items(enums.helpers[row])};
+        for (auto const helper : {NativeEnumHelper::to_string,
+                                  NativeEnumHelper::to_display_string,
+                                  NativeEnumHelper::to_serialized_string}) {
+            if (std::ranges::contains(helpers, helper)) {
+                auto const category{helper == NativeEnumHelper::to_string           ? "Name"
+                                    : helper == NativeEnumHelper::to_display_string ? "Display"
+                                                                                    : "Serialized"};
+                emission.header_global.push_back(
+                    packed_enum_strings(context, settings, schema, category, false));
+            }
+        }
         if (std::ranges::contains(context.declarations.items(enums.helpers[row]),
                                   NativeEnumHelper::formatter)) {
             emission.header_global.push_back(native_enum_formatter(context, settings, schema));
@@ -906,20 +882,30 @@ auto lower_enum(LoweringContext& context,
                    conversion == EnumConversion::display_string_view ||
                    conversion == EnumConversion::display_string;
         })};
-        auto const has_name{has_display ||
-                            std::ranges::any_of(conversion_kinds, [](auto const conversion) {
-                                return conversion == EnumConversion::lex_to_string ||
-                                       conversion == EnumConversion::string_view ||
-                                       conversion == EnumConversion::string;
-                            })};
+        auto const has_name{std::ranges::any_of(conversion_kinds, [](auto const conversion) {
+            return conversion == EnumConversion::lex_to_string ||
+                   conversion == EnumConversion::string_view ||
+                   conversion == EnumConversion::string;
+        })};
         if (has_name) {
-            internal.add(ir.definition(exact_lookup(context, settings, schema)), 2);
+            emission.header_global.push_back(
+                packed_enum_strings(context, settings, schema, "Name", true));
+            internal.add(ir.definition(string_lookup(context, settings, schema, "Name", "name")),
+                         2);
         }
         if (has_display) {
-            internal.add(ir.definition(display_lookup(context, settings, schema)), 2);
+            emission.header_global.push_back(
+                packed_enum_strings(context, settings, schema, "Display", true));
+            internal.add(
+                ir.definition(string_lookup(context, settings, schema, "Display", "display_name")),
+                2);
         }
         if (std::ranges::contains(conversion_kinds, EnumConversion::lex_to_serialized_string)) {
-            internal.add(ir.definition(serialized_lookup(context, settings, schema)), 2);
+            emission.header_global.push_back(
+                packed_enum_strings(context, settings, schema, "Serialized", true));
+            internal.add(ir.definition(string_lookup(
+                             context, settings, schema, "Serialized", "serialized_name")),
+                         2);
         }
         auto const conversion_count{conversion_kinds.size()};
         for (std::size_t index{}; index < conversion_count; ++index) {

@@ -687,9 +687,10 @@ class Validator {
             throw std::invalid_argument{"Enum '" + name + "' helpers require native-api"};
         }
         std::set<NativeEnumHelper> helpers;
+        auto const helper_count{
+            ioj::enum_strings<NativeEnumHelper, ioj::Serialized>.offsets.size() - 1};
         for (auto const helper : declarations_.items(enums.helpers[schema])) {
-            if (!try_parse_serialized_native_enum_helper(to_serialized_string(helper)) ||
-                !helpers.insert(helper).second) {
+            if (std::to_underlying(helper) >= helper_count || !helpers.insert(helper).second) {
                 throw std::invalid_argument{"Enum '" + name +
                                             "' has an invalid or duplicate helper"};
             }
@@ -722,6 +723,30 @@ class Validator {
         auto const enum_conversions{declarations_.items(enums.conversions[schema])};
         auto const enum_values{declarations_.items(enums.values[schema])};
         auto const value_count{enum_values.size()};
+        auto const has_string_lookup{
+            helpers.contains(NativeEnumHelper::to_string) ||
+            helpers.contains(NativeEnumHelper::to_display_string) ||
+            helpers.contains(NativeEnumHelper::to_serialized_string) ||
+            std::ranges::any_of(enum_conversions, [](EnumConversion conversion) {
+                return conversion != EnumConversion::try_parse_serialized;
+            })};
+        if (has_string_lookup) {
+            auto const valid_codes{domains.distinct_code_count[domain_row] == value_count && [&] {
+                for (std::size_t index{}; index < value_count; ++index) {
+                    auto const code{domains.code(domain, index)};
+                    if (!code || code->negative || code->magnitude >= value_count) {
+                        return false;
+                    }
+                }
+                return true;
+            }()};
+            if (!valid_codes) {
+                throw std::invalid_argument{
+                    std::format("Enum '{}' string conversions require known, unique, zero-based "
+                                "contiguous codes",
+                                name)};
+            }
+        }
         auto const has_serialized_conversion{
             helpers.contains(NativeEnumHelper::to_serialized_string) ||
             helpers.contains(NativeEnumHelper::try_parse_serialized) ||

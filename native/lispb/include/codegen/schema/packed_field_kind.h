@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include "ioj/enum_strings.h"
+
 #include <cstdint>
 #include <optional>
 #include <string_view>
@@ -20,33 +22,7 @@ enum class PackedFieldKind : PackedFieldKindUnderlying {
     mini_float,
 };
 
-[[nodiscard]] constexpr auto to_serialized_string(PackedFieldKind const value) noexcept
-    -> std::string_view {
-    switch (value) {
-        case PackedFieldKind::unsigned_integer: {
-            return "unsigned";
-        }
-        case PackedFieldKind::signed_integer: {
-            return "signed";
-        }
-        case PackedFieldKind::enumeration: {
-            return "enum";
-        }
-        case PackedFieldKind::linear_quantized: {
-            return "linear-quantized";
-        }
-        case PackedFieldKind::fixed_point: {
-            return "fixed-point";
-        }
-        case PackedFieldKind::mini_float: {
-            return "mini-float";
-        }
-        default: {
-            return "<invalid PackedFieldKind>";
-        }
-    }
-}
-
+using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto
     try_parse_serialized_packed_field_kind(std::string_view const value) noexcept
     -> std::optional<PackedFieldKind> {
@@ -94,3 +70,8 @@ enum class PackedFieldKind : PackedFieldKindUnderlying {
 }
 
 } // namespace lispb::codegen
+template <>
+inline constexpr auto ioj::enum_strings<::lispb::codegen::PackedFieldKind, ioj::Serialized>{
+    ioj::PackedStrings{
+        "unsigned\000signed\000enum\000linear-quantized\000fixed-point\000mini-float",
+        std::array<std::uint8_t, 7>{0, 9, 16, 21, 38, 50, 61}}};

@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ioj/enum_strings.h"
 #include "ioj/enum_traits.h"
 #include "ioj/parse_enum.h"
 
@@ -22,40 +23,8 @@ enum class ShipFireRate : ShipFireRateUnderlying {
     FullAuto = 2,
 };
 
-[[nodiscard]] constexpr auto to_string(ShipFireRate const value) noexcept -> std::string_view {
-    switch (value) {
-        case ShipFireRate::Single: {
-            return "Single";
-        }
-        case ShipFireRate::Burst3: {
-            return "Burst3";
-        }
-        case ShipFireRate::FullAuto: {
-            return "FullAuto";
-        }
-    }
-
-    return "<invalid ShipFireRate>";
-}
-
-[[nodiscard]] constexpr auto to_serialized_string(ShipFireRate const value) noexcept
-    -> std::string_view {
-    switch (value) {
-        case ShipFireRate::Single: {
-            return "single";
-        }
-        case ShipFireRate::Burst3: {
-            return "burst3";
-        }
-        case ShipFireRate::FullAuto: {
-            return "full-auto";
-        }
-        default: {
-            return "<invalid ShipFireRate>";
-        }
-    }
-}
-
+using ioj::to_serialized_string;
+using ioj::to_string;
 [[nodiscard]] constexpr auto
     try_parse_serialized_ship_fire_rate(std::string_view const value) noexcept
     -> std::optional<ShipFireRate> {
@@ -77,3 +46,9 @@ template <>
     return 3;
 }
 } // namespace ioj
+template <>
+inline constexpr auto ioj::enum_strings<::ioj::sim::ShipFireRate, ioj::Name>{
+    ioj::PackedStrings{"Single\000Burst3\000FullAuto", std::array<std::uint8_t, 4>{0, 7, 14, 23}}};
+template <>
+inline constexpr auto ioj::enum_strings<::ioj::sim::ShipFireRate, ioj::Serialized>{
+    ioj::PackedStrings{"single\000burst3\000full-auto", std::array<std::uint8_t, 4>{0, 7, 14, 24}}};

@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ioj/enum_strings.h"
 #include "ioj/parse_enum.h"
 
 #include <array>
@@ -21,27 +22,7 @@ enum class BinaryOperator : BinaryOperatorUnderlying {
     divide,
 };
 
-[[nodiscard]] constexpr auto to_serialized_string(BinaryOperator const value) noexcept
-    -> std::string_view {
-    switch (value) {
-        case BinaryOperator::add: {
-            return "+";
-        }
-        case BinaryOperator::subtract: {
-            return "-";
-        }
-        case BinaryOperator::multiply: {
-            return "*";
-        }
-        case BinaryOperator::divide: {
-            return "/";
-        }
-        default: {
-            return "<invalid BinaryOperator>";
-        }
-    }
-}
-
+using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto
     try_parse_serialized_binary_operator(std::string_view const value) noexcept
     -> std::optional<BinaryOperator> {
@@ -50,3 +31,6 @@ enum class BinaryOperator : BinaryOperatorUnderlying {
 }
 
 } // namespace kernel_codegen::detail
+template <>
+inline constexpr auto ioj::enum_strings<::kernel_codegen::detail::BinaryOperator, ioj::Serialized>{
+    ioj::PackedStrings{"+\000-\000*\000/", std::array<std::uint8_t, 5>{0, 2, 4, 6, 8}}};

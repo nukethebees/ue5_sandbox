@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ioj/enum_strings.h"
 #include "ioj/parse_enum.h"
 
 #include <array>
@@ -19,21 +20,7 @@ enum class FixedPointRounding : FixedPointRoundingUnderlying {
     toward_zero,
 };
 
-[[nodiscard]] constexpr auto to_serialized_string(FixedPointRounding const value) noexcept
-    -> std::string_view {
-    switch (value) {
-        case FixedPointRounding::nearest_even: {
-            return "nearest-even";
-        }
-        case FixedPointRounding::toward_zero: {
-            return "toward-zero";
-        }
-        default: {
-            return "<invalid FixedPointRounding>";
-        }
-    }
-}
-
+using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto
     try_parse_serialized_fixed_point_rounding(std::string_view const value) noexcept
     -> std::optional<FixedPointRounding> {
@@ -42,3 +29,6 @@ enum class FixedPointRounding : FixedPointRoundingUnderlying {
 }
 
 } // namespace lispb::codegen
+template <>
+inline constexpr auto ioj::enum_strings<::lispb::codegen::FixedPointRounding, ioj::Serialized>{
+    ioj::PackedStrings{"nearest-even\000toward-zero", std::array<std::uint8_t, 3>{0, 13, 25}}};

@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ioj/enum_strings.h"
 #include "ioj/parse_enum.h"
 
 #include <array>
@@ -19,21 +20,7 @@ enum class PackedByteOrder : PackedByteOrderUnderlying {
     big_endian,
 };
 
-[[nodiscard]] constexpr auto to_serialized_string(PackedByteOrder const value) noexcept
-    -> std::string_view {
-    switch (value) {
-        case PackedByteOrder::little_endian: {
-            return "little";
-        }
-        case PackedByteOrder::big_endian: {
-            return "big";
-        }
-        default: {
-            return "<invalid PackedByteOrder>";
-        }
-    }
-}
-
+using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto
     try_parse_serialized_packed_byte_order(std::string_view const value) noexcept
     -> std::optional<PackedByteOrder> {
@@ -42,3 +29,6 @@ enum class PackedByteOrder : PackedByteOrderUnderlying {
 }
 
 } // namespace lispb::codegen
+template <>
+inline constexpr auto ioj::enum_strings<::lispb::codegen::PackedByteOrder, ioj::Serialized>{
+    ioj::PackedStrings{"little\000big", std::array<std::uint8_t, 3>{0, 7, 11}}};

@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ioj/enum_strings.h"
 #include "ioj/parse_enum.h"
 
 #include <array>
@@ -20,24 +21,7 @@ enum class EnumReflection : EnumReflectionUnderlying {
     blueprint,
 };
 
-[[nodiscard]] constexpr auto to_serialized_string(EnumReflection const value) noexcept
-    -> std::string_view {
-    switch (value) {
-        case EnumReflection::none: {
-            return "none";
-        }
-        case EnumReflection::uenum: {
-            return "uenum";
-        }
-        case EnumReflection::blueprint: {
-            return "blueprint";
-        }
-        default: {
-            return "<invalid EnumReflection>";
-        }
-    }
-}
-
+using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto
     try_parse_serialized_enum_reflection(std::string_view const value) noexcept
     -> std::optional<EnumReflection> {
@@ -46,3 +30,6 @@ enum class EnumReflection : EnumReflectionUnderlying {
 }
 
 } // namespace lispb::codegen
+template <>
+inline constexpr auto ioj::enum_strings<::lispb::codegen::EnumReflection, ioj::Serialized>{
+    ioj::PackedStrings{"none\000uenum\000blueprint", std::array<std::uint8_t, 4>{0, 5, 11, 21}}};

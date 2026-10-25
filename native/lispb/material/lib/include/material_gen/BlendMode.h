@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include "ioj/enum_strings.h"
+
 #include <cstdint>
 #include <optional>
 #include <string_view>
@@ -19,30 +21,7 @@ enum class BlendMode : BlendModeUnderlying {
     alpha_composite,
 };
 
-[[nodiscard]] constexpr auto to_serialized_string(BlendMode const value) noexcept
-    -> std::string_view {
-    switch (value) {
-        case BlendMode::additive: {
-            return "additive";
-        }
-        case BlendMode::translucent: {
-            return "translucent";
-        }
-        case BlendMode::opaque: {
-            return "opaque";
-        }
-        case BlendMode::masked: {
-            return "masked";
-        }
-        case BlendMode::alpha_composite: {
-            return "alpha-composite";
-        }
-        default: {
-            return "<invalid BlendMode>";
-        }
-    }
-}
-
+using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto try_parse_serialized_blend_mode(std::string_view const value) noexcept
     -> std::optional<BlendMode> {
     switch (value.size()) {
@@ -80,3 +59,7 @@ enum class BlendMode : BlendModeUnderlying {
 }
 
 } // namespace material_synth
+template <>
+inline constexpr auto ioj::enum_strings<::material_synth::BlendMode, ioj::Serialized>{
+    ioj::PackedStrings{"additive\000translucent\000opaque\000masked\000alpha-composite",
+                       std::array<std::uint8_t, 6>{0, 9, 21, 28, 35, 51}}};

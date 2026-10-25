@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ioj/enum_strings.h"
 #include "ioj/enum_traits.h"
 #include "ioj/parse_enum.h"
 
@@ -58,135 +59,7 @@ enum class Property : PropertyUnderlying {
     Target,
 };
 
-[[nodiscard]] constexpr auto to_serialized_string(Property const value) noexcept
-    -> std::string_view {
-    switch (value) {
-        case Property::Id: {
-            return "id";
-        }
-        case Property::Title: {
-            return "title";
-        }
-        case Property::Description: {
-            return "description";
-        }
-        case Property::ParTime: {
-            return "par-time";
-        }
-        case Property::CollisionGrid: {
-            return "collision-grid";
-        }
-        case Property::Unlock: {
-            return "unlock";
-        }
-        case Property::Player: {
-            return "player";
-        }
-        case Property::Camera: {
-            return "camera";
-        }
-        case Property::Mission: {
-            return "mission";
-        }
-        case Property::Objectives: {
-            return "objectives";
-        }
-        case Property::Nodes: {
-            return "nodes";
-        }
-        case Property::Pass: {
-            return "pass";
-        }
-        case Property::Fail: {
-            return "fail";
-        }
-        case Property::Expire: {
-            return "expire";
-        }
-        case Property::DependsOn: {
-            return "depends-on";
-        }
-        case Property::TeamResults: {
-            return "team-results";
-        }
-        case Property::When: {
-            return "when";
-        }
-        case Property::Result: {
-            return "result";
-        }
-        case Property::Entities: {
-            return "entities";
-        }
-        case Property::Settings: {
-            return "settings";
-        }
-        case Property::Levels: {
-            return "levels";
-        }
-        case Property::Campaigns: {
-            return "campaigns";
-        }
-        case Property::Path: {
-            return "path";
-        }
-        case Property::Value: {
-            return "value";
-        }
-        case Property::Error: {
-            return "error";
-        }
-        case Property::LevelSize: {
-            return "level-size";
-        }
-        case Property::CellSize: {
-            return "cell-size";
-        }
-        case Property::LookAt: {
-            return "look-at";
-        }
-        case Property::Distance: {
-            return "distance";
-        }
-        case Property::OffsetDirection: {
-            return "offset-direction";
-        }
-        case Property::Archetype: {
-            return "archetype";
-        }
-        case Property::Team: {
-            return "team";
-        }
-        case Property::Position: {
-            return "position";
-        }
-        case Property::Rotation: {
-            return "rotation";
-        }
-        case Property::SpawnAt: {
-            return "spawn-at";
-        }
-        case Property::Health: {
-            return "health";
-        }
-        case Property::LaserDamage: {
-            return "laser-damage";
-        }
-        case Property::InitialSpawnDelay: {
-            return "initial-spawn-delay";
-        }
-        case Property::SpawnCooldown: {
-            return "spawn-cooldown";
-        }
-        case Property::Target: {
-            return "target";
-        }
-        default: {
-            return "<invalid Property>";
-        }
-    }
-}
-
+using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto try_parse_serialized_property(std::string_view const value) noexcept
     -> std::optional<Property> {
     switch (value.size()) {
@@ -426,21 +299,7 @@ enum class ExpressionSyntax : ExpressionSyntaxUnderlying {
     Reference,
 };
 
-[[nodiscard]] constexpr auto to_serialized_string(ExpressionSyntax const value) noexcept
-    -> std::string_view {
-    switch (value) {
-        case ExpressionSyntax::Definition: {
-            return "expr";
-        }
-        case ExpressionSyntax::Reference: {
-            return "expr-ref";
-        }
-        default: {
-            return "<invalid ExpressionSyntax>";
-        }
-    }
-}
-
+using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto
     try_parse_serialized_expression_syntax(std::string_view const value) noexcept
     -> std::optional<ExpressionSyntax> {
@@ -465,47 +324,7 @@ enum class RecordKind : RecordKindUnderlying {
     LevelCompleted,
 };
 
-[[nodiscard]] constexpr auto to_serialized_string(RecordKind const value) noexcept
-    -> std::string_view {
-    switch (value) {
-        case RecordKind::Level: {
-            return "level";
-        }
-        case RecordKind::Campaign: {
-            return "campaign";
-        }
-        case RecordKind::Catalog: {
-            return "catalog";
-        }
-        case RecordKind::IncludedDefinition: {
-            return "included-definition";
-        }
-        case RecordKind::Entity: {
-            return "entity";
-        }
-        case RecordKind::Mission: {
-            return "mission";
-        }
-        case RecordKind::Camera: {
-            return "camera";
-        }
-        case RecordKind::CollisionGrid: {
-            return "collision-grid";
-        }
-        case RecordKind::Objective: {
-            return "objective";
-        }
-        case RecordKind::TeamResult: {
-            return "team-result";
-        }
-        case RecordKind::LevelCompleted: {
-            return "level-completed";
-        }
-        default: {
-            return "<invalid RecordKind>";
-        }
-    }
-}
+using ioj::to_serialized_string;
 
 } // namespace ioj::levels::authoring
 namespace ioj {
@@ -554,6 +373,20 @@ struct EnumTraits<::ioj::levels::authoring::Property> {
 };
 
 } // namespace ioj
+template <>
+inline constexpr auto ioj::enum_strings<::ioj::levels::authoring::Property, ioj::Serialized>{
+    ioj::PackedStrings{
+        "id\000title\000description\000par-time\000collision-"
+        "grid\000unlock\000player\000camera\000mission\000objectives\000nodes\000pass\000fail\000ex"
+        "pire\000depends-on\000team-"
+        "results\000when\000result\000entities\000settings\000levels\000campaigns\000path\000value"
+        "\000error\000level-size\000cell-size\000look-at\000distance\000offset-"
+        "direction\000archetype\000team\000position\000rotation\000spawn-at\000health\000laser-"
+        "damage\000initial-spawn-delay\000spawn-cooldown\000target",
+        std::array<std::uint16_t, 41>{0,   3,   9,   21,  30,  45,  52,  59,  66,  74,  85,
+                                      91,  96,  101, 108, 119, 132, 137, 144, 153, 162, 169,
+                                      179, 184, 190, 196, 207, 217, 225, 234, 251, 261, 266,
+                                      275, 284, 293, 300, 313, 333, 348, 355}}};
 
 namespace ioj {
 template <>
@@ -564,3 +397,15 @@ struct EnumTraits<::ioj::levels::authoring::ExpressionSyntax> {
 };
 
 } // namespace ioj
+template <>
+inline constexpr auto
+    ioj::enum_strings<::ioj::levels::authoring::ExpressionSyntax, ioj::Serialized>{
+        ioj::PackedStrings{"expr\000expr-ref", std::array<std::uint8_t, 3>{0, 5, 14}}};
+
+template <>
+inline constexpr auto ioj::enum_strings<::ioj::levels::authoring::RecordKind, ioj::Serialized>{
+    ioj::PackedStrings{
+        "level\000campaign\000catalog\000included-"
+        "definition\000entity\000mission\000camera\000collision-grid\000objective\000team-"
+        "result\000level-completed",
+        std::array<std::uint8_t, 12>{0, 6, 15, 23, 43, 50, 58, 65, 80, 90, 102, 118}}};

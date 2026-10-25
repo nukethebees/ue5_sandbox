@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ioj/enum_strings.h"
 #include "ioj/enum_traits.h"
 
 #include "CoreMinimal.h"
@@ -74,5 +75,10 @@ template <>
     return 9;
 }
 } // namespace ioj
+template <>
+inline constexpr auto ioj::enum_strings<::EGameUiIcon, ioj::Name>{
+    ioj::PackedStrings{TEXT("Hive\000Video\000Gameplay\000Audio\000Controls\000Accessibility\000Sys"
+                            "tem\000LevelIncomplete\000LevelComplete"),
+                       std::array<std::uint8_t, 10>{0, 5, 11, 20, 26, 35, 49, 56, 72, 86}}};
 
 SPACEGAMEPRESENTATION_API auto LexToString(EGameUiIcon const value) -> TCHAR const*;

@@ -4,6 +4,7 @@
 #pragma once
 
 #include "ioj/enum_formatter.h"
+#include "ioj/enum_strings.h"
 
 #include <cstdint>
 #include <optional>
@@ -25,77 +26,8 @@ enum class SemanticRelationKind : SemanticRelationKindUnderlying {
     references,
 };
 
-[[nodiscard]] constexpr auto to_string(SemanticRelationKind const value) noexcept
-    -> std::string_view {
-    switch (value) {
-        case SemanticRelationKind::index_into: {
-            return "index_into";
-        }
-        case SemanticRelationKind::count_of: {
-            return "count_of";
-        }
-        case SemanticRelationKind::offset_into: {
-            return "offset_into";
-        }
-        case SemanticRelationKind::discriminates: {
-            return "discriminates";
-        }
-        case SemanticRelationKind::contains: {
-            return "contains";
-        }
-        case SemanticRelationKind::member_of: {
-            return "member_of";
-        }
-        case SemanticRelationKind::quantises: {
-            return "quantises";
-        }
-        case SemanticRelationKind::encoded_as: {
-            return "encoded_as";
-        }
-        case SemanticRelationKind::references: {
-            return "references";
-        }
-    }
-
-    return "<invalid SemanticRelationKind>";
-}
-
-[[nodiscard]] constexpr auto to_serialized_string(SemanticRelationKind const value) noexcept
-    -> std::string_view {
-    switch (value) {
-        case SemanticRelationKind::index_into: {
-            return "index_into";
-        }
-        case SemanticRelationKind::count_of: {
-            return "count_of";
-        }
-        case SemanticRelationKind::offset_into: {
-            return "offset_into";
-        }
-        case SemanticRelationKind::discriminates: {
-            return "discriminates";
-        }
-        case SemanticRelationKind::contains: {
-            return "contains";
-        }
-        case SemanticRelationKind::member_of: {
-            return "member_of";
-        }
-        case SemanticRelationKind::quantises: {
-            return "quantises";
-        }
-        case SemanticRelationKind::encoded_as: {
-            return "encoded_as";
-        }
-        case SemanticRelationKind::references: {
-            return "references";
-        }
-        default: {
-            return "<invalid SemanticRelationKind>";
-        }
-    }
-}
-
+using ioj::to_serialized_string;
+using ioj::to_string;
 [[nodiscard]] constexpr auto
     try_parse_serialized_semantic_relation_kind(std::string_view const value) noexcept
     -> std::optional<SemanticRelationKind> {
@@ -149,6 +81,18 @@ enum class SemanticRelationKind : SemanticRelationKindUnderlying {
 }
 
 } // namespace lispb::codegen
+template <>
+inline constexpr auto ioj::enum_strings<::lispb::codegen::SemanticRelationKind, ioj::Name>{
+    ioj::PackedStrings{
+        "index_into\000count_of\000offset_into\000discriminates\000contains\000member_"
+        "of\000quantises\000encoded_as\000references",
+        std::array<std::uint8_t, 10>{0, 11, 20, 32, 46, 55, 65, 75, 86, 97}}};
+template <>
+inline constexpr auto ioj::enum_strings<::lispb::codegen::SemanticRelationKind, ioj::Serialized>{
+    ioj::PackedStrings{
+        "index_into\000count_of\000offset_into\000discriminates\000contains\000member_"
+        "of\000quantises\000encoded_as\000references",
+        std::array<std::uint8_t, 10>{0, 11, 20, 32, 46, 55, 65, 75, 86, 97}}};
 namespace std {
 template <>
 struct formatter<::lispb::codegen::SemanticRelationKind>

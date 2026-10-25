@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ioj/enum_strings.h"
 #include "ioj/parse_enum.h"
 
 #include <array>
@@ -19,21 +20,7 @@ enum class VariantKind : VariantKindUnderlying {
     in_place,
 };
 
-[[nodiscard]] constexpr auto to_serialized_string(VariantKind const value) noexcept
-    -> std::string_view {
-    switch (value) {
-        case VariantKind::out_of_place: {
-            return "out-of-place";
-        }
-        case VariantKind::in_place: {
-            return "in-place";
-        }
-        default: {
-            return "<invalid VariantKind>";
-        }
-    }
-}
-
+using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto
     try_parse_serialized_variant_kind(std::string_view const value) noexcept
     -> std::optional<VariantKind> {
@@ -42,3 +29,6 @@ enum class VariantKind : VariantKindUnderlying {
 }
 
 } // namespace kernel_codegen::detail
+template <>
+inline constexpr auto ioj::enum_strings<::kernel_codegen::detail::VariantKind, ioj::Serialized>{
+    ioj::PackedStrings{"out-of-place\000in-place", std::array<std::uint8_t, 3>{0, 13, 22}}};

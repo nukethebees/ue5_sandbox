@@ -8,6 +8,7 @@
 #include <format>
 #include <limits>
 #include <type_traits>
+#include <utility>
 
 namespace ioj::sim {
 namespace {
@@ -317,8 +318,9 @@ auto validate_report(LevelTelemetryReport const& report) -> std::expected<void, 
         return result;
     }
     auto const& completion{report.run.completion};
-    if (!try_parse_serialized_level_telemetry_run_end_reason(
-            to_serialized_string(completion.reason))) {
+    auto const reason_count{enum_strings<LevelTelemetryRunEndReason, Serialized>.offsets.size() -
+                            1};
+    if (std::to_underlying(completion.reason) >= reason_count) {
         return std::unexpected{"completion contains an invalid enum value"};
     }
     return {};

@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ioj/enum_strings.h"
 #include "ioj/parse_enum.h"
 
 #include <array>
@@ -19,21 +20,7 @@ enum class QuantizationClipping : QuantizationClippingUnderlying {
     clamp,
 };
 
-[[nodiscard]] constexpr auto to_serialized_string(QuantizationClipping const value) noexcept
-    -> std::string_view {
-    switch (value) {
-        case QuantizationClipping::reject: {
-            return "reject";
-        }
-        case QuantizationClipping::clamp: {
-            return "clamp";
-        }
-        default: {
-            return "<invalid QuantizationClipping>";
-        }
-    }
-}
-
+using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto
     try_parse_serialized_quantization_clipping(std::string_view const value) noexcept
     -> std::optional<QuantizationClipping> {
@@ -42,3 +29,6 @@ enum class QuantizationClipping : QuantizationClippingUnderlying {
 }
 
 } // namespace lispb::codegen
+template <>
+inline constexpr auto ioj::enum_strings<::lispb::codegen::QuantizationClipping, ioj::Serialized>{
+    ioj::PackedStrings{"reject\000clamp", std::array<std::uint8_t, 3>{0, 7, 13}}};

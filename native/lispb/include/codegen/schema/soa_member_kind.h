@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ioj/enum_strings.h"
 #include "ioj/parse_enum.h"
 
 #include <array>
@@ -19,21 +20,7 @@ enum class SoaMemberKind : SoaMemberKindUnderlying {
     nested,
 };
 
-[[nodiscard]] constexpr auto to_serialized_string(SoaMemberKind const value) noexcept
-    -> std::string_view {
-    switch (value) {
-        case SoaMemberKind::array: {
-            return "array";
-        }
-        case SoaMemberKind::nested: {
-            return "nested";
-        }
-        default: {
-            return "<invalid SoaMemberKind>";
-        }
-    }
-}
-
+using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto
     try_parse_serialized_soa_member_kind(std::string_view const value) noexcept
     -> std::optional<SoaMemberKind> {
@@ -42,3 +29,6 @@ enum class SoaMemberKind : SoaMemberKindUnderlying {
 }
 
 } // namespace lispb::codegen
+template <>
+inline constexpr auto ioj::enum_strings<::lispb::codegen::SoaMemberKind, ioj::Serialized>{
+    ioj::PackedStrings{"array\000nested", std::array<std::uint8_t, 3>{0, 6, 13}}};

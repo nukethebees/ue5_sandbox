@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ioj/enum_strings.h"
 #include "ioj/enum_traits.h"
 #include "ioj/parse_enum.h"
 
@@ -21,25 +22,6 @@ enum class ObjectiveOutcome : ObjectiveOutcomeUnderlying {
     Failed,
     Expired,
 };
-
-[[nodiscard]] constexpr auto to_serialized_string(ObjectiveOutcome const value) noexcept
-    -> std::string_view {
-    switch (value) {
-        case ObjectiveOutcome::Passed: {
-            return "passed";
-        }
-        case ObjectiveOutcome::Failed: {
-            return "failed";
-        }
-        case ObjectiveOutcome::Expired: {
-            return "expired";
-        }
-        default: {
-            return "<invalid ObjectiveOutcome>";
-        }
-    }
-}
-
 [[nodiscard]] constexpr auto
     try_parse_serialized_objective_outcome(std::string_view const value) noexcept
     -> std::optional<ObjectiveOutcome> {
@@ -54,22 +36,6 @@ enum class TeamOutcome : TeamOutcomeUnderlying {
     Victory,
     Defeat,
 };
-
-[[nodiscard]] constexpr auto to_serialized_string(TeamOutcome const value) noexcept
-    -> std::string_view {
-    switch (value) {
-        case TeamOutcome::Victory: {
-            return "victory";
-        }
-        case TeamOutcome::Defeat: {
-            return "defeat";
-        }
-        default: {
-            return "<invalid TeamOutcome>";
-        }
-    }
-}
-
 [[nodiscard]] constexpr auto
     try_parse_serialized_team_outcome(std::string_view const value) noexcept
     -> std::optional<TeamOutcome> {
@@ -98,37 +64,6 @@ enum class ExprType : ExprTypeUnderlying {
     ObjectiveResolved,
     EntityKillsReached,
 };
-
-[[nodiscard]] constexpr auto to_serialized_string(ExprType const value) noexcept
-    -> std::string_view {
-    switch (value) {
-        case ExprType::All: {
-            return "all-of";
-        }
-        case ExprType::Any: {
-            return "any-of";
-        }
-        case ExprType::EntityDestroyed: {
-            return "entity-destroyed";
-        }
-        case ExprType::EntityReachedPosition: {
-            return "entity-reached-position";
-        }
-        case ExprType::TimeElapsed: {
-            return "time-elapsed";
-        }
-        case ExprType::ObjectiveResolved: {
-            return "objective-resolved";
-        }
-        case ExprType::EntityKillsReached: {
-            return "entity-kills-reached";
-        }
-        default: {
-            return "<invalid ExprType>";
-        }
-    }
-}
-
 [[nodiscard]] constexpr auto try_parse_serialized_expr_type(std::string_view const value) noexcept
     -> std::optional<ExprType> {
     switch (value.size()) {
@@ -191,6 +126,9 @@ template <>
     return 3;
 }
 } // namespace ioj
+template <>
+inline constexpr auto ioj::enum_strings<::ioj::ObjectiveOutcome, ioj::Serialized>{
+    ioj::PackedStrings{"passed\000failed\000expired", std::array<std::uint8_t, 4>{0, 7, 14, 22}}};
 
 namespace ioj {
 template <>
@@ -200,6 +138,9 @@ struct EnumTraits<::ioj::TeamOutcome> {
 };
 
 } // namespace ioj
+template <>
+inline constexpr auto ioj::enum_strings<::ioj::TeamOutcome, ioj::Serialized>{
+    ioj::PackedStrings{"victory\000defeat", std::array<std::uint8_t, 3>{0, 8, 15}}};
 
 namespace ioj {
 template <>
@@ -214,3 +155,8 @@ struct EnumTraits<::ioj::ExprType> {
 };
 
 } // namespace ioj
+template <>
+inline constexpr auto ioj::enum_strings<::ioj::ExprType, ioj::Serialized>{
+    ioj::PackedStrings{"all-of\000any-of\000entity-destroyed\000entity-reached-position\000time-"
+                       "elapsed\000objective-resolved\000entity-kills-reached",
+                       std::array<std::uint8_t, 8>{0, 7, 14, 31, 55, 68, 87, 108}}};

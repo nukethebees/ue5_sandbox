@@ -3,8 +3,9 @@
 
 #pragma once
 
+#include "ioj/enum_strings.h"
+
 #include <cstdint>
-#include <string_view>
 
 namespace ioj::sim::player {
 using BoostBrakeStateUnderlying = std::uint8_t;
@@ -17,23 +18,10 @@ enum class BoostBrakeState : BoostBrakeStateUnderlying {
     EmergencyBrake = 3,
 };
 
-[[nodiscard]] constexpr auto to_string(BoostBrakeState const value) noexcept -> std::string_view {
-    switch (value) {
-        case BoostBrakeState::None: {
-            return "None";
-        }
-        case BoostBrakeState::Boost: {
-            return "Boost";
-        }
-        case BoostBrakeState::Brake: {
-            return "Brake";
-        }
-        case BoostBrakeState::EmergencyBrake: {
-            return "EmergencyBrake";
-        }
-    }
-
-    return "<invalid BoostBrakeState>";
-}
+using ioj::to_string;
 
 } // namespace ioj::sim::player
+template <>
+inline constexpr auto ioj::enum_strings<::ioj::sim::player::BoostBrakeState, ioj::Name>{
+    ioj::PackedStrings{"None\000Boost\000Brake\000EmergencyBrake",
+                       std::array<std::uint8_t, 5>{0, 5, 11, 17, 32}}};

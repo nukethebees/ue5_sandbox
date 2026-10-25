@@ -151,15 +151,22 @@
     (value ReadableName
       :display-name "Readable Name"
       :serialized-name readable_name))
-  (enum ESparseFixture std::int32_t
+  (enum ENameOnlyFixture std::int32_t
     :native-api true :helpers (to-string try-parse try-parse-serialized formatter)
-    (value Negative :value -2 :serialized-name negative)
-    (value Positive :value 4 :serialized-name positive))
+    (value First :serialized-name first)
+    (value Second :serialized-name second))
   (enum EReorderedFixture std::uint8_t
-    :native-api true :helpers (try-parse-serialized)
+    :native-api true :helpers (to-string to-serialized-string try-parse-serialized)
     (value Later :value 2 :serialized-name later)
     (value First :value 0 :serialized-name first)
-    (value Second :serialized-name second)))
+    (value Second :serialized-name second))
+  (enum EMissingNames std::int32_t
+    :native-api true :count Count
+    :helpers (to-string to-display-string to-serialized-string traits)
+    (value Unnamed :serialized-name unnamed)
+    (value Empty :serialized-name empty)
+    (value Escaped :display-name "quote\"\\line\n" :serialized-name "2digits")
+    (value Count)))
 
 (module packed_enum_fixture
   :header "PackedEnums.h"

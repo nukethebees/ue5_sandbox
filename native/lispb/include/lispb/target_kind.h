@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include "ioj/enum_strings.h"
+
 #include <cstdint>
 #include <optional>
 #include <string_view>
@@ -20,33 +22,7 @@ enum class TargetKind : TargetKindUnderlying {
     group,
 };
 
-[[nodiscard]] constexpr auto to_serialized_string(TargetKind const value) noexcept
-    -> std::string_view {
-    switch (value) {
-        case TargetKind::none: {
-            return "none";
-        }
-        case TargetKind::cpp_schema: {
-            return "cpp-schema";
-        }
-        case TargetKind::slate: {
-            return "slate";
-        }
-        case TargetKind::kernel: {
-            return "kernel";
-        }
-        case TargetKind::material: {
-            return "material";
-        }
-        case TargetKind::group: {
-            return "group";
-        }
-        default: {
-            return "<invalid TargetKind>";
-        }
-    }
-}
-
+using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto try_parse_serialized_target_kind(std::string_view const value) noexcept
     -> std::optional<TargetKind> {
     switch (value.size()) {
@@ -90,3 +66,7 @@ enum class TargetKind : TargetKindUnderlying {
 }
 
 } // namespace lispb
+template <>
+inline constexpr auto ioj::enum_strings<::lispb::TargetKind, ioj::Serialized>{
+    ioj::PackedStrings{"none\000cpp-schema\000slate\000kernel\000material\000group",
+                       std::array<std::uint8_t, 7>{0, 5, 16, 22, 29, 38, 44}}};

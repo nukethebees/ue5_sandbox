@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include "ioj/enum_strings.h"
+
 #include <cstdint>
 #include <optional>
 #include <string_view>
@@ -22,39 +24,7 @@ enum class OperationField : OperationFieldUnderlying {
     aliasing,
 };
 
-[[nodiscard]] constexpr auto to_serialized_string(OperationField const value) noexcept
-    -> std::string_view {
-    switch (value) {
-        case OperationField::operand: {
-            return "operand";
-        }
-        case OperationField::component_operand: {
-            return "component-operand";
-        }
-        case OperationField::components: {
-            return "components";
-        }
-        case OperationField::types: {
-            return "types";
-        }
-        case OperationField::output: {
-            return "output";
-        }
-        case OperationField::expression: {
-            return "expression";
-        }
-        case OperationField::variants: {
-            return "variants";
-        }
-        case OperationField::aliasing: {
-            return "aliasing";
-        }
-        default: {
-            return "<invalid OperationField>";
-        }
-    }
-}
-
+using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto
     try_parse_serialized_operation_field(std::string_view const value) noexcept
     -> std::optional<OperationField> {
@@ -108,3 +78,9 @@ enum class OperationField : OperationFieldUnderlying {
 }
 
 } // namespace kernel_codegen::detail
+template <>
+inline constexpr auto ioj::enum_strings<::kernel_codegen::detail::OperationField, ioj::Serialized>{
+    ioj::PackedStrings{
+        "operand\000component-"
+        "operand\000components\000types\000output\000expression\000variants\000aliasing",
+        std::array<std::uint8_t, 9>{0, 8, 26, 37, 43, 50, 61, 70, 79}}};

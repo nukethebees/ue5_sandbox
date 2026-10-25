@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include "ioj/enum_strings.h"
+
 #include <cstdint>
 #include <optional>
 #include <string_view>
@@ -20,33 +22,7 @@ enum class LevelTelemetryRunEndReason : LevelTelemetryRunEndReasonUnderlying {
     WorldEnd = 5,
 };
 
-[[nodiscard]] constexpr auto to_serialized_string(LevelTelemetryRunEndReason const value) noexcept
-    -> std::string_view {
-    switch (value) {
-        case LevelTelemetryRunEndReason::MissionSucceeded: {
-            return "mission_succeeded";
-        }
-        case LevelTelemetryRunEndReason::MissionFailed: {
-            return "mission_failed";
-        }
-        case LevelTelemetryRunEndReason::BattleResolved: {
-            return "battle_resolved";
-        }
-        case LevelTelemetryRunEndReason::DurationReached: {
-            return "duration_reached";
-        }
-        case LevelTelemetryRunEndReason::OrchestratorReset: {
-            return "orchestrator_reset";
-        }
-        case LevelTelemetryRunEndReason::WorldEnd: {
-            return "world_end";
-        }
-        default: {
-            return "<invalid LevelTelemetryRunEndReason>";
-        }
-    }
-}
-
+using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto
     try_parse_serialized_level_telemetry_run_end_reason(std::string_view const value) noexcept
     -> std::optional<LevelTelemetryRunEndReason> {
@@ -94,3 +70,8 @@ enum class LevelTelemetryRunEndReason : LevelTelemetryRunEndReasonUnderlying {
 }
 
 } // namespace ioj::sim
+template <>
+inline constexpr auto ioj::enum_strings<::ioj::sim::LevelTelemetryRunEndReason, ioj::Serialized>{
+    ioj::PackedStrings{"mission_succeeded\000mission_failed\000battle_resolved\000duration_"
+                       "reached\000orchestrator_reset\000world_end",
+                       std::array<std::uint8_t, 7>{0, 18, 33, 49, 66, 85, 95}}};

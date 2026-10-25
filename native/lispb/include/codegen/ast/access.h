@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ioj/enum_strings.h"
 #include "ioj/parse_enum.h"
 
 #include <array>
@@ -20,23 +21,7 @@ enum class Access : AccessUnderlying {
     private_,
 };
 
-[[nodiscard]] constexpr auto to_serialized_string(Access const value) noexcept -> std::string_view {
-    switch (value) {
-        case Access::public_: {
-            return "public";
-        }
-        case Access::protected_: {
-            return "protected";
-        }
-        case Access::private_: {
-            return "private";
-        }
-        default: {
-            return "<invalid Access>";
-        }
-    }
-}
-
+using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto try_parse_serialized_access(std::string_view const value) noexcept
     -> std::optional<Access> {
     std::array<std::string_view, 3> constexpr names{"public", "protected", "private"};
@@ -44,3 +29,7 @@ enum class Access : AccessUnderlying {
 }
 
 } // namespace lispb::codegen
+template <>
+inline constexpr auto ioj::enum_strings<::lispb::codegen::Access, ioj::Serialized>{
+    ioj::PackedStrings{"public\000protected\000private",
+                       std::array<std::uint8_t, 4>{0, 7, 17, 25}}};

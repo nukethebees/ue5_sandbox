@@ -4,6 +4,7 @@
 #pragma once
 
 #include "ioj/enum_formatter.h"
+#include "ioj/enum_strings.h"
 #include "ioj/enum_traits.h"
 #include "ioj/parse_enum.h"
 
@@ -22,40 +23,8 @@ enum class EntityArchetype : EntityArchetypeUnderlying {
     StaticTurret,
 };
 
-[[nodiscard]] constexpr auto to_string(EntityArchetype const value) noexcept -> std::string_view {
-    switch (value) {
-        case EntityArchetype::PlayerFighter: {
-            return "PlayerFighter";
-        }
-        case EntityArchetype::CapitalShip: {
-            return "CapitalShip";
-        }
-        case EntityArchetype::StaticTurret: {
-            return "StaticTurret";
-        }
-    }
-
-    return "<invalid EntityArchetype>";
-}
-
-[[nodiscard]] constexpr auto to_serialized_string(EntityArchetype const value) noexcept
-    -> std::string_view {
-    switch (value) {
-        case EntityArchetype::PlayerFighter: {
-            return "player-fighter";
-        }
-        case EntityArchetype::CapitalShip: {
-            return "capital-ship";
-        }
-        case EntityArchetype::StaticTurret: {
-            return "static-turret";
-        }
-        default: {
-            return "<invalid EntityArchetype>";
-        }
-    }
-}
-
+using ioj::to_serialized_string;
+using ioj::to_string;
 [[nodiscard]] constexpr auto
     try_parse_serialized_entity_archetype(std::string_view const value) noexcept
     -> std::optional<EntityArchetype> {
@@ -74,6 +43,14 @@ struct EnumTraits<::ioj::levels::EntityArchetype> {
 };
 
 } // namespace ioj
+template <>
+inline constexpr auto ioj::enum_strings<::ioj::levels::EntityArchetype, ioj::Name>{
+    ioj::PackedStrings{"PlayerFighter\000CapitalShip\000StaticTurret",
+                       std::array<std::uint8_t, 4>{0, 14, 26, 39}}};
+template <>
+inline constexpr auto ioj::enum_strings<::ioj::levels::EntityArchetype, ioj::Serialized>{
+    ioj::PackedStrings{"player-fighter\000capital-ship\000static-turret",
+                       std::array<std::uint8_t, 4>{0, 15, 28, 42}}};
 namespace std {
 template <>
 struct formatter<::ioj::levels::EntityArchetype>

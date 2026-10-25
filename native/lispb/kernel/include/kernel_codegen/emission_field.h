@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include "ioj/enum_strings.h"
+
 #include <cstdint>
 #include <optional>
 #include <string_view>
@@ -19,30 +21,7 @@ enum class EmissionField : EmissionFieldUnderlying {
     namespace_,
 };
 
-[[nodiscard]] constexpr auto to_serialized_string(EmissionField const value) noexcept
-    -> std::string_view {
-    switch (value) {
-        case EmissionField::header: {
-            return "header";
-        }
-        case EmissionField::source: {
-            return "source";
-        }
-        case EmissionField::tests: {
-            return "tests";
-        }
-        case EmissionField::header_include: {
-            return "header-include";
-        }
-        case EmissionField::namespace_: {
-            return "namespace";
-        }
-        default: {
-            return "<invalid EmissionField>";
-        }
-    }
-}
-
+using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto
     try_parse_serialized_emission_field(std::string_view const value) noexcept
     -> std::optional<EmissionField> {
@@ -81,3 +60,7 @@ enum class EmissionField : EmissionFieldUnderlying {
 }
 
 } // namespace kernel_codegen::detail
+template <>
+inline constexpr auto ioj::enum_strings<::kernel_codegen::detail::EmissionField, ioj::Serialized>{
+    ioj::PackedStrings{"header\000source\000tests\000header-include\000namespace",
+                       std::array<std::uint8_t, 6>{0, 7, 14, 20, 35, 45}}};

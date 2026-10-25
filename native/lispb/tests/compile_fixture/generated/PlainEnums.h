@@ -4,6 +4,7 @@
 #pragma once
 
 #include "ioj/enum_formatter.h"
+#include "ioj/enum_strings.h"
 #include "ioj/enum_traits.h"
 #include "ioj/parse_enum.h"
 
@@ -22,48 +23,9 @@ enum class EPlainFixture : EPlainFixtureUnderlying {
     ReadableName,
 };
 
-[[nodiscard]] constexpr auto to_string(EPlainFixture const value) noexcept -> std::string_view {
-    switch (value) {
-        case EPlainFixture::First: {
-            return "First";
-        }
-        case EPlainFixture::ReadableName: {
-            return "ReadableName";
-        }
-    }
-
-    return "<invalid EPlainFixture>";
-}
-
-[[nodiscard]] constexpr auto to_display_string(EPlainFixture const value) noexcept
-    -> std::string_view {
-    switch (value) {
-        case EPlainFixture::First: {
-            return "First";
-        }
-        case EPlainFixture::ReadableName: {
-            return "Readable Name";
-        }
-    }
-
-    return "<invalid EPlainFixture>";
-}
-
-[[nodiscard]] constexpr auto to_serialized_string(EPlainFixture const value) noexcept
-    -> std::string_view {
-    switch (value) {
-        case EPlainFixture::First: {
-            return "first";
-        }
-        case EPlainFixture::ReadableName: {
-            return "readable_name";
-        }
-        default: {
-            return "<invalid EPlainFixture>";
-        }
-    }
-}
-
+using ioj::to_display_string;
+using ioj::to_serialized_string;
+using ioj::to_string;
 [[nodiscard]] constexpr auto try_parse_plain_fixture(std::string_view const value) noexcept
     -> std::optional<EPlainFixture> {
     std::array<std::string_view, 2> constexpr names{"First", "ReadableName"};
@@ -77,48 +39,26 @@ enum class EPlainFixture : EPlainFixtureUnderlying {
     return ioj::try_parse_enum<EPlainFixture>(value, names);
 }
 
-using ESparseFixtureUnderlying = std::int32_t;
+using ENameOnlyFixtureUnderlying = std::int32_t;
 
-// Logical bit width: 4.
-enum class ESparseFixture : ESparseFixtureUnderlying {
-    Negative = -2,
-    Positive = 4,
+// Logical bit width: 1.
+enum class ENameOnlyFixture : ENameOnlyFixtureUnderlying {
+    First,
+    Second,
 };
 
-[[nodiscard]] constexpr auto to_string(ESparseFixture const value) noexcept -> std::string_view {
-    switch (value) {
-        case ESparseFixture::Negative: {
-            return "Negative";
-        }
-        case ESparseFixture::Positive: {
-            return "Positive";
-        }
-    }
-
-    return "<invalid ESparseFixture>";
-}
-
-[[nodiscard]] constexpr auto try_parse_sparse_fixture(std::string_view const value) noexcept
-    -> std::optional<ESparseFixture> {
-    if (value == "Negative") {
-        return ESparseFixture::Negative;
-    }
-    if (value == "Positive") {
-        return ESparseFixture::Positive;
-    }
-    return std::nullopt;
+using ioj::to_string;
+[[nodiscard]] constexpr auto try_parse_name_only_fixture(std::string_view const value) noexcept
+    -> std::optional<ENameOnlyFixture> {
+    std::array<std::string_view, 2> constexpr names{"First", "Second"};
+    return ioj::try_parse_enum<ENameOnlyFixture>(value, names);
 }
 
 [[nodiscard]] constexpr auto
-    try_parse_serialized_sparse_fixture(std::string_view const value) noexcept
-    -> std::optional<ESparseFixture> {
-    if (value == "negative") {
-        return ESparseFixture::Negative;
-    }
-    if (value == "positive") {
-        return ESparseFixture::Positive;
-    }
-    return std::nullopt;
+    try_parse_serialized_name_only_fixture(std::string_view const value) noexcept
+    -> std::optional<ENameOnlyFixture> {
+    std::array<std::string_view, 2> constexpr names{"first", "second"};
+    return ioj::try_parse_enum<ENameOnlyFixture>(value, names);
 }
 
 using EReorderedFixtureUnderlying = std::uint8_t;
@@ -130,6 +70,8 @@ enum class EReorderedFixture : EReorderedFixtureUnderlying {
     Second,
 };
 
+using ioj::to_serialized_string;
+using ioj::to_string;
 [[nodiscard]] constexpr auto
     try_parse_serialized_reordered_fixture(std::string_view const value) noexcept
     -> std::optional<EReorderedFixture> {
@@ -144,6 +86,20 @@ enum class EReorderedFixture : EReorderedFixtureUnderlying {
     }
     return std::nullopt;
 }
+
+using EMissingNamesUnderlying = std::int32_t;
+
+// Logical bit width: 2.
+enum class EMissingNames : EMissingNamesUnderlying {
+    Unnamed,
+    Empty,
+    Escaped,
+    Count,
+};
+
+using ioj::to_display_string;
+using ioj::to_serialized_string;
+using ioj::to_string;
 
 } // namespace codegen_compile_fixture
 namespace ioj {
@@ -160,14 +116,56 @@ template <>
     return 2;
 }
 } // namespace ioj
+template <>
+inline constexpr auto ioj::enum_strings<::codegen_compile_fixture::EPlainFixture, ioj::Name>{
+    ioj::PackedStrings{"First\000ReadableName", std::array<std::uint8_t, 3>{0, 6, 19}}};
+template <>
+inline constexpr auto ioj::enum_strings<::codegen_compile_fixture::EPlainFixture, ioj::Display>{
+    ioj::PackedStrings{"First\000Readable Name", std::array<std::uint8_t, 3>{0, 6, 20}}};
+template <>
+inline constexpr auto ioj::enum_strings<::codegen_compile_fixture::EPlainFixture, ioj::Serialized>{
+    ioj::PackedStrings{"first\000readable_name", std::array<std::uint8_t, 3>{0, 6, 20}}};
 namespace std {
 template <>
 struct formatter<::codegen_compile_fixture::EPlainFixture>
     : ioj::EnumFormatter<::codegen_compile_fixture::EPlainFixture> {};
 } // namespace std
 
+template <>
+inline constexpr auto ioj::enum_strings<::codegen_compile_fixture::ENameOnlyFixture, ioj::Name>{
+    ioj::PackedStrings{"First\000Second", std::array<std::uint8_t, 3>{0, 6, 13}}};
 namespace std {
 template <>
-struct formatter<::codegen_compile_fixture::ESparseFixture>
-    : ioj::EnumFormatter<::codegen_compile_fixture::ESparseFixture> {};
+struct formatter<::codegen_compile_fixture::ENameOnlyFixture>
+    : ioj::EnumFormatter<::codegen_compile_fixture::ENameOnlyFixture> {};
 } // namespace std
+
+template <>
+inline constexpr auto ioj::enum_strings<::codegen_compile_fixture::EReorderedFixture, ioj::Name>{
+    ioj::PackedStrings{"First\000Second\000Later", std::array<std::uint8_t, 4>{0, 6, 13, 19}}};
+template <>
+inline constexpr auto
+    ioj::enum_strings<::codegen_compile_fixture::EReorderedFixture, ioj::Serialized>{
+        ioj::PackedStrings{"first\000second\000later", std::array<std::uint8_t, 4>{0, 6, 13, 19}}};
+
+namespace ioj {
+template <>
+struct EnumTraits<::codegen_compile_fixture::EMissingNames> {
+    inline static constexpr std::array values{::codegen_compile_fixture::EMissingNames::Unnamed,
+                                              ::codegen_compile_fixture::EMissingNames::Empty,
+                                              ::codegen_compile_fixture::EMissingNames::Escaped};
+};
+
+} // namespace ioj
+template <>
+inline constexpr auto ioj::enum_strings<::codegen_compile_fixture::EMissingNames, ioj::Name>{
+    ioj::PackedStrings{"Unnamed\000Empty\000Escaped\000Count",
+                       std::array<std::uint8_t, 5>{0, 8, 14, 22, 28}}};
+template <>
+inline constexpr auto ioj::enum_strings<::codegen_compile_fixture::EMissingNames, ioj::Display>{
+    ioj::PackedStrings{"Unnamed\000Empty\000quote\"\\line\n\000Count",
+                       std::array<std::uint8_t, 5>{0, 8, 14, 27, 33}}};
+template <>
+inline constexpr auto ioj::enum_strings<::codegen_compile_fixture::EMissingNames, ioj::Serialized>{
+    ioj::PackedStrings{"unnamed\000empty\0002digits\000<invalid EMissingNames>",
+                       std::array<std::uint8_t, 5>{0, 8, 14, 22, 46}}};

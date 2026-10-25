@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include "ioj/enum_strings.h"
+
 #include <cstdint>
 #include <optional>
 #include <string_view>
@@ -21,36 +23,7 @@ enum class NativeEnumHelper : NativeEnumHelperUnderlying {
     formatter,
 };
 
-[[nodiscard]] constexpr auto to_serialized_string(NativeEnumHelper const value) noexcept
-    -> std::string_view {
-    switch (value) {
-        case NativeEnumHelper::to_string: {
-            return "to-string";
-        }
-        case NativeEnumHelper::try_parse: {
-            return "try-parse";
-        }
-        case NativeEnumHelper::to_display_string: {
-            return "to-display-string";
-        }
-        case NativeEnumHelper::to_serialized_string: {
-            return "to-serialized-string";
-        }
-        case NativeEnumHelper::try_parse_serialized: {
-            return "try-parse-serialized";
-        }
-        case NativeEnumHelper::traits: {
-            return "traits";
-        }
-        case NativeEnumHelper::formatter: {
-            return "formatter";
-        }
-        default: {
-            return "<invalid NativeEnumHelper>";
-        }
-    }
-}
-
+using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto
     try_parse_serialized_native_enum_helper(std::string_view const value) noexcept
     -> std::optional<NativeEnumHelper> {
@@ -95,3 +68,8 @@ enum class NativeEnumHelper : NativeEnumHelperUnderlying {
 }
 
 } // namespace lispb::codegen
+template <>
+inline constexpr auto ioj::enum_strings<::lispb::codegen::NativeEnumHelper, ioj::Serialized>{
+    ioj::PackedStrings{"to-string\000try-parse\000to-display-string\000to-serialized-string\000try-"
+                       "parse-serialized\000traits\000formatter",
+                       std::array<std::uint8_t, 8>{0, 10, 20, 38, 59, 80, 87, 97}}};

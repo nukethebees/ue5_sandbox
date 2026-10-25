@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ioj/enum_strings.h"
 #include "ioj/parse_enum.h"
 
 #include <array>
@@ -19,21 +20,7 @@ enum class OperationKind : OperationKindUnderlying {
     component_map,
 };
 
-[[nodiscard]] constexpr auto to_serialized_string(OperationKind const value) noexcept
-    -> std::string_view {
-    switch (value) {
-        case OperationKind::map: {
-            return "map";
-        }
-        case OperationKind::component_map: {
-            return "component-map";
-        }
-        default: {
-            return "<invalid OperationKind>";
-        }
-    }
-}
-
+using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto
     try_parse_serialized_operation_kind(std::string_view const value) noexcept
     -> std::optional<OperationKind> {
@@ -42,3 +29,6 @@ enum class OperationKind : OperationKindUnderlying {
 }
 
 } // namespace kernel_codegen::detail
+template <>
+inline constexpr auto ioj::enum_strings<::kernel_codegen::detail::OperationKind, ioj::Serialized>{
+    ioj::PackedStrings{"map\000component-map", std::array<std::uint8_t, 3>{0, 4, 18}}};

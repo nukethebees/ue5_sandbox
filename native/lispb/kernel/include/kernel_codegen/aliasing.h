@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ioj/enum_strings.h"
 #include "ioj/parse_enum.h"
 
 #include <array>
@@ -19,21 +20,7 @@ enum class Aliasing : AliasingUnderlying {
     pairwise_disjoint,
 };
 
-[[nodiscard]] constexpr auto to_serialized_string(Aliasing const value) noexcept
-    -> std::string_view {
-    switch (value) {
-        case Aliasing::output_disjoint: {
-            return "output-disjoint";
-        }
-        case Aliasing::pairwise_disjoint: {
-            return "pairwise-disjoint";
-        }
-        default: {
-            return "<invalid Aliasing>";
-        }
-    }
-}
-
+using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto try_parse_serialized_aliasing(std::string_view const value) noexcept
     -> std::optional<Aliasing> {
     std::array<std::string_view, 2> constexpr names{"output-disjoint", "pairwise-disjoint"};
@@ -41,3 +28,7 @@ enum class Aliasing : AliasingUnderlying {
 }
 
 } // namespace kernel_codegen::detail
+template <>
+inline constexpr auto ioj::enum_strings<::kernel_codegen::detail::Aliasing, ioj::Serialized>{
+    ioj::PackedStrings{"output-disjoint\000pairwise-disjoint",
+                       std::array<std::uint8_t, 3>{0, 16, 34}}};

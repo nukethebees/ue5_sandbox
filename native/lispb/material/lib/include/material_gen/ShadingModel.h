@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ioj/enum_strings.h"
 #include "ioj/parse_enum.h"
 
 #include <array>
@@ -19,21 +20,7 @@ enum class ShadingModel : ShadingModelUnderlying {
     unlit,
 };
 
-[[nodiscard]] constexpr auto to_serialized_string(ShadingModel const value) noexcept
-    -> std::string_view {
-    switch (value) {
-        case ShadingModel::default_lit: {
-            return "default-lit";
-        }
-        case ShadingModel::unlit: {
-            return "unlit";
-        }
-        default: {
-            return "<invalid ShadingModel>";
-        }
-    }
-}
-
+using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto
     try_parse_serialized_shading_model(std::string_view const value) noexcept
     -> std::optional<ShadingModel> {
@@ -42,3 +29,6 @@ enum class ShadingModel : ShadingModelUnderlying {
 }
 
 } // namespace material_synth
+template <>
+inline constexpr auto ioj::enum_strings<::material_synth::ShadingModel, ioj::Serialized>{
+    ioj::PackedStrings{"default-lit\000unlit", std::array<std::uint8_t, 3>{0, 12, 18}}};

@@ -5,38 +5,7 @@
 
 namespace {
 auto get_game_ui_icon_name(EGameUiIcon const value) -> TCHAR const* {
-    switch (value) {
-        case EGameUiIcon::Hive: {
-            return TEXT("Hive");
-        }
-        case EGameUiIcon::Video: {
-            return TEXT("Video");
-        }
-        case EGameUiIcon::Gameplay: {
-            return TEXT("Gameplay");
-        }
-        case EGameUiIcon::Audio: {
-            return TEXT("Audio");
-        }
-        case EGameUiIcon::Controls: {
-            return TEXT("Controls");
-        }
-        case EGameUiIcon::Accessibility: {
-            return TEXT("Accessibility");
-        }
-        case EGameUiIcon::System: {
-            return TEXT("System");
-        }
-        case EGameUiIcon::LevelIncomplete: {
-            return TEXT("LevelIncomplete");
-        }
-        case EGameUiIcon::LevelComplete: {
-            return TEXT("LevelComplete");
-        }
-    }
-
-    ensureMsgf(false, TEXT("Unhandled EGameUiIcon value: %lld"), static_cast<int64>(value));
-    return TEXT("<invalid EGameUiIcon>");
+    return ioj::enum_string<ioj::Name>(value).data();
 }
 
 } // namespace

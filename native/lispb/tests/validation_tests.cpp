@@ -64,6 +64,7 @@
 
 #include <cstdint>
 #include <filesystem>
+#include <format>
 #include <map>
 #include <optional>
 #include <stdexcept>
@@ -92,6 +93,33 @@ auto valid_soa_module(CompilerTestContext& context) -> lispb::codegen::ModuleHan
   (struct FData (member values array int32)))
 )")
         .modules.front();
+}
+
+TEST(Validation, EnumStringTablesRequireKnownDenseZeroBasedCodes) {
+    for (auto const values : {"(value First :value -1) (value Second :value 0)",
+                              "(value First :value 0) (value Second :value 2)",
+                              "(value First :value 1) (value Second :value 2)",
+                              "(value First :value 0) (value Second :value 0)",
+                              "(value First :value \"external_code\") (value Second :value 1)"}) {
+        for (auto const options :
+             {":native-api true :helpers (to-string)", ":conversions (lex-to-string)"}) {
+            SCOPED_TRACE(values);
+            SCOPED_TRACE(options);
+            CompilerTestContext context;
+            auto const source{std::format(
+                "(module test :header \"Test.h\" :source \"Test.cpp\" (enum State int {} {}))",
+                options,
+                values)};
+            try {
+                render_test_manifest(context, parse_test_manifest(context, source));
+                FAIL() << "Expected dense enum diagnostic";
+            } catch (std::invalid_argument const& error) {
+                EXPECT_NE(std::string_view{error.what()}.find("zero-based contiguous codes"),
+                          std::string_view::npos)
+                    << error.what();
+            }
+        }
+    }
 }
 
 TEST(Validation, FunctionQualifiersAreSharedByRecordsAndAllSoaReceivers) {
@@ -825,6 +853,7 @@ TEST(Validation, RejectsEnumSemanticWidthsThatCannotRepresentKnownValues) {
         rows_1.front() = [&] {
             auto row_0{enums.clone(rows_1.front())};
             enums.reflection[row_0] = EnumReflection::none;
+            enums.conversions[row_0] = {};
             return row_0;
         }();
         return declarations.range(rows_1);
@@ -849,6 +878,7 @@ TEST(Validation, RejectsEnumSemanticWidthsThatCannotRepresentKnownValues) {
         rows_1.front() = [&] {
             auto row_0{enums.clone(rows_1.front())};
             enums.reflection[row_0] = EnumReflection::none;
+            enums.conversions[row_0] = {};
             return row_0;
         }();
         return declarations.range(rows_1);
@@ -873,6 +903,7 @@ TEST(Validation, RejectsEnumSemanticWidthsThatCannotRepresentKnownValues) {
         rows_1.front() = [&] {
             auto row_0{enums.clone(rows_1.front())};
             enums.reflection[row_0] = EnumReflection::none;
+            enums.conversions[row_0] = {};
             return row_0;
         }();
         return declarations.range(rows_1);
@@ -921,6 +952,7 @@ TEST(Validation, RejectsEnumSemanticWidthsThatCannotRepresentKnownValues) {
         rows_1.front() = [&] {
             auto row_0{enums.clone(rows_1.front())};
             enums.reflection[row_0] = EnumReflection::none;
+            enums.conversions[row_0] = {};
             return row_0;
         }();
         return declarations.range(rows_1);
@@ -976,6 +1008,7 @@ TEST(Validation, AppliesExplicitEnumSignednessToTheSemanticDomain) {
         rows_1.front() = [&] {
             auto row_0{enums.clone(rows_1.front())};
             enums.reflection[row_0] = EnumReflection::none;
+            enums.conversions[row_0] = {};
             return row_0;
         }();
         return declarations.range(rows_1);
@@ -1024,6 +1057,7 @@ TEST(Validation, AppliesExplicitEnumSignednessToTheSemanticDomain) {
         rows_1.front() = [&] {
             auto row_0{enums.clone(rows_1.front())};
             enums.reflection[row_0] = EnumReflection::none;
+            enums.conversions[row_0] = {};
             return row_0;
         }();
         return declarations.range(rows_1);
@@ -1082,6 +1116,7 @@ TEST(Validation, AppliesExplicitEnumSignednessToTheSemanticDomain) {
         rows_1.front() = [&] {
             auto row_0{enums.clone(rows_1.front())};
             enums.reflection[row_0] = EnumReflection::none;
+            enums.conversions[row_0] = {};
             return row_0;
         }();
         return declarations.range(rows_1);

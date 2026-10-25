@@ -4,6 +4,7 @@
 #pragma once
 
 #include "ioj/enum_formatter.h"
+#include "ioj/enum_strings.h"
 #include "ioj/enum_traits.h"
 
 #include <array>
@@ -24,58 +25,6 @@ enum class Team : TeamUnderlying {
     Orange = 4,
     Yellow = 5,
 };
-
-[[nodiscard]] constexpr auto to_string(Team const value) noexcept -> std::string_view {
-    switch (value) {
-        case Team::White: {
-            return "White";
-        }
-        case Team::Red: {
-            return "Red";
-        }
-        case Team::Green: {
-            return "Green";
-        }
-        case Team::Blue: {
-            return "Blue";
-        }
-        case Team::Orange: {
-            return "Orange";
-        }
-        case Team::Yellow: {
-            return "Yellow";
-        }
-    }
-
-    return "<invalid Team>";
-}
-
-[[nodiscard]] constexpr auto to_serialized_string(Team const value) noexcept -> std::string_view {
-    switch (value) {
-        case Team::White: {
-            return "white";
-        }
-        case Team::Red: {
-            return "red";
-        }
-        case Team::Green: {
-            return "green";
-        }
-        case Team::Blue: {
-            return "blue";
-        }
-        case Team::Orange: {
-            return "orange";
-        }
-        case Team::Yellow: {
-            return "yellow";
-        }
-        default: {
-            return "<invalid Team>";
-        }
-    }
-}
-
 [[nodiscard]] constexpr auto try_parse_serialized_team(std::string_view const value) noexcept
     -> std::optional<Team> {
     switch (value.size()) {
@@ -132,6 +81,14 @@ template <>
     return 6;
 }
 } // namespace ioj
+template <>
+inline constexpr auto ioj::enum_strings<::ioj::Team, ioj::Name>{
+    ioj::PackedStrings{"White\000Red\000Green\000Blue\000Orange\000Yellow",
+                       std::array<std::uint8_t, 7>{0, 6, 10, 16, 21, 28, 35}}};
+template <>
+inline constexpr auto ioj::enum_strings<::ioj::Team, ioj::Serialized>{
+    ioj::PackedStrings{"white\000red\000green\000blue\000orange\000yellow",
+                       std::array<std::uint8_t, 7>{0, 6, 10, 16, 21, 28, 35}}};
 namespace std {
 template <>
 struct formatter<::ioj::Team> : ioj::EnumFormatter<::ioj::Team> {};

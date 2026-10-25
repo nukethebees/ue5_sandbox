@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ioj/enum_strings.h"
 #include "ioj/parse_enum.h"
 
 #include <array>
@@ -20,24 +21,7 @@ enum class ConstantKind : ConstantKindUnderlying {
     negative_infinity,
 };
 
-[[nodiscard]] constexpr auto to_serialized_string(ConstantKind const value) noexcept
-    -> std::string_view {
-    switch (value) {
-        case ConstantKind::nan: {
-            return "nan";
-        }
-        case ConstantKind::infinity: {
-            return "infinity";
-        }
-        case ConstantKind::negative_infinity: {
-            return "negative-infinity";
-        }
-        default: {
-            return "<invalid ConstantKind>";
-        }
-    }
-}
-
+using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto
     try_parse_serialized_constant_kind(std::string_view const value) noexcept
     -> std::optional<ConstantKind> {
@@ -46,3 +30,7 @@ enum class ConstantKind : ConstantKindUnderlying {
 }
 
 } // namespace kernel_codegen::detail
+template <>
+inline constexpr auto ioj::enum_strings<::kernel_codegen::detail::ConstantKind, ioj::Serialized>{
+    ioj::PackedStrings{"nan\000infinity\000negative-infinity",
+                       std::array<std::uint8_t, 4>{0, 4, 13, 31}}};

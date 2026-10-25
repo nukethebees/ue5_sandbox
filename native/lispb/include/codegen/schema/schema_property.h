@@ -3,8 +3,9 @@
 
 #pragma once
 
+#include "ioj/enum_strings.h"
+
 #include <cstdint>
-#include <string_view>
 
 namespace lispb::codegen {
 using SchemaPropertyUnderlying = std::uint8_t;
@@ -135,379 +136,44 @@ enum class SchemaProperty : SchemaPropertyUnderlying {
     value_type,
 };
 
-[[nodiscard]] constexpr auto to_serialized_string(SchemaProperty const value) noexcept
-    -> std::string_view {
-    switch (value) {
-        case SchemaProperty::api_name: {
-            return "api-name";
-        }
-        case SchemaProperty::append_columns: {
-            return "append-columns";
-        }
-        case SchemaProperty::apply: {
-            return "apply";
-        }
-        case SchemaProperty::availability_provider: {
-            return "availability-provider";
-        }
-        case SchemaProperty::backend: {
-            return "backend";
-        }
-        case SchemaProperty::bias: {
-            return "bias";
-        }
-        case SchemaProperty::bind_access: {
-            return "bind-access";
-        }
-        case SchemaProperty::bit_order: {
-            return "bit-order";
-        }
-        case SchemaProperty::bit_width: {
-            return "bit-width";
-        }
-        case SchemaProperty::bits: {
-            return "bits";
-        }
-        case SchemaProperty::body: {
-            return "body";
-        }
-        case SchemaProperty::byte_order: {
-            return "byte-order";
-        }
-        case SchemaProperty::category: {
-            return "category";
-        }
-        case SchemaProperty::clipping: {
-            return "clipping";
-        }
-        case SchemaProperty::columns: {
-            return "columns";
-        }
-        case SchemaProperty::comparison: {
-            return "comparison";
-        }
-        case SchemaProperty::comparison_noexcept: {
-            return "comparison-noexcept";
-        }
-        case SchemaProperty::const_: {
-            return "const";
-        }
-        case SchemaProperty::constexpr_: {
-            return "constexpr";
-        }
-        case SchemaProperty::constraint_policy: {
-            return "constraint-policy";
-        }
-        case SchemaProperty::conversion_header: {
-            return "conversion-header";
-        }
-        case SchemaProperty::conversions: {
-            return "conversions";
-        }
-        case SchemaProperty::count: {
-            return "count";
-        }
-        case SchemaProperty::cpp_emission: {
-            return "cpp-emission";
-        }
-        case SchemaProperty::cpp_type: {
-            return "cpp-type";
-        }
-        case SchemaProperty::custom_row: {
-            return "custom-row";
-        }
-        case SchemaProperty::default_: {
-            return "default";
-        }
-        case SchemaProperty::definition_in_source: {
-            return "definition-in-source";
-        }
-        case SchemaProperty::definitions_in_source: {
-            return "definitions-in-source";
-        }
-        case SchemaProperty::dependencies: {
-            return "dependencies";
-        }
-        case SchemaProperty::device: {
-            return "device";
-        }
-        case SchemaProperty::discriminant: {
-            return "discriminant";
-        }
-        case SchemaProperty::display_name: {
-            return "display-name";
-        }
-        case SchemaProperty::encoding: {
-            return "encoding";
-        }
-        case SchemaProperty::enum_array: {
-            return "enum-array";
-        }
-        case SchemaProperty::equivalent_accessor: {
-            return "equivalent-accessor";
-        }
-        case SchemaProperty::equivalent_constructor: {
-            return "equivalent-constructor";
-        }
-        case SchemaProperty::equivalent_member: {
-            return "equivalent-member";
-        }
-        case SchemaProperty::equivalent_type: {
-            return "equivalent-type";
-        }
-        case SchemaProperty::exponent_bits: {
-            return "exponent-bits";
-        }
-        case SchemaProperty::export_specifier: {
-            return "export-specifier";
-        }
-        case SchemaProperty::field_enum_name: {
-            return "field-enum-name";
-        }
-        case SchemaProperty::field_mask_name: {
-            return "field-mask-name";
-        }
-        case SchemaProperty::finite: {
-            return "finite";
-        }
-        case SchemaProperty::fixed_schema: {
-            return "fixed-schema";
-        }
-        case SchemaProperty::format: {
-            return "format";
-        }
-        case SchemaProperty::fractional_bits: {
-            return "fractional-bits";
-        }
-        case SchemaProperty::friend_kind: {
-            return "friend-kind";
-        }
-        case SchemaProperty::friends: {
-            return "friends";
-        }
-        case SchemaProperty::generate_s7_reader: {
-            return "generate-s7-reader";
-        }
-        case SchemaProperty::generate_visitor: {
-            return "generate-visitor";
-        }
-        case SchemaProperty::header: {
-            return "header";
-        }
-        case SchemaProperty::header_include: {
-            return "header-include";
-        }
-        case SchemaProperty::headers: {
-            return "headers";
-        }
-        case SchemaProperty::helper_namespace: {
-            return "helper-namespace";
-        }
-        case SchemaProperty::helpers: {
-            return "helpers";
-        }
-        case SchemaProperty::hidden: {
-            return "hidden";
-        }
-        case SchemaProperty::include_order: {
-            return "include-order";
-        }
-        case SchemaProperty::initializer: {
-            return "initializer";
-        }
-        case SchemaProperty::inline_: {
-            return "inline";
-        }
-        case SchemaProperty::invalid_value: {
-            return "invalid-value";
-        }
-        case SchemaProperty::kind: {
-            return "kind";
-        }
-        case SchemaProperty::layout_only: {
-            return "layout-only";
-        }
-        case SchemaProperty::mask_dimensions: {
-            return "mask-dimensions";
-        }
-        case SchemaProperty::mask_field: {
-            return "mask-field";
-        }
-        case SchemaProperty::max: {
-            return "max";
-        }
-        case SchemaProperty::maximum: {
-            return "maximum";
-        }
-        case SchemaProperty::method_access: {
-            return "method-access";
-        }
-        case SchemaProperty::min: {
-            return "min";
-        }
-        case SchemaProperty::minimum: {
-            return "minimum";
-        }
-        case SchemaProperty::mutable_: {
-            return "mutable";
-        }
-        case SchemaProperty::namespace_: {
-            return "namespace";
-        }
-        case SchemaProperty::native_api: {
-            return "native-api";
-        }
-        case SchemaProperty::native_header_include: {
-            return "native-header-include";
-        }
-        case SchemaProperty::nested: {
-            return "nested";
-        }
-        case SchemaProperty::nodiscard: {
-            return "nodiscard";
-        }
-        case SchemaProperty::noexcept_: {
-            return "noexcept";
-        }
-        case SchemaProperty::nonempty: {
-            return "nonempty";
-        }
-        case SchemaProperty::nonnegative: {
-            return "nonnegative";
-        }
-        case SchemaProperty::nonzero: {
-            return "nonzero";
-        }
-        case SchemaProperty::options_provider: {
-            return "options-provider";
-        }
-        case SchemaProperty::pass_by: {
-            return "pass-by";
-        }
-        case SchemaProperty::positive: {
-            return "positive";
-        }
-        case SchemaProperty::prelude: {
-            return "prelude";
-        }
-        case SchemaProperty::range_helper: {
-            return "range-helper";
-        }
-        case SchemaProperty::reflection: {
-            return "reflection";
-        }
-        case SchemaProperty::required: {
-            return "required";
-        }
-        case SchemaProperty::requires_: {
-            return "requires";
-        }
-        case SchemaProperty::reserved_codes: {
-            return "reserved-codes";
-        }
-        case SchemaProperty::rounding: {
-            return "rounding";
-        }
-        case SchemaProperty::s7_constructor: {
-            return "s7-constructor";
-        }
-        case SchemaProperty::s7_constructors: {
-            return "s7-constructors";
-        }
-        case SchemaProperty::s7_exclude: {
-            return "s7-exclude";
-        }
-        case SchemaProperty::s7_name: {
-            return "s7-name";
-        }
-        case SchemaProperty::s7_positional: {
-            return "s7-positional";
-        }
-        case SchemaProperty::s7_reader_includes: {
-            return "s7-reader-includes";
-        }
-        case SchemaProperty::s7_tag: {
-            return "s7-tag";
-        }
-        case SchemaProperty::sentinel: {
-            return "sentinel";
-        }
-        case SchemaProperty::serialized_name: {
-            return "serialized-name";
-        }
-        case SchemaProperty::sign_bits: {
-            return "sign-bits";
-        }
-        case SchemaProperty::signed_: {
-            return "signed";
-        }
-        case SchemaProperty::significand_bits: {
-            return "significand-bits";
-        }
-        case SchemaProperty::source: {
-            return "source";
-        }
-        case SchemaProperty::spelling: {
-            return "spelling";
-        }
-        case SchemaProperty::state_name: {
-            return "state-name";
-        }
-        case SchemaProperty::static_: {
-            return "static";
-        }
-        case SchemaProperty::step: {
-            return "step";
-        }
-        case SchemaProperty::storage: {
-            return "storage";
-        }
-        case SchemaProperty::suffix: {
-            return "suffix";
-        }
-        case SchemaProperty::tag: {
-            return "tag";
-        }
-        case SchemaProperty::target_name: {
-            return "target-name";
-        }
-        case SchemaProperty::target_storage: {
-            return "target-storage";
-        }
-        case SchemaProperty::template_parameters: {
-            return "template-parameters";
-        }
-        case SchemaProperty::tooltip: {
-            return "tooltip";
-        }
-        case SchemaProperty::total_bits: {
-            return "total-bits";
-        }
-        case SchemaProperty::trailing_return_type: {
-            return "trailing-return-type";
-        }
-        case SchemaProperty::unit: {
-            return "unit";
-        }
-        case SchemaProperty::using_declarations: {
-            return "using-declarations";
-        }
-        case SchemaProperty::validation: {
-            return "validation";
-        }
-        case SchemaProperty::validation_dependencies: {
-            return "validation-dependencies";
-        }
-        case SchemaProperty::value: {
-            return "value";
-        }
-        case SchemaProperty::value_type: {
-            return "value-type";
-        }
-        default: {
-            return "<invalid SchemaProperty>";
-        }
-    }
-}
+using ioj::to_serialized_string;
 
 } // namespace lispb::codegen
+template <>
+inline constexpr auto ioj::enum_strings<::lispb::codegen::SchemaProperty, ioj::Serialized>{
+    ioj::PackedStrings{
+        "api-name\000append-columns\000apply\000availability-provider\000backend\000bias\000bind-"
+        "access\000bit-order\000bit-width\000bits\000body\000byte-"
+        "order\000category\000clipping\000columns\000comparison\000comparison-"
+        "noexcept\000const\000constexpr\000constraint-policy\000conversion-"
+        "header\000conversions\000count\000cpp-emission\000cpp-type\000custom-"
+        "row\000default\000definition-in-source\000definitions-in-"
+        "source\000dependencies\000device\000discriminant\000display-name\000encoding\000enum-"
+        "array\000equivalent-accessor\000equivalent-constructor\000equivalent-member\000equivalent-"
+        "type\000exponent-bits\000export-specifier\000field-enum-name\000field-mask-"
+        "name\000finite\000fixed-schema\000format\000fractional-bits\000friend-"
+        "kind\000friends\000generate-s7-reader\000generate-visitor\000header\000header-"
+        "include\000headers\000helper-namespace\000helpers\000hidden\000include-"
+        "order\000initializer\000inline\000invalid-value\000kind\000layout-only\000mask-"
+        "dimensions\000mask-field\000max\000maximum\000method-"
+        "access\000min\000minimum\000mutable\000namespace\000native-api\000native-header-"
+        "include\000nested\000nodiscard\000noexcept\000nonempty\000nonnegative\000nonzero\000option"
+        "s-provider\000pass-by\000positive\000prelude\000range-"
+        "helper\000reflection\000required\000requires\000reserved-codes\000rounding\000s7-"
+        "constructor\000s7-constructors\000s7-exclude\000s7-name\000s7-positional\000s7-reader-"
+        "includes\000s7-tag\000sentinel\000serialized-name\000sign-bits\000signed\000significand-"
+        "bits\000source\000spelling\000state-"
+        "name\000static\000step\000storage\000suffix\000tag\000target-name\000target-"
+        "storage\000template-parameters\000tooltip\000total-bits\000trailing-return-"
+        "type\000unit\000using-declarations\000validation\000validation-"
+        "dependencies\000value\000value-type",
+        std::array<std::uint16_t, 123>{
+            0,    9,    24,   30,   52,   60,   65,   77,   87,   97,   102,  107,  118,  127,
+            136,  144,  155,  175,  181,  191,  209,  227,  239,  245,  258,  267,  278,  286,
+            307,  329,  342,  349,  362,  375,  384,  395,  415,  438,  456,  472,  486,  503,
+            519,  535,  542,  555,  562,  578,  590,  598,  617,  634,  641,  656,  664,  681,
+            689,  696,  710,  722,  729,  743,  748,  760,  776,  787,  791,  799,  813,  817,
+            825,  833,  843,  854,  876,  883,  893,  902,  911,  923,  931,  948,  956,  965,
+            973,  986,  997,  1006, 1015, 1030, 1039, 1054, 1070, 1081, 1089, 1103, 1122, 1129,
+            1138, 1154, 1164, 1171, 1188, 1195, 1204, 1215, 1222, 1227, 1235, 1242, 1246, 1258,
+            1273, 1293, 1301, 1312, 1333, 1338, 1357, 1368, 1392, 1398, 1409}}};

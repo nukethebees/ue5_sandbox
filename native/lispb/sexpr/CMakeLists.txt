@@ -55,6 +55,7 @@ target_include_directories(lispb-syntax
 target_link_libraries(lispb-syntax
   PUBLIC
     sandbox::native_defaults
+    native-core-headers
   PRIVATE
     lispb-strings
 )

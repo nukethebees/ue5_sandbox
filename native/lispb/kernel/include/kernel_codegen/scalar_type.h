@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ioj/enum_strings.h"
 #include "ioj/parse_enum.h"
 
 #include <array>
@@ -21,27 +22,7 @@ enum class ScalarType : ScalarTypeUnderlying {
     float64,
 };
 
-[[nodiscard]] constexpr auto to_serialized_string(ScalarType const value) noexcept
-    -> std::string_view {
-    switch (value) {
-        case ScalarType::int32: {
-            return "int32";
-        }
-        case ScalarType::uint32: {
-            return "uint32";
-        }
-        case ScalarType::float32: {
-            return "float";
-        }
-        case ScalarType::float64: {
-            return "double";
-        }
-        default: {
-            return "<invalid ScalarType>";
-        }
-    }
-}
-
+using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto try_parse_serialized_scalar_type(std::string_view const value) noexcept
     -> std::optional<ScalarType> {
     std::array<std::string_view, 4> constexpr names{"int32", "uint32", "float", "double"};
@@ -49,3 +30,7 @@ enum class ScalarType : ScalarTypeUnderlying {
 }
 
 } // namespace kernel_codegen::detail
+template <>
+inline constexpr auto ioj::enum_strings<::kernel_codegen::detail::ScalarType, ioj::Serialized>{
+    ioj::PackedStrings{"int32\000uint32\000float\000double",
+                       std::array<std::uint8_t, 5>{0, 6, 13, 19, 26}}};

@@ -44,6 +44,7 @@
 #include <gtest/gtest.h>
 
 #include <cstdint>
+#include <format>
 #include <limits>
 #include <map>
 #include <optional>
@@ -78,6 +79,24 @@ auto render_settings(CompilerTestContext& context, ModuleHandle module) -> Rende
                                                    {module}})};
     EXPECT_EQ(files.size(), 2);
     return RenderedModule{files[0].content, files[1].content};
+}
+
+TEST(Lowering, PackedEnumOffsetsUseTheSmallestStorageIncludingTheSentinel) {
+    for (auto const length : {254, 255, 65534, 65535}) {
+        SCOPED_TRACE(length);
+        CompilerTestContext context;
+        auto const source{
+            std::format("(module test :header \"Test.h\" (enum State :native-api true "
+                        ":helpers (to-serialized-string) (value Only :serialized-name \"{}\")))",
+                        std::string(length, 'x'))};
+        auto const files{render_test_manifest(context, parse_test_manifest(context, source))};
+        ASSERT_EQ(files.size(), 1);
+        auto const bits{length < 255 ? 8 : length < 65535 ? 16 : 32};
+        EXPECT_NE(files.front().content.find(std::format("std::array<std::uint{}_t, 2>", bits)),
+                  std::string::npos);
+        EXPECT_NE(files.front().content.find(std::format("{{0, {}}}", length + 1)),
+                  std::string::npos);
+    }
 }
 
 TEST(Lowering, EmitsStandaloneNativeEnumApi) {
@@ -171,10 +190,10 @@ TEST(Lowering, EmitsStandaloneNativeEnumApi) {
     EXPECT_EQ(header.find("CoreMinimal.h"), std::string::npos);
 
     std::vector<std::pair<NativeEnumHelper, std::string>> const selections{
-        {NativeEnumHelper::to_string, "auto to_string("},
+        {NativeEnumHelper::to_string, "using ioj::to_string;"},
         {NativeEnumHelper::try_parse, "auto try_parse_state("},
-        {NativeEnumHelper::to_display_string, "auto to_display_string("},
-        {NativeEnumHelper::to_serialized_string, "auto to_serialized_string("},
+        {NativeEnumHelper::to_display_string, "using ioj::to_display_string;"},
+        {NativeEnumHelper::to_serialized_string, "using ioj::to_serialized_string;"},
         {NativeEnumHelper::try_parse_serialized, "auto try_parse_serialized_state("},
         {NativeEnumHelper::traits, "struct EnumTraits<"},
     };
@@ -225,7 +244,9 @@ TEST(Lowering, EmitsStandaloneNativeEnumApi) {
         }
         EXPECT_NE(selected.find("enum_count<"), std::string::npos);
         EXPECT_EQ(selected.find("std::array names"), std::string::npos);
-        EXPECT_EQ(selected.contains("<string_view>"), helper != NativeEnumHelper::traits);
+        EXPECT_EQ(selected.contains("<string_view>"),
+                  helper == NativeEnumHelper::try_parse ||
+                      helper == NativeEnumHelper::try_parse_serialized);
         EXPECT_EQ(selected.find("<unordered_map>"), std::string::npos);
     }
 }
@@ -746,7 +767,7 @@ TEST(Lowering, EmitsReflectedEnumsAndSelectableOutOfLineConversions) {
                      auto const new_enumerators{enumerators.append()};
                      auto const enumerators_row{enumerators.index(new_enumerators)};
                      enumerators.name[enumerators_row] = strings.intern("Readable");
-                     enumerators.initializer[enumerators_row] = strings.intern("7");
+                     enumerators.initializer[enumerators_row] = strings.intern("1");
                      enumerators.display_name[enumerators_row] = strings.intern("Readable Value");
                      enumerators.hidden[enumerators_row] = false;
                      enumerators.serialized_name[enumerators_row] = strings.intern("readable");
@@ -779,7 +800,7 @@ TEST(Lowering, EmitsReflectedEnumsAndSelectableOutOfLineConversions) {
     EXPECT_NE(output.header.find("#include \"Modes.generated.h\""), std::string::npos);
     EXPECT_NE(output.header.find("UENUM(BlueprintType)\nenum class EMode : uint8"),
               std::string::npos);
-    EXPECT_NE(output.header.find("Readable = 7 UMETA(DisplayName = \"Readable Value\")"),
+    EXPECT_NE(output.header.find("Readable = 1 UMETA(DisplayName = \"Readable Value\")"),
               std::string::npos);
     EXPECT_NE(output.header.find("COUNT UMETA(Hidden)"), std::string::npos);
     EXPECT_NE(
@@ -798,10 +819,12 @@ TEST(Lowering, EmitsReflectedEnumsAndSelectableOutOfLineConversions) {
     EXPECT_EQ(output.header.find("auto to_string(EMode"), std::string::npos);
 
     EXPECT_NE(output.source.find("#include \"Project/Modes.h\""), std::string::npos);
-    EXPECT_NE(output.source.find("switch (value)"), std::string::npos);
-    EXPECT_NE(output.source.find("TEXT(\"<invalid EMode>\")"), std::string::npos);
-    EXPECT_NE(output.source.find("return TEXT(\"Readable Value\");"), std::string::npos);
-    EXPECT_NE(output.source.find("return TEXT(\"readable\");"), std::string::npos);
+    EXPECT_EQ(output.source.find("switch (value)"), std::string::npos);
+    EXPECT_NE(output.header.find("ioj::enum_strings<::EMode, ioj::Name>"), std::string::npos);
+    EXPECT_NE(output.header.find("Readable Value"), std::string::npos);
+    EXPECT_NE(output.header.find("readable"), std::string::npos);
+    EXPECT_NE(output.source.find("ioj::enum_string<ioj::Serialized>(value).data()"),
+              std::string::npos);
     EXPECT_NE(output.source.find("result = EMode::Readable;"), std::string::npos);
     EXPECT_NE(output.source.find("auto LexToString(EMode const value) -> TCHAR const*"),
               std::string::npos);
@@ -859,7 +882,8 @@ TEST(Lowering, EmitsPlainEnumsInTheirNamespace) {
     EXPECT_NE(output.header.find("namespace project::states {\nauto to_string(EState const value)"),
               std::string::npos);
     EXPECT_EQ(output.header.find("UENUM"), std::string::npos);
-    EXPECT_NE(output.source.find("project::states::EState::Ready"), std::string::npos);
+    EXPECT_NE(output.header.find("ioj::enum_strings<::project::states::EState, ioj::Name>"),
+              std::string::npos);
 }
 
 TEST(Lowering, EmitsCountsForEnumArrays) {
@@ -1021,12 +1045,11 @@ TEST(Lowering, EnumDisplayLookupWithoutOverridesFallsBackDirectly) {
         return new_normal_modules;
     }())};
 
-    EXPECT_NE(
-        output.source.find("auto get_state_display_name(EState const value) -> TCHAR const* {\n"
-                           "    return get_state_name(value);\n"
-                           "}"),
-        std::string::npos);
-    EXPECT_EQ(occurrences(output.source, "switch (value)"), 1);
+    EXPECT_NE(output.source.find("return ioj::enum_string<ioj::Display>(value).data();"),
+              std::string::npos);
+    EXPECT_NE(output.header.find("ioj::enum_strings<::EState, ioj::Display>"), std::string::npos);
+    EXPECT_EQ(output.header.find("ioj::enum_strings<::EState, ioj::Name>"), std::string::npos);
+    EXPECT_EQ(occurrences(output.source, "switch (value)"), 0);
     EXPECT_NE(output.source.find("return FString{get_state_display_name(value)};"),
               std::string::npos);
 }
@@ -1096,19 +1119,10 @@ TEST(Lowering, EnumEscapingAndSparseDisplayCasesPreserveFallbacks) {
 
     EXPECT_NE(output.header.find("UMETA(DisplayName = \"Quote\\\" Slash\\\\\\n\\t\")"),
               std::string::npos);
-    EXPECT_NE(
-        output.source.find("auto get_state_display_name(EState const value) -> TCHAR const* {\n"
-                           "    switch (value) {\n"
-                           "    case EState::Special: {\n"
-                           "        return TEXT(\"Quote\\\" Slash\\\\\\n\\t\");\n"
-                           "    }\n"
-                           "    default: {\n"
-                           "        break;\n"
-                           "    }\n"
-                           "    }\n\n"
-                           "    return get_state_name(value);\n"
-                           "}"),
-        std::string::npos);
+    EXPECT_NE(output.header.find("TEXT(\"Ready\\000Quote\\\" Slash\\\\\\n\\t\")"),
+              std::string::npos);
+    EXPECT_NE(output.source.find("return ioj::enum_string<ioj::Display>(value).data();"),
+              std::string::npos);
     EXPECT_NE(output.source.find("if (value == TEXT(\"a\\\"b\\\\c\\n\")) {\n"
                                  "        result = EState::Special;\n"
                                  "        return true;\n"

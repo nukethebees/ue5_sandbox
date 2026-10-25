@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ioj/enum_strings.h"
 #include "ioj/enum_traits.h"
 #include "ioj/parse_enum.h"
 
@@ -21,24 +22,7 @@ enum class ShipLaserMode : ShipLaserModeUnderlying {
     Hyper = 2,
 };
 
-[[nodiscard]] constexpr auto to_serialized_string(ShipLaserMode const value) noexcept
-    -> std::string_view {
-    switch (value) {
-        case ShipLaserMode::Single: {
-            return "single";
-        }
-        case ShipLaserMode::Double: {
-            return "double";
-        }
-        case ShipLaserMode::Hyper: {
-            return "hyper";
-        }
-        default: {
-            return "<invalid ShipLaserMode>";
-        }
-    }
-}
-
+using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto
     try_parse_serialized_ship_laser_mode(std::string_view const value) noexcept
     -> std::optional<ShipLaserMode> {
@@ -56,3 +40,6 @@ struct EnumTraits<::ioj::sim::ShipLaserMode> {
 };
 
 } // namespace ioj
+template <>
+inline constexpr auto ioj::enum_strings<::ioj::sim::ShipLaserMode, ioj::Serialized>{
+    ioj::PackedStrings{"single\000double\000hyper", std::array<std::uint8_t, 4>{0, 7, 14, 20}}};

@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ioj/enum_strings.h"
 #include "ioj/parse_enum.h"
 
 #include <array>
@@ -19,21 +20,7 @@ enum class PathBase : PathBaseUnderlying {
     build,
 };
 
-[[nodiscard]] constexpr auto to_serialized_string(PathBase const value) noexcept
-    -> std::string_view {
-    switch (value) {
-        case PathBase::project: {
-            return "project-path";
-        }
-        case PathBase::build: {
-            return "build-path";
-        }
-        default: {
-            return "<invalid PathBase>";
-        }
-    }
-}
-
+using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto try_parse_serialized_path_base(std::string_view const value) noexcept
     -> std::optional<PathBase> {
     std::array<std::string_view, 2> constexpr names{"project-path", "build-path"};
@@ -41,3 +28,6 @@ enum class PathBase : PathBaseUnderlying {
 }
 
 } // namespace lispb
+template <>
+inline constexpr auto ioj::enum_strings<::lispb::PathBase, ioj::Serialized>{
+    ioj::PackedStrings{"project-path\000build-path", std::array<std::uint8_t, 3>{0, 13, 24}}};

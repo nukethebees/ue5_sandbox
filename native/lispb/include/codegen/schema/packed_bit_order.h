@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ioj/enum_strings.h"
 #include "ioj/parse_enum.h"
 
 #include <array>
@@ -19,21 +20,7 @@ enum class PackedBitOrder : PackedBitOrderUnderlying {
     most_significant_first,
 };
 
-[[nodiscard]] constexpr auto to_serialized_string(PackedBitOrder const value) noexcept
-    -> std::string_view {
-    switch (value) {
-        case PackedBitOrder::least_significant_first: {
-            return "lsb-first";
-        }
-        case PackedBitOrder::most_significant_first: {
-            return "msb-first";
-        }
-        default: {
-            return "<invalid PackedBitOrder>";
-        }
-    }
-}
-
+using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto
     try_parse_serialized_packed_bit_order(std::string_view const value) noexcept
     -> std::optional<PackedBitOrder> {
@@ -42,3 +29,6 @@ enum class PackedBitOrder : PackedBitOrderUnderlying {
 }
 
 } // namespace lispb::codegen
+template <>
+inline constexpr auto ioj::enum_strings<::lispb::codegen::PackedBitOrder, ioj::Serialized>{
+    ioj::PackedStrings{"lsb-first\000msb-first", std::array<std::uint8_t, 3>{0, 10, 20}}};

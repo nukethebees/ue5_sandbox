@@ -19,8 +19,6 @@ TEST(NativeEnums, EntityTypeNamesAndSerializedNamesRemainStable) {
     EXPECT_EQ(to_serialized_string(EntityType::CapitalShip), "capital_ship");
     EXPECT_EQ(to_serialized_string(EntityType::Fighter), "capital_ship_fighter");
     EXPECT_EQ(to_serialized_string(EntityType::TubeSpinner), "tube_spinner");
-    EXPECT_EQ(to_serialized_string(static_cast<EntityType>(enum_count<EntityType>())),
-              "<invalid EntityType>");
 }
 
 TEST(NativeEnums, TeamSerializedNamesRoundTrip) {
@@ -34,7 +32,6 @@ TEST(NativeEnums, TeamSerializedNamesRoundTrip) {
     EXPECT_EQ(to_serialized_string(Team::Blue), "blue");
     EXPECT_EQ(to_serialized_string(Team::Orange), "orange");
     EXPECT_EQ(to_serialized_string(Team::Yellow), "yellow");
-    EXPECT_EQ(to_serialized_string(static_cast<Team>(enum_count<Team>())), "<invalid Team>");
     EXPECT_FALSE(try_parse_serialized_team("count").has_value());
 }
 

@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ioj/enum_strings.h"
 #include "ioj/parse_enum.h"
 
 #include <array>
@@ -19,21 +20,7 @@ enum class TextureSamplerType : TextureSamplerTypeUnderlying {
     linear_grayscale,
 };
 
-[[nodiscard]] constexpr auto to_serialized_string(TextureSamplerType const value) noexcept
-    -> std::string_view {
-    switch (value) {
-        case TextureSamplerType::linear_color: {
-            return "linear-color";
-        }
-        case TextureSamplerType::linear_grayscale: {
-            return "linear-grayscale";
-        }
-        default: {
-            return "<invalid TextureSamplerType>";
-        }
-    }
-}
-
+using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto
     try_parse_serialized_texture_sampler_type(std::string_view const value) noexcept
     -> std::optional<TextureSamplerType> {
@@ -42,3 +29,6 @@ enum class TextureSamplerType : TextureSamplerTypeUnderlying {
 }
 
 } // namespace material_synth
+template <>
+inline constexpr auto ioj::enum_strings<::material_synth::TextureSamplerType, ioj::Serialized>{
+    ioj::PackedStrings{"linear-color\000linear-grayscale", std::array<std::uint8_t, 3>{0, 13, 30}}};

@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ioj/enum_strings.h"
 #include "ioj/parse_enum.h"
 
 #include <array>
@@ -20,24 +21,7 @@ enum class IntegerVarintEncoding : IntegerVarintEncodingUnderlying {
     zigzag_varint,
 };
 
-[[nodiscard]] constexpr auto to_serialized_string(IntegerVarintEncoding const value) noexcept
-    -> std::string_view {
-    switch (value) {
-        case IntegerVarintEncoding::unsigned_varint: {
-            return "unsigned";
-        }
-        case IntegerVarintEncoding::signed_varint: {
-            return "signed";
-        }
-        case IntegerVarintEncoding::zigzag_varint: {
-            return "zigzag";
-        }
-        default: {
-            return "<invalid IntegerVarintEncoding>";
-        }
-    }
-}
-
+using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto
     try_parse_serialized_integer_varint_encoding(std::string_view const value) noexcept
     -> std::optional<IntegerVarintEncoding> {
@@ -46,3 +30,6 @@ enum class IntegerVarintEncoding : IntegerVarintEncodingUnderlying {
 }
 
 } // namespace lispb::codegen
+template <>
+inline constexpr auto ioj::enum_strings<::lispb::codegen::IntegerVarintEncoding, ioj::Serialized>{
+    ioj::PackedStrings{"unsigned\000signed\000zigzag", std::array<std::uint8_t, 4>{0, 9, 16, 23}}};

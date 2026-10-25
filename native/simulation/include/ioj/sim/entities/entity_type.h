@@ -3,12 +3,12 @@
 
 #pragma once
 
+#include "ioj/enum_strings.h"
 #include "ioj/enum_traits.h"
 
 #include <array>
 #include <cstddef>
 #include <cstdint>
-#include <string_view>
 
 namespace ioj::sim {
 using EntityTypeUnderlying = std::uint8_t;
@@ -22,51 +22,8 @@ enum class EntityType : EntityTypeUnderlying {
     TubeSpinner = 4,
 };
 
-[[nodiscard]] constexpr auto to_string(EntityType const value) noexcept -> std::string_view {
-    switch (value) {
-        case EntityType::PlayerShip: {
-            return "PlayerShip";
-        }
-        case EntityType::Turret: {
-            return "Turret";
-        }
-        case EntityType::CapitalShip: {
-            return "CapitalShip";
-        }
-        case EntityType::Fighter: {
-            return "Fighter";
-        }
-        case EntityType::TubeSpinner: {
-            return "TubeSpinner";
-        }
-    }
-
-    return "<invalid EntityType>";
-}
-
-[[nodiscard]] constexpr auto to_serialized_string(EntityType const value) noexcept
-    -> std::string_view {
-    switch (value) {
-        case EntityType::PlayerShip: {
-            return "player_ship";
-        }
-        case EntityType::Turret: {
-            return "turret";
-        }
-        case EntityType::CapitalShip: {
-            return "capital_ship";
-        }
-        case EntityType::Fighter: {
-            return "capital_ship_fighter";
-        }
-        case EntityType::TubeSpinner: {
-            return "tube_spinner";
-        }
-        default: {
-            return "<invalid EntityType>";
-        }
-    }
-}
+using ioj::to_serialized_string;
+using ioj::to_string;
 
 } // namespace ioj::sim
 namespace ioj {
@@ -84,3 +41,11 @@ template <>
     return 5;
 }
 } // namespace ioj
+template <>
+inline constexpr auto ioj::enum_strings<::ioj::sim::EntityType, ioj::Name>{
+    ioj::PackedStrings{"PlayerShip\000Turret\000CapitalShip\000Fighter\000TubeSpinner",
+                       std::array<std::uint8_t, 6>{0, 11, 18, 30, 38, 50}}};
+template <>
+inline constexpr auto ioj::enum_strings<::ioj::sim::EntityType, ioj::Serialized>{ioj::PackedStrings{
+    "player_ship\000turret\000capital_ship\000capital_ship_fighter\000tube_spinner",
+    std::array<std::uint8_t, 6>{0, 12, 19, 32, 53, 66}}};

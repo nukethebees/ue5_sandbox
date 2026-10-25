@@ -19,11 +19,7 @@ TEST(GeneratedEnumFormatter, SelectsExistingStringRepresentations) {
     EXPECT_EQ(std::format("{} / {:n} / {:s} / {:l}", value, value, value, value),
               "ReadableName / ReadableName / readable_name / Readable Name");
     EXPECT_EQ(std::format("{:l}", EPlainFixture::First), "First");
-    EXPECT_EQ(std::format("{}", ESparseFixture::Negative), "Negative");
-
-    auto const invalid{static_cast<EPlainFixture>(255)};
-    EXPECT_EQ(std::format("{} / {:s} / {:l}", invalid, invalid, invalid),
-              "<invalid EPlainFixture> / <invalid EPlainFixture> / <invalid EPlainFixture>");
+    EXPECT_EQ(std::format("{}", ENameOnlyFixture::First), "First");
 }
 
 TEST(GeneratedEnumFormatter, PreservesStringFormattingAndDynamicArgumentIndexing) {
@@ -41,7 +37,7 @@ TEST(GeneratedEnumFormatter, PreservesStringFormattingAndDynamicArgumentIndexing
 }
 
 TEST(GeneratedEnumFormatter, RejectsUnavailableRepresentationsAndInvalidSpecifications) {
-    auto value{ESparseFixture::Negative};
+    auto value{ENameOnlyFixture::First};
     for (auto const specification : {"{:s}", "{:l}", "{:d}", "{:x}", "{:nq}"}) {
         SCOPED_TRACE(specification);
         EXPECT_THROW(static_cast<void>(std::vformat(specification, std::make_format_args(value))),

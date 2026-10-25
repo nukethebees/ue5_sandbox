@@ -4,6 +4,7 @@
 #pragma once
 
 #include "ioj/constrained_strings.h"
+#include "ioj/enum_strings.h"
 #include "ioj/enum_traits.h"
 #include "PlainEnums.h"
 
@@ -26,17 +27,7 @@ enum class ReaderEnum : ReaderEnumUnderlying {
     Mixed,
 };
 
-[[nodiscard]] constexpr auto to_serialized_string(ReaderEnum const value) noexcept
-    -> std::string_view {
-    switch (value) {
-        case ReaderEnum::Mixed: {
-            return "MixedCase";
-        }
-        default: {
-            return "<invalid ReaderEnum>";
-        }
-    }
-}
+using ioj::to_serialized_string;
 
 struct EmptyReadable {};
 
@@ -396,3 +387,6 @@ struct EnumTraits<::codegen_compile_fixture::ReaderEnum> {
 };
 
 } // namespace ioj
+template <>
+inline constexpr auto ioj::enum_strings<::codegen_compile_fixture::ReaderEnum, ioj::Serialized>{
+    ioj::PackedStrings{"MixedCase", std::array<std::uint8_t, 2>{0, 10}}};

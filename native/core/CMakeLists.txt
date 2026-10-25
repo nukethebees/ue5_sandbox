@@ -31,6 +31,7 @@ target_sources(native-core
     include/ioj/constrained_value.h
     include/ioj/structural_diff.h
     include/ioj/enum_formatter.h
+    include/ioj/enum_strings.h
     include/ioj/try_numeric_cast.h
     include/ioj/constrained_vectors.h
     include/ioj/constrained_strings.h

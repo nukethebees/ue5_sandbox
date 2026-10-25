@@ -637,13 +637,68 @@ TEST(GeneratedEnum, ValuesAndConversions) {
     EXPECT_FALSE(try_parse_plain_fixture("first"));
     static_assert(try_parse_plain_fixture("ReadableName") == EPlainFixture::ReadableName);
     static_assert(!try_parse_serialized_plain_fixture("missing"));
-    EXPECT_EQ(try_parse_sparse_fixture("Negative"), ESparseFixture::Negative);
-    EXPECT_EQ(try_parse_serialized_sparse_fixture("positive"), ESparseFixture::Positive);
-    EXPECT_FALSE(try_parse_sparse_fixture("missing"));
+    EXPECT_EQ(try_parse_name_only_fixture("First"), ENameOnlyFixture::First);
+    EXPECT_EQ(try_parse_serialized_name_only_fixture("second"), ENameOnlyFixture::Second);
+    EXPECT_FALSE(try_parse_name_only_fixture("missing"));
     EXPECT_EQ(try_parse_serialized_reordered_fixture("first"), EReorderedFixture::First);
     EXPECT_EQ(try_parse_serialized_reordered_fixture("later"), EReorderedFixture::Later);
     EXPECT_FALSE(try_parse_serialized_reordered_fixture("missing"));
-    EXPECT_EQ(to_serialized_string(static_cast<EPlainFixture>(99)), "<invalid EPlainFixture>");
+}
+
+#ifndef NDEBUG
+TEST(GeneratedEnum, RejectsValuesOutsideTheTable) {
+    EXPECT_DEATH(static_cast<void>(to_string(static_cast<EPlainFixture>(255))), "index");
+    EXPECT_DEATH(static_cast<void>(to_string(static_cast<ENameOnlyFixture>(-1))), "index");
+}
+#endif
+
+TEST(GeneratedEnum, PackedStringsPreserveCategoriesLayoutsAndTerminators) {
+    using ioj::Display;
+    using ioj::enum_string;
+    using ioj::Name;
+    using ioj::Serialized;
+    static_assert(enum_string<Name>(EPlainFixture::First) == "First");
+    static_assert(enum_string<Display>(EPlainFixture::ReadableName) == "Readable Name");
+    static_assert(enum_string<Serialized>(EPlainFixture::ReadableName) == "readable_name");
+    static_assert(noexcept(enum_string<Name>(EPlainFixture::First)));
+    static_assert(!ioj::HasEnumStrings<int, Name>);
+    static_assert(!ioj::HasEnumStrings<ENameOnlyFixture, Serialized>);
+    static_assert(to_string(ENameOnlyFixture::First) == "First");
+    static_assert(to_string(EReorderedFixture::Later) == "Later");
+    static_assert(to_string(EReorderedFixture::Second) == "Second");
+    static_assert(to_string(EMissingNames::Count) == "Count");
+    static_assert(to_serialized_string(EMissingNames::Count) == "<invalid EMissingNames>");
+    static_assert(to_display_string(EMissingNames::Unnamed) == "Unnamed");
+    static_assert(to_serialized_string(EMissingNames::Empty) == "empty");
+    static_assert(to_display_string(EMissingNames::Escaped) == "quote\"\\line\n");
+    static_assert(to_serialized_string(EMissingNames::Escaped) == "2digits");
+
+    for (auto const value : {EMissingNames::Unnamed,
+                             EMissingNames::Empty,
+                             EMissingNames::Escaped,
+                             EMissingNames::Count}) {
+        for (auto const text :
+             {to_string(value), to_display_string(value), to_serialized_string(value)}) {
+            EXPECT_EQ(text.data()[text.size()], '\0');
+        }
+    }
+    auto const& table{ioj::enum_strings<EPlainFixture, Name>};
+    EXPECT_EQ(to_string(EPlainFixture::First).data(), table.data);
+    EXPECT_EQ(to_string(EPlainFixture::ReadableName).data(), table.data + table.offsets[1]);
+}
+
+TEST(GeneratedEnum, PackedStringsShareLookupAcrossCharacterAndOffsetTypes) {
+    enum class Value { First, Second };
+    constexpr ioj::PackedStrings utf16{u"\U0001f680\0second",
+                                       std::array<std::uint16_t, 3>{0, 3, 10}};
+    constexpr ioj::PackedStrings utf32{U"\U0001f680\0second",
+                                       std::array<std::uint32_t, 3>{0, 2, 9}};
+    static_assert(utf16(Value::First) == u"\U0001f680");
+    static_assert(utf32(Value::First) == U"\U0001f680");
+    static_assert(utf16(Value::Second) == u"second");
+    static_assert(utf32(Value::Second) == U"second");
+    EXPECT_EQ(utf16(Value::First).data()[utf16(Value::First).size()], u'\0');
+    EXPECT_EQ(utf32(Value::Second).data()[utf32(Value::Second).size()], U'\0');
 }
 
 TEST(GeneratedIntegerScalar, ConstantsAndNameLookup) {

@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ioj/enum_strings.h"
 #include "ioj/parse_enum.h"
 
 #include <array>
@@ -20,24 +21,7 @@ enum class MaterialDomain : MaterialDomainUnderlying {
     post_process,
 };
 
-[[nodiscard]] constexpr auto to_serialized_string(MaterialDomain const value) noexcept
-    -> std::string_view {
-    switch (value) {
-        case MaterialDomain::ui: {
-            return "ui";
-        }
-        case MaterialDomain::surface: {
-            return "surface";
-        }
-        case MaterialDomain::post_process: {
-            return "post-process";
-        }
-        default: {
-            return "<invalid MaterialDomain>";
-        }
-    }
-}
-
+using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto
     try_parse_serialized_material_domain(std::string_view const value) noexcept
     -> std::optional<MaterialDomain> {
@@ -46,3 +30,6 @@ enum class MaterialDomain : MaterialDomainUnderlying {
 }
 
 } // namespace material_synth
+template <>
+inline constexpr auto ioj::enum_strings<::material_synth::MaterialDomain, ioj::Serialized>{
+    ioj::PackedStrings{"ui\000surface\000post-process", std::array<std::uint8_t, 4>{0, 3, 11, 24}}};

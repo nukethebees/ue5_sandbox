@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include "ioj/enum_strings.h"
+
 #include <cstdint>
 #include <optional>
 #include <string_view>
@@ -22,39 +24,7 @@ enum class EnumConversion : EnumConversionUnderlying {
     try_parse_serialized,
 };
 
-[[nodiscard]] constexpr auto to_serialized_string(EnumConversion const value) noexcept
-    -> std::string_view {
-    switch (value) {
-        case EnumConversion::lex_to_string: {
-            return "lex-to-string";
-        }
-        case EnumConversion::string_view: {
-            return "string-view";
-        }
-        case EnumConversion::string: {
-            return "string";
-        }
-        case EnumConversion::lex_to_display_string: {
-            return "lex-to-display-string";
-        }
-        case EnumConversion::display_string_view: {
-            return "display-string-view";
-        }
-        case EnumConversion::display_string: {
-            return "display-string";
-        }
-        case EnumConversion::lex_to_serialized_string: {
-            return "lex-to-serialized-string";
-        }
-        case EnumConversion::try_parse_serialized: {
-            return "try-parse-serialized";
-        }
-        default: {
-            return "<invalid EnumConversion>";
-        }
-    }
-}
-
+using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto
     try_parse_serialized_enum_conversion(std::string_view const value) noexcept
     -> std::optional<EnumConversion> {
@@ -114,3 +84,9 @@ enum class EnumConversion : EnumConversionUnderlying {
 }
 
 } // namespace lispb::codegen
+template <>
+inline constexpr auto ioj::enum_strings<::lispb::codegen::EnumConversion, ioj::Serialized>{
+    ioj::PackedStrings{
+        "lex-to-string\000string-view\000string\000lex-to-display-string\000display-string-"
+        "view\000display-string\000lex-to-serialized-string\000try-parse-serialized",
+        std::array<std::uint8_t, 9>{0, 14, 26, 33, 55, 75, 90, 115, 136}}};

@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ioj/enum_strings.h"
 #include "ioj/parse_enum.h"
 
 #include <array>
@@ -21,27 +22,7 @@ enum class IntegerScalarCppEmission : IntegerScalarCppEmissionUnderlying {
     alias,
 };
 
-[[nodiscard]] constexpr auto to_serialized_string(IntegerScalarCppEmission const value) noexcept
-    -> std::string_view {
-    switch (value) {
-        case IntegerScalarCppEmission::none: {
-            return "none";
-        }
-        case IntegerScalarCppEmission::constants: {
-            return "constants";
-        }
-        case IntegerScalarCppEmission::constants_with_names: {
-            return "constants-with-names";
-        }
-        case IntegerScalarCppEmission::alias: {
-            return "alias";
-        }
-        default: {
-            return "<invalid IntegerScalarCppEmission>";
-        }
-    }
-}
-
+using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto
     try_parse_serialized_integer_scalar_cpp_emission(std::string_view const value) noexcept
     -> std::optional<IntegerScalarCppEmission> {
@@ -51,3 +32,8 @@ enum class IntegerScalarCppEmission : IntegerScalarCppEmissionUnderlying {
 }
 
 } // namespace lispb::codegen
+template <>
+inline constexpr auto
+    ioj::enum_strings<::lispb::codegen::IntegerScalarCppEmission, ioj::Serialized>{
+        ioj::PackedStrings{"none\000constants\000constants-with-names\000alias",
+                           std::array<std::uint8_t, 5>{0, 5, 15, 36, 42}}};

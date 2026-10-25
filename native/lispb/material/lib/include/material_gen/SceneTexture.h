@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ioj/enum_strings.h"
 #include "ioj/parse_enum.h"
 
 #include <array>
@@ -19,21 +20,7 @@ enum class SceneTexture : SceneTextureUnderlying {
     scene_depth,
 };
 
-[[nodiscard]] constexpr auto to_serialized_string(SceneTexture const value) noexcept
-    -> std::string_view {
-    switch (value) {
-        case SceneTexture::post_process_input0: {
-            return "post-process-input0";
-        }
-        case SceneTexture::scene_depth: {
-            return "scene-depth";
-        }
-        default: {
-            return "<invalid SceneTexture>";
-        }
-    }
-}
-
+using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto
     try_parse_serialized_scene_texture(std::string_view const value) noexcept
     -> std::optional<SceneTexture> {
@@ -42,3 +29,7 @@ enum class SceneTexture : SceneTextureUnderlying {
 }
 
 } // namespace material_synth
+template <>
+inline constexpr auto ioj::enum_strings<::material_synth::SceneTexture, ioj::Serialized>{
+    ioj::PackedStrings{"post-process-input0\000scene-depth",
+                       std::array<std::uint8_t, 3>{0, 20, 32}}};

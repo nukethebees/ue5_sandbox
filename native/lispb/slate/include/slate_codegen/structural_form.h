@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include "ioj/enum_strings.h"
+
 #include <cstdint>
 #include <optional>
 #include <string_view>
@@ -27,54 +29,7 @@ enum class StructuralForm : StructuralFormUnderlying {
     params,
 };
 
-[[nodiscard]] constexpr auto to_serialized_string(StructuralForm const value) noexcept
-    -> std::string_view {
-    switch (value) {
-        case StructuralForm::widget_class: {
-            return "widget-class";
-        }
-        case StructuralForm::widget_library: {
-            return "widget-library";
-        }
-        case StructuralForm::function: {
-            return "function";
-        }
-        case StructuralForm::vbox: {
-            return "vbox";
-        }
-        case StructuralForm::hbox: {
-            return "hbox";
-        }
-        case StructuralForm::slot: {
-            return "slot";
-        }
-        case StructuralForm::auto_: {
-            return "auto";
-        }
-        case StructuralForm::fill: {
-            return "fill";
-        }
-        case StructuralForm::assign: {
-            return "assign";
-        }
-        case StructuralForm::existing: {
-            return "existing";
-        }
-        case StructuralForm::call: {
-            return "call";
-        }
-        case StructuralForm::let_: {
-            return "let";
-        }
-        case StructuralForm::params: {
-            return "params";
-        }
-        default: {
-            return "<invalid StructuralForm>";
-        }
-    }
-}
-
+using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto
     try_parse_serialized_structural_form(std::string_view const value) noexcept
     -> std::optional<StructuralForm> {
@@ -165,3 +120,10 @@ enum class StructuralForm : StructuralFormUnderlying {
 }
 
 } // namespace slate_codegen::detail
+template <>
+inline constexpr auto ioj::enum_strings<::slate_codegen::detail::StructuralForm, ioj::Serialized>{
+    ioj::PackedStrings{
+        "widget-class\000widget-"
+        "library\000function\000vbox\000hbox\000slot\000auto\000fill\000assign\000existing\000call"
+        "\000let\000params",
+        std::array<std::uint8_t, 14>{0, 13, 28, 37, 42, 47, 52, 57, 62, 69, 78, 83, 87, 94}}};

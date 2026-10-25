@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include "ioj/enum_strings.h"
+
 #include <cstdint>
 #include <optional>
 #include <string_view>
@@ -43,102 +45,7 @@ enum class MaterialOperator : MaterialOperatorUnderlying {
     custom,
 };
 
-[[nodiscard]] constexpr auto to_serialized_string(MaterialOperator const value) noexcept
-    -> std::string_view {
-    switch (value) {
-        case MaterialOperator::float2: {
-            return "float2";
-        }
-        case MaterialOperator::float3: {
-            return "float3";
-        }
-        case MaterialOperator::float4: {
-            return "float4";
-        }
-        case MaterialOperator::add: {
-            return "+";
-        }
-        case MaterialOperator::subtract: {
-            return "-";
-        }
-        case MaterialOperator::multiply: {
-            return "*";
-        }
-        case MaterialOperator::divide: {
-            return "/";
-        }
-        case MaterialOperator::lerp: {
-            return "lerp";
-        }
-        case MaterialOperator::saturate: {
-            return "saturate";
-        }
-        case MaterialOperator::step: {
-            return "step";
-        }
-        case MaterialOperator::time: {
-            return "time";
-        }
-        case MaterialOperator::sin: {
-            return "sin";
-        }
-        case MaterialOperator::cos: {
-            return "cos";
-        }
-        case MaterialOperator::texcoord: {
-            return "texcoord";
-        }
-        case MaterialOperator::per_instance_custom_data: {
-            return "per-instance-custom-data";
-        }
-        case MaterialOperator::sample: {
-            return "sample";
-        }
-        case MaterialOperator::texture: {
-            return "texture";
-        }
-        case MaterialOperator::swizzle: {
-            return "swizzle";
-        }
-        case MaterialOperator::world_position: {
-            return "world-position";
-        }
-        case MaterialOperator::object_position: {
-            return "object-position";
-        }
-        case MaterialOperator::pixel_normal: {
-            return "pixel-normal";
-        }
-        case MaterialOperator::vertex_normal: {
-            return "vertex-normal";
-        }
-        case MaterialOperator::camera_vector: {
-            return "camera-vector";
-        }
-        case MaterialOperator::camera_position: {
-            return "camera-position";
-        }
-        case MaterialOperator::vertex_color: {
-            return "vertex-color";
-        }
-        case MaterialOperator::transform_position: {
-            return "transform-position";
-        }
-        case MaterialOperator::scene_texture: {
-            return "scene-texture";
-        }
-        case MaterialOperator::shader_call: {
-            return "shader-call";
-        }
-        case MaterialOperator::custom: {
-            return "custom";
-        }
-        default: {
-            return "<invalid MaterialOperator>";
-        }
-    }
-}
-
+using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto
     try_parse_serialized_material_operator(std::string_view const value) noexcept
     -> std::optional<MaterialOperator> {
@@ -289,3 +196,14 @@ enum class MaterialOperator : MaterialOperatorUnderlying {
 }
 
 } // namespace material_synth
+template <>
+inline constexpr auto ioj::enum_strings<::material_synth::MaterialOperator, ioj::Serialized>{
+    ioj::PackedStrings{
+        "float2\000float3\000float4\000+\000-\000*\000/"
+        "\000lerp\000saturate\000step\000time\000sin\000cos\000texcoord\000per-instance-custom-"
+        "data\000sample\000texture\000swizzle\000world-position\000object-position\000pixel-"
+        "normal\000vertex-normal\000camera-vector\000camera-position\000vertex-color\000transform-"
+        "position\000scene-texture\000shader-call\000custom",
+        std::array<std::uint16_t, 30>{0,   7,   14,  21,  23,  25,  27,  29,  34,  43,
+                                      48,  53,  57,  61,  70,  95,  102, 110, 118, 133,
+                                      149, 162, 176, 190, 206, 219, 238, 252, 264, 271}}};

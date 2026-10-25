@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ioj/enum_strings.h"
 #include "ioj/parse_enum.h"
 
 #include <array>
@@ -19,21 +20,7 @@ enum class PositionSpace : PositionSpaceUnderlying {
     local,
 };
 
-[[nodiscard]] constexpr auto to_serialized_string(PositionSpace const value) noexcept
-    -> std::string_view {
-    switch (value) {
-        case PositionSpace::world: {
-            return "world";
-        }
-        case PositionSpace::local: {
-            return "local";
-        }
-        default: {
-            return "<invalid PositionSpace>";
-        }
-    }
-}
-
+using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto
     try_parse_serialized_position_space(std::string_view const value) noexcept
     -> std::optional<PositionSpace> {
@@ -42,3 +29,6 @@ enum class PositionSpace : PositionSpaceUnderlying {
 }
 
 } // namespace material_synth
+template <>
+inline constexpr auto ioj::enum_strings<::material_synth::PositionSpace, ioj::Serialized>{
+    ioj::PackedStrings{"world\000local", std::array<std::uint8_t, 3>{0, 6, 12}}};

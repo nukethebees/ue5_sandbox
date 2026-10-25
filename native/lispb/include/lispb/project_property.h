@@ -3,8 +3,9 @@
 
 #pragma once
 
+#include "ioj/enum_strings.h"
+
 #include <cstdint>
-#include <string_view>
 
 namespace lispb {
 using ProjectPropertyUnderlying = std::uint8_t;
@@ -22,40 +23,11 @@ enum class ProjectProperty : ProjectPropertyUnderlying {
     targets,
 };
 
-[[nodiscard]] constexpr auto to_serialized_string(ProjectProperty const value) noexcept
-    -> std::string_view {
-    switch (value) {
-        case ProjectProperty::language_version: {
-            return "language-version";
-        }
-        case ProjectProperty::project_root: {
-            return "project-root";
-        }
-        case ProjectProperty::types: {
-            return "types";
-        }
-        case ProjectProperty::sources: {
-            return "sources";
-        }
-        case ProjectProperty::output_root: {
-            return "output-root";
-        }
-        case ProjectProperty::include_directories: {
-            return "include-directories";
-        }
-        case ProjectProperty::source: {
-            return "source";
-        }
-        case ProjectProperty::artifact: {
-            return "artifact";
-        }
-        case ProjectProperty::targets: {
-            return "targets";
-        }
-        default: {
-            return "<invalid ProjectProperty>";
-        }
-    }
-}
+using ioj::to_serialized_string;
 
 } // namespace lispb
+template <>
+inline constexpr auto ioj::enum_strings<::lispb::ProjectProperty, ioj::Serialized>{
+    ioj::PackedStrings{"language-version\000project-root\000types\000sources\000output-"
+                       "root\000include-directories\000source\000artifact\000targets",
+                       std::array<std::uint8_t, 10>{0, 17, 30, 36, 44, 56, 76, 83, 92, 100}}};

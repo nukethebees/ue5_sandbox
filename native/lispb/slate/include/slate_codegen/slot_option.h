@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ioj/enum_strings.h"
 #include "ioj/parse_enum.h"
 
 #include <array>
@@ -21,27 +22,7 @@ enum class SlotOption : SlotOptionUnderlying {
     valign,
 };
 
-[[nodiscard]] constexpr auto to_serialized_string(SlotOption const value) noexcept
-    -> std::string_view {
-    switch (value) {
-        case SlotOption::weight: {
-            return "weight";
-        }
-        case SlotOption::padding: {
-            return "padding";
-        }
-        case SlotOption::halign: {
-            return "halign";
-        }
-        case SlotOption::valign: {
-            return "valign";
-        }
-        default: {
-            return "<invalid SlotOption>";
-        }
-    }
-}
-
+using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto try_parse_serialized_slot_option(std::string_view const value) noexcept
     -> std::optional<SlotOption> {
     std::array<std::string_view, 4> constexpr names{"weight", "padding", "halign", "valign"};
@@ -49,3 +30,7 @@ enum class SlotOption : SlotOptionUnderlying {
 }
 
 } // namespace slate_codegen::detail
+template <>
+inline constexpr auto ioj::enum_strings<::slate_codegen::detail::SlotOption, ioj::Serialized>{
+    ioj::PackedStrings{"weight\000padding\000halign\000valign",
+                       std::array<std::uint8_t, 5>{0, 7, 15, 22, 29}}};

@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ioj/enum_strings.h"
 #include "ioj/parse_enum.h"
 
 #include <array>
@@ -20,24 +21,7 @@ enum class RecordKind : RecordKindUnderlying {
     union_,
 };
 
-[[nodiscard]] constexpr auto to_serialized_string(RecordKind const value) noexcept
-    -> std::string_view {
-    switch (value) {
-        case RecordKind::struct_: {
-            return "struct";
-        }
-        case RecordKind::class_: {
-            return "class";
-        }
-        case RecordKind::union_: {
-            return "union";
-        }
-        default: {
-            return "<invalid RecordKind>";
-        }
-    }
-}
-
+using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto try_parse_serialized_record_kind(std::string_view const value) noexcept
     -> std::optional<RecordKind> {
     std::array<std::string_view, 3> constexpr names{"struct", "class", "union"};
@@ -45,3 +29,6 @@ enum class RecordKind : RecordKindUnderlying {
 }
 
 } // namespace lispb::codegen
+template <>
+inline constexpr auto ioj::enum_strings<::lispb::codegen::RecordKind, ioj::Serialized>{
+    ioj::PackedStrings{"struct\000class\000union", std::array<std::uint8_t, 4>{0, 7, 13, 19}}};

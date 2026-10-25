@@ -1,8 +1,35 @@
 #include "Sandbox/utilities/tests/LocalTestEnum.h"
+#include "SpaceGamePresentation/ui/style/GameUiStyleTypes.h"
 
 #include "SandboxCoreEngine/enums.h"
 
 #include "Misc/AutomationTest.h"
+
+#include <array>
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FPackedEnumStringsTest,
+                                 "Sandbox.enum.packed_strings",
+                                 EAutomationTestFlags::EditorContext |
+                                     EAutomationTestFlags::EngineFilter)
+
+bool FPackedEnumStringsTest::RunTest(FString const&) {
+    std::array<TCHAR const*, 9> const names{TEXT("Hive"),
+                                            TEXT("Video"),
+                                            TEXT("Gameplay"),
+                                            TEXT("Audio"),
+                                            TEXT("Controls"),
+                                            TEXT("Accessibility"),
+                                            TEXT("System"),
+                                            TEXT("LevelIncomplete"),
+                                            TEXT("LevelComplete")};
+    auto const count{names.size()};
+    for (std::size_t index{}; index < count; ++index) {
+        TestEqual(TEXT("Packed enum export preserves icon names"),
+                  FString{LexToString(static_cast<EGameUiIcon>(index))},
+                  FString{names[index]});
+    }
+    return true;
+}
 
 BEGIN_DEFINE_SPEC(FWithoutEnumTypePrefixSpec,
                   "Sandbox.enum.without_class_prefix",

@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ioj/enum_strings.h"
 #include "ioj/parse_enum.h"
 
 #include <array>
@@ -20,24 +21,7 @@ enum class SettingDevice : SettingDeviceUnderlying {
     controller,
 };
 
-[[nodiscard]] constexpr auto to_serialized_string(SettingDevice const value) noexcept
-    -> std::string_view {
-    switch (value) {
-        case SettingDevice::shared: {
-            return "shared";
-        }
-        case SettingDevice::keyboard_mouse: {
-            return "keyboard-mouse";
-        }
-        case SettingDevice::controller: {
-            return "controller";
-        }
-        default: {
-            return "<invalid SettingDevice>";
-        }
-    }
-}
-
+using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto
     try_parse_serialized_setting_device(std::string_view const value) noexcept
     -> std::optional<SettingDevice> {
@@ -46,3 +30,7 @@ enum class SettingDevice : SettingDeviceUnderlying {
 }
 
 } // namespace lispb::codegen
+template <>
+inline constexpr auto ioj::enum_strings<::lispb::codegen::SettingDevice, ioj::Serialized>{
+    ioj::PackedStrings{"shared\000keyboard-mouse\000controller",
+                       std::array<std::uint8_t, 4>{0, 7, 22, 33}}};

@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include "ioj/enum_strings.h"
+
 #include <cstdint>
 #include <optional>
 #include <string_view>
@@ -30,63 +32,7 @@ enum class MaterialClause : MaterialClauseUnderlying {
     world_position_offset,
 };
 
-[[nodiscard]] constexpr auto to_serialized_string(MaterialClause const value) noexcept
-    -> std::string_view {
-    switch (value) {
-        case MaterialClause::asset: {
-            return "asset";
-        }
-        case MaterialClause::domain: {
-            return "domain";
-        }
-        case MaterialClause::blend: {
-            return "blend";
-        }
-        case MaterialClause::shading: {
-            return "shading";
-        }
-        case MaterialClause::two_sided: {
-            return "two-sided";
-        }
-        case MaterialClause::disable_depth_test: {
-            return "disable-depth-test";
-        }
-        case MaterialClause::usage: {
-            return "usage";
-        }
-        case MaterialClause::adopt_existing: {
-            return "adopt-existing";
-        }
-        case MaterialClause::opacity_mask_clip: {
-            return "opacity-mask-clip";
-        }
-        case MaterialClause::parameter: {
-            return "parameter";
-        }
-        case MaterialClause::let_: {
-            return "let";
-        }
-        case MaterialClause::emissive: {
-            return "emissive";
-        }
-        case MaterialClause::opacity: {
-            return "opacity";
-        }
-        case MaterialClause::base_color: {
-            return "base-color";
-        }
-        case MaterialClause::opacity_mask: {
-            return "opacity-mask";
-        }
-        case MaterialClause::world_position_offset: {
-            return "world-position-offset";
-        }
-        default: {
-            return "<invalid MaterialClause>";
-        }
-    }
-}
-
+using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto
     try_parse_serialized_material_clause(std::string_view const value) noexcept
     -> std::optional<MaterialClause> {
@@ -182,3 +128,11 @@ enum class MaterialClause : MaterialClauseUnderlying {
 }
 
 } // namespace material_synth
+template <>
+inline constexpr auto ioj::enum_strings<::material_synth::MaterialClause, ioj::Serialized>{
+    ioj::PackedStrings{
+        "asset\000domain\000blend\000shading\000two-sided\000disable-depth-test\000usage\000adopt-"
+        "existing\000opacity-mask-clip\000parameter\000let\000emissive\000opacity\000base-"
+        "color\000opacity-mask\000world-position-offset",
+        std::array<std::uint8_t, 17>{
+            0, 6, 13, 19, 27, 37, 56, 62, 77, 95, 105, 109, 118, 126, 137, 150, 172}}};

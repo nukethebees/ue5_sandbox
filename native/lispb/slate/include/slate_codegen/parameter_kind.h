@@ -4,6 +4,7 @@
 #pragma once
 
 #include "ioj/enum_formatter.h"
+#include "ioj/enum_strings.h"
 #include "ioj/parse_enum.h"
 
 #include <array>
@@ -22,46 +23,8 @@ enum class ParameterKind : ParameterKindUnderlying {
     existing,
 };
 
-[[nodiscard]] constexpr auto to_string(ParameterKind const value) noexcept -> std::string_view {
-    switch (value) {
-        case ParameterKind::value: {
-            return "value";
-        }
-        case ParameterKind::callback: {
-            return "callback";
-        }
-        case ParameterKind::factory: {
-            return "factory";
-        }
-        case ParameterKind::existing: {
-            return "existing";
-        }
-    }
-
-    return "<invalid ParameterKind>";
-}
-
-[[nodiscard]] constexpr auto to_serialized_string(ParameterKind const value) noexcept
-    -> std::string_view {
-    switch (value) {
-        case ParameterKind::value: {
-            return "value";
-        }
-        case ParameterKind::callback: {
-            return "callback";
-        }
-        case ParameterKind::factory: {
-            return "factory";
-        }
-        case ParameterKind::existing: {
-            return "existing";
-        }
-        default: {
-            return "<invalid ParameterKind>";
-        }
-    }
-}
-
+using ioj::to_serialized_string;
+using ioj::to_string;
 [[nodiscard]] constexpr auto
     try_parse_serialized_parameter_kind(std::string_view const value) noexcept
     -> std::optional<ParameterKind> {
@@ -70,6 +33,14 @@ enum class ParameterKind : ParameterKindUnderlying {
 }
 
 } // namespace slate_codegen::detail
+template <>
+inline constexpr auto ioj::enum_strings<::slate_codegen::detail::ParameterKind, ioj::Name>{
+    ioj::PackedStrings{"value\000callback\000factory\000existing",
+                       std::array<std::uint8_t, 5>{0, 6, 15, 23, 32}}};
+template <>
+inline constexpr auto ioj::enum_strings<::slate_codegen::detail::ParameterKind, ioj::Serialized>{
+    ioj::PackedStrings{"value\000callback\000factory\000existing",
+                       std::array<std::uint8_t, 5>{0, 6, 15, 23, 32}}};
 namespace std {
 template <>
 struct formatter<::slate_codegen::detail::ParameterKind>

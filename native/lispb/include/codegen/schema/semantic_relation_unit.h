@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ioj/enum_strings.h"
 #include "ioj/parse_enum.h"
 
 #include <array>
@@ -19,21 +20,7 @@ enum class SemanticRelationUnit : SemanticRelationUnitUnderlying {
     bytes,
 };
 
-[[nodiscard]] constexpr auto to_serialized_string(SemanticRelationUnit const value) noexcept
-    -> std::string_view {
-    switch (value) {
-        case SemanticRelationUnit::elements: {
-            return "elements";
-        }
-        case SemanticRelationUnit::bytes: {
-            return "bytes";
-        }
-        default: {
-            return "<invalid SemanticRelationUnit>";
-        }
-    }
-}
-
+using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto
     try_parse_serialized_semantic_relation_unit(std::string_view const value) noexcept
     -> std::optional<SemanticRelationUnit> {
@@ -42,3 +29,6 @@ enum class SemanticRelationUnit : SemanticRelationUnitUnderlying {
 }
 
 } // namespace lispb::codegen
+template <>
+inline constexpr auto ioj::enum_strings<::lispb::codegen::SemanticRelationUnit, ioj::Serialized>{
+    ioj::PackedStrings{"elements\000bytes", std::array<std::uint8_t, 3>{0, 9, 15}}};

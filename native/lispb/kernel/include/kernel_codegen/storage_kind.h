@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ioj/enum_strings.h"
 #include "ioj/parse_enum.h"
 
 #include <array>
@@ -19,21 +20,7 @@ enum class StorageKind : StorageKindUnderlying {
     scalar,
 };
 
-[[nodiscard]] constexpr auto to_serialized_string(StorageKind const value) noexcept
-    -> std::string_view {
-    switch (value) {
-        case StorageKind::array: {
-            return "array";
-        }
-        case StorageKind::scalar: {
-            return "scalar";
-        }
-        default: {
-            return "<invalid StorageKind>";
-        }
-    }
-}
-
+using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto
     try_parse_serialized_storage_kind(std::string_view const value) noexcept
     -> std::optional<StorageKind> {
@@ -42,3 +29,6 @@ enum class StorageKind : StorageKindUnderlying {
 }
 
 } // namespace kernel_codegen::detail
+template <>
+inline constexpr auto ioj::enum_strings<::kernel_codegen::detail::StorageKind, ioj::Serialized>{
+    ioj::PackedStrings{"array\000scalar", std::array<std::uint8_t, 3>{0, 6, 13}}};

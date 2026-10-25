@@ -4,6 +4,7 @@
 #pragma once
 
 #include "ioj/enum_formatter.h"
+#include "ioj/enum_strings.h"
 #include "ioj/parse_enum.h"
 
 #include <array>
@@ -21,40 +22,8 @@ enum class TypeOperation : TypeOperationUnderlying {
     set_element,
 };
 
-[[nodiscard]] constexpr auto to_string(TypeOperation const value) noexcept -> std::string_view {
-    switch (value) {
-        case TypeOperation::add_element: {
-            return "add_element";
-        }
-        case TypeOperation::remove_at_swap: {
-            return "remove_at_swap";
-        }
-        case TypeOperation::set_element: {
-            return "set_element";
-        }
-    }
-
-    return "<invalid TypeOperation>";
-}
-
-[[nodiscard]] constexpr auto to_serialized_string(TypeOperation const value) noexcept
-    -> std::string_view {
-    switch (value) {
-        case TypeOperation::add_element: {
-            return "add-element";
-        }
-        case TypeOperation::remove_at_swap: {
-            return "remove-at-swap";
-        }
-        case TypeOperation::set_element: {
-            return "set-element";
-        }
-        default: {
-            return "<invalid TypeOperation>";
-        }
-    }
-}
-
+using ioj::to_serialized_string;
+using ioj::to_string;
 [[nodiscard]] constexpr auto
     try_parse_serialized_type_operation(std::string_view const value) noexcept
     -> std::optional<TypeOperation> {
@@ -63,6 +32,14 @@ enum class TypeOperation : TypeOperationUnderlying {
 }
 
 } // namespace lispb::codegen
+template <>
+inline constexpr auto ioj::enum_strings<::lispb::codegen::TypeOperation, ioj::Name>{
+    ioj::PackedStrings{"add_element\000remove_at_swap\000set_element",
+                       std::array<std::uint8_t, 4>{0, 12, 27, 39}}};
+template <>
+inline constexpr auto ioj::enum_strings<::lispb::codegen::TypeOperation, ioj::Serialized>{
+    ioj::PackedStrings{"add-element\000remove-at-swap\000set-element",
+                       std::array<std::uint8_t, 4>{0, 12, 27, 39}}};
 namespace std {
 template <>
 struct formatter<::lispb::codegen::TypeOperation>
