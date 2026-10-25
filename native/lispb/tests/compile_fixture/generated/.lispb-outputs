@@ -3,6 +3,7 @@ FieldMasks.h
 Generated.h
 InlineFacade.h
 Mixed.h
+Mixed_reader.h
 NestedSettings.h
 NestedSettings_reader.h
 PackedEnums.h

@@ -8,21 +8,16 @@
 #include "ioj/settings/attack_distance_band_reader.h"
 #include "ioj/sim/fighters/fighter_sim_config.h"
 #include "ioj/sim/lasers/laser_weapon_sim_config_reader.h"
-#include "ioj/type_traits.h"
 #include <ioj/s7/field_reader.h>
 
 #include <array>
-#include <concepts>
 #include <string_view>
 
 namespace ioj::s7 {
-template <typename T>
-    requires ioj::SameAsAny<T, sim::FighterSimConfig, sim::FighterSimConfigOverrides>
-struct TypeReader<T> : RecordReader<T, sim::FighterSimConfigOverrides> {
-    using value_type = T;
-
+template <>
+struct TypeReader<sim::FighterSimConfig> : RecordReader<sim::FighterSimConfig> {
     static void decode(DecodeContext context, value_type& result) {
-        decode_record<Field, is_patch>(
+        decode_record<Field>(
             context, "fighters", field_names, ([&](Field const field, auto const& read) {
                 switch (field) {
                     case Field::max_live_fighters:
@@ -162,7 +157,6 @@ struct TypeReader<T> : RecordReader<T, sim::FighterSimConfigOverrides> {
         "awareness-radius",
         "awareness-scan-frequency",
         "minimum-opportunistic-intercept-deviation-dot-product"};
-    static constexpr bool is_patch{std::same_as<T, ioj::sim::FighterSimConfigOverrides>};
 };
 
 } // namespace ioj::s7

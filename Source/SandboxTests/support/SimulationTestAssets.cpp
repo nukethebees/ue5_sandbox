@@ -26,8 +26,11 @@ auto load_default_level_config() -> USpaceGameLevelConfig* {
                 LogSandboxTest, Error, TEXT("Cannot load default simulation-test asset package"));
             return nullptr;
         }
-        auto const loaded{read_game_settings(
-            TEXT("LevelScripts/Settings/base.scm"), nullptr, *resources, GetTransientPackage())};
+        auto const loaded{read_game_settings(TEXT("LevelScripts/Settings/base.scm"),
+                                             nullptr,
+                                             {},
+                                             *resources,
+                                             GetTransientPackage())};
         check(loaded);
         resolved.Reset(loaded->config);
     }

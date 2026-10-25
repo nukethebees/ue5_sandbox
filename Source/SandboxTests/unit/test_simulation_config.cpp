@@ -105,24 +105,33 @@ TEST_CLASS(SpaceGameLevelConfig, "Sandbox.UnitTests")
                                                 : std::format("{} ", value);
             }
             auto const overlay{path.find("entity-overlay") != std::string_view::npos};
-            auto definition{ioj::levels::authoring::DefinitionReader{}.read_level_source(
-                std::format(R"((level :id 'vector-settings :title "Vector settings"
+            auto const source{std::format(R"((level :id 'vector-settings :title "Vector settings"
                   :player 'player :entities (list
                     (entity :id 'player :archetype 'player-fighter :team 'blue :position '(0 0 0)))
                   :settings (settings :presentation (presentation :{} (settings-section '{} :{} '({}))))))",
-                            overlay ? "entity-overlay" : "capital-ships",
-                            overlay ? "entity-overlay" : "capital-ships",
-                            overlay ? "bar-size-pixels" : "min-small-explosion-range",
-                            components))};
+                                          overlay ? "entity-overlay" : "capital-ships",
+                                          overlay ? "entity-overlay" : "capital-ships",
+                                          overlay ? "bar-size-pixels" : "min-small-explosion-range",
+                                          components)};
+            auto definition{ioj::levels::authoring::DefinitionReader{}.read_level_source(source)};
             if (!definition) {
                 return std::unexpected{FString{
                     UTF8_TO_TCHAR(ioj::levels::format_diagnostics(definition.error()).c_str())}};
             }
-            return read_game_settings(TEXT("LevelScripts/Settings/base.scm"),
-                                      &*definition,
-                                      *resources,
-                                      GetTransientPackage())
-                .transform([](auto const&) {});
+            auto loaded{read_game_settings(TEXT("LevelScripts/Settings/base.scm"),
+                                           &*definition,
+                                           FString{UTF8_TO_TCHAR(source.c_str())},
+                                           *resources,
+                                           GetTransientPackage())};
+            if (loaded) {
+                TestRunner->TestEqual(TEXT("Presentation-only settings retain base fighter speed"),
+                                      loaded->simulation.fighters.speed,
+                                      4500.f);
+                TestRunner->TestEqual(TEXT("Resolved definition uses the same base settings"),
+                                      definition->settings()->fighters.speed,
+                                      loaded->simulation.fighters.speed);
+            }
+            return loaded.transform([](auto const&) {});
         };
         for (auto const path : {"presentation.entity-overlay.bar-size-pixels",
                                 "presentation.capital-ships.min-small-explosion-range"}) {

@@ -3,12 +3,9 @@
 
 #pragma once
 
-#include "ioj/apply_override.h"
 #include "ioj/math_types.h"
 #include "ioj/sim/entities/health.h"
 #include "ioj/sim/lasers/laser_weapon_sim_config.h"
-
-#include <optional>
 
 namespace ioj::sim {
 struct TurretSimConfig {
@@ -18,18 +15,4 @@ struct TurretSimConfig {
     LaserWeaponSimConfig laser{};
     Health max_health{20};
 };
-
-struct TurretSimConfigOverrides {
-    std::optional<float> detection_radius{};
-    std::optional<float> target_refresh_frequency{};
-    std::optional<ioj::sim::LaserWeaponSimConfigOverrides> laser{};
-    std::optional<Health> max_health{};
-};
-
-inline void apply_overrides(TurretSimConfig& target, TurretSimConfigOverrides const& overrides) {
-    ioj::apply_override(target.detection_radius, overrides.detection_radius);
-    ioj::apply_override(target.target_refresh_frequency, overrides.target_refresh_frequency);
-    ioj::apply_override(target.laser, overrides.laser);
-    ioj::apply_override(target.max_health, overrides.max_health);
-}
 } // namespace ioj::sim

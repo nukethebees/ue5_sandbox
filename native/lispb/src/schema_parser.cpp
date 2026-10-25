@@ -1236,7 +1236,6 @@ auto SchemaParser::parse_record(Declarations& declarations, sexpr::FormId const 
                      "comparison",
                      "comparison-noexcept",
                      "generate-settings",
-                     "generate-overrides",
                      "generate-s7-reader",
                      "s7-tag",
                      "s7-positional",
@@ -1273,7 +1272,6 @@ auto SchemaParser::parse_record(Declarations& declarations, sexpr::FormId const 
     records.comparison_noexcept[record_index] = boolean_or(fields, "comparison-noexcept");
     records.constraint_policy[record_index] = optional_identifier(fields, "constraint-policy");
     records.generate_settings[record_index] = boolean_or(fields, "generate-settings");
-    records.generate_overrides[record_index] = boolean_or(fields, "generate-overrides");
     if (boolean_or(fields, "generate-s7-reader")) {
         records.s7_tag[record_index] = parser_.text_id(fields.required("s7-tag"), "S7 record tag");
         records.s7_positional[record_index] = boolean_or(fields, "s7-positional");

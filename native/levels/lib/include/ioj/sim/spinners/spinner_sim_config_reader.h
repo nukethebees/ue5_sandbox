@@ -7,21 +7,16 @@
 #include "ioj/s7/record_reader.h"
 #include "ioj/sim/lasers/laser_weapon_sim_config_reader.h"
 #include "ioj/sim/spinners/spinner_sim_config.h"
-#include "ioj/type_traits.h"
 #include <ioj/s7/field_reader.h>
 
 #include <array>
-#include <concepts>
 #include <string_view>
 
 namespace ioj::s7 {
-template <typename T>
-    requires ioj::SameAsAny<T, sim::SpinnerSimConfig, sim::SpinnerSimConfigOverrides>
-struct TypeReader<T> : RecordReader<T, sim::SpinnerSimConfigOverrides> {
-    using value_type = T;
-
+template <>
+struct TypeReader<sim::SpinnerSimConfig> : RecordReader<sim::SpinnerSimConfig> {
     static void decode(DecodeContext context, value_type& result) {
-        decode_record<Field, is_patch>(
+        decode_record<Field>(
             context, "tube-spinners", field_names, ([&](Field const field, auto const& read) {
                 switch (field) {
                     case Field::yaw_rotation_speed_degrees:
@@ -44,7 +39,6 @@ struct TypeReader<T> : RecordReader<T, sim::SpinnerSimConfigOverrides> {
 
     static constexpr std::array<std::string_view, 2> field_names{"yaw-rotation-speed-degrees",
                                                                  "laser"};
-    static constexpr bool is_patch{std::same_as<T, ioj::sim::SpinnerSimConfigOverrides>};
 };
 
 } // namespace ioj::s7

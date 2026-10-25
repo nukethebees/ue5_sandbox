@@ -3,21 +3,8 @@
 
 #pragma once
 
-#include "ioj/apply_override.h"
-
-#include <optional>
-
 namespace ioj::settings {
 struct TurretPresentation {
     float death_effect_scale{1.f};
 };
-
-struct TurretPresentationOverrides {
-    std::optional<float> death_effect_scale{};
-};
-
-inline void apply_overrides(TurretPresentation& target,
-                            TurretPresentationOverrides const& overrides) {
-    ioj::apply_override(target.death_effect_scale, overrides.death_effect_scale);
-}
 } // namespace ioj::settings

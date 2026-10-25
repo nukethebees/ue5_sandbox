@@ -3,22 +3,8 @@
 
 #pragma once
 
-#include "ioj/apply_override.h"
-
-#include <optional>
-
 namespace ioj::settings {
 struct PlayerPresentation {
     float boost_effect_colour_intensity{75.f};
 };
-
-struct PlayerPresentationOverrides {
-    std::optional<float> boost_effect_colour_intensity{};
-};
-
-inline void apply_overrides(PlayerPresentation& target,
-                            PlayerPresentationOverrides const& overrides) {
-    ioj::apply_override(target.boost_effect_colour_intensity,
-                        overrides.boost_effect_colour_intensity);
-}
 } // namespace ioj::settings

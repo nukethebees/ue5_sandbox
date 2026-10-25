@@ -3,7 +3,6 @@
 #include "lowering_context.h"
 #include "lowering_utils.h"
 #include "record_reader_lowering.h"
-#include "record_settings.h"
 
 #include <codegen/ast/cpp_ir.h>
 #include <codegen/ast/cpp_types.h>
@@ -86,59 +85,6 @@ auto record_node(LoweringContext& context, DeclarationHandle record) -> NodeId {
     return created_record;
 }
 
-auto record_overrides(LoweringContext& context, DeclarationHandle const record)
-    -> std::vector<NodeId> {
-    auto& ir{context.ir};
-    auto const& records{context.declarations.records};
-    auto const& members{context.declarations.record_members};
-    auto const row{records.index(record)};
-    auto const name{context.text(records.name[row])};
-    auto const override_name{name + "Overrides"};
-    NodeListBuilder fields{ir};
-    std::vector<NodeId> statements;
-    for (auto const member : context.declarations.items(records.members[row])) {
-        auto const index{members.index(member)};
-        if (members.settings_exclude[index]) {
-            continue;
-        }
-        auto type{record_member_type(context, member)};
-        auto const nested{settings_record(context.semantic, context.module, members.type[index])};
-        auto const partial{nested.has_value() && !members.count[index]};
-        if (partial) {
-            type = ir.types.derive(
-                type, context.text(context.semantic.cpp_spelling(*nested)) + "Overrides");
-        }
-        fields.add(ir.instance_member(
-                       ir.types.template_type(
-                           ir.types.named("std::optional",
-                                          {ir.types.dependency("std::optional", "optional")}),
-                           {type}),
-                       members.name[index],
-                       ir.literal("")),
-                   1);
-
-        auto const field_name{context.text(members.name[index])};
-        auto const source{ir.member_access(ir.named("overrides"), field_name)};
-        auto const target{ir.member_access(ir.named("target"), field_name)};
-        statements.push_back(ir.expr_stmt(
-            ir.call(ir.named("ioj::apply_override",
-                             {ir.types.dependency("ioj::apply_override", "ioj/apply_override.h")}),
-                    {target, source})));
-    }
-    auto const overrides{
-        ir.record(ir.strings.intern(override_name), fields.build(), RecordKind::struct_)};
-    ir.set_record_export_specifier(overrides, records.export_specifier[row]);
-    auto const apply{ir.function("apply_overrides", "void")};
-    ir.set_function_parameters(
-        apply,
-        {ir.parameter(name + "&", statements.empty() ? "" : "target"),
-         ir.parameter(override_name + " const&", statements.empty() ? "" : "overrides")});
-    ir.function_flags(apply).set_is_inline(true);
-    ir.function_flags(apply).set_define_in_header(true);
-    ir.set_function_body(apply, statements);
-    return {overrides, ir.header_function(apply)};
-}
-
 } // namespace
 
 auto lower_record(LoweringContext& context, DeclarationHandle schema) -> DeclarationEmission {
@@ -152,10 +98,6 @@ auto lower_record(LoweringContext& context, DeclarationHandle schema) -> Declara
             "ioj::ConstrainedValue<" + name + "Value, " + context.text(*policy) + ">",
             {ir.types.dependency("ioj::ConstrainedValue", "ioj/constrained_value.h")})};
         result.header.push_back(ir.using_declaration(records.name[row], constrained));
-    }
-    if (records.generate_overrides[records.index(schema)]) {
-        auto const overrides{record_overrides(context, schema)};
-        result.header.insert(result.header.end(), overrides.begin(), overrides.end());
     }
     if (records.s7_tag[records.index(schema)]) {
         lower_record_reader(context, schema, result);

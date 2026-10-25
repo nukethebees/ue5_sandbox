@@ -6,21 +6,16 @@
 #include "ioj/s7/field_constraints.h"
 #include "ioj/s7/record_reader.h"
 #include "ioj/sim/levels/hud_settings.h"
-#include "ioj/type_traits.h"
 #include <ioj/s7/field_reader.h>
 
 #include <array>
-#include <concepts>
 #include <string_view>
 
 namespace ioj::s7 {
-template <typename T>
-    requires ioj::SameAsAny<T, sim::HudSettings, sim::HudSettingsOverrides>
-struct TypeReader<T> : RecordReader<T, sim::HudSettingsOverrides> {
-    using value_type = T;
-
+template <>
+struct TypeReader<sim::HudSettings> : RecordReader<sim::HudSettings> {
     static void decode(DecodeContext context, value_type& result) {
-        decode_record<Field, is_patch>(
+        decode_record<Field>(
             context, "hud", field_names, ([&](Field const field, auto const& read) {
                 switch (field) {
                     case Field::player_status_update_period:
@@ -54,7 +49,6 @@ struct TypeReader<T> : RecordReader<T, sim::HudSettingsOverrides> {
     static constexpr std::array<std::string_view, 3> field_names{"player-status-update-period",
                                                                  "entity-count-update-period",
                                                                  "mission-status-update-period"};
-    static constexpr bool is_patch{std::same_as<T, ioj::sim::HudSettingsOverrides>};
 };
 
 } // namespace ioj::s7

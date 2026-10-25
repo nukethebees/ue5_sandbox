@@ -7,6 +7,7 @@
 #include <codegen/schema.h>
 #include <codegen/schema/declarations.h>
 #include <codegen/schema/schema_version.h>
+#include <codegen/sexpr/source_error.h>
 #include <lispb/compiler_storage.h>
 #include <lispb/indices.h>
 #include <lispb/schema/source_renderer.h>
@@ -52,22 +53,10 @@ TEST(RecordLowering, GeneratesSemanticMembersAndFixedArrays) {
     EXPECT_NE(output.find("std::array<Value, 3> values;"), std::string::npos);
 }
 
-TEST(RecordLowering, RejectsInvalidSettingsBindingsAndOverrideDependencies) {
+TEST(RecordLowering, RejectsInvalidSettingsBindingsAndConstrainedNames) {
     for (auto const declarations :
-         {R"((record Config :generate-overrides true (member speed float)))",
-          R"((record Config :generate-settings true :generate-overrides true
-             (member speed (type-ref float :suffix "&"))))",
-          R"((record Config :generate-settings true :generate-overrides true
-             (member speed (type-ref float :suffix " const"))))",
-          R"((record Child (member speed float))
-           (record Config :generate-settings true :generate-overrides true (member child Child)))",
-          R"((record Config :generate-settings true (member speed float :settings-name "")))",
-          R"((record Config :generate-settings true :generate-overrides true (member speed float))
-           (record ConfigOverrides))",
-          R"((record Config :constraint-policy example::policy)
-           (record ConfigValue))",
-          R"((record Config :constraint-policy example::policy
-                :generate-settings true :generate-overrides true))"}) {
+         {R"((record Config :generate-settings true (member speed float :settings-name "")))",
+          R"((record Config :constraint-policy example::policy) (record ConfigValue))"}) {
         SCOPED_TRACE(declarations);
         CompilerTestContext context;
         auto manifest{parse_test_manifest(
@@ -75,6 +64,15 @@ TEST(RecordLowering, RejectsInvalidSettingsBindingsAndOverrideDependencies) {
         EXPECT_THROW(static_cast<void>(lower_test_manifest(context, manifest)),
                      std::invalid_argument);
     }
+}
+
+TEST(RecordLowering, RejectsRemovedOverrideGenerationOption) {
+    CompilerTestContext context;
+    EXPECT_THROW(
+        static_cast<void>(parse_test_manifest(
+            context,
+            R"((module records :header "Records.h" (record Config :generate-overrides true)))")),
+        sexpr::SourceError);
 }
 
 TEST(RecordLowering, SettingsMetadataDoesNotChangeOrdinaryRecordOutput) {
@@ -87,14 +85,13 @@ TEST(RecordLowering, SettingsMetadataDoesNotChangeOrdinaryRecordOutput) {
         return render_test_manifest(context, manifest).front().content;
     }};
     EXPECT_EQ(render(""), render(":generate-settings true"));
-    EXPECT_EQ(render(":generate-settings true"), render(":generate-settings true"));
 }
 
 TEST(RecordLowering, SettingsOptionsSurviveSourceRoundTrip) {
     CompilerTestContext context;
     auto const manifest{parse_test_manifest(context, R"(
         (module records :header "Records.h"
-          (record Config :generate-settings true :generate-overrides true
+          (record Config :generate-settings true
             (member max_speed float :initializer "2.f" :settings-name "speed")
             (member asset float :settings-exclude true))
           (record Range :constraint-policy example::policy

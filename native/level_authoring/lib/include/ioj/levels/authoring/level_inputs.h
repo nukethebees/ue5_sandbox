@@ -62,7 +62,7 @@ struct LevelInput {
     EntityId player{};
     std::optional<ioj::levels::LevelCameraDefinition> camera{};
     std::optional<ioj::levels::LevelCollisionGridDefinition> collision_grid{};
-    ioj::settings::Settings settings{};
+    std::optional<ioj::settings::Settings> settings{};
     std::optional<ioj::levels::authoring::MissionInput> mission{};
     std::vector<ioj::levels::authoring::EntityInput> entities{};
 };

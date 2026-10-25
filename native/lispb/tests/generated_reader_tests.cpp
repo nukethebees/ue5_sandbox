@@ -1,6 +1,7 @@
 #include <ioj/s7/interpreter.h>
 
 #include <gtest/gtest.h>
+#include <Mixed_reader.h>
 #include <NestedSettings_reader.h>
 #include <ReaderDependency_reader.h>
 #include <Records_reader.h>
@@ -19,39 +20,84 @@ auto read_source(std::string_view const source) -> ReadResult<T> {
     return read<T>(Reader{*ast}, ast->root, "record");
 }
 
+template <typename T>
+auto override_source(std::string_view source, T initial = {}) -> ReadResult<T> {
+    Interpreter interpreter;
+    auto ast{interpreter.evaluate_ast(source)};
+    if (!ast) {
+        return std::unexpected{std::move(ast.error())};
+    }
+    return read_override(Reader{*ast}, ast->root, "record", std::move(initial));
+}
+
+TEST(RecordSettings, AppliesPartialLayersAndDistinguishesExplicitEmptyOptional) {
+    ActorSettings target;
+    auto const apply{[&](std::string_view source) {
+        auto result{override_source(source, target)};
+        if (result) {
+            target = *result;
+        }
+        return result;
+    }};
+    ASSERT_TRUE(apply("'(:actor :max-health 200 :weapon (:weapon :damage 20))"));
+    EXPECT_EQ(target.max_health, 200);
+    EXPECT_EQ(target.weapon.damage, 20);
+    EXPECT_EQ(target.weapon.turn_rate, 2.f);
+    EXPECT_EQ(target.weapon.asset_distance, 9.f);
+    ASSERT_TRUE(apply("'(:actor :max-health 100 :weapon (:weapon :turn-speed 4))"));
+    EXPECT_EQ(target.max_health, 100);
+    EXPECT_EQ(target.weapon.damage, 20);
+    EXPECT_EQ(target.weapon.turn_rate, 4.f);
+    EXPECT_EQ(target.optional_limit, 3);
+    ASSERT_TRUE(apply("'(:actor :optional-limit :none)"));
+    EXPECT_FALSE(target.optional_limit);
+    ASSERT_TRUE(apply("'(:actor)"));
+    EXPECT_FALSE(target.optional_limit);
+    ASSERT_TRUE(apply("'(:actor :optional-limit 3)"));
+    EXPECT_EQ(target.optional_limit, 3);
+}
+
+TEST(RecordSettings, AppliesCrossNamespaceNestedOverridesAndEmptyPatches) {
+    auto result{override_source<mixed::CrossSettings>(
+        "'(:cross :actor (:actor :weapon (:weapon :damage 41)))")};
+    ASSERT_TRUE(result);
+    EXPECT_EQ(result->actor.weapon.damage, 41);
+    EXPECT_EQ(result->actor.max_health, 100);
+    EXPECT_TRUE(override_source<EmptySettings>("'(:empty-settings)"));
+}
+
 TEST(GeneratedS7Reader, ConstrainedRecordsValidateAndOverrideAsWholeValues) {
     RangeSettings target;
     EXPECT_EQ(target.range.get().minimum, 0);
     EXPECT_EQ(target.range.get().maximum, 10);
     EXPECT_FALSE(Range::try_make({10, 0}));
     static_assert(std::same_as<decltype(target.range.get_ref()), RangeValue const&>);
-    static_assert(std::same_as<decltype(RangeSettingsOverrides::range), std::optional<Range>>);
 
     auto patch{
-        read_source<RangeSettingsOverrides>("'(:ranges :range (:range :minimum 20 :maximum 30))")};
+        override_source<RangeSettings>("'(:ranges :range (:range :minimum 20 :maximum 30))")};
     ASSERT_TRUE(patch);
-    apply_overrides(target, *patch);
+    target = *patch;
     EXPECT_EQ(target.range.get().minimum, 20);
     EXPECT_EQ(target.range.get().maximum, 30);
     EXPECT_TRUE(target.enabled);
 
-    auto omitted{read_source<RangeSettingsOverrides>("'(:ranges :enabled #f)")};
+    auto omitted{override_source("'(:ranges :enabled #f)", target)};
     ASSERT_TRUE(omitted);
-    apply_overrides(target, *omitted);
+    target = *omitted;
     EXPECT_EQ(target.range.get().minimum, 20);
     EXPECT_FALSE(target.enabled);
 
     auto defaults{
-        read_source<RangeSettingsOverrides>("'(:ranges :range (:range :minimum 0 :maximum 10))")};
+        override_source<RangeSettings>("'(:ranges :range (:range :minimum 0 :maximum 10))")};
     ASSERT_TRUE(defaults);
-    apply_overrides(target, *defaults);
+    target = *defaults;
     EXPECT_EQ(target.range, Range{});
 
-    auto missing{read_source<RangeSettingsOverrides>("'(:ranges :range (:range :minimum 5))")};
+    auto missing{override_source<RangeSettings>("'(:ranges :range (:range :minimum 5))")};
     ASSERT_FALSE(missing);
     EXPECT_EQ(missing.error().front().node_path, "record.range.maximum");
     auto invalid{
-        read_source<RangeSettingsOverrides>("'(:ranges :range (:range :minimum 30 :maximum 20))")};
+        override_source<RangeSettings>("'(:ranges :range (:range :minimum 30 :maximum 20))")};
     ASSERT_FALSE(invalid);
     EXPECT_EQ(invalid.error().front().node_path, "record.range");
     EXPECT_EQ(invalid.error().front().message, "Expected minimum <= maximum");
@@ -66,9 +112,10 @@ TEST(GeneratedS7Reader, ReadsSparseTypedOverridesWithNestedLayersAndExplicitEmpt
     EXPECT_EQ(complete->damage, 0);
     EXPECT_EQ(complete->turn_rate, 2.f);
 
-    auto partial{read_source<ReadableChildOverrides>("'(:child :count 0)")};
+    auto partial{override_source(
+        "'(:child :count 0)", ReadableChild{.name = *ioj::NonEmptyString::try_make("original")})};
     ASSERT_TRUE(partial);
-    EXPECT_FALSE(partial->name);
+    EXPECT_EQ(partial->name.get_ref(), "original");
     EXPECT_EQ(partial->count, 0);
 
     Interpreter interpreter;
@@ -76,22 +123,21 @@ TEST(GeneratedS7Reader, ReadsSparseTypedOverridesWithNestedLayersAndExplicitEmpt
       (:actor :max-health 200 :weapon (:weapon :damage 17 :turn-speed 9))
       (:actor :max-health 100 :weapon (:weapon :damage 5) :optional-limit :none)))")};
     ASSERT_TRUE(ast);
-    auto patch{read_override(Reader{*ast}, ast->root, "actor", ActorSettingsOverrides{})};
+    ActorSettings initial;
+    initial.weapon.asset_distance = 42;
+    auto patch{read_override(Reader{*ast}, ast->root, "actor", initial)};
     ASSERT_TRUE(patch);
-    ASSERT_TRUE(patch->optional_limit);
-    EXPECT_FALSE(*patch->optional_limit);
-    ActorSettings target;
-    target.weapon.asset_distance = 42;
-    apply_overrides(target, *patch);
+    EXPECT_FALSE(patch->optional_limit);
+    auto const& target{*patch};
     EXPECT_EQ(target.max_health, 100);
     EXPECT_EQ(target.weapon.damage, 5);
     EXPECT_EQ(target.weapon.turn_rate, 9);
     EXPECT_EQ(target.weapon.asset_distance, 42);
     EXPECT_FALSE(target.optional_limit);
-    EXPECT_FALSE(read_source<WeaponSettingsOverrides>("'(:weapon :asset-distance 3)"));
-    EXPECT_FALSE(read_source<WeaponSettingsOverrides>("'(:weapon :damage -1)"));
-    EXPECT_FALSE(read_source<WeaponSettingsOverrides>("'(:weapon :damage 1 :damage 2)"));
-    EXPECT_TRUE(read_source<ActorSettingsOverrides>("'(:actor)"));
+    EXPECT_FALSE(override_source<WeaponSettings>("'(:weapon :asset-distance 3)"));
+    EXPECT_FALSE(override_source<WeaponSettings>("'(:weapon :damage -1)"));
+    EXPECT_FALSE(override_source<WeaponSettings>("'(:weapon :damage 1 :damage 2)"));
+    EXPECT_TRUE(override_source<ActorSettings>("'(:actor)"));
 }
 
 auto read_record_source(std::string_view const source) -> ReadResult<ReadableRecord> {
@@ -225,6 +271,10 @@ TEST(GeneratedS7Reader, DecodesFixedPositionalRecordsAndChecksArityAndConstraint
 
 TEST(GeneratedS7Reader, RequiresFieldsEvenWhenTheRecordHasValidDefaults) {
     EXPECT_FALSE(read_source<DefaultReadable>("'(:default)"));
+    EXPECT_FALSE(read_source<DefaultReadable>("'(:settings-layers)"));
+    EXPECT_FALSE(read_source<DefaultReadable>("'(:settings-layers (:default :maybe 2))"));
+    EXPECT_TRUE(read_source<DefaultReadable>(
+        "'(:settings-layers (:default :count 2) (:default :maybe 3))"));
     auto result{read_source<DefaultReadable>("'(:default :count 2)")};
     ASSERT_TRUE(result);
     EXPECT_EQ(result->count, 2);
@@ -302,21 +352,21 @@ TEST(GeneratedS7Reader, UsesCompactMasksAndSupportsMoreThan64Fields) {
 
 namespace lispb::tests {
 TEST(RecordSettings, DiscoversNestedFieldsAndReusesRecordsAtDifferentPaths) {
-    auto patch{read_source<SettingsTargetOverrides>(R"('(:settings
+    auto patch{override_source<SettingsTarget>(R"('(:settings
       :first (:actor :max-health 17)
       :second (:actor :weapon (:weapon :damage 17 :turn-speed 4))
       :external-value 17))")};
     ASSERT_TRUE(patch);
     SettingsTarget target;
-    apply_overrides(target, *patch);
+    target = *patch;
     EXPECT_EQ(target.first.max_health, 17);
     EXPECT_EQ(target.second.weapon.damage, 17);
     EXPECT_EQ(target.external_value, 17);
     EXPECT_EQ(target.first.weapon.damage, 5);
     EXPECT_EQ(target.second.weapon.turn_rate, 4);
-    EXPECT_FALSE(read_source<WeaponSettingsOverrides>("'(:weapon :turn-rate 1)"));
-    EXPECT_FALSE(read_source<WeaponSettingsOverrides>("'(:weapon :asset-distance 1)"));
+    EXPECT_FALSE(override_source<WeaponSettings>("'(:weapon :turn-rate 1)"));
+    EXPECT_FALSE(override_source<WeaponSettings>("'(:weapon :asset-distance 1)"));
     EXPECT_FALSE(read_source<WeaponSettings>("'(:weapon :asset-distance 1)"));
-    EXPECT_FALSE(read_source<SettingsTargetOverrides>("'(:settings :unknown 1)"));
+    EXPECT_FALSE(override_source<SettingsTarget>("'(:settings :unknown 1)"));
 }
 }

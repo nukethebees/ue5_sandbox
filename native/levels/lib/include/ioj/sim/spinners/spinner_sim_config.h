@@ -3,11 +3,9 @@
 
 #pragma once
 
-#include "ioj/apply_override.h"
 #include "ioj/sim/lasers/fire_point.h"
 #include "ioj/sim/lasers/laser_weapon_sim_config.h"
 
-#include <optional>
 #include <vector>
 
 namespace ioj::sim {
@@ -16,14 +14,4 @@ struct SpinnerSimConfig {
     float yaw_rotation_speed_degrees{66.f};
     LaserWeaponSimConfig laser{};
 };
-
-struct SpinnerSimConfigOverrides {
-    std::optional<float> yaw_rotation_speed_degrees{};
-    std::optional<ioj::sim::LaserWeaponSimConfigOverrides> laser{};
-};
-
-inline void apply_overrides(SpinnerSimConfig& target, SpinnerSimConfigOverrides const& overrides) {
-    ioj::apply_override(target.yaw_rotation_speed_degrees, overrides.yaw_rotation_speed_degrees);
-    ioj::apply_override(target.laser, overrides.laser);
-}
 } // namespace ioj::sim

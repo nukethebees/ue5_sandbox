@@ -144,7 +144,7 @@ auto spawn_initial_camera(UWorld& world,
 
 }
 
-auto FLevelLoader::load(levels::LevelDefinition const& definition,
+auto FLevelLoader::load(levels::LevelDefinition const& input,
                         EPlayerControlContext const playerless_control_context) const
     -> FLevelLoadResult {
     FLevelLoadResult result;
@@ -162,7 +162,15 @@ auto FLevelLoader::load(levels::LevelDefinition const& definition,
         return result;
     }
 
-    auto const* config{orchestrator_.get_level_config()};
+    orchestrator_.set_level_definition(input);
+    if (!orchestrator_.prepare_level()) {
+        add_error(result,
+                  ELevelLoadErrorCode::InvalidLevelConfig,
+                  TEXT("Failed to resolve game settings"));
+        return result;
+    }
+    auto const& definition{orchestrator_.get_level_definition()};
+    auto const* const config{orchestrator_.get_level_config()};
     auto const has_player{!definition.player_entity_id().empty()};
     auto const presentation_enabled{orchestrator_.is_presentation_enabled()};
     if (!has_player && presentation_enabled &&
@@ -206,14 +214,6 @@ auto FLevelLoader::load(levels::LevelDefinition const& definition,
         return result;
     }
 
-    orchestrator_.set_level_definition(definition);
-    if (!orchestrator_.prepare_level()) {
-        add_error(result,
-                  ELevelLoadErrorCode::InvalidLevelConfig,
-                  TEXT("Failed to resolve game settings"));
-        return result;
-    }
-    config = orchestrator_.get_level_config();
     if (presentation_enabled && !orchestrator_.get_presentation_resources().is_valid()) {
         add_error(result,
                   ELevelLoadErrorCode::MissingInfrastructure,

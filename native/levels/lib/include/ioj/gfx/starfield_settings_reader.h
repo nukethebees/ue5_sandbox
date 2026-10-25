@@ -6,22 +6,16 @@
 #include "ioj/gfx/starfield_settings.h"
 #include "ioj/s7/field_constraints.h"
 #include "ioj/s7/record_reader.h"
-#include "ioj/type_traits.h"
 #include <ioj/s7/field_reader.h>
 
 #include <array>
-#include <concepts>
 #include <string_view>
 
 namespace ioj::s7 {
-template <typename T>
-    requires ioj::
-        SameAsAny<T, starfield::GenerationSettings, starfield::GenerationSettingsOverrides>
-    struct TypeReader<T> : RecordReader<T, starfield::GenerationSettingsOverrides> {
-    using value_type = T;
-
+template <>
+struct TypeReader<starfield::GenerationSettings> : RecordReader<starfield::GenerationSettings> {
     static void decode(DecodeContext context, value_type& result) {
-        decode_record<Field, is_patch>(
+        decode_record<Field>(
             context, "generation", field_names, ([&](Field const field, auto const& read) {
                 switch (field) {
                     case Field::star_count:
@@ -45,16 +39,12 @@ template <typename T>
     };
 
     static constexpr std::array<std::string_view, 2> field_names{"star-count", "random-seed"};
-    static constexpr bool is_patch{std::same_as<T, ioj::starfield::GenerationSettingsOverrides>};
 };
 
-template <typename T>
-    requires ioj::SameAsAny<T, starfield::StarSettings, starfield::StarSettingsOverrides>
-struct TypeReader<T> : RecordReader<T, starfield::StarSettingsOverrides> {
-    using value_type = T;
-
+template <>
+struct TypeReader<starfield::StarSettings> : RecordReader<starfield::StarSettings> {
     static void decode(DecodeContext context, value_type& result) {
-        decode_record<Field, is_patch>(
+        decode_record<Field>(
             context, "star", field_names, ([&](Field const field, auto const& read) {
                 switch (field) {
                     case Field::scale:
@@ -92,17 +82,12 @@ struct TypeReader<T> : RecordReader<T, starfield::StarSettingsOverrides> {
                                                                  "global-brightness",
                                                                  "colour-variation-strength",
                                                                  "parallax-strength"};
-    static constexpr bool is_patch{std::same_as<T, ioj::starfield::StarSettingsOverrides>};
 };
 
-template <typename T>
-    requires ioj::
-        SameAsAny<T, starfield::GalacticBandSettings, starfield::GalacticBandSettingsOverrides>
-    struct TypeReader<T> : RecordReader<T, starfield::GalacticBandSettingsOverrides> {
-    using value_type = T;
-
+template <>
+struct TypeReader<starfield::GalacticBandSettings> : RecordReader<starfield::GalacticBandSettings> {
     static void decode(DecodeContext context, value_type& result) {
-        decode_record<Field, is_patch>(
+        decode_record<Field>(
             context, "galactic-band", field_names, ([&](Field const field, auto const& read) {
                 switch (field) {
                     case Field::strength:
@@ -127,17 +112,13 @@ template <typename T>
     };
 
     static constexpr std::array<std::string_view, 2> field_names{"strength", "width-degrees"};
-    static constexpr bool is_patch{std::same_as<T, ioj::starfield::GalacticBandSettingsOverrides>};
 };
 
-template <typename T>
-    requires ioj::
-        SameAsAny<T, starfield::StellarClusterSettings, starfield::StellarClusterSettingsOverrides>
-    struct TypeReader<T> : RecordReader<T, starfield::StellarClusterSettingsOverrides> {
-    using value_type = T;
-
+template <>
+struct TypeReader<starfield::StellarClusterSettings>
+    : RecordReader<starfield::StellarClusterSettings> {
     static void decode(DecodeContext context, value_type& result) {
-        decode_record<Field, is_patch>(
+        decode_record<Field>(
             context, "stellar-cluster", field_names, ([&](Field const field, auto const& read) {
                 switch (field) {
                     case Field::strength:
@@ -159,17 +140,12 @@ template <typename T>
     };
 
     static constexpr std::array<std::string_view, 2> field_names{"strength", "width-degrees"};
-    static constexpr bool is_patch{
-        std::same_as<T, ioj::starfield::StellarClusterSettingsOverrides>};
 };
 
-template <typename T>
-    requires ioj::SameAsAny<T, starfield::DustLaneSettings, starfield::DustLaneSettingsOverrides>
-struct TypeReader<T> : RecordReader<T, starfield::DustLaneSettingsOverrides> {
-    using value_type = T;
-
+template <>
+struct TypeReader<starfield::DustLaneSettings> : RecordReader<starfield::DustLaneSettings> {
     static void decode(DecodeContext context, value_type& result) {
-        decode_record<Field, is_patch>(
+        decode_record<Field>(
             context, "dust-lane", field_names, ([&](Field const field, auto const& read) {
                 switch (field) {
                     case Field::strength:
@@ -196,17 +172,12 @@ struct TypeReader<T> : RecordReader<T, starfield::DustLaneSettingsOverrides> {
 
     static constexpr std::array<std::string_view, 3> field_names{
         "strength", "width-degrees", "irregularity"};
-    static constexpr bool is_patch{std::same_as<T, ioj::starfield::DustLaneSettingsOverrides>};
 };
 
-template <typename T>
-    requires ioj::
-        SameAsAny<T, starfield::BrightStarSettings, starfield::BrightStarSettingsOverrides>
-    struct TypeReader<T> : RecordReader<T, starfield::BrightStarSettingsOverrides> {
-    using value_type = T;
-
+template <>
+struct TypeReader<starfield::BrightStarSettings> : RecordReader<starfield::BrightStarSettings> {
     static void decode(DecodeContext context, value_type& result) {
-        decode_record<Field, is_patch>(
+        decode_record<Field>(
             context, "bright-star", field_names, ([&](Field const field, auto const& read) {
                 switch (field) {
                     case Field::fraction:
@@ -237,16 +208,12 @@ template <typename T>
 
     static constexpr std::array<std::string_view, 4> field_names{
         "fraction", "size-multiplier", "brightness-multiplier", "shape-strength"};
-    static constexpr bool is_patch{std::same_as<T, ioj::starfield::BrightStarSettingsOverrides>};
 };
 
-template <typename T>
-    requires ioj::SameAsAny<T, starfield::TwinkleSettings, starfield::TwinkleSettingsOverrides>
-struct TypeReader<T> : RecordReader<T, starfield::TwinkleSettingsOverrides> {
-    using value_type = T;
-
+template <>
+struct TypeReader<starfield::TwinkleSettings> : RecordReader<starfield::TwinkleSettings> {
     static void decode(DecodeContext context, value_type& result) {
-        decode_record<Field, is_patch>(
+        decode_record<Field>(
             context, "twinkle", field_names, ([&](Field const field, auto const& read) {
                 switch (field) {
                     case Field::strength:
@@ -268,17 +235,12 @@ struct TypeReader<T> : RecordReader<T, starfield::TwinkleSettingsOverrides> {
     };
 
     static constexpr std::array<std::string_view, 2> field_names{"strength", "speed"};
-    static constexpr bool is_patch{std::same_as<T, ioj::starfield::TwinkleSettingsOverrides>};
 };
 
-template <typename T>
-    requires ioj::
-        SameAsAny<T, starfield::GalacticHazeSettings, starfield::GalacticHazeSettingsOverrides>
-    struct TypeReader<T> : RecordReader<T, starfield::GalacticHazeSettingsOverrides> {
-    using value_type = T;
-
+template <>
+struct TypeReader<starfield::GalacticHazeSettings> : RecordReader<starfield::GalacticHazeSettings> {
     static void decode(DecodeContext context, value_type& result) {
-        decode_record<Field, is_patch>(
+        decode_record<Field>(
             context, "galactic-haze", field_names, ([&](Field const field, auto const& read) {
                 switch (field) {
                     case Field::strength:
@@ -300,17 +262,12 @@ template <typename T>
     };
 
     static constexpr std::array<std::string_view, 2> field_names{"strength", "width-degrees"};
-    static constexpr bool is_patch{std::same_as<T, ioj::starfield::GalacticHazeSettingsOverrides>};
 };
 
-template <typename T>
-    requires ioj::
-        SameAsAny<T, starfield::GalacticCoreSettings, starfield::GalacticCoreSettingsOverrides>
-    struct TypeReader<T> : RecordReader<T, starfield::GalacticCoreSettingsOverrides> {
-    using value_type = T;
-
+template <>
+struct TypeReader<starfield::GalacticCoreSettings> : RecordReader<starfield::GalacticCoreSettings> {
     static void decode(DecodeContext context, value_type& result) {
-        decode_record<Field, is_patch>(
+        decode_record<Field>(
             context, "galactic-core", field_names, ([&](Field const field, auto const& read) {
                 switch (field) {
                     case Field::strength:
@@ -332,17 +289,12 @@ template <typename T>
     };
 
     static constexpr std::array<std::string_view, 2> field_names{"strength", "width-degrees"};
-    static constexpr bool is_patch{std::same_as<T, ioj::starfield::GalacticCoreSettingsOverrides>};
 };
 
-template <typename T>
-    requires ioj::
-        SameAsAny<T, starfield::NebularKnotSettings, starfield::NebularKnotSettingsOverrides>
-    struct TypeReader<T> : RecordReader<T, starfield::NebularKnotSettingsOverrides> {
-    using value_type = T;
-
+template <>
+struct TypeReader<starfield::NebularKnotSettings> : RecordReader<starfield::NebularKnotSettings> {
     static void decode(DecodeContext context, value_type& result) {
-        decode_record<Field, is_patch>(
+        decode_record<Field>(
             context, "nebular-knot", field_names, ([&](Field const field, auto const& read) {
                 switch (field) {
                     case Field::strength:
@@ -364,16 +316,12 @@ template <typename T>
     };
 
     static constexpr std::array<std::string_view, 2> field_names{"strength", "size-degrees"};
-    static constexpr bool is_patch{std::same_as<T, ioj::starfield::NebularKnotSettingsOverrides>};
 };
 
-template <typename T>
-    requires ioj::SameAsAny<T, starfield::Settings, starfield::SettingsOverrides>
-struct TypeReader<T> : RecordReader<T, starfield::SettingsOverrides> {
-    using value_type = T;
-
+template <>
+struct TypeReader<starfield::Settings> : RecordReader<starfield::Settings> {
     static void decode(DecodeContext context, value_type& result) {
-        decode_record<Field, is_patch>(
+        decode_record<Field>(
             context, "starfield", field_names, ([&](Field const field, auto const& read) {
                 switch (field) {
                     case Field::generation:
@@ -436,7 +384,6 @@ struct TypeReader<T> : RecordReader<T, starfield::SettingsOverrides> {
                                                                   "galactic-haze",
                                                                   "galactic-core",
                                                                   "nebular-knot"};
-    static constexpr bool is_patch{std::same_as<T, ioj::starfield::SettingsOverrides>};
 };
 
 } // namespace ioj::s7

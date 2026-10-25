@@ -3,15 +3,12 @@
 
 #pragma once
 
-#include "ioj/apply_override.h"
 #include "ioj/settings/capital_presentation.h"
 #include "ioj/settings/entity_overlay.h"
 #include "ioj/settings/laser_presentation.h"
 #include "ioj/settings/player_presentation.h"
 #include "ioj/settings/radar.h"
 #include "ioj/settings/turret_presentation.h"
-
-#include <optional>
 
 namespace ioj::settings {
 struct Presentation {
@@ -22,22 +19,4 @@ struct Presentation {
     EntityOverlay entity_overlay{};
     Radar radar{};
 };
-
-struct PresentationOverrides {
-    std::optional<ioj::settings::PlayerPresentationOverrides> player_ship{};
-    std::optional<ioj::settings::LaserPresentationOverrides> laser_projectiles{};
-    std::optional<ioj::settings::CapitalPresentationOverrides> capital_ships{};
-    std::optional<ioj::settings::TurretPresentationOverrides> turrets{};
-    std::optional<ioj::settings::EntityOverlayOverrides> entity_overlay{};
-    std::optional<ioj::settings::RadarOverrides> radar{};
-};
-
-inline void apply_overrides(Presentation& target, PresentationOverrides const& overrides) {
-    ioj::apply_override(target.player_ship, overrides.player_ship);
-    ioj::apply_override(target.laser_projectiles, overrides.laser_projectiles);
-    ioj::apply_override(target.capital_ships, overrides.capital_ships);
-    ioj::apply_override(target.turrets, overrides.turrets);
-    ioj::apply_override(target.entity_overlay, overrides.entity_overlay);
-    ioj::apply_override(target.radar, overrides.radar);
-}
 } // namespace ioj::settings

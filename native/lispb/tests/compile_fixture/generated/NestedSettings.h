@@ -3,10 +3,7 @@
 
 #pragma once
 
-#include "ioj/apply_override.h"
 #include "Records.h"
-
-#include <optional>
 
 namespace codegen_compile_fixture {
 struct SettingsTarget {
@@ -14,16 +11,4 @@ struct SettingsTarget {
     ActorSettings second{};
     int external_value{0};
 };
-
-struct SettingsTargetOverrides {
-    std::optional<codegen_compile_fixture::ActorSettingsOverrides> first{};
-    std::optional<codegen_compile_fixture::ActorSettingsOverrides> second{};
-    std::optional<int> external_value{};
-};
-
-inline void apply_overrides(SettingsTarget& target, SettingsTargetOverrides const& overrides) {
-    ioj::apply_override(target.first, overrides.first);
-    ioj::apply_override(target.second, overrides.second);
-    ioj::apply_override(target.external_value, overrides.external_value);
-}
 } // namespace codegen_compile_fixture

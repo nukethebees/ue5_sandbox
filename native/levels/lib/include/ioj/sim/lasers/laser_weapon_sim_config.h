@@ -3,10 +3,7 @@
 
 #pragma once
 
-#include "ioj/apply_override.h"
-
 #include <cstdint>
-#include <optional>
 
 namespace ioj::sim {
 struct LaserWeaponSimConfig {
@@ -15,19 +12,4 @@ struct LaserWeaponSimConfig {
     float max_distance{10000.f};
     float fire_cooldown{0.33f};
 };
-
-struct LaserWeaponSimConfigOverrides {
-    std::optional<std::int32_t> damage{};
-    std::optional<float> projectile_speed{};
-    std::optional<float> max_distance{};
-    std::optional<float> fire_cooldown{};
-};
-
-inline void apply_overrides(LaserWeaponSimConfig& target,
-                            LaserWeaponSimConfigOverrides const& overrides) {
-    ioj::apply_override(target.damage, overrides.damage);
-    ioj::apply_override(target.projectile_speed, overrides.projectile_speed);
-    ioj::apply_override(target.max_distance, overrides.max_distance);
-    ioj::apply_override(target.fire_cooldown, overrides.fire_cooldown);
-}
 } // namespace ioj::sim

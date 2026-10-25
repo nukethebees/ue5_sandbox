@@ -3,25 +3,12 @@
 
 #pragma once
 
-#include "ioj/apply_override.h"
 #include "ioj/constrained_numbers.h"
 #include "ioj/frequency.h"
-
-#include <optional>
 
 namespace ioj::settings {
 struct TickSettings {
     Frequency tick_rate{60.0};
     ioj::PositiveFinite<double> time_scale{1.0};
 };
-
-struct TickSettingsOverrides {
-    std::optional<Frequency> tick_rate{};
-    std::optional<ioj::PositiveFinite<double>> time_scale{};
-};
-
-inline void apply_overrides(TickSettings& target, TickSettingsOverrides const& overrides) {
-    ioj::apply_override(target.tick_rate, overrides.tick_rate);
-    ioj::apply_override(target.time_scale, overrides.time_scale);
-}
 } // namespace ioj::settings

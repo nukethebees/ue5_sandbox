@@ -7,5 +7,7 @@ using LevelDefinitionReadResult = std::expected<LevelDefinition, Diagnostics>;
 // Parse and verify components before constructing a trusted definition.
 // Resolve omitted entity IDs within this level and default omitted rotations to zero.
 // The root must be a valid node index in ast.
-[[nodiscard]] auto parse_level(s7::Ast const& ast, s7::NodeIndex root) -> LevelDefinitionReadResult;
+[[nodiscard]] auto
+    parse_level(s7::Ast const& ast, s7::NodeIndex root, std::optional<settings::Settings> base = {})
+        -> LevelDefinitionReadResult;
 }

@@ -7,21 +7,16 @@
 #include "ioj/s7/record_reader.h"
 #include "ioj/sim/lasers/laser_weapon_sim_config_reader.h"
 #include "ioj/sim/player/player_sim_config.h"
-#include "ioj/type_traits.h"
 #include <ioj/s7/field_reader.h>
 
 #include <array>
-#include <concepts>
 #include <string_view>
 
 namespace ioj::s7 {
-template <typename T>
-    requires ioj::SameAsAny<T, sim::PlayerSimConfig, sim::PlayerSimConfigOverrides>
-struct TypeReader<T> : RecordReader<T, sim::PlayerSimConfigOverrides> {
-    using value_type = T;
-
+template <>
+struct TypeReader<sim::PlayerSimConfig> : RecordReader<sim::PlayerSimConfig> {
     static void decode(DecodeContext context, value_type& result) {
-        decode_record<Field, is_patch>(
+        decode_record<Field>(
             context, "player-ship", field_names, ([&](Field const field, auto const& read) {
                 switch (field) {
                     case Field::thrust_energy_max:
@@ -89,7 +84,6 @@ struct TypeReader<T> : RecordReader<T, sim::PlayerSimConfigOverrides> {
                                                                   "health",
                                                                   "laser-mode",
                                                                   "laser-fire-rate"};
-    static constexpr bool is_patch{std::same_as<T, ioj::sim::PlayerSimConfigOverrides>};
 };
 
 } // namespace ioj::s7

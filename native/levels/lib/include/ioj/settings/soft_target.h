@@ -3,10 +3,6 @@
 
 #pragma once
 
-#include "ioj/apply_override.h"
-
-#include <optional>
-
 namespace ioj::settings {
 struct SoftTarget {
     float acquisition_radius_pixels{72.f};
@@ -23,38 +19,4 @@ struct SoftTarget {
     float pulse_duration{0.15f};
     float fade_out_duration{0.15f};
 };
-
-struct SoftTargetOverrides {
-    std::optional<float> acquisition_radius_pixels{};
-    std::optional<float> retention_radius_pixels{};
-    std::optional<float> centre_tie_radius_pixels{};
-    std::optional<float> switch_improvement_ratio{};
-    std::optional<float> range_transition_start_multiplier{};
-    std::optional<float> minimum_radius_pixels{};
-    std::optional<float> maximum_radius_pixels{};
-    std::optional<float> bounds_padding_pixels{};
-    std::optional<float> bracket_start_radius_multiplier{};
-    std::optional<float> opacity{};
-    std::optional<float> pulse_opacity_boost{};
-    std::optional<float> pulse_duration{};
-    std::optional<float> fade_out_duration{};
-};
-
-inline void apply_overrides(SoftTarget& target, SoftTargetOverrides const& overrides) {
-    ioj::apply_override(target.acquisition_radius_pixels, overrides.acquisition_radius_pixels);
-    ioj::apply_override(target.retention_radius_pixels, overrides.retention_radius_pixels);
-    ioj::apply_override(target.centre_tie_radius_pixels, overrides.centre_tie_radius_pixels);
-    ioj::apply_override(target.switch_improvement_ratio, overrides.switch_improvement_ratio);
-    ioj::apply_override(target.range_transition_start_multiplier,
-                        overrides.range_transition_start_multiplier);
-    ioj::apply_override(target.minimum_radius_pixels, overrides.minimum_radius_pixels);
-    ioj::apply_override(target.maximum_radius_pixels, overrides.maximum_radius_pixels);
-    ioj::apply_override(target.bounds_padding_pixels, overrides.bounds_padding_pixels);
-    ioj::apply_override(target.bracket_start_radius_multiplier,
-                        overrides.bracket_start_radius_multiplier);
-    ioj::apply_override(target.opacity, overrides.opacity);
-    ioj::apply_override(target.pulse_opacity_boost, overrides.pulse_opacity_boost);
-    ioj::apply_override(target.pulse_duration, overrides.pulse_duration);
-    ioj::apply_override(target.fade_out_duration, overrides.fade_out_duration);
-}
 } // namespace ioj::settings

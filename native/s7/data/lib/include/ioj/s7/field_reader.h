@@ -3,7 +3,6 @@
 #include <ioj/s7/reader.h>
 
 namespace ioj::s7 {
-template <bool Patch = false>
 class FieldReader {
   public:
     explicit FieldReader(DecodeContext context)
@@ -11,16 +10,7 @@ class FieldReader {
 
     template <typename T, typename... Checks>
     void operator()(T& destination, Checks const&... checks) const {
-        read_checked(
-            destination,
-            [&] {
-                if constexpr (Patch) {
-                    decode_patch_field(context_, destination);
-                } else {
-                    decode_field(context_, destination);
-                }
-            },
-            checks...);
+        read_checked(destination, [&] { decode_field(context_, destination); }, checks...);
     }
 
     template <typename T, typename... Checks>

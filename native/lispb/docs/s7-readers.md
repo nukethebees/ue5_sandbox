@@ -67,10 +67,9 @@ as `ConstrainedValue<RecordValue, project::policy>`. Its generated value reader 
 with the ordinary constrained reader, which calls `try_make` before returning `Record`.
 Defaults must satisfy the policy for the constrained type to be default-constructible.
 
-A constrained record is replaced as one complete value, including inside generated override
-records. Mark all required components with `:required true`; an override must supply those
-components too. Enable `:generate-overrides` on the containing record, not on the constrained
-record. This preserves cross-field invariants without exposing writable component references.
+A constrained record is replaced as one complete value. Mark all required components with
+`:required true`; an override must supply those components too. This preserves cross-field
+invariants without exposing writable component references.
 `AttackDistanceBand` uses this for its ordered minimum/desired/maximum triple. A later layer
 cannot repair an invalid earlier triple.
 
@@ -96,14 +95,11 @@ Errors never change an lvalue seed. Required fields need not be repeated in an o
 creating a previously absent optional record still requires its required fields. Scalars and
 collections replace their entire value. `:none` explicitly clears an optional.
 
-Combining `:generate-overrides true` with `:generate-s7-reader true` also generates a reader
-for `RecordOverrides`. Use it when a patch must be decoded before its destination exists.
-The same record members supply field names, types and constraints; `:settings-exclude` members
-are omitted from the patch. `:s7-name` takes precedence over `:settings-name`, otherwise names
-use hyphens. Patch readers do not require fields marked required on the complete record.
-Nested patches merge across ordered layers. An optional-valued member keeps two distinct states:
-an absent override and a present override explicitly clearing that member with `:none`.
-Apply the resulting patch using the existing generated `apply_overrides`.
+Settings use the same concrete record and reader for creation and subsequent layers.
+`:generate-settings true` enables `:settings-exclude` for asset-derived members and
+`:settings-name` for external naming. `:s7-name` takes precedence; otherwise names use hyphens.
+Load base settings before decoding level settings into a copy. No sparse companion structs,
+patch-reader specializations or generated `apply_overrides` functions are needed.
 
 `read_settings<T>(reader, node, section, existing)` in `ioj/s7/settings_reader.h` selects one
 settings section and applies ordered `settings-layers`, including nested layers. It checks
@@ -123,7 +119,7 @@ Recursive mission composition and leaf-payload selection still use a typed adapt
 
 Catalog entries capture `ReadResult<T>` so a bad imported definition remains an error
 associated with that file without discarding successful siblings. Simulation, presentation
-and starfield settings use generated sparse patches over shared configuration records.
+and starfield settings decode layers directly into shared configuration records.
 Unreal retains resource references and colour controls. The former `settings-schema`
 mapping and flattened assignment representation have been removed.
 No writers are generated.

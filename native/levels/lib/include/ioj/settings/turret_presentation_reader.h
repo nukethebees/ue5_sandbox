@@ -6,21 +6,16 @@
 #include "ioj/s7/field_constraints.h"
 #include "ioj/s7/record_reader.h"
 #include "ioj/settings/turret_presentation.h"
-#include "ioj/type_traits.h"
 #include <ioj/s7/field_reader.h>
 
 #include <array>
-#include <concepts>
 #include <string_view>
 
 namespace ioj::s7 {
-template <typename T>
-    requires ioj::SameAsAny<T, settings::TurretPresentation, settings::TurretPresentationOverrides>
-struct TypeReader<T> : RecordReader<T, settings::TurretPresentationOverrides> {
-    using value_type = T;
-
+template <>
+struct TypeReader<settings::TurretPresentation> : RecordReader<settings::TurretPresentation> {
     static void decode(DecodeContext context, value_type& result) {
-        decode_record<Field, is_patch>(
+        decode_record<Field>(
             context, "turrets", field_names, ([&](Field const field, auto const& read) {
                 switch (field) {
                     case Field::death_effect_scale:
@@ -38,7 +33,6 @@ struct TypeReader<T> : RecordReader<T, settings::TurretPresentationOverrides> {
     };
 
     static constexpr std::array<std::string_view, 1> field_names{"death-effect-scale"};
-    static constexpr bool is_patch{std::same_as<T, ioj::settings::TurretPresentationOverrides>};
 };
 
 } // namespace ioj::s7

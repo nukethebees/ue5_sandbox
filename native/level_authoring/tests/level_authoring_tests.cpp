@@ -199,7 +199,9 @@ TEST(NativeSettings, DerivesStarfieldBindingsAndPreservesSparseLayers) {
     EXPECT_EQ(result->nebular_knot.size_degrees, 25);
 }
 
-TEST(NativeSettings, DecodesPresentationOverridesBeforeApplyingThemToNativeValues) {
+TEST(NativeSettings, DecodesPresentationLayersIntoExistingNativeValues) {
+    settings::Settings initial;
+    initial.presentation.entity_overlay.maximum_range = 4000;
     auto const source{DefinitionReader{}.read_settings_source(R"(
       (settings-layers
         (settings :presentation (presentation
@@ -210,15 +212,13 @@ TEST(NativeSettings, DecodesPresentationOverridesBeforeApplyingThemToNativeValue
           :radar (settings-section 'radar :combat-range 150000)))
         (settings :presentation (presentation
           :player-ship (player-ship :boost-effect-colour-intensity 75)
-          :entity-overlay (settings-section 'entity-overlay :soft-target (settings-section 'soft-target :pulse-duration 0.3))))))")};
+          :entity-overlay (settings-section 'entity-overlay :soft-target (settings-section 'soft-target :pulse-duration 0.3))))))",
+                                                              initial)};
     ASSERT_TRUE(source) << format_diagnostics(source.error());
-    EXPECT_FALSE(source->fighters);
-    ASSERT_TRUE(source->presentation);
-    auto const& patch{*source->presentation};
-    EXPECT_FALSE(patch.laser_projectiles);
-    settings::Presentation target;
-    target.entity_overlay.maximum_range = 4000;
-    apply_overrides(target, patch);
+    EXPECT_EQ(source->fighters.speed, initial.fighters.speed);
+    auto const& target{source->presentation};
+    EXPECT_EQ(target.laser_projectiles.max_cull_distance,
+              initial.presentation.laser_projectiles.max_cull_distance);
     EXPECT_EQ(target.player_ship.boost_effect_colour_intensity, 75);
     EXPECT_FALSE(target.entity_overlay.enabled);
     EXPECT_EQ(target.entity_overlay.maximum_range, 4000);
@@ -408,10 +408,10 @@ TEST(NativeLevelAuthoringReader, GeneratedRecordsCoexistWithMissionsAndSparseSet
     ASSERT_TRUE(level->mission());
     ASSERT_EQ(level->mission()->objectives.size(), 1u);
     EXPECT_EQ(level->mission()->objectives.front().id, ObjectiveName{"wait"});
-    auto const& settings{level->settings()};
-    ASSERT_TRUE(settings.fighters);
-    EXPECT_EQ(settings.fighters->speed, 2000);
-    EXPECT_FALSE(settings.fighters->health);
+    ASSERT_TRUE(level->settings());
+    auto const& settings{*level->settings()};
+    EXPECT_EQ(settings.fighters.speed, 2000);
+    EXPECT_EQ(settings.fighters.health, settings::Settings{}.fighters.health);
 }
 
 TEST(NativeLevelAuthoringReader, DecodesTypedInputsBeforeResolvingReferencesOrGeneratingIds) {

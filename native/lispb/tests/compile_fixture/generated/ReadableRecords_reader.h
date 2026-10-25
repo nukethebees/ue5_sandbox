@@ -5,12 +5,10 @@
 
 #include "ioj/s7/field_constraints.h"
 #include "ioj/s7/record_reader.h"
-#include "ioj/type_traits.h"
 #include "ReadableRecords.h"
 #include <ioj/s7/field_reader.h>
 
 #include <array>
-#include <concepts>
 #include <string_view>
 
 namespace ioj::s7 {
@@ -210,13 +208,9 @@ struct TypeReader<codegen_compile_fixture::BoundedInteger>
     static constexpr auto required{required_fields<Field>({Field::value})};
 };
 
-template <typename T>
-    requires ioj::SameAsAny<T,
-                            codegen_compile_fixture::ReadableChild,
-                            codegen_compile_fixture::ReadableChildOverrides>
-struct TypeReader<T> : RecordReader<T, codegen_compile_fixture::ReadableChildOverrides> {
-    using value_type = T;
-
+template <>
+struct TypeReader<codegen_compile_fixture::ReadableChild>
+    : RecordReader<codegen_compile_fixture::ReadableChild> {
     static ReadResult<value_type> construct(DecodeContext context) {
         std::optional<decltype(value_type::name)> value_name{};
         std::optional<decltype(value_type::count)> value_count{};
@@ -249,22 +243,22 @@ struct TypeReader<T> : RecordReader<T, codegen_compile_fixture::ReadableChildOve
     }
 
     static void decode(DecodeContext context, value_type& result) {
-        decode_record<Field, is_patch>(context,
-                                       "child",
-                                       field_names,
-                                       ([&](Field const field, auto const& read) {
-                                           switch (field) {
-                                               case Field::name:
-                                                   read(result.name);
-                                                   break;
-                                               case Field::count:
-                                                   read(result.count, constraints::nonnegative);
-                                                   break;
-                                               case Field::Count:
-                                                   std::unreachable();
-                                           }
-                                       }),
-                                       required);
+        decode_record<Field>(context,
+                             "child",
+                             field_names,
+                             ([&](Field const field, auto const& read) {
+                                 switch (field) {
+                                     case Field::name:
+                                         read(result.name);
+                                         break;
+                                     case Field::count:
+                                         read(result.count, constraints::nonnegative);
+                                         break;
+                                     case Field::Count:
+                                         std::unreachable();
+                                 }
+                             }),
+                             required);
     }
   private:
     enum class Field : std::uint8_t {
@@ -275,8 +269,6 @@ struct TypeReader<T> : RecordReader<T, codegen_compile_fixture::ReadableChildOve
 
     static constexpr std::array<std::string_view, 2> field_names{"name", "count"};
     static constexpr auto required{required_fields<Field>({Field::name})};
-    static constexpr bool is_patch{
-        std::same_as<T, codegen_compile_fixture::ReadableChildOverrides>};
 };
 
 template <>

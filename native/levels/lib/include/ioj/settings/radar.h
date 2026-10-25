@@ -3,10 +3,6 @@
 
 #pragma once
 
-#include "ioj/apply_override.h"
-
-#include <optional>
-
 namespace ioj::settings {
 struct Radar {
     bool enabled{true};
@@ -24,40 +20,4 @@ struct Radar {
     float objective_ring_padding_pixels{3.f};
     float objective_ring_thickness_pixels{1.25f};
 };
-
-struct RadarOverrides {
-    std::optional<bool> enabled{};
-    std::optional<float> combat_range{};
-    std::optional<float> tactical_range{};
-    std::optional<float> maximum_range{};
-    std::optional<float> combat_display_radius{};
-    std::optional<float> grid_opacity{};
-    std::optional<float> core_cell_radius{};
-    std::optional<float> combat_cell_radius{};
-    std::optional<float> tactical_cell_radius{};
-    std::optional<float> strategic_cell_radius{};
-    std::optional<float> glyph_size_scale{};
-    std::optional<float> objective_size_multiplier{};
-    std::optional<float> objective_ring_padding_pixels{};
-    std::optional<float> objective_ring_thickness_pixels{};
-};
-
-inline void apply_overrides(Radar& target, RadarOverrides const& overrides) {
-    ioj::apply_override(target.enabled, overrides.enabled);
-    ioj::apply_override(target.combat_range, overrides.combat_range);
-    ioj::apply_override(target.tactical_range, overrides.tactical_range);
-    ioj::apply_override(target.maximum_range, overrides.maximum_range);
-    ioj::apply_override(target.combat_display_radius, overrides.combat_display_radius);
-    ioj::apply_override(target.grid_opacity, overrides.grid_opacity);
-    ioj::apply_override(target.core_cell_radius, overrides.core_cell_radius);
-    ioj::apply_override(target.combat_cell_radius, overrides.combat_cell_radius);
-    ioj::apply_override(target.tactical_cell_radius, overrides.tactical_cell_radius);
-    ioj::apply_override(target.strategic_cell_radius, overrides.strategic_cell_radius);
-    ioj::apply_override(target.glyph_size_scale, overrides.glyph_size_scale);
-    ioj::apply_override(target.objective_size_multiplier, overrides.objective_size_multiplier);
-    ioj::apply_override(target.objective_ring_padding_pixels,
-                        overrides.objective_ring_padding_pixels);
-    ioj::apply_override(target.objective_ring_thickness_pixels,
-                        overrides.objective_ring_thickness_pixels);
-}
 } // namespace ioj::settings

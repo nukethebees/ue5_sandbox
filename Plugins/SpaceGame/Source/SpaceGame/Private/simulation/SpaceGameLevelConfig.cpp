@@ -80,19 +80,13 @@ auto FCollisionGridConfig::is_valid() const noexcept -> bool {
     return collision_grid_dimensions_are_valid(*this) && collision_class_lists_are_valid(*this);
 }
 
-void USpaceGameLevelConfig::apply_presentation(
-    ioj::settings::PresentationOverrides const& settings) {
-    auto const apply{[](auto& target, auto const& patch) {
-        if (patch) {
-            apply_overrides(target, *patch);
-        }
-    }};
-    apply(player_ship.presentation, settings.player_ship);
-    apply(laser_projectiles.presentation, settings.laser_projectiles);
-    apply(capital_ships.presentation, settings.capital_ships);
-    apply(turrets.presentation, settings.turrets);
-    apply(entity_overlay.values, settings.entity_overlay);
-    apply(radar, settings.radar);
+void USpaceGameLevelConfig::apply_presentation(ioj::settings::Presentation const& settings) {
+    player_ship.presentation = settings.player_ship;
+    laser_projectiles.presentation = settings.laser_projectiles;
+    capital_ships.presentation = settings.capital_ships;
+    turrets.presentation = settings.turrets;
+    entity_overlay.values = settings.entity_overlay;
+    radar = settings.radar;
 }
 
 void USpaceGameLevelConfig::apply_settings(ioj::sim::SimulationSettings const& settings) {

@@ -5,12 +5,10 @@
 
 #include "ioj/s7/field_constraints.h"
 #include "ioj/s7/record_reader.h"
-#include "ioj/type_traits.h"
 #include "Records.h"
 #include <ioj/s7/field_reader.h>
 
 #include <array>
-#include <concepts>
 #include <string_view>
 
 namespace ioj::s7 {
@@ -46,15 +44,11 @@ struct TypeReader<codegen_compile_fixture::RangeValue>
     static constexpr auto required{required_fields<Field>({Field::minimum, Field::maximum})};
 };
 
-template <typename T>
-    requires ioj::SameAsAny<T,
-                            codegen_compile_fixture::RangeSettings,
-                            codegen_compile_fixture::RangeSettingsOverrides>
-struct TypeReader<T> : RecordReader<T, codegen_compile_fixture::RangeSettingsOverrides> {
-    using value_type = T;
-
+template <>
+struct TypeReader<codegen_compile_fixture::RangeSettings>
+    : RecordReader<codegen_compile_fixture::RangeSettings> {
     static void decode(DecodeContext context, value_type& result) {
-        decode_record<Field, is_patch>(
+        decode_record<Field>(
             context, "ranges", field_names, ([&](Field const field, auto const& read) {
                 switch (field) {
                     case Field::range:
@@ -76,34 +70,42 @@ struct TypeReader<T> : RecordReader<T, codegen_compile_fixture::RangeSettingsOve
     };
 
     static constexpr std::array<std::string_view, 2> field_names{"range", "enabled"};
-    static constexpr bool is_patch{
-        std::same_as<T, codegen_compile_fixture::RangeSettingsOverrides>};
 };
 
-template <typename T>
-    requires ioj::SameAsAny<T,
-                            codegen_compile_fixture::WeaponSettings,
-                            codegen_compile_fixture::WeaponSettingsOverrides>
-struct TypeReader<T> : RecordReader<T, codegen_compile_fixture::WeaponSettingsOverrides> {
-    using value_type = T;
+template <>
+struct TypeReader<codegen_compile_fixture::EmptySettings>
+    : RecordReader<codegen_compile_fixture::EmptySettings> {
+    static void decode(DecodeContext context, value_type&) {
+        decode_record<Field>(context, "empty-settings", field_names, ([](Field, auto const&) {}));
+    }
+  private:
+    enum class Field : std::uint8_t {
+        Count,
+    };
 
+    static constexpr std::array<std::string_view, 0> field_names{};
+};
+
+template <>
+struct TypeReader<codegen_compile_fixture::WeaponSettings>
+    : RecordReader<codegen_compile_fixture::WeaponSettings> {
     static void decode(DecodeContext context, value_type& result) {
-        decode_record<Field, is_patch>(context,
-                                       "weapon",
-                                       field_names,
-                                       ([&](Field const field, auto const& read) {
-                                           switch (field) {
-                                               case Field::damage:
-                                                   read(result.damage, constraints::nonnegative);
-                                                   break;
-                                               case Field::turn_rate:
-                                                   read(result.turn_rate);
-                                                   break;
-                                               case Field::Count:
-                                                   std::unreachable();
-                                           }
-                                       }),
-                                       required);
+        decode_record<Field>(context,
+                             "weapon",
+                             field_names,
+                             ([&](Field const field, auto const& read) {
+                                 switch (field) {
+                                     case Field::damage:
+                                         read(result.damage, constraints::nonnegative);
+                                         break;
+                                     case Field::turn_rate:
+                                         read(result.turn_rate);
+                                         break;
+                                     case Field::Count:
+                                         std::unreachable();
+                                 }
+                             }),
+                             required);
     }
   private:
     enum class Field : std::uint8_t {
@@ -114,19 +116,13 @@ struct TypeReader<T> : RecordReader<T, codegen_compile_fixture::WeaponSettingsOv
 
     static constexpr std::array<std::string_view, 2> field_names{"damage", "turn-speed"};
     static constexpr auto required{required_fields<Field>({Field::damage})};
-    static constexpr bool is_patch{
-        std::same_as<T, codegen_compile_fixture::WeaponSettingsOverrides>};
 };
 
-template <typename T>
-    requires ioj::SameAsAny<T,
-                            codegen_compile_fixture::ActorSettings,
-                            codegen_compile_fixture::ActorSettingsOverrides>
-struct TypeReader<T> : RecordReader<T, codegen_compile_fixture::ActorSettingsOverrides> {
-    using value_type = T;
-
+template <>
+struct TypeReader<codegen_compile_fixture::ActorSettings>
+    : RecordReader<codegen_compile_fixture::ActorSettings> {
     static void decode(DecodeContext context, value_type& result) {
-        decode_record<Field, is_patch>(
+        decode_record<Field>(
             context, "actor", field_names, ([&](Field const field, auto const& read) {
                 switch (field) {
                     case Field::max_health:
@@ -153,8 +149,6 @@ struct TypeReader<T> : RecordReader<T, codegen_compile_fixture::ActorSettingsOve
 
     static constexpr std::array<std::string_view, 3> field_names{
         "max-health", "weapon", "optional-limit"};
-    static constexpr bool is_patch{
-        std::same_as<T, codegen_compile_fixture::ActorSettingsOverrides>};
 };
 
 } // namespace ioj::s7

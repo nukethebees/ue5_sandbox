@@ -6,21 +6,16 @@
 #include "ioj/s7/field_constraints.h"
 #include "ioj/s7/record_reader.h"
 #include "ioj/settings/radar.h"
-#include "ioj/type_traits.h"
 #include <ioj/s7/field_reader.h>
 
 #include <array>
-#include <concepts>
 #include <string_view>
 
 namespace ioj::s7 {
-template <typename T>
-    requires ioj::SameAsAny<T, settings::Radar, settings::RadarOverrides>
-struct TypeReader<T> : RecordReader<T, settings::RadarOverrides> {
-    using value_type = T;
-
+template <>
+struct TypeReader<settings::Radar> : RecordReader<settings::Radar> {
     static void decode(DecodeContext context, value_type& result) {
-        decode_record<Field, is_patch>(
+        decode_record<Field>(
             context, "radar", field_names, ([&](Field const field, auto const& read) {
                 switch (field) {
                     case Field::enabled:
@@ -104,7 +99,6 @@ struct TypeReader<T> : RecordReader<T, settings::RadarOverrides> {
         "objective-size-multiplier",
         "objective-ring-padding-pixels",
         "objective-ring-thickness-pixels"};
-    static constexpr bool is_patch{std::same_as<T, ioj::settings::RadarOverrides>};
 };
 
 } // namespace ioj::s7

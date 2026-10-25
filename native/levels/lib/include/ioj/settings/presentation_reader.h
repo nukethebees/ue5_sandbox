@@ -11,21 +11,16 @@
 #include "ioj/settings/presentation.h"
 #include "ioj/settings/radar_reader.h"
 #include "ioj/settings/turret_presentation_reader.h"
-#include "ioj/type_traits.h"
 #include <ioj/s7/field_reader.h>
 
 #include <array>
-#include <concepts>
 #include <string_view>
 
 namespace ioj::s7 {
-template <typename T>
-    requires ioj::SameAsAny<T, settings::Presentation, settings::PresentationOverrides>
-struct TypeReader<T> : RecordReader<T, settings::PresentationOverrides> {
-    using value_type = T;
-
+template <>
+struct TypeReader<settings::Presentation> : RecordReader<settings::Presentation> {
     static void decode(DecodeContext context, value_type& result) {
-        decode_record<Field, is_patch>(
+        decode_record<Field>(
             context, "presentation", field_names, ([&](Field const field, auto const& read) {
                 switch (field) {
                     case Field::player_ship:
@@ -64,7 +59,6 @@ struct TypeReader<T> : RecordReader<T, settings::PresentationOverrides> {
 
     static constexpr std::array<std::string_view, 6> field_names{
         "player-ship", "laser-projectiles", "capital-ships", "turrets", "entity-overlay", "radar"};
-    static constexpr bool is_patch{std::same_as<T, ioj::settings::PresentationOverrides>};
 };
 
 } // namespace ioj::s7

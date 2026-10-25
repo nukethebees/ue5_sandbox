@@ -20,6 +20,6 @@ struct LevelDefinitionComponents {
     std::optional<LevelCollisionGridDefinition> collision_grid{};
     std::optional<MissionDefinition> mission{};
     std::vector<EntitySpawnDefinition> entities{};
-    settings::Settings settings{};
+    std::optional<settings::Settings> settings{};
 };
 }

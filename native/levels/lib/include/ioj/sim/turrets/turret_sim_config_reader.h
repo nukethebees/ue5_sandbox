@@ -7,21 +7,16 @@
 #include "ioj/s7/record_reader.h"
 #include "ioj/sim/lasers/laser_weapon_sim_config_reader.h"
 #include "ioj/sim/turrets/turret_sim_config.h"
-#include "ioj/type_traits.h"
 #include <ioj/s7/field_reader.h>
 
 #include <array>
-#include <concepts>
 #include <string_view>
 
 namespace ioj::s7 {
-template <typename T>
-    requires ioj::SameAsAny<T, sim::TurretSimConfig, sim::TurretSimConfigOverrides>
-struct TypeReader<T> : RecordReader<T, sim::TurretSimConfigOverrides> {
-    using value_type = T;
-
+template <>
+struct TypeReader<sim::TurretSimConfig> : RecordReader<sim::TurretSimConfig> {
     static void decode(DecodeContext context, value_type& result) {
-        decode_record<Field, is_patch>(
+        decode_record<Field>(
             context, "turrets", field_names, ([&](Field const field, auto const& read) {
                 switch (field) {
                     case Field::detection_radius:
@@ -52,7 +47,6 @@ struct TypeReader<T> : RecordReader<T, sim::TurretSimConfigOverrides> {
 
     static constexpr std::array<std::string_view, 4> field_names{
         "detection-radius", "target-refresh-frequency", "laser", "max-health"};
-    static constexpr bool is_patch{std::same_as<T, ioj::sim::TurretSimConfigOverrides>};
 };
 
 } // namespace ioj::s7

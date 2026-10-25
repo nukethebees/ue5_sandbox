@@ -77,16 +77,18 @@ rejects par-time, unlock criteria, objective missions, and settings layers. Obje
 remain authored in S7; the scene editor cannot infer or rewrite them from entity roles.
 
 Settings constructors return records; `settings-layers` groups records in application order.
-`parse_settings` decodes them into generated `SettingsValuesOverrides`, preserving presence
-independently of defaults. Simulation, presentation and starfield use the same typed readers.
+`parse_settings` decodes them into a copy of a supplied `SettingsValues` configuration.
+Load base settings first, then seed level decoding with the result. Omitted fields preserve
+the seed and explicit values replace it, including values equal to C++ defaults.
+Simulation, presentation and starfield use the same typed readers.
 Unknown fields, duplicate properties, incompatible values and field constraints are checked
-during decoding. Simulation applies the generated group patches to its handwritten root,
+during decoding. Simulation copies the effective groups to its handwritten root,
 then validates the effective configuration's domain constraints.
 
 Shared static configuration records live under `native/levels`; runtime state remains under
 simulation. Unreal retains asset references and colour controls. Asset-derived members are
-excluded from authored readers and patches. The old `settings-schema` compiler family,
-flattened path/value assignments and simulation dispatcher are removed.
+excluded from authored readers. The old `settings-schema` compiler family, generated
+override structs, flattened path/value assignments and simulation dispatcher are removed.
 
 AST readers, Scheme file readers and serializers live under `s7/src/`. General authoring code
 such as scene reconciliation and source sessions remains under `lib/src/`. The AST-only and

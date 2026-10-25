@@ -3,11 +3,9 @@
 
 #pragma once
 
-#include "ioj/apply_override.h"
 #include "ioj/math_types.h"
 
 #include <cstdint>
-#include <optional>
 
 namespace ioj::settings {
 struct CapitalPresentation {
@@ -18,23 +16,4 @@ struct CapitalPresentation {
     float large_explosion_delay{0.f};
     float proxy_arrow_size{5.f};
 };
-
-struct CapitalPresentationOverrides {
-    std::optional<std::int32_t> n_small_explosions{};
-    std::optional<float> time_between_explosions{};
-    std::optional<Vector3f> min_small_explosion_range{};
-    std::optional<Vector3f> max_small_explosion_range{};
-    std::optional<float> large_explosion_delay{};
-    std::optional<float> proxy_arrow_size{};
-};
-
-inline void apply_overrides(CapitalPresentation& target,
-                            CapitalPresentationOverrides const& overrides) {
-    ioj::apply_override(target.n_small_explosions, overrides.n_small_explosions);
-    ioj::apply_override(target.time_between_explosions, overrides.time_between_explosions);
-    ioj::apply_override(target.min_small_explosion_range, overrides.min_small_explosion_range);
-    ioj::apply_override(target.max_small_explosion_range, overrides.max_small_explosion_range);
-    ioj::apply_override(target.large_explosion_delay, overrides.large_explosion_delay);
-    ioj::apply_override(target.proxy_arrow_size, overrides.proxy_arrow_size);
-}
 } // namespace ioj::settings

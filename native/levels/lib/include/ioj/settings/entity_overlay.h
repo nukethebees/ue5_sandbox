@@ -3,11 +3,8 @@
 
 #pragma once
 
-#include "ioj/apply_override.h"
 #include "ioj/settings/soft_target.h"
 #include "ioj/vector.h"
-
-#include <optional>
 
 namespace ioj::settings {
 struct EntityOverlay {
@@ -24,34 +21,4 @@ struct EntityOverlay {
     float screen_edge_padding_pixels{12.f};
     SoftTarget soft_target{};
 };
-
-struct EntityOverlayOverrides {
-    std::optional<bool> enabled{};
-    std::optional<float> maximum_range{};
-    std::optional<ioj::Vector<double, 2>> bar_size_pixels{};
-    std::optional<ioj::Vector<double, 2>> screen_offset_pixels{};
-    std::optional<float> minimum_bar_scale{};
-    std::optional<float> maximum_bar_scale{};
-    std::optional<float> inset_pixels{};
-    std::optional<float> maximum_inset_height_ratio{};
-    std::optional<float> objective_frame_pixels{};
-    std::optional<float> objective_bar_height_scale{};
-    std::optional<float> screen_edge_padding_pixels{};
-    std::optional<ioj::settings::SoftTargetOverrides> soft_target{};
-};
-
-inline void apply_overrides(EntityOverlay& target, EntityOverlayOverrides const& overrides) {
-    ioj::apply_override(target.enabled, overrides.enabled);
-    ioj::apply_override(target.maximum_range, overrides.maximum_range);
-    ioj::apply_override(target.bar_size_pixels, overrides.bar_size_pixels);
-    ioj::apply_override(target.screen_offset_pixels, overrides.screen_offset_pixels);
-    ioj::apply_override(target.minimum_bar_scale, overrides.minimum_bar_scale);
-    ioj::apply_override(target.maximum_bar_scale, overrides.maximum_bar_scale);
-    ioj::apply_override(target.inset_pixels, overrides.inset_pixels);
-    ioj::apply_override(target.maximum_inset_height_ratio, overrides.maximum_inset_height_ratio);
-    ioj::apply_override(target.objective_frame_pixels, overrides.objective_frame_pixels);
-    ioj::apply_override(target.objective_bar_height_scale, overrides.objective_bar_height_scale);
-    ioj::apply_override(target.screen_edge_padding_pixels, overrides.screen_edge_padding_pixels);
-    ioj::apply_override(target.soft_target, overrides.soft_target);
-}
 } // namespace ioj::settings

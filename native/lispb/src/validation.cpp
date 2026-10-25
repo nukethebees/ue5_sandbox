@@ -1,7 +1,6 @@
 #include "validation.h"
 
 #include "packed_value_internal.h"
-#include "record_settings.h"
 #include "soa_body.h"
 
 #include <codegen/ast/cpp_types.h>
@@ -1805,40 +1804,11 @@ class Validator {
         if (records.constraint_policy[row]) {
             require_qualified_identifier(*records.constraint_policy[row],
                                          "Record constraint policy");
-            if (records.generate_overrides[row]) {
-                throw std::invalid_argument{"Constrained records are replaced as complete values; "
-                                            "generate overrides on their containing record"};
-            }
-        }
-        if (records.generate_overrides[row] && !records.generate_settings[row]) {
-            throw std::invalid_argument{"Record overrides require :generate-settings true"};
         }
         for (auto const id : declarations_.items(records.members[row])) {
             auto const member{members.index(id)};
             if (members.settings_name[member]) {
                 require_non_blank_value(*members.settings_name[member], "Settings member name");
-            }
-            if (records.generate_overrides[row] && !members.settings_exclude[member]) {
-                auto const& occurrences{graph_.occurrences()};
-                auto const occurrence{
-                    occurrences.index(graph_.resolved(module_, members.type[member]))};
-                auto const form{occurrences.physical_form[occurrence]};
-                if (form == PhysicalTypeForm::lvalue_reference ||
-                    form == PhysicalTypeForm::rvalue_reference ||
-                    (form == PhysicalTypeForm::value && occurrences.cv_qualified[occurrence])) {
-                    throw std::invalid_argument{"Override members must be assignable values, not "
-                                                "references or const values"};
-                }
-            }
-            if (records.generate_overrides[row] && !members.settings_exclude[member] &&
-                !members.count[member]) {
-                auto const nested{settings_record(graph_, module_, members.type[member])};
-                if (nested &&
-                    !records
-                         .generate_overrides[records.index(graph_.source_declaration(*nested))]) {
-                    throw std::invalid_argument{
-                        "Nested override record requires :generate-overrides true"};
-                }
             }
         }
         std::vector<std::string> member_names;

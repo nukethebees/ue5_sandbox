@@ -3,27 +3,13 @@
 
 #pragma once
 
-#include "ioj/apply_override.h"
-
 #include <cstdint>
-#include <optional>
 
 namespace ioj::starfield {
 struct GenerationSettings {
     std::int32_t star_count{10000};
     std::int32_t random_seed{1337};
 };
-
-struct GenerationSettingsOverrides {
-    std::optional<std::int32_t> star_count{};
-    std::optional<std::int32_t> random_seed{};
-};
-
-inline void apply_overrides(GenerationSettings& target,
-                            GenerationSettingsOverrides const& overrides) {
-    ioj::apply_override(target.star_count, overrides.star_count);
-    ioj::apply_override(target.random_seed, overrides.random_seed);
-}
 
 struct StarSettings {
     float scale{1.0f};
@@ -33,71 +19,21 @@ struct StarSettings {
     float parallax_strength{0.01f};
 };
 
-struct StarSettingsOverrides {
-    std::optional<float> scale{};
-    std::optional<float> size_multiplier{};
-    std::optional<float> global_brightness{};
-    std::optional<float> colour_variation_strength{};
-    std::optional<float> parallax_strength{};
-};
-
-inline void apply_overrides(StarSettings& target, StarSettingsOverrides const& overrides) {
-    ioj::apply_override(target.scale, overrides.scale);
-    ioj::apply_override(target.size_multiplier, overrides.size_multiplier);
-    ioj::apply_override(target.global_brightness, overrides.global_brightness);
-    ioj::apply_override(target.colour_variation_strength, overrides.colour_variation_strength);
-    ioj::apply_override(target.parallax_strength, overrides.parallax_strength);
-}
-
 struct GalacticBandSettings {
     float strength{0.65f};
     float width_degrees{15.0f};
 };
-
-struct GalacticBandSettingsOverrides {
-    std::optional<float> strength{};
-    std::optional<float> width_degrees{};
-};
-
-inline void apply_overrides(GalacticBandSettings& target,
-                            GalacticBandSettingsOverrides const& overrides) {
-    ioj::apply_override(target.strength, overrides.strength);
-    ioj::apply_override(target.width_degrees, overrides.width_degrees);
-}
 
 struct StellarClusterSettings {
     float strength{0.12f};
     float width_degrees{4.0f};
 };
 
-struct StellarClusterSettingsOverrides {
-    std::optional<float> strength{};
-    std::optional<float> width_degrees{};
-};
-
-inline void apply_overrides(StellarClusterSettings& target,
-                            StellarClusterSettingsOverrides const& overrides) {
-    ioj::apply_override(target.strength, overrides.strength);
-    ioj::apply_override(target.width_degrees, overrides.width_degrees);
-}
-
 struct DustLaneSettings {
     float strength{0.9f};
     float width_degrees{5.0f};
     float irregularity{0.7f};
 };
-
-struct DustLaneSettingsOverrides {
-    std::optional<float> strength{};
-    std::optional<float> width_degrees{};
-    std::optional<float> irregularity{};
-};
-
-inline void apply_overrides(DustLaneSettings& target, DustLaneSettingsOverrides const& overrides) {
-    ioj::apply_override(target.strength, overrides.strength);
-    ioj::apply_override(target.width_degrees, overrides.width_degrees);
-    ioj::apply_override(target.irregularity, overrides.irregularity);
-}
 
 struct BrightStarSettings {
     float fraction{0.01f};
@@ -106,83 +42,25 @@ struct BrightStarSettings {
     float shape_strength{0.25f};
 };
 
-struct BrightStarSettingsOverrides {
-    std::optional<float> fraction{};
-    std::optional<float> size_multiplier{};
-    std::optional<float> brightness_multiplier{};
-    std::optional<float> shape_strength{};
-};
-
-inline void apply_overrides(BrightStarSettings& target,
-                            BrightStarSettingsOverrides const& overrides) {
-    ioj::apply_override(target.fraction, overrides.fraction);
-    ioj::apply_override(target.size_multiplier, overrides.size_multiplier);
-    ioj::apply_override(target.brightness_multiplier, overrides.brightness_multiplier);
-    ioj::apply_override(target.shape_strength, overrides.shape_strength);
-}
-
 struct TwinkleSettings {
     float strength{0.1f};
     float speed{0.35f};
 };
-
-struct TwinkleSettingsOverrides {
-    std::optional<float> strength{};
-    std::optional<float> speed{};
-};
-
-inline void apply_overrides(TwinkleSettings& target, TwinkleSettingsOverrides const& overrides) {
-    ioj::apply_override(target.strength, overrides.strength);
-    ioj::apply_override(target.speed, overrides.speed);
-}
 
 struct GalacticHazeSettings {
     float strength{0.15f};
     float width_degrees{18.0f};
 };
 
-struct GalacticHazeSettingsOverrides {
-    std::optional<float> strength{};
-    std::optional<float> width_degrees{};
-};
-
-inline void apply_overrides(GalacticHazeSettings& target,
-                            GalacticHazeSettingsOverrides const& overrides) {
-    ioj::apply_override(target.strength, overrides.strength);
-    ioj::apply_override(target.width_degrees, overrides.width_degrees);
-}
-
 struct GalacticCoreSettings {
     float strength{0.65f};
     float width_degrees{32.0f};
 };
 
-struct GalacticCoreSettingsOverrides {
-    std::optional<float> strength{};
-    std::optional<float> width_degrees{};
-};
-
-inline void apply_overrides(GalacticCoreSettings& target,
-                            GalacticCoreSettingsOverrides const& overrides) {
-    ioj::apply_override(target.strength, overrides.strength);
-    ioj::apply_override(target.width_degrees, overrides.width_degrees);
-}
-
 struct NebularKnotSettings {
     float strength{0.18f};
     float size_degrees{9.0f};
 };
-
-struct NebularKnotSettingsOverrides {
-    std::optional<float> strength{};
-    std::optional<float> size_degrees{};
-};
-
-inline void apply_overrides(NebularKnotSettings& target,
-                            NebularKnotSettingsOverrides const& overrides) {
-    ioj::apply_override(target.strength, overrides.strength);
-    ioj::apply_override(target.size_degrees, overrides.size_degrees);
-}
 
 struct Settings {
     GenerationSettings generation{};
@@ -196,30 +74,4 @@ struct Settings {
     GalacticCoreSettings galactic_core{};
     NebularKnotSettings nebular_knot{};
 };
-
-struct SettingsOverrides {
-    std::optional<ioj::starfield::GenerationSettingsOverrides> generation{};
-    std::optional<ioj::starfield::StarSettingsOverrides> star{};
-    std::optional<ioj::starfield::GalacticBandSettingsOverrides> galactic_band{};
-    std::optional<ioj::starfield::StellarClusterSettingsOverrides> stellar_cluster{};
-    std::optional<ioj::starfield::DustLaneSettingsOverrides> dust_lane{};
-    std::optional<ioj::starfield::BrightStarSettingsOverrides> bright_star{};
-    std::optional<ioj::starfield::TwinkleSettingsOverrides> twinkle{};
-    std::optional<ioj::starfield::GalacticHazeSettingsOverrides> galactic_haze{};
-    std::optional<ioj::starfield::GalacticCoreSettingsOverrides> galactic_core{};
-    std::optional<ioj::starfield::NebularKnotSettingsOverrides> nebular_knot{};
-};
-
-inline void apply_overrides(Settings& target, SettingsOverrides const& overrides) {
-    ioj::apply_override(target.generation, overrides.generation);
-    ioj::apply_override(target.star, overrides.star);
-    ioj::apply_override(target.galactic_band, overrides.galactic_band);
-    ioj::apply_override(target.stellar_cluster, overrides.stellar_cluster);
-    ioj::apply_override(target.dust_lane, overrides.dust_lane);
-    ioj::apply_override(target.bright_star, overrides.bright_star);
-    ioj::apply_override(target.twinkle, overrides.twinkle);
-    ioj::apply_override(target.galactic_haze, overrides.galactic_haze);
-    ioj::apply_override(target.galactic_core, overrides.galactic_core);
-    ioj::apply_override(target.nebular_knot, overrides.nebular_knot);
-}
 } // namespace ioj::starfield

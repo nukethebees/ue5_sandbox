@@ -4,25 +4,19 @@
 #pragma once
 
 #include "ioj/s7/record_reader.h"
-#include "ioj/type_traits.h"
 #include "NestedSettings.h"
 #include "Records_reader.h"
 #include <ioj/s7/field_reader.h>
 
 #include <array>
-#include <concepts>
 #include <string_view>
 
 namespace ioj::s7 {
-template <typename T>
-    requires ioj::SameAsAny<T,
-                            codegen_compile_fixture::SettingsTarget,
-                            codegen_compile_fixture::SettingsTargetOverrides>
-struct TypeReader<T> : RecordReader<T, codegen_compile_fixture::SettingsTargetOverrides> {
-    using value_type = T;
-
+template <>
+struct TypeReader<codegen_compile_fixture::SettingsTarget>
+    : RecordReader<codegen_compile_fixture::SettingsTarget> {
     static void decode(DecodeContext context, value_type& result) {
-        decode_record<Field, is_patch>(
+        decode_record<Field>(
             context, "settings", field_names, ([&](Field const field, auto const& read) {
                 switch (field) {
                     case Field::first:
@@ -49,8 +43,6 @@ struct TypeReader<T> : RecordReader<T, codegen_compile_fixture::SettingsTargetOv
 
     static constexpr std::array<std::string_view, 3> field_names{
         "first", "second", "external-value"};
-    static constexpr bool is_patch{
-        std::same_as<T, codegen_compile_fixture::SettingsTargetOverrides>};
 };
 
 } // namespace ioj::s7

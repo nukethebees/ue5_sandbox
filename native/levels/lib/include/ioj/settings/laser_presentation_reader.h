@@ -6,21 +6,16 @@
 #include "ioj/s7/field_constraints.h"
 #include "ioj/s7/record_reader.h"
 #include "ioj/settings/laser_presentation.h"
-#include "ioj/type_traits.h"
 #include <ioj/s7/field_reader.h>
 
 #include <array>
-#include <concepts>
 #include <string_view>
 
 namespace ioj::s7 {
-template <typename T>
-    requires ioj::SameAsAny<T, settings::LaserPresentation, settings::LaserPresentationOverrides>
-struct TypeReader<T> : RecordReader<T, settings::LaserPresentationOverrides> {
-    using value_type = T;
-
+template <>
+struct TypeReader<settings::LaserPresentation> : RecordReader<settings::LaserPresentation> {
     static void decode(DecodeContext context, value_type& result) {
-        decode_record<Field, is_patch>(
+        decode_record<Field>(
             context, "laser-projectiles", field_names, ([&](Field const field, auto const& read) {
                 switch (field) {
                     case Field::min_cull_distance:
@@ -43,7 +38,6 @@ struct TypeReader<T> : RecordReader<T, settings::LaserPresentationOverrides> {
 
     static constexpr std::array<std::string_view, 2> field_names{"min-cull-distance",
                                                                  "max-cull-distance"};
-    static constexpr bool is_patch{std::same_as<T, ioj::settings::LaserPresentationOverrides>};
 };
 
 } // namespace ioj::s7

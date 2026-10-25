@@ -74,8 +74,7 @@ void FLevelLoaderCameraScenario::load_fixture() {
         {.metadata = native.metadata(),
          .camera = native.camera(),
          .entities = native.entities(),
-         .settings = {.presentation = settings::PresentationOverrides{
-                          .entity_overlay = settings::EntityOverlayOverrides{.enabled = false}}}})};
+         .settings = settings::Settings{.presentation = {.entity_overlay = {.enabled = false}}}})};
     SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
     check(resolved);
     auto const load_result{loader.load(*resolved)};

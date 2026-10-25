@@ -3,11 +3,9 @@
 
 #pragma once
 
-#include "ioj/apply_override.h"
 #include "ioj/math_types.h"
 
 #include <cstdint>
-#include <optional>
 
 namespace ioj::sim {
 struct OverlapResponseConfig {
@@ -15,18 +13,4 @@ struct OverlapResponseConfig {
     Vector3f level_size{2000000.f, 2000000.f, 100000.f};
     Vector3f cell_size{5000.f, 5000.f, 20000.f};
 };
-
-struct OverlapResponseConfigOverrides {
-    std::optional<std::int32_t> damage_per_overlap_detection{};
-    std::optional<Vector3f> level_size{};
-    std::optional<Vector3f> cell_size{};
-};
-
-inline void apply_overrides(OverlapResponseConfig& target,
-                            OverlapResponseConfigOverrides const& overrides) {
-    ioj::apply_override(target.damage_per_overlap_detection,
-                        overrides.damage_per_overlap_detection);
-    ioj::apply_override(target.level_size, overrides.level_size);
-    ioj::apply_override(target.cell_size, overrides.cell_size);
-}
 } // namespace ioj::sim

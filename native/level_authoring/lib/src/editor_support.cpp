@@ -35,9 +35,7 @@ auto check_editor_support(LevelDefinition const& level) -> std::expected<void, D
         unsupported("level.mission", "objective editing; edit the S7 mission source directly");
     }
     auto const& settings{definition.settings()};
-    if (settings.tick || settings.player_ship || settings.laser_projectiles ||
-        settings.capital_ships || settings.fighters || settings.turrets || settings.tube_spinners ||
-        settings.collision_grid || settings.hud || settings.presentation || settings.starfield) {
+    if (settings) {
         unsupported("level.settings", "settings layers");
     }
     check_symbol(errors, definition.metadata().id.value, "level.id");

@@ -3,27 +3,10 @@
 
 #pragma once
 
-#include "ioj/apply_override.h"
-
-#include <optional>
-
 namespace ioj::sim {
 struct HudSettings {
     float player_status_update_period{0.25f};
     float entity_count_update_period{0.25f};
     float mission_status_update_period{0.25f};
 };
-
-struct HudSettingsOverrides {
-    std::optional<float> player_status_update_period{};
-    std::optional<float> entity_count_update_period{};
-    std::optional<float> mission_status_update_period{};
-};
-
-inline void apply_overrides(HudSettings& target, HudSettingsOverrides const& overrides) {
-    ioj::apply_override(target.player_status_update_period, overrides.player_status_update_period);
-    ioj::apply_override(target.entity_count_update_period, overrides.entity_count_update_period);
-    ioj::apply_override(target.mission_status_update_period,
-                        overrides.mission_status_update_period);
-}
 } // namespace ioj::sim

@@ -6,10 +6,13 @@
 #include <ioj/s7/simulation_settings_reader.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 
+#include <SandboxCoreEngine/strings.h>
+
 #include <Misc/Paths.h>
 
 auto read_game_settings(FStringView const path,
-                        ioj::levels::LevelDefinition const* const level,
+                        ioj::levels::LevelDefinition* const level,
+                        FStringView const level_source,
                         USpaceGameLevelConfig const& resources,
                         UObject* const outer) -> std::expected<FLoadedGameSettings, FString> {
     auto const absolute_path{
@@ -23,20 +26,44 @@ auto read_game_settings(FStringView const path,
     }
 
     auto const root{FPaths::Combine(FPaths::ProjectDir(), TEXT("LevelScripts"))};
-    auto const assignments{
-        ioj::levels::authoring::DefinitionReader{std::filesystem::path{*root}}.read_settings_source(
-            *text)};
+    ioj::levels::authoring::DefinitionReader const reader{std::filesystem::path{*root}};
+    ioj::settings::Settings initial;
+    initial.presentation = {
+        .player_ship = resources.player_ship.presentation,
+        .laser_projectiles = resources.laser_projectiles.presentation,
+        .capital_ships = resources.capital_ships.presentation,
+        .turrets = resources.turrets.presentation,
+        .entity_overlay = resources.entity_overlay.values,
+        .radar = resources.radar,
+    };
+    auto settings{reader.read_settings_source(*text, std::move(initial))};
     auto const report_errors{[&](ioj::levels::Diagnostics const& errors) {
         return std::unexpected{
             FString::Printf(TEXT("Cannot load settings '%s':\n%s"),
                             *absolute_path,
                             UTF8_TO_TCHAR(ioj::levels::format_diagnostics(errors).c_str()))};
     }};
-    if (!assignments) {
-        return report_errors(assignments.error());
+    if (!settings) {
+        return report_errors(settings.error());
     }
 
-    auto simulation{ioj::s7::resolve_simulation_settings(*assignments, level)};
+    std::optional<ioj::levels::LevelDefinition> decoded_level;
+    if (!level_source.IsEmpty()) {
+        check(level);
+        auto decoded{
+            reader.read_level_source(ioj::to_string(FString{level_source}), std::move(*settings))};
+        if (!decoded) {
+            return report_errors(decoded.error());
+        }
+        decoded_level = std::move(*decoded);
+    }
+    auto const* const effective_level{decoded_level ? &*decoded_level : level};
+    auto const& effective{
+        effective_level && effective_level->settings() ? *effective_level->settings() : *settings};
+    auto const* const grid{effective_level && effective_level->collision_grid()
+                               ? &*effective_level->collision_grid()
+                               : nullptr};
+    auto simulation{ioj::s7::resolve_simulation_settings(effective, grid)};
     if (!simulation) {
         return report_errors(simulation.error());
     }
@@ -45,11 +72,9 @@ auto read_game_settings(FStringView const path,
     check(config);
     config->apply_settings(*simulation);
 
-    if (assignments->presentation) {
-        config->apply_presentation(*assignments->presentation);
-    }
-    if (level && level->settings().presentation) {
-        config->apply_presentation(*level->settings().presentation);
+    config->apply_presentation(effective.presentation);
+    if (decoded_level) {
+        *level = std::move(*decoded_level);
     }
 
     return FLoadedGameSettings{.config = config,

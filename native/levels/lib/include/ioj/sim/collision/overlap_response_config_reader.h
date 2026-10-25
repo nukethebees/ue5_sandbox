@@ -6,21 +6,16 @@
 #include "ioj/s7/field_constraints.h"
 #include "ioj/s7/record_reader.h"
 #include "ioj/sim/collision/overlap_response_config.h"
-#include "ioj/type_traits.h"
 #include <ioj/s7/field_reader.h>
 
 #include <array>
-#include <concepts>
 #include <string_view>
 
 namespace ioj::s7 {
-template <typename T>
-    requires ioj::SameAsAny<T, sim::OverlapResponseConfig, sim::OverlapResponseConfigOverrides>
-struct TypeReader<T> : RecordReader<T, sim::OverlapResponseConfigOverrides> {
-    using value_type = T;
-
+template <>
+struct TypeReader<sim::OverlapResponseConfig> : RecordReader<sim::OverlapResponseConfig> {
     static void decode(DecodeContext context, value_type& result) {
-        decode_record<Field, is_patch>(
+        decode_record<Field>(
             context, "collision-grid", field_names, ([&](Field const field, auto const& read) {
                 switch (field) {
                     case Field::damage_per_overlap_detection:
@@ -47,7 +42,6 @@ struct TypeReader<T> : RecordReader<T, sim::OverlapResponseConfigOverrides> {
 
     static constexpr std::array<std::string_view, 3> field_names{
         "damage-per-overlap-detection", "level-size", "cell-size"};
-    static constexpr bool is_patch{std::same_as<T, ioj::sim::OverlapResponseConfigOverrides>};
 };
 
 } // namespace ioj::s7

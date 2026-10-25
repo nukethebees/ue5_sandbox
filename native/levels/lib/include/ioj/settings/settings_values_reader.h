@@ -16,21 +16,16 @@
 #include "ioj/sim/player/player_sim_config_reader.h"
 #include "ioj/sim/spinners/spinner_sim_config_reader.h"
 #include "ioj/sim/turrets/turret_sim_config_reader.h"
-#include "ioj/type_traits.h"
 #include <ioj/s7/field_reader.h>
 
 #include <array>
-#include <concepts>
 #include <string_view>
 
 namespace ioj::s7 {
-template <typename T>
-    requires ioj::SameAsAny<T, settings::SettingsValues, settings::SettingsValuesOverrides>
-struct TypeReader<T> : RecordReader<T, settings::SettingsValuesOverrides> {
-    using value_type = T;
-
+template <>
+struct TypeReader<settings::SettingsValues> : RecordReader<settings::SettingsValues> {
     static void decode(DecodeContext context, value_type& result) {
-        decode_record<Field, is_patch>(
+        decode_record<Field>(
             context, "settings", field_names, ([&](Field const field, auto const& read) {
                 switch (field) {
                     case Field::tick:
@@ -98,7 +93,6 @@ struct TypeReader<T> : RecordReader<T, settings::SettingsValuesOverrides> {
                                                                   "hud",
                                                                   "presentation",
                                                                   "starfield"};
-    static constexpr bool is_patch{std::same_as<T, ioj::settings::SettingsValuesOverrides>};
 };
 
 } // namespace ioj::s7

@@ -114,7 +114,6 @@ auto fields_body(LoweringContext& context, DeclarationHandle const record, bool 
     }
 
     auto const read_method{constructing ? ".construct" : ""};
-    auto const patch{records.generate_overrides[row] && !constructing};
     if (positional) {
         body.add(ir.variable("auto const",
                              "arguments",
@@ -137,10 +136,9 @@ auto fields_body(LoweringContext& context, DeclarationHandle const record, bool 
             auto const destination{(constructing ? "value_" : "result.") + name};
             auto const path{
                 std::format("std::string{{context.path}} + \".{}\"", field_name(context, field))};
-            body.add(ir.raw(std::format("FieldReader{}{{{{context.reader, (*arguments)[{}], {}, "
+            body.add(ir.raw(std::format("FieldReader{{{{context.reader, (*arguments)[{}], {}, "
                                         "context.mode, context.errors}}}}"
                                         "{}({}{});\n",
-                                        patch ? "<is_patch>" : "",
                                         index++,
                                         path,
                                         read_method,
@@ -173,9 +171,7 @@ auto fields_body(LoweringContext& context, DeclarationHandle const record, bool 
             })) {
             arguments.push_back(ir.named("required"));
         }
-        body.add(ir.expr_stmt(
-            ir.call(ir.named(patch ? "decode_record<Field, is_patch>" : "decode_record<Field>"),
-                    arguments)));
+        body.add(ir.expr_stmt(ir.call(ir.named("decode_record<Field>"), arguments)));
     }
     if (!constructing) {
         return body.build();
@@ -218,17 +214,10 @@ void lower_record_reader(LoweringContext& context,
     auto const row{records.index(record)};
     auto const fields{record_reader::reader_fields(context, record)};
     auto const empty{fields.empty()};
-    auto const paired{records.generate_overrides[row] != 0};
     auto const type{context.semantic.find_declared(context.module, records.name[row]).value()};
     auto const name{context.text(context.semantic.cpp_spelling(type))};
     auto const config_type{ir.types.named(name + (records.constraint_policy[row] ? "Value" : ""))};
-    auto const value_type{paired ? ir.types.named("T") : config_type};
-    auto const patch_type{ir.types.named(name + "Overrides")};
-    auto const same_type{[&](CppTypeId other) {
-        return ir.template_id(
-            ir.named("std::same_as", {ir.types.dependency("std::same_as", "concepts")}),
-            {ir.type_reference(value_type), ir.type_reference(other)});
-    }};
+    auto const value_type{config_type};
     auto const& members{context.declarations.record_members};
     if (std::ranges::any_of(fields, [&](auto field) {
             auto const& options{members.s7[members.index(field)]};
@@ -254,9 +243,6 @@ void lower_record_reader(LoweringContext& context,
         values.push_back(ir.enumerator(member));
     }
     NodeListBuilder declarations{ir};
-    if (paired) {
-        declarations.add(ir.using_declaration(ir.strings.intern("value_type"), value_type), 2);
-    }
     auto const includes{context.declarations.items(records.s7_reader_includes[row])};
     emission.reader_includes.insert(
         emission.reader_includes.end(), includes.begin(), includes.end());
@@ -286,7 +272,7 @@ void lower_record_reader(LoweringContext& context,
     decode_parameters.push_back(ir.parameter("value_type&", empty ? "" : "result"));
     add_function(
         "decode", "void", decode_parameters, record_reader::fields_body(context, record, false));
-    if (paired || !records.s7_positional[row]) {
+    if (!records.s7_positional[row]) {
         declarations.add(ir.access(Access::private_), 1);
     }
     if (!records.s7_positional[row]) {
@@ -321,39 +307,16 @@ void lower_record_reader(LoweringContext& context,
                              1);
         }
     }
-    if (paired) {
-        declarations.add(ir.constexpr_member(ir.types.intern("bool"),
-                                             ir.strings.intern("is_patch"),
-                                             same_type(patch_type)),
-                         1);
-    }
     auto const specialization{
         ir.record(ir.template_id(ir.named("TypeReader"), {ir.type_reference(value_type)}),
                   declarations.build())};
-    if (paired) {
-        ir.set_record_template(
-            specialization,
-            ir.template_declaration({ir.type_template_parameter(ir.strings.intern("T"))}));
-        ir.set_record_requires_clause(
-            specialization,
-            ir.template_id(ir.named("ioj::SameAsAny",
-                                    {ir.types.dependency("ioj::SameAsAny", "ioj/type_traits.h")}),
-                           {ir.type_reference(value_type),
-                            ir.type_reference(config_type),
-                            ir.type_reference(patch_type)}));
-    } else {
-        ir.set_record_template(specialization, ir.template_specialization());
-    }
-    std::vector<CppTypeId> base_arguments{value_type};
-    if (paired) {
-        base_arguments.push_back(patch_type);
-    }
+    ir.set_record_template(specialization, ir.template_specialization());
     ir.set_record_bases(
         specialization,
         {ir.types.template_type(ir.types.named("ioj::s7::RecordReader",
                                                {ir.types.dependency("ioj::s7::RecordReader",
                                                                     "ioj/s7/record_reader.h")}),
-                                base_arguments)});
+                                {value_type})});
     emission.reader_declarations.push_back(specialization);
 
     for (auto const dependency : context.semantic.dependencies_of(type)) {

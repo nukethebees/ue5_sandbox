@@ -3,7 +3,7 @@
   :header-include "ioj/settings/player_presentation.h"
   :namespace ioj::settings
   (record PlayerPresentation
-    :generate-settings true :generate-overrides true
+    :generate-settings true
     :generate-s7-reader true :s7-tag "player-ship"
     (member boost_effect_colour_intensity float :initializer 75.f :finite true)))
 
@@ -12,7 +12,7 @@
   :header-include "ioj/settings/laser_presentation.h"
   :namespace ioj::settings
   (record LaserPresentation
-    :generate-settings true :generate-overrides true
+    :generate-settings true
     :generate-s7-reader true :s7-tag "laser-projectiles"
     (member min_cull_distance float :initializer 0.f :finite true)
     (member max_cull_distance float :initializer 50000.f :finite true)))
@@ -22,7 +22,7 @@
   :header-include "ioj/settings/capital_presentation.h"
   :namespace ioj::settings
   (record CapitalPresentation
-    :generate-settings true :generate-overrides true
+    :generate-settings true
     :generate-s7-reader true :s7-tag "capital-ships"
     (member n_small_explosions std::int32_t :initializer 6)
     (member time_between_explosions float :initializer 0.1f :finite true)
@@ -36,7 +36,7 @@
   :header-include "ioj/settings/turret_presentation.h"
   :namespace ioj::settings
   (record TurretPresentation
-    :generate-settings true :generate-overrides true
+    :generate-settings true
     :generate-s7-reader true :s7-tag "turrets"
     (member death_effect_scale float :initializer 1.f :finite true)))
 
@@ -45,7 +45,7 @@
   :header-include "ioj/settings/soft_target.h"
   :namespace ioj::settings
   (record SoftTarget
-    :generate-settings true :generate-overrides true
+    :generate-settings true
     :generate-s7-reader true :s7-tag "soft-target"
     (member acquisition_radius_pixels float :initializer 72.f :finite true)
     (member retention_radius_pixels float :initializer 96.f :finite true)
@@ -66,7 +66,7 @@
   :header-include "ioj/settings/entity_overlay.h"
   :namespace ioj::settings
   (record EntityOverlay
-    :generate-settings true :generate-overrides true
+    :generate-settings true
     :generate-s7-reader true :s7-tag "entity-overlay"
     (member enabled bool :initializer true)
     (member maximum_range float :initializer 1000000.f :finite true)
@@ -86,7 +86,7 @@
   :header-include "ioj/settings/radar.h"
   :namespace ioj::settings
   (record Radar
-    :generate-settings true :generate-overrides true
+    :generate-settings true
     :generate-s7-reader true :s7-tag "radar"
     (member enabled bool :initializer true)
     (member combat_range float :initializer 100000.f :finite true)
@@ -108,7 +108,7 @@
   :header-include "ioj/settings/presentation.h"
   :namespace ioj::settings
   (record Presentation
-    :generate-settings true :generate-overrides true
+    :generate-settings true
     :generate-s7-reader true :s7-tag "presentation"
     (member player_ship ioj::settings::PlayerPresentation :initializer "")
     (member laser_projectiles ioj::settings::LaserPresentation :initializer "")

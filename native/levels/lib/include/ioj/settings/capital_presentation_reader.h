@@ -6,22 +6,16 @@
 #include "ioj/s7/field_constraints.h"
 #include "ioj/s7/record_reader.h"
 #include "ioj/settings/capital_presentation.h"
-#include "ioj/type_traits.h"
 #include <ioj/s7/field_reader.h>
 
 #include <array>
-#include <concepts>
 #include <string_view>
 
 namespace ioj::s7 {
-template <typename T>
-    requires ioj::
-        SameAsAny<T, settings::CapitalPresentation, settings::CapitalPresentationOverrides>
-    struct TypeReader<T> : RecordReader<T, settings::CapitalPresentationOverrides> {
-    using value_type = T;
-
+template <>
+struct TypeReader<settings::CapitalPresentation> : RecordReader<settings::CapitalPresentation> {
     static void decode(DecodeContext context, value_type& result) {
-        decode_record<Field, is_patch>(
+        decode_record<Field>(
             context, "capital-ships", field_names, ([&](Field const field, auto const& read) {
                 switch (field) {
                     case Field::n_small_explosions:
@@ -64,7 +58,6 @@ template <typename T>
                                                                  "max-small-explosion-range",
                                                                  "large-explosion-delay",
                                                                  "proxy-arrow-size"};
-    static constexpr bool is_patch{std::same_as<T, ioj::settings::CapitalPresentationOverrides>};
 };
 
 } // namespace ioj::s7

@@ -41,7 +41,10 @@ class LevelDefinition {
     [[nodiscard]] auto entities() const -> std::vector<EntitySpawnDefinition> const& {
         return entities_;
     }
-    [[nodiscard]] auto settings() const -> settings::Settings const& { return settings_; }
+    // Absent when neither a base nor authored settings were supplied during decoding.
+    [[nodiscard]] auto settings() const -> std::optional<settings::Settings> const& {
+        return settings_;
+    }
     // Require an entity ID belonging to this definition.
     [[nodiscard]] auto entity(EntityId const& id) const -> EntitySpawnDefinition const&;
   private:
@@ -52,7 +55,7 @@ class LevelDefinition {
     std::optional<LevelCollisionGridDefinition> collision_grid_;
     std::optional<MissionDefinition> mission_;
     std::vector<EntitySpawnDefinition> entities_;
-    settings::Settings settings_;
+    std::optional<settings::Settings> settings_;
 };
 
 // Return distinct teams from initial and scheduled entities, in enum order.

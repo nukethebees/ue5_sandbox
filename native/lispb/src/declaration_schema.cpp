@@ -425,9 +425,6 @@ auto generated_cpp_names(Declarations const& declarations, DeclarationHandle dec
             if (declarations.records.constraint_policy[declarations.records.index(declaration)]) {
                 return {id, strings.intern(name + "Value")};
             }
-            if (declarations.records.generate_overrides[declarations.records.index(declaration)]) {
-                return {id, strings.intern(name + "Overrides")};
-            }
             return {id};
         case DeclarationKind::packed_value:
         case DeclarationKind::union_type:

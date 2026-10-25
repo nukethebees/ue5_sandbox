@@ -827,6 +827,7 @@ auto ATestBatchOrchestrator::prepare_level() -> bool {
     auto loaded{
         read_game_settings(settings_file.FilePath,
                            level_definition_.IsSet() ? &level_definition_.GetValue() : nullptr,
+                           level_source_,
                            *level_config,
                            this)};
     if (!loaded) {

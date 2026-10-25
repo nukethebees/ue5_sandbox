@@ -3,5 +3,5 @@
 #include <ioj/settings/settings_values.h>
 
 namespace ioj::settings {
-using Settings = SettingsValuesOverrides;
+using Settings = SettingsValues;
 }

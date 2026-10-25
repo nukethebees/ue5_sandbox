@@ -4,13 +4,10 @@
 #pragma once
 
 #include "fire_rate.h"
-#include "ioj/apply_override.h"
 #include "ioj/constrained_numbers.h"
 #include "ioj/sim/entities/health.h"
 #include "ioj/sim/lasers/laser_weapon_sim_config.h"
 #include "ship_laser_mode.h"
-
-#include <optional>
 
 namespace ioj::sim {
 struct PlayerSimConfig {
@@ -26,32 +23,4 @@ struct PlayerSimConfig {
     ShipLaserMode laser_mode{ShipLaserMode::Single};
     ShipFireRate laser_fire_rate{ShipFireRate::FullAuto};
 };
-
-struct PlayerSimConfigOverrides {
-    std::optional<ioj::PositiveFinite<float>> thrust_energy_max{};
-    std::optional<float> pitch_angle_max{};
-    std::optional<float> pitch_speed{};
-    std::optional<float> yaw_angle_max{};
-    std::optional<float> yaw_speed{};
-    std::optional<float> turn_bank_angle_max{};
-    std::optional<float> turn_bank_speed{};
-    std::optional<ioj::sim::LaserWeaponSimConfigOverrides> laser{};
-    std::optional<Health> health{};
-    std::optional<ShipLaserMode> laser_mode{};
-    std::optional<ShipFireRate> laser_fire_rate{};
-};
-
-inline void apply_overrides(PlayerSimConfig& target, PlayerSimConfigOverrides const& overrides) {
-    ioj::apply_override(target.thrust_energy_max, overrides.thrust_energy_max);
-    ioj::apply_override(target.pitch_angle_max, overrides.pitch_angle_max);
-    ioj::apply_override(target.pitch_speed, overrides.pitch_speed);
-    ioj::apply_override(target.yaw_angle_max, overrides.yaw_angle_max);
-    ioj::apply_override(target.yaw_speed, overrides.yaw_speed);
-    ioj::apply_override(target.turn_bank_angle_max, overrides.turn_bank_angle_max);
-    ioj::apply_override(target.turn_bank_speed, overrides.turn_bank_speed);
-    ioj::apply_override(target.laser, overrides.laser);
-    ioj::apply_override(target.health, overrides.health);
-    ioj::apply_override(target.laser_mode, overrides.laser_mode);
-    ioj::apply_override(target.laser_fire_rate, overrides.laser_fire_rate);
-}
 } // namespace ioj::sim

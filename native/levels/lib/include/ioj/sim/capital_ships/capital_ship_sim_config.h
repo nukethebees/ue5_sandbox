@@ -3,12 +3,10 @@
 
 #pragma once
 
-#include "ioj/apply_override.h"
 #include "ioj/sim/entities/health.h"
 #include "ioj/transform3d.h"
 
 #include <cstdint>
-#include <optional>
 #include <vector>
 
 namespace ioj::sim {
@@ -18,15 +16,4 @@ struct CapitalShipSimConfig {
     std::vector<ioj::Transform3d> fighter_spawn_slots_relative_transforms{};
     Health max_health{5000};
 };
-
-struct CapitalShipSimConfigOverrides {
-    std::optional<float> spawn_delay{};
-    std::optional<Health> max_health{};
-};
-
-inline void apply_overrides(CapitalShipSimConfig& target,
-                            CapitalShipSimConfigOverrides const& overrides) {
-    ioj::apply_override(target.spawn_delay, overrides.spawn_delay);
-    ioj::apply_override(target.max_health, overrides.max_health);
-}
 } // namespace ioj::sim

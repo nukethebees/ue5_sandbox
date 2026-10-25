@@ -21,7 +21,6 @@ struct RecordSchemas {
 
     std::vector<std::optional<StringId>> constraint_policy;
     std::vector<std::uint8_t> generate_settings;
-    std::vector<std::uint8_t> generate_overrides;
     std::vector<std::optional<StringId>> s7_tag;
     std::vector<std::uint8_t> s7_positional;
     std::vector<SchemaRange<StringId>> s7_reader_includes;

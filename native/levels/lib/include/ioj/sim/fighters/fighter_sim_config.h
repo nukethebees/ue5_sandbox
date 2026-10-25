@@ -3,13 +3,11 @@
 
 #pragma once
 
-#include "ioj/apply_override.h"
 #include "ioj/settings/attack_distance_band.h"
 #include "ioj/sim/entities/health.h"
 #include "ioj/sim/lasers/laser_weapon_sim_config.h"
 
 #include <cstdint>
-#include <optional>
 
 namespace ioj::sim {
 struct FighterSimConfig {
@@ -40,65 +38,4 @@ struct FighterSimConfig {
     float awareness_scan_frequency{6.f};
     float minimum_opportunistic_intercept_deviation_dot_product{0.5f};
 };
-
-struct FighterSimConfigOverrides {
-    std::optional<std::int32_t> max_live_fighters{};
-    std::optional<float> fire_dot_product_threshold{};
-    std::optional<float> speed{};
-    std::optional<float> turn_speed_unitless{};
-    std::optional<float> avoidance_clear_update_frequency{};
-    std::optional<float> avoidance_update_frequency{};
-    std::optional<float> avoidance_active_update_frequency{};
-    std::optional<float> avoidance_immediate_update_frequency{};
-    std::optional<float> avoidance_lookahead_time{};
-    std::optional<float> avoidance_clearance_buffer{};
-    std::optional<float> separation_radius{};
-    std::optional<float> separation_strength{};
-    std::optional<float> steering_memory_duration{};
-    std::optional<std::int32_t> dense_traffic_neighbour_threshold{};
-    std::optional<ioj::sim::LaserWeaponSimConfigOverrides> laser{};
-    std::optional<Health> health{};
-    std::optional<float> attack_retry_cooldown{};
-    std::optional<float> attack_engagement_threshold{};
-    std::optional<float> attack_reposition_frequency{};
-    std::optional<settings::AttackDistanceBand> attack_distance_band{};
-    std::optional<float> arrival_distance{};
-    std::optional<float> los_check_buffer{};
-    std::optional<float> awareness_radius{};
-    std::optional<float> awareness_scan_frequency{};
-    std::optional<float> minimum_opportunistic_intercept_deviation_dot_product{};
-};
-
-inline void apply_overrides(FighterSimConfig& target, FighterSimConfigOverrides const& overrides) {
-    ioj::apply_override(target.max_live_fighters, overrides.max_live_fighters);
-    ioj::apply_override(target.fire_dot_product_threshold, overrides.fire_dot_product_threshold);
-    ioj::apply_override(target.speed, overrides.speed);
-    ioj::apply_override(target.turn_speed_unitless, overrides.turn_speed_unitless);
-    ioj::apply_override(target.avoidance_clear_update_frequency,
-                        overrides.avoidance_clear_update_frequency);
-    ioj::apply_override(target.avoidance_update_frequency, overrides.avoidance_update_frequency);
-    ioj::apply_override(target.avoidance_active_update_frequency,
-                        overrides.avoidance_active_update_frequency);
-    ioj::apply_override(target.avoidance_immediate_update_frequency,
-                        overrides.avoidance_immediate_update_frequency);
-    ioj::apply_override(target.avoidance_lookahead_time, overrides.avoidance_lookahead_time);
-    ioj::apply_override(target.avoidance_clearance_buffer, overrides.avoidance_clearance_buffer);
-    ioj::apply_override(target.separation_radius, overrides.separation_radius);
-    ioj::apply_override(target.separation_strength, overrides.separation_strength);
-    ioj::apply_override(target.steering_memory_duration, overrides.steering_memory_duration);
-    ioj::apply_override(target.dense_traffic_neighbour_threshold,
-                        overrides.dense_traffic_neighbour_threshold);
-    ioj::apply_override(target.laser, overrides.laser);
-    ioj::apply_override(target.health, overrides.health);
-    ioj::apply_override(target.attack_retry_cooldown, overrides.attack_retry_cooldown);
-    ioj::apply_override(target.attack_engagement_threshold, overrides.attack_engagement_threshold);
-    ioj::apply_override(target.attack_reposition_frequency, overrides.attack_reposition_frequency);
-    ioj::apply_override(target.attack_distance_band, overrides.attack_distance_band);
-    ioj::apply_override(target.arrival_distance, overrides.arrival_distance);
-    ioj::apply_override(target.los_check_buffer, overrides.los_check_buffer);
-    ioj::apply_override(target.awareness_radius, overrides.awareness_radius);
-    ioj::apply_override(target.awareness_scan_frequency, overrides.awareness_scan_frequency);
-    ioj::apply_override(target.minimum_opportunistic_intercept_deviation_dot_product,
-                        overrides.minimum_opportunistic_intercept_deviation_dot_product);
-}
 } // namespace ioj::sim

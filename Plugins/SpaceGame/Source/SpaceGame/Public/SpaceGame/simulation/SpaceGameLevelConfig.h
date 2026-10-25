@@ -109,7 +109,7 @@ class SPACEGAME_API USpaceGameLevelConfig : public UDataAsset {
                 sparks};
     }
     void apply_settings(ioj::sim::SimulationSettings const& settings);
-    void apply_presentation(ioj::settings::PresentationOverrides const& settings);
+    void apply_presentation(ioj::settings::Presentation const& settings);
     ioj::sim::OverlapResponseConfig overlap_response;
     [[nodiscard]] auto is_valid(bool require_presentation = true) const noexcept -> bool;
     void get_validation_errors(TArray<FString>& errors, bool require_presentation = true) const;

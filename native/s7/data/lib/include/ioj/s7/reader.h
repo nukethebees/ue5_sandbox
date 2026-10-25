@@ -246,9 +246,8 @@ template <typename T>
 struct TypeReader<std::optional<T>> {
     static void decode(DecodeContext context, std::optional<T>& destination) {
         auto const& ast{context.reader.ast()};
-        if (context.mode == ReadMode::Override && destination &&
-            !(ast.node(context.node).kind == NodeKind::Keyword &&
-              ast.text(context.node) == "none")) {
+        if (destination && !(ast.node(context.node).kind == NodeKind::Keyword &&
+                             ast.text(context.node) == "none")) {
             decode_field(context, *destination);
             return;
         }
@@ -297,43 +296,14 @@ void read_field(DecodeContext context, std::optional<T>& destination) {
 template <typename T>
 void decode_field(DecodeContext context, T& destination) {
     if constexpr (requires { TypeReader<T>::decode(context, destination); }) {
-        if (context.mode == ReadMode::Override) {
-            auto const& ast{context.reader.ast()};
-            if (ast.node(context.node).kind == NodeKind::List) {
-                auto const children{ast.children(context.node)};
-                if (!children.empty() && ast.node(children.front()).kind == NodeKind::Keyword &&
-                    ast.text(children.front()) == "settings-layers") {
-                    for (auto const layer : children.subspan(1)) {
-                        context.node = layer;
-                        decode_field(context, destination);
-                    }
-                    return;
-                }
-            }
-            TypeReader<T>::decode(context, destination);
-            return;
-        }
-    }
-    auto value{read<T>(context.reader, context.node, context.path)};
-    if (value) {
-        destination = std::move(*value);
+        TypeReader<T>::decode(context, destination);
     } else {
-        append_errors(context.errors, std::move(value.error()));
-    }
-}
-
-// Preserve presence separately from an optional-valued field's explicit empty value.
-template <typename T>
-void decode_patch_field(DecodeContext context, std::optional<T>& destination) {
-    if constexpr (std::default_initializable<T> &&
-                  requires(T& value) { TypeReader<T>::decode(context, value); }) {
-        if (!destination) {
-            destination.emplace();
+        auto value{read<T>(context.reader, context.node, context.path)};
+        if (value) {
+            destination = std::move(*value);
+        } else {
+            append_errors(context.errors, std::move(value.error()));
         }
-        context.mode = ReadMode::Override;
-        decode_field(context, *destination);
-    } else {
-        read_field(context, destination);
     }
 }
 

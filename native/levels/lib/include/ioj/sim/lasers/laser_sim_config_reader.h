@@ -5,21 +5,16 @@
 
 #include "ioj/s7/record_reader.h"
 #include "ioj/sim/lasers/laser_sim_config.h"
-#include "ioj/type_traits.h"
 #include <ioj/s7/field_reader.h>
 
 #include <array>
-#include <concepts>
 #include <string_view>
 
 namespace ioj::s7 {
-template <typename T>
-    requires ioj::SameAsAny<T, sim::LaserSimConfig, sim::LaserSimConfigOverrides>
-struct TypeReader<T> : RecordReader<T, sim::LaserSimConfigOverrides> {
-    using value_type = T;
-
+template <>
+struct TypeReader<sim::LaserSimConfig> : RecordReader<sim::LaserSimConfig> {
     static void decode(DecodeContext context, value_type& result) {
-        decode_record<Field, is_patch>(
+        decode_record<Field>(
             context, "laser-projectiles", field_names, ([&](Field const field, auto const& read) {
                 switch (field) {
                     case Field::n_preallocated_instances:
@@ -37,7 +32,6 @@ struct TypeReader<T> : RecordReader<T, sim::LaserSimConfigOverrides> {
     };
 
     static constexpr std::array<std::string_view, 1> field_names{"n-preallocated-instances"};
-    static constexpr bool is_patch{std::same_as<T, ioj::sim::LaserSimConfigOverrides>};
 };
 
 } // namespace ioj::s7

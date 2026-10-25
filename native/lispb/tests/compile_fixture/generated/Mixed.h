@@ -3,14 +3,12 @@
 
 #pragma once
 
-#include "ioj/apply_override.h"
 #include "Records.h"
 #include "SignatureSecond.h"
 
 #include <array>
 #include <compare>
 #include <cstdint>
-#include <optional>
 
 namespace codegen_compile_fixture {
 struct ApiPair;
@@ -25,14 +23,6 @@ union Payload;
 struct CrossSettings {
     ActorSettings actor{};
 };
-
-struct CrossSettingsOverrides {
-    std::optional<codegen_compile_fixture::ActorSettingsOverrides> actor{};
-};
-
-inline void apply_overrides(CrossSettings& target, CrossSettingsOverrides const& overrides) {
-    ioj::apply_override(target.actor, overrides.actor);
-}
 
 struct DefaultValue {
     int value{7};

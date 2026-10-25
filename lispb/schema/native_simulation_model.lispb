@@ -151,7 +151,7 @@
   :header-include "ioj/sim/lasers/laser_weapon_sim_config.h"
   :namespace ioj::sim
   (record LaserWeaponSimConfig
-    :generate-settings true :generate-overrides true
+    :generate-settings true
     :generate-s7-reader true :s7-tag "laser"
     (member damage std::int32_t :initializer "5")
     (member projectile_speed float :initializer "10000.f" :finite true)
@@ -163,7 +163,7 @@
   :header-include "ioj/sim/lasers/laser_sim_config.h"
   :namespace ioj::sim
   (record LaserSimConfig
-    :generate-settings true :generate-overrides true
+    :generate-settings true
     :generate-s7-reader true :s7-tag "laser-projectiles"
     (member n_preallocated_instances std::int32_t :initializer "5000")))
 
@@ -172,7 +172,7 @@
   :header-include "ioj/sim/collision/overlap_response_config.h"
   :namespace ioj::sim
   (record OverlapResponseConfig
-    :generate-settings true :generate-overrides true
+    :generate-settings true
     :generate-s7-reader true :s7-tag "collision-grid"
     (member damage_per_overlap_detection std::int32_t :initializer 50)
     (member level_size @native_vector_3f :initializer "2000000.f, 2000000.f, 100000.f" :finite true)
@@ -183,7 +183,7 @@
   :header-include "ioj/sim/fighters/fighter_sim_config.h"
   :namespace ioj::sim
   (record FighterSimConfig
-    :generate-settings true :generate-overrides true
+    :generate-settings true
     :generate-s7-reader true :s7-tag "fighters"
     (member max_live_fighters std::int32_t :initializer "2000")
     (member fire_point_distance float :initializer "" :settings-exclude true)

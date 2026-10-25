@@ -6,19 +6,19 @@
 #include <filesystem>
 
 namespace ioj::levels {
-class LevelDefinition;
+struct LevelCollisionGridDefinition;
 }
 
 namespace ioj::s7 {
 using SimulationSettingsReadResult = std::expected<sim::SimulationSettings, levels::Diagnostics>;
 
-// Decode supplied records into default-constructed native settings, then apply level overrides.
-[[nodiscard]] auto resolve_simulation_settings(settings::Settings const& source,
-                                               levels::LevelDefinition const* level = nullptr)
-    -> SimulationSettingsReadResult;
+// Require settings decoded in base-to-level order.
+[[nodiscard]] auto
+    resolve_simulation_settings(settings::Settings const& source,
+                                levels::LevelCollisionGridDefinition const* grid = nullptr)
+        -> SimulationSettingsReadResult;
 
 [[nodiscard]] auto read_simulation_settings(std::filesystem::path const& path,
-                                            std::filesystem::path const& library_root = {},
-                                            levels::LevelDefinition const* level = nullptr)
+                                            std::filesystem::path const& library_root = {})
     -> SimulationSettingsReadResult;
 }

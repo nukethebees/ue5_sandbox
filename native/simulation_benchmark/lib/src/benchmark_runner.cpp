@@ -91,15 +91,19 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
     -> std::expected<BenchmarkResult, std::string> {
     auto const script_root{std::filesystem::path{IOJ_PROJECT_SOURCE_DIR} / "LevelScripts"};
     levels::authoring::DefinitionReader reader{script_root};
-    auto level_result{reader.read_level_file(options.level_path)};
+    auto base{reader.read_settings_file(script_root / "Settings" / "base.scm")};
+    if (!base) {
+        return std::unexpected{levels::format_diagnostics(base.error())};
+    }
+    auto level_result{reader.read_level_file(options.level_path, std::move(*base))};
     if (!level_result) {
         return std::unexpected{read_error(level_result)};
     }
     auto const& level{*level_result};
     auto const& level_components{level};
 
-    auto const loaded_settings{
-        s7::read_simulation_settings(script_root / "Settings" / "base.scm", script_root, &level)};
+    auto const loaded_settings{s7::resolve_simulation_settings(
+        *level.settings(), level.collision_grid() ? &*level.collision_grid() : nullptr)};
     if (!loaded_settings) {
         return std::unexpected{levels::format_diagnostics(loaded_settings.error())};
     }

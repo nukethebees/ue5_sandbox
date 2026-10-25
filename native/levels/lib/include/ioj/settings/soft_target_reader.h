@@ -6,21 +6,16 @@
 #include "ioj/s7/field_constraints.h"
 #include "ioj/s7/record_reader.h"
 #include "ioj/settings/soft_target.h"
-#include "ioj/type_traits.h"
 #include <ioj/s7/field_reader.h>
 
 #include <array>
-#include <concepts>
 #include <string_view>
 
 namespace ioj::s7 {
-template <typename T>
-    requires ioj::SameAsAny<T, settings::SoftTarget, settings::SoftTargetOverrides>
-struct TypeReader<T> : RecordReader<T, settings::SoftTargetOverrides> {
-    using value_type = T;
-
+template <>
+struct TypeReader<settings::SoftTarget> : RecordReader<settings::SoftTarget> {
     static void decode(DecodeContext context, value_type& result) {
-        decode_record<Field, is_patch>(
+        decode_record<Field>(
             context, "soft-target", field_names, ([&](Field const field, auto const& read) {
                 switch (field) {
                     case Field::acquisition_radius_pixels:
@@ -99,7 +94,6 @@ struct TypeReader<T> : RecordReader<T, settings::SoftTargetOverrides> {
         "pulse-opacity-boost",
         "pulse-duration",
         "fade-out-duration"};
-    static constexpr bool is_patch{std::same_as<T, ioj::settings::SoftTargetOverrides>};
 };
 
 } // namespace ioj::s7

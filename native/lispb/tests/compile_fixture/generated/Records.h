@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "ioj/apply_override.h"
 #include "ioj/constrained_value.h"
 
 #include <compile_fixture/range_policy.hpp>
@@ -25,16 +24,6 @@ struct RangeSettings {
     bool enabled{true};
 };
 
-struct RangeSettingsOverrides {
-    std::optional<Range> range{};
-    std::optional<bool> enabled{};
-};
-
-inline void apply_overrides(RangeSettings& target, RangeSettingsOverrides const& overrides) {
-    ioj::apply_override(target.range, overrides.range);
-    ioj::apply_override(target.enabled, overrides.enabled);
-}
-
 struct ApiPair {
     float x;
     float y;
@@ -42,41 +31,15 @@ struct ApiPair {
 
 struct EmptySettings {};
 
-struct EmptySettingsOverrides {};
-
-inline void apply_overrides(EmptySettings&, EmptySettingsOverrides const&) {}
-
 struct WeaponSettings {
     int damage{5};
     float turn_rate{2.f};
     float asset_distance{9.f};
 };
 
-struct WeaponSettingsOverrides {
-    std::optional<int> damage{};
-    std::optional<float> turn_rate{};
-};
-
-inline void apply_overrides(WeaponSettings& target, WeaponSettingsOverrides const& overrides) {
-    ioj::apply_override(target.damage, overrides.damage);
-    ioj::apply_override(target.turn_rate, overrides.turn_rate);
-}
-
 struct ActorSettings {
     int max_health{100};
     WeaponSettings weapon{};
     std::optional<int> optional_limit{3};
 };
-
-struct ActorSettingsOverrides {
-    std::optional<int> max_health{};
-    std::optional<codegen_compile_fixture::WeaponSettingsOverrides> weapon{};
-    std::optional<std::optional<int>> optional_limit{};
-};
-
-inline void apply_overrides(ActorSettings& target, ActorSettingsOverrides const& overrides) {
-    ioj::apply_override(target.max_health, overrides.max_health);
-    ioj::apply_override(target.weapon, overrides.weapon);
-    ioj::apply_override(target.optional_limit, overrides.optional_limit);
-}
 } // namespace codegen_compile_fixture

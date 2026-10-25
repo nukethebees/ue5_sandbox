@@ -70,6 +70,10 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
         settings_prepared_ = false;
         level_definition_ = MoveTemp(definition);
     }
+    auto get_level_definition() const -> ioj::levels::LevelDefinition const& {
+        check(level_definition_.IsSet());
+        return level_definition_.GetValue();
+    }
     auto is_presentation_enabled() const noexcept -> bool { return presentation_enabled; }
 
     /* **************************************** */
