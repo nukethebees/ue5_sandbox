@@ -1,4 +1,5 @@
 #include <ioj/array_utils.h>
+#include <ioj/vector_value_math.h>
 
 #include <gtest/gtest.h>
 
@@ -42,12 +43,23 @@ TEST(NativeCoreArrayUtils, FillsScalarAndSplitArrays) {
 }
 
 TEST(NativeCoreArrayUtils, ComparesWithinTolerance) {
-    std::array<float, 3> const lhs{1.0f, 2.0f, 3.0f};
-    std::array<float, 3> const close{1.0f, 2.00005f, 3.0f};
-    std::array<float, 3> const far{1.0f, 2.001f, 3.0f};
+    struct Case {
+        char const* name;
+        ioj::Vector3f actual;
+        bool expected;
+    };
+    ioj::Vector3f const reference{1.f, 2.f, 3.f};
+    for (auto const& test : {Case{"within tolerance", {1.f, 2.00005f, 3.f}, true},
+                             Case{"outside tolerance", {1.f, 2.001f, 3.f}, false}}) {
+        SCOPED_TRACE(test.name);
+        EXPECT_EQ(
+            ioj::kernel::almost_equal(reference.elements.data(), test.actual.elements.data(), 3),
+            test.expected);
+        EXPECT_EQ(ioj::almost_equal(reference, test.actual, 1.e-4f), test.expected);
+    }
 
-    EXPECT_TRUE(ioj::kernel::almost_equal(lhs.data(), close.data(), 3));
-    EXPECT_FALSE(ioj::kernel::almost_equal(lhs.data(), far.data(), 3));
+    EXPECT_TRUE(ioj::almost_equal(ioj::Vector2d{1, 2}, ioj::Vector2d{1.5, 2}, 0.5));
+    EXPECT_FALSE(ioj::almost_equal(ioj::Vector2d{1, 2}, ioj::Vector2d{1, 2.5}, 0.25));
 }
 
 TEST(NativeCoreArrayUtils, RejectsNanValues) {
@@ -55,6 +67,7 @@ TEST(NativeCoreArrayUtils, RejectsNanValues) {
     std::array<float, 1> const rhs{std::numeric_limits<float>::quiet_NaN()};
 
     EXPECT_FALSE(ioj::kernel::almost_equal(lhs.data(), rhs.data(), 1));
+    EXPECT_FALSE(ioj::almost_equal(ioj::Vector<float, 1>{lhs}, ioj::Vector<float, 1>{rhs}, 1.e-4f));
 }
 
 TEST(NativeCoreArrayUtils, RecognisesDescendingOrder) {

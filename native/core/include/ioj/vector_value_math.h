@@ -1,5 +1,6 @@
 #pragma once
 
+#include <ioj/array_utils.h>
 #include <ioj/vector.h>
 #include <ioj/vector_math.h>
 
@@ -10,6 +11,15 @@
 #include <type_traits>
 
 namespace ioj {
+template <std::floating_point T, std::size_t N>
+[[nodiscard]] auto almost_equal(Vector<T, N> const& lhs,
+                                Vector<T, N> const& rhs,
+                                std::type_identity_t<T> const tolerance) -> bool {
+    static_assert(N <= std::numeric_limits<std::uint32_t>::max());
+    return kernel::almost_equal(
+        lhs.elements.data(), rhs.elements.data(), static_cast<std::uint32_t>(N), tolerance);
+}
+
 template <typename T, std::size_t N>
 [[nodiscard]] constexpr auto operator+(Vector<T, N> lhs, Vector<T, N> const rhs) noexcept
     -> Vector<T, N> {
