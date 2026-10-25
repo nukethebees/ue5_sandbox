@@ -344,6 +344,10 @@ add_executable(codegen-tests
   tests/validation_tests.cpp
 )
 set_target_properties(codegen-tests PROPERTIES UNITY_BUILD OFF)
+target_sources(codegen-tests
+  PRIVATE
+    tests/indexed_column_tests.cpp
+)
 add_dependencies(codegen-tests
   codegen-generated-tests
   lispb-syntax-tests
