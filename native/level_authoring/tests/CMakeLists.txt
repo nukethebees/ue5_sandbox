@@ -35,6 +35,7 @@ target_sources(native-level-parser-tests
 target_link_libraries(native-level-parser-tests
   PRIVATE
     native-level-authoring
+    native-test-support
     GTest::gtest_main
 )
 ioj_enable_warnings(native-level-parser-tests)

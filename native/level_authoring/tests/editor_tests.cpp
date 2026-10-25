@@ -2,6 +2,7 @@
 #include <ioj/levels/authoring/level_definition_writer.h>
 #include <ioj/levels/authoring/scene_reconciliation.h>
 #include <ioj/levels/authoring/source_session.h>
+#include <ioj/testing/structural_diff.h>
 
 #include <gtest/gtest.h>
 
@@ -9,8 +10,33 @@
 #include <functional>
 #include <limits>
 
+namespace ioj::levels::authoring {
+void diff_members(SyncChange const& expected, SyncChange const& actual, DiffContext& context) {
+    context.diff("id", expected.id, actual.id);
+    context.diff("action", expected.action, actual.action);
+    context.diff("configure_actor", expected.configure_actor, actual.configure_actor);
+    context.diff("relabel_actor", expected.relabel_actor, actual.relabel_actor);
+
+    // Ignore the unused incoming index for removals.
+    if (expected.action != SyncAction::Remove && actual.action != SyncAction::Remove) {
+        context.diff("incoming_index", expected.incoming_index, actual.incoming_index);
+    }
+}
+
+void diff_members(SyncPlan const& expected, SyncPlan const& actual, DiffContext& context) {
+    context.diff("changes", expected.changes, actual.changes);
+    context.diff(
+        "collision_grid_changed", expected.collision_grid_changed, actual.collision_grid_changed);
+    context.diff("metadata_changed", expected.metadata_changed, actual.metadata_changed);
+    context.diff("viewpoint_changed", expected.viewpoint_changed, actual.viewpoint_changed);
+    context.diff("mission_changed", expected.mission_changed, actual.mission_changed);
+}
+}
+
 namespace ioj::levels::authoring::tests {
 namespace {
+using ioj::testing::structurally_equal;
+
 auto timer_mission() -> MissionDefinition {
     ObjectiveDefinition objective{.id = ioj::levels::ObjectiveName{"primary"}, .team = Team::Blue};
     objective.expressions = {
@@ -40,9 +66,7 @@ auto scene() -> SceneSnapshot {
 struct EntityCase {
     char const* name;
     std::function<void(SceneSnapshot&, LevelDefinitionComponents&)> edit;
-    SyncAction action;
-    bool configure;
-    bool relabel;
+    SyncChange expected;
 };
 
 class Reconciliation : public ::testing::TestWithParam<EntityCase> {};
@@ -55,10 +79,8 @@ TEST_P(Reconciliation, ProducesOnlyNecessaryOperations) {
     auto const plan{reconcile(observed, incoming)};
 
     ASSERT_TRUE(plan);
-    ASSERT_EQ(plan->changes.size(), 1);
-    EXPECT_EQ(plan->changes[0].action, test.action);
-    EXPECT_EQ(plan->changes[0].configure_actor, test.configure);
-    EXPECT_EQ(plan->changes[0].relabel_actor, test.relabel);
+    SyncPlan const expected{.changes = {test.expected}};
+    EXPECT_PRED_FORMAT2(structurally_equal, expected, *plan);
 }
 INSTANTIATE_TEST_SUITE_P(
     Entities,
@@ -70,54 +92,34 @@ INSTANTIATE_TEST_SUITE_P(
                                              .archetype = EntityArchetype::StaticTurret,
                                              .team = Team::Red});
                    },
-                   SyncAction::Add,
-                   true,
-                   true},
+                   {EntityId{"new"}, SyncAction::Add, true, true, 2}},
         EntityCase{"remove",
                    [](auto&, auto& d) { d.entities.pop_back(); },
-                   SyncAction::Remove,
-                   false,
-                   false},
+                   {EntityId{"enemy"}, SyncAction::Remove}},
         EntityCase{"team",
                    [](auto&, auto& d) { d.entities[1].team = Team::Blue; },
-                   SyncAction::Update,
-                   true,
-                   false},
+                   {EntityId{"enemy"}, SyncAction::Update, true, false, 1}},
         EntityCase{"position",
                    [](auto&, auto& d) { d.entities[1].position = {42.0, 0.0, 0.0}; },
-                   SyncAction::Update,
-                   true,
-                   false},
+                   {EntityId{"enemy"}, SyncAction::Update, true, false, 1}},
         EntityCase{"rotation",
                    [](auto&, auto& d) { d.entities[1].rotation.yaw = 90.0; },
-                   SyncAction::Update,
-                   true,
-                   false},
+                   {EntityId{"enemy"}, SyncAction::Update, true, false, 1}},
         EntityCase{"scale",
                    [](auto& s, auto&) { s.properties[1].scale = {2.0, 1.0, 1.0}; },
-                   SyncAction::Update,
-                   true,
-                   false},
+                   {EntityId{"enemy"}, SyncAction::Update, true, false, 1}},
         EntityCase{"time",
                    [](auto&, auto& d) { d.entities[1].spawn_time_seconds = 4.0; },
-                   SyncAction::Update,
-                   false,
-                   false},
+                   {EntityId{"enemy"}, SyncAction::Update, false, false, 1}},
         EntityCase{"label",
                    [](auto& s, auto&) { s.properties[1].label = "Enemy"; },
-                   SyncAction::Update,
-                   false,
-                   true},
+                   {EntityId{"enemy"}, SyncAction::Update, false, true, 1}},
         EntityCase{"class",
                    [](auto& s, auto&) { s.properties[1].class_matches = false; },
-                   SyncAction::Replace,
-                   true,
-                   true},
+                   {EntityId{"enemy"}, SyncAction::Replace, true, true, 1}},
         EntityCase{"archetype",
                    [](auto&, auto& d) { d.entities[1].archetype = EntityArchetype::StaticTurret; },
-                   SyncAction::Replace,
-                   true,
-                   true}),
+                   {EntityId{"enemy"}, SyncAction::Replace, true, true, 1}}),
     [](auto const& info) { return info.param.name; });
 
 TEST(NativeEditorScene, UnchangedAndEquivalentRotationsNeedNoOperations) {
@@ -157,8 +159,8 @@ TEST(NativeEditorScene, InvalidObservedValuesCanBeComparedAndRepaired) {
     EXPECT_TRUE(observed == observed);
     auto const plan{reconcile(observed, incoming)};
     ASSERT_TRUE(plan);
-    ASSERT_EQ(plan->changes.size(), 1);
-    EXPECT_FALSE(plan->changes[0].configure_actor);
+    SyncPlan expected{.changes = {{EntityId{"enemy"}, SyncAction::Update, false, false, 1}}};
+    EXPECT_PRED_FORMAT2(structurally_equal, expected, *plan);
 
     auto const nan{std::numeric_limits<double>::quiet_NaN()};
     observed.definition.collision_grid = {.level_size = Vector3d{nan, 1.0, 1.0}};
@@ -168,9 +170,10 @@ TEST(NativeEditorScene, InvalidObservedValuesCanBeComparedAndRepaired) {
 
     auto const repaired{reconcile(observed, incoming)};
     ASSERT_TRUE(repaired);
-    EXPECT_TRUE(repaired->collision_grid_changed);
-    EXPECT_TRUE(repaired->viewpoint_changed);
-    EXPECT_TRUE(repaired->mission_changed);
+    expected.collision_grid_changed = true;
+    expected.viewpoint_changed = true;
+    expected.mission_changed = true;
+    EXPECT_PRED_FORMAT2(structurally_equal, expected, *repaired);
 }
 
 TEST(NativeEditorScene, ComparesDocumentFieldsAndRepairsInvalidReferences) {
@@ -181,11 +184,9 @@ TEST(NativeEditorScene, ComparesDocumentFieldsAndRepairsInvalidReferences) {
     incoming.mission = timer_mission();
     auto const plan{reconcile(observed, incoming)};
     ASSERT_TRUE(plan);
-    EXPECT_TRUE(plan->changes.empty());
-    EXPECT_TRUE(plan->metadata_changed);
-    EXPECT_TRUE(plan->collision_grid_changed);
-    EXPECT_TRUE(plan->mission_changed);
-    EXPECT_FALSE(plan->viewpoint_changed);
+    SyncPlan expected{
+        .collision_grid_changed = true, .metadata_changed = true, .mission_changed = true};
+    EXPECT_PRED_FORMAT2(structurally_equal, expected, *plan);
 
     incoming.player_entity_id = {};
     incoming.entities[0].archetype = EntityArchetype::CapitalShip;
@@ -194,13 +195,15 @@ TEST(NativeEditorScene, ComparesDocumentFieldsAndRepairsInvalidReferences) {
                        .distance = 1000.0};
     auto const camera_plan{reconcile(observed, incoming)};
     ASSERT_TRUE(camera_plan);
-    EXPECT_TRUE(camera_plan->viewpoint_changed);
+    expected.changes = {{EntityId{"player"}, SyncAction::Replace, true, true, 0}};
+    expected.viewpoint_changed = true;
+    EXPECT_PRED_FORMAT2(structurally_equal, expected, *camera_plan);
     observed.viewpoint_valid = false;
     observed.mission_references_valid = false;
     EXPECT_TRUE(observed == observed);
     auto const repaired{reconcile(observed, incoming)};
     ASSERT_TRUE(repaired);
-    EXPECT_TRUE(repaired->mission_changed);
+    EXPECT_PRED_FORMAT2(structurally_equal, expected, *repaired);
 }
 
 TEST(NativeEditorIdentifiers, UsesAsciiAndAllocatesDeterministicCollisions) {
