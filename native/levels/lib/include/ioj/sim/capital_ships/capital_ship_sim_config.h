@@ -6,11 +6,57 @@
 #include "ioj/sim/entities/health.h"
 #include "ioj/transform3d.h"
 
+#include <cassert>
+#include <concepts>
 #include <cstdint>
+#include <type_traits>
+#include <utility>
 #include <vector>
 
 namespace ioj::sim {
 struct CapitalShipSimConfig {
+    enum class Field : std::uint8_t {
+        spawn_delay,
+        fighter_spawn_slots,
+        fighter_spawn_slots_relative_transforms,
+        max_health,
+        Count,
+    };
+
+    template <typename Self, typename Visitor>
+    static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
+        requires std::same_as<std::remove_const_t<Self>, CapitalShipSimConfig>
+    {
+        switch (field) {
+            case Field::spawn_delay: {
+                std::forward<Visitor>(visitor).template operator()<Field::spawn_delay>(
+                    self.spawn_delay);
+                return;
+            }
+            case Field::fighter_spawn_slots: {
+                std::forward<Visitor>(visitor).template operator()<Field::fighter_spawn_slots>(
+                    self.fighter_spawn_slots);
+                return;
+            }
+            case Field::fighter_spawn_slots_relative_transforms: {
+                std::forward<Visitor>(visitor)
+                    .template operator()<Field::fighter_spawn_slots_relative_transforms>(
+                        self.fighter_spawn_slots_relative_transforms);
+                return;
+            }
+            case Field::max_health: {
+                std::forward<Visitor>(visitor).template operator()<Field::max_health>(
+                    self.max_health);
+                return;
+            }
+            case Field::Count: {
+                break;
+            }
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
     float spawn_delay{5.f};
     std::int32_t fighter_spawn_slots{};
     std::vector<ioj::Transform3d> fighter_spawn_slots_relative_transforms{};

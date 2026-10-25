@@ -17,61 +17,25 @@ template <>
 struct TypeReader<sim::PlayerSimConfig> : RecordReader<sim::PlayerSimConfig> {
     static void decode(DecodeContext context, value_type& result) {
         decode_record<Field>(
-            context, "player-ship", field_names, ([&](Field const field, auto const& read) {
-                switch (field) {
-                    case Field::thrust_energy_max:
-                        read(result.thrust_energy_max);
-                        break;
-                    case Field::pitch_angle_max:
-                        read(result.pitch_angle_max, constraints::finite);
-                        break;
-                    case Field::pitch_speed:
-                        read(result.pitch_speed, constraints::finite);
-                        break;
-                    case Field::yaw_angle_max:
-                        read(result.yaw_angle_max, constraints::finite);
-                        break;
-                    case Field::yaw_speed:
-                        read(result.yaw_speed, constraints::finite);
-                        break;
-                    case Field::turn_bank_angle_max:
-                        read(result.turn_bank_angle_max, constraints::finite);
-                        break;
-                    case Field::turn_bank_speed:
-                        read(result.turn_bank_speed, constraints::finite);
-                        break;
-                    case Field::laser:
-                        read(result.laser);
-                        break;
-                    case Field::health:
-                        read(result.health);
-                        break;
-                    case Field::laser_mode:
-                        read(result.laser_mode);
-                        break;
-                    case Field::laser_fire_rate:
-                        read(result.laser_fire_rate);
-                        break;
-                    case Field::Count:
-                        std::unreachable();
-                }
+            context, "player-ship", field_names, ([&](Field selected, auto const& read) {
+                value_type::visit_field(result, selected, [&]<Field field>(auto& member) {
+                    if constexpr (field == Field::thrust_energy_max || field == Field::laser ||
+                                  field == Field::health || field == Field::laser_mode ||
+                                  field == Field::laser_fire_rate) {
+                        read(member);
+                    } else if constexpr (field == Field::pitch_angle_max ||
+                                         field == Field::pitch_speed ||
+                                         field == Field::yaw_angle_max ||
+                                         field == Field::yaw_speed ||
+                                         field == Field::turn_bank_angle_max ||
+                                         field == Field::turn_bank_speed) {
+                        read(member, constraints::finite);
+                    }
+                });
             }));
     }
   private:
-    enum class Field : std::uint8_t {
-        thrust_energy_max,
-        pitch_angle_max,
-        pitch_speed,
-        yaw_angle_max,
-        yaw_speed,
-        turn_bank_angle_max,
-        turn_bank_speed,
-        laser,
-        health,
-        laser_mode,
-        laser_fire_rate,
-        Count,
-    };
+    using Field = value_type::Field;
 
     static constexpr std::array<std::string_view, 11> field_names{"thrust-energy-max",
                                                                   "pitch-angle-max",

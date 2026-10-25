@@ -16,25 +16,14 @@ template <>
 struct TypeReader<settings::LaserPresentation> : RecordReader<settings::LaserPresentation> {
     static void decode(DecodeContext context, value_type& result) {
         decode_record<Field>(
-            context, "laser-projectiles", field_names, ([&](Field const field, auto const& read) {
-                switch (field) {
-                    case Field::min_cull_distance:
-                        read(result.min_cull_distance, constraints::finite);
-                        break;
-                    case Field::max_cull_distance:
-                        read(result.max_cull_distance, constraints::finite);
-                        break;
-                    case Field::Count:
-                        std::unreachable();
-                }
+            context, "laser-projectiles", field_names, ([&](Field selected, auto const& read) {
+                value_type::visit_field(result, selected, [&]<Field field>(auto& member) {
+                    read(member, constraints::finite);
+                });
             }));
     }
   private:
-    enum class Field : std::uint8_t {
-        min_cull_distance,
-        max_cull_distance,
-        Count,
-    };
+    using Field = value_type::Field;
 
     static constexpr std::array<std::string_view, 2> field_names{"min-cull-distance",
                                                                  "max-cull-distance"};

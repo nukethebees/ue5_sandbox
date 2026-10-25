@@ -17,21 +17,13 @@ struct TypeReader<codegen_compile_fixture::mixed::CrossSettings>
     : RecordReader<codegen_compile_fixture::mixed::CrossSettings> {
     static void decode(DecodeContext context, value_type& result) {
         decode_record<Field>(
-            context, "cross", field_names, ([&](Field const field, auto const& read) {
-                switch (field) {
-                    case Field::actor:
-                        read(result.actor);
-                        break;
-                    case Field::Count:
-                        std::unreachable();
-                }
+            context, "cross", field_names, ([&](Field selected, auto const& read) {
+                value_type::visit_field(
+                    result, selected, [&]<Field field>(auto& member) { read(member); });
             }));
     }
   private:
-    enum class Field : std::uint8_t {
-        actor,
-        Count,
-    };
+    using Field = value_type::Field;
 
     static constexpr std::array<std::string_view, 1> field_names{"actor"};
 };

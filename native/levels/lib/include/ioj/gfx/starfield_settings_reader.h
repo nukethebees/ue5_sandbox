@@ -16,27 +16,18 @@ template <>
 struct TypeReader<starfield::GenerationSettings> : RecordReader<starfield::GenerationSettings> {
     static void decode(DecodeContext context, value_type& result) {
         decode_record<Field>(
-            context, "generation", field_names, ([&](Field const field, auto const& read) {
-                switch (field) {
-                    case Field::star_count:
-                        read(result.star_count,
-                             constraints::minimum(1ULL),
-                             constraints::maximum(1000000ULL));
-                        break;
-                    case Field::random_seed:
-                        read(result.random_seed);
-                        break;
-                    case Field::Count:
-                        std::unreachable();
-                }
+            context, "generation", field_names, ([&](Field selected, auto const& read) {
+                value_type::visit_field(result, selected, [&]<Field field>(auto& member) {
+                    if constexpr (field == Field::random_seed) {
+                        read(member);
+                    } else if constexpr (field == Field::star_count) {
+                        read(member, constraints::minimum(1ULL), constraints::maximum(1000000ULL));
+                    }
+                });
             }));
     }
   private:
-    enum class Field : std::uint8_t {
-        star_count,
-        random_seed,
-        Count,
-    };
+    using Field = value_type::Field;
 
     static constexpr std::array<std::string_view, 2> field_names{"star-count", "random-seed"};
 };
@@ -45,37 +36,22 @@ template <>
 struct TypeReader<starfield::StarSettings> : RecordReader<starfield::StarSettings> {
     static void decode(DecodeContext context, value_type& result) {
         decode_record<Field>(
-            context, "star", field_names, ([&](Field const field, auto const& read) {
-                switch (field) {
-                    case Field::scale:
-                        read(result.scale, constraints::positive, constraints::finite);
-                        break;
-                    case Field::size_multiplier:
-                        read(result.size_multiplier, constraints::nonnegative, constraints::finite);
-                        break;
-                    case Field::global_brightness:
-                        read(result.global_brightness, constraints::finite);
-                        break;
-                    case Field::colour_variation_strength:
-                        read(result.colour_variation_strength, constraints::finite);
-                        break;
-                    case Field::parallax_strength:
-                        read(result.parallax_strength, constraints::finite);
-                        break;
-                    case Field::Count:
-                        std::unreachable();
-                }
+            context, "star", field_names, ([&](Field selected, auto const& read) {
+                value_type::visit_field(result, selected, [&]<Field field>(auto& member) {
+                    if constexpr (field == Field::global_brightness ||
+                                  field == Field::colour_variation_strength ||
+                                  field == Field::parallax_strength) {
+                        read(member, constraints::finite);
+                    } else if constexpr (field == Field::size_multiplier) {
+                        read(member, constraints::nonnegative, constraints::finite);
+                    } else if constexpr (field == Field::scale) {
+                        read(member, constraints::positive, constraints::finite);
+                    }
+                });
             }));
     }
   private:
-    enum class Field : std::uint8_t {
-        scale,
-        size_multiplier,
-        global_brightness,
-        colour_variation_strength,
-        parallax_strength,
-        Count,
-    };
+    using Field = value_type::Field;
 
     static constexpr std::array<std::string_view, 5> field_names{"scale",
                                                                  "size-multiplier",
@@ -88,28 +64,21 @@ template <>
 struct TypeReader<starfield::GalacticBandSettings> : RecordReader<starfield::GalacticBandSettings> {
     static void decode(DecodeContext context, value_type& result) {
         decode_record<Field>(
-            context, "galactic-band", field_names, ([&](Field const field, auto const& read) {
-                switch (field) {
-                    case Field::strength:
-                        read(result.strength, constraints::finite);
-                        break;
-                    case Field::width_degrees:
-                        read(result.width_degrees,
+            context, "galactic-band", field_names, ([&](Field selected, auto const& read) {
+                value_type::visit_field(result, selected, [&]<Field field>(auto& member) {
+                    if constexpr (field == Field::strength) {
+                        read(member, constraints::finite);
+                    } else if constexpr (field == Field::width_degrees) {
+                        read(member,
                              constraints::positive,
                              constraints::finite,
                              constraints::maximum(90ULL));
-                        break;
-                    case Field::Count:
-                        std::unreachable();
-                }
+                    }
+                });
             }));
     }
   private:
-    enum class Field : std::uint8_t {
-        strength,
-        width_degrees,
-        Count,
-    };
+    using Field = value_type::Field;
 
     static constexpr std::array<std::string_view, 2> field_names{"strength", "width-degrees"};
 };
@@ -119,25 +88,18 @@ struct TypeReader<starfield::StellarClusterSettings>
     : RecordReader<starfield::StellarClusterSettings> {
     static void decode(DecodeContext context, value_type& result) {
         decode_record<Field>(
-            context, "stellar-cluster", field_names, ([&](Field const field, auto const& read) {
-                switch (field) {
-                    case Field::strength:
-                        read(result.strength, constraints::finite);
-                        break;
-                    case Field::width_degrees:
-                        read(result.width_degrees, constraints::positive, constraints::finite);
-                        break;
-                    case Field::Count:
-                        std::unreachable();
-                }
+            context, "stellar-cluster", field_names, ([&](Field selected, auto const& read) {
+                value_type::visit_field(result, selected, [&]<Field field>(auto& member) {
+                    if constexpr (field == Field::strength) {
+                        read(member, constraints::finite);
+                    } else if constexpr (field == Field::width_degrees) {
+                        read(member, constraints::positive, constraints::finite);
+                    }
+                });
             }));
     }
   private:
-    enum class Field : std::uint8_t {
-        strength,
-        width_degrees,
-        Count,
-    };
+    using Field = value_type::Field;
 
     static constexpr std::array<std::string_view, 2> field_names{"strength", "width-degrees"};
 };
@@ -146,29 +108,18 @@ template <>
 struct TypeReader<starfield::DustLaneSettings> : RecordReader<starfield::DustLaneSettings> {
     static void decode(DecodeContext context, value_type& result) {
         decode_record<Field>(
-            context, "dust-lane", field_names, ([&](Field const field, auto const& read) {
-                switch (field) {
-                    case Field::strength:
-                        read(result.strength, constraints::finite);
-                        break;
-                    case Field::width_degrees:
-                        read(result.width_degrees, constraints::positive, constraints::finite);
-                        break;
-                    case Field::irregularity:
-                        read(result.irregularity, constraints::finite);
-                        break;
-                    case Field::Count:
-                        std::unreachable();
-                }
+            context, "dust-lane", field_names, ([&](Field selected, auto const& read) {
+                value_type::visit_field(result, selected, [&]<Field field>(auto& member) {
+                    if constexpr (field == Field::strength || field == Field::irregularity) {
+                        read(member, constraints::finite);
+                    } else if constexpr (field == Field::width_degrees) {
+                        read(member, constraints::positive, constraints::finite);
+                    }
+                });
             }));
     }
   private:
-    enum class Field : std::uint8_t {
-        strength,
-        width_degrees,
-        irregularity,
-        Count,
-    };
+    using Field = value_type::Field;
 
     static constexpr std::array<std::string_view, 3> field_names{
         "strength", "width-degrees", "irregularity"};
@@ -178,33 +129,20 @@ template <>
 struct TypeReader<starfield::BrightStarSettings> : RecordReader<starfield::BrightStarSettings> {
     static void decode(DecodeContext context, value_type& result) {
         decode_record<Field>(
-            context, "bright-star", field_names, ([&](Field const field, auto const& read) {
-                switch (field) {
-                    case Field::fraction:
-                        read(result.fraction, constraints::finite);
-                        break;
-                    case Field::size_multiplier:
-                        read(result.size_multiplier, constraints::nonnegative, constraints::finite);
-                        break;
-                    case Field::brightness_multiplier:
-                        read(result.brightness_multiplier, constraints::finite);
-                        break;
-                    case Field::shape_strength:
-                        read(result.shape_strength, constraints::finite);
-                        break;
-                    case Field::Count:
-                        std::unreachable();
-                }
+            context, "bright-star", field_names, ([&](Field selected, auto const& read) {
+                value_type::visit_field(result, selected, [&]<Field field>(auto& member) {
+                    if constexpr (field == Field::fraction ||
+                                  field == Field::brightness_multiplier ||
+                                  field == Field::shape_strength) {
+                        read(member, constraints::finite);
+                    } else if constexpr (field == Field::size_multiplier) {
+                        read(member, constraints::nonnegative, constraints::finite);
+                    }
+                });
             }));
     }
   private:
-    enum class Field : std::uint8_t {
-        fraction,
-        size_multiplier,
-        brightness_multiplier,
-        shape_strength,
-        Count,
-    };
+    using Field = value_type::Field;
 
     static constexpr std::array<std::string_view, 4> field_names{
         "fraction", "size-multiplier", "brightness-multiplier", "shape-strength"};
@@ -214,25 +152,14 @@ template <>
 struct TypeReader<starfield::TwinkleSettings> : RecordReader<starfield::TwinkleSettings> {
     static void decode(DecodeContext context, value_type& result) {
         decode_record<Field>(
-            context, "twinkle", field_names, ([&](Field const field, auto const& read) {
-                switch (field) {
-                    case Field::strength:
-                        read(result.strength, constraints::finite);
-                        break;
-                    case Field::speed:
-                        read(result.speed, constraints::finite);
-                        break;
-                    case Field::Count:
-                        std::unreachable();
-                }
+            context, "twinkle", field_names, ([&](Field selected, auto const& read) {
+                value_type::visit_field(result, selected, [&]<Field field>(auto& member) {
+                    read(member, constraints::finite);
+                });
             }));
     }
   private:
-    enum class Field : std::uint8_t {
-        strength,
-        speed,
-        Count,
-    };
+    using Field = value_type::Field;
 
     static constexpr std::array<std::string_view, 2> field_names{"strength", "speed"};
 };
@@ -241,25 +168,18 @@ template <>
 struct TypeReader<starfield::GalacticHazeSettings> : RecordReader<starfield::GalacticHazeSettings> {
     static void decode(DecodeContext context, value_type& result) {
         decode_record<Field>(
-            context, "galactic-haze", field_names, ([&](Field const field, auto const& read) {
-                switch (field) {
-                    case Field::strength:
-                        read(result.strength, constraints::finite);
-                        break;
-                    case Field::width_degrees:
-                        read(result.width_degrees, constraints::positive, constraints::finite);
-                        break;
-                    case Field::Count:
-                        std::unreachable();
-                }
+            context, "galactic-haze", field_names, ([&](Field selected, auto const& read) {
+                value_type::visit_field(result, selected, [&]<Field field>(auto& member) {
+                    if constexpr (field == Field::strength) {
+                        read(member, constraints::finite);
+                    } else if constexpr (field == Field::width_degrees) {
+                        read(member, constraints::positive, constraints::finite);
+                    }
+                });
             }));
     }
   private:
-    enum class Field : std::uint8_t {
-        strength,
-        width_degrees,
-        Count,
-    };
+    using Field = value_type::Field;
 
     static constexpr std::array<std::string_view, 2> field_names{"strength", "width-degrees"};
 };
@@ -268,25 +188,18 @@ template <>
 struct TypeReader<starfield::GalacticCoreSettings> : RecordReader<starfield::GalacticCoreSettings> {
     static void decode(DecodeContext context, value_type& result) {
         decode_record<Field>(
-            context, "galactic-core", field_names, ([&](Field const field, auto const& read) {
-                switch (field) {
-                    case Field::strength:
-                        read(result.strength, constraints::finite);
-                        break;
-                    case Field::width_degrees:
-                        read(result.width_degrees, constraints::positive, constraints::finite);
-                        break;
-                    case Field::Count:
-                        std::unreachable();
-                }
+            context, "galactic-core", field_names, ([&](Field selected, auto const& read) {
+                value_type::visit_field(result, selected, [&]<Field field>(auto& member) {
+                    if constexpr (field == Field::strength) {
+                        read(member, constraints::finite);
+                    } else if constexpr (field == Field::width_degrees) {
+                        read(member, constraints::positive, constraints::finite);
+                    }
+                });
             }));
     }
   private:
-    enum class Field : std::uint8_t {
-        strength,
-        width_degrees,
-        Count,
-    };
+    using Field = value_type::Field;
 
     static constexpr std::array<std::string_view, 2> field_names{"strength", "width-degrees"};
 };
@@ -295,25 +208,18 @@ template <>
 struct TypeReader<starfield::NebularKnotSettings> : RecordReader<starfield::NebularKnotSettings> {
     static void decode(DecodeContext context, value_type& result) {
         decode_record<Field>(
-            context, "nebular-knot", field_names, ([&](Field const field, auto const& read) {
-                switch (field) {
-                    case Field::strength:
-                        read(result.strength, constraints::finite);
-                        break;
-                    case Field::size_degrees:
-                        read(result.size_degrees, constraints::positive, constraints::finite);
-                        break;
-                    case Field::Count:
-                        std::unreachable();
-                }
+            context, "nebular-knot", field_names, ([&](Field selected, auto const& read) {
+                value_type::visit_field(result, selected, [&]<Field field>(auto& member) {
+                    if constexpr (field == Field::strength) {
+                        read(member, constraints::finite);
+                    } else if constexpr (field == Field::size_degrees) {
+                        read(member, constraints::positive, constraints::finite);
+                    }
+                });
             }));
     }
   private:
-    enum class Field : std::uint8_t {
-        strength,
-        size_degrees,
-        Count,
-    };
+    using Field = value_type::Field;
 
     static constexpr std::array<std::string_view, 2> field_names{"strength", "size-degrees"};
 };
@@ -322,57 +228,13 @@ template <>
 struct TypeReader<starfield::Settings> : RecordReader<starfield::Settings> {
     static void decode(DecodeContext context, value_type& result) {
         decode_record<Field>(
-            context, "starfield", field_names, ([&](Field const field, auto const& read) {
-                switch (field) {
-                    case Field::generation:
-                        read(result.generation);
-                        break;
-                    case Field::star:
-                        read(result.star);
-                        break;
-                    case Field::galactic_band:
-                        read(result.galactic_band);
-                        break;
-                    case Field::stellar_cluster:
-                        read(result.stellar_cluster);
-                        break;
-                    case Field::dust_lane:
-                        read(result.dust_lane);
-                        break;
-                    case Field::bright_star:
-                        read(result.bright_star);
-                        break;
-                    case Field::twinkle:
-                        read(result.twinkle);
-                        break;
-                    case Field::galactic_haze:
-                        read(result.galactic_haze);
-                        break;
-                    case Field::galactic_core:
-                        read(result.galactic_core);
-                        break;
-                    case Field::nebular_knot:
-                        read(result.nebular_knot);
-                        break;
-                    case Field::Count:
-                        std::unreachable();
-                }
+            context, "starfield", field_names, ([&](Field selected, auto const& read) {
+                value_type::visit_field(
+                    result, selected, [&]<Field field>(auto& member) { read(member); });
             }));
     }
   private:
-    enum class Field : std::uint8_t {
-        generation,
-        star,
-        galactic_band,
-        stellar_cluster,
-        dust_lane,
-        bright_star,
-        twinkle,
-        galactic_haze,
-        galactic_core,
-        nebular_knot,
-        Count,
-    };
+    using Field = value_type::Field;
 
     static constexpr std::array<std::string_view, 10> field_names{"generation",
                                                                   "star",

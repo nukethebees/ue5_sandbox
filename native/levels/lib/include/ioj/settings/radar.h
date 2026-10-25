@@ -3,8 +3,116 @@
 
 #pragma once
 
+#include <cassert>
+#include <concepts>
+#include <cstdint>
+#include <type_traits>
+#include <utility>
+
 namespace ioj::settings {
 struct Radar {
+    enum class Field : std::uint8_t {
+        enabled,
+        combat_range,
+        tactical_range,
+        maximum_range,
+        combat_display_radius,
+        grid_opacity,
+        core_cell_radius,
+        combat_cell_radius,
+        tactical_cell_radius,
+        strategic_cell_radius,
+        glyph_size_scale,
+        objective_size_multiplier,
+        objective_ring_padding_pixels,
+        objective_ring_thickness_pixels,
+        Count,
+    };
+
+    template <typename Self, typename Visitor>
+    static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
+        requires std::same_as<std::remove_const_t<Self>, Radar>
+    {
+        switch (field) {
+            case Field::enabled: {
+                std::forward<Visitor>(visitor).template operator()<Field::enabled>(self.enabled);
+                return;
+            }
+            case Field::combat_range: {
+                std::forward<Visitor>(visitor).template operator()<Field::combat_range>(
+                    self.combat_range);
+                return;
+            }
+            case Field::tactical_range: {
+                std::forward<Visitor>(visitor).template operator()<Field::tactical_range>(
+                    self.tactical_range);
+                return;
+            }
+            case Field::maximum_range: {
+                std::forward<Visitor>(visitor).template operator()<Field::maximum_range>(
+                    self.maximum_range);
+                return;
+            }
+            case Field::combat_display_radius: {
+                std::forward<Visitor>(visitor).template operator()<Field::combat_display_radius>(
+                    self.combat_display_radius);
+                return;
+            }
+            case Field::grid_opacity: {
+                std::forward<Visitor>(visitor).template operator()<Field::grid_opacity>(
+                    self.grid_opacity);
+                return;
+            }
+            case Field::core_cell_radius: {
+                std::forward<Visitor>(visitor).template operator()<Field::core_cell_radius>(
+                    self.core_cell_radius);
+                return;
+            }
+            case Field::combat_cell_radius: {
+                std::forward<Visitor>(visitor).template operator()<Field::combat_cell_radius>(
+                    self.combat_cell_radius);
+                return;
+            }
+            case Field::tactical_cell_radius: {
+                std::forward<Visitor>(visitor).template operator()<Field::tactical_cell_radius>(
+                    self.tactical_cell_radius);
+                return;
+            }
+            case Field::strategic_cell_radius: {
+                std::forward<Visitor>(visitor).template operator()<Field::strategic_cell_radius>(
+                    self.strategic_cell_radius);
+                return;
+            }
+            case Field::glyph_size_scale: {
+                std::forward<Visitor>(visitor).template operator()<Field::glyph_size_scale>(
+                    self.glyph_size_scale);
+                return;
+            }
+            case Field::objective_size_multiplier: {
+                std::forward<Visitor>(visitor).template
+                    operator()<Field::objective_size_multiplier>(self.objective_size_multiplier);
+                return;
+            }
+            case Field::objective_ring_padding_pixels: {
+                std::forward<Visitor>(visitor)
+                    .template operator()<Field::objective_ring_padding_pixels>(
+                        self.objective_ring_padding_pixels);
+                return;
+            }
+            case Field::objective_ring_thickness_pixels: {
+                std::forward<Visitor>(visitor)
+                    .template operator()<Field::objective_ring_thickness_pixels>(
+                        self.objective_ring_thickness_pixels);
+                return;
+            }
+            case Field::Count: {
+                break;
+            }
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
     bool enabled{true};
     float combat_range{100000.f};
     float tactical_range{400000.f};

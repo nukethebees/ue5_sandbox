@@ -9,8 +9,95 @@
 #include "ioj/sim/lasers/laser_weapon_sim_config.h"
 #include "ship_laser_mode.h"
 
+#include <cassert>
+#include <concepts>
+#include <cstdint>
+#include <type_traits>
+#include <utility>
+
 namespace ioj::sim {
 struct PlayerSimConfig {
+    enum class Field : std::uint8_t {
+        thrust_energy_max,
+        pitch_angle_max,
+        pitch_speed,
+        yaw_angle_max,
+        yaw_speed,
+        turn_bank_angle_max,
+        turn_bank_speed,
+        laser,
+        health,
+        laser_mode,
+        laser_fire_rate,
+        Count,
+    };
+
+    template <typename Self, typename Visitor>
+    static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
+        requires std::same_as<std::remove_const_t<Self>, PlayerSimConfig>
+    {
+        switch (field) {
+            case Field::thrust_energy_max: {
+                std::forward<Visitor>(visitor).template operator()<Field::thrust_energy_max>(
+                    self.thrust_energy_max);
+                return;
+            }
+            case Field::pitch_angle_max: {
+                std::forward<Visitor>(visitor).template operator()<Field::pitch_angle_max>(
+                    self.pitch_angle_max);
+                return;
+            }
+            case Field::pitch_speed: {
+                std::forward<Visitor>(visitor).template operator()<Field::pitch_speed>(
+                    self.pitch_speed);
+                return;
+            }
+            case Field::yaw_angle_max: {
+                std::forward<Visitor>(visitor).template operator()<Field::yaw_angle_max>(
+                    self.yaw_angle_max);
+                return;
+            }
+            case Field::yaw_speed: {
+                std::forward<Visitor>(visitor).template operator()<Field::yaw_speed>(
+                    self.yaw_speed);
+                return;
+            }
+            case Field::turn_bank_angle_max: {
+                std::forward<Visitor>(visitor).template operator()<Field::turn_bank_angle_max>(
+                    self.turn_bank_angle_max);
+                return;
+            }
+            case Field::turn_bank_speed: {
+                std::forward<Visitor>(visitor).template operator()<Field::turn_bank_speed>(
+                    self.turn_bank_speed);
+                return;
+            }
+            case Field::laser: {
+                std::forward<Visitor>(visitor).template operator()<Field::laser>(self.laser);
+                return;
+            }
+            case Field::health: {
+                std::forward<Visitor>(visitor).template operator()<Field::health>(self.health);
+                return;
+            }
+            case Field::laser_mode: {
+                std::forward<Visitor>(visitor).template operator()<Field::laser_mode>(
+                    self.laser_mode);
+                return;
+            }
+            case Field::laser_fire_rate: {
+                std::forward<Visitor>(visitor).template operator()<Field::laser_fire_rate>(
+                    self.laser_fire_rate);
+                return;
+            }
+            case Field::Count: {
+                break;
+            }
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
     ioj::PositiveFinite<float> thrust_energy_max{1.f};
     float pitch_angle_max{30.f};
     float pitch_speed{3.f};

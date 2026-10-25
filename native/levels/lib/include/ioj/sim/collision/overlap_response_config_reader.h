@@ -16,29 +16,18 @@ template <>
 struct TypeReader<sim::OverlapResponseConfig> : RecordReader<sim::OverlapResponseConfig> {
     static void decode(DecodeContext context, value_type& result) {
         decode_record<Field>(
-            context, "collision-grid", field_names, ([&](Field const field, auto const& read) {
-                switch (field) {
-                    case Field::damage_per_overlap_detection:
-                        read(result.damage_per_overlap_detection);
-                        break;
-                    case Field::level_size:
-                        read(result.level_size, constraints::finite);
-                        break;
-                    case Field::cell_size:
-                        read(result.cell_size, constraints::finite);
-                        break;
-                    case Field::Count:
-                        std::unreachable();
-                }
+            context, "collision-grid", field_names, ([&](Field selected, auto const& read) {
+                value_type::visit_field(result, selected, [&]<Field field>(auto& member) {
+                    if constexpr (field == Field::damage_per_overlap_detection) {
+                        read(member);
+                    } else if constexpr (field == Field::level_size || field == Field::cell_size) {
+                        read(member, constraints::finite);
+                    }
+                });
             }));
     }
   private:
-    enum class Field : std::uint8_t {
-        damage_per_overlap_detection,
-        level_size,
-        cell_size,
-        Count,
-    };
+    using Field = value_type::Field;
 
     static constexpr std::array<std::string_view, 3> field_names{
         "damage-per-overlap-detection", "level-size", "cell-size"};

@@ -16,25 +16,13 @@ template <>
 struct TypeReader<settings::TickSettings> : RecordReader<settings::TickSettings> {
     static void decode(DecodeContext context, value_type& result) {
         decode_record<Field>(
-            context, "tick", field_names, ([&](Field const field, auto const& read) {
-                switch (field) {
-                    case Field::tick_rate:
-                        read(result.tick_rate);
-                        break;
-                    case Field::time_scale:
-                        read(result.time_scale);
-                        break;
-                    case Field::Count:
-                        std::unreachable();
-                }
+            context, "tick", field_names, ([&](Field selected, auto const& read) {
+                value_type::visit_field(
+                    result, selected, [&]<Field field>(auto& member) { read(member); });
             }));
     }
   private:
-    enum class Field : std::uint8_t {
-        tick_rate,
-        time_scale,
-        Count,
-    };
+    using Field = value_type::Field;
 
     static constexpr std::array<std::string_view, 2> field_names{"tick-rate", "time-scale"};
 };

@@ -65,7 +65,7 @@ See [Semantic type graph](SEMANTIC_TYPE_GRAPH.md) for the shared resolved model 
 generation and layout tooling. See [ARCHITECTURE.md](ARCHITECTURE.md) for the shared generation
 pipeline and the sibling DSL documents for their language-specific contracts.
 
-Ordinary records can also supply settings field metadata and optional C++ patches. See
+Ordinary records can also supply settings field metadata and opt-in typed member visitors. See
 [Record settings](docs/record-settings.md) for section bindings, exclusions and patch semantics.
 
 Records can also opt into [typed S7 readers](docs/s7-readers.md) for AST deserialization.

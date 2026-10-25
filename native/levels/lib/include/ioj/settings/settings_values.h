@@ -15,8 +15,93 @@
 #include "ioj/sim/spinners/spinner_sim_config.h"
 #include "ioj/sim/turrets/turret_sim_config.h"
 
+#include <cassert>
+#include <concepts>
+#include <cstdint>
+#include <type_traits>
+#include <utility>
+
 namespace ioj::settings {
 struct SettingsValues {
+    enum class Field : std::uint8_t {
+        tick,
+        player_ship,
+        laser_projectiles,
+        capital_ships,
+        fighters,
+        turrets,
+        tube_spinners,
+        collision_grid,
+        hud,
+        presentation,
+        starfield,
+        Count,
+    };
+
+    template <typename Self, typename Visitor>
+    static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
+        requires std::same_as<std::remove_const_t<Self>, SettingsValues>
+    {
+        switch (field) {
+            case Field::tick: {
+                std::forward<Visitor>(visitor).template operator()<Field::tick>(self.tick);
+                return;
+            }
+            case Field::player_ship: {
+                std::forward<Visitor>(visitor).template operator()<Field::player_ship>(
+                    self.player_ship);
+                return;
+            }
+            case Field::laser_projectiles: {
+                std::forward<Visitor>(visitor).template operator()<Field::laser_projectiles>(
+                    self.laser_projectiles);
+                return;
+            }
+            case Field::capital_ships: {
+                std::forward<Visitor>(visitor).template operator()<Field::capital_ships>(
+                    self.capital_ships);
+                return;
+            }
+            case Field::fighters: {
+                std::forward<Visitor>(visitor).template operator()<Field::fighters>(self.fighters);
+                return;
+            }
+            case Field::turrets: {
+                std::forward<Visitor>(visitor).template operator()<Field::turrets>(self.turrets);
+                return;
+            }
+            case Field::tube_spinners: {
+                std::forward<Visitor>(visitor).template operator()<Field::tube_spinners>(
+                    self.tube_spinners);
+                return;
+            }
+            case Field::collision_grid: {
+                std::forward<Visitor>(visitor).template operator()<Field::collision_grid>(
+                    self.collision_grid);
+                return;
+            }
+            case Field::hud: {
+                std::forward<Visitor>(visitor).template operator()<Field::hud>(self.hud);
+                return;
+            }
+            case Field::presentation: {
+                std::forward<Visitor>(visitor).template operator()<Field::presentation>(
+                    self.presentation);
+                return;
+            }
+            case Field::starfield: {
+                std::forward<Visitor>(visitor).template operator()<Field::starfield>(
+                    self.starfield);
+                return;
+            }
+            case Field::Count: {
+                break;
+            }
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
     TickSettings tick{};
     sim::PlayerSimConfig player_ship{};
     sim::LaserSimConfig laser_projectiles{};

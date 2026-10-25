@@ -5,8 +5,47 @@
 
 #include "Records.h"
 
+#include <cassert>
+#include <concepts>
+#include <cstdint>
+#include <type_traits>
+#include <utility>
+
 namespace codegen_compile_fixture {
 struct SettingsTarget {
+    enum class Field : std::uint8_t {
+        first,
+        second,
+        external_value,
+        Count,
+    };
+
+    template <typename Self, typename Visitor>
+    static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
+        requires std::same_as<std::remove_const_t<Self>, SettingsTarget>
+    {
+        switch (field) {
+            case Field::first: {
+                std::forward<Visitor>(visitor).template operator()<Field::first>(self.first);
+                return;
+            }
+            case Field::second: {
+                std::forward<Visitor>(visitor).template operator()<Field::second>(self.second);
+                return;
+            }
+            case Field::external_value: {
+                std::forward<Visitor>(visitor).template operator()<Field::external_value>(
+                    self.external_value);
+                return;
+            }
+            case Field::Count: {
+                break;
+            }
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
     ActorSettings first{};
     ActorSettings second{};
     int external_value{0};

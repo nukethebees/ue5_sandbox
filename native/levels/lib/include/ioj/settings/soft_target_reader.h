@@ -16,69 +16,14 @@ template <>
 struct TypeReader<settings::SoftTarget> : RecordReader<settings::SoftTarget> {
     static void decode(DecodeContext context, value_type& result) {
         decode_record<Field>(
-            context, "soft-target", field_names, ([&](Field const field, auto const& read) {
-                switch (field) {
-                    case Field::acquisition_radius_pixels:
-                        read(result.acquisition_radius_pixels, constraints::finite);
-                        break;
-                    case Field::retention_radius_pixels:
-                        read(result.retention_radius_pixels, constraints::finite);
-                        break;
-                    case Field::centre_tie_radius_pixels:
-                        read(result.centre_tie_radius_pixels, constraints::finite);
-                        break;
-                    case Field::switch_improvement_ratio:
-                        read(result.switch_improvement_ratio, constraints::finite);
-                        break;
-                    case Field::range_transition_start_multiplier:
-                        read(result.range_transition_start_multiplier, constraints::finite);
-                        break;
-                    case Field::minimum_radius_pixels:
-                        read(result.minimum_radius_pixels, constraints::finite);
-                        break;
-                    case Field::maximum_radius_pixels:
-                        read(result.maximum_radius_pixels, constraints::finite);
-                        break;
-                    case Field::bounds_padding_pixels:
-                        read(result.bounds_padding_pixels, constraints::finite);
-                        break;
-                    case Field::bracket_start_radius_multiplier:
-                        read(result.bracket_start_radius_multiplier, constraints::finite);
-                        break;
-                    case Field::opacity:
-                        read(result.opacity, constraints::finite);
-                        break;
-                    case Field::pulse_opacity_boost:
-                        read(result.pulse_opacity_boost, constraints::finite);
-                        break;
-                    case Field::pulse_duration:
-                        read(result.pulse_duration, constraints::finite);
-                        break;
-                    case Field::fade_out_duration:
-                        read(result.fade_out_duration, constraints::finite);
-                        break;
-                    case Field::Count:
-                        std::unreachable();
-                }
+            context, "soft-target", field_names, ([&](Field selected, auto const& read) {
+                value_type::visit_field(result, selected, [&]<Field field>(auto& member) {
+                    read(member, constraints::finite);
+                });
             }));
     }
   private:
-    enum class Field : std::uint8_t {
-        acquisition_radius_pixels,
-        retention_radius_pixels,
-        centre_tie_radius_pixels,
-        switch_improvement_ratio,
-        range_transition_start_multiplier,
-        minimum_radius_pixels,
-        maximum_radius_pixels,
-        bounds_padding_pixels,
-        bracket_start_radius_multiplier,
-        opacity,
-        pulse_opacity_boost,
-        pulse_duration,
-        fade_out_duration,
-        Count,
-    };
+    using Field = value_type::Field;
 
     static constexpr std::array<std::string_view, 13> field_names{
         "acquisition-radius-pixels",

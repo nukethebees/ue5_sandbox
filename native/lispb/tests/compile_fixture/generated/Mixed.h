@@ -7,8 +7,12 @@
 #include "SignatureSecond.h"
 
 #include <array>
+#include <cassert>
 #include <compare>
+#include <concepts>
 #include <cstdint>
+#include <type_traits>
+#include <utility>
 
 namespace codegen_compile_fixture {
 struct ApiPair;
@@ -21,6 +25,28 @@ struct MethodProvider;
 union Payload;
 
 struct CrossSettings {
+    enum class Field : std::uint8_t {
+        actor,
+        Count,
+    };
+
+    template <typename Self, typename Visitor>
+    static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
+        requires std::same_as<std::remove_const_t<Self>, CrossSettings>
+    {
+        switch (field) {
+            case Field::actor: {
+                std::forward<Visitor>(visitor).template operator()<Field::actor>(self.actor);
+                return;
+            }
+            case Field::Count: {
+                break;
+            }
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
     ActorSettings actor{};
 };
 

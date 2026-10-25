@@ -6,8 +6,102 @@
 #include "ioj/settings/soft_target.h"
 #include "ioj/vector.h"
 
+#include <cassert>
+#include <concepts>
+#include <cstdint>
+#include <type_traits>
+#include <utility>
+
 namespace ioj::settings {
 struct EntityOverlay {
+    enum class Field : std::uint8_t {
+        enabled,
+        maximum_range,
+        bar_size_pixels,
+        screen_offset_pixels,
+        minimum_bar_scale,
+        maximum_bar_scale,
+        inset_pixels,
+        maximum_inset_height_ratio,
+        objective_frame_pixels,
+        objective_bar_height_scale,
+        screen_edge_padding_pixels,
+        soft_target,
+        Count,
+    };
+
+    template <typename Self, typename Visitor>
+    static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
+        requires std::same_as<std::remove_const_t<Self>, EntityOverlay>
+    {
+        switch (field) {
+            case Field::enabled: {
+                std::forward<Visitor>(visitor).template operator()<Field::enabled>(self.enabled);
+                return;
+            }
+            case Field::maximum_range: {
+                std::forward<Visitor>(visitor).template operator()<Field::maximum_range>(
+                    self.maximum_range);
+                return;
+            }
+            case Field::bar_size_pixels: {
+                std::forward<Visitor>(visitor).template operator()<Field::bar_size_pixels>(
+                    self.bar_size_pixels);
+                return;
+            }
+            case Field::screen_offset_pixels: {
+                std::forward<Visitor>(visitor).template operator()<Field::screen_offset_pixels>(
+                    self.screen_offset_pixels);
+                return;
+            }
+            case Field::minimum_bar_scale: {
+                std::forward<Visitor>(visitor).template operator()<Field::minimum_bar_scale>(
+                    self.minimum_bar_scale);
+                return;
+            }
+            case Field::maximum_bar_scale: {
+                std::forward<Visitor>(visitor).template operator()<Field::maximum_bar_scale>(
+                    self.maximum_bar_scale);
+                return;
+            }
+            case Field::inset_pixels: {
+                std::forward<Visitor>(visitor).template operator()<Field::inset_pixels>(
+                    self.inset_pixels);
+                return;
+            }
+            case Field::maximum_inset_height_ratio: {
+                std::forward<Visitor>(visitor).template
+                    operator()<Field::maximum_inset_height_ratio>(self.maximum_inset_height_ratio);
+                return;
+            }
+            case Field::objective_frame_pixels: {
+                std::forward<Visitor>(visitor).template operator()<Field::objective_frame_pixels>(
+                    self.objective_frame_pixels);
+                return;
+            }
+            case Field::objective_bar_height_scale: {
+                std::forward<Visitor>(visitor).template
+                    operator()<Field::objective_bar_height_scale>(self.objective_bar_height_scale);
+                return;
+            }
+            case Field::screen_edge_padding_pixels: {
+                std::forward<Visitor>(visitor).template
+                    operator()<Field::screen_edge_padding_pixels>(self.screen_edge_padding_pixels);
+                return;
+            }
+            case Field::soft_target: {
+                std::forward<Visitor>(visitor).template operator()<Field::soft_target>(
+                    self.soft_target);
+                return;
+            }
+            case Field::Count: {
+                break;
+            }
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
     bool enabled{true};
     float maximum_range{1000000.f};
     ioj::Vector<double, 2> bar_size_pixels{64.0, 8.0};

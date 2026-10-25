@@ -8,10 +8,14 @@
 #include "PlainEnums.h"
 
 #include <array>
+#include <cassert>
+#include <concepts>
 #include <cstdint>
 #include <optional>
 #include <string>
 #include <string_view>
+#include <type_traits>
+#include <utility>
 #include <vector>
 
 namespace codegen_compile_fixture {
@@ -57,6 +61,33 @@ struct BoundedInteger {
 };
 
 struct ReadableChild {
+    enum class Field : std::uint8_t {
+        name,
+        count,
+        Count,
+    };
+
+    template <typename Self, typename Visitor>
+    static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
+        requires std::same_as<std::remove_const_t<Self>, ReadableChild>
+    {
+        switch (field) {
+            case Field::name: {
+                std::forward<Visitor>(visitor).template operator()<Field::name>(self.name);
+                return;
+            }
+            case Field::count: {
+                std::forward<Visitor>(visitor).template operator()<Field::count>(self.count);
+                return;
+            }
+            case Field::Count: {
+                break;
+            }
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
     ioj::NonEmptyString name;
     int count{2};
 };

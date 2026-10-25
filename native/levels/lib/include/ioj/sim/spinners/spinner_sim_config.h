@@ -6,10 +6,49 @@
 #include "ioj/sim/lasers/fire_point.h"
 #include "ioj/sim/lasers/laser_weapon_sim_config.h"
 
+#include <cassert>
+#include <concepts>
+#include <cstdint>
+#include <type_traits>
+#include <utility>
 #include <vector>
 
 namespace ioj::sim {
 struct SpinnerSimConfig {
+    enum class Field : std::uint8_t {
+        fire_point_offsets,
+        yaw_rotation_speed_degrees,
+        laser,
+        Count,
+    };
+
+    template <typename Self, typename Visitor>
+    static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
+        requires std::same_as<std::remove_const_t<Self>, SpinnerSimConfig>
+    {
+        switch (field) {
+            case Field::fire_point_offsets: {
+                std::forward<Visitor>(visitor).template operator()<Field::fire_point_offsets>(
+                    self.fire_point_offsets);
+                return;
+            }
+            case Field::yaw_rotation_speed_degrees: {
+                std::forward<Visitor>(visitor).template
+                    operator()<Field::yaw_rotation_speed_degrees>(self.yaw_rotation_speed_degrees);
+                return;
+            }
+            case Field::laser: {
+                std::forward<Visitor>(visitor).template operator()<Field::laser>(self.laser);
+                return;
+            }
+            case Field::Count: {
+                break;
+            }
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
     std::vector<ioj::sim::FirePoint> fire_point_offsets{};
     float yaw_rotation_speed_degrees{66.f};
     LaserWeaponSimConfig laser{};

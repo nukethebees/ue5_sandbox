@@ -1801,6 +1801,28 @@ class Validator {
         auto const row{declarations_.records.index(record)};
         auto const& records{declarations_.records};
         auto const& members{declarations_.record_members};
+        if (records.generate_visitor[row]) {
+            auto const record_name{text(records.name[row]) +
+                                   (records.constraint_policy[row] ? "Value" : "")};
+            if (record_name == "Field" || record_name == "visit_field" || record_name == "Self" ||
+                record_name == "Visitor") {
+                throw std::invalid_argument{"Record visitor conflicts with record name: " +
+                                            record_name};
+            }
+            auto const check_name{[&](StringId name) {
+                auto const value{text(name)};
+                if (value == "Field" || value == "Count" || value == "visit_field") {
+                    throw std::invalid_argument{"Record visitor reserves the name: " + value};
+                }
+            }};
+            for (auto const id : declarations_.items(records.members[row])) {
+                check_name(members.name[members.index(id)]);
+            }
+            for (auto const id : declarations_.items(records.functions[row])) {
+                auto const& functions{declarations_.functions};
+                check_name(functions.name[functions.index(id)]);
+            }
+        }
         if (records.constraint_policy[row]) {
             require_qualified_identifier(*records.constraint_policy[row],
                                          "Record constraint policy");

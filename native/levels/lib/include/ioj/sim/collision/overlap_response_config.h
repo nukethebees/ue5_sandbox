@@ -5,10 +5,50 @@
 
 #include "ioj/math_types.h"
 
+#include <cassert>
+#include <concepts>
 #include <cstdint>
+#include <type_traits>
+#include <utility>
 
 namespace ioj::sim {
 struct OverlapResponseConfig {
+    enum class Field : std::uint8_t {
+        damage_per_overlap_detection,
+        level_size,
+        cell_size,
+        Count,
+    };
+
+    template <typename Self, typename Visitor>
+    static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
+        requires std::same_as<std::remove_const_t<Self>, OverlapResponseConfig>
+    {
+        switch (field) {
+            case Field::damage_per_overlap_detection: {
+                std::forward<Visitor>(visitor)
+                    .template operator()<Field::damage_per_overlap_detection>(
+                        self.damage_per_overlap_detection);
+                return;
+            }
+            case Field::level_size: {
+                std::forward<Visitor>(visitor).template operator()<Field::level_size>(
+                    self.level_size);
+                return;
+            }
+            case Field::cell_size: {
+                std::forward<Visitor>(visitor).template operator()<Field::cell_size>(
+                    self.cell_size);
+                return;
+            }
+            case Field::Count: {
+                break;
+            }
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
     std::int32_t damage_per_overlap_detection{50};
     Vector3f level_size{2000000.f, 2000000.f, 100000.f};
     Vector3f cell_size{5000.f, 5000.f, 20000.f};

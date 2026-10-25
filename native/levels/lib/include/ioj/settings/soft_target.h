@@ -3,8 +3,110 @@
 
 #pragma once
 
+#include <cassert>
+#include <concepts>
+#include <cstdint>
+#include <type_traits>
+#include <utility>
+
 namespace ioj::settings {
 struct SoftTarget {
+    enum class Field : std::uint8_t {
+        acquisition_radius_pixels,
+        retention_radius_pixels,
+        centre_tie_radius_pixels,
+        switch_improvement_ratio,
+        range_transition_start_multiplier,
+        minimum_radius_pixels,
+        maximum_radius_pixels,
+        bounds_padding_pixels,
+        bracket_start_radius_multiplier,
+        opacity,
+        pulse_opacity_boost,
+        pulse_duration,
+        fade_out_duration,
+        Count,
+    };
+
+    template <typename Self, typename Visitor>
+    static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
+        requires std::same_as<std::remove_const_t<Self>, SoftTarget>
+    {
+        switch (field) {
+            case Field::acquisition_radius_pixels: {
+                std::forward<Visitor>(visitor).template
+                    operator()<Field::acquisition_radius_pixels>(self.acquisition_radius_pixels);
+                return;
+            }
+            case Field::retention_radius_pixels: {
+                std::forward<Visitor>(visitor).template operator()<Field::retention_radius_pixels>(
+                    self.retention_radius_pixels);
+                return;
+            }
+            case Field::centre_tie_radius_pixels: {
+                std::forward<Visitor>(visitor).template operator()<Field::centre_tie_radius_pixels>(
+                    self.centre_tie_radius_pixels);
+                return;
+            }
+            case Field::switch_improvement_ratio: {
+                std::forward<Visitor>(visitor).template operator()<Field::switch_improvement_ratio>(
+                    self.switch_improvement_ratio);
+                return;
+            }
+            case Field::range_transition_start_multiplier: {
+                std::forward<Visitor>(visitor)
+                    .template operator()<Field::range_transition_start_multiplier>(
+                        self.range_transition_start_multiplier);
+                return;
+            }
+            case Field::minimum_radius_pixels: {
+                std::forward<Visitor>(visitor).template operator()<Field::minimum_radius_pixels>(
+                    self.minimum_radius_pixels);
+                return;
+            }
+            case Field::maximum_radius_pixels: {
+                std::forward<Visitor>(visitor).template operator()<Field::maximum_radius_pixels>(
+                    self.maximum_radius_pixels);
+                return;
+            }
+            case Field::bounds_padding_pixels: {
+                std::forward<Visitor>(visitor).template operator()<Field::bounds_padding_pixels>(
+                    self.bounds_padding_pixels);
+                return;
+            }
+            case Field::bracket_start_radius_multiplier: {
+                std::forward<Visitor>(visitor)
+                    .template operator()<Field::bracket_start_radius_multiplier>(
+                        self.bracket_start_radius_multiplier);
+                return;
+            }
+            case Field::opacity: {
+                std::forward<Visitor>(visitor).template operator()<Field::opacity>(self.opacity);
+                return;
+            }
+            case Field::pulse_opacity_boost: {
+                std::forward<Visitor>(visitor).template operator()<Field::pulse_opacity_boost>(
+                    self.pulse_opacity_boost);
+                return;
+            }
+            case Field::pulse_duration: {
+                std::forward<Visitor>(visitor).template operator()<Field::pulse_duration>(
+                    self.pulse_duration);
+                return;
+            }
+            case Field::fade_out_duration: {
+                std::forward<Visitor>(visitor).template operator()<Field::fade_out_duration>(
+                    self.fade_out_duration);
+                return;
+            }
+            case Field::Count: {
+                break;
+            }
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
     float acquisition_radius_pixels{72.f};
     float retention_radius_pixels{96.f};
     float centre_tie_radius_pixels{4.f};

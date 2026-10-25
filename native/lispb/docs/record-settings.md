@@ -35,3 +35,33 @@ Archetype-specific entity spawn overrides remain handwritten.
 
 The former `settings-schema` declaration and flattened path/value dispatcher have been
 removed. See [S7 readers](s7-readers.md) for decoding and constraint policies.
+
+## Typed member visitors
+
+Any ordinary record can opt into `:generate-visitor true`, independently of settings or
+S7 readers. This adds a nested `Field` enum in member order and a static constexpr
+`visit_field(object, field, visitor)` function. The visitor receives the field as a
+template argument and the selected member by reference:
+
+```cpp
+Weapon::visit_field(weapon, Weapon::Field::damage,
+                    []<auto field>(auto& member) {
+    if constexpr (field == Weapon::Field::damage) {
+        member = 10.f;
+    }
+});
+```
+
+The object must be a mutable or const lvalue of the record type. Const objects produce
+const member references. The callable must compile for every member; use `if constexpr`
+when an operation applies only to particular fields. Dispatch invokes it exactly once.
+`Field::Count` and other invalid IDs violate the caller contract. The generated API reserves
+`Field`, `Count` and `visit_field`; it adds no object storage and preserves aggregate layout.
+Record names that collide with `Field`, `visit_field`, `Self` or `Visitor` are rejected.
+
+Visitors expose all members, including settings-excluded ones, without S7 dependencies.
+Opted-in named S7 readers reuse the visitor; external names, requiredness, exclusions and
+constraints remain in the reader. Non-default-constructible records still stage values
+before construction, and positional readers retain their direct argument decoding.
+For constraint-policy records, the visitor belongs to the underlying `NameValue` record;
+the validated wrapper does not expose mutable storage.

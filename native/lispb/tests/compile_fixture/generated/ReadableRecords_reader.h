@@ -225,6 +225,8 @@ struct TypeReader<codegen_compile_fixture::ReadableChild>
                                      case Field::count:
                                          read.construct(value_count, constraints::nonnegative);
                                          break;
+                                     default:
+                                         std::unreachable();
                                      case Field::Count:
                                          std::unreachable();
                                  }
@@ -246,26 +248,20 @@ struct TypeReader<codegen_compile_fixture::ReadableChild>
         decode_record<Field>(context,
                              "child",
                              field_names,
-                             ([&](Field const field, auto const& read) {
-                                 switch (field) {
-                                     case Field::name:
-                                         read(result.name);
-                                         break;
-                                     case Field::count:
-                                         read(result.count, constraints::nonnegative);
-                                         break;
-                                     case Field::Count:
-                                         std::unreachable();
-                                 }
+                             ([&](Field selected, auto const& read) {
+                                 value_type::visit_field(
+                                     result, selected, [&]<Field field>(auto& member) {
+                                         if constexpr (field == Field::name) {
+                                             read(member);
+                                         } else if constexpr (field == Field::count) {
+                                             read(member, constraints::nonnegative);
+                                         }
+                                     });
                              }),
                              required);
     }
   private:
-    enum class Field : std::uint8_t {
-        name,
-        count,
-        Count,
-    };
+    using Field = value_type::Field;
 
     static constexpr std::array<std::string_view, 2> field_names{"name", "count"};
     static constexpr auto required{required_fields<Field>({Field::name})};

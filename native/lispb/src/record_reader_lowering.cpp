@@ -14,6 +14,7 @@
 #include <algorithm>
 #include <filesystem>
 #include <format>
+#include <map>
 #include <set>
 #include <stdexcept>
 
@@ -95,6 +96,34 @@ auto constraint_arguments(LoweringContext& context, RecordMemberId field) -> std
     return checks;
 }
 
+auto member_reader(LoweringContext& context, DeclarationHandle record) -> std::string {
+    auto const& records{context.declarations.records};
+    auto const& members{context.declarations.record_members};
+    auto const fields{reader_fields(context, record)};
+    std::map<std::string, std::vector<std::string>> groups;
+    for (auto const field : context.declarations.items(records.members[records.index(record)])) {
+        auto const excluded{std::ranges::find(fields, field) == fields.end()};
+        auto const action{excluded ? "std::unreachable();"
+                                   : "read(member" + constraint_arguments(context, field) + ");"};
+        groups[action].push_back("field == Field::" +
+                                 context.text(members.name[members.index(field)]));
+    }
+    std::string result{"[&]<Field field>(auto& member) {\n"};
+    if (groups.size() == 1) {
+        result += groups.begin()->first;
+    } else {
+        bool first{true};
+        for (auto const& [action, conditions] : groups) {
+            result += std::format("{}if constexpr ({}) {{ {} }}\n",
+                                  first ? "" : "else ",
+                                  join(conditions, " || "),
+                                  action);
+            first = false;
+        }
+    }
+    return result + "\n}";
+}
+
 auto fields_body(LoweringContext& context, DeclarationHandle const record, bool const constructing)
     -> Nodes {
     auto& ir{context.ir};
@@ -148,19 +177,29 @@ auto fields_body(LoweringContext& context, DeclarationHandle const record, bool 
         }
     } else {
         // The IR has no lambda node; keep only the streaming callback's syntax textual.
-        std::string visitor{"[&](Field const field, auto const& read) {\nswitch (field) {\n"};
-        for (auto const field : fields) {
-            auto const name{context.text(members.name[members.index(field)])};
-            auto const destination{(constructing ? "value_" : "result.") + name};
-            visitor += std::format("case Field::{}: read{}({}{}); break;\n",
-                                   name,
-                                   read_method,
-                                   destination,
-                                   constraint_arguments(context, field));
-        }
-        visitor += "case Field::Count: std::unreachable();\n}\n}";
+        std::string visitor;
         if (fields.empty()) {
             visitor = "[](Field, auto const&) {}";
+        } else if (records.generate_visitor[row] && !constructing) {
+            visitor = "[&](Field selected, auto const& read) { value_type::visit_field(result, "
+                      "selected, " +
+                      member_reader(context, record) + "); }";
+        } else {
+            visitor = "[&](Field const field, auto const& read) {\nswitch (field) {\n";
+            for (auto const field : fields) {
+                auto const name{context.text(members.name[members.index(field)])};
+                auto const destination{(constructing ? "value_" : "result.") + name};
+                visitor += std::format("case Field::{}: read{}({}{}); break;\n",
+                                       name,
+                                       read_method,
+                                       destination,
+                                       constraint_arguments(context, field));
+            }
+            if (records.generate_visitor[row]) {
+                // Stage construction before an object exists; excluded fields cannot be looked up.
+                visitor += "default: std::unreachable();\n";
+            }
+            visitor += "case Field::Count: std::unreachable();\n}\n}";
         }
         std::vector<Expr> arguments{ir.named("context"),
                                     ir.string_literal(context.text(*records.s7_tag[row])),
@@ -276,16 +315,29 @@ void lower_record_reader(LoweringContext& context,
         declarations.add(ir.access(Access::private_), 1);
     }
     if (!records.s7_positional[row]) {
-        values.push_back(ir.enumerator(ir.strings.intern("Count")));
-        declarations.add(
-            ir.enumeration(ir.strings.intern("Field"),
-                           ir.types.intern(values.size() <= 256 ? "std::uint8_t" : "std::uint32_t"),
-                           values),
-            2);
+        if (records.generate_visitor[row]) {
+            declarations.add(ir.using_declaration(ir.strings.intern("Field"),
+                                                  ir.types.intern("value_type::Field")),
+                             2);
+        } else {
+            values.push_back(ir.enumerator(ir.strings.intern("Count")));
+            declarations.add(ir.enumeration(ir.strings.intern("Field"),
+                                            ir.types.intern(values.size() <= 256 ? "std::uint8_t"
+                                                                                 : "std::uint32_t"),
+                                            values),
+                             2);
+        }
         std::vector<Expr> names;
         std::vector<Expr> required;
-        for (auto const field : fields) {
+        auto const named_fields{records.generate_visitor[row]
+                                    ? context.declarations.items(records.members[row])
+                                    : std::span<RecordMemberId const>{fields}};
+        for (auto const field : named_fields) {
             auto const index{members.index(field)};
+            if (std::ranges::find(fields, field) == fields.end()) {
+                names.push_back(ir.string_literal(""));
+                continue;
+            }
             names.push_back(ir.string_literal(record_reader::field_name(context, field)));
             if (members.s7[index].required) {
                 required.push_back(ir.named("Field::" + context.text(members.name[index])));
@@ -295,7 +347,7 @@ void lower_record_reader(LoweringContext& context,
             ir.types.named("std::array", {ir.types.dependency("std::array", "array")}),
             {ir.types.named("std::string_view",
                             {ir.types.dependency("std::string_view", "string_view")}),
-             ir.types.intern(std::to_string(fields.size()))})};
+             ir.types.intern(std::to_string(named_fields.size()))})};
         declarations.add(
             ir.constexpr_member(array_type, ir.strings.intern("field_names"), ir.init_list(names)),
             1);

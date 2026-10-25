@@ -16,35 +16,14 @@ template <>
 struct TypeReader<sim::HudSettings> : RecordReader<sim::HudSettings> {
     static void decode(DecodeContext context, value_type& result) {
         decode_record<Field>(
-            context, "hud", field_names, ([&](Field const field, auto const& read) {
-                switch (field) {
-                    case Field::player_status_update_period:
-                        read(result.player_status_update_period,
-                             constraints::nonnegative,
-                             constraints::finite);
-                        break;
-                    case Field::entity_count_update_period:
-                        read(result.entity_count_update_period,
-                             constraints::nonnegative,
-                             constraints::finite);
-                        break;
-                    case Field::mission_status_update_period:
-                        read(result.mission_status_update_period,
-                             constraints::nonnegative,
-                             constraints::finite);
-                        break;
-                    case Field::Count:
-                        std::unreachable();
-                }
+            context, "hud", field_names, ([&](Field selected, auto const& read) {
+                value_type::visit_field(result, selected, [&]<Field field>(auto& member) {
+                    read(member, constraints::nonnegative, constraints::finite);
+                });
             }));
     }
   private:
-    enum class Field : std::uint8_t {
-        player_status_update_period,
-        entity_count_update_period,
-        mission_status_update_period,
-        Count,
-    };
+    using Field = value_type::Field;
 
     static constexpr std::array<std::string_view, 3> field_names{"player-status-update-period",
                                                                  "entity-count-update-period",

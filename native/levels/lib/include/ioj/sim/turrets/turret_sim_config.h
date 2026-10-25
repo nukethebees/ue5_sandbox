@@ -7,8 +7,60 @@
 #include "ioj/sim/entities/health.h"
 #include "ioj/sim/lasers/laser_weapon_sim_config.h"
 
+#include <cassert>
+#include <concepts>
+#include <cstdint>
+#include <type_traits>
+#include <utility>
+
 namespace ioj::sim {
 struct TurretSimConfig {
+    enum class Field : std::uint8_t {
+        detection_radius,
+        target_refresh_frequency,
+        fire_point_offset,
+        laser,
+        max_health,
+        Count,
+    };
+
+    template <typename Self, typename Visitor>
+    static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
+        requires std::same_as<std::remove_const_t<Self>, TurretSimConfig>
+    {
+        switch (field) {
+            case Field::detection_radius: {
+                std::forward<Visitor>(visitor).template operator()<Field::detection_radius>(
+                    self.detection_radius);
+                return;
+            }
+            case Field::target_refresh_frequency: {
+                std::forward<Visitor>(visitor).template operator()<Field::target_refresh_frequency>(
+                    self.target_refresh_frequency);
+                return;
+            }
+            case Field::fire_point_offset: {
+                std::forward<Visitor>(visitor).template operator()<Field::fire_point_offset>(
+                    self.fire_point_offset);
+                return;
+            }
+            case Field::laser: {
+                std::forward<Visitor>(visitor).template operator()<Field::laser>(self.laser);
+                return;
+            }
+            case Field::max_health: {
+                std::forward<Visitor>(visitor).template operator()<Field::max_health>(
+                    self.max_health);
+                return;
+            }
+            case Field::Count: {
+                break;
+            }
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
     float detection_radius{3000.f};
     float target_refresh_frequency{5.f};
     Vector3f fire_point_offset{};

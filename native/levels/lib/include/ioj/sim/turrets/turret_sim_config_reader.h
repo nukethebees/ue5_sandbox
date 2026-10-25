@@ -17,36 +17,24 @@ template <>
 struct TypeReader<sim::TurretSimConfig> : RecordReader<sim::TurretSimConfig> {
     static void decode(DecodeContext context, value_type& result) {
         decode_record<Field>(
-            context, "turrets", field_names, ([&](Field const field, auto const& read) {
-                switch (field) {
-                    case Field::detection_radius:
-                        read(result.detection_radius, constraints::finite);
-                        break;
-                    case Field::target_refresh_frequency:
-                        read(result.target_refresh_frequency, constraints::finite);
-                        break;
-                    case Field::laser:
-                        read(result.laser);
-                        break;
-                    case Field::max_health:
-                        read(result.max_health);
-                        break;
-                    case Field::Count:
+            context, "turrets", field_names, ([&](Field selected, auto const& read) {
+                value_type::visit_field(result, selected, [&]<Field field>(auto& member) {
+                    if constexpr (field == Field::laser || field == Field::max_health) {
+                        read(member);
+                    } else if constexpr (field == Field::detection_radius ||
+                                         field == Field::target_refresh_frequency) {
+                        read(member, constraints::finite);
+                    } else if constexpr (field == Field::fire_point_offset) {
                         std::unreachable();
-                }
+                    }
+                });
             }));
     }
   private:
-    enum class Field : std::uint8_t {
-        detection_radius,
-        target_refresh_frequency,
-        laser,
-        max_health,
-        Count,
-    };
+    using Field = value_type::Field;
 
-    static constexpr std::array<std::string_view, 4> field_names{
-        "detection-radius", "target-refresh-frequency", "laser", "max-health"};
+    static constexpr std::array<std::string_view, 5> field_names{
+        "detection-radius", "target-refresh-frequency", "", "laser", "max-health"};
 };
 
 } // namespace ioj::s7

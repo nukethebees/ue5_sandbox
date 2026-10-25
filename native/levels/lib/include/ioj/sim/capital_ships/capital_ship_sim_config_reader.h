@@ -16,27 +16,24 @@ template <>
 struct TypeReader<sim::CapitalShipSimConfig> : RecordReader<sim::CapitalShipSimConfig> {
     static void decode(DecodeContext context, value_type& result) {
         decode_record<Field>(
-            context, "capital-ships", field_names, ([&](Field const field, auto const& read) {
-                switch (field) {
-                    case Field::spawn_delay:
-                        read(result.spawn_delay, constraints::finite);
-                        break;
-                    case Field::max_health:
-                        read(result.max_health);
-                        break;
-                    case Field::Count:
+            context, "capital-ships", field_names, ([&](Field selected, auto const& read) {
+                value_type::visit_field(result, selected, [&]<Field field>(auto& member) {
+                    if constexpr (field == Field::max_health) {
+                        read(member);
+                    } else if constexpr (field == Field::spawn_delay) {
+                        read(member, constraints::finite);
+                    } else if constexpr (field == Field::fighter_spawn_slots ||
+                                         field == Field::fighter_spawn_slots_relative_transforms) {
                         std::unreachable();
-                }
+                    }
+                });
             }));
     }
   private:
-    enum class Field : std::uint8_t {
-        spawn_delay,
-        max_health,
-        Count,
-    };
+    using Field = value_type::Field;
 
-    static constexpr std::array<std::string_view, 2> field_names{"spawn-delay", "max-health"};
+    static constexpr std::array<std::string_view, 4> field_names{
+        "spawn-delay", "", "", "max-health"};
 };
 
 } // namespace ioj::s7

@@ -20,6 +20,7 @@
 #include <lispb/schema/type_graph.h>
 #include <lispb/strings.h>
 
+#include <format>
 #include <optional>
 #include <string>
 #include <vector>
@@ -39,6 +40,66 @@ auto record_member_type(LoweringContext& context, RecordMemberId member) -> CppT
     return ir.types.template_type(
         ir.types.named("std::array", {ir.types.dependency("std::array", "array")}),
         {element, ir.types.intern(std::to_string(*count))});
+}
+
+auto record_visitor(LoweringContext& context, DeclarationHandle record, std::string const& name)
+    -> Nodes {
+    auto& ir{context.ir};
+    auto const& records{context.declarations.records};
+    auto const& members{context.declarations.record_members};
+    auto const fields{context.declarations.items(records.members[records.index(record)])};
+    std::vector<EnumValueId> values;
+    std::vector<SwitchCaseId> cases;
+    for (auto const field : fields) {
+        auto const member{members.name[members.index(field)]};
+        values.push_back(ir.enumerator(member));
+        auto const id{"Field::" + context.text(member)};
+        cases.push_back(ir.switch_case(
+            ir.named(id),
+            ir.block(
+                {ir.expr_stmt(ir.raw_expr(
+                     std::format("std::forward<Visitor>(visitor).template operator()<{}>(self.{})",
+                                 id,
+                                 context.text(member)),
+                     {ir.types.dependency("std::forward", "utility")})),
+                 ir.return_stmt()})));
+    }
+    values.push_back(ir.enumerator(ir.strings.intern("Count")));
+    cases.push_back(ir.switch_case(ir.named("Field::Count"), ir.block({ir.break_stmt()})));
+
+    NodeListBuilder result{ir};
+    result.add(
+        ir.enumeration(ir.strings.intern("Field"),
+                       ir.types.intern(values.size() <= 256 ? "std::uint8_t" : "std::uint32_t",
+                                       {ir.types.dependency("std::uint8_t", "cstdint")}),
+                       values),
+        2);
+    auto const function{ir.function("visit_field", "void")};
+    ir.set_function_template(
+        function,
+        ir.template_declaration({ir.type_template_parameter(ir.strings.intern("Self")),
+                                 ir.type_template_parameter(ir.strings.intern("Visitor"))}));
+    ir.set_function_requires_clause(
+        function,
+        ir.raw_expr("std::same_as<std::remove_const_t<Self>, " + name + ">",
+                    {ir.types.dependency("std::same_as", "concepts"),
+                     ir.types.dependency("std::remove_const_t", "type_traits")}));
+    ir.set_function_receiver(function, FunctionReceiver::static_);
+    ir.set_function_parameters(function,
+                               {ir.parameter("Self&", fields.empty() ? "" : "self"),
+                                ir.parameter("Field", "field"),
+                                ir.parameter("Visitor&&", fields.empty() ? "" : "visitor")});
+    ir.function_flags(function).set_is_constexpr(true);
+    ir.function_flags(function).set_define_in_header(true);
+    ir.set_function_body(
+        function,
+        {ir.switch_stmt(ir.named("field"), cases),
+         ir.expr_stmt(ir.raw_expr("assert(false && \"Invalid record field\")",
+                                  {ir.types.dependency("assert", "cassert")})),
+         ir.expr_stmt(ir.raw_expr("std::unreachable()",
+                                  {ir.types.dependency("std::unreachable", "utility")}))});
+    result.add(ir.header_function(function), 2);
+    return result.build();
 }
 
 auto record_node(LoweringContext& context, DeclarationHandle record) -> NodeId {
@@ -68,6 +129,9 @@ auto record_node(LoweringContext& context, DeclarationHandle record) -> NodeId {
     }
     if (records.comparison[row] != RecordComparison::none || !records.functions[row].empty()) {
         members.new_lines(2);
+    }
+    if (records.generate_visitor[row]) {
+        members.append(record_visitor(context, record, name));
     }
     for (auto const member : context.declarations.items(records.members[row])) {
         auto const member_row{record_members.index(member)};

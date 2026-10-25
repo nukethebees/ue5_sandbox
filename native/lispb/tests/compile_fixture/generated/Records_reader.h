@@ -16,29 +16,18 @@ template <>
 struct TypeReader<codegen_compile_fixture::RangeValue>
     : RecordReader<codegen_compile_fixture::RangeValue> {
     static void decode(DecodeContext context, value_type& result) {
-        decode_record<Field>(context,
-                             "range",
-                             field_names,
-                             ([&](Field const field, auto const& read) {
-                                 switch (field) {
-                                     case Field::minimum:
-                                         read(result.minimum);
-                                         break;
-                                     case Field::maximum:
-                                         read(result.maximum);
-                                         break;
-                                     case Field::Count:
-                                         std::unreachable();
-                                 }
-                             }),
-                             required);
+        decode_record<Field>(
+            context,
+            "range",
+            field_names,
+            ([&](Field selected, auto const& read) {
+                value_type::visit_field(
+                    result, selected, [&]<Field field>(auto& member) { read(member); });
+            }),
+            required);
     }
   private:
-    enum class Field : std::uint8_t {
-        minimum,
-        maximum,
-        Count,
-    };
+    using Field = value_type::Field;
 
     static constexpr std::array<std::string_view, 2> field_names{"minimum", "maximum"};
     static constexpr auto required{required_fields<Field>({Field::minimum, Field::maximum})};
@@ -49,25 +38,13 @@ struct TypeReader<codegen_compile_fixture::RangeSettings>
     : RecordReader<codegen_compile_fixture::RangeSettings> {
     static void decode(DecodeContext context, value_type& result) {
         decode_record<Field>(
-            context, "ranges", field_names, ([&](Field const field, auto const& read) {
-                switch (field) {
-                    case Field::range:
-                        read(result.range);
-                        break;
-                    case Field::enabled:
-                        read(result.enabled);
-                        break;
-                    case Field::Count:
-                        std::unreachable();
-                }
+            context, "ranges", field_names, ([&](Field selected, auto const& read) {
+                value_type::visit_field(
+                    result, selected, [&]<Field field>(auto& member) { read(member); });
             }));
     }
   private:
-    enum class Field : std::uint8_t {
-        range,
-        enabled,
-        Count,
-    };
+    using Field = value_type::Field;
 
     static constexpr std::array<std::string_view, 2> field_names{"range", "enabled"};
 };
@@ -79,9 +56,7 @@ struct TypeReader<codegen_compile_fixture::EmptySettings>
         decode_record<Field>(context, "empty-settings", field_names, ([](Field, auto const&) {}));
     }
   private:
-    enum class Field : std::uint8_t {
-        Count,
-    };
+    using Field = value_type::Field;
 
     static constexpr std::array<std::string_view, 0> field_names{};
 };
@@ -93,28 +68,24 @@ struct TypeReader<codegen_compile_fixture::WeaponSettings>
         decode_record<Field>(context,
                              "weapon",
                              field_names,
-                             ([&](Field const field, auto const& read) {
-                                 switch (field) {
-                                     case Field::damage:
-                                         read(result.damage, constraints::nonnegative);
-                                         break;
-                                     case Field::turn_rate:
-                                         read(result.turn_rate);
-                                         break;
-                                     case Field::Count:
-                                         std::unreachable();
-                                 }
+                             ([&](Field selected, auto const& read) {
+                                 value_type::visit_field(
+                                     result, selected, [&]<Field field>(auto& member) {
+                                         if constexpr (field == Field::turn_rate) {
+                                             read(member);
+                                         } else if constexpr (field == Field::damage) {
+                                             read(member, constraints::nonnegative);
+                                         } else if constexpr (field == Field::asset_distance) {
+                                             std::unreachable();
+                                         }
+                                     });
                              }),
                              required);
     }
   private:
-    enum class Field : std::uint8_t {
-        damage,
-        turn_rate,
-        Count,
-    };
+    using Field = value_type::Field;
 
-    static constexpr std::array<std::string_view, 2> field_names{"damage", "turn-speed"};
+    static constexpr std::array<std::string_view, 3> field_names{"damage", "turn-speed", ""};
     static constexpr auto required{required_fields<Field>({Field::damage})};
 };
 
@@ -123,29 +94,13 @@ struct TypeReader<codegen_compile_fixture::ActorSettings>
     : RecordReader<codegen_compile_fixture::ActorSettings> {
     static void decode(DecodeContext context, value_type& result) {
         decode_record<Field>(
-            context, "actor", field_names, ([&](Field const field, auto const& read) {
-                switch (field) {
-                    case Field::max_health:
-                        read(result.max_health);
-                        break;
-                    case Field::weapon:
-                        read(result.weapon);
-                        break;
-                    case Field::optional_limit:
-                        read(result.optional_limit);
-                        break;
-                    case Field::Count:
-                        std::unreachable();
-                }
+            context, "actor", field_names, ([&](Field selected, auto const& read) {
+                value_type::visit_field(
+                    result, selected, [&]<Field field>(auto& member) { read(member); });
             }));
     }
   private:
-    enum class Field : std::uint8_t {
-        max_health,
-        weapon,
-        optional_limit,
-        Count,
-    };
+    using Field = value_type::Field;
 
     static constexpr std::array<std::string_view, 3> field_names{
         "max-health", "weapon", "optional-limit"};

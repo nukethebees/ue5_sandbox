@@ -3,10 +3,54 @@
 
 #pragma once
 
+#include <cassert>
+#include <concepts>
 #include <cstdint>
+#include <type_traits>
+#include <utility>
 
 namespace ioj::sim {
 struct LaserWeaponSimConfig {
+    enum class Field : std::uint8_t {
+        damage,
+        projectile_speed,
+        max_distance,
+        fire_cooldown,
+        Count,
+    };
+
+    template <typename Self, typename Visitor>
+    static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
+        requires std::same_as<std::remove_const_t<Self>, LaserWeaponSimConfig>
+    {
+        switch (field) {
+            case Field::damage: {
+                std::forward<Visitor>(visitor).template operator()<Field::damage>(self.damage);
+                return;
+            }
+            case Field::projectile_speed: {
+                std::forward<Visitor>(visitor).template operator()<Field::projectile_speed>(
+                    self.projectile_speed);
+                return;
+            }
+            case Field::max_distance: {
+                std::forward<Visitor>(visitor).template operator()<Field::max_distance>(
+                    self.max_distance);
+                return;
+            }
+            case Field::fire_cooldown: {
+                std::forward<Visitor>(visitor).template operator()<Field::fire_cooldown>(
+                    self.fire_cooldown);
+                return;
+            }
+            case Field::Count: {
+                break;
+            }
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
     std::int32_t damage{5};
     float projectile_speed{10000.f};
     float max_distance{10000.f};

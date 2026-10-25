@@ -16,41 +16,22 @@ template <>
 struct TypeReader<settings::CapitalPresentation> : RecordReader<settings::CapitalPresentation> {
     static void decode(DecodeContext context, value_type& result) {
         decode_record<Field>(
-            context, "capital-ships", field_names, ([&](Field const field, auto const& read) {
-                switch (field) {
-                    case Field::n_small_explosions:
-                        read(result.n_small_explosions);
-                        break;
-                    case Field::time_between_explosions:
-                        read(result.time_between_explosions, constraints::finite);
-                        break;
-                    case Field::min_small_explosion_range:
-                        read(result.min_small_explosion_range, constraints::finite);
-                        break;
-                    case Field::max_small_explosion_range:
-                        read(result.max_small_explosion_range, constraints::finite);
-                        break;
-                    case Field::large_explosion_delay:
-                        read(result.large_explosion_delay, constraints::finite);
-                        break;
-                    case Field::proxy_arrow_size:
-                        read(result.proxy_arrow_size, constraints::finite);
-                        break;
-                    case Field::Count:
-                        std::unreachable();
-                }
+            context, "capital-ships", field_names, ([&](Field selected, auto const& read) {
+                value_type::visit_field(result, selected, [&]<Field field>(auto& member) {
+                    if constexpr (field == Field::n_small_explosions) {
+                        read(member);
+                    } else if constexpr (field == Field::time_between_explosions ||
+                                         field == Field::min_small_explosion_range ||
+                                         field == Field::max_small_explosion_range ||
+                                         field == Field::large_explosion_delay ||
+                                         field == Field::proxy_arrow_size) {
+                        read(member, constraints::finite);
+                    }
+                });
             }));
     }
   private:
-    enum class Field : std::uint8_t {
-        n_small_explosions,
-        time_between_explosions,
-        min_small_explosion_range,
-        max_small_explosion_range,
-        large_explosion_delay,
-        proxy_arrow_size,
-        Count,
-    };
+    using Field = value_type::Field;
 
     static constexpr std::array<std::string_view, 6> field_names{"n-small-explosions",
                                                                  "time-between-explosions",

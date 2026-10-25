@@ -17,28 +17,23 @@ template <>
 struct TypeReader<sim::SpinnerSimConfig> : RecordReader<sim::SpinnerSimConfig> {
     static void decode(DecodeContext context, value_type& result) {
         decode_record<Field>(
-            context, "tube-spinners", field_names, ([&](Field const field, auto const& read) {
-                switch (field) {
-                    case Field::yaw_rotation_speed_degrees:
-                        read(result.yaw_rotation_speed_degrees, constraints::finite);
-                        break;
-                    case Field::laser:
-                        read(result.laser);
-                        break;
-                    case Field::Count:
+            context, "tube-spinners", field_names, ([&](Field selected, auto const& read) {
+                value_type::visit_field(result, selected, [&]<Field field>(auto& member) {
+                    if constexpr (field == Field::laser) {
+                        read(member);
+                    } else if constexpr (field == Field::yaw_rotation_speed_degrees) {
+                        read(member, constraints::finite);
+                    } else if constexpr (field == Field::fire_point_offsets) {
                         std::unreachable();
-                }
+                    }
+                });
             }));
     }
   private:
-    enum class Field : std::uint8_t {
-        yaw_rotation_speed_degrees,
-        laser,
-        Count,
-    };
+    using Field = value_type::Field;
 
-    static constexpr std::array<std::string_view, 2> field_names{"yaw-rotation-speed-degrees",
-                                                                 "laser"};
+    static constexpr std::array<std::string_view, 3> field_names{
+        "", "yaw-rotation-speed-degrees", "laser"};
 };
 
 } // namespace ioj::s7

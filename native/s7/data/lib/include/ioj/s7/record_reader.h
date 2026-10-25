@@ -29,7 +29,10 @@ void decode_record(DecodeContext context,
             node,
             tag,
             context.path,
-            [&](std::string_view name) { return try_parse_enum<Field>(name, names); },
+            [&](std::string_view name) {
+                // Leave excluded record members unnamed and unavailable to authored input.
+                return name.empty() ? std::optional<Field>{} : try_parse_enum<Field>(name, names);
+            },
             [&](Field field, NodeIndex value, std::string_view location) {
                 seen.set(field);
                 visit(field,

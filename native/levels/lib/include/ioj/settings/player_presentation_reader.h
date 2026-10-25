@@ -16,21 +16,14 @@ template <>
 struct TypeReader<settings::PlayerPresentation> : RecordReader<settings::PlayerPresentation> {
     static void decode(DecodeContext context, value_type& result) {
         decode_record<Field>(
-            context, "player-ship", field_names, ([&](Field const field, auto const& read) {
-                switch (field) {
-                    case Field::boost_effect_colour_intensity:
-                        read(result.boost_effect_colour_intensity, constraints::finite);
-                        break;
-                    case Field::Count:
-                        std::unreachable();
-                }
+            context, "player-ship", field_names, ([&](Field selected, auto const& read) {
+                value_type::visit_field(result, selected, [&]<Field field>(auto& member) {
+                    read(member, constraints::finite);
+                });
             }));
     }
   private:
-    enum class Field : std::uint8_t {
-        boost_effect_colour_intensity,
-        Count,
-    };
+    using Field = value_type::Field;
 
     static constexpr std::array<std::string_view, 1> field_names{"boost-effect-colour-intensity"};
 };

@@ -5,10 +5,67 @@
 
 #include "ioj/math_types.h"
 
+#include <cassert>
+#include <concepts>
 #include <cstdint>
+#include <type_traits>
+#include <utility>
 
 namespace ioj::settings {
 struct CapitalPresentation {
+    enum class Field : std::uint8_t {
+        n_small_explosions,
+        time_between_explosions,
+        min_small_explosion_range,
+        max_small_explosion_range,
+        large_explosion_delay,
+        proxy_arrow_size,
+        Count,
+    };
+
+    template <typename Self, typename Visitor>
+    static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
+        requires std::same_as<std::remove_const_t<Self>, CapitalPresentation>
+    {
+        switch (field) {
+            case Field::n_small_explosions: {
+                std::forward<Visitor>(visitor).template operator()<Field::n_small_explosions>(
+                    self.n_small_explosions);
+                return;
+            }
+            case Field::time_between_explosions: {
+                std::forward<Visitor>(visitor).template operator()<Field::time_between_explosions>(
+                    self.time_between_explosions);
+                return;
+            }
+            case Field::min_small_explosion_range: {
+                std::forward<Visitor>(visitor).template
+                    operator()<Field::min_small_explosion_range>(self.min_small_explosion_range);
+                return;
+            }
+            case Field::max_small_explosion_range: {
+                std::forward<Visitor>(visitor).template
+                    operator()<Field::max_small_explosion_range>(self.max_small_explosion_range);
+                return;
+            }
+            case Field::large_explosion_delay: {
+                std::forward<Visitor>(visitor).template operator()<Field::large_explosion_delay>(
+                    self.large_explosion_delay);
+                return;
+            }
+            case Field::proxy_arrow_size: {
+                std::forward<Visitor>(visitor).template operator()<Field::proxy_arrow_size>(
+                    self.proxy_arrow_size);
+                return;
+            }
+            case Field::Count: {
+                break;
+            }
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
     std::int32_t n_small_explosions{6};
     float time_between_explosions{0.1f};
     Vector3f min_small_explosion_range{};

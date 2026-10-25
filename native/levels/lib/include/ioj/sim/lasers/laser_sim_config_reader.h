@@ -15,21 +15,13 @@ template <>
 struct TypeReader<sim::LaserSimConfig> : RecordReader<sim::LaserSimConfig> {
     static void decode(DecodeContext context, value_type& result) {
         decode_record<Field>(
-            context, "laser-projectiles", field_names, ([&](Field const field, auto const& read) {
-                switch (field) {
-                    case Field::n_preallocated_instances:
-                        read(result.n_preallocated_instances);
-                        break;
-                    case Field::Count:
-                        std::unreachable();
-                }
+            context, "laser-projectiles", field_names, ([&](Field selected, auto const& read) {
+                value_type::visit_field(
+                    result, selected, [&]<Field field>(auto& member) { read(member); });
             }));
     }
   private:
-    enum class Field : std::uint8_t {
-        n_preallocated_instances,
-        Count,
-    };
+    using Field = value_type::Field;
 
     static constexpr std::array<std::string_view, 1> field_names{"n-preallocated-instances"};
 };

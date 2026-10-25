@@ -26,61 +26,13 @@ template <>
 struct TypeReader<settings::SettingsValues> : RecordReader<settings::SettingsValues> {
     static void decode(DecodeContext context, value_type& result) {
         decode_record<Field>(
-            context, "settings", field_names, ([&](Field const field, auto const& read) {
-                switch (field) {
-                    case Field::tick:
-                        read(result.tick);
-                        break;
-                    case Field::player_ship:
-                        read(result.player_ship);
-                        break;
-                    case Field::laser_projectiles:
-                        read(result.laser_projectiles);
-                        break;
-                    case Field::capital_ships:
-                        read(result.capital_ships);
-                        break;
-                    case Field::fighters:
-                        read(result.fighters);
-                        break;
-                    case Field::turrets:
-                        read(result.turrets);
-                        break;
-                    case Field::tube_spinners:
-                        read(result.tube_spinners);
-                        break;
-                    case Field::collision_grid:
-                        read(result.collision_grid);
-                        break;
-                    case Field::hud:
-                        read(result.hud);
-                        break;
-                    case Field::presentation:
-                        read(result.presentation);
-                        break;
-                    case Field::starfield:
-                        read(result.starfield);
-                        break;
-                    case Field::Count:
-                        std::unreachable();
-                }
+            context, "settings", field_names, ([&](Field selected, auto const& read) {
+                value_type::visit_field(
+                    result, selected, [&]<Field field>(auto& member) { read(member); });
             }));
     }
   private:
-    enum class Field : std::uint8_t {
-        tick,
-        player_ship,
-        laser_projectiles,
-        capital_ships,
-        fighters,
-        turrets,
-        tube_spinners,
-        collision_grid,
-        hud,
-        presentation,
-        starfield,
-        Count,
-    };
+    using Field = value_type::Field;
 
     static constexpr std::array<std::string_view, 11> field_names{"tick",
                                                                   "player-ship",

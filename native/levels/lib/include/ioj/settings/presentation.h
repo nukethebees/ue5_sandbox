@@ -10,8 +10,65 @@
 #include "ioj/settings/radar.h"
 #include "ioj/settings/turret_presentation.h"
 
+#include <cassert>
+#include <concepts>
+#include <cstdint>
+#include <type_traits>
+#include <utility>
+
 namespace ioj::settings {
 struct Presentation {
+    enum class Field : std::uint8_t {
+        player_ship,
+        laser_projectiles,
+        capital_ships,
+        turrets,
+        entity_overlay,
+        radar,
+        Count,
+    };
+
+    template <typename Self, typename Visitor>
+    static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
+        requires std::same_as<std::remove_const_t<Self>, Presentation>
+    {
+        switch (field) {
+            case Field::player_ship: {
+                std::forward<Visitor>(visitor).template operator()<Field::player_ship>(
+                    self.player_ship);
+                return;
+            }
+            case Field::laser_projectiles: {
+                std::forward<Visitor>(visitor).template operator()<Field::laser_projectiles>(
+                    self.laser_projectiles);
+                return;
+            }
+            case Field::capital_ships: {
+                std::forward<Visitor>(visitor).template operator()<Field::capital_ships>(
+                    self.capital_ships);
+                return;
+            }
+            case Field::turrets: {
+                std::forward<Visitor>(visitor).template operator()<Field::turrets>(self.turrets);
+                return;
+            }
+            case Field::entity_overlay: {
+                std::forward<Visitor>(visitor).template operator()<Field::entity_overlay>(
+                    self.entity_overlay);
+                return;
+            }
+            case Field::radar: {
+                std::forward<Visitor>(visitor).template operator()<Field::radar>(self.radar);
+                return;
+            }
+            case Field::Count: {
+                break;
+            }
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
     PlayerPresentation player_ship{};
     LaserPresentation laser_projectiles{};
     CapitalPresentation capital_ships{};

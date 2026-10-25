@@ -17,29 +17,13 @@ struct TypeReader<codegen_compile_fixture::SettingsTarget>
     : RecordReader<codegen_compile_fixture::SettingsTarget> {
     static void decode(DecodeContext context, value_type& result) {
         decode_record<Field>(
-            context, "settings", field_names, ([&](Field const field, auto const& read) {
-                switch (field) {
-                    case Field::first:
-                        read(result.first);
-                        break;
-                    case Field::second:
-                        read(result.second);
-                        break;
-                    case Field::external_value:
-                        read(result.external_value);
-                        break;
-                    case Field::Count:
-                        std::unreachable();
-                }
+            context, "settings", field_names, ([&](Field selected, auto const& read) {
+                value_type::visit_field(
+                    result, selected, [&]<Field field>(auto& member) { read(member); });
             }));
     }
   private:
-    enum class Field : std::uint8_t {
-        first,
-        second,
-        external_value,
-        Count,
-    };
+    using Field = value_type::Field;
 
     static constexpr std::array<std::string_view, 3> field_names{
         "first", "second", "external-value"};

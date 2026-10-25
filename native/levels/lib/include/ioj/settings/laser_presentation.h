@@ -3,8 +3,43 @@
 
 #pragma once
 
+#include <cassert>
+#include <concepts>
+#include <cstdint>
+#include <type_traits>
+#include <utility>
+
 namespace ioj::settings {
 struct LaserPresentation {
+    enum class Field : std::uint8_t {
+        min_cull_distance,
+        max_cull_distance,
+        Count,
+    };
+
+    template <typename Self, typename Visitor>
+    static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
+        requires std::same_as<std::remove_const_t<Self>, LaserPresentation>
+    {
+        switch (field) {
+            case Field::min_cull_distance: {
+                std::forward<Visitor>(visitor).template operator()<Field::min_cull_distance>(
+                    self.min_cull_distance);
+                return;
+            }
+            case Field::max_cull_distance: {
+                std::forward<Visitor>(visitor).template operator()<Field::max_cull_distance>(
+                    self.max_cull_distance);
+                return;
+            }
+            case Field::Count: {
+                break;
+            }
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
     float min_cull_distance{0.f};
     float max_cull_distance{50000.f};
 };

@@ -56,7 +56,12 @@ TEST(RecordLowering, GeneratesSemanticMembersAndFixedArrays) {
 TEST(RecordLowering, RejectsInvalidSettingsBindingsAndConstrainedNames) {
     for (auto const declarations :
          {R"((record Config :generate-settings true (member speed float :settings-name "")))",
-          R"((record Config :constraint-policy example::policy) (record ConfigValue))"}) {
+          R"((record Config :constraint-policy example::policy) (record ConfigValue))",
+          R"((record Config :generate-visitor true (member Field int)))",
+          R"((record Config :generate-visitor true (member Count int)))",
+          R"((record Config :generate-visitor true (member visit_field int)))",
+          R"((record Field :generate-visitor true))",
+          R"((record Self :generate-visitor true))"}) {
         SCOPED_TRACE(declarations);
         CompilerTestContext context;
         auto manifest{parse_test_manifest(
@@ -91,7 +96,7 @@ TEST(RecordLowering, SettingsOptionsSurviveSourceRoundTrip) {
     CompilerTestContext context;
     auto const manifest{parse_test_manifest(context, R"(
         (module records :header "Records.h"
-          (record Config :generate-settings true
+          (record Config :generate-settings true :generate-visitor true
             (member max_speed float :initializer "2.f" :settings-name "speed")
             (member asset float :settings-exclude true))
           (record Range :constraint-policy example::policy

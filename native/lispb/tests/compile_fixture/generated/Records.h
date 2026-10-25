@@ -7,11 +7,43 @@
 
 #include <compile_fixture/range_policy.hpp>
 
+#include <cassert>
+#include <concepts>
+#include <cstdint>
 #include <optional>
+#include <type_traits>
+#include <utility>
 
 namespace codegen_compile_fixture {
 struct RangeValue {
     bool operator==(RangeValue const&) const = default;
+
+    enum class Field : std::uint8_t {
+        minimum,
+        maximum,
+        Count,
+    };
+
+    template <typename Self, typename Visitor>
+    static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
+        requires std::same_as<std::remove_const_t<Self>, RangeValue>
+    {
+        switch (field) {
+            case Field::minimum: {
+                std::forward<Visitor>(visitor).template operator()<Field::minimum>(self.minimum);
+                return;
+            }
+            case Field::maximum: {
+                std::forward<Visitor>(visitor).template operator()<Field::maximum>(self.maximum);
+                return;
+            }
+            case Field::Count: {
+                break;
+            }
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
 
     int minimum{0};
     int maximum{10};
@@ -20,24 +52,163 @@ struct RangeValue {
 using Range = ioj::ConstrainedValue<RangeValue, codegen_compile_fixture::range_policy>;
 
 struct RangeSettings {
+    enum class Field : std::uint8_t {
+        range,
+        enabled,
+        Count,
+    };
+
+    template <typename Self, typename Visitor>
+    static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
+        requires std::same_as<std::remove_const_t<Self>, RangeSettings>
+    {
+        switch (field) {
+            case Field::range: {
+                std::forward<Visitor>(visitor).template operator()<Field::range>(self.range);
+                return;
+            }
+            case Field::enabled: {
+                std::forward<Visitor>(visitor).template operator()<Field::enabled>(self.enabled);
+                return;
+            }
+            case Field::Count: {
+                break;
+            }
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
     Range range{};
     bool enabled{true};
 };
 
 struct ApiPair {
+    enum class Field : std::uint8_t {
+        x,
+        y,
+        Count,
+    };
+
+    template <typename Self, typename Visitor>
+    static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
+        requires std::same_as<std::remove_const_t<Self>, ApiPair>
+    {
+        switch (field) {
+            case Field::x: {
+                std::forward<Visitor>(visitor).template operator()<Field::x>(self.x);
+                return;
+            }
+            case Field::y: {
+                std::forward<Visitor>(visitor).template operator()<Field::y>(self.y);
+                return;
+            }
+            case Field::Count: {
+                break;
+            }
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
     float x;
     float y;
 };
 
-struct EmptySettings {};
+struct EmptySettings {
+    enum class Field : std::uint8_t {
+        Count,
+    };
+
+    template <typename Self, typename Visitor>
+    static constexpr void visit_field(Self&, Field field, Visitor&&)
+        requires std::same_as<std::remove_const_t<Self>, EmptySettings>
+    {
+        switch (field) {
+            case Field::Count: {
+                break;
+            }
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+};
 
 struct WeaponSettings {
+    enum class Field : std::uint8_t {
+        damage,
+        turn_rate,
+        asset_distance,
+        Count,
+    };
+
+    template <typename Self, typename Visitor>
+    static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
+        requires std::same_as<std::remove_const_t<Self>, WeaponSettings>
+    {
+        switch (field) {
+            case Field::damage: {
+                std::forward<Visitor>(visitor).template operator()<Field::damage>(self.damage);
+                return;
+            }
+            case Field::turn_rate: {
+                std::forward<Visitor>(visitor).template operator()<Field::turn_rate>(
+                    self.turn_rate);
+                return;
+            }
+            case Field::asset_distance: {
+                std::forward<Visitor>(visitor).template operator()<Field::asset_distance>(
+                    self.asset_distance);
+                return;
+            }
+            case Field::Count: {
+                break;
+            }
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
     int damage{5};
     float turn_rate{2.f};
     float asset_distance{9.f};
 };
 
 struct ActorSettings {
+    enum class Field : std::uint8_t {
+        max_health,
+        weapon,
+        optional_limit,
+        Count,
+    };
+
+    template <typename Self, typename Visitor>
+    static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
+        requires std::same_as<std::remove_const_t<Self>, ActorSettings>
+    {
+        switch (field) {
+            case Field::max_health: {
+                std::forward<Visitor>(visitor).template operator()<Field::max_health>(
+                    self.max_health);
+                return;
+            }
+            case Field::weapon: {
+                std::forward<Visitor>(visitor).template operator()<Field::weapon>(self.weapon);
+                return;
+            }
+            case Field::optional_limit: {
+                std::forward<Visitor>(visitor).template operator()<Field::optional_limit>(
+                    self.optional_limit);
+                return;
+            }
+            case Field::Count: {
+                break;
+            }
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
     int max_health{100};
     WeaponSettings weapon{};
     std::optional<int> optional_limit{3};

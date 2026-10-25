@@ -17,65 +17,27 @@ template <>
 struct TypeReader<settings::EntityOverlay> : RecordReader<settings::EntityOverlay> {
     static void decode(DecodeContext context, value_type& result) {
         decode_record<Field>(
-            context, "entity-overlay", field_names, ([&](Field const field, auto const& read) {
-                switch (field) {
-                    case Field::enabled:
-                        read(result.enabled);
-                        break;
-                    case Field::maximum_range:
-                        read(result.maximum_range, constraints::finite);
-                        break;
-                    case Field::bar_size_pixels:
-                        read(result.bar_size_pixels, constraints::finite);
-                        break;
-                    case Field::screen_offset_pixels:
-                        read(result.screen_offset_pixels, constraints::finite);
-                        break;
-                    case Field::minimum_bar_scale:
-                        read(result.minimum_bar_scale, constraints::finite);
-                        break;
-                    case Field::maximum_bar_scale:
-                        read(result.maximum_bar_scale, constraints::finite);
-                        break;
-                    case Field::inset_pixels:
-                        read(result.inset_pixels, constraints::finite);
-                        break;
-                    case Field::maximum_inset_height_ratio:
-                        read(result.maximum_inset_height_ratio, constraints::finite);
-                        break;
-                    case Field::objective_frame_pixels:
-                        read(result.objective_frame_pixels, constraints::finite);
-                        break;
-                    case Field::objective_bar_height_scale:
-                        read(result.objective_bar_height_scale, constraints::finite);
-                        break;
-                    case Field::screen_edge_padding_pixels:
-                        read(result.screen_edge_padding_pixels, constraints::finite);
-                        break;
-                    case Field::soft_target:
-                        read(result.soft_target);
-                        break;
-                    case Field::Count:
-                        std::unreachable();
-                }
+            context, "entity-overlay", field_names, ([&](Field selected, auto const& read) {
+                value_type::visit_field(result, selected, [&]<Field field>(auto& member) {
+                    if constexpr (field == Field::enabled || field == Field::soft_target) {
+                        read(member);
+                    } else if constexpr (field == Field::maximum_range ||
+                                         field == Field::bar_size_pixels ||
+                                         field == Field::screen_offset_pixels ||
+                                         field == Field::minimum_bar_scale ||
+                                         field == Field::maximum_bar_scale ||
+                                         field == Field::inset_pixels ||
+                                         field == Field::maximum_inset_height_ratio ||
+                                         field == Field::objective_frame_pixels ||
+                                         field == Field::objective_bar_height_scale ||
+                                         field == Field::screen_edge_padding_pixels) {
+                        read(member, constraints::finite);
+                    }
+                });
             }));
     }
   private:
-    enum class Field : std::uint8_t {
-        enabled,
-        maximum_range,
-        bar_size_pixels,
-        screen_offset_pixels,
-        minimum_bar_scale,
-        maximum_bar_scale,
-        inset_pixels,
-        maximum_inset_height_ratio,
-        objective_frame_pixels,
-        objective_bar_height_scale,
-        screen_edge_padding_pixels,
-        soft_target,
-        Count,
-    };
+    using Field = value_type::Field;
 
     static constexpr std::array<std::string_view, 12> field_names{"enabled",
                                                                   "maximum-range",

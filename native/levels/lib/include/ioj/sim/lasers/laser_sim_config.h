@@ -3,10 +3,37 @@
 
 #pragma once
 
+#include <cassert>
+#include <concepts>
 #include <cstdint>
+#include <type_traits>
+#include <utility>
 
 namespace ioj::sim {
 struct LaserSimConfig {
+    enum class Field : std::uint8_t {
+        n_preallocated_instances,
+        Count,
+    };
+
+    template <typename Self, typename Visitor>
+    static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
+        requires std::same_as<std::remove_const_t<Self>, LaserSimConfig>
+    {
+        switch (field) {
+            case Field::n_preallocated_instances: {
+                std::forward<Visitor>(visitor).template operator()<Field::n_preallocated_instances>(
+                    self.n_preallocated_instances);
+                return;
+            }
+            case Field::Count: {
+                break;
+            }
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
     std::int32_t n_preallocated_instances{5000};
 };
 } // namespace ioj::sim

@@ -21,41 +21,13 @@ template <>
 struct TypeReader<settings::Presentation> : RecordReader<settings::Presentation> {
     static void decode(DecodeContext context, value_type& result) {
         decode_record<Field>(
-            context, "presentation", field_names, ([&](Field const field, auto const& read) {
-                switch (field) {
-                    case Field::player_ship:
-                        read(result.player_ship);
-                        break;
-                    case Field::laser_projectiles:
-                        read(result.laser_projectiles);
-                        break;
-                    case Field::capital_ships:
-                        read(result.capital_ships);
-                        break;
-                    case Field::turrets:
-                        read(result.turrets);
-                        break;
-                    case Field::entity_overlay:
-                        read(result.entity_overlay);
-                        break;
-                    case Field::radar:
-                        read(result.radar);
-                        break;
-                    case Field::Count:
-                        std::unreachable();
-                }
+            context, "presentation", field_names, ([&](Field selected, auto const& read) {
+                value_type::visit_field(
+                    result, selected, [&]<Field field>(auto& member) { read(member); });
             }));
     }
   private:
-    enum class Field : std::uint8_t {
-        player_ship,
-        laser_projectiles,
-        capital_ships,
-        turrets,
-        entity_overlay,
-        radar,
-        Count,
-    };
+    using Field = value_type::Field;
 
     static constexpr std::array<std::string_view, 6> field_names{
         "player-ship", "laser-projectiles", "capital-ships", "turrets", "entity-overlay", "radar"};

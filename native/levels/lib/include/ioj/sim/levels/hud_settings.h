@@ -3,8 +3,51 @@
 
 #pragma once
 
+#include <cassert>
+#include <concepts>
+#include <cstdint>
+#include <type_traits>
+#include <utility>
+
 namespace ioj::sim {
 struct HudSettings {
+    enum class Field : std::uint8_t {
+        player_status_update_period,
+        entity_count_update_period,
+        mission_status_update_period,
+        Count,
+    };
+
+    template <typename Self, typename Visitor>
+    static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
+        requires std::same_as<std::remove_const_t<Self>, HudSettings>
+    {
+        switch (field) {
+            case Field::player_status_update_period: {
+                std::forward<Visitor>(visitor)
+                    .template operator()<Field::player_status_update_period>(
+                        self.player_status_update_period);
+                return;
+            }
+            case Field::entity_count_update_period: {
+                std::forward<Visitor>(visitor).template
+                    operator()<Field::entity_count_update_period>(self.entity_count_update_period);
+                return;
+            }
+            case Field::mission_status_update_period: {
+                std::forward<Visitor>(visitor)
+                    .template operator()<Field::mission_status_update_period>(
+                        self.mission_status_update_period);
+                return;
+            }
+            case Field::Count: {
+                break;
+            }
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
     float player_status_update_period{0.25f};
     float entity_count_update_period{0.25f};
     float mission_status_update_period{0.25f};

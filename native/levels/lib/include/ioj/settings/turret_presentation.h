@@ -3,8 +3,37 @@
 
 #pragma once
 
+#include <cassert>
+#include <concepts>
+#include <cstdint>
+#include <type_traits>
+#include <utility>
+
 namespace ioj::settings {
 struct TurretPresentation {
+    enum class Field : std::uint8_t {
+        death_effect_scale,
+        Count,
+    };
+
+    template <typename Self, typename Visitor>
+    static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
+        requires std::same_as<std::remove_const_t<Self>, TurretPresentation>
+    {
+        switch (field) {
+            case Field::death_effect_scale: {
+                std::forward<Visitor>(visitor).template operator()<Field::death_effect_scale>(
+                    self.death_effect_scale);
+                return;
+            }
+            case Field::Count: {
+                break;
+            }
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
     float death_effect_scale{1.f};
 };
 } // namespace ioj::settings

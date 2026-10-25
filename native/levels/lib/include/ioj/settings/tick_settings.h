@@ -6,8 +6,43 @@
 #include "ioj/constrained_numbers.h"
 #include "ioj/frequency.h"
 
+#include <cassert>
+#include <concepts>
+#include <cstdint>
+#include <type_traits>
+#include <utility>
+
 namespace ioj::settings {
 struct TickSettings {
+    enum class Field : std::uint8_t {
+        tick_rate,
+        time_scale,
+        Count,
+    };
+
+    template <typename Self, typename Visitor>
+    static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
+        requires std::same_as<std::remove_const_t<Self>, TickSettings>
+    {
+        switch (field) {
+            case Field::tick_rate: {
+                std::forward<Visitor>(visitor).template operator()<Field::tick_rate>(
+                    self.tick_rate);
+                return;
+            }
+            case Field::time_scale: {
+                std::forward<Visitor>(visitor).template operator()<Field::time_scale>(
+                    self.time_scale);
+                return;
+            }
+            case Field::Count: {
+                break;
+            }
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
     Frequency tick_rate{60.0};
     ioj::PositiveFinite<double> time_scale{1.0};
 };

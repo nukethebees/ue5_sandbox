@@ -85,6 +85,43 @@ TEST(GeneratedRecords, PreserveAggregateDefaultsComparisonsAndMemberApi) {
     EXPECT_EQ(value, (mixed::ValueDefaults{1, 0, 7}));
     static_assert(std::is_trivially_default_constructible_v<mixed::Uninitialized>);
     static_assert(!std::is_trivially_default_constructible_v<mixed::ValueDefaults>);
+
+    static_assert(std::is_aggregate_v<ApiPair>);
+    static_assert(std::is_standard_layout_v<ApiPair>);
+    static_assert(std::is_trivially_copyable_v<ApiPair>);
+    static_assert(sizeof(ApiPair) == 2 * sizeof(float));
+    constexpr auto pair{[] {
+        ApiPair result{1.f, 2.f};
+        ApiPair::visit_field(result, ApiPair::Field::y, []<auto field>(auto& member) {
+            static_assert(std::same_as<decltype(member), float&>);
+            member = 7.f;
+        });
+        return result;
+    }()};
+    static_assert(pair.x == 1.f && pair.y == 7.f);
+    float total{};
+    int visits{};
+    for (auto field : {ApiPair::Field::x, ApiPair::Field::y}) {
+        ApiPair::visit_field(pair, field, [&]<auto selected>(auto& member) {
+            static_assert(std::same_as<decltype(member), float const&>);
+            EXPECT_EQ(selected, field);
+            total += member;
+            ++visits;
+        });
+    }
+    EXPECT_EQ(total, 8.f);
+    EXPECT_EQ(visits, 2);
+
+    WeaponSettings weapon;
+    WeaponSettings::visit_field(
+        weapon, WeaponSettings::Field::asset_distance, []<auto field>(auto& member) {
+            if constexpr (field == WeaponSettings::Field::asset_distance) {
+                member = 42.f;
+            } else {
+                ADD_FAILURE() << "Visited the wrong member";
+            }
+        });
+    EXPECT_EQ(weapon.asset_distance, 42.f);
 }
 
 TEST(GeneratedRecords, NamespaceShorteningPreservesTypeLookup) {

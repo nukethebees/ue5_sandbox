@@ -3,15 +3,94 @@
 
 #pragma once
 
+#include <cassert>
+#include <concepts>
 #include <cstdint>
+#include <type_traits>
+#include <utility>
 
 namespace ioj::starfield {
 struct GenerationSettings {
+    enum class Field : std::uint8_t {
+        star_count,
+        random_seed,
+        Count,
+    };
+
+    template <typename Self, typename Visitor>
+    static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
+        requires std::same_as<std::remove_const_t<Self>, GenerationSettings>
+    {
+        switch (field) {
+            case Field::star_count: {
+                std::forward<Visitor>(visitor).template operator()<Field::star_count>(
+                    self.star_count);
+                return;
+            }
+            case Field::random_seed: {
+                std::forward<Visitor>(visitor).template operator()<Field::random_seed>(
+                    self.random_seed);
+                return;
+            }
+            case Field::Count: {
+                break;
+            }
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
     std::int32_t star_count{10000};
     std::int32_t random_seed{1337};
 };
 
 struct StarSettings {
+    enum class Field : std::uint8_t {
+        scale,
+        size_multiplier,
+        global_brightness,
+        colour_variation_strength,
+        parallax_strength,
+        Count,
+    };
+
+    template <typename Self, typename Visitor>
+    static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
+        requires std::same_as<std::remove_const_t<Self>, StarSettings>
+    {
+        switch (field) {
+            case Field::scale: {
+                std::forward<Visitor>(visitor).template operator()<Field::scale>(self.scale);
+                return;
+            }
+            case Field::size_multiplier: {
+                std::forward<Visitor>(visitor).template operator()<Field::size_multiplier>(
+                    self.size_multiplier);
+                return;
+            }
+            case Field::global_brightness: {
+                std::forward<Visitor>(visitor).template operator()<Field::global_brightness>(
+                    self.global_brightness);
+                return;
+            }
+            case Field::colour_variation_strength: {
+                std::forward<Visitor>(visitor).template
+                    operator()<Field::colour_variation_strength>(self.colour_variation_strength);
+                return;
+            }
+            case Field::parallax_strength: {
+                std::forward<Visitor>(visitor).template operator()<Field::parallax_strength>(
+                    self.parallax_strength);
+                return;
+            }
+            case Field::Count: {
+                break;
+            }
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
     float scale{1.0f};
     float size_multiplier{1.0f};
     float global_brightness{8.0f};
@@ -20,22 +99,152 @@ struct StarSettings {
 };
 
 struct GalacticBandSettings {
+    enum class Field : std::uint8_t {
+        strength,
+        width_degrees,
+        Count,
+    };
+
+    template <typename Self, typename Visitor>
+    static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
+        requires std::same_as<std::remove_const_t<Self>, GalacticBandSettings>
+    {
+        switch (field) {
+            case Field::strength: {
+                std::forward<Visitor>(visitor).template operator()<Field::strength>(self.strength);
+                return;
+            }
+            case Field::width_degrees: {
+                std::forward<Visitor>(visitor).template operator()<Field::width_degrees>(
+                    self.width_degrees);
+                return;
+            }
+            case Field::Count: {
+                break;
+            }
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
     float strength{0.65f};
     float width_degrees{15.0f};
 };
 
 struct StellarClusterSettings {
+    enum class Field : std::uint8_t {
+        strength,
+        width_degrees,
+        Count,
+    };
+
+    template <typename Self, typename Visitor>
+    static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
+        requires std::same_as<std::remove_const_t<Self>, StellarClusterSettings>
+    {
+        switch (field) {
+            case Field::strength: {
+                std::forward<Visitor>(visitor).template operator()<Field::strength>(self.strength);
+                return;
+            }
+            case Field::width_degrees: {
+                std::forward<Visitor>(visitor).template operator()<Field::width_degrees>(
+                    self.width_degrees);
+                return;
+            }
+            case Field::Count: {
+                break;
+            }
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
     float strength{0.12f};
     float width_degrees{4.0f};
 };
 
 struct DustLaneSettings {
+    enum class Field : std::uint8_t {
+        strength,
+        width_degrees,
+        irregularity,
+        Count,
+    };
+
+    template <typename Self, typename Visitor>
+    static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
+        requires std::same_as<std::remove_const_t<Self>, DustLaneSettings>
+    {
+        switch (field) {
+            case Field::strength: {
+                std::forward<Visitor>(visitor).template operator()<Field::strength>(self.strength);
+                return;
+            }
+            case Field::width_degrees: {
+                std::forward<Visitor>(visitor).template operator()<Field::width_degrees>(
+                    self.width_degrees);
+                return;
+            }
+            case Field::irregularity: {
+                std::forward<Visitor>(visitor).template operator()<Field::irregularity>(
+                    self.irregularity);
+                return;
+            }
+            case Field::Count: {
+                break;
+            }
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
     float strength{0.9f};
     float width_degrees{5.0f};
     float irregularity{0.7f};
 };
 
 struct BrightStarSettings {
+    enum class Field : std::uint8_t {
+        fraction,
+        size_multiplier,
+        brightness_multiplier,
+        shape_strength,
+        Count,
+    };
+
+    template <typename Self, typename Visitor>
+    static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
+        requires std::same_as<std::remove_const_t<Self>, BrightStarSettings>
+    {
+        switch (field) {
+            case Field::fraction: {
+                std::forward<Visitor>(visitor).template operator()<Field::fraction>(self.fraction);
+                return;
+            }
+            case Field::size_multiplier: {
+                std::forward<Visitor>(visitor).template operator()<Field::size_multiplier>(
+                    self.size_multiplier);
+                return;
+            }
+            case Field::brightness_multiplier: {
+                std::forward<Visitor>(visitor).template operator()<Field::brightness_multiplier>(
+                    self.brightness_multiplier);
+                return;
+            }
+            case Field::shape_strength: {
+                std::forward<Visitor>(visitor).template operator()<Field::shape_strength>(
+                    self.shape_strength);
+                return;
+            }
+            case Field::Count: {
+                break;
+            }
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
     float fraction{0.01f};
     float size_multiplier{1.75f};
     float brightness_multiplier{2.0f};
@@ -43,26 +252,212 @@ struct BrightStarSettings {
 };
 
 struct TwinkleSettings {
+    enum class Field : std::uint8_t {
+        strength,
+        speed,
+        Count,
+    };
+
+    template <typename Self, typename Visitor>
+    static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
+        requires std::same_as<std::remove_const_t<Self>, TwinkleSettings>
+    {
+        switch (field) {
+            case Field::strength: {
+                std::forward<Visitor>(visitor).template operator()<Field::strength>(self.strength);
+                return;
+            }
+            case Field::speed: {
+                std::forward<Visitor>(visitor).template operator()<Field::speed>(self.speed);
+                return;
+            }
+            case Field::Count: {
+                break;
+            }
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
     float strength{0.1f};
     float speed{0.35f};
 };
 
 struct GalacticHazeSettings {
+    enum class Field : std::uint8_t {
+        strength,
+        width_degrees,
+        Count,
+    };
+
+    template <typename Self, typename Visitor>
+    static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
+        requires std::same_as<std::remove_const_t<Self>, GalacticHazeSettings>
+    {
+        switch (field) {
+            case Field::strength: {
+                std::forward<Visitor>(visitor).template operator()<Field::strength>(self.strength);
+                return;
+            }
+            case Field::width_degrees: {
+                std::forward<Visitor>(visitor).template operator()<Field::width_degrees>(
+                    self.width_degrees);
+                return;
+            }
+            case Field::Count: {
+                break;
+            }
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
     float strength{0.15f};
     float width_degrees{18.0f};
 };
 
 struct GalacticCoreSettings {
+    enum class Field : std::uint8_t {
+        strength,
+        width_degrees,
+        Count,
+    };
+
+    template <typename Self, typename Visitor>
+    static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
+        requires std::same_as<std::remove_const_t<Self>, GalacticCoreSettings>
+    {
+        switch (field) {
+            case Field::strength: {
+                std::forward<Visitor>(visitor).template operator()<Field::strength>(self.strength);
+                return;
+            }
+            case Field::width_degrees: {
+                std::forward<Visitor>(visitor).template operator()<Field::width_degrees>(
+                    self.width_degrees);
+                return;
+            }
+            case Field::Count: {
+                break;
+            }
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
     float strength{0.65f};
     float width_degrees{32.0f};
 };
 
 struct NebularKnotSettings {
+    enum class Field : std::uint8_t {
+        strength,
+        size_degrees,
+        Count,
+    };
+
+    template <typename Self, typename Visitor>
+    static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
+        requires std::same_as<std::remove_const_t<Self>, NebularKnotSettings>
+    {
+        switch (field) {
+            case Field::strength: {
+                std::forward<Visitor>(visitor).template operator()<Field::strength>(self.strength);
+                return;
+            }
+            case Field::size_degrees: {
+                std::forward<Visitor>(visitor).template operator()<Field::size_degrees>(
+                    self.size_degrees);
+                return;
+            }
+            case Field::Count: {
+                break;
+            }
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
     float strength{0.18f};
     float size_degrees{9.0f};
 };
 
 struct Settings {
+    enum class Field : std::uint8_t {
+        generation,
+        star,
+        galactic_band,
+        stellar_cluster,
+        dust_lane,
+        bright_star,
+        twinkle,
+        galactic_haze,
+        galactic_core,
+        nebular_knot,
+        Count,
+    };
+
+    template <typename Self, typename Visitor>
+    static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
+        requires std::same_as<std::remove_const_t<Self>, Settings>
+    {
+        switch (field) {
+            case Field::generation: {
+                std::forward<Visitor>(visitor).template operator()<Field::generation>(
+                    self.generation);
+                return;
+            }
+            case Field::star: {
+                std::forward<Visitor>(visitor).template operator()<Field::star>(self.star);
+                return;
+            }
+            case Field::galactic_band: {
+                std::forward<Visitor>(visitor).template operator()<Field::galactic_band>(
+                    self.galactic_band);
+                return;
+            }
+            case Field::stellar_cluster: {
+                std::forward<Visitor>(visitor).template operator()<Field::stellar_cluster>(
+                    self.stellar_cluster);
+                return;
+            }
+            case Field::dust_lane: {
+                std::forward<Visitor>(visitor).template operator()<Field::dust_lane>(
+                    self.dust_lane);
+                return;
+            }
+            case Field::bright_star: {
+                std::forward<Visitor>(visitor).template operator()<Field::bright_star>(
+                    self.bright_star);
+                return;
+            }
+            case Field::twinkle: {
+                std::forward<Visitor>(visitor).template operator()<Field::twinkle>(self.twinkle);
+                return;
+            }
+            case Field::galactic_haze: {
+                std::forward<Visitor>(visitor).template operator()<Field::galactic_haze>(
+                    self.galactic_haze);
+                return;
+            }
+            case Field::galactic_core: {
+                std::forward<Visitor>(visitor).template operator()<Field::galactic_core>(
+                    self.galactic_core);
+                return;
+            }
+            case Field::nebular_knot: {
+                std::forward<Visitor>(visitor).template operator()<Field::nebular_knot>(
+                    self.nebular_knot);
+                return;
+            }
+            case Field::Count: {
+                break;
+            }
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
     GenerationSettings generation{};
     StarSettings star{};
     GalacticBandSettings galactic_band{};

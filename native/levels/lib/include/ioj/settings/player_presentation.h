@@ -3,8 +3,38 @@
 
 #pragma once
 
+#include <cassert>
+#include <concepts>
+#include <cstdint>
+#include <type_traits>
+#include <utility>
+
 namespace ioj::settings {
 struct PlayerPresentation {
+    enum class Field : std::uint8_t {
+        boost_effect_colour_intensity,
+        Count,
+    };
+
+    template <typename Self, typename Visitor>
+    static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
+        requires std::same_as<std::remove_const_t<Self>, PlayerPresentation>
+    {
+        switch (field) {
+            case Field::boost_effect_colour_intensity: {
+                std::forward<Visitor>(visitor)
+                    .template operator()<Field::boost_effect_colour_intensity>(
+                        self.boost_effect_colour_intensity);
+                return;
+            }
+            case Field::Count: {
+                break;
+            }
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
     float boost_effect_colour_intensity{75.f};
 };
 } // namespace ioj::settings
