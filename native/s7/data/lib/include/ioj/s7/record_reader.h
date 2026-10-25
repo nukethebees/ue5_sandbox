@@ -5,6 +5,64 @@
 
 namespace ioj::s7 {
 template <typename Field, std::size_t N, typename Visit>
+void read_record(DecodeContext context,
+                 std::string_view const tag,
+                 std::array<std::string_view, N> const& names,
+                 Visit visit) {
+    auto const& reader{context.reader};
+    auto const node{context.node};
+    auto const path{context.path};
+    auto& errors{context.errors};
+    auto const children{reader.list(node, path)};
+    if (!children) {
+        append_errors(errors, children.error());
+        return;
+    }
+    auto const& ast{reader.ast()};
+    if (children->empty() || ast.node((*children)[0]).kind != NodeKind::Keyword ||
+        ast.text((*children)[0]) != tag) {
+        errors.push_back({AstErrorCode::ExpectedRecord,
+                          std::string{path},
+                          std::format("Expected a '{}' record", tag)});
+        return;
+    }
+    RecordMask<Field> seen;
+    auto const count{children->size()};
+    for (std::size_t i{1}; i < count; i += 2) {
+        auto const key{(*children)[i]};
+        auto const location{std::format("{}[{}]", path, i)};
+        if (i + 1 == count) {
+            errors.push_back({AstErrorCode::MissingValue, location, "Property has no value"});
+        }
+        if (ast.node(key).kind != NodeKind::Keyword) {
+            errors.push_back(
+                {AstErrorCode::ExpectedKeyword, location, "Expected a property keyword"});
+            continue;
+        }
+        auto const name{ast.text(key)};
+        auto const field{name.empty() ? std::optional<Field>{}
+                                      : try_parse_enum<Field>(name, names)};
+        if (!field) {
+            errors.push_back({AstErrorCode::UnknownProperty,
+                              field_path(path, name),
+                              std::format("Unknown property ':{}'", name)});
+            continue;
+        }
+        assert(static_cast<std::size_t>(*field) < static_cast<std::size_t>(Field::Count));
+        if (seen.has(*field)) {
+            errors.push_back({AstErrorCode::DuplicateProperty,
+                              location,
+                              std::format("Duplicate property ':{}'", name)});
+            continue;
+        }
+        seen.set(*field);
+        if (i + 1 < count) {
+            visit(*field, (*children)[i + 1], field_path(path, name));
+        }
+    }
+}
+
+template <typename Field, std::size_t N, typename Visit>
 void decode_record(DecodeContext context,
                    std::string_view tag,
                    std::array<std::string_view, N> const& names,
@@ -24,23 +82,15 @@ void decode_record(DecodeContext context,
                 return;
             }
         }
-        auto const fields{read_record<Field>(
-            context.reader,
-            node,
+        read_record<Field>(
+            {context.reader, node, context.path, context.mode, context.errors},
             tag,
-            context.path,
-            [&](std::string_view name) {
-                // Leave excluded record members unnamed and unavailable to authored input.
-                return name.empty() ? std::optional<Field>{} : try_parse_enum<Field>(name, names);
-            },
+            names,
             [&](Field field, NodeIndex value, std::string_view location) {
                 seen.set(field);
                 visit(field,
                       FieldReader{{context.reader, value, location, context.mode, context.errors}});
-            })};
-        if (!fields) {
-            append_errors(context.errors, fields.error());
-        }
+            });
     }};
     decode(decode, context.node);
 

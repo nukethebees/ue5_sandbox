@@ -376,64 +376,6 @@ void require_fields(RecordMask<Field> const& seen,
     }
 }
 
-// Stream fields once; leave domain-specific dispatch and presence requirements to the caller.
-template <typename Field, typename Lookup, typename Visit>
-auto read_record(Reader const& reader,
-                 NodeIndex const node,
-                 std::string_view const tag,
-                 std::string_view const path,
-                 Lookup lookup,
-                 Visit visit) -> ReadResult<RecordMask<Field>> {
-    auto const children{reader.list(node, path)};
-    if (!children) {
-        return std::unexpected{children.error()};
-    }
-    auto const& ast{reader.ast()};
-    if (children->empty() || ast.node((*children)[0]).kind != NodeKind::Keyword ||
-        ast.text((*children)[0]) != tag) {
-        return read_error(
-            AstErrorCode::ExpectedRecord, path, std::format("Expected a '{}' record", tag));
-    }
-    RecordMask<Field> seen;
-    AstDiagnostics errors;
-    auto const count{children->size()};
-    for (std::size_t i{1}; i < count; i += 2) {
-        auto const key{(*children)[i]};
-        auto const location{std::format("{}[{}]", path, i)};
-        if (i + 1 == count) {
-            errors.push_back({AstErrorCode::MissingValue, location, "Property has no value"});
-        }
-        if (ast.node(key).kind != NodeKind::Keyword) {
-            errors.push_back(
-                {AstErrorCode::ExpectedKeyword, location, "Expected a property keyword"});
-            continue;
-        }
-        auto const name{ast.text(key)};
-        auto const field{lookup(name)};
-        if (!field) {
-            errors.push_back({AstErrorCode::UnknownProperty,
-                              field_path(path, name),
-                              std::format("Unknown property ':{}'", name)});
-            continue;
-        }
-        assert(static_cast<std::size_t>(*field) < static_cast<std::size_t>(Field::Count));
-        if (seen.has(*field)) {
-            errors.push_back({AstErrorCode::DuplicateProperty,
-                              location,
-                              std::format("Duplicate property ':{}'", name)});
-            continue;
-        }
-        seen.set(*field);
-        if (i + 1 < count) {
-            visit(*field, (*children)[i + 1], field_path(path, name));
-        }
-    }
-    if (!errors.empty()) {
-        return std::unexpected{std::move(errors)};
-    }
-    return seen;
-}
-
 inline auto positional_arguments(Reader const& reader,
                                  NodeIndex node,
                                  std::string_view tag,
