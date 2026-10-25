@@ -71,8 +71,18 @@ The object must be a mutable or const lvalue of the record type. Const objects p
 const member references. The callable must compile for every member; use `if constexpr`
 when an operation applies only to particular fields. Dispatch invokes it exactly once.
 `Field::Count` and other invalid IDs violate the caller contract. The generated API reserves
-`Field`, `Count` and `visit_field`; it adds no object storage and preserves aggregate layout.
-Record names that collide with `Field`, `visit_field`, `Self` or `Visitor` are rejected.
+`Field`, `Count`, `visit_field`, `invoke_field`, `get_field` and `field_name`; it adds no object
+storage and preserves aggregate layout. Record names must not collide with these generated
+functions, `Field`, or the template parameter names `Selected`, `Self` and `Visitor`.
+
+`get_field<Field::damage>(weapon)` selects a member at compile time, preserving its reference
+and constness. Invalid fields are rejected by template constraints. `field_name(Field::damage)`
+returns the C++ member name as a static `string_view`, independent of S7 aliases. Runtime
+visitation retains a switch with unbraced return cases. Each case calls `invoke_field<F>`, which
+forwards the callable, discards its return value and obtains the member through `get_field<F>`.
+
+These APIs also support [structural diffing](../../core/docs/structural-diff.md) without S7
+dependencies or a second paired visitor.
 
 Visitors expose all members, including S7-excluded ones, without S7 dependencies.
 Opted-in named S7 readers reuse the visitor; external names, requiredness, exclusions and

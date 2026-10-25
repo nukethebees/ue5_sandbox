@@ -1,5 +1,6 @@
 #include <ioj/levels/authoring/definition_reader.h>
 #include <ioj/s7/simulation_settings_reader.h>
+#include <ioj/structural_diff.h>
 
 #include <gtest/gtest.h>
 
@@ -23,12 +24,19 @@ TEST(SimulationSettingsReader, AppliesSparseNestedLayersIncludingExplicitDefault
     EXPECT_EQ(source->player_ship.health, defaults.player.health);
     auto const resolved{s7::resolve_simulation_settings(*source)};
     ASSERT_TRUE(resolved) << resolved.error().front().message;
-    EXPECT_EQ(resolved->fighters.speed, defaults.fighters.speed);
-    EXPECT_EQ(resolved->fighters.laser.damage, 31);
-    EXPECT_EQ(resolved->fighters.laser.max_distance, 50000);
-    EXPECT_EQ(resolved->fighters.laser.projectile_speed, defaults.fighters.laser.projectile_speed);
-    EXPECT_EQ(resolved->turrets.laser.damage, 23);
-    EXPECT_EQ(resolved->player.laser.damage, defaults.player.laser.damage);
+    auto expected_fighters{defaults.fighters};
+    expected_fighters.laser.damage = 31;
+    expected_fighters.laser.max_distance = 50000;
+    auto expected_turrets{defaults.turrets};
+    expected_turrets.laser.damage = 23;
+
+    DiffResult differences;
+    DiffContext context{differences};
+    context.diff("fighters", expected_fighters, resolved->fighters);
+    context.diff("turrets", expected_turrets, resolved->turrets);
+    context.diff("player", defaults.player, resolved->player);
+    EXPECT_TRUE(differences.empty()) << differences.message();
+    EXPECT_EQ(expected_fighters, resolved->fighters);
 }
 
 TEST(SimulationSettingsReader, PreservesBaseFileCompatibilityAndLevelMission) {

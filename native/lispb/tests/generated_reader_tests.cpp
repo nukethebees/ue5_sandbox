@@ -1,4 +1,5 @@
 #include <ioj/s7/interpreter.h>
+#include <ioj/structural_diff.h>
 
 #include <gtest/gtest.h>
 #include <Mixed_reader.h>
@@ -127,13 +128,12 @@ TEST(GeneratedS7Reader, ReadsSparseTypedOverridesWithNestedLayersAndExplicitEmpt
     initial.weapon.asset_distance = 42;
     auto patch{read_override(Reader{*ast}, ast->root, "actor", initial)};
     ASSERT_TRUE(patch);
-    EXPECT_FALSE(patch->optional_limit);
-    auto const& target{*patch};
-    EXPECT_EQ(target.max_health, 100);
-    EXPECT_EQ(target.weapon.damage, 5);
-    EXPECT_EQ(target.weapon.turn_rate, 9);
-    EXPECT_EQ(target.weapon.asset_distance, 42);
-    EXPECT_FALSE(target.optional_limit);
+    auto expected{initial};
+    expected.weapon.turn_rate = 9;
+    expected.optional_limit.reset();
+    ioj::DiffResult differences;
+    ioj::DiffContext{differences}.diff("actor", expected, *patch);
+    EXPECT_TRUE(differences.empty()) << differences.message();
     EXPECT_FALSE(override_source<WeaponSettings>("'(:weapon :asset-distance 3)"));
     EXPECT_FALSE(override_source<WeaponSettings>("'(:weapon :damage -1)"));
     EXPECT_FALSE(override_source<WeaponSettings>("'(:weapon :damage 1 :damage 2)"));

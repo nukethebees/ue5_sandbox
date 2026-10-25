@@ -29,6 +29,7 @@ target_sources(native-core
     include/ioj/require.h
     include/ioj/constrained_numbers.h
     include/ioj/constrained_value.h
+    include/ioj/structural_diff.h
     include/ioj/try_numeric_cast.h
     include/ioj/constrained_vectors.h
     include/ioj/constrained_strings.h
@@ -172,3 +173,24 @@ set_tests_properties(StaticStringViewRejectsAutomaticStorage PROPERTIES
 
 ioj_apply_native_abi(native-core)
 ioj_apply_native_abi(native-core-tests)
+
+add_library(structural-diff-reject-unsupported OBJECT EXCLUDE_FROM_ALL)
+target_sources(structural-diff-reject-unsupported
+  PRIVATE
+    tests/structural_diff_reject_unsupported.cpp
+)
+target_link_libraries(structural-diff-reject-unsupported
+  PRIVATE
+    native-core-headers
+    sandbox::native_defaults
+)
+add_test(NAME StructuralDiffRejectsUnsupportedType
+  COMMAND "${CMAKE_COMMAND}" "-DBUILD_DIR=${CMAKE_BINARY_DIR}"
+    -DREJECT_TARGET=structural-diff-reject-unsupported
+    "-DEXPECTED_DIAGNOSTIC=Structural diff requires a generated visitor"
+    -P "${PROJECT_SOURCE_DIR}/cmake/expect_compile_failure.cmake"
+)
+set_tests_properties(StructuralDiffRejectsUnsupportedType PROPERTIES
+  LABELS "all;native;native-core;codegen;compile-contract;subprocess"
+  RESOURCE_LOCK codegen-negative-build
+)
