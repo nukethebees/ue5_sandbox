@@ -1,4 +1,5 @@
 add_native_simulation_test(native-simulation-tests)
+target_link_libraries(native-simulation-tests PRIVATE native-test-support)
 target_sources(native-simulation-tests PRIVATE
   entity_lookup_tables_tests.cpp
   entity_ledger_tests.cpp

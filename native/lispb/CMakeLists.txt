@@ -321,6 +321,7 @@ target_sources(codegen-generated-tests PRIVATE
 )
 set_target_properties(codegen-generated-tests PROPERTIES UNITY_BUILD OFF)
 target_link_libraries(codegen-generated-tests PRIVATE
+  native-test-support
   codegen-generated-compile-fixture
   sandbox-s7
   GTest::gtest_main

@@ -8,6 +8,7 @@
 #include <ioj/levels/authoring/starfield_reader.h>
 #include <ioj/levels/catalog_validation.h>
 #include <ioj/s7/interpreter.h>
+#include <ioj/testing/structural_diff.h>
 
 #include <gtest/gtest.h>
 
@@ -20,6 +21,7 @@
 #include <unordered_set>
 
 namespace ioj::levels::authoring::tests {
+using ioj::testing::structurally_equal;
 namespace {
 auto timer_mission() -> MissionDefinition {
     ObjectiveDefinition objective{.id = ioj::levels::ObjectiveName{"primary"}, .team = Team::Blue};
@@ -171,32 +173,17 @@ TEST(NativeSettings, DerivesStarfieldBindingsAndPreservesSparseLayers) {
       (settings :starfield (starfield :star (star :scale 1)))))";
     auto const result{read_starfield_settings_file(path)};
     ASSERT_TRUE(result) << format_diagnostics(result.error());
-    EXPECT_EQ(result->generation.star_count, 42);
-    EXPECT_EQ(result->generation.random_seed, -7);
-    EXPECT_EQ(result->star.scale, starfield::Settings{}.star.scale);
-    EXPECT_EQ(result->star.size_multiplier, 3);
-    EXPECT_EQ(result->star.global_brightness, 4);
-    EXPECT_EQ(result->star.colour_variation_strength, 5);
-    EXPECT_EQ(result->star.parallax_strength, 6);
-    EXPECT_EQ(result->galactic_band.strength, 7);
-    EXPECT_EQ(result->galactic_band.width_degrees, 8);
-    EXPECT_EQ(result->stellar_cluster.strength, 9);
-    EXPECT_EQ(result->stellar_cluster.width_degrees, 10);
-    EXPECT_EQ(result->dust_lane.strength, 11);
-    EXPECT_EQ(result->dust_lane.width_degrees, 12);
-    EXPECT_EQ(result->dust_lane.irregularity, 13);
-    EXPECT_EQ(result->bright_star.fraction, 14);
-    EXPECT_EQ(result->bright_star.size_multiplier, 15);
-    EXPECT_EQ(result->bright_star.brightness_multiplier, 16);
-    EXPECT_EQ(result->bright_star.shape_strength, 17);
-    EXPECT_EQ(result->twinkle.strength, 18);
-    EXPECT_EQ(result->twinkle.speed, 19);
-    EXPECT_EQ(result->galactic_haze.strength, 20);
-    EXPECT_EQ(result->galactic_haze.width_degrees, 21);
-    EXPECT_EQ(result->galactic_core.strength, 22);
-    EXPECT_EQ(result->galactic_core.width_degrees, 23);
-    EXPECT_EQ(result->nebular_knot.strength, 24);
-    EXPECT_EQ(result->nebular_knot.size_degrees, 25);
+    starfield::Settings const expected{.generation = {42, -7},
+                                       .star = {starfield::Settings{}.star.scale, 3, 4, 5, 6},
+                                       .galactic_band = {7, 8},
+                                       .stellar_cluster = {9, 10},
+                                       .dust_lane = {11, 12, 13},
+                                       .bright_star = {14, 15, 16, 17},
+                                       .twinkle = {18, 19},
+                                       .galactic_haze = {20, 21},
+                                       .galactic_core = {22, 23},
+                                       .nebular_knot = {24, 25}};
+    EXPECT_PRED_FORMAT2(structurally_equal, expected, *result);
 }
 
 TEST(NativeSettings, DecodesPresentationLayersIntoExistingNativeValues) {
@@ -216,17 +203,15 @@ TEST(NativeSettings, DecodesPresentationLayersIntoExistingNativeValues) {
                                                               initial)};
     ASSERT_TRUE(source) << format_diagnostics(source.error());
     EXPECT_EQ(source->fighters.speed, initial.fighters.speed);
-    auto const& target{source->presentation};
-    EXPECT_EQ(target.laser_projectiles.max_cull_distance,
-              initial.presentation.laser_projectiles.max_cull_distance);
-    EXPECT_EQ(target.player_ship.boost_effect_colour_intensity, 75);
-    EXPECT_FALSE(target.entity_overlay.enabled);
-    EXPECT_EQ(target.entity_overlay.maximum_range, 4000);
-    EXPECT_EQ(target.entity_overlay.bar_size_pixels, (Vector<double, 2>{32, 6}));
-    EXPECT_EQ(target.entity_overlay.soft_target.opacity, 0.5f);
-    EXPECT_EQ(target.entity_overlay.soft_target.pulse_duration, 0.3f);
-    EXPECT_EQ(target.capital_ships.n_small_explosions, 3);
-    EXPECT_EQ(target.radar.combat_range, 150000);
+    auto expected{initial.presentation};
+    expected.player_ship.boost_effect_colour_intensity = 75;
+    expected.entity_overlay.enabled = false;
+    expected.entity_overlay.bar_size_pixels = {32, 6};
+    expected.entity_overlay.soft_target.opacity = 0.5f;
+    expected.entity_overlay.soft_target.pulse_duration = 0.3f;
+    expected.capital_ships.n_small_explosions = 3;
+    expected.radar.combat_range = 150000;
+    EXPECT_PRED_FORMAT2(structurally_equal, expected, source->presentation);
 }
 
 TEST(NativeSettings, RecordTagsRegisterConstructorsWithoutHandwrittenBindings) {
@@ -1004,11 +989,8 @@ TEST(NativeLevelAuthoringCollisionGrid, PreservesIndependentOverridesAcrossSourc
         ASSERT_TRUE(source) << format_diagnostics(source.error());
         auto const parsed{DefinitionReader{}.read_level_source(*source)};
         ASSERT_TRUE(parsed) << format_diagnostics(parsed.error());
-        ASSERT_EQ(parsed->collision_grid().has_value(), mask != 0);
-        if (mask != 0) {
-            EXPECT_EQ(parsed->collision_grid()->level_size.has_value(), (mask & 1) != 0);
-            EXPECT_EQ(parsed->collision_grid()->cell_size.has_value(), (mask & 2) != 0);
-        }
+        EXPECT_PRED_FORMAT2(
+            structurally_equal, definition.collision_grid, parsed->collision_grid());
     }
 }
 TEST(NativeLevelAuthoringCollisionGrid, RejectsMalformedAndInvalidExplicitDimensions) {

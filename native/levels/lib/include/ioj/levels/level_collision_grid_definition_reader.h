@@ -16,25 +16,13 @@ struct TypeReader<levels::LevelCollisionGridDefinition>
     : RecordReader<levels::LevelCollisionGridDefinition> {
     static void decode(DecodeContext context, value_type& result) {
         decode_record<Field>(
-            context, "collision-grid", field_names, ([&](Field const field, auto const& read) {
-                switch (field) {
-                    case Field::level_size:
-                        read(result.level_size);
-                        break;
-                    case Field::cell_size:
-                        read(result.cell_size);
-                        break;
-                    case Field::Count:
-                        std::unreachable();
-                }
+            context, "collision-grid", field_names, ([&](Field selected, auto const& read) {
+                value_type::visit_field(
+                    result, selected, [&]<Field field>(auto& member) { read(member); });
             }));
     }
   private:
-    enum class Field : std::uint8_t {
-        level_size,
-        cell_size,
-        Count,
-    };
+    using Field = value_type::Field;
 
     static constexpr std::array<std::string_view, 2> field_names{"level-size", "cell-size"};
 };

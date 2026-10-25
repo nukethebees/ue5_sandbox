@@ -12,6 +12,7 @@ target_compile_definitions(native-level-authoring-tests
 target_link_libraries(native-level-authoring-tests
   PRIVATE
     native-level-authoring-s7
+    native-test-support
     sandbox-s7
     GTest::gtest_main
     sandbox::native_defaults

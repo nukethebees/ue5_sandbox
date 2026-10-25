@@ -3,10 +3,12 @@
 #include <ioj/s7/field_constraints.h>
 #include <ioj/s7/interpreter.h>
 #include <ioj/s7/reader.h>
+#include <ioj/testing/structural_diff.h>
 
 #include <gtest/gtest.h>
 
 namespace ioj::s7::tests {
+using ioj::testing::structurally_equal;
 template <typename T>
 auto read_source(std::string_view const source) -> ReadResult<T> {
     Interpreter interpreter;
@@ -59,22 +61,18 @@ TEST(SchemeReader, ComposesContainersAndDistinguishesAbsence) {
     using Values = std::vector<std::array<std::optional<NonNegative<int>>, 2>>;
     auto const values{read_source<Values>("'((1 :none) (0 2))")};
     ASSERT_TRUE(values);
-    ASSERT_EQ(values->size(), 2u);
-    EXPECT_EQ((*values)[0][0]->get(), 1);
-    EXPECT_FALSE((*values)[0][1]);
-    EXPECT_EQ((*values)[1][0]->get(), 0);
-    EXPECT_EQ((*values)[1][1]->get(), 2);
+    Values const expected{{NonNegative<int>::try_make(1), std::nullopt},
+                          {NonNegative<int>::try_make(0), NonNegative<int>::try_make(2)}};
+    EXPECT_PRED_FORMAT2(structurally_equal, expected, *values);
     EXPECT_TRUE(read_source<std::vector<int>>("'()")->empty());
     EXPECT_TRUE((read_source<std::array<int, 0>>("'()")));
     EXPECT_FALSE((read_source<std::array<int, 2>>("'(1)")));
     auto const boolean{read_source<std::optional<bool>>("#f")};
     ASSERT_TRUE(boolean);
-    ASSERT_TRUE(*boolean);
-    EXPECT_FALSE(**boolean);
+    EXPECT_PRED_FORMAT2(structurally_equal, std::optional{false}, *boolean);
     auto const empty{read_source<std::optional<std::vector<int>>>("'()")};
     ASSERT_TRUE(empty);
-    ASSERT_TRUE(*empty);
-    EXPECT_TRUE((*empty)->empty());
+    EXPECT_PRED_FORMAT2(structurally_equal, std::optional{std::vector<int>{}}, *empty);
     auto const invalid{read_source<Values>("'((1 -2) (3 -4))")};
     ASSERT_FALSE(invalid);
     ASSERT_EQ(invalid.error().size(), 2u);

@@ -1,4 +1,5 @@
 #include <ioj/structural_diff.h>
+#include <ioj/testing/structural_diff.h>
 
 #include <gtest/gtest.h>
 #include <NestedSettings.h>
@@ -71,6 +72,18 @@ TEST(StructuralDiff, AccessorsAndVisitorsReferToTheSameMembers) {
     context.diff("empty", EmptySettings{}, EmptySettings{});
     context.diff("pair", pair, pair);
     EXPECT_TRUE(result.empty()) << result.message();
+}
+
+TEST(StructuralDiff, GoogleTestPredicateRetainsExpressionsAndNestedDifferences) {
+    ActorSettings expected;
+    auto actual{expected};
+    EXPECT_PRED_FORMAT2(ioj::testing::structurally_equal, expected, actual);
+    actual.weapon.damage = 17;
+    auto const failure{ioj::testing::structurally_equal("expected", "actual", expected, actual)};
+    EXPECT_FALSE(failure);
+    EXPECT_EQ(
+        std::string_view{failure.message()},
+        "Comparing actual with expected:\nactual.weapon.damage\n  Expected: 5\n  Actual:   17\n");
 }
 
 #ifndef NDEBUG

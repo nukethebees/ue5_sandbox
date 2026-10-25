@@ -105,6 +105,16 @@ if(IOJ_WITH_UNREAL)
 endif()
 
 add_executable(native-core-tests)
+add_library(native-test-support INTERFACE)
+target_include_directories(native-test-support
+  INTERFACE
+    tests/include
+)
+target_link_libraries(native-test-support
+  INTERFACE
+    native-core-headers
+    GTest::gtest
+)
 ioj_stage_tbb_runtime(native-core-tests)
 
 target_sources(native-core-tests

@@ -1,6 +1,6 @@
 #include <ioj/levels/authoring/definition_reader.h>
 #include <ioj/s7/simulation_settings_reader.h>
-#include <ioj/structural_diff.h>
+#include <ioj/testing/structural_diff.h>
 
 #include <gtest/gtest.h>
 
@@ -8,6 +8,7 @@
 #include <format>
 
 namespace ioj::sim::tests {
+using ioj::testing::structurally_equal;
 using levels::authoring::DefinitionReader;
 using settings::AttackDistanceBand;
 
@@ -24,19 +25,11 @@ TEST(SimulationSettingsReader, AppliesSparseNestedLayersIncludingExplicitDefault
     EXPECT_EQ(source->player_ship.health, defaults.player.health);
     auto const resolved{s7::resolve_simulation_settings(*source)};
     ASSERT_TRUE(resolved) << resolved.error().front().message;
-    auto expected_fighters{defaults.fighters};
-    expected_fighters.laser.damage = 31;
-    expected_fighters.laser.max_distance = 50000;
-    auto expected_turrets{defaults.turrets};
-    expected_turrets.laser.damage = 23;
-
-    DiffResult differences;
-    DiffContext context{differences};
-    context.diff("fighters", expected_fighters, resolved->fighters);
-    context.diff("turrets", expected_turrets, resolved->turrets);
-    context.diff("player", defaults.player, resolved->player);
-    EXPECT_TRUE(differences.empty()) << differences.message();
-    EXPECT_EQ(expected_fighters, resolved->fighters);
+    FighterSimConfig const expected_fighters{.laser = {.damage = 31, .max_distance = 50000}};
+    EXPECT_PRED_FORMAT2(structurally_equal, expected_fighters, resolved->fighters);
+    EXPECT_PRED_FORMAT2(
+        structurally_equal, TurretSimConfig{.laser = {.damage = 23}}, resolved->turrets);
+    EXPECT_PRED_FORMAT2(structurally_equal, defaults.player, resolved->player);
 }
 
 TEST(SimulationSettingsReader, PreservesBaseFileCompatibilityAndLevelMission) {
@@ -75,8 +68,7 @@ TEST(SimulationSettingsReader, PreservesBaseFileCompatibilityAndLevelMission) {
                                                                   *base_values)};
         ASSERT_TRUE(inherited) << levels::format_diagnostics(inherited.error());
         ASSERT_TRUE(inherited->settings());
-        EXPECT_EQ(inherited->settings()->fighters.speed, base->fighters.speed);
-        EXPECT_EQ(inherited->settings()->fighters.laser.damage, base->fighters.laser.damage);
+        EXPECT_PRED_FORMAT2(structurally_equal, base->fighters, inherited->settings()->fighters);
     }
     EXPECT_FALSE(
         DefinitionReader{}.read_level_source("(level :title \"Missing id\")", *base_values));

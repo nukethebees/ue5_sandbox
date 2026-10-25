@@ -49,3 +49,14 @@ stored differences; traversal continues and counts additional mismatches in `omi
 
 Boolean equality remains separate. Use Lispb `:comparison equality` on suitable value records
 to generate defaulted `operator==`; no diagnostic machinery is involved in that operation.
+
+Native GoogleTest targets can link `native-test-support` and include
+`<ioj/testing/structural_diff.h>` for a single assertion with the same diagnostics:
+
+```cpp
+EXPECT_PRED_FORMAT2(ioj::testing::structurally_equal, expected, actual);
+```
+
+Use `ASSERT_PRED_FORMAT2` when subsequent steps depend on equality. Both forms report at the
+call site and include the operand expressions. Prefer an existing original/default object or
+a concise expected aggregate; keep tolerance, ownership and lifecycle assertions explicit.

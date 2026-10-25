@@ -5,10 +5,69 @@
 
 #include "ioj/vector_value_math.h"
 
+#include <cassert>
+#include <concepts>
+#include <cstdint>
 #include <optional>
+#include <string_view>
+#include <type_traits>
+#include <utility>
 
 namespace ioj::levels {
 struct LevelCollisionGridDefinition {
+    enum class Field : std::uint8_t {
+        level_size,
+        cell_size,
+        Count,
+    };
+
+    template <Field Selected, typename Self>
+    static constexpr decltype(auto) get_field(Self& self)
+        requires (std::same_as<std::remove_const_t<Self>, LevelCollisionGridDefinition> &&
+                  Selected < Field::Count)
+    {
+        if constexpr (Selected == Field::level_size) {
+            return (self.level_size);
+        }
+        if constexpr (Selected == Field::cell_size) {
+            return (self.cell_size);
+        }
+    }
+
+    template <Field Selected, typename Self, typename Visitor>
+    static constexpr void invoke_field(Self& self, Visitor&& visitor) {
+        std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
+    }
+
+    static constexpr std::string_view field_name(Field field) {
+        switch (field) {
+            case Field::level_size:
+                return "level_size";
+            case Field::cell_size:
+                return "cell_size";
+            case Field::Count:
+                break;
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
+    template <typename Self, typename Visitor>
+    static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
+        requires std::same_as<std::remove_const_t<Self>, LevelCollisionGridDefinition>
+    {
+        switch (field) {
+            case Field::level_size:
+                return invoke_field<Field::level_size>(self, std::forward<Visitor>(visitor));
+            case Field::cell_size:
+                return invoke_field<Field::cell_size>(self, std::forward<Visitor>(visitor));
+            case Field::Count:
+                break;
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
     std::optional<ioj::Vector3d> level_size{};
     std::optional<ioj::Vector3d> cell_size{};
 };

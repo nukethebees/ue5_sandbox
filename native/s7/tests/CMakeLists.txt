@@ -32,6 +32,7 @@ target_sources(native-s7-ast-tests
 target_link_libraries(native-s7-ast-tests
   PRIVATE
     sandbox-s7
+    native-test-support
     GTest::gtest_main
 )
 ioj_enable_warnings(native-s7-ast-tests)

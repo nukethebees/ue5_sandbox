@@ -14,7 +14,7 @@
   :header-include "ioj/levels/level_collision_grid_definition.h"
   :namespace ioj::levels
   :prelude ("#include <optional>")
-  (record LevelCollisionGridDefinition :generate-s7-reader true :s7-tag "collision-grid"
+  (record LevelCollisionGridDefinition :generate-visitor true :generate-s7-reader true :s7-tag "collision-grid"
     (member level_size @native_optional_vector3d :initializer "")
     (member cell_size @native_optional_vector3d :initializer "")))
 

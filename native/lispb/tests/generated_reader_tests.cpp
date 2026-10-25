@@ -1,5 +1,5 @@
 #include <ioj/s7/interpreter.h>
-#include <ioj/structural_diff.h>
+#include <ioj/testing/structural_diff.h>
 
 #include <gtest/gtest.h>
 #include <Mixed_reader.h>
@@ -10,6 +10,7 @@
 namespace lispb::tests {
 using namespace ioj::s7;
 using namespace codegen_compile_fixture;
+using ioj::testing::structurally_equal;
 
 template <typename T>
 auto read_source(std::string_view const source) -> ReadResult<T> {
@@ -41,15 +42,9 @@ TEST(RecordSettings, AppliesPartialLayersAndDistinguishesExplicitEmptyOptional) 
         return result;
     }};
     ASSERT_TRUE(apply("'(:actor :max-health 200 :weapon (:weapon :damage 20))"));
-    EXPECT_EQ(target.max_health, 200);
-    EXPECT_EQ(target.weapon.damage, 20);
-    EXPECT_EQ(target.weapon.turn_rate, 2.f);
-    EXPECT_EQ(target.weapon.asset_distance, 9.f);
+    EXPECT_PRED_FORMAT2(structurally_equal, (ActorSettings{200, {20}}), target);
     ASSERT_TRUE(apply("'(:actor :max-health 100 :weapon (:weapon :turn-speed 4))"));
-    EXPECT_EQ(target.max_health, 100);
-    EXPECT_EQ(target.weapon.damage, 20);
-    EXPECT_EQ(target.weapon.turn_rate, 4.f);
-    EXPECT_EQ(target.optional_limit, 3);
+    EXPECT_PRED_FORMAT2(structurally_equal, (ActorSettings{100, {20, 4.f}}), target);
     ASSERT_TRUE(apply("'(:actor :optional-limit :none)"));
     EXPECT_FALSE(target.optional_limit);
     ASSERT_TRUE(apply("'(:actor)"));
@@ -62,15 +57,13 @@ TEST(RecordSettings, AppliesCrossNamespaceNestedOverridesAndEmptyPatches) {
     auto result{override_source<mixed::CrossSettings>(
         "'(:cross :actor (:actor :weapon (:weapon :damage 41)))")};
     ASSERT_TRUE(result);
-    EXPECT_EQ(result->actor.weapon.damage, 41);
-    EXPECT_EQ(result->actor.max_health, 100);
+    EXPECT_PRED_FORMAT2(structurally_equal, (ActorSettings{100, {41}}), result->actor);
     EXPECT_TRUE(override_source<EmptySettings>("'(:empty-settings)"));
 }
 
 TEST(GeneratedS7Reader, ConstrainedRecordsValidateAndOverrideAsWholeValues) {
     RangeSettings target;
-    EXPECT_EQ(target.range.get().minimum, 0);
-    EXPECT_EQ(target.range.get().maximum, 10);
+    EXPECT_PRED_FORMAT2(structurally_equal, (RangeValue{0, 10}), target.range.get_ref());
     EXPECT_FALSE(Range::try_make({10, 0}));
     static_assert(std::same_as<decltype(target.range.get_ref()), RangeValue const&>);
 
@@ -78,8 +71,7 @@ TEST(GeneratedS7Reader, ConstrainedRecordsValidateAndOverrideAsWholeValues) {
         override_source<RangeSettings>("'(:ranges :range (:range :minimum 20 :maximum 30))")};
     ASSERT_TRUE(patch);
     target = *patch;
-    EXPECT_EQ(target.range.get().minimum, 20);
-    EXPECT_EQ(target.range.get().maximum, 30);
+    EXPECT_PRED_FORMAT2(structurally_equal, (RangeValue{20, 30}), target.range.get_ref());
     EXPECT_TRUE(target.enabled);
 
     auto omitted{override_source("'(:ranges :enabled #f)", target)};
@@ -110,8 +102,7 @@ TEST(GeneratedS7Reader, ReadsSparseTypedOverridesWithNestedLayersAndExplicitEmpt
     EXPECT_EQ(missing.error().front().node_path, "record.damage");
     auto complete{read_source<WeaponSettings>("'(:weapon :damage 0)")};
     ASSERT_TRUE(complete);
-    EXPECT_EQ(complete->damage, 0);
-    EXPECT_EQ(complete->turn_rate, 2.f);
+    EXPECT_PRED_FORMAT2(structurally_equal, WeaponSettings{.damage = 0}, *complete);
 
     auto partial{override_source(
         "'(:child :count 0)", ReadableChild{.name = *ioj::NonEmptyString::try_make("original")})};
@@ -131,9 +122,7 @@ TEST(GeneratedS7Reader, ReadsSparseTypedOverridesWithNestedLayersAndExplicitEmpt
     auto expected{initial};
     expected.weapon.turn_rate = 9;
     expected.optional_limit.reset();
-    ioj::DiffResult differences;
-    ioj::DiffContext{differences}.diff("actor", expected, *patch);
-    EXPECT_TRUE(differences.empty()) << differences.message();
+    EXPECT_PRED_FORMAT2(structurally_equal, expected, *patch);
     EXPECT_FALSE(override_source<WeaponSettings>("'(:weapon :asset-distance 3)"));
     EXPECT_FALSE(override_source<WeaponSettings>("'(:weapon :damage -1)"));
     EXPECT_FALSE(override_source<WeaponSettings>("'(:weapon :damage 1 :damage 2)"));
@@ -175,17 +164,14 @@ TEST(GeneratedS7Reader, ComposesRecordsContainersEnumsAndConstrainedValues) {
         :values ((:child :name "first" :count 0) (:child :name "second"))
         :samples (1 2 3) :enabled #f :maybe :none :mode readable_name))")};
     ASSERT_TRUE(result);
-    EXPECT_EQ(result->child.name.get_ref(), "root");
-    EXPECT_EQ(result->child.count, 2);
-    ASSERT_EQ(result->values.size(), 2u);
-    EXPECT_EQ(result->values[0].count, 0);
-    EXPECT_EQ(result->values[1].name.get_ref(), "second");
-    EXPECT_EQ(result->points, (std::array{1.f, 2.f, 3.f}));
-    EXPECT_FALSE(result->enabled);
-    EXPECT_FALSE(result->maybe);
-    EXPECT_EQ(result->mode, EPlainFixture::ReadableName);
-    EXPECT_EQ(result->title, "untitled");
-    EXPECT_EQ(result->scale, 1.f);
+    ReadableRecord const expected{.child = {.name = *ioj::NonEmptyString::try_make("root")},
+                                  .values = {{*ioj::NonEmptyString::try_make("first"), 0},
+                                             {*ioj::NonEmptyString::try_make("second")}},
+                                  .points = {1.f, 2.f, 3.f},
+                                  .enabled = false,
+                                  .maybe = std::nullopt,
+                                  .mode = EPlainFixture::ReadableName};
+    EXPECT_PRED_FORMAT2(structurally_equal, expected, *result);
 }
 
 TEST(GeneratedS7Reader, PreservesDefaultsAndInclusiveConstraints) {
@@ -285,6 +271,7 @@ TEST(GeneratedS7Reader, RequiresFieldsEvenWhenTheRecordHasValidDefaults) {
 TEST(GeneratedS7Reader, OverridesACopyAndPreservesOmittedNestedFields) {
     auto initial{read_record_source(R"('(:record :child (:child :name "original" :count 5)))")};
     ASSERT_TRUE(initial);
+    auto const original{*initial};
     auto const patch{[&](std::string_view source) {
         Interpreter interpreter;
         auto ast{interpreter.evaluate_ast(source).value()};
@@ -292,16 +279,14 @@ TEST(GeneratedS7Reader, OverridesACopyAndPreservesOmittedNestedFields) {
     }};
     auto result{patch("'(:record :child (:child :count 2) :maybe :none)")};
     ASSERT_TRUE(result);
-    EXPECT_EQ(result->child.name.get_ref(), "original");
-    EXPECT_EQ(result->child.count, 2);
-    EXPECT_FALSE(result->maybe);
-    EXPECT_EQ(result->scale, 1.f);
-    EXPECT_EQ(initial->child.count, 5);
-    EXPECT_EQ(initial->maybe, 7);
+    auto expected{*initial};
+    expected.child.count = 2;
+    expected.maybe.reset();
+    EXPECT_PRED_FORMAT2(structurally_equal, expected, *result);
+    EXPECT_PRED_FORMAT2(structurally_equal, original, *initial);
     EXPECT_FALSE(patch("'(:record :child (:child :count -1) :enabled #f)"));
     EXPECT_FALSE(patch("'(:record :unknown 1)"));
-    EXPECT_TRUE(initial->enabled);
-    EXPECT_EQ(initial->child.count, 5);
+    EXPECT_PRED_FORMAT2(structurally_equal, original, *initial);
 }
 
 TEST(GeneratedS7Reader, OverridesEngagedOptionalRecordsWithoutLosingPresence) {
@@ -357,13 +342,10 @@ TEST(RecordSettings, DiscoversNestedFieldsAndReusesRecordsAtDifferentPaths) {
       :second (:actor :weapon (:weapon :damage 17 :turn-speed 4))
       :external-value 17))")};
     ASSERT_TRUE(patch);
-    SettingsTarget target;
-    target = *patch;
-    EXPECT_EQ(target.first.max_health, 17);
-    EXPECT_EQ(target.second.weapon.damage, 17);
-    EXPECT_EQ(target.external_value, 17);
-    EXPECT_EQ(target.first.weapon.damage, 5);
-    EXPECT_EQ(target.second.weapon.turn_rate, 4);
+    SettingsTarget const expected{.first = {.max_health = 17},
+                                  .second = {.weapon = {.damage = 17, .turn_rate = 4}},
+                                  .external_value = 17};
+    EXPECT_PRED_FORMAT2(structurally_equal, expected, *patch);
     EXPECT_FALSE(override_source<WeaponSettings>("'(:weapon :turn-rate 1)"));
     EXPECT_FALSE(override_source<WeaponSettings>("'(:weapon :asset-distance 1)"));
     EXPECT_FALSE(read_source<WeaponSettings>("'(:weapon :asset-distance 1)"));
