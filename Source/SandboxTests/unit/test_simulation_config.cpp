@@ -1,4 +1,5 @@
 #include <ioj/levels/authoring/definition_reader.h>
+#include <ioj/s7/source_format.h>
 #include <ioj/sim/collision/entity_world_bounds.h>
 #include <SandboxTests/support/SimulationTestAssets.h>
 #include <SpaceGame/levels/ExampleLevels.h>
@@ -7,6 +8,8 @@
 #include <SpaceGame/simulation/LevelSimulationBuilder.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGameS7/definition_reader.h>
+
+#include <SandboxCoreEngine/VectorConversion.h>
 
 #include <CQTest.h>
 #include <Engine/StaticMesh.h>
@@ -30,8 +33,7 @@ TEST_CLASS(SpaceGameLevelConfig, "Sandbox.UnitTests")
         for (auto const rotation :
              {FRotator3f::ZeroRotator, FRotator3f{0.f, 90.f, 0.f}, FRotator3f{23.f, 47.f, -16.f}}) {
             FBox3f expected{ForceInit};
-            auto const native_centre{bounds.get_centre(type)};
-            FVector3f const centre{native_centre.x(), native_centre.y(), native_centre.z()};
+            auto const centre{ioj::to_unreal(bounds.get_centre(type))};
             auto const extent{bounds.get_half_extents(type)};
             for (int32 corner{}; corner < 8; ++corner) {
                 FVector3f const offset{(corner & 1) ? extent.x() : -extent.x(),
@@ -41,13 +43,9 @@ TEST_CLASS(SpaceGameLevelConfig, "Sandbox.UnitTests")
             }
             auto const orientation{rotation.Quaternion()};
             auto const native_bounds{::ioj::sim::collision::make_entity_world_bounds(
-                bounds,
-                type,
-                ioj::Vector3f{position.X, position.Y, position.Z},
-                ioj::Quaternion4f{orientation.X, orientation.Y, orientation.Z, orientation.W})};
-            FBox3f const actual{
-                FVector3f{native_bounds.min.x(), native_bounds.min.y(), native_bounds.min.z()},
-                FVector3f{native_bounds.max.x(), native_bounds.max.y(), native_bounds.max.z()}};
+                bounds, type, ioj::Vector3f{position}, ioj::Quaternion4f{orientation})};
+            FBox3f const actual{ioj::to_unreal(native_bounds.min),
+                                ioj::to_unreal(native_bounds.max)};
             TestRunner->TestTrue(TEXT("World bounds match independently transformed corners"),
                                  actual.Min.Equals(expected.Min, 0.001f) &&
                                      actual.Max.Equals(expected.Max, 0.001f));
@@ -101,10 +99,8 @@ TEST_CLASS(SpaceGameLevelConfig, "Sandbox.UnitTests")
         auto load = [&](std::string_view const path,
                         std::vector<double> values) -> std::expected<void, FString> {
             std::string components;
-            for (double value : values) {
-                components += std::isnan(value) ? "+nan.0 "
-                            : std::isinf(value) ? "+inf.0 "
-                                                : std::format("{} ", value);
+            for (auto const value : values) {
+                components += ioj::s7::format_real(value) + ' ';
             }
             auto const overlay{path.find("entity-overlay") != std::string_view::npos};
             auto const source{std::format(R"((level :id 'vector-settings :title "Vector settings"
@@ -137,6 +133,7 @@ TEST_CLASS(SpaceGameLevelConfig, "Sandbox.UnitTests")
                                        : *valid.error(),
                                  valid.has_value());
             for (auto const invalid : {std::numeric_limits<double>::infinity(),
+                                       -std::numeric_limits<double>::infinity(),
                                        std::numeric_limits<double>::quiet_NaN()}) {
                 for (std::size_t index{}; index < count; ++index) {
                     std::vector<double> values(count, 2.5);

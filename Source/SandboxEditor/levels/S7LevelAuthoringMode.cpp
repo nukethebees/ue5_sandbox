@@ -81,6 +81,13 @@ auto confirm_replace_source(FStringView const path) -> bool {
                    FText::FromString(FString{path}))) == EAppReturnType::Yes;
 }
 
+auto scene_has_unsaved_changes(AS7LevelAuthoringDocument const& document, FString const& source)
+    -> bool {
+    return source.IsEmpty() || (document.synchronized_scene_source.IsEmpty()
+                                    ? !document.entities.IsEmpty()
+                                    : source != document.synchronized_scene_source);
+}
+
 auto selected_bound_entity(AS7LevelAuthoringDocument& document)
     -> std::expected<FS7LevelEntityBinding*, FString> {
     if (!GEditor) {
@@ -173,20 +180,12 @@ void US7LevelAuthoringMode::Tick(FEditorViewportClient* const viewport_client,
     auto const scene{collect_s7_scene(*level, *document_)};
     if (!scene || !observed_scene_.IsSet() || *scene != *observed_scene_ ||
         observed_actor_count_ != level->Actors.Num()) {
-        auto const definition{collect_s7_editor_level(*level, *document_)};
-        observed_scene_source_.Empty();
-        if (definition) {
-            auto const source{emit_s7_scene_source(*definition, *document_)};
-            if (source) {
-                observed_scene_source_ = *source;
-            }
-        }
+        auto const source{collect_s7_scene_source(*level, *document_)};
+        observed_scene_source_ = source.value_or(FString{});
         observed_scene_ = scene ? TOptional{*scene} : NullOpt;
         observed_actor_count_ = level->Actors.Num();
     }
-    state.scene_dirty = observed_scene_source_.IsEmpty() ||
-                        (!document_->synchronized_scene_source.IsEmpty() &&
-                         document_->synchronized_scene_source != observed_scene_source_);
+    state.scene_dirty = scene_has_unsaved_changes(*document_, observed_scene_source_);
     if (preview_.IsSet() && state.preview == PreviewState::Valid) {
         auto const current{
             validate_s7_level_authoring_preview(*level, *document_, source_session_, *preview_)};
@@ -711,14 +710,9 @@ auto US7LevelAuthoringMode::prepare_source_replay() -> bool {
     if (!IsValid(level) || !document_.IsValid()) {
         return false;
     }
-    auto const definition{collect_s7_editor_level(*level, *document_)};
-    auto const scene_source{
-        definition ? emit_s7_scene_source(*definition, *document_)
-                   : std::expected<FString, FString>{std::unexpect, definition.error()}};
-    auto const scene_changed{!scene_source ||
-                             (document_->synchronized_scene_source.IsEmpty()
-                                  ? !document_->entities.IsEmpty()
-                                  : *scene_source != document_->synchronized_scene_source)};
+    auto const scene_source{collect_s7_scene_source(*level, *document_)};
+    auto const scene_changed{
+        scene_has_unsaved_changes(*document_, scene_source.value_or(FString{}))};
     source_session_.state().scene_dirty = scene_changed;
     if (source_session_.is_dirty() || scene_changed) {
         auto const choice{FMessageDialog::Open(
@@ -898,13 +892,7 @@ void US7LevelAuthoringMode::save_canonical_from_scene() {
         changed_.Broadcast();
         return;
     }
-    auto const definition{collect_s7_editor_level(*level, *document_)};
-    if (!definition) {
-        set_status(FText::FromString(definition.error()));
-        changed_.Broadcast();
-        return;
-    }
-    auto const emitted{emit_s7_scene_source(*definition, *document_)};
+    auto const emitted{collect_s7_scene_source(*level, *document_)};
     if (!emitted) {
         set_status(FText::FromString(emitted.error()));
         changed_.Broadcast();
@@ -944,7 +932,7 @@ void US7LevelAuthoringMode::save_canonical_from_scene() {
     source_session_.state().scene_dirty = false;
     set_status(FText::FromString(
         FString::Printf(TEXT("Saved canonical scene state with %d entities to %s."),
-                        static_cast<int32>(definition->entities().size()),
+                        document_->entities.Num(),
                         *source_session_.path())));
     changed_.Broadcast();
 }

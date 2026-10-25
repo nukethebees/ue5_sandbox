@@ -37,10 +37,6 @@ auto library_root(AS7LevelAuthoringDocument const& document) -> std::filesystem:
 auto entity_id(FName const value) -> EntityId {
     return EntityId{value.IsNone() ? std::string{} : text(value.ToString().ToLower())};
 }
-auto vector(FVector const value) -> Vector3d {
-    return {value.X, value.Y, value.Z};
-}
-
 auto adopt(ULevel& level, TArray<FS7LevelEntityBinding>& bindings) -> int32 {
     TSet<AActor const*> bound;
     std::unordered_set<EntityId> ids;
@@ -115,6 +111,15 @@ auto emit_s7_scene_source(levels::LevelDefinition const& definition,
         return std::unexpected{to_fstring(levels::format_diagnostics(source.error()))};
     }
     return to_fstring(*source);
+}
+
+auto collect_s7_scene_source(ULevel const& level, AS7LevelAuthoringDocument const& document)
+    -> std::expected<FString, FString> {
+    auto const definition{collect_s7_editor_level(level, document)};
+    if (!definition) {
+        return std::unexpected{definition.error()};
+    }
+    return emit_s7_scene_source(*definition, document);
 }
 
 auto find_level_authoring_document(ULevel const& level)
@@ -278,12 +283,12 @@ auto collect_s7_scene(ULevel const& level, AS7LevelAuthoringDocument const& docu
             {.id = id,
              .archetype = resolved.IsSet() ? resolved->archetype : EntityArchetype::PlayerFighter,
              .team = resolved.IsSet() ? resolved->team : static_cast<Team>(255),
-             .position = vector(actor->GetActorLocation()),
-             .rotation = {rotation.Pitch, rotation.Yaw, rotation.Roll},
+             .position = Vector3d{actor->GetActorLocation()},
+             .rotation = Rotator3d{rotation},
              .spawn_time_seconds = binding.spawn_time_seconds});
         snapshot.properties.push_back(
             {.label = text(actor->GetActorLabel()),
-             .scale = vector(actor->GetActorScale3D()),
+             .scale = Vector3d{actor->GetActorScale3D()},
              .class_matches = resolved.IsSet() && IsValid(document.level_config) &&
                               actor->GetClass() == s7_level_actor_class(resolved->archetype,
                                                                         *document.level_config)});
@@ -308,7 +313,7 @@ auto collect_s7_scene(ULevel const& level, AS7LevelAuthoringDocument const& docu
         definition.player_entity_id = {};
         definition.camera = {.target_entity_ids =
                                  references(document.camera.targets, snapshot.viewpoint_valid),
-                             .offset_direction = vector(document.camera.offset_direction),
+                             .offset_direction = Vector3d{document.camera.offset_direction},
                              .distance = document.camera.distance};
     } else {
         snapshot.viewpoint_valid = player_count == 1;

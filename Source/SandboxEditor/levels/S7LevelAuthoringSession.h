@@ -17,6 +17,9 @@ SANDBOXEDITOR_API auto s7_settings_path(ULevel const& level) -> FString;
 SANDBOXEDITOR_API auto emit_s7_scene_source(levels::LevelDefinition const& definition,
                                             AS7LevelAuthoringDocument const& document)
     -> std::expected<FString, FString>;
+SANDBOXEDITOR_API auto collect_s7_scene_source(ULevel const& level,
+                                               AS7LevelAuthoringDocument const& document)
+    -> std::expected<FString, FString>;
 
 struct FS7LevelBindingRepairResult {
     int32 removed_bindings{};
