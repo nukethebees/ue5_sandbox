@@ -1,6 +1,7 @@
 #include <material_gen/MaterialFrontend.h>
 
 #include "material_type_rules.h"
+#include <ioj/is_any.h>
 
 #include <codegen/sexpr/indices.h>
 #include <codegen/sexpr/reader.h>
@@ -18,8 +19,10 @@
 #include <material_gen/CustomInputs.h>
 #include <material_gen/Diagnostic.h>
 #include <material_gen/Indices.h>
+#include <material_gen/MaterialClause.h>
 #include <material_gen/MaterialDomain.h>
 #include <material_gen/MaterialIR.h>
+#include <material_gen/MaterialOperator.h>
 #include <material_gen/NamedNodes.h>
 #include <material_gen/NodeKind.h>
 #include <material_gen/Nodes.h>
@@ -179,7 +182,7 @@ class Analyzer {
         }
         material_.settings.name = syntax_.identifier(syntax_.children(form)[1]);
 
-        std::set<lispb::StringId> clauses;
+        std::set<MaterialClause> clauses;
         auto const count{syntax_.children(form).size()};
         for (std::size_t index{2}; index < count; ++index) {
             auto const& clause{syntax_.children(form)[index]};
@@ -189,57 +192,76 @@ class Analyzer {
                      "material clause must be a list beginning with a symbol");
                 continue;
             }
-            if (head == "asset" || head == "domain" || head == "blend" || head == "shading" ||
-                head == "two-sided" || head == "disable-depth-test" || head == "usage" ||
-                head == "adopt-existing" || head == "opacity-mask-clip") {
-                if (!clauses.insert(syntax_.identifier(syntax_.children(clause).front())).second) {
-                    fail(syntax_.token_span(clause),
-                         "duplicate material setting '" + std::string{head} + "'");
-                    continue;
-                }
-            }
-            if (head == "asset") {
-                parse_asset(clause);
-            } else if (head == "domain") {
-                parse_domain(clause);
-            } else if (head == "blend") {
-                parse_blend_mode(clause);
-            } else if (head == "shading") {
-                parse_shading_model(clause);
-            } else if (head == "two-sided") {
-                parse_boolean_setting(clause, "two-sided", material_.settings.two_sided);
-            } else if (head == "disable-depth-test") {
-                parse_boolean_setting(
-                    clause, "disable-depth-test", material_.settings.disable_depth_test);
-            } else if (head == "usage") {
-                parse_usage(clause);
-            } else if (head == "adopt-existing") {
-                parse_boolean_setting(clause, "adopt-existing", material_.settings.adopt_existing);
-            } else if (head == "opacity-mask-clip") {
-                parse_opacity_mask_clip(clause);
-            } else if (head == "parameter") {
-                parse_parameter(clause);
-            } else if (head == "let") {
-                parse_binding(clause);
-            } else if (head == "emissive") {
-                parse_output(clause, "emissive");
-            } else if (head == "opacity") {
-                parse_output(clause, "opacity");
-            } else if (head == "base-color") {
-                parse_output(clause, "base-color");
-            } else if (head == "opacity-mask") {
-                parse_output(clause, "opacity-mask");
-            } else if (head == "world-position-offset") {
-                parse_output(clause, "world-position-offset");
-            } else {
+            auto const kind{try_parse_serialized_material_clause(head)};
+            if (!kind) {
                 fail(syntax_.token_span(clause),
                      "unknown material clause '" + std::string{head} + "'");
+                continue;
+            }
+            if (ioj::is_any(*kind,
+                            {MaterialClause::asset,
+                             MaterialClause::domain,
+                             MaterialClause::blend,
+                             MaterialClause::shading,
+                             MaterialClause::two_sided,
+                             MaterialClause::disable_depth_test,
+                             MaterialClause::usage,
+                             MaterialClause::adopt_existing,
+                             MaterialClause::opacity_mask_clip}) &&
+                !clauses.insert(*kind).second) {
+                fail(syntax_.token_span(clause),
+                     "duplicate material setting '" + std::string{head} + "'");
+                continue;
+            }
+            switch (*kind) {
+                case MaterialClause::asset:
+                    parse_asset(clause);
+                    break;
+                case MaterialClause::domain:
+                    parse_domain(clause);
+                    break;
+                case MaterialClause::blend:
+                    parse_blend_mode(clause);
+                    break;
+                case MaterialClause::shading:
+                    parse_shading_model(clause);
+                    break;
+                case MaterialClause::two_sided:
+                    parse_boolean_setting(clause, head, material_.settings.two_sided);
+                    break;
+                case MaterialClause::disable_depth_test:
+                    parse_boolean_setting(clause, head, material_.settings.disable_depth_test);
+                    break;
+                case MaterialClause::usage:
+                    parse_usage(clause);
+                    break;
+                case MaterialClause::adopt_existing:
+                    parse_boolean_setting(clause, head, material_.settings.adopt_existing);
+                    break;
+                case MaterialClause::opacity_mask_clip:
+                    parse_opacity_mask_clip(clause);
+                    break;
+                case MaterialClause::parameter:
+                    parse_parameter(clause);
+                    break;
+                case MaterialClause::let_:
+                    parse_binding(clause);
+                    break;
+                case MaterialClause::emissive:
+                case MaterialClause::opacity:
+                case MaterialClause::base_color:
+                case MaterialClause::opacity_mask:
+                case MaterialClause::world_position_offset:
+                    parse_output(clause, head);
+                    break;
             }
         }
-        for (auto const required : {"asset", "domain", "blend"}) {
-            if (!clauses.contains(syntax_.strings().find(required))) {
+        for (auto const required :
+             {MaterialClause::asset, MaterialClause::domain, MaterialClause::blend}) {
+            if (!clauses.contains(required)) {
                 fail(syntax_.token_span(form),
-                     "missing material setting '" + std::string{required} + "'");
+                     "missing material setting '" + std::string{to_serialized_string(required)} +
+                         "'");
             }
         }
     }
@@ -277,12 +299,8 @@ class Analyzer {
         if (!value) {
             return;
         }
-        if (*value == "ui") {
-            material_.settings.domain = MaterialDomain::ui;
-        } else if (*value == "surface") {
-            material_.settings.domain = MaterialDomain::surface;
-        } else if (*value == "post-process") {
-            material_.settings.domain = MaterialDomain::post_process;
+        if (auto const parsed{try_parse_serialized_material_domain(*value)}) {
+            material_.settings.domain = *parsed;
         } else {
             fail(syntax_.token_span(syntax_.children(form)[1]),
                  "unknown material domain '" + std::string{*value} + "'");
@@ -294,16 +312,8 @@ class Analyzer {
         if (!value) {
             return;
         }
-        if (*value == "additive") {
-            material_.settings.blend_mode = BlendMode::additive;
-        } else if (*value == "translucent") {
-            material_.settings.blend_mode = BlendMode::translucent;
-        } else if (*value == "opaque") {
-            material_.settings.blend_mode = BlendMode::opaque;
-        } else if (*value == "masked") {
-            material_.settings.blend_mode = BlendMode::masked;
-        } else if (*value == "alpha-composite") {
-            material_.settings.blend_mode = BlendMode::alpha_composite;
+        if (auto const parsed{try_parse_serialized_blend_mode(*value)}) {
+            material_.settings.blend_mode = *parsed;
         } else {
             fail(syntax_.token_span(syntax_.children(form)[1]),
                  "unknown blend mode '" + std::string{*value} + "'");
@@ -315,10 +325,8 @@ class Analyzer {
         if (!value) {
             return;
         }
-        if (*value == "default-lit") {
-            material_.settings.shading_model = ShadingModel::default_lit;
-        } else if (*value == "unlit") {
-            material_.settings.shading_model = ShadingModel::unlit;
+        if (auto const parsed{try_parse_serialized_shading_model(*value)}) {
+            material_.settings.shading_model = *parsed;
         } else {
             fail(syntax_.token_span(syntax_.children(form)[1]),
                  "unknown shading model '" + std::string{*value} + "'");
@@ -430,15 +438,13 @@ class Analyzer {
                 if (!sampler) {
                     return;
                 }
-                if (*sampler == "linear-color") {
-                    parameter_sampler = TextureSamplerType::linear_color;
-                } else if (*sampler == "linear-grayscale") {
-                    parameter_sampler = TextureSamplerType::linear_grayscale;
-                } else {
+                auto const parsed{try_parse_serialized_texture_sampler_type(*sampler)};
+                if (!parsed) {
                     fail(syntax_.token_span(syntax_.children(form)[5]),
                          "unknown texture sampler '" + std::string{*sampler} + "'");
                     return;
                 }
+                parameter_sampler = *parsed;
             }
         } else {
             auto const components{component_count(type)};
@@ -537,77 +543,72 @@ class Analyzer {
             fail(syntax_.token_span(form), "expression must begin with an operation name");
             return std::nullopt;
         }
-        if (head == "float2" || head == "float3" || head == "float4") {
-            return vector(form, parse_type(head));
+        auto const operation{try_parse_serialized_material_operator(head)};
+        if (!operation) {
+            fail(syntax_.token_span(form), "unknown expression form '" + std::string{head} + "'");
+            return std::nullopt;
         }
-        if (head == "+" || head == "-" || head == "*" || head == "/") {
-            return arithmetic(form, head);
+        switch (*operation) {
+            case MaterialOperator::float2:
+                return vector(form, ValueType::float2);
+            case MaterialOperator::float3:
+                return vector(form, ValueType::float3);
+            case MaterialOperator::float4:
+                return vector(form, ValueType::float4);
+            case MaterialOperator::add:
+                return arithmetic(form, NodeKind::add);
+            case MaterialOperator::subtract:
+                return arithmetic(form, NodeKind::subtract);
+            case MaterialOperator::multiply:
+                return arithmetic(form, NodeKind::multiply);
+            case MaterialOperator::divide:
+                return arithmetic(form, NodeKind::divide);
+            case MaterialOperator::lerp:
+                return lerp(form);
+            case MaterialOperator::saturate:
+                return saturate(form);
+            case MaterialOperator::step:
+                return step(form);
+            case MaterialOperator::time:
+                return time(form);
+            case MaterialOperator::texcoord:
+                return texcoord(form);
+            case MaterialOperator::per_instance_custom_data:
+                return per_instance_custom_data(form);
+            case MaterialOperator::sample:
+                return sample(form);
+            case MaterialOperator::texture:
+                return texture(form);
+            case MaterialOperator::swizzle:
+                return swizzle(form);
+            case MaterialOperator::transform_position:
+                return transform_position(form);
+            case MaterialOperator::scene_texture:
+                return scene_texture(form);
+            case MaterialOperator::shader_call:
+                return shader_call(form);
+            case MaterialOperator::custom:
+                return custom(form);
+            case MaterialOperator::sin:
+                return trigonometric(form, NodeKind::sine);
+            case MaterialOperator::cos:
+                return trigonometric(form, NodeKind::cosine);
+            case MaterialOperator::world_position:
+                return standard_value(form, NodeKind::world_position, ValueType::float3);
+            case MaterialOperator::object_position:
+                return standard_value(form, NodeKind::object_position, ValueType::float3);
+            case MaterialOperator::pixel_normal:
+                return standard_value(form, NodeKind::pixel_normal, ValueType::float3);
+            case MaterialOperator::vertex_normal:
+                return standard_value(form, NodeKind::vertex_normal, ValueType::float3);
+            case MaterialOperator::camera_vector:
+                return standard_value(form, NodeKind::camera_vector, ValueType::float3);
+            case MaterialOperator::camera_position:
+                return standard_value(form, NodeKind::camera_position, ValueType::float3);
+            case MaterialOperator::vertex_color:
+                return standard_value(form, NodeKind::vertex_color, ValueType::float4);
         }
-        if (head == "lerp") {
-            return lerp(form);
-        }
-        if (head == "saturate") {
-            return saturate(form);
-        }
-        if (head == "step") {
-            return step(form);
-        }
-        if (head == "time") {
-            return time(form);
-        }
-        if (head == "sin" || head == "cos") {
-            return trigonometric(form, head);
-        }
-        if (head == "texcoord") {
-            return texcoord(form);
-        }
-        if (head == "per-instance-custom-data") {
-            return per_instance_custom_data(form);
-        }
-        if (head == "sample") {
-            return sample(form);
-        }
-        if (head == "texture") {
-            return texture(form);
-        }
-        if (head == "swizzle") {
-            return swizzle(form);
-        }
-        if (head == "world-position") {
-            return standard_value(form, NodeKind::world_position, ValueType::float3);
-        }
-        if (head == "object-position") {
-            return standard_value(form, NodeKind::object_position, ValueType::float3);
-        }
-        if (head == "pixel-normal") {
-            return standard_value(form, NodeKind::pixel_normal, ValueType::float3);
-        }
-        if (head == "vertex-normal") {
-            return standard_value(form, NodeKind::vertex_normal, ValueType::float3);
-        }
-        if (head == "camera-vector") {
-            return standard_value(form, NodeKind::camera_vector, ValueType::float3);
-        }
-        if (head == "camera-position") {
-            return standard_value(form, NodeKind::camera_position, ValueType::float3);
-        }
-        if (head == "vertex-color") {
-            return standard_value(form, NodeKind::vertex_color, ValueType::float4);
-        }
-        if (head == "transform-position") {
-            return transform_position(form);
-        }
-        if (head == "scene-texture") {
-            return scene_texture(form);
-        }
-        if (head == "shader-call") {
-            return shader_call(form);
-        }
-        if (head == "custom") {
-            return custom(form);
-        }
-        fail(syntax_.token_span(form), "unknown expression form '" + std::string{head} + "'");
-        return std::nullopt;
+        std::unreachable();
     }
 
     auto vector(FormId const form, ValueType const type) -> std::optional<NodeHandle> {
@@ -657,13 +658,8 @@ class Analyzer {
                                    std::span{inputs}.first(components));
     }
 
-    auto arithmetic(FormId const form, std::string_view const operation)
-        -> std::optional<NodeHandle> {
-        NodeKind const kind{operation == "+"   ? NodeKind::add
-                            : operation == "-" ? NodeKind::subtract
-                            : operation == "*" ? NodeKind::multiply
-                                               : NodeKind::divide};
-        auto const is_nary{operation == "+" || operation == "*"};
+    auto arithmetic(FormId const form, NodeKind const kind) -> std::optional<NodeHandle> {
+        auto const is_nary{kind == NodeKind::add || kind == NodeKind::multiply};
         if (syntax_.children(form).size() < 3 || (!is_nary && syntax_.children(form).size() != 3)) {
             fail(syntax_.token_span(form),
                  is_nary ? "addition and multiplication require at least two operands"
@@ -704,11 +700,10 @@ class Analyzer {
             NodeKind::time, ValueType::float1, material_span(syntax_.token_span(form)), {});
     }
 
-    auto trigonometric(FormId const form, std::string_view const operation)
-        -> std::optional<NodeHandle> {
-        auto const kind{operation == "sin" ? NodeKind::sine : NodeKind::cosine};
+    auto trigonometric(FormId const form, NodeKind const kind) -> std::optional<NodeHandle> {
         if (syntax_.children(form).size() != 2) {
-            fail(syntax_.token_span(form), std::string{operation} + " requires one operand");
+            fail(syntax_.token_span(form),
+                 std::string{syntax_.head(form)} + " requires one operand");
             return std::nullopt;
         }
         auto const input{expression(syntax_.children(form)[1])};
@@ -921,17 +916,8 @@ class Analyzer {
         if (!source || !destination) {
             return std::nullopt;
         }
-        auto parse_space{[](std::string_view const space) -> std::optional<PositionSpace> {
-            if (space == "world") {
-                return PositionSpace::world;
-            }
-            if (space == "local") {
-                return PositionSpace::local;
-            }
-            return std::nullopt;
-        }};
-        auto const source_space{parse_space(*source)};
-        auto const destination_space{parse_space(*destination)};
+        auto const source_space{try_parse_serialized_position_space(*source)};
+        auto const destination_space{try_parse_serialized_position_space(*destination)};
         if (!source_space || !destination_space || *source_space == *destination_space) {
             fail(syntax_.token_span(form),
                  "transform-position requires two distinct supported spaces");
@@ -958,13 +944,14 @@ class Analyzer {
         if (!name) {
             return std::nullopt;
         }
-        if (*name == "post-process-input0") {
+        auto const texture{try_parse_serialized_scene_texture(*name)};
+        if (texture == SceneTexture::post_process_input0) {
             return material_.nodes.add_scene_texture(ValueType::float4,
                                                      material_span(syntax_.token_span(form)),
                                                      {},
                                                      SceneTexture::post_process_input0);
         }
-        if (*name == "scene-depth") {
+        if (texture == SceneTexture::scene_depth) {
             return material_.nodes.add_scene_texture(ValueType::float1,
                                                      material_span(syntax_.token_span(form)),
                                                      {},

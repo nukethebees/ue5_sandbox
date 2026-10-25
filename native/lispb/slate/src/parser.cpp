@@ -18,6 +18,8 @@
 #include <slate_codegen/document.h>
 #include <slate_codegen/parameter_kind.h>
 #include <slate_codegen/range.h>
+#include <slate_codegen/slot_option.h>
+#include <slate_codegen/structural_form.h>
 #include <slate_codegen/value_id.h>
 #include <slate_codegen/value_kind.h>
 
@@ -120,7 +122,8 @@ class Parser {
         std::set<StringId> owners{document_.declarations.names.begin(),
                                   document_.declarations.names.end()};
         for (auto const form : syntax_.forms(forms)) {
-            if (syntax_.head(form) != "widget-class" && syntax_.head(form) != "widget-library") {
+            auto const kind{try_parse_serialized_structural_form(syntax_.head(form))};
+            if (kind != StructuralForm::widget_class && kind != StructuralForm::widget_library) {
                 fail(syntax_.token_span(form),
                      "expected 'widget-class' or 'widget-library' declaration");
             }
@@ -135,13 +138,14 @@ class Parser {
                 fail(syntax_.token_span(owner),
                      std::format("duplicate widget declaration '{}'", syntax_.text(owner)));
             }
-            library_ = syntax_.head(form) == "widget-library";
+            library_ = kind == StructuralForm::widget_library;
             auto functions{start(document_.functions.names.size())};
             std::set<StringId> function_names;
             auto const count{syntax_.children(form).size()};
             for (std::size_t index{2}; index < count; ++index) {
                 auto const function{syntax_.children(form)[index]};
-                if (syntax_.head(function) != "function") {
+                if (try_parse_serialized_structural_form(syntax_.head(function)) !=
+                    StructuralForm::function) {
                     fail(syntax_.token_span(function), "expected 'function' declaration");
                 }
                 parse_function(function);
@@ -219,7 +223,8 @@ class Parser {
         parameter_states_.clear();
         binding_names_.clear();
         auto const parameter_form{syntax_.children(form)[2]};
-        if (syntax_.head(parameter_form) != "params") {
+        if (try_parse_serialized_structural_form(syntax_.head(parameter_form)) !=
+            StructuralForm::params) {
             fail(syntax_.token_span(parameter_form),
                  "expected 'params' declaration after function name");
         }
@@ -231,7 +236,10 @@ class Parser {
         finish(parameters, document_.parameters.names.size());
         auto bindings{start(document_.bindings.names.size())};
         auto const body{syntax_.children(form)[3]};
-        auto const root{syntax_.head(body) == "let" ? parse_let(body) : parse_child(body)};
+        auto const root{try_parse_serialized_structural_form(syntax_.head(body)) ==
+                                StructuralForm::let_
+                            ? parse_let(body)
+                            : parse_child(body)};
         finish(bindings, document_.bindings.names.size());
         auto const end{parameters.begin + parameters.count};
         for (auto index{parameters.begin}; index < end; ++index) {
@@ -468,15 +476,15 @@ class Parser {
         if (!syntax_.is_list(form) || syntax_.children(form).empty()) {
             fail(syntax_.token_span(form), "expected child list");
         }
-        auto const head{syntax_.head(form)};
-        if (head == "hbox" || head == "vbox") {
+        auto const kind{try_parse_serialized_structural_form(syntax_.head(form))};
+        if (kind == StructuralForm::hbox || kind == StructuralForm::vbox) {
             return parse_box(form);
         }
-        if (head == "existing" || head == "call") {
-            require_count(form, 2, "expected widget parameter", head == "existing");
+        if (kind == StructuralForm::existing || kind == StructuralForm::call) {
+            require_count(form, 2, "expected widget parameter", kind == StructuralForm::existing);
             auto const parameter{atom(syntax_.children(form)[1], "expected widget parameter")};
             validate_name(parameter, "widget parameter");
-            if (head == "existing") {
+            if (kind == StructuralForm::existing) {
                 use_parameter(parameter, ParameterKind::existing, false);
                 auto const id{child_id(ChildKind::existing, document_.existing.parameters.size())};
                 document_.existing.parameters.push_back(syntax_.identifier(parameter));
@@ -505,9 +513,15 @@ class Parser {
             document_.calls.spans.push_back(syntax_.token_span(form));
             return id;
         }
-        if (head == "widget-class" || head == "widget-library" || head == "function" ||
-            head == "slot" || head == "auto" || head == "fill" || head == "let" ||
-            head == "params") {
+        if (kind && ioj::is_any(*kind,
+                                {StructuralForm::widget_class,
+                                 StructuralForm::widget_library,
+                                 StructuralForm::function,
+                                 StructuralForm::slot,
+                                 StructuralForm::auto_,
+                                 StructuralForm::fill,
+                                 StructuralForm::let_,
+                                 StructuralForm::params})) {
             fail(syntax_.token_span(form),
                  "expected widget, assigned widget, existing widget, or box child");
         }
@@ -518,7 +532,7 @@ class Parser {
         std::size_t index{1};
         auto type{atom(syntax_.children(form)[0], "expected widget type")};
         StringId assigned{};
-        if (syntax_.head(form) == "assign") {
+        if (try_parse_serialized_structural_form(syntax_.head(form)) == StructuralForm::assign) {
             if (library_) {
                 fail(syntax_.token_span(form),
                      "assign requires a widget-class host; unavailable in widget-library");
@@ -531,20 +545,7 @@ class Parser {
             index = 3;
         }
         auto const type_name{syntax_.text(type)};
-        if (ioj::is_any<std::string_view>(type_name,
-                                          {"widget-class",
-                                           "widget-library",
-                                           "function",
-                                           "vbox",
-                                           "hbox",
-                                           "slot",
-                                           "auto",
-                                           "fill",
-                                           "assign",
-                                           "existing",
-                                           "call",
-                                           "let",
-                                           "params"})) {
+        if (try_parse_serialized_structural_form(type_name)) {
             fail(syntax_.token_span(type),
                  std::format("expected widget type, found structural form '{}'", type_name));
         }
@@ -573,7 +574,7 @@ class Parser {
                 continue;
             }
             saw_child = true;
-            if (syntax_.head(item) == "slot") {
+            if (try_parse_serialized_structural_form(syntax_.head(item)) == StructuralForm::slot) {
                 require_count(item, 3, "expected named slot name and child");
                 auto const name{atom(syntax_.children(item)[1], "expected named slot name")};
                 if (!slot_names.insert(syntax_.identifier(name)).second) {
@@ -629,7 +630,9 @@ class Parser {
         finish(range, document_.box_slots.children.size());
         auto const id{child_id(ChildKind::box, document_.boxes.slots.size())};
         document_.boxes.orientations.push_back(
-            syntax_.head(form) == "vbox" ? BoxOrientation::vertical : BoxOrientation::horizontal);
+            try_parse_serialized_structural_form(syntax_.head(form)) == StructuralForm::vbox
+                ? BoxOrientation::vertical
+                : BoxOrientation::horizontal);
         document_.boxes.slots.push_back(range);
         document_.boxes.spans.push_back(syntax_.token_span(form));
         return id;
@@ -637,10 +640,11 @@ class Parser {
 
     auto parse_box_slot(FormId const form) -> BoxSlot {
         require_count(form, 2, "expected box slot list", false);
-        if (syntax_.head(form) != "auto" && syntax_.head(form) != "fill") {
+        auto const kind{try_parse_serialized_structural_form(syntax_.head(form))};
+        if (kind != StructuralForm::auto_ && kind != StructuralForm::fill) {
             fail(syntax_.token_span(form), "expected 'auto' or 'fill' box slot");
         }
-        BoxSlot slot{.fill = syntax_.head(form) == "fill"};
+        BoxSlot slot{.fill = kind == StructuralForm::fill};
         std::size_t index{1};
         auto const count{syntax_.children(form).size()};
         while (index < count && syntax_.kind(syntax_.children(form)[index]) == TokenKind::keyword) {
@@ -649,7 +653,8 @@ class Parser {
                 fail(syntax_.token_span(option), "expected box slot option value");
             }
             auto const value{syntax_.children(form)[index++]};
-            if (syntax_.text(option) == "weight") {
+            auto const option_kind{try_parse_serialized_slot_option(syntax_.text(option))};
+            if (option_kind == SlotOption::weight) {
                 if (!slot.fill) {
                     fail(syntax_.token_span(option), "weight is only valid on fill slots");
                 }
@@ -663,17 +668,17 @@ class Parser {
                     fail(syntax_.token_span(value),
                          "expected fill weight number or value parameter");
                 }
-            } else if (syntax_.text(option) == "padding") {
+            } else if (option_kind == SlotOption::padding) {
                 if (slot.padding) {
                     fail(syntax_.token_span(option), "duplicate slot padding");
                 }
                 slot.padding = parse_margin(value);
-            } else if (syntax_.text(option) == "halign") {
+            } else if (option_kind == SlotOption::halign) {
                 if (slot.horizontal.kind != AlignmentKind::none) {
                     fail(syntax_.token_span(option), "duplicate horizontal alignment");
                 }
                 slot.horizontal = parse_alignment(value, true);
-            } else if (syntax_.text(option) == "valign") {
+            } else if (option_kind == SlotOption::valign) {
                 if (slot.vertical.kind != AlignmentKind::none) {
                     fail(syntax_.token_span(option), "duplicate vertical alignment");
                 }
