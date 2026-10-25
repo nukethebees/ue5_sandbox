@@ -16,6 +16,7 @@
 #include <format>
 #include <initializer_list>
 #include <optional>
+#include <span>
 #include <type_traits>
 #include <utility>
 
@@ -307,15 +308,36 @@ void decode_field(DecodeContext context, T& destination) {
     }
 }
 
+struct Override {
+    Reader const& reader;
+    NodeIndex node;
+    std::string_view path;
+};
+
+// Keep the readers, their ASTs, and diagnostic paths alive until the chain completes.
+template <typename T>
+[[nodiscard]] auto apply_overrides(T value, std::span<Override const> overrides) -> ReadResult<T> {
+    for (auto const& override : overrides) {
+        AstDiagnostics errors;
+        decode_field({override.reader, override.node, override.path, ReadMode::Override, errors},
+                     value);
+        if (!errors.empty()) {
+            return std::unexpected{std::move(errors)};
+        }
+    }
+    return value;
+}
+
+template <typename T>
+[[nodiscard]] auto apply_overrides(T value, std::initializer_list<Override> overrides)
+    -> ReadResult<T> {
+    return apply_overrides(std::move(value), std::span<Override const>{overrides});
+}
+
 template <typename T>
 auto read_override(Reader const& reader, NodeIndex node, std::string_view path, T value)
     -> ReadResult<T> {
-    AstDiagnostics errors;
-    decode_field({reader, node, path, ReadMode::Override, errors}, value);
-    if (!errors.empty()) {
-        return std::unexpected{std::move(errors)};
-    }
-    return value;
+    return apply_overrides(std::move(value), {{reader, node, path}});
 }
 
 template <typename Field>

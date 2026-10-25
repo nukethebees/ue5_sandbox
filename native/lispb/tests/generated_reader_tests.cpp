@@ -306,6 +306,44 @@ TEST(GeneratedS7Reader, OverridesEngagedOptionalRecordsWithoutLosingPresence) {
     EXPECT_FALSE(read_override(Reader{ast}, ast.root, "child", std::optional<ReadableChild>{}));
 }
 
+TEST(GeneratedS7Reader, AppliesOverrideChainsFromDistinctSourcesWithoutMutatingTheBase) {
+    auto const base{
+        read_record_source(R"('(:record :child (:child :name "original" :count 5)))").value()};
+    auto const original{base};
+    Interpreter interpreter;
+    auto first{
+        interpreter.evaluate_ast("'(:record :child (:child :count 2) :maybe :none)").value()};
+    auto second{
+        interpreter.evaluate_ast("'(:record :child (:child :count 3) :enabled #f)").value()};
+    Reader const first_reader{first};
+    Reader const second_reader{second};
+    std::array const overrides{Override{first_reader, first.root, "base.scm"},
+                               Override{second_reader, second.root, "level.scm"}};
+
+    auto expected{base};
+    expected.child.count = 3;
+    expected.maybe.reset();
+    expected.enabled = false;
+    auto const result{apply_overrides(base, overrides)};
+    ASSERT_TRUE(result);
+    EXPECT_PRED_FORMAT2(structurally_equal, expected, *result);
+    EXPECT_PRED_FORMAT2(structurally_equal, original, base);
+
+    auto const unchanged{apply_overrides(base, {})};
+    ASSERT_TRUE(unchanged);
+    EXPECT_PRED_FORMAT2(structurally_equal, original, *unchanged);
+
+    auto invalid{
+        interpreter.evaluate_ast("'(:record :child (:child :count -1) :enabled #t)").value()};
+    Reader const invalid_reader{invalid};
+    auto const failed{apply_overrides(
+        base, {overrides[0], {invalid_reader, invalid.root, "broken.scm"}, overrides[1]})};
+    ASSERT_FALSE(failed);
+    ASSERT_EQ(failed.error().size(), 1u);
+    EXPECT_EQ(failed.error().front().node_path, "broken.scm.child.count");
+    EXPECT_PRED_FORMAT2(structurally_equal, original, base);
+}
+
 TEST(GeneratedS7Reader, UsesCompactMasksAndSupportsMoreThan64Fields) {
     enum class Small : std::uint8_t { Required, Optional, Count };
     static_assert(std::same_as<RecordMask<Small>, ioj::FieldMask<Small>>);
