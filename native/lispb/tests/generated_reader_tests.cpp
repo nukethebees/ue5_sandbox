@@ -71,21 +71,18 @@ TEST(GeneratedS7Reader, ConstrainedRecordsValidateAndOverrideAsWholeValues) {
     auto patch{
         override_source<RangeSettings>("'(:ranges :range (:range :minimum 20 :maximum 30))")};
     ASSERT_TRUE(patch);
-    target = *patch;
-    EXPECT_PRED_FORMAT2(structurally_equal, (RangeValue{20, 30}), target.range.get_ref());
-    EXPECT_TRUE(target.enabled);
+    RangeSettings expected{*Range::try_make({20, 30})};
+    EXPECT_PRED_FORMAT2(structurally_equal, expected, *patch);
 
-    auto omitted{override_source("'(:ranges :enabled #f)", target)};
+    auto omitted{override_source("'(:ranges :enabled #f)", *patch)};
     ASSERT_TRUE(omitted);
-    target = *omitted;
-    EXPECT_PRED_FORMAT2(
-        structurally_equal, (RangeSettings{*Range::try_make({20, 30}), false}), target);
+    expected.enabled = false;
+    EXPECT_PRED_FORMAT2(structurally_equal, expected, *omitted);
 
     auto defaults{
         override_source<RangeSettings>("'(:ranges :range (:range :minimum 0 :maximum 10))")};
     ASSERT_TRUE(defaults);
-    target = *defaults;
-    EXPECT_EQ(target.range, Range{});
+    EXPECT_PRED_FORMAT2(structurally_equal, RangeSettings{}, *defaults);
 
     auto missing{override_source<RangeSettings>("'(:ranges :range (:range :minimum 5))")};
     ASSERT_FALSE(missing);
@@ -148,7 +145,9 @@ TEST(GeneratedS7Reader, ReadsEmptyRecursiveAndCrossModuleRecords) {
     auto const dependency{
         read_source<ReaderDependency>(R"('(:dependent :child (:child :name "nested")))")};
     ASSERT_TRUE(dependency);
-    EXPECT_EQ(dependency->child.name.get_ref(), "nested");
+    EXPECT_PRED_FORMAT2(structurally_equal,
+                        (ReadableChild{.name = *ioj::NonEmptyString::try_make("nested")}),
+                        dependency->child);
 }
 
 TEST(GeneratedS7Reader, PreservesExactIntegerBounds) {
@@ -177,13 +176,14 @@ TEST(GeneratedS7Reader, ComposesRecordsContainersEnumsAndConstrainedValues) {
 }
 
 TEST(GeneratedS7Reader, PreservesDefaultsAndInclusiveConstraints) {
-    for (auto const scale : {"0.5", "5"}) {
+    for (auto const scale : {0.5f, 5.f}) {
         SCOPED_TRACE(scale);
         auto const result{read_record_source(
             std::format(R"('(:record :child (:child :name "root") :scale {}))", scale))};
         ASSERT_TRUE(result);
-        EXPECT_EQ(result->maybe, 7);
-        EXPECT_TRUE(result->values.empty());
+        ReadableRecord const expected{.child = {.name = *ioj::NonEmptyString::try_make("root")},
+                                      .scale = scale};
+        EXPECT_PRED_FORMAT2(structurally_equal, expected, *result);
     }
 }
 

@@ -225,10 +225,10 @@ TEST(NativeSettings, RecordTagsRegisterConstructorsWithoutHandwrittenBindings) {
     DefinitionReader const reader;
     auto const settings{reader.read_settings_source(source)};
     ASSERT_TRUE(settings) << format_diagnostics(settings.error());
-    settings::Presentation const expected{
-        .entity_overlay = {.enabled = false, .soft_target = {.opacity = 0.5f}},
-        .radar = {.combat_range = 150000}};
-    EXPECT_PRED_FORMAT2(structurally_equal, expected, settings->presentation);
+    settings::Settings const expected{
+        .presentation = {.entity_overlay = {.enabled = false, .soft_target = {.opacity = 0.5f}},
+                         .radar = {.combat_range = 150000}}};
+    EXPECT_PRED_FORMAT2(structurally_equal, expected, *settings);
 
     auto const ast{reader.read_source_ast(source)};
     ASSERT_TRUE(ast) << format_diagnostics(ast.error());
@@ -466,14 +466,12 @@ TEST(NativeLevelAuthoringReader, GeneratedRecordsCoexistWithMissionsAndSparseSet
             (objective :id 'wait :team 'blue :pass (time-elapsed 1)))))))")};
     ASSERT_TRUE(level) << format_diagnostics(level.error());
     std::optional<LevelCameraDefinition> const camera{{{EntityId{"capital"}}, {-1, 0, 1}, 1000}};
-    sim::OverlapResponseConfig const grid{.cell_size = {5000, 5000, 5000}};
+    settings::Settings const expected{.collision_grid = {.cell_size = {5000, 5000, 5000}}};
     EXPECT_PRED_FORMAT2(structurally_equal, camera, level->camera());
-    EXPECT_PRED_FORMAT2(structurally_equal, grid, level->settings().collision_grid);
+    EXPECT_PRED_FORMAT2(structurally_equal, expected, level->settings());
     ASSERT_TRUE(level->mission());
     ASSERT_EQ(level->mission()->objectives.size(), 1u);
     EXPECT_EQ(level->mission()->objectives.front().id, ObjectiveName{"wait"});
-    auto const& settings{level->settings()};
-    EXPECT_PRED_FORMAT2(structurally_equal, sim::FighterSimConfig{}, settings.fighters);
 }
 
 TEST(NativeLevelAuthoringReader, DecodesTypedInputsBeforeResolvingReferencesOrGeneratingIds) {
