@@ -511,51 +511,28 @@ TEST(SemanticTypeGraph, ResolvesStandaloneIntegerScalarWithoutPhysicalFacts) {
                           ? std::optional{graph.definition(node)}
                           : std::nullopt};
     ASSERT_TRUE(scalar.has_value());
-    EXPECT_FALSE(
-        graph.definitions()
-            .integer_scalars.signedness[graph.definitions().integer_scalars.index(*scalar)]);
-    EXPECT_EQ(
-        graph.definitions()
-            .integer_scalars.minimum_value[graph.definitions().integer_scalars.index(*scalar)],
-        lispb::codegen::PackedIntegerValue{0});
-    EXPECT_EQ(
-        graph.definitions()
-            .integer_scalars.maximum_value[graph.definitions().integer_scalars.index(*scalar)],
-        lispb::codegen::PackedIntegerValue{10});
-    EXPECT_TRUE(
-        graph.definitions()
-            .integer_scalars.bit_width_auto[graph.definitions().integer_scalars.index(*scalar)]);
-    EXPECT_EQ(graph.definitions()
-                  .integer_scalars.bit_width[graph.definitions().integer_scalars.index(*scalar)],
-              4U);
-    ASSERT_EQ(graph.definitions()
-                  .integer_scalars.named_codes[graph.definitions().integer_scalars.index(*scalar)]
-                  .size(),
-              2U);
-    EXPECT_TRUE(
-        storage.declarations.packed_named_codes
-            .sentinel[storage.declarations.packed_named_codes.index(storage.declarations.items(
-                graph.definitions().integer_scalars.named_codes
-                    [graph.definitions().integer_scalars.index(*scalar)])[1])]);
-    ASSERT_TRUE(lispb::schema::is_valid(
-        graph.definitions()
-            .integer_scalars.relationship[graph.definitions().integer_scalars.index(*scalar)]));
-    EXPECT_EQ(
-        graph.relationships().kind[graph.relationships().index(
-            graph.definitions()
-                .integer_scalars.relationship[graph.definitions().integer_scalars.index(*scalar)])],
-        lispb::codegen::SemanticRelationKind::offset_into);
-    EXPECT_EQ(
-        graph.relationships().unit[graph.relationships().index(
-            graph.definitions()
-                .integer_scalars.relationship[graph.definitions().integer_scalars.index(*scalar)])],
-        lispb::codegen::SemanticRelationUnit::bytes);
+    auto const& scalars{graph.definitions().integer_scalars};
+    auto const row{scalars.index(*scalar)};
+    auto const relationship{scalars.relationship[row]};
+    auto const& relationships{graph.relationships()};
+    auto const& occurrences{graph.occurrences()};
+
+    EXPECT_FALSE(scalars.signedness[row]);
+    EXPECT_EQ(scalars.minimum_value[row], lispb::codegen::PackedIntegerValue{0});
+    EXPECT_EQ(scalars.maximum_value[row], lispb::codegen::PackedIntegerValue{10});
+    EXPECT_TRUE(scalars.bit_width_auto[row]);
+    EXPECT_EQ(scalars.bit_width[row], 4U);
+    ASSERT_EQ(scalars.named_codes[row].size(), 2U);
+    EXPECT_TRUE(packed_named_codes.sentinel[declarations.items(scalars.named_codes[row])[1]]);
+    ASSERT_TRUE(lispb::schema::is_valid(relationship));
+    EXPECT_EQ(relationships.kind[relationships.index(relationship)],
+              lispb::codegen::SemanticRelationKind::offset_into);
+    EXPECT_EQ(relationships.unit[relationships.index(relationship)],
+              lispb::codegen::SemanticRelationUnit::bytes);
     auto const target{lispb::codegen::find_test_type(graph, "semantic_values", "EntityTable")};
     ASSERT_TRUE(target.has_value());
-    EXPECT_EQ(graph.occurrences().type[graph.occurrences().index(
-                  graph.relationships().target[graph.relationships().index(
-                      graph.definitions().integer_scalars.relationship
-                          [graph.definitions().integer_scalars.index(*scalar)])])],
+    EXPECT_EQ(occurrences
+                  .type[occurrences.index(relationships.target[relationships.index(relationship)])],
               *target);
     ASSERT_EQ(graph.dependencies_of(*scalar_id).size(), 1U);
     EXPECT_EQ(graph.dependencies_of(*scalar_id).front(), *target);
@@ -566,6 +543,8 @@ TEST(SemanticTypeGraph, ResolvesStandaloneIntegerScalarWithoutPhysicalFacts) {
 TEST(SemanticTypeGraph, RejectsIntegerScalarRelationshipToExternalLeaf) {
     lispb::codegen::CompilerTestContext context;
     [[maybe_unused]] auto& storage{context.storage};
+    auto& modules{storage.declarations.normal_modules};
+    auto& modules_settings{storage.declarations.module_settings_store};
     auto& integer_scalars{storage.declarations.integer_scalars};
     auto& semantic_relations{storage.declarations.semantic_relations};
     lispb::codegen::Manifest manifest{
@@ -576,31 +555,21 @@ TEST(SemanticTypeGraph, RejectsIntegerScalarRelationshipToExternalLeaf) {
               storage.cpp_types.add(
                   "project::ExternalTable",
                   {storage.cpp_types.dependency("project::ExternalTable", "ExternalTable.h")})}}),
-        context.storage.declarations,
+        storage.declarations,
         {[&] {
-            auto const new_normal_modules{context.storage.declarations.normal_modules.append()};
-            context.storage.declarations.normal_modules
-                .settings[context.storage.declarations.normal_modules.index(new_normal_modules)] =
-                [&] {
-                    auto const new_module_settings_store{
-                        context.storage.declarations.module_settings_store.append()};
-                    context.storage.declarations.module_settings_store
-                        .name[context.storage.declarations.module_settings_store.index(
-                            new_module_settings_store)] =
-                        context.storage.strings.intern("semantic_values");
-                    context.storage.declarations.module_settings_store
-                        .header[context.storage.declarations.module_settings_store.index(
-                            new_module_settings_store)] =
-                        context.storage.strings.intern("SemanticValues.h");
-                    context.storage.declarations.module_settings_store
-                        .namespace_name[context.storage.declarations.module_settings_store.index(
-                            new_module_settings_store)] = context.storage.strings.intern("project");
-                    return new_module_settings_store;
-                }();
-            context.storage.declarations.normal_modules
-                .declarations[context.storage.declarations.normal_modules.index(
-                    new_normal_modules)] =
-                context.storage.declarations.range<lispb::codegen::DeclarationHandle>({[&] {
+            auto const new_normal_modules{modules.append()};
+            modules.settings[new_normal_modules] = [&] {
+                auto const new_module_settings_store{modules_settings.append()};
+                modules_settings.name[new_module_settings_store] =
+                    storage.strings.intern("semantic_values");
+                modules_settings.header[new_module_settings_store] =
+                    storage.strings.intern("SemanticValues.h");
+                modules_settings.namespace_name[new_module_settings_store] =
+                    storage.strings.intern("project");
+                return new_module_settings_store;
+            }();
+            modules.declarations[new_normal_modules] =
+                storage.declarations.range<lispb::codegen::DeclarationHandle>({[&] {
                     auto const new_integer_scalars{integer_scalars.append()};
                     auto const new_integer_scalars_row{integer_scalars.index(new_integer_scalars)};
                     integer_scalars.name[new_integer_scalars_row] =

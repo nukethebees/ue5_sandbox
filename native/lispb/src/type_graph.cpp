@@ -859,62 +859,55 @@ class TypeGraphBuilder {
             auto const source{declaration};
             switch (source.kind()) {
                 case lispb::codegen::DeclarationKind::enumeration: {
+                    auto& enums{definitions.enums};
+                    auto const& schemas{store_.enums};
 
-                    auto const new_enums_3{definitions.enums.append()};
-                    definitions.enums.domain[definitions.enums.index(new_enums_3)] =
-                        graph_.enum_domains_.find(source);
-                    definitions.enums.underlying_type[definitions.enums.index(new_enums_3)] =
-                        store_.enums.underlying_type[source]
+                    auto const new_enums_3{enums.append()};
+
+                    auto const row{enums.index(new_enums_3)};
+                    enums.domain[row] = graph_.enum_domains_.find(source);
+                    enums.underlying_type[row] =
+                        schemas.underlying_type[source]
                             .transform([&](auto id) { return resolve_ref(id, module_id); })
                             .value_or(ResolvedOccurrenceId{});
-                    definitions.enums.bit_width[definitions.enums.index(new_enums_3)] =
-                        store_.enums.bit_width[source];
-                    definitions.enums.signedness[definitions.enums.index(new_enums_3)] =
-                        store_.enums.signedness[source];
-                    definitions.enums.count[definitions.enums.index(new_enums_3)] =
-                        store_.enums.count[source];
-                    definitions.enums.enum_array[definitions.enums.index(new_enums_3)] =
-                        store_.enums.enum_array[source];
+                    enums.bit_width[row] = schemas.bit_width[source];
+                    enums.signedness[row] = schemas.signedness[source];
+                    enums.count[row] = schemas.count[source];
+                    enums.enum_array[row] = schemas.enum_array[source];
                     return new_enums_3;
                 }
                 case lispb::codegen::DeclarationKind::integer_scalar: {
+                    auto const& schemas{store_.integer_scalars};
+                    auto const& codes{store_.packed_named_codes};
 
-                    auto minimum{store_.integer_scalars.minimum_value[source]};
-                    auto maximum{store_.integer_scalars.maximum_value[source]};
-                    for (auto const code_id :
-                         store_.items(store_.integer_scalars.named_codes[source])) {
+                    auto minimum{schemas.minimum_value[source]};
+                    auto maximum{schemas.maximum_value[source]};
+                    for (auto const code_id : store_.items(schemas.named_codes[source])) {
                         auto const code{code_id};
-                        if (codegen::packed_integer_less(store_.packed_named_codes.value[code],
-                                                         minimum)) {
-                            minimum = store_.packed_named_codes.value[code];
+                        if (codegen::packed_integer_less(codes.value[code], minimum)) {
+                            minimum = codes.value[code];
                         }
-                        if (codegen::packed_integer_less(maximum,
-                                                         store_.packed_named_codes.value[code])) {
-                            maximum = store_.packed_named_codes.value[code];
+                        if (codegen::packed_integer_less(maximum, codes.value[code])) {
+                            maximum = codes.value[code];
                         }
                     }
                     auto& scalars{definitions.integer_scalars};
                     auto const result{scalars.append()};
                     auto const scalar_index{scalars.index(result)};
-                    scalars.signedness[scalar_index] = store_.integer_scalars.signedness[source];
-                    scalars.minimum_value[scalar_index] =
-                        store_.integer_scalars.minimum_value[source];
-                    scalars.maximum_value[scalar_index] =
-                        store_.integer_scalars.maximum_value[source];
+                    scalars.signedness[scalar_index] = schemas.signedness[source];
+                    scalars.minimum_value[scalar_index] = schemas.minimum_value[source];
+                    scalars.maximum_value[scalar_index] = schemas.maximum_value[source];
                     scalars.bit_width[scalar_index] =
-                        store_.integer_scalars.bit_width[source].value_or(
-                            *codegen::minimum_packed_integer_bits(
-                                minimum, maximum, store_.integer_scalars.signedness[source]));
-                    scalars.bit_width_auto[scalar_index] =
-                        !store_.integer_scalars.bit_width[source];
-                    scalars.named_codes[scalar_index] = store_.integer_scalars.named_codes[source];
-                    scalars.relationship[scalar_index] = relationship(
-                        store_.integer_scalars.relationship[source], module_id, "Integer scalar");
-                    if (store_.integer_scalars.cpp_emission[source] ==
-                            codegen::IntegerScalarCppEmission::alias &&
-                        store_.integer_scalars.cpp_type[source]) {
+                        schemas.bit_width[source].value_or(*codegen::minimum_packed_integer_bits(
+                            minimum, maximum, schemas.signedness[source]));
+                    scalars.bit_width_auto[scalar_index] = !schemas.bit_width[source];
+                    scalars.named_codes[scalar_index] = schemas.named_codes[source];
+                    scalars.relationship[scalar_index] =
+                        relationship(schemas.relationship[source], module_id, "Integer scalar");
+                    if (schemas.cpp_emission[source] == codegen::IntegerScalarCppEmission::alias &&
+                        schemas.cpp_type[source]) {
                         scalars.cpp_representation[scalar_index] =
-                            resolve_ref(*store_.integer_scalars.cpp_type[source], module_id);
+                            resolve_ref(*schemas.cpp_type[source], module_id);
                     }
                     return result;
                 }
@@ -963,51 +956,39 @@ class TypeGraphBuilder {
                     return new_integer_varints_5;
                 }
                 case lispb::codegen::DeclarationKind::fixed_point: {
+                    auto& points{definitions.fixed_points};
+                    auto const& schemas{store_.fixed_points};
 
-                    auto const new_fixed_points_6{definitions.fixed_points.append()};
-                    definitions.fixed_points
-                        .signedness[definitions.fixed_points.index(new_fixed_points_6)] =
-                        store_.fixed_points.signedness[source];
-                    definitions.fixed_points
-                        .total_bits[definitions.fixed_points.index(new_fixed_points_6)] =
-                        store_.fixed_points.total_bits[source];
-                    definitions.fixed_points
-                        .fractional_bits[definitions.fixed_points.index(new_fixed_points_6)] =
-                        store_.fixed_points.fractional_bits[source];
-                    definitions.fixed_points
-                        .rounding[definitions.fixed_points.index(new_fixed_points_6)] =
-                        store_.fixed_points.rounding[source];
-                    definitions.fixed_points
-                        .minimum_raw_value[definitions.fixed_points.index(new_fixed_points_6)] =
-                        store_.fixed_points.minimum_value[source].transform([&](auto id) {
+                    auto const new_fixed_points_6{points.append()};
+
+                    auto const row{points.index(new_fixed_points_6)};
+                    points.signedness[row] = schemas.signedness[source];
+                    points.total_bits[row] = schemas.total_bits[source];
+                    points.fractional_bits[row] = schemas.fractional_bits[source];
+                    points.rounding[row] = schemas.rounding[source];
+                    points.minimum_raw_value[row] =
+                        schemas.minimum_value[source].transform([&](auto id) {
                             return *codegen::parse_fixed_point_value(
-                                store_.strings().view(id),
-                                store_.fixed_points.fractional_bits[source]);
+                                store_.strings().view(id), schemas.fractional_bits[source]);
                         });
-                    definitions.fixed_points
-                        .maximum_raw_value[definitions.fixed_points.index(new_fixed_points_6)] =
-                        store_.fixed_points.maximum_value[source].transform([&](auto id) {
+                    points.maximum_raw_value[row] =
+                        schemas.maximum_value[source].transform([&](auto id) {
                             return *codegen::parse_fixed_point_value(
-                                store_.strings().view(id),
-                                store_.fixed_points.fractional_bits[source]);
+                                store_.strings().view(id), schemas.fractional_bits[source]);
                         });
                     return new_fixed_points_6;
                 }
                 case lispb::codegen::DeclarationKind::mini_float: {
+                    auto& floats{definitions.mini_floats};
+                    auto const& schemas{store_.mini_floats};
 
-                    auto const new_mini_floats_7{definitions.mini_floats.append()};
-                    definitions.mini_floats
-                        .sign_bits[definitions.mini_floats.index(new_mini_floats_7)] =
-                        store_.mini_floats.sign_bits[source];
-                    definitions.mini_floats
-                        .exponent_bits[definitions.mini_floats.index(new_mini_floats_7)] =
-                        store_.mini_floats.exponent_bits[source];
-                    definitions.mini_floats
-                        .significand_bits[definitions.mini_floats.index(new_mini_floats_7)] =
-                        store_.mini_floats.significand_bits[source];
-                    definitions.mini_floats
-                        .exponent_bias[definitions.mini_floats.index(new_mini_floats_7)] =
-                        store_.mini_floats.exponent_bias[source];
+                    auto const new_mini_floats_7{floats.append()};
+
+                    auto const row{floats.index(new_mini_floats_7)};
+                    floats.sign_bits[row] = schemas.sign_bits[source];
+                    floats.exponent_bits[row] = schemas.exponent_bits[source];
+                    floats.significand_bits[row] = schemas.significand_bits[source];
+                    floats.exponent_bias[row] = schemas.exponent_bias[source];
                     return new_mini_floats_7;
                 }
                 case lispb::codegen::DeclarationKind::optional_sentinel: {
@@ -1084,6 +1065,9 @@ class TypeGraphBuilder {
                     return new_optional_presence_bits_9;
                 }
                 case lispb::codegen::DeclarationKind::packed_value: {
+                    auto& fields{definitions.packed_fields};
+                    auto const& schemas{store_.packed_fields};
+                    auto& packed{definitions.packed};
 
                     std::vector<PackedSegmentId> segments;
                     for (auto const segment_id :
@@ -1094,56 +1078,38 @@ class TypeGraphBuilder {
                                      : std::nullopt)}) {
                             auto const scalar{codegen::detail::find_packed_integer_domain(
                                 *value, graph_, module_id)};
-                            auto const new_packed_fields_10{definitions.packed_fields.append()};
-                            definitions.packed_fields
-                                .source[definitions.packed_fields.index(new_packed_fields_10)] =
-                                segment_id;
-                            definitions.packed_fields
-                                .name[definitions.packed_fields.index(new_packed_fields_10)] =
-                                store_.packed_fields.name[*value];
-                            definitions.packed_fields.semantic_type[definitions.packed_fields.index(
-                                new_packed_fields_10)] =
-                                resolve_ref(store_.packed_fields.type[*value], module_id);
-                            definitions.packed_fields
-                                .bit_width[definitions.packed_fields.index(new_packed_fields_10)] =
-                                static_cast<std::uint32_t>(
-                                    *codegen::detail::derive_packed_field_width(
-                                        *value, manifest_, graph_, module_id));
-                            definitions.packed_fields
-                                .bit_width_auto[definitions.packed_fields.index(
-                                    new_packed_fields_10)] = !store_.packed_fields.bits[*value];
-                            definitions.packed_fields
-                                .kind[definitions.packed_fields.index(new_packed_fields_10)] =
-                                store_.packed_fields.kind[*value];
-                            definitions.packed_fields.range_helper[definitions.packed_fields.index(
-                                new_packed_fields_10)] = store_.packed_fields.range_helper[*value];
-                            definitions.packed_fields.minimum_value[definitions.packed_fields.index(
-                                new_packed_fields_10)] =
+                            auto const new_packed_fields_10{fields.append()};
+                            auto const row{fields.index(new_packed_fields_10)};
+                            fields.source[row] = segment_id;
+                            fields.name[row] = schemas.name[*value];
+                            fields.semantic_type[row] =
+                                resolve_ref(schemas.type[*value], module_id);
+                            fields.bit_width[row] = static_cast<std::uint32_t>(
+                                *codegen::detail::derive_packed_field_width(
+                                    *value, manifest_, graph_, module_id));
+                            fields.bit_width_auto[row] = !schemas.bits[*value];
+                            fields.kind[row] = schemas.kind[*value];
+                            fields.range_helper[row] = schemas.range_helper[*value];
+                            fields.minimum_value[row] =
                                 scalar
                                     ? std::optional{definitions.integer_scalars
                                                         .minimum_value[definitions.integer_scalars
                                                                            .index(*scalar)]}
-                                    : store_.packed_fields.minimum_value[*value];
-                            definitions.packed_fields.maximum_value[definitions.packed_fields.index(
-                                new_packed_fields_10)] =
+                                    : schemas.minimum_value[*value];
+                            fields.maximum_value[row] =
                                 scalar
                                     ? std::optional{definitions.integer_scalars
                                                         .maximum_value[definitions.integer_scalars
                                                                            .index(*scalar)]}
-                                    : store_.packed_fields.maximum_value[*value];
-                            definitions.packed_fields.named_codes[definitions.packed_fields.index(
-                                new_packed_fields_10)] =
+                                    : schemas.maximum_value[*value];
+                            fields.named_codes[row] =
                                 scalar
                                     ? definitions.integer_scalars
                                           .named_codes[definitions.integer_scalars.index(*scalar)]
-                                    : store_.packed_fields.named_codes[*value];
-                            definitions.packed_fields.relationship[definitions.packed_fields.index(
-                                new_packed_fields_10)] =
-                                relationship(store_.packed_fields.relationship[*value],
-                                             module_id,
-                                             "Packed field");
-                            definitions.packed_fields.default_value[definitions.packed_fields.index(
-                                new_packed_fields_10)] = store_.packed_fields.default_value[*value];
+                                    : schemas.named_codes[*value];
+                            fields.relationship[row] = relationship(
+                                schemas.relationship[*value], module_id, "Packed field");
+                            fields.default_value[row] = schemas.default_value[*value];
                             segments.push_back(new_packed_fields_10);
                         } else {
                             auto const reserved{segment_id};
@@ -1161,44 +1127,35 @@ class TypeGraphBuilder {
                             segments.push_back(new_packed_reserved_bits_11);
                         }
                     }
-                    auto const new_packed_12{definitions.packed.append()};
-                    definitions.packed.storage_type[definitions.packed.index(new_packed_12)] =
+                    auto const new_packed_12{packed.append()};
+                    auto const row{packed.index(new_packed_12)};
+                    packed.storage_type[row] =
                         resolve_ref(store_.packed_values.storage_type[source], module_id);
-                    definitions.packed.set_segments(new_packed_12, segments);
-                    definitions.packed.invalid_raw_value[definitions.packed.index(new_packed_12)] =
-                        store_.packed_values.invalid_value[source];
-                    definitions.packed.byte_order[definitions.packed.index(new_packed_12)] =
-                        store_.packed_values.byte_order[source];
-                    definitions.packed.bit_order[definitions.packed.index(new_packed_12)] =
-                        store_.packed_values.bit_order[source].value_or(
-                            codegen::PackedBitOrder::least_significant_first);
-                    definitions.packed.default_raw_value[definitions.packed.index(new_packed_12)] =
+                    packed.set_segments(new_packed_12, segments);
+                    packed.invalid_raw_value[row] = store_.packed_values.invalid_value[source];
+                    packed.byte_order[row] = store_.packed_values.byte_order[source];
+                    packed.bit_order[row] = store_.packed_values.bit_order[source].value_or(
+                        codegen::PackedBitOrder::least_significant_first);
+                    packed.default_raw_value[row] =
                         codegen::detail::packed_default_value(source, manifest_, graph_, module_id);
                     return new_packed_12;
                 }
                 case lispb::codegen::DeclarationKind::record: {
+                    auto& member_definitions{definitions.record_members};
+                    auto const& schemas{store_.record_members};
 
                     std::vector<RecordMemberId> members;
                     for (auto const member_id : store_.items(store_.records.members[source])) {
                         auto const member{member_id};
-                        auto const new_record_members_13{definitions.record_members.append()};
-                        definitions.record_members
-                            .name[definitions.record_members.index(new_record_members_13)] =
-                            store_.record_members.name[member];
-                        definitions.record_members.semantic_type[definitions.record_members.index(
-                            new_record_members_13)] =
-                            resolve_ref(store_.record_members.type[member], module_id);
-                        definitions.record_members
-                            .count[definitions.record_members.index(new_record_members_13)] =
-                            store_.record_members.count[member];
-                        definitions.record_members
-                            .relationship[definitions.record_members.index(new_record_members_13)] =
-                            relationship(store_.record_members.relationship[member],
-                                         module_id,
-                                         "Record member");
-                        definitions.record_members
-                            .initializer[definitions.record_members.index(new_record_members_13)] =
-                            store_.record_members.initializer[member];
+                        auto const new_record_members_13{member_definitions.append()};
+                        auto const row{member_definitions.index(new_record_members_13)};
+                        member_definitions.name[row] = schemas.name[member];
+                        member_definitions.semantic_type[row] =
+                            resolve_ref(schemas.type[member], module_id);
+                        member_definitions.count[row] = schemas.count[member];
+                        member_definitions.relationship[row] =
+                            relationship(schemas.relationship[member], module_id, "Record member");
+                        member_definitions.initializer[row] = schemas.initializer[member];
                         members.push_back(new_record_members_13);
                     }
                     auto const new_records_14{definitions.records.append()};
@@ -1300,42 +1257,36 @@ class TypeGraphBuilder {
                     return new_tagged_unions_18;
                 }
                 case lispb::codegen::DeclarationKind::soa: {
+                    auto& column_definitions{definitions.soa_columns};
+                    auto const& members{store_.soa_members};
+                    auto& soas{definitions.soas};
 
                     std::vector<SoaColumnId> columns;
                     for (auto const member_id : store_.items(store_.soas.members[source])) {
                         auto const member{member_id};
-                        auto const resolved{
-                            resolve_ref(store_.soa_members.type[member], module_id)};
-                        auto const new_soa_columns_19{definitions.soa_columns.append()};
-                        definitions.soa_columns
-                            .source[definitions.soa_columns.index(new_soa_columns_19)] = member_id;
-                        definitions.soa_columns
-                            .name[definitions.soa_columns.index(new_soa_columns_19)] =
-                            store_.soa_members.name[member];
-                        definitions.soa_columns
-                            .semantic_type[definitions.soa_columns.index(new_soa_columns_19)] =
-                            resolved;
-                        definitions.soa_columns
-                            .kind[definitions.soa_columns.index(new_soa_columns_19)] =
-                            store_.soa_members.kind[member];
-                        definitions.soa_columns
-                            .relationship[definitions.soa_columns.index(new_soa_columns_19)] =
-                            relationship(store_.soa_members.relationship[member],
+                        auto const resolved{resolve_ref(members.type[member], module_id)};
+                        auto const new_soa_columns_19{column_definitions.append()};
+                        auto const row{column_definitions.index(new_soa_columns_19)};
+                        column_definitions.source[row] = member_id;
+                        column_definitions.name[row] = members.name[member];
+                        column_definitions.semantic_type[row] = resolved;
+                        column_definitions.kind[row] = members.kind[member];
+                        column_definitions.relationship[row] =
+                            relationship(members.relationship[member],
                                          module_id,
                                          "SOA '" + str(store_.soas.name[source]) + "' member '" +
-                                             str(store_.soa_members.name[member]) + "'");
+                                             str(members.name[member]) + "'");
                         columns.push_back(new_soa_columns_19);
                     }
-                    auto const new_soas_20{definitions.soas.append()};
-                    definitions.soas.set_columns(new_soas_20, columns);
-                    definitions.soas.equivalent_type[definitions.soas.index(new_soas_20)] =
+                    auto const new_soas_20{soas.append()};
+                    auto const row{soas.index(new_soas_20)};
+                    soas.set_columns(new_soas_20, columns);
+                    soas.equivalent_type[row] =
                         store_.soas.equivalent_type[source]
                             .transform([&](auto id) { return resolve_ref(id, module_id); })
                             .value_or(ResolvedOccurrenceId{});
-                    definitions.soas.layout_only[definitions.soas.index(new_soas_20)] =
-                        store_.soas.layout_only[source];
-                    definitions.soas.equivalent_constructor[definitions.soas.index(new_soas_20)] =
-                        store_.soas.equivalent_constructor[source];
+                    soas.layout_only[row] = store_.soas.layout_only[source];
+                    soas.equivalent_constructor[row] = store_.soas.equivalent_constructor[source];
                     return new_soas_20;
                 }
                 case lispb::codegen::DeclarationKind::static_table: {
@@ -1426,42 +1377,40 @@ class TypeGraphBuilder {
         }
         states[type.value] = 1;
         path.push_back(type);
+        auto const& occurrences{graph_.occurrences()};
+        auto const& definitions{graph_.definitions_};
+        auto const definition{graph_.definition(type)};
         auto follow = [&](ResolvedOccurrenceId const reference) {
-            if (graph_.occurrences().contains_value(reference)) {
+            if (occurrences.contains_value(reference)) {
                 validate_aggregate_cycle(
-                    graph_.occurrences().type[graph_.occurrences().index(reference)], states, path);
+                    occurrences.type[occurrences.index(reference)], states, path);
             }
         };
-        switch ((graph_.definition(type)).kind()) {
+        switch ((definition).kind()) {
             case lispb::schema::TypeDefinitionKind::record: {
-                for (auto const id :
-                     graph_.definitions_.records.members_of(graph_.definition(type))) {
-                    follow(graph_.definitions_.record_members
-                               .semantic_type[graph_.definitions_.record_members.index(id)]);
+                for (auto const id : definitions.records.members_of(definition)) {
+                    follow(definitions.record_members
+                               .semantic_type[definitions.record_members.index(id)]);
                 }
                 break;
             }
             case lispb::schema::TypeDefinitionKind::union_type: {
-                for (auto const id :
-                     graph_.definitions_.unions.alternatives_of(graph_.definition(type))) {
-                    follow(graph_.definitions_.union_alternatives
-                               .semantic_type[graph_.definitions_.union_alternatives.index(id)]);
+                for (auto const id : definitions.unions.alternatives_of(definition)) {
+                    follow(definitions.union_alternatives
+                               .semantic_type[definitions.union_alternatives.index(id)]);
                 }
                 break;
             }
             case lispb::schema::TypeDefinitionKind::tagged_union: {
-                for (auto const id :
-                     graph_.definitions_.tagged_unions.alternatives_of(graph_.definition(type))) {
-                    follow(graph_.definitions_.tagged_union_alternatives
-                               .semantic_type[graph_.definitions_.tagged_union_alternatives.index(
-                                   id)]);
+                for (auto const id : definitions.tagged_unions.alternatives_of(definition)) {
+                    follow(definitions.tagged_union_alternatives
+                               .semantic_type[definitions.tagged_union_alternatives.index(id)]);
                 }
                 break;
             }
             case lispb::schema::TypeDefinitionKind::static_table: {
                 auto const source{
-                    graph_.definitions_.static_tables
-                        .source[graph_.definitions_.static_tables.index(graph_.definition(type))]};
+                    definitions.static_tables.source[definitions.static_tables.index(definition)]};
                 for (auto const column : store_.items(store_.static_tables.columns[source])) {
                     follow(graph_.resolved(graph_.module(type),
                                            store_.static_table_columns.type[column]));
@@ -1487,22 +1436,25 @@ class TypeGraphBuilder {
     void build_edges() {
         std::vector<std::pair<TypeId, TypeId>> edges;
         auto const count{graph_.types().size()};
-        auto& definitions{graph_.definitions_};
+        auto const& definitions{graph_.definitions_};
+        auto const& occurrences{graph_.occurrences()};
+        auto const& relationships{graph_.relationships()};
         for (std::uint32_t index{}; index < count; ++index) {
             auto const owner{TypeId{index}};
+            auto const definition{graph_.definitions_ids_[index]};
             auto add = [&](TypeId const dependency) {
                 assert(lispb::schema::is_valid(dependency));
                 if (dependency != owner) {
                     edges.emplace_back(owner, dependency);
                 }
             };
-            switch ((graph_.definitions_ids_[index]).kind()) {
+            switch ((definition).kind()) {
                 case lispb::schema::TypeDefinitionKind::enumeration: {
-                    if (is_valid(definitions.enums.underlying_type[definitions.enums.index(
-                            graph_.definitions_ids_[index])])) {
-                        add(graph_.occurrences().type[graph_.occurrences().index(
-                            definitions.enums.underlying_type[definitions.enums.index(
-                                graph_.definitions_ids_[index])])]);
+                    if (is_valid(definitions.enums
+                                     .underlying_type[definitions.enums.index(definition)])) {
+                        add(occurrences.type[occurrences.index(
+                            definitions.enums
+                                .underlying_type[definitions.enums.index(definition)])]);
                     }
                     break;
                 }
@@ -1514,12 +1466,12 @@ class TypeGraphBuilder {
                     for (auto const column : store_.items(store_.static_tables.columns[source])) {
                         auto const occurrence{
                             graph_.resolved(module, store_.static_table_columns.type[column])};
-                        add(graph_.occurrences().type[graph_.occurrences().index(occurrence)]);
+                        add(occurrences.type[occurrences.index(occurrence)]);
                     }
                     for (auto const group : store_.items(store_.static_tables.groups[source])) {
                         auto const occurrence{
                             graph_.resolved(module, store_.static_table_groups.type[group])};
-                        add(graph_.occurrences().type[graph_.occurrences().index(occurrence)]);
+                        add(occurrences.type[occurrences.index(occurrence)]);
                     }
                     break;
                 }
@@ -1530,7 +1482,7 @@ class TypeGraphBuilder {
                     auto const module{graph_.module(owner)};
                     auto add_reference = [&](codegen::TypeRefId reference) {
                         auto const occurrence{graph_.resolved(module, reference)};
-                        add(graph_.occurrences().type[graph_.occurrences().index(occurrence)]);
+                        add(occurrences.type[occurrences.index(occurrence)]);
                     };
                     add_reference(store_.facades.target_type[source]);
                     for (auto const method : store_.items(store_.facades.methods[source])) {
@@ -1543,131 +1495,109 @@ class TypeGraphBuilder {
                     break;
                 }
                 case lispb::schema::TypeDefinitionKind::integer_scalar: {
-                    if (is_valid(definitions.integer_scalars
-                                     .cpp_representation[definitions.integer_scalars.index(
-                                         graph_.definitions_ids_[index])])) {
-                        add(graph_.occurrences().type[graph_.occurrences().index(
-                            definitions.integer_scalars
-                                .cpp_representation[definitions.integer_scalars.index(
-                                    graph_.definitions_ids_[index])])]);
+                    auto const& scalars{definitions.integer_scalars};
+                    if (is_valid(scalars.cpp_representation[scalars.index(definition)])) {
+                        add(occurrences.type[occurrences.index(
+                            scalars.cpp_representation[scalars.index(definition)])]);
                     }
-                    if (is_valid(definitions.integer_scalars
-                                     .relationship[definitions.integer_scalars.index(
-                                         graph_.definitions_ids_[index])])) {
-                        add(graph_.occurrences().type[graph_.occurrences().index(
-                            graph_.relationships().target[graph_.relationships().index(
-                                definitions.integer_scalars
-                                    .relationship[definitions.integer_scalars.index(
-                                        graph_.definitions_ids_[index])])])]);
+                    if (is_valid(scalars.relationship[scalars.index(definition)])) {
+                        add(occurrences
+                                .type[occurrences.index(relationships.target[relationships.index(
+                                    scalars.relationship[scalars.index(definition)])])]);
                     }
                     break;
                 }
                 case lispb::schema::TypeDefinitionKind::linear_quantized: {
-                    add(graph_.occurrences().type[graph_.occurrences().index(
-                        definitions.linear_quantized.source[definitions.linear_quantized.index(
-                            graph_.definitions_ids_[index])])]);
+                    add(occurrences.type[occurrences.index(
+                        definitions.linear_quantized
+                            .source[definitions.linear_quantized.index(definition)])]);
                     break;
                 }
                 case lispb::schema::TypeDefinitionKind::integer_varint: {
-                    add(graph_.occurrences().type[graph_.occurrences().index(
-                        definitions.integer_varints.source[definitions.integer_varints.index(
-                            graph_.definitions_ids_[index])])]);
+                    add(occurrences.type[occurrences.index(
+                        definitions.integer_varints
+                            .source[definitions.integer_varints.index(definition)])]);
                     break;
                 }
                 case lispb::schema::TypeDefinitionKind::optional_sentinel: {
-                    add(graph_.occurrences().type[graph_.occurrences().index(
-                        definitions.optional_sentinels.source[definitions.optional_sentinels.index(
-                            graph_.definitions_ids_[index])])]);
+                    add(occurrences.type[occurrences.index(
+                        definitions.optional_sentinels
+                            .source[definitions.optional_sentinels.index(definition)])]);
                     break;
                 }
                 case lispb::schema::TypeDefinitionKind::optional_presence_bit: {
-                    add(graph_.occurrences().type[graph_.occurrences().index(
+                    add(occurrences.type[occurrences.index(
                         definitions.optional_presence_bits
-                            .source[definitions.optional_presence_bits.index(
-                                graph_.definitions_ids_[index])])]);
+                            .source[definitions.optional_presence_bits.index(definition)])]);
                     break;
                 }
                 case lispb::schema::TypeDefinitionKind::packed: {
-                    add(graph_.occurrences().type[graph_.occurrences().index(
-                        definitions.packed.storage_type[definitions.packed.index(
-                            graph_.definitions_ids_[index])])]);
-                    for (auto const id :
-                         definitions.packed.segments_of(graph_.definitions_ids_[index])) {
+                    auto const& fields{definitions.packed_fields};
+                    add(occurrences.type[occurrences.index(
+                        definitions.packed.storage_type[definitions.packed.index(definition)])]);
+                    for (auto const id : definitions.packed.segments_of(definition)) {
                         if (auto const field{((id).kind() == lispb::schema::PackedSegmentKind::field
                                                   ? std::optional{id}
                                                   : std::nullopt)}) {
-                            add(graph_.occurrences().type[graph_.occurrences().index(
-                                definitions.packed_fields
-                                    .semantic_type[definitions.packed_fields.index(*field)])]);
-                            if (is_valid(
-                                    definitions.packed_fields
-                                        .relationship[definitions.packed_fields.index(*field)])) {
-                                add(graph_.occurrences().type[graph_.occurrences().index(
-                                    graph_.relationships().target[graph_.relationships().index(
-                                        definitions.packed_fields.relationship
-                                            [definitions.packed_fields.index(*field)])])]);
+                            add(occurrences.type[occurrences.index(
+                                fields.semantic_type[fields.index(*field)])]);
+                            if (is_valid(fields.relationship[fields.index(*field)])) {
+                                add(occurrences.type[occurrences.index(
+                                    relationships.target[relationships.index(
+                                        fields.relationship[fields.index(*field)])])]);
                             }
                         }
                     }
                     break;
                 }
                 case lispb::schema::TypeDefinitionKind::record: {
-                    for (auto const id :
-                         definitions.records.members_of(graph_.definitions_ids_[index])) {
+                    auto const& members{definitions.record_members};
+                    for (auto const id : definitions.records.members_of(definition)) {
                         auto const member{id};
-                        add(graph_.occurrences().type[graph_.occurrences().index(
-                            definitions.record_members
-                                .semantic_type[definitions.record_members.index(member)])]);
-                        if (is_valid(definitions.record_members
-                                         .relationship[definitions.record_members.index(member)])) {
-                            add(graph_.occurrences().type[graph_.occurrences().index(
-                                graph_.relationships().target[graph_.relationships().index(
-                                    definitions.record_members.relationship
-                                        [definitions.record_members.index(member)])])]);
+                        add(occurrences.type[occurrences.index(
+                            members.semantic_type[members.index(member)])]);
+                        if (is_valid(members.relationship[members.index(member)])) {
+                            add(occurrences.type[occurrences.index(
+                                relationships.target[relationships.index(
+                                    members.relationship[members.index(member)])])]);
                         }
                     }
                     break;
                 }
                 case lispb::schema::TypeDefinitionKind::union_type: {
-                    for (auto const id :
-                         definitions.unions.alternatives_of(graph_.definitions_ids_[index])) {
-                        add(graph_.occurrences().type[graph_.occurrences().index(
+                    for (auto const id : definitions.unions.alternatives_of(definition)) {
+                        add(occurrences.type[occurrences.index(
                             definitions.union_alternatives
                                 .semantic_type[definitions.union_alternatives.index(id)])]);
                     }
                     break;
                 }
                 case lispb::schema::TypeDefinitionKind::tagged_union: {
-                    add(graph_.occurrences().type[graph_.occurrences().index(
-                        definitions.tagged_unions.discriminant[definitions.tagged_unions.index(
-                            graph_.definitions_ids_[index])])]);
-                    for (auto const id : definitions.tagged_unions.alternatives_of(
-                             graph_.definitions_ids_[index])) {
-                        add(graph_.occurrences().type[graph_.occurrences().index(
+                    add(occurrences.type[occurrences.index(
+                        definitions.tagged_unions
+                            .discriminant[definitions.tagged_unions.index(definition)])]);
+                    for (auto const id : definitions.tagged_unions.alternatives_of(definition)) {
+                        add(occurrences.type[occurrences.index(
                             definitions.tagged_union_alternatives
                                 .semantic_type[definitions.tagged_union_alternatives.index(id)])]);
                     }
                     break;
                 }
                 case lispb::schema::TypeDefinitionKind::soa: {
-                    if (is_valid(definitions.soas.equivalent_type[definitions.soas.index(
-                            graph_.definitions_ids_[index])])) {
-                        add(graph_.occurrences().type[graph_.occurrences().index(
-                            definitions.soas.equivalent_type[definitions.soas.index(
-                                graph_.definitions_ids_[index])])]);
+                    auto const& columns{definitions.soa_columns};
+                    if (is_valid(
+                            definitions.soas.equivalent_type[definitions.soas.index(definition)])) {
+                        add(occurrences.type[occurrences.index(
+                            definitions.soas.equivalent_type[definitions.soas.index(definition)])]);
                     }
-                    for (auto const id :
-                         definitions.soas.columns_of(graph_.definitions_ids_[index])) {
+                    for (auto const id : definitions.soas.columns_of(definition)) {
                         auto const column{id};
-                        add(graph_.occurrences().type[graph_.occurrences().index(
-                            definitions.soa_columns
-                                .semantic_type[definitions.soa_columns.index(column)])]);
-                        if (is_valid(definitions.soa_columns
-                                         .relationship[definitions.soa_columns.index(column)])) {
-                            add(graph_.occurrences().type[graph_.occurrences().index(
-                                graph_.relationships().target[graph_.relationships().index(
-                                    definitions.soa_columns
-                                        .relationship[definitions.soa_columns.index(column)])])]);
+                        add(occurrences.type[occurrences.index(
+                            columns.semantic_type[columns.index(column)])]);
+                        if (is_valid(columns.relationship[columns.index(column)])) {
+                            add(occurrences.type[occurrences.index(
+                                relationships.target[relationships.index(
+                                    columns.relationship[columns.index(column)])])]);
                         }
                     }
                     break;
@@ -1681,11 +1611,9 @@ class TypeGraphBuilder {
                 graph_.role(use).category == codegen::TypeReferenceCategory::function &&
                 ((graph_.definition(*graph_.owner(use))).kind() ==
                  lispb::schema::TypeDefinitionKind::record) &&
-                graph_.occurrences().type[graph_.occurrences().index(graph_.target(use))] !=
-                    *graph_.owner(use)) {
-                edges.emplace_back(
-                    *graph_.owner(use),
-                    graph_.occurrences().type[graph_.occurrences().index(graph_.target(use))]);
+                occurrences.type[occurrences.index(graph_.target(use))] != *graph_.owner(use)) {
+                edges.emplace_back(*graph_.owner(use),
+                                   occurrences.type[occurrences.index(graph_.target(use))]);
             }
         }
         std::ranges::stable_sort(edges, {}, &std::pair<TypeId, TypeId>::first);

@@ -2416,6 +2416,10 @@ TEST(Validation, ValidatesFixedPointWidthsAndEmitsOnlyConfiguredHeader) {
 
 TEST(Validation, ValidatesMiniFloatEncodingAndEmitsNoPhysicalType) {
     CompilerTestContext context;
+    auto& declarations{context.storage.declarations};
+    auto& floats{declarations.mini_floats};
+    auto& points{declarations.fixed_points};
+    auto& modules{declarations.normal_modules};
     auto manifest{valid_mini_float_manifest(context)};
     auto lowered{lower_test_manifest(context, manifest)};
     ASSERT_EQ(lowered.size(), 1U);
@@ -2428,64 +2432,49 @@ TEST(Validation, ValidatesMiniFloatEncodingAndEmitsNoPhysicalType) {
 
     auto invalidate = [&](auto edit) {
         auto invalid{valid_mini_float_manifest(context)};
-        auto& declarations{context.storage.declarations};
-        auto const module{declarations.normal_modules.clone(invalid.modules.front())};
-        auto const original{declarations.items(declarations.normal_modules.declarations[module])};
+        auto const module{modules.clone(invalid.modules.front())};
+        auto const original{declarations.items(modules.declarations[module])};
         auto rows{std::vector(original.begin(), original.end())};
-        auto value{declarations.mini_floats.clone(rows.front())};
+        auto value{floats.clone(rows.front())};
         edit(value);
         rows.front() = value;
-        declarations.normal_modules.declarations[module] = declarations.range(rows);
+        modules.declarations[module] = declarations.range(rows);
         invalid.modules.front() = module;
         EXPECT_THROW(lower_test_manifest(context, invalid), std::invalid_argument);
     };
+    invalidate([&](lispb::codegen::DeclarationHandle& value) { floats.sign_bits[value] = 2; });
+    invalidate([&](lispb::codegen::DeclarationHandle& value) { floats.exponent_bits[value] = 1; });
+    invalidate([&](lispb::codegen::DeclarationHandle& value) { floats.exponent_bits[value] = 16; });
+    invalidate(
+        [&](lispb::codegen::DeclarationHandle& value) { floats.significand_bits[value] = 63; });
     invalidate([&](lispb::codegen::DeclarationHandle& value) {
-        context.storage.declarations.mini_floats.sign_bits[value] = 2;
+        floats.exponent_bits[value] = 15;
+        floats.significand_bits[value] = 49;
     });
-    invalidate([&](lispb::codegen::DeclarationHandle& value) {
-        context.storage.declarations.mini_floats.exponent_bits[value] = 1;
-    });
-    invalidate([&](lispb::codegen::DeclarationHandle& value) {
-        context.storage.declarations.mini_floats.exponent_bits[value] = 16;
-    });
-    invalidate([&](lispb::codegen::DeclarationHandle& value) {
-        context.storage.declarations.mini_floats.significand_bits[value] = 63;
-    });
-    invalidate([&](lispb::codegen::DeclarationHandle& value) {
-        context.storage.declarations.mini_floats.exponent_bits[value] = 15;
-        context.storage.declarations.mini_floats.significand_bits[value] = 49;
-    });
-    invalidate([&](lispb::codegen::DeclarationHandle& value) {
-        context.storage.declarations.mini_floats.exponent_bias[value] = -32'769;
-    });
-    invalidate([&](lispb::codegen::DeclarationHandle& value) {
-        context.storage.declarations.mini_floats.exponent_bias[value] = 32'768;
-    });
+    invalidate(
+        [&](lispb::codegen::DeclarationHandle& value) { floats.exponent_bias[value] = -32'769; });
+    invalidate(
+        [&](lispb::codegen::DeclarationHandle& value) { floats.exponent_bias[value] = 32'768; });
 
     manifest = valid_mini_float_manifest(context);
 
     manifest.modules.front() = [&] {
-        auto row_0{context.storage.declarations.normal_modules.clone(manifest.modules.front())};
-        context.storage.declarations.normal_modules.declarations[row_0] = [&] {
-            auto const original_items{context.storage.declarations.items(
-                context.storage.declarations.normal_modules.declarations[row_0])};
+        auto row_0{modules.clone(manifest.modules.front())};
+        modules.declarations[row_0] = [&] {
+            auto const original_items{declarations.items(modules.declarations[row_0])};
             auto rows{std::vector(original_items.begin(), original_items.end())};
             rows.push_back([&] {
-                auto const new_fixed_points{context.storage.declarations.fixed_points.append()};
-                context.storage.declarations.fixed_points.name[new_fixed_points] =
-                    context.storage.declarations.mini_floats
-                        .name[context.storage.declarations
-                                  .items(context.storage.declarations.normal_modules
-                                             .declarations[manifest.modules.front()])
-                                  .front()];
-                context.storage.declarations.fixed_points.signedness[new_fixed_points] = true;
-                context.storage.declarations.fixed_points.total_bits[new_fixed_points] = 16;
-                context.storage.declarations.fixed_points.fractional_bits[new_fixed_points] = 4;
-                context.storage.declarations.fixed_points.rounding[new_fixed_points] =
-                    FixedPointRounding::nearest_even;
+                auto const new_fixed_points{points.append()};
+                points.name[new_fixed_points] =
+                    floats.name[declarations.items(modules.declarations[manifest.modules.front()])
+                                    .front()];
+                points.signedness[new_fixed_points] = true;
+                points.total_bits[new_fixed_points] = 16;
+                points.fractional_bits[new_fixed_points] = 4;
+                points.rounding[new_fixed_points] = FixedPointRounding::nearest_even;
                 return new_fixed_points;
             }());
-            return context.storage.declarations.range(rows);
+            return declarations.range(rows);
         }();
         return row_0;
     }();
