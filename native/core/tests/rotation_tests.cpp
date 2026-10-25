@@ -21,15 +21,6 @@ struct RotateCase {
     float expected;
 };
 
-void expect_normalised_rotation(RotateCase const& test_case) {
-    float const current[]{test_case.current};
-    float const target[]{test_case.target};
-    float out[]{999.0f};
-    ioj::kernel::rotate_towards_1d_degrees_normalised(
-        current, target, test_case.speed, test_case.delta_time, out, 1);
-    EXPECT_EQ(out[0], test_case.expected);
-}
-
 template <std::floating_point T>
 void expect_desired_yaws() {
     constexpr auto pi{std::numbers::pi_v<T>};
@@ -63,72 +54,85 @@ void expect_desired_yaws() {
 }
 }
 
-TEST(NativeCoreRotation, ComputesShortestSignedAngleDelta) {
-    constexpr AngleDeltaCase cases[]{
-        {0.0f, 0.0f, 0.0f},        {90.0f, 90.0f, 0.0f},     {360.0f, 0.0f, 0.0f},
-        {0.0f, 10.0f, 10.0f},      {45.0f, 90.0f, 45.0f},    {270.0f, 315.0f, 45.0f},
-        {10.0f, 0.0f, -10.0f},     {90.0f, 45.0f, -45.0f},   {315.0f, 270.0f, -45.0f},
-        {350.0f, 10.0f, 20.0f},    {10.0f, 350.0f, -20.0f},  {359.0f, 1.0f, 2.0f},
-        {1.0f, 359.0f, -2.0f},     {-10.0f, 10.0f, 20.0f},   {10.0f, -10.0f, -20.0f},
-        {-350.0f, -10.0f, -20.0f}, {-10.0f, -350.0f, 20.0f}, {0.0f, 370.0f, 10.0f},
-        {370.0f, 0.0f, -10.0f},    {720.0f, 90.0f, 90.0f},   {-720.0f, -90.0f, -90.0f},
-        {0.0f, 180.0f, -180.0f},   {180.0f, 0.0f, -180.0f},  {90.0f, 270.0f, -180.0f},
-        {270.0f, 90.0f, -180.0f},
-    };
+using SignedAngleDelta = testing::TestWithParam<AngleDeltaCase>;
 
-    for (auto const& test_case : cases) {
-        EXPECT_EQ(ioj::shortest_signed_angle_delta_degrees(test_case.current, test_case.target),
-                  test_case.expected);
-    }
+TEST_P(SignedAngleDelta, ComputesShortestSignedAngleDelta) {
+    auto const test{GetParam()};
+    EXPECT_EQ(ioj::shortest_signed_angle_delta_degrees(test.current, test.target), test.expected);
+}
 
+constexpr AngleDeltaCase signed_angle_cases[]{
+    {0.0f, 0.0f, 0.0f},        {90.0f, 90.0f, 0.0f},     {360.0f, 0.0f, 0.0f},
+    {0.0f, 10.0f, 10.0f},      {45.0f, 90.0f, 45.0f},    {270.0f, 315.0f, 45.0f},
+    {10.0f, 0.0f, -10.0f},     {90.0f, 45.0f, -45.0f},   {315.0f, 270.0f, -45.0f},
+    {350.0f, 10.0f, 20.0f},    {10.0f, 350.0f, -20.0f},  {359.0f, 1.0f, 2.0f},
+    {1.0f, 359.0f, -2.0f},     {-10.0f, 10.0f, 20.0f},   {10.0f, -10.0f, -20.0f},
+    {-350.0f, -10.0f, -20.0f}, {-10.0f, -350.0f, 20.0f}, {0.0f, 370.0f, 10.0f},
+    {370.0f, 0.0f, -10.0f},    {720.0f, 90.0f, 90.0f},   {-720.0f, -90.0f, -90.0f},
+    {0.0f, 180.0f, -180.0f},   {180.0f, 0.0f, -180.0f},  {90.0f, 270.0f, -180.0f},
+    {270.0f, 90.0f, -180.0f},
+};
+INSTANTIATE_TEST_SUITE_P(NativeCoreRotation,
+                         SignedAngleDelta,
+                         testing::ValuesIn(signed_angle_cases));
+
+TEST(NativeCoreRotation, ComputesDoubleShortestSignedAngleDelta) {
     EXPECT_EQ(ioj::shortest_signed_angle_delta_degrees(350.0, 10.0), 20.0);
 }
 
-TEST(NativeCoreRotation, ComputesNormalisedShortestDelta) {
-    constexpr AngleDeltaCase cases[]{
-        {0.0f, 0.0f, 0.0f},       {90.0f, 90.0f, 0.0f},     {359.0f, 359.0f, 0.0f},
-        {0.0f, 10.0f, 10.0f},     {90.0f, 135.0f, 45.0f},   {270.0f, 315.0f, 45.0f},
-        {10.0f, 0.0f, -10.0f},    {135.0f, 90.0f, -45.0f},  {315.0f, 270.0f, -45.0f},
-        {0.0f, 270.0f, -90.0f},   {10.0f, 350.0f, -20.0f},  {45.0f, 315.0f, -90.0f},
-        {270.0f, 0.0f, 90.0f},    {350.0f, 10.0f, 20.0f},   {315.0f, 45.0f, 90.0f},
-        {0.0f, 180.0f, -180.0f},  {90.0f, 270.0f, -180.0f}, {180.0f, 0.0f, -180.0f},
-        {270.0f, 90.0f, -180.0f}, {359.0f, 1.0f, 2.0f},     {1.0f, 359.0f, -2.0f},
-        {355.0f, 5.0f, 10.0f},    {5.0f, 355.0f, -10.0f},   {0.0f, 360.0f, 0.0f},
-        {360.0f, 0.0f, 0.0f},
-    };
+using NormalisedAngleDelta = testing::TestWithParam<AngleDeltaCase>;
 
-    for (auto const& test_case : cases) {
-        EXPECT_EQ(ioj::shortest_signed_angle_delta_degrees_normalised(test_case.current,
-                                                                      test_case.target),
-                  test_case.expected);
-    }
+TEST_P(NormalisedAngleDelta, ComputesNormalisedShortestDelta) {
+    auto const test{GetParam()};
+    EXPECT_EQ(ioj::shortest_signed_angle_delta_degrees_normalised(test.current, test.target),
+              test.expected);
 }
 
-TEST(NativeCoreRotation, RotatesTowardsUnnormalisedAngles) {
-    constexpr RotateCase cases[]{
-        {0.0f, 0.0f, 90.0f, 1.0f, 0.0f},
-        {90.0f, 90.0f, 90.0f, 1.0f, 90.0f},
-        {360.0f, 0.0f, 90.0f, 1.0f, 360.0f},
-        {0.0f, 90.0f, 30.0f, 1.0f, 30.0f},
-        {90.0f, 0.0f, 30.0f, 1.0f, 60.0f},
-        {0.0f, 20.0f, 90.0f, 1.0f, 20.0f},
-        {20.0f, 0.0f, 90.0f, 1.0f, 0.0f},
-        {350.0f, 10.0f, 5.0f, 1.0f, 355.0f},
-        {10.0f, 350.0f, 5.0f, 1.0f, 5.0f},
-        {350.0f, 10.0f, 90.0f, 1.0f, 10.0f},
-        {10.0f, 350.0f, 90.0f, 1.0f, 350.0f},
-        {0.0f, 90.0f, 60.0f, 0.5f, 30.0f},
-    };
+constexpr AngleDeltaCase normalised_angle_cases[]{
+    {0.0f, 0.0f, 0.0f},       {90.0f, 90.0f, 0.0f},     {359.0f, 359.0f, 0.0f},
+    {0.0f, 10.0f, 10.0f},     {90.0f, 135.0f, 45.0f},   {270.0f, 315.0f, 45.0f},
+    {10.0f, 0.0f, -10.0f},    {135.0f, 90.0f, -45.0f},  {315.0f, 270.0f, -45.0f},
+    {0.0f, 270.0f, -90.0f},   {10.0f, 350.0f, -20.0f},  {45.0f, 315.0f, -90.0f},
+    {270.0f, 0.0f, 90.0f},    {350.0f, 10.0f, 20.0f},   {315.0f, 45.0f, 90.0f},
+    {0.0f, 180.0f, -180.0f},  {90.0f, 270.0f, -180.0f}, {180.0f, 0.0f, -180.0f},
+    {270.0f, 90.0f, -180.0f}, {359.0f, 1.0f, 2.0f},     {1.0f, 359.0f, -2.0f},
+    {355.0f, 5.0f, 10.0f},    {5.0f, 355.0f, -10.0f},   {0.0f, 360.0f, 0.0f},
+    {360.0f, 0.0f, 0.0f},
+};
+INSTANTIATE_TEST_SUITE_P(NativeCoreRotation,
+                         NormalisedAngleDelta,
+                         testing::ValuesIn(normalised_angle_cases));
 
-    for (auto const& test_case : cases) {
-        float const current[]{test_case.current};
-        float const target[]{test_case.target};
-        float out[]{-1.0f};
-        ioj::kernel::rotate_towards_1d_degrees(
-            current, target, test_case.speed, test_case.delta_time, out, 1);
-        EXPECT_EQ(out[0], test_case.expected);
-    }
+using UnnormalisedRotation = testing::TestWithParam<RotateCase>;
 
+TEST_P(UnnormalisedRotation, RotatesTowardsUnnormalisedAngles) {
+    auto const test{GetParam()};
+    float const current[]{test.current};
+    float const target[]{test.target};
+    float out[]{-1.0f};
+    ioj::kernel::rotate_towards_1d_degrees(current, target, test.speed, test.delta_time, out, 1);
+    EXPECT_EQ(out[0], test.expected);
+}
+
+constexpr RotateCase unnormalised_rotation_cases[]{
+    {0.0f, 0.0f, 90.0f, 1.0f, 0.0f},
+    {90.0f, 90.0f, 90.0f, 1.0f, 90.0f},
+    {360.0f, 0.0f, 90.0f, 1.0f, 360.0f},
+    {0.0f, 90.0f, 30.0f, 1.0f, 30.0f},
+    {90.0f, 0.0f, 30.0f, 1.0f, 60.0f},
+    {0.0f, 20.0f, 90.0f, 1.0f, 20.0f},
+    {20.0f, 0.0f, 90.0f, 1.0f, 0.0f},
+    {350.0f, 10.0f, 5.0f, 1.0f, 355.0f},
+    {10.0f, 350.0f, 5.0f, 1.0f, 5.0f},
+    {350.0f, 10.0f, 90.0f, 1.0f, 10.0f},
+    {10.0f, 350.0f, 90.0f, 1.0f, 350.0f},
+    {0.0f, 90.0f, 60.0f, 0.5f, 30.0f},
+};
+INSTANTIATE_TEST_SUITE_P(NativeCoreRotation,
+                         UnnormalisedRotation,
+                         testing::ValuesIn(unnormalised_rotation_cases));
+
+TEST(NativeCoreRotation, RotatesUnnormalisedBatch) {
     std::array<float, 4> const current{0.0f, 90.0f, 350.0f, 10.0f};
     std::array<float, 4> const target{90.0f, 0.0f, 10.0f, 350.0f};
     std::array<float, 4> out{};
@@ -139,29 +143,38 @@ TEST(NativeCoreRotation, RotatesTowardsUnnormalisedAngles) {
     EXPECT_EQ(out, (std::array<float, 4>{30.0f, 60.0f, 10.0f, 350.0f}));
 }
 
-TEST(NativeCoreRotation, RotatesTowardsNormalisedAngles) {
-    constexpr RotateCase cases[]{
-        {0.0f, 0.0f, 90.0f, 1.0f, 0.0f},         {90.0f, 90.0f, 90.0f, 1.0f, 90.0f},
-        {-90.0f, -90.0f, 90.0f, 1.0f, -90.0f},   {-180.0f, -180.0f, 90.0f, 1.0f, -180.0f},
-        {0.0f, 90.0f, 30.0f, 1.0f, 30.0f},       {10.0f, 100.0f, 20.0f, 2.0f, 50.0f},
-        {-90.0f, 0.0f, 45.0f, 1.0f, -45.0f},     {90.0f, 0.0f, 30.0f, 1.0f, 60.0f},
-        {100.0f, 10.0f, 20.0f, 2.0f, 60.0f},     {0.0f, -90.0f, 45.0f, 1.0f, -45.0f},
-        {0.0f, 10.0f, 90.0f, 1.0f, 10.0f},       {0.0f, -10.0f, 90.0f, 1.0f, -10.0f},
-        {45.0f, 50.0f, 10.0f, 1.0f, 50.0f},      {45.0f, 40.0f, 10.0f, 1.0f, 40.0f},
-        {170.0f, -170.0f, 5.0f, 1.0f, 175.0f},   {175.0f, -170.0f, 10.0f, 1.0f, -175.0f},
-        {179.0f, -179.0f, 1.0f, 1.0f, -180.0f},  {-170.0f, 170.0f, 5.0f, 1.0f, -175.0f},
-        {-175.0f, 170.0f, 10.0f, 1.0f, 175.0f},  {-179.0f, 179.0f, 1.0f, 1.0f, -180.0f},
-        {170.0f, -170.0f, 90.0f, 1.0f, -170.0f}, {-170.0f, 170.0f, 90.0f, 1.0f, 170.0f},
-        {179.0f, -179.0f, 90.0f, 1.0f, -179.0f}, {-179.0f, 179.0f, 90.0f, 1.0f, 179.0f},
-        {0.0f, 90.0f, 0.0f, 1.0f, 0.0f},         {90.0f, 0.0f, 0.0f, 1.0f, 90.0f},
-        {170.0f, -170.0f, 0.0f, 1.0f, 170.0f},   {0.0f, 90.0f, 90.0f, 0.0f, 0.0f},
-        {90.0f, 0.0f, 90.0f, 0.0f, 90.0f},       {-170.0f, 170.0f, 90.0f, 0.0f, -170.0f},
-    };
+using NormalisedRotation = testing::TestWithParam<RotateCase>;
 
-    for (auto const& test_case : cases) {
-        expect_normalised_rotation(test_case);
-    }
+TEST_P(NormalisedRotation, RotatesTowardsNormalisedAngles) {
+    auto const test{GetParam()};
+    float const current[]{test.current};
+    float const target[]{test.target};
+    float out[]{999.0f};
+    ioj::kernel::rotate_towards_1d_degrees_normalised(
+        current, target, test.speed, test.delta_time, out, 1);
+    EXPECT_EQ(out[0], test.expected);
 }
+
+constexpr RotateCase normalised_rotation_cases[]{
+    {0.0f, 0.0f, 90.0f, 1.0f, 0.0f},         {90.0f, 90.0f, 90.0f, 1.0f, 90.0f},
+    {-90.0f, -90.0f, 90.0f, 1.0f, -90.0f},   {-180.0f, -180.0f, 90.0f, 1.0f, -180.0f},
+    {0.0f, 90.0f, 30.0f, 1.0f, 30.0f},       {10.0f, 100.0f, 20.0f, 2.0f, 50.0f},
+    {-90.0f, 0.0f, 45.0f, 1.0f, -45.0f},     {90.0f, 0.0f, 30.0f, 1.0f, 60.0f},
+    {100.0f, 10.0f, 20.0f, 2.0f, 60.0f},     {0.0f, -90.0f, 45.0f, 1.0f, -45.0f},
+    {0.0f, 10.0f, 90.0f, 1.0f, 10.0f},       {0.0f, -10.0f, 90.0f, 1.0f, -10.0f},
+    {45.0f, 50.0f, 10.0f, 1.0f, 50.0f},      {45.0f, 40.0f, 10.0f, 1.0f, 40.0f},
+    {170.0f, -170.0f, 5.0f, 1.0f, 175.0f},   {175.0f, -170.0f, 10.0f, 1.0f, -175.0f},
+    {179.0f, -179.0f, 1.0f, 1.0f, -180.0f},  {-170.0f, 170.0f, 5.0f, 1.0f, -175.0f},
+    {-175.0f, 170.0f, 10.0f, 1.0f, 175.0f},  {-179.0f, 179.0f, 1.0f, 1.0f, -180.0f},
+    {170.0f, -170.0f, 90.0f, 1.0f, -170.0f}, {-170.0f, 170.0f, 90.0f, 1.0f, 170.0f},
+    {179.0f, -179.0f, 90.0f, 1.0f, -179.0f}, {-179.0f, 179.0f, 90.0f, 1.0f, 179.0f},
+    {0.0f, 90.0f, 0.0f, 1.0f, 0.0f},         {90.0f, 0.0f, 0.0f, 1.0f, 90.0f},
+    {170.0f, -170.0f, 0.0f, 1.0f, 170.0f},   {0.0f, 90.0f, 90.0f, 0.0f, 0.0f},
+    {90.0f, 0.0f, 90.0f, 0.0f, 90.0f},       {-170.0f, 170.0f, 90.0f, 0.0f, -170.0f},
+};
+INSTANTIATE_TEST_SUITE_P(NativeCoreRotation,
+                         NormalisedRotation,
+                         testing::ValuesIn(normalised_rotation_cases));
 
 TEST(NativeCoreRotation, SupportsInPlaceAndZeroCount) {
     std::array<float, 4> current{0.0f, 90.0f, 170.0f, -170.0f};

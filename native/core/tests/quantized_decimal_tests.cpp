@@ -76,21 +76,25 @@ TEST(NativeCoreQuantizedDecimal, DefaultValueAndDecimalPlaceCounts) {
     EXPECT_EQ(ThreePlaceDecimal{17.425}.fraction(), 425);
 }
 
-TEST(NativeCoreQuantizedDecimal, SaturatesAndHandlesNonFiniteInput) {
-    SmallDecimal const minimum{-128.0};
-    SmallDecimal const maximum{127.99};
-    SmallDecimal const below_minimum{-1000.0};
-    SmallDecimal const above_maximum{1000.0};
-    SmallDecimal const positive_infinity{std::numeric_limits<double>::infinity()};
-    SmallDecimal const negative_infinity{-std::numeric_limits<double>::infinity()};
-    SmallDecimal const nan{std::numeric_limits<double>::quiet_NaN()};
+using DecimalSaturation = testing::TestWithParam<DecimalCase>;
 
-    EXPECT_EQ(below_minimum, minimum);
-    EXPECT_EQ(above_maximum, maximum);
-    EXPECT_EQ(positive_infinity, maximum);
-    EXPECT_EQ(negative_infinity, minimum);
-    EXPECT_EQ(nan, SmallDecimal{});
+TEST_P(DecimalSaturation, SaturatesAndHandlesNonFiniteInput) {
+    auto const& test{GetParam()};
+    SmallDecimal const value{test.input};
+    EXPECT_EQ(value.integer(), test.integer);
+    EXPECT_EQ(value.fraction(), test.fraction);
 }
+
+constexpr DecimalCase saturation_cases[]{
+    {"BelowMinimum", -1000, -128, 0},
+    {"AboveMaximum", 1000, 127, 99},
+    {"PositiveInfinity", std::numeric_limits<double>::infinity(), 127, 99},
+    {"NegativeInfinity", -std::numeric_limits<double>::infinity(), -128, 0},
+    {"NotANumber", std::numeric_limits<double>::quiet_NaN(), 0, 0}};
+INSTANTIATE_TEST_SUITE_P(NativeCoreQuantizedDecimal,
+                         DecimalSaturation,
+                         testing::ValuesIn(saturation_cases),
+                         [](auto const& info) { return info.param.name; });
 
 TEST(NativeCoreQuantizedDecimal, RoundTripsWithinQuantizationError) {
     constexpr double values[]{-127.994, -17.426, -0.125, 0.0, 0.125, 17.426, 127.984};

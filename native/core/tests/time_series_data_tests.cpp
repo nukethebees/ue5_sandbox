@@ -36,20 +36,29 @@ TEST(TimeSeriesData, ForwardsMoveOnlyValues) {
     EXPECT_EQ(*data.value_at(0), 42);
 }
 
-TEST(TimeSeriesData, FindsNearestValueAndResolvesTiesEarlier) {
+struct NearestTimeCase {
+    std::uint64_t query;
+    std::int32_t index;
+    std::uint64_t time;
+    std::int32_t value;
+};
+using NearestTime = testing::TestWithParam<NearestTimeCase>;
+
+TEST_P(NearestTime, FindsNearestValueAndResolvesTiesEarlier) {
     ioj::XYSeriesData<std::uint64_t, std::int32_t> data;
     data.add(10, 100);
     data.add(20, 200);
     data.add(40, 400);
 
-    EXPECT_EQ(data.nearest_index(0), 0);
-    EXPECT_EQ(data.nearest_index(13), 0);
-    EXPECT_EQ(data.nearest_index(15), 0);
-    EXPECT_EQ(data.nearest_index(18), 1);
-    EXPECT_EQ(data.nearest_index(50), 2);
-    EXPECT_EQ(data.nearest_value(18), 200);
-    EXPECT_EQ(data.nearest_time(18), 20);
+    auto const test{GetParam()};
+    EXPECT_EQ(data.nearest_index(test.query), test.index);
+    EXPECT_EQ(data.nearest_time(test.query), test.time);
+    EXPECT_EQ(data.nearest_value(test.query), test.value);
 }
+
+constexpr NearestTimeCase nearest_time_cases[]{
+    {0, 0, 10, 100}, {13, 0, 10, 100}, {15, 0, 10, 100}, {18, 1, 20, 200}, {50, 2, 40, 400}};
+INSTANTIATE_TEST_SUITE_P(TimeSeriesData, NearestTime, testing::ValuesIn(nearest_time_cases));
 
 TEST(TimeSeriesData, ReportsCapacityAndAllocatedBytes) {
     ioj::TimeSeriesData<std::int32_t> data;

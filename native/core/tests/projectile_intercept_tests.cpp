@@ -1,9 +1,9 @@
 #include <ioj/projectile_intercept.h>
+#include <ioj/vector_value_math.h>
 
 #include <gtest/gtest.h>
 
 #include <array>
-#include <cmath>
 #include <cstdint>
 
 namespace {
@@ -15,21 +15,9 @@ struct InterceptCase {
     float expected_time;
 };
 
-constexpr auto v3(float const x, float const y, float const z) noexcept -> ioj::Vector3f {
-    return ioj::Vector3f{x, y, z};
-}
-
 void expect_intercept_geometry(InterceptCase const& test_case, float const intercept_time) {
-    auto const target_x{test_case.target_position.x() +
-                        test_case.target_velocity.x() * intercept_time};
-    auto const target_y{test_case.target_position.y() +
-                        test_case.target_velocity.y() * intercept_time};
-    auto const target_z{test_case.target_position.z() +
-                        test_case.target_velocity.z() * intercept_time};
-    auto const dx{target_x - test_case.shooter_position.x()};
-    auto const dy{target_y - test_case.shooter_position.y()};
-    auto const dz{target_z - test_case.shooter_position.z()};
-    auto const target_distance{std::sqrt(dx * dx + dy * dy + dz * dz)};
+    auto const target{test_case.target_position + test_case.target_velocity * intercept_time};
+    auto const target_distance{ioj::size(target - test_case.shooter_position)};
     EXPECT_NEAR(test_case.projectile_speed * intercept_time, target_distance, 1e-4f);
 }
 
@@ -40,40 +28,45 @@ using BatchSolver = void (*)(float*,
                              float) noexcept;
 }
 
-TEST(NativeCoreProjectileIntercept, SolvesScalarCases) {
-    constexpr InterceptCase cases[]{
-        {v3(0.0f, 0.0f, 0.0f), v3(10.0f, 0.0f, 0.0f), v3(0.0f, 0.0f, 0.0f), 5.0f, 2.0f},
-        {v3(0.0f, 0.0f, 0.0f), v3(10.0f, 0.0f, 0.0f), v3(1.0f, 0.0f, 0.0f), 5.0f, 2.5f},
-        {v3(0.0f, 0.0f, 0.0f), v3(10.0f, 0.0f, 0.0f), v3(-5.0f, 0.0f, 0.0f), 5.0f, 1.0f},
-        {v3(0.0f, 0.0f, 0.0f), v3(10.0f, 0.0f, 0.0f), v3(-5.0f, 5.0f, 0.0f), 5.0f, 2.0f},
-        {v3(0.0f, 0.0f, 0.0f), v3(10.0f, 0.0f, 0.0f), v3(-10.0f, 0.0f, 0.0f), 5.0f, 2.0f / 3.0f},
-    };
+using ScalarIntercept = testing::TestWithParam<InterceptCase>;
+using RejectedIntercept = testing::TestWithParam<InterceptCase>;
 
-    for (auto const& test_case : cases) {
-        auto const result{ioj::solve_intercept_time(test_case.shooter_position,
-                                                    test_case.target_position,
-                                                    test_case.target_velocity,
-                                                    test_case.projectile_speed)};
-        EXPECT_NEAR(result, test_case.expected_time, 1e-5f);
-        expect_intercept_geometry(test_case, result);
-    }
+TEST_P(ScalarIntercept, SolvesScalarCases) {
+    auto const& test{GetParam()};
+    auto const result{ioj::solve_intercept_time(
+        test.shooter_position, test.target_position, test.target_velocity, test.projectile_speed)};
+    EXPECT_NEAR(result, test.expected_time, 1e-5f);
+    expect_intercept_geometry(test, result);
 }
 
-TEST(NativeCoreProjectileIntercept, RejectsDegenerateAndEscapingTargets) {
-    constexpr InterceptCase cases[]{
-        {v3(0.0f, 0.0f, 0.0f), v3(10.0f, 0.0f, 0.0f), v3(5.0f, 0.0f, 0.0f), 5.0f, 0.0f},
-        {v3(0.0f, 0.0f, 0.0f), v3(10.0f, 0.0f, 0.0f), v3(0.0f, 10.0f, 0.0f), 5.0f, 0.0f},
-        {v3(3.0f, 4.0f, 5.0f), v3(3.0f, 4.0f, 5.0f), v3(1.0f, 2.0f, 3.0f), 20.0f, 0.0f},
-    };
+constexpr InterceptCase scalar_intercept_cases[]{
+    {{}, {10, 0, 0}, {}, 5, 2},
+    {{}, {10, 0, 0}, {1, 0, 0}, 5, 2.5f},
+    {{}, {10, 0, 0}, {-5, 0, 0}, 5, 1},
+    {{}, {10, 0, 0}, {-5, 5, 0}, 5, 2},
+    {{}, {10, 0, 0}, {-10, 0, 0}, 5, 2.f / 3.f},
+};
+INSTANTIATE_TEST_SUITE_P(NativeCoreProjectileIntercept,
+                         ScalarIntercept,
+                         testing::ValuesIn(scalar_intercept_cases));
 
-    for (auto const& test_case : cases) {
-        EXPECT_EQ(ioj::solve_intercept_time(test_case.shooter_position,
-                                            test_case.target_position,
-                                            test_case.target_velocity,
-                                            test_case.projectile_speed),
-                  test_case.expected_time);
-    }
+TEST_P(RejectedIntercept, RejectsDegenerateAndEscapingTargets) {
+    auto const& test{GetParam()};
+    EXPECT_EQ(ioj::solve_intercept_time(test.shooter_position,
+                                        test.target_position,
+                                        test.target_velocity,
+                                        test.projectile_speed),
+              test.expected_time);
 }
+
+constexpr InterceptCase rejected_intercept_cases[]{
+    {{}, {10, 0, 0}, {5, 0, 0}, 5, 0},
+    {{}, {10, 0, 0}, {0, 10, 0}, 5, 0},
+    {{3, 4, 5}, {3, 4, 5}, {1, 2, 3}, 20, 0},
+};
+INSTANTIATE_TEST_SUITE_P(NativeCoreProjectileIntercept,
+                         RejectedIntercept,
+                         testing::ValuesIn(rejected_intercept_cases));
 
 TEST(NativeCoreProjectileIntercept, BatchImplementationsMatchExpectedResults) {
     std::array<float, 5> const shooter_x{100.0f, 0.0f, 0.0f, 0.0f, 0.0f};
@@ -90,8 +83,8 @@ TEST(NativeCoreProjectileIntercept, BatchImplementationsMatchExpectedResults) {
     auto const count{static_cast<std::int32_t>(expected.size())};
     auto const shooters{ioj::vectors3f::ResolvedConstView{
         shooter_x.data(), shooter_y.data(), shooter_z.data(), count}};
-    auto const targets{
-        ioj::vectors3f::ResolvedConstView{target_x.data(), target_y.data(), target_z.data(), count}};
+    auto const targets{ioj::vectors3f::ResolvedConstView{
+        target_x.data(), target_y.data(), target_z.data(), count}};
     auto const velocities{ioj::vectors3f::ResolvedConstView{
         velocity_x.data(), velocity_y.data(), velocity_z.data(), count}};
     constexpr BatchSolver solvers[]{

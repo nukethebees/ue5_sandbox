@@ -192,19 +192,31 @@ TEST(NativeCoreVector3d, MovesTowardsTargetWithoutOvershoot) {
     EXPECT_EQ(ioj::move_towards(current, target, 0.0), current);
 }
 
-TEST(NativeCoreVector3d, ChecksFinitePositiveDimensions) {
-    EXPECT_TRUE(ioj::is_finite(ioj::Vector3d{-1.0, 0.0, 3.0}));
-    EXPECT_TRUE(ioj::is_positive_finite(ioj::Vector3d{1.0, 2.0, 3.0}));
-    EXPECT_FALSE(ioj::is_positive_finite(ioj::Vector3d{0.0, 2.0, 3.0}));
-    EXPECT_FALSE(ioj::is_positive_finite(ioj::Vector3d{1.0, -2.0, 3.0}));
-    auto const infinity{std::numeric_limits<double>::infinity()};
+struct VectorDimensionsCase {
+    ioj::Vector3d value;
+    bool finite;
+    bool positive_finite;
+};
+using VectorDimensions = testing::TestWithParam<VectorDimensionsCase>;
+
+TEST_P(VectorDimensions, ChecksFinitePositiveDimensions) {
+    auto const& test{GetParam()};
+    EXPECT_EQ(ioj::is_finite(test.value), test.finite);
+    EXPECT_EQ(ioj::is_positive_finite(test.value), test.positive_finite);
+}
+
+constexpr VectorDimensionsCase dimension_cases[]{
+    {{-1, 0, 3}, true, false},
+    {{1, 2, 3}, true, true},
+    {{0, 2, 3}, true, false},
+    {{1, -2, 3}, true, false},
+    {{std::numeric_limits<double>::infinity(), 2, 3}, false, false},
+    {{1, std::numeric_limits<double>::quiet_NaN(), 3}, false, false},
+    {{1, 2, -std::numeric_limits<double>::infinity()}, false, false}};
+INSTANTIATE_TEST_SUITE_P(NativeCoreVector3d, VectorDimensions, testing::ValuesIn(dimension_cases));
+
+TEST(NativeCoreVector3d, NaNComparisonIsUnordered) {
     auto const nan{std::numeric_limits<double>::quiet_NaN()};
     ioj::Vector3d const unordered{nan, 0.0, 0.0};
     EXPECT_EQ(unordered <=> unordered, std::partial_ordering::unordered);
-    for (auto const value : {ioj::Vector3d{infinity, 2.0, 3.0},
-                             ioj::Vector3d{1.0, nan, 3.0},
-                             ioj::Vector3d{1.0, 2.0, -infinity}}) {
-        EXPECT_FALSE(ioj::is_finite(value));
-        EXPECT_FALSE(ioj::is_positive_finite(value));
-    }
 }
