@@ -277,6 +277,10 @@ auto CppIR::using_declaration(StringId name, CppTypeId type, TemplateId declarat
     return ir_detail::node(NodeKind::using_declaration, index);
 }
 
+auto CppIR::using_import(CppTypeId qualified_name) -> NodeId {
+    return using_declaration({}, types.reference(qualified_name));
+}
+
 auto CppIR::instance_member(CppTypeId type, StringId name, std::optional<Expr> initializer)
     -> NodeId {
     auto const index{instance_members_.name.size()};

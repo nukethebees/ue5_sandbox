@@ -163,6 +163,7 @@ class CppIR {
                             TemplateId declaration = {}) -> NodeId;
     auto friend_type(CppTypeId type) -> NodeId;
     auto using_declaration(StringId name, CppTypeId type, TemplateId declaration = {}) -> NodeId;
+    auto using_import(CppTypeId qualified_name) -> NodeId;
     auto instance_member(CppTypeId type, StringId name, std::optional<Expr> initializer = {})
         -> NodeId;
     auto static_member(CppTypeId type,

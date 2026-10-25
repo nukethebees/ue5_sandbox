@@ -456,7 +456,17 @@ void CppRenderer::collect_environment(EnvironmentId environment,
                 add_name(ir_.forward_declaration_nodes_.name[i], declaration);
                 break;
             case NodeKind::using_declaration:
-                add_name(ir_.using_declaration_nodes_.name[i], declaration);
+                if (ir_.using_declaration_nodes_.name[i].value != 0) {
+                    add_name(ir_.using_declaration_nodes_.name[i], declaration);
+                } else {
+                    auto const type{ir_.using_declaration_nodes_.type[i]};
+                    auto const shape{ir_.types.shapes_[type.value - 1]};
+                    assert(shape.form == CppTypeForm::named && shape.parts.count > 1);
+                    auto const components{std::span{ir_.types.name_components_}.subspan(
+                        shape.parts.begin, shape.parts.count)};
+                    auto const target{environments.reference(components)};
+                    environments.bind(environment, components.back(), target);
+                }
                 break;
             case NodeKind::instance_member:
                 add_name(ir_.instance_members_.name[i], declaration);
@@ -1196,6 +1206,23 @@ void CppRenderer::append_node(std::string& output, NodeId node, RenderContext co
             output += ';';
             break;
         case NodeKind::using_declaration:
+            if (ir_.using_declaration_nodes_.name[i].value == 0) {
+                auto const imported{ir_.using_declaration_nodes_.type[i]};
+                auto const shape{ir_.types.shapes_[imported.value - 1]};
+                auto const components{std::span{ir_.types.name_components_}.subspan(
+                    shape.parts.begin, shape.parts.count)};
+                auto const target{state_.environments.reference(components)};
+                if (target.declaring_scope == state_.current) {
+                    break;
+                }
+                indent();
+                output += "using ";
+                append_name(output, components.first(components.size() - 1));
+                output += "::";
+                text(components.back());
+                output += ';';
+                break;
+            }
             template_prefix(ir_.using_declaration_nodes_.template_declaration[i]);
             indent();
             output += "using ";

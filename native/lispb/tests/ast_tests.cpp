@@ -736,6 +736,21 @@ TEST(Ast, RestoresNamespaceContextAndRetainsAnonymousLookup) {
     EXPECT_EQ(renderer.render(local), renderer.render(local));
 }
 
+TEST(Ast, OmitsImportsIntoTheirOwningNamespaceAndRetainsOtherImports) {
+    CompilerTestContext context;
+    auto& ir{context.ir};
+    auto const dependency{ir.types.dependency("a::lookup", "Lookup.h")};
+    auto const imported{ir.using_import(ir.types.named("a::lookup", {dependency}))};
+    CppRenderer renderer{ir};
+    EXPECT_EQ(renderer.render(in_namespace(ir, "a", imported)),
+              "namespace a {\n\n} // namespace a");
+    EXPECT_NE(renderer.render(in_namespace(ir, "b", imported)).find("using a::lookup;"),
+              std::string::npos);
+    EXPECT_NE(renderer.render(in_namespace(ir, "a::nested", imported)).find("using a::lookup;"),
+              std::string::npos);
+    EXPECT_EQ(collected_dependencies(ir, imported), std::vector{dependency});
+}
+
 TEST(Ast, RetainsTypeStructureAndPoliciesAcrossCompositionAndDependencies) {
     CompilerTestContext context;
     auto& ir{context.ir};
