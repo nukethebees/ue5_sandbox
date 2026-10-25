@@ -52,6 +52,21 @@ Weapon::visit_field(weapon, Weapon::Field::damage,
 });
 ```
 
+`Field` is guaranteed to be zero-based and contiguous, with one enumerator per member
+in schema declaration order. `Field::Count` equals the number of members, including
+settings-excluded members; it is zero for an empty record. Consequently, each integer
+in `[0, Count)` can be cast directly to a valid field and used for iteration or array indexing:
+
+```cpp
+using Field = Weapon::Field;
+constexpr auto count{static_cast<std::size_t>(Field::Count)};
+for (std::size_t index{}; index < count; ++index) {
+    Weapon::visit_field(weapon, static_cast<Field>(index), visitor);
+}
+```
+
+These indices follow schema order and are not stable persistent identifiers across schema edits.
+
 The object must be a mutable or const lvalue of the record type. Const objects produce
 const member references. The callable must compile for every member; use `if constexpr`
 when an operation applies only to particular fields. Dispatch invokes it exactly once.
