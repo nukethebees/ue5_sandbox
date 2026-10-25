@@ -181,8 +181,7 @@ auto schema_at(Manifest const& manifest,
                std::size_t const declaration_index = 0) -> DeclarationHandle {
     auto const& store{manifest.declarations};
     auto const module{manifest.modules.at(module_index)};
-    return store.items(
-        store.normal_modules.declarations[store.normal_modules.index(module)])[declaration_index];
+    return store.items(store.normal_modules.declarations[module])[declaration_index];
 }
 
 TEST(SourceLoader, RecordValueSemanticsSurviveParsingGraphAndLowering) {
@@ -202,14 +201,12 @@ TEST(SourceLoader, RecordValueSemanticsSurviveParsingGraphAndLowering) {
     auto const& schema{schema_at(manifest, 0)};
     auto const schema_row{records.index(schema)};
     auto const members{store.items(records.members[schema_row])};
-    EXPECT_FALSE(record_members.initializer[record_members.index(members[0])].has_value());
-    EXPECT_EQ(files.text(record_members.initializer[record_members.index(members[1])]), "");
-    EXPECT_EQ(files.text(record_members.initializer[record_members.index(members[2])]), "7");
+    EXPECT_FALSE(record_members.initializer[members[0]].has_value());
+    EXPECT_EQ(files.text(record_members.initializer[members[1]]), "");
+    EXPECT_EQ(files.text(record_members.initializer[members[2]]), "7");
     EXPECT_EQ(records.comparison[schema_row], RecordComparison::three_way);
     ASSERT_EQ(records.functions[schema_row].size(), 2U);
-    EXPECT_TRUE(
-        store.functions
-            .is_constexpr[store.functions.index(store.items(records.functions[schema_row])[0])]);
+    EXPECT_TRUE(store.functions.is_constexpr[store.items(records.functions[schema_row])[0]]);
     auto const graph{lispb::schema::resolve_type_graph(manifest)};
     auto const& record{graph.definition(*find_test_type(graph, "records", "Value"))};
     auto const& definitions{graph.definitions()};
@@ -271,9 +268,7 @@ TEST(SourceLoader, RecordMethodDeclarationsForwardDeclareLaterAndMutualTypes) {
                graph.occurrences().physical_form[graph.occurrences().index(graph.target(use))] ==
                    PhysicalTypeForm::value;
     }));
-    auto editable{
-        store.items(normal_modules.declarations[normal_modules.index(manifest.modules.front())])
-            .front()};
+    auto editable{store.items(normal_modules.declarations[manifest.modules.front()]).front()};
     std::vector<std::pair<std::string, TypeReferenceKind>> const_uses;
     visit_type_references(store,
                           std::as_const(editable),
@@ -296,10 +291,9 @@ TEST(SourceLoader, RecordMethodDeclarationsForwardDeclareLaterAndMutualTypes) {
             return reference;
         });
     EXPECT_EQ(mutable_uses, const_uses);
-    EXPECT_EQ(
-        files.text(type_refs.name[type_refs.index(store.functions.return_type[store.functions.index(
-            store.items(store.records.functions[store.records.index(editable)])[0])])]),
-        "Renamed");
+    EXPECT_EQ(files.text(type_refs.name[store.functions.return_type[store.items(
+                  store.records.functions[editable])[0]]]),
+              "Renamed");
     auto const output{files.render(manifest).front().content};
     EXPECT_LT(output.find("struct B;"), output.find("struct A {"));
     EXPECT_LT(output.find("struct A;"), output.find("struct B {"));
@@ -307,9 +301,7 @@ TEST(SourceLoader, RecordMethodDeclarationsForwardDeclareLaterAndMutualTypes) {
     EXPECT_NE(output.find("auto ref() -> B const&;"), std::string::npos);
     EXPECT_EQ(
         files.text(declaration_name(
-            store,
-            store.items(normal_modules.declarations[normal_modules.index(manifest.modules.front())])
-                .front())),
+            store, store.items(normal_modules.declarations[manifest.modules.front()]).front())),
         "A");
 }
 
@@ -340,10 +332,7 @@ TEST(SourceLoader, RecordMethodSignaturesOrderAliasesEnumsAndHeaderBodyValues) {
     EXPECT_EQ(
         files.text(declaration_name(
             store,
-            store
-                .items(store.normal_modules
-                           .declarations[store.normal_modules.index(manifest.modules.front())])
-                .front())),
+            store.items(store.normal_modules.declarations[manifest.modules.front()]).front())),
         "Consumer");
 }
 
@@ -425,10 +414,7 @@ TEST(SourceLoader, RecordParameterDefaultsRequireCompleteTypesWithoutChangingOth
             }
         }
         auto declaration{
-            store
-                .items(store.normal_modules
-                           .declarations[store.normal_modules.index(manifest.modules.front())])
-                .front()};
+            store.items(store.normal_modules.declarations[manifest.modules.front()]).front()};
         std::vector<TypeReferenceKind> const_kinds;
         visit_type_references(store,
                               std::as_const(declaration),
@@ -825,8 +811,8 @@ TEST(SourceLoader, PackedDefaultsAreValidatedWithoutChangingImplicitSentinels) {
         (field task std::uint8_t :bits 1))))");
     auto manifest{files.load()};
     EXPECT_EQ(
-        store.packed_fields.default_value[store.packed_fields.index(store.items(
-            store.packed_values.segments[store.packed_values.index(schema_at(manifest, 0))])[0])],
+        store.packed_fields
+            .default_value[store.items(store.packed_values.segments[schema_at(manifest, 0)])[0]],
         PackedIntegerValue{1});
     auto const graph{lispb::schema::resolve_type_graph(manifest)};
     auto default_raw = [&](char const* name) {
@@ -975,8 +961,7 @@ TEST(SourceLoader, ExternalMetadataPreservesExplicitWidthCppFieldEmission) {
 
     auto const graph{lispb::schema::resolve_type_graph(manifest)};
     auto const type{*graph.find_registered(graph.strings().find("integer"))};
-    auto field{store.items(
-        store.packed_values.segments[store.packed_values.index(schema_at(manifest, 0))])[0]};
+    auto field{store.items(store.packed_values.segments[schema_at(manifest, 0)])[0]};
     auto const field_row{packed_fields.index(field)};
     EXPECT_FALSE(lispb::schema::packed_integer_domain(graph, type, field).has_value());
     packed_fields.bits[field_row].reset();
@@ -984,8 +969,7 @@ TEST(SourceLoader, ExternalMetadataPreservesExplicitWidthCppFieldEmission) {
     packed_fields.bits[field_row] = 32;
     packed_fields.type[field_row] = [&] {
         auto const new_type_refs{type_refs.append()};
-        type_refs.name[type_refs.index(new_type_refs)] =
-            files.context.storage.strings.intern("@integer");
+        type_refs.name[new_type_refs] = files.context.storage.strings.intern("@integer");
         return new_type_refs;
     }();
     EXPECT_FALSE(lispb::schema::packed_integer_domain(graph, type, field).has_value());
@@ -1163,8 +1147,7 @@ TEST(SourceLoader, OrdersPhysicalDependenciesWithoutChangingDeclarationIndices) 
     auto const& header{files_out.front().content};
     EXPECT_LT(header.find("struct Inner"), header.find("union Payload"));
     EXPECT_LT(header.find("union Payload"), header.find("struct Outer"));
-    auto const& declarations{
-        store.normal_modules.declarations[store.normal_modules.index(manifest.modules.front())]};
+    auto const& declarations{store.normal_modules.declarations[manifest.modules.front()]};
     EXPECT_EQ(files.text(declaration_name(store, store.items(declarations)[0])), "Outer");
     EXPECT_EQ(files.text(declaration_name(store, store.items(declarations)[1])), "Index");
     EXPECT_EQ(files.text(declaration_name(store, store.items(declarations)[2])), "Payload");
@@ -1221,7 +1204,7 @@ TEST(SourceLoader, ReadsCommentsAndTypedSoa) {
               "add");
     ASSERT_EQ(manifest.modules.size(), 1);
     auto const& schema{schema_at(manifest, 0)};
-    auto const& member{store.items(store.soas.members[store.soas.index(schema)])[0]};
+    auto const& member{store.items(store.soas.members[schema])[0]};
     auto const member_row{soa_members.index(member)};
     EXPECT_EQ(files.text(files.context.storage.cpp_types.spelling(
                   resolve_type(soa_members.type[member_row], manifest.types))),
@@ -1229,10 +1212,7 @@ TEST(SourceLoader, ReadsCommentsAndTypedSoa) {
     ASSERT_TRUE(soa_members.relationship[member_row].has_value());
     auto const relation_row{semantic_relations.index(*soa_members.relationship[member_row])};
     EXPECT_EQ(semantic_relations.kind[relation_row], SemanticRelationKind::offset_into);
-    EXPECT_EQ(
-        files.text(
-            store.type_refs.name[store.type_refs.index(semantic_relations.target[relation_row])]),
-        "FData");
+    EXPECT_EQ(files.text(store.type_refs.name[semantic_relations.target[relation_row]]), "FData");
     EXPECT_EQ(semantic_relations.unit[relation_row], SemanticRelationUnit::elements);
 }
 
@@ -1342,12 +1322,11 @@ TEST(SourceLoader, ReadsPackedValueModule) {
 
     auto manifest{files.load()};
     auto const& module{manifest.modules.front()};
-    ASSERT_EQ(store.normal_modules.declarations[store.normal_modules.index(module)].size(), 1);
+    ASSERT_EQ(store.normal_modules.declarations[module].size(), 1);
     auto const& value{schema_at(manifest, 0)};
     auto const value_row{packed_values.index(value)};
     EXPECT_EQ(files.text(packed_values.name[value_row]), "FighterState");
-    EXPECT_EQ(files.text(type_refs.name[type_refs.index(packed_values.storage_type[value_row])]),
-              "std::uint32_t");
+    EXPECT_EQ(files.text(type_refs.name[packed_values.storage_type[value_row]]), "std::uint32_t");
     EXPECT_EQ(packed_values.byte_order[value_row], PackedByteOrder::big_endian);
     EXPECT_EQ(packed_values.bit_order[value_row], PackedBitOrder::most_significant_first);
     EXPECT_EQ(packed_values.invalid_value[value_row], std::uint64_t{0x7fffffff});
@@ -1371,13 +1350,12 @@ TEST(SourceLoader, ReadsPackedValueModule) {
     EXPECT_EQ(packed_named_codes.value[invalid_row], 1'048'575U);
     EXPECT_TRUE(packed_named_codes.sentinel[invalid_row]);
     ASSERT_TRUE(packed_fields.relationship[index_row].has_value());
+    EXPECT_EQ(semantic_relations.kind[*packed_fields.relationship[index_row]],
+              SemanticRelationKind::index_into);
     EXPECT_EQ(
-        semantic_relations.kind[semantic_relations.index(*packed_fields.relationship[index_row])],
-        SemanticRelationKind::index_into);
-    EXPECT_EQ(files.text(
-                  type_refs.name[type_refs.index(semantic_relations.target[semantic_relations.index(
-                      *packed_fields.relationship[index_row])])]),
-              "FighterState");
+        files.text(
+            type_refs.name[semantic_relations.target[*packed_fields.relationship[index_row]]]),
+        "FighterState");
     auto const& reserved{store.items(packed_values.segments[value_row])[1]};
     auto const reserved_row{packed_reserved_bits.index(reserved)};
     EXPECT_EQ(files.text(packed_reserved_bits.name[reserved_row]), "future");
@@ -1412,24 +1390,17 @@ TEST(SourceLoader, ReadsSignedArbitraryWidthPackedField) {
     EXPECT_FALSE(packed_values.bit_order[value_row].has_value());
     auto const& delta{store.items(packed_values.segments[value_row])[0]};
     auto const delta_row{packed_fields.index(delta)};
-    EXPECT_EQ(
-        files.text(store.type_refs.name[store.type_refs.index(packed_fields.type[delta_row])]),
-        "std::int32_t");
+    EXPECT_EQ(files.text(store.type_refs.name[packed_fields.type[delta_row]]), "std::int32_t");
     EXPECT_FALSE(packed_fields.bits[delta_row].has_value());
     EXPECT_EQ(packed_fields.kind[delta_row], PackedFieldKind::signed_integer);
     EXPECT_EQ(packed_fields.minimum_value[delta_row], PackedIntegerValue{-100});
     EXPECT_EQ(packed_fields.maximum_value[delta_row], PackedIntegerValue{100});
     ASSERT_EQ(packed_fields.named_codes[delta_row].size(), 2U);
-    EXPECT_EQ(
-        packed_named_codes
-            .value[packed_named_codes.index(store.items(packed_fields.named_codes[delta_row])[0])],
-        PackedIntegerValue{0});
-    EXPECT_EQ(
-        packed_named_codes
-            .value[packed_named_codes.index(store.items(packed_fields.named_codes[delta_row])[1])],
-        PackedIntegerValue{-128});
-    EXPECT_TRUE(packed_named_codes.sentinel[packed_named_codes.index(
-        store.items(packed_fields.named_codes[delta_row])[1])]);
+    EXPECT_EQ(packed_named_codes.value[store.items(packed_fields.named_codes[delta_row])[0]],
+              PackedIntegerValue{0});
+    EXPECT_EQ(packed_named_codes.value[store.items(packed_fields.named_codes[delta_row])[1]],
+              PackedIntegerValue{-128});
+    EXPECT_TRUE(packed_named_codes.sentinel[store.items(packed_fields.named_codes[delta_row])[1]]);
 }
 
 TEST(SourceLoader, ReadsLinearQuantizedPackedField) {
@@ -1464,12 +1435,10 @@ TEST(SourceLoader, ReadsLinearQuantizedPackedField) {
 
     auto manifest{files.load()};
     auto const& value{schema_at(manifest, manifest.modules.size() - 1)};
-    auto const& health{
-        store.items(store.packed_values.segments[store.packed_values.index(value)])[0]};
+    auto const& health{store.items(store.packed_values.segments[value])[0]};
     auto const health_row{packed_fields.index(health)};
-    EXPECT_EQ(
-        files.text(store.type_refs.name[store.type_refs.index(packed_fields.type[health_row])]),
-        "project::HealthQ8");
+    EXPECT_EQ(files.text(store.type_refs.name[packed_fields.type[health_row]]),
+              "project::HealthQ8");
     EXPECT_FALSE(packed_fields.bits[health_row].has_value());
     EXPECT_EQ(packed_fields.kind[health_row], PackedFieldKind::linear_quantized);
 }
@@ -1498,12 +1467,10 @@ TEST(SourceLoader, ReadsFixedPointPackedField) {
 
     auto manifest{files.load()};
     auto const& value{schema_at(manifest, manifest.modules.size() - 1)};
-    auto const& velocity{
-        store.items(store.packed_values.segments[store.packed_values.index(value)])[0]};
+    auto const& velocity{store.items(store.packed_values.segments[value])[0]};
     auto const velocity_row{packed_fields.index(velocity)};
-    EXPECT_EQ(
-        files.text(store.type_refs.name[store.type_refs.index(packed_fields.type[velocity_row])]),
-        "project::VelocityQ12_4");
+    EXPECT_EQ(files.text(store.type_refs.name[packed_fields.type[velocity_row]]),
+              "project::VelocityQ12_4");
     EXPECT_FALSE(packed_fields.bits[velocity_row].has_value());
     EXPECT_EQ(packed_fields.kind[velocity_row], PackedFieldKind::fixed_point);
 }
@@ -1532,12 +1499,10 @@ TEST(SourceLoader, ReadsMiniFloatPackedField) {
 
     auto manifest{files.load()};
     auto const& value{schema_at(manifest, manifest.modules.size() - 1)};
-    auto const& component{
-        store.items(store.packed_values.segments[store.packed_values.index(value)])[0]};
+    auto const& component{store.items(store.packed_values.segments[value])[0]};
     auto const component_row{packed_fields.index(component)};
-    EXPECT_EQ(
-        files.text(store.type_refs.name[store.type_refs.index(packed_fields.type[component_row])]),
-        "project::PositionF12");
+    EXPECT_EQ(files.text(store.type_refs.name[packed_fields.type[component_row]]),
+              "project::PositionF12");
     EXPECT_FALSE(packed_fields.bits[component_row].has_value());
     EXPECT_EQ(packed_fields.kind[component_row], PackedFieldKind::mini_float);
 }
@@ -1601,7 +1566,7 @@ TEST(SourceLoader, ReadsStandaloneIntegerScalarDomain) {
 
     auto manifest{files.load()};
     auto const& module{manifest.modules.front()};
-    ASSERT_EQ(store.normal_modules.declarations[store.normal_modules.index(module)].size(), 3U);
+    ASSERT_EQ(store.normal_modules.declarations[module].size(), 3U);
     auto const& scalar{schema_at(manifest, 0)};
     auto const scalar_row{integer_scalars.index(scalar)};
     EXPECT_EQ(files.text(integer_scalars.name[scalar_row]), "DamageReason");
@@ -1612,33 +1577,26 @@ TEST(SourceLoader, ReadsStandaloneIntegerScalarDomain) {
     EXPECT_EQ(integer_scalars.cpp_emission[scalar_row],
               IntegerScalarCppEmission::constants_with_names);
     ASSERT_TRUE(integer_scalars.cpp_type[scalar_row].has_value());
-    EXPECT_EQ(files.text(type_refs.name[type_refs.index(*integer_scalars.cpp_type[scalar_row])]),
-              "std::uint8_t");
+    EXPECT_EQ(files.text(type_refs.name[*integer_scalars.cpp_type[scalar_row]]), "std::uint8_t");
     ASSERT_EQ(integer_scalars.named_codes[scalar_row].size(), 2U);
-    EXPECT_EQ(packed_named_codes.value[packed_named_codes.index(
-                  store.items(integer_scalars.named_codes[scalar_row])[1])],
+    EXPECT_EQ(packed_named_codes.value[store.items(integer_scalars.named_codes[scalar_row])[1]],
               PackedIntegerValue{15});
-    EXPECT_TRUE(packed_named_codes.sentinel[packed_named_codes.index(
-        store.items(integer_scalars.named_codes[scalar_row])[1])]);
+    EXPECT_TRUE(
+        packed_named_codes.sentinel[store.items(integer_scalars.named_codes[scalar_row])[1]]);
     ASSERT_TRUE(integer_scalars.relationship[scalar_row].has_value());
-    EXPECT_EQ(semantic_relations
-                  .kind[semantic_relations.index(*integer_scalars.relationship[scalar_row])],
+    EXPECT_EQ(semantic_relations.kind[*integer_scalars.relationship[scalar_row]],
               SemanticRelationKind::index_into);
-    EXPECT_EQ(files.text(
-                  type_refs.name[type_refs.index(semantic_relations.target[semantic_relations.index(
-                      *integer_scalars.relationship[scalar_row])])]),
-              "EntityTable");
-    EXPECT_FALSE(
-        semantic_relations.unit[semantic_relations.index(*integer_scalars.relationship[scalar_row])]
-            .has_value());
+    EXPECT_EQ(
+        files.text(
+            type_refs.name[semantic_relations.target[*integer_scalars.relationship[scalar_row]]]),
+        "EntityTable");
+    EXPECT_FALSE(semantic_relations.unit[*integer_scalars.relationship[scalar_row]].has_value());
     auto const& offset{schema_at(manifest, 0, 2)};
     auto const offset_row{integer_scalars.index(offset)};
     ASSERT_TRUE(integer_scalars.relationship[offset_row].has_value());
-    EXPECT_EQ(semantic_relations
-                  .kind[semantic_relations.index(*integer_scalars.relationship[offset_row])],
+    EXPECT_EQ(semantic_relations.kind[*integer_scalars.relationship[offset_row]],
               SemanticRelationKind::offset_into);
-    EXPECT_EQ(semantic_relations
-                  .unit[semantic_relations.index(*integer_scalars.relationship[offset_row])],
+    EXPECT_EQ(semantic_relations.unit[*integer_scalars.relationship[offset_row]],
               SemanticRelationUnit::bytes);
 }
 
@@ -1695,21 +1653,19 @@ TEST(SourceLoader, ReadsPhysicalRepresentations) {
     auto manifest{files.load()};
     ASSERT_EQ(manifest.modules.size(), 2U);
     auto const& module{manifest.modules[1]};
-    ASSERT_EQ(store.normal_modules.declarations[store.normal_modules.index(module)].size(), 6U);
+    ASSERT_EQ(store.normal_modules.declarations[module].size(), 6U);
     auto const& representation{schema_at(manifest, 1, 0)};
     auto const representation_row{linear_quantizeds.index(representation)};
     EXPECT_EQ(files.text(linear_quantizeds.name[representation_row]), "HealthQ8");
-    EXPECT_EQ(
-        files.text(type_refs.name[type_refs.index(linear_quantizeds.source[representation_row])]),
-        "project::Health");
+    EXPECT_EQ(files.text(type_refs.name[linear_quantizeds.source[representation_row]]),
+              "project::Health");
     EXPECT_EQ(linear_quantizeds.bit_width[representation_row], 8U);
     EXPECT_EQ(linear_quantizeds.reserved_codes[representation_row], 1U);
     EXPECT_EQ(linear_quantizeds.clipping[representation_row], QuantizationClipping::clamp);
     auto const& varint{schema_at(manifest, 1, 1)};
     auto const varint_row{integer_varints.index(varint)};
     EXPECT_EQ(files.text(integer_varints.name[varint_row]), "HealthVarint");
-    EXPECT_EQ(files.text(type_refs.name[type_refs.index(integer_varints.source[varint_row])]),
-              "project::Health");
+    EXPECT_EQ(files.text(type_refs.name[integer_varints.source[varint_row]]), "project::Health");
     EXPECT_EQ(integer_varints.encoding[varint_row], IntegerVarintEncoding::unsigned_varint);
     auto const& fixed_point{schema_at(manifest, 1, 2)};
     auto const fixed_point_row{fixed_points.index(fixed_point)};
@@ -1730,15 +1686,14 @@ TEST(SourceLoader, ReadsPhysicalRepresentations) {
     auto const& optional{schema_at(manifest, 1, 4)};
     auto const optional_row{optional_sentinels.index(optional)};
     EXPECT_EQ(files.text(optional_sentinels.name[optional_row]), "OptionalHealth");
-    EXPECT_EQ(files.text(type_refs.name[type_refs.index(optional_sentinels.source[optional_row])]),
+    EXPECT_EQ(files.text(type_refs.name[optional_sentinels.source[optional_row]]),
               "project::Health");
     EXPECT_EQ(files.text(optional_sentinels.sentinel[optional_row]), "Invalid");
     auto const& presence{schema_at(manifest, 1, 5)};
     auto const presence_row{optional_presence_bits.index(presence)};
     EXPECT_EQ(files.text(optional_presence_bits.name[presence_row]), "PresentHealth");
-    EXPECT_EQ(
-        files.text(type_refs.name[type_refs.index(optional_presence_bits.source[presence_row])]),
-        "project::Health");
+    EXPECT_EQ(files.text(type_refs.name[optional_presence_bits.source[presence_row]]),
+              "project::Health");
 }
 
 TEST(SourceLoader, RejectsInvalidMiniFloatWidthsAndBias) {
@@ -1853,11 +1808,11 @@ TEST(SourceLoader, ReadsNamedEnumSentinels) {
 )");
 
     auto manifest{files.load()};
-    auto const& values{store.enums.values[store.enums.index(schema_at(manifest, 0))]};
+    auto const& values{store.enums.values[schema_at(manifest, 0)]};
     ASSERT_EQ(values.size(), 3U);
-    EXPECT_FALSE(enumerators.sentinel[enumerators.index(store.items(values)[0])]);
-    EXPECT_TRUE(enumerators.sentinel[enumerators.index(store.items(values)[1])]);
-    EXPECT_TRUE(enumerators.sentinel[enumerators.index(store.items(values)[2])]);
+    EXPECT_FALSE(enumerators.sentinel[store.items(values)[0]]);
+    EXPECT_TRUE(enumerators.sentinel[store.items(values)[1]]);
+    EXPECT_TRUE(enumerators.sentinel[store.items(values)[2]]);
 }
 
 TEST(SourceLoader, RejectsEnumBitWidthOutsideNativeAnalysisRange) {
@@ -1887,11 +1842,10 @@ TEST(SourceLoader, PreservesNumericAndOpaqueEnumInitializers) {
 )schema");
 
     auto manifest{files.load()};
-    auto const& values{enums.values[enums.index(schema_at(manifest, 0))]};
+    auto const& values{enums.values[schema_at(manifest, 0)]};
     ASSERT_EQ(values.size(), 2);
-    EXPECT_EQ(files.text(enumerators.initializer[enumerators.index(store.items(values)[0])]), "0");
-    EXPECT_EQ(files.text(enumerators.initializer[enumerators.index(store.items(values)[1])]),
-              "0x7f");
+    EXPECT_EQ(files.text(enumerators.initializer[store.items(values)[0]]), "0");
+    EXPECT_EQ(files.text(enumerators.initializer[store.items(values)[1]]), "0x7f");
 
     files.write_root(R"schema(
 (module enums
@@ -1900,10 +1854,8 @@ TEST(SourceLoader, PreservesNumericAndOpaqueEnumInitializers) {
     (value Invalid :value -1)))
 )schema");
     auto const negative_manifest{files.load()};
-    auto const& negative_values{enums.values[enums.index(schema_at(negative_manifest, 0))]};
-    EXPECT_EQ(
-        files.text(enumerators.initializer[enumerators.index(store.items(negative_values)[0])]),
-        "-1");
+    auto const& negative_values{enums.values[schema_at(negative_manifest, 0)]};
+    EXPECT_EQ(files.text(enumerators.initializer[store.items(negative_values)[0]]), "-1");
 
     files.write_root(R"schema(
 (module enums
@@ -1912,8 +1864,8 @@ TEST(SourceLoader, PreservesNumericAndOpaqueEnumInitializers) {
     (value Invalid :value "static_cast<uint8>(1)")))
 )schema");
     auto const opaque_manifest{files.load()};
-    auto const& opaque_values{enums.values[enums.index(schema_at(opaque_manifest, 0))]};
-    EXPECT_EQ(files.text(enumerators.initializer[enumerators.index(store.items(opaque_values)[0])]),
+    auto const& opaque_values{enums.values[schema_at(opaque_manifest, 0)]};
+    EXPECT_EQ(files.text(enumerators.initializer[store.items(opaque_values)[0]]),
               "static_cast<uint8>(1)");
 }
 
@@ -1939,33 +1891,28 @@ TEST(SourceLoader, ReadsRecordModuleAndFixedArrays) {
 
     auto manifest{files.load()};
     auto const& module{manifest.modules.front()};
-    ASSERT_EQ(store.normal_modules.declarations[store.normal_modules.index(module)].size(), 2U);
+    ASSERT_EQ(store.normal_modules.declarations[module].size(), 2U);
     auto const& position{schema_at(manifest, 0, 0)};
     auto const position_row{records.index(position)};
     auto const& trail{schema_at(manifest, 0, 1)};
     auto const trail_row{records.index(trail)};
     EXPECT_EQ(files.text(records.name[position_row]), "Position");
     ASSERT_EQ(records.members[position_row].size(), 2U);
-    EXPECT_EQ(files.text(type_refs.name[type_refs.index(record_members.type[record_members.index(
-                  store.items(records.members[position_row])[0])])]),
-              "float");
-    EXPECT_FALSE(
-        record_members.count[record_members.index(store.items(records.members[position_row])[0])]
-            .has_value());
-    EXPECT_EQ(files.text(records.export_specifier[trail_row]), "PROJECT_API");
     EXPECT_EQ(
-        record_members.count[record_members.index(store.items(records.members[trail_row])[0])], 4);
-    ASSERT_TRUE(record_members
-                    .relationship[record_members.index(store.items(records.members[trail_row])[0])]
-                    .has_value());
+        files.text(
+            type_refs.name[record_members.type[store.items(records.members[position_row])[0]]]),
+        "float");
+    EXPECT_FALSE(record_members.count[store.items(records.members[position_row])[0]].has_value());
+    EXPECT_EQ(files.text(records.export_specifier[trail_row]), "PROJECT_API");
+    EXPECT_EQ(record_members.count[store.items(records.members[trail_row])[0]], 4);
+    ASSERT_TRUE(
+        record_members.relationship[store.items(records.members[trail_row])[0]].has_value());
     EXPECT_EQ(semantic_relations
-                  .kind[semantic_relations.index(*record_members.relationship[record_members.index(
-                      store.items(records.members[trail_row])[0])])],
+                  .kind[*record_members.relationship[store.items(records.members[trail_row])[0]]],
               SemanticRelationKind::contains);
     EXPECT_EQ(files.text(
-                  type_refs.name[type_refs.index(semantic_relations.target[semantic_relations.index(
-                      *record_members.relationship[record_members.index(
-                          store.items(records.members[trail_row])[0])])])]),
+                  type_refs.name[semantic_relations.target[*record_members.relationship[store.items(
+                      records.members[trail_row])[0]]]]),
               "Position");
 }
 
@@ -1986,28 +1933,22 @@ TEST(SourceLoader, ReadsRawUnionModuleAndFixedArrayAlternatives) {
 
     auto manifest{files.load()};
     auto const& module{manifest.modules.front()};
-    ASSERT_EQ(store.normal_modules.declarations[store.normal_modules.index(module)].size(), 1U);
+    ASSERT_EQ(store.normal_modules.declarations[module].size(), 1U);
     auto const& payload{schema_at(manifest, 0)};
     auto const payload_row{unions.index(payload)};
     EXPECT_EQ(files.text(unions.name[payload_row]), "Payload");
     EXPECT_EQ(files.text(unions.export_specifier[payload_row]), "PROJECT_API");
     ASSERT_EQ(unions.alternatives[payload_row].size(), 2U);
-    EXPECT_EQ(files.text(union_alternatives.name[union_alternatives.index(
-                  store.items(unions.alternatives[payload_row])[0])]),
+    EXPECT_EQ(files.text(union_alternatives.name[store.items(unions.alternatives[payload_row])[0]]),
               "identifier");
     EXPECT_FALSE(
-        union_alternatives
-            .count[union_alternatives.index(store.items(unions.alternatives[payload_row])[0])]
-            .has_value());
+        union_alternatives.count[store.items(unions.alternatives[payload_row])[0]].has_value());
     EXPECT_EQ(
-        files.text(store.type_refs
-                       .name[store.type_refs.index(union_alternatives.type[union_alternatives.index(
-                           store.items(unions.alternatives[payload_row])[1])])]),
+        files.text(
+            store.type_refs
+                .name[union_alternatives.type[store.items(unions.alternatives[payload_row])[1]]]),
         "std::uint8_t");
-    EXPECT_EQ(
-        union_alternatives
-            .count[union_alternatives.index(store.items(unions.alternatives[payload_row])[1])],
-        12);
+    EXPECT_EQ(union_alternatives.count[store.items(unions.alternatives[payload_row])[1]], 12);
 }
 
 TEST(SourceLoader, RejectsInvalidRawUnionAlternatives) {
@@ -2053,29 +1994,27 @@ TEST(SourceLoader, ReadsTaggedUnionDiscriminantAndSymbolicMappings) {
 
     auto manifest{files.load()};
     auto const& module{manifest.modules[1]};
-    ASSERT_EQ(store.normal_modules.declarations[store.normal_modules.index(module)].size(), 1U);
+    ASSERT_EQ(store.normal_modules.declarations[module].size(), 1U);
     auto const& tagged{schema_at(manifest, 1)};
     auto const tagged_row{tagged_unions.index(tagged)};
     EXPECT_EQ(files.text(tagged_unions.name[tagged_row]), "Event");
-    EXPECT_EQ(
-        files.text(
-            store.type_refs.name[store.type_refs.index(tagged_unions.discriminant[tagged_row])]),
-        "events::EventKind");
+    EXPECT_EQ(files.text(store.type_refs.name[tagged_unions.discriminant[tagged_row]]),
+              "events::EventKind");
     EXPECT_EQ(files.text(tagged_unions.export_specifier[tagged_row]), "PROJECT_API");
     ASSERT_EQ(tagged_unions.alternatives[tagged_row].size(), 2U);
-    EXPECT_EQ(files.text(tagged_union_alternatives.tag[tagged_union_alternatives.index(
-                  store.items(tagged_unions.alternatives[tagged_row])[0])]),
-              "Spawn");
-    EXPECT_FALSE(tagged_union_alternatives
-                     .count[tagged_union_alternatives.index(
-                         store.items(tagged_unions.alternatives[tagged_row])[0])]
-                     .has_value());
-    EXPECT_EQ(files.text(tagged_union_alternatives.tag[tagged_union_alternatives.index(
-                  store.items(tagged_unions.alternatives[tagged_row])[1])]),
-              "Damage");
-    EXPECT_EQ(tagged_union_alternatives.count[tagged_union_alternatives.index(
-                  store.items(tagged_unions.alternatives[tagged_row])[1])],
-              4);
+    EXPECT_EQ(
+        files.text(
+            tagged_union_alternatives.tag[store.items(tagged_unions.alternatives[tagged_row])[0]]),
+        "Spawn");
+    EXPECT_FALSE(
+        tagged_union_alternatives.count[store.items(tagged_unions.alternatives[tagged_row])[0]]
+            .has_value());
+    EXPECT_EQ(
+        files.text(
+            tagged_union_alternatives.tag[store.items(tagged_unions.alternatives[tagged_row])[1]]),
+        "Damage");
+    EXPECT_EQ(
+        tagged_union_alternatives.count[store.items(tagged_unions.alternatives[tagged_row])[1]], 4);
 }
 
 TEST(SourceLoader, RejectsDuplicateTaggedUnionNamesAndTags) {
@@ -2180,10 +2119,8 @@ TEST(SourceLoader, LoadsStructuredTypeReferencesAndFacadeStorage) {
     EXPECT_TRUE(facades.reference_target[facade_row]);
     EXPECT_TRUE(facades.definitions_in_source[facade_row]);
     auto const method_row{facade_methods.index(store.items(facades.methods[facade_row])[0])};
-    EXPECT_EQ(
-        files.text(
-            store.type_refs.suffix[store.type_refs.index(facade_methods.return_type[method_row])]),
-        " const&");
+    EXPECT_EQ(files.text(store.type_refs.suffix[facade_methods.return_type[method_row]]),
+              " const&");
     EXPECT_EQ(files.text(facade_methods.target_name[method_row]), "get_value");
     EXPECT_TRUE(facade_methods.is_const[method_row]);
 }
@@ -2236,12 +2173,12 @@ TEST(SourceLoader, LoadsOpaqueCppBlocksAndKeepsQuotedBodiesCompatible) {
     auto const data_row{soas.index(data)};
     ASSERT_EQ(soas.functions[data_row].size(), 2);
     auto const members{store.items(soas.functions[data_row])};
-    auto const update_body{store.items(functions.body_lines[functions.index(members[0])])};
+    auto const update_body{store.items(functions.body_lines[members[0]])};
     ASSERT_EQ(update_body.size(), 1);
     EXPECT_EQ(files.text(update_body[0]),
               "if (dt <= 0.0f) {" + newline + "    return;" + newline + "}" + newline + newline +
                   "values[0] += dt;");
-    auto const reset_body{store.items(functions.body_lines[functions.index(members[1])])};
+    auto const reset_body{store.items(functions.body_lines[members[1]])};
     ASSERT_EQ(reset_body.size(), 1);
     EXPECT_EQ(files.text(reset_body[0]), "values[0] = 0;");
 
@@ -2263,8 +2200,7 @@ TEST(SourceLoader, AcceptsEmptyCppBodyAndRejectsWrongRawTag) {
     (function empty void :body #cpp{}cpp#)))
 )");
     auto manifest{files.load()};
-    auto const& function{
-        store.items(store.soas.functions[store.soas.index(schema_at(manifest, 0))])[0]};
+    auto const& function{store.items(store.soas.functions[schema_at(manifest, 0)])[0]};
     auto const function_row{functions.index(function)};
     ASSERT_EQ(functions.body_lines[function_row].size(), 1);
     EXPECT_EQ(files.text(store.items(functions.body_lines[function_row])[0]), "");
@@ -2317,19 +2253,18 @@ TEST(SourceLoader, LoadsSettingsControls) {
     auto const& module{manifest.modules.front()};
     auto const module_row{settings_modules.index(module)};
     ASSERT_EQ(settings_modules.settings_list[module_row].size(), 1);
+    EXPECT_EQ(settings.apply_mode[store.items(settings_modules.settings_list[module_row])[0]],
+              SettingApplyMode::deferred);
+    EXPECT_EQ(settings.device[store.items(settings_modules.settings_list[module_row])[0]],
+              SettingDevice::keyboard_mouse);
     EXPECT_EQ(
-        settings
-            .apply_mode[settings.index(store.items(settings_modules.settings_list[module_row])[0])],
-        SettingApplyMode::deferred);
+        setting_controls
+            .kind[settings.control[store.items(settings_modules.settings_list[module_row])[0]]],
+        SettingControlKind::float_range);
     EXPECT_EQ(
-        settings.device[settings.index(store.items(settings_modules.settings_list[module_row])[0])],
-        SettingDevice::keyboard_mouse);
-    EXPECT_EQ(setting_controls.kind[setting_controls.index(settings.control[settings.index(
-                  store.items(settings_modules.settings_list[module_row])[0])])],
-              SettingControlKind::float_range);
-    EXPECT_EQ(setting_controls.step[setting_controls.index(settings.control[settings.index(
-                  store.items(settings_modules.settings_list[module_row])[0])])],
-              0.5);
+        setting_controls
+            .step[settings.control[store.items(settings_modules.settings_list[module_row])[0]]],
+        0.5);
 }
 
 TEST(SourceLoader, SettingsDeviceDefaultsToShared) {
@@ -2351,8 +2286,7 @@ TEST(SourceLoader, SettingsDeviceDefaultsToShared) {
 
     auto manifest{files.load()};
     auto const& module{manifest.modules.front()};
-    EXPECT_EQ(store.settings.device[store.settings.index(store.items(
-                  store.settings_modules.settings_list[store.settings_modules.index(module)])[0])],
+    EXPECT_EQ(store.settings.device[store.items(store.settings_modules.settings_list[module])[0]],
               SettingDevice::shared);
 }
 
@@ -2375,8 +2309,7 @@ TEST(SourceLoader, OrdinarySoaPreservesLogicalApi) {
     auto const& schema{schema_at(manifest, 0)};
     auto const schema_row{soas.index(schema)};
     ASSERT_EQ(soas.const_view_functions[schema_row].size(), 1U);
-    EXPECT_TRUE(store.functions.is_const[store.functions.index(
-        store.items(soas.const_view_functions[schema_row])[0])]);
+    EXPECT_TRUE(store.functions.is_const[store.items(soas.const_view_functions[schema_row])[0]]);
     ASSERT_EQ(soas.mutable_view_functions[schema_row].size(), 1U);
     auto const output{files.render(manifest).front().content};
     EXPECT_NE(output.find("struct API Rows"), std::string::npos);

@@ -43,8 +43,7 @@ auto module_declarations(codegen::Declarations const& declarations,
     if (module.kind() != codegen::ModuleKind::normal) {
         return {};
     }
-    return declarations.items(
-        declarations.normal_modules.declarations[declarations.normal_modules.index(module)]);
+    return declarations.items(declarations.normal_modules.declarations[module]);
 }
 
 auto indentation(std::string_view const text, std::size_t const offset) -> std::string {

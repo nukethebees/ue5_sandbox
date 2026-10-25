@@ -616,8 +616,8 @@ auto packed_value_text(LoweringContext& context,
             auto const count{values.size()};
             bool has_opaque_value{};
             for (std::size_t ordinal{}; ordinal < count; ++ordinal) {
-                if (!enumerators.sentinel[enumerators.index(values[ordinal])] &&
-                    values[ordinal] != count_value && !domains.code(domain, ordinal)) {
+                if (!enumerators.sentinel[values[ordinal]] && values[ordinal] != count_value &&
+                    !domains.code(domain, ordinal)) {
                     has_opaque_value = true;
                     break;
                 }
@@ -637,9 +637,8 @@ auto packed_value_text(LoweringContext& context,
                     if (!first_value) {
                         output += ",\n";
                     }
-                    write("        {}::{}",
-                          field_alias,
-                          context.text(enumerators.name[enumerators.index(enumerator)]));
+                    write(
+                        "        {}::{}", field_alias, context.text(enumerators.name[enumerator]));
                     first_value = false;
                 }
                 output += "\n    >());\n";

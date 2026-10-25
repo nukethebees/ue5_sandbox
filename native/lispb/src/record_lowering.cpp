@@ -47,7 +47,7 @@ auto record_visitor(LoweringContext& context, DeclarationHandle record, std::str
     auto& ir{context.ir};
     auto const& records{context.declarations.records};
     auto const& members{context.declarations.record_members};
-    auto const fields{context.declarations.items(records.members[records.index(record)])};
+    auto const fields{context.declarations.items(records.members[record])};
     std::vector<EnumValueId> values;
     std::vector<SwitchCaseId> cases;
     for (auto const field : fields) {
@@ -163,7 +163,7 @@ auto lower_record(LoweringContext& context, DeclarationHandle schema) -> Declara
             {ir.types.dependency("ioj::ConstrainedValue", "ioj/constrained_value.h")})};
         result.header.push_back(ir.using_declaration(records.name[row], constrained));
     }
-    if (records.s7_tag[records.index(schema)]) {
+    if (records.s7_tag[schema]) {
         lower_record_reader(context, schema, result);
     }
     return result;

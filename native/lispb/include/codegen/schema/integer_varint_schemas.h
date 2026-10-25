@@ -4,21 +4,24 @@
 #include <codegen/schema/declaration_kind.h>
 #include <codegen/schema/indices.h>
 #include <codegen/schema/integer_varint_encoding.h>
+#include <lispb/indexed_column.h>
 #include <lispb/indices.h>
-
-#include <vector>
 
 namespace lispb::codegen {
 
 struct IntegerVarintSchemas {
+    using Indexing = TaggedIndex<DeclarationHandle, DeclarationKind::integer_varint>;
+    template <typename T>
+    using Column = IndexedColumn<T, Indexing>;
+
     [[nodiscard]] auto append() -> DeclarationHandle;
     [[nodiscard]] auto clone(DeclarationHandle id) -> DeclarationHandle;
     [[nodiscard]] auto index(DeclarationHandle id) const -> std::uint32_t;
     void clear();
 
-    std::vector<StringId> name;
-    std::vector<TypeRefId> source;
-    std::vector<IntegerVarintEncoding> encoding;
+    Column<StringId> name;
+    Column<TypeRefId> source;
+    Column<IntegerVarintEncoding> encoding;
 };
 
 }

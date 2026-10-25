@@ -46,23 +46,17 @@ auto logical_column_access(LoweringContext& context,
         if (!receiver.empty() && !receiver.ends_with("->")) {
             receiver += '.';
         }
-        auto const members{context.declarations.items(
-            context.declarations.soas.members[context.declarations.soas.index(current)])};
+        auto const members{context.declarations.items(context.declarations.soas.members[current])};
         auto const found{std::ranges::find(members, path[index], [&](auto id) {
-            return context.declarations.strings().view(
-                context.declarations.soa_members.name[context.declarations.soa_members.index(id)]);
+            return context.declarations.strings().view(context.declarations.soa_members.name[id]);
         })};
         if (found == members.end()) {
-            throw std::invalid_argument{
-                "SOA '" +
-                context.text(
-                    context.declarations.soas.name[context.declarations.soas.index(current)]) +
-                "' has no column '" + path[index] + "'"};
+            throw std::invalid_argument{"SOA '" +
+                                        context.text(context.declarations.soas.name[current]) +
+                                        "' has no column '" + path[index] + "'"};
         }
         auto const member{*found};
-        bool const nested{
-            context.declarations.soa_members.kind[context.declarations.soa_members.index(member)] ==
-            SoaMemberKind::nested};
+        bool const nested{context.declarations.soa_members.kind[member] == SoaMemberKind::nested};
         receiver += nested ? "view_" : "";
         receiver += path[index];
         receiver += "()";
@@ -88,8 +82,7 @@ auto has_custom_row_function(LoweringContext& context,
     auto const functions{receiver == SoaReceiver::owner ? soas.functions[row]
                                                         : soas.mutable_view_functions[row]};
     return std::ranges::any_of(declarations.items(functions), [&](auto function) {
-        return context.text(declarations.functions.name[declarations.functions.index(function)]) ==
-               name;
+        return context.text(declarations.functions.name[function]) == name;
     });
 }
 
@@ -124,7 +117,7 @@ auto compact_row_api(LoweringContext& context,
     };
 
     if (owner) {
-        for (auto member : declarations.items(soas.members[soas.index(schema)])) {
+        for (auto member : declarations.items(soas.members[schema])) {
             auto const row{members.index(member)};
             auto const name{(members.kind[row] == SoaMemberKind::nested ? "view_" : "") +
                             context.text(members.name[row])};
@@ -147,9 +140,9 @@ auto compact_row_api(LoweringContext& context,
 
     std::vector<CppTypeId> parameter_types;
     std::vector<Expr> equivalent_arguments;
-    auto mapped{soas.equivalent_type[soas.index(schema)].has_value()};
+    auto mapped{soas.equivalent_type[schema].has_value()};
     auto collect = [&](auto&& self, DeclarationHandle current, std::string const& value) -> void {
-        for (auto member : declarations.items(soas.members[soas.index(current)])) {
+        for (auto member : declarations.items(soas.members[current])) {
             auto const row{members.index(member)};
             auto component{value};
             if (members.equivalent_member[row]) {
@@ -171,10 +164,10 @@ auto compact_row_api(LoweringContext& context,
     };
     collect(collect, schema, "value");
     auto can_assign_equivalent = [&](auto&& self, DeclarationHandle current) -> bool {
-        if (!soas.equivalent_type[soas.index(current)]) {
+        if (!soas.equivalent_type[current]) {
             return false;
         }
-        for (auto const member : declarations.items(soas.members[soas.index(current)])) {
+        for (auto const member : declarations.items(soas.members[current])) {
             auto const row{members.index(member)};
             if (!members.equivalent_member[row]) {
                 return false;
@@ -192,7 +185,7 @@ auto compact_row_api(LoweringContext& context,
     logical_assignments.add(ir.raw("assert(index < num());"));
     auto collect_logical =
         [&](auto&& self, DeclarationHandle current, std::vector<std::string> const& path) -> void {
-        for (auto const member : declarations.items(soas.members[soas.index(current)])) {
+        for (auto const member : declarations.items(soas.members[current])) {
             auto const row{members.index(member)};
             auto column{path};
             column.push_back(context.text(members.name[row]));
@@ -206,7 +199,7 @@ auto compact_row_api(LoweringContext& context,
                     continue;
                 }
                 member_context.module = context.for_declaration(child).module;
-                type_reference = *soas.equivalent_type[soas.index(child)];
+                type_reference = *soas.equivalent_type[child];
             }
             auto const name{"new_" + join(column, "_")};
             auto const type{member_context.resolve(type_reference)};
@@ -236,7 +229,7 @@ auto compact_row_api(LoweringContext& context,
         }
     }
     if (mapped) {
-        auto const equivalent{context.resolve(*soas.equivalent_type[soas.index(schema)])};
+        auto const equivalent{context.resolve(*soas.equivalent_type[schema])};
         auto const value{ir.parameter(ir.types.decorate(equivalent, "", " const"), "value")};
         auto set_arguments{equivalent_arguments};
         set_arguments.insert(set_arguments.begin(), ir.named("index"));
@@ -256,8 +249,7 @@ auto expand_columns(LoweringContext& context,
     result.reserve(body.size());
     std::size_t copied{};
     scan_soa_columns(body,
-                     context.declarations.strings().view(
-                         context.declarations.soas.name[context.declarations.soas.index(schema)]),
+                     context.declarations.strings().view(context.declarations.soas.name[schema]),
                      [&](std::size_t const begin,
                          std::size_t const end,
                          std::span<std::string const> const path) {
@@ -302,9 +294,8 @@ auto lower_soa_api(LoweringContext& parent_context,
     NodeListBuilder header{ir};
     NodeListBuilder source{ir};
     header.append(compact_row_api(context, schema, receiver, base));
-    for (auto const alias : context.declarations.items(
-             context.declarations.soas
-                 .using_declarations[context.declarations.soas.index(schema)])) {
+    for (auto const alias :
+         context.declarations.items(context.declarations.soas.using_declarations[schema])) {
         header.add(ir.raw("using " + context.text(alias) + ";")).new_lines(1);
     }
     auto append = [&](SchemaRange<FunctionSchemaId> const functions) {
@@ -314,9 +305,7 @@ auto lower_soa_api(LoweringContext& parent_context,
             auto const row{function_schemas.index(function)};
             auto const body{expand_columns(
                 context,
-                join_lines(context,
-                           context.declarations.functions
-                               .body_lines[context.declarations.functions.index(function)]),
+                join_lines(context, context.declarations.functions.body_lines[function]),
                 schema,
                 receiver)};
             auto spec{lower_schema_function(context, function, body)};
@@ -355,8 +344,7 @@ auto lower_soa_api(LoweringContext& parent_context,
                 ir.function_flags(spec).set_define_in_header(
                     !function_schemas.definition_in_source[row]);
             }
-            if (context.declarations.functions
-                    .definition_in_source[context.declarations.functions.index(function)]) {
+            if (context.declarations.functions.definition_in_source[function]) {
                 auto const id{spec};
                 auto const use_trailing_return{
                     ir.function_return_syntax(spec) == ReturnSyntax::direct &&
@@ -372,48 +360,40 @@ auto lower_soa_api(LoweringContext& parent_context,
             } else {
                 ir.function_flags(spec).set_define_in_header(
                     ir.function_flags(spec).define_in_header() ||
-                    !context.declarations.functions
-                         .body_lines[context.declarations.functions.index(function)]
-                         .empty());
+                    !context.declarations.functions.body_lines[function].empty());
                 ir.function_flags(spec).set_is_inline(ir.function_flags(spec).define_in_header());
                 header.add(ir.header_function(spec)).new_lines(1);
             }
         }
     };
     if (receiver == SoaReceiver::owner) {
-        append(context.declarations.soas.functions[context.declarations.soas.index(schema)]);
+        append(context.declarations.soas.functions[schema]);
     } else {
-        append(context.declarations.soas
-                   .const_view_functions[context.declarations.soas.index(schema)]);
+        append(context.declarations.soas.const_view_functions[schema]);
         if (receiver == SoaReceiver::mutable_view) {
-            append(context.declarations.soas
-                       .mutable_view_functions[context.declarations.soas.index(schema)]);
+            append(context.declarations.soas.mutable_view_functions[schema]);
         }
     }
-    if (context.declarations.soas.equivalent_type[context.declarations.soas.index(schema)]) {
-        auto const equivalent{context.resolve(
-            *context.declarations.soas.equivalent_type[context.declarations.soas.index(schema)])};
+    if (context.declarations.soas.equivalent_type[schema]) {
+        auto const equivalent{context.resolve(*context.declarations.soas.equivalent_type[schema])};
         header.add(ir.using_declaration(ir.strings.intern("equivalent_type"), equivalent))
             .new_lines(1);
         std::string expression;
         if (receiver == SoaReceiver::owner) {
             expression = "get_const_view()[index]";
         } else {
-            auto const constructor{
-                context.declarations.soas
-                    .equivalent_constructor[context.declarations.soas.index(schema)]};
+            auto const constructor{context.declarations.soas.equivalent_constructor[schema]};
             expression = constructor ? context.text(*constructor) + "(" : "equivalent_type{";
             bool first{true};
-            for (auto const member_id : context.declarations.items(
-                     context.declarations.soas.members[context.declarations.soas.index(schema)])) {
+            for (auto const member_id :
+                 context.declarations.items(context.declarations.soas.members[schema])) {
                 auto const member{member_id};
                 if (!first) {
                     expression += ", ";
                 }
                 first = false;
                 std::vector<std::string> const path{
-                    context.text(context.declarations.soa_members
-                                     .name[context.declarations.soa_members.index(member)])};
+                    context.text(context.declarations.soa_members.name[member])};
                 expression += logical_column_access(context, schema, path) + "[index]";
             }
             expression += constructor ? ")" : "}";

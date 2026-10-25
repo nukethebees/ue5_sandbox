@@ -7,34 +7,38 @@
 #include <codegen/schema/indices.h>
 #include <codegen/schema/native_enum_helper.h>
 #include <codegen/schema/schema_range.h>
+#include <lispb/indexed_column.h>
 #include <lispb/indices.h>
 #include <lispb/schema/enum_signedness.h>
 
 #include <cstdint>
 #include <optional>
-#include <vector>
 
 namespace lispb::codegen {
 
 struct EnumSchemas {
+    using Indexing = TaggedIndex<DeclarationHandle, DeclarationKind::enumeration>;
+    template <typename T>
+    using Column = IndexedColumn<T, Indexing>;
+
     [[nodiscard]] auto append() -> DeclarationHandle;
     [[nodiscard]] auto clone(DeclarationHandle id) -> DeclarationHandle;
     [[nodiscard]] auto index(DeclarationHandle id) const -> std::uint32_t;
     void clear();
 
-    std::vector<StringId> name;
-    std::vector<std::optional<TypeRefId>> underlying_type;
-    std::vector<SchemaRange<EnumeratorId>> values;
-    std::vector<std::optional<StringId>> count;
-    std::vector<SchemaRange<EnumConversion>> conversions;
-    std::vector<StringId> export_specifier;
-    std::vector<std::optional<EnumUnrealProjectionId>> unreal_projection;
-    std::vector<std::optional<std::uint8_t>> bit_width;
-    std::vector<EnumReflection> reflection;
-    std::vector<schema::EnumSignedness> signedness;
-    std::vector<std::uint8_t> enum_array;
-    std::vector<std::uint8_t> native_api;
-    std::vector<SchemaRange<NativeEnumHelper>> helpers;
+    Column<StringId> name;
+    Column<std::optional<TypeRefId>> underlying_type;
+    Column<SchemaRange<EnumeratorId>> values;
+    Column<std::optional<StringId>> count;
+    Column<SchemaRange<EnumConversion>> conversions;
+    Column<StringId> export_specifier;
+    Column<std::optional<EnumUnrealProjectionId>> unreal_projection;
+    Column<std::optional<std::uint8_t>> bit_width;
+    Column<EnumReflection> reflection;
+    Column<schema::EnumSignedness> signedness;
+    Column<std::uint8_t> enum_array;
+    Column<std::uint8_t> native_api;
+    Column<SchemaRange<NativeEnumHelper>> helpers;
 };
 
 }

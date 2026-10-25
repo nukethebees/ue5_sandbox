@@ -5,8 +5,7 @@
 namespace lispb::codegen {
 
 auto SettingsModuleSchemas::index(ModuleHandle id) const -> std::uint32_t {
-    assert(id.kind() == ModuleKind::settings);
-    auto const row{id.index()};
+    auto const row{Indexing::offset(id)};
     assert(row < settings.size());
     return row;
 }

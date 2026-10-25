@@ -73,16 +73,11 @@ auto join_lines(LoweringContext const& context, SchemaRange<StringId> values) ->
 }
 
 auto source_include(LoweringContext const& context, ModuleSettingsId settings) -> std::string {
-    if (context.declarations.module_settings_store
-            .header_include[context.declarations.module_settings_store.index(settings)]
-            .has_value()) {
-        return context.text(
-            *context.declarations.module_settings_store
-                 .header_include[context.declarations.module_settings_store.index(settings)]);
+    if (context.declarations.module_settings_store.header_include[settings].has_value()) {
+        return context.text(*context.declarations.module_settings_store.header_include[settings]);
     }
     return std::filesystem::path{
-        context.text(context.declarations.module_settings_store
-                         .header[context.declarations.module_settings_store.index(settings)])}
+        context.text(context.declarations.module_settings_store.header[settings])}
         .filename()
         .generic_string();
 }
@@ -204,26 +199,19 @@ auto lower_schema_function(LoweringContext& context,
     auto const& declarations{context.declarations};
     auto const row{declarations.functions.index(schema)};
     std::vector<FunctionParameterId> parameters;
-    for (auto const id :
-         declarations.items(context.declarations.functions
-                                .parameters[context.declarations.functions.index(schema)])) {
+    for (auto const id : declarations.items(context.declarations.functions.parameters[schema])) {
         auto const parameter{id};
-        auto resolved{context.resolve(
-            declarations.parameters.type[declarations.parameters.index(parameter)])};
-        if (declarations.parameters.default_value[declarations.parameters.index(parameter)]) {
-            parameters.push_back(ir.parameter(
-                resolved,
-                declarations.parameters.name[declarations.parameters.index(parameter)],
-                *declarations.parameters.default_value[declarations.parameters.index(parameter)]));
+        auto resolved{context.resolve(declarations.parameters.type[parameter])};
+        if (declarations.parameters.default_value[parameter]) {
+            parameters.push_back(ir.parameter(resolved,
+                                              declarations.parameters.name[parameter],
+                                              *declarations.parameters.default_value[parameter]));
         } else {
-            parameters.push_back(ir.parameter(
-                resolved, declarations.parameters.name[declarations.parameters.index(parameter)]));
+            parameters.push_back(ir.parameter(resolved, declarations.parameters.name[parameter]));
         }
     }
     std::vector<TypeDependencyId> dependencies;
-    for (auto const key :
-         declarations.items(context.declarations.functions
-                                .dependencies[context.declarations.functions.index(schema)])) {
+    for (auto const key : declarations.items(context.declarations.functions.dependencies[schema])) {
         append_type_dependencies(dependencies, context.text(key), context.types);
     }
     auto const trailing{declarations.functions.trailing_return_type[row]};
@@ -234,9 +222,7 @@ auto lower_schema_function(LoweringContext& context,
     ir.set_function_body(
         created_function,
         {body ? ir.raw(*body, dependencies)
-              : ir.raw_lines(declarations.items(
-                                 context.declarations.functions
-                                     .body_lines[context.declarations.functions.index(schema)]),
+              : ir.raw_lines(declarations.items(context.declarations.functions.body_lines[schema]),
                              dependencies)});
     if (trailing) {
         ir.set_function_return_type(created_function, return_type, ReturnSyntax::trailing);
@@ -250,14 +236,11 @@ auto lower_schema_function(LoweringContext& context,
         ir.set_function_noexcept(created_function);
     }
     ir.function_flags(created_function)
-        .set_is_constexpr(context.declarations.functions
-                              .is_constexpr[context.declarations.functions.index(schema)]);
+        .set_is_constexpr(context.declarations.functions.is_constexpr[schema]);
     ir.function_flags(created_function)
-        .set_is_inline(
-            context.declarations.functions.is_inline[context.declarations.functions.index(schema)]);
+        .set_is_inline(context.declarations.functions.is_inline[schema]);
     ir.function_flags(created_function)
-        .set_is_nodiscard(context.declarations.functions
-                              .is_nodiscard[context.declarations.functions.index(schema)]);
+        .set_is_nodiscard(context.declarations.functions.is_nodiscard[schema]);
     ir.function_flags(created_function)
         .set_define_in_header(!declarations.functions.definition_in_source[row] &&
                               (declarations.functions.is_inline[row] ||

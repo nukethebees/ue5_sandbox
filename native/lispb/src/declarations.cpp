@@ -66,11 +66,11 @@ auto Declarations::clone(PackedSegmentId id) -> PackedSegmentId {
 auto Declarations::module_settings(ModuleHandle id) const -> ModuleSettingsId {
     switch (id.kind()) {
         case ModuleKind::normal:
-            return normal_modules.settings[normal_modules.index(id)];
+            return normal_modules.settings[id];
         case ModuleKind::settings:
-            return settings_modules.settings[settings_modules.index(id)];
+            return settings_modules.settings[id];
         case ModuleKind::umbrella:
-            return umbrella_modules.settings[umbrella_modules.index(id)];
+            return umbrella_modules.settings[id];
     }
     assert(false);
     std::unreachable();

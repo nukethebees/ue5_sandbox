@@ -2,26 +2,30 @@
 
 #include <codegen/schema/indices.h>
 #include <codegen/schema/setting_control_kind.h>
+#include <lispb/indexed_column.h>
 #include <lispb/indices.h>
 
 #include <optional>
-#include <vector>
 
 namespace lispb::codegen {
 
 struct SettingControlSchemas {
+    using Indexing = OneBasedIndex<SettingControlId>;
+    template <typename T>
+    using Column = IndexedColumn<T, Indexing>;
+
     [[nodiscard]] auto append() -> SettingControlId;
     [[nodiscard]] auto clone(SettingControlId id) -> SettingControlId;
     [[nodiscard]] auto index(SettingControlId id) const -> std::uint32_t;
     void clear();
 
-    std::vector<SettingControlKind> kind;
-    std::vector<std::optional<StringId>> options_provider;
-    std::vector<std::optional<StringId>> availability_provider;
-    std::vector<std::optional<double>> minimum;
-    std::vector<std::optional<double>> maximum;
-    std::vector<std::optional<double>> step;
-    std::vector<std::optional<StringId>> custom_row;
+    Column<SettingControlKind> kind;
+    Column<std::optional<StringId>> options_provider;
+    Column<std::optional<StringId>> availability_provider;
+    Column<std::optional<double>> minimum;
+    Column<std::optional<double>> maximum;
+    Column<std::optional<double>> step;
+    Column<std::optional<StringId>> custom_row;
 };
 
 }

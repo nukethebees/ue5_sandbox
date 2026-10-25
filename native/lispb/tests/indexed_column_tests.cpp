@@ -18,7 +18,8 @@
 namespace lispb::codegen {
 namespace {
 using MemberColumn = IndexedColumn<int, OneBasedIndex<RecordMemberId>>;
-using TypeColumn = IndexedColumn<int, ZeroBasedIndex<schema::TypeId, UINT32_MAX>>;
+using TypeColumn =
+    IndexedColumn<int, ZeroBasedIndex<schema::TypeId, std::numeric_limits<std::uint32_t>::max()>>;
 
 template <typename Column, typename Id>
 concept CanIndex = requires(Column& column, Id id) { column[id]; };
@@ -133,18 +134,20 @@ TEST(IndexedColumn, RewritingClonesBeforeUpdatingAndPreservesHistoricalRows) {
     Declarations declarations{strings};
     auto& records{declarations.records};
     auto& members{declarations.record_members};
+    auto const original_type{declarations.type_refs.append()};
+    auto const replacement_type{declarations.type_refs.append()};
     auto const member{members.append()};
-    members.type[member] = TypeRefId{1};
+    members.type[member] = original_type;
     auto const original{records.append()};
     records.members[original] = declarations.range<RecordMemberId>({member});
     auto const updated{rewrite_type_references(
-        declarations, original, [](auto const&, TypeRefId, auto) { return TypeRefId{2}; })};
+        declarations, original, [&](auto const&, TypeRefId, auto) { return replacement_type; })};
     EXPECT_NE(updated, original);
-    EXPECT_EQ(members.type[member], TypeRefId{1});
+    EXPECT_EQ(members.type[member], original_type);
     EXPECT_EQ(declarations.items(records.members[original]).front(), member);
     auto const updated_member{declarations.items(records.members[updated]).front()};
     EXPECT_NE(updated_member, member);
-    EXPECT_EQ(members.type[updated_member], TypeRefId{2});
+    EXPECT_EQ(members.type[updated_member], replacement_type);
     auto const record_count{records.name.size()};
     auto const member_count{members.name.size()};
     EXPECT_EQ(rewrite_type_references(

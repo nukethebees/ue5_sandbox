@@ -525,10 +525,7 @@ auto CanonicalRenderer::build_static_table(codegen::DeclarationHandle const sche
         result.field("export-specifier", ir_.atom(tables.export_specifier[index]));
     }
     for (auto const row : items(tables.rows[index])) {
-        result.add(
-            ir_.form("row",
-                     {ir_.atom(store_.static_table_rows.name[store_.static_table_rows.index(row)])})
-                .build());
+        result.add(ir_.form("row", {ir_.atom(store_.static_table_rows.name[row])}).build());
     }
     for (auto const column : items(tables.columns[index])) {
         auto const column_index{columns.index(column)};

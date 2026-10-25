@@ -5,8 +5,7 @@
 namespace lispb::codegen {
 
 auto StaticTableSchemas::index(DeclarationHandle id) const -> std::uint32_t {
-    assert(id.kind() == DeclarationKind::static_table);
-    auto const row{id.index()};
+    auto const row{Indexing::offset(id)};
     assert(row < name.size());
     return row;
 }

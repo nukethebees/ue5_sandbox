@@ -55,8 +55,8 @@ auto reader_fields(LoweringContext& context, DeclarationHandle record)
     auto const& declarations{context.declarations};
     auto const& records{declarations.records};
     std::vector<RecordMemberId> result;
-    for (auto field : declarations.items(records.members[records.index(record)])) {
-        if (!declarations.record_members.s7[declarations.record_members.index(field)].exclude) {
+    for (auto field : declarations.items(records.members[record])) {
+        if (!declarations.record_members.s7[field].exclude) {
             result.push_back(field);
         }
     }
@@ -98,7 +98,7 @@ auto member_reader(LoweringContext& context, DeclarationHandle record) -> std::s
     auto const& members{context.declarations.record_members};
     auto const fields{reader_fields(context, record)};
     std::map<std::string, std::vector<std::string>> groups;
-    for (auto const field : context.declarations.items(records.members[records.index(record)])) {
+    for (auto const field : context.declarations.items(records.members[record])) {
         auto const excluded{std::ranges::find(fields, field) == fields.end()};
         auto const action{
             excluded ? "std::unreachable();"
@@ -375,7 +375,7 @@ void lower_record_reader(LoweringContext& context,
         auto const declaration{context.semantic.source_declaration(dependency)};
         auto const module{context.semantic.module(dependency)};
         if (declaration.value != 0 && declaration.kind() == DeclarationKind::record &&
-            records.s7_tag[records.index(declaration)] && module != context.module) {
+            records.s7_tag[declaration] && module != context.module) {
             emission.reader_includes.push_back(ir.strings.intern(reader_header_path(
                 source_include(context, context.declarations.module_settings(module)))));
         }

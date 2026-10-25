@@ -58,7 +58,7 @@ auto qualified_enum_name(LoweringContext& context,
     auto const& settings_store{context.declarations.module_settings_store};
     auto const namespace_name{settings_store.namespace_name[settings_store.index(settings)]};
     auto const& enums{context.declarations.enums};
-    auto name{context.text(enums.name[enums.index(schema)])};
+    auto name{context.text(enums.name[schema])};
     if (namespace_name) {
         return context.text(*namespace_name) + "::" + name;
     }
@@ -86,9 +86,7 @@ auto snake_case_type_name(std::string_view const name) -> std::string {
 auto internal_name(LoweringContext& context,
                    DeclarationHandle schema,
                    std::string_view const suffix) -> std::string {
-    return "get_" +
-           snake_case_type_name(context.text(
-               context.declarations.enums.name[context.declarations.enums.index(schema)])) +
+    return "get_" + snake_case_type_name(context.text(context.declarations.enums.name[schema])) +
            "_" + std::string{suffix};
 }
 
@@ -137,7 +135,7 @@ auto exact_lookup(LoweringContext& context, ModuleSettingsId settings, Declarati
     NodeListBuilder body{ir};
     std::vector<SwitchCaseId> cases;
     for (auto const value : context.declarations.items(enums.values[row])) {
-        auto const value_name{context.text(enumerators.name[enumerators.index(value)])};
+        auto const value_name{context.text(enumerators.name[value])};
         cases.push_back(ir.switch_case(ir.named(enum_name + "::" + value_name),
                                        ir.block({ir.return_stmt(text_literal(ir, value_name))})));
     }
@@ -579,8 +577,7 @@ auto native_enum_traits(LoweringContext& context,
         std::vector<Expr> values;
         values.reserve(value_count);
         for (auto const value : context.declarations.items(enums.values[schema_index])) {
-            auto const name{context.declarations.enumerators
-                                .name[context.declarations.enumerators.index(value)]};
+            auto const name{context.declarations.enumerators.name[value]};
             if (enums.count[schema_index] && name == *enums.count[schema_index]) {
                 continue;
             }
@@ -679,7 +676,7 @@ auto native_conversion_function(LoweringContext& context,
     std::vector<SwitchCaseId> cases;
     cases.reserve(values.size());
     for (auto const value : values) {
-        auto const name{context.text(enumerators.name[enumerators.index(value)])};
+        auto const name{context.text(enumerators.name[value])};
         cases.push_back(ir.switch_case(ir.named(source + "::" + name),
                                        ir.block({ir.return_stmt(ir.named(target + "::" + name))})));
     }
@@ -709,7 +706,7 @@ auto unreal_conversion_header(LoweringContext& context,
     auto const& projections{context.declarations.enum_unreal_projections};
     auto const projection_name{context.text(projections.name[projections.index(projection)])};
     auto const& enums{context.declarations.enums};
-    auto const values{context.declarations.items(enums.values[enums.index(schema)])};
+    auto const values{context.declarations.items(enums.values[schema])};
 
     NodeListBuilder declarations{ir};
     declarations.add(
@@ -718,7 +715,7 @@ auto unreal_conversion_header(LoweringContext& context,
         native_conversion_function(context, "to_unreal", native_name, projection_name, values), 2);
     auto const& enumerators{context.declarations.enumerators};
     for (auto const value : values) {
-        auto const name{context.text(enumerators.name[enumerators.index(value)])};
+        auto const name{context.text(enumerators.name[value])};
         declarations.add(
             ir.static_assertion(
                 ir.store_text(std::format("static_cast<int>({}::{}) == static_cast<int>({}::{})",

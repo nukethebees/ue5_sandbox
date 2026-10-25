@@ -5,8 +5,7 @@
 namespace lispb::codegen {
 
 auto UmbrellaModuleSchemas::index(ModuleHandle id) const -> std::uint32_t {
-    assert(id.kind() == ModuleKind::umbrella);
-    auto const row{id.index()};
+    auto const row{Indexing::offset(id)};
     assert(row < settings.size());
     return row;
 }

@@ -5,8 +5,7 @@
 namespace lispb::codegen {
 
 auto RecordSchemas::index(DeclarationHandle id) const -> std::uint32_t {
-    assert(id.kind() == DeclarationKind::record);
-    auto const row{id.index()};
+    auto const row{Indexing::offset(id)};
     assert(row < name.size());
     return row;
 }

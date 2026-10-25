@@ -5,8 +5,7 @@
 namespace lispb::codegen {
 
 auto LinearQuantizedSchemas::index(DeclarationHandle id) const -> std::uint32_t {
-    assert(id.kind() == DeclarationKind::linear_quantized);
-    auto const row{id.index()};
+    auto const row{Indexing::offset(id)};
     assert(row < name.size());
     return row;
 }

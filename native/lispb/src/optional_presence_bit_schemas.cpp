@@ -5,8 +5,7 @@
 namespace lispb::codegen {
 
 auto OptionalPresenceBitSchemas::index(DeclarationHandle id) const -> std::uint32_t {
-    assert(id.kind() == DeclarationKind::optional_presence_bit);
-    auto const row{id.index()};
+    auto const row{Indexing::offset(id)};
     assert(row < name.size());
     return row;
 }

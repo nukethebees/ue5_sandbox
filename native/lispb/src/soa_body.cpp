@@ -24,35 +24,30 @@ void validate_soa_body_columns(schema::TypeGraph const& graph,
     auto const& declarations{graph.declarations()};
     scan_soa_columns(
         body,
-        declarations.strings().view(declarations.soas.name[declarations.soas.index(schema)]),
+        declarations.strings().view(declarations.soas.name[schema]),
         [&](std::size_t, std::size_t, std::span<std::string const> const path) {
             auto current{schema};
             auto current_module{module};
             auto const count{path.size()};
             for (std::size_t index{}; index < count; ++index) {
-                auto const members{declarations.items(
-                    declarations.soas.members[declarations.soas.index(current)])};
+                auto const members{declarations.items(declarations.soas.members[current])};
                 auto const found{std::ranges::find(members, path[index], [&](auto id) {
-                    return declarations.strings().view(
-                        declarations.soa_members.name[declarations.soa_members.index(id)]);
+                    return declarations.strings().view(declarations.soa_members.name[id]);
                 })};
                 if (found == members.end()) {
                     throw std::invalid_argument{
                         "SOA '" +
-                        std::string{declarations.strings().view(
-                            declarations.soas.name[declarations.soas.index(current)])} +
+                        std::string{declarations.strings().view(declarations.soas.name[current])} +
                         "' has no column '" + path[index] + "'"};
                 }
                 auto const member{*found};
                 if (index + 1 < count) {
-                    if (declarations.soa_members.kind[declarations.soa_members.index(member)] !=
-                        SoaMemberKind::nested) {
+                    if (declarations.soa_members.kind[member] != SoaMemberKind::nested) {
                         throw std::invalid_argument{
                             "SOA column path requires a resolved nested schema: " + path[index]};
                     }
-                    auto const occurrence{graph.resolved(
-                        current_module,
-                        declarations.soa_members.type[declarations.soa_members.index(member)])};
+                    auto const occurrence{
+                        graph.resolved(current_module, declarations.soa_members.type[member])};
                     auto const& occurrences{graph.occurrences()};
                     auto const nested{occurrences.type[occurrences.index(occurrence)]};
                     current = graph.source_declaration(nested);

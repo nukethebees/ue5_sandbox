@@ -100,9 +100,8 @@ auto lower_known_enum(CompilerTestContext& context, ModuleHandle module, Declara
     auto& packed_values{declarations.packed_values};
     auto& module_settings_store{declarations.module_settings_store};
     auto& strings{context.storage.strings};
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_3{std::vector(original_items.begin(), original_items.end())};
         rows_3.front() = [&] {
             auto row_2{packed_values.clone(rows_3.front())};
@@ -112,8 +111,7 @@ auto lower_known_enum(CompilerTestContext& context, ModuleHandle module, Declara
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1[1] = [&] {
                     auto row_0{declarations.packed_fields.clone(rows_1[1])};
-                    declarations.packed_fields.type[declarations.packed_fields.index(row_0)] =
-                        make_test_type_ref(context, "@state");
+                    declarations.packed_fields.type[row_0] = make_test_type_ref(context, "@state");
                     return row_0;
                 }();
                 return declarations.range(rows_1);
@@ -162,9 +160,8 @@ auto scalar_backed_manifest(CompilerTestContext& context,
     auto& packed_named_codes{declarations.packed_named_codes};
     auto& strings{context.storage.strings};
 
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_3{std::vector(original_items.begin(), original_items.end())};
         rows_3.front() = [&] {
             auto row_2{packed_values.clone(rows_3.front())};
@@ -174,8 +171,7 @@ auto scalar_backed_manifest(CompilerTestContext& context,
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1[0] = [&] {
                     auto row_0{packed_fields.clone(rows_1[0])};
-                    packed_fields.type[packed_fields.index(row_0)] =
-                        make_test_type_ref(context, "project::Health");
+                    packed_fields.type[row_0] = make_test_type_ref(context, "project::Health");
                     return row_0;
                 }();
                 return declarations.range(rows_1);
@@ -184,9 +180,8 @@ auto scalar_backed_manifest(CompilerTestContext& context,
         }();
         return declarations.range(rows_3);
     }();
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_3{std::vector(original_items.begin(), original_items.end())};
         rows_3.front() = [&] {
             auto row_2{packed_values.clone(rows_3.front())};
@@ -196,9 +191,8 @@ auto scalar_backed_manifest(CompilerTestContext& context,
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1[0] = [&] {
                     auto row_0{packed_fields.clone(rows_1[0])};
-                    packed_fields.kind[packed_fields.index(row_0)] =
-                        signedness ? PackedFieldKind::signed_integer
-                                   : PackedFieldKind::unsigned_integer;
+                    packed_fields.kind[row_0] = signedness ? PackedFieldKind::signed_integer
+                                                           : PackedFieldKind::unsigned_integer;
                     return row_0;
                 }();
                 return declarations.range(rows_1);
@@ -207,9 +201,8 @@ auto scalar_backed_manifest(CompilerTestContext& context,
         }();
         return declarations.range(rows_3);
     }();
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_3{std::vector(original_items.begin(), original_items.end())};
         rows_3.front() = [&] {
             auto row_2{packed_values.clone(rows_3.front())};
@@ -219,7 +212,7 @@ auto scalar_backed_manifest(CompilerTestContext& context,
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1[0] = [&] {
                     auto row_0{packed_fields.clone(rows_1[0])};
-                    packed_fields.bits[packed_fields.index(row_0)].reset();
+                    packed_fields.bits[row_0].reset();
                     return row_0;
                 }();
                 return declarations.range(rows_1);
@@ -228,16 +221,13 @@ auto scalar_backed_manifest(CompilerTestContext& context,
         }();
         return declarations.range(rows_3);
     }();
-    normal_modules.settings[normal_modules.index(module)] = [&] {
-        auto row_0{
-            module_settings_store.clone(normal_modules.settings[normal_modules.index(module)])};
-        module_settings_store.namespace_name[module_settings_store.index(row_0)] =
-            strings.intern("project");
+    normal_modules.settings[module] = [&] {
+        auto row_0{module_settings_store.clone(normal_modules.settings[module])};
+        module_settings_store.namespace_name[row_0] = strings.intern("project");
         return row_0;
     }();
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{packed_values.clone(rows_1.front())};
@@ -252,13 +242,12 @@ auto scalar_backed_manifest(CompilerTestContext& context,
         }();
         return declarations.range(rows_1);
     }();
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{packed_values.clone(rows_1.front())};
-            packed_values.mutable_value[packed_values.index(row_0)] = true;
+            packed_values.mutable_value[row_0] = true;
             return row_0;
         }();
         return declarations.range(rows_1);
@@ -705,7 +694,7 @@ TEST(PackedValue, ValidatesExplicitDefaultsAndReportsStorageBudget) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1[1] = [&] {
                     auto row_0{packed_fields.clone(rows_1[1])};
-                    packed_fields.default_value[packed_fields.index(row_0)] = 2;
+                    packed_fields.default_value[row_0] = 2;
                     return row_0;
                 }();
                 return declarations.range(rows_1);
@@ -726,7 +715,7 @@ TEST(PackedValue, ValidatesExplicitDefaultsAndReportsStorageBudget) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1[1] = [&] {
                     auto row_0{packed_fields.clone(rows_1[1])};
-                    packed_fields.default_value[packed_fields.index(row_0)] = -1;
+                    packed_fields.default_value[row_0] = -1;
                     return row_0;
                 }();
                 return declarations.range(rows_1);
@@ -747,7 +736,7 @@ TEST(PackedValue, ValidatesExplicitDefaultsAndReportsStorageBudget) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1[1] = [&] {
                     auto row_0{packed_fields.clone(rows_1[1])};
-                    packed_fields.default_value[packed_fields.index(row_0)] = 1;
+                    packed_fields.default_value[row_0] = 1;
                     return row_0;
                 }();
                 return declarations.range(rows_1);
@@ -761,7 +750,7 @@ TEST(PackedValue, ValidatesExplicitDefaultsAndReportsStorageBudget) {
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1[0] = [&] {
             auto row_0{packed_values.clone(rows_1[0])};
-            packed_values.invalid_value[packed_values.index(row_0)] = 2;
+            packed_values.invalid_value[row_0] = 2;
             return row_0;
         }();
         return declarations.range(rows_1);
@@ -772,8 +761,7 @@ TEST(PackedValue, ValidatesExplicitDefaultsAndReportsStorageBudget) {
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1[0] = [&] {
             auto row_0{packed_values.clone(rows_1[0])};
-            packed_values.bit_order[packed_values.index(row_0)] =
-                PackedBitOrder::most_significant_first;
+            packed_values.bit_order[row_0] = PackedBitOrder::most_significant_first;
             return row_0;
         }();
         return declarations.range(rows_1);
@@ -784,7 +772,7 @@ TEST(PackedValue, ValidatesExplicitDefaultsAndReportsStorageBudget) {
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1[0] = [&] {
             auto row_0{packed_values.clone(rows_1[0])};
-            packed_values.invalid_value[packed_values.index(row_0)] = 64;
+            packed_values.invalid_value[row_0] = 64;
             return row_0;
         }();
         return declarations.range(rows_1);
@@ -801,7 +789,7 @@ TEST(PackedValue, ValidatesExplicitDefaultsAndReportsStorageBudget) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1[0] = [&] {
                     auto row_0{packed_fields.clone(rows_1[0])};
-                    packed_fields.default_value[packed_fields.index(row_0)].reset();
+                    packed_fields.default_value[row_0].reset();
                     return row_0;
                 }();
                 return declarations.range(rows_1);
@@ -816,7 +804,7 @@ TEST(PackedValue, ValidatesExplicitDefaultsAndReportsStorageBudget) {
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1[0] = [&] {
             auto row_0{packed_values.clone(rows_1[0])};
-            packed_values.invalid_value[packed_values.index(row_0)].reset();
+            packed_values.invalid_value[row_0].reset();
             return row_0;
         }();
         return declarations.range(rows_1);
@@ -832,7 +820,7 @@ TEST(PackedValue, ValidatesExplicitDefaultsAndReportsStorageBudget) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1[1] = [&] {
                     auto row_0{packed_fields.clone(rows_1[1])};
-                    packed_fields.bits[packed_fields.index(row_0)] = 8;
+                    packed_fields.bits[row_0] = 8;
                     return row_0;
                 }();
                 return declarations.range(rows_1);
@@ -873,7 +861,7 @@ TEST(PackedValue, ValidatesDefaultsAgainstSemanticRangesAndNamedSentinels) {
                     auto rows_1{std::vector(original_items.begin(), original_items.end())};
                     rows_1[0] = [&] {
                         auto row_0{packed_fields.clone(rows_1[0])};
-                        packed_fields.default_value[packed_fields.index(row_0)] = 0;
+                        packed_fields.default_value[row_0] = 0;
                         return row_0;
                     }();
                     return declarations.range(rows_1);
@@ -900,7 +888,7 @@ TEST(PackedValue, ValidatesDefaultsAgainstSemanticRangesAndNamedSentinels) {
                     auto rows_1{std::vector(original_items.begin(), original_items.end())};
                     rows_1[0] = [&] {
                         auto row_0{packed_fields.clone(rows_1[0])};
-                        packed_fields.default_value[packed_fields.index(row_0)] = 4095;
+                        packed_fields.default_value[row_0] = 4095;
                         return row_0;
                     }();
                     return declarations.range(rows_1);
@@ -927,7 +915,7 @@ TEST(PackedValue, ValidatesDefaultsAgainstSemanticRangesAndNamedSentinels) {
                     auto rows_1{std::vector(original_items.begin(), original_items.end())};
                     rows_1[0] = [&] {
                         auto row_0{packed_fields.clone(rows_1[0])};
-                        packed_fields.default_value[packed_fields.index(row_0)] = 1001;
+                        packed_fields.default_value[row_0] = 1001;
                         return row_0;
                     }();
                     return declarations.range(rows_1);
@@ -954,7 +942,7 @@ TEST(PackedValue, ValidatesDefaultsAgainstSemanticRangesAndNamedSentinels) {
                     auto rows_1{std::vector(original_items.begin(), original_items.end())};
                     rows_1[0] = [&] {
                         auto row_0{packed_fields.clone(rows_1[0])};
-                        packed_fields.default_value[packed_fields.index(row_0)] = 1000000;
+                        packed_fields.default_value[row_0] = 1000000;
                         return row_0;
                     }();
                     return declarations.range(rows_1);
@@ -983,7 +971,7 @@ TEST(PackedValue, LowersTypedFieldsAndThreeWayComparison) {
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{packed_values.clone(rows_1.front())};
-            packed_values.invalid_value[packed_values.index(row_0)] = 0x7fffffffu;
+            packed_values.invalid_value[row_0] = 0x7fffffffu;
             return row_0;
         }();
         return declarations.range(rows_1);
@@ -999,7 +987,7 @@ TEST(PackedValue, LowersTypedFieldsAndThreeWayComparison) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1[0] = [&] {
                     auto row_0{packed_fields.clone(rows_1[0])};
-                    packed_fields.range_helper[packed_fields.index(row_0)] = true;
+                    packed_fields.range_helper[row_0] = true;
                     return row_0;
                 }();
                 return declarations.range(rows_1);
@@ -1019,7 +1007,7 @@ TEST(PackedValue, LowersTypedFieldsAndThreeWayComparison) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1[0] = [&] {
                     auto row_0{packed_fields.clone(rows_1[0])};
-                    packed_fields.bits[packed_fields.index(row_0)].reset();
+                    packed_fields.bits[row_0].reset();
                     return row_0;
                 }();
                 return declarations.range(rows_1);
@@ -1039,7 +1027,7 @@ TEST(PackedValue, LowersTypedFieldsAndThreeWayComparison) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1[0] = [&] {
                     auto row_0{packed_fields.clone(rows_1[0])};
-                    packed_fields.minimum_value[packed_fields.index(row_0)] = 10;
+                    packed_fields.minimum_value[row_0] = 10;
                     return row_0;
                 }();
                 return declarations.range(rows_1);
@@ -1059,7 +1047,7 @@ TEST(PackedValue, LowersTypedFieldsAndThreeWayComparison) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1[0] = [&] {
                     auto row_0{packed_fields.clone(rows_1[0])};
-                    packed_fields.maximum_value[packed_fields.index(row_0)] = 1'000'000;
+                    packed_fields.maximum_value[row_0] = 1'000'000;
                     return row_0;
                 }();
                 return declarations.range(rows_1);
@@ -1079,32 +1067,27 @@ TEST(PackedValue, LowersTypedFieldsAndThreeWayComparison) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1[0] = [&] {
                     auto row_0{packed_fields.clone(rows_1[0])};
-                    packed_fields.named_codes[packed_fields.index(row_0)] =
-                        declarations.range<PackedNamedCodeId>(
-                            {[&] {
-                                 auto const new_packed_named_codes{packed_named_codes.append()};
-                                 auto const new_packed_named_codes_row{
-                                     packed_named_codes.index(new_packed_named_codes)};
-                                 packed_named_codes.name[new_packed_named_codes_row] =
-                                     strings.intern("Player");
-                                 packed_named_codes.value[new_packed_named_codes_row] = 42;
-                                 packed_named_codes
-                                     .sentinel[packed_named_codes.index(new_packed_named_codes)] =
-                                     false;
-                                 return new_packed_named_codes;
-                             }(),
-                             [&] {
-                                 auto const new_packed_named_codes{packed_named_codes.append()};
-                                 auto const new_packed_named_codes_row{
-                                     packed_named_codes.index(new_packed_named_codes)};
-                                 packed_named_codes.name[new_packed_named_codes_row] =
-                                     strings.intern("Invalid");
-                                 packed_named_codes.value[new_packed_named_codes_row] = 0xffffff;
-                                 packed_named_codes
-                                     .sentinel[packed_named_codes.index(new_packed_named_codes)] =
-                                     true;
-                                 return new_packed_named_codes;
-                             }()});
+                    packed_fields.named_codes[row_0] = declarations.range<PackedNamedCodeId>(
+                        {[&] {
+                             auto const new_packed_named_codes{packed_named_codes.append()};
+                             auto const new_packed_named_codes_row{
+                                 packed_named_codes.index(new_packed_named_codes)};
+                             packed_named_codes.name[new_packed_named_codes_row] =
+                                 strings.intern("Player");
+                             packed_named_codes.value[new_packed_named_codes_row] = 42;
+                             packed_named_codes.sentinel[new_packed_named_codes] = false;
+                             return new_packed_named_codes;
+                         }(),
+                         [&] {
+                             auto const new_packed_named_codes{packed_named_codes.append()};
+                             auto const new_packed_named_codes_row{
+                                 packed_named_codes.index(new_packed_named_codes)};
+                             packed_named_codes.name[new_packed_named_codes_row] =
+                                 strings.intern("Invalid");
+                             packed_named_codes.value[new_packed_named_codes_row] = 0xffffff;
+                             packed_named_codes.sentinel[new_packed_named_codes] = true;
+                             return new_packed_named_codes;
+                         }()});
                     return row_0;
                 }();
                 return declarations.range(rows_1);
@@ -1172,8 +1155,7 @@ TEST(PackedValue, EmitsAssertBackedMutationOnlyWhenRequested) {
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{declarations.packed_values.clone(rows_1.front())};
-            declarations.packed_values.mutable_value[declarations.packed_values.index(row_0)] =
-                true;
+            declarations.packed_values.mutable_value[row_0] = true;
             return row_0;
         }();
         return declarations.range(rows_1);
@@ -1200,7 +1182,7 @@ TEST(PackedValue, UsesFieldAliasesAcrossImmutableAndMutablePublicApis) {
             auto rows_1{std::vector(original_items.begin(), original_items.end())};
             rows_1.front() = [&] {
                 auto row_0{packed_values.clone(rows_1.front())};
-                packed_values.mutable_value[packed_values.index(row_0)] = mutable_value;
+                packed_values.mutable_value[row_0] = mutable_value;
                 return row_0;
             }();
             return declarations.range(rows_1);
@@ -1217,8 +1199,7 @@ TEST(PackedValue, UsesFieldAliasesAcrossImmutableAndMutablePublicApis) {
                     auto rows_1{std::vector(original_items.begin(), original_items.end())};
                     rows_1[0] = [&] {
                         auto row_0{declarations.packed_fields.clone(rows_1[0])};
-                        declarations.packed_fields
-                            .range_helper[declarations.packed_fields.index(row_0)] = true;
+                        declarations.packed_fields.range_helper[row_0] = true;
                         return row_0;
                     }();
                     return declarations.range(rows_1);
@@ -1270,17 +1251,13 @@ TEST(PackedValue, UsesRepresentationAliasesAcrossPublicApis) {
                                  fixed_point_backed_manifest(context),
                                  mini_float_backed_manifest(context)}) {
         auto const schema{
-            declarations
-                .items(declarations.normal_modules.declarations[declarations.normal_modules.index(
-                    manifest.modules.back())])
+            declarations.items(declarations.normal_modules.declarations[manifest.modules.back()])
                 .front()};
-        auto const fixed_point{
-            std::string{strings.view(packed_values.name[packed_values.index(schema)])} == "Motion"};
-        auto const accessor{
-            fixed_point ? std::string{"velocity_raw"}
-            : std::string{strings.view(packed_values.name[packed_values.index(schema)])} == "Vitals"
-                ? std::string{"health_encoded"}
-                : std::string{"component_encoded"}};
+        auto const fixed_point{std::string{strings.view(packed_values.name[schema])} == "Motion"};
+        auto const accessor{fixed_point ? std::string{"velocity_raw"}
+                            : std::string{strings.view(packed_values.name[schema])} == "Vitals"
+                                ? std::string{"health_encoded"}
+                                : std::string{"component_encoded"}};
         auto const alias{accessor + "_type"};
         auto const parameter{alias + "const" + accessor + "_value"};
         auto const files{render_test_manifest(context, manifest)};
@@ -1290,16 +1267,12 @@ TEST(PackedValue, UsesRepresentationAliasesAcrossPublicApis) {
         expect_type_only_in_alias_definitions(
             header,
             "std::uint16_t",
-            fixed_point || std::string{strings.view(
-                               packed_values.name[packed_values.index(schema)])} == "Vitals"
-                ? 1
-                : 2);
+            fixed_point || std::string{strings.view(packed_values.name[schema])} == "Vitals" ? 1
+                                                                                             : 2);
         expect_type_only_in_alias_definitions(
             header,
             "std::uint8_t",
-            std::string{strings.view(packed_values.name[packed_values.index(schema)])} == "Vitals"
-                ? 2
-                : 1);
+            std::string{strings.view(packed_values.name[schema])} == "Vitals" ? 2 : 1);
         if (fixed_point) {
             expect_type_only_in_alias_definitions(header, "std::int16_t", 1);
             EXPECT_NE(text.find("try_encode_velocity_value(doubleconstvalue,velocity_raw_type&out_"
@@ -1307,16 +1280,14 @@ TEST(PackedValue, UsesRepresentationAliasesAcrossPublicApis) {
                       std::string::npos);
             EXPECT_NE(text.find("velocity_raw_typeraw{};"), std::string::npos);
         }
-        EXPECT_NE(
-            text.find("explicitconstexpr" +
-                      std::string{strings.view(packed_values.name[packed_values.index(schema)])} +
-                      "(" + parameter + ",state_typeconststate_value)noexcept"),
-            std::string::npos);
-        EXPECT_EQ(
-            text.find("try_make(" + parameter + ",state_typeconststate_value," +
-                      std::string{strings.view(packed_values.name[packed_values.index(schema)])} +
-                      "&out_result)noexcept->bool"),
-            std::string::npos);
+        EXPECT_NE(text.find("explicitconstexpr" +
+                            std::string{strings.view(packed_values.name[schema])} + "(" +
+                            parameter + ",state_typeconststate_value)noexcept"),
+                  std::string::npos);
+        EXPECT_EQ(text.find("try_make(" + parameter + ",state_typeconststate_value," +
+                            std::string{strings.view(packed_values.name[schema])} +
+                            "&out_result)noexcept->bool"),
+                  std::string::npos);
         EXPECT_NE(text.find(accessor + "()constnoexcept->" + alias), std::string::npos);
         EXPECT_EQ(text.find("try_set_" + accessor + "(" + alias + "constvalue)noexcept->bool"),
                   std::string::npos);
@@ -1341,7 +1312,7 @@ TEST(PackedValue, UsesBooleanFieldAliasWithoutChangingStatusTypes) {
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{packed_values.clone(rows_1.front())};
-            packed_values.mutable_value[packed_values.index(row_0)] = true;
+            packed_values.mutable_value[row_0] = true;
             return row_0;
         }();
         return declarations.range(rows_1);
@@ -1351,8 +1322,7 @@ TEST(PackedValue, UsesBooleanFieldAliasWithoutChangingStatusTypes) {
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{packed_values.clone(rows_1.front())};
-            packed_values.storage_type[packed_values.index(row_0)] =
-                make_test_type_ref(context, "std::uint8_t");
+            packed_values.storage_type[row_0] = make_test_type_ref(context, "std::uint8_t");
             return row_0;
         }();
         return declarations.range(rows_1);
@@ -1362,15 +1332,14 @@ TEST(PackedValue, UsesBooleanFieldAliasWithoutChangingStatusTypes) {
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{packed_values.clone(rows_1.front())};
-            packed_values.segments[packed_values.index(row_0)] =
-                declarations.range<PackedSegmentId>({[&] {
-                    auto const new_packed_fields{packed_fields.append()};
-                    auto const new_packed_fields_row{packed_fields.index(new_packed_fields)};
-                    packed_fields.name[new_packed_fields_row] = strings.intern("flag");
-                    packed_fields.type[new_packed_fields_row] = make_test_type_ref(context, "bool");
-                    packed_fields.bits[new_packed_fields_row] = 1;
-                    return new_packed_fields;
-                }()});
+            packed_values.segments[row_0] = declarations.range<PackedSegmentId>({[&] {
+                auto const new_packed_fields{packed_fields.append()};
+                auto const new_packed_fields_row{packed_fields.index(new_packed_fields)};
+                packed_fields.name[new_packed_fields_row] = strings.intern("flag");
+                packed_fields.type[new_packed_fields_row] = make_test_type_ref(context, "bool");
+                packed_fields.bits[new_packed_fields_row] = 1;
+                return new_packed_fields;
+            }()});
             return row_0;
         }();
         return declarations.range(rows_1);
@@ -1405,7 +1374,7 @@ TEST(PackedValue, ReservedSegmentsOccupyBitsWithoutGeneratingValueApi) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1[0] = [&] {
                     auto row_0{declarations.packed_fields.clone(rows_1[0])};
-                    declarations.packed_fields.bits[declarations.packed_fields.index(row_0)] = 20;
+                    declarations.packed_fields.bits[row_0] = 20;
                     return row_0;
                 }();
                 return declarations.range(rows_1);
@@ -1469,7 +1438,7 @@ TEST(PackedValue, MostSignificantFirstSegmentsDriveGeneratedNumericOffsets) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1[0] = [&] {
                     auto row_0{declarations.packed_fields.clone(rows_1[0])};
-                    declarations.packed_fields.bits[declarations.packed_fields.index(row_0)] = 20;
+                    declarations.packed_fields.bits[row_0] = 20;
                     return row_0;
                 }();
                 return declarations.range(rows_1);
@@ -1507,7 +1476,7 @@ TEST(PackedValue, MostSignificantFirstSegmentsDriveGeneratedNumericOffsets) {
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{packed_values.clone(rows_1.front())};
-            packed_values.byte_order[packed_values.index(row_0)] = PackedByteOrder::big_endian;
+            packed_values.byte_order[row_0] = PackedByteOrder::big_endian;
             return row_0;
         }();
         return declarations.range(rows_1);
@@ -1517,8 +1486,7 @@ TEST(PackedValue, MostSignificantFirstSegmentsDriveGeneratedNumericOffsets) {
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{packed_values.clone(rows_1.front())};
-            packed_values.bit_order[packed_values.index(row_0)] =
-                PackedBitOrder::most_significant_first;
+            packed_values.bit_order[row_0] = PackedBitOrder::most_significant_first;
             return row_0;
         }();
         return declarations.range(rows_1);
@@ -1548,7 +1516,7 @@ TEST(PackedValue, MostSignificantFirstEnumDomainCanExcludeInvalidRawValue) {
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{packed_values.clone(rows_1.front())};
-            packed_values.invalid_value[packed_values.index(row_0)] = 7;
+            packed_values.invalid_value[row_0] = 7;
             return row_0;
         }();
         return declarations.range(rows_1);
@@ -1558,8 +1526,7 @@ TEST(PackedValue, MostSignificantFirstEnumDomainCanExcludeInvalidRawValue) {
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{packed_values.clone(rows_1.front())};
-            packed_values.bit_order[packed_values.index(row_0)] =
-                PackedBitOrder::most_significant_first;
+            packed_values.bit_order[row_0] = PackedBitOrder::most_significant_first;
             return row_0;
         }();
         return declarations.range(rows_1);
@@ -1605,8 +1572,7 @@ TEST(PackedValue, SerializedByteOrderDoesNotChangeHostNumericOffsets) {
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{declarations.packed_values.clone(rows_1.front())};
-            declarations.packed_values.byte_order[declarations.packed_values.index(row_0)] =
-                PackedByteOrder::big_endian;
+            declarations.packed_values.byte_order[row_0] = PackedByteOrder::big_endian;
             return row_0;
         }();
         return declarations.range(rows_1);
@@ -1634,7 +1600,7 @@ TEST(PackedValue, LowersSignedArbitraryWidthFieldWithSafeSignExtension) {
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{packed_values.clone(rows_1.front())};
-            packed_values.mutable_value[packed_values.index(row_0)] = true;
+            packed_values.mutable_value[row_0] = true;
             return row_0;
         }();
         return declarations.range(rows_1);
@@ -1644,7 +1610,7 @@ TEST(PackedValue, LowersSignedArbitraryWidthFieldWithSafeSignExtension) {
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{packed_values.clone(rows_1.front())};
-            packed_values.name[packed_values.index(row_0)] = strings.intern("SignedDelta");
+            packed_values.name[row_0] = strings.intern("SignedDelta");
             return row_0;
         }();
         return declarations.range(rows_1);
@@ -1654,28 +1620,26 @@ TEST(PackedValue, LowersSignedArbitraryWidthFieldWithSafeSignExtension) {
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{packed_values.clone(rows_1.front())};
-            packed_values.segments[packed_values.index(row_0)] =
-                declarations.range<PackedSegmentId>(
-                    {[&] {
-                         auto const new_packed_fields{packed_fields.append()};
-                         auto const new_packed_fields_row{packed_fields.index(new_packed_fields)};
-                         packed_fields.name[new_packed_fields_row] = strings.intern("delta");
-                         packed_fields.type[new_packed_fields_row] =
-                             make_test_type_ref(context, "std::int32_t");
-                         packed_fields.bits[new_packed_fields_row] = 17;
-                         packed_fields.kind[new_packed_fields_row] =
-                             PackedFieldKind::signed_integer;
-                         return new_packed_fields;
-                     }(),
-                     [&] {
-                         auto const new_packed_reserved_bits{packed_reserved_bits.append()};
-                         auto const new_packed_reserved_bits_row{
-                             packed_reserved_bits.index(new_packed_reserved_bits)};
-                         packed_reserved_bits.name[new_packed_reserved_bits_row] =
-                             strings.intern("future");
-                         packed_reserved_bits.bits[new_packed_reserved_bits_row] = 15;
-                         return new_packed_reserved_bits;
-                     }()});
+            packed_values.segments[row_0] = declarations.range<PackedSegmentId>(
+                {[&] {
+                     auto const new_packed_fields{packed_fields.append()};
+                     auto const new_packed_fields_row{packed_fields.index(new_packed_fields)};
+                     packed_fields.name[new_packed_fields_row] = strings.intern("delta");
+                     packed_fields.type[new_packed_fields_row] =
+                         make_test_type_ref(context, "std::int32_t");
+                     packed_fields.bits[new_packed_fields_row] = 17;
+                     packed_fields.kind[new_packed_fields_row] = PackedFieldKind::signed_integer;
+                     return new_packed_fields;
+                 }(),
+                 [&] {
+                     auto const new_packed_reserved_bits{packed_reserved_bits.append()};
+                     auto const new_packed_reserved_bits_row{
+                         packed_reserved_bits.index(new_packed_reserved_bits)};
+                     packed_reserved_bits.name[new_packed_reserved_bits_row] =
+                         strings.intern("future");
+                     packed_reserved_bits.bits[new_packed_reserved_bits_row] = 15;
+                     return new_packed_reserved_bits;
+                 }()});
             return row_0;
         }();
         return declarations.range(rows_1);
@@ -1711,7 +1675,7 @@ TEST(PackedValue, DerivesAndEnforcesSignedSemanticRangeWithNamedSentinel) {
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{packed_values.clone(rows_1.front())};
-            packed_values.mutable_value[packed_values.index(row_0)] = true;
+            packed_values.mutable_value[row_0] = true;
             return row_0;
         }();
         return declarations.range(rows_1);
@@ -1721,7 +1685,7 @@ TEST(PackedValue, DerivesAndEnforcesSignedSemanticRangeWithNamedSentinel) {
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{packed_values.clone(rows_1.front())};
-            packed_values.name[packed_values.index(row_0)] = strings.intern("SignedTemperature");
+            packed_values.name[row_0] = strings.intern("SignedTemperature");
             return row_0;
         }();
         return declarations.range(rows_1);
@@ -1731,8 +1695,7 @@ TEST(PackedValue, DerivesAndEnforcesSignedSemanticRangeWithNamedSentinel) {
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{packed_values.clone(rows_1.front())};
-            packed_values
-                .segments[packed_values.index(row_0)] = declarations.range<PackedSegmentId>(
+            packed_values.segments[row_0] = declarations.range<PackedSegmentId>(
                 {[&] {
                      auto const new_packed_fields{packed_fields.append()};
                      auto const new_packed_fields_row{packed_fields.index(new_packed_fields)};
@@ -1748,27 +1711,18 @@ TEST(PackedValue, DerivesAndEnforcesSignedSemanticRangeWithNamedSentinel) {
                          declarations.range<PackedNamedCodeId>(
                              {[&] {
                                   auto const new_packed_named_codes{packed_named_codes.append()};
-                                  packed_named_codes
-                                      .name[packed_named_codes.index(new_packed_named_codes)] =
+                                  packed_named_codes.name[new_packed_named_codes] =
                                       strings.intern("Freezing");
-                                  packed_named_codes
-                                      .value[packed_named_codes.index(new_packed_named_codes)] = 0;
-                                  packed_named_codes
-                                      .sentinel[packed_named_codes.index(new_packed_named_codes)] =
-                                      false;
+                                  packed_named_codes.value[new_packed_named_codes] = 0;
+                                  packed_named_codes.sentinel[new_packed_named_codes] = false;
                                   return new_packed_named_codes;
                               }(),
                               [&] {
                                   auto const new_packed_named_codes{packed_named_codes.append()};
-                                  packed_named_codes
-                                      .name[packed_named_codes.index(new_packed_named_codes)] =
+                                  packed_named_codes.name[new_packed_named_codes] =
                                       strings.intern("Unknown");
-                                  packed_named_codes
-                                      .value[packed_named_codes.index(new_packed_named_codes)] =
-                                      -128;
-                                  packed_named_codes
-                                      .sentinel[packed_named_codes.index(new_packed_named_codes)] =
-                                      true;
+                                  packed_named_codes.value[new_packed_named_codes] = -128;
+                                  packed_named_codes.sentinel[new_packed_named_codes] = true;
                                   return new_packed_named_codes;
                               }()});
                      return new_packed_fields;
@@ -1874,7 +1828,7 @@ TEST(PackedValue, RejectsCompetingLinearQuantizedPlacementFacts) {
                     auto rows_1{std::vector(original_items.begin(), original_items.end())};
                     rows_1[0] = [&] {
                         auto row_0{packed_fields.clone(rows_1[0])};
-                        packed_fields.bits[packed_fields.index(row_0)] = 7;
+                        packed_fields.bits[row_0] = 7;
                         return row_0;
                     }();
                     return declarations.range(rows_1);
@@ -1902,7 +1856,7 @@ TEST(PackedValue, RejectsCompetingLinearQuantizedPlacementFacts) {
                     auto rows_1{std::vector(original_items.begin(), original_items.end())};
                     rows_1[0] = [&] {
                         auto row_0{packed_fields.clone(rows_1[0])};
-                        packed_fields.bits[packed_fields.index(row_0)].reset();
+                        packed_fields.bits[row_0].reset();
                         return row_0;
                     }();
                     return declarations.range(rows_1);
@@ -1928,89 +1882,7 @@ TEST(PackedValue, RejectsCompetingLinearQuantizedPlacementFacts) {
                     auto rows_1{std::vector(original_items.begin(), original_items.end())};
                     rows_1[0] = [&] {
                         auto row_0{packed_fields.clone(rows_1[0])};
-                        packed_fields.kind[packed_fields.index(row_0)] =
-                            PackedFieldKind::unsigned_integer;
-                        return row_0;
-                    }();
-                    return declarations.range(rows_1);
-                }();
-                return row_2;
-            }();
-            return declarations.range(rows_3);
-        }();
-        return row_4;
-    }();
-    EXPECT_THROW(lower_test_manifest(context, manifest), std::invalid_argument);
-
-    manifest.modules.back() = [&] {
-        auto row_4{normal_modules.clone(manifest.modules.back())};
-        auto const row_4_row{normal_modules.index(row_4)};
-        normal_modules.declarations[row_4_row] = [&] {
-            auto const original_items{declarations.items(normal_modules.declarations[row_4_row])};
-            auto rows_3{std::vector(original_items.begin(), original_items.end())};
-            rows_3.front() = [&] {
-                auto row_2{packed_values.clone(rows_3.front())};
-                auto const row_2_row{packed_values.index(row_2)};
-                packed_values.segments[row_2_row] = [&] {
-                    auto const original_items{
-                        declarations.items(packed_values.segments[row_2_row])};
-                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                    rows_1[0] = [&] {
-                        auto row_0{packed_fields.clone(rows_1[0])};
-                        packed_fields.kind[packed_fields.index(row_0)] =
-                            PackedFieldKind::linear_quantized;
-                        return row_0;
-                    }();
-                    return declarations.range(rows_1);
-                }();
-                return row_2;
-            }();
-            return declarations.range(rows_3);
-        }();
-        return row_4;
-    }();
-    manifest.modules.back() = [&] {
-        auto row_4{normal_modules.clone(manifest.modules.back())};
-        auto const row_4_row{normal_modules.index(row_4)};
-        normal_modules.declarations[row_4_row] = [&] {
-            auto const original_items{declarations.items(normal_modules.declarations[row_4_row])};
-            auto rows_3{std::vector(original_items.begin(), original_items.end())};
-            rows_3.front() = [&] {
-                auto row_2{packed_values.clone(rows_3.front())};
-                auto const row_2_row{packed_values.index(row_2)};
-                packed_values.segments[row_2_row] = [&] {
-                    auto const original_items{
-                        declarations.items(packed_values.segments[row_2_row])};
-                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                    rows_1[0] = [&] {
-                        auto row_0{packed_fields.clone(rows_1[0])};
-                        packed_fields.minimum_value[packed_fields.index(row_0)] = 0;
-                        return row_0;
-                    }();
-                    return declarations.range(rows_1);
-                }();
-                return row_2;
-            }();
-            return declarations.range(rows_3);
-        }();
-        return row_4;
-    }();
-    manifest.modules.back() = [&] {
-        auto row_4{normal_modules.clone(manifest.modules.back())};
-        auto const row_4_row{normal_modules.index(row_4)};
-        normal_modules.declarations[row_4_row] = [&] {
-            auto const original_items{declarations.items(normal_modules.declarations[row_4_row])};
-            auto rows_3{std::vector(original_items.begin(), original_items.end())};
-            rows_3.front() = [&] {
-                auto row_2{packed_values.clone(rows_3.front())};
-                auto const row_2_row{packed_values.index(row_2)};
-                packed_values.segments[row_2_row] = [&] {
-                    auto const original_items{
-                        declarations.items(packed_values.segments[row_2_row])};
-                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                    rows_1[0] = [&] {
-                        auto row_0{packed_fields.clone(rows_1[0])};
-                        packed_fields.maximum_value[packed_fields.index(row_0)] = 1000;
+                        packed_fields.kind[row_0] = PackedFieldKind::unsigned_integer;
                         return row_0;
                     }();
                     return declarations.range(rows_1);
@@ -2038,7 +1910,7 @@ TEST(PackedValue, RejectsCompetingLinearQuantizedPlacementFacts) {
                     auto rows_1{std::vector(original_items.begin(), original_items.end())};
                     rows_1[0] = [&] {
                         auto row_0{packed_fields.clone(rows_1[0])};
-                        packed_fields.minimum_value[packed_fields.index(row_0)].reset();
+                        packed_fields.kind[row_0] = PackedFieldKind::linear_quantized;
                         return row_0;
                     }();
                     return declarations.range(rows_1);
@@ -2064,7 +1936,7 @@ TEST(PackedValue, RejectsCompetingLinearQuantizedPlacementFacts) {
                     auto rows_1{std::vector(original_items.begin(), original_items.end())};
                     rows_1[0] = [&] {
                         auto row_0{packed_fields.clone(rows_1[0])};
-                        packed_fields.maximum_value[packed_fields.index(row_0)].reset();
+                        packed_fields.minimum_value[row_0] = 0;
                         return row_0;
                     }();
                     return declarations.range(rows_1);
@@ -2090,7 +1962,87 @@ TEST(PackedValue, RejectsCompetingLinearQuantizedPlacementFacts) {
                     auto rows_1{std::vector(original_items.begin(), original_items.end())};
                     rows_1[0] = [&] {
                         auto row_0{packed_fields.clone(rows_1[0])};
-                        packed_fields.range_helper[packed_fields.index(row_0)] = true;
+                        packed_fields.maximum_value[row_0] = 1000;
+                        return row_0;
+                    }();
+                    return declarations.range(rows_1);
+                }();
+                return row_2;
+            }();
+            return declarations.range(rows_3);
+        }();
+        return row_4;
+    }();
+    EXPECT_THROW(lower_test_manifest(context, manifest), std::invalid_argument);
+
+    manifest.modules.back() = [&] {
+        auto row_4{normal_modules.clone(manifest.modules.back())};
+        auto const row_4_row{normal_modules.index(row_4)};
+        normal_modules.declarations[row_4_row] = [&] {
+            auto const original_items{declarations.items(normal_modules.declarations[row_4_row])};
+            auto rows_3{std::vector(original_items.begin(), original_items.end())};
+            rows_3.front() = [&] {
+                auto row_2{packed_values.clone(rows_3.front())};
+                auto const row_2_row{packed_values.index(row_2)};
+                packed_values.segments[row_2_row] = [&] {
+                    auto const original_items{
+                        declarations.items(packed_values.segments[row_2_row])};
+                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                    rows_1[0] = [&] {
+                        auto row_0{packed_fields.clone(rows_1[0])};
+                        packed_fields.minimum_value[row_0].reset();
+                        return row_0;
+                    }();
+                    return declarations.range(rows_1);
+                }();
+                return row_2;
+            }();
+            return declarations.range(rows_3);
+        }();
+        return row_4;
+    }();
+    manifest.modules.back() = [&] {
+        auto row_4{normal_modules.clone(manifest.modules.back())};
+        auto const row_4_row{normal_modules.index(row_4)};
+        normal_modules.declarations[row_4_row] = [&] {
+            auto const original_items{declarations.items(normal_modules.declarations[row_4_row])};
+            auto rows_3{std::vector(original_items.begin(), original_items.end())};
+            rows_3.front() = [&] {
+                auto row_2{packed_values.clone(rows_3.front())};
+                auto const row_2_row{packed_values.index(row_2)};
+                packed_values.segments[row_2_row] = [&] {
+                    auto const original_items{
+                        declarations.items(packed_values.segments[row_2_row])};
+                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                    rows_1[0] = [&] {
+                        auto row_0{packed_fields.clone(rows_1[0])};
+                        packed_fields.maximum_value[row_0].reset();
+                        return row_0;
+                    }();
+                    return declarations.range(rows_1);
+                }();
+                return row_2;
+            }();
+            return declarations.range(rows_3);
+        }();
+        return row_4;
+    }();
+    manifest.modules.back() = [&] {
+        auto row_4{normal_modules.clone(manifest.modules.back())};
+        auto const row_4_row{normal_modules.index(row_4)};
+        normal_modules.declarations[row_4_row] = [&] {
+            auto const original_items{declarations.items(normal_modules.declarations[row_4_row])};
+            auto rows_3{std::vector(original_items.begin(), original_items.end())};
+            rows_3.front() = [&] {
+                auto row_2{packed_values.clone(rows_3.front())};
+                auto const row_2_row{packed_values.index(row_2)};
+                packed_values.segments[row_2_row] = [&] {
+                    auto const original_items{
+                        declarations.items(packed_values.segments[row_2_row])};
+                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                    rows_1[0] = [&] {
+                        auto row_0{packed_fields.clone(rows_1[0])};
+                        packed_fields.range_helper[row_0] = true;
                         return row_0;
                     }();
                     return declarations.range(rows_1);
@@ -2154,7 +2106,7 @@ TEST(PackedValue, LowersFixedPointPlacementToExplicitRawCodeApi) {
             auto rows_1{std::vector(original_items.begin(), original_items.end())};
             rows_1.front() = [&] {
                 auto row_0{fixed_points.clone(rows_1.front())};
-                fixed_points.minimum_value[fixed_points.index(row_0)] = strings.intern("-1.5");
+                fixed_points.minimum_value[row_0] = strings.intern("-1.5");
                 return row_0;
             }();
             return declarations.range(rows_1);
@@ -2169,7 +2121,7 @@ TEST(PackedValue, LowersFixedPointPlacementToExplicitRawCodeApi) {
             auto rows_1{std::vector(original_items.begin(), original_items.end())};
             rows_1.front() = [&] {
                 auto row_0{fixed_points.clone(rows_1.front())};
-                fixed_points.maximum_value[fixed_points.index(row_0)] = strings.intern("2.25");
+                fixed_points.maximum_value[row_0] = strings.intern("2.25");
                 return row_0;
             }();
             return declarations.range(rows_1);
@@ -2194,8 +2146,7 @@ TEST(PackedValue, LowersFixedPointPlacementToExplicitRawCodeApi) {
             auto rows_1{std::vector(original_items.begin(), original_items.end())};
             rows_1.front() = [&] {
                 auto row_0{declarations.packed_values.clone(rows_1.front())};
-                declarations.packed_values.mutable_value[declarations.packed_values.index(row_0)] =
-                    false;
+                declarations.packed_values.mutable_value[row_0] = false;
                 return row_0;
             }();
             return declarations.range(rows_1);
@@ -2236,7 +2187,7 @@ TEST(PackedValue, RejectsCompetingFixedPointPlacementFacts) {
                     auto rows_1{std::vector(original_items.begin(), original_items.end())};
                     rows_1[0] = [&] {
                         auto row_0{packed_fields.clone(rows_1[0])};
-                        packed_fields.bits[packed_fields.index(row_0)] = 11;
+                        packed_fields.bits[row_0] = 11;
                         return row_0;
                     }();
                     return declarations.range(rows_1);
@@ -2264,7 +2215,7 @@ TEST(PackedValue, RejectsCompetingFixedPointPlacementFacts) {
                     auto rows_1{std::vector(original_items.begin(), original_items.end())};
                     rows_1[0] = [&] {
                         auto row_0{packed_fields.clone(rows_1[0])};
-                        packed_fields.bits[packed_fields.index(row_0)].reset();
+                        packed_fields.bits[row_0].reset();
                         return row_0;
                     }();
                     return declarations.range(rows_1);
@@ -2290,89 +2241,7 @@ TEST(PackedValue, RejectsCompetingFixedPointPlacementFacts) {
                     auto rows_1{std::vector(original_items.begin(), original_items.end())};
                     rows_1[0] = [&] {
                         auto row_0{packed_fields.clone(rows_1[0])};
-                        packed_fields.kind[packed_fields.index(row_0)] =
-                            PackedFieldKind::signed_integer;
-                        return row_0;
-                    }();
-                    return declarations.range(rows_1);
-                }();
-                return row_2;
-            }();
-            return declarations.range(rows_3);
-        }();
-        return row_4;
-    }();
-    EXPECT_THROW(lower_test_manifest(context, manifest), std::invalid_argument);
-
-    manifest.modules.back() = [&] {
-        auto row_4{normal_modules.clone(manifest.modules.back())};
-        auto const row_4_row{normal_modules.index(row_4)};
-        normal_modules.declarations[row_4_row] = [&] {
-            auto const original_items{declarations.items(normal_modules.declarations[row_4_row])};
-            auto rows_3{std::vector(original_items.begin(), original_items.end())};
-            rows_3.front() = [&] {
-                auto row_2{packed_values.clone(rows_3.front())};
-                auto const row_2_row{packed_values.index(row_2)};
-                packed_values.segments[row_2_row] = [&] {
-                    auto const original_items{
-                        declarations.items(packed_values.segments[row_2_row])};
-                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                    rows_1[0] = [&] {
-                        auto row_0{packed_fields.clone(rows_1[0])};
-                        packed_fields.kind[packed_fields.index(row_0)] =
-                            PackedFieldKind::fixed_point;
-                        return row_0;
-                    }();
-                    return declarations.range(rows_1);
-                }();
-                return row_2;
-            }();
-            return declarations.range(rows_3);
-        }();
-        return row_4;
-    }();
-    manifest.modules.back() = [&] {
-        auto row_4{normal_modules.clone(manifest.modules.back())};
-        auto const row_4_row{normal_modules.index(row_4)};
-        normal_modules.declarations[row_4_row] = [&] {
-            auto const original_items{declarations.items(normal_modules.declarations[row_4_row])};
-            auto rows_3{std::vector(original_items.begin(), original_items.end())};
-            rows_3.front() = [&] {
-                auto row_2{packed_values.clone(rows_3.front())};
-                auto const row_2_row{packed_values.index(row_2)};
-                packed_values.segments[row_2_row] = [&] {
-                    auto const original_items{
-                        declarations.items(packed_values.segments[row_2_row])};
-                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                    rows_1[0] = [&] {
-                        auto row_0{packed_fields.clone(rows_1[0])};
-                        packed_fields.minimum_value[packed_fields.index(row_0)] = -10;
-                        return row_0;
-                    }();
-                    return declarations.range(rows_1);
-                }();
-                return row_2;
-            }();
-            return declarations.range(rows_3);
-        }();
-        return row_4;
-    }();
-    manifest.modules.back() = [&] {
-        auto row_4{normal_modules.clone(manifest.modules.back())};
-        auto const row_4_row{normal_modules.index(row_4)};
-        normal_modules.declarations[row_4_row] = [&] {
-            auto const original_items{declarations.items(normal_modules.declarations[row_4_row])};
-            auto rows_3{std::vector(original_items.begin(), original_items.end())};
-            rows_3.front() = [&] {
-                auto row_2{packed_values.clone(rows_3.front())};
-                auto const row_2_row{packed_values.index(row_2)};
-                packed_values.segments[row_2_row] = [&] {
-                    auto const original_items{
-                        declarations.items(packed_values.segments[row_2_row])};
-                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                    rows_1[0] = [&] {
-                        auto row_0{packed_fields.clone(rows_1[0])};
-                        packed_fields.maximum_value[packed_fields.index(row_0)] = 10;
+                        packed_fields.kind[row_0] = PackedFieldKind::signed_integer;
                         return row_0;
                     }();
                     return declarations.range(rows_1);
@@ -2400,7 +2269,7 @@ TEST(PackedValue, RejectsCompetingFixedPointPlacementFacts) {
                     auto rows_1{std::vector(original_items.begin(), original_items.end())};
                     rows_1[0] = [&] {
                         auto row_0{packed_fields.clone(rows_1[0])};
-                        packed_fields.minimum_value[packed_fields.index(row_0)].reset();
+                        packed_fields.kind[row_0] = PackedFieldKind::fixed_point;
                         return row_0;
                     }();
                     return declarations.range(rows_1);
@@ -2426,7 +2295,87 @@ TEST(PackedValue, RejectsCompetingFixedPointPlacementFacts) {
                     auto rows_1{std::vector(original_items.begin(), original_items.end())};
                     rows_1[0] = [&] {
                         auto row_0{packed_fields.clone(rows_1[0])};
-                        packed_fields.maximum_value[packed_fields.index(row_0)].reset();
+                        packed_fields.minimum_value[row_0] = -10;
+                        return row_0;
+                    }();
+                    return declarations.range(rows_1);
+                }();
+                return row_2;
+            }();
+            return declarations.range(rows_3);
+        }();
+        return row_4;
+    }();
+    manifest.modules.back() = [&] {
+        auto row_4{normal_modules.clone(manifest.modules.back())};
+        auto const row_4_row{normal_modules.index(row_4)};
+        normal_modules.declarations[row_4_row] = [&] {
+            auto const original_items{declarations.items(normal_modules.declarations[row_4_row])};
+            auto rows_3{std::vector(original_items.begin(), original_items.end())};
+            rows_3.front() = [&] {
+                auto row_2{packed_values.clone(rows_3.front())};
+                auto const row_2_row{packed_values.index(row_2)};
+                packed_values.segments[row_2_row] = [&] {
+                    auto const original_items{
+                        declarations.items(packed_values.segments[row_2_row])};
+                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                    rows_1[0] = [&] {
+                        auto row_0{packed_fields.clone(rows_1[0])};
+                        packed_fields.maximum_value[row_0] = 10;
+                        return row_0;
+                    }();
+                    return declarations.range(rows_1);
+                }();
+                return row_2;
+            }();
+            return declarations.range(rows_3);
+        }();
+        return row_4;
+    }();
+    EXPECT_THROW(lower_test_manifest(context, manifest), std::invalid_argument);
+
+    manifest.modules.back() = [&] {
+        auto row_4{normal_modules.clone(manifest.modules.back())};
+        auto const row_4_row{normal_modules.index(row_4)};
+        normal_modules.declarations[row_4_row] = [&] {
+            auto const original_items{declarations.items(normal_modules.declarations[row_4_row])};
+            auto rows_3{std::vector(original_items.begin(), original_items.end())};
+            rows_3.front() = [&] {
+                auto row_2{packed_values.clone(rows_3.front())};
+                auto const row_2_row{packed_values.index(row_2)};
+                packed_values.segments[row_2_row] = [&] {
+                    auto const original_items{
+                        declarations.items(packed_values.segments[row_2_row])};
+                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                    rows_1[0] = [&] {
+                        auto row_0{packed_fields.clone(rows_1[0])};
+                        packed_fields.minimum_value[row_0].reset();
+                        return row_0;
+                    }();
+                    return declarations.range(rows_1);
+                }();
+                return row_2;
+            }();
+            return declarations.range(rows_3);
+        }();
+        return row_4;
+    }();
+    manifest.modules.back() = [&] {
+        auto row_4{normal_modules.clone(manifest.modules.back())};
+        auto const row_4_row{normal_modules.index(row_4)};
+        normal_modules.declarations[row_4_row] = [&] {
+            auto const original_items{declarations.items(normal_modules.declarations[row_4_row])};
+            auto rows_3{std::vector(original_items.begin(), original_items.end())};
+            rows_3.front() = [&] {
+                auto row_2{packed_values.clone(rows_3.front())};
+                auto const row_2_row{packed_values.index(row_2)};
+                packed_values.segments[row_2_row] = [&] {
+                    auto const original_items{
+                        declarations.items(packed_values.segments[row_2_row])};
+                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                    rows_1[0] = [&] {
+                        auto row_0{packed_fields.clone(rows_1[0])};
+                        packed_fields.maximum_value[row_0].reset();
                         return row_0;
                     }();
                     return declarations.range(rows_1);
@@ -2496,7 +2445,7 @@ TEST(PackedValue, RejectsCompetingFixedPointPlacementFacts) {
                     auto rows_1{std::vector(original_items.begin(), original_items.end())};
                     rows_1[0] = [&] {
                         auto row_0{packed_fields.clone(rows_1[0])};
-                        packed_fields.named_codes[packed_fields.index(row_0)] = {};
+                        packed_fields.named_codes[row_0] = {};
                         return row_0;
                     }();
                     return declarations.range(rows_1);
@@ -2522,7 +2471,7 @@ TEST(PackedValue, RejectsCompetingFixedPointPlacementFacts) {
                     auto rows_1{std::vector(original_items.begin(), original_items.end())};
                     rows_1[0] = [&] {
                         auto row_0{packed_fields.clone(rows_1[0])};
-                        packed_fields.range_helper[packed_fields.index(row_0)] = true;
+                        packed_fields.range_helper[row_0] = true;
                         return row_0;
                     }();
                     return declarations.range(rows_1);
@@ -2550,7 +2499,7 @@ TEST(PackedValue, RejectsCompetingFixedPointPlacementFacts) {
                     auto rows_1{std::vector(original_items.begin(), original_items.end())};
                     rows_1[0] = [&] {
                         auto row_0{packed_fields.clone(rows_1[0])};
-                        packed_fields.range_helper[packed_fields.index(row_0)] = false;
+                        packed_fields.range_helper[row_0] = false;
                         return row_0;
                     }();
                     return declarations.range(rows_1);
@@ -2576,7 +2525,7 @@ TEST(PackedValue, RejectsCompetingFixedPointPlacementFacts) {
                     auto rows_1{std::vector(original_items.begin(), original_items.end())};
                     rows_1[0] = [&] {
                         auto row_0{packed_fields.clone(rows_1[0])};
-                        packed_fields.relationship[packed_fields.index(row_0)] = [&] {
+                        packed_fields.relationship[row_0] = [&] {
                             auto const new_semantic_relations{semantic_relations.append()};
                             auto const new_semantic_relations_row{
                                 semantic_relations.index(new_semantic_relations)};
@@ -2633,8 +2582,7 @@ TEST(PackedValue, LowersMiniFloatPlacementAsRawEncodedBits) {
             auto rows_1{std::vector(original_items.begin(), original_items.end())};
             rows_1.front() = [&] {
                 auto row_0{declarations.mini_floats.clone(rows_1.front())};
-                declarations.mini_floats.significand_bits[declarations.mini_floats.index(row_0)] =
-                    58;
+                declarations.mini_floats.significand_bits[row_0] = 58;
                 return row_0;
             }();
             return declarations.range(rows_1);
@@ -2650,8 +2598,7 @@ TEST(PackedValue, LowersMiniFloatPlacementAsRawEncodedBits) {
             auto rows_1{std::vector(original_items.begin(), original_items.end())};
             rows_1.front() = [&] {
                 auto row_0{packed_values.clone(rows_1.front())};
-                packed_values.storage_type[packed_values.index(row_0)] =
-                    make_test_type_ref(context, "std::uint64_t");
+                packed_values.storage_type[row_0] = make_test_type_ref(context, "std::uint64_t");
                 return row_0;
             }();
             return declarations.range(rows_1);
@@ -2688,7 +2635,7 @@ TEST(PackedValue, LowersMiniFloatPlacementAsRawEncodedBits) {
             auto rows_1{std::vector(original_items.begin(), original_items.end())};
             rows_1.front() = [&] {
                 auto row_0{packed_values.clone(rows_1.front())};
-                packed_values.mutable_value[packed_values.index(row_0)] = false;
+                packed_values.mutable_value[row_0] = false;
                 return row_0;
             }();
             return declarations.range(rows_1);
@@ -2734,7 +2681,7 @@ TEST(PackedValue, RejectsCompetingMiniFloatPlacementFacts) {
                     auto rows_1{std::vector(original_items.begin(), original_items.end())};
                     rows_1[0] = [&] {
                         auto row_0{packed_fields.clone(rows_1[0])};
-                        packed_fields.bits[packed_fields.index(row_0)] = 11;
+                        packed_fields.bits[row_0] = 11;
                         return row_0;
                     }();
                     return declarations.range(rows_1);
@@ -2761,7 +2708,7 @@ TEST(PackedValue, RejectsCompetingMiniFloatPlacementFacts) {
                     auto rows_1{std::vector(original_items.begin(), original_items.end())};
                     rows_1[0] = [&] {
                         auto row_0{packed_fields.clone(rows_1[0])};
-                        packed_fields.bits[packed_fields.index(row_0)].reset();
+                        packed_fields.bits[row_0].reset();
                         return row_0;
                     }();
                     return declarations.range(rows_1);
@@ -2787,88 +2734,7 @@ TEST(PackedValue, RejectsCompetingMiniFloatPlacementFacts) {
                     auto rows_1{std::vector(original_items.begin(), original_items.end())};
                     rows_1[0] = [&] {
                         auto row_0{packed_fields.clone(rows_1[0])};
-                        packed_fields.kind[packed_fields.index(row_0)] =
-                            PackedFieldKind::unsigned_integer;
-                        return row_0;
-                    }();
-                    return declarations.range(rows_1);
-                }();
-                return row_2;
-            }();
-            return declarations.range(rows_3);
-        }();
-        return row_4;
-    }();
-    EXPECT_THROW(lower_test_manifest(context, manifest), std::invalid_argument);
-    manifest.modules.back() = [&] {
-        auto row_4{normal_modules.clone(manifest.modules.back())};
-        auto const row_4_row{normal_modules.index(row_4)};
-        normal_modules.declarations[row_4_row] = [&] {
-            auto const original_items{declarations.items(normal_modules.declarations[row_4_row])};
-            auto rows_3{std::vector(original_items.begin(), original_items.end())};
-            rows_3.front() = [&] {
-                auto row_2{packed_values.clone(rows_3.front())};
-                auto const row_2_row{packed_values.index(row_2)};
-                packed_values.segments[row_2_row] = [&] {
-                    auto const original_items{
-                        declarations.items(packed_values.segments[row_2_row])};
-                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                    rows_1[0] = [&] {
-                        auto row_0{packed_fields.clone(rows_1[0])};
-                        packed_fields.kind[packed_fields.index(row_0)] =
-                            PackedFieldKind::mini_float;
-                        return row_0;
-                    }();
-                    return declarations.range(rows_1);
-                }();
-                return row_2;
-            }();
-            return declarations.range(rows_3);
-        }();
-        return row_4;
-    }();
-    manifest.modules.back() = [&] {
-        auto row_4{normal_modules.clone(manifest.modules.back())};
-        auto const row_4_row{normal_modules.index(row_4)};
-        normal_modules.declarations[row_4_row] = [&] {
-            auto const original_items{declarations.items(normal_modules.declarations[row_4_row])};
-            auto rows_3{std::vector(original_items.begin(), original_items.end())};
-            rows_3.front() = [&] {
-                auto row_2{packed_values.clone(rows_3.front())};
-                auto const row_2_row{packed_values.index(row_2)};
-                packed_values.segments[row_2_row] = [&] {
-                    auto const original_items{
-                        declarations.items(packed_values.segments[row_2_row])};
-                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                    rows_1[0] = [&] {
-                        auto row_0{packed_fields.clone(rows_1[0])};
-                        packed_fields.minimum_value[packed_fields.index(row_0)] = 0;
-                        return row_0;
-                    }();
-                    return declarations.range(rows_1);
-                }();
-                return row_2;
-            }();
-            return declarations.range(rows_3);
-        }();
-        return row_4;
-    }();
-    manifest.modules.back() = [&] {
-        auto row_4{normal_modules.clone(manifest.modules.back())};
-        auto const row_4_row{normal_modules.index(row_4)};
-        normal_modules.declarations[row_4_row] = [&] {
-            auto const original_items{declarations.items(normal_modules.declarations[row_4_row])};
-            auto rows_3{std::vector(original_items.begin(), original_items.end())};
-            rows_3.front() = [&] {
-                auto row_2{packed_values.clone(rows_3.front())};
-                auto const row_2_row{packed_values.index(row_2)};
-                packed_values.segments[row_2_row] = [&] {
-                    auto const original_items{
-                        declarations.items(packed_values.segments[row_2_row])};
-                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                    rows_1[0] = [&] {
-                        auto row_0{packed_fields.clone(rows_1[0])};
-                        packed_fields.maximum_value[packed_fields.index(row_0)] = 1;
+                        packed_fields.kind[row_0] = PackedFieldKind::unsigned_integer;
                         return row_0;
                     }();
                     return declarations.range(rows_1);
@@ -2895,7 +2761,7 @@ TEST(PackedValue, RejectsCompetingMiniFloatPlacementFacts) {
                     auto rows_1{std::vector(original_items.begin(), original_items.end())};
                     rows_1[0] = [&] {
                         auto row_0{packed_fields.clone(rows_1[0])};
-                        packed_fields.minimum_value[packed_fields.index(row_0)].reset();
+                        packed_fields.kind[row_0] = PackedFieldKind::mini_float;
                         return row_0;
                     }();
                     return declarations.range(rows_1);
@@ -2921,7 +2787,86 @@ TEST(PackedValue, RejectsCompetingMiniFloatPlacementFacts) {
                     auto rows_1{std::vector(original_items.begin(), original_items.end())};
                     rows_1[0] = [&] {
                         auto row_0{packed_fields.clone(rows_1[0])};
-                        packed_fields.maximum_value[packed_fields.index(row_0)].reset();
+                        packed_fields.minimum_value[row_0] = 0;
+                        return row_0;
+                    }();
+                    return declarations.range(rows_1);
+                }();
+                return row_2;
+            }();
+            return declarations.range(rows_3);
+        }();
+        return row_4;
+    }();
+    manifest.modules.back() = [&] {
+        auto row_4{normal_modules.clone(manifest.modules.back())};
+        auto const row_4_row{normal_modules.index(row_4)};
+        normal_modules.declarations[row_4_row] = [&] {
+            auto const original_items{declarations.items(normal_modules.declarations[row_4_row])};
+            auto rows_3{std::vector(original_items.begin(), original_items.end())};
+            rows_3.front() = [&] {
+                auto row_2{packed_values.clone(rows_3.front())};
+                auto const row_2_row{packed_values.index(row_2)};
+                packed_values.segments[row_2_row] = [&] {
+                    auto const original_items{
+                        declarations.items(packed_values.segments[row_2_row])};
+                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                    rows_1[0] = [&] {
+                        auto row_0{packed_fields.clone(rows_1[0])};
+                        packed_fields.maximum_value[row_0] = 1;
+                        return row_0;
+                    }();
+                    return declarations.range(rows_1);
+                }();
+                return row_2;
+            }();
+            return declarations.range(rows_3);
+        }();
+        return row_4;
+    }();
+    EXPECT_THROW(lower_test_manifest(context, manifest), std::invalid_argument);
+    manifest.modules.back() = [&] {
+        auto row_4{normal_modules.clone(manifest.modules.back())};
+        auto const row_4_row{normal_modules.index(row_4)};
+        normal_modules.declarations[row_4_row] = [&] {
+            auto const original_items{declarations.items(normal_modules.declarations[row_4_row])};
+            auto rows_3{std::vector(original_items.begin(), original_items.end())};
+            rows_3.front() = [&] {
+                auto row_2{packed_values.clone(rows_3.front())};
+                auto const row_2_row{packed_values.index(row_2)};
+                packed_values.segments[row_2_row] = [&] {
+                    auto const original_items{
+                        declarations.items(packed_values.segments[row_2_row])};
+                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                    rows_1[0] = [&] {
+                        auto row_0{packed_fields.clone(rows_1[0])};
+                        packed_fields.minimum_value[row_0].reset();
+                        return row_0;
+                    }();
+                    return declarations.range(rows_1);
+                }();
+                return row_2;
+            }();
+            return declarations.range(rows_3);
+        }();
+        return row_4;
+    }();
+    manifest.modules.back() = [&] {
+        auto row_4{normal_modules.clone(manifest.modules.back())};
+        auto const row_4_row{normal_modules.index(row_4)};
+        normal_modules.declarations[row_4_row] = [&] {
+            auto const original_items{declarations.items(normal_modules.declarations[row_4_row])};
+            auto rows_3{std::vector(original_items.begin(), original_items.end())};
+            rows_3.front() = [&] {
+                auto row_2{packed_values.clone(rows_3.front())};
+                auto const row_2_row{packed_values.index(row_2)};
+                packed_values.segments[row_2_row] = [&] {
+                    auto const original_items{
+                        declarations.items(packed_values.segments[row_2_row])};
+                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                    rows_1[0] = [&] {
+                        auto row_0{packed_fields.clone(rows_1[0])};
+                        packed_fields.maximum_value[row_0].reset();
                         return row_0;
                     }();
                     return declarations.range(rows_1);
@@ -2990,7 +2935,7 @@ TEST(PackedValue, RejectsCompetingMiniFloatPlacementFacts) {
                     auto rows_1{std::vector(original_items.begin(), original_items.end())};
                     rows_1[0] = [&] {
                         auto row_0{packed_fields.clone(rows_1[0])};
-                        packed_fields.named_codes[packed_fields.index(row_0)] = {};
+                        packed_fields.named_codes[row_0] = {};
                         return row_0;
                     }();
                     return declarations.range(rows_1);
@@ -3016,7 +2961,7 @@ TEST(PackedValue, RejectsCompetingMiniFloatPlacementFacts) {
                     auto rows_1{std::vector(original_items.begin(), original_items.end())};
                     rows_1[0] = [&] {
                         auto row_0{packed_fields.clone(rows_1[0])};
-                        packed_fields.range_helper[packed_fields.index(row_0)] = true;
+                        packed_fields.range_helper[row_0] = true;
                         return row_0;
                     }();
                     return declarations.range(rows_1);
@@ -3043,7 +2988,7 @@ TEST(PackedValue, RejectsCompetingMiniFloatPlacementFacts) {
                     auto rows_1{std::vector(original_items.begin(), original_items.end())};
                     rows_1[0] = [&] {
                         auto row_0{packed_fields.clone(rows_1[0])};
-                        packed_fields.range_helper[packed_fields.index(row_0)] = false;
+                        packed_fields.range_helper[row_0] = false;
                         return row_0;
                     }();
                     return declarations.range(rows_1);
@@ -3069,7 +3014,7 @@ TEST(PackedValue, RejectsCompetingMiniFloatPlacementFacts) {
                     auto rows_1{std::vector(original_items.begin(), original_items.end())};
                     rows_1[0] = [&] {
                         auto row_0{packed_fields.clone(rows_1[0])};
-                        packed_fields.relationship[packed_fields.index(row_0)] = [&] {
+                        packed_fields.relationship[row_0] = [&] {
                             auto const new_semantic_relations{semantic_relations.append()};
                             auto const new_semantic_relations_row{
                                 semantic_relations.index(new_semantic_relations)};
@@ -3117,7 +3062,7 @@ TEST(PackedValue, RejectsCompetingOrMismatchedIntegerScalarFieldDomain) {
                     auto rows_1{std::vector(original_items.begin(), original_items.end())};
                     rows_1[0] = [&] {
                         auto row_0{packed_fields.clone(rows_1[0])};
-                        packed_fields.minimum_value[packed_fields.index(row_0)] = 0;
+                        packed_fields.minimum_value[row_0] = 0;
                         return row_0;
                     }();
                     return declarations.range(rows_1);
@@ -3143,88 +3088,7 @@ TEST(PackedValue, RejectsCompetingOrMismatchedIntegerScalarFieldDomain) {
                     auto rows_1{std::vector(original_items.begin(), original_items.end())};
                     rows_1[0] = [&] {
                         auto row_0{packed_fields.clone(rows_1[0])};
-                        packed_fields.maximum_value[packed_fields.index(row_0)] = 1000;
-                        return row_0;
-                    }();
-                    return declarations.range(rows_1);
-                }();
-                return row_2;
-            }();
-            return declarations.range(rows_3);
-        }();
-        return row_4;
-    }();
-    EXPECT_THROW(lower_test_manifest(context, manifest), std::invalid_argument);
-
-    manifest.modules.back() = [&] {
-        auto row_4{normal_modules.clone(manifest.modules.back())};
-        auto const row_4_row{normal_modules.index(row_4)};
-        normal_modules.declarations[row_4_row] = [&] {
-            auto const original_items{declarations.items(normal_modules.declarations[row_4_row])};
-            auto rows_3{std::vector(original_items.begin(), original_items.end())};
-            rows_3.front() = [&] {
-                auto row_2{packed_values.clone(rows_3.front())};
-                auto const row_2_row{packed_values.index(row_2)};
-                packed_values.segments[row_2_row] = [&] {
-                    auto const original_items{
-                        declarations.items(packed_values.segments[row_2_row])};
-                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                    rows_1[0] = [&] {
-                        auto row_0{packed_fields.clone(rows_1[0])};
-                        packed_fields.minimum_value[packed_fields.index(row_0)].reset();
-                        return row_0;
-                    }();
-                    return declarations.range(rows_1);
-                }();
-                return row_2;
-            }();
-            return declarations.range(rows_3);
-        }();
-        return row_4;
-    }();
-    manifest.modules.back() = [&] {
-        auto row_4{normal_modules.clone(manifest.modules.back())};
-        auto const row_4_row{normal_modules.index(row_4)};
-        normal_modules.declarations[row_4_row] = [&] {
-            auto const original_items{declarations.items(normal_modules.declarations[row_4_row])};
-            auto rows_3{std::vector(original_items.begin(), original_items.end())};
-            rows_3.front() = [&] {
-                auto row_2{packed_values.clone(rows_3.front())};
-                auto const row_2_row{packed_values.index(row_2)};
-                packed_values.segments[row_2_row] = [&] {
-                    auto const original_items{
-                        declarations.items(packed_values.segments[row_2_row])};
-                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                    rows_1[0] = [&] {
-                        auto row_0{packed_fields.clone(rows_1[0])};
-                        packed_fields.maximum_value[packed_fields.index(row_0)].reset();
-                        return row_0;
-                    }();
-                    return declarations.range(rows_1);
-                }();
-                return row_2;
-            }();
-            return declarations.range(rows_3);
-        }();
-        return row_4;
-    }();
-    manifest.modules.back() = [&] {
-        auto row_4{normal_modules.clone(manifest.modules.back())};
-        auto const row_4_row{normal_modules.index(row_4)};
-        normal_modules.declarations[row_4_row] = [&] {
-            auto const original_items{declarations.items(normal_modules.declarations[row_4_row])};
-            auto rows_3{std::vector(original_items.begin(), original_items.end())};
-            rows_3.front() = [&] {
-                auto row_2{packed_values.clone(rows_3.front())};
-                auto const row_2_row{packed_values.index(row_2)};
-                packed_values.segments[row_2_row] = [&] {
-                    auto const original_items{
-                        declarations.items(packed_values.segments[row_2_row])};
-                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                    rows_1[0] = [&] {
-                        auto row_0{packed_fields.clone(rows_1[0])};
-                        packed_fields.kind[packed_fields.index(row_0)] =
-                            PackedFieldKind::signed_integer;
+                        packed_fields.maximum_value[row_0] = 1000;
                         return row_0;
                     }();
                     return declarations.range(rows_1);
@@ -3252,8 +3116,7 @@ TEST(PackedValue, RejectsCompetingOrMismatchedIntegerScalarFieldDomain) {
                     auto rows_1{std::vector(original_items.begin(), original_items.end())};
                     rows_1[0] = [&] {
                         auto row_0{packed_fields.clone(rows_1[0])};
-                        packed_fields.kind[packed_fields.index(row_0)] =
-                            PackedFieldKind::unsigned_integer;
+                        packed_fields.minimum_value[row_0].reset();
                         return row_0;
                     }();
                     return declarations.range(rows_1);
@@ -3279,7 +3142,87 @@ TEST(PackedValue, RejectsCompetingOrMismatchedIntegerScalarFieldDomain) {
                     auto rows_1{std::vector(original_items.begin(), original_items.end())};
                     rows_1[0] = [&] {
                         auto row_0{packed_fields.clone(rows_1[0])};
-                        packed_fields.bits[packed_fields.index(row_0)] = 11;
+                        packed_fields.maximum_value[row_0].reset();
+                        return row_0;
+                    }();
+                    return declarations.range(rows_1);
+                }();
+                return row_2;
+            }();
+            return declarations.range(rows_3);
+        }();
+        return row_4;
+    }();
+    manifest.modules.back() = [&] {
+        auto row_4{normal_modules.clone(manifest.modules.back())};
+        auto const row_4_row{normal_modules.index(row_4)};
+        normal_modules.declarations[row_4_row] = [&] {
+            auto const original_items{declarations.items(normal_modules.declarations[row_4_row])};
+            auto rows_3{std::vector(original_items.begin(), original_items.end())};
+            rows_3.front() = [&] {
+                auto row_2{packed_values.clone(rows_3.front())};
+                auto const row_2_row{packed_values.index(row_2)};
+                packed_values.segments[row_2_row] = [&] {
+                    auto const original_items{
+                        declarations.items(packed_values.segments[row_2_row])};
+                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                    rows_1[0] = [&] {
+                        auto row_0{packed_fields.clone(rows_1[0])};
+                        packed_fields.kind[row_0] = PackedFieldKind::signed_integer;
+                        return row_0;
+                    }();
+                    return declarations.range(rows_1);
+                }();
+                return row_2;
+            }();
+            return declarations.range(rows_3);
+        }();
+        return row_4;
+    }();
+    EXPECT_THROW(lower_test_manifest(context, manifest), std::invalid_argument);
+
+    manifest.modules.back() = [&] {
+        auto row_4{normal_modules.clone(manifest.modules.back())};
+        auto const row_4_row{normal_modules.index(row_4)};
+        normal_modules.declarations[row_4_row] = [&] {
+            auto const original_items{declarations.items(normal_modules.declarations[row_4_row])};
+            auto rows_3{std::vector(original_items.begin(), original_items.end())};
+            rows_3.front() = [&] {
+                auto row_2{packed_values.clone(rows_3.front())};
+                auto const row_2_row{packed_values.index(row_2)};
+                packed_values.segments[row_2_row] = [&] {
+                    auto const original_items{
+                        declarations.items(packed_values.segments[row_2_row])};
+                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                    rows_1[0] = [&] {
+                        auto row_0{packed_fields.clone(rows_1[0])};
+                        packed_fields.kind[row_0] = PackedFieldKind::unsigned_integer;
+                        return row_0;
+                    }();
+                    return declarations.range(rows_1);
+                }();
+                return row_2;
+            }();
+            return declarations.range(rows_3);
+        }();
+        return row_4;
+    }();
+    manifest.modules.back() = [&] {
+        auto row_4{normal_modules.clone(manifest.modules.back())};
+        auto const row_4_row{normal_modules.index(row_4)};
+        normal_modules.declarations[row_4_row] = [&] {
+            auto const original_items{declarations.items(normal_modules.declarations[row_4_row])};
+            auto rows_3{std::vector(original_items.begin(), original_items.end())};
+            rows_3.front() = [&] {
+                auto row_2{packed_values.clone(rows_3.front())};
+                auto const row_2_row{packed_values.index(row_2)};
+                packed_values.segments[row_2_row] = [&] {
+                    auto const original_items{
+                        declarations.items(packed_values.segments[row_2_row])};
+                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                    rows_1[0] = [&] {
+                        auto row_0{packed_fields.clone(rows_1[0])};
+                        packed_fields.bits[row_0] = 11;
                         return row_0;
                     }();
                     return declarations.range(rows_1);
@@ -3305,9 +3248,8 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
     auto& semantic_relations{declarations.semantic_relations};
     auto& strings{context.storage.strings};
     auto module{normal_modules.clone(valid_module(context))};
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_3{std::vector(original_items.begin(), original_items.end())};
         rows_3.front() = [&] {
             auto row_2{packed_values.clone(rows_3.front())};
@@ -3317,7 +3259,7 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1[0] = [&] {
                     auto row_0{packed_fields.clone(rows_1[0])};
-                    packed_fields.bits[packed_fields.index(row_0)] = 0;
+                    packed_fields.bits[row_0] = 0;
                     return row_0;
                 }();
                 return declarations.range(rows_1);
@@ -3329,9 +3271,8 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
     EXPECT_THROW(lower(context, module), std::invalid_argument);
 
     module = valid_module(context);
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_3{std::vector(original_items.begin(), original_items.end())};
         rows_3.front() = [&] {
             auto row_2{packed_values.clone(rows_3.front())};
@@ -3341,7 +3282,7 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1[0] = [&] {
                     auto row_0{packed_fields.clone(rows_1[0])};
-                    packed_fields.bits[packed_fields.index(row_0)] = 25;
+                    packed_fields.bits[row_0] = 25;
                     return row_0;
                 }();
                 return declarations.range(rows_1);
@@ -3353,14 +3294,12 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
     EXPECT_THROW(lower(context, module), std::invalid_argument);
 
     module = valid_module(context);
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{packed_values.clone(rows_1.front())};
-            packed_values.storage_type[packed_values.index(row_0)] =
-                make_test_type_ref(context, "int32");
+            packed_values.storage_type[row_0] = make_test_type_ref(context, "int32");
             return row_0;
         }();
         return declarations.range(rows_1);
@@ -3368,9 +3307,8 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
     EXPECT_THROW(lower(context, module), std::invalid_argument);
 
     module = valid_module(context);
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_3{std::vector(original_items.begin(), original_items.end())};
         rows_3.front() = [&] {
             auto row_2{packed_values.clone(rows_3.front())};
@@ -3380,8 +3318,7 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1[0] = [&] {
                     auto row_0{packed_fields.clone(rows_1[0])};
-                    packed_fields.type[packed_fields.index(row_0)] =
-                        make_test_type_ref(context, "int32");
+                    packed_fields.type[row_0] = make_test_type_ref(context, "int32");
                     return row_0;
                 }();
                 return declarations.range(rows_1);
@@ -3393,9 +3330,8 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
     EXPECT_THROW(lower(context, module), std::invalid_argument);
 
     module = valid_module(context);
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_3{std::vector(original_items.begin(), original_items.end())};
         rows_3.front() = [&] {
             auto row_2{packed_values.clone(rows_3.front())};
@@ -3405,8 +3341,7 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1[0] = [&] {
                     auto row_0{packed_fields.clone(rows_1[0])};
-                    packed_fields.kind[packed_fields.index(row_0)] =
-                        PackedFieldKind::signed_integer;
+                    packed_fields.kind[row_0] = PackedFieldKind::signed_integer;
                     return row_0;
                 }();
                 return declarations.range(rows_1);
@@ -3418,9 +3353,8 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
     EXPECT_THROW(lower(context, module), std::invalid_argument);
 
     module = valid_module(context);
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_3{std::vector(original_items.begin(), original_items.end())};
         rows_3.front() = [&] {
             auto row_2{packed_values.clone(rows_3.front())};
@@ -3430,8 +3364,7 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1[0] = [&] {
                     auto row_0{packed_fields.clone(rows_1[0])};
-                    packed_fields.type[packed_fields.index(row_0)] =
-                        make_test_type_ref(context, "int32");
+                    packed_fields.type[row_0] = make_test_type_ref(context, "int32");
                     return row_0;
                 }();
                 return declarations.range(rows_1);
@@ -3440,9 +3373,8 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
         }();
         return declarations.range(rows_3);
     }();
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_3{std::vector(original_items.begin(), original_items.end())};
         rows_3.front() = [&] {
             auto row_2{packed_values.clone(rows_3.front())};
@@ -3452,8 +3384,7 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1[0] = [&] {
                     auto row_0{packed_fields.clone(rows_1[0])};
-                    packed_fields.kind[packed_fields.index(row_0)] =
-                        PackedFieldKind::signed_integer;
+                    packed_fields.kind[row_0] = PackedFieldKind::signed_integer;
                     return row_0;
                 }();
                 return declarations.range(rows_1);
@@ -3462,9 +3393,8 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
         }();
         return declarations.range(rows_3);
     }();
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_3{std::vector(original_items.begin(), original_items.end())};
         rows_3.front() = [&] {
             auto row_2{packed_values.clone(rows_3.front())};
@@ -3474,75 +3404,7 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1[0] = [&] {
                     auto row_0{packed_fields.clone(rows_1[0])};
-                    packed_fields.bits[packed_fields.index(row_0)].reset();
-                    return row_0;
-                }();
-                return declarations.range(rows_1);
-            }();
-            return row_2;
-        }();
-        return declarations.range(rows_3);
-    }();
-    EXPECT_THROW(lower(context, module), std::invalid_argument);
-
-    module = valid_module(context);
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
-        auto rows_3{std::vector(original_items.begin(), original_items.end())};
-        rows_3.front() = [&] {
-            auto row_2{packed_values.clone(rows_3.front())};
-            auto const row_2_row{packed_values.index(row_2)};
-            packed_values.segments[row_2_row] = [&] {
-                auto const original_items{declarations.items(packed_values.segments[row_2_row])};
-                auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                rows_1[0] = [&] {
-                    auto row_0{packed_fields.clone(rows_1[0])};
-                    packed_fields.type[packed_fields.index(row_0)] =
-                        make_test_type_ref(context, "int16");
-                    return row_0;
-                }();
-                return declarations.range(rows_1);
-            }();
-            return row_2;
-        }();
-        return declarations.range(rows_3);
-    }();
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
-        auto rows_3{std::vector(original_items.begin(), original_items.end())};
-        rows_3.front() = [&] {
-            auto row_2{packed_values.clone(rows_3.front())};
-            auto const row_2_row{packed_values.index(row_2)};
-            packed_values.segments[row_2_row] = [&] {
-                auto const original_items{declarations.items(packed_values.segments[row_2_row])};
-                auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                rows_1[0] = [&] {
-                    auto row_0{packed_fields.clone(rows_1[0])};
-                    packed_fields.kind[packed_fields.index(row_0)] =
-                        PackedFieldKind::signed_integer;
-                    return row_0;
-                }();
-                return declarations.range(rows_1);
-            }();
-            return row_2;
-        }();
-        return declarations.range(rows_3);
-    }();
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
-        auto rows_3{std::vector(original_items.begin(), original_items.end())};
-        rows_3.front() = [&] {
-            auto row_2{packed_values.clone(rows_3.front())};
-            auto const row_2_row{packed_values.index(row_2)};
-            packed_values.segments[row_2_row] = [&] {
-                auto const original_items{declarations.items(packed_values.segments[row_2_row])};
-                auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                rows_1[0] = [&] {
-                    auto row_0{packed_fields.clone(rows_1[0])};
-                    packed_fields.bits[packed_fields.index(row_0)] = 17;
+                    packed_fields.bits[row_0].reset();
                     return row_0;
                 }();
                 return declarations.range(rows_1);
@@ -3554,9 +3416,71 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
     EXPECT_THROW(lower(context, module), std::invalid_argument);
 
     module = valid_module(context);
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{packed_values.clone(rows_3.front())};
+            auto const row_2_row{packed_values.index(row_2)};
+            packed_values.segments[row_2_row] = [&] {
+                auto const original_items{declarations.items(packed_values.segments[row_2_row])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[0] = [&] {
+                    auto row_0{packed_fields.clone(rows_1[0])};
+                    packed_fields.type[row_0] = make_test_type_ref(context, "int16");
+                    return row_0;
+                }();
+                return declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return declarations.range(rows_3);
+    }();
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{packed_values.clone(rows_3.front())};
+            auto const row_2_row{packed_values.index(row_2)};
+            packed_values.segments[row_2_row] = [&] {
+                auto const original_items{declarations.items(packed_values.segments[row_2_row])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[0] = [&] {
+                    auto row_0{packed_fields.clone(rows_1[0])};
+                    packed_fields.kind[row_0] = PackedFieldKind::signed_integer;
+                    return row_0;
+                }();
+                return declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return declarations.range(rows_3);
+    }();
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{packed_values.clone(rows_3.front())};
+            auto const row_2_row{packed_values.index(row_2)};
+            packed_values.segments[row_2_row] = [&] {
+                auto const original_items{declarations.items(packed_values.segments[row_2_row])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[0] = [&] {
+                    auto row_0{packed_fields.clone(rows_1[0])};
+                    packed_fields.bits[row_0] = 17;
+                    return row_0;
+                }();
+                return declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return declarations.range(rows_3);
+    }();
+    EXPECT_THROW(lower(context, module), std::invalid_argument);
+
+    module = valid_module(context);
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_2{std::vector(original_items.begin(), original_items.end())};
         rows_2.front() = [&] {
             auto row_1{packed_values.clone(rows_2.front())};
@@ -3581,11 +3505,9 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
     EXPECT_THROW(lower(context, module), std::invalid_argument);
 
     module = valid_module(context);
-    normal_modules.settings[normal_modules.index(module)] = [&] {
-        auto row_0{declarations.module_settings_store.clone(
-            normal_modules.settings[normal_modules.index(module)])};
-        declarations.module_settings_store.source[declarations.module_settings_store.index(row_0)] =
-            strings.intern("Packed.cpp");
+    normal_modules.settings[module] = [&] {
+        auto row_0{declarations.module_settings_store.clone(normal_modules.settings[module])};
+        declarations.module_settings_store.source[row_0] = strings.intern("Packed.cpp");
         return row_0;
     }();
     EXPECT_EQ(
@@ -3596,9 +3518,8 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
         2U);
 
     module = valid_module(context);
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_3{std::vector(original_items.begin(), original_items.end())};
         rows_3.front() = [&] {
             auto row_2{packed_values.clone(rows_3.front())};
@@ -3608,7 +3529,7 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1[1] = [&] {
                     auto row_0{packed_fields.clone(rows_1[1])};
-                    packed_fields.range_helper[packed_fields.index(row_0)] = true;
+                    packed_fields.range_helper[row_0] = true;
                     return row_0;
                 }();
                 return declarations.range(rows_1);
@@ -3620,13 +3541,12 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
     EXPECT_THROW(lower(context, module), std::invalid_argument);
 
     module = valid_module(context);
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{packed_values.clone(rows_1.front())};
-            packed_values.invalid_value[packed_values.index(row_0)] = std::uint64_t{1} << 32;
+            packed_values.invalid_value[row_0] = std::uint64_t{1} << 32;
             return row_0;
         }();
         return declarations.range(rows_1);
@@ -3634,22 +3554,19 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
     EXPECT_THROW(lower(context, module), std::invalid_argument);
 
     module = valid_module(context);
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{packed_values.clone(rows_1.front())};
-            packed_values.segments[packed_values.index(row_0)] =
-                declarations.range<PackedSegmentId>({[&] {
-                    auto const new_packed_reserved_bits{packed_reserved_bits.append()};
-                    auto const new_packed_reserved_bits_row{
-                        packed_reserved_bits.index(new_packed_reserved_bits)};
-                    packed_reserved_bits.name[new_packed_reserved_bits_row] =
-                        strings.intern("future");
-                    packed_reserved_bits.bits[new_packed_reserved_bits_row] = 32;
-                    return new_packed_reserved_bits;
-                }()});
+            packed_values.segments[row_0] = declarations.range<PackedSegmentId>({[&] {
+                auto const new_packed_reserved_bits{packed_reserved_bits.append()};
+                auto const new_packed_reserved_bits_row{
+                    packed_reserved_bits.index(new_packed_reserved_bits)};
+                packed_reserved_bits.name[new_packed_reserved_bits_row] = strings.intern("future");
+                packed_reserved_bits.bits[new_packed_reserved_bits_row] = 32;
+                return new_packed_reserved_bits;
+            }()});
             return row_0;
         }();
         return declarations.range(rows_1);
@@ -3657,9 +3574,8 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
     EXPECT_THROW(lower(context, module), std::invalid_argument);
 
     module = valid_module(context);
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{packed_values.clone(rows_1.front())};
@@ -3685,9 +3601,8 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
     EXPECT_THROW(lower(context, module), std::invalid_argument);
 
     module = valid_module(context);
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{packed_values.clone(rows_1.front())};
@@ -3713,9 +3628,8 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
     EXPECT_THROW(lower(context, module), std::invalid_argument);
 
     module = valid_module(context);
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_3{std::vector(original_items.begin(), original_items.end())};
         rows_3.front() = [&] {
             auto row_2{packed_values.clone(rows_3.front())};
@@ -3725,7 +3639,7 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1[0] = [&] {
                     auto row_0{packed_fields.clone(rows_1[0])};
-                    packed_fields.minimum_value[packed_fields.index(row_0)] = 1;
+                    packed_fields.minimum_value[row_0] = 1;
                     return row_0;
                 }();
                 return declarations.range(rows_1);
@@ -3737,9 +3651,8 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
     EXPECT_THROW(lower(context, module), std::invalid_argument);
 
     module = valid_module(context);
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_3{std::vector(original_items.begin(), original_items.end())};
         rows_3.front() = [&] {
             auto row_2{packed_values.clone(rows_3.front())};
@@ -3749,7 +3662,7 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1[0] = [&] {
                     auto row_0{packed_fields.clone(rows_1[0])};
-                    packed_fields.bits[packed_fields.index(row_0)].reset();
+                    packed_fields.bits[row_0].reset();
                     return row_0;
                 }();
                 return declarations.range(rows_1);
@@ -3761,9 +3674,8 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
     EXPECT_THROW(lower(context, module), std::invalid_argument);
 
     module = valid_module(context);
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_3{std::vector(original_items.begin(), original_items.end())};
         rows_3.front() = [&] {
             auto row_2{packed_values.clone(rows_3.front())};
@@ -3773,7 +3685,7 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1[1] = [&] {
                     auto row_0{packed_fields.clone(rows_1[1])};
-                    packed_fields.bits[packed_fields.index(row_0)].reset();
+                    packed_fields.bits[row_0].reset();
                     return row_0;
                 }();
                 return declarations.range(rows_1);
@@ -3785,9 +3697,8 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
     EXPECT_THROW(lower(context, module), std::invalid_argument);
 
     module = valid_module(context);
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_3{std::vector(original_items.begin(), original_items.end())};
         rows_3.front() = [&] {
             auto row_2{packed_values.clone(rows_3.front())};
@@ -3797,7 +3708,7 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1[0] = [&] {
                     auto row_0{packed_fields.clone(rows_1[0])};
-                    packed_fields.minimum_value[packed_fields.index(row_0)] = 100;
+                    packed_fields.minimum_value[row_0] = 100;
                     return row_0;
                 }();
                 return declarations.range(rows_1);
@@ -3806,9 +3717,8 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
         }();
         return declarations.range(rows_3);
     }();
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_3{std::vector(original_items.begin(), original_items.end())};
         rows_3.front() = [&] {
             auto row_2{packed_values.clone(rows_3.front())};
@@ -3818,52 +3728,7 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1[0] = [&] {
                     auto row_0{packed_fields.clone(rows_1[0])};
-                    packed_fields.maximum_value[packed_fields.index(row_0)] = 10;
-                    return row_0;
-                }();
-                return declarations.range(rows_1);
-            }();
-            return row_2;
-        }();
-        return declarations.range(rows_3);
-    }();
-    EXPECT_THROW(lower(context, module), std::invalid_argument);
-
-    module = valid_module(context);
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
-        auto rows_3{std::vector(original_items.begin(), original_items.end())};
-        rows_3.front() = [&] {
-            auto row_2{packed_values.clone(rows_3.front())};
-            auto const row_2_row{packed_values.index(row_2)};
-            packed_values.segments[row_2_row] = [&] {
-                auto const original_items{declarations.items(packed_values.segments[row_2_row])};
-                auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                rows_1[0] = [&] {
-                    auto row_0{packed_fields.clone(rows_1[0])};
-                    packed_fields.minimum_value[packed_fields.index(row_0)] = -1;
-                    return row_0;
-                }();
-                return declarations.range(rows_1);
-            }();
-            return row_2;
-        }();
-        return declarations.range(rows_3);
-    }();
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
-        auto rows_3{std::vector(original_items.begin(), original_items.end())};
-        rows_3.front() = [&] {
-            auto row_2{packed_values.clone(rows_3.front())};
-            auto const row_2_row{packed_values.index(row_2)};
-            packed_values.segments[row_2_row] = [&] {
-                auto const original_items{declarations.items(packed_values.segments[row_2_row])};
-                auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                rows_1[0] = [&] {
-                    auto row_0{packed_fields.clone(rows_1[0])};
-                    packed_fields.maximum_value[packed_fields.index(row_0)] = 100;
+                    packed_fields.maximum_value[row_0] = 10;
                     return row_0;
                 }();
                 return declarations.range(rows_1);
@@ -3875,9 +3740,8 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
     EXPECT_THROW(lower(context, module), std::invalid_argument);
 
     module = valid_module(context);
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_3{std::vector(original_items.begin(), original_items.end())};
         rows_3.front() = [&] {
             auto row_2{packed_values.clone(rows_3.front())};
@@ -3887,8 +3751,7 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1[0] = [&] {
                     auto row_0{packed_fields.clone(rows_1[0])};
-                    packed_fields.type[packed_fields.index(row_0)] =
-                        make_test_type_ref(context, "std::int32_t");
+                    packed_fields.minimum_value[row_0] = -1;
                     return row_0;
                 }();
                 return declarations.range(rows_1);
@@ -3897,9 +3760,8 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
         }();
         return declarations.range(rows_3);
     }();
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_3{std::vector(original_items.begin(), original_items.end())};
         rows_3.front() = [&] {
             auto row_2{packed_values.clone(rows_3.front())};
@@ -3909,71 +3771,7 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1[0] = [&] {
                     auto row_0{packed_fields.clone(rows_1[0])};
-                    packed_fields.kind[packed_fields.index(row_0)] =
-                        PackedFieldKind::signed_integer;
-                    return row_0;
-                }();
-                return declarations.range(rows_1);
-            }();
-            return row_2;
-        }();
-        return declarations.range(rows_3);
-    }();
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
-        auto rows_3{std::vector(original_items.begin(), original_items.end())};
-        rows_3.front() = [&] {
-            auto row_2{packed_values.clone(rows_3.front())};
-            auto const row_2_row{packed_values.index(row_2)};
-            packed_values.segments[row_2_row] = [&] {
-                auto const original_items{declarations.items(packed_values.segments[row_2_row])};
-                auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                rows_1[0] = [&] {
-                    auto row_0{packed_fields.clone(rows_1[0])};
-                    packed_fields.bits[packed_fields.index(row_0)] = 7;
-                    return row_0;
-                }();
-                return declarations.range(rows_1);
-            }();
-            return row_2;
-        }();
-        return declarations.range(rows_3);
-    }();
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
-        auto rows_3{std::vector(original_items.begin(), original_items.end())};
-        rows_3.front() = [&] {
-            auto row_2{packed_values.clone(rows_3.front())};
-            auto const row_2_row{packed_values.index(row_2)};
-            packed_values.segments[row_2_row] = [&] {
-                auto const original_items{declarations.items(packed_values.segments[row_2_row])};
-                auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                rows_1[0] = [&] {
-                    auto row_0{packed_fields.clone(rows_1[0])};
-                    packed_fields.minimum_value[packed_fields.index(row_0)] = -100;
-                    return row_0;
-                }();
-                return declarations.range(rows_1);
-            }();
-            return row_2;
-        }();
-        return declarations.range(rows_3);
-    }();
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
-        auto rows_3{std::vector(original_items.begin(), original_items.end())};
-        rows_3.front() = [&] {
-            auto row_2{packed_values.clone(rows_3.front())};
-            auto const row_2_row{packed_values.index(row_2)};
-            packed_values.segments[row_2_row] = [&] {
-                auto const original_items{declarations.items(packed_values.segments[row_2_row])};
-                auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                rows_1[0] = [&] {
-                    auto row_0{packed_fields.clone(rows_1[0])};
-                    packed_fields.maximum_value[packed_fields.index(row_0)] = 100;
+                    packed_fields.maximum_value[row_0] = 100;
                     return row_0;
                 }();
                 return declarations.range(rows_1);
@@ -3985,9 +3783,8 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
     EXPECT_THROW(lower(context, module), std::invalid_argument);
 
     module = valid_module(context);
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_3{std::vector(original_items.begin(), original_items.end())};
         rows_3.front() = [&] {
             auto row_2{packed_values.clone(rows_3.front())};
@@ -3997,8 +3794,7 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1[0] = [&] {
                     auto row_0{packed_fields.clone(rows_1[0])};
-                    packed_fields.type[packed_fields.index(row_0)] =
-                        make_test_type_ref(context, "std::int32_t");
+                    packed_fields.type[row_0] = make_test_type_ref(context, "std::int32_t");
                     return row_0;
                 }();
                 return declarations.range(rows_1);
@@ -4007,9 +3803,8 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
         }();
         return declarations.range(rows_3);
     }();
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_3{std::vector(original_items.begin(), original_items.end())};
         rows_3.front() = [&] {
             auto row_2{packed_values.clone(rows_3.front())};
@@ -4019,8 +3814,7 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1[0] = [&] {
                     auto row_0{packed_fields.clone(rows_1[0])};
-                    packed_fields.kind[packed_fields.index(row_0)] =
-                        PackedFieldKind::signed_integer;
+                    packed_fields.kind[row_0] = PackedFieldKind::signed_integer;
                     return row_0;
                 }();
                 return declarations.range(rows_1);
@@ -4029,9 +3823,8 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
         }();
         return declarations.range(rows_3);
     }();
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_3{std::vector(original_items.begin(), original_items.end())};
         rows_3.front() = [&] {
             auto row_2{packed_values.clone(rows_3.front())};
@@ -4041,7 +3834,7 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1[0] = [&] {
                     auto row_0{packed_fields.clone(rows_1[0])};
-                    packed_fields.bits[packed_fields.index(row_0)] = 8;
+                    packed_fields.bits[row_0] = 7;
                     return row_0;
                 }();
                 return declarations.range(rows_1);
@@ -4050,9 +3843,8 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
         }();
         return declarations.range(rows_3);
     }();
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_3{std::vector(original_items.begin(), original_items.end())};
         rows_3.front() = [&] {
             auto row_2{packed_values.clone(rows_3.front())};
@@ -4062,7 +3854,7 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1[0] = [&] {
                     auto row_0{packed_fields.clone(rows_1[0])};
-                    packed_fields.minimum_value[packed_fields.index(row_0)] = -100;
+                    packed_fields.minimum_value[row_0] = -100;
                     return row_0;
                 }();
                 return declarations.range(rows_1);
@@ -4071,9 +3863,8 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
         }();
         return declarations.range(rows_3);
     }();
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_3{std::vector(original_items.begin(), original_items.end())};
         rows_3.front() = [&] {
             auto row_2{packed_values.clone(rows_3.front())};
@@ -4083,38 +3874,7 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1[0] = [&] {
                     auto row_0{packed_fields.clone(rows_1[0])};
-                    packed_fields.maximum_value[packed_fields.index(row_0)] = 100;
-                    return row_0;
-                }();
-                return declarations.range(rows_1);
-            }();
-            return row_2;
-        }();
-        return declarations.range(rows_3);
-    }();
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
-        auto rows_3{std::vector(original_items.begin(), original_items.end())};
-        rows_3.front() = [&] {
-            auto row_2{packed_values.clone(rows_3.front())};
-            auto const row_2_row{packed_values.index(row_2)};
-            packed_values.segments[row_2_row] = [&] {
-                auto const original_items{declarations.items(packed_values.segments[row_2_row])};
-                auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                rows_1[0] = [&] {
-                    auto row_0{packed_fields.clone(rows_1[0])};
-                    packed_fields.named_codes[packed_fields.index(row_0)] =
-                        declarations.range<PackedNamedCodeId>({[&] {
-                            auto const new_packed_named_codes{packed_named_codes.append()};
-                            auto const new_packed_named_codes_row{
-                                packed_named_codes.index(new_packed_named_codes)};
-                            packed_named_codes.name[new_packed_named_codes_row] =
-                                strings.intern("Invalid");
-                            packed_named_codes.value[new_packed_named_codes_row] = 0;
-                            packed_named_codes.sentinel[new_packed_named_codes_row] = true;
-                            return new_packed_named_codes;
-                        }()});
+                    packed_fields.maximum_value[row_0] = 100;
                     return row_0;
                 }();
                 return declarations.range(rows_1);
@@ -4126,9 +3886,8 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
     EXPECT_THROW(lower(context, module), std::invalid_argument);
 
     module = valid_module(context);
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_3{std::vector(original_items.begin(), original_items.end())};
         rows_3.front() = [&] {
             auto row_2{packed_values.clone(rows_3.front())};
@@ -4138,7 +3897,7 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1[0] = [&] {
                     auto row_0{packed_fields.clone(rows_1[0])};
-                    packed_fields.minimum_value[packed_fields.index(row_0)] = 0;
+                    packed_fields.type[row_0] = make_test_type_ref(context, "std::int32_t");
                     return row_0;
                 }();
                 return declarations.range(rows_1);
@@ -4147,9 +3906,8 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
         }();
         return declarations.range(rows_3);
     }();
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_3{std::vector(original_items.begin(), original_items.end())};
         rows_3.front() = [&] {
             auto row_2{packed_values.clone(rows_3.front())};
@@ -4159,8 +3917,96 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1[0] = [&] {
                     auto row_0{packed_fields.clone(rows_1[0])};
-                    packed_fields.maximum_value[packed_fields.index(row_0)] = std::uint64_t{1}
-                                                                           << 24;
+                    packed_fields.kind[row_0] = PackedFieldKind::signed_integer;
+                    return row_0;
+                }();
+                return declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return declarations.range(rows_3);
+    }();
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{packed_values.clone(rows_3.front())};
+            auto const row_2_row{packed_values.index(row_2)};
+            packed_values.segments[row_2_row] = [&] {
+                auto const original_items{declarations.items(packed_values.segments[row_2_row])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[0] = [&] {
+                    auto row_0{packed_fields.clone(rows_1[0])};
+                    packed_fields.bits[row_0] = 8;
+                    return row_0;
+                }();
+                return declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return declarations.range(rows_3);
+    }();
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{packed_values.clone(rows_3.front())};
+            auto const row_2_row{packed_values.index(row_2)};
+            packed_values.segments[row_2_row] = [&] {
+                auto const original_items{declarations.items(packed_values.segments[row_2_row])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[0] = [&] {
+                    auto row_0{packed_fields.clone(rows_1[0])};
+                    packed_fields.minimum_value[row_0] = -100;
+                    return row_0;
+                }();
+                return declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return declarations.range(rows_3);
+    }();
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{packed_values.clone(rows_3.front())};
+            auto const row_2_row{packed_values.index(row_2)};
+            packed_values.segments[row_2_row] = [&] {
+                auto const original_items{declarations.items(packed_values.segments[row_2_row])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[0] = [&] {
+                    auto row_0{packed_fields.clone(rows_1[0])};
+                    packed_fields.maximum_value[row_0] = 100;
+                    return row_0;
+                }();
+                return declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return declarations.range(rows_3);
+    }();
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{packed_values.clone(rows_3.front())};
+            auto const row_2_row{packed_values.index(row_2)};
+            packed_values.segments[row_2_row] = [&] {
+                auto const original_items{declarations.items(packed_values.segments[row_2_row])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[0] = [&] {
+                    auto row_0{packed_fields.clone(rows_1[0])};
+                    packed_fields.named_codes[row_0] = declarations.range<PackedNamedCodeId>({[&] {
+                        auto const new_packed_named_codes{packed_named_codes.append()};
+                        auto const new_packed_named_codes_row{
+                            packed_named_codes.index(new_packed_named_codes)};
+                        packed_named_codes.name[new_packed_named_codes_row] =
+                            strings.intern("Invalid");
+                        packed_named_codes.value[new_packed_named_codes_row] = 0;
+                        packed_named_codes.sentinel[new_packed_named_codes_row] = true;
+                        return new_packed_named_codes;
+                    }()});
                     return row_0;
                 }();
                 return declarations.range(rows_1);
@@ -4172,9 +4018,51 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
     EXPECT_THROW(lower(context, module), std::invalid_argument);
 
     module = valid_module(context);
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{packed_values.clone(rows_3.front())};
+            auto const row_2_row{packed_values.index(row_2)};
+            packed_values.segments[row_2_row] = [&] {
+                auto const original_items{declarations.items(packed_values.segments[row_2_row])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[0] = [&] {
+                    auto row_0{packed_fields.clone(rows_1[0])};
+                    packed_fields.minimum_value[row_0] = 0;
+                    return row_0;
+                }();
+                return declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return declarations.range(rows_3);
+    }();
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{packed_values.clone(rows_3.front())};
+            auto const row_2_row{packed_values.index(row_2)};
+            packed_values.segments[row_2_row] = [&] {
+                auto const original_items{declarations.items(packed_values.segments[row_2_row])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[0] = [&] {
+                    auto row_0{packed_fields.clone(rows_1[0])};
+                    packed_fields.maximum_value[row_0] = std::uint64_t{1} << 24;
+                    return row_0;
+                }();
+                return declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return declarations.range(rows_3);
+    }();
+    EXPECT_THROW(lower(context, module), std::invalid_argument);
+
+    module = valid_module(context);
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_3{std::vector(original_items.begin(), original_items.end())};
         rows_3.front() = [&] {
             auto row_2{packed_values.clone(rows_3.front())};
@@ -4184,7 +4072,7 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1[1] = [&] {
                     auto row_0{packed_fields.clone(rows_1[1])};
-                    packed_fields.minimum_value[packed_fields.index(row_0)] = 0;
+                    packed_fields.minimum_value[row_0] = 0;
                     return row_0;
                 }();
                 return declarations.range(rows_1);
@@ -4193,9 +4081,8 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
         }();
         return declarations.range(rows_3);
     }();
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_3{std::vector(original_items.begin(), original_items.end())};
         rows_3.front() = [&] {
             auto row_2{packed_values.clone(rows_3.front())};
@@ -4205,7 +4092,7 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1[1] = [&] {
                     auto row_0{packed_fields.clone(rows_1[1])};
-                    packed_fields.maximum_value[packed_fields.index(row_0)] = 3;
+                    packed_fields.maximum_value[row_0] = 3;
                     return row_0;
                 }();
                 return declarations.range(rows_1);
@@ -4217,9 +4104,8 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
     EXPECT_THROW(lower(context, module), std::invalid_argument);
 
     module = valid_module(context);
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_3{std::vector(original_items.begin(), original_items.end())};
         rows_3.front() = [&] {
             auto row_2{packed_values.clone(rows_3.front())};
@@ -4229,17 +4115,16 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1[0] = [&] {
                     auto row_0{packed_fields.clone(rows_1[0])};
-                    packed_fields.named_codes[packed_fields.index(row_0)] =
-                        declarations.range<PackedNamedCodeId>({[&] {
-                            auto const new_packed_named_codes{packed_named_codes.append()};
-                            auto const new_packed_named_codes_row{
-                                packed_named_codes.index(new_packed_named_codes)};
-                            packed_named_codes.name[new_packed_named_codes_row] =
-                                strings.intern("Invalid");
-                            packed_named_codes.value[new_packed_named_codes_row] = 0xffffff;
-                            packed_named_codes.sentinel[new_packed_named_codes_row] = true;
-                            return new_packed_named_codes;
-                        }()});
+                    packed_fields.named_codes[row_0] = declarations.range<PackedNamedCodeId>({[&] {
+                        auto const new_packed_named_codes{packed_named_codes.append()};
+                        auto const new_packed_named_codes_row{
+                            packed_named_codes.index(new_packed_named_codes)};
+                        packed_named_codes.name[new_packed_named_codes_row] =
+                            strings.intern("Invalid");
+                        packed_named_codes.value[new_packed_named_codes_row] = 0xffffff;
+                        packed_named_codes.sentinel[new_packed_named_codes_row] = true;
+                        return new_packed_named_codes;
+                    }()});
                     return row_0;
                 }();
                 return declarations.range(rows_1);
@@ -4251,9 +4136,8 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
     EXPECT_THROW(lower(context, module), std::invalid_argument);
 
     module = valid_module(context);
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_3{std::vector(original_items.begin(), original_items.end())};
         rows_3.front() = [&] {
             auto row_2{packed_values.clone(rows_3.front())};
@@ -4263,7 +4147,7 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1[0] = [&] {
                     auto row_0{packed_fields.clone(rows_1[0])};
-                    packed_fields.minimum_value[packed_fields.index(row_0)] = 0;
+                    packed_fields.minimum_value[row_0] = 0;
                     return row_0;
                 }();
                 return declarations.range(rows_1);
@@ -4272,9 +4156,8 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
         }();
         return declarations.range(rows_3);
     }();
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_3{std::vector(original_items.begin(), original_items.end())};
         rows_3.front() = [&] {
             auto row_2{packed_values.clone(rows_3.front())};
@@ -4284,7 +4167,7 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1[0] = [&] {
                     auto row_0{packed_fields.clone(rows_1[0])};
-                    packed_fields.maximum_value[packed_fields.index(row_0)] = 100;
+                    packed_fields.maximum_value[row_0] = 100;
                     return row_0;
                 }();
                 return declarations.range(rows_1);
@@ -4293,9 +4176,8 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
         }();
         return declarations.range(rows_3);
     }();
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_3{std::vector(original_items.begin(), original_items.end())};
         rows_3.front() = [&] {
             auto row_2{packed_values.clone(rows_3.front())};
@@ -4305,93 +4187,16 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1[0] = [&] {
                     auto row_0{packed_fields.clone(rows_1[0])};
-                    packed_fields.named_codes[packed_fields.index(row_0)] =
-                        declarations.range<PackedNamedCodeId>({[&] {
-                            auto const new_packed_named_codes{packed_named_codes.append()};
-                            auto const new_packed_named_codes_row{
-                                packed_named_codes.index(new_packed_named_codes)};
-                            packed_named_codes.name[new_packed_named_codes_row] =
-                                strings.intern("Invalid");
-                            packed_named_codes.value[new_packed_named_codes_row] = 100;
-                            packed_named_codes.sentinel[new_packed_named_codes_row] = true;
-                            return new_packed_named_codes;
-                        }()});
-                    return row_0;
-                }();
-                return declarations.range(rows_1);
-            }();
-            return row_2;
-        }();
-        return declarations.range(rows_3);
-    }();
-    EXPECT_THROW(lower(context, module), std::invalid_argument);
-
-    module = valid_module(context);
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
-        auto rows_3{std::vector(original_items.begin(), original_items.end())};
-        rows_3.front() = [&] {
-            auto row_2{packed_values.clone(rows_3.front())};
-            auto const row_2_row{packed_values.index(row_2)};
-            packed_values.segments[row_2_row] = [&] {
-                auto const original_items{declarations.items(packed_values.segments[row_2_row])};
-                auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                rows_1[0] = [&] {
-                    auto row_0{packed_fields.clone(rows_1[0])};
-                    packed_fields.minimum_value[packed_fields.index(row_0)] = 0;
-                    return row_0;
-                }();
-                return declarations.range(rows_1);
-            }();
-            return row_2;
-        }();
-        return declarations.range(rows_3);
-    }();
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
-        auto rows_3{std::vector(original_items.begin(), original_items.end())};
-        rows_3.front() = [&] {
-            auto row_2{packed_values.clone(rows_3.front())};
-            auto const row_2_row{packed_values.index(row_2)};
-            packed_values.segments[row_2_row] = [&] {
-                auto const original_items{declarations.items(packed_values.segments[row_2_row])};
-                auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                rows_1[0] = [&] {
-                    auto row_0{packed_fields.clone(rows_1[0])};
-                    packed_fields.maximum_value[packed_fields.index(row_0)] = 100;
-                    return row_0;
-                }();
-                return declarations.range(rows_1);
-            }();
-            return row_2;
-        }();
-        return declarations.range(rows_3);
-    }();
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
-        auto rows_3{std::vector(original_items.begin(), original_items.end())};
-        rows_3.front() = [&] {
-            auto row_2{packed_values.clone(rows_3.front())};
-            auto const row_2_row{packed_values.index(row_2)};
-            packed_values.segments[row_2_row] = [&] {
-                auto const original_items{declarations.items(packed_values.segments[row_2_row])};
-                auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                rows_1[0] = [&] {
-                    auto row_0{packed_fields.clone(rows_1[0])};
-                    packed_fields.named_codes[packed_fields.index(row_0)] =
-                        declarations.range<PackedNamedCodeId>({[&] {
-                            auto const new_packed_named_codes{packed_named_codes.append()};
-                            auto const new_packed_named_codes_row{
-                                packed_named_codes.index(new_packed_named_codes)};
-                            packed_named_codes.name[new_packed_named_codes_row] =
-                                strings.intern("Named");
-                            packed_named_codes.value[new_packed_named_codes_row] = 101;
-                            packed_named_codes.sentinel[new_packed_named_codes_row] = false;
-                            return new_packed_named_codes;
-                        }()});
+                    packed_fields.named_codes[row_0] = declarations.range<PackedNamedCodeId>({[&] {
+                        auto const new_packed_named_codes{packed_named_codes.append()};
+                        auto const new_packed_named_codes_row{
+                            packed_named_codes.index(new_packed_named_codes)};
+                        packed_named_codes.name[new_packed_named_codes_row] =
+                            strings.intern("Invalid");
+                        packed_named_codes.value[new_packed_named_codes_row] = 100;
+                        packed_named_codes.sentinel[new_packed_named_codes_row] = true;
+                        return new_packed_named_codes;
+                    }()});
                     return row_0;
                 }();
                 return declarations.range(rows_1);
@@ -4403,9 +4208,8 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
     EXPECT_THROW(lower(context, module), std::invalid_argument);
 
     module = valid_module(context);
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_3{std::vector(original_items.begin(), original_items.end())};
         rows_3.front() = [&] {
             auto row_2{packed_values.clone(rows_3.front())};
@@ -4415,7 +4219,7 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1[0] = [&] {
                     auto row_0{packed_fields.clone(rows_1[0])};
-                    packed_fields.minimum_value[packed_fields.index(row_0)] = 0;
+                    packed_fields.minimum_value[row_0] = 0;
                     return row_0;
                 }();
                 return declarations.range(rows_1);
@@ -4424,9 +4228,8 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
         }();
         return declarations.range(rows_3);
     }();
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_3{std::vector(original_items.begin(), original_items.end())};
         rows_3.front() = [&] {
             auto row_2{packed_values.clone(rows_3.front())};
@@ -4436,7 +4239,7 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1[0] = [&] {
                     auto row_0{packed_fields.clone(rows_1[0])};
-                    packed_fields.maximum_value[packed_fields.index(row_0)] = 100;
+                    packed_fields.maximum_value[row_0] = 100;
                     return row_0;
                 }();
                 return declarations.range(rows_1);
@@ -4445,9 +4248,8 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
         }();
         return declarations.range(rows_3);
     }();
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_3{std::vector(original_items.begin(), original_items.end())};
         rows_3.front() = [&] {
             auto row_2{packed_values.clone(rows_3.front())};
@@ -4457,108 +4259,16 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1[0] = [&] {
                     auto row_0{packed_fields.clone(rows_1[0])};
-                    packed_fields.named_codes[packed_fields.index(row_0)] =
-                        declarations.range<PackedNamedCodeId>({[&] {
-                            auto const new_packed_named_codes{packed_named_codes.append()};
-                            auto const new_packed_named_codes_row{
-                                packed_named_codes.index(new_packed_named_codes)};
-                            packed_named_codes.name[new_packed_named_codes_row] =
-                                strings.intern("Invalid");
-                            packed_named_codes.value[new_packed_named_codes_row] = 0x1000000;
-                            packed_named_codes.sentinel[new_packed_named_codes_row] = true;
-                            return new_packed_named_codes;
-                        }()});
-                    return row_0;
-                }();
-                return declarations.range(rows_1);
-            }();
-            return row_2;
-        }();
-        return declarations.range(rows_3);
-    }();
-    EXPECT_THROW(lower(context, module), std::invalid_argument);
-
-    module = valid_module(context);
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
-        auto rows_3{std::vector(original_items.begin(), original_items.end())};
-        rows_3.front() = [&] {
-            auto row_2{packed_values.clone(rows_3.front())};
-            auto const row_2_row{packed_values.index(row_2)};
-            packed_values.segments[row_2_row] = [&] {
-                auto const original_items{declarations.items(packed_values.segments[row_2_row])};
-                auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                rows_1[0] = [&] {
-                    auto row_0{packed_fields.clone(rows_1[0])};
-                    packed_fields.minimum_value[packed_fields.index(row_0)] = 0;
-                    return row_0;
-                }();
-                return declarations.range(rows_1);
-            }();
-            return row_2;
-        }();
-        return declarations.range(rows_3);
-    }();
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
-        auto rows_3{std::vector(original_items.begin(), original_items.end())};
-        rows_3.front() = [&] {
-            auto row_2{packed_values.clone(rows_3.front())};
-            auto const row_2_row{packed_values.index(row_2)};
-            packed_values.segments[row_2_row] = [&] {
-                auto const original_items{declarations.items(packed_values.segments[row_2_row])};
-                auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                rows_1[0] = [&] {
-                    auto row_0{packed_fields.clone(rows_1[0])};
-                    packed_fields.maximum_value[packed_fields.index(row_0)] = 100;
-                    return row_0;
-                }();
-                return declarations.range(rows_1);
-            }();
-            return row_2;
-        }();
-        return declarations.range(rows_3);
-    }();
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
-        auto rows_3{std::vector(original_items.begin(), original_items.end())};
-        rows_3.front() = [&] {
-            auto row_2{packed_values.clone(rows_3.front())};
-            auto const row_2_row{packed_values.index(row_2)};
-            packed_values.segments[row_2_row] = [&] {
-                auto const original_items{declarations.items(packed_values.segments[row_2_row])};
-                auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                rows_1[0] = [&] {
-                    auto row_0{packed_fields.clone(rows_1[0])};
-                    packed_fields.named_codes[packed_fields.index(row_0)] =
-                        declarations.range<PackedNamedCodeId>(
-                            {[&] {
-                                 auto const new_packed_named_codes{packed_named_codes.append()};
-                                 auto const new_packed_named_codes_row{
-                                     packed_named_codes.index(new_packed_named_codes)};
-                                 packed_named_codes.name[new_packed_named_codes_row] =
-                                     strings.intern("Invalid");
-                                 packed_named_codes.value[new_packed_named_codes_row] = 0xffffff;
-                                 packed_named_codes
-                                     .sentinel[packed_named_codes.index(new_packed_named_codes)] =
-                                     true;
-                                 return new_packed_named_codes;
-                             }(),
-                             [&] {
-                                 auto const new_packed_named_codes{packed_named_codes.append()};
-                                 auto const new_packed_named_codes_row{
-                                     packed_named_codes.index(new_packed_named_codes)};
-                                 packed_named_codes.name[new_packed_named_codes_row] =
-                                     strings.intern("Invalid");
-                                 packed_named_codes.value[new_packed_named_codes_row] = 0xfffffe;
-                                 packed_named_codes
-                                     .sentinel[packed_named_codes.index(new_packed_named_codes)] =
-                                     true;
-                                 return new_packed_named_codes;
-                             }()});
+                    packed_fields.named_codes[row_0] = declarations.range<PackedNamedCodeId>({[&] {
+                        auto const new_packed_named_codes{packed_named_codes.append()};
+                        auto const new_packed_named_codes_row{
+                            packed_named_codes.index(new_packed_named_codes)};
+                        packed_named_codes.name[new_packed_named_codes_row] =
+                            strings.intern("Named");
+                        packed_named_codes.value[new_packed_named_codes_row] = 101;
+                        packed_named_codes.sentinel[new_packed_named_codes_row] = false;
+                        return new_packed_named_codes;
+                    }()});
                     return row_0;
                 }();
                 return declarations.range(rows_1);
@@ -4570,9 +4280,8 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
     EXPECT_THROW(lower(context, module), std::invalid_argument);
 
     module = valid_module(context);
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_3{std::vector(original_items.begin(), original_items.end())};
         rows_3.front() = [&] {
             auto row_2{packed_values.clone(rows_3.front())};
@@ -4582,7 +4291,7 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1[0] = [&] {
                     auto row_0{packed_fields.clone(rows_1[0])};
-                    packed_fields.minimum_value[packed_fields.index(row_0)] = 0;
+                    packed_fields.minimum_value[row_0] = 0;
                     return row_0;
                 }();
                 return declarations.range(rows_1);
@@ -4591,9 +4300,8 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
         }();
         return declarations.range(rows_3);
     }();
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_3{std::vector(original_items.begin(), original_items.end())};
         rows_3.front() = [&] {
             auto row_2{packed_values.clone(rows_3.front())};
@@ -4603,7 +4311,7 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1[0] = [&] {
                     auto row_0{packed_fields.clone(rows_1[0])};
-                    packed_fields.maximum_value[packed_fields.index(row_0)] = 100;
+                    packed_fields.maximum_value[row_0] = 100;
                     return row_0;
                 }();
                 return declarations.range(rows_1);
@@ -4612,9 +4320,8 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
         }();
         return declarations.range(rows_3);
     }();
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_3{std::vector(original_items.begin(), original_items.end())};
         rows_3.front() = [&] {
             auto row_2{packed_values.clone(rows_3.front())};
@@ -4624,32 +4331,16 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1[0] = [&] {
                     auto row_0{packed_fields.clone(rows_1[0])};
-                    packed_fields.named_codes[packed_fields.index(row_0)] =
-                        declarations.range<PackedNamedCodeId>(
-                            {[&] {
-                                 auto const new_packed_named_codes{packed_named_codes.append()};
-                                 auto const new_packed_named_codes_row{
-                                     packed_named_codes.index(new_packed_named_codes)};
-                                 packed_named_codes.name[new_packed_named_codes_row] =
-                                     strings.intern("Invalid");
-                                 packed_named_codes.value[new_packed_named_codes_row] = 0xffffff;
-                                 packed_named_codes
-                                     .sentinel[packed_named_codes.index(new_packed_named_codes)] =
-                                     true;
-                                 return new_packed_named_codes;
-                             }(),
-                             [&] {
-                                 auto const new_packed_named_codes{packed_named_codes.append()};
-                                 auto const new_packed_named_codes_row{
-                                     packed_named_codes.index(new_packed_named_codes)};
-                                 packed_named_codes.name[new_packed_named_codes_row] =
-                                     strings.intern("Pending");
-                                 packed_named_codes.value[new_packed_named_codes_row] = 0xffffff;
-                                 packed_named_codes
-                                     .sentinel[packed_named_codes.index(new_packed_named_codes)] =
-                                     true;
-                                 return new_packed_named_codes;
-                             }()});
+                    packed_fields.named_codes[row_0] = declarations.range<PackedNamedCodeId>({[&] {
+                        auto const new_packed_named_codes{packed_named_codes.append()};
+                        auto const new_packed_named_codes_row{
+                            packed_named_codes.index(new_packed_named_codes)};
+                        packed_named_codes.name[new_packed_named_codes_row] =
+                            strings.intern("Invalid");
+                        packed_named_codes.value[new_packed_named_codes_row] = 0x1000000;
+                        packed_named_codes.sentinel[new_packed_named_codes_row] = true;
+                        return new_packed_named_codes;
+                    }()});
                     return row_0;
                 }();
                 return declarations.range(rows_1);
@@ -4661,9 +4352,8 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
     EXPECT_THROW(lower(context, module), std::invalid_argument);
 
     module = valid_module(context);
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_3{std::vector(original_items.begin(), original_items.end())};
         rows_3.front() = [&] {
             auto row_2{packed_values.clone(rows_3.front())};
@@ -4673,7 +4363,173 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1[0] = [&] {
                     auto row_0{packed_fields.clone(rows_1[0])};
-                    packed_fields.relationship[packed_fields.index(row_0)] = [&] {
+                    packed_fields.minimum_value[row_0] = 0;
+                    return row_0;
+                }();
+                return declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return declarations.range(rows_3);
+    }();
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{packed_values.clone(rows_3.front())};
+            auto const row_2_row{packed_values.index(row_2)};
+            packed_values.segments[row_2_row] = [&] {
+                auto const original_items{declarations.items(packed_values.segments[row_2_row])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[0] = [&] {
+                    auto row_0{packed_fields.clone(rows_1[0])};
+                    packed_fields.maximum_value[row_0] = 100;
+                    return row_0;
+                }();
+                return declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return declarations.range(rows_3);
+    }();
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{packed_values.clone(rows_3.front())};
+            auto const row_2_row{packed_values.index(row_2)};
+            packed_values.segments[row_2_row] = [&] {
+                auto const original_items{declarations.items(packed_values.segments[row_2_row])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[0] = [&] {
+                    auto row_0{packed_fields.clone(rows_1[0])};
+                    packed_fields.named_codes[row_0] = declarations.range<PackedNamedCodeId>(
+                        {[&] {
+                             auto const new_packed_named_codes{packed_named_codes.append()};
+                             auto const new_packed_named_codes_row{
+                                 packed_named_codes.index(new_packed_named_codes)};
+                             packed_named_codes.name[new_packed_named_codes_row] =
+                                 strings.intern("Invalid");
+                             packed_named_codes.value[new_packed_named_codes_row] = 0xffffff;
+                             packed_named_codes.sentinel[new_packed_named_codes] = true;
+                             return new_packed_named_codes;
+                         }(),
+                         [&] {
+                             auto const new_packed_named_codes{packed_named_codes.append()};
+                             auto const new_packed_named_codes_row{
+                                 packed_named_codes.index(new_packed_named_codes)};
+                             packed_named_codes.name[new_packed_named_codes_row] =
+                                 strings.intern("Invalid");
+                             packed_named_codes.value[new_packed_named_codes_row] = 0xfffffe;
+                             packed_named_codes.sentinel[new_packed_named_codes] = true;
+                             return new_packed_named_codes;
+                         }()});
+                    return row_0;
+                }();
+                return declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return declarations.range(rows_3);
+    }();
+    EXPECT_THROW(lower(context, module), std::invalid_argument);
+
+    module = valid_module(context);
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{packed_values.clone(rows_3.front())};
+            auto const row_2_row{packed_values.index(row_2)};
+            packed_values.segments[row_2_row] = [&] {
+                auto const original_items{declarations.items(packed_values.segments[row_2_row])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[0] = [&] {
+                    auto row_0{packed_fields.clone(rows_1[0])};
+                    packed_fields.minimum_value[row_0] = 0;
+                    return row_0;
+                }();
+                return declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return declarations.range(rows_3);
+    }();
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{packed_values.clone(rows_3.front())};
+            auto const row_2_row{packed_values.index(row_2)};
+            packed_values.segments[row_2_row] = [&] {
+                auto const original_items{declarations.items(packed_values.segments[row_2_row])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[0] = [&] {
+                    auto row_0{packed_fields.clone(rows_1[0])};
+                    packed_fields.maximum_value[row_0] = 100;
+                    return row_0;
+                }();
+                return declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return declarations.range(rows_3);
+    }();
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{packed_values.clone(rows_3.front())};
+            auto const row_2_row{packed_values.index(row_2)};
+            packed_values.segments[row_2_row] = [&] {
+                auto const original_items{declarations.items(packed_values.segments[row_2_row])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[0] = [&] {
+                    auto row_0{packed_fields.clone(rows_1[0])};
+                    packed_fields.named_codes[row_0] = declarations.range<PackedNamedCodeId>(
+                        {[&] {
+                             auto const new_packed_named_codes{packed_named_codes.append()};
+                             auto const new_packed_named_codes_row{
+                                 packed_named_codes.index(new_packed_named_codes)};
+                             packed_named_codes.name[new_packed_named_codes_row] =
+                                 strings.intern("Invalid");
+                             packed_named_codes.value[new_packed_named_codes_row] = 0xffffff;
+                             packed_named_codes.sentinel[new_packed_named_codes] = true;
+                             return new_packed_named_codes;
+                         }(),
+                         [&] {
+                             auto const new_packed_named_codes{packed_named_codes.append()};
+                             auto const new_packed_named_codes_row{
+                                 packed_named_codes.index(new_packed_named_codes)};
+                             packed_named_codes.name[new_packed_named_codes_row] =
+                                 strings.intern("Pending");
+                             packed_named_codes.value[new_packed_named_codes_row] = 0xffffff;
+                             packed_named_codes.sentinel[new_packed_named_codes] = true;
+                             return new_packed_named_codes;
+                         }()});
+                    return row_0;
+                }();
+                return declarations.range(rows_1);
+            }();
+            return row_2;
+        }();
+        return declarations.range(rows_3);
+    }();
+    EXPECT_THROW(lower(context, module), std::invalid_argument);
+
+    module = valid_module(context);
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
+        auto rows_3{std::vector(original_items.begin(), original_items.end())};
+        rows_3.front() = [&] {
+            auto row_2{packed_values.clone(rows_3.front())};
+            auto const row_2_row{packed_values.index(row_2)};
+            packed_values.segments[row_2_row] = [&] {
+                auto const original_items{declarations.items(packed_values.segments[row_2_row])};
+                auto rows_1{std::vector(original_items.begin(), original_items.end())};
+                rows_1[0] = [&] {
+                    auto row_0{packed_fields.clone(rows_1[0])};
+                    packed_fields.relationship[row_0] = [&] {
                         auto const new_semantic_relations{semantic_relations.append()};
                         auto const new_semantic_relations_row{
                             semantic_relations.index(new_semantic_relations)};
@@ -4695,9 +4551,8 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
     EXPECT_THROW(lower(context, module), std::invalid_argument);
 
     module = valid_module(context);
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_3{std::vector(original_items.begin(), original_items.end())};
         rows_3.front() = [&] {
             auto row_2{packed_values.clone(rows_3.front())};
@@ -4707,7 +4562,7 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1[1] = [&] {
                     auto row_0{packed_fields.clone(rows_1[1])};
-                    packed_fields.relationship[packed_fields.index(row_0)] = [&] {
+                    packed_fields.relationship[row_0] = [&] {
                         auto const new_semantic_relations{semantic_relations.append()};
                         auto const new_semantic_relations_row{
                             semantic_relations.index(new_semantic_relations)};
@@ -4729,9 +4584,8 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
     EXPECT_THROW(lower(context, module), std::invalid_argument);
 
     module = valid_module(context);
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_3{std::vector(original_items.begin(), original_items.end())};
         rows_3.front() = [&] {
             auto row_2{packed_values.clone(rows_3.front())};
@@ -4741,7 +4595,7 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1[0] = [&] {
                     auto row_0{packed_fields.clone(rows_1[0])};
-                    packed_fields.relationship[packed_fields.index(row_0)] = [&] {
+                    packed_fields.relationship[row_0] = [&] {
                         auto const new_semantic_relations{semantic_relations.append()};
                         auto const new_semantic_relations_row{
                             semantic_relations.index(new_semantic_relations)};
@@ -4775,7 +4629,7 @@ TEST(PackedValue, RejectsGeneratedApiCollisions) {
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{packed_values.clone(rows_1.front())};
-            packed_values.mutable_value[packed_values.index(row_0)] = true;
+            packed_values.mutable_value[row_0] = true;
             return row_0;
         }();
         return declarations.range(rows_1);
@@ -4791,7 +4645,7 @@ TEST(PackedValue, RejectsGeneratedApiCollisions) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1[1] = [&] {
                     auto row_0{declarations.packed_fields.clone(rows_1[1])};
-                    declarations.packed_fields.name[declarations.packed_fields.index(row_0)] =
+                    declarations.packed_fields.name[row_0] =
                         context.storage.strings.intern("set_entity_index");
                     return row_0;
                 }();
@@ -4825,8 +4679,7 @@ TEST(PackedValue, RejectsDescriptorAndRawFactoryNameCollisions) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1[1] = [&] {
                     auto row_0{packed_fields.clone(rows_1[1])};
-                    packed_fields.name[packed_fields.index(row_0)] =
-                        strings.intern("entity_index_field");
+                    packed_fields.name[row_0] = strings.intern("entity_index_field");
                     return row_0;
                 }();
                 return declarations.range(rows_1);
@@ -4847,7 +4700,7 @@ TEST(PackedValue, RejectsDescriptorAndRawFactoryNameCollisions) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1[1] = [&] {
                     auto row_0{packed_fields.clone(rows_1[1])};
-                    packed_fields.name[packed_fields.index(row_0)] = strings.intern("from_raw");
+                    packed_fields.name[row_0] = strings.intern("from_raw");
                     return row_0;
                 }();
                 return declarations.range(rows_1);
@@ -4868,8 +4721,7 @@ TEST(PackedValue, RejectsDescriptorAndRawFactoryNameCollisions) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1[1] = [&] {
                     auto row_0{packed_fields.clone(rows_1[1])};
-                    packed_fields.name[packed_fields.index(row_0)] =
-                        strings.intern("entity_index_range");
+                    packed_fields.name[row_0] = strings.intern("entity_index_range");
                     return row_0;
                 }();
                 return declarations.range(rows_1);
@@ -4903,8 +4755,7 @@ TEST(PackedValue, ValidatesKnownEnumUnderlyingType) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1[1] = [&] {
                     auto row_0{declarations.packed_fields.clone(rows_1[1])};
-                    declarations.packed_fields.type[declarations.packed_fields.index(row_0)] =
-                        make_test_type_ref(context, "@state");
+                    declarations.packed_fields.type[row_0] = make_test_type_ref(context, "@state");
                     return row_0;
                 }();
                 return declarations.range(rows_1);
@@ -4930,8 +4781,7 @@ TEST(PackedValue, ValidatesKnownEnumUnderlyingType) {
         enums_schemas.underlying_type[new_enums_row] = make_test_type_ref(context, "int8");
         enums_schemas.values[new_enums_row] = declarations.range<EnumeratorId>({[&] {
             auto const new_enumerators{declarations.enumerators.append()};
-            declarations.enumerators.name[declarations.enumerators.index(new_enumerators)] =
-                strings.intern("Value");
+            declarations.enumerators.name[new_enumerators] = strings.intern("Value");
             return new_enumerators;
         }()});
         return new_enums;
@@ -4968,7 +4818,7 @@ TEST(PackedValue, ValidatesKnownEnumEncodedWidthWithoutEmittingPerValueAssertion
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{packed_values.clone(rows_1.front())};
-            packed_values.invalid_value[packed_values.index(row_0)] = 0x07ffffffu;
+            packed_values.invalid_value[row_0] = 0x07ffffffu;
             return row_0;
         }();
         return declarations.range(rows_1);
@@ -4984,7 +4834,7 @@ TEST(PackedValue, ValidatesKnownEnumEncodedWidthWithoutEmittingPerValueAssertion
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1[1] = [&] {
                     auto row_0{packed_fields.clone(rows_1[1])};
-                    packed_fields.bits[packed_fields.index(row_0)] = 4;
+                    packed_fields.bits[row_0] = 4;
                     return row_0;
                 }();
                 return declarations.range(rows_1);
@@ -5044,7 +4894,7 @@ TEST(PackedValue, ValidatesKnownEnumEncodedWidthWithoutEmittingPerValueAssertion
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1[1] = [&] {
                     auto row_0{packed_fields.clone(rows_1[1])};
-                    packed_fields.bits[packed_fields.index(row_0)] = 3;
+                    packed_fields.bits[row_0] = 3;
                     return row_0;
                 }();
                 return declarations.range(rows_1);
@@ -5070,8 +4920,7 @@ TEST(PackedValue, OmitsSentinelAssertionWhenTheKnownEnumDomainExcludesIt) {
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{declarations.packed_values.clone(rows_1.front())};
-            declarations.packed_values.invalid_value[declarations.packed_values.index(row_0)] =
-                0xffffffffu;
+            declarations.packed_values.invalid_value[row_0] = 0xffffffffu;
             return row_0;
         }();
         return declarations.range(rows_1);
@@ -5127,7 +4976,7 @@ TEST(PackedValue, ResolvesImplicitValuesAfterExplicitHexadecimalValues) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1[1] = [&] {
                     auto row_0{packed_fields.clone(rows_1[1])};
-                    packed_fields.bits[packed_fields.index(row_0)] = 4;
+                    packed_fields.bits[row_0] = 4;
                     return row_0;
                 }();
                 return declarations.range(rows_1);
@@ -5158,7 +5007,7 @@ TEST(PackedValue, ResolvesImplicitValuesAfterExplicitHexadecimalValues) {
              }(),
              [&] {
                  auto const new_enumerators{enumerators.append()};
-                 enumerators.name[enumerators.index(new_enumerators)] = strings.intern("Next");
+                 enumerators.name[new_enumerators] = strings.intern("Next");
                  return new_enumerators;
              }(),
              [&] {
@@ -5187,7 +5036,7 @@ TEST(PackedValue, ResolvesImplicitValuesAfterExplicitHexadecimalValues) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1[1] = [&] {
                     auto row_0{packed_fields.clone(rows_1[1])};
-                    packed_fields.bits[packed_fields.index(row_0)] = 3;
+                    packed_fields.bits[row_0] = 3;
                     return row_0;
                 }();
                 return declarations.range(rows_1);
@@ -5220,7 +5069,7 @@ TEST(PackedValue, RejectsKnownEnumValuesOutsideTheirUnderlyingType) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1[1] = [&] {
                     auto row_0{declarations.packed_fields.clone(rows_1[1])};
-                    declarations.packed_fields.bits[declarations.packed_fields.index(row_0)] = 8;
+                    declarations.packed_fields.bits[row_0] = 8;
                     return row_0;
                 }();
                 return declarations.range(rows_1);
@@ -5253,12 +5102,12 @@ TEST(PackedValue, RejectsKnownEnumValuesOutsideTheirUnderlyingType) {
     }()};
     EXPECT_NO_THROW(static_cast<void>(lower_known_enum(context, module, schema)));
 
-    enums.values[enums.index(schema)] = [&] {
-        auto const original_items{declarations.items(enums.values[enums.index(schema)])};
+    enums.values[schema] = [&] {
+        auto const original_items{declarations.items(enums.values[schema])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.back() = [&] {
             auto row_0{enumerators.clone(rows_1.back())};
-            enumerators.initializer[enumerators.index(row_0)] = strings.intern("256");
+            enumerators.initializer[row_0] = strings.intern("256");
             return row_0;
         }();
         return declarations.range(rows_1);
@@ -5287,7 +5136,7 @@ TEST(PackedValue, AllowsEnumAliasesAndUsesStructuralCountSemantics) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1[1] = [&] {
                     auto row_0{declarations.packed_fields.clone(rows_1[1])};
-                    declarations.packed_fields.bits[declarations.packed_fields.index(row_0)] = 8;
+                    declarations.packed_fields.bits[row_0] = 8;
                     return row_0;
                 }();
                 return declarations.range(rows_1);
@@ -5320,7 +5169,7 @@ TEST(PackedValue, AllowsEnumAliasesAndUsesStructuralCountSemantics) {
     }()};
     EXPECT_NO_THROW(static_cast<void>(lower_known_enum(context, module, schema)));
 
-    enums.values[enums.index(schema)] = declarations.range<EnumeratorId>(
+    enums.values[schema] = declarations.range<EnumeratorId>(
         {[&] {
              auto const new_enumerators{enumerators.append()};
              auto const new_enumerators_row{enumerators.index(new_enumerators)};
@@ -5344,7 +5193,7 @@ TEST(PackedValue, AllowsEnumAliasesAndUsesStructuralCountSemantics) {
              enumerators.hidden[new_enumerators_row] = true;
              return new_enumerators;
          }()});
-    enums.count[enums.index(schema)] = strings.intern("COUNT");
+    enums.count[schema] = strings.intern("COUNT");
     EXPECT_NO_THROW(static_cast<void>(lower_known_enum(context, module, schema)));
 }
 
@@ -5369,7 +5218,7 @@ TEST(PackedValue, EmitsCompactFallbackForOpaqueKnownEnumValues) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1[1] = [&] {
                     auto row_0{declarations.packed_fields.clone(rows_1[1])};
-                    declarations.packed_fields.bits[declarations.packed_fields.index(row_0)] = 3;
+                    declarations.packed_fields.bits[row_0] = 3;
                     return row_0;
                 }();
                 return declarations.range(rows_1);
@@ -5435,8 +5284,7 @@ TEST(PackedValue, RejectsFieldsNarrowerThanEnumSemanticDomain) {
                     auto rows_1{std::vector(original_items.begin(), original_items.end())};
                     rows_1[1] = [&] {
                         auto row_0{declarations.packed_fields.clone(rows_1[1])};
-                        declarations.packed_fields.bits[declarations.packed_fields.index(row_0)] =
-                            2;
+                        declarations.packed_fields.bits[row_0] = 2;
                         return row_0;
                     }();
                     return declarations.range(rows_1);
@@ -5526,7 +5374,7 @@ TEST(PackedValue, DerivesAutoWidthFromEnumSemanticDomain) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1[1] = [&] {
                     auto row_0{packed_fields.clone(rows_1[1])};
-                    packed_fields.bits[packed_fields.index(row_0)].reset();
+                    packed_fields.bits[row_0].reset();
                     return row_0;
                 }();
                 return declarations.range(rows_1);
@@ -5546,7 +5394,7 @@ TEST(PackedValue, DerivesAutoWidthFromEnumSemanticDomain) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1[0] = [&] {
                     auto row_0{packed_fields.clone(rows_1[0])};
-                    packed_fields.relationship[packed_fields.index(row_0)] = [&] {
+                    packed_fields.relationship[row_0] = [&] {
                         auto const new_semantic_relations{semantic_relations.append()};
                         auto const new_semantic_relations_row{
                             semantic_relations.index(new_semantic_relations)};
@@ -5632,7 +5480,7 @@ TEST(PackedValue, SentinelCodeCanIncreaseDerivedIntegerWidth) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1[0] = [&] {
                     auto row_0{packed_fields.clone(rows_1[0])};
-                    packed_fields.bits[packed_fields.index(row_0)].reset();
+                    packed_fields.bits[row_0].reset();
                     return row_0;
                 }();
                 return declarations.range(rows_1);
@@ -5652,7 +5500,7 @@ TEST(PackedValue, SentinelCodeCanIncreaseDerivedIntegerWidth) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1[0] = [&] {
                     auto row_0{packed_fields.clone(rows_1[0])};
-                    packed_fields.minimum_value[packed_fields.index(row_0)] = 0;
+                    packed_fields.minimum_value[row_0] = 0;
                     return row_0;
                 }();
                 return declarations.range(rows_1);
@@ -5672,7 +5520,7 @@ TEST(PackedValue, SentinelCodeCanIncreaseDerivedIntegerWidth) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1[0] = [&] {
                     auto row_0{packed_fields.clone(rows_1[0])};
-                    packed_fields.maximum_value[packed_fields.index(row_0)] = 7;
+                    packed_fields.maximum_value[row_0] = 7;
                     return row_0;
                 }();
                 return declarations.range(rows_1);
@@ -5692,17 +5540,16 @@ TEST(PackedValue, SentinelCodeCanIncreaseDerivedIntegerWidth) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1[0] = [&] {
                     auto row_0{packed_fields.clone(rows_1[0])};
-                    packed_fields.named_codes[packed_fields.index(row_0)] =
-                        declarations.range<PackedNamedCodeId>({[&] {
-                            auto const new_packed_named_codes{packed_named_codes.append()};
-                            auto const new_packed_named_codes_row{
-                                packed_named_codes.index(new_packed_named_codes)};
-                            packed_named_codes.name[new_packed_named_codes_row] =
-                                context.storage.strings.intern("Invalid");
-                            packed_named_codes.value[new_packed_named_codes_row] = 8;
-                            packed_named_codes.sentinel[new_packed_named_codes_row] = true;
-                            return new_packed_named_codes;
-                        }()});
+                    packed_fields.named_codes[row_0] = declarations.range<PackedNamedCodeId>({[&] {
+                        auto const new_packed_named_codes{packed_named_codes.append()};
+                        auto const new_packed_named_codes_row{
+                            packed_named_codes.index(new_packed_named_codes)};
+                        packed_named_codes.name[new_packed_named_codes_row] =
+                            context.storage.strings.intern("Invalid");
+                        packed_named_codes.value[new_packed_named_codes_row] = 8;
+                        packed_named_codes.sentinel[new_packed_named_codes_row] = true;
+                        return new_packed_named_codes;
+                    }()});
                     return row_0;
                 }();
                 return declarations.range(rows_1);

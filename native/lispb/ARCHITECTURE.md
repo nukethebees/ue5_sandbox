@@ -35,6 +35,15 @@ emission metadata stored once in the graph, without synthetic type names or rewr
 Relationships reference these occurrences. Enum-domain codes and widths are computed once per
 semantic graph from authored enumerator IDs; validation, lowering and layout analysis share them.
 
+Authored schema columns use `IndexedColumn<T, Indexing>`, a value-owned `std::vector` adapter.
+Each store explicitly selects one-based IDs or a tagged handle and expected kind; representation
+alone does not determine the indexing convention. Typed access checks handle validity, kind and
+column bounds with debug assertions. Numeric indexing and ordinary vector/range operations remain
+available; cached rows are useful when accessing several columns. The adapter adds no row metadata
+or allocation, and must not be deleted through a base-vector pointer. Typed access does not enforce
+document immutability: callers must still clone published rows before mutation and reacquire element
+references after appending. Semantic graph and generated C++ IR columns retain their existing APIs.
+
 C++ template declarations and parameters use separate tagged handle domains. Type/value parameters,
 defaults, packs, specialization names and constraints retain their structure through rendering.
 Generated templates are constructed directly; authored `#cpp` template parameters and constraints

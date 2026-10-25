@@ -209,12 +209,9 @@ class TypeGraphBuilder {
     auto text(std::string_view const value) -> StringId { return store_.strings().intern(value); }
     auto qualified_name(lispb::codegen::ModuleSettingsId const& module, StringId const name)
         -> StringId {
-        return store_.module_settings_store
-                       .namespace_name[store_.module_settings_store.index(module)]
+        return store_.module_settings_store.namespace_name[module]
                  ? store_.strings().intern(
-                       str(*store_.module_settings_store
-                                .namespace_name[store_.module_settings_store.index(module)]) +
-                       "::" + str(name))
+                       str(*store_.module_settings_store.namespace_name[module]) + "::" + str(name))
                  : name;
     }
     auto declaration_name(TypeId const id) const -> std::string { return str(graph_.name(id)); }
@@ -252,19 +249,16 @@ class TypeGraphBuilder {
         auto const physical{physical_name && physical_name->value == 0
                                 ? StringId{}
                                 : qualified_name(module_settings, physical_name.value_or(name))};
-        auto const id{
-            add_type({.origin = TypeOrigin::declaration,
-                      .module_name = store_.module_settings_store
-                                         .name[store_.module_settings_store.index(module_settings)],
-                      .namespace_name =
-                          store_.module_settings_store
-                              .namespace_name[store_.module_settings_store.index(module_settings)]
-                              .value_or(StringId{}),
-                      .name = name},
-                     physical,
-                     definition,
-                     module,
-                     source)};
+        auto const id{add_type(
+            {.origin = TypeOrigin::declaration,
+             .module_name = store_.module_settings_store.name[module_settings],
+             .namespace_name =
+                 store_.module_settings_store.namespace_name[module_settings].value_or(StringId{}),
+             .name = name},
+            physical,
+            definition,
+            module,
+            source)};
         declarations_.push_back(id);
         graph_.declarations_by_module_name_.emplace(std::pair{module, name}, id);
         if (physical.value) {
@@ -282,31 +276,24 @@ class TypeGraphBuilder {
         for (auto const module_id : manifest_.modules) {
             auto const module_settings{store_.module_settings(module_id)};
             if (!modules_by_name_
-                     .emplace(store_.module_settings_store
-                                  .name[store_.module_settings_store.index(module_settings)],
-                              module_id)
+                     .emplace(store_.module_settings_store.name[module_settings], module_id)
                      .second) {
                 throw std::invalid_argument{
                     "Duplicate module name: " +
-                    str(store_.module_settings_store
-                            .name[store_.module_settings_store.index(module_settings)])};
+                    str(store_.module_settings_store.name[module_settings])};
             }
             module_headers_.emplace(
                 module_id,
-                store_.module_settings_store
-                    .header_include[store_.module_settings_store.index(module_settings)]
-                    .value_or(text(std::filesystem::path{
-                        str(store_.module_settings_store
-                                .header[store_.module_settings_store.index(module_settings)])}
-                                       .filename()
-                                       .generic_string())));
+                store_.module_settings_store.header_include[module_settings].value_or(text(
+                    std::filesystem::path{str(store_.module_settings_store.header[module_settings])}
+                        .filename()
+                        .generic_string())));
             if (module_id.kind() != codegen::ModuleKind::normal) {
                 continue;
             }
             auto const module{module_id};
             std::set<StringId> names;
-            for (auto const source : store_.items(
-                     store_.normal_modules.declarations[store_.normal_modules.index(module)])) {
+            for (auto const source : store_.items(store_.normal_modules.declarations[module])) {
                 auto const name{codegen::declaration_name(store_, source)};
                 if (!names.insert(name).second) {
                     throw std::invalid_argument{"Duplicate declaration name: " + str(name)};
@@ -441,7 +428,7 @@ class TypeGraphBuilder {
                 if (auto const soa{((source).kind() == lispb::codegen::DeclarationKind::soa
                                         ? std::optional{source}
                                         : std::nullopt)}) {
-                    if (store_.soas.layout_only[store_.soas.index(*soa)]) {
+                    if (store_.soas.layout_only[*soa]) {
                         physical = StringId{};
                     }
                 }
@@ -603,12 +590,10 @@ class TypeGraphBuilder {
                         auto physical_type{types.reference(
                             types.derive(original, str(graph_.cpp_spelling(node))))};
                         std::string suffix;
-                        if (store_.type_refs.nested[store_.type_refs.index(reference)]) {
-                            suffix +=
-                                "::" +
-                                str(*store_.type_refs.nested[store_.type_refs.index(reference)]);
+                        if (store_.type_refs.nested[reference]) {
+                            suffix += "::" + str(*store_.type_refs.nested[reference]);
                         }
-                        suffix += str(store_.type_refs.suffix[store_.type_refs.index(reference)]);
+                        suffix += str(store_.type_refs.suffix[reference]);
                         resolved.cpp_type = suffix.empty()
                                               ? physical_type
                                               : types.decorate(physical_type, "", suffix);
@@ -621,10 +606,8 @@ class TypeGraphBuilder {
             }
 
         } else {
-            assert(!store_.strings()
-                        .view(store_.type_refs.name[store_.type_refs.index(reference)])
-                        .starts_with('@'));
-            semantic_type = raw_external(store_.type_refs.name[store_.type_refs.index(reference)]);
+            assert(!store_.strings().view(store_.type_refs.name[reference]).starts_with('@'));
+            semantic_type = raw_external(store_.type_refs.name[reference]);
         }
         auto const result{add_occurrence(semantic_type, resolved.cpp_type, resolved.physical)};
         graph_.bindings_.emplace(key, result);
@@ -658,9 +641,7 @@ class TypeGraphBuilder {
         }
         auto const reference{reference_id};
         if (graph_.module(node) == module ||
-            store_.strings()
-                .view(store_.type_refs.name[store_.type_refs.index(reference)])
-                .starts_with('@') ||
+            store_.strings().view(store_.type_refs.name[reference]).starts_with('@') ||
             (record_signature &&
              uses_cross_module_signature_forward_declaration(target, kind, graph_))) {
             return target;
@@ -718,8 +699,8 @@ class TypeGraphBuilder {
         for (auto const module_id : manifest_.modules) {
             if (module_id.kind() == codegen::ModuleKind::normal) {
                 auto const module{module_id};
-                for (auto const declaration : store_.items(
-                         store_.normal_modules.declarations[store_.normal_modules.index(module)])) {
+                for (auto const declaration :
+                     store_.items(store_.normal_modules.declarations[module])) {
                     codegen::visit_type_references(
                         store_,
                         declaration,
@@ -734,11 +715,10 @@ class TypeGraphBuilder {
                                 role.category == codegen::TypeReferenceCategory::member &&
                                 role.part == codegen::TypeReferencePart::direct) {
                                 auto const soa{declaration};
-                                auto const member{store_.items(
-                                    store_.soas.members[store_.soas.index(soa)])[role.index]};
-                                emitted =
-                                    store_.soa_members.kind[store_.soa_members.index(member)] !=
-                                    codegen::SoaMemberKind::nested;
+                                auto const member{
+                                    store_.items(store_.soas.members[soa])[role.index]};
+                                emitted = store_.soa_members.kind[member] !=
+                                          codegen::SoaMemberKind::nested;
                             }
                             if (emitted) {
                                 target = resolve_cpp_occurrence(
@@ -782,16 +762,13 @@ class TypeGraphBuilder {
                             std::uint32_t index{};
                             for (auto const method_id : store_.items(methods)) {
                                 auto const method{method_id};
-                                for (auto const name : store_.items(
-                                         store_.functions
-                                             .dependencies[store_.functions.index(method)])) {
-                                    registration(
-                                        {.category = category,
-                                         .part = codegen::TypeReferencePart::dependency,
-                                         .subject =
-                                             store_.functions.name[store_.functions.index(method)],
-                                         .index = index},
-                                        name);
+                                for (auto const name :
+                                     store_.items(store_.functions.dependencies[method])) {
+                                    registration({.category = category,
+                                                  .part = codegen::TypeReferencePart::dependency,
+                                                  .subject = store_.functions.name[method],
+                                                  .index = index},
+                                                 name);
                                 }
                                 ++index;
                             }
@@ -800,9 +777,8 @@ class TypeGraphBuilder {
                             ((declaration).kind() == lispb::codegen::DeclarationKind::facade
                                  ? std::optional{declaration}
                                  : std::nullopt)}) {
-                        for (auto const name : store_.items(
-                                 store_.facades
-                                     .validation_dependencies[store_.facades.index(*facade)])) {
+                        for (auto const name :
+                             store_.items(store_.facades.validation_dependencies[*facade])) {
                             registration(
                                 {.category = codegen::TypeReferenceCategory::validation_dependency},
                                 name);
@@ -812,35 +788,34 @@ class TypeGraphBuilder {
                                         ? std::optional{declaration}
                                         : std::nullopt)}) {
                         functions(codegen::TypeReferenceCategory::function,
-                                  store_.records.functions[store_.records.index(*record)]);
+                                  store_.records.functions[*record]);
                     } else if (auto const soa{
                                    ((declaration).kind() == lispb::codegen::DeclarationKind::soa
                                         ? std::optional{declaration}
                                         : std::nullopt)}) {
                         functions(codegen::TypeReferenceCategory::function,
-                                  store_.soas.functions[store_.soas.index(*soa)]);
+                                  store_.soas.functions[*soa]);
                         functions(codegen::TypeReferenceCategory::const_view_function,
-                                  store_.soas.const_view_functions[store_.soas.index(*soa)]);
+                                  store_.soas.const_view_functions[*soa]);
                         functions(codegen::TypeReferenceCategory::view_function,
-                                  store_.soas.mutable_view_functions[store_.soas.index(*soa)]);
+                                  store_.soas.mutable_view_functions[*soa]);
                     }
                 }
             } else if (module_id.kind() == codegen::ModuleKind::settings) {
                 auto const module{module_id};
                 std::uint32_t index{};
                 for (auto const setting_id :
-                     store_.items(store_.settings_modules
-                                      .settings_list[store_.settings_modules.index(module)])) {
+                     store_.items(store_.settings_modules.settings_list[module])) {
                     auto const setting{setting_id};
-                    auto const target{bind_reference(
-                        store_.settings.value_type[store_.settings.index(setting)], module_id)};
+                    auto const target{
+                        bind_reference(store_.settings.value_type[setting], module_id)};
                     add_use(module_id,
                             {},
                             {.category = codegen::TypeReferenceCategory::setting,
-                             .subject = store_.settings.name[store_.settings.index(setting)],
+                             .subject = store_.settings.name[setting],
                              .index = index++},
                             target,
-                            store_.settings.value_type[store_.settings.index(setting)]);
+                            store_.settings.value_type[setting]);
                 }
             }
         }
@@ -858,24 +833,20 @@ class TypeGraphBuilder {
             found != relationships_by_source_.end()) {
             return found->second;
         }
-        auto const target{resolve_ref(
-            store_.semantic_relations.target[store_.semantic_relations.index(relation)], module)};
+        auto const target{resolve_ref(store_.semantic_relations.target[relation], module)};
         if (graph_.origin(graph_.occurrences().type[graph_.occurrences().index(target)]) !=
             TypeOrigin::declaration) {
             throw std::invalid_argument{
                 std::string{context} + " relationship target '" +
-                str(store_.type_refs.name[store_.type_refs.index(
-                    store_.semantic_relations.target[store_.semantic_relations.index(relation)])]) +
+                str(store_.type_refs.name[store_.semantic_relations.target[relation]]) +
                 "' must resolve to a declared semantic type"};
         }
         auto& relationships{graph_.relationships_};
         auto const id{relationships.append()};
         auto const row{relationships.index(id)};
-        relationships.kind[row] =
-            store_.semantic_relations.kind[store_.semantic_relations.index(relation)];
+        relationships.kind[row] = store_.semantic_relations.kind[relation];
         relationships.target[row] = target;
-        relationships.unit[row] =
-            store_.semantic_relations.unit[store_.semantic_relations.index(relation)];
+        relationships.unit[row] = store_.semantic_relations.unit[relation];
         relationships_by_source_.emplace(key, id);
         return id;
     }
@@ -893,90 +864,70 @@ class TypeGraphBuilder {
                     definitions.enums.domain[definitions.enums.index(new_enums_3)] =
                         graph_.enum_domains_.find(source);
                     definitions.enums.underlying_type[definitions.enums.index(new_enums_3)] =
-                        store_.enums.underlying_type[store_.enums.index(source)]
+                        store_.enums.underlying_type[source]
                             .transform([&](auto id) { return resolve_ref(id, module_id); })
                             .value_or(ResolvedOccurrenceId{});
                     definitions.enums.bit_width[definitions.enums.index(new_enums_3)] =
-                        store_.enums.bit_width[store_.enums.index(source)];
+                        store_.enums.bit_width[source];
                     definitions.enums.signedness[definitions.enums.index(new_enums_3)] =
-                        store_.enums.signedness[store_.enums.index(source)];
+                        store_.enums.signedness[source];
                     definitions.enums.count[definitions.enums.index(new_enums_3)] =
-                        store_.enums.count[store_.enums.index(source)];
+                        store_.enums.count[source];
                     definitions.enums.enum_array[definitions.enums.index(new_enums_3)] =
-                        store_.enums.enum_array[store_.enums.index(source)];
+                        store_.enums.enum_array[source];
                     return new_enums_3;
                 }
                 case lispb::codegen::DeclarationKind::integer_scalar: {
 
-                    auto minimum{
-                        store_.integer_scalars.minimum_value[store_.integer_scalars.index(source)]};
-                    auto maximum{
-                        store_.integer_scalars.maximum_value[store_.integer_scalars.index(source)]};
+                    auto minimum{store_.integer_scalars.minimum_value[source]};
+                    auto maximum{store_.integer_scalars.maximum_value[source]};
                     for (auto const code_id :
-                         store_.items(store_.integer_scalars
-                                          .named_codes[store_.integer_scalars.index(source)])) {
+                         store_.items(store_.integer_scalars.named_codes[source])) {
                         auto const code{code_id};
-                        if (codegen::packed_integer_less(
-                                store_.packed_named_codes
-                                    .value[store_.packed_named_codes.index(code)],
-                                minimum)) {
-                            minimum = store_.packed_named_codes
-                                          .value[store_.packed_named_codes.index(code)];
+                        if (codegen::packed_integer_less(store_.packed_named_codes.value[code],
+                                                         minimum)) {
+                            minimum = store_.packed_named_codes.value[code];
                         }
-                        if (codegen::packed_integer_less(
-                                maximum,
-                                store_.packed_named_codes
-                                    .value[store_.packed_named_codes.index(code)])) {
-                            maximum = store_.packed_named_codes
-                                          .value[store_.packed_named_codes.index(code)];
+                        if (codegen::packed_integer_less(maximum,
+                                                         store_.packed_named_codes.value[code])) {
+                            maximum = store_.packed_named_codes.value[code];
                         }
                     }
                     auto& scalars{definitions.integer_scalars};
                     auto const result{scalars.append()};
                     auto const scalar_index{scalars.index(result)};
-                    scalars.signedness[scalar_index] =
-                        store_.integer_scalars.signedness[store_.integer_scalars.index(source)];
+                    scalars.signedness[scalar_index] = store_.integer_scalars.signedness[source];
                     scalars.minimum_value[scalar_index] =
-                        store_.integer_scalars.minimum_value[store_.integer_scalars.index(source)];
+                        store_.integer_scalars.minimum_value[source];
                     scalars.maximum_value[scalar_index] =
-                        store_.integer_scalars.maximum_value[store_.integer_scalars.index(source)];
+                        store_.integer_scalars.maximum_value[source];
                     scalars.bit_width[scalar_index] =
-                        store_.integer_scalars.bit_width[store_.integer_scalars.index(source)]
-                            .value_or(*codegen::minimum_packed_integer_bits(
-                                minimum,
-                                maximum,
-                                store_.integer_scalars
-                                    .signedness[store_.integer_scalars.index(source)]));
+                        store_.integer_scalars.bit_width[source].value_or(
+                            *codegen::minimum_packed_integer_bits(
+                                minimum, maximum, store_.integer_scalars.signedness[source]));
                     scalars.bit_width_auto[scalar_index] =
-                        !store_.integer_scalars.bit_width[store_.integer_scalars.index(source)];
-                    scalars.named_codes[scalar_index] =
-                        store_.integer_scalars.named_codes[store_.integer_scalars.index(source)];
+                        !store_.integer_scalars.bit_width[source];
+                    scalars.named_codes[scalar_index] = store_.integer_scalars.named_codes[source];
                     scalars.relationship[scalar_index] = relationship(
-                        store_.integer_scalars.relationship[store_.integer_scalars.index(source)],
-                        module_id,
-                        "Integer scalar");
-                    if (store_.integer_scalars.cpp_emission[store_.integer_scalars.index(source)] ==
+                        store_.integer_scalars.relationship[source], module_id, "Integer scalar");
+                    if (store_.integer_scalars.cpp_emission[source] ==
                             codegen::IntegerScalarCppEmission::alias &&
-                        store_.integer_scalars.cpp_type[store_.integer_scalars.index(source)]) {
-                        scalars.cpp_representation[scalar_index] = resolve_ref(
-                            *store_.integer_scalars.cpp_type[store_.integer_scalars.index(source)],
-                            module_id);
+                        store_.integer_scalars.cpp_type[source]) {
+                        scalars.cpp_representation[scalar_index] =
+                            resolve_ref(*store_.integer_scalars.cpp_type[source], module_id);
                     }
                     return result;
                 }
                 case lispb::codegen::DeclarationKind::linear_quantized: {
 
-                    auto const scalar{resolve_ref(
-                        store_.linear_quantizeds.source[store_.linear_quantizeds.index(source)],
-                        module_id)};
+                    auto const scalar{
+                        resolve_ref(store_.linear_quantizeds.source[source], module_id)};
                     if (!integer_domain(
                             graph_,
                             graph_.occurrences().type[graph_.occurrences().index(scalar)])) {
-                        throw std::invalid_argument{
-                            "Linear quantization '" +
-                            str(store_.linear_quantizeds
-                                    .name[store_.linear_quantizeds.index(source)]) +
-                            "' source must have a declared integer domain"};
+                        throw std::invalid_argument{"Linear quantization '" +
+                                                    str(store_.linear_quantizeds.name[source]) +
+                                                    "' source must have a declared integer domain"};
                     }
                     auto const new_linear_quantized_4{definitions.linear_quantized.append()};
                     definitions.linear_quantized
@@ -984,35 +935,31 @@ class TypeGraphBuilder {
                         scalar;
                     definitions.linear_quantized
                         .bit_width[definitions.linear_quantized.index(new_linear_quantized_4)] =
-                        store_.linear_quantizeds.bit_width[store_.linear_quantizeds.index(source)];
+                        store_.linear_quantizeds.bit_width[source];
                     definitions.linear_quantized.reserved_codes[definitions.linear_quantized.index(
-                        new_linear_quantized_4)] =
-                        store_.linear_quantizeds
-                            .reserved_codes[store_.linear_quantizeds.index(source)];
+                        new_linear_quantized_4)] = store_.linear_quantizeds.reserved_codes[source];
                     definitions.linear_quantized
                         .clipping[definitions.linear_quantized.index(new_linear_quantized_4)] =
-                        store_.linear_quantizeds.clipping[store_.linear_quantizeds.index(source)];
+                        store_.linear_quantizeds.clipping[source];
                     return new_linear_quantized_4;
                 }
                 case lispb::codegen::DeclarationKind::integer_varint: {
 
-                    auto const scalar{resolve_ref(
-                        store_.integer_varints.source[store_.integer_varints.index(source)],
-                        module_id)};
+                    auto const scalar{
+                        resolve_ref(store_.integer_varints.source[source], module_id)};
                     if (!integer_domain(
                             graph_,
                             graph_.occurrences().type[graph_.occurrences().index(scalar)])) {
-                        throw std::invalid_argument{
-                            "Integer varint '" +
-                            str(store_.integer_varints.name[store_.integer_varints.index(source)]) +
-                            "' source must have a declared integer domain"};
+                        throw std::invalid_argument{"Integer varint '" +
+                                                    str(store_.integer_varints.name[source]) +
+                                                    "' source must have a declared integer domain"};
                     }
                     auto const new_integer_varints_5{definitions.integer_varints.append()};
                     definitions.integer_varints
                         .source[definitions.integer_varints.index(new_integer_varints_5)] = scalar;
                     definitions.integer_varints
                         .encoding[definitions.integer_varints.index(new_integer_varints_5)] =
-                        store_.integer_varints.encoding[store_.integer_varints.index(source)];
+                        store_.integer_varints.encoding[source];
                     return new_integer_varints_5;
                 }
                 case lispb::codegen::DeclarationKind::fixed_point: {
@@ -1020,34 +967,30 @@ class TypeGraphBuilder {
                     auto const new_fixed_points_6{definitions.fixed_points.append()};
                     definitions.fixed_points
                         .signedness[definitions.fixed_points.index(new_fixed_points_6)] =
-                        store_.fixed_points.signedness[store_.fixed_points.index(source)];
+                        store_.fixed_points.signedness[source];
                     definitions.fixed_points
                         .total_bits[definitions.fixed_points.index(new_fixed_points_6)] =
-                        store_.fixed_points.total_bits[store_.fixed_points.index(source)];
+                        store_.fixed_points.total_bits[source];
                     definitions.fixed_points
                         .fractional_bits[definitions.fixed_points.index(new_fixed_points_6)] =
-                        store_.fixed_points.fractional_bits[store_.fixed_points.index(source)];
+                        store_.fixed_points.fractional_bits[source];
                     definitions.fixed_points
                         .rounding[definitions.fixed_points.index(new_fixed_points_6)] =
-                        store_.fixed_points.rounding[store_.fixed_points.index(source)];
+                        store_.fixed_points.rounding[source];
                     definitions.fixed_points
                         .minimum_raw_value[definitions.fixed_points.index(new_fixed_points_6)] =
-                        store_.fixed_points.minimum_value[store_.fixed_points.index(source)]
-                            .transform([&](auto id) {
-                                return *codegen::parse_fixed_point_value(
-                                    store_.strings().view(id),
-                                    store_.fixed_points
-                                        .fractional_bits[store_.fixed_points.index(source)]);
-                            });
+                        store_.fixed_points.minimum_value[source].transform([&](auto id) {
+                            return *codegen::parse_fixed_point_value(
+                                store_.strings().view(id),
+                                store_.fixed_points.fractional_bits[source]);
+                        });
                     definitions.fixed_points
                         .maximum_raw_value[definitions.fixed_points.index(new_fixed_points_6)] =
-                        store_.fixed_points.maximum_value[store_.fixed_points.index(source)]
-                            .transform([&](auto id) {
-                                return *codegen::parse_fixed_point_value(
-                                    store_.strings().view(id),
-                                    store_.fixed_points
-                                        .fractional_bits[store_.fixed_points.index(source)]);
-                            });
+                        store_.fixed_points.maximum_value[source].transform([&](auto id) {
+                            return *codegen::parse_fixed_point_value(
+                                store_.strings().view(id),
+                                store_.fixed_points.fractional_bits[source]);
+                        });
                     return new_fixed_points_6;
                 }
                 case lispb::codegen::DeclarationKind::mini_float: {
@@ -1055,50 +998,41 @@ class TypeGraphBuilder {
                     auto const new_mini_floats_7{definitions.mini_floats.append()};
                     definitions.mini_floats
                         .sign_bits[definitions.mini_floats.index(new_mini_floats_7)] =
-                        store_.mini_floats.sign_bits[store_.mini_floats.index(source)];
+                        store_.mini_floats.sign_bits[source];
                     definitions.mini_floats
                         .exponent_bits[definitions.mini_floats.index(new_mini_floats_7)] =
-                        store_.mini_floats.exponent_bits[store_.mini_floats.index(source)];
+                        store_.mini_floats.exponent_bits[source];
                     definitions.mini_floats
                         .significand_bits[definitions.mini_floats.index(new_mini_floats_7)] =
-                        store_.mini_floats.significand_bits[store_.mini_floats.index(source)];
+                        store_.mini_floats.significand_bits[source];
                     definitions.mini_floats
                         .exponent_bias[definitions.mini_floats.index(new_mini_floats_7)] =
-                        store_.mini_floats.exponent_bias[store_.mini_floats.index(source)];
+                        store_.mini_floats.exponent_bias[source];
                     return new_mini_floats_7;
                 }
                 case lispb::codegen::DeclarationKind::optional_sentinel: {
 
-                    auto const resolved{resolve_ref(
-                        store_.optional_sentinels.source[store_.optional_sentinels.index(source)],
-                        module_id)};
+                    auto const resolved{
+                        resolve_ref(store_.optional_sentinels.source[source], module_id)};
                     auto const scalar{integer_domain(
                         graph_, graph_.occurrences().type[graph_.occurrences().index(resolved)])};
                     if (!scalar) {
-                        throw std::invalid_argument{
-                            "Optional sentinel representation '" +
-                            str(store_.optional_sentinels
-                                    .name[store_.optional_sentinels.index(source)]) +
-                            "' source must have a declared integer domain"};
+                        throw std::invalid_argument{"Optional sentinel representation '" +
+                                                    str(store_.optional_sentinels.name[source]) +
+                                                    "' source must have a declared integer domain"};
                     }
                     auto const codes{store_.items(
                         graph_.definitions()
                             .integer_scalars
                             .named_codes[graph_.definitions().integer_scalars.index(*scalar)])};
                     auto const sentinel{std::ranges::find_if(codes, [&](auto id) {
-                        return store_.packed_named_codes
-                                   .name[store_.packed_named_codes.index(id)] ==
-                               store_.optional_sentinels
-                                   .sentinel[store_.optional_sentinels.index(source)];
+                        return store_.packed_named_codes.name[id] ==
+                               store_.optional_sentinels.sentinel[source];
                     })};
-                    if (sentinel == codes.end() ||
-                        !store_.packed_named_codes
-                             .sentinel[store_.packed_named_codes.index(*sentinel)]) {
-                        throw std::invalid_argument{
-                            "Optional sentinel representation '" +
-                            str(store_.optional_sentinels
-                                    .name[store_.optional_sentinels.index(source)]) +
-                            "' must name a source sentinel code"};
+                    if (sentinel == codes.end() || !store_.packed_named_codes.sentinel[*sentinel]) {
+                        throw std::invalid_argument{"Optional sentinel representation '" +
+                                                    str(store_.optional_sentinels.name[source]) +
+                                                    "' must name a source sentinel code"};
                     }
                     auto const new_optional_sentinels_8{definitions.optional_sentinels.append()};
                     definitions.optional_sentinels
@@ -1106,12 +1040,10 @@ class TypeGraphBuilder {
                         resolved;
                     definitions.optional_sentinels
                         .sentinel_name[definitions.optional_sentinels.index(
-                            new_optional_sentinels_8)] =
-                        store_.optional_sentinels.sentinel[store_.optional_sentinels.index(source)];
+                            new_optional_sentinels_8)] = store_.optional_sentinels.sentinel[source];
                     definitions.optional_sentinels
                         .sentinel_value[definitions.optional_sentinels.index(
-                            new_optional_sentinels_8)] =
-                        store_.packed_named_codes.value[store_.packed_named_codes.index(*sentinel)];
+                            new_optional_sentinels_8)] = store_.packed_named_codes.value[*sentinel];
                     definitions.optional_sentinels
                         .bit_width[definitions.optional_sentinels.index(new_optional_sentinels_8)] =
                         graph_.definitions()
@@ -1122,16 +1054,13 @@ class TypeGraphBuilder {
                 case lispb::codegen::DeclarationKind::optional_presence_bit: {
 
                     auto const resolved{
-                        resolve_ref(store_.optional_presence_bits
-                                        .source[store_.optional_presence_bits.index(source)],
-                                    module_id)};
+                        resolve_ref(store_.optional_presence_bits.source[source], module_id)};
                     auto const scalar{integer_domain(
                         graph_, graph_.occurrences().type[graph_.occurrences().index(resolved)])};
                     if (!scalar) {
                         throw std::invalid_argument{
                             "Optional presence-bit representation '" +
-                            str(store_.optional_presence_bits
-                                    .name[store_.optional_presence_bits.index(source)]) +
+                            str(store_.optional_presence_bits.name[source]) +
                             "' source must have a declared integer domain"};
                     }
                     auto const new_optional_presence_bits_9{
@@ -1157,8 +1086,8 @@ class TypeGraphBuilder {
                 case lispb::codegen::DeclarationKind::packed_value: {
 
                     std::vector<PackedSegmentId> segments;
-                    for (auto const segment_id : store_.items(
-                             store_.packed_values.segments[store_.packed_values.index(source)])) {
+                    for (auto const segment_id :
+                         store_.items(store_.packed_values.segments[source])) {
                         if (auto const value{
                                 ((segment_id).kind() == lispb::codegen::PackedSegmentKind::field
                                      ? std::optional{segment_id}
@@ -1171,12 +1100,10 @@ class TypeGraphBuilder {
                                 segment_id;
                             definitions.packed_fields
                                 .name[definitions.packed_fields.index(new_packed_fields_10)] =
-                                store_.packed_fields.name[store_.packed_fields.index(*value)];
+                                store_.packed_fields.name[*value];
                             definitions.packed_fields.semantic_type[definitions.packed_fields.index(
                                 new_packed_fields_10)] =
-                                resolve_ref(
-                                    store_.packed_fields.type[store_.packed_fields.index(*value)],
-                                    module_id);
+                                resolve_ref(store_.packed_fields.type[*value], module_id);
                             definitions.packed_fields
                                 .bit_width[definitions.packed_fields.index(new_packed_fields_10)] =
                                 static_cast<std::uint32_t>(
@@ -1184,48 +1111,39 @@ class TypeGraphBuilder {
                                         *value, manifest_, graph_, module_id));
                             definitions.packed_fields
                                 .bit_width_auto[definitions.packed_fields.index(
-                                    new_packed_fields_10)] =
-                                !store_.packed_fields.bits[store_.packed_fields.index(*value)];
+                                    new_packed_fields_10)] = !store_.packed_fields.bits[*value];
                             definitions.packed_fields
                                 .kind[definitions.packed_fields.index(new_packed_fields_10)] =
-                                store_.packed_fields.kind[store_.packed_fields.index(*value)];
+                                store_.packed_fields.kind[*value];
                             definitions.packed_fields.range_helper[definitions.packed_fields.index(
-                                new_packed_fields_10)] =
-                                store_.packed_fields
-                                    .range_helper[store_.packed_fields.index(*value)];
+                                new_packed_fields_10)] = store_.packed_fields.range_helper[*value];
                             definitions.packed_fields.minimum_value[definitions.packed_fields.index(
                                 new_packed_fields_10)] =
                                 scalar
                                     ? std::optional{definitions.integer_scalars
                                                         .minimum_value[definitions.integer_scalars
                                                                            .index(*scalar)]}
-                                    : store_.packed_fields
-                                          .minimum_value[store_.packed_fields.index(*value)];
+                                    : store_.packed_fields.minimum_value[*value];
                             definitions.packed_fields.maximum_value[definitions.packed_fields.index(
                                 new_packed_fields_10)] =
                                 scalar
                                     ? std::optional{definitions.integer_scalars
                                                         .maximum_value[definitions.integer_scalars
                                                                            .index(*scalar)]}
-                                    : store_.packed_fields
-                                          .maximum_value[store_.packed_fields.index(*value)];
+                                    : store_.packed_fields.maximum_value[*value];
                             definitions.packed_fields.named_codes[definitions.packed_fields.index(
                                 new_packed_fields_10)] =
                                 scalar
                                     ? definitions.integer_scalars
                                           .named_codes[definitions.integer_scalars.index(*scalar)]
-                                    : store_.packed_fields
-                                          .named_codes[store_.packed_fields.index(*value)];
+                                    : store_.packed_fields.named_codes[*value];
                             definitions.packed_fields.relationship[definitions.packed_fields.index(
                                 new_packed_fields_10)] =
-                                relationship(store_.packed_fields
-                                                 .relationship[store_.packed_fields.index(*value)],
+                                relationship(store_.packed_fields.relationship[*value],
                                              module_id,
                                              "Packed field");
                             definitions.packed_fields.default_value[definitions.packed_fields.index(
-                                new_packed_fields_10)] =
-                                store_.packed_fields
-                                    .default_value[store_.packed_fields.index(*value)];
+                                new_packed_fields_10)] = store_.packed_fields.default_value[*value];
                             segments.push_back(new_packed_fields_10);
                         } else {
                             auto const reserved{segment_id};
@@ -1234,29 +1152,25 @@ class TypeGraphBuilder {
                             definitions.packed_reserved_bits
                                 .name[definitions.packed_reserved_bits.index(
                                     new_packed_reserved_bits_11)] =
-                                store_.packed_reserved_bits
-                                    .name[store_.packed_reserved_bits.index(reserved)];
+                                store_.packed_reserved_bits.name[reserved];
                             definitions.packed_reserved_bits
                                 .bit_width[definitions.packed_reserved_bits.index(
                                     new_packed_reserved_bits_11)] =
                                 static_cast<std::uint32_t>(
-                                    store_.packed_reserved_bits
-                                        .bits[store_.packed_reserved_bits.index(reserved)]);
+                                    store_.packed_reserved_bits.bits[reserved]);
                             segments.push_back(new_packed_reserved_bits_11);
                         }
                     }
                     auto const new_packed_12{definitions.packed.append()};
                     definitions.packed.storage_type[definitions.packed.index(new_packed_12)] =
-                        resolve_ref(
-                            store_.packed_values.storage_type[store_.packed_values.index(source)],
-                            module_id);
+                        resolve_ref(store_.packed_values.storage_type[source], module_id);
                     definitions.packed.set_segments(new_packed_12, segments);
                     definitions.packed.invalid_raw_value[definitions.packed.index(new_packed_12)] =
-                        store_.packed_values.invalid_value[store_.packed_values.index(source)];
+                        store_.packed_values.invalid_value[source];
                     definitions.packed.byte_order[definitions.packed.index(new_packed_12)] =
-                        store_.packed_values.byte_order[store_.packed_values.index(source)];
+                        store_.packed_values.byte_order[source];
                     definitions.packed.bit_order[definitions.packed.index(new_packed_12)] =
-                        store_.packed_values.bit_order[store_.packed_values.index(source)].value_or(
+                        store_.packed_values.bit_order[source].value_or(
                             codegen::PackedBitOrder::least_significant_first);
                     definitions.packed.default_raw_value[definitions.packed.index(new_packed_12)] =
                         codegen::detail::packed_default_value(source, manifest_, graph_, module_id);
@@ -1265,30 +1179,26 @@ class TypeGraphBuilder {
                 case lispb::codegen::DeclarationKind::record: {
 
                     std::vector<RecordMemberId> members;
-                    for (auto const member_id :
-                         store_.items(store_.records.members[store_.records.index(source)])) {
+                    for (auto const member_id : store_.items(store_.records.members[source])) {
                         auto const member{member_id};
                         auto const new_record_members_13{definitions.record_members.append()};
                         definitions.record_members
                             .name[definitions.record_members.index(new_record_members_13)] =
-                            store_.record_members.name[store_.record_members.index(member)];
+                            store_.record_members.name[member];
                         definitions.record_members.semantic_type[definitions.record_members.index(
                             new_record_members_13)] =
-                            resolve_ref(
-                                store_.record_members.type[store_.record_members.index(member)],
-                                module_id);
+                            resolve_ref(store_.record_members.type[member], module_id);
                         definitions.record_members
                             .count[definitions.record_members.index(new_record_members_13)] =
-                            store_.record_members.count[store_.record_members.index(member)];
+                            store_.record_members.count[member];
                         definitions.record_members
                             .relationship[definitions.record_members.index(new_record_members_13)] =
-                            relationship(store_.record_members
-                                             .relationship[store_.record_members.index(member)],
+                            relationship(store_.record_members.relationship[member],
                                          module_id,
                                          "Record member");
                         definitions.record_members
                             .initializer[definitions.record_members.index(new_record_members_13)] =
-                            store_.record_members.initializer[store_.record_members.index(member)];
+                            store_.record_members.initializer[member];
                         members.push_back(new_record_members_13);
                     }
                     auto const new_records_14{definitions.records.append()};
@@ -1299,24 +1209,20 @@ class TypeGraphBuilder {
 
                     std::vector<UnionAlternativeId> alternatives;
                     for (auto const alternative_id :
-                         store_.items(store_.unions.alternatives[store_.unions.index(source)])) {
+                         store_.items(store_.unions.alternatives[source])) {
                         auto const alternative{alternative_id};
                         auto const new_union_alternatives_15{
                             definitions.union_alternatives.append()};
                         definitions.union_alternatives
                             .name[definitions.union_alternatives.index(new_union_alternatives_15)] =
-                            store_.union_alternatives
-                                .name[store_.union_alternatives.index(alternative)];
+                            store_.union_alternatives.name[alternative];
                         definitions.union_alternatives
                             .semantic_type[definitions.union_alternatives.index(
                                 new_union_alternatives_15)] =
-                            resolve_ref(store_.union_alternatives
-                                            .type[store_.union_alternatives.index(alternative)],
-                                        module_id);
+                            resolve_ref(store_.union_alternatives.type[alternative], module_id);
                         definitions.union_alternatives.count[definitions.union_alternatives.index(
                             new_union_alternatives_15)] =
-                            store_.union_alternatives
-                                .count[store_.union_alternatives.index(alternative)];
+                            store_.union_alternatives.count[alternative];
                         alternatives.push_back(new_union_alternatives_15);
                     }
                     auto const new_unions_16{definitions.unions.append()};
@@ -1325,15 +1231,13 @@ class TypeGraphBuilder {
                 }
                 case lispb::codegen::DeclarationKind::tagged_union: {
 
-                    auto const discriminant{resolve_ref(
-                        store_.tagged_unions.discriminant[store_.tagged_unions.index(source)],
-                        module_id)};
+                    auto const discriminant{
+                        resolve_ref(store_.tagged_unions.discriminant[source], module_id)};
                     auto const definition{graph_.definition(
                         graph_.occurrences().type[graph_.occurrences().index(discriminant)])};
                     if (!((definition).kind() == lispb::schema::TypeDefinitionKind::enumeration)) {
                         throw std::invalid_argument{
-                            "Tagged union '" +
-                            str(store_.tagged_unions.name[store_.tagged_unions.index(source)]) +
+                            "Tagged union '" + str(store_.tagged_unions.name[source]) +
                             "' discriminant must resolve to an enum declaration"};
                     }
                     auto const enumeration{definition};
@@ -1342,67 +1246,50 @@ class TypeGraphBuilder {
                     auto const enumerators{graph_.enum_domains_.values(domain)};
                     std::vector<TaggedUnionAlternativeId> alternatives;
                     for (auto const alternative_id :
-                         store_.items(store_.tagged_unions
-                                          .alternatives[store_.tagged_unions.index(source)])) {
+                         store_.items(store_.tagged_unions.alternatives[source])) {
                         auto const alternative{alternative_id};
                         auto const tag{std::ranges::find_if(enumerators, [&](auto id) {
-                            return store_.enumerators.name[store_.enumerators.index(id)] ==
-                                   store_.tagged_union_alternatives
-                                       .tag[store_.tagged_union_alternatives.index(alternative)];
+                            return store_.enumerators.name[id] ==
+                                   store_.tagged_union_alternatives.tag[alternative];
                         })};
                         if (tag == enumerators.end()) {
                             throw std::invalid_argument{
-                                "Tagged union '" +
-                                str(store_.tagged_unions.name[store_.tagged_unions.index(source)]) +
+                                "Tagged union '" + str(store_.tagged_unions.name[source]) +
                                 "' alternative '" +
-                                str(store_.tagged_union_alternatives
-                                        .name[store_.tagged_union_alternatives.index(
-                                            alternative)]) +
+                                str(store_.tagged_union_alternatives.name[alternative]) +
                                 "' maps unknown discriminant tag '" +
-                                str(store_.tagged_union_alternatives
-                                        .tag[store_.tagged_union_alternatives.index(alternative)]) +
-                                "'"};
+                                str(store_.tagged_union_alternatives.tag[alternative]) + "'"};
                         }
                         auto const value{*tag};
-                        if (store_.enumerators.sentinel[store_.enumerators.index(value)] ||
+                        if (store_.enumerators.sentinel[value] ||
                             value == graph_.enum_domains_
                                          .count_value[graph_.enum_domains_.index(domain)]) {
                             throw std::invalid_argument{
-                                "Tagged union '" +
-                                str(store_.tagged_unions.name[store_.tagged_unions.index(source)]) +
+                                "Tagged union '" + str(store_.tagged_unions.name[source]) +
                                 "' alternative '" +
-                                str(store_.tagged_union_alternatives
-                                        .name[store_.tagged_union_alternatives.index(
-                                            alternative)]) +
+                                str(store_.tagged_union_alternatives.name[alternative]) +
                                 "' cannot map sentinel tag '" +
-                                str(store_.tagged_union_alternatives
-                                        .tag[store_.tagged_union_alternatives.index(alternative)]) +
-                                "'"};
+                                str(store_.tagged_union_alternatives.tag[alternative]) + "'"};
                         }
                         auto const new_tagged_union_alternatives_17{
                             definitions.tagged_union_alternatives.append()};
                         definitions.tagged_union_alternatives
                             .name[definitions.tagged_union_alternatives.index(
                                 new_tagged_union_alternatives_17)] =
-                            store_.tagged_union_alternatives
-                                .name[store_.tagged_union_alternatives.index(alternative)];
+                            store_.tagged_union_alternatives.name[alternative];
                         definitions.tagged_union_alternatives
                             .semantic_type[definitions.tagged_union_alternatives.index(
                                 new_tagged_union_alternatives_17)] =
-                            resolve_ref(
-                                store_.tagged_union_alternatives
-                                    .type[store_.tagged_union_alternatives.index(alternative)],
-                                module_id);
+                            resolve_ref(store_.tagged_union_alternatives.type[alternative],
+                                        module_id);
                         definitions.tagged_union_alternatives
                             .count[definitions.tagged_union_alternatives.index(
                                 new_tagged_union_alternatives_17)] =
-                            store_.tagged_union_alternatives
-                                .count[store_.tagged_union_alternatives.index(alternative)];
+                            store_.tagged_union_alternatives.count[alternative];
                         definitions.tagged_union_alternatives
                             .tag[definitions.tagged_union_alternatives.index(
                                 new_tagged_union_alternatives_17)] =
-                            store_.tagged_union_alternatives
-                                .tag[store_.tagged_union_alternatives.index(alternative)];
+                            store_.tagged_union_alternatives.tag[alternative];
                         alternatives.push_back(new_tagged_union_alternatives_17);
                     }
                     auto const new_tagged_unions_18{definitions.tagged_unions.append()};
@@ -1415,44 +1302,40 @@ class TypeGraphBuilder {
                 case lispb::codegen::DeclarationKind::soa: {
 
                     std::vector<SoaColumnId> columns;
-                    for (auto const member_id :
-                         store_.items(store_.soas.members[store_.soas.index(source)])) {
+                    for (auto const member_id : store_.items(store_.soas.members[source])) {
                         auto const member{member_id};
-                        auto const resolved{resolve_ref(
-                            store_.soa_members.type[store_.soa_members.index(member)], module_id)};
+                        auto const resolved{
+                            resolve_ref(store_.soa_members.type[member], module_id)};
                         auto const new_soa_columns_19{definitions.soa_columns.append()};
                         definitions.soa_columns
                             .source[definitions.soa_columns.index(new_soa_columns_19)] = member_id;
                         definitions.soa_columns
                             .name[definitions.soa_columns.index(new_soa_columns_19)] =
-                            store_.soa_members.name[store_.soa_members.index(member)];
+                            store_.soa_members.name[member];
                         definitions.soa_columns
                             .semantic_type[definitions.soa_columns.index(new_soa_columns_19)] =
                             resolved;
                         definitions.soa_columns
                             .kind[definitions.soa_columns.index(new_soa_columns_19)] =
-                            store_.soa_members.kind[store_.soa_members.index(member)];
+                            store_.soa_members.kind[member];
                         definitions.soa_columns
                             .relationship[definitions.soa_columns.index(new_soa_columns_19)] =
-                            relationship(
-                                store_.soa_members.relationship[store_.soa_members.index(member)],
-                                module_id,
-                                "SOA '" + str(store_.soas.name[store_.soas.index(source)]) +
-                                    "' member '" +
-                                    str(store_.soa_members.name[store_.soa_members.index(member)]) +
-                                    "'");
+                            relationship(store_.soa_members.relationship[member],
+                                         module_id,
+                                         "SOA '" + str(store_.soas.name[source]) + "' member '" +
+                                             str(store_.soa_members.name[member]) + "'");
                         columns.push_back(new_soa_columns_19);
                     }
                     auto const new_soas_20{definitions.soas.append()};
                     definitions.soas.set_columns(new_soas_20, columns);
                     definitions.soas.equivalent_type[definitions.soas.index(new_soas_20)] =
-                        store_.soas.equivalent_type[store_.soas.index(source)]
+                        store_.soas.equivalent_type[source]
                             .transform([&](auto id) { return resolve_ref(id, module_id); })
                             .value_or(ResolvedOccurrenceId{});
                     definitions.soas.layout_only[definitions.soas.index(new_soas_20)] =
-                        store_.soas.layout_only[store_.soas.index(source)];
+                        store_.soas.layout_only[source];
                     definitions.soas.equivalent_constructor[definitions.soas.index(new_soas_20)] =
-                        store_.soas.equivalent_constructor[store_.soas.index(source)];
+                        store_.soas.equivalent_constructor[source];
                     return new_soas_20;
                 }
                 case lispb::codegen::DeclarationKind::static_table: {
@@ -1499,7 +1382,7 @@ class TypeGraphBuilder {
             }
             auto const schema{graph_.source_declaration(type)};
             auto const module{graph_.module(type)};
-            for (auto const member : store_.items(store_.soas.members[store_.soas.index(schema)])) {
+            for (auto const member : store_.items(store_.soas.members[schema])) {
                 auto const row{members.index(member)};
                 if (members.kind[row] != codegen::SoaMemberKind::nested) {
                     continue;
@@ -1579,11 +1462,9 @@ class TypeGraphBuilder {
                 auto const source{
                     graph_.definitions_.static_tables
                         .source[graph_.definitions_.static_tables.index(graph_.definition(type))]};
-                for (auto const column : store_.items(
-                         store_.static_tables.columns[store_.static_tables.index(source)])) {
+                for (auto const column : store_.items(store_.static_tables.columns[source])) {
                     follow(graph_.resolved(graph_.module(type),
-                                           store_.static_table_columns
-                                               .type[store_.static_table_columns.index(column)]));
+                                           store_.static_table_columns.type[column]));
                 }
                 break;
             }
@@ -1630,20 +1511,14 @@ class TypeGraphBuilder {
                         definitions.static_tables
                             .source[definitions.static_tables.index(graph_.definition(owner))]};
                     auto const module{graph_.module(owner)};
-                    for (auto const column : store_.items(
-                             store_.static_tables.columns[store_.static_tables.index(source)])) {
+                    for (auto const column : store_.items(store_.static_tables.columns[source])) {
                         auto const occurrence{
-                            graph_.resolved(module,
-                                            store_.static_table_columns
-                                                .type[store_.static_table_columns.index(column)])};
+                            graph_.resolved(module, store_.static_table_columns.type[column])};
                         add(graph_.occurrences().type[graph_.occurrences().index(occurrence)]);
                     }
-                    for (auto const group : store_.items(
-                             store_.static_tables.groups[store_.static_tables.index(source)])) {
+                    for (auto const group : store_.items(store_.static_tables.groups[source])) {
                         auto const occurrence{
-                            graph_.resolved(module,
-                                            store_.static_table_groups
-                                                .type[store_.static_table_groups.index(group)])};
+                            graph_.resolved(module, store_.static_table_groups.type[group])};
                         add(graph_.occurrences().type[graph_.occurrences().index(occurrence)]);
                     }
                     break;
@@ -1657,16 +1532,12 @@ class TypeGraphBuilder {
                         auto const occurrence{graph_.resolved(module, reference)};
                         add(graph_.occurrences().type[graph_.occurrences().index(occurrence)]);
                     };
-                    add_reference(store_.facades.target_type[store_.facades.index(source)]);
-                    for (auto const method :
-                         store_.items(store_.facades.methods[store_.facades.index(source)])) {
-                        add_reference(
-                            store_.facade_methods.return_type[store_.facade_methods.index(method)]);
+                    add_reference(store_.facades.target_type[source]);
+                    for (auto const method : store_.items(store_.facades.methods[source])) {
+                        add_reference(store_.facade_methods.return_type[method]);
                         for (auto const parameter :
-                             store_.items(store_.facade_methods
-                                              .parameters[store_.facade_methods.index(method)])) {
-                            add_reference(
-                                store_.parameters.type[store_.parameters.index(parameter)]);
+                             store_.items(store_.facade_methods.parameters[method])) {
+                            add_reference(store_.parameters.type[parameter]);
                         }
                     }
                     break;

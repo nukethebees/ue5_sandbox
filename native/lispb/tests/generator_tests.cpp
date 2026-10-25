@@ -301,10 +301,9 @@ TEST(Generator, LowersFacadeWithPrivateBindingAndSourceDefinitions) {
 
     auto& store{context.storage.declarations};
     auto module{manifest.modules.front()};
-    auto facade{
-        store.items(store.normal_modules.declarations[store.normal_modules.index(module)]).front()};
-    store.facades.friend_kind[store.facades.index(facade)] = RecordKind::struct_;
-    store.normal_modules.declarations[store.normal_modules.index(module)] = store.range({facade});
+    auto facade{store.items(store.normal_modules.declarations[module]).front()};
+    store.facades.friend_kind[facade] = RecordKind::struct_;
+    store.normal_modules.declarations[module] = store.range({facade});
     manifest.modules.front() = module;
     auto const struct_files{render_test_manifest(context, manifest)};
     EXPECT_NE(struct_files[0].content.find("friend struct FOwner;"), std::string::npos);

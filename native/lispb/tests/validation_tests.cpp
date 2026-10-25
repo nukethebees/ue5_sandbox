@@ -119,7 +119,7 @@ TEST(Validation, FunctionQualifiersAreSharedByRecordsAndAllSoaReceivers) {
             SCOPED_TRACE(diagnostic);
             auto module{valid_soa_module(context)};
             if (receiver == 0) {
-                normal_modules.declarations[normal_modules.index(module)] =
+                normal_modules.declarations[module] =
                     declarations.range<lispb::codegen::DeclarationHandle>({[&] {
                         auto const new_records{records.append()};
                         auto const new_records_row{records.index(new_records)};
@@ -130,9 +130,9 @@ TEST(Validation, FunctionQualifiersAreSharedByRecordsAndAllSoaReceivers) {
                     }()});
             } else {
 
-                normal_modules.declarations[normal_modules.index(module)] = [&] {
-                    auto const original_items{declarations.items(
-                        normal_modules.declarations[normal_modules.index(module)])};
+                normal_modules.declarations[module] = [&] {
+                    auto const original_items{
+                        declarations.items(normal_modules.declarations[module])};
                     auto rows{std::vector(original_items.begin(), original_items.end())};
                     rows.front() = [&] {
                         auto soa{soas.clone(rows.front())};
@@ -301,13 +301,12 @@ auto valid_enum_module(CompilerTestContext& context) -> lispb::codegen::ModuleHa
                 auto const new_enums_row{enums.index(new_enums)};
                 enums.name[new_enums_row] = strings.intern("EMode");
                 enums.underlying_type[new_enums_row] = make_test_type_ref(context, "uint8");
-                enums
-                    .values[new_enums_row] = declarations.range<lispb::codegen::EnumeratorId>({[&] {
-                    auto const new_enumerators{declarations.enumerators.append()};
-                    declarations.enumerators.name[declarations.enumerators.index(new_enumerators)] =
-                        strings.intern("Value");
-                    return new_enumerators;
-                }()});
+                enums.values[new_enums_row] =
+                    declarations.range<lispb::codegen::EnumeratorId>({[&] {
+                        auto const new_enumerators{declarations.enumerators.append()};
+                        declarations.enumerators.name[new_enumerators] = strings.intern("Value");
+                        return new_enumerators;
+                    }()});
                 enums.conversions[new_enums_row] =
                     declarations.range<lispb::codegen::EnumConversion>(
                         {EnumConversion::string_view});
@@ -424,46 +423,42 @@ auto valid_integer_varint_manifest(
     auto& strings{context.storage.strings};
     auto scalar{valid_integer_scalar_module(context)};
     if (signedness) {
-        normal_modules.declarations[normal_modules.index(scalar)] = [&] {
-            auto const original_items{
-                declarations.items(normal_modules.declarations[normal_modules.index(scalar)])};
+        normal_modules.declarations[scalar] = [&] {
+            auto const original_items{declarations.items(normal_modules.declarations[scalar])};
             auto rows_1{std::vector(original_items.begin(), original_items.end())};
             rows_1.front() = [&] {
                 auto row_0{integer_scalars.clone(rows_1.front())};
-                integer_scalars.signedness[integer_scalars.index(row_0)] = true;
+                integer_scalars.signedness[row_0] = true;
                 return row_0;
             }();
             return declarations.range(rows_1);
         }();
-        normal_modules.declarations[normal_modules.index(scalar)] = [&] {
-            auto const original_items{
-                declarations.items(normal_modules.declarations[normal_modules.index(scalar)])};
+        normal_modules.declarations[scalar] = [&] {
+            auto const original_items{declarations.items(normal_modules.declarations[scalar])};
             auto rows_1{std::vector(original_items.begin(), original_items.end())};
             rows_1.front() = [&] {
                 auto row_0{integer_scalars.clone(rows_1.front())};
-                integer_scalars.minimum_value[integer_scalars.index(row_0)] = -100;
+                integer_scalars.minimum_value[row_0] = -100;
                 return row_0;
             }();
             return declarations.range(rows_1);
         }();
-        normal_modules.declarations[normal_modules.index(scalar)] = [&] {
-            auto const original_items{
-                declarations.items(normal_modules.declarations[normal_modules.index(scalar)])};
+        normal_modules.declarations[scalar] = [&] {
+            auto const original_items{declarations.items(normal_modules.declarations[scalar])};
             auto rows_1{std::vector(original_items.begin(), original_items.end())};
             rows_1.front() = [&] {
                 auto row_0{integer_scalars.clone(rows_1.front())};
-                integer_scalars.maximum_value[integer_scalars.index(row_0)] = 100;
+                integer_scalars.maximum_value[row_0] = 100;
                 return row_0;
             }();
             return declarations.range(rows_1);
         }();
-        normal_modules.declarations[normal_modules.index(scalar)] = [&] {
-            auto const original_items{
-                declarations.items(normal_modules.declarations[normal_modules.index(scalar)])};
+        normal_modules.declarations[scalar] = [&] {
+            auto const original_items{declarations.items(normal_modules.declarations[scalar])};
             auto rows_1{std::vector(original_items.begin(), original_items.end())};
             rows_1.front() = [&] {
                 auto row_0{integer_scalars.clone(rows_1.front())};
-                integer_scalars.named_codes[integer_scalars.index(row_0)] = {};
+                integer_scalars.named_codes[row_0] = {};
                 return row_0;
             }();
             return declarations.range(rows_1);
@@ -630,37 +625,38 @@ auto valid_static_table_module(CompilerTestContext& context) -> lispb::codegen::
                 strings.intern("Tables.h");
             return new_module_settings_store;
         }();
-        normal_modules.declarations[new_normal_modules_row] = declarations.range<
-            lispb::codegen::DeclarationHandle>({[&] {
-            auto const new_static_tables{static_tables.append()};
-            auto const new_static_tables_row{static_tables.index(new_static_tables)};
-            static_tables.name[new_static_tables_row] = strings.intern("FValues");
-            static_tables.rows[new_static_tables_row] =
-                declarations.range<lispb::codegen::StaticTableRowId>(
-                    {[&] {
-                         auto const new_static_table_rows{static_table_rows.append()};
-                         static_table_rows.name[static_table_rows.index(new_static_table_rows)] =
-                             strings.intern("first");
-                         return new_static_table_rows;
-                     }(),
-                     [&] {
-                         auto const new_static_table_rows{static_table_rows.append()};
-                         static_table_rows.name[static_table_rows.index(new_static_table_rows)] =
-                             strings.intern("second");
-                         return new_static_table_rows;
-                     }()});
-            static_tables.columns[new_static_tables_row] =
-                declarations.range<lispb::codegen::StaticTableColumnId>({[&] {
-                    auto const new_static_table_columns{static_table_columns.append()};
-                    auto const new_static_table_columns_row{
-                        static_table_columns.index(new_static_table_columns)};
-                    static_table_columns.name[new_static_table_columns_row] = strings.intern("ids");
-                    static_table_columns.type[new_static_table_columns_row] =
-                        make_test_type_ref(context, "int32");
-                    return new_static_table_columns;
-                }()});
-            return new_static_tables;
-        }()});
+        normal_modules.declarations[new_normal_modules_row] =
+            declarations.range<lispb::codegen::DeclarationHandle>({[&] {
+                auto const new_static_tables{static_tables.append()};
+                auto const new_static_tables_row{static_tables.index(new_static_tables)};
+                static_tables.name[new_static_tables_row] = strings.intern("FValues");
+                static_tables.rows[new_static_tables_row] =
+                    declarations.range<lispb::codegen::StaticTableRowId>(
+                        {[&] {
+                             auto const new_static_table_rows{static_table_rows.append()};
+                             static_table_rows.name[new_static_table_rows] =
+                                 strings.intern("first");
+                             return new_static_table_rows;
+                         }(),
+                         [&] {
+                             auto const new_static_table_rows{static_table_rows.append()};
+                             static_table_rows.name[new_static_table_rows] =
+                                 strings.intern("second");
+                             return new_static_table_rows;
+                         }()});
+                static_tables.columns[new_static_tables_row] =
+                    declarations.range<lispb::codegen::StaticTableColumnId>({[&] {
+                        auto const new_static_table_columns{static_table_columns.append()};
+                        auto const new_static_table_columns_row{
+                            static_table_columns.index(new_static_table_columns)};
+                        static_table_columns.name[new_static_table_columns_row] =
+                            strings.intern("ids");
+                        static_table_columns.type[new_static_table_columns_row] =
+                            make_test_type_ref(context, "int32");
+                        return new_static_table_columns;
+                    }()});
+                return new_static_tables;
+            }()});
         return new_normal_modules;
     }();
 }
@@ -721,11 +717,9 @@ TEST(Validation, RejectsEmptyModuleNames) {
     auto& declarations{context.storage.declarations};
     auto& normal_modules{declarations.normal_modules};
     auto module{valid_soa_module(context)};
-    normal_modules.settings[normal_modules.index(module)] = [&] {
-        auto row_0{declarations.module_settings_store.clone(
-            normal_modules.settings[normal_modules.index(module)])};
-        declarations.module_settings_store
-            .name[declarations.module_settings_store.index(row_0)] = {};
+    normal_modules.settings[module] = [&] {
+        auto row_0{declarations.module_settings_store.clone(normal_modules.settings[module])};
+        declarations.module_settings_store.name[row_0] = {};
         return row_0;
     }();
 
@@ -741,13 +735,12 @@ TEST(Validation, RejectsInvalidEnumDefinitions) {
     auto& enumerators{declarations.enumerators};
     auto& strings{context.storage.strings};
     auto module{valid_enum_module(context)};
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{enums.clone(rows_1.front())};
-            enums.values[enums.index(row_0)] = {};
+            enums.values[row_0] = {};
             return row_0;
         }();
         return declarations.range(rows_1);
@@ -756,9 +749,8 @@ TEST(Validation, RejectsInvalidEnumDefinitions) {
                  std::invalid_argument);
 
     module = valid_enum_module(context);
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{enums.clone(rows_1.front())};
@@ -768,7 +760,7 @@ TEST(Validation, RejectsInvalidEnumDefinitions) {
                 auto rows{std::vector(original_items.begin(), original_items.end())};
                 rows.push_back([&] {
                     auto const new_enumerators{enumerators.append()};
-                    enumerators.name[enumerators.index(new_enumerators)] = strings.intern("Value");
+                    enumerators.name[new_enumerators] = strings.intern("Value");
                     return new_enumerators;
                 }());
                 return declarations.range(rows);
@@ -781,9 +773,8 @@ TEST(Validation, RejectsInvalidEnumDefinitions) {
                  std::invalid_argument);
 
     module = valid_enum_module(context);
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_3{std::vector(original_items.begin(), original_items.end())};
         rows_3.front() = [&] {
             auto row_2{enums.clone(rows_3.front())};
@@ -793,7 +784,7 @@ TEST(Validation, RejectsInvalidEnumDefinitions) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1.front() = [&] {
                     auto row_0{enumerators.clone(rows_1.front())};
-                    enumerators.name[enumerators.index(row_0)] = strings.intern("bad-name");
+                    enumerators.name[row_0] = strings.intern("bad-name");
                     return row_0;
                 }();
                 return declarations.range(rows_1);
@@ -806,13 +797,12 @@ TEST(Validation, RejectsInvalidEnumDefinitions) {
                  std::invalid_argument);
 
     module = valid_enum_module(context);
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{enums.clone(rows_1.front())};
-            enums.underlying_type[enums.index(row_0)] = make_test_type_ref(context, "@missing");
+            enums.underlying_type[row_0] = make_test_type_ref(context, "@missing");
             return row_0;
         }();
         return declarations.range(rows_1);
@@ -829,50 +819,22 @@ TEST(Validation, RejectsEnumSemanticWidthsThatCannotRepresentKnownValues) {
     auto& enumerators{declarations.enumerators};
     auto& strings{context.storage.strings};
     auto module{valid_enum_module(context)};
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{enums.clone(rows_1.front())};
-            enums.reflection[enums.index(row_0)] = EnumReflection::none;
+            enums.reflection[row_0] = EnumReflection::none;
             return row_0;
         }();
         return declarations.range(rows_1);
     }();
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{enums.clone(rows_1.front())};
-            enums.bit_width[enums.index(row_0)] = 0;
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
-
-    module = valid_enum_module(context);
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{enums.clone(rows_1.front())};
-            enums.reflection[enums.index(row_0)] = EnumReflection::none;
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{enums.clone(rows_1.front())};
-            enums.bit_width[enums.index(row_0)] = 65;
+            enums.bit_width[row_0] = 0;
             return row_0;
         }();
         return declarations.range(rows_1);
@@ -881,24 +843,46 @@ TEST(Validation, RejectsEnumSemanticWidthsThatCannotRepresentKnownValues) {
                  std::invalid_argument);
 
     module = valid_enum_module(context);
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{enums.clone(rows_1.front())};
-            enums.reflection[enums.index(row_0)] = EnumReflection::none;
+            enums.reflection[row_0] = EnumReflection::none;
             return row_0;
         }();
         return declarations.range(rows_1);
     }();
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{enums.clone(rows_1.front())};
-            enums.values[enums.index(row_0)] = declarations.range<lispb::codegen::EnumeratorId>(
+            enums.bit_width[row_0] = 65;
+            return row_0;
+        }();
+        return declarations.range(rows_1);
+    }();
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
+                 std::invalid_argument);
+
+    module = valid_enum_module(context);
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
+        auto rows_1{std::vector(original_items.begin(), original_items.end())};
+        rows_1.front() = [&] {
+            auto row_0{enums.clone(rows_1.front())};
+            enums.reflection[row_0] = EnumReflection::none;
+            return row_0;
+        }();
+        return declarations.range(rows_1);
+    }();
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
+        auto rows_1{std::vector(original_items.begin(), original_items.end())};
+        rows_1.front() = [&] {
+            auto row_0{enums.clone(rows_1.front())};
+            enums.values[row_0] = declarations.range<lispb::codegen::EnumeratorId>(
                 {[&] {
                      auto const new_enumerators{enumerators.append()};
                      auto const new_enumerators_row{enumerators.index(new_enumerators)};
@@ -917,13 +901,12 @@ TEST(Validation, RejectsEnumSemanticWidthsThatCannotRepresentKnownValues) {
         }();
         return declarations.range(rows_1);
     }();
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{enums.clone(rows_1.front())};
-            enums.bit_width[enums.index(row_0)] = 2;
+            enums.bit_width[row_0] = 2;
             return row_0;
         }();
         return declarations.range(rows_1);
@@ -932,24 +915,22 @@ TEST(Validation, RejectsEnumSemanticWidthsThatCannotRepresentKnownValues) {
                  std::invalid_argument);
 
     module = valid_enum_module(context);
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{enums.clone(rows_1.front())};
-            enums.reflection[enums.index(row_0)] = EnumReflection::none;
+            enums.reflection[row_0] = EnumReflection::none;
             return row_0;
         }();
         return declarations.range(rows_1);
     }();
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{enums.clone(rows_1.front())};
-            enums.values[enums.index(row_0)] = declarations.range<lispb::codegen::EnumeratorId>(
+            enums.values[row_0] = declarations.range<lispb::codegen::EnumeratorId>(
                 {[&] {
                      auto const new_enumerators{enumerators.append()};
                      auto const new_enumerators_row{enumerators.index(new_enumerators)};
@@ -968,13 +949,12 @@ TEST(Validation, RejectsEnumSemanticWidthsThatCannotRepresentKnownValues) {
         }();
         return declarations.range(rows_1);
     }();
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{enums.clone(rows_1.front())};
-            enums.bit_width[enums.index(row_0)] = 3;
+            enums.bit_width[row_0] = 3;
             return row_0;
         }();
         return declarations.range(rows_1);
@@ -990,24 +970,22 @@ TEST(Validation, AppliesExplicitEnumSignednessToTheSemanticDomain) {
     auto& enumerators{declarations.enumerators};
     auto& strings{context.storage.strings};
     auto module{valid_enum_module(context)};
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{enums.clone(rows_1.front())};
-            enums.reflection[enums.index(row_0)] = EnumReflection::none;
+            enums.reflection[row_0] = EnumReflection::none;
             return row_0;
         }();
         return declarations.range(rows_1);
     }();
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{enums.clone(rows_1.front())};
-            enums.values[enums.index(row_0)] = declarations.range<lispb::codegen::EnumeratorId>(
+            enums.values[row_0] = declarations.range<lispb::codegen::EnumeratorId>(
                 {[&] {
                      auto const new_enumerators{enumerators.append()};
                      auto const new_enumerators_row{enumerators.index(new_enumerators)};
@@ -1026,13 +1004,12 @@ TEST(Validation, AppliesExplicitEnumSignednessToTheSemanticDomain) {
         }();
         return declarations.range(rows_1);
     }();
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{enums.clone(rows_1.front())};
-            enums.signedness[enums.index(row_0)] = schema::EnumSignedness::unsigned_;
+            enums.signedness[row_0] = schema::EnumSignedness::unsigned_;
             return row_0;
         }();
         return declarations.range(rows_1);
@@ -1041,24 +1018,22 @@ TEST(Validation, AppliesExplicitEnumSignednessToTheSemanticDomain) {
                  std::invalid_argument);
 
     module = valid_enum_module(context);
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{enums.clone(rows_1.front())};
-            enums.reflection[enums.index(row_0)] = EnumReflection::none;
+            enums.reflection[row_0] = EnumReflection::none;
             return row_0;
         }();
         return declarations.range(rows_1);
     }();
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{enums.clone(rows_1.front())};
-            enums.values[enums.index(row_0)] = declarations.range<lispb::codegen::EnumeratorId>(
+            enums.values[row_0] = declarations.range<lispb::codegen::EnumeratorId>(
                 {[&] {
                      auto const new_enumerators{enumerators.append()};
                      auto const new_enumerators_row{enumerators.index(new_enumerators)};
@@ -1077,24 +1052,22 @@ TEST(Validation, AppliesExplicitEnumSignednessToTheSemanticDomain) {
         }();
         return declarations.range(rows_1);
     }();
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{enums.clone(rows_1.front())};
-            enums.signedness[enums.index(row_0)] = schema::EnumSignedness::signed_;
+            enums.signedness[row_0] = schema::EnumSignedness::signed_;
             return row_0;
         }();
         return declarations.range(rows_1);
     }();
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{enums.clone(rows_1.front())};
-            enums.bit_width[enums.index(row_0)] = 3;
+            enums.bit_width[row_0] = 3;
             return row_0;
         }();
         return declarations.range(rows_1);
@@ -1103,24 +1076,22 @@ TEST(Validation, AppliesExplicitEnumSignednessToTheSemanticDomain) {
                  std::invalid_argument);
 
     module = valid_enum_module(context);
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{enums.clone(rows_1.front())};
-            enums.reflection[enums.index(row_0)] = EnumReflection::none;
+            enums.reflection[row_0] = EnumReflection::none;
             return row_0;
         }();
         return declarations.range(rows_1);
     }();
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{enums.clone(rows_1.front())};
-            enums.values[enums.index(row_0)] = declarations.range<lispb::codegen::EnumeratorId>(
+            enums.values[row_0] = declarations.range<lispb::codegen::EnumeratorId>(
                 {[&] {
                      auto const new_enumerators{enumerators.append()};
                      auto const new_enumerators_row{enumerators.index(new_enumerators)};
@@ -1139,24 +1110,22 @@ TEST(Validation, AppliesExplicitEnumSignednessToTheSemanticDomain) {
         }();
         return declarations.range(rows_1);
     }();
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{enums.clone(rows_1.front())};
-            enums.signedness[enums.index(row_0)] = schema::EnumSignedness::signed_;
+            enums.signedness[row_0] = schema::EnumSignedness::signed_;
             return row_0;
         }();
         return declarations.range(rows_1);
     }();
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{enums.clone(rows_1.front())};
-            enums.bit_width[enums.index(row_0)] = 4;
+            enums.bit_width[row_0] = 4;
             return row_0;
         }();
         return declarations.range(rows_1);
@@ -1172,13 +1141,12 @@ TEST(Validation, RejectsInvalidIntegerScalarDomainsAndNamedCodes) {
     auto& packed_named_codes{declarations.packed_named_codes};
     auto& strings{context.storage.strings};
     auto module{valid_integer_scalar_module(context)};
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{integer_scalars.clone(rows_1.front())};
-            integer_scalars.bit_width[integer_scalars.index(row_0)] = 3;
+            integer_scalars.bit_width[row_0] = 3;
             return row_0;
         }();
         return declarations.range(rows_1);
@@ -1187,13 +1155,12 @@ TEST(Validation, RejectsInvalidIntegerScalarDomainsAndNamedCodes) {
                  std::invalid_argument);
 
     module = valid_integer_scalar_module(context);
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{integer_scalars.clone(rows_1.front())};
-            integer_scalars.minimum_value[integer_scalars.index(row_0)] = -1;
+            integer_scalars.minimum_value[row_0] = -1;
             return row_0;
         }();
         return declarations.range(rows_1);
@@ -1202,9 +1169,8 @@ TEST(Validation, RejectsInvalidIntegerScalarDomainsAndNamedCodes) {
                  std::invalid_argument);
 
     module = valid_integer_scalar_module(context);
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_3{std::vector(original_items.begin(), original_items.end())};
         rows_3.front() = [&] {
             auto row_2{integer_scalars.clone(rows_3.front())};
@@ -1215,7 +1181,7 @@ TEST(Validation, RejectsInvalidIntegerScalarDomainsAndNamedCodes) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1[1] = [&] {
                     auto row_0{packed_named_codes.clone(rows_1[1])};
-                    packed_named_codes.value[packed_named_codes.index(row_0)] = 10;
+                    packed_named_codes.value[row_0] = 10;
                     return row_0;
                 }();
                 return declarations.range(rows_1);
@@ -1228,9 +1194,8 @@ TEST(Validation, RejectsInvalidIntegerScalarDomainsAndNamedCodes) {
                  std::invalid_argument);
 
     module = valid_integer_scalar_module(context);
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_3{std::vector(original_items.begin(), original_items.end())};
         rows_3.front() = [&] {
             auto row_2{integer_scalars.clone(rows_3.front())};
@@ -1241,7 +1206,7 @@ TEST(Validation, RejectsInvalidIntegerScalarDomainsAndNamedCodes) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1[0] = [&] {
                     auto row_0{packed_named_codes.clone(rows_1[0])};
-                    packed_named_codes.value[packed_named_codes.index(row_0)] = 11;
+                    packed_named_codes.value[row_0] = 11;
                     return row_0;
                 }();
                 return declarations.range(rows_1);
@@ -1254,9 +1219,8 @@ TEST(Validation, RejectsInvalidIntegerScalarDomainsAndNamedCodes) {
                  std::invalid_argument);
 
     module = valid_integer_scalar_module(context);
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_3{std::vector(original_items.begin(), original_items.end())};
         rows_3.front() = [&] {
             auto row_2{integer_scalars.clone(rows_3.front())};
@@ -1267,8 +1231,7 @@ TEST(Validation, RejectsInvalidIntegerScalarDomainsAndNamedCodes) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1[1] = [&] {
                     auto row_0{packed_named_codes.clone(rows_1[1])};
-                    packed_named_codes.name[packed_named_codes.index(row_0)] =
-                        strings.intern("Unknown");
+                    packed_named_codes.name[row_0] = strings.intern("Unknown");
                     return row_0;
                 }();
                 return declarations.range(rows_1);
@@ -1281,9 +1244,8 @@ TEST(Validation, RejectsInvalidIntegerScalarDomainsAndNamedCodes) {
                  std::invalid_argument);
 
     module = valid_integer_scalar_module(context);
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_3{std::vector(original_items.begin(), original_items.end())};
         rows_3.front() = [&] {
             auto row_2{integer_scalars.clone(rows_3.front())};
@@ -1294,7 +1256,7 @@ TEST(Validation, RejectsInvalidIntegerScalarDomainsAndNamedCodes) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1[1] = [&] {
                     auto row_0{packed_named_codes.clone(rows_1[1])};
-                    packed_named_codes.value[packed_named_codes.index(row_0)] = 0;
+                    packed_named_codes.value[row_0] = 0;
                     return row_0;
                 }();
                 return declarations.range(rows_1);
@@ -1307,11 +1269,9 @@ TEST(Validation, RejectsInvalidIntegerScalarDomainsAndNamedCodes) {
                  std::invalid_argument);
 
     module = valid_integer_scalar_module(context);
-    normal_modules.settings[normal_modules.index(module)] = [&] {
-        auto row_0{declarations.module_settings_store.clone(
-            normal_modules.settings[normal_modules.index(module)])};
-        declarations.module_settings_store.source[declarations.module_settings_store.index(row_0)] =
-            strings.intern("Scalars.cpp");
+    normal_modules.settings[module] = [&] {
+        auto row_0{declarations.module_settings_store.clone(normal_modules.settings[module])};
+        declarations.module_settings_store.source[row_0] = strings.intern("Scalars.cpp");
         return row_0;
     }();
     EXPECT_NO_THROW(lower_test_manifest(context, manifest_with(context, module)));
@@ -1335,14 +1295,12 @@ TEST(Validation, ValidatesIntegerScalarCppConstantsPolicy) {
     auto& packed_named_codes{declarations.packed_named_codes};
     auto& strings{context.storage.strings};
     auto module{valid_integer_scalar_module(context)};
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{integer_scalars.clone(rows_1.front())};
-            integer_scalars.cpp_type[integer_scalars.index(row_0)] =
-                make_test_type_ref(context, "std::uint8_t");
+            integer_scalars.cpp_type[row_0] = make_test_type_ref(context, "std::uint8_t");
             return row_0;
         }();
         return declarations.range(rows_1);
@@ -1351,14 +1309,12 @@ TEST(Validation, ValidatesIntegerScalarCppConstantsPolicy) {
                  std::invalid_argument);
 
     module = valid_integer_scalar_module(context);
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{integer_scalars.clone(rows_1.front())};
-            integer_scalars.cpp_emission[integer_scalars.index(row_0)] =
-                IntegerScalarCppEmission::constants;
+            integer_scalars.cpp_emission[row_0] = IntegerScalarCppEmission::constants;
             return row_0;
         }();
         return declarations.range(rows_1);
@@ -1367,26 +1323,22 @@ TEST(Validation, ValidatesIntegerScalarCppConstantsPolicy) {
                  std::invalid_argument);
 
     module = valid_integer_scalar_module(context);
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{integer_scalars.clone(rows_1.front())};
-            integer_scalars.cpp_emission[integer_scalars.index(row_0)] =
-                IntegerScalarCppEmission::constants;
+            integer_scalars.cpp_emission[row_0] = IntegerScalarCppEmission::constants;
             return row_0;
         }();
         return declarations.range(rows_1);
     }();
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{integer_scalars.clone(rows_1.front())};
-            integer_scalars.cpp_type[integer_scalars.index(row_0)] =
-                make_test_type_ref(context, "std::uint8_t");
+            integer_scalars.cpp_type[row_0] = make_test_type_ref(context, "std::uint8_t");
             return row_0;
         }();
         return declarations.range(rows_1);
@@ -1394,44 +1346,38 @@ TEST(Validation, ValidatesIntegerScalarCppConstantsPolicy) {
     EXPECT_NO_THROW(lower_test_manifest(context, manifest_with(context, module)));
 
     module = valid_integer_scalar_module(context);
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{integer_scalars.clone(rows_1.front())};
-            integer_scalars.cpp_emission[integer_scalars.index(row_0)] =
-                IntegerScalarCppEmission::constants;
+            integer_scalars.cpp_emission[row_0] = IntegerScalarCppEmission::constants;
             return row_0;
         }();
         return declarations.range(rows_1);
     }();
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{integer_scalars.clone(rows_1.front())};
-            integer_scalars.cpp_type[integer_scalars.index(row_0)] =
-                make_test_type_ref(context, "std::int8_t");
+            integer_scalars.cpp_type[row_0] = make_test_type_ref(context, "std::int8_t");
             return row_0;
         }();
         return declarations.range(rows_1);
     }();
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{integer_scalars.clone(rows_1.front())};
-            integer_scalars.maximum_value[integer_scalars.index(row_0)] = 127;
+            integer_scalars.maximum_value[row_0] = 127;
             return row_0;
         }();
         return declarations.range(rows_1);
     }();
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_3{std::vector(original_items.begin(), original_items.end())};
         rows_3.front() = [&] {
             auto row_2{integer_scalars.clone(rows_3.front())};
@@ -1442,7 +1388,7 @@ TEST(Validation, ValidatesIntegerScalarCppConstantsPolicy) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1[1] = [&] {
                     auto row_0{packed_named_codes.clone(rows_1[1])};
-                    packed_named_codes.value[packed_named_codes.index(row_0)] = 128;
+                    packed_named_codes.value[row_0] = 128;
                     return row_0;
                 }();
                 return declarations.range(rows_1);
@@ -1455,65 +1401,22 @@ TEST(Validation, ValidatesIntegerScalarCppConstantsPolicy) {
                  std::invalid_argument);
 
     module = valid_integer_scalar_module(context);
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{integer_scalars.clone(rows_1.front())};
-            integer_scalars.cpp_emission[integer_scalars.index(row_0)] =
-                IntegerScalarCppEmission::constants;
+            integer_scalars.cpp_emission[row_0] = IntegerScalarCppEmission::constants;
             return row_0;
         }();
         return declarations.range(rows_1);
     }();
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{integer_scalars.clone(rows_1.front())};
-            integer_scalars.cpp_type[integer_scalars.index(row_0)] =
-                make_test_type_ref(context, "float");
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
-
-    module = valid_integer_scalar_module(context);
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{integer_scalars.clone(rows_1.front())};
-            integer_scalars.cpp_emission[integer_scalars.index(row_0)] =
-                IntegerScalarCppEmission::constants;
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{integer_scalars.clone(rows_1.front())};
-            integer_scalars.cpp_type[integer_scalars.index(row_0)] =
-                make_test_type_ref(context, "std::uint8_t");
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{integer_scalars.clone(rows_1.front())};
-            integer_scalars.named_codes[integer_scalars.index(row_0)] = {};
+            integer_scalars.cpp_type[row_0] = make_test_type_ref(context, "float");
             return row_0;
         }();
         return declarations.range(rows_1);
@@ -1522,33 +1425,62 @@ TEST(Validation, ValidatesIntegerScalarCppConstantsPolicy) {
                  std::invalid_argument);
 
     module = valid_integer_scalar_module(context);
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{integer_scalars.clone(rows_1.front())};
-            integer_scalars.cpp_emission[integer_scalars.index(row_0)] =
-                IntegerScalarCppEmission::constants_with_names;
+            integer_scalars.cpp_emission[row_0] = IntegerScalarCppEmission::constants;
             return row_0;
         }();
         return declarations.range(rows_1);
     }();
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{integer_scalars.clone(rows_1.front())};
-            integer_scalars.cpp_type[integer_scalars.index(row_0)] =
-                make_test_type_ref(context, "std::uint8_t");
+            integer_scalars.cpp_type[row_0] = make_test_type_ref(context, "std::uint8_t");
             return row_0;
         }();
         return declarations.range(rows_1);
     }();
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
+        auto rows_1{std::vector(original_items.begin(), original_items.end())};
+        rows_1.front() = [&] {
+            auto row_0{integer_scalars.clone(rows_1.front())};
+            integer_scalars.named_codes[row_0] = {};
+            return row_0;
+        }();
+        return declarations.range(rows_1);
+    }();
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
+                 std::invalid_argument);
+
+    module = valid_integer_scalar_module(context);
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
+        auto rows_1{std::vector(original_items.begin(), original_items.end())};
+        rows_1.front() = [&] {
+            auto row_0{integer_scalars.clone(rows_1.front())};
+            integer_scalars.cpp_emission[row_0] = IntegerScalarCppEmission::constants_with_names;
+            return row_0;
+        }();
+        return declarations.range(rows_1);
+    }();
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
+        auto rows_1{std::vector(original_items.begin(), original_items.end())};
+        rows_1.front() = [&] {
+            auto row_0{integer_scalars.clone(rows_1.front())};
+            integer_scalars.cpp_type[row_0] = make_test_type_ref(context, "std::uint8_t");
+            return row_0;
+        }();
+        return declarations.range(rows_1);
+    }();
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_3{std::vector(original_items.begin(), original_items.end())};
         rows_3.front() = [&] {
             auto row_2{integer_scalars.clone(rows_3.front())};
@@ -1559,8 +1491,7 @@ TEST(Validation, ValidatesIntegerScalarCppConstantsPolicy) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1.front() = [&] {
                     auto row_0{packed_named_codes.clone(rows_1.front())};
-                    packed_named_codes.name[packed_named_codes.index(row_0)] =
-                        strings.intern("name");
+                    packed_named_codes.name[row_0] = strings.intern("name");
                     return row_0;
                 }();
                 return declarations.range(rows_1);
@@ -1592,16 +1523,14 @@ TEST(Validation, AllowsEmptyEditableModulesToRemainGenerationDestinations) {
     };
     auto module{[&] {
         auto const new_normal_modules{normal_modules.append()};
-        normal_modules.settings[normal_modules.index(new_normal_modules)] = settings("empty");
+        normal_modules.settings[new_normal_modules] = settings("empty");
         return new_normal_modules;
     }()};
     EXPECT_NO_THROW(
         render_modules(context.ir, lower_test_manifest(context, manifest_with(context, module))));
-    normal_modules.settings[normal_modules.index(module)] = [&] {
-        auto row_0{
-            module_settings_store.clone(normal_modules.settings[normal_modules.index(module)])};
-        module_settings_store.source[module_settings_store.index(row_0)] =
-            strings.intern("empty.cpp");
+    normal_modules.settings[module] = [&] {
+        auto row_0{module_settings_store.clone(normal_modules.settings[module])};
+        module_settings_store.source[row_0] = strings.intern("empty.cpp");
         return row_0;
     }();
     EXPECT_EQ(
@@ -1681,9 +1610,8 @@ TEST(Validation, ValidatesRecordMemberRelationshipUnits) {
     }()};
     EXPECT_NO_THROW(lower_test_manifest(context, manifest_with(context, module)));
 
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_3{std::vector(original_items.begin(), original_items.end())};
         rows_3[1] = [&] {
             auto row_2{records.clone(rows_3[1])};
@@ -1693,7 +1621,7 @@ TEST(Validation, ValidatesRecordMemberRelationshipUnits) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1[0] = [&] {
                     auto row_0{record_members.clone(rows_1[0])};
-                    record_members.relationship[record_members.index(row_0)] = [&] {
+                    record_members.relationship[row_0] = [&] {
                         auto const new_semantic_relations{semantic_relations.append()};
                         auto const new_semantic_relations_row{
                             semantic_relations.index(new_semantic_relations)};
@@ -1715,9 +1643,8 @@ TEST(Validation, ValidatesRecordMemberRelationshipUnits) {
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_3{std::vector(original_items.begin(), original_items.end())};
         rows_3[1] = [&] {
             auto row_2{records.clone(rows_3[1])};
@@ -1727,7 +1654,7 @@ TEST(Validation, ValidatesRecordMemberRelationshipUnits) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1[0] = [&] {
                     auto row_0{record_members.clone(rows_1[0])};
-                    record_members.relationship[record_members.index(row_0)] = [&] {
+                    record_members.relationship[row_0] = [&] {
                         auto const new_semantic_relations{semantic_relations.append()};
                         auto const new_semantic_relations_row{
                             semantic_relations.index(new_semantic_relations)};
@@ -1750,9 +1677,8 @@ TEST(Validation, ValidatesRecordMemberRelationshipUnits) {
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_3{std::vector(original_items.begin(), original_items.end())};
         rows_3[1] = [&] {
             auto row_2{records.clone(rows_3[1])};
@@ -1762,7 +1688,7 @@ TEST(Validation, ValidatesRecordMemberRelationshipUnits) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1[0] = [&] {
                     auto row_0{record_members.clone(rows_1[0])};
-                    record_members.relationship[record_members.index(row_0)] = [&] {
+                    record_members.relationship[row_0] = [&] {
                         auto const new_semantic_relations{semantic_relations.append()};
                         auto const new_semantic_relations_row{
                             semantic_relations.index(new_semantic_relations)};
@@ -1795,9 +1721,8 @@ TEST(Validation, ValidatesSoaMemberRelationshipUnits) {
     auto& semantic_relations{declarations.semantic_relations};
     auto& strings{context.storage.strings};
     auto module{valid_soa_module(context)};
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows{std::vector(original_items.begin(), original_items.end())};
         rows.push_back([&] {
             auto const new_soas{soas.append()};
@@ -1818,9 +1743,8 @@ TEST(Validation, ValidatesSoaMemberRelationshipUnits) {
         return declarations.range(rows);
     }();
 
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_3{std::vector(original_items.begin(), original_items.end())};
         rows_3.front() = [&] {
             auto row_2{soas.clone(rows_3.front())};
@@ -1830,7 +1754,7 @@ TEST(Validation, ValidatesSoaMemberRelationshipUnits) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1.front() = [&] {
                     auto row_0{soa_members.clone(rows_1.front())};
-                    soa_members.relationship[soa_members.index(row_0)] = [&] {
+                    soa_members.relationship[row_0] = [&] {
                         auto const new_semantic_relations{semantic_relations.append()};
                         auto const new_semantic_relations_row{
                             semantic_relations.index(new_semantic_relations)};
@@ -1851,9 +1775,8 @@ TEST(Validation, ValidatesSoaMemberRelationshipUnits) {
     }();
     EXPECT_NO_THROW(lower_test_manifest(context, manifest_with(context, module)));
 
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_3{std::vector(original_items.begin(), original_items.end())};
         rows_3.front() = [&] {
             auto row_2{soas.clone(rows_3.front())};
@@ -1863,7 +1786,7 @@ TEST(Validation, ValidatesSoaMemberRelationshipUnits) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1.front() = [&] {
                     auto row_0{soa_members.clone(rows_1.front())};
-                    soa_members.relationship[soa_members.index(row_0)] = [&] {
+                    soa_members.relationship[row_0] = [&] {
                         auto const new_semantic_relations{semantic_relations.append()};
                         auto const new_semantic_relations_row{
                             semantic_relations.index(new_semantic_relations)};
@@ -1885,9 +1808,8 @@ TEST(Validation, ValidatesSoaMemberRelationshipUnits) {
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_3{std::vector(original_items.begin(), original_items.end())};
         rows_3.front() = [&] {
             auto row_2{soas.clone(rows_3.front())};
@@ -1897,7 +1819,7 @@ TEST(Validation, ValidatesSoaMemberRelationshipUnits) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1.front() = [&] {
                     auto row_0{soa_members.clone(rows_1.front())};
-                    soa_members.relationship[soa_members.index(row_0)] = [&] {
+                    soa_members.relationship[row_0] = [&] {
                         auto const new_semantic_relations{semantic_relations.append()};
                         auto const new_semantic_relations_row{
                             semantic_relations.index(new_semantic_relations)};
@@ -1920,9 +1842,8 @@ TEST(Validation, ValidatesSoaMemberRelationshipUnits) {
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_3{std::vector(original_items.begin(), original_items.end())};
         rows_3.front() = [&] {
             auto row_2{soas.clone(rows_3.front())};
@@ -1932,7 +1853,7 @@ TEST(Validation, ValidatesSoaMemberRelationshipUnits) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1.front() = [&] {
                     auto row_0{soa_members.clone(rows_1.front())};
-                    soa_members.relationship[soa_members.index(row_0)] = [&] {
+                    soa_members.relationship[row_0] = [&] {
                         auto const new_semantic_relations{semantic_relations.append()};
                         auto const new_semantic_relations_row{
                             semantic_relations.index(new_semantic_relations)};
@@ -1967,57 +1888,52 @@ TEST(Validation, RequiresUnsignedIndexCountAndOffsetIntegerScalars) {
                             SemanticRelationKind::offset_into}) {
         auto module{valid_integer_scalar_module(context)};
 
-        normal_modules.declarations[normal_modules.index(module)] = [&] {
-            auto const original_items{
-                declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+        normal_modules.declarations[module] = [&] {
+            auto const original_items{declarations.items(normal_modules.declarations[module])};
             auto rows_1{std::vector(original_items.begin(), original_items.end())};
             rows_1.front() = [&] {
                 auto row_0{integer_scalars.clone(rows_1.front())};
-                integer_scalars.signedness[integer_scalars.index(row_0)] = true;
+                integer_scalars.signedness[row_0] = true;
                 return row_0;
             }();
             return declarations.range(rows_1);
         }();
-        normal_modules.declarations[normal_modules.index(module)] = [&] {
-            auto const original_items{
-                declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+        normal_modules.declarations[module] = [&] {
+            auto const original_items{declarations.items(normal_modules.declarations[module])};
             auto rows_1{std::vector(original_items.begin(), original_items.end())};
             rows_1.front() = [&] {
                 auto row_0{integer_scalars.clone(rows_1.front())};
-                integer_scalars.minimum_value[integer_scalars.index(row_0)] = -10;
+                integer_scalars.minimum_value[row_0] = -10;
                 return row_0;
             }();
             return declarations.range(rows_1);
         }();
-        normal_modules.declarations[normal_modules.index(module)] = [&] {
-            auto const original_items{
-                declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+        normal_modules.declarations[module] = [&] {
+            auto const original_items{declarations.items(normal_modules.declarations[module])};
             auto rows_1{std::vector(original_items.begin(), original_items.end())};
             rows_1.front() = [&] {
                 auto row_0{integer_scalars.clone(rows_1.front())};
-                integer_scalars.maximum_value[integer_scalars.index(row_0)] = 10;
+                integer_scalars.maximum_value[row_0] = 10;
                 return row_0;
             }();
             return declarations.range(rows_1);
         }();
-        normal_modules.declarations[normal_modules.index(module)] = [&] {
-            auto const original_items{
-                declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+        normal_modules.declarations[module] = [&] {
+            auto const original_items{declarations.items(normal_modules.declarations[module])};
             auto rows_1{std::vector(original_items.begin(), original_items.end())};
             rows_1.front() = [&] {
                 auto row_0{integer_scalars.clone(rows_1.front())};
-                integer_scalars.named_codes[integer_scalars.index(row_0)] = {};
+                integer_scalars.named_codes[row_0] = {};
                 return row_0;
             }();
             return declarations.range(rows_1);
         }();
-        normal_modules.declarations[normal_modules.index(module)] = [&] {
-            auto const original_items{
-                declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+        normal_modules.declarations[module] = [&] {
+            auto const original_items{declarations.items(normal_modules.declarations[module])};
             auto rows_1{std::vector(original_items.begin(), original_items.end())};
             rows_1.front() = [&] {
                 auto row_0{integer_scalars.clone(rows_1.front())};
-                integer_scalars.relationship[integer_scalars.index(row_0)] = [&] {
+                integer_scalars.relationship[row_0] = [&] {
                     auto const new_semantic_relations{semantic_relations.append()};
                     auto const new_semantic_relations_row{
                         semantic_relations.index(new_semantic_relations)};
@@ -2039,13 +1955,12 @@ TEST(Validation, RequiresUnsignedIndexCountAndOffsetIntegerScalars) {
     }
 
     auto module{valid_integer_scalar_module(context)};
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{integer_scalars.clone(rows_1.front())};
-            integer_scalars.relationship[integer_scalars.index(row_0)] = [&] {
+            integer_scalars.relationship[row_0] = [&] {
                 auto const new_semantic_relations{semantic_relations.append()};
                 auto const new_semantic_relations_row{
                     semantic_relations.index(new_semantic_relations)};
@@ -2063,13 +1978,12 @@ TEST(Validation, RequiresUnsignedIndexCountAndOffsetIntegerScalars) {
     EXPECT_NO_THROW(lower_test_manifest(context, manifest_with(context, module)));
 
     module = valid_integer_scalar_module(context);
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{integer_scalars.clone(rows_1.front())};
-            integer_scalars.relationship[integer_scalars.index(row_0)] = [&] {
+            integer_scalars.relationship[row_0] = [&] {
                 auto const new_semantic_relations{semantic_relations.append()};
                 auto const new_semantic_relations_row{
                     semantic_relations.index(new_semantic_relations)};
@@ -2088,13 +2002,12 @@ TEST(Validation, RequiresUnsignedIndexCountAndOffsetIntegerScalars) {
                  std::invalid_argument);
 
     module = valid_integer_scalar_module(context);
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{integer_scalars.clone(rows_1.front())};
-            integer_scalars.relationship[integer_scalars.index(row_0)] = [&] {
+            integer_scalars.relationship[row_0] = [&] {
                 auto const new_semantic_relations{semantic_relations.append()};
                 auto const new_semantic_relations_row{
                     semantic_relations.index(new_semantic_relations)};
@@ -2114,13 +2027,12 @@ TEST(Validation, RequiresUnsignedIndexCountAndOffsetIntegerScalars) {
                  std::invalid_argument);
 
     module = valid_integer_scalar_module(context);
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{integer_scalars.clone(rows_1.front())};
-            integer_scalars.relationship[integer_scalars.index(row_0)] = [&] {
+            integer_scalars.relationship[row_0] = [&] {
                 auto const new_semantic_relations{semantic_relations.append()};
                 auto const new_semantic_relations_row{
                     semantic_relations.index(new_semantic_relations)};
@@ -2164,7 +2076,7 @@ TEST(Validation, ValidatesLinearQuantizedRepresentationsAndEmitsOnlyConfiguredHe
             auto rows_1{std::vector(original_items.begin(), original_items.end())};
             rows_1.front() = [&] {
                 auto row_0{integer_scalars.clone(rows_1.front())};
-                integer_scalars.signedness[integer_scalars.index(row_0)] = true;
+                integer_scalars.signedness[row_0] = true;
                 return row_0;
             }();
             return declarations.range(rows_1);
@@ -2179,7 +2091,7 @@ TEST(Validation, ValidatesLinearQuantizedRepresentationsAndEmitsOnlyConfiguredHe
             auto rows_1{std::vector(original_items.begin(), original_items.end())};
             rows_1.front() = [&] {
                 auto row_0{integer_scalars.clone(rows_1.front())};
-                integer_scalars.minimum_value[integer_scalars.index(row_0)] = -100;
+                integer_scalars.minimum_value[row_0] = -100;
                 return row_0;
             }();
             return declarations.range(rows_1);
@@ -2194,7 +2106,7 @@ TEST(Validation, ValidatesLinearQuantizedRepresentationsAndEmitsOnlyConfiguredHe
             auto rows_1{std::vector(original_items.begin(), original_items.end())};
             rows_1.front() = [&] {
                 auto row_0{integer_scalars.clone(rows_1.front())};
-                integer_scalars.maximum_value[integer_scalars.index(row_0)] = 100;
+                integer_scalars.maximum_value[row_0] = 100;
                 return row_0;
             }();
             return declarations.range(rows_1);
@@ -2209,7 +2121,7 @@ TEST(Validation, ValidatesLinearQuantizedRepresentationsAndEmitsOnlyConfiguredHe
             auto rows_1{std::vector(original_items.begin(), original_items.end())};
             rows_1.front() = [&] {
                 auto row_0{integer_scalars.clone(rows_1.front())};
-                integer_scalars.named_codes[integer_scalars.index(row_0)] = {};
+                integer_scalars.named_codes[row_0] = {};
                 return row_0;
             }();
             return declarations.range(rows_1);
@@ -2227,7 +2139,7 @@ TEST(Validation, ValidatesLinearQuantizedRepresentationsAndEmitsOnlyConfiguredHe
             auto rows_1{std::vector(original_items.begin(), original_items.end())};
             rows_1.front() = [&] {
                 auto row_0{linear_quantizeds.clone(rows_1.front())};
-                linear_quantizeds.bit_width[linear_quantizeds.index(row_0)] = 1;
+                linear_quantizeds.bit_width[row_0] = 1;
                 return row_0;
             }();
             return declarations.range(rows_1);
@@ -2246,7 +2158,7 @@ TEST(Validation, ValidatesLinearQuantizedRepresentationsAndEmitsOnlyConfiguredHe
             auto rows_1{std::vector(original_items.begin(), original_items.end())};
             rows_1.front() = [&] {
                 auto row_0{linear_quantizeds.clone(rows_1.front())};
-                linear_quantizeds.bit_width[linear_quantizeds.index(row_0)] = 2;
+                linear_quantizeds.bit_width[row_0] = 2;
                 return row_0;
             }();
             return declarations.range(rows_1);
@@ -2261,7 +2173,7 @@ TEST(Validation, ValidatesLinearQuantizedRepresentationsAndEmitsOnlyConfiguredHe
             auto rows_1{std::vector(original_items.begin(), original_items.end())};
             rows_1.front() = [&] {
                 auto row_0{linear_quantizeds.clone(rows_1.front())};
-                linear_quantizeds.reserved_codes[linear_quantizeds.index(row_0)] = 3;
+                linear_quantizeds.reserved_codes[row_0] = 3;
                 return row_0;
             }();
             return declarations.range(rows_1);
@@ -2279,7 +2191,7 @@ TEST(Validation, ValidatesLinearQuantizedRepresentationsAndEmitsOnlyConfiguredHe
             auto rows_1{std::vector(original_items.begin(), original_items.end())};
             rows_1.front() = [&] {
                 auto row_0{integer_scalars.clone(rows_1.front())};
-                integer_scalars.maximum_value[integer_scalars.index(row_0)] = 0;
+                integer_scalars.maximum_value[row_0] = 0;
                 return row_0;
             }();
             return declarations.range(rows_1);
@@ -2297,8 +2209,7 @@ TEST(Validation, ValidatesLinearQuantizedRepresentationsAndEmitsOnlyConfiguredHe
             auto rows_1{std::vector(original_items.begin(), original_items.end())};
             rows_1.front() = [&] {
                 auto row_0{linear_quantizeds.clone(rows_1.front())};
-                linear_quantizeds.source[linear_quantizeds.index(row_0)] =
-                    make_test_type_ref(context, "std::uint32_t");
+                linear_quantizeds.source[row_0] = make_test_type_ref(context, "std::uint32_t");
                 return row_0;
             }();
             return declarations.range(rows_1);
@@ -2314,8 +2225,7 @@ TEST(Validation, ValidatesLinearQuantizedRepresentationsAndEmitsOnlyConfiguredHe
         normal_modules.settings[row_1_row] = [&] {
             auto row_0{
                 declarations.module_settings_store.clone(normal_modules.settings[row_1_row])};
-            declarations.module_settings_store
-                .source[declarations.module_settings_store.index(row_0)] =
+            declarations.module_settings_store.source[row_0] =
                 strings.intern("Representations.cpp");
             return row_0;
         }();
@@ -2362,8 +2272,7 @@ TEST(Validation, ValidatesIntegerVarintSourceAndSignedness) {
             auto rows_1{std::vector(original_items.begin(), original_items.end())};
             rows_1.front() = [&] {
                 auto row_0{integer_varints.clone(rows_1.front())};
-                integer_varints.source[integer_varints.index(row_0)] =
-                    make_test_type_ref(context, "std::uint32_t");
+                integer_varints.source[row_0] = make_test_type_ref(context, "std::uint32_t");
                 return row_0;
             }();
             return declarations.range(rows_1);
@@ -2385,11 +2294,9 @@ TEST(Validation, ValidatesIntegerVarintSourceAndSignedness) {
                 auto const new_linear_quantizeds_row{
                     linear_quantizeds.index(new_linear_quantizeds)};
                 linear_quantizeds.name[new_linear_quantizeds_row] =
-                    integer_varints.name[integer_varints.index(
-                        declarations
-                            .items(normal_modules
-                                       .declarations[normal_modules.index(manifest.modules[1])])
-                            .front())];
+                    integer_varints
+                        .name[declarations.items(normal_modules.declarations[manifest.modules[1]])
+                                  .front()];
                 linear_quantizeds.source[new_linear_quantizeds_row] =
                     make_test_type_ref(context, "DamageReason");
                 linear_quantizeds.bit_width[new_linear_quantizeds_row] = 4;
@@ -2430,7 +2337,7 @@ TEST(Validation, ValidatesFixedPointWidthsAndEmitsOnlyConfiguredHeader) {
             auto rows_1{std::vector(original_items.begin(), original_items.end())};
             rows_1.front() = [&] {
                 auto row_0{fixed_points.clone(rows_1.front())};
-                fixed_points.total_bits[fixed_points.index(row_0)] = 8;
+                fixed_points.total_bits[row_0] = 8;
                 return row_0;
             }();
             return declarations.range(rows_1);
@@ -2445,7 +2352,7 @@ TEST(Validation, ValidatesFixedPointWidthsAndEmitsOnlyConfiguredHeader) {
             auto rows_1{std::vector(original_items.begin(), original_items.end())};
             rows_1.front() = [&] {
                 auto row_0{fixed_points.clone(rows_1.front())};
-                fixed_points.fractional_bits[fixed_points.index(row_0)] = 8;
+                fixed_points.fractional_bits[row_0] = 8;
                 return row_0;
             }();
             return declarations.range(rows_1);
@@ -2463,7 +2370,7 @@ TEST(Validation, ValidatesFixedPointWidthsAndEmitsOnlyConfiguredHeader) {
             auto rows_1{std::vector(original_items.begin(), original_items.end())};
             rows_1.front() = [&] {
                 auto row_0{fixed_points.clone(rows_1.front())};
-                fixed_points.fractional_bits[fixed_points.index(row_0)] = 16;
+                fixed_points.fractional_bits[row_0] = 16;
                 return row_0;
             }();
             return declarations.range(rows_1);
@@ -2481,7 +2388,7 @@ TEST(Validation, ValidatesFixedPointWidthsAndEmitsOnlyConfiguredHeader) {
             auto rows_1{std::vector(original_items.begin(), original_items.end())};
             rows_1.front() = [&] {
                 auto row_0{fixed_points.clone(rows_1.front())};
-                fixed_points.total_bits[fixed_points.index(row_0)] = 0;
+                fixed_points.total_bits[row_0] = 0;
                 return row_0;
             }();
             return declarations.range(rows_1);
@@ -2499,10 +2406,7 @@ TEST(Validation, ValidatesFixedPointWidthsAndEmitsOnlyConfiguredHeader) {
             auto const original_items{declarations.items(normal_modules.declarations[row_0_row])};
             auto rows{std::vector(original_items.begin(), original_items.end())};
             rows.push_back(
-                declarations
-                    .items(
-                        normal_modules.declarations[normal_modules.index(manifest.modules.front())])
-                    .front());
+                declarations.items(normal_modules.declarations[manifest.modules.front()]).front());
             return declarations.range(rows);
         }();
         return row_0;
@@ -2526,80 +2430,58 @@ TEST(Validation, ValidatesMiniFloatEncodingAndEmitsNoPhysicalType) {
         auto invalid{valid_mini_float_manifest(context)};
         auto& declarations{context.storage.declarations};
         auto const module{declarations.normal_modules.clone(invalid.modules.front())};
-        auto const original{declarations.items(
-            declarations.normal_modules.declarations[declarations.normal_modules.index(module)])};
+        auto const original{declarations.items(declarations.normal_modules.declarations[module])};
         auto rows{std::vector(original.begin(), original.end())};
         auto value{declarations.mini_floats.clone(rows.front())};
         edit(value);
         rows.front() = value;
-        declarations.normal_modules.declarations[declarations.normal_modules.index(module)] =
-            declarations.range(rows);
+        declarations.normal_modules.declarations[module] = declarations.range(rows);
         invalid.modules.front() = module;
         EXPECT_THROW(lower_test_manifest(context, invalid), std::invalid_argument);
     };
     invalidate([&](lispb::codegen::DeclarationHandle& value) {
-        context.storage.declarations.mini_floats
-            .sign_bits[context.storage.declarations.mini_floats.index(value)] = 2;
+        context.storage.declarations.mini_floats.sign_bits[value] = 2;
     });
     invalidate([&](lispb::codegen::DeclarationHandle& value) {
-        context.storage.declarations.mini_floats
-            .exponent_bits[context.storage.declarations.mini_floats.index(value)] = 1;
+        context.storage.declarations.mini_floats.exponent_bits[value] = 1;
     });
     invalidate([&](lispb::codegen::DeclarationHandle& value) {
-        context.storage.declarations.mini_floats
-            .exponent_bits[context.storage.declarations.mini_floats.index(value)] = 16;
+        context.storage.declarations.mini_floats.exponent_bits[value] = 16;
     });
     invalidate([&](lispb::codegen::DeclarationHandle& value) {
-        context.storage.declarations.mini_floats
-            .significand_bits[context.storage.declarations.mini_floats.index(value)] = 63;
+        context.storage.declarations.mini_floats.significand_bits[value] = 63;
     });
     invalidate([&](lispb::codegen::DeclarationHandle& value) {
-        context.storage.declarations.mini_floats
-            .exponent_bits[context.storage.declarations.mini_floats.index(value)] = 15;
-        context.storage.declarations.mini_floats
-            .significand_bits[context.storage.declarations.mini_floats.index(value)] = 49;
+        context.storage.declarations.mini_floats.exponent_bits[value] = 15;
+        context.storage.declarations.mini_floats.significand_bits[value] = 49;
     });
     invalidate([&](lispb::codegen::DeclarationHandle& value) {
-        context.storage.declarations.mini_floats
-            .exponent_bias[context.storage.declarations.mini_floats.index(value)] = -32'769;
+        context.storage.declarations.mini_floats.exponent_bias[value] = -32'769;
     });
     invalidate([&](lispb::codegen::DeclarationHandle& value) {
-        context.storage.declarations.mini_floats
-            .exponent_bias[context.storage.declarations.mini_floats.index(value)] = 32'768;
+        context.storage.declarations.mini_floats.exponent_bias[value] = 32'768;
     });
 
     manifest = valid_mini_float_manifest(context);
 
     manifest.modules.front() = [&] {
         auto row_0{context.storage.declarations.normal_modules.clone(manifest.modules.front())};
-        context.storage.declarations.normal_modules
-            .declarations[context.storage.declarations.normal_modules.index(row_0)] = [&] {
+        context.storage.declarations.normal_modules.declarations[row_0] = [&] {
             auto const original_items{context.storage.declarations.items(
-                context.storage.declarations.normal_modules
-                    .declarations[context.storage.declarations.normal_modules.index(row_0)])};
+                context.storage.declarations.normal_modules.declarations[row_0])};
             auto rows{std::vector(original_items.begin(), original_items.end())};
             rows.push_back([&] {
                 auto const new_fixed_points{context.storage.declarations.fixed_points.append()};
-                context.storage.declarations.fixed_points
-                    .name[context.storage.declarations.fixed_points.index(new_fixed_points)] =
+                context.storage.declarations.fixed_points.name[new_fixed_points] =
                     context.storage.declarations.mini_floats
-                        .name[context.storage.declarations.mini_floats.index(
-                            context.storage.declarations
-                                .items(context.storage.declarations.normal_modules
-                                           .declarations[context.storage.declarations.normal_modules
-                                                             .index(manifest.modules.front())])
-                                .front())];
-                context.storage.declarations.fixed_points
-                    .signedness[context.storage.declarations.fixed_points.index(new_fixed_points)] =
-                    true;
-                context.storage.declarations.fixed_points
-                    .total_bits[context.storage.declarations.fixed_points.index(new_fixed_points)] =
-                    16;
-                context.storage.declarations.fixed_points
-                    .fractional_bits[context.storage.declarations.fixed_points.index(
-                        new_fixed_points)] = 4;
-                context.storage.declarations.fixed_points
-                    .rounding[context.storage.declarations.fixed_points.index(new_fixed_points)] =
+                        .name[context.storage.declarations
+                                  .items(context.storage.declarations.normal_modules
+                                             .declarations[manifest.modules.front()])
+                                  .front()];
+                context.storage.declarations.fixed_points.signedness[new_fixed_points] = true;
+                context.storage.declarations.fixed_points.total_bits[new_fixed_points] = 16;
+                context.storage.declarations.fixed_points.fractional_bits[new_fixed_points] = 4;
+                context.storage.declarations.fixed_points.rounding[new_fixed_points] =
                     FixedPointRounding::nearest_even;
                 return new_fixed_points;
             }());
@@ -2629,8 +2511,7 @@ TEST(Validation, ValidatesOptionalSentinelSourceAndCodeRole) {
             auto rows_1{std::vector(original_items.begin(), original_items.end())};
             rows_1.front() = [&] {
                 auto row_0{optional_sentinels.clone(rows_1.front())};
-                optional_sentinels.source[optional_sentinels.index(row_0)] =
-                    make_test_type_ref(context, "std::uint32_t");
+                optional_sentinels.source[row_0] = make_test_type_ref(context, "std::uint32_t");
                 return row_0;
             }();
             return declarations.range(rows_1);
@@ -2648,8 +2529,7 @@ TEST(Validation, ValidatesOptionalSentinelSourceAndCodeRole) {
             auto rows_1{std::vector(original_items.begin(), original_items.end())};
             rows_1.front() = [&] {
                 auto row_0{optional_sentinels.clone(rows_1.front())};
-                optional_sentinels.sentinel[optional_sentinels.index(row_0)] =
-                    strings.intern("Missing");
+                optional_sentinels.sentinel[row_0] = strings.intern("Missing");
                 return row_0;
             }();
             return declarations.range(rows_1);
@@ -2667,8 +2547,7 @@ TEST(Validation, ValidatesOptionalSentinelSourceAndCodeRole) {
             auto rows_1{std::vector(original_items.begin(), original_items.end())};
             rows_1.front() = [&] {
                 auto row_0{optional_sentinels.clone(rows_1.front())};
-                optional_sentinels.sentinel[optional_sentinels.index(row_0)] =
-                    strings.intern("Unknown");
+                optional_sentinels.sentinel[row_0] = strings.intern("Unknown");
                 return row_0;
             }();
             return declarations.range(rows_1);
@@ -2686,8 +2565,7 @@ TEST(Validation, ValidatesOptionalSentinelSourceAndCodeRole) {
             auto rows_1{std::vector(original_items.begin(), original_items.end())};
             rows_1.front() = [&] {
                 auto row_0{declarations.integer_scalars.clone(rows_1.front())};
-                declarations.integer_scalars
-                    .named_codes[declarations.integer_scalars.index(row_0)] = {};
+                declarations.integer_scalars.named_codes[row_0] = {};
                 return row_0;
             }();
             return declarations.range(rows_1);
@@ -2708,11 +2586,9 @@ TEST(Validation, ValidatesOptionalSentinelSourceAndCodeRole) {
                 auto const new_fixed_points{fixed_points.append()};
                 auto const new_fixed_points_row{fixed_points.index(new_fixed_points)};
                 fixed_points.name[new_fixed_points_row] =
-                    optional_sentinels.name[optional_sentinels.index(
-                        declarations
-                            .items(normal_modules
-                                       .declarations[normal_modules.index(manifest.modules[1])])
-                            .front())];
+                    optional_sentinels
+                        .name[declarations.items(normal_modules.declarations[manifest.modules[1]])
+                                  .front()];
                 fixed_points.signedness[new_fixed_points_row] = false;
                 fixed_points.total_bits[new_fixed_points_row] = 8;
                 fixed_points.fractional_bits[new_fixed_points_row] = 0;
@@ -2745,8 +2621,7 @@ TEST(Validation, ValidatesOptionalPresenceBitSourceAndSharedNames) {
             auto rows_1{std::vector(original_items.begin(), original_items.end())};
             rows_1.front() = [&] {
                 auto row_0{optional_presence_bits.clone(rows_1.front())};
-                optional_presence_bits.source[optional_presence_bits.index(row_0)] =
-                    make_test_type_ref(context, "std::uint32_t");
+                optional_presence_bits.source[row_0] = make_test_type_ref(context, "std::uint32_t");
                 return row_0;
             }();
             return declarations.range(rows_1);
@@ -2768,11 +2643,9 @@ TEST(Validation, ValidatesOptionalPresenceBitSourceAndSharedNames) {
                 auto const new_optional_sentinels_row{
                     optional_sentinels.index(new_optional_sentinels)};
                 optional_sentinels.name[new_optional_sentinels_row] =
-                    optional_presence_bits.name[optional_presence_bits.index(
-                        declarations
-                            .items(normal_modules
-                                       .declarations[normal_modules.index(manifest.modules[1])])
-                            .front())];
+                    optional_presence_bits
+                        .name[declarations.items(normal_modules.declarations[manifest.modules[1]])
+                                  .front()];
                 optional_sentinels.source[new_optional_sentinels_row] =
                     make_test_type_ref(context, "DamageReason");
                 optional_sentinels.sentinel[new_optional_sentinels_row] = strings.intern("Invalid");
@@ -2793,27 +2666,24 @@ TEST(Validation, RejectsInvalidEnumModuleConfiguration) {
     auto& enums{declarations.enums};
     auto& strings{context.storage.strings};
     auto module{valid_enum_module(context)};
-    auto settings_row{
-        module_settings_store.index(normal_modules.settings[normal_modules.index(module)])};
+    auto settings_row{module_settings_store.index(normal_modules.settings[module])};
     module_settings_store.namespace_name[settings_row] = strings.intern("project");
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_enum_module(context);
-    settings_row =
-        module_settings_store.index(normal_modules.settings[normal_modules.index(module)]);
+    settings_row = module_settings_store.index(normal_modules.settings[module]);
     module_settings_store.source[settings_row].reset();
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_enum_module(context);
-    normal_modules.enum_helper_namespace[normal_modules.index(module)] = strings.intern("bad-name");
+    normal_modules.enum_helper_namespace[module] = strings.intern("bad-name");
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_enum_module(context);
-    auto enum_row{enums.index(
-        declarations.items(normal_modules.declarations[normal_modules.index(module)]).front())};
+    auto enum_row{enums.index(declarations.items(normal_modules.declarations[module]).front())};
     auto const original_conversions{declarations.items(enums.conversions[enum_row])};
     auto conversions{std::vector(original_conversions.begin(), original_conversions.end())};
     conversions.push_back(EnumConversion::string_view);
@@ -2822,11 +2692,10 @@ TEST(Validation, RejectsInvalidEnumModuleConfiguration) {
                  std::invalid_argument);
 
     module = valid_enum_module(context);
-    enum_row = enums.index(
-        declarations.items(normal_modules.declarations[normal_modules.index(module)]).front());
+    enum_row = enums.index(declarations.items(normal_modules.declarations[module]).front());
     enums.reflection[enum_row] = EnumReflection::none;
     auto const first_value{declarations.items(enums.values[enum_row]).front()};
-    declarations.enumerators.hidden[declarations.enumerators.index(first_value)] = true;
+    declarations.enumerators.hidden[first_value] = true;
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 }
@@ -2844,20 +2713,18 @@ TEST(Validation, RejectsUnsupportedNativeEnumCombinations) {
                                 std::vector{NativeEnumHelper::try_parse_serialized}}) {
         auto invalid{valid_native_enum_module(context)};
 
-        normal_modules.declarations[normal_modules.index(invalid)] = [&] {
-            auto const original_items{
-                declarations.items(normal_modules.declarations[normal_modules.index(invalid)])};
+        normal_modules.declarations[invalid] = [&] {
+            auto const original_items{declarations.items(normal_modules.declarations[invalid])};
             auto rows_1{std::vector(original_items.begin(), original_items.end())};
             rows_1.front() = [&] {
                 auto row_0{enums.clone(rows_1.front())};
-                enums.helpers[enums.index(row_0)] = declarations.range<NativeEnumHelper>(helpers);
+                enums.helpers[row_0] = declarations.range<NativeEnumHelper>(helpers);
                 return row_0;
             }();
             return declarations.range(rows_1);
         }();
-        normal_modules.declarations[normal_modules.index(invalid)] = [&] {
-            auto const original_items{
-                declarations.items(normal_modules.declarations[normal_modules.index(invalid)])};
+        normal_modules.declarations[invalid] = [&] {
+            auto const original_items{declarations.items(normal_modules.declarations[invalid])};
             auto rows_3{std::vector(original_items.begin(), original_items.end())};
             rows_3.front() = [&] {
                 auto row_2{enums.clone(rows_3.front())};
@@ -2867,9 +2734,7 @@ TEST(Validation, RejectsUnsupportedNativeEnumCombinations) {
                     auto rows_1{std::vector(original_items.begin(), original_items.end())};
                     rows_1.front() = [&] {
                         auto row_0{declarations.enumerators.clone(rows_1.front())};
-                        declarations.enumerators
-                            .serialized_name[declarations.enumerators.index(row_0)]
-                            .reset();
+                        declarations.enumerators.serialized_name[row_0].reset();
                         return row_0;
                     }();
                     return declarations.range(rows_1);
@@ -2882,13 +2747,12 @@ TEST(Validation, RejectsUnsupportedNativeEnumCombinations) {
                      std::invalid_argument);
     }
     auto unreal{valid_enum_module(context)};
-    normal_modules.declarations[normal_modules.index(unreal)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(unreal)])};
+    normal_modules.declarations[unreal] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[unreal])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{enums.clone(rows_1.front())};
-            enums.helpers[enums.index(row_0)] =
+            enums.helpers[row_0] =
                 declarations.range<lispb::codegen::NativeEnumHelper>({NativeEnumHelper::traits});
             return row_0;
         }();
@@ -2898,28 +2762,23 @@ TEST(Validation, RejectsUnsupportedNativeEnumCombinations) {
                  std::invalid_argument);
 
     auto module{valid_native_enum_module(context)};
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows{std::vector(original_items.begin(), original_items.end())};
         rows.push_back(
-            declarations
-                .items(
-                    normal_modules.declarations[normal_modules.index(valid_enum_module(context))])
-                .front());
+            declarations.items(normal_modules.declarations[valid_enum_module(context)]).front());
         return declarations.range(rows);
     }();
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_native_enum_module(context);
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{enums.clone(rows_1.front())};
-            enums.reflection[enums.index(row_0)] = EnumReflection::uenum;
+            enums.reflection[row_0] = EnumReflection::uenum;
             return row_0;
         }();
         return declarations.range(rows_1);
@@ -2928,13 +2787,12 @@ TEST(Validation, RejectsUnsupportedNativeEnumCombinations) {
                  std::invalid_argument);
 
     module = valid_native_enum_module(context);
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{enums.clone(rows_1.front())};
-            enums.enum_array[enums.index(row_0)] = true;
+            enums.enum_array[row_0] = true;
             return row_0;
         }();
         return declarations.range(rows_1);
@@ -2942,13 +2800,12 @@ TEST(Validation, RejectsUnsupportedNativeEnumCombinations) {
     EXPECT_NO_THROW(lower_test_manifest(context, manifest_with(context, module)));
 
     module = valid_native_enum_module(context);
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{enums.clone(rows_1.front())};
-            enums.conversions[enums.index(row_0)] =
+            enums.conversions[row_0] =
                 declarations.range<lispb::codegen::EnumConversion>({EnumConversion::string_view});
             return row_0;
         }();
@@ -2958,13 +2815,12 @@ TEST(Validation, RejectsUnsupportedNativeEnumCombinations) {
                  std::invalid_argument);
 
     module = valid_native_enum_module(context);
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{enums.clone(rows_1.front())};
-            enums.export_specifier[enums.index(row_0)] = strings.intern("PROJECT_API");
+            enums.export_specifier[row_0] = strings.intern("PROJECT_API");
             return row_0;
         }();
         return declarations.range(rows_1);
@@ -2973,13 +2829,12 @@ TEST(Validation, RejectsUnsupportedNativeEnumCombinations) {
                  std::invalid_argument);
 
     module = valid_native_enum_module(context);
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{enums.clone(rows_1.front())};
-            enums.unreal_projection[enums.index(row_0)] = [&] {
+            enums.unreal_projection[row_0] = [&] {
                 auto const new_enum_unreal_projections{enum_unreal_projections.append()};
                 auto const new_enum_unreal_projections_row{
                     enum_unreal_projections.index(new_enum_unreal_projections)};
@@ -2991,8 +2846,8 @@ TEST(Validation, RejectsUnsupportedNativeEnumCombinations) {
                     strings.intern("Project/NativeMode.h");
                 enum_unreal_projections.conversion_header[new_enum_unreal_projections_row] =
                     strings.intern("Project/NativeModeConversion.h");
-                enum_unreal_projections.native_header_include[enum_unreal_projections.index(
-                    new_enum_unreal_projections)] = strings.intern("project/NativeEnums.h");
+                enum_unreal_projections.native_header_include[new_enum_unreal_projections] =
+                    strings.intern("project/NativeEnums.h");
                 enum_unreal_projections.reflection[new_enum_unreal_projections_row] =
                     EnumReflection::none;
                 return new_enum_unreal_projections;
@@ -3005,13 +2860,12 @@ TEST(Validation, RejectsUnsupportedNativeEnumCombinations) {
                  std::invalid_argument);
 
     module = valid_enum_module(context);
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{enums.clone(rows_1.front())};
-            enums.unreal_projection[enums.index(row_0)] = [&] {
+            enums.unreal_projection[row_0] = [&] {
                 auto const new_enum_unreal_projections{enum_unreal_projections.append()};
                 auto const new_enum_unreal_projections_row{
                     enum_unreal_projections.index(new_enum_unreal_projections)};
@@ -3023,8 +2877,8 @@ TEST(Validation, RejectsUnsupportedNativeEnumCombinations) {
                     strings.intern("Project/NativeMode.h");
                 enum_unreal_projections.conversion_header[new_enum_unreal_projections_row] =
                     strings.intern("Project/NativeModeConversion.h");
-                enum_unreal_projections.native_header_include[enum_unreal_projections.index(
-                    new_enum_unreal_projections)] = strings.intern("project/NativeEnums.h");
+                enum_unreal_projections.native_header_include[new_enum_unreal_projections] =
+                    strings.intern("project/NativeEnums.h");
                 return new_enum_unreal_projections;
             }();
             return row_0;
@@ -3043,9 +2897,8 @@ TEST(Validation, RejectsIncompleteOrAmbiguousSerializedEnumNames) {
     auto& enumerators{declarations.enumerators};
     auto& strings{context.storage.strings};
     auto module{valid_enum_module(context)};
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{enums.clone(rows_1.front())};
@@ -3064,9 +2917,8 @@ TEST(Validation, RejectsIncompleteOrAmbiguousSerializedEnumNames) {
                  std::invalid_argument);
 
     module = valid_enum_module(context);
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_3{std::vector(original_items.begin(), original_items.end())};
         rows_3.front() = [&] {
             auto row_2{enums.clone(rows_3.front())};
@@ -3076,7 +2928,7 @@ TEST(Validation, RejectsIncompleteOrAmbiguousSerializedEnumNames) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1.front() = [&] {
                     auto row_0{enumerators.clone(rows_1.front())};
-                    enumerators.serialized_name[enumerators.index(row_0)] = strings.intern("value");
+                    enumerators.serialized_name[row_0] = strings.intern("value");
                     return row_0;
                 }();
                 return declarations.range(rows_1);
@@ -3085,9 +2937,8 @@ TEST(Validation, RejectsIncompleteOrAmbiguousSerializedEnumNames) {
         }();
         return declarations.range(rows_3);
     }();
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{enums.clone(rows_1.front())};
@@ -3111,9 +2962,8 @@ TEST(Validation, RejectsIncompleteOrAmbiguousSerializedEnumNames) {
         }();
         return declarations.range(rows_1);
     }();
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{enums.clone(rows_1.front())};
@@ -3140,20 +2990,18 @@ TEST(Validation, RejectsInvalidEnumArrayDefinitions) {
     auto& enumerators{declarations.enumerators};
     auto& strings{context.storage.strings};
     auto module{valid_enum_module(context)};
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{enums.clone(rows_1.front())};
-            enums.enum_array[enums.index(row_0)] = true;
+            enums.enum_array[row_0] = true;
             return row_0;
         }();
         return declarations.range(rows_1);
     }();
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_3{std::vector(original_items.begin(), original_items.end())};
         rows_3.front() = [&] {
             auto row_2{enums.clone(rows_3.front())};
@@ -3163,7 +3011,7 @@ TEST(Validation, RejectsInvalidEnumArrayDefinitions) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1.front() = [&] {
                     auto row_0{enumerators.clone(rows_1.front())};
-                    enumerators.initializer[enumerators.index(row_0)] = strings.intern("0");
+                    enumerators.initializer[row_0] = strings.intern("0");
                     return row_0;
                 }();
                 return declarations.range(rows_1);
@@ -3178,24 +3026,22 @@ TEST(Validation, RejectsInvalidEnumArrayDefinitions) {
         SCOPED_TRACE(code);
         module = valid_enum_module(context);
 
-        normal_modules.declarations[normal_modules.index(module)] = [&] {
-            auto const original_items{
-                declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+        normal_modules.declarations[module] = [&] {
+            auto const original_items{declarations.items(normal_modules.declarations[module])};
             auto rows_1{std::vector(original_items.begin(), original_items.end())};
             rows_1.front() = [&] {
                 auto row_0{enums.clone(rows_1.front())};
-                enums.enum_array[enums.index(row_0)] = true;
+                enums.enum_array[row_0] = true;
                 return row_0;
             }();
             return declarations.range(rows_1);
         }();
-        normal_modules.declarations[normal_modules.index(module)] = [&] {
-            auto const original_items{
-                declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+        normal_modules.declarations[module] = [&] {
+            auto const original_items{declarations.items(normal_modules.declarations[module])};
             auto rows_1{std::vector(original_items.begin(), original_items.end())};
             rows_1.front() = [&] {
                 auto row_0{enums.clone(rows_1.front())};
-                enums.values[enums.index(row_0)] = declarations.range<lispb::codegen::EnumeratorId>(
+                enums.values[row_0] = declarations.range<lispb::codegen::EnumeratorId>(
                     {[&] {
                          auto const new_enumerators{enumerators.append()};
                          auto const new_enumerators_row{enumerators.index(new_enumerators)};
@@ -3220,24 +3066,22 @@ TEST(Validation, RejectsInvalidEnumArrayDefinitions) {
 
     module = valid_native_enum_module(context);
 
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{enums.clone(rows_1.front())};
-            enums.enum_array[enums.index(row_0)] = true;
+            enums.enum_array[row_0] = true;
             return row_0;
         }();
         return declarations.range(rows_1);
     }();
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{enums.clone(rows_1.front())};
-            enums.values[enums.index(row_0)] = declarations.range<lispb::codegen::EnumeratorId>(
+            enums.values[row_0] = declarations.range<lispb::codegen::EnumeratorId>(
                 {[&] {
                      auto const new_enumerators{enumerators.append()};
                      auto const new_enumerators_row{enumerators.index(new_enumerators)};
@@ -3259,20 +3103,18 @@ TEST(Validation, RejectsInvalidEnumArrayDefinitions) {
     EXPECT_NO_THROW(lower_test_manifest(context, manifest_with(context, module)));
 
     module = valid_enum_module(context);
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{enums.clone(rows_1.front())};
-            enums.enum_array[enums.index(row_0)] = true;
+            enums.enum_array[row_0] = true;
             return row_0;
         }();
         return declarations.range(rows_1);
     }();
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_3{std::vector(original_items.begin(), original_items.end())};
         rows_3.front() = [&] {
             auto row_2{enums.clone(rows_3.front())};
@@ -3282,7 +3124,7 @@ TEST(Validation, RejectsInvalidEnumArrayDefinitions) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1.front() = [&] {
                     auto row_0{enumerators.clone(rows_1.front())};
-                    enumerators.hidden[enumerators.index(row_0)] = true;
+                    enumerators.hidden[row_0] = true;
                     return row_0;
                 }();
                 return declarations.range(rows_1);
@@ -3295,13 +3137,12 @@ TEST(Validation, RejectsInvalidEnumArrayDefinitions) {
                  std::invalid_argument);
 
     module = valid_enum_module(context);
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{enums.clone(rows_1.front())};
-            enums.count[enums.index(row_0)] = strings.intern("Value");
+            enums.count[row_0] = strings.intern("Value");
             return row_0;
         }();
         return declarations.range(rows_1);
@@ -3310,24 +3151,22 @@ TEST(Validation, RejectsInvalidEnumArrayDefinitions) {
                  std::invalid_argument);
 
     module = valid_enum_module(context);
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{enums.clone(rows_1.front())};
-            enums.enum_array[enums.index(row_0)] = true;
+            enums.enum_array[row_0] = true;
             return row_0;
         }();
         return declarations.range(rows_1);
     }();
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{enums.clone(rows_1.front())};
-            enums.count[enums.index(row_0)] = strings.intern("Missing");
+            enums.count[row_0] = strings.intern("Missing");
             return row_0;
         }();
         return declarations.range(rows_1);
@@ -3336,20 +3175,18 @@ TEST(Validation, RejectsInvalidEnumArrayDefinitions) {
                  std::invalid_argument);
 
     module = valid_enum_module(context);
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{enums.clone(rows_1.front())};
-            enums.enum_array[enums.index(row_0)] = true;
+            enums.enum_array[row_0] = true;
             return row_0;
         }();
         return declarations.range(rows_1);
     }();
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{enums.clone(rows_1.front())};
@@ -3372,9 +3209,8 @@ TEST(Validation, RejectsInvalidEnumArrayDefinitions) {
         }();
         return declarations.range(rows_1);
     }();
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{enums.clone(rows_1.front())};
@@ -3384,7 +3220,7 @@ TEST(Validation, RejectsInvalidEnumArrayDefinitions) {
                 auto rows{std::vector(original_items.begin(), original_items.end())};
                 rows.push_back([&] {
                     auto const new_enumerators{enumerators.append()};
-                    enumerators.name[enumerators.index(new_enumerators)] = strings.intern("After");
+                    enumerators.name[new_enumerators] = strings.intern("After");
                     return new_enumerators;
                 }());
                 return declarations.range(rows);
@@ -3393,13 +3229,12 @@ TEST(Validation, RejectsInvalidEnumArrayDefinitions) {
         }();
         return declarations.range(rows_1);
     }();
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{enums.clone(rows_1.front())};
-            enums.count[enums.index(row_0)] = strings.intern("COUNT");
+            enums.count[row_0] = strings.intern("COUNT");
             return row_0;
         }();
         return declarations.range(rows_1);
@@ -3408,20 +3243,18 @@ TEST(Validation, RejectsInvalidEnumArrayDefinitions) {
                  std::invalid_argument);
 
     module = valid_enum_module(context);
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{enums.clone(rows_1.front())};
-            enums.enum_array[enums.index(row_0)] = true;
+            enums.enum_array[row_0] = true;
             return row_0;
         }();
         return declarations.range(rows_1);
     }();
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{enums.clone(rows_1.front())};
@@ -3431,7 +3264,7 @@ TEST(Validation, RejectsInvalidEnumArrayDefinitions) {
                 auto rows{std::vector(original_items.begin(), original_items.end())};
                 rows.push_back([&] {
                     auto const new_enumerators{enumerators.append()};
-                    enumerators.name[enumerators.index(new_enumerators)] = strings.intern("COUNT");
+                    enumerators.name[new_enumerators] = strings.intern("COUNT");
                     return new_enumerators;
                 }());
                 return declarations.range(rows);
@@ -3440,13 +3273,12 @@ TEST(Validation, RejectsInvalidEnumArrayDefinitions) {
         }();
         return declarations.range(rows_1);
     }();
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{enums.clone(rows_1.front())};
-            enums.count[enums.index(row_0)] = strings.intern("COUNT");
+            enums.count[row_0] = strings.intern("COUNT");
             return row_0;
         }();
         return declarations.range(rows_1);
@@ -3455,44 +3287,40 @@ TEST(Validation, RejectsInvalidEnumArrayDefinitions) {
                  std::invalid_argument);
 
     module = valid_enum_module(context);
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{enums.clone(rows_1.front())};
-            enums.enum_array[enums.index(row_0)] = true;
+            enums.enum_array[row_0] = true;
             return row_0;
         }();
         return declarations.range(rows_1);
     }();
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{enums.clone(rows_1.front())};
-            enums.values[enums.index(row_0)] =
-                declarations.range<lispb::codegen::EnumeratorId>({[&] {
-                    auto const new_enumerators{enumerators.append()};
-                    auto const new_enumerators_row{enumerators.index(new_enumerators)};
-                    enumerators.name[new_enumerators_row] = strings.intern("COUNT");
-                    enumerators.initializer[new_enumerators_row] = std::nullopt;
-                    enumerators.display_name[new_enumerators_row] = std::nullopt;
-                    enumerators.hidden[new_enumerators_row] = true;
-                    return new_enumerators;
-                }()});
+            enums.values[row_0] = declarations.range<lispb::codegen::EnumeratorId>({[&] {
+                auto const new_enumerators{enumerators.append()};
+                auto const new_enumerators_row{enumerators.index(new_enumerators)};
+                enumerators.name[new_enumerators_row] = strings.intern("COUNT");
+                enumerators.initializer[new_enumerators_row] = std::nullopt;
+                enumerators.display_name[new_enumerators_row] = std::nullopt;
+                enumerators.hidden[new_enumerators_row] = true;
+                return new_enumerators;
+            }()});
             return row_0;
         }();
         return declarations.range(rows_1);
     }();
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{enums.clone(rows_1.front())};
-            enums.count[enums.index(row_0)] = strings.intern("COUNT");
+            enums.count[row_0] = strings.intern("COUNT");
             return row_0;
         }();
         return declarations.range(rows_1);
@@ -3510,24 +3338,22 @@ TEST(Validation, SupportsSignedEnumValuesWhenTheyFitTheUnderlyingType) {
     auto& strings{context.storage.strings};
     auto module{valid_native_enum_module(context)};
 
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{enums.clone(rows_1.front())};
-            enums.underlying_type[enums.index(row_0)] = make_test_type_ref(context, "@native_int8");
+            enums.underlying_type[row_0] = make_test_type_ref(context, "@native_int8");
             return row_0;
         }();
         return declarations.range(rows_1);
     }();
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{enums.clone(rows_1.front())};
-            enums.values[enums.index(row_0)] = declarations.range<lispb::codegen::EnumeratorId>(
+            enums.values[row_0] = declarations.range<lispb::codegen::EnumeratorId>(
                 {[&] {
                      auto const new_enumerators{enumerators.append()};
                      auto const new_enumerators_row{enumerators.index(new_enumerators)};
@@ -3546,13 +3372,12 @@ TEST(Validation, SupportsSignedEnumValuesWhenTheyFitTheUnderlyingType) {
         }();
         return declarations.range(rows_1);
     }();
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{enums.clone(rows_1.front())};
-            enums.count[enums.index(row_0)].reset();
+            enums.count[row_0].reset();
             return row_0;
         }();
         return declarations.range(rows_1);
@@ -3566,9 +3391,8 @@ TEST(Validation, SupportsSignedEnumValuesWhenTheyFitTheUnderlyingType) {
     EXPECT_NO_THROW(
         static_cast<void>(lower_test_manifest(context, manifest_with(context, module, types))));
 
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_3{std::vector(original_items.begin(), original_items.end())};
         rows_3.front() = [&] {
             auto row_2{enums.clone(rows_3.front())};
@@ -3578,7 +3402,7 @@ TEST(Validation, SupportsSignedEnumValuesWhenTheyFitTheUnderlyingType) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1.back() = [&] {
                     auto row_0{enumerators.clone(rows_1.back())};
-                    enumerators.initializer[enumerators.index(row_0)] = strings.intern("128");
+                    enumerators.initializer[row_0] = strings.intern("128");
                     return row_0;
                 }();
                 return declarations.range(rows_1);
@@ -3601,9 +3425,8 @@ TEST(Validation, RequiresKnownSemanticFactsWhenEnumBackingIsDerived) {
     auto& strings{context.storage.strings};
     auto module{valid_native_enum_module(context)};
 
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{enums.clone(rows_1.front())};
@@ -3613,7 +3436,7 @@ TEST(Validation, RequiresKnownSemanticFactsWhenEnumBackingIsDerived) {
                 auto rows{std::vector(original_items.begin(), original_items.end())};
                 rows.push_back([&] {
                     auto const new_enumerators{enumerators.append()};
-                    enumerators.name[enumerators.index(new_enumerators)] = strings.intern("Active");
+                    enumerators.name[new_enumerators] = strings.intern("Active");
                     return new_enumerators;
                 }());
                 return declarations.range(rows);
@@ -3622,35 +3445,32 @@ TEST(Validation, RequiresKnownSemanticFactsWhenEnumBackingIsDerived) {
         }();
         return declarations.range(rows_1);
     }();
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{enums.clone(rows_1.front())};
-            enums.underlying_type[enums.index(row_0)].reset();
+            enums.underlying_type[row_0].reset();
             return row_0;
         }();
         return declarations.range(rows_1);
     }();
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{enums.clone(rows_1.front())};
-            enums.bit_width[enums.index(row_0)] = 12;
+            enums.bit_width[row_0] = 12;
             return row_0;
         }();
         return declarations.range(rows_1);
     }();
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{enums.clone(rows_1.front())};
-            enums.signedness[enums.index(row_0)] = schema::EnumSignedness::unsigned_;
+            enums.signedness[row_0] = schema::EnumSignedness::unsigned_;
             return row_0;
         }();
         return declarations.range(rows_1);
@@ -3659,9 +3479,8 @@ TEST(Validation, RequiresKnownSemanticFactsWhenEnumBackingIsDerived) {
     EXPECT_NO_THROW(
         static_cast<void>(lower_test_manifest(context, manifest_with(context, module))));
 
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_3{std::vector(original_items.begin(), original_items.end())};
         rows_3.front() = [&] {
             auto row_2{enums.clone(rows_3.front())};
@@ -3671,8 +3490,7 @@ TEST(Validation, RequiresKnownSemanticFactsWhenEnumBackingIsDerived) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1.front() = [&] {
                     auto row_0{enumerators.clone(rows_1.front())};
-                    enumerators.initializer[enumerators.index(row_0)] =
-                        strings.intern("calculate_state()");
+                    enumerators.initializer[row_0] = strings.intern("calculate_state()");
                     return row_0;
                 }();
                 return declarations.range(rows_1);
@@ -3681,9 +3499,8 @@ TEST(Validation, RequiresKnownSemanticFactsWhenEnumBackingIsDerived) {
         }();
         return declarations.range(rows_3);
     }();
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_3{std::vector(original_items.begin(), original_items.end())};
         rows_3.front() = [&] {
             auto row_2{enums.clone(rows_3.front())};
@@ -3693,7 +3510,7 @@ TEST(Validation, RequiresKnownSemanticFactsWhenEnumBackingIsDerived) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1.back() = [&] {
                     auto row_0{enumerators.clone(rows_1.back())};
-                    enumerators.initializer[enumerators.index(row_0)].reset();
+                    enumerators.initializer[row_0].reset();
                     return row_0;
                 }();
                 return declarations.range(rows_1);
@@ -3702,24 +3519,22 @@ TEST(Validation, RequiresKnownSemanticFactsWhenEnumBackingIsDerived) {
         }();
         return declarations.range(rows_3);
     }();
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{enums.clone(rows_1.front())};
-            enums.bit_width[enums.index(row_0)].reset();
+            enums.bit_width[row_0].reset();
             return row_0;
         }();
         return declarations.range(rows_1);
     }();
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{enums.clone(rows_1.front())};
-            enums.signedness[enums.index(row_0)] = schema::EnumSignedness::unspecified;
+            enums.signedness[row_0] = schema::EnumSignedness::unspecified;
             return row_0;
         }();
         return declarations.range(rows_1);
@@ -3734,27 +3549,25 @@ TEST(Validation, RejectsInvalidStaticTableModuleConfiguration) {
     auto& normal_modules{declarations.normal_modules};
     auto& static_tables{declarations.static_tables};
     auto module{valid_static_table_module(context)};
-    normal_modules.declarations[normal_modules.index(module)] = {};
+    normal_modules.declarations[module] = {};
     EXPECT_NO_THROW(lower_test_manifest(context, manifest_with(context, module)));
 
     module = valid_static_table_module(context);
-    normal_modules.settings[normal_modules.index(module)] = [&] {
-        auto row_0{declarations.module_settings_store.clone(
-            normal_modules.settings[normal_modules.index(module)])};
-        declarations.module_settings_store.source[declarations.module_settings_store.index(row_0)] =
+    normal_modules.settings[module] = [&] {
+        auto row_0{declarations.module_settings_store.clone(normal_modules.settings[module])};
+        declarations.module_settings_store.source[row_0] =
             context.storage.strings.intern("Tables.cpp");
         return row_0;
     }();
     EXPECT_NO_THROW(lower_test_manifest(context, manifest_with(context, module)));
 
     module = valid_static_table_module(context);
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{static_tables.clone(rows_1.front())};
-            static_tables.rows[static_tables.index(row_0)] = {};
+            static_tables.rows[row_0] = {};
             return row_0;
         }();
         return declarations.range(rows_1);
@@ -3763,13 +3576,12 @@ TEST(Validation, RejectsInvalidStaticTableModuleConfiguration) {
                  std::invalid_argument);
 
     module = valid_static_table_module(context);
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{static_tables.clone(rows_1.front())};
-            static_tables.columns[static_tables.index(row_0)] = {};
+            static_tables.columns[row_0] = {};
             return row_0;
         }();
         return declarations.range(rows_1);
@@ -3812,8 +3624,7 @@ TEST(Validation, RejectsInvalidStaticTableNamesAndTypes) {
                 auto rows{std::vector(original_items.begin(), original_items.end())};
                 rows.push_back([&] {
                     auto const new_static_table_rows{static_table_rows.append()};
-                    static_table_rows.name[static_table_rows.index(new_static_table_rows)] =
-                        strings.intern("first");
+                    static_table_rows.name[new_static_table_rows] = strings.intern("first");
                     return new_static_table_rows;
                 }());
                 return declarations.range(rows);
@@ -3838,8 +3649,7 @@ TEST(Validation, RejectsInvalidStaticTableNamesAndTypes) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1.front() = [&] {
                     auto row_0{static_table_rows.clone(rows_1.front())};
-                    static_table_rows.name[static_table_rows.index(row_0)] =
-                        strings.intern("bad-name");
+                    static_table_rows.name[row_0] = strings.intern("bad-name");
                     return row_0;
                 }();
                 return declarations.range(rows_1);
@@ -3864,11 +3674,12 @@ TEST(Validation, RejectsInvalidStaticTableNamesAndTypes) {
                 auto rows{std::vector(original_items.begin(), original_items.end())};
                 rows.push_back(
                     declarations
-                        .items(static_tables.columns[static_tables.index(
-                            declarations
-                                .items(normal_modules_schemas
-                                           .declarations[declarations.normal_modules.index(module)])
-                                .front())])
+                        .items(
+                            static_tables
+                                .columns[declarations
+                                             .items(normal_modules_schemas.declarations
+                                                        [declarations.normal_modules.index(module)])
+                                             .front()])
                         .front());
                 return declarations.range(rows);
             }();
@@ -3892,8 +3703,7 @@ TEST(Validation, RejectsInvalidStaticTableNamesAndTypes) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1.front() = [&] {
                     auto row_0{declarations.static_table_columns.clone(rows_1.front())};
-                    declarations.static_table_columns
-                        .type[declarations.static_table_columns.index(row_0)] =
+                    declarations.static_table_columns.type[row_0] =
                         make_test_type_ref(context, "@missing");
                     return row_0;
                 }();
@@ -3916,9 +3726,8 @@ TEST(Validation, RejectsStaticTableColumnsCollidingWithGeneratedApis) {
          {"FValues", "num_rows", "num", "apply_arrays", "apply_array_pairs", "first_index"}) {
         SCOPED_TRACE(name);
         auto module{valid_static_table_module(context)};
-        normal_modules.declarations[normal_modules.index(module)] = [&] {
-            auto const original_items{
-                declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+        normal_modules.declarations[module] = [&] {
+            auto const original_items{declarations.items(normal_modules.declarations[module])};
             auto rows_3{std::vector(original_items.begin(), original_items.end())};
             rows_3.front() = [&] {
                 auto row_2{static_tables.clone(rows_3.front())};
@@ -3928,8 +3737,7 @@ TEST(Validation, RejectsStaticTableColumnsCollidingWithGeneratedApis) {
                     auto rows_1{std::vector(original_items.begin(), original_items.end())};
                     rows_1.front() = [&] {
                         auto row_0{declarations.static_table_columns.clone(rows_1.front())};
-                        declarations.static_table_columns
-                            .name[declarations.static_table_columns.index(row_0)] =
+                        declarations.static_table_columns.name[row_0] =
                             context.storage.strings.intern(name);
                         return row_0;
                     }();
@@ -3959,7 +3767,7 @@ TEST(Validation, RejectsInvalidStaticTableGroups) {
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{static_tables.clone(rows_1.front())};
-            static_tables.groups[static_tables.index(row_0)] =
+            static_tables.groups[row_0] =
                 declarations.range<lispb::codegen::StaticTableGroupId>({[&] {
                     auto const new_static_table_groups{static_table_groups.append()};
                     auto const new_static_table_groups_row{
@@ -3989,11 +3797,13 @@ TEST(Validation, RejectsInvalidStaticTableGroups) {
                 auto rows{std::vector(original_items.begin(), original_items.end())};
                 rows.push_back(
                     declarations
-                        .items(static_tables.groups[static_tables.index(
-                            declarations
-                                .items(normal_modules_schemas.declarations
-                                           [declarations.normal_modules.index(duplicate_group)])
-                                .front())])
+                        .items(
+                            static_tables
+                                .groups[declarations
+                                            .items(normal_modules_schemas
+                                                       .declarations[declarations.normal_modules
+                                                                         .index(duplicate_group)])
+                                            .front()])
                         .front());
                 return declarations.range(rows);
             }();
@@ -4017,8 +3827,7 @@ TEST(Validation, RejectsInvalidStaticTableGroups) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1.front() = [&] {
                     auto row_0{static_table_groups.clone(rows_1.front())};
-                    static_table_groups.name[static_table_groups.index(row_0)] =
-                        strings.intern("bad-name");
+                    static_table_groups.name[row_0] = strings.intern("bad-name");
                     return row_0;
                 }();
                 return declarations.range(rows_1);
@@ -4043,8 +3852,7 @@ TEST(Validation, RejectsInvalidStaticTableGroups) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1.front() = [&] {
                     auto row_0{static_table_groups.clone(rows_1.front())};
-                    static_table_groups.type[static_table_groups.index(row_0)] =
-                        make_test_type_ref(context, "@missing");
+                    static_table_groups.type[row_0] = make_test_type_ref(context, "@missing");
                     return row_0;
                 }();
                 return declarations.range(rows_1);
@@ -4069,7 +3877,7 @@ TEST(Validation, RejectsInvalidStaticTableGroups) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1.front() = [&] {
                     auto row_0{static_table_groups.clone(rows_1.front())};
-                    static_table_groups.columns[static_table_groups.index(row_0)] = {};
+                    static_table_groups.columns[row_0] = {};
                     return row_0;
                 }();
                 return declarations.range(rows_1);
@@ -4094,7 +3902,7 @@ TEST(Validation, RejectsInvalidStaticTableGroups) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1.front() = [&] {
                     auto row_0{static_table_groups.clone(rows_1.front())};
-                    static_table_groups.columns[static_table_groups.index(row_0)] =
+                    static_table_groups.columns[row_0] =
                         declarations.range<lispb::StringId>({strings.intern("missing")});
                     return row_0;
                 }();
@@ -4120,9 +3928,8 @@ TEST(Validation, RejectsInvalidStaticTableGroups) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1.front() = [&] {
                     auto row_0{static_table_groups.clone(rows_1.front())};
-                    static_table_groups.columns[static_table_groups.index(row_0)] =
-                        declarations.range<lispb::StringId>(
-                            {strings.intern("ids"), strings.intern("ids")});
+                    static_table_groups.columns[row_0] = declarations.range<lispb::StringId>(
+                        {strings.intern("ids"), strings.intern("ids")});
                     return row_0;
                 }();
                 return declarations.range(rows_1);
@@ -4145,9 +3952,8 @@ TEST(Validation, RejectsStaticTableGroupGetterCollisions) {
     auto& static_table_groups{declarations.static_table_groups};
     auto& strings{context.storage.strings};
     auto module{valid_static_table_module(context)};
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{static_tables.clone(rows_1.front())};
@@ -4171,13 +3977,12 @@ TEST(Validation, RejectsStaticTableGroupGetterCollisions) {
         }();
         return declarations.range(rows_1);
     }();
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{static_tables.clone(rows_1.front())};
-            static_tables.groups[static_tables.index(row_0)] =
+            static_tables.groups[row_0] =
                 declarations.range<lispb::codegen::StaticTableGroupId>({[&] {
                     auto const new_static_table_groups{static_table_groups.append()};
                     auto const new_static_table_groups_row{
@@ -4204,7 +4009,7 @@ TEST(Validation, RejectsEmptyModuleOutputs) {
     auto& normal_modules{declarations.normal_modules};
     auto& settings{declarations.module_settings_store};
     auto const module{valid_soa_module(context)};
-    auto const row{settings.index(normal_modules.settings[normal_modules.index(module)])};
+    auto const row{settings.index(normal_modules.settings[module])};
     settings.header[row] = {};
 
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
@@ -4221,7 +4026,7 @@ TEST(Validation, RejectsEmptyOptionalModuleSettings) {
         auto& normal_modules{declarations.normal_modules};
         auto& settings{declarations.module_settings_store};
         auto const module{valid_soa_module(context)};
-        auto const row{settings.index(normal_modules.settings[normal_modules.index(module)])};
+        auto const row{settings.index(normal_modules.settings[module])};
         (settings.*column)[row] = context.storage.strings.intern("");
 
         EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
@@ -4238,7 +4043,7 @@ TEST(Validation, RejectsDuplicateAndEmptyIncludeOrderPrefixes) {
         auto& normal_modules{declarations.normal_modules};
         auto& settings{declarations.module_settings_store};
         auto const module{valid_soa_module(context)};
-        auto const row{settings.index(normal_modules.settings[normal_modules.index(module)])};
+        auto const row{settings.index(normal_modules.settings[module])};
         std::vector<StringId> values;
         for (auto const prefix : prefixes) {
             values.push_back(context.storage.strings.intern(prefix));
@@ -4256,7 +4061,7 @@ TEST(Validation, RejectsMalformedQualifiedNamespaces) {
     auto& normal_modules{declarations.normal_modules};
     auto& settings{declarations.module_settings_store};
     auto const module{valid_soa_module(context)};
-    auto const row{settings.index(normal_modules.settings[normal_modules.index(module)])};
+    auto const row{settings.index(normal_modules.settings[module])};
     settings.namespace_name[row] = context.storage.strings.intern("project:::invalid");
 
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
@@ -4271,7 +4076,7 @@ TEST(Validation, RejectsDuplicateModuleNames) {
     auto& strings{context.storage.strings};
     auto const first{valid_soa_module(context)};
     auto const second{valid_soa_module(context)};
-    auto const row{settings.index(normal_modules.settings[normal_modules.index(second)])};
+    auto const row{settings.index(normal_modules.settings[second])};
     settings.header[row] = strings.intern("Other.h");
     settings.source[row] = strings.intern("Other.cpp");
     lispb::codegen::Manifest const manifest{
@@ -4305,9 +4110,8 @@ TEST(Validation, RejectsKeywordsAndReservedIdentifiers) {
     for (auto const& invalid : {"class", "__generated", "_Reserved"}) {
         SCOPED_TRACE(invalid);
         auto module{valid_soa_module(context)};
-        normal_modules.declarations[normal_modules.index(module)] = [&] {
-            auto const original_items{
-                declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+        normal_modules.declarations[module] = [&] {
+            auto const original_items{declarations.items(normal_modules.declarations[module])};
             auto rows_3{std::vector(original_items.begin(), original_items.end())};
             rows_3.front() = [&] {
                 auto row_2{soas.clone(rows_3.front())};
@@ -4317,8 +4121,7 @@ TEST(Validation, RejectsKeywordsAndReservedIdentifiers) {
                     auto rows_1{std::vector(original_items.begin(), original_items.end())};
                     rows_1.front() = [&] {
                         auto row_0{declarations.soa_members.clone(rows_1.front())};
-                        declarations.soa_members.name[declarations.soa_members.index(row_0)] =
-                            strings.intern(invalid);
+                        declarations.soa_members.name[row_0] = strings.intern(invalid);
                         return row_0;
                     }();
                     return declarations.range(rows_1);
@@ -4332,11 +4135,9 @@ TEST(Validation, RejectsKeywordsAndReservedIdentifiers) {
     }
 
     auto module{valid_soa_module(context)};
-    normal_modules.settings[normal_modules.index(module)] = [&] {
-        auto row_0{declarations.module_settings_store.clone(
-            normal_modules.settings[normal_modules.index(module)])};
-        declarations.module_settings_store
-            .namespace_name[declarations.module_settings_store.index(row_0)] =
+    normal_modules.settings[module] = [&] {
+        auto row_0{declarations.module_settings_store.clone(normal_modules.settings[module])};
+        declarations.module_settings_store.namespace_name[row_0] =
             strings.intern("project::namespace");
         return row_0;
     }();
@@ -4378,13 +4179,12 @@ TEST(Validation, RejectsEmptySoaNames) {
     auto& declarations{context.storage.declarations};
     auto& normal_modules{declarations.normal_modules};
     auto module{valid_soa_module(context)};
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{declarations.soas.clone(rows_1.front())};
-            declarations.soas.name[declarations.soas.index(row_0)] = {};
+            declarations.soas.name[row_0] = {};
             return row_0;
         }();
         return declarations.range(rows_1);
@@ -4402,9 +4202,8 @@ TEST(Validation, RejectsDuplicateSoaMembers) {
     auto& soa_members{declarations.soa_members};
     auto& strings{context.storage.strings};
     auto module{valid_soa_module(context)};
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{soas.clone(rows_1.front())};
@@ -4437,9 +4236,8 @@ TEST(Validation, RejectsMalformedSoaMemberIdentifiers) {
     auto& normal_modules{declarations.normal_modules};
     auto& soas{declarations.soas};
     auto module{valid_soa_module(context)};
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_3{std::vector(original_items.begin(), original_items.end())};
         rows_3.front() = [&] {
             auto row_2{soas.clone(rows_3.front())};
@@ -4449,7 +4247,7 @@ TEST(Validation, RejectsMalformedSoaMemberIdentifiers) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1.front() = [&] {
                     auto row_0{declarations.soa_members.clone(rows_1.front())};
-                    declarations.soa_members.name[declarations.soa_members.index(row_0)] =
+                    declarations.soa_members.name[row_0] =
                         context.storage.strings.intern("bad-name");
                     return row_0;
                 }();
@@ -4470,13 +4268,12 @@ TEST(Validation, RejectsIncompleteSoaFieldMaskDeclarations) {
     auto& normal_modules{declarations.normal_modules};
     auto& soas{declarations.soas};
     auto module{valid_mask_soa_module(context)};
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{soas.clone(rows_1.front())};
-            soas.field_enum_name[soas.index(row_0)].reset();
+            soas.field_enum_name[row_0].reset();
             return row_0;
         }();
         return declarations.range(rows_1);
@@ -4485,13 +4282,12 @@ TEST(Validation, RejectsIncompleteSoaFieldMaskDeclarations) {
                  std::invalid_argument);
 
     module = valid_mask_soa_module(context);
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{soas.clone(rows_1.front())};
-            soas.field_mask_name[soas.index(row_0)].reset();
+            soas.field_mask_name[row_0].reset();
             return row_0;
         }();
         return declarations.range(rows_1);
@@ -4507,9 +4303,8 @@ TEST(Validation, RejectsInvalidSoaFieldMaskMembers) {
     auto& soas{declarations.soas};
     auto& soa_members{declarations.soa_members};
     auto module{valid_mask_soa_module(context)};
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_3{std::vector(original_items.begin(), original_items.end())};
         rows_3.front() = [&] {
             auto row_2{soas.clone(rows_3.front())};
@@ -4519,8 +4314,7 @@ TEST(Validation, RejectsInvalidSoaFieldMaskMembers) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1.front() = [&] {
                     auto row_0{soa_members.clone(rows_1.front())};
-                    soa_members.type[soa_members.index(row_0)] =
-                        make_test_type_ref(context, "uint8");
+                    soa_members.type[row_0] = make_test_type_ref(context, "uint8");
                     return row_0;
                 }();
                 return declarations.range(rows_1);
@@ -4533,9 +4327,8 @@ TEST(Validation, RejectsInvalidSoaFieldMaskMembers) {
                  std::invalid_argument);
 
     module = valid_mask_soa_module(context);
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_3{std::vector(original_items.begin(), original_items.end())};
         rows_3.front() = [&] {
             auto row_2{soas.clone(rows_3.front())};
@@ -4545,7 +4338,7 @@ TEST(Validation, RejectsInvalidSoaFieldMaskMembers) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1.back() = [&] {
                     auto row_0{soa_members.clone(rows_1.back())};
-                    soa_members.mask_field[soa_members.index(row_0)] = false;
+                    soa_members.mask_field[row_0] = false;
                     return row_0;
                 }();
                 return declarations.range(rows_1);
@@ -4558,9 +4351,8 @@ TEST(Validation, RejectsInvalidSoaFieldMaskMembers) {
                  std::invalid_argument);
 
     module = valid_soa_module(context);
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_3{std::vector(original_items.begin(), original_items.end())};
         rows_3.front() = [&] {
             auto row_2{soas.clone(rows_3.front())};
@@ -4570,7 +4362,7 @@ TEST(Validation, RejectsInvalidSoaFieldMaskMembers) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1.front() = [&] {
                     auto row_0{soa_members.clone(rows_1.front())};
-                    soa_members.mask_field[soa_members.index(row_0)] = true;
+                    soa_members.mask_field[row_0] = true;
                     return row_0;
                 }();
                 return declarations.range(rows_1);
@@ -4593,9 +4385,8 @@ TEST(Validation, RejectsInvalidSoaMaskDimensions) {
     auto& strings{context.storage.strings};
     auto module{valid_mask_soa_module(context)};
 
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_3{std::vector(original_items.begin(), original_items.end())};
         rows_3.front() = [&] {
             auto row_2{soas.clone(rows_3.front())};
@@ -4612,11 +4403,9 @@ TEST(Validation, RejectsInvalidSoaMaskDimensions) {
                         auto rows{std::vector(original_items.begin(), original_items.end())};
                         rows.push_back([&] {
                             auto const new_soa_mask_dimensions{soa_mask_dimensions.append()};
-                            soa_mask_dimensions
-                                .index_name[soa_mask_dimensions.index(new_soa_mask_dimensions)] =
+                            soa_mask_dimensions.index_name[new_soa_mask_dimensions] =
                                 strings.intern("field_index");
-                            soa_mask_dimensions
-                                .extent[soa_mask_dimensions.index(new_soa_mask_dimensions)] =
+                            soa_mask_dimensions.extent[new_soa_mask_dimensions] =
                                 strings.intern("4");
                             return new_soa_mask_dimensions;
                         }());
@@ -4630,9 +4419,8 @@ TEST(Validation, RejectsInvalidSoaMaskDimensions) {
         }();
         return declarations.range(rows_3);
     }();
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_3{std::vector(original_items.begin(), original_items.end())};
         rows_3.front() = [&] {
             auto row_2{soas.clone(rows_3.front())};
@@ -4649,11 +4437,9 @@ TEST(Validation, RejectsInvalidSoaMaskDimensions) {
                         auto rows{std::vector(original_items.begin(), original_items.end())};
                         rows.push_back([&] {
                             auto const new_soa_mask_dimensions{soa_mask_dimensions.append()};
-                            soa_mask_dimensions
-                                .index_name[soa_mask_dimensions.index(new_soa_mask_dimensions)] =
+                            soa_mask_dimensions.index_name[new_soa_mask_dimensions] =
                                 strings.intern("field_index");
-                            soa_mask_dimensions
-                                .extent[soa_mask_dimensions.index(new_soa_mask_dimensions)] =
+                            soa_mask_dimensions.extent[new_soa_mask_dimensions] =
                                 strings.intern("2");
                             return new_soa_mask_dimensions;
                         }());
@@ -4671,9 +4457,8 @@ TEST(Validation, RejectsInvalidSoaMaskDimensions) {
                  std::invalid_argument);
 
     module = valid_mask_soa_module(context);
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_3{std::vector(original_items.begin(), original_items.end())};
         rows_3.front() = [&] {
             auto row_2{soas.clone(rows_3.front())};
@@ -4690,11 +4475,9 @@ TEST(Validation, RejectsInvalidSoaMaskDimensions) {
                         auto rows{std::vector(original_items.begin(), original_items.end())};
                         rows.push_back([&] {
                             auto const new_soa_mask_dimensions{soa_mask_dimensions.append()};
-                            soa_mask_dimensions
-                                .index_name[soa_mask_dimensions.index(new_soa_mask_dimensions)] =
+                            soa_mask_dimensions.index_name[new_soa_mask_dimensions] =
                                 strings.intern("bad-index");
-                            soa_mask_dimensions
-                                .extent[soa_mask_dimensions.index(new_soa_mask_dimensions)] =
+                            soa_mask_dimensions.extent[new_soa_mask_dimensions] =
                                 strings.intern("4");
                             return new_soa_mask_dimensions;
                         }());
@@ -4720,9 +4503,8 @@ TEST(Validation, RejectsMembersCollidingWithGeneratedStorageApis) {
     for (auto const& name : {"num", "reset", "copy_element"}) {
         SCOPED_TRACE(name);
         auto module{valid_soa_module(context)};
-        normal_modules.declarations[normal_modules.index(module)] = [&] {
-            auto const original_items{
-                declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+        normal_modules.declarations[module] = [&] {
+            auto const original_items{declarations.items(normal_modules.declarations[module])};
             auto rows_3{std::vector(original_items.begin(), original_items.end())};
             rows_3.front() = [&] {
                 auto row_2{soas.clone(rows_3.front())};
@@ -4732,8 +4514,7 @@ TEST(Validation, RejectsMembersCollidingWithGeneratedStorageApis) {
                     auto rows_1{std::vector(original_items.begin(), original_items.end())};
                     rows_1.front() = [&] {
                         auto row_0{declarations.soa_members.clone(rows_1.front())};
-                        declarations.soa_members.name[declarations.soa_members.index(row_0)] =
-                            context.storage.strings.intern(name);
+                        declarations.soa_members.name[row_0] = context.storage.strings.intern(name);
                         return row_0;
                     }();
                     return declarations.range(rows_1);
@@ -4753,9 +4534,8 @@ TEST(Validation, RejectsUnknownSoaTypeReferences) {
     auto& normal_modules{declarations.normal_modules};
     auto& soas{declarations.soas};
     auto module{valid_soa_module(context)};
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_3{std::vector(original_items.begin(), original_items.end())};
         rows_3.front() = [&] {
             auto row_2{soas.clone(rows_3.front())};
@@ -4765,8 +4545,7 @@ TEST(Validation, RejectsUnknownSoaTypeReferences) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1.front() = [&] {
                     auto row_0{declarations.soa_members.clone(rows_1.front())};
-                    declarations.soa_members.type[declarations.soa_members.index(row_0)] =
-                        make_test_type_ref(context, "@missing");
+                    declarations.soa_members.type[row_0] = make_test_type_ref(context, "@missing");
                     return row_0;
                 }();
                 return declarations.range(rows_1);
@@ -4785,13 +4564,11 @@ TEST(Validation, RejectsCollidingGeneratedSoaTypeNames) {
     auto& declarations{context.storage.declarations};
     auto& normal_modules{declarations.normal_modules};
     auto module{valid_soa_module(context)};
-    auto second{declarations.soas.clone(
-        declarations.items(normal_modules.declarations[normal_modules.index(module)]).front())};
-    declarations.soas.name[declarations.soas.index(second)] =
-        context.storage.strings.intern("F_Data");
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    auto second{
+        declarations.soas.clone(declarations.items(normal_modules.declarations[module]).front())};
+    declarations.soas.name[second] = context.storage.strings.intern("F_Data");
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows{std::vector(original_items.begin(), original_items.end())};
         rows.push_back(second);
         return declarations.range(rows);
@@ -4806,14 +4583,12 @@ TEST(Validation, RejectsReservedSoaNamespaceNames) {
     auto& declarations{context.storage.declarations};
     auto& normal_modules{declarations.normal_modules};
     auto module{valid_soa_module(context)};
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{declarations.soas.clone(rows_1.front())};
-            declarations.soas.name[declarations.soas.index(row_0)] =
-                context.storage.strings.intern("Class");
+            declarations.soas.name[row_0] = context.storage.strings.intern("Class");
             return row_0;
         }();
         return declarations.range(rows_1);
@@ -4831,9 +4606,8 @@ TEST(Validation, RejectsBlankSoaUsingDeclarations) {
     for (auto const* declaration : {"", " \t\r\n"}) {
         SCOPED_TRACE(declaration);
         auto module{valid_soa_module(context)};
-        normal_modules.declarations[normal_modules.index(module)] = [&] {
-            auto const original_items{
-                declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+        normal_modules.declarations[module] = [&] {
+            auto const original_items{declarations.items(normal_modules.declarations[module])};
             auto rows_1{std::vector(original_items.begin(), original_items.end())};
             rows_1.front() = [&] {
                 auto row_0{soas.clone(rows_1.front())};
@@ -4864,13 +4638,12 @@ TEST(Validation, RejectsDuplicateCustomSoaFunctionParameters) {
     auto& parameters_schemas{declarations.parameters};
     auto& strings{context.storage.strings};
     auto module{valid_soa_module(context)};
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{declarations.soas.clone(rows_1.front())};
-            declarations.soas.functions[declarations.soas.index(row_0)] =
+            declarations.soas.functions[row_0] =
                 declarations.range<lispb::codegen::FunctionSchemaId>({[&] {
                     auto const new_functions{functions_schemas.append()};
                     auto const new_functions_row{functions_schemas.index(new_functions)};
@@ -4920,45 +4693,41 @@ TEST(Validation, RejectsNonTrailingCustomSoaDefaultArguments) {
     auto& parameters_schemas{declarations.parameters};
     auto& strings{context.storage.strings};
     auto module{valid_soa_module(context)};
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{soas.clone(rows_1.front())};
-            soas.functions[soas.index(row_0)] =
-                declarations.range<lispb::codegen::FunctionSchemaId>({[&] {
-                    auto const new_functions{functions_schemas.append()};
-                    auto const new_functions_row{functions_schemas.index(new_functions)};
-                    functions_schemas.name[new_functions_row] = strings.intern("set");
-                    functions_schemas.return_type[new_functions_row] =
-                        make_test_type_ref(context, "void");
-                    functions_schemas.parameters[new_functions_row] =
-                        declarations.range<lispb::codegen::ParameterId>(
-                            {[&] {
-                                 auto const new_parameters{parameters_schemas.append()};
-                                 auto const new_parameters_row{
-                                     parameters_schemas.index(new_parameters)};
-                                 parameters_schemas.type[new_parameters_row] =
-                                     make_test_type_ref(context, "int32");
-                                 parameters_schemas.name[new_parameters_row] =
-                                     strings.intern("first");
-                                 parameters_schemas.default_value[new_parameters_row] =
-                                     strings.intern("0");
-                                 return new_parameters;
-                             }(),
-                             [&] {
-                                 auto const new_parameters{parameters_schemas.append()};
-                                 auto const new_parameters_row{
-                                     parameters_schemas.index(new_parameters)};
-                                 parameters_schemas.type[new_parameters_row] =
-                                     make_test_type_ref(context, "int32");
-                                 parameters_schemas.name[new_parameters_row] =
-                                     strings.intern("second");
-                                 return new_parameters;
-                             }()});
-                    return new_functions;
-                }()});
+            soas.functions[row_0] = declarations.range<lispb::codegen::FunctionSchemaId>({[&] {
+                auto const new_functions{functions_schemas.append()};
+                auto const new_functions_row{functions_schemas.index(new_functions)};
+                functions_schemas.name[new_functions_row] = strings.intern("set");
+                functions_schemas.return_type[new_functions_row] =
+                    make_test_type_ref(context, "void");
+                functions_schemas.parameters[new_functions_row] =
+                    declarations.range<lispb::codegen::ParameterId>(
+                        {[&] {
+                             auto const new_parameters{parameters_schemas.append()};
+                             auto const new_parameters_row{
+                                 parameters_schemas.index(new_parameters)};
+                             parameters_schemas.type[new_parameters_row] =
+                                 make_test_type_ref(context, "int32");
+                             parameters_schemas.name[new_parameters_row] = strings.intern("first");
+                             parameters_schemas.default_value[new_parameters_row] =
+                                 strings.intern("0");
+                             return new_parameters;
+                         }(),
+                         [&] {
+                             auto const new_parameters{parameters_schemas.append()};
+                             auto const new_parameters_row{
+                                 parameters_schemas.index(new_parameters)};
+                             parameters_schemas.type[new_parameters_row] =
+                                 make_test_type_ref(context, "int32");
+                             parameters_schemas.name[new_parameters_row] = strings.intern("second");
+                             return new_parameters;
+                         }()});
+                return new_functions;
+            }()});
             return row_0;
         }();
         return declarations.range(rows_1);
@@ -4968,32 +4737,30 @@ TEST(Validation, RejectsNonTrailingCustomSoaDefaultArguments) {
                  std::invalid_argument);
 
     module = valid_soa_module(context);
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{soas.clone(rows_1.front())};
-            soas.functions[soas.index(row_0)] =
-                declarations.range<lispb::codegen::FunctionSchemaId>({[&] {
-                    auto const new_functions{functions_schemas.append()};
-                    auto const new_functions_row{functions_schemas.index(new_functions)};
-                    functions_schemas.name[new_functions_row] = strings.intern("set");
-                    functions_schemas.return_type[new_functions_row] =
-                        make_test_type_ref(context, "void");
-                    functions_schemas.parameters[new_functions_row] =
-                        declarations.range<lispb::codegen::ParameterId>({[&] {
-                            auto const new_parameters{parameters_schemas.append()};
-                            auto const new_parameters_row{parameters_schemas.index(new_parameters)};
-                            parameters_schemas.type[new_parameters_row] =
-                                make_test_type_ref(context, "int32");
-                            parameters_schemas.name[new_parameters_row] = strings.intern("value");
-                            parameters_schemas.default_value[new_parameters_row] =
-                                strings.intern(" \t");
-                            return new_parameters;
-                        }()});
-                    return new_functions;
-                }()});
+            soas.functions[row_0] = declarations.range<lispb::codegen::FunctionSchemaId>({[&] {
+                auto const new_functions{functions_schemas.append()};
+                auto const new_functions_row{functions_schemas.index(new_functions)};
+                functions_schemas.name[new_functions_row] = strings.intern("set");
+                functions_schemas.return_type[new_functions_row] =
+                    make_test_type_ref(context, "void");
+                functions_schemas.parameters[new_functions_row] =
+                    declarations.range<lispb::codegen::ParameterId>({[&] {
+                        auto const new_parameters{parameters_schemas.append()};
+                        auto const new_parameters_row{parameters_schemas.index(new_parameters)};
+                        parameters_schemas.type[new_parameters_row] =
+                            make_test_type_ref(context, "int32");
+                        parameters_schemas.name[new_parameters_row] = strings.intern("value");
+                        parameters_schemas.default_value[new_parameters_row] =
+                            strings.intern(" \t");
+                        return new_parameters;
+                    }()});
+                return new_functions;
+            }()});
             return row_0;
         }();
         return declarations.range(rows_1);
@@ -5012,23 +4779,21 @@ TEST(Validation, RejectsUnknownCustomSoaDependencies) {
 
     auto& strings{context.storage.strings};
     auto module{valid_soa_module(context)};
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{soas.clone(rows_1.front())};
-            soas.functions[soas.index(row_0)] =
-                declarations.range<lispb::codegen::FunctionSchemaId>({[&] {
-                    auto const new_functions{functions_schemas.append()};
-                    auto const new_functions_row{functions_schemas.index(new_functions)};
-                    functions_schemas.name[new_functions_row] = strings.intern("reset_values");
-                    functions_schemas.return_type[new_functions_row] =
-                        make_test_type_ref(context, "void");
-                    functions_schemas.dependencies[new_functions_row] =
-                        declarations.range<lispb::StringId>({strings.intern("missing")});
-                    return new_functions;
-                }()});
+            soas.functions[row_0] = declarations.range<lispb::codegen::FunctionSchemaId>({[&] {
+                auto const new_functions{functions_schemas.append()};
+                auto const new_functions_row{functions_schemas.index(new_functions)};
+                functions_schemas.name[new_functions_row] = strings.intern("reset_values");
+                functions_schemas.return_type[new_functions_row] =
+                    make_test_type_ref(context, "void");
+                functions_schemas.dependencies[new_functions_row] =
+                    declarations.range<lispb::StringId>({strings.intern("missing")});
+                return new_functions;
+            }()});
             return row_0;
         }();
         return declarations.range(rows_1);
@@ -5038,23 +4803,21 @@ TEST(Validation, RejectsUnknownCustomSoaDependencies) {
                  std::invalid_argument);
 
     module = valid_soa_module(context);
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{soas.clone(rows_1.front())};
-            soas.functions[soas.index(row_0)] =
-                declarations.range<lispb::codegen::FunctionSchemaId>({[&] {
-                    auto const new_functions{functions_schemas.append()};
-                    auto const new_functions_row{functions_schemas.index(new_functions)};
-                    functions_schemas.name[new_functions_row] = strings.intern("reset_values");
-                    functions_schemas.return_type[new_functions_row] =
-                        make_test_type_ref(context, "void");
-                    functions_schemas.dependencies[new_functions_row] =
-                        declarations.range<lispb::StringId>({strings.intern(" \t")});
-                    return new_functions;
-                }()});
+            soas.functions[row_0] = declarations.range<lispb::codegen::FunctionSchemaId>({[&] {
+                auto const new_functions{functions_schemas.append()};
+                auto const new_functions_row{functions_schemas.index(new_functions)};
+                functions_schemas.name[new_functions_row] = strings.intern("reset_values");
+                functions_schemas.return_type[new_functions_row] =
+                    make_test_type_ref(context, "void");
+                functions_schemas.dependencies[new_functions_row] =
+                    declarations.range<lispb::StringId>({strings.intern(" \t")});
+                return new_functions;
+            }()});
             return row_0;
         }();
         return declarations.range(rows_1);
@@ -5073,22 +4836,20 @@ TEST(Validation, RejectsInvalidCustomSoaFunctionDefinitions) {
 
     auto& strings{context.storage.strings};
     auto module{valid_soa_module(context)};
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{soas.clone(rows_1.front())};
-            soas.functions[soas.index(row_0)] =
-                declarations.range<lispb::codegen::FunctionSchemaId>({[&] {
-                    auto const new_functions{functions_schemas.append()};
-                    auto const new_functions_row{functions_schemas.index(new_functions)};
-                    functions_schemas.name[new_functions_row] = strings.intern("class");
-                    functions_schemas.return_type[new_functions_row] =
-                        make_test_type_ref(context, "void");
-                    functions_schemas.is_inline[new_functions_row] = true;
-                    return new_functions;
-                }()});
+            soas.functions[row_0] = declarations.range<lispb::codegen::FunctionSchemaId>({[&] {
+                auto const new_functions{functions_schemas.append()};
+                auto const new_functions_row{functions_schemas.index(new_functions)};
+                functions_schemas.name[new_functions_row] = strings.intern("class");
+                functions_schemas.return_type[new_functions_row] =
+                    make_test_type_ref(context, "void");
+                functions_schemas.is_inline[new_functions_row] = true;
+                return new_functions;
+            }()});
             return row_0;
         }();
         return declarations.range(rows_1);
@@ -5097,23 +4858,21 @@ TEST(Validation, RejectsInvalidCustomSoaFunctionDefinitions) {
                  std::invalid_argument);
 
     module = valid_soa_module(context);
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{soas.clone(rows_1.front())};
-            soas.functions[soas.index(row_0)] =
-                declarations.range<lispb::codegen::FunctionSchemaId>({[&] {
-                    auto const new_functions{functions_schemas.append()};
-                    auto const new_functions_row{functions_schemas.index(new_functions)};
-                    functions_schemas.name[new_functions_row] = strings.intern("update");
-                    functions_schemas.return_type[new_functions_row] =
-                        make_test_type_ref(context, "void");
-                    functions_schemas.is_inline[new_functions_row] = true;
-                    functions_schemas.definition_in_source[new_functions_row] = true;
-                    return new_functions;
-                }()});
+            soas.functions[row_0] = declarations.range<lispb::codegen::FunctionSchemaId>({[&] {
+                auto const new_functions{functions_schemas.append()};
+                auto const new_functions_row{functions_schemas.index(new_functions)};
+                functions_schemas.name[new_functions_row] = strings.intern("update");
+                functions_schemas.return_type[new_functions_row] =
+                    make_test_type_ref(context, "void");
+                functions_schemas.is_inline[new_functions_row] = true;
+                functions_schemas.definition_in_source[new_functions_row] = true;
+                return new_functions;
+            }()});
             return row_0;
         }();
         return declarations.range(rows_1);
@@ -5122,24 +4881,21 @@ TEST(Validation, RejectsInvalidCustomSoaFunctionDefinitions) {
                  std::invalid_argument);
 
     module = valid_soa_module(context);
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{soas.clone(rows_1.front())};
-            soas.functions[soas.index(row_0)] =
-                declarations.range<lispb::codegen::FunctionSchemaId>({[&] {
-                    auto const new_functions{functions_schemas.append()};
-                    auto const new_functions_row{functions_schemas.index(new_functions)};
-                    functions_schemas.name[new_functions_row] =
-                        strings.intern("invalid_static_const");
-                    functions_schemas.return_type[new_functions_row] =
-                        make_test_type_ref(context, "void");
-                    functions_schemas.is_const[new_functions_row] = true;
-                    functions_schemas.is_static[new_functions_row] = true;
-                    return new_functions;
-                }()});
+            soas.functions[row_0] = declarations.range<lispb::codegen::FunctionSchemaId>({[&] {
+                auto const new_functions{functions_schemas.append()};
+                auto const new_functions_row{functions_schemas.index(new_functions)};
+                functions_schemas.name[new_functions_row] = strings.intern("invalid_static_const");
+                functions_schemas.return_type[new_functions_row] =
+                    make_test_type_ref(context, "void");
+                functions_schemas.is_const[new_functions_row] = true;
+                functions_schemas.is_static[new_functions_row] = true;
+                return new_functions;
+            }()});
             return row_0;
         }();
         return declarations.range(rows_1);
@@ -5148,24 +4904,22 @@ TEST(Validation, RejectsInvalidCustomSoaFunctionDefinitions) {
                  std::invalid_argument);
 
     module = valid_soa_module(context);
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{soas.clone(rows_1.front())};
-            soas.functions[soas.index(row_0)] =
-                declarations.range<lispb::codegen::FunctionSchemaId>({[&] {
-                    auto const new_functions{functions_schemas.append()};
-                    auto const new_functions_row{functions_schemas.index(new_functions)};
-                    functions_schemas.name[new_functions_row] =
-                        strings.intern("invalid_trailing_return");
-                    functions_schemas.return_type[new_functions_row] =
-                        make_test_type_ref(context, "void");
-                    functions_schemas.trailing_return_type[new_functions_row] =
-                        make_test_type_ref(context, "int32");
-                    return new_functions;
-                }()});
+            soas.functions[row_0] = declarations.range<lispb::codegen::FunctionSchemaId>({[&] {
+                auto const new_functions{functions_schemas.append()};
+                auto const new_functions_row{functions_schemas.index(new_functions)};
+                functions_schemas.name[new_functions_row] =
+                    strings.intern("invalid_trailing_return");
+                functions_schemas.return_type[new_functions_row] =
+                    make_test_type_ref(context, "void");
+                functions_schemas.trailing_return_type[new_functions_row] =
+                    make_test_type_ref(context, "int32");
+                return new_functions;
+            }()});
             return row_0;
         }();
         return declarations.range(rows_1);
@@ -5174,23 +4928,20 @@ TEST(Validation, RejectsInvalidCustomSoaFunctionDefinitions) {
                  std::invalid_argument);
 
     module = valid_soa_module(context);
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{soas.clone(rows_1.front())};
-            soas.functions[soas.index(row_0)] =
-                declarations.range<lispb::codegen::FunctionSchemaId>({[&] {
-                    auto const new_functions{functions_schemas.append()};
-                    auto const new_functions_row{functions_schemas.index(new_functions)};
-                    functions_schemas.name[new_functions_row] = strings.intern("invalid_template");
-                    functions_schemas.return_type[new_functions_row] =
-                        make_test_type_ref(context, "void");
-                    functions_schemas.template_parameters[new_functions_row] =
-                        strings.intern(" \t");
-                    return new_functions;
-                }()});
+            soas.functions[row_0] = declarations.range<lispb::codegen::FunctionSchemaId>({[&] {
+                auto const new_functions{functions_schemas.append()};
+                auto const new_functions_row{functions_schemas.index(new_functions)};
+                functions_schemas.name[new_functions_row] = strings.intern("invalid_template");
+                functions_schemas.return_type[new_functions_row] =
+                    make_test_type_ref(context, "void");
+                functions_schemas.template_parameters[new_functions_row] = strings.intern(" \t");
+                return new_functions;
+            }()});
             return row_0;
         }();
         return declarations.range(rows_1);
@@ -5199,22 +4950,20 @@ TEST(Validation, RejectsInvalidCustomSoaFunctionDefinitions) {
                  std::invalid_argument);
 
     module = valid_soa_module(context);
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{soas.clone(rows_1.front())};
-            soas.functions[soas.index(row_0)] =
-                declarations.range<lispb::codegen::FunctionSchemaId>({[&] {
-                    auto const new_functions{functions_schemas.append()};
-                    auto const new_functions_row{functions_schemas.index(new_functions)};
-                    functions_schemas.name[new_functions_row] = strings.intern("invalid_requires");
-                    functions_schemas.return_type[new_functions_row] =
-                        make_test_type_ref(context, "void");
-                    functions_schemas.requires_clause[new_functions_row] = strings.intern(" \t");
-                    return new_functions;
-                }()});
+            soas.functions[row_0] = declarations.range<lispb::codegen::FunctionSchemaId>({[&] {
+                auto const new_functions{functions_schemas.append()};
+                auto const new_functions_row{functions_schemas.index(new_functions)};
+                functions_schemas.name[new_functions_row] = strings.intern("invalid_requires");
+                functions_schemas.return_type[new_functions_row] =
+                    make_test_type_ref(context, "void");
+                functions_schemas.requires_clause[new_functions_row] = strings.intern(" \t");
+                return new_functions;
+            }()});
             return row_0;
         }();
         return declarations.range(rows_1);
@@ -5232,13 +4981,12 @@ TEST(Validation, RejectsCustomSoaFunctionsCollidingWithGeneratedApisAndTypeNames
     for (auto const& name : {"sort", "get_view", "FData"}) {
         SCOPED_TRACE(name);
         auto module{valid_soa_module(context)};
-        normal_modules.declarations[normal_modules.index(module)] = [&] {
-            auto const original_items{
-                declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+        normal_modules.declarations[module] = [&] {
+            auto const original_items{declarations.items(normal_modules.declarations[module])};
             auto rows_1{std::vector(original_items.begin(), original_items.end())};
             rows_1.front() = [&] {
                 auto row_0{declarations.soas.clone(rows_1.front())};
-                declarations.soas.functions[declarations.soas.index(row_0)] =
+                declarations.soas.functions[row_0] =
                     declarations.range<lispb::codegen::FunctionSchemaId>({[&] {
                         auto const new_functions{functions_schemas.append()};
                         auto const new_functions_row{functions_schemas.index(new_functions)};
@@ -5263,14 +5011,12 @@ TEST(Validation, RejectsMalformedExportSpecifiers) {
     auto& normal_modules{declarations.normal_modules};
     auto& strings{context.storage.strings};
     auto soa{valid_soa_module(context)};
-    normal_modules.declarations[normal_modules.index(soa)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(soa)])};
+    normal_modules.declarations[soa] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[soa])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{declarations.soas.clone(rows_1.front())};
-            declarations.soas.export_specifier[declarations.soas.index(row_0)] =
-                strings.intern("bad-specifier");
+            declarations.soas.export_specifier[row_0] = strings.intern("bad-specifier");
             return row_0;
         }();
         return declarations.range(rows_1);
@@ -5278,14 +5024,12 @@ TEST(Validation, RejectsMalformedExportSpecifiers) {
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, soa)), std::invalid_argument);
 
     auto facade{valid_facade_module(context)};
-    normal_modules.declarations[normal_modules.index(facade)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(facade)])};
+    normal_modules.declarations[facade] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[facade])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{declarations.facades.clone(rows_1.front())};
-            declarations.facades.export_specifier[declarations.facades.index(row_0)] =
-                strings.intern("two words");
+            declarations.facades.export_specifier[row_0] = strings.intern("two words");
             return row_0;
         }();
         return declarations.range(rows_1);
@@ -5294,14 +5038,12 @@ TEST(Validation, RejectsMalformedExportSpecifiers) {
                  std::invalid_argument);
 
     auto table{valid_static_table_module(context)};
-    normal_modules.declarations[normal_modules.index(table)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(table)])};
+    normal_modules.declarations[table] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[table])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{declarations.static_tables.clone(rows_1.front())};
-            declarations.static_tables.export_specifier[declarations.static_tables.index(row_0)] =
-                strings.intern("bad-specifier");
+            declarations.static_tables.export_specifier[row_0] = strings.intern("bad-specifier");
             return row_0;
         }();
         return declarations.range(rows_1);
@@ -5315,13 +5057,12 @@ TEST(Validation, RejectsFacadesWithoutMethods) {
     auto& declarations{context.storage.declarations};
     auto& normal_modules{declarations.normal_modules};
     auto module{valid_facade_module(context)};
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{declarations.facades.clone(rows_1.front())};
-            declarations.facades.methods[declarations.facades.index(row_0)] = {};
+            declarations.facades.methods[row_0] = {};
             return row_0;
         }();
         return declarations.range(rows_1);
@@ -5344,9 +5085,8 @@ TEST(Validation, RejectsMalformedFacadeMethodIdentifiers) {
     auto& normal_modules{declarations.normal_modules};
     auto& facades{declarations.facades};
     auto module{valid_facade_module(context)};
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_3{std::vector(original_items.begin(), original_items.end())};
         rows_3.front() = [&] {
             auto row_2{facades.clone(rows_3.front())};
@@ -5356,7 +5096,7 @@ TEST(Validation, RejectsMalformedFacadeMethodIdentifiers) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1.front() = [&] {
                     auto row_0{declarations.facade_methods.clone(rows_1.front())};
-                    declarations.facade_methods.name[declarations.facade_methods.index(row_0)] =
+                    declarations.facade_methods.name[row_0] =
                         context.storage.strings.intern("bad-name");
                     return row_0;
                 }();
@@ -5376,13 +5116,12 @@ TEST(Validation, RejectsOutOfLineFacadesWithoutSourceOutput) {
     auto& declarations{context.storage.declarations};
     auto& normal_modules{declarations.normal_modules};
     auto module{valid_facade_module(context)};
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{declarations.facades.clone(rows_1.front())};
-            declarations.facades.definitions_in_source[declarations.facades.index(row_0)] = true;
+            declarations.facades.definitions_in_source[row_0] = true;
             return row_0;
         }();
         return declarations.range(rows_1);
@@ -5397,10 +5136,9 @@ TEST(Validation, AllowsInlineFacadesInModulesWithSourceOutput) {
     auto& declarations{context.storage.declarations};
     auto& normal_modules{declarations.normal_modules};
     auto module{valid_facade_module(context)};
-    normal_modules.settings[normal_modules.index(module)] = [&] {
-        auto row_0{declarations.module_settings_store.clone(
-            normal_modules.settings[normal_modules.index(module)])};
-        declarations.module_settings_store.source[declarations.module_settings_store.index(row_0)] =
+    normal_modules.settings[module] = [&] {
+        auto row_0{declarations.module_settings_store.clone(normal_modules.settings[module])};
+        declarations.module_settings_store.source[row_0] =
             context.storage.strings.intern("Facade.cpp");
         return row_0;
     }();
@@ -5417,9 +5155,8 @@ TEST(Validation, RejectsDuplicateFacadeMethodParameters) {
 
     auto& strings{context.storage.strings};
     auto module{valid_facade_module(context)};
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_3{std::vector(original_items.begin(), original_items.end())};
         rows_3.front() = [&] {
             auto row_2{facades.clone(rows_3.front())};
@@ -5429,8 +5166,7 @@ TEST(Validation, RejectsDuplicateFacadeMethodParameters) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1.front() = [&] {
                     auto row_0{declarations.facade_methods.clone(rows_1.front())};
-                    declarations.facade_methods
-                        .parameters[declarations.facade_methods.index(row_0)] =
+                    declarations.facade_methods.parameters[row_0] =
                         declarations.range<lispb::codegen::ParameterId>(
                             {[&] {
                                  auto const new_parameters{parameters_schemas.append()};
@@ -5483,11 +5219,12 @@ TEST(Validation, RejectsDuplicateFacadeMethodSignatures) {
                 auto rows{std::vector(original_items.begin(), original_items.end())};
                 rows.push_back(
                     declarations
-                        .items(facades.methods[facades.index(
-                            declarations
-                                .items(normal_modules_schemas
-                                           .declarations[declarations.normal_modules.index(module)])
-                                .front())])
+                        .items(
+                            facades
+                                .methods[declarations
+                                             .items(normal_modules_schemas.declarations
+                                                        [declarations.normal_modules.index(module)])
+                                             .front()])
                         .front());
                 return declarations.range(rows);
             }();
@@ -5508,14 +5245,11 @@ TEST(Validation, RejectsFacadeOverloadsDifferingOnlyByNoexcept) {
     auto module{valid_facade_module(context)};
     auto second{declarations.facade_methods.clone(
         declarations
-            .items(facades.methods[facades.index(
-                declarations.items(normal_modules.declarations[normal_modules.index(module)])
-                    .front())])
+            .items(facades.methods[declarations.items(normal_modules.declarations[module]).front()])
             .front())};
-    declarations.facade_methods.is_noexcept[declarations.facade_methods.index(second)] = true;
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    declarations.facade_methods.is_noexcept[second] = true;
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{facades.clone(rows_1.front())};
@@ -5544,13 +5278,12 @@ TEST(Validation, RejectsFacadeMethodsCollidingWithBind) {
     auto& parameters_schemas{declarations.parameters};
     auto& strings{context.storage.strings};
     auto module{valid_facade_module(context)};
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{declarations.facades.clone(rows_1.front())};
-            declarations.facades.methods[declarations.facades.index(row_0)] =
+            declarations.facades.methods[row_0] =
                 declarations.range<lispb::codegen::FacadeMethodId>({[&] {
                     auto const new_facade_methods{facade_methods.append()};
                     auto const new_facade_methods_row{facade_methods.index(new_facade_methods)};
@@ -5586,9 +5319,8 @@ TEST(Validation, RejectsNonTrailingFacadeDefaultArguments) {
 
     auto& strings{context.storage.strings};
     auto module{valid_facade_module(context)};
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_3{std::vector(original_items.begin(), original_items.end())};
         rows_3.front() = [&] {
             auto row_2{facades.clone(rows_3.front())};
@@ -5598,8 +5330,7 @@ TEST(Validation, RejectsNonTrailingFacadeDefaultArguments) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1.front() = [&] {
                     auto row_0{declarations.facade_methods.clone(rows_1.front())};
-                    declarations.facade_methods
-                        .parameters[declarations.facade_methods.index(row_0)] =
+                    declarations.facade_methods.parameters[row_0] =
                         declarations.range<lispb::codegen::ParameterId>(
                             {[&] {
                                  auto const new_parameters{parameters_schemas.append()};
@@ -5641,13 +5372,12 @@ TEST(Validation, RejectsUnknownFacadeValidationDependencies) {
     auto& declarations{context.storage.declarations};
     auto& normal_modules{declarations.normal_modules};
     auto module{valid_facade_module(context)};
-    normal_modules.declarations[normal_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(normal_modules.declarations[normal_modules.index(module)])};
+    normal_modules.declarations[module] = [&] {
+        auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{declarations.facades.clone(rows_1.front())};
-            declarations.facades.validation_dependencies[declarations.facades.index(row_0)] =
+            declarations.facades.validation_dependencies[row_0] =
                 declarations.range<lispb::StringId>({context.storage.strings.intern("missing")});
             return row_0;
         }();
@@ -5676,8 +5406,7 @@ TEST(Validation, RejectsInvalidFacadeFriendAndMemberCollisions) {
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{facades.clone(rows_1.front())};
-            facades.friends[facades.index(row_0)] =
-                declarations.range<lispb::StringId>({strings.intern("class")});
+            facades.friends[row_0] = declarations.range<lispb::StringId>({strings.intern("class")});
             return row_0;
         }();
         return declarations.range(rows_1);
@@ -5692,7 +5421,7 @@ TEST(Validation, RejectsInvalidFacadeFriendAndMemberCollisions) {
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{facades.clone(rows_1.front())};
-            facades.target_member_name[facades.index(row_0)] = strings.intern("bind");
+            facades.target_member_name[row_0] = strings.intern("bind");
             return row_0;
         }();
         return declarations.range(rows_1);
@@ -5713,12 +5442,13 @@ TEST(Validation, RejectsInvalidFacadeFriendAndMemberCollisions) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1.front() = [&] {
                     auto row_0{declarations.facade_methods.clone(rows_1.front())};
-                    declarations.facade_methods.name[declarations.facade_methods.index(row_0)] =
-                        facades.target_member_name[facades.index(
-                            declarations
-                                .items(normal_modules_schemas
-                                           .declarations[declarations.normal_modules.index(module)])
-                                .front())];
+                    declarations.facade_methods.name[row_0] =
+                        facades.target_member_name
+                            [declarations
+                                 .items(
+                                     normal_modules_schemas
+                                         .declarations[declarations.normal_modules.index(module)])
+                                 .front()];
                     return row_0;
                 }();
                 return declarations.range(rows_1);
@@ -5760,7 +5490,7 @@ TEST(Validation, RejectsUmbrellaModulesWithoutHeaders) {
     auto& module_settings_store{declarations.module_settings_store};
     auto& strings{context.storage.strings};
     auto const module{declarations.umbrella_modules.append()};
-    declarations.umbrella_modules.settings[declarations.umbrella_modules.index(module)] = [&] {
+    declarations.umbrella_modules.settings[module] = [&] {
         auto const new_module_settings_store{module_settings_store.append()};
         auto const new_module_settings_store_row{
             module_settings_store.index(new_module_settings_store)};
@@ -5797,13 +5527,12 @@ TEST(Validation, RejectsUnsupportedUmbrellaSourceAndNamespaceSettings) {
 
     umbrella_modules.settings[module_row] = [&] {
         auto row_0{module_settings_store.clone(umbrella_modules.settings[module_row])};
-        module_settings_store.source[module_settings_store.index(row_0)].reset();
+        module_settings_store.source[row_0].reset();
         return row_0;
     }();
     umbrella_modules.settings[module_row] = [&] {
         auto row_0{module_settings_store.clone(umbrella_modules.settings[module_row])};
-        module_settings_store.namespace_name[module_settings_store.index(row_0)] =
-            strings.intern("project");
+        module_settings_store.namespace_name[row_0] = strings.intern("project");
         return row_0;
     }();
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
@@ -5856,8 +5585,7 @@ TEST(Validation, RejectsInvalidSettingsDefinitions) {
                 settings_schemas.apply_mode[new_settings_row] = SettingApplyMode::deferred;
                 settings_schemas.control[new_settings_row] = [&] {
                     auto const new_setting_controls{setting_controls.append()};
-                    setting_controls.kind[setting_controls.index(new_setting_controls)] =
-                        SettingControlKind::toggle;
+                    setting_controls.kind[new_setting_controls] = SettingControlKind::toggle;
                     return new_setting_controls;
                 }();
                 return new_settings;
@@ -5867,9 +5595,8 @@ TEST(Validation, RejectsInvalidSettingsDefinitions) {
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
-    settings_modules.settings_list[settings_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(settings_modules.settings_list[settings_modules.index(module)])};
+    settings_modules.settings_list[module] = [&] {
+        auto const original_items{declarations.items(settings_modules.settings_list[module])};
         auto rows_1{std::vector(original_items.begin(), original_items.end())};
         rows_1.front() = [&] {
             auto row_0{settings_schemas.clone(rows_1.front())};
@@ -5878,16 +5605,15 @@ TEST(Validation, RejectsInvalidSettingsDefinitions) {
         }();
         return declarations.range(rows_1);
     }();
-    settings_modules.settings_list[settings_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(settings_modules.settings_list[settings_modules.index(module)])};
+    settings_modules.settings_list[module] = [&] {
+        auto const original_items{declarations.items(settings_modules.settings_list[module])};
         auto rows_2{std::vector(original_items.begin(), original_items.end())};
         rows_2.front() = [&] {
             auto row_1{settings_schemas.clone(rows_2.front())};
             auto const row_1_row{settings_schemas.index(row_1)};
             settings_schemas.control[row_1_row] = [&] {
                 auto row_0{setting_controls.clone(settings_schemas.control[row_1_row])};
-                setting_controls.kind[setting_controls.index(row_0)] = SettingControlKind::choice;
+                setting_controls.kind[row_0] = SettingControlKind::choice;
                 return row_0;
             }();
             return row_1;
@@ -5897,16 +5623,15 @@ TEST(Validation, RejectsInvalidSettingsDefinitions) {
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
-    settings_modules.settings_list[settings_modules.index(module)] = [&] {
-        auto const original_items{
-            declarations.items(settings_modules.settings_list[settings_modules.index(module)])};
+    settings_modules.settings_list[module] = [&] {
+        auto const original_items{declarations.items(settings_modules.settings_list[module])};
         auto rows_2{std::vector(original_items.begin(), original_items.end())};
         rows_2.front() = [&] {
             auto row_1{settings_schemas.clone(rows_2.front())};
             auto const row_1_row{settings_schemas.index(row_1)};
             settings_schemas.control[row_1_row] = [&] {
                 auto row_0{setting_controls.clone(settings_schemas.control[row_1_row])};
-                setting_controls.kind[setting_controls.index(row_0)] = SettingControlKind::custom;
+                setting_controls.kind[row_0] = SettingControlKind::custom;
                 return row_0;
             }();
             return row_1;
@@ -5939,7 +5664,7 @@ TEST(Validation, NormalModuleReservesGeneratedNamesAcrossDeclarationKinds) {
              enums.underlying_type[new_enums_row] = make_test_type_ref(context, "uint8");
              enums.values[new_enums_row] = declarations.range<lispb::codegen::EnumeratorId>({[&] {
                  auto const new_enumerators{enumerators.append()};
-                 enumerators.name[enumerators.index(new_enumerators)] = strings.intern("One");
+                 enumerators.name[new_enumerators] = strings.intern("One");
                  return new_enumerators;
              }()});
              return new_enums;
@@ -5984,22 +5709,23 @@ TEST(Validation, NormalModuleReservesGeneratedNamesAcrossDeclarationKinds) {
         }()});
         return new_soas;
     }();
-    module = normal_module(
-        context,
-        {soa,
-         [&] {
-             auto const new_enums{enums.append()};
-             auto const new_enums_row{enums.index(new_enums)};
-             enums.name[new_enums_row] = strings.intern("data");
-             enums.underlying_type[new_enums_row] = make_test_type_ref(context, "uint8");
-             enums.values[new_enums_row] = declarations.range<lispb::codegen::EnumeratorId>({[&] {
-                 auto const new_enumerators{enumerators.append()};
-                 enumerators.name[enumerators.index(new_enumerators)] = strings.intern("One");
-                 return new_enumerators;
-             }()});
-             return new_enums;
-         }()},
-        "Mixed.cpp");
+    module = normal_module(context,
+                           {soa,
+                            [&] {
+                                auto const new_enums{enums.append()};
+                                auto const new_enums_row{enums.index(new_enums)};
+                                enums.name[new_enums_row] = strings.intern("data");
+                                enums.underlying_type[new_enums_row] =
+                                    make_test_type_ref(context, "uint8");
+                                enums.values[new_enums_row] =
+                                    declarations.range<lispb::codegen::EnumeratorId>({[&] {
+                                        auto const new_enumerators{enumerators.append()};
+                                        enumerators.name[new_enumerators] = strings.intern("One");
+                                        return new_enumerators;
+                                    }()});
+                                return new_enums;
+                            }()},
+                           "Mixed.cpp");
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
@@ -6012,7 +5738,7 @@ TEST(Validation, NormalModuleReservesGeneratedNamesAcrossDeclarationKinds) {
              enums.underlying_type[new_enums_row] = make_test_type_ref(context, "uint8");
              enums.values[new_enums_row] = declarations.range<lispb::codegen::EnumeratorId>({[&] {
                  auto const new_enumerators{enumerators.append()};
-                 enumerators.name[enumerators.index(new_enumerators)] = strings.intern("One");
+                 enumerators.name[new_enumerators] = strings.intern("One");
                  return new_enumerators;
              }()});
              return new_enums;
@@ -6062,7 +5788,7 @@ TEST(Validation, NormalModuleAppliesSourceRequirementsPerDeclaration) {
     EXPECT_NO_THROW(lower_test_manifest(context, manifest_with(context, module)));
 
     auto const source_facade{facades.clone(facade)};
-    facades.definitions_in_source[facades.index(source_facade)] = true;
+    facades.definitions_in_source[source_facade] = true;
     module = normal_module(context, {source_facade});
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
@@ -6084,7 +5810,7 @@ TEST(Validation, NormalModuleCanMixIndependentEnumApis) {
              enums.underlying_type[new_enums_row] = make_test_type_ref(context, "uint8");
              enums.values[new_enums_row] = declarations.range<lispb::codegen::EnumeratorId>({[&] {
                  auto const new_enumerators{enumerators.append()};
-                 enumerators.name[enumerators.index(new_enumerators)] = strings.intern("One");
+                 enumerators.name[new_enumerators] = strings.intern("One");
                  return new_enumerators;
              }()});
              enums.native_api[new_enums_row] = true;
@@ -6097,7 +5823,7 @@ TEST(Validation, NormalModuleCanMixIndependentEnumApis) {
              enums.underlying_type[new_enums_row] = make_test_type_ref(context, "uint8");
              enums.values[new_enums_row] = declarations.range<lispb::codegen::EnumeratorId>({[&] {
                  auto const new_enumerators{enumerators.append()};
-                 enumerators.name[enumerators.index(new_enumerators)] = strings.intern("One");
+                 enumerators.name[new_enumerators] = strings.intern("One");
                  return new_enumerators;
              }()});
              return new_enums;

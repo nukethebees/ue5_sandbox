@@ -34,11 +34,9 @@ auto schema_namespace(LoweringContext& context, DeclarationHandle schema) -> std
     auto const scoped{context.for_declaration(schema)};
     auto const& declarations{context.declarations};
     auto const& settings{declarations.module_settings_store};
-    auto const namespace_name{
-        settings.namespace_name[settings.index(declarations.module_settings(scoped.module))]};
+    auto const namespace_name{settings.namespace_name[declarations.module_settings(scoped.module)]};
     return (namespace_name ? "::" + context.text(*namespace_name) + "::" : "::") +
-           soa_namespace_name(
-               context.text(declarations.soas.name[declarations.soas.index(schema)]));
+           soa_namespace_name(context.text(declarations.soas.name[schema]));
 }
 
 auto is_strided_schema(LoweringContext& context, DeclarationHandle schema) -> bool {
@@ -49,7 +47,7 @@ auto is_strided_schema(LoweringContext& context, DeclarationHandle schema) -> bo
     std::size_t count{};
     auto homogeneous = [&](auto&& self, DeclarationHandle current) -> bool {
         auto const scoped{context.for_declaration(current)};
-        for (auto const member : declarations.items(soas.members[soas.index(current)])) {
+        for (auto const member : declarations.items(soas.members[current])) {
             auto const row{members.index(member)};
             if (members.kind[row] == SoaMemberKind::nested) {
                 if (!self(self, scoped.nested_declaration(member))) {
@@ -86,12 +84,11 @@ auto build_single_allocation_model(LoweringContext& context, DeclarationHandle s
         ir.types.dependency("single_allocation_storage", "ioj/native_soa/storage.h")};
     std::vector<SingleAllocationColumnId> column_ids;
 
-    auto const root_id{type_graph.find_declared(
-        module_name, context.declarations.soas.name[context.declarations.soas.index(schema)])};
+    auto const root_id{
+        type_graph.find_declared(module_name, context.declarations.soas.name[schema])};
     if (!root_id.has_value()) {
-        throw std::invalid_argument{
-            "Missing resolved single-allocation SOA: " +
-            context.text(context.declarations.soas.name[context.declarations.soas.index(schema)])};
+        throw std::invalid_argument{"Missing resolved single-allocation SOA: " +
+                                    context.text(context.declarations.soas.name[schema])};
     }
     auto const root_type{type_graph.definition(*root_id)};
     std::set<std::string> flattened_names;

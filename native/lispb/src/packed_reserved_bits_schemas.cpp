@@ -5,8 +5,7 @@
 namespace lispb::codegen {
 
 auto PackedReservedBitsSchemas::index(PackedSegmentId id) const -> std::uint32_t {
-    assert(id.kind() == PackedSegmentKind::reserved);
-    auto const row{id.index()};
+    auto const row{Indexing::offset(id)};
     assert(row < name.size());
     return row;
 }

@@ -5,8 +5,7 @@
 namespace lispb::codegen {
 
 auto IntegerScalarSchemas::index(DeclarationHandle id) const -> std::uint32_t {
-    assert(id.kind() == DeclarationKind::integer_scalar);
-    auto const row{id.index()};
+    auto const row{Indexing::offset(id)};
     assert(row < name.size());
     return row;
 }

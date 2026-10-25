@@ -6,29 +6,33 @@
 #include <codegen/schema/integer_scalar_cpp_emission.h>
 #include <codegen/schema/packed_integer_value.h>
 #include <codegen/schema/schema_range.h>
+#include <lispb/indexed_column.h>
 #include <lispb/indices.h>
 
 #include <cstdint>
 #include <optional>
-#include <vector>
 
 namespace lispb::codegen {
 
 struct IntegerScalarSchemas {
+    using Indexing = TaggedIndex<DeclarationHandle, DeclarationKind::integer_scalar>;
+    template <typename T>
+    using Column = IndexedColumn<T, Indexing>;
+
     [[nodiscard]] auto append() -> DeclarationHandle;
     [[nodiscard]] auto clone(DeclarationHandle id) -> DeclarationHandle;
     [[nodiscard]] auto index(DeclarationHandle id) const -> std::uint32_t;
     void clear();
 
-    std::vector<StringId> name;
-    std::vector<std::uint8_t> signedness;
-    std::vector<PackedIntegerValue> minimum_value;
-    std::vector<PackedIntegerValue> maximum_value;
-    std::vector<std::optional<std::uint32_t>> bit_width;
-    std::vector<SchemaRange<PackedNamedCodeId>> named_codes;
-    std::vector<std::optional<SemanticRelationId>> relationship;
-    std::vector<IntegerScalarCppEmission> cpp_emission;
-    std::vector<std::optional<TypeRefId>> cpp_type;
+    Column<StringId> name;
+    Column<std::uint8_t> signedness;
+    Column<PackedIntegerValue> minimum_value;
+    Column<PackedIntegerValue> maximum_value;
+    Column<std::optional<std::uint32_t>> bit_width;
+    Column<SchemaRange<PackedNamedCodeId>> named_codes;
+    Column<std::optional<SemanticRelationId>> relationship;
+    Column<IntegerScalarCppEmission> cpp_emission;
+    Column<std::optional<TypeRefId>> cpp_type;
 };
 
 }

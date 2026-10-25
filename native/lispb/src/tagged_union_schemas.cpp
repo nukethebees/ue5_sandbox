@@ -5,8 +5,7 @@
 namespace lispb::codegen {
 
 auto TaggedUnionSchemas::index(DeclarationHandle id) const -> std::uint32_t {
-    assert(id.kind() == DeclarationKind::tagged_union);
-    auto const row{id.index()};
+    auto const row{Indexing::offset(id)};
     assert(row < name.size());
     return row;
 }

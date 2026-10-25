@@ -27,7 +27,7 @@ auto rewrite_row(Columns& columns, Id& id, Rewrite const& rewrite) -> bool {
     auto current{id};
     bool changed{};
     auto field = [&](auto& column, auto const& transform) {
-        auto value{column[columns.index(current)]};
+        auto value{column[current]};
         if (!transform(value)) {
             return;
         }
@@ -36,7 +36,7 @@ auto rewrite_row(Columns& columns, Id& id, Rewrite const& rewrite) -> bool {
             if (current == id) {
                 current = columns.clone(id);
             }
-            column[columns.index(current)] = value;
+            column[current] = value;
         }
     };
     rewrite(field, columns.index(id));
@@ -422,7 +422,7 @@ auto generated_cpp_names(Declarations const& declarations, DeclarationHandle dec
         case DeclarationKind::enumeration:
             return {id, strings.intern(name + "Underlying")};
         case DeclarationKind::record:
-            if (declarations.records.constraint_policy[declarations.records.index(declaration)]) {
+            if (declarations.records.constraint_policy[declaration]) {
                 return {id, strings.intern(name + "Value")};
             }
             return {id};
@@ -442,9 +442,7 @@ auto generated_cpp_names(Declarations const& declarations, DeclarationHandle dec
             if (scalars.cpp_emission[row] != IntegerScalarCppEmission::none) {
                 for (auto const code : declarations.items(scalars.named_codes[row])) {
                     result.push_back(strings.intern(
-                        name + "_" +
-                        text(declarations.packed_named_codes
-                                 .name[declarations.packed_named_codes.index(code)])));
+                        name + "_" + text(declarations.packed_named_codes.name[code])));
                 }
                 if (scalars.cpp_emission[row] == IntegerScalarCppEmission::constants_with_names) {
                     result.push_back(strings.intern(name + "_name"));

@@ -5,8 +5,7 @@
 namespace lispb::codegen {
 
 auto TypeRefs::index(TypeRefId id) const -> std::uint32_t {
-    assert(id.value != 0);
-    auto const row{id.value - 1};
+    auto const row{Indexing::offset(id)};
     assert(row < name.size());
     return row;
 }

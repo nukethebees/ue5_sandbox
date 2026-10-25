@@ -5,8 +5,7 @@
 namespace lispb::codegen {
 
 auto PackedFieldSchemas::index(PackedSegmentId id) const -> std::uint32_t {
-    assert(id.kind() == PackedSegmentKind::field);
-    auto const row{id.index()};
+    auto const row{Indexing::offset(id)};
     assert(row < name.size());
     return row;
 }

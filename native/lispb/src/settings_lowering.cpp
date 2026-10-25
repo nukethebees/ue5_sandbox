@@ -126,8 +126,8 @@ auto enum_name(SettingDevice const value) -> std::string_view {
 
 auto setting_type_name(LoweringContext& context, SettingId const setting) -> std::string {
     auto const& declarations{context.declarations};
-    auto const type{declarations.settings.value_type[declarations.settings.index(setting)]};
-    auto const name{context.text(declarations.type_refs.name[declarations.type_refs.index(type)])};
+    auto const type{declarations.settings.value_type[setting]};
+    auto const name{context.text(declarations.type_refs.name[type])};
     return title_case(name.starts_with('@') ? name.substr(1) : name);
 }
 
@@ -182,14 +182,13 @@ auto build_functions(LoweringContext& context,
                                {ir.parameter(state_name + " const&", "state"), id_parameter});
     std::vector<SwitchCaseId> getter_cases;
     for (auto const setting : settings) {
-        auto const name{declarations.settings.name[declarations.settings.index(setting)]};
+        auto const name{declarations.settings.name[setting]};
         getter_cases.push_back(ir.switch_case(
             ir.named("EGameSetting::" + title_case(context.text(name))),
             ir.block({ir.return_stmt(ir.init_list({ir.member_access(state, name)},
                                                   ir.types.intern("FGameSettingValue")))})));
     }
-    auto const first_name{
-        declarations.settings.name[declarations.settings.index(settings.front())]};
+    auto const first_name{declarations.settings.name[settings.front()]};
     ir.set_function_body(getter,
                          {ir.switch_stmt(id, getter_cases),
                           ir.expr_stmt(ir.call(ir.named("checkNoEntry"))),
@@ -204,7 +203,7 @@ auto build_functions(LoweringContext& context,
     std::vector<SwitchCaseId> setter_cases;
     auto const setting_count{settings.size()};
     for (std::size_t index{}; index < setting_count; ++index) {
-        auto const name{declarations.settings.name[declarations.settings.index(settings[index])]};
+        auto const name{declarations.settings.name[settings[index]]};
         auto const typed_value{ir.named("typed_value")};
         setter_cases.push_back(ir.switch_case(
             ir.named("EGameSetting::" + title_case(context.text(name))),
@@ -239,8 +238,7 @@ auto settings_api(LoweringContext& context,
     auto const setting_count{settings.size()};
     for (std::size_t index{}; index < setting_count; ++index) {
         auto const setting{settings[index]};
-        auto const name{
-            context.declarations.settings.name[context.declarations.settings.index(setting)]};
+        auto const name{context.declarations.settings.name[setting]};
         auto const getter{ir.function(name, ir.types.intern("auto"))};
         ir.set_function_return_type(getter, setting_types[index], ReturnSyntax::trailing);
         ir.set_function_receiver(getter, FunctionReceiver::const_);
@@ -333,8 +331,7 @@ auto build_header(LoweringContext& context,
     }
     for (auto const category : declarations.items(modules.categories[module_row])) {
         category_names.push_back(
-            title_case(context.text(declarations.setting_categories
-                                        .name[declarations.setting_categories.index(category)])));
+            title_case(context.text(declarations.setting_categories.name[category])));
     }
 
     NodeListBuilder header{ir};
@@ -430,9 +427,7 @@ auto build_header(LoweringContext& context,
     header.new_lines(2).add(settings_api(context, module, setting_types));
 
     auto nodes{header.build()};
-    if (auto const namespace_name{
-            declarations.module_settings_store
-                .namespace_name[declarations.module_settings_store.index(settings)]}) {
+    if (auto const namespace_name{declarations.module_settings_store.namespace_name[settings]}) {
         return {ir.namespace_node(*namespace_name, nodes)};
     }
     return nodes;
@@ -508,9 +503,7 @@ auto build_source(LoweringContext& context,
     }
 
     auto nodes{source.build()};
-    if (auto const namespace_name{
-            declarations.module_settings_store
-                .namespace_name[declarations.module_settings_store.index(settings)]}) {
+    if (auto const namespace_name{declarations.module_settings_store.namespace_name[settings]}) {
         return {ir.namespace_node(*namespace_name, nodes)};
     }
     return nodes;
