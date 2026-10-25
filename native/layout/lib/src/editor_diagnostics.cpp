@@ -3,6 +3,7 @@
 #include <lispb/strings.h>
 
 #include <cassert>
+#include <format>
 #include <limits>
 
 namespace ioj::layout {
@@ -72,8 +73,7 @@ auto EditorDiagnostics::instruction(lispb::DiagnosticId const id) const
 auto EditorDiagnostics::format(lispb::DiagnosticId const id) const -> std::string {
     std::string result;
     if (!path(id).empty()) {
-        result = std::string{path(id)} + ':' + std::to_string(line(id)) + ':' +
-                 std::to_string(column(id)) + ": ";
+        result = std::format("{}:{}:{}: ", path(id), line(id), column(id));
     }
     switch (severity(id)) {
         case lispb::DiagnosticSeverity::note:

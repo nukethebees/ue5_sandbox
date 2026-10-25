@@ -25,6 +25,7 @@
 #include <cctype>
 #include <cstddef>
 #include <cstdint>
+#include <format>
 #include <map>
 #include <set>
 #include <string>
@@ -147,7 +148,7 @@ class Parser {
             }
             if (!owners.insert(syntax_.identifier(owner)).second) {
                 fail(syntax_.token_span(owner),
-                     "duplicate widget declaration '" + std::string{syntax_.text(owner)} + "'");
+                     std::format("duplicate widget declaration '{}'", syntax_.text(owner)));
             }
             library_ = syntax_.head(form) == "widget-library";
             auto functions{start(document_.functions.names.size())};
@@ -162,8 +163,8 @@ class Parser {
                 auto const name{document_.functions.names.back()};
                 if (!function_names.insert(name).second) {
                     fail(syntax_.token_span(function),
-                         "duplicate generated function '" +
-                             std::string{syntax_.strings().view(name)} + "'");
+                         std::format("duplicate generated function '{}'",
+                                     syntax_.strings().view(name)));
                 }
             }
             finish(functions, document_.functions.names.size());
@@ -222,7 +223,7 @@ class Parser {
     }
     void validate_name(FormId const token, std::string_view const subject) const {
         if (!is_identifier(syntax_.text(token))) {
-            fail(syntax_.token_span(token), std::string{subject} + " must be a C++ identifier");
+            fail(syntax_.token_span(token), std::format("{} must be a C++ identifier", subject));
         }
     }
 
@@ -252,8 +253,9 @@ class Parser {
             auto const parameter{document_.parameters.names[index]};
             if (parameter_states_.at(parameter).uses == 0) {
                 fail(document_.parameters.spans[index],
-                     "unused " + kind_name(document_.parameters.kinds[index]) + " parameter '" +
-                         std::string{syntax_.strings().view(parameter)} + "'");
+                     std::format("unused {} parameter '{}'",
+                                 kind_name(document_.parameters.kinds[index]),
+                                 syntax_.strings().view(parameter)));
             }
         }
         document_.functions.names.push_back(syntax_.identifier(name));
@@ -285,7 +287,7 @@ class Parser {
         }
         if (!parameter_states_.emplace(syntax_.identifier(name), ParameterState{kind}).second) {
             fail(syntax_.token_span(name),
-                 "duplicate parameter declaration '" + std::string{syntax_.text(name)} + "'");
+                 std::format("duplicate parameter declaration '{}'", syntax_.text(name)));
         }
         document_.parameters.kinds.push_back(kind);
         document_.parameters.names.push_back(syntax_.identifier(name));
@@ -308,12 +310,11 @@ class Parser {
             }
             if (binding_names_.contains(syntax_.identifier(name))) {
                 fail(syntax_.token_span(name),
-                     "duplicate let binding '" + std::string{syntax_.text(name)} + "'");
+                     std::format("duplicate let binding '{}'", syntax_.text(name)));
             }
             if (parameter_states_.contains(syntax_.identifier(name))) {
                 fail(syntax_.token_span(name),
-                     "let binding '" + std::string{syntax_.text(name)} +
-                         "' conflicts with parameter");
+                     std::format("let binding '{}' conflicts with parameter", syntax_.text(name)));
             }
             auto const initializer{syntax_.children(binding)[1]};
             auto const head{syntax_.head(initializer)};
@@ -336,20 +337,23 @@ class Parser {
 
     void use_parameter(FormId const name, ParameterKind const expected, bool const multiple) {
         auto const found{parameter_states_.find(syntax_.identifier(name))};
-        auto const spelling{std::string{syntax_.text(name)}};
+        auto const spelling{syntax_.text(name)};
         if (found == parameter_states_.end()) {
             fail(syntax_.token_span(name),
-                 "undeclared " + kind_name(expected) + " parameter '" + spelling + "'");
+                 std::format("undeclared {} parameter '{}'", kind_name(expected), spelling));
         }
         auto& state{found->second};
         if (state.kind != expected) {
             fail(syntax_.token_span(name),
-                 "parameter '" + spelling + "' is declared as " + kind_name(state.kind) + ", not " +
-                     kind_name(expected));
+                 std::format("parameter '{}' is declared as {}, not {}",
+                             spelling,
+                             kind_name(state.kind),
+                             kind_name(expected)));
         }
         if (!multiple && state.uses != 0) {
             fail(syntax_.token_span(name),
-                 kind_name(expected) + " parameter '" + spelling + "' may only be used once");
+                 std::format(
+                     "{} parameter '{}' may only be used once", kind_name(expected), spelling));
         }
         ++state.uses;
     }
@@ -371,8 +375,8 @@ class Parser {
             auto const head{syntax_.head(form)};
             if (library_ && (head == "method" || head == "uobject")) {
                 fail(syntax_.token_span(form),
-                     std::string{head} +
-                         " requires a widget-class host; unavailable in widget-library");
+                     std::format("{} requires a widget-class host; unavailable in widget-library",
+                                 head));
             }
             if (head == "loc") {
                 require_count(form, 4, "expected localization context, key, and text");
@@ -553,8 +557,8 @@ class Parser {
             syntax_.text(type) == "call" || syntax_.text(type) == "let" ||
             syntax_.text(type) == "params") {
             fail(syntax_.token_span(type),
-                 "expected widget type, found structural form '" + std::string{syntax_.text(type)} +
-                     "'");
+                 std::format("expected widget type, found structural form '{}'",
+                             syntax_.text(type)));
         }
         std::vector<Argument> arguments;
         std::vector<NamedSlot> slots;
@@ -571,7 +575,7 @@ class Parser {
                 }
                 if (!argument_names.insert(syntax_.identifier(item)).second) {
                     fail(syntax_.token_span(item),
-                         "duplicate widget argument ':" + std::string{syntax_.text(item)} + "'");
+                         std::format("duplicate widget argument ':{}'", syntax_.text(item)));
                 }
                 if (index == count) {
                     fail(syntax_.token_span(item), "expected widget argument value");
@@ -586,7 +590,7 @@ class Parser {
                 auto const name{atom(syntax_.children(item)[1], "expected named slot name")};
                 if (!slot_names.insert(syntax_.identifier(name)).second) {
                     fail(syntax_.token_span(name),
-                         "duplicate named slot '" + std::string{syntax_.text(name)} + "'");
+                         std::format("duplicate named slot '{}'", syntax_.text(name)));
                 }
                 slots.push_back({syntax_.identifier(name), parse_child(syntax_.children(item)[2])});
             } else {
@@ -688,7 +692,7 @@ class Parser {
                 slot.vertical = parse_alignment(value, false);
             } else {
                 fail(syntax_.token_span(option),
-                     "unsupported box slot option ':" + std::string{syntax_.text(option)} + "'");
+                     std::format("unsupported box slot option ':{}'", syntax_.text(option)));
             }
         }
         if (index + 1 != count) {

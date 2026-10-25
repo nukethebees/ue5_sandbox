@@ -52,14 +52,16 @@ auto hex_value(std::uint64_t const value) -> std::string {
 
 auto integer_cast_literal(std::string const& type, PackedIntegerValue const value) -> std::string {
     if (value.negative && value.magnitude == (std::uint64_t{1} << 63)) {
-        return "std::numeric_limits<" + type + ">::min()";
+        return std::format("std::numeric_limits<{}>::min()", type);
     }
-    auto magnitude{std::to_string(value.magnitude)};
-    if (!value.negative &&
-        value.magnitude > static_cast<std::uint64_t>((std::numeric_limits<std::int64_t>::max)())) {
-        magnitude += "ULL";
-    }
-    return "static_cast<" + type + ">(" + (value.negative ? "-" : "") + magnitude + ")";
+    auto const unsigned_suffix{
+        !value.negative &&
+        value.magnitude > static_cast<std::uint64_t>((std::numeric_limits<std::int64_t>::max)())};
+    return std::format("static_cast<{}>({}{}{})",
+                       type,
+                       value.negative ? "-" : "",
+                       value.magnitude,
+                       unsigned_suffix ? "ULL" : "");
 }
 
 auto dependency_for_integer(CppIR& ir, CppTypeId type) -> std::optional<TypeDependencyId> {
@@ -82,7 +84,7 @@ auto fixed_width_integer_spelling(bool const signedness, std::uint32_t const req
                             : required_bits <= 16 ? 16
                             : required_bits <= 32 ? 32
                                                   : 64};
-    return "std::" + std::string{signedness ? "int" : "uint"} + std::to_string(storage_bits) + "_t";
+    return std::format("std::{}{}_t", signedness ? "int" : "uint", storage_bits);
 }
 
 auto packed_field_accessor(LoweringContext& context, schema::PackedSegmentId const& field)
@@ -214,10 +216,11 @@ auto enum_range_check(LoweringContext& context,
                       std::string const& value) -> std::optional<std::string> {
     auto const& enums{context.semantic.definitions().enums};
     if (enums.enum_array[enums.index(type)]) {
-        return "static_cast<std::size_t>(" + value + ") < ioj::enum_count<" + field_alias + ">()";
+        return std::format(
+            "static_cast<std::size_t>({}) < ioj::enum_count<{}>()", value, field_alias);
     }
     if (auto const count{enum_count_value(context, type)}; count.has_value()) {
-        return "static_cast<std::uint64_t>(" + value + ") < " + std::to_string(*count);
+        return std::format("static_cast<std::uint64_t>({}) < {}", value, *count);
     }
     return std::nullopt;
 }
@@ -259,12 +262,14 @@ auto invalid_value_may_be_constructed(LoweringContext& context,
 void append_make_parameters(LoweringContext& context,
                             std::string& output,
                             std::span<schema::PackedSegmentId const> fields) {
+    ioj::FormatWriter write{std::back_inserter(output)};
     for (std::size_t index{}; index < fields.size(); ++index) {
         if (index != 0) {
             output += ", ";
         }
-        output += packed_field_type_alias(context, fields[index]) + " const " +
-                  packed_field_value_name(context, fields[index]);
+        write("{} const {}",
+              packed_field_type_alias(context, fields[index]),
+              packed_field_value_name(context, fields[index]));
     }
 }
 
@@ -357,21 +362,16 @@ void append_field_validation(LoweringContext& context,
     append_semantic_range_assertion(context, output, packed_field, value_name);
 }
 
-auto packed_field_expression(LoweringContext& context, schema::PackedSegmentId packed_field)
-    -> std::string {
-    auto const& field_definitions{context.semantic.definitions().packed_fields};
-    auto const field_row{field_definitions.index(packed_field)};
-    auto const field_name{context.text(field_definitions.name[field_row])};
-    return std::format("ioj::packed_pack<{}_field>({})",
-                       field_name,
-                       packed_field_value_name(context, packed_field));
-}
-
 auto packed_raw_value_expression(LoweringContext& context,
                                  std::span<schema::PackedSegmentId const> fields) -> std::string {
+    auto const& field_definitions{context.semantic.definitions().packed_fields};
     std::string expression{"static_cast<storage_type>(\n"};
+    ioj::FormatWriter write{std::back_inserter(expression)};
     for (std::size_t index{}; index < fields.size(); ++index) {
-        expression += "            " + packed_field_expression(context, fields[index]);
+        auto const field{fields[index]};
+        write("            ioj::packed_pack<{}_field>({})",
+              context.text(field_definitions.name[field_definitions.index(field)]),
+              packed_field_value_name(context, field));
         expression += index + 1 < fields.size() ? " |\n" : ")";
     }
     return expression;

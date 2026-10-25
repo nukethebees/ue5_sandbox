@@ -15,6 +15,7 @@
 #include <lispb/strings.h>
 
 #include <algorithm>
+#include <format>
 #include <ranges>
 #include <string>
 #include <string_view>
@@ -193,13 +194,15 @@ auto analyze_unsigned_relationship_extent(
                                                .value[declarations.packed_named_codes.index(code)]
                                                .magnitude < target_extent)};
         if (collides) {
-            analysis.report({DiagnosticSeverity::error,
-                             std::string{context} + " sentinel code '" +
-                                 std::string{declarations.strings().view(
-                                     declarations.packed_named_codes
-                                         .name[declarations.packed_named_codes.index(code)])} +
-                                 "' collides with the live values required by its '" +
-                                 std::string{to_serialized_string(kind)} + "' target extent."});
+            analysis.report(
+                {DiagnosticSeverity::error,
+                 std::format("{} sentinel code '{}' collides with the live values required by its "
+                             "'{}' target extent.",
+                             context,
+                             declarations.strings().view(
+                                 declarations.packed_named_codes
+                                     .name[declarations.packed_named_codes.index(code)]),
+                             to_serialized_string(kind))});
         }
     }
 
@@ -221,19 +224,22 @@ auto analyze_unsigned_relationship_extent(
         result.effective_capacity_headroom = *result.effective_capacity_limit - target_extent;
     }
     if (!result.width_sufficient) {
-        analysis.report({DiagnosticSeverity::error,
-                         std::string{context} + " uses " + std::to_string(width) +
-                             " bits but its '" + std::string{to_serialized_string(kind)} +
-                             "' target extent requires at least " +
-                             std::to_string(result.minimum_required_bits) + " bits."});
+        analysis.report(
+            {DiagnosticSeverity::error,
+             std::format("{} uses {} bits but its '{}' target extent requires at least {} bits.",
+                         context,
+                         width,
+                         to_serialized_string(kind),
+                         result.minimum_required_bits)});
     }
     if (has_live_value && minimum_value.has_value() && maximum_value.has_value() &&
         (minimum_value->negative || minimum_value->magnitude != 0 || maximum_value->negative ||
          maximum_value->magnitude < maximum_live_value)) {
         analysis.report({DiagnosticSeverity::error,
-                         std::string{context} +
-                             " semantic range does not cover the live values required by its '" +
-                             std::string{to_serialized_string(kind)} + "' target extent."});
+                         std::format("{} semantic range does not cover the live values required by "
+                                     "its '{}' target extent.",
+                                     context,
+                                     to_serialized_string(kind))});
     }
     return result;
 }

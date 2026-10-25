@@ -20,6 +20,8 @@
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
+#include <format>
+#include <iterator>
 #include <map>
 #include <set>
 #include <span>
@@ -117,8 +119,7 @@ class Preprocessor {
     }
     auto location(SourceSpan const span) const -> std::string {
         auto const location{syntax_.sources().location(span)};
-        return std::string{location.path} + ":" + std::to_string(location.line) + ":" +
-               std::to_string(location.column);
+        return std::format("{}:{}:{}", location.path, location.line, location.column);
     }
     auto resolve(FormId const form, std::filesystem::path const& including) const
         -> std::filesystem::path {
@@ -139,10 +140,13 @@ class Preprocessor {
             if (std::filesystem::is_regular_file(candidate)) {
                 return candidate;
             }
-            searched += "\n  " + candidate.lexically_normal().generic_string();
+            std::format_to(std::back_inserter(searched),
+                           "\n  {}",
+                           candidate.lexically_normal().generic_string());
         }
         fail(syntax_.token_span(form),
-             "include not found: " + requested.generic_string() + "\nsearched:" + searched);
+             std::format(
+                 "include not found: {}\nsearched:{}", requested.generic_string(), searched));
     }
 
     auto load(std::filesystem::path const& input, bool const included, SourceSpan const invocation)
@@ -151,9 +155,9 @@ class Preprocessor {
         if (std::ranges::find(active_files_, path) != active_files_.end()) {
             std::string chain;
             for (auto const& active : active_files_) {
-                chain += "\n  " + active.generic_string();
+                std::format_to(std::back_inserter(chain), "\n  {}", active.generic_string());
             }
-            fail(invocation, "include cycle:" + chain + "\n  " + path.generic_string());
+            fail(invocation, std::format("include cycle:{}\n  {}", chain, path.generic_string()));
         }
         if (!loaded_files_.insert(path).second) {
             return {};
@@ -219,9 +223,9 @@ class Preprocessor {
         validate_template(body, parameter_range);
         if (auto const previous{macro_names_.find(name)}; previous != macro_names_.end()) {
             fail(syntax_.token_span(id),
-                 "duplicate macro '" + std::string{syntax_.strings().view(name)} +
-                     "'; first defined at " +
-                     location(syntax_.token_span(macros_.bodies[previous->second.value])));
+                 std::format("duplicate macro '{}'; first defined at {}",
+                             syntax_.strings().view(name),
+                             location(syntax_.token_span(macros_.bodies[previous->second.value]))));
         }
         macros_.parameters.push_back(parameter_range);
         macros_.bodies.push_back(body);
@@ -237,7 +241,7 @@ class Preprocessor {
             }
             if (!found) {
                 fail(syntax_.token_span(form),
-                     "unknown macro parameter '" + std::string{syntax_.text(form)} + "'");
+                     std::format("unknown macro parameter '{}'", syntax_.text(form)));
             }
         }
         for (auto const child : syntax_.children(form)) {
@@ -261,7 +265,7 @@ class Preprocessor {
                     return argument.value;
                 }
             }
-            fail(span, "macro parameter outside a template: " + std::string{syntax_.text(form)});
+            fail(span, std::format("macro parameter outside a template: {}", syntax_.text(form)));
         }
         if (syntax_.head(form) == "include" || syntax_.head(form) == "defmacro") {
             fail(span, "include and defmacro must be top-level source declarations");
@@ -280,16 +284,17 @@ class Preprocessor {
             auto const name{found->first};
             auto const macro{found->second};
             if (std::ranges::find(active_macros_, macro) != active_macros_.end()) {
-                fail(span,
-                     "recursive macro expansion of '" + std::string{syntax_.strings().view(name)} +
-                         "'");
+                fail(
+                    span,
+                    std::format("recursive macro expansion of '{}'", syntax_.strings().view(name)));
             }
             auto const parameters{macros_.parameters[macro.value]};
             auto const body{macros_.bodies[macro.value]};
             if (syntax_.children(form).size() != parameters.count + 1) {
                 fail(span,
-                     "macro '" + std::string{syntax_.strings().view(name)} + "' expects " +
-                         std::to_string(parameters.count) + " arguments");
+                     std::format("macro '{}' expects {} arguments",
+                                 syntax_.strings().view(name),
+                                 parameters.count));
             }
             auto const trace{syntax_.sources().add_expansion(name, span, syntax_.token_span(body))};
             std::vector<Argument> bindings;

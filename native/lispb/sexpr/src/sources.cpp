@@ -13,6 +13,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
+#include <format>
 #include <fstream>
 #include <ios>
 #include <iterator>
@@ -165,12 +166,11 @@ auto Sources::add_expansion(lispb::StringId const name,
 auto Sources::expansion_text(SourceSpan const span) const -> std::string {
     std::string result;
     for (auto id{span.expansion}; id.value != 0; id = invocations_[id.value].expansion) {
-        result += "\n  macro '";
-        result += strings_->view(expansion_names_[id.value]);
-        result += "' defined at ";
-        result += format_location(*this, definitions_[id.value]);
-        result += "\n  expanded at ";
-        result += format_location(*this, invocations_[id.value]);
+        std::format_to(std::back_inserter(result),
+                       "\n  macro '{}' defined at {}\n  expanded at {}",
+                       strings_->view(expansion_names_[id.value]),
+                       format_location(*this, definitions_[id.value]),
+                       format_location(*this, invocations_[id.value]));
     }
     return result;
 }

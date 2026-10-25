@@ -1,6 +1,8 @@
 #include "document_file_updates.hpp"
 
+#include <format>
 #include <fstream>
+#include <iterator>
 #include <stdexcept>
 #include <utility>
 
@@ -63,8 +65,10 @@ void DocumentFileUpdates::publish() {
                 std::filesystem::rename(backups[index], paths_[index], rollback_error);
             }
             if (rollback_error) {
-                message +=
-                    "; cannot restore " + paths_[index].string() + ": " + rollback_error.message();
+                std::format_to(std::back_inserter(message),
+                               "; cannot restore {}: {}",
+                               paths_[index].string(),
+                               rollback_error.message());
             }
             if (written[index]) {
                 std::error_code ignored;

@@ -42,7 +42,9 @@
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
+#include <format>
 #include <functional>
+#include <iterator>
 #include <optional>
 #include <set>
 #include <span>
@@ -1001,9 +1003,8 @@ void CppRenderer::append_node(std::string& output, NodeId node, RenderContext co
             write("// " + std::string{ir_.strings.view(ir_.line_comment_nodes_.text[i])});
             break;
         case NodeKind::line_directive:
-            output += "#line ";
-            output += std::to_string(ir_.line_directive_nodes_.line[i]);
-            output += " \"";
+            std::format_to(
+                std::back_inserter(output), "#line {} \"", ir_.line_directive_nodes_.line[i]);
             append_escaped_cpp_string(output, ir_.strings.view(ir_.line_directive_nodes_.path[i]));
             output += '"';
             break;

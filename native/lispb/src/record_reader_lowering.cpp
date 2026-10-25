@@ -3,6 +3,7 @@
 #include "declaration_emission.h"
 #include "lowering_context.h"
 #include "lowering_utils.h"
+#include <ioj/format_writer.h>
 
 #include <codegen/ast/cpp_ir.h>
 #include <codegen/ast/cpp_types.h>
@@ -14,6 +15,7 @@
 #include <algorithm>
 #include <filesystem>
 #include <format>
+#include <iterator>
 #include <map>
 #include <set>
 #include <stdexcept>
@@ -65,8 +67,8 @@ auto constraint_arguments(LoweringContext& context, RecordMemberId field) -> std
     auto const& members{context.declarations.record_members};
     auto const& options{members.s7[members.index(field)]};
     std::string checks;
-    auto const constraint{
-        [&](std::string_view check) { checks += std::format(", constraints::{}", check); }};
+    ioj::FormatWriter write{std::back_inserter(checks)};
+    auto const constraint{[&](std::string_view check) { write(", constraints::{}", check); }};
     if (options.nonzero) {
         constraint("nonzero");
     }
@@ -83,10 +85,10 @@ auto constraint_arguments(LoweringContext& context, RecordMemberId field) -> std
         constraint("nonempty");
     }
     if (options.minimum) {
-        constraint(std::format("minimum({})", bound_literal(context, *options.minimum)));
+        write(", constraints::minimum({})", bound_literal(context, *options.minimum));
     }
     if (options.maximum) {
-        constraint(std::format("maximum({})", bound_literal(context, *options.maximum)));
+        write(", constraints::maximum({})", bound_literal(context, *options.maximum));
     }
     return checks;
 }
@@ -98,8 +100,9 @@ auto member_reader(LoweringContext& context, DeclarationHandle record) -> std::s
     std::map<std::string, std::vector<std::string>> groups;
     for (auto const field : context.declarations.items(records.members[records.index(record)])) {
         auto const excluded{std::ranges::find(fields, field) == fields.end()};
-        auto const action{excluded ? "std::unreachable();"
-                                   : "read(member" + constraint_arguments(context, field) + ");"};
+        auto const action{
+            excluded ? "std::unreachable();"
+                     : std::format("read(member{});", constraint_arguments(context, field))};
         groups[action].push_back("field == Field::" +
                                  context.text(members.name[members.index(field)]));
     }
@@ -107,12 +110,13 @@ auto member_reader(LoweringContext& context, DeclarationHandle record) -> std::s
     if (groups.size() == 1) {
         result += groups.begin()->first;
     } else {
+        ioj::FormatWriter write{std::back_inserter(result)};
         bool first{true};
         for (auto const& [action, conditions] : groups) {
-            result += std::format("{}if constexpr ({}) {{ {} }}\n",
-                                  first ? "" : "else ",
-                                  join(conditions, " || "),
-                                  action);
+            write("{}if constexpr ({}) {{ {} }}\n",
+                  first ? "" : "else ",
+                  join(conditions, " || "),
+                  action);
             first = false;
         }
     }
@@ -131,7 +135,7 @@ auto fields_body(LoweringContext& context, DeclarationHandle const record, bool 
     if (constructing) {
         for (auto const field : fields) {
             auto const name{context.text(members.name[members.index(field)])};
-            body.add(ir.variable("std::optional<decltype(value_type::" + name + ")>",
+            body.add(ir.variable(std::format("std::optional<decltype(value_type::{})>", name),
                                  "value_" + name,
                                  ir.literal("")));
         }
@@ -176,19 +180,20 @@ auto fields_body(LoweringContext& context, DeclarationHandle const record, bool 
         if (fields.empty()) {
             visitor = "[](Field, auto const&) {}";
         } else if (records.generate_visitor[row] && !constructing) {
-            visitor = "[&](Field selected, auto const& read) { value_type::visit_field(result, "
-                      "selected, " +
-                      member_reader(context, record) + "); }";
+            visitor = std::format("[&](Field selected, auto const& read) {{ "
+                                  "value_type::visit_field(result, selected, {}); }}",
+                                  member_reader(context, record));
         } else {
             visitor = "[&](Field const field, auto const& read) {\nswitch (field) {\n";
+            ioj::FormatWriter write{std::back_inserter(visitor)};
             for (auto const field : fields) {
                 auto const name{context.text(members.name[members.index(field)])};
                 auto const destination{(constructing ? "value_" : "result.") + name};
-                visitor += std::format("case Field::{}: read{}({}{}); break;\n",
-                                       name,
-                                       read_method,
-                                       destination,
-                                       constraint_arguments(context, field));
+                write("case Field::{}: read{}({}{}); break;\n",
+                      name,
+                      read_method,
+                      destination,
+                      constraint_arguments(context, field));
             }
             if (records.generate_visitor[row]) {
                 // Stage construction before an object exists; excluded fields cannot be looked up.
@@ -219,7 +224,7 @@ auto fields_body(LoweringContext& context, DeclarationHandle const record, bool 
         auto const index{members.index(field)};
         if (positional || members.s7[index].required) {
             auto const name{context.text(members.name[index])};
-            initializers.push_back("." + name + " = std::move(*value_" + name + ")");
+            initializers.push_back(std::format(".{0} = std::move(*value_{0})", name));
         }
     }
     body.add(ir.variable("value_type", "result", ir.raw_expr(join(initializers, ",\n"), {})), 2);
@@ -228,10 +233,10 @@ auto fields_body(LoweringContext& context, DeclarationHandle const record, bool 
         auto const name{context.text(members.name[index])};
         auto const& options{members.s7[index]};
         if (!positional && !options.required) {
-            body.add(ir.if_stmt(
-                ir.named("value_" + name),
-                ir.block({ir.assignment(ir.named("result." + name),
-                                        ir.raw_expr("std::move(*value_" + name + ")", {}))})));
+            body.add(ir.if_stmt(ir.named("value_" + name),
+                                ir.block({ir.assignment(
+                                    ir.named("result." + name),
+                                    ir.raw_expr(std::format("std::move(*value_{})", name), {}))})));
         }
     }
     body.add(ir.return_stmt(ir.named("result")));

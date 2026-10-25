@@ -86,6 +86,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
+#include <format>
 #include <iterator>
 #include <limits>
 #include <map>
@@ -735,12 +736,11 @@ class Validator {
                 *domains.minimum_required_bits[domain_row] >
                     *declarations_.enums.bit_width[declarations_.enums.index(schema)]) {
                 throw std::invalid_argument{
-                    "Enum '" + text(declarations_.enums.name[declarations_.enums.index(schema)]) +
-                    "' known value domain requires at least " +
-                    std::to_string(*domains.minimum_required_bits[domain_row]) +
-                    " bits but its semantic bit width is " +
-                    std::to_string(
-                        *declarations_.enums.bit_width[declarations_.enums.index(schema)])};
+                    std::format("Enum '{}' known value domain requires at least {} bits but its "
+                                "semantic bit width is {}",
+                                text(declarations_.enums.name[declarations_.enums.index(schema)]),
+                                *domains.minimum_required_bits[domain_row],
+                                *declarations_.enums.bit_width[declarations_.enums.index(schema)])};
             }
         }
         validate_export_specifier(
@@ -1015,11 +1015,12 @@ class Validator {
                 auto const value_row{declarations_.enumerators.index(value)};
                 auto const name{declarations_.enumerators.name[value_row]};
                 if (!code.has_value() || code->negative || code->magnitude != index) {
-                    throw std::invalid_argument{
-                        "Enum-array enum '" +
-                        text(declarations_.enums.name[declarations_.enums.index(schema)]) +
-                        "' value '" + text(name) + "' must have the zero-based contiguous code " +
-                        std::to_string(index)};
+                    throw std::invalid_argument{std::format(
+                        "Enum-array enum '{}' value '{}' must have the zero-based contiguous code "
+                        "{}",
+                        text(declarations_.enums.name[declarations_.enums.index(schema)]),
+                        text(name),
+                        index)};
                 }
                 if (declarations_.enumerators.hidden[value_row]) {
                     throw std::invalid_argument{
@@ -1092,8 +1093,8 @@ class Validator {
             *storage_width < 64 &&
             *declarations_.packed_values.invalid_value[declarations_.packed_values.index(value)] >=
                 (std::uint64_t{1} << *storage_width)) {
-            throw std::invalid_argument{context + " invalid value does not fit in " +
-                                        std::to_string(*storage_width) + "-bit storage"};
+            throw std::invalid_argument{std::format(
+                "{} invalid value does not fit in {}-bit storage", context, *storage_width)};
         }
 
         std::set<std::string> generated_names{
@@ -1217,10 +1218,13 @@ class Validator {
             }
             if (*segment_bits > *storage_width - used_bits) {
                 throw std::invalid_argument{
-                    segment_context + " does not fit in " + std::to_string(*storage_width) +
-                    "-bit storage: requires " + std::to_string(*segment_bits) + " bits, " +
-                    std::to_string(used_bits) + " already used, " +
-                    std::to_string(*storage_width - used_bits) + " remaining"};
+                    std::format("{} does not fit in {}-bit storage: requires {} bits, {} already "
+                                "used, {} remaining",
+                                segment_context,
+                                *storage_width,
+                                *segment_bits,
+                                used_bits,
+                                *storage_width - used_bits)};
             }
             used_bits += *segment_bits;
 
@@ -1268,9 +1272,10 @@ class Validator {
                 if (requires_integer &&
                     declarations_.packed_fields.kind[declarations_.packed_fields.index(*field)] !=
                         PackedFieldKind::unsigned_integer) {
-                    throw std::invalid_argument{field_context + " relationship '" +
-                                                std::string{to_serialized_string(relation_kind)} +
-                                                "' requires an unsigned integer field"};
+                    throw std::invalid_argument{
+                        std::format("{} relationship '{}' requires an unsigned integer field",
+                                    field_context,
+                                    to_serialized_string(relation_kind))};
                 }
                 if (relation_kind == SemanticRelationKind::discriminates &&
                     declarations_.packed_fields.kind[declarations_.packed_fields.index(*field)] !=
@@ -1317,12 +1322,11 @@ class Validator {
                         static_cast<int>(
                             declarations_.linear_quantizeds
                                 .bit_width[declarations_.linear_quantizeds.index(*quantized)])) {
-                    throw std::invalid_argument{
-                        field_context + " width must equal its linear-quantized representation's " +
-                        std::to_string(
-                            declarations_.linear_quantizeds
-                                .bit_width[declarations_.linear_quantizeds.index(*quantized)]) +
-                        "-bit encoding"};
+                    throw std::invalid_argument{std::format(
+                        "{} width must equal its linear-quantized representation's {}-bit encoding",
+                        field_context,
+                        declarations_.linear_quantizeds
+                            .bit_width[declarations_.linear_quantizeds.index(*quantized)])};
                 }
                 if (declarations_.packed_fields
                         .range_helper[declarations_.packed_fields.index(*field)]) {
@@ -1349,11 +1353,11 @@ class Validator {
                         static_cast<int>(
                             declarations_.fixed_points
                                 .total_bits[declarations_.fixed_points.index(*fixed)])) {
-                    throw std::invalid_argument{
-                        field_context + " width must equal its fixed-point representation's " +
-                        std::to_string(declarations_.fixed_points
-                                           .total_bits[declarations_.fixed_points.index(*fixed)]) +
-                        "-bit encoding"};
+                    throw std::invalid_argument{std::format(
+                        "{} width must equal its fixed-point representation's {}-bit encoding",
+                        field_context,
+                        declarations_.fixed_points
+                            .total_bits[declarations_.fixed_points.index(*fixed)])};
                 }
                 if (declarations_.packed_fields
                         .range_helper[declarations_.packed_fields.index(*field)]) {
@@ -1383,9 +1387,10 @@ class Validator {
                         .has_value() &&
                     *declarations_.packed_fields.bits[declarations_.packed_fields.index(*field)] !=
                         static_cast<int>(total_bits)) {
-                    throw std::invalid_argument{
-                        field_context + " width must equal its mini-float representation's " +
-                        std::to_string(total_bits) + "-bit encoding"};
+                    throw std::invalid_argument{std::format(
+                        "{} width must equal its mini-float representation's {}-bit encoding",
+                        field_context,
+                        total_bits)};
                 }
                 if (declarations_.packed_fields
                         .range_helper[declarations_.packed_fields.index(*field)]) {
@@ -1405,19 +1410,19 @@ class Validator {
                                              : PackedFieldKind::unsigned_integer};
                 if (declarations_.packed_fields.kind[declarations_.packed_fields.index(*field)] !=
                     expected_kind) {
-                    throw std::invalid_argument{
-                        field_context + " kind must match its " +
-                        std::string{integer_scalars.signedness[integer_scalars.index(*scalar)]
-                                        ? "signed"
-                                        : "unsigned"} +
-                        " integer-scalar type"};
+                    throw std::invalid_argument{std::format(
+                        "{} kind must match its {} integer-scalar type",
+                        field_context,
+                        integer_scalars.signedness[integer_scalars.index(*scalar)] ? "signed"
+                                                                                   : "unsigned")};
                 }
                 auto const scalar_width{
                     static_cast<int>(integer_scalars.bit_width[integer_scalars.index(*scalar)])};
                 if (field_bits < scalar_width) {
-                    throw std::invalid_argument{
-                        field_context + " width is smaller than the integer scalar's " +
-                        std::to_string(scalar_width) + "-bit semantic domain"};
+                    throw std::invalid_argument{std::format(
+                        "{} width is smaller than the integer scalar's {}-bit semantic domain",
+                        field_context,
+                        scalar_width)};
                 }
             } else if (declarations_.packed_fields
                            .kind[declarations_.packed_fields.index(*field)] ==
@@ -1472,8 +1477,9 @@ class Validator {
                         : domains.minimum_required_bits[domain_row]};
                 if (semantic_width.has_value() && field_bits < static_cast<int>(*semantic_width)) {
                     throw std::invalid_argument{
-                        field_context + " width is smaller than the enum's " +
-                        std::to_string(*semantic_width) + "-bit semantic domain"};
+                        std::format("{} width is smaller than the enum's {}-bit semantic domain",
+                                    field_context,
+                                    *semantic_width)};
                 }
                 std::optional<int> underlying_width;
                 if (declarations_.enums.underlying_type[declarations_.enums.index(*enum_schema)]
@@ -2151,9 +2157,11 @@ class Validator {
             throw std::invalid_argument{context + " bit width must be in the range 1..64"};
         }
         if (bit_width.has_value() && *bit_width < *minimum_bits) {
-            throw std::invalid_argument{context + " " + std::to_string(*bit_width) +
-                                        "-bit width is smaller than the required " +
-                                        std::to_string(*minimum_bits) + " bits"};
+            throw std::invalid_argument{
+                std::format("{} {}-bit width is smaller than the required {} bits",
+                            context,
+                            *bit_width,
+                            *minimum_bits)};
         }
     }
 
@@ -2183,9 +2191,10 @@ class Validator {
                                          relation_kind == SemanticRelationKind::offset_into};
             if (requires_unsigned && declarations_.integer_scalars
                                          .signedness[declarations_.integer_scalars.index(scalar)]) {
-                throw std::invalid_argument{context + " relationship '" +
-                                            std::string{to_serialized_string(relation_kind)} +
-                                            "' requires an unsigned integer scalar"};
+                throw std::invalid_argument{
+                    std::format("{} relationship '{}' requires an unsigned integer scalar",
+                                context,
+                                to_serialized_string(relation_kind))};
             }
         }
 
@@ -2242,8 +2251,9 @@ class Validator {
         auto const storage_domain{
             enum_storage_domain(std::string{types.cpp_types.spelling(cpp_type)})};
         if (!storage_domain.has_value()) {
-            throw std::invalid_argument{context + " has unsupported C++ representation: " +
-                                        std::string{types.cpp_types.spelling(cpp_type)}};
+            throw std::invalid_argument{std::format("{} has unsupported C++ representation: {}",
+                                                    context,
+                                                    types.cpp_types.spelling(cpp_type))};
         }
         auto const fits = [&](PackedIntegerValue const value) {
             return storage_domain->is_unsigned
@@ -2251,8 +2261,10 @@ class Validator {
                      : packed_integer_fits_signed(value, storage_domain->bit_width);
         };
         if (!fits(required_minimum) || !fits(required_maximum)) {
-            throw std::invalid_argument{context + " domain does not fit C++ representation '" +
-                                        std::string{types.cpp_types.spelling(cpp_type)} + "'"};
+            throw std::invalid_argument{
+                std::format("{} domain does not fit C++ representation '{}'",
+                            context,
+                            types.cpp_types.spelling(cpp_type))};
         }
     }
 
@@ -2301,12 +2313,11 @@ class Validator {
         if (declarations_.linear_quantizeds
                 .reserved_codes[declarations_.linear_quantizeds.index(representation)] >
             maximum_reserved) {
-            throw std::invalid_argument{
-                context + " reserves " +
-                std::to_string(
-                    declarations_.linear_quantizeds
-                        .reserved_codes[declarations_.linear_quantizeds.index(representation)]) +
-                " codes but at least two usable codes are required"};
+            throw std::invalid_argument{std::format(
+                "{} reserves {} codes but at least two usable codes are required",
+                context,
+                declarations_.linear_quantizeds
+                    .reserved_codes[declarations_.linear_quantizeds.index(representation)])};
         }
     }
 
@@ -2375,12 +2386,13 @@ class Validator {
                 .fractional_bits[declarations_.fixed_points.index(representation)] >
             maximum_fractional_bits) {
             throw std::invalid_argument{
-                context + " fractional width must be at most " +
-                std::to_string(maximum_fractional_bits) +
-                (declarations_.fixed_points
-                         .signedness[declarations_.fixed_points.index(representation)]
-                     ? " so one sign bit remains"
-                     : "")};
+                std::format("{} fractional width must be at most {}{}",
+                            context,
+                            maximum_fractional_bits,
+                            declarations_.fixed_points
+                                    .signedness[declarations_.fixed_points.index(representation)]
+                                ? " so one sign bit remains"
+                                : "")};
         }
 
         std::optional<PackedIntegerValue> minimum;
@@ -3608,8 +3620,9 @@ class Validator {
     void run(Manifest const& manifest) {
         if (manifest.schema_version != manifest_schema_version) {
             throw std::invalid_argument{
-                "Unsupported manifest schema version: " + std::to_string(manifest.schema_version) +
-                "; expected " + std::to_string(manifest_schema_version)};
+                std::format("Unsupported manifest schema version: {}; expected {}",
+                            manifest.schema_version,
+                            manifest_schema_version)};
         }
         std::set<lispb::StringId> module_names;
         std::set<std::string> output_paths;

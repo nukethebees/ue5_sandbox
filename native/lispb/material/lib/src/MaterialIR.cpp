@@ -24,6 +24,7 @@
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
+#include <format>
 #include <ranges>
 #include <set>
 #include <string>
@@ -120,20 +121,21 @@ auto validate(MaterialIR const& material) -> std::vector<Diagnostic> {
                 report(material,
                        diagnostics,
                        nodes.span[named.value],
-                       "invalid " + std::string{category} + " name");
+                       std::format("invalid {} name", category));
             } else if (!names.insert(material.text(nodes.name[named.value])).second) {
                 report(material,
                        diagnostics,
                        nodes.span[named.value],
-                       "duplicate " + std::string{category} + " name '" +
-                           std::string{material.text(nodes.name[named.value])} + "'");
+                       std::format("duplicate {} name '{}'",
+                                   category,
+                                   material.text(nodes.name[named.value])));
             }
             if (!valid_handle(material, nodes.node[named.value])) {
                 report(material,
                        diagnostics,
                        nodes.span[named.value],
-                       "invalid node handle for '" +
-                           std::string{material.text(nodes.name[named.value])} + "'");
+                       std::format("invalid node handle for '{}'",
+                                   material.text(nodes.name[named.value])));
             }
         }};
 
@@ -147,8 +149,8 @@ auto validate(MaterialIR const& material) -> std::vector<Diagnostic> {
             report(material,
                    diagnostics,
                    material.parameters.span[parameter.value],
-                   "duplicate parameter name '" +
-                       std::string{material.text(material.parameters.name[parameter.value])} + "'");
+                   std::format("duplicate parameter name '{}'",
+                               material.text(material.parameters.name[parameter.value])));
         }
         if (material.parameters.type[parameter.value] == ValueType::invalid ||
             (material.parameters.type[parameter.value] == ValueType::texture &&
@@ -175,8 +177,8 @@ auto validate(MaterialIR const& material) -> std::vector<Diagnostic> {
             report(material,
                    diagnostics,
                    material.parameters.span[parameter.value],
-                   "malformed parameter node for '" +
-                       std::string{material.text(material.parameters.name[parameter.value])} + "'");
+                   std::format("malformed parameter node for '{}'",
+                               material.text(material.parameters.name[parameter.value])));
         }
     }
     for (auto const binding : material.bindings.handles()) {
@@ -189,8 +191,8 @@ auto validate(MaterialIR const& material) -> std::vector<Diagnostic> {
             report(material,
                    diagnostics,
                    material.outputs.span[output.value],
-                   "invalid node handle for output '" +
-                       std::string{material.text(material.outputs.name[output.value])} + "'");
+                   std::format("invalid node handle for output '{}'",
+                               material.text(material.outputs.name[output.value])));
         }
     }
 
@@ -360,10 +362,9 @@ auto validate(MaterialIR const& material) -> std::vector<Diagnostic> {
                     report(material,
                            diagnostics,
                            material.nodes.span(node),
-                           "malformed custom input '" +
-                               std::string{material.text(
-                                   material.nodes.input_declarations.name[input.value])} +
-                               "'");
+                           std::format(
+                               "malformed custom input '{}'",
+                               material.text(material.nodes.input_declarations.name[input.value])));
                 }
             }
         } else if (material.nodes.kind(node) == NodeKind::vector_constructor) {
@@ -509,10 +510,9 @@ auto validate(MaterialIR const& material) -> std::vector<Diagnostic> {
                     report(material,
                            diagnostics,
                            material.nodes.span(node),
-                           "malformed shader-call input '" +
-                               std::string{material.text(
-                                   material.nodes.input_declarations.name[input.value])} +
-                               "'");
+                           std::format(
+                               "malformed shader-call input '{}'",
+                               material.text(material.nodes.input_declarations.name[input.value])));
                 }
             }
         }
