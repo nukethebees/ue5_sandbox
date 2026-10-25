@@ -16,6 +16,8 @@
 
 namespace ioj::sim {
 struct CapitalShipSimConfig {
+    bool operator==(CapitalShipSimConfig const&) const = default;
+
     enum class Field : std::uint8_t {
         spawn_delay,
         fighter_spawn_slots,

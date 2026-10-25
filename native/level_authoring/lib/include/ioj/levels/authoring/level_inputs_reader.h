@@ -8,7 +8,6 @@
 #include "ioj/levels/authoring/positional_inputs_reader.h"
 #include "ioj/levels/campaign_definition_reader.h"
 #include "ioj/levels/level_camera_definition_reader.h"
-#include "ioj/levels/level_collision_grid_definition_reader.h"
 #include "ioj/levels/team_result_definition_reader.h"
 #include "ioj/s7/field_constraints.h"
 #include "ioj/s7/record_reader.h"
@@ -176,9 +175,6 @@ struct TypeReader<levels::authoring::LevelInput> : RecordReader<levels::authorin
                                      case Field::camera:
                                          read(result.camera);
                                          break;
-                                     case Field::collision_grid:
-                                         read(result.collision_grid);
-                                         break;
                                      case Field::settings:
                                          read(result.settings);
                                          break;
@@ -203,21 +199,19 @@ struct TypeReader<levels::authoring::LevelInput> : RecordReader<levels::authorin
         unlock,
         player,
         camera,
-        collision_grid,
         settings,
         mission,
         entities,
         Count,
     };
 
-    static constexpr std::array<std::string_view, 11> field_names{"id",
+    static constexpr std::array<std::string_view, 10> field_names{"id",
                                                                   "title",
                                                                   "description",
                                                                   "par-time",
                                                                   "unlock",
                                                                   "player",
                                                                   "camera",
-                                                                  "collision-grid",
                                                                   "settings",
                                                                   "mission",
                                                                   "entities"};

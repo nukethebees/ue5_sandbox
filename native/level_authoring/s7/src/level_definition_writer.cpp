@@ -1,5 +1,6 @@
 #include <ioj/levels/authoring/level_definition_writer.h>
 
+#include <ioj/levels/authoring/definition_reader.h>
 #include <ioj/levels/authoring/editor_support.h>
 #include <ioj/levels/authoring/grammar.h>
 
@@ -52,13 +53,84 @@ auto id_list(SExprIR& ir, std::vector<Id> ids) -> Expr {
     }
     return ir.quote(ir.list(values));
 }
+
+auto evaluated_value(SExprIR& ir, s7::Ast const& ast, s7::NodeIndex const node) -> Expr {
+    switch (ast.node(node).kind) {
+        case s7::NodeKind::List:
+            return ir.list(ast.children(node),
+                           [&](auto child) { return evaluated_value(ir, ast, child); });
+        case s7::NodeKind::Symbol:
+            return ir.atom(ast.text(node));
+        case s7::NodeKind::Keyword:
+            return ir.atom(std::format(":{}", ast.text(node)));
+        case s7::NodeKind::String:
+            return ir.string(ast.text(node));
+        case s7::NodeKind::Boolean:
+            return ast.boolean(node) ? ir.atoms.true_value : ir.atoms.false_value;
+        case s7::NodeKind::Integer:
+            return ir.atom(ast.integer(node));
+        case s7::NodeKind::Ratio: {
+            auto const ratio{ast.ratio(node)};
+            return ir.atom(std::format("{}/{}", ratio.numerator, ratio.denominator));
+        }
+        case s7::NodeKind::Real:
+            return ir.atom(std::format("{}", ast.real(node)));
+    }
+    std::unreachable();
 }
 
-auto emit_editor_level_source(LevelDefinition const& level)
+auto level_settings_node(s7::Ast const& ast, s7::NodeIndex const root)
+    -> std::optional<s7::NodeIndex> {
+    auto const fields{ast.children(root)};
+    auto const count{fields.size()};
+    for (std::size_t index{1}; index < count; index += 2) {
+        if (ast.text(fields[index]) == "settings") {
+            return fields[index + 1];
+        }
+    }
+    return std::nullopt;
+}
+}
+
+auto emit_evaluated_source(s7::Ast const& ast, s7::NodeIndex const node) -> std::string {
+    lispb::Strings strings;
+    SExprIR ir{strings};
+    auto const expression{ir.quote(evaluated_value(ir, ast, node))};
+    return SExprRenderer{ir, Dialect::scheme}.render(expression);
+}
+
+auto emit_editor_level_source(LevelDefinition const& level,
+                              std::optional<std::string_view> const authored_source,
+                              std::filesystem::path const& script_library_root)
     -> std::expected<std::string, Diagnostics> {
     auto support{check_editor_support(level)};
     if (!support) {
         return std::unexpected{std::move(support.error())};
+    }
+
+    std::optional<s7::Ast> source_ast;
+    if (authored_source && !authored_source->empty()) {
+        auto source{DefinitionReader{script_library_root}.read_source_ast(*authored_source)};
+        if (!source) {
+            return std::unexpected{std::move(source.error())};
+        }
+        auto valid{parse_level(*source, source->root, level.settings())};
+        if (!valid) {
+            return std::unexpected{std::move(valid.error())};
+        }
+        auto const fields{source->children(source->root)};
+        if (source->text(fields.front()) != "level") {
+            return std::unexpected{
+                Diagnostics{{DiagnosticCode::UnsupportedEditorFeature,
+                             "level",
+                             "Canonical saving requires one evaluated level record"}}};
+        }
+        source_ast = std::move(*source);
+    } else if (!authored_source && level.settings() != settings::Settings{}) {
+        return std::unexpected{
+            Diagnostics{{DiagnosticCode::UnsupportedEditorFeature,
+                         "level.settings",
+                         "Saving nondefault settings requires the authored level source"}}};
     }
 
     auto const& definition{level};
@@ -70,18 +142,10 @@ auto emit_editor_level_source(LevelDefinition const& level)
     if (!definition.metadata().description.empty()) {
         form.field(Property::Description, ir.string(definition.metadata().description));
     }
-    if (definition.collision_grid() &&
-        (definition.collision_grid()->level_size || definition.collision_grid()->cell_size)) {
-        auto collision{ir.form(RecordKind::CollisionGrid)};
-        if (definition.collision_grid()->level_size) {
-            collision.field(Property::LevelSize,
-                            vector(ir, *definition.collision_grid()->level_size));
+    if (source_ast) {
+        if (auto const node{level_settings_node(*source_ast, source_ast->root)}) {
+            form.field(Property::Settings, ir.quote(evaluated_value(ir, *source_ast, *node)));
         }
-        if (definition.collision_grid()->cell_size) {
-            collision.field(Property::CellSize,
-                            vector(ir, *definition.collision_grid()->cell_size));
-        }
-        form.field(Property::CollisionGrid, collision.build());
     }
     if (!definition.player_entity_id().empty()) {
         form.field(Property::Player, ir.quote(definition.player_entity_id().value));

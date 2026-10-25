@@ -22,8 +22,9 @@ Copy an existing `.scm` scenario, give it a unique `:id`, and add its path to
       :position '(0 10000 0))))
 ```
 
-All game defaults live in `Settings/base.scm`. A level overrides only the fields
-it supplies. For a separate settings file, compose defaults and overrides in order:
+Settings resolve from C++ defaults, then `Settings/base.scm`, then the level's
+`:settings`. A level overrides only the fields it supplies, including collision-grid
+dimensions. For a separate settings file, compose overrides in order:
 
 ```scheme
 (settings-layers
@@ -33,8 +34,10 @@ it supplies. For a separate settings file, compose defaults and overrides in ord
 
 Imports are relative to `LevelScripts/`. Shared formation helpers live in
 `Libraries/`. Assets, colours and scene bindings stay in Unreal properties.
-Edit scripts directly for missions, settings and entity overrides; editor scene saving
-rejects these unsupported features. See [objective authoring](docs/objectives.md).
+Edit scripts directly for missions, settings and entity overrides. Canonical scene
+saving preserves authored settings as explicit values; it rejects missions and
+entity overrides. Save Buffer preserves the original source exactly.
+See [objective authoring](docs/objectives.md).
 
 Run a scenario with `coj benchmark native-simulation --level LevelScripts/your-level.scm --seconds 10`.
 See [the native guide](../native/README.md) and [benchmark guide](../docs/benchmarks.md)

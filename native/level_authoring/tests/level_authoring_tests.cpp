@@ -276,10 +276,9 @@ TEST(NativeLevelAuthoringReader, ResolvesSourceAgainstBaseAndAcceptsPreparedDefi
         (settings :fighters (fighters :speed 2000)))))"}};
     auto const resolved{reader.resolve_level(source, base)};
     ASSERT_TRUE(resolved) << format_diagnostics(resolved.error());
-    ASSERT_TRUE(resolved->settings());
     auto expected{base};
     expected.fighters.speed = 2000.f;
-    EXPECT_PRED_FORMAT2(structurally_equal, expected, *resolved->settings());
+    EXPECT_PRED_FORMAT2(structurally_equal, expected, resolved->settings());
     EXPECT_PRED_FORMAT2(structurally_equal, original, base);
 
     auto const prepared{reader.resolve_level(LevelSource{*resolved}, {})};
@@ -450,24 +449,22 @@ TEST(NativeLevelAuthoringReader, GeneratedRecordsCoexistWithMissionsAndSparseSet
       (let ((distance (* 2 500)))
         (level :id 'generated-records :title "Generated records"
           :camera (camera :look-at '(capital) :distance distance :offset-direction '(-1 0 1))
-          :collision-grid (collision-grid :cell-size '(5000 5000 5000))
           :entities (list (entity :id 'capital :archetype 'capital-ship :team 'blue :position '(0 0 0)))
           :settings (settings-layers
-            (settings :fighters (fighters :speed 9000))
+            (settings :fighters (fighters :speed 9000)
+                      :collision-grid (collision-grid :cell-size '(5000 5000 5000)))
             (settings :fighters (fighters :speed 2000)))
           :mission (mission :objectives (list
             (objective :id 'wait :team 'blue :pass (time-elapsed 1)))))))")};
     ASSERT_TRUE(level) << format_diagnostics(level.error());
     std::optional<LevelCameraDefinition> const camera{{{EntityId{"capital"}}, {-1, 0, 1}, 1000}};
-    std::optional<LevelCollisionGridDefinition> const grid{
-        {.cell_size = Vector3d{5000, 5000, 5000}}};
+    sim::OverlapResponseConfig const grid{.cell_size = {5000, 5000, 5000}};
     EXPECT_PRED_FORMAT2(structurally_equal, camera, level->camera());
-    EXPECT_PRED_FORMAT2(structurally_equal, grid, level->collision_grid());
+    EXPECT_PRED_FORMAT2(structurally_equal, grid, level->settings().collision_grid);
     ASSERT_TRUE(level->mission());
     ASSERT_EQ(level->mission()->objectives.size(), 1u);
     EXPECT_EQ(level->mission()->objectives.front().id, ObjectiveName{"wait"});
-    ASSERT_TRUE(level->settings());
-    auto const& settings{*level->settings()};
+    auto const& settings{level->settings()};
     EXPECT_PRED_FORMAT2(structurally_equal, sim::FighterSimConfig{}, settings.fighters);
 }
 
@@ -650,8 +647,14 @@ TEST(NativeLevelAuthoringReader, ReportsMissingFile) {
 TEST(NativeLevelAuthoringReader, RootControlsImportsAndPreservesFailuresAndSourcePaths) {
     TemporaryLevelDirectory directory;
     auto const& root{directory.path()};
+    settings::Settings base;
+    base.fighters.speed = 7300.f;
+    base.collision_grid.cell_size = {1e8f, 1e8f, 1e8f};
     auto source{minimal_source()};
     source.replace(source.find("\"Test\""), 6, "shared-title");
+    source.insert(source.size() - 1, R"(
+      :settings (settings :collision-grid
+        (collision-grid :level-size '(2000000000 2000000000 2000000000))))");
     ASSERT_TRUE(write_files({
         {root / "first.scm", "(define shared-title \"Shared\")\n" + source},
         {root / "second.scm", source},
@@ -665,7 +668,7 @@ TEST(NativeLevelAuthoringReader, RootControlsImportsAndPreservesFailuresAndSourc
                         "second.scm")
           :campaigns (list "campaign.scm")))"},
     }));
-    auto const catalog{DefinitionReader{}.read_root_file(root / "catalog.scm")};
+    auto const catalog{DefinitionReader{}.read_root_file(root / "catalog.scm", base)};
     ASSERT_TRUE(catalog) << format_diagnostics(catalog.error());
     auto const& levels{catalog->levels};
     ASSERT_EQ(levels.size(), 3u);
@@ -676,6 +679,10 @@ TEST(NativeLevelAuthoringReader, RootControlsImportsAndPreservesFailuresAndSourc
     EXPECT_EQ(levels[1].definition.error().front().source_path, root / "broken.scm");
     ASSERT_TRUE(levels[2].definition);
     EXPECT_EQ(levels[2].definition->metadata().title, "Shared");
+    auto expected_settings{base};
+    expected_settings.collision_grid.level_size = {2e9f, 2e9f, 2e9f};
+    EXPECT_PRED_FORMAT2(structurally_equal, expected_settings, levels[0].definition->settings());
+    EXPECT_PRED_FORMAT2(structurally_equal, expected_settings, levels[2].definition->settings());
 
     auto const& campaign{catalog->campaigns[0].definition};
     ASSERT_TRUE(campaign);
@@ -983,35 +990,53 @@ TEST(NativeLevelAuthoringWriter, HandlesEmptyCollectionsEscapesAndNumericBoundar
     EXPECT_DOUBLE_EQ(parsed->entities()[0].position.x(), 0.0);
 }
 TEST(NativeLevelAuthoringCollisionGrid, PreservesIndependentOverridesAcrossSourceRoundTrip) {
+    settings::Settings base;
+    base.fighters.speed = 7000.f;
+    base.collision_grid.cell_size = {2500.f, 2500.f, 10000.f};
     for (int mask{}; mask < 4; ++mask) {
-        auto definition{make_level("grid")};
-        if (mask != 0) {
-            definition.collision_grid.emplace();
-        }
+        auto expected{base};
+        std::string fields;
         if ((mask & 1) != 0) {
-            definition.collision_grid->level_size = Vector3d{20000, 20000, 20000};
+            fields += " :level-size '(20000 20000 20000)";
+            expected.collision_grid.level_size = {20000.f, 20000.f, 20000.f};
         }
         if ((mask & 2) != 0) {
-            definition.collision_grid->cell_size = Vector3d{5000, 5000, 5000};
+            fields += " :cell-size '(5000 5000 20000)";
+            expected.collision_grid.cell_size = sim::OverlapResponseConfig{}.cell_size;
         }
-        auto const source{emit_source(definition)};
+        auto authored{minimal_source()};
+        authored.insert(
+            authored.size() - 1,
+            std::format(" :settings (settings :collision-grid (collision-grid{}))", fields));
+        auto const definition{DefinitionReader{}.read_level_source(authored, base)};
+        ASSERT_TRUE(definition) << format_diagnostics(definition.error());
+        EXPECT_PRED_FORMAT2(structurally_equal, expected, definition->settings());
+        EXPECT_FALSE(emit_source(*definition));
+
+        auto const source{emit_editor_level_source(*definition, authored)};
         ASSERT_TRUE(source) << format_diagnostics(source.error());
-        auto const parsed{DefinitionReader{}.read_level_source(*source)};
+        auto const parsed{DefinitionReader{}.read_level_source(*source, base)};
         ASSERT_TRUE(parsed) << format_diagnostics(parsed.error());
-        EXPECT_PRED_FORMAT2(
-            structurally_equal, definition.collision_grid, parsed->collision_grid());
+        EXPECT_PRED_FORMAT2(structurally_equal, expected, parsed->settings());
+
+        auto changed_base{base};
+        changed_base.fighters.speed = 8000.f;
+        expected.fighters.speed = 8000.f;
+        auto const inherited{DefinitionReader{}.read_level_source(*source, changed_base)};
+        ASSERT_TRUE(inherited) << format_diagnostics(inherited.error());
+        EXPECT_PRED_FORMAT2(structurally_equal, expected, inherited->settings());
     }
 }
 TEST(NativeLevelAuthoringCollisionGrid, RejectsMalformedAndInvalidExplicitDimensions) {
     for (auto const grid :
-         {"(collision-grid)",
-          "(collision-grid :cell-size '(0 1 1))",
+         {"(collision-grid :cell-size '(0 1 1))",
           "(collision-grid :level-size '(+nan.0 1 1))",
           "(collision-grid :level-size '(2000 2000 2000) :cell-size '(0.00001 0.00001 0.00001))",
           "(collision-grid :cell-size '(1 1 1) :cell-size '(2 2 2))",
           "(collision-grid :unknown '(1 1 1))"}) {
         auto source{minimal_source()};
-        source.insert(source.size() - 1, std::format(" :collision-grid {}", grid));
+        source.insert(source.size() - 1,
+                      std::format(" :settings (settings :collision-grid {})", grid));
         EXPECT_FALSE(DefinitionReader{}.read_level_source(source)) << grid;
     }
 }

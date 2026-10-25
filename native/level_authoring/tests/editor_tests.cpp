@@ -25,8 +25,7 @@ void diff_members(SyncChange const& expected, SyncChange const& actual, DiffCont
 
 void diff_members(SyncPlan const& expected, SyncPlan const& actual, DiffContext& context) {
     context.diff("changes", expected.changes, actual.changes);
-    context.diff(
-        "collision_grid_changed", expected.collision_grid_changed, actual.collision_grid_changed);
+    context.diff("settings_changed", expected.settings_changed, actual.settings_changed);
     context.diff("metadata_changed", expected.metadata_changed, actual.metadata_changed);
     context.diff("viewpoint_changed", expected.viewpoint_changed, actual.viewpoint_changed);
     context.diff("mission_changed", expected.mission_changed, actual.mission_changed);
@@ -163,14 +162,15 @@ TEST(NativeEditorScene, InvalidObservedValuesCanBeComparedAndRepaired) {
     EXPECT_PRED_FORMAT2(structurally_equal, expected, *plan);
 
     auto const nan{std::numeric_limits<double>::quiet_NaN()};
-    observed.definition.collision_grid = {.level_size = Vector3d{nan, 1.0, 1.0}};
+    observed.definition.settings.collision_grid.level_size = {
+        std::numeric_limits<float>::quiet_NaN(), 1.f, 1.f};
     observed.definition.camera = {.offset_direction = {nan, 0.0, 0.0}, .distance = nan};
     observed.definition.mission = timer_mission();
     EXPECT_EQ(observed, observed);
 
     auto const repaired{reconcile(observed, incoming)};
     ASSERT_TRUE(repaired);
-    expected.collision_grid_changed = true;
+    expected.settings_changed = true;
     expected.viewpoint_changed = true;
     expected.mission_changed = true;
     EXPECT_PRED_FORMAT2(structurally_equal, expected, *repaired);
@@ -179,13 +179,20 @@ TEST(NativeEditorScene, InvalidObservedValuesCanBeComparedAndRepaired) {
 TEST(NativeEditorScene, ComparesDocumentFieldsAndRepairsInvalidReferences) {
     auto observed{scene()};
     auto incoming{observed.definition};
+    incoming.settings.fighters.speed += 100.f;
+    auto const settings_plan{reconcile(observed, incoming)};
+    ASSERT_TRUE(settings_plan);
+    SyncPlan expected{.settings_changed = true};
+    EXPECT_PRED_FORMAT2(structurally_equal, expected, *settings_plan);
+    EXPECT_NE(observed, (SceneSnapshot{.definition = incoming, .properties = observed.properties}));
+
     incoming.metadata.description = "Changed";
-    incoming.collision_grid = {.level_size = Vector3d{100000.0, 100000.0, 100000.0}};
+    incoming.settings.collision_grid.level_size = {100000.f, 100000.f, 100000.f};
     incoming.mission = timer_mission();
     auto const plan{reconcile(observed, incoming)};
     ASSERT_TRUE(plan);
-    SyncPlan expected{
-        .collision_grid_changed = true, .metadata_changed = true, .mission_changed = true};
+    expected.metadata_changed = true;
+    expected.mission_changed = true;
     EXPECT_PRED_FORMAT2(structurally_equal, expected, *plan);
 
     incoming.player_entity_id = {};

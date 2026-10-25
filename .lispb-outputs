@@ -30,8 +30,6 @@ native/levels/lib/include/ioj/levels/diagnostic_code.h
 native/levels/lib/include/ioj/levels/entity_archetype.h
 native/levels/lib/include/ioj/levels/level_camera_definition.h
 native/levels/lib/include/ioj/levels/level_camera_definition_reader.h
-native/levels/lib/include/ioj/levels/level_collision_grid_definition.h
-native/levels/lib/include/ioj/levels/level_collision_grid_definition_reader.h
 native/levels/lib/include/ioj/levels/mission_types.h
 native/levels/lib/include/ioj/levels/objective_dependency.h
 native/levels/lib/include/ioj/levels/objective_dependency_reader.h

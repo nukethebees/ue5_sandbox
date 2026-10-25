@@ -1,8 +1,8 @@
 #include <ioj/levels/authoring/catalog_parser.h>
 
-#include "level_processing.h"
 #include "reader_diagnostics.h"
 #include <ioj/levels/authoring/level_inputs_reader.h>
+#include <ioj/levels/authoring/level_parser.h>
 
 namespace ioj::levels::authoring {
 namespace {
@@ -45,7 +45,9 @@ auto process_entry(s7::ReadResult<Input> input,
 }
 }
 
-auto parse_catalog(s7::Ast const& ast, std::filesystem::path const& source_root)
+auto parse_catalog(s7::Ast const& ast,
+                   std::filesystem::path const& source_root,
+                   settings::Settings const& base)
     -> std::expected<DefinitionCatalog, Diagnostics> {
     auto input{s7::read<CatalogInput>(s7::Reader{ast}, ast.root, "catalog")};
     if (!input) {
@@ -54,10 +56,11 @@ auto parse_catalog(s7::Ast const& ast, std::filesystem::path const& source_root)
     DefinitionCatalog result;
     auto const levels_count{input->levels.size()};
     for (std::size_t i{}; i < levels_count; ++i) {
-        result.levels.push_back(process_entry<LevelDefinition>(std::move(input->levels[i]),
-                                                               std::format("catalog.levels[{}]", i),
-                                                               source_root,
-                                                               detail::process_level));
+        auto const path{std::format("catalog.levels[{}]", i)};
+        result.levels.push_back(process_entry<LevelDefinition>(
+            std::move(input->levels[i]), path, source_root, [&](s7::RawNode value) {
+                return parse_level(ast, value.index, base, path + ".value");
+            }));
     }
     auto const campaigns_count{input->campaigns.size()};
     for (std::size_t i{}; i < campaigns_count; ++i) {

@@ -133,7 +133,8 @@ auto DefinitionReader::resolve_level(LevelSource const& source, settings::Settin
     return read_level_source(std::get<std::string>(source), std::move(base));
 }
 
-auto DefinitionReader::read_root_file(std::filesystem::path const& path) const
+auto DefinitionReader::read_root_file(std::filesystem::path const& path,
+                                      settings::Settings base) const
     -> std::expected<DefinitionCatalog, Diagnostics> {
     auto const full_path{std::filesystem::absolute(path)};
     lispb::Strings strings;
@@ -150,7 +151,7 @@ auto DefinitionReader::read_root_file(std::filesystem::path const& path) const
             full_path);
     }
 
-    auto catalog{parse_catalog(*ast, full_path.parent_path())};
+    auto catalog{parse_catalog(*ast, full_path.parent_path(), base)};
     if (catalog) {
         for (auto& entry : catalog->levels) {
             entry.definition = with_source_path(std::move(entry.definition), entry.source_path);
@@ -168,8 +169,13 @@ auto DefinitionReader::read_root_file(std::filesystem::path const& path) const
     return with_source_path(std::move(catalog), full_path);
 }
 
+auto DefinitionReader::read_source_ast(std::string_view const source) const
+    -> std::expected<s7::Ast, Diagnostics> {
+    return evaluate(source, script_library_root_);
+}
+
 auto DefinitionReader::read_level_source(std::string_view const source,
-                                         std::optional<settings::Settings> base) const
+                                         settings::Settings base) const
     -> LevelDefinitionReadResult {
     return evaluate(source, script_library_root_).and_then([&](s7::Ast const& ast) {
         return parse_level(ast, ast.root, std::move(base));
@@ -207,8 +213,7 @@ auto DefinitionReader::read_script_file(std::filesystem::path const& path) const
     return with_source_path(evaluate(*source, root), path);
 }
 auto DefinitionReader::read_level_file(std::filesystem::path const& path,
-                                       std::optional<settings::Settings> base) const
-    -> LevelDefinitionReadResult {
+                                       settings::Settings base) const -> LevelDefinitionReadResult {
     return with_source_path(read_script_file(path).and_then([&](s7::Ast const& ast) {
         return parse_level(ast, ast.root, std::move(base));
     }),

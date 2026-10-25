@@ -6,6 +6,8 @@
 namespace ioj::sim {
 // Describe a muzzle position and orientation relative to its owning entity.
 struct FirePoint {
+    auto operator==(FirePoint const&) const -> bool = default;
+
     Vector3f location;
     Rotator3f rotation;
 };

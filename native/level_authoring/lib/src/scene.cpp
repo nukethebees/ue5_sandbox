@@ -14,7 +14,8 @@ auto near(double const lhs, double const rhs) -> bool {
 auto same_number(double const lhs, double const rhs) -> bool {
     return lhs == rhs || (std::isnan(lhs) && std::isnan(rhs));
 }
-auto same_vector(Vector3d const& lhs, Vector3d const& rhs) -> bool {
+template <typename T>
+auto same_vector(T const& lhs, T const& rhs) -> bool {
     return same_number(lhs.x(), rhs.x()) && same_number(lhs.y(), rhs.y()) &&
            same_number(lhs.z(), rhs.z());
 }
@@ -42,10 +43,6 @@ auto operator==(LevelCameraDefinition const& lhs, LevelCameraDefinition const& r
            same_number(lhs.distance, rhs.distance);
 }
 
-auto operator==(std::optional<Vector3d> const& lhs, std::optional<Vector3d> const& rhs) -> bool {
-    return lhs.has_value() == rhs.has_value() && (!lhs || same_vector(*lhs, *rhs));
-}
-
 // Keep observation equality local: std::optional's ordinary equality deliberately
 // treats NaN as unequal, whereas an unchanged invalid observation is still current.
 template <typename T>
@@ -53,9 +50,21 @@ auto operator==(std::optional<T> const& lhs, std::optional<T> const& rhs) -> boo
     return lhs.has_value() == rhs.has_value() && (!lhs || *lhs == *rhs);
 }
 
-auto operator==(LevelCollisionGridDefinition const& lhs, LevelCollisionGridDefinition const& rhs)
-    -> bool {
-    return lhs.level_size == rhs.level_size && lhs.cell_size == rhs.cell_size;
+auto same_collision_grid(sim::OverlapResponseConfig const& lhs,
+                         sim::OverlapResponseConfig const& rhs) -> bool {
+    return lhs.damage_per_overlap_detection == rhs.damage_per_overlap_detection &&
+           same_vector(lhs.level_size, rhs.level_size) && same_vector(lhs.cell_size, rhs.cell_size);
+}
+
+auto same_settings(settings::Settings lhs, settings::Settings rhs) -> bool {
+    if (!same_collision_grid(lhs.collision_grid, rhs.collision_grid)) {
+        return false;
+    }
+
+    // Compare invalid observed grid values above without losing unchanged NaNs.
+    lhs.collision_grid = {};
+    rhs.collision_grid = {};
+    return lhs == rhs;
 }
 
 auto same_viewpoint(LevelDefinitionComponents const& lhs, LevelDefinitionComponents const& rhs)
@@ -81,9 +90,7 @@ auto document_changes(SceneSnapshot const& scene,
                       LevelDefinitionComponents const& incoming,
                       bool const repair_invalid = true) -> SyncPlan {
     auto const& current{scene.definition};
-    return {.collision_grid_changed =
-                !(current.collision_grid.value_or(LevelCollisionGridDefinition{}) ==
-                  incoming.collision_grid.value_or(LevelCollisionGridDefinition{})),
+    return {.settings_changed = !same_settings(current.settings, incoming.settings),
             .metadata_changed = current.metadata.id != incoming.metadata.id ||
                                 current.metadata.title != incoming.metadata.title ||
                                 current.metadata.description != incoming.metadata.description,
@@ -98,7 +105,7 @@ auto SyncPlan::count(SyncAction const action) const -> std::size_t {
     return static_cast<std::size_t>(std::ranges::count(changes, action, &SyncChange::action));
 }
 auto SyncPlan::has_changes() const -> bool {
-    return !changes.empty() || collision_grid_changed || metadata_changed || viewpoint_changed ||
+    return !changes.empty() || settings_changed || metadata_changed || viewpoint_changed ||
            mission_changed;
 }
 
@@ -109,9 +116,7 @@ auto reconcile_scene(SceneSnapshot const& scene, LevelDefinition const& level) -
 
     auto const& current_document{scene.definition};
     auto result{SyncPlan{
-        .collision_grid_changed =
-            !(current_document.collision_grid.value_or(LevelCollisionGridDefinition{}) ==
-              incoming.collision_grid().value_or(LevelCollisionGridDefinition{})),
+        .settings_changed = !same_settings(current_document.settings, incoming.settings()),
         .metadata_changed =
             current_document.metadata.id != incoming.metadata().id ||
             current_document.metadata.title != incoming.metadata().title ||

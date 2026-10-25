@@ -15,6 +15,8 @@
 
 namespace ioj::settings {
 struct TickSettings {
+    bool operator==(TickSettings const&) const = default;
+
     enum class Field : std::uint8_t {
         tick_rate,
         time_scale,

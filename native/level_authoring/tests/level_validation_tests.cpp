@@ -50,6 +50,25 @@ TEST(LevelDefinition, CameraCanTargetOneEntity) {
     EXPECT_TRUE(LevelDefinition::make(std::move(definition)));
 }
 
+TEST(LevelDefinition, ValidatesResolvedCollisionGridSettings) {
+    auto definition{camera_level()};
+    ASSERT_TRUE(LevelDefinition::make(definition));
+
+    for (auto const value : {0.f, -1.f, std::numeric_limits<float>::infinity()}) {
+        SCOPED_TRACE(value);
+        definition.settings.collision_grid.level_size.x() = value;
+        expect_error(definition, DiagnosticCode::InvalidLevelSize);
+        definition = camera_level();
+        definition.settings.collision_grid.cell_size.x() = value;
+        expect_error(definition, DiagnosticCode::InvalidGridCellSize);
+        definition = camera_level();
+    }
+
+    definition.settings.collision_grid.level_size = {100000.f, 100000.f, 100000.f};
+    definition.settings.collision_grid.cell_size = {1.f, 1.f, 1.f};
+    expect_error(definition, DiagnosticCode::InvalidGridDimensions);
+}
+
 TEST(LevelDefinition, DuplicateAuthoredEntityIdFailsValidation) {
     auto definition{camera_level()};
     definition.entities[1].id = definition.entities[0].id;

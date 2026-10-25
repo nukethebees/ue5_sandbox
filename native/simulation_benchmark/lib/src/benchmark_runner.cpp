@@ -102,8 +102,7 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
     auto const& level{*level_result};
     auto const& level_components{level};
 
-    auto const loaded_settings{s7::resolve_simulation_settings(
-        *level.settings(), level.collision_grid() ? &*level.collision_grid() : nullptr)};
+    auto const loaded_settings{s7::resolve_simulation_settings(level.settings())};
     if (!loaded_settings) {
         return std::unexpected{levels::format_diagnostics(loaded_settings.error())};
     }

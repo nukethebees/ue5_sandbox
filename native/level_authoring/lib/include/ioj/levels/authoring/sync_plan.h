@@ -22,7 +22,7 @@ struct SyncPlan {
     [[nodiscard]] auto has_changes() const -> bool;
 
     std::vector<SyncChange> changes{};
-    bool collision_grid_changed{};
+    bool settings_changed{};
     bool metadata_changed{};
     bool viewpoint_changed{};
     bool mission_changed{};

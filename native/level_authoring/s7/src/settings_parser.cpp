@@ -6,7 +6,8 @@
 namespace ioj::levels::authoring {
 auto parse_settings(s7::Ast const& ast, s7::NodeIndex root, settings::Settings base)
     -> SettingsReadResult {
-    return s7::read_override(s7::Reader{ast}, root, "", std::move(base))
+    s7::Reader const reader{ast};
+    return s7::apply_overrides(std::move(base), {{reader, root, ""}})
         .transform_error(detail::diagnostics);
 }
 }

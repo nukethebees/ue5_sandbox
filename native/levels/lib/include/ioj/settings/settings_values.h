@@ -24,6 +24,8 @@
 
 namespace ioj::settings {
 struct SettingsValues {
+    bool operator==(SettingsValues const&) const = default;
+
     enum class Field : std::uint8_t {
         tick,
         player_ship,

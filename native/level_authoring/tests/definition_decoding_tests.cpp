@@ -1,3 +1,4 @@
+#include "settings_diff.h"
 #include <ioj/levels/authoring/definition_reader.h>
 #include <ioj/testing/math_diff.h>
 #include <ioj/testing/structural_diff.h>
@@ -52,6 +53,7 @@ TEST(S7LevelDefinition, DecodesPlayerlessCameraDefinition) {
     std::optional<LevelCameraDefinition> const expected{
         {{EntityId{"blue-capital"}, EntityId{"red-capital"}}, {-1., -1., .5}, 10000.}};
     EXPECT_PRED_FORMAT2(ioj::testing::structurally_equal, expected, result->camera());
+    EXPECT_PRED_FORMAT2(ioj::testing::structurally_equal, settings::Settings{}, result->settings());
 }
 
 TEST(S7LevelDefinition, DecodesTimedMissionValues) {

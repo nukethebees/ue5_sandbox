@@ -8,7 +8,6 @@ target_sources(native-level-authoring
     ../s7/src/mission_processing.cpp
     ../s7/src/campaign_parser.cpp
     ../s7/src/catalog_parser.cpp
-    ../s7/src/level_definition_writer.cpp
     src/editor_support.cpp
     src/identifiers.cpp
     src/scene.cpp
@@ -25,8 +24,6 @@ target_link_libraries(native-level-authoring
     sandbox::native_defaults
   PRIVATE
     native-core
-    lispb-sexpr-output
-    lispb-strings
 )
 ioj_enable_warnings(native-level-authoring)
 ioj_apply_native_abi(native-level-authoring)
@@ -37,6 +34,7 @@ target_sources(native-level-authoring-s7
   PUBLIC
     include/ioj/levels/authoring/starfield_reader.h
   PRIVATE
+    ../s7/src/level_definition_writer.cpp
     ../s7/src/script_reader.cpp
     ../s7/src/starfield_reader.cpp
 )
@@ -51,6 +49,7 @@ target_link_libraries(native-level-authoring-s7
   PRIVATE
     sandbox-s7
     lispb-sexpr-output
+    lispb-strings
 )
 ioj_enable_warnings(native-level-authoring-s7)
 ioj_apply_native_abi(native-level-authoring-s7)

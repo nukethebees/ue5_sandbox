@@ -34,10 +34,6 @@ auto check_editor_support(LevelDefinition const& level) -> std::expected<void, D
     if (definition.mission()) {
         unsupported("level.mission", "objective editing; edit the S7 mission source directly");
     }
-    auto const& settings{definition.settings()};
-    if (settings) {
-        unsupported("level.settings", "settings layers");
-    }
     check_symbol(errors, definition.metadata().id.value, "level.id");
     // Semantic validation already requires every reference to name one of these entities.
     auto const count{definition.entities().size()};

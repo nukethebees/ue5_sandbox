@@ -4,9 +4,10 @@
 (level
   :id 'defend-capital
   :title "defend_capital"
-  :collision-grid (collision-grid
-    :level-size '(2000000 2000000 500000)
-    :cell-size '(5000 5000 20000))
+  :settings (settings
+    :collision-grid (collision-grid
+      :level-size '(2000000 2000000 500000)
+      :cell-size '(5000 5000 20000)))
 
   :player 'playership
 

@@ -9,12 +9,11 @@
 #include "ioj/levels/entity_archetype.h"
 #include "ioj/levels/identifiers.h"
 #include "ioj/levels/level_camera_definition.h"
-#include "ioj/levels/level_collision_grid_definition.h"
 #include "ioj/levels/objective_dependency.h"
 #include "ioj/levels/objective_name.h"
 #include "ioj/levels/team.h"
 #include "ioj/levels/team_result_definition.h"
-#include "ioj/s7/ast_result.h"
+#include "ioj/s7/raw_node.h"
 #include "ioj/settings/settings.h"
 #include "ioj/vector_value_math.h"
 
@@ -192,15 +191,14 @@ struct LevelInput {
     std::optional<std::vector<ioj::levels::authoring::UnlockInput>> unlock{};
     EntityId player{};
     std::optional<ioj::levels::LevelCameraDefinition> camera{};
-    std::optional<ioj::levels::LevelCollisionGridDefinition> collision_grid{};
-    std::optional<ioj::settings::Settings> settings{};
+    ioj::settings::Settings settings{};
     std::optional<ioj::levels::authoring::MissionInput> mission{};
     std::vector<ioj::levels::authoring::EntityInput> entities{};
 };
 
 struct IncludedLevelInput {
     std::string path{};
-    std::optional<ioj::s7::ReadResult<ioj::levels::authoring::LevelInput>> value{};
+    std::optional<ioj::s7::ReadResult<ioj::s7::RawNode>> value{};
     std::optional<std::string> error{};
 };
 

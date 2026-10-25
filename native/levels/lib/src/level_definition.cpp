@@ -49,9 +49,7 @@ auto LevelDefinition::make(LevelDefinitionComponents definition)
                                 "Level par time requires a player-controlled mission");
         }
     }
-    if (definition.collision_grid) {
-        detail::validate_collision_grid(*definition.collision_grid, result);
-    }
+    detail::validate_collision_grid(definition.settings.collision_grid, result);
 
     std::unordered_set<LevelId> unlock_ids;
     for (auto const& id : definition.unlock_level_ids) {

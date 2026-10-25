@@ -45,8 +45,7 @@
     (member objectives @input_objectives :initializer "" :required true)
     (member team_results @input_team_results :initializer ""))
   (record LevelInput :generate-s7-reader true :s7-tag "level"
-    :s7-reader-includes ("ioj/levels/level_camera_definition_reader.h"
-                        "ioj/levels/level_collision_grid_definition_reader.h")
+    :s7-reader-includes ("ioj/levels/level_camera_definition_reader.h")
     (member id @input_level_id :initializer "" :required true)
     (member title @native_string :initializer "" :required true)
     (member description @native_string :initializer "")
@@ -54,7 +53,6 @@
     (member unlock @input_unlocks :initializer "")
     (member player @input_entity_id :initializer "")
     (member camera @input_camera :initializer "")
-    (member collision_grid @input_grid :initializer "")
     (member settings @input_settings :initializer "")
     (member mission @input_mission :initializer "")
     (member entities @input_entities :initializer ""))

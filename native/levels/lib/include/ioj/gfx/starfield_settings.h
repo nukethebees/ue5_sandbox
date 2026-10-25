@@ -12,6 +12,8 @@
 
 namespace ioj::starfield {
 struct GenerationSettings {
+    bool operator==(GenerationSettings const&) const = default;
+
     enum class Field : std::uint8_t {
         star_count,
         random_seed,
@@ -70,6 +72,8 @@ struct GenerationSettings {
 };
 
 struct StarSettings {
+    bool operator==(StarSettings const&) const = default;
+
     enum class Field : std::uint8_t {
         scale,
         size_multiplier,
@@ -155,6 +159,8 @@ struct StarSettings {
 };
 
 struct GalacticBandSettings {
+    bool operator==(GalacticBandSettings const&) const = default;
+
     enum class Field : std::uint8_t {
         strength,
         width_degrees,
@@ -213,6 +219,8 @@ struct GalacticBandSettings {
 };
 
 struct StellarClusterSettings {
+    bool operator==(StellarClusterSettings const&) const = default;
+
     enum class Field : std::uint8_t {
         strength,
         width_degrees,
@@ -271,6 +279,8 @@ struct StellarClusterSettings {
 };
 
 struct DustLaneSettings {
+    bool operator==(DustLaneSettings const&) const = default;
+
     enum class Field : std::uint8_t {
         strength,
         width_degrees,
@@ -338,6 +348,8 @@ struct DustLaneSettings {
 };
 
 struct BrightStarSettings {
+    bool operator==(BrightStarSettings const&) const = default;
+
     enum class Field : std::uint8_t {
         fraction,
         size_multiplier,
@@ -415,6 +427,8 @@ struct BrightStarSettings {
 };
 
 struct TwinkleSettings {
+    bool operator==(TwinkleSettings const&) const = default;
+
     enum class Field : std::uint8_t {
         strength,
         speed,
@@ -473,6 +487,8 @@ struct TwinkleSettings {
 };
 
 struct GalacticHazeSettings {
+    bool operator==(GalacticHazeSettings const&) const = default;
+
     enum class Field : std::uint8_t {
         strength,
         width_degrees,
@@ -531,6 +547,8 @@ struct GalacticHazeSettings {
 };
 
 struct GalacticCoreSettings {
+    bool operator==(GalacticCoreSettings const&) const = default;
+
     enum class Field : std::uint8_t {
         strength,
         width_degrees,
@@ -589,6 +607,8 @@ struct GalacticCoreSettings {
 };
 
 struct NebularKnotSettings {
+    bool operator==(NebularKnotSettings const&) const = default;
+
     enum class Field : std::uint8_t {
         strength,
         size_degrees,
@@ -647,6 +667,8 @@ struct NebularKnotSettings {
 };
 
 struct Settings {
+    bool operator==(Settings const&) const = default;
+
     enum class Field : std::uint8_t {
         generation,
         star,

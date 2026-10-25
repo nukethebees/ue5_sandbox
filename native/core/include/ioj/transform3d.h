@@ -5,6 +5,8 @@
 
 namespace ioj {
 struct Transform3d {
+    auto operator==(Transform3d const&) const -> bool = default;
+
     Quaternion4d rotation{};
     Vector3d location{};
     Vector3d scale{1.0, 1.0, 1.0};

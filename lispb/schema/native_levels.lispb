@@ -9,15 +9,6 @@
     (member offset_direction @native_vector3d :initializer "" :required true)
     (member distance double :initializer "" :required true)))
 
-(module native_level_collision_grid
-  :header "native/levels/lib/include/ioj/levels/level_collision_grid_definition.h"
-  :header-include "ioj/levels/level_collision_grid_definition.h"
-  :namespace ioj::levels
-  :prelude ("#include <optional>")
-  (record LevelCollisionGridDefinition :generate-visitor true :generate-s7-reader true :s7-tag "collision-grid"
-    (member level_size @native_optional_vector3d :initializer "")
-    (member cell_size @native_optional_vector3d :initializer "")))
-
 (module native_campaign
   :header "native/levels/lib/include/ioj/levels/campaign_definition.h"
   :header-include "ioj/levels/campaign_definition.h"

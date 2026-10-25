@@ -58,11 +58,11 @@ TEST(SimulationSettingsReader, PreservesBaseFileCompatibilityAndLevelMission) {
                                                           *base_values)};
     ASSERT_TRUE(level) << level.error().front().message;
     auto const mission{level->mission()};
-    auto const resolved{s7::resolve_simulation_settings(*level->settings())};
+    auto const resolved{s7::resolve_simulation_settings(level->settings())};
     ASSERT_TRUE(resolved);
     auto expected{*base_values};
     expected.fighters.laser.damage = 77;
-    EXPECT_PRED_FORMAT2(structurally_equal, expected, *level->settings());
+    EXPECT_PRED_FORMAT2(structurally_equal, expected, level->settings());
     EXPECT_PRED_FORMAT2(structurally_equal, expected.fighters, resolved->fighters);
     EXPECT_EQ(level->mission(), mission);
 
@@ -75,8 +75,7 @@ TEST(SimulationSettingsReader, PreservesBaseFileCompatibilityAndLevelMission) {
                                                                               field),
                                                                   *base_values)};
         ASSERT_TRUE(inherited) << levels::format_diagnostics(inherited.error());
-        ASSERT_TRUE(inherited->settings());
-        EXPECT_PRED_FORMAT2(structurally_equal, original, *inherited->settings());
+        EXPECT_PRED_FORMAT2(structurally_equal, original, inherited->settings());
     }
     EXPECT_FALSE(
         DefinitionReader{}.read_level_source("(level :title \"Missing id\")", *base_values));
@@ -109,10 +108,41 @@ TEST(SimulationSettingsReader, ReplacesWholeAttackBandsAcrossLayersAndLevelOverr
           (attack-distance-band :minimum-ratio 0 :desired-ratio 0 :maximum-ratio 0)))))",
                                                           *source)};
     ASSERT_TRUE(level) << level.error().front().message;
-    auto const overridden{s7::resolve_simulation_settings(*level->settings())};
+    auto const overridden{s7::resolve_simulation_settings(level->settings())};
     ASSERT_TRUE(overridden) << overridden.error().front().message;
     expected.attack_distance_band = *AttackDistanceBand::try_make({0.f, 0.f, 0.f});
     EXPECT_PRED_FORMAT2(structurally_equal, expected, overridden->fighters);
+}
+
+TEST(SimulationSettingsReader, ResolvesCollisionGridThroughOrdinaryLevelSettings) {
+    settings::Settings base;
+    base.fighters.speed = 7300.f;
+    base.collision_grid.level_size = {80000.f, 60000.f, 40000.f};
+    base.collision_grid.damage_per_overlap_detection = 75;
+    auto const original{base};
+    auto const level{DefinitionReader{}.read_level_source(R"(
+      (level :id 'grid :title "Grid" :player 'player
+        :entities (list (entity :id 'player :archetype 'player-fighter :team 'blue
+                               :position '(0 0 0)))
+        :settings (settings-layers
+          (settings :collision-grid (collision-grid :cell-size '(1000 1000 1000)))
+          (settings :collision-grid (collision-grid :cell-size '(5000 5000 20000))))))",
+                                                          base)};
+    ASSERT_TRUE(level) << levels::format_diagnostics(level.error());
+    EXPECT_PRED_FORMAT2(structurally_equal, original, level->settings());
+    EXPECT_PRED_FORMAT2(structurally_equal, original, base);
+    auto const resolved{s7::resolve_simulation_settings(level->settings())};
+    ASSERT_TRUE(resolved) << levels::format_diagnostics(resolved.error());
+    EXPECT_PRED_FORMAT2(structurally_equal, original.collision_grid, resolved->overlap_response);
+
+    auto const legacy{DefinitionReader{}.read_level_source(R"(
+      (level :id 'grid :title "Grid" :player 'player
+        :entities (list (entity :id 'player :archetype 'player-fighter :team 'blue
+                               :position '(0 0 0)))
+        :collision-grid (collision-grid :cell-size '(5000 5000 20000))))",
+                                                           base)};
+    ASSERT_FALSE(legacy);
+    EXPECT_EQ(legacy.error().front().code, levels::DiagnosticCode::UnknownProperty);
 }
 
 TEST(SimulationSettingsReader, RejectsInvalidAttackBandsDuringDecoding) {

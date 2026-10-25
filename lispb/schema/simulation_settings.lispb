@@ -2,7 +2,7 @@
   :header "native/levels/lib/include/ioj/settings/tick_settings.h"
   :header-include "ioj/settings/tick_settings.h"
   :namespace ioj::settings
-  (record TickSettings :generate-visitor true
+  (record TickSettings :comparison equality :generate-visitor true
     :generate-s7-reader true :s7-tag "tick"
     :s7-reader-includes ("ioj/s7/frequency_reader.h")
     (member tick_rate @settings_frequency :initializer 60.0)
@@ -31,7 +31,7 @@
   :header "native/levels/lib/include/ioj/sim/capital_ships/capital_ship_sim_config.h"
   :header-include "ioj/sim/capital_ships/capital_ship_sim_config.h"
   :namespace ioj::sim
-  (record CapitalShipSimConfig :generate-visitor true
+  (record CapitalShipSimConfig :comparison equality :generate-visitor true
     :generate-s7-reader true :s7-tag "capital-ships"
     (member spawn_delay float :initializer 5.f :finite true)
     (member fighter_spawn_slots std::int32_t :initializer "" :s7-exclude true)
@@ -75,7 +75,7 @@
   :header "native/levels/lib/include/ioj/settings/settings_values.h"
   :header-include "ioj/settings/settings_values.h"
   :namespace ioj::settings
-  (record SettingsValues :generate-visitor true
+  (record SettingsValues :comparison equality :generate-visitor true
     :generate-s7-reader true :s7-tag "settings"
     (member tick ioj::settings::TickSettings :initializer "")
     (member player_ship ioj::sim::PlayerSimConfig :initializer "")

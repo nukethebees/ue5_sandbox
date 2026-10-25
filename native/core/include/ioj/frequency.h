@@ -20,6 +20,8 @@ class Frequency {
         }
     }
 
+    auto operator==(Frequency const&) const -> bool = default;
+
     [[nodiscard]] static constexpr auto valid(double const hz) noexcept -> bool {
         return hz >= min_hz && hz <= std::numeric_limits<double>::max();
     }

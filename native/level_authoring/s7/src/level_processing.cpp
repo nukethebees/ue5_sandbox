@@ -45,7 +45,6 @@ auto detail::process_level(LevelInput input) -> LevelDefinitionReadResult {
                      input.par_time},
         .player_entity_id = std::move(input.player),
         .camera = std::move(input.camera),
-        .collision_grid = std::move(input.collision_grid),
         .settings = std::move(input.settings),
     };
     Diagnostics errors;
@@ -58,12 +57,6 @@ auto detail::process_level(LevelInput input) -> LevelDefinitionReadResult {
         for (auto& criterion : *input.unlock) {
             result.unlock_level_ids.push_back(std::move(criterion.level));
         }
-    }
-    if (result.collision_grid && !result.collision_grid->level_size &&
-        !result.collision_grid->cell_size) {
-        errors.emplace_back(DiagnosticCode::MissingProperty,
-                            "level.collision-grid",
-                            "Collision grid requires a level-size or cell-size");
     }
     if (input.mission) {
         auto mission{process_mission(std::move(*input.mission), "level.mission")};

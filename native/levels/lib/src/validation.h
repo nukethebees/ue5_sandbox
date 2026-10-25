@@ -12,5 +12,5 @@ auto validate_entities(LevelDefinitionComponents const& definition, Diagnostics&
 void validate_camera(LevelCameraDefinition const& camera,
                      EntityValidationState const& entities,
                      Diagnostics& result);
-void validate_collision_grid(LevelCollisionGridDefinition const& grid, Diagnostics& result);
+void validate_collision_grid(sim::OverlapResponseConfig const& grid, Diagnostics& result);
 }
