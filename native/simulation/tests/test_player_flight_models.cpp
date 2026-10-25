@@ -94,6 +94,7 @@ auto brake_speed_after_tick(player::ResponseConfig const& response, float const 
 
 using namespace player_flight_model_tests;
 using ioj::testing::expect_approximately_equal;
+using ioj::testing::structurally_equal;
 
 TEST(NativeSimulationFlightModels, StarfoxConvergesToCruiseAndSupportsBoostAndBrake) {
     GameMemory simulation_memory;
@@ -325,10 +326,12 @@ TEST(NativeSimulationFlightModels, DirectSlotSelectionPreservesPhysicalStateAtBo
     advance_ticks(simulation, 30);
     set_test_turn(*simulation.get_player_ship_commands(), {0.25, -0.5});
     auto const& sim_player{player_sim(simulation)};
-    auto const& intent{sim_player.get_flight_intent()};
-    auto const transform{sim_player.get_physical_state().transform};
-    auto const before{velocity(simulation)};
-    auto const energy{sim_player.get_energy()};
+    auto const physical{sim_player.get_physical_state()};
+    auto const resources{sim_player.get_resource_state()};
+    auto expected_presentation{sim_player.get_presentation_state()};
+    ++expected_presentation.boost_start_sequence;
+    player::PlayerFlightIntent const expected_intent{
+        .translation = {-0.25, 0.0, 0.0}, .rotation = {-0.5, 0.25, 0.0}, .accelerator = 1.f};
     auto const health{sim_player.get_health()};
     auto commands{simulation.get_player_ship_commands()};
     commands->start_fire_laser();
@@ -338,17 +341,14 @@ TEST(NativeSimulationFlightModels, DirectSlotSelectionPreservesPhysicalStateAtBo
     commands->select_flight_model_slot(player::FlightModelSlot::First);
 
     EXPECT_EQ(sim_player.get_active_flight_model_slot(), player::FlightModelSlot::First);
+    EXPECT_PRED_FORMAT2(structurally_equal, physical, sim_player.get_physical_state());
+    EXPECT_PRED_FORMAT2(structurally_equal, resources, sim_player.get_resource_state());
     EXPECT_PRED_FORMAT2(
-        ioj::testing::structurally_equal, transform, sim_player.get_physical_state().transform);
-    expect_approximately_equal(sim_player.get_physical_state().velocity, before, 1.e-8);
-    EXPECT_FLOAT_EQ(sim_player.get_energy(), energy);
+        structurally_equal, expected_presentation, sim_player.get_presentation_state());
+    EXPECT_PRED_FORMAT2(structurally_equal, expected_intent, sim_player.get_flight_intent());
     EXPECT_EQ(sim_player.get_health(), health);
     EXPECT_EQ(sim_player.laser_firing_mode, firing_mode);
     EXPECT_EQ(sim_player.laser_fire_rate, fire_rate);
-    EXPECT_DOUBLE_EQ(intent.translation.x(), -0.25);
-    EXPECT_FLOAT_EQ(intent.accelerator, 1.f);
-    EXPECT_DOUBLE_EQ(intent.rotation.x(), -0.5);
-    EXPECT_DOUBLE_EQ(intent.rotation.y(), 0.25);
     EXPECT_EQ(sim_player.get_controller_state().effective_action, player::BoostBrakeState::Boost);
 }
 
@@ -392,7 +392,9 @@ TEST(NativeSimulationFlightModels, SwitchingRecomputesActionsFromHeldIntent) {
 
     commands->select_flight_model_slot(player::FlightModelSlot::Fourth);
 
-    EXPECT_TRUE(player_sim(simulation).get_flight_intent().boost_held);
+    player::PlayerFlightIntent const expected_intent{.boost_held = true};
+    EXPECT_PRED_FORMAT2(
+        structurally_equal, expected_intent, player_sim(simulation).get_flight_intent());
     EXPECT_EQ(controller.effective_action, player::BoostBrakeState::Boost);
     commands->stop_boost();
     EXPECT_EQ(controller.effective_action, player::BoostBrakeState::None);
@@ -409,7 +411,7 @@ TEST(NativeSimulationFlightModels, SlotReplacementAppliesRuntimeConfigWithoutRec
     profile.config.maximum_resultant_speed = player::effectively_unlimited_speed;
     EXPECT_TRUE(simulation.get_player_ship_commands()->set_flight_model_slot_profile(
         player::FlightModelSlot::Third, profile));
-    EXPECT_TRUE(sim_player.get_active_flight_model_profile().customized);
+    EXPECT_EQ(sim_player.get_active_flight_model_profile(), profile);
 
     simulation.get_player_ship_commands()->set_accelerator(1.f);
     advance_ticks(simulation, 60);
@@ -811,6 +813,7 @@ TEST(NativeSimulationFlightModels, ProfileReplacementClampsTargetsAndReseedsResp
     sim_player.stop_sampling();
     advance_ticks(simulation, 1);
     ASSERT_NEAR(velocity(simulation).x(), 800.0, 1.e-5);
+    auto const physical{sim_player.get_physical_state()};
 
     forward.normal.positive_target_speed = 300.f;
     forward.normal.positive_speed_limit = 250.f;
@@ -818,7 +821,7 @@ TEST(NativeSimulationFlightModels, ProfileReplacementClampsTargetsAndReseedsResp
 
     EXPECT_FLOAT_EQ(controller.persistent_forward_target_speed, 250.f);
     EXPECT_NEAR(controller.forward_manual_response.value(), 800.f, 1.e-5f);
-    EXPECT_NEAR(velocity(simulation).x(), 800.0, 1.e-5);
+    EXPECT_PRED_FORMAT2(structurally_equal, physical, sim_player.get_physical_state());
 }
 
 TEST(NativeSimulationFlightModels, LeavingBoostImmediatelyClampsPersistentTarget) {

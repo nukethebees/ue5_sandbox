@@ -3,8 +3,69 @@
 
 #pragma once
 
+#include <cassert>
+#include <concepts>
+#include <cstdint>
+#include <string_view>
+#include <type_traits>
+#include <utility>
+
 namespace ioj::sim::player {
 struct PlayerResourceState {
+    enum class Field : std::uint8_t {
+        thrust_energy,
+        thrust_change_rate,
+        Count,
+    };
+
+    template <Field Selected, typename Self>
+    static constexpr decltype(auto) get_field(Self& self)
+        requires (std::same_as<std::remove_const_t<Self>, PlayerResourceState> &&
+                  Selected < Field::Count)
+    {
+        if constexpr (Selected == Field::thrust_energy) {
+            return (self.thrust_energy);
+        }
+        if constexpr (Selected == Field::thrust_change_rate) {
+            return (self.thrust_change_rate);
+        }
+    }
+
+    template <Field Selected, typename Self, typename Visitor>
+    static constexpr void invoke_field(Self& self, Visitor&& visitor) {
+        std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
+    }
+
+    static constexpr std::string_view field_name(Field field) {
+        switch (field) {
+            case Field::thrust_energy:
+                return "thrust_energy";
+            case Field::thrust_change_rate:
+                return "thrust_change_rate";
+            case Field::Count:
+                break;
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
+    template <typename Self, typename Visitor>
+    static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
+        requires std::same_as<std::remove_const_t<Self>, PlayerResourceState>
+    {
+        switch (field) {
+            case Field::thrust_energy:
+                return invoke_field<Field::thrust_energy>(self, std::forward<Visitor>(visitor));
+            case Field::thrust_change_rate:
+                return invoke_field<Field::thrust_change_rate>(self,
+                                                               std::forward<Visitor>(visitor));
+            case Field::Count:
+                break;
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
     float thrust_energy{1.f};
     float thrust_change_rate{};
 };

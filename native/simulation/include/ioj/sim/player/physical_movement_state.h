@@ -6,8 +6,68 @@
 #include "ioj/transform3d.h"
 #include "ioj/vector_value_math.h"
 
+#include <cassert>
+#include <concepts>
+#include <cstdint>
+#include <string_view>
+#include <type_traits>
+#include <utility>
+
 namespace ioj::sim::player {
 struct PhysicalMovementState {
+    enum class Field : std::uint8_t {
+        transform,
+        velocity,
+        Count,
+    };
+
+    template <Field Selected, typename Self>
+    static constexpr decltype(auto) get_field(Self& self)
+        requires (std::same_as<std::remove_const_t<Self>, PhysicalMovementState> &&
+                  Selected < Field::Count)
+    {
+        if constexpr (Selected == Field::transform) {
+            return (self.transform);
+        }
+        if constexpr (Selected == Field::velocity) {
+            return (self.velocity);
+        }
+    }
+
+    template <Field Selected, typename Self, typename Visitor>
+    static constexpr void invoke_field(Self& self, Visitor&& visitor) {
+        std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
+    }
+
+    static constexpr std::string_view field_name(Field field) {
+        switch (field) {
+            case Field::transform:
+                return "transform";
+            case Field::velocity:
+                return "velocity";
+            case Field::Count:
+                break;
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
+    template <typename Self, typename Visitor>
+    static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
+        requires std::same_as<std::remove_const_t<Self>, PhysicalMovementState>
+    {
+        switch (field) {
+            case Field::transform:
+                return invoke_field<Field::transform>(self, std::forward<Visitor>(visitor));
+            case Field::velocity:
+                return invoke_field<Field::velocity>(self, std::forward<Visitor>(visitor));
+            case Field::Count:
+                break;
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
     Transform3d transform{};
     Vector3d velocity{};
 };

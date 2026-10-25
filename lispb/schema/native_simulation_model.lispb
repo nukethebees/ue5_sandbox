@@ -322,6 +322,7 @@
   :header-include "ioj/sim/player/physical_movement_state.h"
   :namespace ioj::sim::player
   (record PhysicalMovementState
+    :generate-visitor true
     (member transform @native_transform3d :initializer "")
     (member velocity @native_vector3d :initializer "")))
 
@@ -330,6 +331,7 @@
   :header-include "ioj/sim/player/player_flight_intent.h"
   :namespace ioj::sim::player
   (record PlayerFlightIntent
+    :generate-visitor true
     (member translation @native_vector3d :initializer "")
     (member rotation @native_vector3d :initializer "")
     (member accelerator float :initializer "")
@@ -368,6 +370,7 @@
   :header-include "ioj/sim/player/player_resource_state.h"
   :namespace ioj::sim::player
   (record PlayerResourceState
+    :generate-visitor true
     (member thrust_energy float :initializer "1.f")
     (member thrust_change_rate float :initializer "")))
 
@@ -376,6 +379,7 @@
   :header-include "ioj/sim/player/player_presentation_state.h"
   :namespace ioj::sim::player
   (record PlayerPresentationState
+    :generate-visitor true
     (member body_transform @native_transform3d :initializer "")
     (member boost_start_sequence std::uint64_t :initializer "")))
 

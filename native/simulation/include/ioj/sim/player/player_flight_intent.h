@@ -5,8 +5,101 @@
 
 #include "ioj/vector_value_math.h"
 
+#include <cassert>
+#include <concepts>
+#include <cstdint>
+#include <string_view>
+#include <type_traits>
+#include <utility>
+
 namespace ioj::sim::player {
 struct PlayerFlightIntent {
+    enum class Field : std::uint8_t {
+        translation,
+        rotation,
+        accelerator,
+        boost_held,
+        brake_held,
+        emergency_brake_held,
+        Count,
+    };
+
+    template <Field Selected, typename Self>
+    static constexpr decltype(auto) get_field(Self& self)
+        requires (std::same_as<std::remove_const_t<Self>, PlayerFlightIntent> &&
+                  Selected < Field::Count)
+    {
+        if constexpr (Selected == Field::translation) {
+            return (self.translation);
+        }
+        if constexpr (Selected == Field::rotation) {
+            return (self.rotation);
+        }
+        if constexpr (Selected == Field::accelerator) {
+            return (self.accelerator);
+        }
+        if constexpr (Selected == Field::boost_held) {
+            return (self.boost_held);
+        }
+        if constexpr (Selected == Field::brake_held) {
+            return (self.brake_held);
+        }
+        if constexpr (Selected == Field::emergency_brake_held) {
+            return (self.emergency_brake_held);
+        }
+    }
+
+    template <Field Selected, typename Self, typename Visitor>
+    static constexpr void invoke_field(Self& self, Visitor&& visitor) {
+        std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
+    }
+
+    static constexpr std::string_view field_name(Field field) {
+        switch (field) {
+            case Field::translation:
+                return "translation";
+            case Field::rotation:
+                return "rotation";
+            case Field::accelerator:
+                return "accelerator";
+            case Field::boost_held:
+                return "boost_held";
+            case Field::brake_held:
+                return "brake_held";
+            case Field::emergency_brake_held:
+                return "emergency_brake_held";
+            case Field::Count:
+                break;
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
+    template <typename Self, typename Visitor>
+    static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
+        requires std::same_as<std::remove_const_t<Self>, PlayerFlightIntent>
+    {
+        switch (field) {
+            case Field::translation:
+                return invoke_field<Field::translation>(self, std::forward<Visitor>(visitor));
+            case Field::rotation:
+                return invoke_field<Field::rotation>(self, std::forward<Visitor>(visitor));
+            case Field::accelerator:
+                return invoke_field<Field::accelerator>(self, std::forward<Visitor>(visitor));
+            case Field::boost_held:
+                return invoke_field<Field::boost_held>(self, std::forward<Visitor>(visitor));
+            case Field::brake_held:
+                return invoke_field<Field::brake_held>(self, std::forward<Visitor>(visitor));
+            case Field::emergency_brake_held:
+                return invoke_field<Field::emergency_brake_held>(self,
+                                                                 std::forward<Visitor>(visitor));
+            case Field::Count:
+                break;
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
     Vector3d translation{};
     Vector3d rotation{};
     float accelerator{};
