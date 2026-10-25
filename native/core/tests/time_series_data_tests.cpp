@@ -1,4 +1,5 @@
 #include "ioj/time_series_data.h"
+#include <ioj/testing/test_case.h>
 
 #include <gtest/gtest.h>
 
@@ -36,12 +37,12 @@ TEST(TimeSeriesData, ForwardsMoveOnlyValues) {
     EXPECT_EQ(*data.value_at(0), 42);
 }
 
-struct NearestTimeCase {
-    std::uint64_t query;
+struct NearestResult {
     std::int32_t index;
     std::uint64_t time;
     std::int32_t value;
 };
+using NearestTimeCase = ioj::testing::TestCase<std::uint64_t, NearestResult>;
 using NearestTime = testing::TestWithParam<NearestTimeCase>;
 
 TEST_P(NearestTime, FindsNearestValueAndResolvesTiesEarlier) {
@@ -51,13 +52,17 @@ TEST_P(NearestTime, FindsNearestValueAndResolvesTiesEarlier) {
     data.add(40, 400);
 
     auto const test{GetParam()};
-    EXPECT_EQ(data.nearest_index(test.query), test.index);
-    EXPECT_EQ(data.nearest_time(test.query), test.time);
-    EXPECT_EQ(data.nearest_value(test.query), test.value);
+    SCOPED_TRACE(test.name);
+    EXPECT_EQ(data.nearest_index(test.input), test.expected.index);
+    EXPECT_EQ(data.nearest_time(test.input), test.expected.time);
+    EXPECT_EQ(data.nearest_value(test.input), test.expected.value);
 }
 
-constexpr NearestTimeCase nearest_time_cases[]{
-    {0, 0, 10, 100}, {13, 0, 10, 100}, {15, 0, 10, 100}, {18, 1, 20, 200}, {50, 2, 40, 400}};
+constexpr NearestTimeCase nearest_time_cases[]{{"BeforeFirst", 0, {0, 10, 100}},
+                                               {"NearestFirst", 13, {0, 10, 100}},
+                                               {"TieChoosesEarlier", 15, {0, 10, 100}},
+                                               {"NearestMiddle", 18, {1, 20, 200}},
+                                               {"AfterLast", 50, {2, 40, 400}}};
 INSTANTIATE_TEST_SUITE_P(TimeSeriesData, NearestTime, testing::ValuesIn(nearest_time_cases));
 
 TEST(TimeSeriesData, ReportsCapacityAndAllocatedBytes) {

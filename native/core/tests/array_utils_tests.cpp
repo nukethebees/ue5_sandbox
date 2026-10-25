@@ -1,4 +1,5 @@
 #include <ioj/array_utils.h>
+#include <ioj/testing/test_case.h>
 #include <ioj/vector_value_math.h>
 
 #include <gtest/gtest.h>
@@ -6,6 +7,7 @@
 #include <array>
 #include <cstdint>
 #include <limits>
+#include <string>
 #include <vector>
 
 TEST(NativeCoreArrayUtils, AssignsSplitVectorColumns) {
@@ -43,19 +45,15 @@ TEST(NativeCoreArrayUtils, FillsScalarAndSplitArrays) {
     EXPECT_EQ(zs, xs);
 }
 
-struct ArrayComparisonCase {
-    char const* name;
-    ioj::Vector3f actual;
-    bool expected;
-};
+using ArrayComparisonCase = ioj::testing::TestCase<ioj::Vector3f, bool>;
 using ArrayComparison = testing::TestWithParam<ArrayComparisonCase>;
 
 TEST_P(ArrayComparison, ComparesWithinTolerance) {
     auto const& test{GetParam()};
     ioj::Vector3f const reference{1.f, 2.f, 3.f};
-    EXPECT_EQ(ioj::kernel::almost_equal(reference.elements.data(), test.actual.elements.data(), 3),
+    EXPECT_EQ(ioj::kernel::almost_equal(reference.elements.data(), test.input.elements.data(), 3),
               test.expected);
-    EXPECT_EQ(ioj::almost_equal(reference, test.actual, 1.e-4f), test.expected);
+    EXPECT_EQ(ioj::almost_equal(reference, test.input, 1.e-4f), test.expected);
 }
 
 constexpr ArrayComparisonCase array_comparison_cases[]{
@@ -64,7 +62,7 @@ constexpr ArrayComparisonCase array_comparison_cases[]{
 INSTANTIATE_TEST_SUITE_P(NativeCoreArrayUtils,
                          ArrayComparison,
                          testing::ValuesIn(array_comparison_cases),
-                         [](auto const& info) { return info.param.name; });
+                         [](auto const& info) { return std::string{info.param.name}; });
 
 TEST(NativeCoreArrayUtils, ComparesDoubleVectorsWithExplicitTolerance) {
     EXPECT_TRUE(ioj::almost_equal(ioj::Vector2d{1, 2}, ioj::Vector2d{1.5, 2}, 0.5));
@@ -79,21 +77,22 @@ TEST(NativeCoreArrayUtils, RejectsNanValues) {
     EXPECT_FALSE(ioj::almost_equal(ioj::Vector<float, 1>{lhs}, ioj::Vector<float, 1>{rhs}, 1.e-4f));
 }
 
-struct DescendingOrderCase {
-    std::vector<std::int32_t> input;
-    bool expected;
-};
+using DescendingOrderCase = ioj::testing::TestCase<std::vector<std::int32_t>, bool>;
 using DescendingOrder = testing::TestWithParam<DescendingOrderCase>;
 
 TEST_P(DescendingOrder, RecognisesDescendingOrder) {
     auto const& test{GetParam()};
+    SCOPED_TRACE(test.name);
     EXPECT_EQ(ioj::kernel::is_sorted_desc(test.input.data(),
                                           static_cast<std::int32_t>(test.input.size())),
               test.expected);
 }
 
 DescendingOrderCase const descending_order_cases[]{
-    {{}, true}, {{1}, true}, {{3, 2, 2, -1}, true}, {{-3, -2, -1}, false}};
+    {"Empty", {}, true},
+    {"Single", {1}, true},
+    {"DescendingWithEqualValues", {3, 2, 2, -1}, true},
+    {"Ascending", {-3, -2, -1}, false}};
 INSTANTIATE_TEST_SUITE_P(NativeCoreArrayUtils,
                          DescendingOrder,
                          testing::ValuesIn(descending_order_cases));

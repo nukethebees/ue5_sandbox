@@ -1,10 +1,12 @@
 #include <ioj/quantized_decimal.h>
+#include <ioj/testing/test_case.h>
 
 #include <gtest/gtest.h>
 
 #include <concepts>
 #include <cstdint>
 #include <limits>
+#include <string>
 #include <type_traits>
 
 namespace {
@@ -36,36 +38,36 @@ static_assert(std::is_standard_layout_v<CompactDecimal>);
 static_assert(sizeof(CompactDecimal) == 4);
 }
 
-struct DecimalCase {
-    char const* name;
-    double input;
+struct DecimalParts {
     int integer;
     int fraction;
 };
+using DecimalCase = ioj::testing::TestCase<double, DecimalParts>;
 using DecimalConstruction = testing::TestWithParam<DecimalCase>;
 
 TEST_P(DecimalConstruction, RoundsToCanonicalRepresentation) {
     auto const& test{GetParam()};
+    auto const expected{test.expected};
     TwoPlaceDecimal const value{test.input};
-    EXPECT_EQ(value.integer(), test.integer);
-    EXPECT_EQ(value.fraction(), test.fraction);
-    EXPECT_NEAR(value.to_floating_point(), test.integer + test.fraction / 100.0, 1e-12);
+    EXPECT_EQ(value.integer(), expected.integer);
+    EXPECT_EQ(value.fraction(), expected.fraction);
+    EXPECT_NEAR(value.to_floating_point(), expected.integer + expected.fraction / 100.0, 1e-12);
 }
 
-constexpr DecimalCase decimal_cases[]{{"Zero", 0.0, 0, 0},
-                                      {"Whole", 123.0, 123, 0},
-                                      {"Fraction", 17.42, 17, 42},
-                                      {"RoundsDown", 1.234, 1, 23},
-                                      {"PositiveHalf", 1.125, 1, 13},
-                                      {"NegativeHalf", -1.125, -2, 87},
-                                      {"Carry", 1.999, 2, 0},
-                                      {"NegativeWhole", -17.0, -17, 0},
-                                      {"NegativeFraction", -17.42, -18, 58},
-                                      {"NegativeSubunit", -0.42, -1, 58}};
+constexpr DecimalCase decimal_cases[]{{"Zero", 0.0, {0, 0}},
+                                      {"Whole", 123.0, {123, 0}},
+                                      {"Fraction", 17.42, {17, 42}},
+                                      {"RoundsDown", 1.234, {1, 23}},
+                                      {"PositiveHalf", 1.125, {1, 13}},
+                                      {"NegativeHalf", -1.125, {-2, 87}},
+                                      {"Carry", 1.999, {2, 0}},
+                                      {"NegativeWhole", -17.0, {-17, 0}},
+                                      {"NegativeFraction", -17.42, {-18, 58}},
+                                      {"NegativeSubunit", -0.42, {-1, 58}}};
 INSTANTIATE_TEST_SUITE_P(NativeCoreQuantizedDecimal,
                          DecimalConstruction,
                          testing::ValuesIn(decimal_cases),
-                         [](auto const& info) { return info.param.name; });
+                         [](auto const& info) { return std::string{info.param.name}; });
 
 TEST(NativeCoreQuantizedDecimal, DefaultValueAndDecimalPlaceCounts) {
     EXPECT_EQ(TwoPlaceDecimal{}, TwoPlaceDecimal{0.0});
@@ -81,20 +83,20 @@ using DecimalSaturation = testing::TestWithParam<DecimalCase>;
 TEST_P(DecimalSaturation, SaturatesAndHandlesNonFiniteInput) {
     auto const& test{GetParam()};
     SmallDecimal const value{test.input};
-    EXPECT_EQ(value.integer(), test.integer);
-    EXPECT_EQ(value.fraction(), test.fraction);
+    EXPECT_EQ(value.integer(), test.expected.integer);
+    EXPECT_EQ(value.fraction(), test.expected.fraction);
 }
 
 constexpr DecimalCase saturation_cases[]{
-    {"BelowMinimum", -1000, -128, 0},
-    {"AboveMaximum", 1000, 127, 99},
-    {"PositiveInfinity", std::numeric_limits<double>::infinity(), 127, 99},
-    {"NegativeInfinity", -std::numeric_limits<double>::infinity(), -128, 0},
-    {"NotANumber", std::numeric_limits<double>::quiet_NaN(), 0, 0}};
+    {"BelowMinimum", -1000, {-128, 0}},
+    {"AboveMaximum", 1000, {127, 99}},
+    {"PositiveInfinity", std::numeric_limits<double>::infinity(), {127, 99}},
+    {"NegativeInfinity", -std::numeric_limits<double>::infinity(), {-128, 0}},
+    {"NotANumber", std::numeric_limits<double>::quiet_NaN(), {0, 0}}};
 INSTANTIATE_TEST_SUITE_P(NativeCoreQuantizedDecimal,
                          DecimalSaturation,
                          testing::ValuesIn(saturation_cases),
-                         [](auto const& info) { return info.param.name; });
+                         [](auto const& info) { return std::string{info.param.name}; });
 
 TEST(NativeCoreQuantizedDecimal, RoundTripsWithinQuantizationError) {
     constexpr double values[]{-127.994, -17.426, -0.125, 0.0, 0.125, 17.426, 127.984};

@@ -1,4 +1,5 @@
 #include <ioj/loop_bounds.h>
+#include <ioj/testing/test_case.h>
 
 #include <gtest/gtest.h>
 
@@ -27,37 +28,43 @@ void expect_sequence(std::int32_t const begin, std::int32_t const end, std::int3
 }
 }
 
-struct LoopBoundsCase {
+struct RotatedLoopInput {
     std::int32_t begin;
     std::int32_t end;
     std::int32_t offset;
+};
+struct LoopBoundsResult {
     ioj::FLoopBounds first;
     ioj::FLoopBounds second;
 };
+using LoopBoundsCase = ioj::testing::TestCase<RotatedLoopInput, LoopBoundsResult>;
 using RotatedLoopBounds = testing::TestWithParam<LoopBoundsCase>;
 
 TEST_P(RotatedLoopBounds, ReturnsExpectedBounds) {
     auto const test{GetParam()};
-    auto const bounds{ioj::make_rotated_loop_bounds(test.begin, test.end, test.offset)};
-    EXPECT_EQ(bounds[0].begin, test.first.begin);
-    EXPECT_EQ(bounds[0].end, test.first.end);
-    EXPECT_EQ(bounds[1].begin, test.second.begin);
-    EXPECT_EQ(bounds[1].end, test.second.end);
+    SCOPED_TRACE(test.name);
+    auto const input{test.input};
+    auto const expected{test.expected};
+    auto const bounds{ioj::make_rotated_loop_bounds(input.begin, input.end, input.offset)};
+    EXPECT_EQ(bounds[0].begin, expected.first.begin);
+    EXPECT_EQ(bounds[0].end, expected.first.end);
+    EXPECT_EQ(bounds[1].begin, expected.second.begin);
+    EXPECT_EQ(bounds[1].end, expected.second.end);
 }
 
 constexpr LoopBoundsCase loop_bounds_cases[]{
-    {0, 20, 0, {0, 20}, {0, 0}},
-    {10, 20, 0, {10, 20}, {10, 10}},
-    {10, 20, 1, {11, 20}, {10, 11}},
-    {10, 20, 5, {15, 20}, {10, 15}},
-    {10, 20, 9, {19, 20}, {10, 19}},
-    {10, 20, 10, {10, 20}, {10, 10}},
-    {10, 20, 13, {13, 20}, {10, 13}},
-    {0, 10, 3, {3, 10}, {0, 3}},
-    {5, 13, 6, {11, 13}, {5, 11}},
-    {42, 43, 0, {42, 43}, {42, 42}},
-    {42, 43, 1, {42, 43}, {42, 42}},
-    {7, 7, 999, {7, 7}, {7, 7}},
+    {"ZeroOffset", {0, 20, 0}, {{0, 20}, {0, 0}}},
+    {"NonzeroBegin", {10, 20, 0}, {{10, 20}, {10, 10}}},
+    {"OneStep", {10, 20, 1}, {{11, 20}, {10, 11}}},
+    {"HalfRotation", {10, 20, 5}, {{15, 20}, {10, 15}}},
+    {"LastStep", {10, 20, 9}, {{19, 20}, {10, 19}}},
+    {"FullRotation", {10, 20, 10}, {{10, 20}, {10, 10}}},
+    {"WrappedOffset", {10, 20, 13}, {{13, 20}, {10, 13}}},
+    {"ZeroBeginRotation", {0, 10, 3}, {{3, 10}, {0, 3}}},
+    {"NonzeroBeginRotation", {5, 13, 6}, {{11, 13}, {5, 11}}},
+    {"Single", {42, 43, 0}, {{42, 43}, {42, 42}}},
+    {"SingleWrapped", {42, 43, 1}, {{42, 43}, {42, 42}}},
+    {"Empty", {7, 7, 999}, {{7, 7}, {7, 7}}},
 };
 INSTANTIATE_TEST_SUITE_P(NativeCoreLoopBounds,
                          RotatedLoopBounds,

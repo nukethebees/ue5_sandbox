@@ -1,5 +1,6 @@
 #include <ioj/quaternion.h>
 #include <ioj/rotator_types.h>
+#include <ioj/testing/test_case.h>
 #include <ioj/vector_value_math.h>
 
 #include <gtest/gtest.h>
@@ -192,27 +193,28 @@ TEST(NativeCoreVector3d, MovesTowardsTargetWithoutOvershoot) {
     EXPECT_EQ(ioj::move_towards(current, target, 0.0), current);
 }
 
-struct VectorDimensionsCase {
-    ioj::Vector3d value;
+struct VectorValidity {
     bool finite;
     bool positive_finite;
 };
+using VectorDimensionsCase = ioj::testing::TestCase<ioj::Vector3d, VectorValidity>;
 using VectorDimensions = testing::TestWithParam<VectorDimensionsCase>;
 
 TEST_P(VectorDimensions, ChecksFinitePositiveDimensions) {
     auto const& test{GetParam()};
-    EXPECT_EQ(ioj::is_finite(test.value), test.finite);
-    EXPECT_EQ(ioj::is_positive_finite(test.value), test.positive_finite);
+    SCOPED_TRACE(test.name);
+    EXPECT_EQ(ioj::is_finite(test.input), test.expected.finite);
+    EXPECT_EQ(ioj::is_positive_finite(test.input), test.expected.positive_finite);
 }
 
 constexpr VectorDimensionsCase dimension_cases[]{
-    {{-1, 0, 3}, true, false},
-    {{1, 2, 3}, true, true},
-    {{0, 2, 3}, true, false},
-    {{1, -2, 3}, true, false},
-    {{std::numeric_limits<double>::infinity(), 2, 3}, false, false},
-    {{1, std::numeric_limits<double>::quiet_NaN(), 3}, false, false},
-    {{1, 2, -std::numeric_limits<double>::infinity()}, false, false}};
+    {"NegativeAndZero", {-1, 0, 3}, {true, false}},
+    {"Positive", {1, 2, 3}, {true, true}},
+    {"Zero", {0, 2, 3}, {true, false}},
+    {"Negative", {1, -2, 3}, {true, false}},
+    {"PositiveInfinity", {std::numeric_limits<double>::infinity(), 2, 3}, {false, false}},
+    {"NotANumber", {1, std::numeric_limits<double>::quiet_NaN(), 3}, {false, false}},
+    {"NegativeInfinity", {1, 2, -std::numeric_limits<double>::infinity()}, {false, false}}};
 INSTANTIATE_TEST_SUITE_P(NativeCoreVector3d, VectorDimensions, testing::ValuesIn(dimension_cases));
 
 TEST(NativeCoreVector3d, NaNComparisonIsUnordered) {

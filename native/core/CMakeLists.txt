@@ -153,6 +153,7 @@ set_tests_properties(native-core-tests PROPERTIES LABELS "unit;all;native;native
 target_link_libraries(native-core-tests
   PRIVATE
     native-core
+    native-test-support
     sandbox::native_defaults
     ioj::test_pch
     GTest::gtest_main
