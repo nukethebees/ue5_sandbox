@@ -3741,40 +3741,36 @@ TEST(Validation, RejectsInvalidStaticTableNamesAndTypes) {
                  std::invalid_argument);
 }
 
-TEST(Validation, RejectsStaticTableColumnsCollidingWithGeneratedApis) {
+struct InvalidSchemaTextCase {
+    char const* name;
+    std::string_view value;
+};
+
+using StaticTableColumnCollision = testing::TestWithParam<InvalidSchemaTextCase>;
+
+TEST_P(StaticTableColumnCollision, RejectsGeneratedApiNames) {
     CompilerTestContext context;
     auto& declarations{context.storage.declarations};
-    auto& normal_modules{declarations.normal_modules};
-    auto& static_tables{declarations.static_tables};
-    for (auto const& name :
-         {"FValues", "num_rows", "num", "apply_arrays", "apply_array_pairs", "first_index"}) {
-        SCOPED_TRACE(name);
-        auto module{valid_static_table_module(context)};
-        normal_modules.declarations[module] = [&] {
-            auto const original_items{declarations.items(normal_modules.declarations[module])};
-            auto rows_3{std::vector(original_items.begin(), original_items.end())};
-            rows_3.front() = [&] {
-                auto row_2{static_tables.clone(rows_3.front())};
-                auto const row_2_row{static_tables.index(row_2)};
-                static_tables.columns[row_2_row] = [&] {
-                    auto const original_items{declarations.items(static_tables.columns[row_2_row])};
-                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                    rows_1.front() = [&] {
-                        auto row_0{declarations.static_table_columns.clone(rows_1.front())};
-                        declarations.static_table_columns.name[row_0] =
-                            context.storage.strings.intern(name);
-                        return row_0;
-                    }();
-                    return declarations.range(rows_1);
-                }();
-                return row_2;
-            }();
-            return declarations.range(rows_3);
-        }();
-        EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                     std::invalid_argument);
-    }
+    auto const module{valid_static_table_module(context)};
+    auto const table{declarations.items(declarations.normal_modules.declarations[module]).front()};
+    auto const column{declarations.items(declarations.static_tables.columns[table]).front()};
+    declarations.static_table_columns.name[column] =
+        context.storage.strings.intern(GetParam().value);
+
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
+                 std::invalid_argument);
 }
+
+INSTANTIATE_TEST_SUITE_P(
+    Validation,
+    StaticTableColumnCollision,
+    testing::Values(InvalidSchemaTextCase{"FValues", "FValues"},
+                    InvalidSchemaTextCase{"num_rows", "num_rows"},
+                    InvalidSchemaTextCase{"num", "num"},
+                    InvalidSchemaTextCase{"apply_arrays", "apply_arrays"},
+                    InvalidSchemaTextCase{"apply_array_pairs", "apply_array_pairs"},
+                    InvalidSchemaTextCase{"first_index", "first_index"}),
+    [](testing::TestParamInfo<InvalidSchemaTextCase> const& info) { return info.param.name; });
 
 TEST(Validation, RejectsInvalidStaticTableGroups) {
     CompilerTestContext context;
@@ -4040,44 +4036,60 @@ TEST(Validation, RejectsEmptyModuleOutputs) {
                  std::invalid_argument);
 }
 
-TEST(Validation, RejectsEmptyOptionalModuleSettings) {
-    for (auto const& [name, column] :
-         {std::pair{"header_include", &ModuleSettingsStore::header_include},
-          std::pair{"namespace_name", &ModuleSettingsStore::namespace_name}}) {
-        SCOPED_TRACE(name);
-        CompilerTestContext context;
-        auto& declarations{context.storage.declarations};
-        auto& normal_modules{declarations.normal_modules};
-        auto& settings{declarations.module_settings_store};
-        auto const module{valid_soa_module(context)};
-        auto const row{settings.index(normal_modules.settings[module])};
-        (settings.*column)[row] = context.storage.strings.intern("");
+struct EmptyModuleSettingCase {
+    char const* name;
+    decltype(&ModuleSettingsStore::header_include) column;
+};
 
-        EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                     std::invalid_argument);
-    }
+using EmptyModuleSetting = testing::TestWithParam<EmptyModuleSettingCase>;
+
+TEST_P(EmptyModuleSetting, RejectsPresentButEmptyValues) {
+    CompilerTestContext context;
+    auto& declarations{context.storage.declarations};
+    auto& settings{declarations.module_settings_store};
+    auto const module{valid_soa_module(context)};
+    auto const row{settings.index(declarations.normal_modules.settings[module])};
+    (settings.*GetParam().column)[row] = context.storage.strings.intern("");
+
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
+                 std::invalid_argument);
 }
 
-TEST(Validation, RejectsDuplicateAndEmptyIncludeOrderPrefixes) {
-    for (auto const& prefixes : {std::vector<std::string_view>{"Project/", "Project/"},
-                                 std::vector<std::string_view>{""}}) {
-        SCOPED_TRACE(::testing::PrintToString(prefixes));
-        CompilerTestContext context;
-        auto& declarations{context.storage.declarations};
-        auto& normal_modules{declarations.normal_modules};
-        auto& settings{declarations.module_settings_store};
-        auto const module{valid_soa_module(context)};
-        auto const row{settings.index(normal_modules.settings[module])};
-        std::vector<StringId> values;
-        for (auto const prefix : prefixes) {
-            values.push_back(context.storage.strings.intern(prefix));
-        }
-        settings.include_order[row] = declarations.range(values);
+INSTANTIATE_TEST_SUITE_P(
+    Validation,
+    EmptyModuleSetting,
+    testing::Values(EmptyModuleSettingCase{"HeaderInclude", &ModuleSettingsStore::header_include},
+                    EmptyModuleSettingCase{"Namespace", &ModuleSettingsStore::namespace_name}),
+    [](testing::TestParamInfo<EmptyModuleSettingCase> const& info) { return info.param.name; });
 
-        EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                     std::invalid_argument);
+struct InvalidIncludeOrderCase {
+    char const* name;
+    std::vector<std::string_view> prefixes;
+};
+
+using InvalidIncludeOrder = testing::TestWithParam<InvalidIncludeOrderCase>;
+
+TEST_P(InvalidIncludeOrder, RejectsDuplicateAndEmptyPrefixes) {
+    CompilerTestContext context;
+    auto& declarations{context.storage.declarations};
+    auto const module{valid_soa_module(context)};
+    auto const settings{declarations.normal_modules.settings[module]};
+    std::vector<StringId> prefixes;
+    for (auto const prefix : GetParam().prefixes) {
+        prefixes.push_back(context.storage.strings.intern(prefix));
     }
+    declarations.module_settings_store.include_order[settings] = declarations.range(prefixes);
+
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
+                 std::invalid_argument);
 }
+
+INSTANTIATE_TEST_SUITE_P(
+    Validation,
+    InvalidIncludeOrder,
+    testing::Values(InvalidIncludeOrderCase{"Duplicate", {"Project/", "Project/"}},
+                    InvalidIncludeOrderCase{"Empty", {""}}),
+    [](testing::TestParamInfo<InvalidIncludeOrderCase> const& info) { return info.param.name; });
 
 TEST(Validation, RejectsMalformedQualifiedNamespaces) {
     CompilerTestContext context;
@@ -4125,46 +4137,14 @@ TEST(Validation, AllowsManifestsWithoutModules) {
     EXPECT_NO_THROW(lower_test_manifest(context, manifest));
 }
 
-TEST(Validation, RejectsKeywordsAndReservedIdentifiers) {
+TEST(Validation, RejectsKeywordsInQualifiedNamespaces) {
     CompilerTestContext context;
     auto& declarations{context.storage.declarations};
-    auto& normal_modules{declarations.normal_modules};
-    auto& soas{declarations.soas};
-    auto& strings{context.storage.strings};
-    for (auto const& invalid : {"class", "__generated", "_Reserved"}) {
-        SCOPED_TRACE(invalid);
-        auto module{valid_soa_module(context)};
-        normal_modules.declarations[module] = [&] {
-            auto const original_items{declarations.items(normal_modules.declarations[module])};
-            auto rows_3{std::vector(original_items.begin(), original_items.end())};
-            rows_3.front() = [&] {
-                auto row_2{soas.clone(rows_3.front())};
-                auto const row_2_row{soas.index(row_2)};
-                soas.members[row_2_row] = [&] {
-                    auto const original_items{declarations.items(soas.members[row_2_row])};
-                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                    rows_1.front() = [&] {
-                        auto row_0{declarations.soa_members.clone(rows_1.front())};
-                        declarations.soa_members.name[row_0] = strings.intern(invalid);
-                        return row_0;
-                    }();
-                    return declarations.range(rows_1);
-                }();
-                return row_2;
-            }();
-            return declarations.range(rows_3);
-        }();
-        EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                     std::invalid_argument);
-    }
+    auto const module{valid_soa_module(context)};
+    auto const settings{declarations.normal_modules.settings[module]};
+    declarations.module_settings_store.namespace_name[settings] =
+        context.storage.strings.intern("project::namespace");
 
-    auto module{valid_soa_module(context)};
-    normal_modules.settings[module] = [&] {
-        auto row_0{declarations.module_settings_store.clone(normal_modules.settings[module])};
-        declarations.module_settings_store.namespace_name[row_0] =
-            strings.intern("project::namespace");
-        return row_0;
-    }();
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 }
@@ -4519,38 +4499,31 @@ TEST(Validation, RejectsInvalidSoaMaskDimensions) {
                  std::invalid_argument);
 }
 
-TEST(Validation, RejectsMembersCollidingWithGeneratedStorageApis) {
+using InvalidSoaMemberName = testing::TestWithParam<InvalidSchemaTextCase>;
+
+TEST_P(InvalidSoaMemberName, RejectsReservedNamesAndGeneratedApiCollisions) {
     CompilerTestContext context;
     auto& declarations{context.storage.declarations};
-    auto& normal_modules{declarations.normal_modules};
-    auto& soas{declarations.soas};
-    for (auto const& name : {"num", "reset", "copy_element"}) {
-        SCOPED_TRACE(name);
-        auto module{valid_soa_module(context)};
-        normal_modules.declarations[module] = [&] {
-            auto const original_items{declarations.items(normal_modules.declarations[module])};
-            auto rows_3{std::vector(original_items.begin(), original_items.end())};
-            rows_3.front() = [&] {
-                auto row_2{soas.clone(rows_3.front())};
-                auto const row_2_row{soas.index(row_2)};
-                soas.members[row_2_row] = [&] {
-                    auto const original_items{declarations.items(soas.members[row_2_row])};
-                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                    rows_1.front() = [&] {
-                        auto row_0{declarations.soa_members.clone(rows_1.front())};
-                        declarations.soa_members.name[row_0] = context.storage.strings.intern(name);
-                        return row_0;
-                    }();
-                    return declarations.range(rows_1);
-                }();
-                return row_2;
-            }();
-            return declarations.range(rows_3);
-        }();
-        EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                     std::invalid_argument);
-    }
+    auto const module{valid_soa_module(context)};
+    auto const soa{declarations.items(declarations.normal_modules.declarations[module]).front()};
+    auto const member{declarations.items(declarations.soas.members[soa]).front()};
+    declarations.soa_members.name[member] = context.storage.strings.intern(GetParam().value);
+
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
+                 std::invalid_argument);
 }
+
+INSTANTIATE_TEST_SUITE_P(Validation,
+                         InvalidSoaMemberName,
+                         testing::Values(InvalidSchemaTextCase{"Keyword", "class"},
+                                         InvalidSchemaTextCase{"DoubleUnderscore", "__generated"},
+                                         InvalidSchemaTextCase{"ReservedPrefix", "_Reserved"},
+                                         InvalidSchemaTextCase{"Num", "num"},
+                                         InvalidSchemaTextCase{"Reset", "reset"},
+                                         InvalidSchemaTextCase{"CopyElement", "copy_element"}),
+                         [](testing::TestParamInfo<InvalidSchemaTextCase> const& info) {
+                             return info.param.name;
+                         });
 
 TEST(Validation, RejectsUnknownSoaTypeReferences) {
     CompilerTestContext context;
@@ -4622,36 +4595,27 @@ TEST(Validation, RejectsReservedSoaNamespaceNames) {
                  std::invalid_argument);
 }
 
-TEST(Validation, RejectsBlankSoaUsingDeclarations) {
+using BlankSoaUsingDeclaration = testing::TestWithParam<InvalidSchemaTextCase>;
+
+TEST_P(BlankSoaUsingDeclaration, RejectsBlankDeclarations) {
     CompilerTestContext context;
     auto& declarations{context.storage.declarations};
-    auto& normal_modules{declarations.normal_modules};
-    auto& soas{declarations.soas};
-    for (auto const* declaration : {"", " \t\r\n"}) {
-        SCOPED_TRACE(declaration);
-        auto module{valid_soa_module(context)};
-        normal_modules.declarations[module] = [&] {
-            auto const original_items{declarations.items(normal_modules.declarations[module])};
-            auto rows_1{std::vector(original_items.begin(), original_items.end())};
-            rows_1.front() = [&] {
-                auto row_0{soas.clone(rows_1.front())};
-                auto const row_0_row{soas.index(row_0)};
-                soas.using_declarations[row_0_row] = [&] {
-                    auto const original_items{
-                        declarations.items(soas.using_declarations[row_0_row])};
-                    auto rows{std::vector(original_items.begin(), original_items.end())};
-                    rows.push_back(context.storage.strings.intern(declaration));
-                    return declarations.range(rows);
-                }();
-                return row_0;
-            }();
-            return declarations.range(rows_1);
-        }();
+    auto const module{valid_soa_module(context)};
+    auto const soa{declarations.items(declarations.normal_modules.declarations[module]).front()};
+    declarations.soas.using_declarations[soa] =
+        declarations.range<StringId>({context.storage.strings.intern(GetParam().value)});
 
-        EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                     std::invalid_argument);
-    }
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
+                 std::invalid_argument);
 }
+
+INSTANTIATE_TEST_SUITE_P(Validation,
+                         BlankSoaUsingDeclaration,
+                         testing::Values(InvalidSchemaTextCase{"Empty", ""},
+                                         InvalidSchemaTextCase{"Whitespace", " \t\r\n"}),
+                         [](testing::TestParamInfo<InvalidSchemaTextCase> const& info) {
+                             return info.param.name;
+                         });
 
 TEST(Validation, RejectsDuplicateCustomSoaFunctionParameters) {
     CompilerTestContext context;
@@ -4996,38 +4960,32 @@ TEST(Validation, RejectsInvalidCustomSoaFunctionDefinitions) {
                  std::invalid_argument);
 }
 
-TEST(Validation, RejectsCustomSoaFunctionsCollidingWithGeneratedApisAndTypeNames) {
+using SoaFunctionNameCollision = testing::TestWithParam<InvalidSchemaTextCase>;
+
+TEST_P(SoaFunctionNameCollision, RejectsGeneratedApiAndTypeNames) {
     CompilerTestContext context;
     auto& declarations{context.storage.declarations};
-    auto& normal_modules{declarations.normal_modules};
-    auto& functions_schemas{declarations.functions};
-    auto& strings{context.storage.strings};
-    for (auto const& name : {"sort", "get_view", "FData"}) {
-        SCOPED_TRACE(name);
-        auto module{valid_soa_module(context)};
-        normal_modules.declarations[module] = [&] {
-            auto const original_items{declarations.items(normal_modules.declarations[module])};
-            auto rows_1{std::vector(original_items.begin(), original_items.end())};
-            rows_1.front() = [&] {
-                auto row_0{declarations.soas.clone(rows_1.front())};
-                declarations.soas.functions[row_0] =
-                    declarations.range<lispb::codegen::FunctionSchemaId>({[&] {
-                        auto const new_functions{functions_schemas.append()};
-                        auto const new_functions_row{functions_schemas.index(new_functions)};
-                        functions_schemas.name[new_functions_row] = strings.intern(name);
-                        functions_schemas.return_type[new_functions_row] =
-                            make_test_type_ref(context, "void");
-                        functions_schemas.is_inline[new_functions_row] = true;
-                        return new_functions;
-                    }()});
-                return row_0;
-            }();
-            return declarations.range(rows_1);
-        }();
-        EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                     std::invalid_argument);
-    }
+    auto const module{valid_soa_module(context)};
+    auto const soa{declarations.items(declarations.normal_modules.declarations[module]).front()};
+    auto& functions{declarations.functions};
+    auto const function{functions.append()};
+    functions.name[function] = context.storage.strings.intern(GetParam().value);
+    functions.return_type[function] = make_test_type_ref(context, "void");
+    functions.is_inline[function] = true;
+    declarations.soas.functions[soa] = declarations.range<FunctionSchemaId>({function});
+
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
+                 std::invalid_argument);
 }
+
+INSTANTIATE_TEST_SUITE_P(Validation,
+                         SoaFunctionNameCollision,
+                         testing::Values(InvalidSchemaTextCase{"Sort", "sort"},
+                                         InvalidSchemaTextCase{"GetView", "get_view"},
+                                         InvalidSchemaTextCase{"TypeName", "FData"}),
+                         [](testing::TestParamInfo<InvalidSchemaTextCase> const& info) {
+                             return info.param.name;
+                         });
 
 TEST(Validation, RejectsMalformedExportSpecifiers) {
     CompilerTestContext context;
@@ -5855,19 +5813,31 @@ TEST(Validation, NormalModuleCanMixIndependentEnumApis) {
     EXPECT_NO_THROW(lower_test_manifest(context, manifest_with(context, module)));
 }
 
-TEST(Validation, EquivalentMemberMappingsRequireACompleteEquivalentType) {
-    for (auto const declaration :
-         {"(struct Rows (member xs array float :equivalent-member x))",
-          "(struct Rows :equivalent-type Pair (member xs array float :equivalent-accessor true))",
-          "(struct Rows :equivalent-type Pair (member xs array float :equivalent-member x) (member "
-          "ys array float))",
-          "(struct Rows :equivalent-constructor make_pair (member xs array float))"}) {
-        CompilerTestContext context;
-        auto manifest{parse_test_manifest(
-            context, std::string{"(module test :header \"Test.h\" "} + declaration + ")")};
-        EXPECT_THROW(lower_test_manifest(context, std::move(manifest)), std::invalid_argument);
-    }
+using IncompleteEquivalentType = testing::TestWithParam<InvalidSchemaTextCase>;
+
+TEST_P(IncompleteEquivalentType, RejectsIncompleteMappings) {
+    CompilerTestContext context;
+    auto manifest{parse_test_manifest(
+        context, std::format("(module test :header \"Test.h\" {})", GetParam().value))};
+    EXPECT_THROW(lower_test_manifest(context, std::move(manifest)), std::invalid_argument);
 }
+
+INSTANTIATE_TEST_SUITE_P(
+    Validation,
+    IncompleteEquivalentType,
+    testing::Values(
+        InvalidSchemaTextCase{"MissingType",
+                              "(struct Rows (member xs array float :equivalent-member x))"},
+        InvalidSchemaTextCase{"MissingMember",
+                              "(struct Rows :equivalent-type Pair (member xs array float "
+                              ":equivalent-accessor true))"},
+        InvalidSchemaTextCase{"UnmappedMember",
+                              "(struct Rows :equivalent-type Pair (member xs array float "
+                              ":equivalent-member x) (member ys array float))"},
+        InvalidSchemaTextCase{
+            "ConstructorWithoutType",
+            "(struct Rows :equivalent-constructor make_pair (member xs array float))"}),
+    [](testing::TestParamInfo<InvalidSchemaTextCase> const& info) { return info.param.name; });
 
 } // namespace
 } // namespace lispb::codegen

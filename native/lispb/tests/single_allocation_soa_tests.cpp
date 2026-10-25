@@ -133,9 +133,13 @@ auto changed(std::string_view from, std::string_view to) -> std::string {
     return source;
 }
 
-TEST(SingleAllocationSoa, RejectsEmptySchema) {
-    EXPECT_THROW(render("(struct Rows)"), std::invalid_argument);
+class InvalidSoaDeclaration : public testing::TestWithParam<std::string> {};
+
+TEST_P(InvalidSoaDeclaration, RejectsDeclaration) {
+    EXPECT_THROW(render(GetParam()), std::invalid_argument);
 }
+
+INSTANTIATE_TEST_SUITE_P(EmptySchema, InvalidSoaDeclaration, testing::Values("(struct Rows)"));
 
 TEST(SingleAllocationSoa, PartialAppendSurvivesCloningAndSourceRoundTrip) {
     CompilerTestContext context;
@@ -171,59 +175,76 @@ TEST(SingleAllocationSoa, PartialAppendSurvivesCloningAndSourceRoundTrip) {
     EXPECT_TRUE(options[1]->empty());
 }
 
-TEST(SingleAllocationSoa, RejectsInvalidPartialAppendDeclarations) {
-    for (auto const function :
-         {"(function append int (parameter value float) :append-columns ())",
-          ("(function append int (parameter a float) (parameter b float) :append-columns (values "
-           "values))"),
-          "(function append int (parameter value float) :append-columns (missing))",
-          "(function append int (parameter value float) :append-columns (nested))",
-          "(function append int :const true :append-columns ())",
-          "(function append int :static true :append-columns ())",
-          "(function append int :constexpr true :append-columns ())",
-          "(function append int :body (\"return 0;\") :append-columns ())",
-          "(function append void :append-columns ())",
-          ("(function append int (parameter value (type-ref float :suffix \" const&\")) "
-           ":append-columns (values))"),
-          "(view-function append int :append-columns ())"}) {
-        SCOPED_TRACE(function);
-        EXPECT_THROW(
-            render(std::string{"(struct Child (member xs array float)) (struct Rows (member values "
-                               "array float) (member nested nested Child) "} +
-                   function + ")"),
-            std::exception);
-    }
+class InvalidPartialAppend : public testing::TestWithParam<char const*> {};
+
+TEST_P(InvalidPartialAppend, RejectsDeclaration) {
+    EXPECT_THROW(
+        render(std::string{"(struct Child (member xs array float)) (struct Rows (member values "
+                           "array float) (member nested nested Child) "} +
+               GetParam() + ")"),
+        std::exception);
 }
 
-TEST(SingleAllocationSoa, RejectsGeneratedNameCollisions) {
-    EXPECT_THROW(render(changed("small array", "validate array")), std::invalid_argument);
-    EXPECT_THROW(render("(struct Counts (member column_count array std::uint32_t))"),
-                 std::invalid_argument);
-    for (auto const options : {"", ":layout-only true"}) {
-        SCOPED_TRACE(options);
-        EXPECT_THROW(render(std::string{"(struct Counts (member count array std::uint32_t))"
-                                        "(struct Rows "} +
-                            options + " (member column nested Counts))"),
-                     std::invalid_argument);
-    }
-    EXPECT_THROW(render(schemas() + "(struct rows (member value array float))"),
-                 std::invalid_argument);
-    EXPECT_THROW(render("(struct FooBar (member value array float))"
-                        "(struct Foo_Bar (member value array float))"),
-                 std::invalid_argument);
+INSTANTIATE_TEST_SUITE_P(
+    SingleAllocationSoa,
+    InvalidPartialAppend,
+    testing::Values(
+        "(function append int (parameter value float) :append-columns ())",
+        ("(function append int (parameter a float) (parameter b float) :append-columns (values "
+         "values))"),
+        "(function append int (parameter value float) :append-columns (missing))",
+        "(function append int (parameter value float) :append-columns (nested))",
+        "(function append int :const true :append-columns ())",
+        "(function append int :static true :append-columns ())",
+        "(function append int :constexpr true :append-columns ())",
+        "(function append int :body (\"return 0;\") :append-columns ())",
+        "(function append void :append-columns ())",
+        ("(function append int (parameter value (type-ref float :suffix \" const&\")) "
+         ":append-columns (values))"),
+        "(view-function append int :append-columns ())"));
+
+struct InvalidSoaMutation {
+    std::string_view from;
+    std::string_view to;
+};
+
+class InvalidSoaMember : public testing::TestWithParam<InvalidSoaMutation> {};
+
+TEST_P(InvalidSoaMember, RejectsDeclaration) {
+    auto const& test{GetParam()};
+    SCOPED_TRACE(test.to);
+    EXPECT_THROW(render(changed(test.from, test.to)), std::invalid_argument);
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    FlatteningAndGeneratedNames,
+    InvalidSoaMember,
+    testing::Values(InvalidSoaMutation{"small array", "validate array"},
+                    InvalidSoaMutation{"nested nested Child", "nested nested int"},
+                    InvalidSoaMutation{"nested nested Child", "nested nested Missing"},
+                    InvalidSoaMutation{
+                        "(member small array std::uint8_t) (member wide array Aligned256)",
+                        "(member cycle nested Rows)"},
+                    InvalidSoaMutation{"nested nested Child", "nested nested Opaque"},
+                    InvalidSoaMutation{
+                        "(member ids array std::int32_t)",
+                        "(member ids array std::int32_t) (member nested_small array std::int32_t)"},
+                    InvalidSoaMutation{"ids array", "trailing_ array"}));
+
+INSTANTIATE_TEST_SUITE_P(
+    GeneratedNameCollisions,
+    InvalidSoaDeclaration,
+    testing::Values(
+        "(struct Counts (member column_count array std::uint32_t))",
+        "(struct Counts (member count array std::uint32_t))"
+        "(struct Rows (member column nested Counts))",
+        "(struct Counts (member count array std::uint32_t))"
+        "(struct Rows :layout-only true (member column nested Counts))",
+        schemas() + "(struct rows (member value array float))",
+        "(struct FooBar (member value array float)) (struct Foo_Bar (member value array float))"));
+
+TEST(SingleAllocationSoa, AllowsNonconflictingOwnerAndMemberNames) {
     EXPECT_NO_THROW(render(schemas() + "(struct RowsView (member value array float))"));
-}
-
-TEST(SingleAllocationSoa, RejectsInvalidFlatteningAndOwnerNames) {
-    EXPECT_THROW(render(changed("nested nested Child", "nested nested int")),
-                 std::invalid_argument);
-    EXPECT_THROW(render(changed("nested nested Child", "nested nested Missing")),
-                 std::invalid_argument);
-    EXPECT_THROW(render(changed("(member small array std::uint8_t) (member wide array Aligned256)",
-                                "(member cycle nested Rows)")),
-                 std::invalid_argument);
-    EXPECT_THROW(render(changed("nested nested Child", "nested nested Opaque")),
-                 std::invalid_argument);
     auto source{schemas()};
     for (auto position{source.find("Child")}; position != std::string::npos;
          position = source.find("Child", position)) {
@@ -231,31 +252,29 @@ TEST(SingleAllocationSoa, RejectsInvalidFlatteningAndOwnerNames) {
         position += 17;
     }
     EXPECT_NO_THROW(render(source));
-    EXPECT_THROW(
-        render(changed("(member ids array std::int32_t)",
-                       "(member ids array std::int32_t) (member nested_small array std::int32_t)")),
-        std::invalid_argument);
     EXPECT_NO_THROW(render(
         changed("(member ids array std::int32_t)",
                 "(member ids array std::int32_t) (member layout_start array std::int32_t)")));
     EXPECT_NO_THROW(
         render(changed("(member ids array std::int32_t)",
                        "(member ids array std::int32_t) (member col_layout array std::int32_t)")));
-    EXPECT_THROW(render(changed("ids array", "trailing_ array")), std::invalid_argument);
 }
 
-TEST(SingleAllocationSoa, RejectsModuleDeclarationsCollidingWithSharedViewTypes) {
-    for (auto const name : {"View", "DataPointers"}) {
-        SCOPED_TRACE(name);
-        CompilerTestContext context;
-        auto const manifest{parse_test_manifest(context, std::string{R"(
+class ConflictingSoaModuleDeclaration : public testing::TestWithParam<char const*> {};
+
+TEST_P(ConflictingSoaModuleDeclaration, RejectsSharedViewTypeCollisions) {
+    CompilerTestContext context;
+    auto const manifest{parse_test_manifest(context, std::string{R"(
         (module owner :header "Owner.h" :namespace example
           (struct Rows (member values array float)))
         (module collision :header "Collision.h" :namespace example::rows
-          (record )"} + name + "))")};
-        EXPECT_THROW(render_test_manifest(context, manifest), std::invalid_argument);
-    }
+          (record )"} + GetParam() + "))")};
+    EXPECT_THROW(render_test_manifest(context, manifest), std::invalid_argument);
 }
+
+INSTANTIATE_TEST_SUITE_P(SingleAllocationSoa,
+                         ConflictingSoaModuleDeclaration,
+                         testing::Values("View", "DataPointers"));
 
 TEST(SingleAllocationSoa, FlattensMultipleLevelsAndRepeatedNestedSchemas) {
     auto const output{render(schemas() + R"(
@@ -297,10 +316,9 @@ TEST(SingleAllocationSoa, PreservesCommonApiInSchemaNamespace) {
     EXPECT_NE(implementation.find("LogicalRows::external_first() const"), std::string::npos);
 }
 
-TEST(SingleAllocationSoa, RejectsUnknownLogicalColumns) {
-    EXPECT_THROW(render(R"((struct Rows (member values array float)
-        (function broken float :body #cpp{return $column(missing)[0];}cpp#)))"),
-                 std::invalid_argument);
-}
+INSTANTIATE_TEST_SUITE_P(UnknownLogicalColumns,
+                         InvalidSoaDeclaration,
+                         testing::Values(R"((struct Rows (member values array float)
+        (function broken float :body #cpp{return $column(missing)[0];}cpp#)))"));
 
 }

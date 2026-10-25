@@ -498,58 +498,60 @@ TEST(NativeSoa, ResolvedSelfAppendPreservesAliasedColumnsAcrossGrowthAndAllocati
     EXPECT_EQ(state.allocations, allocations + 1);
 }
 
-TEST(NativeSoa, IndexedSelfAppendPreservesEveryColumnWithAndWithoutGrowth) {
-    for (bool const grow : {false, true}) {
-        SCOPED_TRACE(grow);
-        pmr_test_support::AllocationState state;
-        pmr_test_support::CountingResource resource{state};
-        SingleRows owner{resource};
-        owner.reserve(1);
-        owner.set_num(grow ? owner.capacity() : 4);
-        auto const first{owner.num()};
-        std::uint32_t column_index{};
-        owner.get_view().each_column([&](auto column) {
-            using Element = typename decltype(column)::value_type;
-            for (std::uint32_t row{}; row < first; ++row) {
-                column[row] = static_cast<Element>(column_index * 1000 + row);
-            }
-            ++column_index;
-        });
-        auto const source{owner.get_const_view(1, 3).resolve()};
-        std::array<std::uint32_t, 4> const indices{2, 0, 2, 1};
-        auto const allocations{state.allocations};
-        EXPECT_EQ(owner.append_from(source, std::span<std::uint32_t const>{}), first);
-        EXPECT_EQ(state.allocations, allocations);
-        std::array<std::uint32_t, 1> const outside_source{3};
-        EXPECT_DEATH(owner.append_from(source, outside_source), "");
+class IndexedSelfAppend : public testing::TestWithParam<bool> {};
 
-        if (grow) {
-            state.reject_allocation = true;
-            EXPECT_THROW(owner.append_from(source, indices), std::bad_alloc);
-            EXPECT_EQ(owner.num(), first);
-            EXPECT_EQ(owner.values().data() + 1, source.values().data());
-            state.reject_allocation = false;
+TEST_P(IndexedSelfAppend, PreservesEveryColumnWithAndWithoutGrowth) {
+    auto const grow{GetParam()};
+    pmr_test_support::AllocationState state;
+    pmr_test_support::CountingResource resource{state};
+    SingleRows owner{resource};
+    owner.reserve(1);
+    owner.set_num(grow ? owner.capacity() : 4);
+    auto const first{owner.num()};
+    std::uint32_t column_index{};
+    owner.get_view().each_column([&](auto column) {
+        using Element = typename decltype(column)::value_type;
+        for (std::uint32_t row{}; row < first; ++row) {
+            column[row] = static_cast<Element>(column_index * 1000 + row);
         }
+        ++column_index;
+    });
+    auto const source{owner.get_const_view(1, 3).resolve()};
+    std::array<std::uint32_t, 4> const indices{2, 0, 2, 1};
+    auto const allocations{state.allocations};
+    EXPECT_EQ(owner.append_from(source, std::span<std::uint32_t const>{}), first);
+    EXPECT_EQ(state.allocations, allocations);
+    std::array<std::uint32_t, 1> const outside_source{3};
+    EXPECT_DEATH(owner.append_from(source, outside_source), "");
 
-        EXPECT_EQ(owner.append_from(source, indices), first);
-        EXPECT_EQ(owner.num(), first + indices.size());
-        EXPECT_EQ(state.allocations, allocations + (grow ? 1 : 0));
-        column_index = 0;
-        owner.get_const_view().each_column([&](auto column) {
-            using Element = typename decltype(column)::value_type;
-            for (std::uint32_t row{}; row < first; ++row) {
-                EXPECT_EQ(column[row], static_cast<Element>(column_index * 1000 + row));
-            }
-            auto const count{static_cast<std::uint32_t>(indices.size())};
-            for (std::uint32_t row{}; row < count; ++row) {
-                EXPECT_EQ(column[first + row],
-                          static_cast<Element>(column_index * 1000 + indices[row] + 1));
-            }
-            ++column_index;
-        });
-        EXPECT_EQ(column_index, 7U);
+    if (grow) {
+        state.reject_allocation = true;
+        EXPECT_THROW(owner.append_from(source, indices), std::bad_alloc);
+        EXPECT_EQ(owner.num(), first);
+        EXPECT_EQ(owner.values().data() + 1, source.values().data());
+        state.reject_allocation = false;
     }
+
+    EXPECT_EQ(owner.append_from(source, indices), first);
+    EXPECT_EQ(owner.num(), first + indices.size());
+    EXPECT_EQ(state.allocations, allocations + (grow ? 1 : 0));
+    column_index = 0;
+    owner.get_const_view().each_column([&](auto column) {
+        using Element = typename decltype(column)::value_type;
+        for (std::uint32_t row{}; row < first; ++row) {
+            EXPECT_EQ(column[row], static_cast<Element>(column_index * 1000 + row));
+        }
+        auto const count{static_cast<std::uint32_t>(indices.size())};
+        for (std::uint32_t row{}; row < count; ++row) {
+            EXPECT_EQ(column[first + row],
+                      static_cast<Element>(column_index * 1000 + indices[row] + 1));
+        }
+        ++column_index;
+    });
+    EXPECT_EQ(column_index, 7U);
 }
+
+INSTANTIATE_TEST_SUITE_P(NativeSoa, IndexedSelfAppend, testing::Bool());
 
 TEST(NativeSoa, PermutationAndSortingKeepNestedRowsAlignedAndRestoreScratch) {
     SingleRows owner;

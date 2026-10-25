@@ -189,25 +189,40 @@ TEST(KernelRenderer, GeneratesFusedComponentMapBindings) {
         files[1].content.contains("from_z[i] = from_z[i] + alpha * (to_z[i] - from_z[i]);"));
 }
 
-TEST(KernelParser, RejectsInvalidComponentMapDeclarations) {
-    auto duplicate_component_source{std::string{component_source}};
-    duplicate_component_source.replace(duplicate_component_source.find("(components x y z)"),
-                                       std::string{"(components x y z)"}.size(),
-                                       "(components x x)");
+struct InvalidDeclarationCase {
+    char const* name;
+    std::string_view original;
+    std::string_view replacement;
+};
 
-    EXPECT_THROW(static_cast<void>(parse_document("test.lispb", duplicate_component_source)),
-                 lispb::codegen::sexpr::SourceError);
+class KernelInvalidComponentMap : public testing::TestWithParam<InvalidDeclarationCase> {};
 
-    auto scalar_target_source{std::string{component_source}};
-    scalar_target_source.replace(scalar_target_source.find("(in-place from lerp_3d_in_place)"),
-                                 std::string{"(in-place from lerp_3d_in_place)"}.size(),
-                                 "(in-place alpha lerp_3d_in_place)");
-
-    EXPECT_THROW(static_cast<void>(parse_document("test.lispb", scalar_target_source)),
+TEST_P(KernelInvalidComponentMap, RejectsInvalidDeclaration) {
+    auto const& test{GetParam()};
+    auto source{std::string{component_source}};
+    source.replace(source.find(test.original), test.original.size(), test.replacement);
+    EXPECT_THROW(static_cast<void>(parse_document("test.lispb", source)),
                  lispb::codegen::sexpr::SourceError);
 }
 
-TEST(KernelAnalysis, RejectsInvalidIntegralReferenceFixtures) {
+INSTANTIATE_TEST_SUITE_P(KernelParser,
+                         KernelInvalidComponentMap,
+                         testing::Values(
+                             InvalidDeclarationCase{
+                                 "DuplicateComponent", "(components x y z)", "(components x x)"},
+                             InvalidDeclarationCase{"ScalarInPlaceTarget",
+                                                    "(in-place from lerp_3d_in_place)",
+                                                    "(in-place alpha lerp_3d_in_place)"}),
+                         [](auto const& info) { return info.param.name; });
+
+struct InvalidReferenceCase {
+    char const* name;
+    std::string_view expression;
+};
+
+class KernelInvalidIntegralReference : public testing::TestWithParam<InvalidReferenceCase> {};
+
+TEST_P(KernelInvalidIntegralReference, RejectsWithoutProducingArtifacts) {
     constexpr std::string_view prefix = R"(
 (kernel-module invalid_reference
   (emit
@@ -227,14 +242,20 @@ TEST(KernelAnalysis, RejectsInvalidIntegralReferenceFixtures) {
       (out-of-place calculate))))
 )";
 
-    for (auto const expression : {"(* (* data 50000) 50000)", "(/ data 0)"}) {
-        auto const source{std::string{prefix} + expression + std::string{suffix}};
-        auto document{parse_document("test.lispb", source)};
-        EXPECT_THROW(static_cast<void>(analyze(document.syntax, document.data, ModuleId{0})),
-                     lispb::codegen::sexpr::SourceError);
-        EXPECT_TRUE(document.cpp.files.path.empty());
-    }
+    auto const source{std::string{prefix} + std::string{GetParam().expression} +
+                      std::string{suffix}};
+    auto document{parse_document("test.lispb", source)};
+    EXPECT_THROW(static_cast<void>(analyze(document.syntax, document.data, ModuleId{0})),
+                 lispb::codegen::sexpr::SourceError);
+    EXPECT_TRUE(document.cpp.files.path.empty());
 }
+
+INSTANTIATE_TEST_SUITE_P(KernelAnalysis,
+                         KernelInvalidIntegralReference,
+                         testing::Values(InvalidReferenceCase{"Overflow",
+                                                              "(* (* data 50000) 50000)"},
+                                         InvalidReferenceCase{"DivisionByZero", "(/ data 0)"}),
+                         [](auto const& info) { return info.param.name; });
 
 TEST(KernelReferenceEvaluator, EvaluatesEveryOperatorForEveryNumericType) {
     constexpr std::string_view source = R"(
@@ -414,62 +435,61 @@ TEST(KernelParser, RejectsUnknownExpressionOperatorWithLocation) {
     }
 }
 
-TEST(KernelParser, RejectsDuplicateStructuralVariants) {
-    auto source{std::string{valid_source}};
-    source.replace(source.find("(out-of-place multiply)"),
-                   std::string{"(out-of-place multiply)"}.size(),
-                   "(out-of-place multiply) (out-of-place multiply_again)");
+class KernelInvalidMap : public testing::TestWithParam<InvalidDeclarationCase> {};
 
+TEST_P(KernelInvalidMap, RejectsInvalidDeclaration) {
+    auto const& test{GetParam()};
+    auto source{std::string{valid_source}};
+    source.replace(source.find(test.original), test.original.size(), test.replacement);
     EXPECT_THROW(static_cast<void>(parse_document("bad.lispb", source)), std::runtime_error);
 }
 
-TEST(KernelParser, RejectsScalarOnlyInPlaceTargets) {
-    auto source{std::string{valid_source}};
-    source.replace(source.find("(operand lhs array)"),
-                   std::string{"(operand lhs array)"}.size(),
-                   "(operand lhs scalar)");
+INSTANTIATE_TEST_SUITE_P(
+    KernelParser,
+    KernelInvalidMap,
+    testing::Values(InvalidDeclarationCase{"DuplicateStructuralVariant",
+                                           "(out-of-place multiply)",
+                                           "(out-of-place multiply) (out-of-place multiply_again)"},
+                    InvalidDeclarationCase{
+                        "ScalarInPlaceTarget", "(operand lhs array)", "(operand lhs scalar)"},
+                    InvalidDeclarationCase{"BareInfinity", "(* lhs rhs)", "(* lhs inf)"}),
+    [](auto const& info) { return info.param.name; });
 
-    EXPECT_THROW(static_cast<void>(parse_document("bad.lispb", source)), std::runtime_error);
-}
+struct InvalidLiteralCase {
+    char const* name;
+    std::string_view types;
+    std::string_view expression;
+};
 
-TEST(KernelParser, RejectsNonFiniteNumericLiterals) {
-    auto source{std::string{valid_source}};
-    source.replace(source.find("(* lhs rhs)"), std::string{"(* lhs rhs)"}.size(), "(* lhs inf)");
+class KernelInvalidLiteral : public testing::TestWithParam<InvalidLiteralCase> {};
 
-    EXPECT_THROW(static_cast<void>(parse_document("bad.lispb", source)), std::runtime_error);
-}
-
-TEST(KernelParser, RejectsUnknownAndMalformedConstants) {
-    for (auto const expression : {"(constant maximum)", "(constant nan extra)"}) {
-        EXPECT_THROW(static_cast<void>(render_source(literal_source("float", expression))),
-                     std::runtime_error);
-    }
-}
-
-TEST(KernelParser, RejectsNonFiniteConstantsForIntegralTypeSets) {
-    EXPECT_THROW(static_cast<void>(render_source(literal_source("int32 float", "(constant nan)"))),
+TEST_P(KernelInvalidLiteral, RejectsInvalidOrUnrepresentableValue) {
+    auto const& test{GetParam()};
+    EXPECT_THROW(static_cast<void>(render_source(literal_source(test.types, test.expression))),
                  std::runtime_error);
 }
 
-TEST(KernelParser, ValidatesUnsignedIntegerLiterals) {
+INSTANTIATE_TEST_SUITE_P(
+    KernelParser,
+    KernelInvalidLiteral,
+    testing::Values(InvalidLiteralCase{"UnknownConstant", "float", "(constant maximum)"},
+                    InvalidLiteralCase{"MalformedConstant", "float", "(constant nan extra)"},
+                    InvalidLiteralCase{"NanInMixedTypeSet", "int32 float", "(constant nan)"},
+                    InvalidLiteralCase{"NegativeUnsigned", "uint32", "-1"},
+                    InvalidLiteralCase{"UnsignedOverflow", "uint32", "4294967296"},
+                    InvalidLiteralCase{"FractionalUnsigned", "uint32", "0.5"},
+                    InvalidLiteralCase{"UnsignedInfinity", "uint32", "(constant infinity)"},
+                    InvalidLiteralCase{"LeadingZero", "float", "08"},
+                    InvalidLiteralCase{"RepeatedZero", "float", "00"},
+                    InvalidLiteralCase{"MissingExponent", "float", "1e"},
+                    InvalidLiteralCase{"FloatOverflow", "float", "1e100"},
+                    InvalidLiteralCase{"FloatUnderflow", "float", "1e-100"},
+                    InvalidLiteralCase{"FractionalInteger", "int32", "0.5"},
+                    InvalidLiteralCase{"IntegerOverflow", "int32", "2147483648"}),
+    [](auto const& info) { return info.param.name; });
+
+TEST(KernelParser, AcceptsUnsignedIntegerMaximum) {
     EXPECT_NO_THROW(static_cast<void>(render_source(literal_source("uint32", "4294967295"))));
-    for (auto const literal : {"-1", "4294967296", "0.5"}) {
-        EXPECT_THROW(static_cast<void>(render_source(literal_source("uint32", literal))),
-                     std::runtime_error);
-    }
-    EXPECT_THROW(static_cast<void>(render_source(literal_source("uint32", "(constant infinity)"))),
-                 std::runtime_error);
-}
-
-TEST(KernelParser, RejectsInvalidOrUnrepresentableDecimalLiterals) {
-    for (auto const literal : {"08", "00", "1e", "1e100", "1e-100"}) {
-        EXPECT_THROW(static_cast<void>(render_source(literal_source("float", literal))),
-                     std::runtime_error);
-    }
-    for (auto const literal : {"0.5", "2147483648"}) {
-        EXPECT_THROW(static_cast<void>(render_source(literal_source("int32", literal))),
-                     std::runtime_error);
-    }
 }
 
 TEST(KernelAnalysis, RejectsCollidingPublicSignatures) {

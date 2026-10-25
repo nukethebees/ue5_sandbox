@@ -1141,19 +1141,23 @@ TEST(SemanticTypeGraph, ResolvesSoaColumnsAndEquivalentValues) {
     }
 }
 
-TEST(SemanticTypeGraph, RejectsNestedMembersWithoutDeclaredSoaTypes) {
-    for (auto const type : {"Missing", "int", "Record", "Child*", "Child const"}) {
-        lispb::codegen::CompilerTestContext context;
-        auto const manifest{lispb::codegen::parse_test_manifest(
-            context,
-            std::string{"(module test :header \"Test.h\" "
-                        "(record Record (member value float)) "
-                        "(struct Child (member values array float)) "
-                        "(struct Parent (member child nested \""} +
-                type + "\")))")};
-        EXPECT_THROW(static_cast<void>(resolve_type_graph(manifest)), std::invalid_argument);
-    }
+class InvalidNestedSoaType : public testing::TestWithParam<char const*> {};
+
+TEST_P(InvalidNestedSoaType, RejectsNestedMembersWithoutDeclaredSoaTypes) {
+    lispb::codegen::CompilerTestContext context;
+    auto const manifest{lispb::codegen::parse_test_manifest(
+        context,
+        std::string{"(module test :header \"Test.h\" "
+                    "(record Record (member value float)) "
+                    "(struct Child (member values array float)) "
+                    "(struct Parent (member child nested \""} +
+            GetParam() + "\")))")};
+    EXPECT_THROW(static_cast<void>(resolve_type_graph(manifest)), std::invalid_argument);
 }
+
+INSTANTIATE_TEST_SUITE_P(SemanticTypeGraph,
+                         InvalidNestedSoaType,
+                         testing::Values("Missing", "int", "Record", "Child*", "Child const"));
 
 TEST(SemanticTypeGraph, ResolvesNestedSoaThroughRegisteredCrossModuleType) {
     lispb::codegen::CompilerTestContext context;
@@ -2072,7 +2076,9 @@ TEST(SemanticTypeGraph, RejectsAmbiguousRegisteredDeclarationBindings) {
     EXPECT_THROW(static_cast<void>(resolve_type_graph(manifest)), std::invalid_argument);
 }
 
-TEST(SemanticTypeGraph, RejectsInvalidAndDuplicateDeclaredIdentities) {
+class InvalidDeclaredIdentities : public testing::TestWithParam<std::vector<std::string>> {};
+
+TEST_P(InvalidDeclaredIdentities, RejectsInvalidAndDuplicateDeclaredIdentities) {
     lispb::codegen::CompilerTestContext context;
     auto& strings{context.storage.strings};
     [[maybe_unused]] auto& storage{context.storage};
@@ -2123,19 +2129,21 @@ TEST(SemanticTypeGraph, RejectsInvalidAndDuplicateDeclaredIdentities) {
         }();
     };
 
-    lispb::codegen::Manifest invalid{lispb::codegen::manifest_schema_version,
-                                     lispb::codegen::make_test_registry(context),
-                                     semantic_declarations,
-                                     {make_module("types", {make_enum("")})}};
-    EXPECT_THROW(static_cast<void>(resolve_type_graph(invalid)), std::invalid_argument);
-
-    lispb::codegen::Manifest duplicate{
-        lispb::codegen::manifest_schema_version,
-        lispb::codegen::make_test_registry(context),
-        semantic_declarations,
-        {make_module("types", {make_enum("Mode"), make_enum("Mode")})}};
-    EXPECT_THROW(static_cast<void>(resolve_type_graph(duplicate)), std::invalid_argument);
+    std::vector<lispb::codegen::DeclarationHandle> enums;
+    for (auto const& name : GetParam()) {
+        enums.push_back(make_enum(name));
+    }
+    lispb::codegen::Manifest manifest{lispb::codegen::manifest_schema_version,
+                                      lispb::codegen::make_test_registry(context),
+                                      semantic_declarations,
+                                      {make_module("types", enums)}};
+    EXPECT_THROW(static_cast<void>(resolve_type_graph(manifest)), std::invalid_argument);
 }
+
+INSTANTIATE_TEST_SUITE_P(SemanticTypeGraph,
+                         InvalidDeclaredIdentities,
+                         testing::Values(std::vector<std::string>{""},
+                                         std::vector<std::string>{"Mode", "Mode"}));
 
 TEST(SemanticTypeGraph, RejectsUnresolvedRegisteredReferences) {
     lispb::codegen::CompilerTestContext context;

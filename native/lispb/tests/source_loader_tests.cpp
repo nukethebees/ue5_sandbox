@@ -231,19 +231,37 @@ TEST(SourceLoader, RecordValueSemanticsSurviveParsingGraphAndLowering) {
     }
 }
 
-TEST(SourceLoader, RecordRejectsStatementInitializersAndInvalidMethods) {
+struct InvalidSourceCase {
+    char const* name;
+    char const* source;
+};
+
+class SourceLoaderInvalidRecord : public testing::TestWithParam<InvalidSourceCase> {};
+
+TEST_P(SourceLoaderInvalidRecord, RejectsInvalidDeclaration) {
     TemporaryManifest files;
-    for (auto const declaration :
-         {R"((record Value (member x int :initializer "0; int injected")))",
-          R"((record Value :comparison-noexcept true (member x int)))",
-          R"((record Value (member x int) (function x int)))",
-          R"((record Value (function read int :static true :const true)))",
-          R"((record Value (function read int :constexpr true)))",
-          R"((record Value (function read int) (function read int)))"}) {
-        files.write_root(std::string{"(module records :header \"Records.h\" "} + declaration + ")");
-        EXPECT_THROW(static_cast<void>(files.lower(files.load())), std::exception) << declaration;
-    }
+    files.write_root(std::string{"(module records :header \"Records.h\" "} + GetParam().source +
+                     ")");
+    EXPECT_THROW(static_cast<void>(files.lower(files.load())), std::exception);
 }
+
+INSTANTIATE_TEST_SUITE_P(
+    SourceLoader,
+    SourceLoaderInvalidRecord,
+    testing::Values(
+        InvalidSourceCase{"StatementInitializer",
+                          R"((record Value (member x int :initializer "0; int injected")))"},
+        InvalidSourceCase{"NoexceptWithoutComparison",
+                          R"((record Value :comparison-noexcept true (member x int)))"},
+        InvalidSourceCase{"MemberMethodNameCollision",
+                          R"((record Value (member x int) (function x int)))"},
+        InvalidSourceCase{"StaticConstMethod",
+                          R"((record Value (function read int :static true :const true)))"},
+        InvalidSourceCase{"ConstexprWithoutBody",
+                          R"((record Value (function read int :constexpr true)))"},
+        InvalidSourceCase{"DuplicateMethod",
+                          R"((record Value (function read int) (function read int)))"}),
+    [](auto const& info) { return info.param.name; });
 
 TEST(SourceLoader, RecordMethodDeclarationsForwardDeclareLaterAndMutualTypes) {
     TemporaryManifest files;
@@ -582,22 +600,45 @@ TEST(SourceLoader, RecordMethodSignaturesRejectLayoutOnlyTypesAndCompleteDefinit
     }
 }
 
-TEST(SourceLoader, RejectsRemovedSoaRepresentationSyntax) {
+class SourceLoaderInvalidDeclaration : public testing::TestWithParam<InvalidSourceCase> {};
+
+TEST_P(SourceLoaderInvalidDeclaration, RejectsInvalidSyntax) {
     TemporaryManifest files;
-    for (auto const declaration :
-         {"(struct Rows :storage vector (member values array float))",
-          "(struct Rows :storage both (member values array float))",
-          "(struct Rows :storage single-allocation (member values array float))",
-          "(struct Rows :vector-components (values) (member values array float))",
-          "(struct Rows (member values array float) (single-allocation Owner))",
-          "(struct Rows (member values array float) (fixed FixedRows))",
-          "(struct Rows (member child nested Child :nested-schema Child))",
-          "(vector-soa Rows :value-type float :components (xs ys) :equivalent-type Point)"}) {
-        SCOPED_TRACE(declaration);
-        files.write_root(std::string{R"((module rows :header "Rows.h" )"} + declaration + ")");
-        EXPECT_THROW(files.load(), lispb::codegen::sexpr::SourceError);
-    }
+    files.write_root(std::string{R"((module invalid :header "Invalid.h" )"} + GetParam().source +
+                     ")");
+    EXPECT_THROW(files.load(), lispb::codegen::sexpr::SourceError);
 }
+
+INSTANTIATE_TEST_SUITE_P(
+    RemovedSoaSyntax,
+    SourceLoaderInvalidDeclaration,
+    testing::Values(
+        InvalidSourceCase{"VectorStorage",
+                          "(struct Rows :storage vector (member values array float))"},
+        InvalidSourceCase{"BothStorage", "(struct Rows :storage both (member values array float))"},
+        InvalidSourceCase{"SingleAllocationStorage",
+                          "(struct Rows :storage single-allocation (member values array float))"},
+        InvalidSourceCase{"VectorComponents",
+                          "(struct Rows :vector-components (values) (member values array float))"},
+        InvalidSourceCase{"SingleAllocationOwner",
+                          "(struct Rows (member values array float) (single-allocation Owner))"},
+        InvalidSourceCase{"FixedOwner",
+                          "(struct Rows (member values array float) (fixed FixedRows))"},
+        InvalidSourceCase{"NestedSchema",
+                          "(struct Rows (member child nested Child :nested-schema Child))"},
+        InvalidSourceCase{
+            "VectorSoa",
+            "(vector-soa Rows :value-type float :components (xs ys) :equivalent-type Point)"},
+        InvalidSourceCase{
+            "SingleAllocationAllocator",
+            "(struct Rows :single-allocation-allocator Allocator (member ids array int))"},
+        InvalidSourceCase{"SingleAllocationVariant",
+                          "(struct Rows (member ids array int) (single-allocation Owner (variant "
+                          "Pool Allocator)))"},
+        InvalidSourceCase{"ViewName", "(struct Rows :view-name Values (member ids array int))"},
+        InvalidSourceCase{"ConstViewName",
+                          "(struct Rows :const-view-name ConstValues (member ids array int))"}),
+    [](auto const& info) { return info.param.name; });
 
 TEST(SourceLoader, AliasEmissionKeepsSemanticIdentityAndDependencies) {
     TemporaryManifest files;
@@ -975,26 +1016,42 @@ TEST(SourceLoader, ExternalMetadataPreservesExplicitWidthCppFieldEmission) {
     EXPECT_FALSE(lispb::schema::packed_integer_domain(graph, type, field).has_value());
 }
 
-TEST(SourceLoader, RejectsInvalidExternalDomainsAndIncludes) {
+class SourceLoaderInvalidExternalType : public testing::TestWithParam<InvalidSourceCase> {};
+
+TEST_P(SourceLoaderInvalidExternalType, RejectsInvalidDomainOrInclude) {
     TemporaryManifest files;
     files.write_root(R"((module example :header "Example.h"))");
-    for (
-        auto const* source :
-        {R"((type x :spelling "X" (integer :signed true :bit-width 0)))",
-         R"((type x :spelling "X" (integer :signed true :bit-width 8 :maximum 128)))",
-         R"((type x :spelling "X" (integer :signed false :bit-width 8 :minimum -1)))",
-         R"((type x :spelling "X" (integer :signed false :bit-width 8 (code invalid :value 255 :sentinel true))))",
-         R"((type x :spelling "X" (floating-point :format invented)))",
-         R"((type x :spelling "X" (integer :signed true :bit-width 8) (floating-point :format ieee754-binary32)))",
-         R"((type x :spelling "int8" (integer :signed true :bit-width 8)) (type y :spelling "std::int8_t" (integer :signed false :bit-width 8)))",
-         R"((type x :spelling "X") (type x :spelling "Y"))",
-         R"((include "missing.lispb"))",
-         R"((include "types.lispb"))"}) {
-        SCOPED_TRACE(source);
-        files.write("types.lispb", source);
-        EXPECT_THROW(files.graph(), std::exception);
-    }
+    files.write("types.lispb", GetParam().source);
+    EXPECT_THROW(files.graph(), std::exception);
 }
+
+INSTANTIATE_TEST_SUITE_P(
+    SourceLoader,
+    SourceLoaderInvalidExternalType,
+    testing::Values(
+        InvalidSourceCase{"ZeroWidth",
+                          R"((type x :spelling "X" (integer :signed true :bit-width 0)))"},
+        InvalidSourceCase{
+            "SignedMaximum",
+            R"((type x :spelling "X" (integer :signed true :bit-width 8 :maximum 128)))"},
+        InvalidSourceCase{
+            "UnsignedMinimum",
+            R"((type x :spelling "X" (integer :signed false :bit-width 8 :minimum -1)))"},
+        InvalidSourceCase{
+            "SentinelInDomain",
+            R"((type x :spelling "X" (integer :signed false :bit-width 8 (code invalid :value 255 :sentinel true))))"},
+        InvalidSourceCase{"UnknownFloatFormat",
+                          R"((type x :spelling "X" (floating-point :format invented)))"},
+        InvalidSourceCase{
+            "ConflictingDomains",
+            R"((type x :spelling "X" (integer :signed true :bit-width 8) (floating-point :format ieee754-binary32)))"},
+        InvalidSourceCase{
+            "ConflictingAliases",
+            R"((type x :spelling "int8" (integer :signed true :bit-width 8)) (type y :spelling "std::int8_t" (integer :signed false :bit-width 8)))"},
+        InvalidSourceCase{"DuplicateName", R"((type x :spelling "X") (type x :spelling "Y"))"},
+        InvalidSourceCase{"MissingInclude", R"((include "missing.lispb"))"},
+        InvalidSourceCase{"RecursiveInclude", R"((include "types.lispb"))"}),
+    [](auto const& info) { return info.param.name; });
 
 TEST(SourceLoader, ExternalIntegerDefaultsCoverFull64BitDomains) {
     TemporaryManifest files;
@@ -1019,28 +1076,37 @@ TEST(SourceLoader, ExternalIntegerDefaultsCoverFull64BitDomains) {
         PackedIntegerValue{(std::numeric_limits<std::uint64_t>::max)()});
 }
 
-TEST(SourceLoader, ExternalRepresentationSourcesObeyIntegerDomainRules) {
+class SourceLoaderInvalidRepresentation : public testing::TestWithParam<InvalidSourceCase> {};
+
+TEST_P(SourceLoaderInvalidRepresentation, RequiresValidIntegerDomain) {
     TemporaryManifest files;
     files.write("types.lispb", R"(
       (type real :spelling "double" (floating-point :format ieee754-binary64))
       (type opaque :spelling "Opaque")
       (type signed_byte :spelling "int8" (integer :signed true :bit-width 8))
       (type byte :spelling "uint8" (integer :signed false :bit-width 8)))");
-    for (auto const* declaration :
-         {"(linear-quantized Q :source @real :bits 4)",
-          "(integer-varint V :source @opaque :encoding unsigned)",
-          "(integer-varint V :source @signed_byte :encoding unsigned)",
-          "(integer-varint V :source @byte :encoding zigzag)",
-          "(optional-sentinel S :source @byte :sentinel missing)",
-          "(optional-presence-bit P :source @real)",
-          "(optional-presence-bit P :source (type-ref @byte :suffix \"*\"))",
-          "(record double (member x int8))"}) {
-        SCOPED_TRACE(declaration);
-        files.write("modules.lispb",
-                    "(module example :header \"Example.h\" " + std::string{declaration} + ")");
-        EXPECT_THROW(files.graph(), std::exception);
-    }
+    files.write("modules.lispb",
+                std::string{"(module example :header \"Example.h\" "} + GetParam().source + ")");
+    EXPECT_THROW(files.graph(), std::exception);
 }
+
+INSTANTIATE_TEST_SUITE_P(
+    SourceLoader,
+    SourceLoaderInvalidRepresentation,
+    testing::Values(
+        InvalidSourceCase{"QuantizedReal", "(linear-quantized Q :source @real :bits 4)"},
+        InvalidSourceCase{"OpaqueVarint", "(integer-varint V :source @opaque :encoding unsigned)"},
+        InvalidSourceCase{"UnsignedEncodingForSignedVarint",
+                          "(integer-varint V :source @signed_byte :encoding unsigned)"},
+        InvalidSourceCase{"ZigzagEncodingForUnsignedVarint",
+                          "(integer-varint V :source @byte :encoding zigzag)"},
+        InvalidSourceCase{"MissingSentinel",
+                          "(optional-sentinel S :source @byte :sentinel missing)"},
+        InvalidSourceCase{"RealPresenceBit", "(optional-presence-bit P :source @real)"},
+        InvalidSourceCase{"PointerPresenceBit",
+                          "(optional-presence-bit P :source (type-ref @byte :suffix \"*\"))"},
+        InvalidSourceCase{"BuiltinNameCollision", "(record double (member x int8))"}),
+    [](auto const& info) { return info.param.name; });
 
 TEST(SourceLoader, NormalModuleKeepsMixedDeclarationOrderAndResolvesTypes) {
     TemporaryManifest files;
@@ -1507,28 +1573,20 @@ TEST(SourceLoader, ReadsMiniFloatPackedField) {
     EXPECT_EQ(packed_fields.kind[component_row], PackedFieldKind::mini_float);
 }
 
-TEST(SourceLoader, RejectsUnknownPackedPhysicalOrdering) {
-    TemporaryManifest files;
-    files.write_root(R"(
-(module packed
-  :header "Packed.h"
-  (packed-value Value
-    :storage std::uint32_t
-    :byte-order middle
-    (field value std::uint32_t :bits 32)))
-)");
-    EXPECT_THROW(static_cast<void>(files.load()), lispb::codegen::sexpr::SourceError);
-
-    files.write_root(R"(
-(module packed
-  :header "Packed.h"
-  (packed-value Value
-    :storage std::uint32_t
-    :bit-order byte-first
-    (field value std::uint32_t :bits 32)))
-)");
-    EXPECT_THROW(static_cast<void>(files.load()), lispb::codegen::sexpr::SourceError);
-}
+INSTANTIATE_TEST_SUITE_P(
+    PackedValues,
+    SourceLoaderInvalidDeclaration,
+    testing::Values(
+        InvalidSourceCase{"UnknownByteOrder",
+                          "(packed-value Value :storage std::uint32_t :byte-order middle (field "
+                          "value std::uint32_t :bits 32))"},
+        InvalidSourceCase{"UnknownBitOrder",
+                          "(packed-value Value :storage std::uint32_t :bit-order byte-first (field "
+                          "value std::uint32_t :bits 32))"},
+        InvalidSourceCase{
+            "NegativeInvalidValue",
+            "(packed-value Value :storage uint8 :invalid-value -1 (field value uint8 :bits 8))"}),
+    [](auto const& info) { return info.param.name; });
 
 TEST(SourceLoader, ReadsStandaloneIntegerScalarDomain) {
     TemporaryManifest files;
@@ -1696,27 +1754,26 @@ TEST(SourceLoader, ReadsPhysicalRepresentations) {
               "project::Health");
 }
 
-TEST(SourceLoader, RejectsInvalidMiniFloatWidthsAndBias) {
-    auto load_mini_float = [](std::string const& properties) {
-        TemporaryManifest files;
-        files.write_root("(module representations\n"
-                         "  :header \"Representations.h\"\n"
-                         "  (mini-float Invalid " +
-                         properties + "))\n");
-        return files.load();
-    };
-
-    EXPECT_THROW(load_mini_float(":sign-bits 2 :exponent-bits 5 :significand-bits 10 :bias 15"),
-                 lispb::codegen::sexpr::SourceError);
-    EXPECT_THROW(load_mini_float(":sign-bits 1 :exponent-bits 1 :significand-bits 10 :bias 15"),
-                 lispb::codegen::sexpr::SourceError);
-    EXPECT_THROW(load_mini_float(":sign-bits 1 :exponent-bits 5 :significand-bits 63 :bias 15"),
-                 lispb::codegen::sexpr::SourceError);
-    EXPECT_THROW(load_mini_float(":sign-bits 1 :exponent-bits 15 :significand-bits 49 :bias 15"),
-                 lispb::codegen::sexpr::SourceError);
-    EXPECT_THROW(load_mini_float(":sign-bits 1 :exponent-bits 5 :significand-bits 10 :bias 32768"),
-                 lispb::codegen::sexpr::SourceError);
-}
+INSTANTIATE_TEST_SUITE_P(
+    MiniFloat,
+    SourceLoaderInvalidDeclaration,
+    testing::Values(
+        InvalidSourceCase{
+            "SignWidth",
+            "(mini-float Invalid :sign-bits 2 :exponent-bits 5 :significand-bits 10 :bias 15)"},
+        InvalidSourceCase{
+            "ExponentWidth",
+            "(mini-float Invalid :sign-bits 1 :exponent-bits 1 :significand-bits 10 :bias 15)"},
+        InvalidSourceCase{
+            "SignificandWidth",
+            "(mini-float Invalid :sign-bits 1 :exponent-bits 5 :significand-bits 63 :bias 15)"},
+        InvalidSourceCase{
+            "TotalWidth",
+            "(mini-float Invalid :sign-bits 1 :exponent-bits 15 :significand-bits 49 :bias 15)"},
+        InvalidSourceCase{
+            "Bias",
+            "(mini-float Invalid :sign-bits 1 :exponent-bits 5 :significand-bits 10 :bias 32768)"}),
+    [](auto const& info) { return info.param.name; });
 
 TEST(SourceLoader, ReadsExplicitEnumBitWidth) {
     TemporaryManifest files;
@@ -1742,14 +1799,6 @@ TEST(SourceLoader, ReadsExplicitEnumBitWidth) {
     EXPECT_TRUE(
         std::ranges::equal(store.items(enums.helpers[schema_row]),
                            std::array{NativeEnumHelper::to_string, NativeEnumHelper::traits}));
-    for (auto const options : {":native-api true :helpers (unknown)",
-                               ":native-api true :helpers traits",
-                               ":helpers (traits)"}) {
-        files.write_root(
-            std::string{"(module states :header \"States.h\" (enum State std::uint8_t "} + options +
-            " (value Idle :value \"0\")))");
-        EXPECT_THROW(files.load(), lispb::codegen::sexpr::SourceError);
-    }
 }
 
 TEST(SourceLoader, ReadsEnumWithoutCppBackingType) {
@@ -1815,18 +1864,22 @@ TEST(SourceLoader, ReadsNamedEnumSentinels) {
     EXPECT_TRUE(enumerators.sentinel[store.items(values)[2]]);
 }
 
-TEST(SourceLoader, RejectsEnumBitWidthOutsideNativeAnalysisRange) {
-    TemporaryManifest files;
-    files.write_root(R"(
-(module states
-  :header "States.h"
-  (enum State std::uint8_t
-    :bit-width 65
-    (value Idle)))
-)");
-
-    EXPECT_THROW(static_cast<void>(files.load()), lispb::codegen::sexpr::SourceError);
-}
+INSTANTIATE_TEST_SUITE_P(
+    EnumOptions,
+    SourceLoaderInvalidDeclaration,
+    testing::Values(
+        InvalidSourceCase{"BitWidthOutsideNativeRange",
+                          "(enum State std::uint8_t :bit-width 65 (value Idle))"},
+        InvalidSourceCase{
+            "UnknownHelper",
+            R"((enum State std::uint8_t :native-api true :helpers (unknown) (value Idle :value "0")))"},
+        InvalidSourceCase{
+            "NonListHelpers",
+            R"((enum State std::uint8_t :native-api true :helpers traits (value Idle :value "0")))"},
+        InvalidSourceCase{
+            "HelperWithoutNativeApi",
+            R"((enum State std::uint8_t :helpers (traits) (value Idle :value "0")))"}),
+    [](auto const& info) { return info.param.name; });
 
 TEST(SourceLoader, PreservesNumericAndOpaqueEnumInitializers) {
     TemporaryManifest files;
@@ -1951,25 +2004,33 @@ TEST(SourceLoader, ReadsRawUnionModuleAndFixedArrayAlternatives) {
     EXPECT_EQ(union_alternatives.count[store.items(unions.alternatives[payload_row])[1]], 12);
 }
 
-TEST(SourceLoader, RejectsInvalidRawUnionAlternatives) {
-    TemporaryManifest files;
-    files.write_root(R"(
-(module payloads
-  :header "Payloads.h"
-  (union Payload
-    (alternative value std::uint32_t :count 0)))
-)");
-    EXPECT_THROW(lispb::schema::resolve_type_graph(files.load()), std::invalid_argument);
+class SourceLoaderInvalidUnion : public testing::TestWithParam<InvalidSourceCase> {};
 
-    files.write_root(R"(
-(module payloads
-  :header "Payloads.h"
-  (union Payload
-    (alternative value std::uint32_t)
-    (alternative value std::uint16_t)))
-)");
+TEST_P(SourceLoaderInvalidUnion, RejectsInvalidAlternatives) {
+    TemporaryManifest files;
+    files.write_root(std::string{R"((module payloads :header "Payloads.h" )"} + GetParam().source +
+                     ")");
     EXPECT_THROW(lispb::schema::resolve_type_graph(files.load()), std::invalid_argument);
 }
+
+INSTANTIATE_TEST_SUITE_P(
+    SourceLoader,
+    SourceLoaderInvalidUnion,
+    testing::Values(
+        InvalidSourceCase{"ZeroCount",
+                          "(union Payload (alternative value std::uint32_t :count 0))"},
+        InvalidSourceCase{
+            "DuplicateName",
+            "(union Payload (alternative value std::uint32_t) (alternative value std::uint16_t))"},
+        InvalidSourceCase{
+            "DuplicateTaggedName",
+            "(tagged-union Event :discriminant std::uint8_t (alternative value std::uint32_t :tag "
+            "Value) (alternative value std::uint16_t :tag Other))"},
+        InvalidSourceCase{
+            "DuplicateTag",
+            "(tagged-union Event :discriminant std::uint8_t (alternative first std::uint32_t :tag "
+            "Value) (alternative second std::uint16_t :tag Value))"}),
+    [](auto const& info) { return info.param.name; });
 
 TEST(SourceLoader, ReadsTaggedUnionDiscriminantAndSymbolicMappings) {
     TemporaryManifest files;
@@ -2017,29 +2078,6 @@ TEST(SourceLoader, ReadsTaggedUnionDiscriminantAndSymbolicMappings) {
         tagged_union_alternatives.count[store.items(tagged_unions.alternatives[tagged_row])[1]], 4);
 }
 
-TEST(SourceLoader, RejectsDuplicateTaggedUnionNamesAndTags) {
-    TemporaryManifest files;
-    files.write_root(R"(
-(module payloads
-  :header "Payloads.h"
-  (tagged-union Event
-    :discriminant std::uint8_t
-    (alternative value std::uint32_t :tag Value)
-    (alternative value std::uint16_t :tag Other)))
-)");
-    EXPECT_THROW(lispb::schema::resolve_type_graph(files.load()), std::invalid_argument);
-
-    files.write_root(R"(
-(module payloads
-  :header "Payloads.h"
-  (tagged-union Event
-    :discriminant std::uint8_t
-    (alternative first std::uint32_t :tag Value)
-    (alternative second std::uint16_t :tag Value)))
-)");
-    EXPECT_THROW(lispb::schema::resolve_type_graph(files.load()), std::invalid_argument);
-}
-
 TEST(SourceLoader, RejectsNonIntegerPackedFieldWidthWithSourceLocation) {
     TemporaryManifest files;
     files.write_root(R"(
@@ -2058,20 +2096,6 @@ TEST(SourceLoader, RejectsNonIntegerPackedFieldWidthWithSourceLocation) {
         EXPECT_NE(message.find("modules.lispb:6:30"), std::string::npos);
         EXPECT_NE(message.find("packed field bits must be an integer"), std::string::npos);
     }
-}
-
-TEST(SourceLoader, RejectsNegativePackedInvalidValue) {
-    TemporaryManifest files;
-    files.write_root(R"(
-(module packed
-  :header "Packed.h"
-  (packed-value Value
-    :storage uint8
-    :invalid-value -1
-    (field value uint8 :bits 8)))
-)");
-
-    EXPECT_THROW(static_cast<void>(files.load()), lispb::codegen::sexpr::SourceError);
 }
 
 TEST(SourceLoader, ReportsSourceLocationForUnknownProperties) {
@@ -2317,20 +2341,6 @@ TEST(SourceLoader, OrdinarySoaPreservesLogicalApi) {
     EXPECT_NE(output.find("return this->values()[0];"), std::string::npos);
     EXPECT_EQ(output.find("struct Rows {"), std::string::npos);
     EXPECT_NE(output.find("void noop() {"), std::string::npos);
-}
-
-TEST(SourceLoader, RejectsRemovedSoaOptions) {
-    TemporaryManifest files;
-    for (auto const declaration :
-         {"(struct Rows :single-allocation-allocator Allocator (member "
-          "ids array int))",
-          "(struct Rows (member ids array int) (single-allocation Owner "
-          "(variant Pool Allocator)))",
-          "(struct Rows :view-name Values (member ids array int))",
-          "(struct Rows :const-view-name ConstValues (member ids array int))"}) {
-        files.write_root(std::string{"(module api :header \"Api.h\" "} + declaration + ")");
-        EXPECT_THROW(files.load(), lispb::codegen::sexpr::SourceError);
-    }
 }
 
 TEST(SourceLoader, ReadOnlyViewFunctionRejectsMutableReceiver) {

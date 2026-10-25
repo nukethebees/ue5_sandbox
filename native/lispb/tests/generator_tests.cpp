@@ -26,6 +26,7 @@
 
 #include <algorithm>
 #include <filesystem>
+#include <format>
 #include <fstream>
 #include <map>
 #include <stdexcept>
@@ -98,25 +99,31 @@ TEST(Generator, LowersSoaFieldMaskFromAnnotatedMembers) {
     EXPECT_EQ(header.find("CoreMinimal.h"), std::string::npos);
 }
 
-TEST(Generator, RejectsDuplicateOutputPaths) {
+class DuplicateOutputPaths : public testing::TestWithParam<char const*> {};
+
+TEST_P(DuplicateOutputPaths, RejectsDuringRendering) {
     CompilerTestContext context;
     auto manifest{example_manifest(context)};
     auto duplicate{parse_test_manifest(
-        context, R"((umbrella-module duplicate :header "Generated.h" :headers ()))")};
+        context, std::format("(umbrella-module duplicate :header {} :headers ())", GetParam()))};
     manifest.modules.push_back(duplicate.modules.front());
 
     EXPECT_THROW(render_test_manifest(context, manifest), std::invalid_argument);
 }
 
-TEST(Generator, RejectsCaseInsensitiveDuplicateOutputPaths) {
+TEST_P(DuplicateOutputPaths, RejectsDuringLowering) {
     CompilerTestContext context;
     auto manifest{example_manifest(context)};
     auto duplicate{parse_test_manifest(
-        context, R"((umbrella-module duplicate :header "generated.h" :headers ()))")};
+        context, std::format("(umbrella-module duplicate :header {} :headers ())", GetParam()))};
     manifest.modules.push_back(duplicate.modules.front());
 
     EXPECT_THROW(lower_test_manifest(context, manifest), std::invalid_argument);
 }
+
+INSTANTIATE_TEST_SUITE_P(Generator,
+                         DuplicateOutputPaths,
+                         testing::Values("Generated.h", "generated.h"));
 
 TEST(Generator, RendersDeterministically) {
     CompilerTestContext context;
@@ -151,18 +158,27 @@ TEST(Generator, ReportsMissingGeneratedFilesAsStale) {
               1);
 }
 
-TEST(Generator, RejectsOutputPathsOutsideOutputRoot) {
-    auto const directory{std::filesystem::temp_directory_path() / "lispb-output-containment-test"};
+class InvalidDirectOutputPaths : public testing::TestWithParam<std::vector<GeneratedFile>> {};
 
-    EXPECT_THROW(
-        generate_files({GeneratedFile{"../escape.h", "content\n"}}, directory, directory, true),
-        std::invalid_argument);
-    EXPECT_THROW(generate_files({GeneratedFile{directory.parent_path() / "escape.h", "content\n"}},
-                                directory,
-                                directory,
-                                true),
-                 std::invalid_argument);
+TEST_P(InvalidDirectOutputPaths, RejectsPaths) {
+    auto const directory{std::filesystem::temp_directory_path() /
+                         "lispb-direct-output-validation-test"};
+    EXPECT_THROW(generate_files(GetParam(), directory, directory, true), std::invalid_argument);
 }
+
+INSTANTIATE_TEST_SUITE_P(OutsideOutputRoot,
+                         InvalidDirectOutputPaths,
+                         testing::Values(std::vector<GeneratedFile>{{"../escape.h", "content\n"}},
+                                         std::vector<GeneratedFile>{
+                                             {std::filesystem::temp_directory_path() / "escape.h",
+                                              "content\n"}}));
+
+INSTANTIATE_TEST_SUITE_P(DuplicateAndReservedPaths,
+                         InvalidDirectOutputPaths,
+                         testing::Values(std::vector<GeneratedFile>{{"Generated/Value.h", "first"},
+                                                                    {"generated/value.h",
+                                                                     "second"}},
+                                         std::vector<GeneratedFile>{{".lispb-outputs", "value"}}));
 
 TEST(Generator, TracksDetectsAndRemovesOrphanedGeneratedFiles) {
     auto const directory{std::filesystem::temp_directory_path() / "lispb-orphan-generation-test"};
@@ -207,20 +223,6 @@ TEST(Generator, RefusesToRemoveModifiedOrphanedFiles) {
         std::runtime_error);
     EXPECT_TRUE(std::filesystem::exists(directory / "Generated/Modified.h"));
     std::filesystem::remove_all(directory, ignored);
-}
-
-TEST(Generator, RejectsDuplicateAndReservedDirectOutputPaths) {
-    auto const directory{std::filesystem::temp_directory_path() /
-                         "lispb-direct-output-validation-test"};
-    auto const files{std::vector<GeneratedFile>{
-        {"Generated/Value.h", "first"},
-        {"generated/value.h", "second"},
-    }};
-
-    EXPECT_THROW(generate_files(files, directory, directory, true), std::invalid_argument);
-    EXPECT_THROW(
-        generate_files({GeneratedFile{".lispb-outputs", "value"}}, directory, directory, true),
-        std::invalid_argument);
 }
 
 TEST(Generator, PreservesDestinationWhenAtomicReplacementFails) {

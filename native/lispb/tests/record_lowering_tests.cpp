@@ -41,20 +41,23 @@ TEST(RecordLowering, GeneratesUniqueConstructorsAndPreservesSpecialForms) {
     EXPECT_EQ(output.find("(define (special"), std::string::npos);
 }
 
-TEST(RecordLowering, RejectsUnsafeAndConflictingConstructorTags) {
-    for (auto const declarations : {R"((record Bad :generate-s7-reader true :s7-tag "a) (bad"))",
-                                    R"((record First :generate-s7-reader true :s7-tag "shared")
-           (record Second :generate-s7-reader true :s7-tag "shared" :s7-constructor false))"}) {
-        SCOPED_TRACE(declarations);
-        CompilerTestContext context;
-        auto manifest{parse_test_manifest(
-            context,
-            std::format("(module constructors :header Constructors.h :s7-constructors true {})",
-                        declarations))};
-        EXPECT_THROW(static_cast<void>(render_test_manifest(context, manifest)),
-                     std::invalid_argument);
-    }
+class InvalidConstructorTags : public testing::TestWithParam<char const*> {};
+
+TEST_P(InvalidConstructorTags, RejectsUnsafeAndConflictingConstructorTags) {
+    CompilerTestContext context;
+    auto manifest{parse_test_manifest(
+        context,
+        std::format("(module constructors :header Constructors.h :s7-constructors true {})",
+                    GetParam()))};
+    EXPECT_THROW(static_cast<void>(render_test_manifest(context, manifest)), std::invalid_argument);
 }
+
+INSTANTIATE_TEST_SUITE_P(
+    RecordLowering,
+    InvalidConstructorTags,
+    testing::Values(R"((record Bad :generate-s7-reader true :s7-tag "a) (bad"))",
+                    R"((record First :generate-s7-reader true :s7-tag "shared")
+           (record Second :generate-s7-reader true :s7-tag "shared" :s7-constructor false))"));
 
 TEST(RecordLowering, GeneratesSemanticMembersAndFixedArrays) {
     CompilerTestContext context;
@@ -83,39 +86,50 @@ TEST(RecordLowering, GeneratesSemanticMembersAndFixedArrays) {
     EXPECT_NE(output.find("std::array<Value, 3> values;"), std::string::npos);
 }
 
-TEST(RecordLowering, RejectsInvalidSettingsBindingsAndConstrainedNames) {
-    for (auto const declarations :
-         {R"((record Config (member speed float :s7-name "")))",
-          R"((record Config :constraint-policy example::policy) (record ConfigValue))",
-          R"((record Config :generate-visitor true (member Field int)))",
-          R"((record Config :generate-visitor true (member visit_field int)))",
-          R"((record Config :generate-visitor true (member get_field int)))",
-          R"((record Config :generate-visitor true (member invoke_field int)))",
-          R"((record Selected :generate-visitor true))",
-          R"((record Field :generate-visitor true))",
-          R"((record Self :generate-visitor true))"}) {
-        SCOPED_TRACE(declarations);
-        CompilerTestContext context;
-        auto manifest{parse_test_manifest(
-            context, std::string{R"((module records :header "Records.h" )"} + declarations + ")")};
-        EXPECT_THROW(static_cast<void>(lower_test_manifest(context, manifest)),
-                     std::invalid_argument);
-    }
+class InvalidRecordDeclaration : public testing::TestWithParam<char const*> {};
+
+TEST_P(InvalidRecordDeclaration, RejectsDeclaration) {
+    CompilerTestContext context;
+    auto manifest{parse_test_manifest(
+        context, std::format(R"((module records :header "Records.h" {}))", GetParam()))};
+    EXPECT_THROW(static_cast<void>(lower_test_manifest(context, manifest)), std::invalid_argument);
 }
 
-TEST(RecordLowering, RejectsRemovedOverrideGenerationOption) {
-    for (auto const declaration : {"(record Config :generate-overrides true)",
-                                   "(record Config :generate-settings true)",
-                                   "(record Config (member value int :settings-exclude true))",
-                                   "(record Config (member value int :settings-name value))"}) {
-        SCOPED_TRACE(declaration);
-        CompilerTestContext context;
-        EXPECT_THROW(
-            static_cast<void>(parse_test_manifest(
-                context, std::format("(module records :header Records.h {})", declaration))),
-            sexpr::SourceError);
-    }
+INSTANTIATE_TEST_SUITE_P(
+    SettingsBindingsAndConstrainedNames,
+    InvalidRecordDeclaration,
+    testing::Values(R"((record Config (member speed float :s7-name "")))",
+                    R"((record Config :constraint-policy example::policy) (record ConfigValue))",
+                    R"((record Config :generate-visitor true (member Field int)))",
+                    R"((record Config :generate-visitor true (member visit_field int)))",
+                    R"((record Config :generate-visitor true (member get_field int)))",
+                    R"((record Config :generate-visitor true (member invoke_field int)))",
+                    R"((record Selected :generate-visitor true))",
+                    R"((record Field :generate-visitor true))",
+                    R"((record Self :generate-visitor true))"));
+
+INSTANTIATE_TEST_SUITE_P(
+    DuplicateAndZeroCountMembers,
+    InvalidRecordDeclaration,
+    testing::Values("(record Record (member value float) (member value float))",
+                    "(record Record (member values float :count 0))"));
+
+class RemovedRecordOption : public testing::TestWithParam<char const*> {};
+
+TEST_P(RemovedRecordOption, RejectsRemovedOverrideGenerationOption) {
+    CompilerTestContext context;
+    EXPECT_THROW(static_cast<void>(parse_test_manifest(
+                     context, std::format("(module records :header Records.h {})", GetParam()))),
+                 sexpr::SourceError);
 }
+
+INSTANTIATE_TEST_SUITE_P(
+    RecordLowering,
+    RemovedRecordOption,
+    testing::Values("(record Config :generate-overrides true)",
+                    "(record Config :generate-settings true)",
+                    "(record Config (member value int :settings-exclude true))",
+                    "(record Config (member value int :settings-name value))"));
 
 TEST(RecordLowering, SettingsMetadataDoesNotChangeOrdinaryRecordOutput) {
     auto const render{[](std::string_view const options) {
@@ -206,32 +220,34 @@ TEST(RecordLowering, RetainsReaderConstraintsInCanonicalSource) {
     EXPECT_EQ(first.back().content, second.back().content);
 }
 
-TEST(RecordLowering, RejectsAmbiguousReaderFieldsAndInvalidBounds) {
-    for (
-        auto const declarations :
-        {R"((record Config :generate-s7-reader true))",
-         R"((record Config :s7-tag config))",
-         R"((record Config :s7-positional true))",
-         R"((record Config :generate-s7-reader true :s7-tag config
-            (member first int :s7-name same) (member second int :s7-name same)))",
-         R"((record Config :generate-s7-reader true :s7-tag config (member value int :s7-name "")))",
-         R"((record Config :generate-s7-reader true :s7-tag config (member value int :minimum 4 :maximum 2)))",
-         R"((record Config :generate-s7-reader true :s7-tag config (member value int :minimum "1;bad")))",
-         R"((record Config :generate-s7-reader true :s7-tag config (member value int :minimum -9223372036854775809)))"}) {
-        SCOPED_TRACE(declarations);
-        CompilerTestContext context;
-        EXPECT_THROW(
-            {
-                auto const manifest{parse_test_manifest(
-                    context,
-                    std::format(R"((module records :header "Records.h" {}))", declarations))};
-                static_cast<void>(lower_test_manifest(context, manifest));
-            },
-            std::exception);
-    }
+class InvalidRecordReader : public testing::TestWithParam<char const*> {};
+
+TEST_P(InvalidRecordReader, RejectsAmbiguousReaderFieldsAndInvalidBounds) {
+    CompilerTestContext context;
+    EXPECT_THROW(
+        {
+            auto const manifest{parse_test_manifest(
+                context, std::format(R"((module records :header "Records.h" {}))", GetParam()))};
+            static_cast<void>(lower_test_manifest(context, manifest));
+        },
+        std::exception);
 }
 
-TEST(RecordLowering, AllowsEmptyAndRejectsDuplicateAndZeroCountMembers) {
+INSTANTIATE_TEST_SUITE_P(
+    RecordLowering,
+    InvalidRecordReader,
+    testing::Values(
+        R"((record Config :generate-s7-reader true))",
+        R"((record Config :s7-tag config))",
+        R"((record Config :s7-positional true))",
+        R"((record Config :generate-s7-reader true :s7-tag config
+            (member first int :s7-name same) (member second int :s7-name same)))",
+        R"((record Config :generate-s7-reader true :s7-tag config (member value int :s7-name "")))",
+        R"((record Config :generate-s7-reader true :s7-tag config (member value int :minimum 4 :maximum 2)))",
+        R"((record Config :generate-s7-reader true :s7-tag config (member value int :minimum "1;bad")))",
+        R"((record Config :generate-s7-reader true :s7-tag config (member value int :minimum -9223372036854775809)))"));
+
+TEST(RecordLowering, AllowsEmptyAndNonemptyRecords) {
     CompilerTestContext context;
     auto record = [&](std::string_view members) {
         return parse_test_manifest(context,
@@ -243,12 +259,6 @@ TEST(RecordLowering, AllowsEmptyAndRejectsDuplicateAndZeroCountMembers) {
     auto const files{render_test_manifest(context, record(""))};
     ASSERT_EQ(files.size(), 1U);
     EXPECT_NE(files.front().content.find("struct Record"), std::string::npos);
-    EXPECT_THROW(static_cast<void>(lower_test_manifest(
-                     context, record("(member value float) (member value float)"))),
-                 std::invalid_argument);
-    EXPECT_THROW(
-        static_cast<void>(lower_test_manifest(context, record("(member values float :count 0)"))),
-        std::invalid_argument);
 }
 
 TEST(RecordLowering, EmitsByValueDependenciesBeforeTheirUsers) {

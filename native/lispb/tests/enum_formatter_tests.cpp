@@ -36,14 +36,17 @@ TEST(GeneratedEnumFormatter, PreservesStringFormattingAndDynamicArgumentIndexing
     EXPECT_EQ(output, "Readable Name");
 }
 
-TEST(GeneratedEnumFormatter, RejectsUnavailableRepresentationsAndInvalidSpecifications) {
+class InvalidEnumFormat : public testing::TestWithParam<char const*> {};
+
+TEST_P(InvalidEnumFormat, RejectsUnavailableRepresentationsAndInvalidSpecifications) {
     auto value{ENameOnlyFixture::First};
-    for (auto const specification : {"{:s}", "{:l}", "{:d}", "{:x}", "{:nq}"}) {
-        SCOPED_TRACE(specification);
-        EXPECT_THROW(static_cast<void>(std::vformat(specification, std::make_format_args(value))),
-                     std::format_error);
-    }
+    EXPECT_THROW(static_cast<void>(std::vformat(GetParam(), std::make_format_args(value))),
+                 std::format_error);
 }
+
+INSTANTIATE_TEST_SUITE_P(GeneratedEnumFormatter,
+                         InvalidEnumFormat,
+                         testing::Values("{:s}", "{:l}", "{:d}", "{:x}", "{:nq}"));
 
 TEST(GeneratedEnumFormatter, SuppliesReadableStructuralDiffValues) {
     ioj::DiffReport result;

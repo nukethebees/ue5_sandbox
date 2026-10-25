@@ -1805,256 +1805,129 @@ TEST(PackedValue, LowersLinearQuantizedPlacementToExplicitEncodedCodeApi) {
     EXPECT_EQ(header.find("health()"), std::string::npos);
 }
 
-TEST(PackedValue, RejectsCompetingLinearQuantizedPlacementFacts) {
+enum class PackedRepresentation {
+    linear_quantized,
+    fixed_point,
+    mini_float,
+};
+
+struct InvalidPackedPlacementCase {
+    char const* name;
+    PackedRepresentation representation;
+    std::optional<int> bits{};
+    std::optional<PackedFieldKind> kind{};
+    std::optional<PackedIntegerValue> minimum{};
+    std::optional<PackedIntegerValue> maximum{};
+    bool named_code{};
+    bool range_helper{};
+    std::string_view relationship{};
+};
+
+using InvalidPackedPlacement = testing::TestWithParam<InvalidPackedPlacementCase>;
+
+TEST_P(InvalidPackedPlacement, RejectsCompetingRepresentationFacts) {
+    auto const& parameter{GetParam()};
     CompilerTestContext context;
+    auto manifest{[&] {
+        switch (parameter.representation) {
+            case PackedRepresentation::linear_quantized:
+                return quantized_backed_manifest(context);
+            case PackedRepresentation::fixed_point:
+                return fixed_point_backed_manifest(context);
+            case PackedRepresentation::mini_float:
+                return mini_float_backed_manifest(context);
+        }
+        std::unreachable();
+    }()};
     auto& declarations{context.storage.declarations};
-    auto& normal_modules{declarations.normal_modules};
-    auto& packed_values{declarations.packed_values};
-    auto& packed_fields{declarations.packed_fields};
-    auto manifest{quantized_backed_manifest(context)};
+    auto& fields{declarations.packed_fields};
+    auto const packed{
+        declarations.items(declarations.normal_modules.declarations[manifest.modules.back()])
+            .front()};
+    auto const field{declarations.items(declarations.packed_values.segments[packed]).front()};
+    fields.bits[field] = parameter.bits;
+    if (parameter.kind) {
+        fields.kind[field] = *parameter.kind;
+    }
+    fields.minimum_value[field] = parameter.minimum;
+    fields.maximum_value[field] = parameter.maximum;
+    fields.range_helper[field] = parameter.range_helper;
+    if (parameter.named_code) {
+        auto& codes{declarations.packed_named_codes};
+        auto const code{codes.append()};
+        codes.name[code] = context.storage.strings.intern("Zero");
+        codes.value[code] = 0;
+        codes.sentinel[code] = false;
+        fields.named_codes[field] = declarations.range<PackedNamedCodeId>({code});
+    }
+    if (!parameter.relationship.empty()) {
+        auto& relationships{declarations.semantic_relations};
+        auto const relationship{relationships.append()};
+        relationships.kind[relationship] = SemanticRelationKind::encoded_as;
+        relationships.target[relationship] = make_test_type_ref(context, parameter.relationship);
+        relationships.unit[relationship] = std::nullopt;
+        fields.relationship[field] = relationship;
+    }
 
-    manifest.modules.back() = [&] {
-        auto row_4{normal_modules.clone(manifest.modules.back())};
-        auto const row_4_row{normal_modules.index(row_4)};
-        normal_modules.declarations[row_4_row] = [&] {
-            auto const original_items{declarations.items(normal_modules.declarations[row_4_row])};
-            auto rows_3{std::vector(original_items.begin(), original_items.end())};
-            rows_3.front() = [&] {
-                auto row_2{packed_values.clone(rows_3.front())};
-                auto const row_2_row{packed_values.index(row_2)};
-                packed_values.segments[row_2_row] = [&] {
-                    auto const original_items{
-                        declarations.items(packed_values.segments[row_2_row])};
-                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                    rows_1[0] = [&] {
-                        auto row_0{packed_fields.clone(rows_1[0])};
-                        packed_fields.bits[row_0] = 7;
-                        return row_0;
-                    }();
-                    return declarations.range(rows_1);
-                }();
-                return row_2;
-            }();
-            return declarations.range(rows_3);
-        }();
-        return row_4;
-    }();
-    EXPECT_THROW(lower_test_manifest(context, manifest), std::invalid_argument);
-
-    manifest.modules.back() = [&] {
-        auto row_4{normal_modules.clone(manifest.modules.back())};
-        auto const row_4_row{normal_modules.index(row_4)};
-        normal_modules.declarations[row_4_row] = [&] {
-            auto const original_items{declarations.items(normal_modules.declarations[row_4_row])};
-            auto rows_3{std::vector(original_items.begin(), original_items.end())};
-            rows_3.front() = [&] {
-                auto row_2{packed_values.clone(rows_3.front())};
-                auto const row_2_row{packed_values.index(row_2)};
-                packed_values.segments[row_2_row] = [&] {
-                    auto const original_items{
-                        declarations.items(packed_values.segments[row_2_row])};
-                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                    rows_1[0] = [&] {
-                        auto row_0{packed_fields.clone(rows_1[0])};
-                        packed_fields.bits[row_0].reset();
-                        return row_0;
-                    }();
-                    return declarations.range(rows_1);
-                }();
-                return row_2;
-            }();
-            return declarations.range(rows_3);
-        }();
-        return row_4;
-    }();
-    manifest.modules.back() = [&] {
-        auto row_4{normal_modules.clone(manifest.modules.back())};
-        auto const row_4_row{normal_modules.index(row_4)};
-        normal_modules.declarations[row_4_row] = [&] {
-            auto const original_items{declarations.items(normal_modules.declarations[row_4_row])};
-            auto rows_3{std::vector(original_items.begin(), original_items.end())};
-            rows_3.front() = [&] {
-                auto row_2{packed_values.clone(rows_3.front())};
-                auto const row_2_row{packed_values.index(row_2)};
-                packed_values.segments[row_2_row] = [&] {
-                    auto const original_items{
-                        declarations.items(packed_values.segments[row_2_row])};
-                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                    rows_1[0] = [&] {
-                        auto row_0{packed_fields.clone(rows_1[0])};
-                        packed_fields.kind[row_0] = PackedFieldKind::unsigned_integer;
-                        return row_0;
-                    }();
-                    return declarations.range(rows_1);
-                }();
-                return row_2;
-            }();
-            return declarations.range(rows_3);
-        }();
-        return row_4;
-    }();
-    EXPECT_THROW(lower_test_manifest(context, manifest), std::invalid_argument);
-
-    manifest.modules.back() = [&] {
-        auto row_4{normal_modules.clone(manifest.modules.back())};
-        auto const row_4_row{normal_modules.index(row_4)};
-        normal_modules.declarations[row_4_row] = [&] {
-            auto const original_items{declarations.items(normal_modules.declarations[row_4_row])};
-            auto rows_3{std::vector(original_items.begin(), original_items.end())};
-            rows_3.front() = [&] {
-                auto row_2{packed_values.clone(rows_3.front())};
-                auto const row_2_row{packed_values.index(row_2)};
-                packed_values.segments[row_2_row] = [&] {
-                    auto const original_items{
-                        declarations.items(packed_values.segments[row_2_row])};
-                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                    rows_1[0] = [&] {
-                        auto row_0{packed_fields.clone(rows_1[0])};
-                        packed_fields.kind[row_0] = PackedFieldKind::linear_quantized;
-                        return row_0;
-                    }();
-                    return declarations.range(rows_1);
-                }();
-                return row_2;
-            }();
-            return declarations.range(rows_3);
-        }();
-        return row_4;
-    }();
-    manifest.modules.back() = [&] {
-        auto row_4{normal_modules.clone(manifest.modules.back())};
-        auto const row_4_row{normal_modules.index(row_4)};
-        normal_modules.declarations[row_4_row] = [&] {
-            auto const original_items{declarations.items(normal_modules.declarations[row_4_row])};
-            auto rows_3{std::vector(original_items.begin(), original_items.end())};
-            rows_3.front() = [&] {
-                auto row_2{packed_values.clone(rows_3.front())};
-                auto const row_2_row{packed_values.index(row_2)};
-                packed_values.segments[row_2_row] = [&] {
-                    auto const original_items{
-                        declarations.items(packed_values.segments[row_2_row])};
-                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                    rows_1[0] = [&] {
-                        auto row_0{packed_fields.clone(rows_1[0])};
-                        packed_fields.minimum_value[row_0] = 0;
-                        return row_0;
-                    }();
-                    return declarations.range(rows_1);
-                }();
-                return row_2;
-            }();
-            return declarations.range(rows_3);
-        }();
-        return row_4;
-    }();
-    manifest.modules.back() = [&] {
-        auto row_4{normal_modules.clone(manifest.modules.back())};
-        auto const row_4_row{normal_modules.index(row_4)};
-        normal_modules.declarations[row_4_row] = [&] {
-            auto const original_items{declarations.items(normal_modules.declarations[row_4_row])};
-            auto rows_3{std::vector(original_items.begin(), original_items.end())};
-            rows_3.front() = [&] {
-                auto row_2{packed_values.clone(rows_3.front())};
-                auto const row_2_row{packed_values.index(row_2)};
-                packed_values.segments[row_2_row] = [&] {
-                    auto const original_items{
-                        declarations.items(packed_values.segments[row_2_row])};
-                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                    rows_1[0] = [&] {
-                        auto row_0{packed_fields.clone(rows_1[0])};
-                        packed_fields.maximum_value[row_0] = 1000;
-                        return row_0;
-                    }();
-                    return declarations.range(rows_1);
-                }();
-                return row_2;
-            }();
-            return declarations.range(rows_3);
-        }();
-        return row_4;
-    }();
-    EXPECT_THROW(lower_test_manifest(context, manifest), std::invalid_argument);
-
-    manifest.modules.back() = [&] {
-        auto row_4{normal_modules.clone(manifest.modules.back())};
-        auto const row_4_row{normal_modules.index(row_4)};
-        normal_modules.declarations[row_4_row] = [&] {
-            auto const original_items{declarations.items(normal_modules.declarations[row_4_row])};
-            auto rows_3{std::vector(original_items.begin(), original_items.end())};
-            rows_3.front() = [&] {
-                auto row_2{packed_values.clone(rows_3.front())};
-                auto const row_2_row{packed_values.index(row_2)};
-                packed_values.segments[row_2_row] = [&] {
-                    auto const original_items{
-                        declarations.items(packed_values.segments[row_2_row])};
-                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                    rows_1[0] = [&] {
-                        auto row_0{packed_fields.clone(rows_1[0])};
-                        packed_fields.minimum_value[row_0].reset();
-                        return row_0;
-                    }();
-                    return declarations.range(rows_1);
-                }();
-                return row_2;
-            }();
-            return declarations.range(rows_3);
-        }();
-        return row_4;
-    }();
-    manifest.modules.back() = [&] {
-        auto row_4{normal_modules.clone(manifest.modules.back())};
-        auto const row_4_row{normal_modules.index(row_4)};
-        normal_modules.declarations[row_4_row] = [&] {
-            auto const original_items{declarations.items(normal_modules.declarations[row_4_row])};
-            auto rows_3{std::vector(original_items.begin(), original_items.end())};
-            rows_3.front() = [&] {
-                auto row_2{packed_values.clone(rows_3.front())};
-                auto const row_2_row{packed_values.index(row_2)};
-                packed_values.segments[row_2_row] = [&] {
-                    auto const original_items{
-                        declarations.items(packed_values.segments[row_2_row])};
-                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                    rows_1[0] = [&] {
-                        auto row_0{packed_fields.clone(rows_1[0])};
-                        packed_fields.maximum_value[row_0].reset();
-                        return row_0;
-                    }();
-                    return declarations.range(rows_1);
-                }();
-                return row_2;
-            }();
-            return declarations.range(rows_3);
-        }();
-        return row_4;
-    }();
-    manifest.modules.back() = [&] {
-        auto row_4{normal_modules.clone(manifest.modules.back())};
-        auto const row_4_row{normal_modules.index(row_4)};
-        normal_modules.declarations[row_4_row] = [&] {
-            auto const original_items{declarations.items(normal_modules.declarations[row_4_row])};
-            auto rows_3{std::vector(original_items.begin(), original_items.end())};
-            rows_3.front() = [&] {
-                auto row_2{packed_values.clone(rows_3.front())};
-                auto const row_2_row{packed_values.index(row_2)};
-                packed_values.segments[row_2_row] = [&] {
-                    auto const original_items{
-                        declarations.items(packed_values.segments[row_2_row])};
-                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                    rows_1[0] = [&] {
-                        auto row_0{packed_fields.clone(rows_1[0])};
-                        packed_fields.range_helper[row_0] = true;
-                        return row_0;
-                    }();
-                    return declarations.range(rows_1);
-                }();
-                return row_2;
-            }();
-            return declarations.range(rows_3);
-        }();
-        return row_4;
-    }();
     EXPECT_THROW(lower_test_manifest(context, manifest), std::invalid_argument);
 }
+
+INSTANTIATE_TEST_SUITE_P(
+    PackedValue,
+    InvalidPackedPlacement,
+    testing::Values(
+        InvalidPackedPlacementCase{.name = "QuantizedWidth",
+                                   .representation = PackedRepresentation::linear_quantized,
+                                   .bits = 7},
+        InvalidPackedPlacementCase{.name = "QuantizedKind",
+                                   .representation = PackedRepresentation::linear_quantized,
+                                   .kind = PackedFieldKind::unsigned_integer},
+        InvalidPackedPlacementCase{.name = "QuantizedRange",
+                                   .representation = PackedRepresentation::linear_quantized,
+                                   .minimum = 0,
+                                   .maximum = 1000},
+        InvalidPackedPlacementCase{.name = "QuantizedRangeHelper",
+                                   .representation = PackedRepresentation::linear_quantized,
+                                   .range_helper = true},
+        InvalidPackedPlacementCase{.name = "FixedPointWidth",
+                                   .representation = PackedRepresentation::fixed_point,
+                                   .bits = 11},
+        InvalidPackedPlacementCase{.name = "FixedPointKind",
+                                   .representation = PackedRepresentation::fixed_point,
+                                   .kind = PackedFieldKind::signed_integer},
+        InvalidPackedPlacementCase{.name = "FixedPointRange",
+                                   .representation = PackedRepresentation::fixed_point,
+                                   .minimum = -10,
+                                   .maximum = 10},
+        InvalidPackedPlacementCase{.name = "FixedPointNamedCode",
+                                   .representation = PackedRepresentation::fixed_point,
+                                   .named_code = true},
+        InvalidPackedPlacementCase{.name = "FixedPointRangeHelper",
+                                   .representation = PackedRepresentation::fixed_point,
+                                   .range_helper = true},
+        InvalidPackedPlacementCase{.name = "FixedPointRelationship",
+                                   .representation = PackedRepresentation::fixed_point,
+                                   .relationship = "project::VelocityQ8_4"},
+        InvalidPackedPlacementCase{.name = "MiniFloatWidth",
+                                   .representation = PackedRepresentation::mini_float,
+                                   .bits = 11},
+        InvalidPackedPlacementCase{.name = "MiniFloatKind",
+                                   .representation = PackedRepresentation::mini_float,
+                                   .kind = PackedFieldKind::unsigned_integer},
+        InvalidPackedPlacementCase{.name = "MiniFloatRange",
+                                   .representation = PackedRepresentation::mini_float,
+                                   .minimum = 0,
+                                   .maximum = 1},
+        InvalidPackedPlacementCase{.name = "MiniFloatNamedCode",
+                                   .representation = PackedRepresentation::mini_float,
+                                   .named_code = true},
+        InvalidPackedPlacementCase{.name = "MiniFloatRangeHelper",
+                                   .representation = PackedRepresentation::mini_float,
+                                   .range_helper = true},
+        InvalidPackedPlacementCase{.name = "MiniFloatRelationship",
+                                   .representation = PackedRepresentation::mini_float,
+                                   .relationship = "project::PositionF12"}),
+    [](testing::TestParamInfo<InvalidPackedPlacementCase> const& info) { return info.param.name; });
 
 TEST(PackedValue, LowersFixedPointPlacementToExplicitRawCodeApi) {
     CompilerTestContext context;
@@ -2161,394 +2034,6 @@ TEST(PackedValue, LowersFixedPointPlacementToExplicitRawCodeApi) {
               std::string::npos);
 }
 
-TEST(PackedValue, RejectsCompetingFixedPointPlacementFacts) {
-    CompilerTestContext context;
-    auto& declarations{context.storage.declarations};
-    auto& normal_modules{declarations.normal_modules};
-    auto& packed_values{declarations.packed_values};
-    auto& packed_fields{declarations.packed_fields};
-    auto& packed_named_codes{declarations.packed_named_codes};
-    auto& semantic_relations{declarations.semantic_relations};
-    auto& strings{context.storage.strings};
-    auto manifest{fixed_point_backed_manifest(context)};
-
-    manifest.modules.back() = [&] {
-        auto row_4{normal_modules.clone(manifest.modules.back())};
-        auto const row_4_row{normal_modules.index(row_4)};
-        normal_modules.declarations[row_4_row] = [&] {
-            auto const original_items{declarations.items(normal_modules.declarations[row_4_row])};
-            auto rows_3{std::vector(original_items.begin(), original_items.end())};
-            rows_3.front() = [&] {
-                auto row_2{packed_values.clone(rows_3.front())};
-                auto const row_2_row{packed_values.index(row_2)};
-                packed_values.segments[row_2_row] = [&] {
-                    auto const original_items{
-                        declarations.items(packed_values.segments[row_2_row])};
-                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                    rows_1[0] = [&] {
-                        auto row_0{packed_fields.clone(rows_1[0])};
-                        packed_fields.bits[row_0] = 11;
-                        return row_0;
-                    }();
-                    return declarations.range(rows_1);
-                }();
-                return row_2;
-            }();
-            return declarations.range(rows_3);
-        }();
-        return row_4;
-    }();
-    EXPECT_THROW(lower_test_manifest(context, manifest), std::invalid_argument);
-
-    manifest.modules.back() = [&] {
-        auto row_4{normal_modules.clone(manifest.modules.back())};
-        auto const row_4_row{normal_modules.index(row_4)};
-        normal_modules.declarations[row_4_row] = [&] {
-            auto const original_items{declarations.items(normal_modules.declarations[row_4_row])};
-            auto rows_3{std::vector(original_items.begin(), original_items.end())};
-            rows_3.front() = [&] {
-                auto row_2{packed_values.clone(rows_3.front())};
-                auto const row_2_row{packed_values.index(row_2)};
-                packed_values.segments[row_2_row] = [&] {
-                    auto const original_items{
-                        declarations.items(packed_values.segments[row_2_row])};
-                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                    rows_1[0] = [&] {
-                        auto row_0{packed_fields.clone(rows_1[0])};
-                        packed_fields.bits[row_0].reset();
-                        return row_0;
-                    }();
-                    return declarations.range(rows_1);
-                }();
-                return row_2;
-            }();
-            return declarations.range(rows_3);
-        }();
-        return row_4;
-    }();
-    manifest.modules.back() = [&] {
-        auto row_4{normal_modules.clone(manifest.modules.back())};
-        auto const row_4_row{normal_modules.index(row_4)};
-        normal_modules.declarations[row_4_row] = [&] {
-            auto const original_items{declarations.items(normal_modules.declarations[row_4_row])};
-            auto rows_3{std::vector(original_items.begin(), original_items.end())};
-            rows_3.front() = [&] {
-                auto row_2{packed_values.clone(rows_3.front())};
-                auto const row_2_row{packed_values.index(row_2)};
-                packed_values.segments[row_2_row] = [&] {
-                    auto const original_items{
-                        declarations.items(packed_values.segments[row_2_row])};
-                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                    rows_1[0] = [&] {
-                        auto row_0{packed_fields.clone(rows_1[0])};
-                        packed_fields.kind[row_0] = PackedFieldKind::signed_integer;
-                        return row_0;
-                    }();
-                    return declarations.range(rows_1);
-                }();
-                return row_2;
-            }();
-            return declarations.range(rows_3);
-        }();
-        return row_4;
-    }();
-    EXPECT_THROW(lower_test_manifest(context, manifest), std::invalid_argument);
-
-    manifest.modules.back() = [&] {
-        auto row_4{normal_modules.clone(manifest.modules.back())};
-        auto const row_4_row{normal_modules.index(row_4)};
-        normal_modules.declarations[row_4_row] = [&] {
-            auto const original_items{declarations.items(normal_modules.declarations[row_4_row])};
-            auto rows_3{std::vector(original_items.begin(), original_items.end())};
-            rows_3.front() = [&] {
-                auto row_2{packed_values.clone(rows_3.front())};
-                auto const row_2_row{packed_values.index(row_2)};
-                packed_values.segments[row_2_row] = [&] {
-                    auto const original_items{
-                        declarations.items(packed_values.segments[row_2_row])};
-                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                    rows_1[0] = [&] {
-                        auto row_0{packed_fields.clone(rows_1[0])};
-                        packed_fields.kind[row_0] = PackedFieldKind::fixed_point;
-                        return row_0;
-                    }();
-                    return declarations.range(rows_1);
-                }();
-                return row_2;
-            }();
-            return declarations.range(rows_3);
-        }();
-        return row_4;
-    }();
-    manifest.modules.back() = [&] {
-        auto row_4{normal_modules.clone(manifest.modules.back())};
-        auto const row_4_row{normal_modules.index(row_4)};
-        normal_modules.declarations[row_4_row] = [&] {
-            auto const original_items{declarations.items(normal_modules.declarations[row_4_row])};
-            auto rows_3{std::vector(original_items.begin(), original_items.end())};
-            rows_3.front() = [&] {
-                auto row_2{packed_values.clone(rows_3.front())};
-                auto const row_2_row{packed_values.index(row_2)};
-                packed_values.segments[row_2_row] = [&] {
-                    auto const original_items{
-                        declarations.items(packed_values.segments[row_2_row])};
-                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                    rows_1[0] = [&] {
-                        auto row_0{packed_fields.clone(rows_1[0])};
-                        packed_fields.minimum_value[row_0] = -10;
-                        return row_0;
-                    }();
-                    return declarations.range(rows_1);
-                }();
-                return row_2;
-            }();
-            return declarations.range(rows_3);
-        }();
-        return row_4;
-    }();
-    manifest.modules.back() = [&] {
-        auto row_4{normal_modules.clone(manifest.modules.back())};
-        auto const row_4_row{normal_modules.index(row_4)};
-        normal_modules.declarations[row_4_row] = [&] {
-            auto const original_items{declarations.items(normal_modules.declarations[row_4_row])};
-            auto rows_3{std::vector(original_items.begin(), original_items.end())};
-            rows_3.front() = [&] {
-                auto row_2{packed_values.clone(rows_3.front())};
-                auto const row_2_row{packed_values.index(row_2)};
-                packed_values.segments[row_2_row] = [&] {
-                    auto const original_items{
-                        declarations.items(packed_values.segments[row_2_row])};
-                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                    rows_1[0] = [&] {
-                        auto row_0{packed_fields.clone(rows_1[0])};
-                        packed_fields.maximum_value[row_0] = 10;
-                        return row_0;
-                    }();
-                    return declarations.range(rows_1);
-                }();
-                return row_2;
-            }();
-            return declarations.range(rows_3);
-        }();
-        return row_4;
-    }();
-    EXPECT_THROW(lower_test_manifest(context, manifest), std::invalid_argument);
-
-    manifest.modules.back() = [&] {
-        auto row_4{normal_modules.clone(manifest.modules.back())};
-        auto const row_4_row{normal_modules.index(row_4)};
-        normal_modules.declarations[row_4_row] = [&] {
-            auto const original_items{declarations.items(normal_modules.declarations[row_4_row])};
-            auto rows_3{std::vector(original_items.begin(), original_items.end())};
-            rows_3.front() = [&] {
-                auto row_2{packed_values.clone(rows_3.front())};
-                auto const row_2_row{packed_values.index(row_2)};
-                packed_values.segments[row_2_row] = [&] {
-                    auto const original_items{
-                        declarations.items(packed_values.segments[row_2_row])};
-                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                    rows_1[0] = [&] {
-                        auto row_0{packed_fields.clone(rows_1[0])};
-                        packed_fields.minimum_value[row_0].reset();
-                        return row_0;
-                    }();
-                    return declarations.range(rows_1);
-                }();
-                return row_2;
-            }();
-            return declarations.range(rows_3);
-        }();
-        return row_4;
-    }();
-    manifest.modules.back() = [&] {
-        auto row_4{normal_modules.clone(manifest.modules.back())};
-        auto const row_4_row{normal_modules.index(row_4)};
-        normal_modules.declarations[row_4_row] = [&] {
-            auto const original_items{declarations.items(normal_modules.declarations[row_4_row])};
-            auto rows_3{std::vector(original_items.begin(), original_items.end())};
-            rows_3.front() = [&] {
-                auto row_2{packed_values.clone(rows_3.front())};
-                auto const row_2_row{packed_values.index(row_2)};
-                packed_values.segments[row_2_row] = [&] {
-                    auto const original_items{
-                        declarations.items(packed_values.segments[row_2_row])};
-                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                    rows_1[0] = [&] {
-                        auto row_0{packed_fields.clone(rows_1[0])};
-                        packed_fields.maximum_value[row_0].reset();
-                        return row_0;
-                    }();
-                    return declarations.range(rows_1);
-                }();
-                return row_2;
-            }();
-            return declarations.range(rows_3);
-        }();
-        return row_4;
-    }();
-    manifest.modules.back() = [&] {
-        auto row_4{normal_modules.clone(manifest.modules.back())};
-        auto const row_4_row{normal_modules.index(row_4)};
-        normal_modules.declarations[row_4_row] = [&] {
-            auto const original_items{declarations.items(normal_modules.declarations[row_4_row])};
-            auto rows_3{std::vector(original_items.begin(), original_items.end())};
-            rows_3.front() = [&] {
-                auto row_2{packed_values.clone(rows_3.front())};
-                auto const row_2_row{packed_values.index(row_2)};
-                packed_values.segments[row_2_row] = [&] {
-                    auto const original_items{
-                        declarations.items(packed_values.segments[row_2_row])};
-                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                    rows_1[0] = [&] {
-                        auto row_0{packed_fields.clone(rows_1[0])};
-                        auto const row_0_row{packed_fields.index(row_0)};
-                        packed_fields.named_codes[row_0_row] = [&] {
-                            auto const original_items{
-                                declarations.items(packed_fields.named_codes[row_0_row])};
-                            auto rows{std::vector(original_items.begin(), original_items.end())};
-                            rows.push_back([&] {
-                                auto const new_packed_named_codes{packed_named_codes.append()};
-                                auto const new_packed_named_codes_row{
-                                    packed_named_codes.index(new_packed_named_codes)};
-                                packed_named_codes.name[new_packed_named_codes_row] =
-                                    strings.intern("Zero");
-                                packed_named_codes.value[new_packed_named_codes_row] = 0;
-                                packed_named_codes.sentinel[new_packed_named_codes_row] = false;
-                                return new_packed_named_codes;
-                            }());
-                            return declarations.range(rows);
-                        }();
-                        return row_0;
-                    }();
-                    return declarations.range(rows_1);
-                }();
-                return row_2;
-            }();
-            return declarations.range(rows_3);
-        }();
-        return row_4;
-    }();
-    EXPECT_THROW(lower_test_manifest(context, manifest), std::invalid_argument);
-
-    manifest.modules.back() = [&] {
-        auto row_4{normal_modules.clone(manifest.modules.back())};
-        auto const row_4_row{normal_modules.index(row_4)};
-        normal_modules.declarations[row_4_row] = [&] {
-            auto const original_items{declarations.items(normal_modules.declarations[row_4_row])};
-            auto rows_3{std::vector(original_items.begin(), original_items.end())};
-            rows_3.front() = [&] {
-                auto row_2{packed_values.clone(rows_3.front())};
-                auto const row_2_row{packed_values.index(row_2)};
-                packed_values.segments[row_2_row] = [&] {
-                    auto const original_items{
-                        declarations.items(packed_values.segments[row_2_row])};
-                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                    rows_1[0] = [&] {
-                        auto row_0{packed_fields.clone(rows_1[0])};
-                        packed_fields.named_codes[row_0] = {};
-                        return row_0;
-                    }();
-                    return declarations.range(rows_1);
-                }();
-                return row_2;
-            }();
-            return declarations.range(rows_3);
-        }();
-        return row_4;
-    }();
-    manifest.modules.back() = [&] {
-        auto row_4{normal_modules.clone(manifest.modules.back())};
-        auto const row_4_row{normal_modules.index(row_4)};
-        normal_modules.declarations[row_4_row] = [&] {
-            auto const original_items{declarations.items(normal_modules.declarations[row_4_row])};
-            auto rows_3{std::vector(original_items.begin(), original_items.end())};
-            rows_3.front() = [&] {
-                auto row_2{packed_values.clone(rows_3.front())};
-                auto const row_2_row{packed_values.index(row_2)};
-                packed_values.segments[row_2_row] = [&] {
-                    auto const original_items{
-                        declarations.items(packed_values.segments[row_2_row])};
-                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                    rows_1[0] = [&] {
-                        auto row_0{packed_fields.clone(rows_1[0])};
-                        packed_fields.range_helper[row_0] = true;
-                        return row_0;
-                    }();
-                    return declarations.range(rows_1);
-                }();
-                return row_2;
-            }();
-            return declarations.range(rows_3);
-        }();
-        return row_4;
-    }();
-    EXPECT_THROW(lower_test_manifest(context, manifest), std::invalid_argument);
-
-    manifest.modules.back() = [&] {
-        auto row_4{normal_modules.clone(manifest.modules.back())};
-        auto const row_4_row{normal_modules.index(row_4)};
-        normal_modules.declarations[row_4_row] = [&] {
-            auto const original_items{declarations.items(normal_modules.declarations[row_4_row])};
-            auto rows_3{std::vector(original_items.begin(), original_items.end())};
-            rows_3.front() = [&] {
-                auto row_2{packed_values.clone(rows_3.front())};
-                auto const row_2_row{packed_values.index(row_2)};
-                packed_values.segments[row_2_row] = [&] {
-                    auto const original_items{
-                        declarations.items(packed_values.segments[row_2_row])};
-                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                    rows_1[0] = [&] {
-                        auto row_0{packed_fields.clone(rows_1[0])};
-                        packed_fields.range_helper[row_0] = false;
-                        return row_0;
-                    }();
-                    return declarations.range(rows_1);
-                }();
-                return row_2;
-            }();
-            return declarations.range(rows_3);
-        }();
-        return row_4;
-    }();
-    manifest.modules.back() = [&] {
-        auto row_4{normal_modules.clone(manifest.modules.back())};
-        auto const row_4_row{normal_modules.index(row_4)};
-        normal_modules.declarations[row_4_row] = [&] {
-            auto const original_items{declarations.items(normal_modules.declarations[row_4_row])};
-            auto rows_3{std::vector(original_items.begin(), original_items.end())};
-            rows_3.front() = [&] {
-                auto row_2{packed_values.clone(rows_3.front())};
-                auto const row_2_row{packed_values.index(row_2)};
-                packed_values.segments[row_2_row] = [&] {
-                    auto const original_items{
-                        declarations.items(packed_values.segments[row_2_row])};
-                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                    rows_1[0] = [&] {
-                        auto row_0{packed_fields.clone(rows_1[0])};
-                        packed_fields.relationship[row_0] = [&] {
-                            auto const new_semantic_relations{semantic_relations.append()};
-                            auto const new_semantic_relations_row{
-                                semantic_relations.index(new_semantic_relations)};
-                            semantic_relations.kind[new_semantic_relations_row] =
-                                SemanticRelationKind::encoded_as;
-                            semantic_relations.target[new_semantic_relations_row] =
-                                make_test_type_ref(context, "project::VelocityQ8_4");
-                            semantic_relations.unit[new_semantic_relations_row] = std::nullopt;
-                            return new_semantic_relations;
-                        }();
-                        return row_0;
-                    }();
-                    return declarations.range(rows_1);
-                }();
-                return row_2;
-            }();
-            return declarations.range(rows_3);
-        }();
-        return row_4;
-    }();
-    EXPECT_THROW(lower_test_manifest(context, manifest), std::invalid_argument);
-}
-
 TEST(PackedValue, LowersMiniFloatPlacementAsRawEncodedBits) {
     CompilerTestContext context;
     auto& declarations{context.storage.declarations};
@@ -2653,389 +2138,6 @@ TEST(PackedValue, LowersMiniFloatPlacementAsRawEncodedBits) {
     EXPECT_NE(wide_files.back().content.find(
                   "assert(component_encoded_value <= component_maximum_encoded);"),
               std::string::npos);
-}
-
-TEST(PackedValue, RejectsCompetingMiniFloatPlacementFacts) {
-    CompilerTestContext context;
-    auto& declarations{context.storage.declarations};
-    auto& normal_modules{declarations.normal_modules};
-    auto& packed_values{declarations.packed_values};
-    auto& packed_fields{declarations.packed_fields};
-    auto& packed_named_codes{declarations.packed_named_codes};
-    auto& semantic_relations{declarations.semantic_relations};
-    auto& strings{context.storage.strings};
-    auto manifest{mini_float_backed_manifest(context)};
-
-    manifest.modules.back() = [&] {
-        auto row_4{normal_modules.clone(manifest.modules.back())};
-        auto const row_4_row{normal_modules.index(row_4)};
-        normal_modules.declarations[row_4_row] = [&] {
-            auto const original_items{declarations.items(normal_modules.declarations[row_4_row])};
-            auto rows_3{std::vector(original_items.begin(), original_items.end())};
-            rows_3.front() = [&] {
-                auto row_2{packed_values.clone(rows_3.front())};
-                auto const row_2_row{packed_values.index(row_2)};
-                packed_values.segments[row_2_row] = [&] {
-                    auto const original_items{
-                        declarations.items(packed_values.segments[row_2_row])};
-                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                    rows_1[0] = [&] {
-                        auto row_0{packed_fields.clone(rows_1[0])};
-                        packed_fields.bits[row_0] = 11;
-                        return row_0;
-                    }();
-                    return declarations.range(rows_1);
-                }();
-                return row_2;
-            }();
-            return declarations.range(rows_3);
-        }();
-        return row_4;
-    }();
-    EXPECT_THROW(lower_test_manifest(context, manifest), std::invalid_argument);
-    manifest.modules.back() = [&] {
-        auto row_4{normal_modules.clone(manifest.modules.back())};
-        auto const row_4_row{normal_modules.index(row_4)};
-        normal_modules.declarations[row_4_row] = [&] {
-            auto const original_items{declarations.items(normal_modules.declarations[row_4_row])};
-            auto rows_3{std::vector(original_items.begin(), original_items.end())};
-            rows_3.front() = [&] {
-                auto row_2{packed_values.clone(rows_3.front())};
-                auto const row_2_row{packed_values.index(row_2)};
-                packed_values.segments[row_2_row] = [&] {
-                    auto const original_items{
-                        declarations.items(packed_values.segments[row_2_row])};
-                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                    rows_1[0] = [&] {
-                        auto row_0{packed_fields.clone(rows_1[0])};
-                        packed_fields.bits[row_0].reset();
-                        return row_0;
-                    }();
-                    return declarations.range(rows_1);
-                }();
-                return row_2;
-            }();
-            return declarations.range(rows_3);
-        }();
-        return row_4;
-    }();
-    manifest.modules.back() = [&] {
-        auto row_4{normal_modules.clone(manifest.modules.back())};
-        auto const row_4_row{normal_modules.index(row_4)};
-        normal_modules.declarations[row_4_row] = [&] {
-            auto const original_items{declarations.items(normal_modules.declarations[row_4_row])};
-            auto rows_3{std::vector(original_items.begin(), original_items.end())};
-            rows_3.front() = [&] {
-                auto row_2{packed_values.clone(rows_3.front())};
-                auto const row_2_row{packed_values.index(row_2)};
-                packed_values.segments[row_2_row] = [&] {
-                    auto const original_items{
-                        declarations.items(packed_values.segments[row_2_row])};
-                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                    rows_1[0] = [&] {
-                        auto row_0{packed_fields.clone(rows_1[0])};
-                        packed_fields.kind[row_0] = PackedFieldKind::unsigned_integer;
-                        return row_0;
-                    }();
-                    return declarations.range(rows_1);
-                }();
-                return row_2;
-            }();
-            return declarations.range(rows_3);
-        }();
-        return row_4;
-    }();
-    EXPECT_THROW(lower_test_manifest(context, manifest), std::invalid_argument);
-    manifest.modules.back() = [&] {
-        auto row_4{normal_modules.clone(manifest.modules.back())};
-        auto const row_4_row{normal_modules.index(row_4)};
-        normal_modules.declarations[row_4_row] = [&] {
-            auto const original_items{declarations.items(normal_modules.declarations[row_4_row])};
-            auto rows_3{std::vector(original_items.begin(), original_items.end())};
-            rows_3.front() = [&] {
-                auto row_2{packed_values.clone(rows_3.front())};
-                auto const row_2_row{packed_values.index(row_2)};
-                packed_values.segments[row_2_row] = [&] {
-                    auto const original_items{
-                        declarations.items(packed_values.segments[row_2_row])};
-                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                    rows_1[0] = [&] {
-                        auto row_0{packed_fields.clone(rows_1[0])};
-                        packed_fields.kind[row_0] = PackedFieldKind::mini_float;
-                        return row_0;
-                    }();
-                    return declarations.range(rows_1);
-                }();
-                return row_2;
-            }();
-            return declarations.range(rows_3);
-        }();
-        return row_4;
-    }();
-    manifest.modules.back() = [&] {
-        auto row_4{normal_modules.clone(manifest.modules.back())};
-        auto const row_4_row{normal_modules.index(row_4)};
-        normal_modules.declarations[row_4_row] = [&] {
-            auto const original_items{declarations.items(normal_modules.declarations[row_4_row])};
-            auto rows_3{std::vector(original_items.begin(), original_items.end())};
-            rows_3.front() = [&] {
-                auto row_2{packed_values.clone(rows_3.front())};
-                auto const row_2_row{packed_values.index(row_2)};
-                packed_values.segments[row_2_row] = [&] {
-                    auto const original_items{
-                        declarations.items(packed_values.segments[row_2_row])};
-                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                    rows_1[0] = [&] {
-                        auto row_0{packed_fields.clone(rows_1[0])};
-                        packed_fields.minimum_value[row_0] = 0;
-                        return row_0;
-                    }();
-                    return declarations.range(rows_1);
-                }();
-                return row_2;
-            }();
-            return declarations.range(rows_3);
-        }();
-        return row_4;
-    }();
-    manifest.modules.back() = [&] {
-        auto row_4{normal_modules.clone(manifest.modules.back())};
-        auto const row_4_row{normal_modules.index(row_4)};
-        normal_modules.declarations[row_4_row] = [&] {
-            auto const original_items{declarations.items(normal_modules.declarations[row_4_row])};
-            auto rows_3{std::vector(original_items.begin(), original_items.end())};
-            rows_3.front() = [&] {
-                auto row_2{packed_values.clone(rows_3.front())};
-                auto const row_2_row{packed_values.index(row_2)};
-                packed_values.segments[row_2_row] = [&] {
-                    auto const original_items{
-                        declarations.items(packed_values.segments[row_2_row])};
-                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                    rows_1[0] = [&] {
-                        auto row_0{packed_fields.clone(rows_1[0])};
-                        packed_fields.maximum_value[row_0] = 1;
-                        return row_0;
-                    }();
-                    return declarations.range(rows_1);
-                }();
-                return row_2;
-            }();
-            return declarations.range(rows_3);
-        }();
-        return row_4;
-    }();
-    EXPECT_THROW(lower_test_manifest(context, manifest), std::invalid_argument);
-    manifest.modules.back() = [&] {
-        auto row_4{normal_modules.clone(manifest.modules.back())};
-        auto const row_4_row{normal_modules.index(row_4)};
-        normal_modules.declarations[row_4_row] = [&] {
-            auto const original_items{declarations.items(normal_modules.declarations[row_4_row])};
-            auto rows_3{std::vector(original_items.begin(), original_items.end())};
-            rows_3.front() = [&] {
-                auto row_2{packed_values.clone(rows_3.front())};
-                auto const row_2_row{packed_values.index(row_2)};
-                packed_values.segments[row_2_row] = [&] {
-                    auto const original_items{
-                        declarations.items(packed_values.segments[row_2_row])};
-                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                    rows_1[0] = [&] {
-                        auto row_0{packed_fields.clone(rows_1[0])};
-                        packed_fields.minimum_value[row_0].reset();
-                        return row_0;
-                    }();
-                    return declarations.range(rows_1);
-                }();
-                return row_2;
-            }();
-            return declarations.range(rows_3);
-        }();
-        return row_4;
-    }();
-    manifest.modules.back() = [&] {
-        auto row_4{normal_modules.clone(manifest.modules.back())};
-        auto const row_4_row{normal_modules.index(row_4)};
-        normal_modules.declarations[row_4_row] = [&] {
-            auto const original_items{declarations.items(normal_modules.declarations[row_4_row])};
-            auto rows_3{std::vector(original_items.begin(), original_items.end())};
-            rows_3.front() = [&] {
-                auto row_2{packed_values.clone(rows_3.front())};
-                auto const row_2_row{packed_values.index(row_2)};
-                packed_values.segments[row_2_row] = [&] {
-                    auto const original_items{
-                        declarations.items(packed_values.segments[row_2_row])};
-                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                    rows_1[0] = [&] {
-                        auto row_0{packed_fields.clone(rows_1[0])};
-                        packed_fields.maximum_value[row_0].reset();
-                        return row_0;
-                    }();
-                    return declarations.range(rows_1);
-                }();
-                return row_2;
-            }();
-            return declarations.range(rows_3);
-        }();
-        return row_4;
-    }();
-    manifest.modules.back() = [&] {
-        auto row_4{normal_modules.clone(manifest.modules.back())};
-        auto const row_4_row{normal_modules.index(row_4)};
-        normal_modules.declarations[row_4_row] = [&] {
-            auto const original_items{declarations.items(normal_modules.declarations[row_4_row])};
-            auto rows_3{std::vector(original_items.begin(), original_items.end())};
-            rows_3.front() = [&] {
-                auto row_2{packed_values.clone(rows_3.front())};
-                auto const row_2_row{packed_values.index(row_2)};
-                packed_values.segments[row_2_row] = [&] {
-                    auto const original_items{
-                        declarations.items(packed_values.segments[row_2_row])};
-                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                    rows_1[0] = [&] {
-                        auto row_0{packed_fields.clone(rows_1[0])};
-                        auto const row_0_row{packed_fields.index(row_0)};
-                        packed_fields.named_codes[row_0_row] = [&] {
-                            auto const original_items{
-                                declarations.items(packed_fields.named_codes[row_0_row])};
-                            auto rows{std::vector(original_items.begin(), original_items.end())};
-                            rows.push_back([&] {
-                                auto const new_packed_named_codes{packed_named_codes.append()};
-                                auto const new_packed_named_codes_row{
-                                    packed_named_codes.index(new_packed_named_codes)};
-                                packed_named_codes.name[new_packed_named_codes_row] =
-                                    strings.intern("Zero");
-                                packed_named_codes.value[new_packed_named_codes_row] = 0;
-                                packed_named_codes.sentinel[new_packed_named_codes_row] = false;
-                                return new_packed_named_codes;
-                            }());
-                            return declarations.range(rows);
-                        }();
-                        return row_0;
-                    }();
-                    return declarations.range(rows_1);
-                }();
-                return row_2;
-            }();
-            return declarations.range(rows_3);
-        }();
-        return row_4;
-    }();
-    EXPECT_THROW(lower_test_manifest(context, manifest), std::invalid_argument);
-    manifest.modules.back() = [&] {
-        auto row_4{normal_modules.clone(manifest.modules.back())};
-        auto const row_4_row{normal_modules.index(row_4)};
-        normal_modules.declarations[row_4_row] = [&] {
-            auto const original_items{declarations.items(normal_modules.declarations[row_4_row])};
-            auto rows_3{std::vector(original_items.begin(), original_items.end())};
-            rows_3.front() = [&] {
-                auto row_2{packed_values.clone(rows_3.front())};
-                auto const row_2_row{packed_values.index(row_2)};
-                packed_values.segments[row_2_row] = [&] {
-                    auto const original_items{
-                        declarations.items(packed_values.segments[row_2_row])};
-                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                    rows_1[0] = [&] {
-                        auto row_0{packed_fields.clone(rows_1[0])};
-                        packed_fields.named_codes[row_0] = {};
-                        return row_0;
-                    }();
-                    return declarations.range(rows_1);
-                }();
-                return row_2;
-            }();
-            return declarations.range(rows_3);
-        }();
-        return row_4;
-    }();
-    manifest.modules.back() = [&] {
-        auto row_4{normal_modules.clone(manifest.modules.back())};
-        auto const row_4_row{normal_modules.index(row_4)};
-        normal_modules.declarations[row_4_row] = [&] {
-            auto const original_items{declarations.items(normal_modules.declarations[row_4_row])};
-            auto rows_3{std::vector(original_items.begin(), original_items.end())};
-            rows_3.front() = [&] {
-                auto row_2{packed_values.clone(rows_3.front())};
-                auto const row_2_row{packed_values.index(row_2)};
-                packed_values.segments[row_2_row] = [&] {
-                    auto const original_items{
-                        declarations.items(packed_values.segments[row_2_row])};
-                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                    rows_1[0] = [&] {
-                        auto row_0{packed_fields.clone(rows_1[0])};
-                        packed_fields.range_helper[row_0] = true;
-                        return row_0;
-                    }();
-                    return declarations.range(rows_1);
-                }();
-                return row_2;
-            }();
-            return declarations.range(rows_3);
-        }();
-        return row_4;
-    }();
-    EXPECT_THROW(lower_test_manifest(context, manifest), std::invalid_argument);
-    manifest.modules.back() = [&] {
-        auto row_4{normal_modules.clone(manifest.modules.back())};
-        auto const row_4_row{normal_modules.index(row_4)};
-        normal_modules.declarations[row_4_row] = [&] {
-            auto const original_items{declarations.items(normal_modules.declarations[row_4_row])};
-            auto rows_3{std::vector(original_items.begin(), original_items.end())};
-            rows_3.front() = [&] {
-                auto row_2{packed_values.clone(rows_3.front())};
-                auto const row_2_row{packed_values.index(row_2)};
-                packed_values.segments[row_2_row] = [&] {
-                    auto const original_items{
-                        declarations.items(packed_values.segments[row_2_row])};
-                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                    rows_1[0] = [&] {
-                        auto row_0{packed_fields.clone(rows_1[0])};
-                        packed_fields.range_helper[row_0] = false;
-                        return row_0;
-                    }();
-                    return declarations.range(rows_1);
-                }();
-                return row_2;
-            }();
-            return declarations.range(rows_3);
-        }();
-        return row_4;
-    }();
-    manifest.modules.back() = [&] {
-        auto row_4{normal_modules.clone(manifest.modules.back())};
-        auto const row_4_row{normal_modules.index(row_4)};
-        normal_modules.declarations[row_4_row] = [&] {
-            auto const original_items{declarations.items(normal_modules.declarations[row_4_row])};
-            auto rows_3{std::vector(original_items.begin(), original_items.end())};
-            rows_3.front() = [&] {
-                auto row_2{packed_values.clone(rows_3.front())};
-                auto const row_2_row{packed_values.index(row_2)};
-                packed_values.segments[row_2_row] = [&] {
-                    auto const original_items{
-                        declarations.items(packed_values.segments[row_2_row])};
-                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                    rows_1[0] = [&] {
-                        auto row_0{packed_fields.clone(rows_1[0])};
-                        packed_fields.relationship[row_0] = [&] {
-                            auto const new_semantic_relations{semantic_relations.append()};
-                            auto const new_semantic_relations_row{
-                                semantic_relations.index(new_semantic_relations)};
-                            semantic_relations.kind[new_semantic_relations_row] =
-                                SemanticRelationKind::encoded_as;
-                            semantic_relations.target[new_semantic_relations_row] =
-                                make_test_type_ref(context, "project::PositionF12");
-                            semantic_relations.unit[new_semantic_relations_row] = std::nullopt;
-                            return new_semantic_relations;
-                        }();
-                        return row_0;
-                    }();
-                    return declarations.range(rows_1);
-                }();
-                return row_2;
-            }();
-            return declarations.range(rows_3);
-        }();
-        return row_4;
-    }();
-    EXPECT_THROW(lower_test_manifest(context, manifest), std::invalid_argument);
 }
 
 TEST(PackedValue, RejectsCompetingOrMismatchedIntegerScalarFieldDomain) {
@@ -4617,121 +3719,35 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
     EXPECT_THROW(lower(context, module), std::invalid_argument);
 }
 
-TEST(PackedValue, RejectsGeneratedApiCollisions) {
+struct PackedApiCollisionCase {
+    char const* field_name;
+    bool mutable_value{};
+};
+
+using PackedApiCollision = testing::TestWithParam<PackedApiCollisionCase>;
+
+TEST_P(PackedApiCollision, RejectsFieldNamesCollidingWithGeneratedApis) {
     CompilerTestContext context;
     auto& declarations{context.storage.declarations};
-    auto& normal_modules{declarations.normal_modules};
-    auto& packed_values{declarations.packed_values};
-    auto module{normal_modules.clone(valid_module(context))};
-    auto const module_row{normal_modules.index(module)};
-    normal_modules.declarations[module_row] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module_row])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{packed_values.clone(rows_1.front())};
-            packed_values.mutable_value[row_0] = true;
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
-    normal_modules.declarations[module_row] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module_row])};
-        auto rows_3{std::vector(original_items.begin(), original_items.end())};
-        rows_3.front() = [&] {
-            auto row_2{packed_values.clone(rows_3.front())};
-            auto const row_2_row{packed_values.index(row_2)};
-            packed_values.segments[row_2_row] = [&] {
-                auto const original_items{declarations.items(packed_values.segments[row_2_row])};
-                auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                rows_1[1] = [&] {
-                    auto row_0{declarations.packed_fields.clone(rows_1[1])};
-                    declarations.packed_fields.name[row_0] =
-                        context.storage.strings.intern("set_entity_index");
-                    return row_0;
-                }();
-                return declarations.range(rows_1);
-            }();
-            return row_2;
-        }();
-        return declarations.range(rows_3);
-    }();
+    auto const module{valid_module(context)};
+    auto const packed{declarations.items(declarations.normal_modules.declarations[module]).front()};
+    auto const fields{declarations.items(declarations.packed_values.segments[packed])};
+    declarations.packed_values.mutable_value[packed] = GetParam().mutable_value;
+    declarations.packed_fields.name[fields[1]] =
+        context.storage.strings.intern(GetParam().field_name);
+
     EXPECT_THROW(lower(context, module), std::invalid_argument);
 }
 
-TEST(PackedValue, RejectsDescriptorAndRawFactoryNameCollisions) {
-    CompilerTestContext context;
-    auto& declarations{context.storage.declarations};
-    auto& normal_modules{declarations.normal_modules};
-    auto& packed_values{declarations.packed_values};
-    auto& packed_fields{declarations.packed_fields};
-    auto& strings{context.storage.strings};
-    auto module{normal_modules.clone(valid_module(context))};
-    auto const module_row{normal_modules.index(module)};
-
-    normal_modules.declarations[module_row] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module_row])};
-        auto rows_3{std::vector(original_items.begin(), original_items.end())};
-        rows_3.front() = [&] {
-            auto row_2{packed_values.clone(rows_3.front())};
-            auto const row_2_row{packed_values.index(row_2)};
-            packed_values.segments[row_2_row] = [&] {
-                auto const original_items{declarations.items(packed_values.segments[row_2_row])};
-                auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                rows_1[1] = [&] {
-                    auto row_0{packed_fields.clone(rows_1[1])};
-                    packed_fields.name[row_0] = strings.intern("entity_index_field");
-                    return row_0;
-                }();
-                return declarations.range(rows_1);
-            }();
-            return row_2;
-        }();
-        return declarations.range(rows_3);
-    }();
-    EXPECT_THROW(lower(context, module), std::invalid_argument);
-    normal_modules.declarations[module_row] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module_row])};
-        auto rows_3{std::vector(original_items.begin(), original_items.end())};
-        rows_3.front() = [&] {
-            auto row_2{packed_values.clone(rows_3.front())};
-            auto const row_2_row{packed_values.index(row_2)};
-            packed_values.segments[row_2_row] = [&] {
-                auto const original_items{declarations.items(packed_values.segments[row_2_row])};
-                auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                rows_1[1] = [&] {
-                    auto row_0{packed_fields.clone(rows_1[1])};
-                    packed_fields.name[row_0] = strings.intern("from_raw");
-                    return row_0;
-                }();
-                return declarations.range(rows_1);
-            }();
-            return row_2;
-        }();
-        return declarations.range(rows_3);
-    }();
-    EXPECT_THROW(lower(context, module), std::invalid_argument);
-    normal_modules.declarations[module_row] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module_row])};
-        auto rows_3{std::vector(original_items.begin(), original_items.end())};
-        rows_3.front() = [&] {
-            auto row_2{packed_values.clone(rows_3.front())};
-            auto const row_2_row{packed_values.index(row_2)};
-            packed_values.segments[row_2_row] = [&] {
-                auto const original_items{declarations.items(packed_values.segments[row_2_row])};
-                auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                rows_1[1] = [&] {
-                    auto row_0{packed_fields.clone(rows_1[1])};
-                    packed_fields.name[row_0] = strings.intern("entity_index_range");
-                    return row_0;
-                }();
-                return declarations.range(rows_1);
-            }();
-            return row_2;
-        }();
-        return declarations.range(rows_3);
-    }();
-    EXPECT_THROW(lower(context, module), std::invalid_argument);
-}
+INSTANTIATE_TEST_SUITE_P(PackedValue,
+                         PackedApiCollision,
+                         testing::Values(PackedApiCollisionCase{"set_entity_index", true},
+                                         PackedApiCollisionCase{"entity_index_field"},
+                                         PackedApiCollisionCase{"from_raw"},
+                                         PackedApiCollisionCase{"entity_index_range"}),
+                         [](testing::TestParamInfo<PackedApiCollisionCase> const& info) {
+                             return info.param.field_name;
+                         });
 
 TEST(PackedValue, ValidatesKnownEnumUnderlyingType) {
     CompilerTestContext context;
