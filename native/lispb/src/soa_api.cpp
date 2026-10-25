@@ -41,22 +41,23 @@ auto logical_column_access(LoweringContext& context,
     if (path.empty()) {
         throw std::invalid_argument{"SOA column reference cannot be empty"};
     }
+    auto const& soas{context.declarations.soas};
+    auto const& columns{context.declarations.soa_members};
     auto current{schema};
     for (std::size_t index{}; index < path.size(); ++index) {
         if (!receiver.empty() && !receiver.ends_with("->")) {
             receiver += '.';
         }
-        auto const members{context.declarations.items(context.declarations.soas.members[current])};
+        auto const members{context.declarations.items(soas.members[current])};
         auto const found{std::ranges::find(members, path[index], [&](auto id) {
-            return context.declarations.strings().view(context.declarations.soa_members.name[id]);
+            return context.declarations.strings().view(columns.name[id]);
         })};
         if (found == members.end()) {
-            throw std::invalid_argument{"SOA '" +
-                                        context.text(context.declarations.soas.name[current]) +
+            throw std::invalid_argument{"SOA '" + context.text(soas.name[current]) +
                                         "' has no column '" + path[index] + "'"};
         }
         auto const member{*found};
-        bool const nested{context.declarations.soa_members.kind[member] == SoaMemberKind::nested};
+        bool const nested{columns.kind[member] == SoaMemberKind::nested};
         receiver += nested ? "view_" : "";
         receiver += path[index];
         receiver += "()";
@@ -291,11 +292,11 @@ auto lower_soa_api(LoweringContext& parent_context,
                    CppTypeId base) -> LoweredSoa {
     auto context{parent_context.for_declaration(schema)};
     auto& ir{context.ir};
+    auto const& soas{context.declarations.soas};
     NodeListBuilder header{ir};
     NodeListBuilder source{ir};
     header.append(compact_row_api(context, schema, receiver, base));
-    for (auto const alias :
-         context.declarations.items(context.declarations.soas.using_declarations[schema])) {
+    for (auto const alias : context.declarations.items(soas.using_declarations[schema])) {
         header.add(ir.raw("using " + context.text(alias) + ";")).new_lines(1);
     }
     auto append = [&](SchemaRange<FunctionSchemaId> const functions) {
@@ -303,11 +304,11 @@ auto lower_soa_api(LoweringContext& parent_context,
             auto const function{function_id};
             auto const& function_schemas{context.declarations.functions};
             auto const row{function_schemas.index(function)};
-            auto const body{expand_columns(
-                context,
-                join_lines(context, context.declarations.functions.body_lines[function]),
-                schema,
-                receiver)};
+            auto const body{
+                expand_columns(context,
+                               join_lines(context, function_schemas.body_lines[function]),
+                               schema,
+                               receiver)};
             auto spec{lower_schema_function(context, function, body)};
             if (auto const appended{function_schemas.append_columns[row]}) {
                 auto const columns{context.declarations.items(*appended)};
@@ -315,9 +316,7 @@ auto lower_soa_api(LoweringContext& parent_context,
                 auto const& parameter_schemas{context.declarations.parameters};
                 std::string index_name{"row"};
                 while (std::ranges::any_of(parameters, [&](auto parameter) {
-                    return context.text(
-                               parameter_schemas.name[parameter_schemas.index(parameter)]) ==
-                           index_name;
+                    return context.text(parameter_schemas.name[parameter]) == index_name;
                 })) {
                     index_name += '_';
                 }
@@ -332,8 +331,7 @@ auto lower_soa_api(LoweringContext& parent_context,
                         ir.subscript(ir.call(ir.member_access(ir.call(ir.named("this->get_view")),
                                                               context.text(columns[column]))),
                                      index),
-                        ir.named(
-                            parameter_schemas.name[parameter_schemas.index(parameters[column])])));
+                        ir.named(parameter_schemas.name[parameters[column]])));
                 }
                 auto const return_type{ir.function_return_type(spec)};
                 auto const spelling{ir.types.spelling(return_type)};
@@ -344,7 +342,7 @@ auto lower_soa_api(LoweringContext& parent_context,
                 ir.function_flags(spec).set_define_in_header(
                     !function_schemas.definition_in_source[row]);
             }
-            if (context.declarations.functions.definition_in_source[function]) {
+            if (function_schemas.definition_in_source[function]) {
                 auto const id{spec};
                 auto const use_trailing_return{
                     ir.function_return_syntax(spec) == ReturnSyntax::direct &&
@@ -360,33 +358,32 @@ auto lower_soa_api(LoweringContext& parent_context,
             } else {
                 ir.function_flags(spec).set_define_in_header(
                     ir.function_flags(spec).define_in_header() ||
-                    !context.declarations.functions.body_lines[function].empty());
+                    !function_schemas.body_lines[function].empty());
                 ir.function_flags(spec).set_is_inline(ir.function_flags(spec).define_in_header());
                 header.add(ir.header_function(spec)).new_lines(1);
             }
         }
     };
     if (receiver == SoaReceiver::owner) {
-        append(context.declarations.soas.functions[schema]);
+        append(soas.functions[schema]);
     } else {
-        append(context.declarations.soas.const_view_functions[schema]);
+        append(soas.const_view_functions[schema]);
         if (receiver == SoaReceiver::mutable_view) {
-            append(context.declarations.soas.mutable_view_functions[schema]);
+            append(soas.mutable_view_functions[schema]);
         }
     }
-    if (context.declarations.soas.equivalent_type[schema]) {
-        auto const equivalent{context.resolve(*context.declarations.soas.equivalent_type[schema])};
+    if (soas.equivalent_type[schema]) {
+        auto const equivalent{context.resolve(*soas.equivalent_type[schema])};
         header.add(ir.using_declaration(ir.strings.intern("equivalent_type"), equivalent))
             .new_lines(1);
         std::string expression;
         if (receiver == SoaReceiver::owner) {
             expression = "get_const_view()[index]";
         } else {
-            auto const constructor{context.declarations.soas.equivalent_constructor[schema]};
+            auto const constructor{soas.equivalent_constructor[schema]};
             expression = constructor ? context.text(*constructor) + "(" : "equivalent_type{";
             bool first{true};
-            for (auto const member_id :
-                 context.declarations.items(context.declarations.soas.members[schema])) {
+            for (auto const member_id : context.declarations.items(soas.members[schema])) {
                 auto const member{member_id};
                 if (!first) {
                     expression += ", ";

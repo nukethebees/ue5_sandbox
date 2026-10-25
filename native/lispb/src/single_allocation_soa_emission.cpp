@@ -119,8 +119,9 @@ auto section_header(LoweringContext& context, std::string_view title) -> Nodes {
 
 auto inline_function(LoweringContext& context, FunctionId spec) -> NodeId {
     auto& ir{context.ir};
-    context.ir.function_flags(spec).set_is_inline(true);
-    context.ir.function_flags(spec).set_define_in_header(true);
+    auto& flags{ir.function_flags(spec)};
+    flags.set_is_inline(true);
+    flags.set_define_in_header(true);
     return ir.header_function(spec);
 }
 

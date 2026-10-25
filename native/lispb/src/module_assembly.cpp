@@ -29,21 +29,15 @@ auto assemble_module(LoweringContext& context,
                      ModuleSettingsId settings,
                      std::span<DeclarationEmission> emissions) -> std::vector<ModuleId> {
     auto& ir{context.ir};
+    auto const& settings_store{context.declarations.module_settings_store};
     NodeListBuilder header{ir};
     NodeListBuilder source{ir};
     header.add(ir.include_dependencies(), 2);
-    if (!context.declarations.module_settings_store
-             .prelude_lines[context.declarations.module_settings_store.index(settings)]
-             .empty()) {
-        header.add(
-            ir.raw_lines(context.declarations.items(
-                context.declarations.module_settings_store
-                    .prelude_lines[context.declarations.module_settings_store.index(settings)])),
-            2);
+    if (!settings_store.prelude_lines[settings].empty()) {
+        header.add(ir.raw_lines(context.declarations.items(settings_store.prelude_lines[settings])),
+                   2);
     }
-    if (context.declarations.module_settings_store
-            .source[context.declarations.module_settings_store.index(settings)]
-            .has_value()) {
+    if (settings_store.source[settings].has_value()) {
         source.add(
             ir.include(ir.store_text(source_include(context, settings)), IncludeStyle::quoted), 2);
         if (std::ranges::any_of(emissions, [](DeclarationEmission const& emission) {
@@ -131,14 +125,10 @@ auto assemble_module(LoweringContext& context,
     auto header_nodes{header_declarations.build()};
     auto after_nodes{header_after.build()};
     auto source_nodes{source_definitions.build()};
-    if (context.declarations.module_settings_store
-            .namespace_name[context.declarations.module_settings_store.index(settings)]
-            .has_value()) {
+    if (settings_store.namespace_name[settings].has_value()) {
         if (!header_nodes.empty()) {
-            header.add(ir.namespace_node(
-                *context.declarations.module_settings_store
-                     .namespace_name[context.declarations.module_settings_store.index(settings)],
-                std::move(header_nodes)));
+            header.add(ir.namespace_node(*settings_store.namespace_name[settings],
+                                         std::move(header_nodes)));
         }
     } else {
         header.append(std::move(header_nodes));
@@ -147,14 +137,10 @@ auto assemble_module(LoweringContext& context,
     if (has_header_global && !after_nodes.empty()) {
         header.new_lines(2);
     }
-    if (context.declarations.module_settings_store
-            .namespace_name[context.declarations.module_settings_store.index(settings)]
-            .has_value()) {
+    if (settings_store.namespace_name[settings].has_value()) {
         if (!after_nodes.empty()) {
-            header.add(ir.namespace_node(
-                *context.declarations.module_settings_store
-                     .namespace_name[context.declarations.module_settings_store.index(settings)],
-                std::move(after_nodes)));
+            header.add(ir.namespace_node(*settings_store.namespace_name[settings],
+                                         std::move(after_nodes)));
         }
     } else {
         header.append(std::move(after_nodes));
@@ -173,14 +159,10 @@ auto assemble_module(LoweringContext& context,
     if (!internal_nodes.empty()) {
         source.add(ir.namespace_node(ir.strings.intern(""), std::move(internal_nodes)), 2);
     }
-    if (context.declarations.module_settings_store
-            .namespace_name[context.declarations.module_settings_store.index(settings)]
-            .has_value()) {
+    if (settings_store.namespace_name[settings].has_value()) {
         if (!source_nodes.empty()) {
-            source.add(ir.namespace_node(
-                *context.declarations.module_settings_store
-                     .namespace_name[context.declarations.module_settings_store.index(settings)],
-                std::move(source_nodes)));
+            source.add(ir.namespace_node(*settings_store.namespace_name[settings],
+                                         std::move(source_nodes)));
         }
     } else {
         source.append(std::move(source_nodes));
@@ -195,17 +177,14 @@ auto assemble_module(LoweringContext& context,
             source.append(std::move(source_tail_nodes));
         }
     }
-    auto const& settings_store{context.declarations.module_settings_store};
-    auto const settings_row{settings_store.index(settings)};
-    auto const include_order{
-        context.declarations.items(settings_store.include_order[settings_row])};
-    auto const header_file{ir.files.append(settings_store.header[settings_row], header.build())};
+    auto const include_order{context.declarations.items(settings_store.include_order[settings])};
+    auto const header_file{ir.files.append(settings_store.header[settings], header.build())};
     auto const header_row{ir.files.index(header_file)};
     ir.files.flags[header_row].set_clang_format_off(!format_generated);
     ir.files.flags[header_row].set_format_generated(format_generated);
     ir.files.set_include_order(header_file, include_order);
     CppFileId source_file;
-    if (auto const path{settings_store.source[settings_row]}) {
+    if (auto const path{settings_store.source[settings]}) {
         source_file = ir.files.append(*path, source.build());
         auto const source_row{ir.files.index(source_file)};
         ir.files.flags[source_row].set_pragma_once(false);
@@ -213,8 +192,7 @@ auto assemble_module(LoweringContext& context,
         ir.files.flags[source_row].set_format_generated(format_generated);
         ir.files.set_include_order(source_file, include_order);
     }
-    auto const result{
-        ir.modules.append(settings_store.name[settings_row], header_file, source_file)};
+    auto const result{ir.modules.append(settings_store.name[settings], header_file, source_file)};
 
     auto reader_nodes{reader_declarations.build()};
     if (!reader_nodes.empty()) {
@@ -228,14 +206,11 @@ auto assemble_module(LoweringContext& context,
         }
         reader.new_lines(2);
         reader.add(ir.namespace_node(ir.strings.intern("ioj::s7"), reader_nodes));
-        auto const reader_path{
-            reader_header_path(context.text(settings_store.header[settings_row]))};
+        auto const reader_path{reader_header_path(context.text(settings_store.header[settings]))};
         auto const file{ir.files.append(ir.strings.intern(reader_path), reader.build())};
         ir.files.flags[ir.files.index(file)].set_format_generated(true);
         additional.push_back(ir.modules.append(
-            ir.strings.intern(context.text(settings_store.name[settings_row]) + "Reader"),
-            file,
-            {}));
+            ir.strings.intern(context.text(settings_store.name[settings]) + "Reader"), file, {}));
     }
 
     std::vector<ModuleId> modules;
