@@ -23,7 +23,7 @@
               :IsEnabled (method can_reload_source)
               :OnClicked (method reload_source)))
           (s7-row
-            (s7-action "Preview" "Preview Buffer" can_preview_buffer preview_buffer)
+            (s7-action "Preview" "Replay and Preview" can_preview_buffer preview_buffer)
             (s7-action "Apply" "Apply Preview" can_apply_preview apply_preview))
           (s7-row
             (s7-action "Save" "Save Buffer" can_save_buffer save_buffer)

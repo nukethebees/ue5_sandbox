@@ -2,15 +2,20 @@
 
 #include "SandboxEditor/levels/S7LevelAuthoringActors.h"
 #include "SandboxEditor/levels/S7LevelAuthoringDocument.h"
+#include <ioj/levels/authoring/definition_reader.h>
 #include <ioj/levels/authoring/identifiers.h>
+#include <ioj/levels/authoring/level_definition_writer.h>
+#include <SpaceGame/s7/GameSettingsReader.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
+#include <SpaceGame/simulation/TestBatchOrchestrator.h>
 
 #include <SandboxCoreEngine/strings.h>
 
 #include <Editor.h>
 #include <Engine/Level.h>
 #include <Misc/PackageName.h>
+#include <Misc/Paths.h>
 #include <ScopedTransaction.h>
 
 namespace ioj::editor {
@@ -21,6 +26,13 @@ using namespace levels::authoring;
 auto text(FString const& value) -> std::string {
     auto const utf8{FTCHARToUTF8{*value, value.Len()}};
     return {utf8.Get(), static_cast<std::size_t>(utf8.Length())};
+}
+
+auto library_root(AS7LevelAuthoringDocument const& document) -> std::filesystem::path {
+    auto const directory{document.source_path.IsEmpty()
+                             ? FPaths::Combine(FPaths::ProjectDir(), TEXT("LevelScripts"))
+                             : FPaths::GetPath(document.source_path)};
+    return std::filesystem::path{*directory} / "Libraries";
 }
 auto entity_id(FName const value) -> EntityId {
     return EntityId{value.IsNone() ? std::string{} : text(value.ToString().ToLower())};
@@ -51,6 +63,58 @@ auto adopt(ULevel& level, TArray<FS7LevelEntityBinding>& bindings) -> int32 {
     }
     return count;
 }
+}
+
+auto s7_settings_path(ULevel const& level) -> FString {
+    for (auto const actor : level.Actors) {
+        if (auto const* const orchestrator{Cast<ATestBatchOrchestrator>(actor.Get())}) {
+            return orchestrator->get_settings_file();
+        }
+    }
+    return TEXT("LevelScripts/Settings/base.scm");
+}
+
+auto read_s7_document_settings(AS7LevelAuthoringDocument const& document)
+    -> std::expected<settings::Settings, FString> {
+    auto const root{FPaths::Combine(FPaths::ProjectDir(), TEXT("LevelScripts"))};
+    levels::authoring::DefinitionReader const reader{std::filesystem::path{*root}};
+    settings::Settings initial;
+    if (IsValid(document.level_config)) {
+        initial.presentation = document.level_config->presentation;
+    }
+    auto base{document.evaluated_base_settings_source.IsEmpty()
+                  ? std::expected<settings::Settings, levels::Diagnostics>{std::move(initial)}
+                  : reader.read_settings_source(s7_level_authoring_session_detail::text(
+                                                    document.evaluated_base_settings_source),
+                                                std::move(initial))};
+    if (!base) {
+        return std::unexpected{to_fstring(levels::format_diagnostics(base.error()))};
+    }
+    if (document.evaluated_level_source.IsEmpty()) {
+        return std::move(*base);
+    }
+    levels::authoring::DefinitionReader const level_reader{
+        s7_level_authoring_session_detail::library_root(document)};
+    auto definition{level_reader.read_level_source(
+        s7_level_authoring_session_detail::text(document.evaluated_level_source),
+        std::move(*base))};
+    if (!definition) {
+        return std::unexpected{to_fstring(levels::format_diagnostics(definition.error()))};
+    }
+    return definition->settings();
+}
+
+auto emit_s7_scene_source(levels::LevelDefinition const& definition,
+                          AS7LevelAuthoringDocument const& document)
+    -> std::expected<FString, FString> {
+    auto source{levels::authoring::emit_editor_level_source(
+        definition,
+        s7_level_authoring_session_detail::text(document.evaluated_level_source),
+        s7_level_authoring_session_detail::library_root(document))};
+    if (!source) {
+        return std::unexpected{to_fstring(levels::format_diagnostics(source.error()))};
+    }
+    return to_fstring(*source);
 }
 
 auto find_level_authoring_document(ULevel const& level)
@@ -106,6 +170,15 @@ auto create_level_authoring_document(ULevel& level)
         return std::unexpected{
             TEXT("The canonical S7 runtime level configuration is unavailable.")};
     }
+    auto const settings{
+        read_game_settings_source(s7_settings_path(level), *document->level_config)};
+    if (!settings) {
+        document->Destroy();
+        transaction.Cancel();
+        return std::unexpected{settings.error()};
+    }
+    document->synchronized_base_settings_source = settings->source;
+    document->evaluated_base_settings_source = settings->evaluated_source;
     return document;
 }
 
@@ -180,16 +253,11 @@ auto collect_s7_scene(ULevel const& level, AS7LevelAuthoringDocument const& docu
                                              : text(document.level_id.ToString().ToLower())},
                            .title = text(document.title),
                            .description = text(document.description)};
-    auto const grid{document.collision_grid_overrides()};
-    if (grid.level_size.IsSet() || grid.cell_size.IsSet()) {
-        definition.collision_grid.emplace();
-        if (grid.level_size.IsSet()) {
-            definition.collision_grid->level_size = vector(FVector{*grid.level_size});
-        }
-        if (grid.cell_size.IsSet()) {
-            definition.collision_grid->cell_size = vector(FVector{*grid.cell_size});
-        }
+    auto settings{read_s7_document_settings(document)};
+    if (!settings) {
+        return std::unexpected{settings.error()};
     }
+    definition.settings = std::move(*settings);
 
     TMap<AActor const*, EntityId> ids_by_actor;
     TSet<FName> ids;

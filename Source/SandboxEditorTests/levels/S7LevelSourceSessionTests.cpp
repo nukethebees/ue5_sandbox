@@ -1,4 +1,5 @@
 #include <SandboxEditor/levels/S7LevelAuthoringDocument.h>
+#include <SandboxEditor/levels/S7LevelAuthoringSession.h>
 #include <SandboxEditor/levels/S7LevelSourceSession.h>
 
 #include <SandboxCoreEngine/strings.h>
@@ -121,12 +122,15 @@ TEST_CLASS(S7LevelSourceSession, "Sandbox.UnitTests")
         IFileManager::Get().MakeDirectory(*library_directory, true);
         FString const source{
             TEXT("(load-script \"metadata.scm\") (level :id 'library-level :title shared-title "
+                 " :settings (settings :collision-grid (collision-grid :cell-size shared-cells) "
+                 " :presentation (presentation :entity-overlay (entity-overlay :enabled #f))) "
                  " :player 'player :entities (list (entity :id 'player :archetype "
                  "'player-fighter :team 'blue :position '(0 0 0) :rotation '(0 0 0))))")};
         if (!TestRunner->TestNotNull(TEXT("Document"), document) ||
             !TestRunner->TestTrue(
                 TEXT("Library is written"),
-                write_source(TEXT("(define shared-title \"From Sibling Library\")"),
+                write_source(TEXT("(define shared-title \"From Sibling Library\") (define "
+                                  "shared-cells '(6000 6000 20000))"),
                              FPaths::Combine(library_directory, TEXT("metadata.scm")))) ||
             !TestRunner->TestTrue(TEXT("Level is written"), write_source(source, source_path))) {
             return;
@@ -164,6 +168,28 @@ TEST_CLASS(S7LevelSourceSession, "Sandbox.UnitTests")
         TestRunner->TestEqual(TEXT("Buffer parsing does not write the source file"),
                               unchanged_disk_source,
                               FString{source});
+
+        auto const replay{session.read_replay({})};
+        if (!TestRunner->TestTrue(TEXT("Replay captures evaluated inputs"), replay.has_value())) {
+            return;
+        }
+        document->evaluated_level_source = replay->evaluated_source;
+        if (!TestRunner->TestTrue(
+                TEXT("Library changes on disk"),
+                write_source(TEXT("(define shared-title \"Changed Library\") (define shared-cells "
+                                  "'(7000 7000 20000))"),
+                             FPaths::Combine(library_directory, TEXT("metadata.scm"))))) {
+            return;
+        }
+        auto const applied_settings{ioj::editor::read_s7_document_settings(*document)};
+        TestRunner->TestTrue(TEXT("Applied settings retain their evaluated library input"),
+                             applied_settings.has_value() &&
+                                 *applied_settings == replay->definition.settings());
+        auto const next_replay{session.read_replay({})};
+        TestRunner->TestTrue(TEXT("Explicit replay sees updated library input"),
+                             next_replay.has_value() &&
+                                 next_replay->definition.settings().collision_grid.cell_size ==
+                                     ioj::Vector3f{7000.f, 7000.f, 20000.f});
     }
 
     TEST_METHOD(DirtyBufferDetachesWhenTheDocumentChanges)

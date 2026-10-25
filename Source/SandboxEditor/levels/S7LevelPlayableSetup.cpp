@@ -2,6 +2,7 @@
 
 #include "SandboxEditor/levels/S7LevelAuthoringDocument.h"
 #include "SandboxEditor/levels/S7LevelAuthoringSession.h"
+#include <ioj/s7/simulation_settings_reader.h>
 #include <Sandbox/environment/effects/ShipPostProcessing.h>
 #include <SpaceGame/levels/native_level_definition_conversion.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
@@ -112,15 +113,25 @@ auto validate_playable_s7_level(ULevel& level, AS7LevelAuthoringDocument& docume
         return std::unexpected{
             TEXT("The canonical S7 runtime level configuration is unavailable.")};
     }
-    if (!config->is_valid(true)) {
-        return std::unexpected{TEXT("The base S7 level configuration is invalid.")};
-    }
     auto const definition{collect_s7_editor_level(level, document)};
     if (!definition) {
         return std::unexpected{definition.error()};
     }
     auto* const player{
         s7_level_playable_setup_detail::find_player(document, definition->player_entity_id())};
+    return validate_playable_s7_definition(*definition, *config, player);
+}
+
+auto validate_playable_s7_definition(levels::LevelDefinition const& definition,
+                                     USpaceGameLevelConfig const& resources,
+                                     ATestSpaceShip const* player)
+    -> std::expected<FString, FString> {
+    if (!definition.player_entity_id().empty() && !player) {
+        player = resources.classes.player_ship_class.GetDefaultObject();
+        if (!IsValid(player)) {
+            return std::unexpected{TEXT("The player ship class is unavailable.")};
+        }
+    }
 
     TOptional<sim::player::PlayerSpawnData> player_spawn;
     UStaticMesh const* player_mesh{};
@@ -129,22 +140,31 @@ auto validate_playable_s7_level(ULevel& level, AS7LevelAuthoringDocument& docume
         player_mesh = player->get_collision_mesh();
     }
     TStrongObjectPtr<USpaceGameLevelConfig> effective_config{
-        DuplicateObject<USpaceGameLevelConfig>(config, GetTransientPackage())};
+        DuplicateObject<USpaceGameLevelConfig>(&resources, GetTransientPackage())};
     if (!effective_config.IsValid()) {
-        return std::unexpected{TEXT("Could not prepare the authored collision-grid settings.")};
+        return std::unexpected{TEXT("Could not prepare the authored settings.")};
     }
-    effective_config->collision_grid = document.resolve_collision_grid(config->collision_grid);
+    auto const simulation{ioj::s7::resolve_simulation_settings(definition.settings())};
+    if (!simulation) {
+        return std::unexpected{to_fstring(levels::format_diagnostics(simulation.error()))};
+    }
+    effective_config->apply_settings(*simulation);
+    effective_config->presentation = definition.settings().presentation;
     if (!effective_config->is_valid(true)) {
-        return std::unexpected{TEXT("The authored collision-grid settings are invalid.")};
+        return std::unexpected{TEXT("The authored level configuration is invalid.")};
     }
-    auto const build{make_level_simulation_init_data(
-        *effective_config, {}, *definition, MoveTemp(player_spawn), {}, player_mesh)};
+    auto const build{make_level_simulation_init_data(*effective_config,
+                                                     definition.settings().tick,
+                                                     definition,
+                                                     MoveTemp(player_spawn),
+                                                     {},
+                                                     player_mesh)};
     if (!build) {
         return std::unexpected{build.error().format()};
     }
     return FString::Printf(
         TEXT("Entity, fighter spawn, and collision grid checks passed using %s."),
-        *config->GetName());
+        *resources.GetName());
 }
 
 auto set_up_playable_s7_level(ULevel& level, AS7LevelAuthoringDocument& document)

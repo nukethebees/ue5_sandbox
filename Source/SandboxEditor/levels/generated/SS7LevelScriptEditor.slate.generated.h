@@ -32,7 +32,7 @@ struct SS7LevelScriptEditorBuilder {
                          SandboxUI::Slate::hbox_fill_slot(1.0f, FMargin{2.0f})
                              [SNew(SButton)
                                   .Text(NSLOCTEXT(
-                                      "SS7LevelScriptEditor", "Preview", "Preview Buffer"))
+                                      "SS7LevelScriptEditor", "Preview", "Replay and Preview"))
                                   .IsEnabled(&self_, &ThisClass::can_preview_buffer)
                                   .OnClicked(&self_, &ThisClass::preview_buffer)] +
                          SandboxUI::Slate::hbox_fill_slot(1.0f, FMargin{2.0f})

@@ -8,7 +8,6 @@
 #include "S7LevelAuthoringDocument.generated.h"
 
 class USpaceGameLevelConfig;
-struct FCollisionGridConfig;
 
 USTRUCT()
 struct FS7LevelEntityBinding {
@@ -57,18 +56,21 @@ class SANDBOXEDITOR_API AS7LevelAuthoringDocument final : public AInfo {
     AS7LevelAuthoringDocument();
 
     bool IsEditorOnly() const override { return true; }
-    void PostActorCreated() override;
-    void PostRegisterAllComponents() override;
-    [[nodiscard]] auto collision_grid_overrides() const -> ioj::FLevelCollisionGridDefinition;
-    [[nodiscard]] auto resolve_collision_grid(FCollisionGridConfig const& source) const
-        -> FCollisionGridConfig;
-    void migrate_collision_grid_overrides();
 
     UPROPERTY(EditAnywhere, Category = "Document")
     FString source_path{};
 
     UPROPERTY()
     FString synchronized_source{};
+
+    UPROPERTY()
+    FString synchronized_base_settings_source{};
+
+    UPROPERTY()
+    FString evaluated_level_source{};
+
+    UPROPERTY()
+    FString evaluated_base_settings_source{};
 
     UPROPERTY()
     FString synchronized_scene_source{};
@@ -82,28 +84,10 @@ class SANDBOXEDITOR_API AS7LevelAuthoringDocument final : public AInfo {
     UPROPERTY()
     FString description{};
 
-    UPROPERTY(
-        VisibleAnywhere,
-        Category = "Level",
-        meta = (ToolTip = "Shared canonical S7 runtime defaults; edit per-level dimensions below"))
+    UPROPERTY(VisibleAnywhere,
+              Category = "Level",
+              meta = (ToolTip = "Shared canonical S7 runtime resources"))
     TObjectPtr<USpaceGameLevelConfig> level_config{nullptr};
-
-    UPROPERTY(EditAnywhere,
-              Category = "Collision Grid Overrides",
-              meta = (Units = "cm",
-                      DisplayName = "Level Size Override",
-                      ToolTip = "Zero inherits the shared game asset's grid size"))
-    FVector3f level_size{FVector3f::ZeroVector};
-
-    UPROPERTY(EditAnywhere,
-              Category = "Collision Grid Overrides",
-              meta = (Units = "cm",
-                      DisplayName = "Cell Size Override",
-                      ToolTip = "Zero inherits the shared game asset's grid cell size"))
-    FVector3f grid_cell_size{FVector3f::ZeroVector};
-
-    UPROPERTY()
-    int32 grid_override_schema_version{};
 
     UPROPERTY(EditAnywhere, EditFixedSize, Category = "Entities", meta = (TitleProperty = "id"))
     TArray<FS7LevelEntityBinding> entities{};

@@ -66,6 +66,7 @@ class SANDBOXEDITOR_API US7LevelAuthoringMode final : public UBaseLegacyWidgetEd
     void set_source_buffer(FString source);
     void preview_apply();
     void apply_preview();
+    [[nodiscard]] auto prepare_for_play() -> bool;
     void save();
     void save_as();
     void save_canonical_from_scene();
@@ -74,6 +75,8 @@ class SANDBOXEDITOR_API US7LevelAuthoringMode final : public UBaseLegacyWidgetEd
     void refresh_document();
     void set_status(FText text);
     void update_document_source_path();
+    auto prepare_source_replay() -> bool;
+    auto apply_current_source(bool require_review) -> bool;
 
     TWeakObjectPtr<AS7LevelAuthoringDocument> document_{};
     ioj::editor::FS7LevelSourceSession source_session_{};

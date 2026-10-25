@@ -12,13 +12,22 @@ class ULevel;
 
 namespace ioj::editor {
 using ES7LevelSyncAction = levels::authoring::SyncAction;
+struct FS7LevelReplaySources {
+    FString source;
+    FString base_settings_source;
+    FString evaluated_source;
+    FString evaluated_base_settings_source;
+};
+
 struct SANDBOXEDITOR_API FS7LevelSyncPlan : levels::authoring::SyncPlan {
     levels::LevelDefinition definition;
+    TOptional<FS7LevelReplaySources> sources;
 };
 
 SANDBOXEDITOR_API auto make_s7_level_sync_plan(ULevel const& level,
                                                AS7LevelAuthoringDocument const& document,
-                                               levels::LevelDefinition definition)
+                                               levels::LevelDefinition definition,
+                                               TOptional<FS7LevelReplaySources> sources = {})
     -> std::expected<FS7LevelSyncPlan, FString>;
 
 SANDBOXEDITOR_API auto apply_s7_level_sync_plan(ULevel& level,

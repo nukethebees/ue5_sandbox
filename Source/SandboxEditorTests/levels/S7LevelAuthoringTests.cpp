@@ -47,7 +47,7 @@ auto emit_source(ioj::FLevelDraft const& definition) -> std::expected<FString, F
     if (!checked) {
         return std::unexpected{ioj::to_fstring(ioj::levels::format_diagnostics(checked.error()))};
     }
-    auto source{ioj::levels::authoring::emit_editor_level_source(*checked)};
+    auto source{ioj::levels::authoring::emit_editor_level_source(*checked, std::string_view{})};
     if (!source) {
         return std::unexpected{ioj::to_fstring(ioj::levels::format_diagnostics(source.error()))};
     }
@@ -65,7 +65,13 @@ auto make_plan(ULevel const& level,
                AS7LevelAuthoringDocument const& document,
                ioj::FLevelDraft const& definition)
     -> std::expected<ioj::editor::FS7LevelSyncPlan, FString> {
-    auto checked{ioj::levels::authoring::to_native(definition)};
+    auto settings{ioj::editor::read_s7_document_settings(document)};
+    if (!settings) {
+        return std::unexpected{settings.error()};
+    }
+    auto scene_definition{definition};
+    scene_definition.settings = std::move(*settings);
+    auto checked{ioj::levels::authoring::to_native(scene_definition)};
     if (!checked) {
         return std::unexpected{ioj::to_fstring(ioj::levels::format_diagnostics(checked.error()))};
     }
@@ -301,207 +307,138 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         }
     }
 
-    TEST_METHOD(CollisionGridInheritsAssetAndKeepsPartialOverridesLive)
+    TEST_METHOD(SettingsResolveStoredBaseAndLevelSources)
     {
         auto fixture{make_preview_fixture()};
         if (!TestRunner->TestTrue(TEXT("Fixture is valid"), fixture.is_valid())) {
             return;
         }
-        TestRunner->TestEqual(TEXT("New documents use the override schema"),
-                              fixture.document->grid_override_schema_version,
-                              1);
-
-        auto const inherited{collect_level(*fixture.world->GetCurrentLevel(), *fixture.document)};
-        if (!TestRunner->TestTrue(TEXT("Inherited grid collects"), inherited.has_value())) {
-            TestRunner->AddError(inherited.error());
+        auto const original{collect_level(*fixture.world->GetCurrentLevel(), *fixture.document)};
+        if (!TestRunner->TestTrue(TEXT("Scene collects"), original.has_value())) {
             return;
         }
-        TestRunner->TestFalse(TEXT("Inherited grid is not authored"),
-                              inherited->collision_grid.IsSet());
-        auto const original_size{fixture.level_config->collision_grid.grid_size};
-        auto const original_cell_size{fixture.level_config->collision_grid.cell_size};
-        auto const effective{
-            fixture.document->resolve_collision_grid(fixture.level_config->collision_grid)};
-        TestRunner->TestTrue(TEXT("Size comes from asset"), effective.grid_size == original_size);
-        TestRunner->TestTrue(TEXT("Cells come from asset"),
-                             effective.cell_size == original_cell_size);
-
-        fixture.level_config->collision_grid.grid_size.X += 10000.f;
-        fixture.document->grid_cell_size = FVector3f{6000.f, 6000.f, 20000.f};
-        auto const partial{fixture.document->collision_grid_overrides()};
-        TestRunner->TestFalse(TEXT("Size remains inherited"), partial.level_size.IsSet());
-        TestRunner->TestTrue(TEXT("Cell size is authored"), partial.cell_size.IsSet());
-        auto const updated{
-            fixture.document->resolve_collision_grid(fixture.level_config->collision_grid)};
-        TestRunner->TestTrue(TEXT("Asset size change is live"),
-                             updated.grid_size == fixture.level_config->collision_grid.grid_size);
-        TestRunner->TestTrue(TEXT("Cell override survives asset size change"),
-                             updated.cell_size == fixture.document->grid_cell_size);
-
-        auto const playable{ioj::editor::validate_playable_s7_level(
-            *fixture.world->GetCurrentLevel(), *fixture.document)};
-        if (!TestRunner->TestTrue(TEXT("Partial grid validates for play"), playable.has_value())) {
-            TestRunner->AddError(playable.error());
+        auto const source{emit_source(*original)};
+        if (!TestRunner->TestTrue(TEXT("Scene writes"), source.has_value())) {
+            return;
         }
-
+        fixture.document->synchronized_base_settings_source = TEXT(
+            "(settings :collision-grid (collision-grid :level-size '(3000000 3000000 100000)))");
+        fixture.document->evaluated_base_settings_source =
+            fixture.document->synchronized_base_settings_source;
+        fixture.document->synchronized_source =
+            source->Replace(TEXT("(level"),
+                            TEXT("(level :settings (settings :collision-grid (collision-grid "
+                                 ":cell-size '(6000 6000 20000)))"));
+        fixture.document->evaluated_level_source = fixture.document->synchronized_source;
+        auto const settings{ioj::editor::read_s7_document_settings(*fixture.document)};
+        if (!TestRunner->TestTrue(TEXT("Source chain resolves"), settings.has_value())) {
+            return;
+        }
+        TestRunner->TestTrue(TEXT("Omitted size inherits from base"),
+                             settings->collision_grid.level_size ==
+                                 ioj::Vector3f{3000000.f, 3000000.f, 100000.f});
+        TestRunner->TestTrue(TEXT("Level replaces supplied cells"),
+                             settings->collision_grid.cell_size ==
+                                 ioj::Vector3f{6000.f, 6000.f, 20000.f});
         fixture.level_config->collision_grid.grid_size = FVector3f::ZeroVector;
-        fixture.document->level_size = original_size;
-        auto const fully_authored{ioj::editor::validate_playable_s7_level(
-            *fixture.world->GetCurrentLevel(), *fixture.document)};
-        TestRunner->TestFalse(TEXT("Valid S7 override cannot repair invalid base asset"),
-                              fully_authored.has_value());
-        fixture.document->level_size = FVector3f::ZeroVector;
-        TestRunner->TestFalse(TEXT("Invalid base without override fails"),
-                              ioj::editor::validate_playable_s7_level(
-                                  *fixture.world->GetCurrentLevel(), *fixture.document)
-                                  .has_value());
-        fixture.level_config->collision_grid.grid_size = original_size;
-        fixture.document->level_size = FVector3f{-1.f, 100.f, 100.f};
-        TestRunner->TestFalse(TEXT("Invalid explicit override fails"),
-                              ioj::editor::validate_playable_s7_level(
-                                  *fixture.world->GetCurrentLevel(), *fixture.document)
-                                  .has_value());
-        fixture.document->level_size = original_size;
-        TestRunner->TestTrue(TEXT("Valid full override passes"),
-                             ioj::editor::validate_playable_s7_level(
-                                 *fixture.world->GetCurrentLevel(), *fixture.document)
-                                 .has_value());
+        auto const unchanged{ioj::editor::read_s7_document_settings(*fixture.document)};
+        TestRunner->TestTrue(TEXT("Resource grid edits do not alter the applied source chain"),
+                             unchanged.has_value() &&
+                                 unchanged->collision_grid == settings->collision_grid);
     }
 
-    TEST_METHOD(CollisionGridMigratesSeededValuesWithoutLosingExplicitOverrides)
+    TEST_METHOD(SettingsApplyStoresReplayInputsAndUndoRestoresThem)
     {
         auto fixture{make_preview_fixture()};
         if (!TestRunner->TestTrue(TEXT("Fixture is valid"), fixture.is_valid())) {
             return;
         }
-
-        fixture.document->level_size = fixture.level_config->collision_grid.grid_size;
-        fixture.document->grid_cell_size = FVector3f{6000.f, 6000.f, 20000.f};
-        fixture.document->grid_override_schema_version = 0;
-        fixture.document->ReregisterAllComponents();
-        TestRunner->TestEqual(TEXT("Legacy document migrates on registration"),
-                              fixture.document->grid_override_schema_version,
-                              1);
-        TestRunner->TestTrue(TEXT("Seeded size becomes inherited"),
-                             fixture.document->level_size == FVector3f::ZeroVector);
-        TestRunner->TestTrue(TEXT("Distinct cell override remains"),
-                             fixture.document->grid_cell_size ==
-                                 FVector3f{6000.f, 6000.f, 20000.f});
-
-        fixture.document->level_size = fixture.level_config->collision_grid.grid_size;
-        auto const pinned{fixture.document->collision_grid_overrides()};
-        TestRunner->TestTrue(TEXT("New same-value override stays pinned"),
-                             pinned.level_size.IsSet());
-
-        fixture.document->level_size = FVector3f{0.f, 100.f, 100.f};
-        auto const invalid{collect_level(*fixture.world->GetCurrentLevel(), *fixture.document)};
-        TestRunner->TestFalse(TEXT("Malformed explicit size does not fall back"),
-                              invalid.has_value());
-    }
-
-    TEST_METHOD(CollisionGridSourceApplyClearsOmittedOverrides)
-    {
-        auto fixture{make_preview_fixture()};
-        if (!TestRunner->TestTrue(TEXT("Fixture is valid"), fixture.is_valid())) {
-            return;
-        }
-        fixture.document->migrate_collision_grid_overrides();
-        fixture.document->level_size = FVector3f{2100000.f, 2100000.f, 500000.f};
-
-        auto definition{collect_level(*fixture.world->GetCurrentLevel(), *fixture.document)};
-        if (!TestRunner->TestTrue(TEXT("Authored grid collects"), definition.has_value())) {
-            TestRunner->AddError(definition.error());
-            return;
-        }
-        definition->collision_grid = NullOpt;
-        auto const plan{
-            make_plan(*fixture.world->GetCurrentLevel(), *fixture.document, *definition)};
-        if (!TestRunner->TestTrue(TEXT("Grid removal plans"), plan.has_value())) {
-            TestRunner->AddError(plan.error());
-            return;
-        }
-        TestRunner->TestTrue(TEXT("Grid removal is a change"), plan->collision_grid_changed);
-
-        auto const applied{ioj::editor::apply_s7_level_sync_plan(
-            *fixture.world->GetCurrentLevel(), *fixture.document, *plan)};
-        if (!TestRunner->TestTrue(TEXT("Grid removal applies"), applied.has_value())) {
-            TestRunner->AddError(applied.error());
-            return;
-        }
-        TestRunner->TestTrue(TEXT("Size inherits again"),
-                             fixture.document->level_size == FVector3f::ZeroVector);
-        auto const recollected{collect_level(*fixture.world->GetCurrentLevel(), *fixture.document)};
-        TestRunner->TestTrue(TEXT("No grid override is reintroduced"),
-                             recollected.has_value() && !recollected->collision_grid.IsSet());
-    }
-
-    TEST_METHOD(CollisionGridSourceApplyReplacesOnlyPresentDimensions)
-    {
-        auto fixture{make_preview_fixture()};
-        if (!TestRunner->TestTrue(TEXT("Fixture is valid"), fixture.is_valid())) {
-            return;
-        }
-        fixture.document->migrate_collision_grid_overrides();
-        fixture.document->level_size = FVector3f{2100000.f, 2100000.f, 500000.f};
-        fixture.document->grid_cell_size = FVector3f{6000.f, 6000.f, 20000.f};
-
-        auto definition{collect_level(*fixture.world->GetCurrentLevel(), *fixture.document)};
-        if (!TestRunner->TestTrue(TEXT("Existing overrides collect"), definition.has_value())) {
-            return;
-        }
-        auto const incoming_cells{FVector3f{7000.f, 8000.f, 22000.f}};
-        definition->collision_grid =
-            ioj::FLevelCollisionGridDefinition{.level_size = NullOpt, .cell_size = incoming_cells};
-        auto const plan{
-            make_plan(*fixture.world->GetCurrentLevel(), *fixture.document, *definition)};
-        if (!TestRunner->TestTrue(TEXT("Partial replacement plans"), plan.has_value())) {
-            return;
-        }
-        auto const applied{ioj::editor::apply_s7_level_sync_plan(
-            *fixture.world->GetCurrentLevel(), *fixture.document, *plan)};
-        TestRunner->TestTrue(TEXT("Partial replacement applies"), applied.has_value());
-        TestRunner->TestTrue(TEXT("Omitted size returns to inheritance"),
-                             fixture.document->level_size == FVector3f::ZeroVector);
-        TestRunner->TestTrue(TEXT("Present cell override is replaced"),
-                             fixture.document->grid_cell_size == incoming_cells);
-    }
-
-    TEST_METHOD(CollisionGridPartialOverrideSurvivesS7RoundTrip)
-    {
-        auto fixture{make_preview_fixture()};
-        if (!TestRunner->TestTrue(TEXT("Fixture is valid"), fixture.is_valid())) {
-            return;
-        }
-        fixture.document->migrate_collision_grid_overrides();
-        fixture.document->grid_cell_size = FVector3f{6000.f, 6000.f, 20000.f};
-
         auto const collected{collect_level(*fixture.world->GetCurrentLevel(), *fixture.document)};
-        if (!TestRunner->TestTrue(TEXT("Partial grid collects"), collected.has_value())) {
-            TestRunner->AddError(collected.error());
+        if (!TestRunner->TestTrue(TEXT("Scene collects"), collected.has_value())) {
             return;
         }
         auto const source{emit_source(*collected)};
-        if (!TestRunner->TestTrue(TEXT("Partial grid writes"), source.has_value())) {
-            TestRunner->AddError(source.error());
+        if (!TestRunner->TestTrue(TEXT("Scene writes"), source.has_value())) {
             return;
         }
-        TestRunner->TestFalse(TEXT("Inherited size is omitted"),
-                              source->Contains(TEXT(":level-size")));
-        TestRunner->TestTrue(TEXT("Authored cell size is written"),
-                             source->Contains(TEXT(":cell-size")));
+        auto const incoming{
+            source->Replace(TEXT("(level"),
+                            TEXT("(level :settings (settings :collision-grid (collision-grid "
+                                 ":cell-size '(7000 8000 22000)))"))};
+        ioj::editor::FS7LevelSourceSession session;
+        if (!TestRunner->TestTrue(TEXT("Session attaches"),
+                                  session.attach(*fixture.document).has_value())) {
+            return;
+        }
+        session.set_buffer(incoming);
+        auto const base{ioj::editor::read_s7_document_settings(*fixture.document)};
+        if (!TestRunner->TestTrue(TEXT("Base settings resolve"), base.has_value())) {
+            return;
+        }
+        auto definition{session.read_replay(*base)};
+        if (!TestRunner->TestTrue(TEXT("Incoming source parses"), definition.has_value())) {
+            return;
+        }
+        auto const plan{ioj::editor::make_s7_level_sync_plan(
+            *fixture.world->GetCurrentLevel(),
+            *fixture.document,
+            definition->definition,
+            ioj::editor::FS7LevelReplaySources{
+                incoming, TEXT("(settings)"), definition->evaluated_source, TEXT("'(:settings)")})};
+        if (!TestRunner->TestTrue(TEXT("Settings change plans"), plan.has_value())) {
+            return;
+        }
+        TestRunner->TestTrue(TEXT("Plan identifies settings change"), plan->settings_changed);
+        auto const applied{ioj::editor::apply_s7_level_sync_plan(
+            *fixture.world->GetCurrentLevel(), *fixture.document, *plan)};
+        if (!TestRunner->TestTrue(TEXT("Settings change applies"), applied.has_value())) {
+            return;
+        }
+        auto const settings{ioj::editor::read_s7_document_settings(*fixture.document)};
+        TestRunner->TestTrue(TEXT("Applied settings match the replay result"),
+                             settings.has_value() &&
+                                 *settings == definition->definition.settings());
+        TestRunner->TestEqual(
+            TEXT("Level source is retained"), fixture.document->synchronized_source, incoming);
+        GEditor->UndoTransaction();
+        TestRunner->TestTrue(TEXT("Undo restores the old level source"),
+                             fixture.document->synchronized_source.IsEmpty());
+        TestRunner->TestTrue(TEXT("Undo restores the old base source"),
+                             fixture.document->synchronized_base_settings_source.IsEmpty());
+    }
 
-        ioj::levels::authoring::FDefinitionReader reader;
-        auto const read{reader.read_level_source(*source)};
-        if (!TestRunner->TestTrue(TEXT("Partial grid reads"), static_cast<bool>(read))) {
-            TestRunner->AddError(ioj::to_fstring(ioj::levels::format_diagnostics(read.error())));
+    TEST_METHOD(CanonicalSceneSavePreservesSparseSettings)
+    {
+        auto fixture{make_preview_fixture()};
+        if (!TestRunner->TestTrue(TEXT("Fixture is valid"), fixture.is_valid())) {
             return;
         }
-        auto const& grid{read->collision_grid()};
-        TestRunner->TestTrue(TEXT("Grid clause persists"), grid.has_value());
-        if (grid.has_value()) {
-            TestRunner->TestFalse(TEXT("Size stays inherited"), grid->level_size.has_value());
-            TestRunner->TestTrue(TEXT("Cell override persists"), grid->cell_size.has_value());
+        auto const collected{collect_level(*fixture.world->GetCurrentLevel(), *fixture.document)};
+        if (!TestRunner->TestTrue(TEXT("Scene collects"), collected.has_value())) {
+            return;
         }
+        auto const source{emit_source(*collected)};
+        if (!TestRunner->TestTrue(TEXT("Scene writes"), source.has_value())) {
+            return;
+        }
+        fixture.document->synchronized_source =
+            source->Replace(TEXT("(level"),
+                            TEXT("(level :settings (settings :collision-grid (collision-grid "
+                                 ":cell-size '(6000 6000 20000)))"));
+        fixture.document->evaluated_level_source = fixture.document->synchronized_source;
+        auto const definition{ioj::editor::collect_s7_editor_level(
+            *fixture.world->GetCurrentLevel(), *fixture.document)};
+        if (!TestRunner->TestTrue(TEXT("Resolved scene collects"), definition.has_value())) {
+            return;
+        }
+        auto const saved{ioj::editor::emit_s7_scene_source(*definition, *fixture.document)};
+        if (!TestRunner->TestTrue(TEXT("Canonical source writes"), saved.has_value())) {
+            return;
+        }
+        TestRunner->TestFalse(TEXT("Inherited size stays omitted"),
+                              saved->Contains(TEXT(":level-size")));
+        TestRunner->TestTrue(TEXT("Authored cell size persists"),
+                             saved->Contains(TEXT(":cell-size")));
     }
 
     TEST_METHOD(ObserverCameraTransformMatchesRuntimeCalculation)

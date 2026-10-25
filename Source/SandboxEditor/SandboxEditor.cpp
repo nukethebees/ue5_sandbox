@@ -1,7 +1,9 @@
 #include "SandboxEditor/SandboxEditor.h"
 
 #include "SandboxEditor/codegen/TypedefCodeGenerator.h"
+#include "SandboxEditor/levels/S7LevelAuthoringDocument.h"
 #include "SandboxEditor/levels/S7LevelAuthoringMode.h"
+#include "SandboxEditor/levels/S7LevelAuthoringSession.h"
 #include "SandboxEditor/levels/S7LevelPlayableSetup.h"
 #include "SandboxEditor/levels/S7LevelScriptEditor.h"
 #include "SandboxEditor/slate/BoxSizeCustomisation.h"
@@ -24,6 +26,7 @@
 #include "WorkspaceMenuStructure.h"
 #include "WorkspaceMenuStructureModule.h"
 #include <Engine/World.h>
+#include <Features/IModularFeatures.h>
 
 #define LOCTEXT_NAMESPACE "FSandboxEditorModule"
 
@@ -36,6 +39,7 @@ FName const FSandboxEditorModule::s7_level_script_editor_tab_id{
     TEXT("Sandbox.S7LevelScriptEditor")};
 
 void FSandboxEditorModule::StartupModule() {
+    IModularFeatures::Get().RegisterModularFeature(IPIEAuthorizer::GetModularFeatureName(), this);
     s7_pie_handle_ = FWorldDelegates::OnWorldInitializedActors.AddLambda(
         [](FActorsInitializedParams const& params) {
             auto const prepared{ioj::editor::prepare_s7_level_for_pie(*params.World)};
@@ -71,6 +75,7 @@ void FSandboxEditorModule::StartupModule() {
     create_sandbox_editor_menus();
 }
 void FSandboxEditorModule::ShutdownModule() {
+    IModularFeatures::Get().UnregisterModularFeature(IPIEAuthorizer::GetModularFeatureName(), this);
     FWorldDelegates::OnWorldInitializedActors.Remove(s7_pie_handle_);
     if (IsValid(GEditor) && GEditor->PlayWorld != nullptr) {
         GEditor->EndPlayMap();
@@ -89,6 +94,37 @@ void FSandboxEditorModule::ShutdownModule() {
         level_editor_module.GetAllLevelViewportContextMenuExtenders().RemoveAll(
             [&](auto const& delegate) { return delegate.GetHandle() == context_menu_delegate; });
     }
+}
+
+auto FSandboxEditorModule::IsPIEAuthorizedInternal(bool) const -> TValueOrError<bool, FText> {
+    return MakeValue(true);
+}
+
+auto FSandboxEditorModule::RequestPIEPermissionInternal(bool) const -> TValueOrError<bool, FText> {
+    auto* mode{Cast<US7LevelAuthoringMode>(
+        GLevelEditorModeTools().GetActiveScriptableMode(US7LevelAuthoringMode::mode_id))};
+    if (!mode) {
+        auto* const world{GEditor ? GEditor->GetEditorWorldContext().World() : nullptr};
+        auto* const level{IsValid(world) ? world->GetCurrentLevel() : nullptr};
+        if (!IsValid(level)) {
+            return MakeValue(true);
+        }
+        auto const document{ioj::editor::find_level_authoring_document(*level)};
+        if (!document) {
+            return MakeError(FText::FromString(document.error()));
+        }
+        if (!*document || (*document)->source_path.IsEmpty()) {
+            return MakeValue(true);
+        }
+        GLevelEditorModeTools().ActivateMode(US7LevelAuthoringMode::mode_id);
+        mode = Cast<US7LevelAuthoringMode>(
+            GLevelEditorModeTools().GetActiveScriptableMode(US7LevelAuthoringMode::mode_id));
+        if (!mode) {
+            return MakeError(LOCTEXT("S7ReplayUnavailable",
+                                     "Could not open the S7 authoring document before play."));
+        }
+    }
+    return MakeValue(mode->prepare_for_play());
 }
 
 auto FSandboxEditorModule::open_s7_level_script_editor() -> TSharedPtr<SDockTab> {

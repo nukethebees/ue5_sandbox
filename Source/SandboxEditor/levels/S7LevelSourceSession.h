@@ -13,6 +13,11 @@ class AS7LevelAuthoringDocument;
 namespace ioj::editor {
 using ES7SourceOverwritePolicy = levels::authoring::SourceOverwritePolicy;
 
+struct FS7LevelReadResult {
+    levels::LevelDefinition definition;
+    FString evaluated_source;
+};
+
 class SANDBOXEDITOR_API FS7LevelSourceSession final {
   public:
     [[nodiscard]] auto attach(AS7LevelAuthoringDocument& document) -> std::expected<void, FString>;
@@ -34,7 +39,10 @@ class SANDBOXEDITOR_API FS7LevelSourceSession final {
                                            ES7SourceOverwritePolicy overwrite)
         -> std::expected<void, FString>;
 
-    [[nodiscard]] auto read() const -> std::expected<levels::LevelDefinition, levels::Diagnostics>;
+    [[nodiscard]] auto read(settings::Settings base = {}) const
+        -> std::expected<levels::LevelDefinition, levels::Diagnostics>;
+    [[nodiscard]] auto read_replay(settings::Settings base) const
+        -> std::expected<FS7LevelReadResult, levels::Diagnostics>;
     [[nodiscard]] auto refresh_external_conflict() -> std::expected<void, FString>;
 
     [[nodiscard]] auto document() const -> AS7LevelAuthoringDocument*;

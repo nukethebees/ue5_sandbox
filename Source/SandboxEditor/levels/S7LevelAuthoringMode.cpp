@@ -6,6 +6,7 @@
 #include "SandboxEditor/levels/S7LevelObserverCamera.h"
 #include "SandboxEditor/levels/S7LevelPlayableSetup.h"
 #include <ioj/levels/authoring/level_definition_writer.h>
+#include <SpaceGame/s7/GameSettingsReader.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
 #include <SpaceGameS7/level_script_catalog.h>
@@ -175,9 +176,9 @@ void US7LevelAuthoringMode::Tick(FEditorViewportClient* const viewport_client,
         auto const definition{collect_s7_editor_level(*level, *document_)};
         observed_scene_source_.Empty();
         if (definition) {
-            auto const source{levels::authoring::emit_editor_level_source(*definition)};
+            auto const source{emit_s7_scene_source(*definition, *document_)};
             if (source) {
-                observed_scene_source_ = ioj::to_fstring(*source);
+                observed_scene_source_ = *source;
             }
         }
         observed_scene_ = scene ? TOptional{*scene} : NullOpt;
@@ -199,8 +200,8 @@ void US7LevelAuthoringMode::Tick(FEditorViewportClient* const viewport_client,
     }
     if (!disk_refreshed || state.disk_conflict) {
         set_status(LOCTEXT("ExternalChange",
-                           "The S7 source changed externally. Saving is blocked; an unchanged "
-                           "preview can still apply."));
+                           "The S7 source changed externally. Reload it before saving; "
+                           "replay will use the saved file."));
     } else if (state.preview == PreviewState::Valid) {
         if (was_disk_conflict) {
             set_status(LOCTEXT("ConflictCleared",
@@ -376,7 +377,6 @@ void US7LevelAuthoringMode::refresh_document() {
         create_document();
         return;
     }
-    document_->migrate_collision_grid_overrides();
     auto const attached{source_session_.attach(*document_)};
     if (!attached) {
         set_status(FText::FromString(attached.error()));
@@ -601,13 +601,30 @@ void US7LevelAuthoringMode::set_source_buffer(FString source) {
 }
 
 void US7LevelAuthoringMode::preview_apply() {
+    preview_.Reset();
+    source_session_.state().preview = PreviewState::None;
     auto* const level{current_level()};
     if (!IsValid(level) || !document_.IsValid() || source_session_.document() != document_.Get()) {
         set_status(LOCTEXT("NoSource", "Attach an S7 source buffer to this level first."));
         changed_.Broadcast();
         return;
     }
-    auto read{source_session_.read()};
+    if (!prepare_source_replay()) {
+        changed_.Broadcast();
+        return;
+    }
+    if (!IsValid(document_->level_config)) {
+        set_status(LOCTEXT("MissingReplayResources", "The level resources are unavailable."));
+        changed_.Broadcast();
+        return;
+    }
+    auto base{read_game_settings_source(s7_settings_path(*level), *document_->level_config)};
+    if (!base) {
+        set_status(FText::FromString(base.error()));
+        changed_.Broadcast();
+        return;
+    }
+    auto read{source_session_.read_replay(std::move(base->settings))};
     if (!read) {
         set_status(FText::FromString(ioj::to_fstring(levels::format_diagnostics(read.error()))));
         preview_.Reset();
@@ -615,7 +632,13 @@ void US7LevelAuthoringMode::preview_apply() {
         changed_.Broadcast();
         return;
     }
-    auto plan{make_s7_level_sync_plan(*level, *document_, MoveTemp(*read))};
+    auto plan{make_s7_level_sync_plan(*level,
+                                      *document_,
+                                      MoveTemp(read->definition),
+                                      FS7LevelReplaySources{source_session_.buffer(),
+                                                            MoveTemp(base->source),
+                                                            MoveTemp(read->evaluated_source),
+                                                            MoveTemp(base->evaluated_source)})};
     if (!plan) {
         set_status(FText::FromString(plan.error()));
         preview_.Reset();
@@ -641,8 +664,8 @@ void US7LevelAuthoringMode::preview_apply() {
         if (preview_->plan.metadata_changed) {
             document_changes.Add(TEXT("metadata"));
         }
-        if (preview_->plan.collision_grid_changed) {
-            document_changes.Add(TEXT("collision grid"));
+        if (preview_->plan.settings_changed) {
+            document_changes.Add(TEXT("settings"));
         }
         if (preview_->plan.viewpoint_changed) {
             document_changes.Add(TEXT("viewpoint"));
@@ -673,14 +696,121 @@ void US7LevelAuthoringMode::preview_apply() {
 }
 
 void US7LevelAuthoringMode::apply_preview() {
+    static_cast<void>(apply_current_source(true));
+}
+
+auto US7LevelAuthoringMode::prepare_for_play() -> bool {
+    if (!document_.IsValid()) {
+        return true;
+    }
+    return apply_current_source(false);
+}
+
+auto US7LevelAuthoringMode::prepare_source_replay() -> bool {
+    auto* const level{current_level()};
+    if (!IsValid(level) || !document_.IsValid()) {
+        return false;
+    }
+    auto const definition{collect_s7_editor_level(*level, *document_)};
+    auto const scene_source{
+        definition ? emit_s7_scene_source(*definition, *document_)
+                   : std::expected<FString, FString>{std::unexpect, definition.error()}};
+    auto const scene_changed{!scene_source ||
+                             (document_->synchronized_scene_source.IsEmpty()
+                                  ? !document_->entities.IsEmpty()
+                                  : *scene_source != document_->synchronized_scene_source)};
+    source_session_.state().scene_dirty = scene_changed;
+    if (source_session_.is_dirty() || scene_changed) {
+        auto const choice{FMessageDialog::Open(
+            EAppMsgType::YesNoCancel,
+            LOCTEXT("SaveBeforeReplay",
+                    "There are unsaved level changes. Save and continue?\n\n"
+                    "Yes: save and continue.\nNo: discard and continue.\nCancel: keep editing."))};
+        if (choice == EAppReturnType::Cancel) {
+            return false;
+        }
+        if (choice == EAppReturnType::Yes) {
+            if (scene_changed &&
+                source_session_.has_unapplied_buffer(document_->synchronized_source)) {
+                set_status(
+                    LOCTEXT("ConflictingUnsavedChanges",
+                            "Both the scene and source have changes. Save the source separately or "
+                            "resolve the scene changes before replaying."));
+                return false;
+            }
+            if (scene_changed) {
+                save_canonical_from_scene();
+                if (source_session_.state().scene_dirty) {
+                    return false;
+                }
+            } else {
+                save();
+            }
+            if (source_session_.is_dirty() || source_session_.path().IsEmpty()) {
+                return false;
+            }
+        }
+    }
+    if (source_session_.path().IsEmpty()) {
+        set_status(LOCTEXT("SaveBeforeReplayPath", "Save the level source before replaying it."));
+        return false;
+    }
+    auto const loaded{source_session_.reload()};
+    if (!loaded) {
+        set_status(FText::FromString(loaded.error()));
+        return false;
+    }
+    changed_.Broadcast();
+    return true;
+}
+
+auto US7LevelAuthoringMode::apply_current_source(bool const require_review) -> bool {
+    auto previous{preview_};
+    if (require_review && previous.IsSet()) {
+        auto* const level{current_level()};
+        if (!IsValid(level) || !document_.IsValid()) {
+            return false;
+        }
+        auto const current{
+            validate_s7_level_authoring_preview(*level, *document_, source_session_, *previous)};
+        if (!current) {
+            preview_.Reset();
+            source_session_.state().preview = PreviewState::Stale;
+            set_status(FText::FromString(current.error().message));
+            changed_.Broadcast();
+            return false;
+        }
+    }
+    preview_apply();
     auto* const level{current_level()};
     if (!IsValid(level) || !document_.IsValid() || !preview_.IsSet()) {
-        set_status(LOCTEXT("NoPreview", "Preview the source before applying it."));
+        return false;
+    }
+    auto const changed_inputs{
+        !previous.IsSet() || !previous->plan.sources.IsSet() ||
+        previous->plan.sources->evaluated_source != preview_->plan.sources->evaluated_source ||
+        previous->plan.sources->evaluated_base_settings_source !=
+            preview_->plan.sources->evaluated_base_settings_source ||
+        previous->plan.definition.settings() != preview_->plan.definition.settings()};
+    if (require_review && changed_inputs) {
+        set_status(LOCTEXT(
+            "ReplayChangedPreview",
+            "The saved source inputs changed. Review the refreshed preview, then apply it."));
         changed_.Broadcast();
-        return;
+        return false;
+    }
+    if (!require_review) {
+        auto const candidate{
+            validate_playable_s7_definition(preview_->plan.definition, *document_->level_config)};
+        if (!candidate) {
+            set_status(FText::FromString(candidate.error()));
+            changed_.Broadcast();
+            return false;
+        }
     }
     auto const applied{
         apply_s7_level_authoring_preview(*level, *document_, source_session_, preview_.GetValue())};
+    bool playable{false};
     if (!applied) {
         set_status(FText::FromString(applied.error().message));
         if (applied.error().code == ES7LevelPreviewError::Stale) {
@@ -692,6 +822,7 @@ void US7LevelAuthoringMode::apply_preview() {
         source_session_.state().preview = PreviewState::None;
         source_session_.state().scene_dirty = false;
         auto const validation{validate_playable_s7_level(*level, *document_)};
+        playable = validation.has_value();
         set_status(FText::FromString(
             validation ? FString::Printf(TEXT("The scene matches the S7 source. %s"), **validation)
                        : FString::Printf(TEXT("The scene matches the S7 source. Play validation: "
@@ -699,6 +830,7 @@ void US7LevelAuthoringMode::apply_preview() {
                                          *validation.error())));
     }
     changed_.Broadcast();
+    return applied.has_value() && (require_review || playable);
 }
 
 void US7LevelAuthoringMode::save() {
@@ -772,13 +904,13 @@ void US7LevelAuthoringMode::save_canonical_from_scene() {
         changed_.Broadcast();
         return;
     }
-    auto const emitted{levels::authoring::emit_editor_level_source(*definition)};
+    auto const emitted{emit_s7_scene_source(*definition, *document_)};
     if (!emitted) {
-        set_status(FText::FromString(ioj::to_fstring(levels::format_diagnostics(emitted.error()))));
+        set_status(FText::FromString(emitted.error()));
         changed_.Broadcast();
         return;
     }
-    auto const source{ioj::to_fstring(*emitted)};
+    auto const source{*emitted};
 
     std::expected<void, FString> saved;
     if (source_session_.path().IsEmpty()) {
@@ -808,6 +940,8 @@ void US7LevelAuthoringMode::save_canonical_from_scene() {
     update_document_source_path();
     document_->synchronized_source = source;
     document_->synchronized_scene_source = source;
+    document_->evaluated_level_source = source;
+    source_session_.state().scene_dirty = false;
     set_status(FText::FromString(
         FString::Printf(TEXT("Saved canonical scene state with %d entities to %s."),
                         static_cast<int32>(definition->entities().size()),

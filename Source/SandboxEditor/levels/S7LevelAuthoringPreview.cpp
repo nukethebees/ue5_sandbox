@@ -157,13 +157,12 @@ auto apply_s7_level_authoring_preview(ULevel& level,
             FS7LevelPreviewError{ES7LevelPreviewError::Execution, applied.error()}};
     }
     document.Modify();
-    document.synchronized_source = to_fstring(source_session.state().buffer_text);
     auto const definition{collect_s7_editor_level(level, document)};
     document.synchronized_scene_source.Empty();
     if (definition) {
-        auto const source{levels::authoring::emit_editor_level_source(*definition)};
+        auto const source{emit_s7_scene_source(*definition, document)};
         if (source) {
-            document.synchronized_scene_source = to_fstring(*source);
+            document.synchronized_scene_source = *source;
         }
     }
     return {};

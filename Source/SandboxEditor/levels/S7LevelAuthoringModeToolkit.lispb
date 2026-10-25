@@ -35,9 +35,9 @@
             (authoring-action "ValidatePlayableLevel" "Validate Level" validate_playable_level))
           (authoring-row
             (SButton
-              :Text (loc "FS7LevelAuthoringModeToolkit" "EditLevelConfig" "Edit Grid Defaults")
+              :Text (loc "FS7LevelAuthoringModeToolkit" "EditLevelConfig" "Edit Resources")
               :ToolTipText (loc "FS7LevelAuthoringModeToolkit" "EditLevelConfigTooltip"
-                "Edit shared defaults. Changes may affect multiple S7 levels.")
+                "Edit shared game resources. Author simulation settings in the S7 sources.")
               :OnClicked (method open_level_config))
             (SBox))
           (authoring-row

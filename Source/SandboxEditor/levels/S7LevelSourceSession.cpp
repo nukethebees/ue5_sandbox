@@ -2,6 +2,8 @@
 
 #include "SandboxEditor/levels/S7LevelAuthoringDocument.h"
 #include <ioj/files.h>
+#include <ioj/levels/authoring/level_definition_writer.h>
+#include <ioj/levels/authoring/level_parser.h>
 #include <SpaceGameS7/level_script_catalog.h>
 
 #include <SandboxCoreEngine/strings.h>
@@ -126,8 +128,15 @@ auto FS7LevelSourceSession::has_unapplied_buffer(FStringView const synchronized_
     return session_.state().unapplied(text(synchronized_source));
 }
 
-auto FS7LevelSourceSession::read() const
+auto FS7LevelSourceSession::read(settings::Settings base) const
     -> std::expected<levels::LevelDefinition, levels::Diagnostics> {
+    return read_replay(std::move(base)).transform([](FS7LevelReadResult&& result) {
+        return std::move(result.definition);
+    });
+}
+
+auto FS7LevelSourceSession::read_replay(settings::Settings base) const
+    -> std::expected<FS7LevelReadResult, levels::Diagnostics> {
     if (!is_attached()) {
         return std::unexpected{
             levels::Diagnostics{{levels::DiagnosticCode::ExpectedRecord,
@@ -138,7 +147,17 @@ auto FS7LevelSourceSession::read() const
         session_.path().empty()
             ? s7_source_session_detail::path(levels::authoring::default_level_script_directory())
             : session_.path().parent_path()};
-    return levels::authoring::DefinitionReader{root / "Libraries"}.read_level_source(
-        session_.buffer());
+    auto ast{
+        levels::authoring::DefinitionReader{root / "Libraries"}.read_source_ast(session_.buffer())};
+    if (!ast) {
+        return std::unexpected{std::move(ast.error())};
+    }
+    auto definition{levels::authoring::parse_level(*ast, ast->root, std::move(base))};
+    if (!definition) {
+        return std::unexpected{std::move(definition.error())};
+    }
+    return FS7LevelReadResult{
+        std::move(*definition),
+        to_fstring(levels::authoring::emit_evaluated_source(*ast, ast->root))};
 }
 }

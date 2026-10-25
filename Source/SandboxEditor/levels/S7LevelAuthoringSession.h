@@ -11,6 +11,13 @@ class AS7LevelAuthoringDocument;
 class ULevel;
 
 namespace ioj::editor {
+SANDBOXEDITOR_API auto read_s7_document_settings(AS7LevelAuthoringDocument const& document)
+    -> std::expected<settings::Settings, FString>;
+SANDBOXEDITOR_API auto s7_settings_path(ULevel const& level) -> FString;
+SANDBOXEDITOR_API auto emit_s7_scene_source(levels::LevelDefinition const& definition,
+                                            AS7LevelAuthoringDocument const& document)
+    -> std::expected<FString, FString>;
+
 struct FS7LevelBindingRepairResult {
     int32 removed_bindings{};
     int32 removed_references{};

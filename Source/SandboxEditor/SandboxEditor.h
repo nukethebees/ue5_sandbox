@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Delegates/IDelegateInstance.h"
 #include "Modules/ModuleManager.h"
+#include <IPIEAuthorizer.h>
 
 class FMenuBarBuilder;
 class FMenuBuilder;
@@ -18,6 +19,7 @@ class SS7LevelScriptEditor;
 
 class SANDBOXEDITOR_API FSandboxEditorModule
     : public IModuleInterface
+    , public IPIEAuthorizer
     , public ioj::LogMsgMixin<"FSandboxEditorModule"> {
   public:
     static FName const s7_level_script_editor_tab_id;
@@ -26,6 +28,9 @@ class SANDBOXEDITOR_API FSandboxEditorModule
     virtual void ShutdownModule() override;
     static auto open_s7_level_script_editor() -> TSharedPtr<SDockTab>;
   private:
+    auto IsPIEAuthorizedInternal(bool simulate) const -> TValueOrError<bool, FText> override;
+    auto RequestPIEPermissionInternal(bool simulate) const -> TValueOrError<bool, FText> override;
+
     auto spawn_s7_level_script_editor(FSpawnTabArgs const& arguments) -> TSharedRef<SDockTab>;
     void create_sandbox_editor_menus();
 

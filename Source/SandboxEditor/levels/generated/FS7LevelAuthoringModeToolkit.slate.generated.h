@@ -94,11 +94,11 @@ struct FS7LevelAuthoringModeToolkitBuilder {
                              [SNew(SButton)
                                   .Text(NSLOCTEXT("FS7LevelAuthoringModeToolkit",
                                                   "EditLevelConfig",
-                                                  "Edit Grid Defaults"))
+                                                  "Edit Resources"))
                                   .ToolTipText(NSLOCTEXT("FS7LevelAuthoringModeToolkit",
                                                          "EditLevelConfigTooltip",
-                                                         "Edit shared defaults. Changes may affect "
-                                                         "multiple S7 levels."))
+                                                         "Edit shared game resources. Author "
+                                                         "simulation settings in the S7 sources."))
                                   .OnClicked(&self_, &ThisClass::open_level_config)] +
                          SandboxUI::Slate::hbox_fill_slot(1.0f, FMargin{2.0f})[SNew(SBox)]] +
                     SandboxUI::Slate::vbox_auto_slot()

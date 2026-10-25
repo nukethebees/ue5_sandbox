@@ -5,6 +5,7 @@
 #include "SandboxEditor/levels/S7LevelAuthoringSession.h"
 #include <ioj/levels/authoring/editor_support.h>
 #include <ioj/levels/authoring/scene_reconciliation.h>
+#include <ioj/s7/simulation_settings_reader.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 
 #include <SandboxCoreEngine/strings.h>
@@ -73,17 +74,25 @@ auto name(levels::EntityId const& id) -> FName {
 
 auto make_s7_level_sync_plan(ULevel const& level,
                              AS7LevelAuthoringDocument const& document,
-                             levels::LevelDefinition definition)
+                             levels::LevelDefinition definition,
+                             TOptional<FS7LevelReplaySources> sources)
     -> std::expected<FS7LevelSyncPlan, FString> {
     auto support{levels::authoring::check_editor_support(definition)};
     if (!support) {
         return std::unexpected{to_fstring(levels::format_diagnostics(support.error()))};
     }
+    auto const simulation{s7::resolve_simulation_settings(definition.settings())};
+    if (!simulation) {
+        return std::unexpected{to_fstring(levels::format_diagnostics(simulation.error()))};
+    }
     auto changes{s7_level_reconciliation_detail::prepare_sync(level, document, definition)};
     if (!changes) {
         return std::unexpected{changes.error()};
     }
-    return FS7LevelSyncPlan{MoveTemp(changes->plan), MoveTemp(definition)};
+    if (changes->plan.settings_changed && !sources.IsSet()) {
+        return std::unexpected{TEXT("Settings changes require their level and base source text.")};
+    }
+    return FS7LevelSyncPlan{MoveTemp(changes->plan), MoveTemp(definition), MoveTemp(sources)};
 }
 
 auto apply_s7_level_sync_plan(ULevel& level,
@@ -165,10 +174,12 @@ auto apply_s7_level_sync_plan(ULevel& level,
     }
 
     document.Modify();
-    auto const grid{definition.collision_grid().value_or(levels::LevelCollisionGridDefinition{})};
-    document.level_size = to_unreal(Vector3f{grid.level_size.value_or(Vector3d{})});
-    document.grid_cell_size = to_unreal(Vector3f{grid.cell_size.value_or(Vector3d{})});
-    document.grid_override_schema_version = 1;
+    if (plan.sources.IsSet()) {
+        document.synchronized_source = plan.sources->source;
+        document.synchronized_base_settings_source = plan.sources->base_settings_source;
+        document.evaluated_level_source = plan.sources->evaluated_source;
+        document.evaluated_base_settings_source = plan.sources->evaluated_base_settings_source;
+    }
     document.level_id = FName{to_fstring(definition.metadata().id.value)};
     document.title = to_fstring(definition.metadata().title);
     document.description = to_fstring(definition.metadata().description);

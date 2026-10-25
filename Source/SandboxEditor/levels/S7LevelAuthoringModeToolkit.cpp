@@ -2,6 +2,7 @@
 
 #include "SandboxEditor/levels/S7LevelAuthoringDocument.h"
 #include "SandboxEditor/levels/S7LevelAuthoringMode.h"
+#include "SandboxEditor/levels/S7LevelAuthoringSession.h"
 #include "SandboxEditor/SandboxEditor.h"
 #include <ioj/sim/collision/collision_grid.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
@@ -63,14 +64,19 @@ auto FS7LevelAuthoringModeToolkit::grid_summary() const -> FText {
         return LOCTEXT("NoActiveConfig", "Level config: none");
     }
 
-    auto const collision_grid{document->resolve_collision_grid(config->collision_grid)};
+    auto const settings{ioj::editor::read_s7_document_settings(*document)};
+    if (!settings) {
+        return FText::FromString(settings.error());
+    }
+    auto collision_grid{config->collision_grid};
+    collision_grid.grid_size = ioj::to_unreal(settings->collision_grid.level_size);
+    collision_grid.cell_size = ioj::to_unreal(settings->collision_grid.cell_size);
     auto const dimensions{collision_grid.calculate_grid_dimensions()};
     auto const half_bounds{ioj::to_unreal(ioj::sim::collision::grid_half_size(
         {{dimensions.X, dimensions.Y, dimensions.Z}, ioj::Vector3f{collision_grid.cell_size}}))};
-    return FText::FromString(
-        FString::Printf(TEXT("Shared grid defaults: %s | Effective grid bounds: +/-%s cm"),
-                        *config->GetName(),
-                        *half_bounds.ToString()));
+    return FText::FromString(FString::Printf(TEXT("Resources: %s | Resolved grid bounds: +/-%s cm"),
+                                             *config->GetName(),
+                                             *half_bounds.ToString()));
 }
 
 void FS7LevelAuthoringModeToolkit::refresh() {
