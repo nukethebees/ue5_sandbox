@@ -29,6 +29,7 @@ target_include_directories(sandbox-image-tests PRIVATE include src tests)
 target_link_libraries(sandbox-image-tests PRIVATE
   sandbox::native_defaults
   GTest::gtest_main
+  native-test-support
   ioj::test_pch
 )
 ioj_enable_warnings(sandbox-image-tests)

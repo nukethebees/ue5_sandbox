@@ -46,11 +46,12 @@ TEST(RecordSettings, AppliesPartialLayersAndDistinguishesExplicitEmptyOptional) 
     ASSERT_TRUE(apply("'(:actor :max-health 100 :weapon (:weapon :turn-speed 4))"));
     EXPECT_PRED_FORMAT2(structurally_equal, (ActorSettings{100, {20, 4.f}}), target);
     ASSERT_TRUE(apply("'(:actor :optional-limit :none)"));
-    EXPECT_FALSE(target.optional_limit);
+    ActorSettings const without_limit{100, {20, 4.f}, std::nullopt};
+    EXPECT_PRED_FORMAT2(structurally_equal, without_limit, target);
     ASSERT_TRUE(apply("'(:actor)"));
-    EXPECT_FALSE(target.optional_limit);
+    EXPECT_PRED_FORMAT2(structurally_equal, without_limit, target);
     ASSERT_TRUE(apply("'(:actor :optional-limit 3)"));
-    EXPECT_EQ(target.optional_limit, 3);
+    EXPECT_PRED_FORMAT2(structurally_equal, (ActorSettings{100, {20, 4.f}, 3}), target);
 }
 
 TEST(RecordSettings, AppliesCrossNamespaceNestedOverridesAndEmptyPatches) {
@@ -77,8 +78,8 @@ TEST(GeneratedS7Reader, ConstrainedRecordsValidateAndOverrideAsWholeValues) {
     auto omitted{override_source("'(:ranges :enabled #f)", target)};
     ASSERT_TRUE(omitted);
     target = *omitted;
-    EXPECT_EQ(target.range.get().minimum, 20);
-    EXPECT_FALSE(target.enabled);
+    EXPECT_PRED_FORMAT2(
+        structurally_equal, (RangeSettings{*Range::try_make({20, 30}), false}), target);
 
     auto defaults{
         override_source<RangeSettings>("'(:ranges :range (:range :minimum 0 :maximum 10))")};
@@ -107,8 +108,9 @@ TEST(GeneratedS7Reader, ReadsSparseTypedOverridesWithNestedLayersAndExplicitEmpt
     auto partial{override_source(
         "'(:child :count 0)", ReadableChild{.name = *ioj::NonEmptyString::try_make("original")})};
     ASSERT_TRUE(partial);
-    EXPECT_EQ(partial->name.get_ref(), "original");
-    EXPECT_EQ(partial->count, 0);
+    EXPECT_PRED_FORMAT2(structurally_equal,
+                        (ReadableChild{*ioj::NonEmptyString::try_make("original"), 0}),
+                        *partial);
 
     Interpreter interpreter;
     auto ast{interpreter.evaluate_ast(R"('(:settings-layers
@@ -141,8 +143,8 @@ TEST(GeneratedS7Reader, ReadsEmptyRecursiveAndCrossModuleRecords) {
     auto const recursive{read_source<RecursiveReadable>(
         "'(:recursive :children ((:recursive :children ((:recursive)))))")};
     ASSERT_TRUE(recursive);
-    ASSERT_EQ(recursive->children.size(), 1u);
-    EXPECT_EQ(recursive->children.front().children.size(), 1u);
+    RecursiveReadable const expected{{RecursiveReadable{{RecursiveReadable{}}}}};
+    EXPECT_PRED_FORMAT2(structurally_equal, expected, *recursive);
     auto const dependency{
         read_source<ReaderDependency>(R"('(:dependent :child (:child :name "nested")))")};
     ASSERT_TRUE(dependency);
@@ -241,8 +243,8 @@ TEST(GeneratedS7Reader, DecodesFixedPositionalRecordsAndChecksArityAndConstraint
     EXPECT_FALSE(read_source<EmptyPositional>("'(:empty-position 1)"));
     auto result{read_source<PositionalChild>(R"('(:position "name" 3))")};
     ASSERT_TRUE(result);
-    EXPECT_EQ(result->name.get_ref(), "name");
-    EXPECT_EQ(result->count, 3);
+    EXPECT_PRED_FORMAT2(
+        structurally_equal, (PositionalChild{*ioj::NonEmptyString::try_make("name"), 3}), *result);
     for (auto source : {R"('(:position "name"))",
                         R"('(:position "name" 3 4))",
                         R"('(:wrong "name" 3))",
@@ -259,12 +261,13 @@ TEST(GeneratedS7Reader, RequiresFieldsEvenWhenTheRecordHasValidDefaults) {
     EXPECT_FALSE(read_source<DefaultReadable>("'(:default)"));
     EXPECT_FALSE(read_source<DefaultReadable>("'(:settings-layers)"));
     EXPECT_FALSE(read_source<DefaultReadable>("'(:settings-layers (:default :maybe 2))"));
-    EXPECT_TRUE(read_source<DefaultReadable>(
-        "'(:settings-layers (:default :count 2) (:default :maybe 3))"));
+    auto const layered{read_source<DefaultReadable>(
+        "'(:settings-layers (:default :count 2) (:default :maybe 3))")};
+    ASSERT_TRUE(layered);
+    EXPECT_PRED_FORMAT2(structurally_equal, (DefaultReadable{2, 3}), *layered);
     auto result{read_source<DefaultReadable>("'(:default :count 2)")};
     ASSERT_TRUE(result);
-    EXPECT_EQ(result->count, 2);
-    EXPECT_EQ(result->maybe, 7);
+    EXPECT_PRED_FORMAT2(structurally_equal, DefaultReadable{.count = 2}, *result);
     EXPECT_FALSE(read_source<DefaultReadable>("'(:default :count 2 :maybe 1 :maybe 2)"));
 }
 
@@ -296,10 +299,10 @@ TEST(GeneratedS7Reader, OverridesEngagedOptionalRecordsWithoutLosingPresence) {
     auto ast{interpreter.evaluate_ast("'(:child :count 2)").value()};
     auto result{read_override(Reader{ast}, ast.root, "child", initial)};
     ASSERT_TRUE(result);
-    ASSERT_TRUE(*result);
-    EXPECT_EQ((*result)->name.get_ref(), "original");
-    EXPECT_EQ((*result)->count, 2);
-    EXPECT_EQ(initial->count, 5);
+    auto expected{initial};
+    expected->count = 2;
+    EXPECT_PRED_FORMAT2(structurally_equal, expected, *result);
+    EXPECT_PRED_FORMAT2(structurally_equal, std::optional{child}, initial);
     EXPECT_FALSE(read_override(Reader{ast}, ast.root, "child", std::optional<ReadableChild>{}));
 }
 

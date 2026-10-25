@@ -2,6 +2,7 @@ add_executable(mesh-gen-tests mesh_generation_tests.cpp)
 target_link_libraries(mesh-gen-tests PRIVATE
   mesh-gen
   GTest::gtest_main
+  native-test-support
   sandbox::native_defaults
 )
 ioj_enable_warnings(mesh-gen-tests)

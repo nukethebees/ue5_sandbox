@@ -1,3 +1,6 @@
+#include <ioj/testing/math_diff.h>
+#include <ioj/testing/structural_diff.h>
+
 #include <mesh_gen/MeshGeneration.h>
 
 #include <gtest/gtest.h>
@@ -8,7 +11,20 @@
 #include <limits>
 #include <vector>
 
+namespace mesh_gen {
+void diff_members(MeshData const& expected, MeshData const& actual, ioj::DiffContext& context) {
+    context.diff("positions", expected.positions, actual.positions);
+    context.diff("normals", expected.normals, actual.normals);
+    context.diff("uvs", expected.uvs, actual.uvs);
+    context.diff("indices", expected.indices, actual.indices);
+    context.diff("triangle_material_roles",
+                 expected.triangle_material_roles,
+                 actual.triangle_material_roles);
+}
+}
+
 namespace mesh_gen::tests {
+using ioj::testing::structurally_equal;
 namespace {
 
 [[nodiscard]] auto subtract(Vec3f const left, Vec3f const right) -> Vec3f {
@@ -94,12 +110,6 @@ void expect_valid_geometry(MeshData const& mesh) {
     }
 }
 
-[[nodiscard]] auto same_mesh(MeshData const& left, MeshData const& right) -> bool {
-    return left.positions == right.positions && left.normals == right.normals &&
-           left.uvs == right.uvs && left.indices == right.indices &&
-           left.triangle_material_roles == right.triangle_material_roles;
-}
-
 }
 
 struct PrimitiveCase {
@@ -120,7 +130,7 @@ TEST_P(PrimitiveGenerators, ProducesExpectedGeometryDeterministically) {
     expect_valid_geometry(mesh);
 
     auto const request{make_default_request(test.shape)};
-    EXPECT_TRUE(same_mesh(generate_mesh(request), generate_mesh(request)));
+    EXPECT_PRED_FORMAT2(structurally_equal, generate_mesh(request), generate_mesh(request));
 }
 
 PrimitiveCase const primitive_cases[]{
@@ -292,7 +302,7 @@ TEST(AssemblyGeneration, ValidatesVisibilityAndDeterminism) {
     EXPECT_TRUE(validate_assembly(parts).empty());
     auto const first{generate_assembly(parts)};
     auto const second{generate_assembly(parts)};
-    EXPECT_TRUE(same_mesh(first, second));
+    EXPECT_PRED_FORMAT2(structurally_equal, first, second);
     EXPECT_EQ(describe_assembly(parts).find("version=1;assembly;part0={"), 0);
 
     parts[1].visible = false;

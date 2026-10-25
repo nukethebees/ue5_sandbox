@@ -5,11 +5,78 @@
 
 #include "ioj/levels/identifiers.h"
 
+#include <cassert>
+#include <concepts>
+#include <cstdint>
 #include <string>
+#include <string_view>
+#include <type_traits>
+#include <utility>
 #include <vector>
 
 namespace ioj::levels {
 struct CampaignDefinition {
+    enum class Field : std::uint8_t {
+        id,
+        title,
+        level_ids,
+        Count,
+    };
+
+    template <Field Selected, typename Self>
+    static constexpr decltype(auto) get_field(Self& self)
+        requires (std::same_as<std::remove_const_t<Self>, CampaignDefinition> &&
+                  Selected < Field::Count)
+    {
+        if constexpr (Selected == Field::id) {
+            return (self.id);
+        }
+        if constexpr (Selected == Field::title) {
+            return (self.title);
+        }
+        if constexpr (Selected == Field::level_ids) {
+            return (self.level_ids);
+        }
+    }
+
+    template <Field Selected, typename Self, typename Visitor>
+    static constexpr void invoke_field(Self& self, Visitor&& visitor) {
+        std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
+    }
+
+    static constexpr std::string_view field_name(Field field) {
+        switch (field) {
+            case Field::id:
+                return "id";
+            case Field::title:
+                return "title";
+            case Field::level_ids:
+                return "level_ids";
+            case Field::Count:
+                break;
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
+    template <typename Self, typename Visitor>
+    static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
+        requires std::same_as<std::remove_const_t<Self>, CampaignDefinition>
+    {
+        switch (field) {
+            case Field::id:
+                return invoke_field<Field::id>(self, std::forward<Visitor>(visitor));
+            case Field::title:
+                return invoke_field<Field::title>(self, std::forward<Visitor>(visitor));
+            case Field::level_ids:
+                return invoke_field<Field::level_ids>(self, std::forward<Visitor>(visitor));
+            case Field::Count:
+                break;
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
     CampaignId id{};
     std::string title{};
     std::vector<ioj::levels::LevelId> level_ids{};

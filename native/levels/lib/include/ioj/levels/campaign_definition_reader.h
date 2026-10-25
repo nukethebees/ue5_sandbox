@@ -15,33 +15,18 @@ namespace ioj::s7 {
 template <>
 struct TypeReader<levels::CampaignDefinition> : RecordReader<levels::CampaignDefinition> {
     static void decode(DecodeContext context, value_type& result) {
-        decode_record<Field>(context,
-                             "campaign",
-                             field_names,
-                             ([&](Field const field, auto const& read) {
-                                 switch (field) {
-                                     case Field::id:
-                                         read(result.id);
-                                         break;
-                                     case Field::title:
-                                         read(result.title);
-                                         break;
-                                     case Field::level_ids:
-                                         read(result.level_ids);
-                                         break;
-                                     case Field::Count:
-                                         std::unreachable();
-                                 }
-                             }),
-                             required);
+        decode_record<Field>(
+            context,
+            "campaign",
+            field_names,
+            ([&](Field selected, auto const& read) {
+                value_type::visit_field(
+                    result, selected, [&]<Field field>(auto& member) { read(member); });
+            }),
+            required);
     }
   private:
-    enum class Field : std::uint8_t {
-        id,
-        title,
-        level_ids,
-        Count,
-    };
+    using Field = value_type::Field;
 
     static constexpr std::array<std::string_view, 3> field_names{"id", "title", "levels"};
     static constexpr auto required{

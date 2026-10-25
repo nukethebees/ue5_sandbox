@@ -1,4 +1,6 @@
 #include <ioj/levels/authoring/definition_reader.h>
+#include <ioj/testing/math_diff.h>
+#include <ioj/testing/structural_diff.h>
 
 #include <gtest/gtest.h>
 
@@ -47,11 +49,9 @@ TEST(S7LevelDefinition, DecodesPlayerlessCameraDefinition) {
     ASSERT_TRUE(result) << format_diagnostics(result.error());
     EXPECT_TRUE(result->player_entity_id().empty());
     EXPECT_FALSE(result->metadata().par_time_seconds);
-    ASSERT_TRUE(result->camera());
-    auto const& camera{*result->camera()};
-    EXPECT_EQ(camera.target_entity_ids.size(), 2u);
-    EXPECT_EQ(camera.offset_direction, (Vector3d{-1., -1., .5}));
-    EXPECT_EQ(camera.distance, 10000.);
+    std::optional<LevelCameraDefinition> const expected{
+        {{EntityId{"blue-capital"}, EntityId{"red-capital"}}, {-1., -1., .5}, 10000.}};
+    EXPECT_PRED_FORMAT2(ioj::testing::structurally_equal, expected, result->camera());
 }
 
 TEST(S7LevelDefinition, DecodesTimedMissionValues) {

@@ -6,10 +6,77 @@
 #include "ioj/levels/identifiers.h"
 #include "ioj/vector_value_math.h"
 
+#include <cassert>
+#include <concepts>
+#include <cstdint>
+#include <string_view>
+#include <type_traits>
+#include <utility>
 #include <vector>
 
 namespace ioj::levels {
 struct LevelCameraDefinition {
+    enum class Field : std::uint8_t {
+        target_entity_ids,
+        offset_direction,
+        distance,
+        Count,
+    };
+
+    template <Field Selected, typename Self>
+    static constexpr decltype(auto) get_field(Self& self)
+        requires (std::same_as<std::remove_const_t<Self>, LevelCameraDefinition> &&
+                  Selected < Field::Count)
+    {
+        if constexpr (Selected == Field::target_entity_ids) {
+            return (self.target_entity_ids);
+        }
+        if constexpr (Selected == Field::offset_direction) {
+            return (self.offset_direction);
+        }
+        if constexpr (Selected == Field::distance) {
+            return (self.distance);
+        }
+    }
+
+    template <Field Selected, typename Self, typename Visitor>
+    static constexpr void invoke_field(Self& self, Visitor&& visitor) {
+        std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
+    }
+
+    static constexpr std::string_view field_name(Field field) {
+        switch (field) {
+            case Field::target_entity_ids:
+                return "target_entity_ids";
+            case Field::offset_direction:
+                return "offset_direction";
+            case Field::distance:
+                return "distance";
+            case Field::Count:
+                break;
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
+    template <typename Self, typename Visitor>
+    static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
+        requires std::same_as<std::remove_const_t<Self>, LevelCameraDefinition>
+    {
+        switch (field) {
+            case Field::target_entity_ids:
+                return invoke_field<Field::target_entity_ids>(self, std::forward<Visitor>(visitor));
+            case Field::offset_direction:
+                return invoke_field<Field::offset_direction>(self, std::forward<Visitor>(visitor));
+            case Field::distance:
+                return invoke_field<Field::distance>(self, std::forward<Visitor>(visitor));
+            case Field::Count:
+                break;
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
     std::vector<ioj::levels::EntityId> target_entity_ids{};
     Vector3d offset_direction{};
     double distance{};

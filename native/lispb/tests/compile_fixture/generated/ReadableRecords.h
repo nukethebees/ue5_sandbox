@@ -43,16 +43,167 @@ struct EmptyReadable {};
 struct EmptyPositional {};
 
 struct PositionalChild {
+    enum class Field : std::uint8_t {
+        name,
+        count,
+        Count,
+    };
+
+    template <Field Selected, typename Self>
+    static constexpr decltype(auto) get_field(Self& self)
+        requires (std::same_as<std::remove_const_t<Self>, PositionalChild> &&
+                  Selected < Field::Count)
+    {
+        if constexpr (Selected == Field::name) {
+            return (self.name);
+        }
+        if constexpr (Selected == Field::count) {
+            return (self.count);
+        }
+    }
+
+    template <Field Selected, typename Self, typename Visitor>
+    static constexpr void invoke_field(Self& self, Visitor&& visitor) {
+        std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
+    }
+
+    static constexpr std::string_view field_name(Field field) {
+        switch (field) {
+            case Field::name:
+                return "name";
+            case Field::count:
+                return "count";
+            case Field::Count:
+                break;
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
+    template <typename Self, typename Visitor>
+    static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
+        requires std::same_as<std::remove_const_t<Self>, PositionalChild>
+    {
+        switch (field) {
+            case Field::name:
+                return invoke_field<Field::name>(self, std::forward<Visitor>(visitor));
+            case Field::count:
+                return invoke_field<Field::count>(self, std::forward<Visitor>(visitor));
+            case Field::Count:
+                break;
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
     ioj::NonEmptyString name;
     int count;
 };
 
 struct DefaultReadable {
+    enum class Field : std::uint8_t {
+        count,
+        maybe,
+        Count,
+    };
+
+    template <Field Selected, typename Self>
+    static constexpr decltype(auto) get_field(Self& self)
+        requires (std::same_as<std::remove_const_t<Self>, DefaultReadable> &&
+                  Selected < Field::Count)
+    {
+        if constexpr (Selected == Field::count) {
+            return (self.count);
+        }
+        if constexpr (Selected == Field::maybe) {
+            return (self.maybe);
+        }
+    }
+
+    template <Field Selected, typename Self, typename Visitor>
+    static constexpr void invoke_field(Self& self, Visitor&& visitor) {
+        std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
+    }
+
+    static constexpr std::string_view field_name(Field field) {
+        switch (field) {
+            case Field::count:
+                return "count";
+            case Field::maybe:
+                return "maybe";
+            case Field::Count:
+                break;
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
+    template <typename Self, typename Visitor>
+    static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
+        requires std::same_as<std::remove_const_t<Self>, DefaultReadable>
+    {
+        switch (field) {
+            case Field::count:
+                return invoke_field<Field::count>(self, std::forward<Visitor>(visitor));
+            case Field::maybe:
+                return invoke_field<Field::maybe>(self, std::forward<Visitor>(visitor));
+            case Field::Count:
+                break;
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
     int count{2};
     std::optional<int> maybe{7};
 };
 
 struct RecursiveReadable {
+    enum class Field : std::uint8_t {
+        children,
+        Count,
+    };
+
+    template <Field Selected, typename Self>
+    static constexpr decltype(auto) get_field(Self& self)
+        requires (std::same_as<std::remove_const_t<Self>, RecursiveReadable> &&
+                  Selected < Field::Count)
+    {
+        if constexpr (Selected == Field::children) {
+            return (self.children);
+        }
+    }
+
+    template <Field Selected, typename Self, typename Visitor>
+    static constexpr void invoke_field(Self& self, Visitor&& visitor) {
+        std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
+    }
+
+    static constexpr std::string_view field_name(Field field) {
+        switch (field) {
+            case Field::children:
+                return "children";
+            case Field::Count:
+                break;
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
+    template <typename Self, typename Visitor>
+    static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
+        requires std::same_as<std::remove_const_t<Self>, RecursiveReadable>
+    {
+        switch (field) {
+            case Field::children:
+                return invoke_field<Field::children>(self, std::forward<Visitor>(visitor));
+            case Field::Count:
+                break;
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
     std::vector<codegen_compile_fixture::RecursiveReadable> children{};
 };
 

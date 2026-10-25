@@ -99,29 +99,18 @@ template <>
 struct TypeReader<codegen_compile_fixture::DefaultReadable>
     : RecordReader<codegen_compile_fixture::DefaultReadable> {
     static void decode(DecodeContext context, value_type& result) {
-        decode_record<Field>(context,
-                             "default",
-                             field_names,
-                             ([&](Field const field, auto const& read) {
-                                 switch (field) {
-                                     case Field::count:
-                                         read(result.count);
-                                         break;
-                                     case Field::maybe:
-                                         read(result.maybe);
-                                         break;
-                                     case Field::Count:
-                                         std::unreachable();
-                                 }
-                             }),
-                             required);
+        decode_record<Field>(
+            context,
+            "default",
+            field_names,
+            ([&](Field selected, auto const& read) {
+                value_type::visit_field(
+                    result, selected, [&]<Field field>(auto& member) { read(member); });
+            }),
+            required);
     }
   private:
-    enum class Field : std::uint8_t {
-        count,
-        maybe,
-        Count,
-    };
+    using Field = value_type::Field;
 
     static constexpr std::array<std::string_view, 2> field_names{"count", "maybe"};
     static constexpr auto required{required_fields<Field>({Field::count})};
@@ -132,21 +121,13 @@ struct TypeReader<codegen_compile_fixture::RecursiveReadable>
     : RecordReader<codegen_compile_fixture::RecursiveReadable> {
     static void decode(DecodeContext context, value_type& result) {
         decode_record<Field>(
-            context, "recursive", field_names, ([&](Field const field, auto const& read) {
-                switch (field) {
-                    case Field::children:
-                        read(result.children);
-                        break;
-                    case Field::Count:
-                        std::unreachable();
-                }
+            context, "recursive", field_names, ([&](Field selected, auto const& read) {
+                value_type::visit_field(
+                    result, selected, [&]<Field field>(auto& member) { read(member); });
             }));
     }
   private:
-    enum class Field : std::uint8_t {
-        children,
-        Count,
-    };
+    using Field = value_type::Field;
 
     static constexpr std::array<std::string_view, 1> field_names{"children"};
 };

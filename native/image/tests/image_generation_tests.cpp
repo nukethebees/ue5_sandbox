@@ -1,3 +1,5 @@
+#include <ioj/testing/structural_diff.h>
+
 #include "sandbox/image/image_generation.h"
 
 #include <gtest/gtest.h>
@@ -9,7 +11,26 @@
 #include <string_view>
 #include <unordered_set>
 
+namespace sandbox::image {
+void diff_members(Pixel const& expected, Pixel const& actual, ioj::DiffContext& context) {
+    context.diff("red", expected.red, actual.red);
+    context.diff("green", expected.green, actual.green);
+    context.diff("blue", expected.blue, actual.blue);
+    context.diff("alpha", expected.alpha, actual.alpha);
+}
+
+void diff_members(GeneratedImage const& expected,
+                  GeneratedImage const& actual,
+                  ioj::DiffContext& context) {
+    context.diff("width", expected.width, actual.width);
+    context.diff("height", expected.height, actual.height);
+    context.diff("pixels", expected.pixels, actual.pixels);
+    context.diff("error", expected.error, actual.error);
+}
+}
+
 namespace sandbox::image::tests {
+using ioj::testing::structurally_equal;
 
 auto pixel_at(GeneratedImage const& image, std::int32_t x, std::int32_t y) -> Pixel const& {
     return image.pixels[static_cast<std::size_t>(y * image.width + x)];
@@ -176,7 +197,7 @@ TEST(GenerationRequests, SeedChangesFlowThroughUnifiedRequests) {
     auto second{first};
     second.starfield.seed += 1;
 
-    EXPECT_EQ(generate_image(first).pixels, generate_image(first).pixels);
+    EXPECT_PRED_FORMAT2(structurally_equal, generate_image(first), generate_image(first));
     EXPECT_NE(generate_image(first).pixels, generate_image(second).pixels);
 }
 
@@ -254,7 +275,7 @@ TEST(ShockwaveFlipbookGenerator, FramesExpandFadeAndLeaveUnusedCellsEmpty) {
                                                  .start_intensity = 1.0f,
                                                  .end_intensity = 0.25f};
     auto const first{generate_shockwave_flipbook(parameters)};
-    EXPECT_EQ(first.pixels, generate_shockwave_flipbook(parameters).pixels);
+    EXPECT_PRED_FORMAT2(structurally_equal, first, generate_shockwave_flipbook(parameters));
 
     constexpr std::int32_t frame_width{65};
     std::uint8_t previous_peak{255};
@@ -287,7 +308,7 @@ TEST(ShockwaveFlipbookGenerator, FramesExpandFadeAndLeaveUnusedCellsEmpty) {
 TEST(SeededGenerators, StarfieldIsDeterministicSparseAndSeeded) {
     StarfieldParameters parameters{.width = 96, .height = 64, .seed = 12345u, .star_count = 40};
     auto const first{generate_starfield(parameters)};
-    EXPECT_EQ(first.pixels, generate_starfield(parameters).pixels);
+    EXPECT_PRED_FORMAT2(structurally_equal, first, generate_starfield(parameters));
     parameters.seed = 54321u;
     auto const different_seed{generate_starfield(parameters)};
 
@@ -310,7 +331,7 @@ TEST(SeededGenerators, NoiseIsDeterministicSeededNonconstantAndSpatiallyCoherent
                                .octave_count = 4,
                                .persistence = 0.5f};
     auto const first{generate_noise(parameters)};
-    EXPECT_EQ(first.pixels, generate_noise(parameters).pixels);
+    EXPECT_PRED_FORMAT2(structurally_equal, first, generate_noise(parameters));
     parameters.seed = 6789u;
     auto const different_seed{generate_noise(parameters)};
 
@@ -370,7 +391,7 @@ TEST(DomainWarpedNoiseGenerator, IsDeterministicSeededNonconstantAndTileable) {
                                            .persistence = 0.55f,
                                            .tileable = true};
     auto const first{generate_domain_warped_noise(parameters)};
-    EXPECT_EQ(first.pixels, generate_domain_warped_noise(parameters).pixels);
+    EXPECT_PRED_FORMAT2(structurally_equal, first, generate_domain_warped_noise(parameters));
     parameters.warp_seed += 1;
     auto const changed_warp_seed{generate_domain_warped_noise(parameters)};
 
@@ -392,7 +413,7 @@ TEST(CurlNoiseFlowGenerator, IsDeterministicNormalizedAndTileable) {
                                        .strength = 0.8f,
                                        .tileable = true};
     auto const first{generate_curl_noise_flow(parameters)};
-    EXPECT_EQ(first.pixels, generate_curl_noise_flow(parameters).pixels);
+    EXPECT_PRED_FORMAT2(structurally_equal, first, generate_curl_noise_flow(parameters));
     parameters.seed += 1;
     auto const changed_seed{generate_curl_noise_flow(parameters)};
 
@@ -431,7 +452,7 @@ TEST(CellularNoiseGenerator, IsDeterministicSeededAndTileable) {
                                        .mode = CellularMode::Distance,
                                        .tileable = true};
     auto const first{generate_cellular_noise(parameters)};
-    EXPECT_EQ(first.pixels, generate_cellular_noise(parameters).pixels);
+    EXPECT_PRED_FORMAT2(structurally_equal, first, generate_cellular_noise(parameters));
     parameters.seed += 1;
     auto const changed_seed{generate_cellular_noise(parameters)};
 
@@ -507,7 +528,7 @@ TEST(NormalMapGeneration, SeededTileableHeightProducesDeterministicSeamlessNorma
                             .normal_wrap = true};
 
     auto const first{generate_image(request)};
-    EXPECT_EQ(first.pixels, generate_image(request).pixels);
+    EXPECT_PRED_FORMAT2(structurally_equal, first, generate_image(request));
 
     expect_matching_edges(first);
 
@@ -559,7 +580,7 @@ TEST(SignedDistanceGeneration, TileableMasksProduceDeterministicSeamlessDistance
                             .distance_wrap = true};
 
     auto const first{generate_image(request)};
-    EXPECT_EQ(first.pixels, generate_image(request).pixels);
+    EXPECT_PRED_FORMAT2(structurally_equal, first, generate_image(request));
 
     expect_matching_edges(first);
 

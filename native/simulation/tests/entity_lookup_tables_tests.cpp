@@ -2,13 +2,41 @@
 #include <ioj/column_math.h>
 #include <ioj/rotator_math.h>
 #include <ioj/sim/entities/entity_tables.h>
+#include <ioj/testing/math_diff.h>
+#include <ioj/testing/structural_diff.h>
 #include <ioj/vectors3f.h>
 
 #include <gtest/gtest.h>
 
 #include <array>
+#include <vector>
+
+namespace ioj::sim {
+void diff_members(EntityInstanceHandle const expected,
+                  EntityInstanceHandle const actual,
+                  DiffContext& context) {
+    context.diff("valid", expected.is_valid(), actual.is_valid());
+    if (expected.is_valid() && actual.is_valid()) {
+        context.diff("index", expected.index(), actual.index());
+        context.diff("team", expected.team(), actual.team());
+        context.diff("health_state", expected.health_state(), actual.health_state());
+    }
+}
+}
 
 namespace ioj::sim::tests {
+using ioj::testing::structurally_equal;
+using Handle = EntityInstanceHandle;
+
+auto vector_values(Vectors3f const& vectors) -> std::vector<Vector3f> {
+    auto const values{vectors.get_const_view().resolve()};
+    auto const count{values.num()};
+    std::vector<Vector3f> result(count);
+    for (std::uint32_t row{}; row < count; ++row) {
+        result[row] = values[row];
+    }
+    return result;
+}
 TEST(EntityTypeRuns, GroupsWithoutChangingIdsAndOmitsEmptyIds) {
     std::array const ids{EntityId{3, EntityType::Fighter},
                          EntityId{},
@@ -71,11 +99,9 @@ TEST(EntityLookupTables, ResolvesArbitraryIdsInCallerOrder) {
     std::array<std::uint32_t, ids.size()> order;
     std::array<EntityInstanceHandle, ids.size()> handles;
     lookups.lookup_handles(ids, order, handles);
-    EXPECT_EQ(handles[0].team(), Team::Blue);
-    EXPECT_FALSE(handles[1].is_valid());
-    EXPECT_EQ(handles[2].team(), Team::Red);
-    EXPECT_EQ(handles[0], handles[3]);
-    EXPECT_FALSE(handles[4].is_valid());
+    std::array<Handle, 5> const expected{
+        {Handle{0, Team::Blue, 3}, {}, Handle{0, Team::Red, 3}, Handle{0, Team::Blue, 3}, {}}};
+    EXPECT_PRED_FORMAT2(structurally_equal, expected, handles);
 }
 
 TEST(EntityLookupTables, ResolvesTypeRunsAndPreservesDuplicateAndMissingSlots) {
@@ -95,13 +121,13 @@ TEST(EntityLookupTables, ResolvesTypeRunsAndPreservesDuplicateAndMissingSlots) {
                          EntityId{}};
     std::array<EntityInstanceHandle, ids.size()> handles;
     lookups.lookup_handles(ids, handles);
-    EXPECT_EQ(handles[0].index(), 0u);
-    EXPECT_EQ(handles[0].team(), Team::Green);
-    EXPECT_EQ(handles[1].index(), 1u);
-    EXPECT_EQ(handles[2].index(), 0u);
-    EXPECT_EQ(handles[1], handles[3]);
-    EXPECT_FALSE(handles[4].is_valid());
-    EXPECT_FALSE(handles[5].is_valid());
+    std::array<Handle, 6> const expected{{Handle{0, Team::Green, 3},
+                                          Handle{1, Team::Red, 3},
+                                          Handle{0, Team::Blue, 3},
+                                          Handle{1, Team::Red, 3},
+                                          {},
+                                          {}}};
+    EXPECT_PRED_FORMAT2(structurally_equal, expected, handles);
     lookups.lookup_handles({}, {});
 }
 
@@ -116,9 +142,9 @@ TEST(EntityLookupTables, RetirementAndReorderingCannotAliasStableIdentity) {
     lookup.publish_rows(reordered, {});
     std::array<EntityInstanceHandle, ids.size()> handles;
     lookup.lookup_handles(ids, handles);
-    EXPECT_FALSE(handles[0].is_valid());
-    EXPECT_EQ(handles[1].index(), 1u);
-    EXPECT_EQ(handles[2].index(), 0u);
+    std::array<Handle, 3> const expected{
+        {{}, Handle{1, Team::White, 3}, Handle{0, Team::White, 3}}};
+    EXPECT_PRED_FORMAT2(structurally_equal, expected, handles);
 }
 
 TEST(EntityMotion, CopiesMixedTypesAndReportsMissingEntitiesWithoutChangingIds) {
@@ -147,34 +173,32 @@ TEST(EntityMotion, CopiesMixedTypesAndReportsMissingEntitiesWithoutChangingIds) 
     std::array<EntityInstanceHandle, ids.size()> handles;
     queries.copy_entity_motion(
         ids, locations.get_view().resolve(), velocities.get_view().resolve(), handles, &scratch);
-    EXPECT_EQ(ids, original);
-    EXPECT_TRUE(handles[0].is_valid());
-    EXPECT_FALSE(handles[1].is_valid());
-    EXPECT_TRUE(handles[2].is_valid());
-    EXPECT_TRUE(handles[3].is_valid());
-    EXPECT_FALSE(handles[4].is_valid());
-    EXPECT_FLOAT_EQ(locations[0].x(), 10.f);
-    EXPECT_FLOAT_EQ(locations[2].x(), 40.f);
-    EXPECT_FLOAT_EQ(locations[3].x(), 10.f);
-    EXPECT_FLOAT_EQ(locations[4].x(), 0.f);
-    EXPECT_FLOAT_EQ(velocities[2].x(), 0.f);
-    EXPECT_FLOAT_EQ(velocities[0].x(), 1.f);
-    EXPECT_FLOAT_EQ(locations[5].x(), 70.f);
-    EXPECT_FLOAT_EQ(velocities[5].x(), 4.f);
-    EXPECT_FALSE(handles[6].is_valid());
-    EXPECT_FLOAT_EQ(locations[6].x(), 0.f);
-    EXPECT_FLOAT_EQ(velocities[6].x(), 0.f);
+    std::array expected_validity{true, false, true, true, false, true, false};
+    std::vector<Vector3f> expected_locations{
+        {10, 20, 30}, {}, {40, 50, 60}, {10, 20, 30}, {}, {70, 80, 90}, {}};
+    std::vector<Vector3f> expected_velocities{{1, 2, 3}, {}, {}, {1, 2, 3}, {}, {4, 5, 6}, {}};
+    auto const expect_motion{[&] {
+        std::array<bool, ids.size()> validity;
+        std::ranges::transform(handles, validity.begin(), &EntityInstanceHandle::is_valid);
+        EXPECT_PRED_FORMAT2(structurally_equal, original, ids);
+        EXPECT_PRED_FORMAT2(structurally_equal, expected_validity, validity);
+        EXPECT_PRED_FORMAT2(structurally_equal, expected_locations, vector_values(locations));
+        EXPECT_PRED_FORMAT2(structurally_equal, expected_velocities, vector_values(velocities));
+    }};
+    expect_motion();
 
     owners.remove(fighter);
     owners.publish();
     owners.refresh(queries);
     queries.copy_entity_motion(
         ids, locations.get_view().resolve(), velocities.get_view().resolve(), handles, &scratch);
-    EXPECT_EQ(ids, original);
-    EXPECT_FALSE(handles[0].is_valid());
-    EXPECT_FALSE(handles[3].is_valid());
-    EXPECT_FLOAT_EQ(locations[0].x(), 0.f);
-    EXPECT_FLOAT_EQ(velocities[0].x(), 0.f);
+    expected_validity[0] = false;
+    expected_validity[3] = false;
+    expected_locations[0] = {};
+    expected_locations[3] = {};
+    expected_velocities[0] = {};
+    expected_velocities[3] = {};
+    expect_motion();
 }
 
 TEST(EntityLookupTables, ResolutionHealthChangesBeforeHandlesRetire) {

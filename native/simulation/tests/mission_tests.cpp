@@ -35,7 +35,7 @@ TEST(MissionAuthoring, RejectsInvalidConstrainedInputsBeforeRuntimeCompilation) 
 }
 
 namespace {
-struct MissionTest : testing::Test {
+struct MissionTest : ::testing::Test {
     SimClock clock;
     EntityLedger ledger;
     Mission mission;

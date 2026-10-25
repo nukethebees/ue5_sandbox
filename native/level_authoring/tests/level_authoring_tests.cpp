@@ -1,3 +1,4 @@
+#include "settings_diff.h"
 #include <ioj/files.h>
 #include <ioj/levels/authoring/campaign_parser.h>
 #include <ioj/levels/authoring/definition_reader.h>
@@ -202,16 +203,16 @@ TEST(NativeSettings, DecodesPresentationLayersIntoExistingNativeValues) {
           :entity-overlay (settings-section 'entity-overlay :soft-target (settings-section 'soft-target :pulse-duration 0.3))))))",
                                                               initial)};
     ASSERT_TRUE(source) << format_diagnostics(source.error());
-    EXPECT_EQ(source->fighters.speed, initial.fighters.speed);
-    auto expected{initial.presentation};
-    expected.player_ship.boost_effect_colour_intensity = 75;
-    expected.entity_overlay.enabled = false;
-    expected.entity_overlay.bar_size_pixels = {32, 6};
-    expected.entity_overlay.soft_target.opacity = 0.5f;
-    expected.entity_overlay.soft_target.pulse_duration = 0.3f;
-    expected.capital_ships.n_small_explosions = 3;
-    expected.radar.combat_range = 150000;
-    EXPECT_PRED_FORMAT2(structurally_equal, expected, source->presentation);
+    auto expected{initial};
+    auto& presentation{expected.presentation};
+    presentation.player_ship.boost_effect_colour_intensity = 75;
+    presentation.entity_overlay.enabled = false;
+    presentation.entity_overlay.bar_size_pixels = {32, 6};
+    presentation.entity_overlay.soft_target.opacity = 0.5f;
+    presentation.entity_overlay.soft_target.pulse_duration = 0.3f;
+    presentation.capital_ships.n_small_explosions = 3;
+    presentation.radar.combat_range = 150000;
+    EXPECT_PRED_FORMAT2(structurally_equal, expected, *source);
 }
 
 TEST(NativeSettings, RecordTagsRegisterConstructorsWithoutHandwrittenBindings) {
@@ -221,9 +222,10 @@ TEST(NativeSettings, RecordTagsRegisterConstructorsWithoutHandwrittenBindings) {
         :entity-overlay (entity-overlay :enabled #f
           :soft-target (soft-target :opacity 0.5)))))")};
     ASSERT_TRUE(settings) << format_diagnostics(settings.error());
-    EXPECT_EQ(settings->presentation.radar.combat_range, 150000);
-    EXPECT_FALSE(settings->presentation.entity_overlay.enabled);
-    EXPECT_EQ(settings->presentation.entity_overlay.soft_target.opacity, 0.5f);
+    settings::Presentation const expected{
+        .entity_overlay = {.enabled = false, .soft_target = {.opacity = 0.5f}},
+        .radar = {.combat_range = 150000}};
+    EXPECT_PRED_FORMAT2(structurally_equal, expected, settings->presentation);
 }
 
 TEST(NativeSettings, PresentationValueEqualityIncludesNestedSettings) {
@@ -241,13 +243,14 @@ TEST(NativeSettings, PresentationValueEqualityIncludesNestedSettings) {
 TEST(NativeSettings, AccumulatesStructuralAndNestedErrorsWithoutChangingTheBase) {
     settings::Settings base;
     base.fighters.speed = 7000.f;
+    auto const original{base};
     auto const result{DefinitionReader{}.read_settings_source(R"(
       (settings :unknown 1
         :fighters (fighters :speed 9000 :health #t :speed 1)
         :presentation (presentation :radar (radar :enabled 1))))",
                                                               base)};
     ASSERT_FALSE(result);
-    EXPECT_EQ(base.fighters.speed, 7000.f);
+    EXPECT_PRED_FORMAT2(structurally_equal, original, base);
     auto const& errors{result.error()};
     EXPECT_EQ(errors.size(), 4u) << format_diagnostics(errors);
     EXPECT_TRUE(has_code(errors, DiagnosticCode::UnknownProperty));
@@ -262,6 +265,7 @@ TEST(NativeLevelAuthoringReader, ResolvesSourceAgainstBaseAndAcceptsPreparedDefi
     settings::Settings base;
     base.fighters.speed = 7000.f;
     base.fighters.health = 17;
+    auto const original{base};
     DefinitionReader reader;
     LevelSource source{std::string{R"((level :id 'resolved :title "Resolved"
       :player 'player
@@ -272,13 +276,14 @@ TEST(NativeLevelAuthoringReader, ResolvesSourceAgainstBaseAndAcceptsPreparedDefi
     auto const resolved{reader.resolve_level(source, base)};
     ASSERT_TRUE(resolved) << format_diagnostics(resolved.error());
     ASSERT_TRUE(resolved->settings());
-    EXPECT_EQ(resolved->settings()->fighters.speed, 2000.f);
-    EXPECT_EQ(resolved->settings()->fighters.health, 17);
-    EXPECT_EQ(base.fighters.speed, 7000.f);
+    auto expected{base};
+    expected.fighters.speed = 2000.f;
+    EXPECT_PRED_FORMAT2(structurally_equal, expected, *resolved->settings());
+    EXPECT_PRED_FORMAT2(structurally_equal, original, base);
 
     auto const prepared{reader.resolve_level(LevelSource{*resolved}, {})};
     ASSERT_TRUE(prepared);
-    EXPECT_EQ(prepared->settings()->fighters.health, 17);
+    EXPECT_PRED_FORMAT2(structurally_equal, resolved->settings(), prepared->settings());
     EXPECT_EQ(prepared->metadata().id, resolved->metadata().id);
 }
 
@@ -361,8 +366,9 @@ TEST(NativeSettings, ReadsShippedStarfieldSettingsAndValidatesEachNestedLayer) {
         (star :scale 1)))))";
     auto result{read_starfield_settings_file(path)};
     ASSERT_TRUE(result) << format_diagnostics(result.error());
-    EXPECT_EQ(result->star.scale, 1.f);
-    EXPECT_EQ(result->star.size_multiplier, 3.f);
+    starfield::Settings expected;
+    expected.star.size_multiplier = 3.f;
+    EXPECT_PRED_FORMAT2(structurally_equal, expected, *result);
 
     std::ofstream{path} << R"((settings :starfield (starfield
       :star (settings-layers (star :scale 0) (star :scale 1)))))";
@@ -451,20 +457,17 @@ TEST(NativeLevelAuthoringReader, GeneratedRecordsCoexistWithMissionsAndSparseSet
           :mission (mission :objectives (list
             (objective :id 'wait :team 'blue :pass (time-elapsed 1)))))))")};
     ASSERT_TRUE(level) << format_diagnostics(level.error());
-    ASSERT_TRUE(level->camera());
-    EXPECT_EQ(level->camera()->target_entity_ids, (std::vector{EntityId{"capital"}}));
-    EXPECT_EQ(level->camera()->distance, 1000);
-    ASSERT_TRUE(level->collision_grid());
-    EXPECT_FALSE(level->collision_grid()->level_size);
-    ASSERT_TRUE(level->collision_grid()->cell_size);
-    EXPECT_EQ(level->collision_grid()->cell_size->x(), 5000);
+    std::optional<LevelCameraDefinition> const camera{{{EntityId{"capital"}}, {-1, 0, 1}, 1000}};
+    std::optional<LevelCollisionGridDefinition> const grid{
+        {.cell_size = Vector3d{5000, 5000, 5000}}};
+    EXPECT_PRED_FORMAT2(structurally_equal, camera, level->camera());
+    EXPECT_PRED_FORMAT2(structurally_equal, grid, level->collision_grid());
     ASSERT_TRUE(level->mission());
     ASSERT_EQ(level->mission()->objectives.size(), 1u);
     EXPECT_EQ(level->mission()->objectives.front().id, ObjectiveName{"wait"});
     ASSERT_TRUE(level->settings());
     auto const& settings{*level->settings()};
-    EXPECT_EQ(settings.fighters.speed, 2000);
-    EXPECT_EQ(settings.fighters.health, settings::Settings{}.fighters.health);
+    EXPECT_PRED_FORMAT2(structurally_equal, sim::FighterSimConfig{}, settings.fighters);
 }
 
 TEST(NativeLevelAuthoringReader, DecodesTypedInputsBeforeResolvingReferencesOrGeneratingIds) {
@@ -741,8 +744,9 @@ TEST(NativeLevelAuthoringCampaignReader, DecodesAndValidatesCampaignData) {
     auto const result{reader.read_campaign_source(
         R"((campaign :id 'first-campaign :title "First Campaign" :levels '(alpha beta)))")};
     ASSERT_TRUE(result) << format_diagnostics(result.error());
-    EXPECT_EQ(result->id, CampaignId{"first-campaign"});
-    EXPECT_EQ(result->level_ids, (std::vector{LevelId{"alpha"}, LevelId{"beta"}}));
+    CampaignDefinition const expected{
+        CampaignId{"first-campaign"}, "First Campaign", {LevelId{"alpha"}, LevelId{"beta"}}};
+    EXPECT_PRED_FORMAT2(structurally_equal, expected, *result);
     auto const duplicate{reader.read_campaign_source(
         R"((campaign :id 'campaign :title "Duplicate" :levels '(alpha alpha)))")};
     ASSERT_FALSE(duplicate);

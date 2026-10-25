@@ -1,3 +1,4 @@
+#include "../../level_authoring/tests/settings_diff.h"
 #include <ioj/levels/authoring/definition_reader.h>
 #include <ioj/s7/simulation_settings_reader.h>
 #include <ioj/testing/structural_diff.h>
@@ -22,7 +23,11 @@ TEST(SimulationSettingsReader, AppliesSparseNestedLayersIncludingExplicitDefault
         (settings :fighters (fighters :speed {} :laser (laser :damage 31)))))",
                                                             defaults.fighters.speed))};
     ASSERT_TRUE(source);
-    EXPECT_EQ(source->player_ship.health, defaults.player.health);
+    settings::Settings expected;
+    expected.fighters.laser.damage = 31;
+    expected.fighters.laser.max_distance = 50000;
+    expected.turrets.laser.damage = 23;
+    EXPECT_PRED_FORMAT2(structurally_equal, expected, *source);
     auto const resolved{s7::resolve_simulation_settings(*source)};
     ASSERT_TRUE(resolved) << resolved.error().front().message;
     FighterSimConfig const expected_fighters{.laser = {.damage = 31, .max_distance = 50000}};
@@ -42,6 +47,7 @@ TEST(SimulationSettingsReader, PreservesBaseFileCompatibilityAndLevelMission) {
 
     auto const base_values{DefinitionReader{root}.read_settings_file(root / "Settings/base.scm")};
     ASSERT_TRUE(base_values);
+    auto const original{*base_values};
     auto const level{DefinitionReader{}.read_level_source(R"(
       (level :id 'settings-mission :title "Settings and mission" :player 'player
         :entities (list (entity :id 'player :archetype 'player-fighter :team 'blue
@@ -54,8 +60,10 @@ TEST(SimulationSettingsReader, PreservesBaseFileCompatibilityAndLevelMission) {
     auto const mission{level->mission()};
     auto const resolved{s7::resolve_simulation_settings(*level->settings())};
     ASSERT_TRUE(resolved);
-    EXPECT_EQ(resolved->fighters.laser.damage, 77);
-    EXPECT_EQ(resolved->fighters.speed, base->fighters.speed);
+    auto expected{*base_values};
+    expected.fighters.laser.damage = 77;
+    EXPECT_PRED_FORMAT2(structurally_equal, expected, *level->settings());
+    EXPECT_PRED_FORMAT2(structurally_equal, expected.fighters, resolved->fighters);
     EXPECT_EQ(level->mission(), mission);
 
     for (auto const field : {"", ":settings (settings)", ":settings (settings-layers)"}) {
@@ -68,14 +76,13 @@ TEST(SimulationSettingsReader, PreservesBaseFileCompatibilityAndLevelMission) {
                                                                   *base_values)};
         ASSERT_TRUE(inherited) << levels::format_diagnostics(inherited.error());
         ASSERT_TRUE(inherited->settings());
-        EXPECT_PRED_FORMAT2(structurally_equal, base->fighters, inherited->settings()->fighters);
+        EXPECT_PRED_FORMAT2(structurally_equal, original, *inherited->settings());
     }
     EXPECT_FALSE(
         DefinitionReader{}.read_level_source("(level :title \"Missing id\")", *base_values));
     EXPECT_FALSE(DefinitionReader{}.read_settings_source(
         "(settings :fighters (fighters :speed 1 :laser (laser :damage 'invalid)))", *base_values));
-    EXPECT_EQ(base_values->fighters.speed, 4500);
-    EXPECT_EQ(base_values->fighters.laser.damage, 10);
+    EXPECT_PRED_FORMAT2(structurally_equal, original, *base_values);
 }
 
 TEST(SimulationSettingsReader, ReplacesWholeAttackBandsAcrossLayersAndLevelOverrides) {
@@ -89,8 +96,9 @@ TEST(SimulationSettingsReader, ReplacesWholeAttackBandsAcrossLayersAndLevelOverr
     ASSERT_TRUE(source);
     auto const resolved{s7::resolve_simulation_settings(*source)};
     ASSERT_TRUE(resolved) << resolved.error().front().message;
-    EXPECT_EQ(resolved->fighters.attack_distance_band,
-              *settings::AttackDistanceBand::try_make({0.8f, 0.85f, 1.f}));
+    FighterSimConfig expected{
+        .speed = 5000, .attack_distance_band = *AttackDistanceBand::try_make({0.8f, 0.85f, 1.f})};
+    EXPECT_PRED_FORMAT2(structurally_equal, expected, resolved->fighters);
 
     auto const level{DefinitionReader{}.read_level_source(R"(
       (level :id 'band :title "Band" :player 'player
@@ -103,9 +111,8 @@ TEST(SimulationSettingsReader, ReplacesWholeAttackBandsAcrossLayersAndLevelOverr
     ASSERT_TRUE(level) << level.error().front().message;
     auto const overridden{s7::resolve_simulation_settings(*level->settings())};
     ASSERT_TRUE(overridden) << overridden.error().front().message;
-    EXPECT_EQ(overridden->fighters.speed, 5000);
-    EXPECT_EQ(overridden->fighters.attack_distance_band,
-              *settings::AttackDistanceBand::try_make({0.f, 0.f, 0.f}));
+    expected.attack_distance_band = *AttackDistanceBand::try_make({0.f, 0.f, 0.f});
+    EXPECT_PRED_FORMAT2(structurally_equal, expected, overridden->fighters);
 }
 
 TEST(SimulationSettingsReader, RejectsInvalidAttackBandsDuringDecoding) {
