@@ -217,16 +217,24 @@ TEST(NativeSettings, DecodesPresentationLayersIntoExistingNativeValues) {
 }
 
 TEST(NativeSettings, RecordTagsRegisterConstructorsWithoutHandwrittenBindings) {
-    auto const settings{DefinitionReader{}.read_settings_source(R"(
+    auto const source{R"(
       (settings :presentation (presentation
-        :radar (radar :combat-range 150000)
+        :radar (radar :enabled #t :combat-range 150000)
         :entity-overlay (entity-overlay :enabled #f
-          :soft-target (soft-target :opacity 0.5)))))")};
+          :soft-target (soft-target :opacity 0.5)))))"};
+    DefinitionReader const reader;
+    auto const settings{reader.read_settings_source(source)};
     ASSERT_TRUE(settings) << format_diagnostics(settings.error());
     settings::Presentation const expected{
         .entity_overlay = {.enabled = false, .soft_target = {.opacity = 0.5f}},
         .radar = {.combat_range = 150000}};
     EXPECT_PRED_FORMAT2(structurally_equal, expected, settings->presentation);
+
+    auto const ast{reader.read_source_ast(source)};
+    ASSERT_TRUE(ast) << format_diagnostics(ast.error());
+    auto const frozen{reader.read_settings_source(emit_evaluated_source(*ast, ast->root))};
+    ASSERT_TRUE(frozen) << format_diagnostics(frozen.error());
+    EXPECT_PRED_FORMAT2(structurally_equal, *settings, *frozen);
 }
 
 TEST(NativeSettings, PresentationValueEqualityIncludesNestedSettings) {

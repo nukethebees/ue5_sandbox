@@ -66,7 +66,7 @@ auto evaluated_value(SExprIR& ir, s7::Ast const& ast, s7::NodeIndex const node) 
         case s7::NodeKind::String:
             return ir.string(ast.text(node));
         case s7::NodeKind::Boolean:
-            return ast.boolean(node) ? ir.atoms.true_value : ir.atoms.false_value;
+            return ir.atom(ast.boolean(node) ? "#t" : "#f");
         case s7::NodeKind::Integer:
             return ir.atom(ast.integer(node));
         case s7::NodeKind::Ratio: {
