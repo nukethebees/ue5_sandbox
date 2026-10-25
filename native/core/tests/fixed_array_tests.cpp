@@ -95,61 +95,60 @@ struct ThrowingValue {
 static_assert(std::is_nothrow_move_constructible_v<ioj::FixedArray<MoveOnlyValue, 3>>);
 static_assert(!std::is_nothrow_move_constructible_v<ioj::FixedArray<ThrowingValue, 3>>);
 
-TEST(NativeCoreFixedArray, CleansUpAfterThrowingCopyConstruction) {
-    for (std::int32_t prefix{}; prefix < 3; ++prefix) {
-        SCOPED_TRACE(prefix);
-        ConstructionCounts counts;
-        {
-            ioj::FixedArray<ThrowingValue, 3> source;
-            source.emplace_back(counts);
-            source.emplace_back(counts);
-            source.emplace_back(counts);
-            counts.copies_before_throw = prefix;
+class NativeCoreFixedArrayConstructionFailure : public testing::TestWithParam<std::int32_t> {};
 
-            EXPECT_THROW((ioj::FixedArray<ThrowingValue, 3>{source}), std::runtime_error);
-            EXPECT_EQ(counts.live, 3);
-            EXPECT_EQ(source.num(), 3);
-        }
-        EXPECT_EQ(counts.live, 0);
+TEST_P(NativeCoreFixedArrayConstructionFailure, CleansUpAfterThrowingCopyConstruction) {
+    ConstructionCounts counts;
+    {
+        ioj::FixedArray<ThrowingValue, 3> source;
+        source.emplace_back(counts);
+        source.emplace_back(counts);
+        source.emplace_back(counts);
+        counts.copies_before_throw = GetParam();
+
+        EXPECT_THROW((ioj::FixedArray<ThrowingValue, 3>{source}), std::runtime_error);
+        EXPECT_EQ(counts.live, 3);
+        EXPECT_EQ(source.num(), 3);
     }
+    EXPECT_EQ(counts.live, 0);
 }
 
-TEST(NativeCoreFixedArray, CleansUpAfterThrowingMoveConstruction) {
-    for (std::int32_t prefix{}; prefix < 3; ++prefix) {
-        SCOPED_TRACE(prefix);
-        ConstructionCounts counts;
-        {
-            ioj::FixedArray<ThrowingValue, 3> source;
-            source.emplace_back(counts);
-            source.emplace_back(counts);
-            source.emplace_back(counts);
-            counts.moves_before_throw = prefix;
+TEST_P(NativeCoreFixedArrayConstructionFailure, CleansUpAfterThrowingMoveConstruction) {
+    ConstructionCounts counts;
+    {
+        ioj::FixedArray<ThrowingValue, 3> source;
+        source.emplace_back(counts);
+        source.emplace_back(counts);
+        source.emplace_back(counts);
+        counts.moves_before_throw = GetParam();
 
-            EXPECT_THROW((ioj::FixedArray<ThrowingValue, 3>{std::move(source)}),
-                         std::runtime_error);
-            EXPECT_EQ(counts.live, 3);
-            // NOLINTNEXTLINE(bugprone-use-after-move): Check the failed move's source range.
-            EXPECT_EQ(source.num(), 3);
-        }
-        EXPECT_EQ(counts.live, 0);
+        EXPECT_THROW((ioj::FixedArray<ThrowingValue, 3>{std::move(source)}), std::runtime_error);
+        EXPECT_EQ(counts.live, 3);
+        // NOLINTNEXTLINE(bugprone-use-after-move): Check the failed move's source range.
+        EXPECT_EQ(source.num(), 3);
     }
+    EXPECT_EQ(counts.live, 0);
 }
 
-TEST(NativeCoreFixedArray, CleansUpAfterThrowingInitializerListConstruction) {
-    for (std::int32_t prefix{}; prefix < 3; ++prefix) {
-        SCOPED_TRACE(prefix);
-        ConstructionCounts counts;
-        {
-            std::initializer_list<ThrowingValue> const source{
-                ThrowingValue{counts}, ThrowingValue{counts}, ThrowingValue{counts}};
-            counts.copies_before_throw = prefix;
+TEST_P(NativeCoreFixedArrayConstructionFailure, CleansUpAfterThrowingInitializerListConstruction) {
+    ConstructionCounts counts;
+    {
+        std::initializer_list<ThrowingValue> const source{
+            ThrowingValue{counts}, ThrowingValue{counts}, ThrowingValue{counts}};
+        counts.copies_before_throw = GetParam();
 
-            EXPECT_THROW((ioj::FixedArray<ThrowingValue, 3>{source}), std::runtime_error);
-            EXPECT_EQ(counts.live, 3);
-        }
-        EXPECT_EQ(counts.live, 0);
+        EXPECT_THROW((ioj::FixedArray<ThrowingValue, 3>{source}), std::runtime_error);
+        EXPECT_EQ(counts.live, 3);
     }
+    EXPECT_EQ(counts.live, 0);
 }
+
+INSTANTIATE_TEST_SUITE_P(ConstructedPrefix,
+                         NativeCoreFixedArrayConstructionFailure,
+                         testing::Values(0, 1, 2),
+                         [](testing::TestParamInfo<std::int32_t> const& info) {
+                             return "After" + std::to_string(info.param) + "Elements";
+                         });
 
 struct alignas(64) OverAlignedValue {
     explicit OverAlignedValue(std::int32_t const initial_value)

@@ -114,29 +114,45 @@ TEST(SchemeReader, PreservesNumericValues) {
               std::numeric_limits<double>::infinity());
 }
 
-TEST(SchemeSourceFormatting, PreservesRealValuesAndTypes) {
+struct RealFormattingCase {
+    char const* name;
+    double value;
+};
+
+using SchemeRealFormatting = ::testing::TestWithParam<RealFormattingCase>;
+
+TEST_P(SchemeRealFormatting, PreservesValueAndType) {
     Interpreter interpreter;
-    for (auto const value : {0.0,
-                             -0.0,
-                             1.0,
-                             -1.25,
-                             std::numeric_limits<double>::max(),
-                             std::numeric_limits<double>::infinity(),
-                             -std::numeric_limits<double>::infinity(),
-                             std::numeric_limits<double>::quiet_NaN()}) {
-        auto const source{format_real(value)};
-        SCOPED_TRACE(source);
-        auto const ast{interpreter.evaluate_ast(source)};
-        ASSERT_TRUE(ast);
-        ASSERT_EQ(ast->node(ast->root).kind, NodeKind::Real);
-        auto const actual{ast->real(ast->root)};
-        if (std::isnan(value)) {
-            EXPECT_TRUE(std::isnan(actual));
-        } else {
-            EXPECT_EQ(actual, value);
-            EXPECT_EQ(std::signbit(actual), std::signbit(value));
-        }
+    auto const value{GetParam().value};
+    auto const source{format_real(value)};
+    SCOPED_TRACE(source);
+    auto const ast{interpreter.evaluate_ast(source)};
+    ASSERT_TRUE(ast);
+    ASSERT_EQ(ast->node(ast->root).kind, NodeKind::Real);
+    auto const actual{ast->real(ast->root)};
+    if (std::isnan(value)) {
+        EXPECT_TRUE(std::isnan(actual));
+    } else {
+        EXPECT_EQ(actual, value);
+        EXPECT_EQ(std::signbit(actual), std::signbit(value));
     }
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    RealValues,
+    SchemeRealFormatting,
+    ::testing::Values(
+        RealFormattingCase{"Zero", 0.0},
+        RealFormattingCase{"NegativeZero", -0.0},
+        RealFormattingCase{"Whole", 1.0},
+        RealFormattingCase{"Fractional", -1.25},
+        RealFormattingCase{"Maximum", std::numeric_limits<double>::max()},
+        RealFormattingCase{"PositiveInfinity", std::numeric_limits<double>::infinity()},
+        RealFormattingCase{"NegativeInfinity", -std::numeric_limits<double>::infinity()},
+        RealFormattingCase{"NaN", std::numeric_limits<double>::quiet_NaN()}),
+    [](auto const& info) { return info.param.name; });
+
+TEST(SchemeSourceFormatting, FormatsSubnormalValue) {
     EXPECT_EQ(format_real(std::numeric_limits<double>::denorm_min()), "5e-324");
 }
 

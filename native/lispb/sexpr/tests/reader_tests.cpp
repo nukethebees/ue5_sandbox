@@ -47,37 +47,48 @@ TEST(SexprReader, GeneratedPropertyNamesSupportTypedLookup) {
     EXPECT_FALSE(fields.optional(SchemaProperty::step));
 }
 
-TEST(SexprReader, TypedPropertyValidationPreservesDiagnosticText) {
-    struct Case {
-        std::string_view source;
-        std::string_view message;
-    };
-    constexpr Case cases[]{
-        {"(range :typo 1)", "unknown property ':typo'"},
-        {"(range :header 1)", "unknown property ':header'"},
-        {"(range :minimum 1 :minimum 2)", "duplicate property ':minimum'"},
-        {"(range :maximum 2)", "missing required property ':minimum'"},
-        {"(range :minimum)", "property ':minimum' requires a value"},
-        {"(range :minimum 1 (child))", "unexpected nested declaration 'child'"},
-    };
+struct PropertyDiagnosticCase {
+    char const* name;
+    std::string_view source;
+    std::string_view message;
+};
 
-    for (auto const& test : cases) {
-        SCOPED_TRACE(test.source);
-        Fixture fixture;
-        auto const form{fixture.read("fixture.lispb", test.source).front()};
-        Parser parser{fixture.syntax};
-        try {
-            Fields fields{parser, form, "range", 0};
-            fields.validate({SchemaProperty::minimum, SchemaProperty::maximum});
-            static_cast<void>(fields.required(SchemaProperty::minimum));
-            FAIL() << "Expected source error";
-        } catch (SourceError const& error) {
-            EXPECT_EQ(fixture.diagnostics.message(error.diagnostic()), test.message);
-            EXPECT_EQ(fixture.sources.location(fixture.diagnostics.span(error.diagnostic())).path,
-                      "fixture.lispb");
-        }
+using SexprPropertyDiagnostic = ::testing::TestWithParam<PropertyDiagnosticCase>;
+
+TEST_P(SexprPropertyDiagnostic, PreservesDiagnosticTextAndPath) {
+    auto const& test{GetParam()};
+    SCOPED_TRACE(test.source);
+    Fixture fixture;
+    auto const form{fixture.read("fixture.lispb", test.source).front()};
+    Parser parser{fixture.syntax};
+    try {
+        Fields fields{parser, form, "range", 0};
+        fields.validate({SchemaProperty::minimum, SchemaProperty::maximum});
+        static_cast<void>(fields.required(SchemaProperty::minimum));
+        FAIL() << "Expected source error";
+    } catch (SourceError const& error) {
+        EXPECT_EQ(fixture.diagnostics.message(error.diagnostic()), test.message);
+        EXPECT_EQ(fixture.sources.location(fixture.diagnostics.span(error.diagnostic())).path,
+                  "fixture.lispb");
     }
 }
+
+INSTANTIATE_TEST_SUITE_P(
+    InvalidProperties,
+    SexprPropertyDiagnostic,
+    ::testing::Values(
+        PropertyDiagnosticCase{"Unknown", "(range :typo 1)", "unknown property ':typo'"},
+        PropertyDiagnosticCase{"Disallowed", "(range :header 1)", "unknown property ':header'"},
+        PropertyDiagnosticCase{
+            "Duplicate", "(range :minimum 1 :minimum 2)", "duplicate property ':minimum'"},
+        PropertyDiagnosticCase{
+            "Missing", "(range :maximum 2)", "missing required property ':minimum'"},
+        PropertyDiagnosticCase{
+            "MissingValue", "(range :minimum)", "property ':minimum' requires a value"},
+        PropertyDiagnosticCase{"NestedDeclaration",
+                               "(range :minimum 1 (child))",
+                               "unexpected nested declaration 'child'"}),
+    [](auto const& info) { return info.param.name; });
 
 TEST(SexprReader, ReadsNestedFormsAndPreservesSpans) {
     Fixture fixture;
@@ -188,15 +199,23 @@ TEST(SexprReader, DoesNotRecognizeCPlusPlusAsARawTag) {
     EXPECT_EQ(fixture.syntax.text(token), "#c++{value}c++#");
 }
 
-TEST(SexprReader, RejectsMissingClosingParenthesis) {
+struct InvalidParenthesisCase {
+    char const* name;
+    std::string_view source;
+};
+
+using SexprParenthesis = ::testing::TestWithParam<InvalidParenthesisCase>;
+
+TEST_P(SexprParenthesis, RejectsInvalidClosingParenthesis) {
     Fixture fixture;
-    EXPECT_THROW(static_cast<void>(fixture.read("fixture.scm", "(outer (inner)")), SourceError);
+    EXPECT_THROW(static_cast<void>(fixture.read("fixture.scm", GetParam().source)), SourceError);
 }
 
-TEST(SexprReader, RejectsUnexpectedClosingParenthesis) {
-    Fixture fixture;
-    EXPECT_THROW(static_cast<void>(fixture.read("fixture.scm", ")")), SourceError);
-}
+INSTANTIATE_TEST_SUITE_P(InvalidForms,
+                         SexprParenthesis,
+                         ::testing::Values(InvalidParenthesisCase{"Missing", "(outer (inner)"},
+                                           InvalidParenthesisCase{"Unexpected", ")"}),
+                         [](auto const& info) { return info.param.name; });
 
 }
 }

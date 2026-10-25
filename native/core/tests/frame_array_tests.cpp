@@ -397,31 +397,32 @@ TEST(NativeCoreFrameArray, ShrinksAndRemovesExactlyTheActiveElements) {
     EXPECT_EQ(scalars[2], 0);
 }
 
-TEST(NativeCoreFrameArray, UninitialisedGrowthLeavesNewElementsForCallerConstruction) {
-    for (bool const reserve_spare : {false, true}) {
-        TrackedValue::reset_counts();
-        RecordingResource resource;
-        {
-            ioj::FrameArray<TrackedValue> values{&resource};
-            values.reserve(reserve_spare ? 3 : 1);
-            values.emplace(42);
-            auto const allocation_count{resource.allocations.size()};
+class NativeCoreFrameArrayCapacity : public testing::TestWithParam<bool> {};
 
-            values.set_num_uninitialised(3);
-            EXPECT_EQ(values.num(), 3);
-            EXPECT_EQ(TrackedValue::live_count, 1);
-            EXPECT_EQ(values[0].value, 42);
-            EXPECT_EQ(resource.allocations.size(), allocation_count + (reserve_spare ? 0 : 1));
+TEST_P(NativeCoreFrameArrayCapacity, UninitialisedGrowthLeavesNewElementsForCallerConstruction) {
+    bool const reserve_spare{GetParam()};
+    TrackedValue::reset_counts();
+    RecordingResource resource;
+    {
+        ioj::FrameArray<TrackedValue> values{&resource};
+        values.reserve(reserve_spare ? 3 : 1);
+        values.emplace(42);
+        auto const allocation_count{resource.allocations.size()};
 
-            std::construct_at(values.data() + 1, 17);
-            std::construct_at(values.data() + 2, 99);
-            EXPECT_EQ(values[1].value, 17);
-            EXPECT_EQ(values[2].value, 99);
-            EXPECT_EQ(TrackedValue::live_count, 3);
-        }
-        EXPECT_EQ(TrackedValue::live_count, 0);
-        EXPECT_EQ(resource.outstanding, 0);
+        values.set_num_uninitialised(3);
+        EXPECT_EQ(values.num(), 3);
+        EXPECT_EQ(TrackedValue::live_count, 1);
+        EXPECT_EQ(values[0].value, 42);
+        EXPECT_EQ(resource.allocations.size(), allocation_count + (reserve_spare ? 0 : 1));
+
+        std::construct_at(values.data() + 1, 17);
+        std::construct_at(values.data() + 2, 99);
+        EXPECT_EQ(values[1].value, 17);
+        EXPECT_EQ(values[2].value, 99);
+        EXPECT_EQ(TrackedValue::live_count, 3);
     }
+    EXPECT_EQ(TrackedValue::live_count, 0);
+    EXPECT_EQ(resource.outstanding, 0);
 }
 
 TEST(NativeCoreFrameArray, UninitialisedResizeShrinksAndReusesStorage) {
@@ -579,37 +580,42 @@ TEST(NativeCoreFrameArray, PreservesValuesWhenAllocationFails) {
     EXPECT_EQ(resource.outstanding, 0);
 }
 
-TEST(NativeCoreFrameArray, RollsBackFailedInsertionAndPartialResize) {
+TEST_P(NativeCoreFrameArrayCapacity, RollsBackFailedInsertionAndPartialResize) {
     ASSERT_EQ(ThrowingValue::live_count, 0);
     RecordingResource resource;
-    for (bool const reserve_spare : {false, true}) {
+    ThrowingValue::constructions_before_throw = -1;
+    {
+        ioj::FrameArray<ThrowingValue> values{&resource};
+        values.reserve(GetParam() ? 8 : 1);
+        values.emplace(42);
+        auto* const storage{values.data()};
+
+        ThrowingValue::constructions_before_throw = 0;
+        EXPECT_THROW(values.emplace(7), std::runtime_error);
+        EXPECT_THROW(values.add(values[0]), std::runtime_error);
+        ThrowingValue::constructions_before_throw = 1;
+        EXPECT_THROW(values.set_num(4), std::runtime_error);
+        EXPECT_EQ(values.data(), storage);
+        EXPECT_EQ(values.num(), 1);
+        EXPECT_EQ(values[0].value, 42);
+        EXPECT_EQ(ThrowingValue::live_count, 1);
+        EXPECT_EQ(resource.outstanding, 1);
+
         ThrowingValue::constructions_before_throw = -1;
-        {
-            ioj::FrameArray<ThrowingValue> values{&resource};
-            values.reserve(reserve_spare ? 8 : 1);
-            values.emplace(42);
-            auto* const storage{values.data()};
-
-            ThrowingValue::constructions_before_throw = 0;
-            EXPECT_THROW(values.emplace(7), std::runtime_error);
-            EXPECT_THROW(values.add(values[0]), std::runtime_error);
-            ThrowingValue::constructions_before_throw = 1;
-            EXPECT_THROW(values.set_num(4), std::runtime_error);
-            EXPECT_EQ(values.data(), storage);
-            EXPECT_EQ(values.num(), 1);
-            EXPECT_EQ(values[0].value, 42);
-            EXPECT_EQ(ThrowingValue::live_count, 1);
-            EXPECT_EQ(resource.outstanding, 1);
-
-            ThrowingValue::constructions_before_throw = -1;
-            values.set_num(4);
-            EXPECT_EQ(values[0].value, 42);
-            EXPECT_EQ(values[3].value, 0);
-        }
-        EXPECT_EQ(ThrowingValue::live_count, 0);
-        EXPECT_EQ(resource.outstanding, 0);
+        values.set_num(4);
+        EXPECT_EQ(values[0].value, 42);
+        EXPECT_EQ(values[3].value, 0);
     }
+    EXPECT_EQ(ThrowingValue::live_count, 0);
+    EXPECT_EQ(resource.outstanding, 0);
 }
+
+INSTANTIATE_TEST_SUITE_P(Storage,
+                         NativeCoreFrameArrayCapacity,
+                         testing::Bool(),
+                         [](testing::TestParamInfo<bool> const& info) {
+                             return info.param ? "WithSpareCapacity" : "WithoutSpareCapacity";
+                         });
 
 TEST(NativeCoreFrameArray, ForwardsExplicitElementResourcesWithoutAllocatorInjection) {
     RecordingResource storage_resource;
