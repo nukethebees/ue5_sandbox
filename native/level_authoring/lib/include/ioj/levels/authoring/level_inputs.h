@@ -18,12 +18,143 @@
 #include "ioj/settings/settings.h"
 #include "ioj/vector_value_math.h"
 
+#include <cassert>
+#include <concepts>
+#include <cstdint>
 #include <optional>
 #include <string>
+#include <string_view>
+#include <type_traits>
+#include <utility>
 #include <vector>
 
 namespace ioj::levels::authoring {
 struct EntityInput {
+    enum class Field : std::uint8_t {
+        id,
+        archetype,
+        team,
+        position,
+        rotation,
+        spawn_at,
+        health,
+        laser_damage,
+        initial_spawn_delay,
+        spawn_cooldown,
+        target,
+        Count,
+    };
+
+    template <Field Selected, typename Self>
+    static constexpr decltype(auto) get_field(Self& self)
+        requires (std::same_as<std::remove_const_t<Self>, EntityInput> && Selected < Field::Count)
+    {
+        if constexpr (Selected == Field::id) {
+            return (self.id);
+        }
+        if constexpr (Selected == Field::archetype) {
+            return (self.archetype);
+        }
+        if constexpr (Selected == Field::team) {
+            return (self.team);
+        }
+        if constexpr (Selected == Field::position) {
+            return (self.position);
+        }
+        if constexpr (Selected == Field::rotation) {
+            return (self.rotation);
+        }
+        if constexpr (Selected == Field::spawn_at) {
+            return (self.spawn_at);
+        }
+        if constexpr (Selected == Field::health) {
+            return (self.health);
+        }
+        if constexpr (Selected == Field::laser_damage) {
+            return (self.laser_damage);
+        }
+        if constexpr (Selected == Field::initial_spawn_delay) {
+            return (self.initial_spawn_delay);
+        }
+        if constexpr (Selected == Field::spawn_cooldown) {
+            return (self.spawn_cooldown);
+        }
+        if constexpr (Selected == Field::target) {
+            return (self.target);
+        }
+    }
+
+    template <Field Selected, typename Self, typename Visitor>
+    static constexpr void invoke_field(Self& self, Visitor&& visitor) {
+        std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
+    }
+
+    static constexpr std::string_view field_name(Field field) {
+        switch (field) {
+            case Field::id:
+                return "id";
+            case Field::archetype:
+                return "archetype";
+            case Field::team:
+                return "team";
+            case Field::position:
+                return "position";
+            case Field::rotation:
+                return "rotation";
+            case Field::spawn_at:
+                return "spawn_at";
+            case Field::health:
+                return "health";
+            case Field::laser_damage:
+                return "laser_damage";
+            case Field::initial_spawn_delay:
+                return "initial_spawn_delay";
+            case Field::spawn_cooldown:
+                return "spawn_cooldown";
+            case Field::target:
+                return "target";
+            case Field::Count:
+                break;
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
+    template <typename Self, typename Visitor>
+    static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
+        requires std::same_as<std::remove_const_t<Self>, EntityInput>
+    {
+        switch (field) {
+            case Field::id:
+                return invoke_field<Field::id>(self, std::forward<Visitor>(visitor));
+            case Field::archetype:
+                return invoke_field<Field::archetype>(self, std::forward<Visitor>(visitor));
+            case Field::team:
+                return invoke_field<Field::team>(self, std::forward<Visitor>(visitor));
+            case Field::position:
+                return invoke_field<Field::position>(self, std::forward<Visitor>(visitor));
+            case Field::rotation:
+                return invoke_field<Field::rotation>(self, std::forward<Visitor>(visitor));
+            case Field::spawn_at:
+                return invoke_field<Field::spawn_at>(self, std::forward<Visitor>(visitor));
+            case Field::health:
+                return invoke_field<Field::health>(self, std::forward<Visitor>(visitor));
+            case Field::laser_damage:
+                return invoke_field<Field::laser_damage>(self, std::forward<Visitor>(visitor));
+            case Field::initial_spawn_delay:
+                return invoke_field<Field::initial_spawn_delay>(self,
+                                                                std::forward<Visitor>(visitor));
+            case Field::spawn_cooldown:
+                return invoke_field<Field::spawn_cooldown>(self, std::forward<Visitor>(visitor));
+            case Field::target:
+                return invoke_field<Field::target>(self, std::forward<Visitor>(visitor));
+            case Field::Count:
+                break;
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
     EntityId id{};
     EntityArchetype archetype{};
     Team team{};

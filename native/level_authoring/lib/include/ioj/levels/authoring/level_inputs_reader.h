@@ -21,65 +21,28 @@ namespace ioj::s7 {
 template <>
 struct TypeReader<levels::authoring::EntityInput> : RecordReader<levels::authoring::EntityInput> {
     static void decode(DecodeContext context, value_type& result) {
-        decode_record<Field>(context,
-                             "entity",
-                             field_names,
-                             ([&](Field const field, auto const& read) {
-                                 switch (field) {
-                                     case Field::id:
-                                         read(result.id);
-                                         break;
-                                     case Field::archetype:
-                                         read(result.archetype);
-                                         break;
-                                     case Field::team:
-                                         read(result.team);
-                                         break;
-                                     case Field::position:
-                                         read(result.position);
-                                         break;
-                                     case Field::rotation:
-                                         read(result.rotation);
-                                         break;
-                                     case Field::spawn_at:
-                                         read(result.spawn_at);
-                                         break;
-                                     case Field::health:
-                                         read(result.health);
-                                         break;
-                                     case Field::laser_damage:
-                                         read(result.laser_damage);
-                                         break;
-                                     case Field::initial_spawn_delay:
-                                         read(result.initial_spawn_delay, constraints::finite);
-                                         break;
-                                     case Field::spawn_cooldown:
-                                         read(result.spawn_cooldown, constraints::finite);
-                                         break;
-                                     case Field::target:
-                                         read(result.target);
-                                         break;
-                                     case Field::Count:
-                                         std::unreachable();
-                                 }
-                             }),
-                             required);
+        decode_record<Field>(
+            context,
+            "entity",
+            field_names,
+            ([&](Field selected, auto const& read) {
+                value_type::visit_field(result, selected, [&]<Field field>(auto& member) {
+                    if constexpr (field == Field::id || field == Field::archetype ||
+                                  field == Field::team || field == Field::position ||
+                                  field == Field::rotation || field == Field::spawn_at ||
+                                  field == Field::health || field == Field::laser_damage ||
+                                  field == Field::target) {
+                        read(member);
+                    } else if constexpr (field == Field::initial_spawn_delay ||
+                                         field == Field::spawn_cooldown) {
+                        read(member, constraints::finite);
+                    }
+                });
+            }),
+            required);
     }
   private:
-    enum class Field : std::uint8_t {
-        id,
-        archetype,
-        team,
-        position,
-        rotation,
-        spawn_at,
-        health,
-        laser_damage,
-        initial_spawn_delay,
-        spawn_cooldown,
-        target,
-        Count,
-    };
+    using Field = value_type::Field;
 
     static constexpr std::array<std::string_view, 11> field_names{"id",
                                                                   "archetype",

@@ -17,7 +17,7 @@
   :header "native/level_authoring/lib/include/ioj/levels/authoring/level_inputs.h"
   :header-include "ioj/levels/authoring/level_inputs.h"
   :namespace ioj::levels::authoring
-  (record EntityInput :generate-s7-reader true :s7-tag "entity"
+  (record EntityInput :generate-visitor true :generate-s7-reader true :s7-tag "entity"
     :s7-reader-includes ("ioj/levels/authoring/input_readers.h"
                         "ioj/levels/authoring/positional_inputs_reader.h")
     (member id @input_entity_id :initializer "")

@@ -480,9 +480,9 @@ TEST(NativeLevelAuthoringReader, DecodesTypedInputsBeforeResolvingReferencesOrGe
     ASSERT_TRUE(ast);
     auto const input{s7::read<LevelInput>(s7::Reader{*ast}, ast->root, "level")};
     ASSERT_TRUE(input);
-    ASSERT_EQ(input->entities.size(), 1u);
-    EXPECT_TRUE(input->entities[0].id.empty());
-    EXPECT_EQ(input->entities[0].position.x(), 1);
+    std::vector<EntityInput> const expected{
+        {.archetype = EntityArchetype::CapitalShip, .team = Team::Blue, .position = {1, 2, 3}}};
+    EXPECT_PRED_FORMAT2(structurally_equal, expected, input->entities);
     auto const& objective{input->mission->objectives[0]};
     EXPECT_EQ(objective.pass->reference, ObjectiveName{"later"});
     ASSERT_EQ(objective.nodes.size(), 1u);
