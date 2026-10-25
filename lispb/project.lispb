@@ -12,6 +12,11 @@
     :sources ("native/lispb/schema/compiler_schema.lispb")
     :output-root (project-path "native/lispb/include/codegen/schema"))
 
+  (cpp-schema slate-schema
+    :types "native/lispb/schema/compiler_types.lispb"
+    :sources ("native/lispb/slate/schema/model.lispb")
+    :output-root (project-path "native/lispb/slate/include/slate_codegen"))
+
   (cpp-schema layout-analysis
     :types "native/layout/schema/types.lispb"
     :sources (

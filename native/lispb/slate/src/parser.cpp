@@ -92,21 +92,6 @@ auto is_number(std::string_view const text) -> bool {
     return index == text.size();
 }
 
-auto kind_name(ParameterKind const kind) -> std::string {
-    switch (kind) {
-        case ParameterKind::value:
-            return "value";
-        case ParameterKind::callback:
-            return "callback";
-        case ParameterKind::factory:
-            return "factory";
-        case ParameterKind::existing:
-            return "existing";
-    }
-    assert(false);
-    return {};
-}
-
 auto child_id(ChildKind const kind, std::size_t const index) -> ChildId {
     assert(index < 0x01000000u);
     return {static_cast<std::uint32_t>(kind) << 24 | static_cast<std::uint32_t>(index)};
@@ -254,7 +239,7 @@ class Parser {
             if (parameter_states_.at(parameter).uses == 0) {
                 fail(document_.parameters.spans[index],
                      std::format("unused {} parameter '{}'",
-                                 kind_name(document_.parameters.kinds[index]),
+                                 to_serialized_string(document_.parameters.kinds[index]),
                                  syntax_.strings().view(parameter)));
             }
         }
@@ -269,14 +254,8 @@ class Parser {
         require_count(form, 2, "expected parameter declaration");
         auto const role{atom(syntax_.children(form)[0],
                              "expected value, callback, factory, or existing parameter role")};
-        auto kind{ParameterKind::value};
-        if (syntax_.text(role) == "callback") {
-            kind = ParameterKind::callback;
-        } else if (syntax_.text(role) == "factory") {
-            kind = ParameterKind::factory;
-        } else if (syntax_.text(role) == "existing") {
-            kind = ParameterKind::existing;
-        } else if (syntax_.text(role) != "value") {
+        auto const kind{try_parse_serialized_parameter_kind(syntax_.text(role))};
+        if (!kind) {
             fail(syntax_.token_span(role),
                  "expected value, callback, factory, or existing parameter role");
         }
@@ -285,11 +264,11 @@ class Parser {
         if (syntax_.text(name) == "self_" || syntax_.text(name) == "ThisClass") {
             fail(syntax_.token_span(name), "reserved generated name cannot be used as a parameter");
         }
-        if (!parameter_states_.emplace(syntax_.identifier(name), ParameterState{kind}).second) {
+        if (!parameter_states_.emplace(syntax_.identifier(name), ParameterState{*kind}).second) {
             fail(syntax_.token_span(name),
                  std::format("duplicate parameter declaration '{}'", syntax_.text(name)));
         }
-        document_.parameters.kinds.push_back(kind);
+        document_.parameters.kinds.push_back(*kind);
         document_.parameters.names.push_back(syntax_.identifier(name));
         document_.parameters.spans.push_back(syntax_.token_span(form));
     }
@@ -340,20 +319,22 @@ class Parser {
         auto const spelling{syntax_.text(name)};
         if (found == parameter_states_.end()) {
             fail(syntax_.token_span(name),
-                 std::format("undeclared {} parameter '{}'", kind_name(expected), spelling));
+                 std::format(
+                     "undeclared {} parameter '{}'", to_serialized_string(expected), spelling));
         }
         auto& state{found->second};
         if (state.kind != expected) {
             fail(syntax_.token_span(name),
                  std::format("parameter '{}' is declared as {}, not {}",
                              spelling,
-                             kind_name(state.kind),
-                             kind_name(expected)));
+                             to_serialized_string(state.kind),
+                             to_serialized_string(expected)));
         }
         if (!multiple && state.uses != 0) {
             fail(syntax_.token_span(name),
-                 std::format(
-                     "{} parameter '{}' may only be used once", kind_name(expected), spelling));
+                 std::format("{} parameter '{}' may only be used once",
+                             to_serialized_string(expected),
+                             spelling));
         }
         ++state.uses;
     }
@@ -549,16 +530,23 @@ class Parser {
             type = atom(syntax_.children(form)[2], "expected assigned widget type");
             index = 3;
         }
-        if (syntax_.text(type) == "widget-class" || syntax_.text(type) == "widget-library" ||
-            syntax_.text(type) == "function" || syntax_.text(type) == "vbox" ||
-            syntax_.text(type) == "hbox" || syntax_.text(type) == "slot" ||
-            syntax_.text(type) == "auto" || syntax_.text(type) == "fill" ||
-            syntax_.text(type) == "assign" || syntax_.text(type) == "existing" ||
-            syntax_.text(type) == "call" || syntax_.text(type) == "let" ||
-            syntax_.text(type) == "params") {
+        auto const type_name{syntax_.text(type)};
+        if (ioj::is_any<std::string_view>(type_name,
+                                          {"widget-class",
+                                           "widget-library",
+                                           "function",
+                                           "vbox",
+                                           "hbox",
+                                           "slot",
+                                           "auto",
+                                           "fill",
+                                           "assign",
+                                           "existing",
+                                           "call",
+                                           "let",
+                                           "params"})) {
             fail(syntax_.token_span(type),
-                 std::format("expected widget type, found structural form '{}'",
-                             syntax_.text(type)));
+                 std::format("expected widget type, found structural form '{}'", type_name));
         }
         std::vector<Argument> arguments;
         std::vector<NamedSlot> slots;
