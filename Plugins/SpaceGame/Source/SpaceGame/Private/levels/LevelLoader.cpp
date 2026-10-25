@@ -144,7 +144,7 @@ auto spawn_initial_camera(UWorld& world,
 
 }
 
-auto FLevelLoader::load(levels::LevelDefinition const& input,
+auto FLevelLoader::load(levels::authoring::LevelSource const& input,
                         EPlayerControlContext const playerless_control_context) const
     -> FLevelLoadResult {
     FLevelLoadResult result;
@@ -162,8 +162,7 @@ auto FLevelLoader::load(levels::LevelDefinition const& input,
         return result;
     }
 
-    orchestrator_.set_level_definition(input);
-    if (!orchestrator_.prepare_level()) {
+    if (!orchestrator_.prepare_level(&input)) {
         add_error(result,
                   ELevelLoadErrorCode::InvalidLevelConfig,
                   TEXT("Failed to resolve game settings"));

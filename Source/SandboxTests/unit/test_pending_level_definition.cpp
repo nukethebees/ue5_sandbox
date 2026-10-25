@@ -23,7 +23,6 @@ TEST_CLASS(PendingLevelDefinition, "Sandbox.UnitTests")
         subsystem->set_pending_level(
             ioj::levels::authoring::to_native(ioj::example_levels::make_example_draft()).value(),
             TEXT("LevelScripts/Example.scm"),
-            TEXT("0123456789abcdef"),
             {.launch_mode = ioj::ELevelLaunchMode::Paused,
              .requested_time_scale = 4.0,
              .control_context = EPlayerControlContext::Benchmark});
@@ -38,9 +37,11 @@ TEST_CLASS(PendingLevelDefinition, "Sandbox.UnitTests")
         TestRunner->TestEqual(TEXT("Source path is retained"),
                               pending->source_path,
                               FString{TEXT("LevelScripts/Example.scm")});
-        TestRunner->TestEqual(TEXT("Native definition is retained"),
-                              ioj::to_fstring(pending->definition.metadata().title),
-                              FString{TEXT("Native Example")});
+        TestRunner->TestEqual(
+            TEXT("Native definition is retained"),
+            ioj::to_fstring(
+                std::get<ioj::levels::LevelDefinition>(pending->source).metadata().title),
+            FString{TEXT("Native Example")});
         TestRunner->TestTrue(TEXT("Launch mode is retained"),
                              pending->options.launch_mode == ioj::ELevelLaunchMode::Paused);
         TestRunner->TestEqual(

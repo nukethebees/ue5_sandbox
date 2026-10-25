@@ -16,7 +16,8 @@ struct SPACEGAMEPRESENTATION_API FTurretPresentation {
     static constexpr int32 n_custom_ismc_floats{3};
 
     explicit FTurretPresentation(UInstancedStaticMeshComponent& component);
-    void set_actor_config(FTurretConfig const* new_config) noexcept;
+    void set_actor_config(FTurretConfig const* new_config,
+                          ioj::settings::TurretPresentation const& settings) noexcept;
   private:
     auto simulation() const -> ::ioj::sim::turrets::Sim const& { return *simulation_; }
     void ValidateOptionalAssets() const;
@@ -34,6 +35,7 @@ struct SPACEGAMEPRESENTATION_API FTurretPresentation {
     void validate_array_sizes() const;
 
     FTurretConfig const* actor_config{nullptr};
+    ioj::settings::TurretPresentation const* settings_{};
     ::ioj::sim::turrets::Sim const* simulation_{};
 
     UInstancedStaticMeshComponent* instances{nullptr};

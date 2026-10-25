@@ -97,7 +97,7 @@ auto prepare_s7_level_for_pie(UWorld& world) -> std::expected<void, FString> {
             return fail(TEXT("Could not remove a duplicated authoring actor before PIE."));
         }
     }
-    game->set_pending_level(*definition, TEXT("PIE scene"), {}, options);
+    game->set_pending_level(*definition, TEXT("PIE scene"), options);
     return {};
 }
 

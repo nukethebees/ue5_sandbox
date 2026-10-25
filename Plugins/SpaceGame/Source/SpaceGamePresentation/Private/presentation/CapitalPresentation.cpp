@@ -23,8 +23,11 @@
 FCapitalPresentation::FCapitalPresentation(UInstancedStaticMeshComponent& component)
     : instances{&component} {}
 
-void FCapitalPresentation::set_actor_config(FCapitalShipConfig const* const new_config) noexcept {
+void FCapitalPresentation::set_actor_config(
+    FCapitalShipConfig const* const new_config,
+    ioj::settings::CapitalPresentation const& settings) noexcept {
     actor_config = new_config;
+    settings_ = &settings;
 }
 
 void FCapitalPresentation::set_niagara_spawner(FDelayedNiagaraSpawns& spawner) {
@@ -34,8 +37,7 @@ void FCapitalPresentation::set_niagara_spawner(FDelayedNiagaraSpawns& spawner) {
 void FCapitalPresentation::ValidateOptionalAssets() const {
     check(actor_config);
 
-    if (actor_config->presentation.n_small_explosions > 0 &&
-        !IsValid(actor_config->small_death_explosion)) {
+    if (settings_->n_small_explosions > 0 && !IsValid(actor_config->small_death_explosion)) {
         UE_LOG(LogSandbox,
                Warning,
                TEXT("FCapitalPresentation optional asset is missing: small_death_explosion"));
@@ -165,7 +167,7 @@ void FCapitalPresentation::trigger_death_effects(ioj::sim::EntityLedger const& l
     auto const has_small_death_explosion{IsValid(small_death_explosion)};
     auto const has_main_death_explosion{IsValid(main_death_explosion)};
 
-    if ((!has_small_death_explosion || actor_config->presentation.n_small_explosions <= 0) &&
+    if ((!has_small_death_explosion || settings_->n_small_explosions <= 0) &&
         !has_main_death_explosion) {
         return;
     }
@@ -176,11 +178,11 @@ void FCapitalPresentation::trigger_death_effects(ioj::sim::EntityLedger const& l
         return;
     }
 
-    auto const n_small_explosions{actor_config->presentation.n_small_explosions};
-    auto const time_between_explosions{actor_config->presentation.time_between_explosions};
-    auto const min_range{actor_config->presentation.min_small_explosion_range};
-    auto const max_range{actor_config->presentation.max_small_explosion_range};
-    auto main_explosion_delay{actor_config->presentation.large_explosion_delay};
+    auto const n_small_explosions{settings_->n_small_explosions};
+    auto const time_between_explosions{settings_->time_between_explosions};
+    auto const min_range{settings_->min_small_explosion_range};
+    auto const max_range{settings_->max_small_explosion_range};
+    auto main_explosion_delay{settings_->large_explosion_delay};
     if (actor_config->main_explosion_delay_mode ==
             ECapitalShipMainExplosionDelayMode::AfterSmallExplosions &&
         has_small_death_explosion && n_small_explosions > 1) {

@@ -105,12 +105,10 @@ class SPACEGAME_API USpaceGameLevelConfig : public UDataAsset {
                 turret_debug_targets,
                 turret_debug_entities,
                 entity_overlay,
-                radar,
+                presentation,
                 sparks};
     }
     void apply_settings(ioj::sim::SimulationSettings const& settings);
-    void apply_presentation(ioj::settings::Presentation const& settings);
-    ioj::sim::OverlapResponseConfig overlap_response;
     [[nodiscard]] auto is_valid(bool require_presentation = true) const noexcept -> bool;
     void get_validation_errors(TArray<FString>& errors, bool require_presentation = true) const;
     void get_validation_warnings(TArray<FString>& warnings) const;
@@ -164,7 +162,8 @@ class SPACEGAME_API USpaceGameLevelConfig : public UDataAsset {
     UPROPERTY(EditAnywhere, Category = "UI", meta = (ShowOnlyInnerProperties))
     FEntityOverlaySettings entity_overlay;
 
-    ioj::settings::Radar radar;
+    ioj::settings::Presentation presentation;
+    ioj::sim::OverlapResponseConfig overlap_response;
 
     UPROPERTY(EditAnywhere, Category = "Sparks", meta = (ShowOnlyInnerProperties))
     FSparkRendererSettings sparks;

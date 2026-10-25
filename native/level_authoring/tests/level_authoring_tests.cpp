@@ -241,6 +241,50 @@ TEST(NativeSettings, RecordTagsRegisterConstructorsWithoutHandwrittenBindings) {
     EXPECT_EQ(settings->presentation.entity_overlay.soft_target.opacity, 0.5f);
 }
 
+TEST(NativeSettings, AccumulatesStructuralAndNestedErrorsWithoutChangingTheBase) {
+    settings::Settings base;
+    base.fighters.speed = 7000.f;
+    auto const result{DefinitionReader{}.read_settings_source(R"(
+      (settings :unknown 1
+        :fighters (fighters :speed 9000 :health #t :speed 1)
+        :presentation (presentation :radar (radar :enabled 1))))",
+                                                              base)};
+    ASSERT_FALSE(result);
+    EXPECT_EQ(base.fighters.speed, 7000.f);
+    auto const& errors{result.error()};
+    EXPECT_EQ(errors.size(), 4u) << format_diagnostics(errors);
+    EXPECT_TRUE(has_code(errors, DiagnosticCode::UnknownProperty));
+    EXPECT_TRUE(has_code(errors, DiagnosticCode::DuplicateProperty));
+    EXPECT_TRUE(std::ranges::any_of(
+        errors, [](auto const& error) { return error.node_path == "fighters.health"; }));
+    EXPECT_TRUE(std::ranges::any_of(
+        errors, [](auto const& error) { return error.node_path == "presentation.radar.enabled"; }));
+}
+
+TEST(NativeLevelAuthoringReader, ResolvesSourceAgainstBaseAndAcceptsPreparedDefinitions) {
+    settings::Settings base;
+    base.fighters.speed = 7000.f;
+    base.fighters.health = 17;
+    DefinitionReader reader;
+    LevelSource source{std::string{R"((level :id 'resolved :title "Resolved"
+      :player 'player
+      :entities (list (entity :id 'player :archetype 'player-fighter :team 'blue :position '(0 0 0)))
+      :settings (settings-layers
+        (settings :fighters (fighters :speed 9000))
+        (settings :fighters (fighters :speed 2000)))))"}};
+    auto const resolved{reader.resolve_level(source, base)};
+    ASSERT_TRUE(resolved) << format_diagnostics(resolved.error());
+    ASSERT_TRUE(resolved->settings());
+    EXPECT_EQ(resolved->settings()->fighters.speed, 2000.f);
+    EXPECT_EQ(resolved->settings()->fighters.health, 17);
+    EXPECT_EQ(base.fighters.speed, 7000.f);
+
+    auto const prepared{reader.resolve_level(LevelSource{*resolved}, {})};
+    ASSERT_TRUE(prepared);
+    EXPECT_EQ(prepared->settings()->fighters.health, 17);
+    EXPECT_EQ(prepared->metadata().id, resolved->metadata().id);
+}
+
 TEST(NativeSettings, RejectsMalformedPresentationAtTheTypedDecodingBoundary) {
     for (auto const value : {"3", "#f", "'(1 2)", "'( :radar )"}) {
         EXPECT_FALSE(DefinitionReader{}.read_settings_source(

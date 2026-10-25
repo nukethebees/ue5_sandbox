@@ -500,11 +500,11 @@ auto FLevelPresentationFrameChangesTest::RunTest(FString const&) -> bool {
     ::ioj::sim::GameMemory deaths_memory;
     ::ioj::sim::LevelSim deaths{deaths_memory, MoveTemp(death_data)};
     deaths.finish_initialisation();
-    resources.config.capital_ships.presentation.n_small_explosions = 3;
+    resources.config.presentation.capital_ships.n_small_explosions = 3;
     resources.config.capital_ships.small_death_explosion = NewObject<UNiagaraSystem>(owner);
     resources.config.capital_ships.main_death_explosion = NewObject<UNiagaraSystem>(owner);
-    resources.config.capital_ships.presentation.time_between_explosions = 10.f;
-    resources.config.capital_ships.presentation.large_explosion_delay = 100.f;
+    resources.config.presentation.capital_ships.time_between_explosions = 10.f;
+    resources.config.presentation.capital_ships.large_explosion_delay = 100.f;
     FLevelPresentation death_effects{resources, deaths.get_read_access(), {}};
     ::ioj::sim::DirectDamageEvents damage;
     damage.add(
@@ -598,7 +598,8 @@ auto FPlayerBoostFrameOutputTest::RunTest(FString const&) -> bool {
     auto* engine{NewObject<UTestNiagaraComponent>(actor)};
     resources.pulse = pulse;
     resources.engine = engine;
-    FPlayerPresentation presentation{resources, config->player_ship, *player};
+    FPlayerPresentation presentation{
+        resources, config->player_ship, config->presentation.player_ship, *player};
     simulation.get_player_ship_commands()->start_boost();
     simulation.advance(0.325);
     auto const& frame{*player};
@@ -615,7 +616,8 @@ auto FPlayerBoostFrameOutputTest::RunTest(FString const&) -> bool {
     presentation.tick(frame);
     TestEqual(
         TEXT("Repeated observation does not replay the pulse"), pulse->activation_count, uint64{1});
-    FPlayerPresentation attached{resources, config->player_ship, frame};
+    FPlayerPresentation attached{
+        resources, config->player_ship, config->presentation.player_ship, frame};
     attached.tick(frame);
     TestEqual(TEXT("Late attachment does not replay historical boost starts"),
               pulse->activation_count,

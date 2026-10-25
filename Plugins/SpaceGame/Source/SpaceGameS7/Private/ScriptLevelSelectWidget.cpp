@@ -558,13 +558,12 @@ void UScriptLevelSelectWidget::launch_selected_level(FLevelLaunchOptions options
         return;
     }
 
-    auto definition{MoveTemp(entry.definition.GetValue())};
     entry.definition.Reset();
     options.control_context =
         active_category_ == ELevelCatalogCategory::Mission     ? EPlayerControlContext::Player
         : active_category_ == ELevelCatalogCategory::Benchmark ? EPlayerControlContext::Benchmark
                                                                : EPlayerControlContext::Observer;
-    game_->set_pending_level(MoveTemp(definition), entry.path, MoveTemp(level_source), options);
+    game_->set_pending_level(ioj::to_string(level_source), entry.path, options);
     view_state_.can_launch = false;
     if (options.launch_mode == ELevelLaunchMode::Paused) {
         view_state_.status =

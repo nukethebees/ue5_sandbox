@@ -22,8 +22,11 @@
 FTurretPresentation::FTurretPresentation(UInstancedStaticMeshComponent& component)
     : instances{&component} {}
 
-void FTurretPresentation::set_actor_config(FTurretConfig const* const new_config) noexcept {
+void FTurretPresentation::set_actor_config(
+    FTurretConfig const* const new_config,
+    ioj::settings::TurretPresentation const& settings) noexcept {
     actor_config = new_config;
+    settings_ = &settings;
 }
 
 void FTurretPresentation::ValidateOptionalAssets() const {
@@ -158,7 +161,7 @@ void FTurretPresentation::trigger_death_effects() {
         return;
     }
 
-    FVector const scale{actor_config->presentation.death_effect_scale};
+    FVector const scale{settings_->death_effect_scale};
     FVector const location_offset{actor_config->death_effect_offset};
 
     for (int32 i{0}; i < n; ++i) {

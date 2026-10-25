@@ -125,6 +125,14 @@ auto read_source(std::filesystem::path const& path) -> std::expected<std::string
 DefinitionReader::DefinitionReader(std::filesystem::path script_library_root)
     : script_library_root_{std::move(script_library_root)} {}
 
+auto DefinitionReader::resolve_level(LevelSource const& source, settings::Settings base) const
+    -> LevelDefinitionReadResult {
+    if (auto const* definition{std::get_if<LevelDefinition>(&source)}) {
+        return *definition;
+    }
+    return read_level_source(std::get<std::string>(source), std::move(base));
+}
+
 auto DefinitionReader::read_root_file(std::filesystem::path const& path) const
     -> std::expected<DefinitionCatalog, Diagnostics> {
     auto const full_path{std::filesystem::absolute(path)};

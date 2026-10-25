@@ -25,7 +25,10 @@ FLevelPresentation::FLevelPresentation(FLevelPresentationResources const& resour
     sparks.clear();
     auto const* player{view.get_player()};
     if (resources.player.IsSet() && player != nullptr) {
-        player_.Emplace(resources.player.GetValue(), config.player_ship, *player);
+        player_.Emplace(resources.player.GetValue(),
+                        config.player_ship,
+                        config.presentation.player_ship,
+                        *player);
     }
 #if WITH_EDITORONLY_DATA
     lasers.debug_drawer = config.laser_debug_drawer;
@@ -37,9 +40,9 @@ FLevelPresentation::FLevelPresentation(FLevelPresentationResources const& resour
     turrets.draw_debug_entity_info_enabled = config.turret_debug_entities;
     lasers.set_actor_config(&config.laser_projectiles);
     lasers.set_spark_effects(sparks);
-    capital_ships.set_actor_config(&config.capital_ships);
+    capital_ships.set_actor_config(&config.capital_ships, config.presentation.capital_ships);
     capital_ship_fighters.set_actor_config(&config.fighters);
-    turrets.set_actor_config(&config.turrets);
+    turrets.set_actor_config(&config.turrets, config.presentation.turrets);
     spinners.set_actor_config(&config.tube_spinners);
 
     auto const ValidateOptionalAssets{

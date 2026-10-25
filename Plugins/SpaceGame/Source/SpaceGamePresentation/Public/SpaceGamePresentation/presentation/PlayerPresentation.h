@@ -20,11 +20,11 @@ struct FPlayerPresentationResources {
 struct SPACEGAMEPRESENTATION_API FPlayerPresentation {
     FPlayerPresentation(FPlayerPresentationResources resources,
                         FPlayerShipConfig const& config,
+                        ioj::settings::PlayerPresentation const& settings,
                         ::ioj::sim::player::Sim const& initial_state);
     void tick(::ioj::sim::player::Sim const& state);
   private:
     FPlayerPresentationResources resources_;
-    FPlayerShipConfig config_;
     ::ioj::sim::player::BoostBrakeState boost_brake_state_{
         ::ioj::sim::player::BoostBrakeState::None};
     uint64 boost_start_sequence_{};

@@ -113,22 +113,15 @@ TEST_CLASS(SpaceGameLevelConfig, "Sandbox.UnitTests")
                                           overlay ? "entity-overlay" : "capital-ships",
                                           overlay ? "bar-size-pixels" : "min-small-explosion-range",
                                           components)};
-            auto definition{ioj::levels::authoring::DefinitionReader{}.read_level_source(source)};
-            if (!definition) {
-                return std::unexpected{FString{
-                    UTF8_TO_TCHAR(ioj::levels::format_diagnostics(definition.error()).c_str())}};
-            }
-            auto loaded{read_game_settings(TEXT("LevelScripts/Settings/base.scm"),
-                                           &*definition,
-                                           FString{UTF8_TO_TCHAR(source.c_str())},
-                                           *resources,
-                                           GetTransientPackage())};
+            ioj::levels::authoring::LevelSource input{source};
+            auto loaded{read_game_settings(
+                TEXT("LevelScripts/Settings/base.scm"), &input, *resources, GetTransientPackage())};
             if (loaded) {
                 TestRunner->TestEqual(TEXT("Presentation-only settings retain base fighter speed"),
                                       loaded->simulation.fighters.speed,
                                       4500.f);
                 TestRunner->TestEqual(TEXT("Resolved definition uses the same base settings"),
-                                      definition->settings()->fighters.speed,
+                                      loaded->level->settings()->fighters.speed,
                                       loaded->simulation.fighters.speed);
             }
             return loaded.transform([](auto const&) {});

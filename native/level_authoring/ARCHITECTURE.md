@@ -76,6 +76,10 @@ The writer preserves deterministic ordering and three-decimal rounding. Editor s
 rejects par-time, unlock criteria, objective missions, and settings layers. Objective graphs
 remain authored in S7; the scene editor cannot infer or rewrite them from entity roles.
 
+The `s7_constructors` module derives ordinary Scheme constructors from record tags, including
+positional forms. Shared tags produce one definition. Catalog imports and mission expression
+operators keep their special DSL implementations and opt out of constructor generation.
+
 Settings constructors return records; `settings-layers` groups records in application order.
 `parse_settings` decodes them into a copy of a supplied `SettingsValues` configuration.
 Load base settings first, then seed level decoding with the result. Omitted fields preserve
@@ -85,10 +89,22 @@ Unknown fields, duplicate properties, incompatible values and field constraints 
 during decoding. Simulation copies the effective groups to its handwritten root,
 then validates the effective configuration's domain constraints.
 
+Runtime loading accepts `LevelSource`: either source text to decode against the resolved base,
+or an already-validated definition from a native caller/editor scene. The latter's settings,
+when present, are complete values rather than a sparse patch. Menu inspection remains separate:
+the runtime map's settings file and resource defaults are not available during catalog browsing.
+A launch passes only the source, evaluates it once after base configuration is available, and
+uses that same resolved definition for both Unreal actors and native simulation. Failed settings
+resolution leaves the supplied definition and live configuration untouched.
+
 Shared static configuration records live under `native/levels`; runtime state remains under
 simulation. Unreal retains asset references and colour controls. Asset-derived members are
 excluded from authored readers. The old `settings-schema` compiler family, generated
 override structs, flattened path/value assignments and simulation dispatcher are removed.
+`USpaceGameLevelConfig::presentation` owns the native numeric/behavioural presentation values;
+resource structs no longer contain copies of its component records. Renderers and HUDs consume
+the relevant native values alongside Unreal asset references. Debug/resource editor controls
+remain Unreal-owned.
 
 AST readers, Scheme file readers and serializers live under `s7/src/`. General authoring code
 such as scene reconciliation and source sessions remains under `lib/src/`. The AST-only and
@@ -101,6 +117,8 @@ Generated readers mutate a local default-constructed value when available and st
 only when construction is necessary. Presence masks distinguish omissions independently of
 member values. Fixed positional readers handle named expressions, references, dependencies
 and unlock criteria. Expression recursion, leaf selection and reference resolution remain explicit.
+Record traversal and nested decoding append to the same diagnostic accumulator. Per-record
+presence masks detect duplicates within a layer; the combined mask checks required fields.
 
 `read_override` applies a partial record to a copy, leaving the caller's instance untouched
 on failure. Each supplied layer is validated; later values cannot hide malformed earlier values.

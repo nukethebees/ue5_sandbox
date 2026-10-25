@@ -11,8 +11,7 @@
 #include <Misc/Paths.h>
 
 auto read_game_settings(FStringView const path,
-                        ioj::levels::LevelDefinition* const level,
-                        FStringView const level_source,
+                        ioj::levels::authoring::LevelSource const* const level,
                         USpaceGameLevelConfig const& resources,
                         UObject* const outer) -> std::expected<FLoadedGameSettings, FString> {
     auto const absolute_path{
@@ -28,14 +27,7 @@ auto read_game_settings(FStringView const path,
     auto const root{FPaths::Combine(FPaths::ProjectDir(), TEXT("LevelScripts"))};
     ioj::levels::authoring::DefinitionReader const reader{std::filesystem::path{*root}};
     ioj::settings::Settings initial;
-    initial.presentation = {
-        .player_ship = resources.player_ship.presentation,
-        .laser_projectiles = resources.laser_projectiles.presentation,
-        .capital_ships = resources.capital_ships.presentation,
-        .turrets = resources.turrets.presentation,
-        .entity_overlay = resources.entity_overlay.values,
-        .radar = resources.radar,
-    };
+    initial.presentation = resources.presentation;
     auto settings{reader.read_settings_source(*text, std::move(initial))};
     auto const report_errors{[&](ioj::levels::Diagnostics const& errors) {
         return std::unexpected{
@@ -48,16 +40,14 @@ auto read_game_settings(FStringView const path,
     }
 
     std::optional<ioj::levels::LevelDefinition> decoded_level;
-    if (!level_source.IsEmpty()) {
-        check(level);
-        auto decoded{
-            reader.read_level_source(ioj::to_string(FString{level_source}), std::move(*settings))};
+    if (level) {
+        auto decoded{reader.resolve_level(*level, *settings)};
         if (!decoded) {
             return report_errors(decoded.error());
         }
         decoded_level = std::move(*decoded);
     }
-    auto const* const effective_level{decoded_level ? &*decoded_level : level};
+    auto const* const effective_level{decoded_level ? &*decoded_level : nullptr};
     auto const& effective{
         effective_level && effective_level->settings() ? *effective_level->settings() : *settings};
     auto const* const grid{effective_level && effective_level->collision_grid()
@@ -72,12 +62,9 @@ auto read_game_settings(FStringView const path,
     check(config);
     config->apply_settings(*simulation);
 
-    config->apply_presentation(effective.presentation);
-    if (decoded_level) {
-        *level = std::move(*decoded_level);
-    }
-
+    config->presentation = effective.presentation;
     return FLoadedGameSettings{.config = config,
                                .simulation = std::move(*simulation),
-                               .source = UTF8_TO_TCHAR(text->c_str())};
+                               .source = UTF8_TO_TCHAR(text->c_str()),
+                               .level = std::move(decoded_level)};
 }

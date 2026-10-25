@@ -46,7 +46,7 @@ void FLevelLoaderCameraScenario::load_fixture() {
     auto* const resources{duplicate_level_config(*original_config_, orchestrator)};
     checks.is_true(orchestrator.set_level_config(*resources),
                    TEXT("Loader resources are assigned"));
-    resources->entity_overlay.values.enabled = true;
+    resources->presentation.entity_overlay.enabled = true;
     resources->entity_overlay.soft_target.mesh = nullptr;
     resources->entity_overlay.soft_target.material = nullptr;
     checks.is_true(!resources->is_valid(), TEXT("Unresolved overlay requires missing resources"));
@@ -81,7 +81,7 @@ void FLevelLoaderCameraScenario::load_fixture() {
     if (!checks.is_true(static_cast<bool>(load_result), TEXT("Playerless definition loads"))) {
         return;
     }
-    checks.is_true(!orchestrator.get_level_config()->entity_overlay.values.enabled,
+    checks.is_true(!orchestrator.get_level_config()->presentation.entity_overlay.enabled,
                    TEXT("Level override disables overlay before resource validation"));
 
     checks.are_equal(

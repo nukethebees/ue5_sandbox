@@ -1,10 +1,10 @@
 #pragma once
-
 #include "SpaceGame/levels/LevelDefinition.h"
 #include "SpaceGame/persistence/SaveGameBrowser.h"
 #include "SpaceGame/ships/player/PlayerControlContext.h"
 #include "SpaceGamePresentation/audio/GameAudio.h"
 #include "SpaceGamePresentation/ui/style/GameUiStyle.h"
+#include <ioj/levels/authoring/level_source.h>
 
 #include "Subsystems/GameInstanceSubsystem.h"
 
@@ -105,9 +105,8 @@ struct SPACEGAME_API FLevelLaunchOptions {
 };
 
 struct SPACEGAME_API FPendingLevelDefinition {
-    levels::LevelDefinition definition;
+    levels::authoring::LevelSource source;
     FString source_path{};
-    FString level_source{};
     FLevelLaunchOptions options{};
 };
 
@@ -152,9 +151,8 @@ class SPACEGAME_API UGameSubsystem : public UGameInstanceSubsystem {
     /* **************************************** */
     // Level launch and navigation
     /* **************************************** */
-    void set_pending_level(levels::LevelDefinition definition,
+    void set_pending_level(levels::authoring::LevelSource source,
                            FString source_path,
-                           FString level_source,
                            FLevelLaunchOptions options = {});
     auto take_pending_level() -> TOptional<FPendingLevelDefinition>;
 

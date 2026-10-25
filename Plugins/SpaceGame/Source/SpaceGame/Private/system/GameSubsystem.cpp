@@ -199,13 +199,11 @@ auto UGameSubsystem::set_ui_theme(USpaceGameUiTheme* const theme) -> bool {
 /* **************************************** */
 // Level launch and navigation
 /* **************************************** */
-void UGameSubsystem::set_pending_level(levels::LevelDefinition definition,
+void UGameSubsystem::set_pending_level(levels::authoring::LevelSource source,
                                        FString source_path,
-                                       FString level_source,
                                        FLevelLaunchOptions options) {
-    pending_level_.Emplace(FPendingLevelDefinition{.definition = MoveTemp(definition),
+    pending_level_.Emplace(FPendingLevelDefinition{.source = MoveTemp(source),
                                                    .source_path = MoveTemp(source_path),
-                                                   .level_source = MoveTemp(level_source),
                                                    .options = MoveTemp(options)});
     level_launch_error_.Reset();
 }

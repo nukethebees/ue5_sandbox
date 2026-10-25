@@ -26,11 +26,8 @@ auto load_default_level_config() -> USpaceGameLevelConfig* {
                 LogSandboxTest, Error, TEXT("Cannot load default simulation-test asset package"));
             return nullptr;
         }
-        auto const loaded{read_game_settings(TEXT("LevelScripts/Settings/base.scm"),
-                                             nullptr,
-                                             {},
-                                             *resources,
-                                             GetTransientPackage())};
+        auto const loaded{read_game_settings(
+            TEXT("LevelScripts/Settings/base.scm"), nullptr, *resources, GetTransientPackage())};
         check(loaded);
         resolved.Reset(loaded->config);
     }
@@ -67,7 +64,7 @@ auto duplicate_level_config(USpaceGameLevelConfig const& config, UObject& outer)
     copy->tube_spinners = config.tube_spinners;
     copy->collision_grid = config.collision_grid;
     copy->entity_overlay = config.entity_overlay;
-    copy->radar = config.radar;
+    copy->presentation = config.presentation;
     copy->overlap_response = config.overlap_response;
     return copy;
 }

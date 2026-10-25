@@ -18,7 +18,8 @@ struct SPACEGAMEPRESENTATION_API FCapitalPresentation {
 
     explicit FCapitalPresentation(UInstancedStaticMeshComponent& component);
 
-    void set_actor_config(FCapitalShipConfig const* new_config) noexcept;
+    void set_actor_config(FCapitalShipConfig const* new_config,
+                          ioj::settings::CapitalPresentation const& settings) noexcept;
   private:
     auto simulation() const -> ::ioj::sim::capital_ships::Sim const& { return *simulation_; }
     void set_niagara_spawner(FDelayedNiagaraSpawns& spawner);
@@ -37,6 +38,7 @@ struct SPACEGAMEPRESENTATION_API FCapitalPresentation {
     void validate_array_sizes() const;
 
     FCapitalShipConfig const* actor_config{nullptr};
+    ioj::settings::CapitalPresentation const* settings_{};
 
     UInstancedStaticMeshComponent* instances{nullptr};
     FDelayedNiagaraSpawns* niagara_spawner{nullptr};

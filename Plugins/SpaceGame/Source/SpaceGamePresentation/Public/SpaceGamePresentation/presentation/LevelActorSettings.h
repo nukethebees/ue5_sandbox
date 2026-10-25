@@ -1,8 +1,5 @@
 #pragma once
-#include <ioj/settings/capital_presentation.h>
-#include <ioj/settings/laser_presentation.h>
-#include <ioj/settings/player_presentation.h>
-#include <ioj/settings/turret_presentation.h>
+#include <ioj/settings/presentation.h>
 #include <ioj/sim/capital_ships/capital_ship_sim_config.h>
 #include <ioj/sim/fighters/fighter_sim_config.h>
 #include <ioj/sim/lasers/laser_sim_config.h>
@@ -37,8 +34,6 @@ USTRUCT(BlueprintType)
 struct SPACEGAMEPRESENTATION_API FPlayerShipConfig {
     GENERATED_BODY()
 
-    ioj::settings::PlayerPresentation presentation;
-
     ioj::sim::PlayerSimConfig simulation;
 
     UPROPERTY(EditAnywhere, Category = "Visuals")
@@ -55,8 +50,6 @@ USTRUCT(BlueprintType)
 struct SPACEGAMEPRESENTATION_API FLaserProjectileConfig {
     GENERATED_BODY()
 
-    ioj::settings::LaserPresentation presentation;
-
     ioj::sim::LaserSimConfig simulation;
 
     UPROPERTY(EditAnywhere, Category = "Visuals")
@@ -72,8 +65,6 @@ struct SPACEGAMEPRESENTATION_API FLaserProjectileConfig {
 USTRUCT(BlueprintType)
 struct SPACEGAMEPRESENTATION_API FCapitalShipConfig {
     GENERATED_BODY()
-
-    ioj::settings::CapitalPresentation presentation;
 
     ioj::sim::CapitalShipSimConfig simulation;
 
@@ -128,8 +119,6 @@ struct SPACEGAMEPRESENTATION_API FFighterConfig {
 USTRUCT(BlueprintType)
 struct SPACEGAMEPRESENTATION_API FTurretConfig {
     GENERATED_BODY()
-
-    ioj::settings::TurretPresentation presentation;
 
     ioj::sim::TurretSimConfig simulation;
 
@@ -188,6 +177,6 @@ struct SPACEGAMEPRESENTATION_API FLevelVisualConfig {
     bool turret_debug_targets{};
     bool turret_debug_entities{};
     FEntityOverlaySettings entity_overlay;
-    ioj::settings::Radar radar;
+    ioj::settings::Presentation presentation;
     FSparkRendererSettings sparks;
 };

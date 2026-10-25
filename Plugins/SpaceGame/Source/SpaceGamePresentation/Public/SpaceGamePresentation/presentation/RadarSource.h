@@ -1,7 +1,7 @@
 #pragma once
 #include "ioj/sim/entities/entity_id.h"
 #include "SpaceGamePresentation/presentation/AgentDisplayBatch.h"
-#include "SpaceGamePresentation/presentation/LevelPresentationSettings.h"
+#include <ioj/settings/radar.h>
 #include <SpaceGamePresentation/entities/TestTeam.h>
 
 #include "SandboxUI/EntityOverlay/EntityOverlayTypes.h"

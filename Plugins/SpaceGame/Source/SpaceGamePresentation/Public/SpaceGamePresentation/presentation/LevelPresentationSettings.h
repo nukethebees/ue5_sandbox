@@ -1,8 +1,5 @@
 #pragma once
 
-#include <ioj/settings/entity_overlay.h>
-#include <ioj/settings/radar.h>
-
 #include "LevelPresentationSettings.generated.h"
 
 class UMaterialInterface;
@@ -22,8 +19,6 @@ struct FSoftTargetSettings {
 USTRUCT(BlueprintType)
 struct FEntityOverlaySettings {
     GENERATED_BODY()
-
-    ioj::settings::EntityOverlay values;
 
     UPROPERTY(EditAnywhere, Category = "Entity Overlay")
     FSoftTargetSettings soft_target;

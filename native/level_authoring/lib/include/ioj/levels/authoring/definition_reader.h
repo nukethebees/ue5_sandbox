@@ -2,6 +2,7 @@
 #include <ioj/levels/authoring/campaign_parser.h>
 #include <ioj/levels/authoring/definition_catalog.h>
 #include <ioj/levels/authoring/level_parser.h>
+#include <ioj/levels/authoring/level_source.h>
 #include <ioj/levels/authoring/settings_parser.h>
 #include <ioj/s7/ast_result.h>
 
@@ -14,6 +15,8 @@ class DefinitionReader {
   public:
     DefinitionReader() = default;
     explicit DefinitionReader(std::filesystem::path script_library_root);
+    [[nodiscard]] auto resolve_level(LevelSource const& source, settings::Settings base) const
+        -> LevelDefinitionReadResult;
     // Resolve all imports relative to the root file's directory. Each call starts fresh.
     [[nodiscard]] auto read_root_file(std::filesystem::path const& path) const
         -> std::expected<DefinitionCatalog, Diagnostics>;

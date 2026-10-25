@@ -2,6 +2,7 @@
 
 #include <ioj/multi_buffer.h>
 #include <ioj/periodic_tick_countdown.h>
+#include <ioj/settings/entity_overlay.h>
 #include <ioj/sim/entities/entity_ledger.h>
 #include <ioj/sim/entities/entity_type.h>
 #include <ioj/sim/fixed_tick_loop.h>
@@ -162,8 +163,6 @@ struct SPACEGAMEPRESENTATION_API FHUDManager {
                     sim::SpatialQueryManager const& new_spatial_query_manager,
                     sim::player::Sim const* new_player_ship,
                     FLevelVisualConfig const& level_config,
-                    FEntityOverlaySettings const& entity_overlay_settings,
-                    ioj::settings::Radar const& radar_settings,
                     UInstancedStaticMeshComponent* soft_target_instances = nullptr);
     void deactivate();
     void advance(double dt);
@@ -287,7 +286,8 @@ struct SPACEGAMEPRESENTATION_API FHUDManager {
 
     bool has_mission_data{false};
     FString selected_mapping_context;
-    FEntityOverlaySettings entity_overlay_settings_;
+    FEntityOverlaySettings entity_overlay_resources_;
+    ioj::settings::EntityOverlay entity_overlay_settings_;
     FEntityOverlayStyle entity_overlay_style_;
     FEntityOverlayTeamColours entity_overlay_team_colours_;
     FEntityOverlayHealthMaximums entity_overlay_maximum_health_;

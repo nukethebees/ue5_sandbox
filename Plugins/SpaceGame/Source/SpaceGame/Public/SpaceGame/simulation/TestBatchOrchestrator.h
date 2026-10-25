@@ -66,10 +66,6 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     void set_start_mode(EOrchestratorStartMode mode);
     auto get_start_mode() const noexcept -> EOrchestratorStartMode { return start_mode; }
     void set_presentation_enabled(bool enabled);
-    void set_level_definition(ioj::levels::LevelDefinition definition) {
-        settings_prepared_ = false;
-        level_definition_ = MoveTemp(definition);
-    }
     auto get_level_definition() const -> ioj::levels::LevelDefinition const& {
         check(level_definition_.IsSet());
         return level_definition_.GetValue();
@@ -152,7 +148,7 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     // Testing and level preparation
     /* **************************************** */
 
-    auto prepare_level() -> bool;
+    auto prepare_level(ioj::levels::authoring::LevelSource const* source = nullptr) -> bool;
 
     /* **************************************** */
     // Events, results, and presentation

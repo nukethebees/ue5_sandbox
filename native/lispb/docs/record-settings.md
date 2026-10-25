@@ -54,7 +54,7 @@ Weapon::visit_field(weapon, Weapon::Field::damage,
 
 `Field` is guaranteed to be zero-based and contiguous, with one enumerator per member
 in schema declaration order. `Field::Count` equals the number of members, including
-settings-excluded members; it is zero for an empty record. Consequently, each integer
+S7-excluded members; it is zero for an empty record. Consequently, each integer
 in `[0, Count)` can be cast directly to a valid field and used for iteration or array indexing:
 
 ```cpp
@@ -74,7 +74,7 @@ when an operation applies only to particular fields. Dispatch invokes it exactly
 `Field`, `Count` and `visit_field`; it adds no object storage and preserves aggregate layout.
 Record names that collide with `Field`, `visit_field`, `Self` or `Visitor` are rejected.
 
-Visitors expose all members, including settings-excluded ones, without S7 dependencies.
+Visitors expose all members, including S7-excluded ones, without S7 dependencies.
 Opted-in named S7 readers reuse the visitor; external names, requiredness, exclusions and
 constraints remain in the reader. Non-default-constructible records still stage values
 before construction, and positional readers retain their direct argument decoding.
