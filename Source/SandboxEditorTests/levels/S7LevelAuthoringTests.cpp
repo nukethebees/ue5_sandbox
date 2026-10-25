@@ -819,6 +819,21 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         TestRunner->TestEqual(
             TEXT("Entities are unchanged"), static_cast<int32>(plan->changes.size()), 0);
 
+        ioj::editor::FS7LevelSourceSession session;
+        if (!TestRunner->TestTrue(TEXT("Source attaches"),
+                                  session.attach(*fixture.document).has_value())) {
+            return;
+        }
+        auto const position{fixture.player->GetActorLocation()};
+        fixture.player->SetActorLocation(position + FVector{100.0, 0.0, 0.0});
+        auto const preview{ioj::editor::make_s7_level_authoring_preview(
+            *fixture.world->GetCurrentLevel(), *fixture.document, session, *plan)};
+        if (!TestRunner->TestTrue(TEXT("Preview retains the plan baseline"), preview.has_value())) {
+            return;
+        }
+        assert_stale_preview_does_not_apply(*TestRunner, fixture, session, *preview, TEXT("scene"));
+        fixture.player->SetActorLocation(position);
+
         auto const applied{ioj::editor::apply_s7_level_sync_plan(
             *fixture.world->GetCurrentLevel(), *fixture.document, *plan)};
         if (!TestRunner->TestTrue(TEXT("Preview applies"), applied.has_value())) {

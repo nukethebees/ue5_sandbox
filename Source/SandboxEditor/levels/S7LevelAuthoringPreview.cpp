@@ -4,10 +4,7 @@
 #include "SandboxEditor/levels/S7LevelAuthoringDocument.h"
 #include "SandboxEditor/levels/S7LevelAuthoringSession.h"
 #include "SandboxEditor/levels/S7LevelSourceSession.h"
-#include <ioj/levels/authoring/level_definition_writer.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
-
-#include <SandboxCoreEngine/strings.h>
 
 #include <Engine/Level.h>
 #include <ScopedTransaction.h>
@@ -46,13 +43,10 @@ auto actor_identities(ULevel const& level, AS7LevelAuthoringDocument const& docu
     for (auto const& binding : document.entities) {
         result.Add(binding.actor.Get());
     }
-    auto append{[&](auto const& actors) {
-        result.Add(nullptr);
-        for (auto const actor : actors) {
-            result.Add(actor.Get());
-        }
-    }};
-    append(document.camera.targets);
+    result.Add(nullptr);
+    for (auto const actor : document.camera.targets) {
+        result.Add(actor.Get());
+    }
     result.Add(nullptr);
     for (auto const actor : level.Actors) {
         if (IsValid(actor) && resolve_s7_level_actor(*actor).IsSet()) {
@@ -89,11 +83,6 @@ auto make_s7_level_authoring_preview(ULevel& level,
     if (source_session.document() != &document) {
         return std::unexpected{TEXT("The source buffer is not attached to this level document.")};
     }
-    auto scene{collect_s7_scene(level, document)};
-    if (!scene) {
-        return std::unexpected{scene.error()};
-    }
-
     auto* const level_config{document.level_config.Get()};
     return FS7LevelAuthoringPreview{
         .plan = MoveTemp(plan),
@@ -103,8 +92,7 @@ auto make_s7_level_authoring_preview(ULevel& level,
         .level_config = level_config,
         .level_config_snapshot =
             s7_level_authoring_preview_detail::level_config_snapshot(level_config),
-        .actor_identities = s7_level_authoring_preview_detail::actor_identities(level, document),
-        .scene = MoveTemp(*scene)};
+        .actor_identities = s7_level_authoring_preview_detail::actor_identities(level, document)};
 }
 
 auto validate_s7_level_authoring_preview(ULevel& level,
@@ -126,7 +114,7 @@ auto validate_s7_level_authoring_preview(ULevel& level,
             s7_level_authoring_preview_detail::level_config_snapshot(level_config)};
 
     auto const current_scene{collect_s7_scene(level, document)};
-    auto const scene_changed{!current_scene || *current_scene != preview.scene};
+    auto const scene_changed{!current_scene || *current_scene != preview.plan.scene};
     auto const authoring_state_changed{level_or_document_changed || bindings_changed ||
                                        scene_changed};
     if (source_changed || authoring_state_changed || configuration_changed) {

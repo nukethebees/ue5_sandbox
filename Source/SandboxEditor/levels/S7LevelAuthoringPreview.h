@@ -1,7 +1,6 @@
 #pragma once
 
 #include "SandboxEditor/levels/S7LevelReconciliation.h"
-#include <ioj/levels/authoring/scene_snapshot.h>
 
 #include <CoreMinimal.h>
 #include <UObject/WeakObjectPtr.h>
@@ -30,7 +29,6 @@ struct SANDBOXEDITOR_API FS7LevelAuthoringPreview {
     TWeakObjectPtr<USpaceGameLevelConfig> level_config{};
     FString level_config_snapshot{};
     TArray<TWeakObjectPtr<AActor>> actor_identities{};
-    levels::authoring::SceneSnapshot scene{};
 };
 
 SANDBOXEDITOR_API auto make_s7_level_authoring_preview(ULevel& level,

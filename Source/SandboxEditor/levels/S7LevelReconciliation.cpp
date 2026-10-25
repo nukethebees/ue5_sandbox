@@ -23,6 +23,7 @@ struct PreparedSync {
     USpaceGameLevelConfig& config;
     levels::authoring::SyncPlan plan;
     std::vector<UClass*> entity_classes;
+    levels::authoring::SceneSnapshot scene;
 };
 
 auto prepare_sync(ULevel const& level,
@@ -60,7 +61,8 @@ auto prepare_sync(ULevel const& level,
     return PreparedSync{*GEditor,
                         config,
                         levels::authoring::reconcile_scene(*scene, incoming),
-                        std::move(entity_classes)};
+                        std::move(entity_classes),
+                        std::move(*scene)};
 }
 
 auto transform(levels::EntitySpawnDefinition const& entity) -> FTransform {
@@ -92,7 +94,8 @@ auto make_s7_level_sync_plan(ULevel const& level,
     if (changes->plan.settings_changed && !sources.IsSet()) {
         return std::unexpected{TEXT("Settings changes require their level and base source text.")};
     }
-    return FS7LevelSyncPlan{MoveTemp(changes->plan), MoveTemp(definition), MoveTemp(sources)};
+    return FS7LevelSyncPlan{
+        MoveTemp(changes->plan), MoveTemp(definition), MoveTemp(sources), MoveTemp(changes->scene)};
 }
 
 auto apply_s7_level_sync_plan(ULevel& level,

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <ioj/levels/authoring/scene_snapshot.h>
 #include <ioj/levels/authoring/sync_plan.h>
 #include <ioj/levels/level_definition.h>
 
@@ -22,6 +23,7 @@ struct FS7LevelReplaySources {
 struct SANDBOXEDITOR_API FS7LevelSyncPlan : levels::authoring::SyncPlan {
     levels::LevelDefinition definition;
     TOptional<FS7LevelReplaySources> sources;
+    levels::authoring::SceneSnapshot scene;
 };
 
 SANDBOXEDITOR_API auto make_s7_level_sync_plan(ULevel const& level,
