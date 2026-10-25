@@ -59,6 +59,10 @@ Use their generated serialized-name lookups for closed keyword sets. Grammar res
 as accepting only class/struct facade friends, remain in the parser. `generate-code` regenerates
 both compiler targets using the existing compiler before rebuilding its consumers.
 
+`SchemaProperty` owns the property spellings used by the handwritten schema parser. Property
+lookups and per-form allowlists use its generated enum values; `Fields` shares the same validation
+and diagnostics with string-based DSL consumers. Allowed nested declarations remain grammar rules.
+
 Use `:enum-array true` independently on native or Unreal enums to generate `ioj::enum_count<Enum>()` for
 `ioj::EnumArray<Enum, T>` and `ioj::FixedEnumArray<Enum>`. LispB requires known codes in declaration
 order from zero through count minus one; gaps, aliases, negative codes, hidden values, and count

@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <format>
 #include <initializer_list>
 #include <optional>
 #include <span>
@@ -24,14 +25,14 @@ Fields::Fields(Parser const& parser,
     , form_{form}
     , parser_{parser} {
     if (!syntax_.is_list(form) || syntax_.head(form) != expected_head) {
-        parser_.fail(syntax_.token_span(form),
-                     "expected '" + std::string{expected_head} + "' form");
+        parser_.fail(syntax_.token_span(form), std::format("expected '{}' form", expected_head));
     }
     if (syntax_.children(form).size() < positionals + 1) {
         parser_.fail(syntax_.token_span(form),
-                     "'" + std::string{expected_head} + "' requires " +
-                         std::to_string(positionals) + " positional value" +
-                         (positionals == 1 ? "" : "s"));
+                     std::format("'{}' requires {} positional value{}",
+                                 expected_head,
+                                 positionals,
+                                 positionals == 1 ? "" : "s"));
     }
 
     auto const count{syntax_.children(form).size()};
@@ -41,12 +42,11 @@ Fields::Fields(Parser const& parser,
             if (index + 1 >= count ||
                 syntax_.kind(syntax_.children(form)[index + 1]) == TokenKind::keyword) {
                 parser_.fail(syntax_.token_span(child),
-                             "property ':" + std::string{syntax_.text(child)} +
-                                 "' requires a value");
+                             std::format("property ':{}' requires a value", syntax_.text(child)));
             }
             if (std::ranges::find(properties_, syntax_.identifier(child)) != properties_.end()) {
                 parser_.fail(syntax_.token_span(child),
-                             "duplicate property ':" + std::string{syntax_.text(child)} + "'");
+                             std::format("duplicate property ':{}'", syntax_.text(child)));
             }
             properties_.push_back(syntax_.identifier(child));
             values_.push_back(syntax_.children(form)[index + 1]);
@@ -80,7 +80,7 @@ auto Fields::required(std::string_view const name) const -> FormId {
     auto const value{optional(name)};
     if (!value.has_value()) {
         parser_.fail(syntax_.token_span(form_),
-                     "missing required property ':" + std::string{name} + "'");
+                     std::format("missing required property ':{}'", name));
     }
     return *value;
 }
@@ -91,11 +91,16 @@ auto Fields::declarations() const -> std::span<FormId const> {
 
 void Fields::validate(std::initializer_list<std::string_view> const properties,
                       std::initializer_list<std::string_view> const declarations) const {
+    validate_names(properties, declarations);
+}
+
+void Fields::validate_names(std::span<std::string_view const> const properties,
+                            std::span<std::string_view const> const declarations) const {
     auto const count{properties_.size()};
     for (std::size_t index{}; index < count; ++index) {
         auto const name{syntax_.strings().view(properties_[index])};
         if (std::ranges::find(properties, name) == properties.end()) {
-            parser_.fail(property_spans_[index], "unknown property ':" + std::string{name} + "'");
+            parser_.fail(property_spans_[index], std::format("unknown property ':{}'", name));
         }
     }
 
@@ -108,7 +113,7 @@ void Fields::validate(std::initializer_list<std::string_view> const properties,
         }
         if (std::ranges::find(declarations, head) == declarations.end()) {
             parser_.fail(syntax_.token_span(declaration),
-                         "unexpected nested declaration '" + std::string{head} + "'");
+                         std::format("unexpected nested declaration '{}'", head));
         }
     }
 }

@@ -27,6 +27,7 @@ struct PackedIntegerValue;
 struct ExternalScalarId;
 enum class Access : std::uint8_t;
 enum class RecordKind : std::uint8_t;
+enum class SchemaProperty : std::uint8_t;
 enum class NativeEnumHelper : std::uint8_t;
 enum class PackedBitOrder : std::uint8_t;
 enum class PackedByteOrder : std::uint8_t;
@@ -40,29 +41,29 @@ class SchemaParser {
     auto parse_type_definition(sexpr::FormId const form, TypeRegistry& registry)
         -> std::pair<lispb::StringId, RegisteredTypeId>;
   private:
-    auto optional_text_id(sexpr::Fields const& fields, std::string_view const name)
+    auto optional_text_id(sexpr::Fields const& fields, SchemaProperty const key)
         -> std::optional<lispb::StringId>;
     auto parse_export_specifier(sexpr::Fields const& fields) -> lispb::StringId;
-    auto optional_identifier(sexpr::Fields const& fields, std::string_view const name)
+    auto optional_identifier(sexpr::Fields const& fields, SchemaProperty const key)
         -> std::optional<lispb::StringId>;
     auto text_id_list(sexpr::FormId const form, std::string_view const purpose)
         -> std::vector<lispb::StringId>;
     auto identifier_list(sexpr::FormId const form, std::string_view const purpose)
         -> std::vector<lispb::StringId>;
-    auto text_id_list_or(sexpr::Fields const& fields, std::string_view const name)
+    auto text_id_list_or(sexpr::Fields const& fields, SchemaProperty const key)
         -> std::vector<lispb::StringId>;
-    auto identifier_list_or(sexpr::Fields const& fields, std::string_view const name)
+    auto identifier_list_or(sexpr::Fields const& fields, SchemaProperty const key)
         -> std::vector<lispb::StringId>;
     auto unsigned_integer(sexpr::FormId const form, std::string_view const purpose)
         -> std::uint64_t;
     auto packed_integer(sexpr::FormId const form, std::string_view const purpose)
         -> PackedIntegerValue;
-    auto optional_text(sexpr::Fields const& fields, std::string_view const name)
+    auto optional_text(sexpr::Fields const& fields, SchemaProperty const key)
         -> std::optional<std::string>;
-    auto cpp_lines_or(sexpr::Fields const& fields, std::string_view const name)
+    auto cpp_lines_or(sexpr::Fields const& fields, SchemaProperty const key)
         -> std::vector<lispb::StringId>;
     auto boolean_or(sexpr::Fields const& fields,
-                    std::string_view const name,
+                    SchemaProperty const key,
                     bool const fallback = false) -> bool;
     auto parse_type_ref(Declarations& declarations, sexpr::FormId const form) -> TypeRefId;
     auto type_ref_list(Declarations& declarations,
@@ -91,8 +92,7 @@ class SchemaParser {
     auto parse_enum(Declarations& declarations, sexpr::FormId const form) -> DeclarationHandle;
     auto parse_table(Declarations& declarations, sexpr::FormId const form) -> DeclarationHandle;
     auto parse_facade_target_storage(sexpr::FormId const form) -> bool;
-    auto parse_facade_access(sexpr::Fields const& fields, std::string_view const property)
-        -> Access;
+    auto parse_facade_access(sexpr::Fields const& fields, SchemaProperty const key) -> Access;
     auto parse_facade_friend_kind(sexpr::Fields const& fields) -> RecordKind;
     auto parse_facade(Declarations& declarations, sexpr::FormId const form) -> DeclarationHandle;
     auto parse_setting_device(sexpr::FormId const form) -> SettingDevice;

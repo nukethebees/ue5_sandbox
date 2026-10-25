@@ -7,6 +7,7 @@ integer_scalar_cpp_emission.h
 integer_varint_encoding.h
 packed_field_kind.h
 record_comparison.h
+schema_property.h
 semantic_relation_kind.h
 setting_apply_mode.h
 setting_control_kind.h

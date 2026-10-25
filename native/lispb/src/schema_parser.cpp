@@ -28,6 +28,7 @@
 #include <codegen/schema/quantization_clipping.h>
 #include <codegen/schema/record_comparison.h>
 #include <codegen/schema/registered_types.h>
+#include <codegen/schema/schema_property.h>
 #include <codegen/schema/semantic_relation_kind.h>
 #include <codegen/schema/semantic_relation_unit.h>
 #include <codegen/schema/setting_apply_mode.h>
@@ -62,6 +63,7 @@
 namespace lispb::codegen {
 using sexpr::Fields;
 using sexpr::FormId;
+using P = SchemaProperty;
 
 namespace {
 template <typename Enum>
@@ -93,14 +95,15 @@ SchemaParser::SchemaParser(sexpr::Syntax& syntax)
     : syntax_{syntax}
     , parser_{syntax} {}
 
-auto SchemaParser::optional_text_id(sexpr::Fields const& fields, std::string_view const name)
+auto SchemaParser::optional_text_id(sexpr::Fields const& fields, SchemaProperty const key)
     -> std::optional<lispb::StringId> {
+    auto const name{to_serialized_string(key)};
     auto const value{fields.optional(name)};
     return value ? std::optional{parser_.text_id(*value, name)} : std::nullopt;
 }
 
 auto SchemaParser::parse_export_specifier(sexpr::Fields const& fields) -> lispb::StringId {
-    auto const value{fields.optional("export-specifier")};
+    auto const value{fields.optional(P::export_specifier)};
     if (!value) {
         return {};
     }
@@ -111,8 +114,9 @@ auto SchemaParser::parse_export_specifier(sexpr::Fields const& fields) -> lispb:
     return result;
 }
 
-auto SchemaParser::optional_identifier(sexpr::Fields const& fields, std::string_view const name)
+auto SchemaParser::optional_identifier(sexpr::Fields const& fields, SchemaProperty const key)
     -> std::optional<lispb::StringId> {
+    auto const name{to_serialized_string(key)};
     auto const value{fields.optional(name)};
     return value ? std::optional{parser_.identifier(*value, name)} : std::nullopt;
 }
@@ -143,14 +147,16 @@ auto SchemaParser::identifier_list(sexpr::FormId const form, std::string_view co
     return result;
 }
 
-auto SchemaParser::text_id_list_or(sexpr::Fields const& fields, std::string_view const name)
+auto SchemaParser::text_id_list_or(sexpr::Fields const& fields, SchemaProperty const key)
     -> std::vector<lispb::StringId> {
+    auto const name{to_serialized_string(key)};
     auto const value{fields.optional(name)};
     return value ? text_id_list(*value, name) : std::vector<lispb::StringId>{};
 }
 
-auto SchemaParser::identifier_list_or(sexpr::Fields const& fields, std::string_view const name)
+auto SchemaParser::identifier_list_or(sexpr::Fields const& fields, SchemaProperty const key)
     -> std::vector<lispb::StringId> {
+    auto const name{to_serialized_string(key)};
     auto const value{fields.optional(name)};
     return value ? identifier_list(*value, name) : std::vector<lispb::StringId>{};
 }
@@ -200,15 +206,17 @@ auto SchemaParser::packed_integer(sexpr::FormId const form, std::string_view con
     }
 }
 
-auto SchemaParser::optional_text(sexpr::Fields const& fields, std::string_view const name)
+auto SchemaParser::optional_text(sexpr::Fields const& fields, SchemaProperty const key)
     -> std::optional<std::string> {
+    auto const name{to_serialized_string(key)};
     auto const value{fields.optional(name)};
     return !value.has_value() ? std::nullopt
                               : std::optional<std::string>{std::string{parser_.text(*value, name)}};
 }
 
-auto SchemaParser::cpp_lines_or(sexpr::Fields const& fields, std::string_view const name)
+auto SchemaParser::cpp_lines_or(sexpr::Fields const& fields, SchemaProperty const key)
     -> std::vector<lispb::StringId> {
+    auto const name{to_serialized_string(key)};
     auto const value{fields.optional(name)};
     if (!value.has_value()) {
         return {};
@@ -229,8 +237,9 @@ auto SchemaParser::cpp_lines_or(sexpr::Fields const& fields, std::string_view co
 }
 
 auto SchemaParser::boolean_or(sexpr::Fields const& fields,
-                              std::string_view const name,
+                              SchemaProperty const key,
                               bool const fallback) -> bool {
+    auto const name{to_serialized_string(key)};
     auto const value{fields.optional(name)};
     return !value.has_value() ? fallback : parser_.boolean(*value, name);
 }
@@ -247,13 +256,13 @@ auto SchemaParser::parse_type_ref(Declarations& declarations, sexpr::FormId cons
         return record_id;
     }
     Fields const fields{parser_, form, "type-ref", 1};
-    fields.validate({"suffix", "nested"});
+    fields.validate({P::suffix, P::nested});
     auto& records{declarations.type_refs};
     auto const record_id{records.append()};
     auto const record_index{records.index(record_id)};
     records.name[record_index] = parser_.identifier(fields.positional(0), "type reference name");
-    records.suffix[record_index] = optional_text_id(fields, "suffix").value_or(lispb::StringId{});
-    records.nested[record_index] = optional_text_id(fields, "nested");
+    records.suffix[record_index] = optional_text_id(fields, P::suffix).value_or(lispb::StringId{});
+    records.nested[record_index] = optional_text_id(fields, P::nested);
     return record_id;
 }
 
@@ -274,13 +283,13 @@ auto SchemaParser::type_ref_list(Declarations& declarations,
 auto SchemaParser::parse_parameter(Declarations& declarations, sexpr::FormId const form)
     -> ParameterId {
     Fields const fields{parser_, form, "parameter", 2};
-    fields.validate({"default"});
+    fields.validate({P::default_});
     auto& records{declarations.parameters};
     auto const record_id{records.append()};
     auto const record_index{records.index(record_id)};
     records.type[record_index] = parse_type_ref(declarations, fields.positional(1));
     records.name[record_index] = parser_.identifier(fields.positional(0), "parameter name");
-    records.default_value[record_index] = optional_text_id(fields, "default");
+    records.default_value[record_index] = optional_text_id(fields, P::default_);
     return record_id;
 }
 
@@ -288,19 +297,19 @@ auto SchemaParser::parse_function(Declarations& declarations,
                                   sexpr::FormId const form,
                                   bool soa_owner) -> FunctionSchemaId {
     Fields const fields{parser_, form, syntax_.head(form), 2};
-    fields.validate({"body",
-                     "append-columns",
-                     "dependencies",
-                     "trailing-return-type",
-                     "const",
-                     "noexcept",
-                     "static",
-                     "inline",
-                     "constexpr",
-                     "nodiscard",
-                     "definition-in-source",
-                     "template-parameters",
-                     "requires"},
+    fields.validate({P::body,
+                     P::append_columns,
+                     P::dependencies,
+                     P::trailing_return_type,
+                     P::const_,
+                     P::noexcept_,
+                     P::static_,
+                     P::inline_,
+                     P::constexpr_,
+                     P::nodiscard,
+                     P::definition_in_source,
+                     P::template_parameters,
+                     P::requires_},
                     {"parameter"});
     std::vector<ParameterId> parameters;
     for (auto const declaration_id : fields.declarations()) {
@@ -308,21 +317,21 @@ auto SchemaParser::parse_function(Declarations& declarations,
         parameters.push_back(parse_parameter(declarations, declaration));
     }
     std::optional<TypeRefId> trailing_return_type;
-    if (auto const value{fields.optional("trailing-return-type")}) {
+    if (auto const value{fields.optional(P::trailing_return_type)}) {
         trailing_return_type = parse_type_ref(declarations, *value);
     }
-    auto const is_static{boolean_or(fields, "static")};
+    auto const is_static{boolean_or(fields, P::static_)};
     auto const is_const{
-        boolean_or(fields, "const", syntax_.head(form) == "view-function" && !is_static)};
+        boolean_or(fields, P::const_, syntax_.head(form) == "view-function" && !is_static)};
     if (syntax_.head(form) == "view-function" && !is_static && !is_const) {
         parser_.fail(
             form, "view-function must be const; use mutable-view-function for a mutable receiver");
     }
-    auto body_lines{cpp_lines_or(fields, "body")};
-    if (fields.optional("body").has_value() && body_lines.empty()) {
+    auto body_lines{cpp_lines_or(fields, P::body)};
+    if (fields.optional(P::body).has_value() && body_lines.empty()) {
         body_lines.emplace_back();
     }
-    if (fields.optional("append-columns") && !soa_owner) {
+    if (fields.optional(P::append_columns) && !soa_owner) {
         parser_.fail(form, "append-columns requires an owning SOA function");
     }
     auto& records{declarations.functions};
@@ -332,33 +341,33 @@ auto SchemaParser::parse_function(Declarations& declarations,
     records.return_type[record_index] = parse_type_ref(declarations, fields.positional(1));
     records.parameters[record_index] = declarations.range(parameters);
     records.body_lines[record_index] = declarations.range(body_lines);
-    if (fields.optional("append-columns")) {
+    if (fields.optional(P::append_columns)) {
         records.append_columns[record_index] =
-            declarations.range(identifier_list_or(fields, "append-columns"));
+            declarations.range(identifier_list_or(fields, P::append_columns));
     }
     records.dependencies[record_index] =
-        declarations.range(identifier_list_or(fields, "dependencies"));
+        declarations.range(identifier_list_or(fields, P::dependencies));
     records.trailing_return_type[record_index] = trailing_return_type;
     records.is_const[record_index] = is_const;
-    records.is_noexcept[record_index] = boolean_or(fields, "noexcept");
+    records.is_noexcept[record_index] = boolean_or(fields, P::noexcept_);
     records.is_static[record_index] = is_static;
-    records.is_inline[record_index] = boolean_or(fields, "inline");
-    records.definition_in_source[record_index] = boolean_or(fields, "definition-in-source");
-    records.template_parameters[record_index] = optional_text_id(fields, "template-parameters");
-    records.requires_clause[record_index] = optional_text_id(fields, "requires");
-    records.is_constexpr[record_index] = boolean_or(fields, "constexpr");
-    records.is_nodiscard[record_index] = boolean_or(fields, "nodiscard");
+    records.is_inline[record_index] = boolean_or(fields, P::inline_);
+    records.definition_in_source[record_index] = boolean_or(fields, P::definition_in_source);
+    records.template_parameters[record_index] = optional_text_id(fields, P::template_parameters);
+    records.requires_clause[record_index] = optional_text_id(fields, P::requires_);
+    records.is_constexpr[record_index] = boolean_or(fields, P::constexpr_);
+    records.is_nodiscard[record_index] = boolean_or(fields, P::nodiscard);
     return record_id;
 }
 
 auto SchemaParser::parse_member(Declarations& declarations, sexpr::FormId const form)
     -> SoaMemberId {
     Fields const fields{parser_, form, "member", 3};
-    fields.validate({"fixed-schema",
-                     "mask-field",
-                     "mask-dimensions",
-                     "equivalent-member",
-                     "equivalent-accessor"},
+    fields.validate({P::fixed_schema,
+                     P::mask_field,
+                     P::mask_dimensions,
+                     P::equivalent_member,
+                     P::equivalent_accessor},
                     {"relation"});
     auto const kind_name{std::string{parser_.text(fields.positional(1), "member kind")}};
     SoaMemberKind kind;
@@ -370,7 +379,7 @@ auto SchemaParser::parse_member(Declarations& declarations, sexpr::FormId const 
         parser_.fail(fields.positional(1), std::format("unknown SOA member kind '{}'", kind_name));
     }
     std::vector<SoaMaskDimensionId> mask_dimensions;
-    if (auto const dimensions{fields.optional("mask-dimensions")}) {
+    if (auto const dimensions{fields.optional(P::mask_dimensions)}) {
         if (!syntax_.is_list(*dimensions)) {
             parser_.fail(*dimensions, "mask-dimensions must be a list");
         }
@@ -398,8 +407,8 @@ auto SchemaParser::parse_member(Declarations& declarations, sexpr::FormId const 
             parser_.fail(declaration, "SOA member may have only one relationship");
         }
         Fields const relation{parser_, declaration, "relation", 2};
-        relation.validate({"unit"});
-        auto const unit{relation.optional("unit")};
+        relation.validate({P::unit});
+        auto const unit{relation.optional(P::unit)};
         {
             auto& records{declarations.semantic_relations};
             auto const record_id{records.append()};
@@ -421,9 +430,9 @@ auto SchemaParser::parse_member(Declarations& declarations, sexpr::FormId const 
     records.name[record_index] = parser_.identifier(fields.positional(0), "member name");
     records.kind[record_index] = kind;
     records.type[record_index] = parse_type_ref(declarations, fields.positional(2));
-    records.equivalent_member[record_index] = optional_identifier(fields, "equivalent-member");
-    records.equivalent_accessor[record_index] = boolean_or(fields, "equivalent-accessor");
-    records.mask_field[record_index] = boolean_or(fields, "mask-field");
+    records.equivalent_member[record_index] = optional_identifier(fields, P::equivalent_member);
+    records.equivalent_accessor[record_index] = boolean_or(fields, P::equivalent_accessor);
+    records.mask_field[record_index] = boolean_or(fields, P::mask_field);
     records.mask_dimensions[record_index] = declarations.range(mask_dimensions);
     records.relationship[record_index] = relationship;
     return record_id;
@@ -432,13 +441,13 @@ auto SchemaParser::parse_member(Declarations& declarations, sexpr::FormId const 
 auto SchemaParser::parse_soa(Declarations& declarations, sexpr::FormId const form)
     -> DeclarationHandle {
     Fields const fields{parser_, form, "struct", 1};
-    fields.validate({"export-specifier",
-                     "using-declarations",
-                     "equivalent-type",
-                     "equivalent-constructor",
-                     "layout-only",
-                     "field-mask-name",
-                     "field-enum-name"},
+    fields.validate({P::export_specifier,
+                     P::using_declarations,
+                     P::equivalent_type,
+                     P::equivalent_constructor,
+                     P::layout_only,
+                     P::field_mask_name,
+                     P::field_enum_name},
                     {"member", "function", "view-function", "mutable-view-function"});
 
     std::vector<SoaMemberId> members;
@@ -460,7 +469,7 @@ auto SchemaParser::parse_soa(Declarations& declarations, sexpr::FormId const for
     }
 
     std::optional<TypeRefId> equivalent_type;
-    if (auto const value{fields.optional("equivalent-type")}) {
+    if (auto const value{fields.optional(P::equivalent_type)}) {
         equivalent_type = parse_type_ref(declarations, *value);
     }
     auto& records{declarations.soas};
@@ -472,31 +481,31 @@ auto SchemaParser::parse_soa(Declarations& declarations, sexpr::FormId const for
     records.functions[record_index] = declarations.range(functions);
     records.mutable_view_functions[record_index] = declarations.range(mutable_view_functions);
     records.using_declarations[record_index] =
-        declarations.range(text_id_list_or(fields, "using-declarations"));
+        declarations.range(text_id_list_or(fields, P::using_declarations));
     records.equivalent_type[record_index] = equivalent_type;
     records.equivalent_constructor[record_index] =
-        optional_text_id(fields, "equivalent-constructor");
-    records.layout_only[record_index] = boolean_or(fields, "layout-only");
-    records.field_mask_name[record_index] = optional_identifier(fields, "field-mask-name");
-    records.field_enum_name[record_index] = optional_identifier(fields, "field-enum-name");
+        optional_text_id(fields, P::equivalent_constructor);
+    records.layout_only[record_index] = boolean_or(fields, P::layout_only);
+    records.field_mask_name[record_index] = optional_identifier(fields, P::field_mask_name);
+    records.field_enum_name[record_index] = optional_identifier(fields, P::field_enum_name);
     records.const_view_functions[record_index] = declarations.range(const_view_functions);
     return record_id;
 }
 
 auto SchemaParser::parse_module_settings(Declarations& declarations, sexpr::Fields const& fields)
     -> ModuleSettingsId {
-    auto const source{optional_text_id(fields, "source")};
+    auto const source{optional_text_id(fields, P::source)};
     auto& records{declarations.module_settings_store};
     auto const record_id{records.append()};
     auto const record_index{records.index(record_id)};
     records.name[record_index] = parser_.identifier(fields.positional(0), "module name");
-    records.header[record_index] = parser_.text_id(fields.required("header"), "module header");
+    records.header[record_index] = parser_.text_id(fields.required(P::header), "module header");
     records.source[record_index] = source;
-    records.header_include[record_index] = optional_text_id(fields, "header-include");
-    records.namespace_name[record_index] = optional_identifier(fields, "namespace");
+    records.header_include[record_index] = optional_text_id(fields, P::header_include);
+    records.namespace_name[record_index] = optional_identifier(fields, P::namespace_);
     records.include_order[record_index] =
-        declarations.range(text_id_list_or(fields, "include-order"));
-    records.prelude_lines[record_index] = declarations.range(cpp_lines_or(fields, "prelude"));
+        declarations.range(text_id_list_or(fields, P::include_order));
+    records.prelude_lines[record_index] = declarations.range(cpp_lines_or(fields, P::prelude));
     return record_id;
 }
 
@@ -522,15 +531,15 @@ auto SchemaParser::parse_enum_unreal_projection(Declarations& declarations,
                                                 sexpr::FormId const form)
     -> EnumUnrealProjectionId {
     Fields const fields{parser_, form, "unreal-projection", 1};
-    fields.validate({"header",
-                     "header-include",
-                     "conversion-header",
-                     "native-header-include",
-                     "reflection",
-                     "enum-array"});
+    fields.validate({P::header,
+                     P::header_include,
+                     P::conversion_header,
+                     P::native_header_include,
+                     P::reflection,
+                     P::enum_array});
 
     auto reflection{EnumReflection::uenum};
-    if (auto const value{fields.optional("reflection")}) {
+    if (auto const value{fields.optional(P::reflection)}) {
         reflection = parse_keyword(
             parser_, *value, "enum reflection mode", try_parse_serialized_enum_reflection);
     }
@@ -540,15 +549,15 @@ auto SchemaParser::parse_enum_unreal_projection(Declarations& declarations,
     auto const record_index{records.index(record_id)};
     records.name[record_index] = parser_.identifier(fields.positional(0), "Unreal projection name");
     records.header[record_index] =
-        parser_.text_id(fields.required("header"), "Unreal projection header");
+        parser_.text_id(fields.required(P::header), "Unreal projection header");
     records.header_include[record_index] =
-        parser_.text_id(fields.required("header-include"), "Unreal projection header include");
+        parser_.text_id(fields.required(P::header_include), "Unreal projection header include");
     records.conversion_header[record_index] = parser_.text_id(
-        fields.required("conversion-header"), "Unreal projection conversion header");
+        fields.required(P::conversion_header), "Unreal projection conversion header");
     records.native_header_include[record_index] =
-        parser_.text_id(fields.required("native-header-include"), "native enum header include");
+        parser_.text_id(fields.required(P::native_header_include), "native enum header include");
     records.reflection[record_index] = reflection;
-    records.enum_array[record_index] = boolean_or(fields, "enum-array");
+    records.enum_array[record_index] = boolean_or(fields, P::enum_array);
     return record_id;
 }
 
@@ -588,18 +597,18 @@ auto SchemaParser::parse_packed_bit_order(sexpr::FormId const form) -> PackedBit
 auto SchemaParser::parse_packed_field(Declarations& declarations, sexpr::FormId const form)
     -> PackedSegmentId {
     Fields const fields{parser_, form, "field", 2};
-    fields.validate({"bits", "kind", "range-helper", "minimum", "maximum", "default"},
+    fields.validate({P::bits, P::kind, P::range_helper, P::minimum, P::maximum, P::default_},
                     {"code", "relation"});
 
     auto kind{PackedFieldKind::unsigned_integer};
-    if (auto const value{fields.optional("kind")}) {
+    if (auto const value{fields.optional(P::kind)}) {
         kind = parse_keyword(
             parser_, *value, "packed field kind", try_parse_serialized_packed_field_kind);
     }
 
-    auto const minimum{fields.optional("minimum")};
-    auto const maximum{fields.optional("maximum")};
-    auto const& bits_form{fields.required("bits")};
+    auto const minimum{fields.optional(P::minimum)};
+    auto const maximum{fields.optional(P::maximum)};
+    auto const& bits_form{fields.required(P::bits)};
     auto const bits_text{std::string{parser_.text(bits_form, "packed field bits")}};
     auto const bits{bits_text == "auto"
                         ? std::optional<int>{}
@@ -614,8 +623,8 @@ auto SchemaParser::parse_packed_field(Declarations& declarations, sexpr::FormId 
                 parser_.fail(declaration, "packed field may have only one relationship");
             }
             Fields const relation{parser_, declaration, "relation", 2};
-            relation.validate({"unit"});
-            auto const unit{relation.optional("unit")};
+            relation.validate({P::unit});
+            auto const unit{relation.optional(P::unit)};
             {
                 auto& records{declarations.semantic_relations};
                 auto const record_id{records.append()};
@@ -634,7 +643,7 @@ auto SchemaParser::parse_packed_field(Declarations& declarations, sexpr::FormId 
             continue;
         }
         Fields const code{parser_, declaration, "code", 1};
-        code.validate({"value", "sentinel"});
+        code.validate({P::value, P::sentinel});
         {
             auto& records{declarations.packed_named_codes};
             auto const record_id{records.append()};
@@ -642,8 +651,8 @@ auto SchemaParser::parse_packed_field(Declarations& declarations, sexpr::FormId 
             records.name[record_index] =
                 parser_.identifier(code.positional(0), "packed named code name");
             records.value[record_index] =
-                packed_integer(code.required("value"), "packed named code value");
-            records.sentinel[record_index] = boolean_or(code, "sentinel");
+                packed_integer(code.required(P::value), "packed named code value");
+            records.sentinel[record_index] = boolean_or(code, P::sentinel);
             named_codes.push_back(record_id);
         }
     }
@@ -654,7 +663,7 @@ auto SchemaParser::parse_packed_field(Declarations& declarations, sexpr::FormId 
     records.type[record_index] = parse_type_ref(declarations, fields.positional(1));
     records.bits[record_index] = bits;
     records.kind[record_index] = kind;
-    records.range_helper[record_index] = boolean_or(fields, "range-helper");
+    records.range_helper[record_index] = boolean_or(fields, P::range_helper);
     records.minimum_value[record_index] =
         !minimum.has_value()
             ? std::nullopt
@@ -666,35 +675,39 @@ auto SchemaParser::parse_packed_field(Declarations& declarations, sexpr::FormId 
     records.named_codes[record_index] = declarations.range(named_codes);
     records.relationship[record_index] = relationship;
     records.default_value[record_index] =
-        !fields.optional("default").has_value()
+        !fields.optional(P::default_).has_value()
             ? std::nullopt
-            : std::optional{packed_integer(*fields.optional("default"), "packed field default")};
+            : std::optional{packed_integer(*fields.optional(P::default_), "packed field default")};
     return record_id;
 }
 
 auto SchemaParser::parse_packed_reserved_bits(Declarations& declarations, sexpr::FormId const form)
     -> PackedSegmentId {
     Fields const fields{parser_, form, "reserved", 1};
-    fields.validate({"bits"});
+    fields.validate({P::bits});
     auto& records{declarations.packed_reserved_bits};
     auto const record_id{records.append()};
     auto const record_index{records.index(record_id)};
     records.name[record_index] =
         parser_.identifier(fields.positional(0), "packed reserved-region name");
     records.bits[record_index] =
-        parser_.integer(fields.required("bits"), "packed reserved-region bits");
+        parser_.integer(fields.required(P::bits), "packed reserved-region bits");
     return record_id;
 }
 
 auto SchemaParser::parse_packed_value(Declarations& declarations, sexpr::FormId const form)
     -> DeclarationHandle {
     Fields const fields{parser_, form, "packed-value", 1};
-    fields.validate(
-        {"storage", "invalid-value", "export-specifier", "mutable", "byte-order", "bit-order"},
-        {"field", "reserved"});
-    auto const invalid_value{fields.optional("invalid-value")};
-    auto const byte_order{fields.optional("byte-order")};
-    auto const bit_order{fields.optional("bit-order")};
+    fields.validate({P::storage,
+                     P::invalid_value,
+                     P::export_specifier,
+                     P::mutable_,
+                     P::byte_order,
+                     P::bit_order},
+                    {"field", "reserved"});
+    auto const invalid_value{fields.optional(P::invalid_value)};
+    auto const byte_order{fields.optional(P::byte_order)};
+    auto const bit_order{fields.optional(P::bit_order)};
 
     std::vector<PackedSegmentId> segments;
     segments.reserve(fields.declarations().size());
@@ -711,14 +724,14 @@ auto SchemaParser::parse_packed_value(Declarations& declarations, sexpr::FormId 
     auto const record_id{records.append()};
     auto const record_index{records.index(record_id)};
     records.name[record_index] = parser_.identifier(fields.positional(0), "packed value name");
-    records.storage_type[record_index] = parse_type_ref(declarations, fields.required("storage"));
+    records.storage_type[record_index] = parse_type_ref(declarations, fields.required(P::storage));
     records.segments[record_index] = declarations.range(segments);
     records.invalid_value[record_index] =
         !invalid_value.has_value() ? std::nullopt
                                    : std::optional<std::uint64_t>{
                                          unsigned_integer(*invalid_value, "packed invalid value")};
     records.export_specifier[record_index] = parse_export_specifier(fields);
-    records.mutable_value[record_index] = boolean_or(fields, "mutable");
+    records.mutable_value[record_index] = boolean_or(fields, P::mutable_);
     records.byte_order[record_index] =
         !byte_order.has_value()
             ? std::nullopt
@@ -737,15 +750,15 @@ auto SchemaParser::parse_enum(Declarations& declarations, sexpr::FormId const fo
                                    (!syntax_.is_list(syntax_.children(form)[2]) ||
                                     syntax_.head(syntax_.children(form)[2]) == "type-ref")};
     Fields const fields{parser_, form, "enum", has_underlying_type ? 2U : 1U};
-    fields.validate({"reflection",
-                     "enum-array",
-                     "count",
-                     "conversions",
-                     "export-specifier",
-                     "native-api",
-                     "helpers",
-                     "bit-width",
-                     "signed"},
+    fields.validate({P::reflection,
+                     P::enum_array,
+                     P::count,
+                     P::conversions,
+                     P::export_specifier,
+                     P::native_api,
+                     P::helpers,
+                     P::bit_width,
+                     P::signed_},
                     {"value", "unreal-projection"});
     std::vector<EnumeratorId> values;
     std::optional<EnumUnrealProjectionId> unreal_projection;
@@ -753,18 +766,18 @@ auto SchemaParser::parse_enum(Declarations& declarations, sexpr::FormId const fo
         auto const declaration{declaration_id};
         if (syntax_.head(declaration) == "value") {
             Fields const value{parser_, declaration, "value", 1};
-            value.validate({"value", "display-name", "hidden", "serialized-name", "sentinel"});
+            value.validate({P::value, P::display_name, P::hidden, P::serialized_name, P::sentinel});
             {
                 auto& records{declarations.enumerators};
                 auto const record_id{records.append()};
                 auto const record_index{records.index(record_id)};
                 records.name[record_index] =
                     parser_.identifier(value.positional(0), "enumerator name");
-                records.initializer[record_index] = optional_text_id(value, "value");
-                records.display_name[record_index] = optional_text_id(value, "display-name");
-                records.hidden[record_index] = boolean_or(value, "hidden");
-                records.serialized_name[record_index] = optional_text_id(value, "serialized-name");
-                records.sentinel[record_index] = boolean_or(value, "sentinel");
+                records.initializer[record_index] = optional_text_id(value, P::value);
+                records.display_name[record_index] = optional_text_id(value, P::display_name);
+                records.hidden[record_index] = boolean_or(value, P::hidden);
+                records.serialized_name[record_index] = optional_text_id(value, P::serialized_name);
+                records.sentinel[record_index] = boolean_or(value, P::sentinel);
                 values.push_back(record_id);
             }
         } else {
@@ -775,11 +788,11 @@ auto SchemaParser::parse_enum(Declarations& declarations, sexpr::FormId const fo
         }
     }
     std::vector<NativeEnumHelper> helpers;
-    if (auto const list{fields.optional("helpers")}) {
+    if (auto const list{fields.optional(P::helpers)}) {
         if (!syntax_.is_list(*list)) {
             parser_.fail(*list, "helpers must be a list");
         }
-        if (!boolean_or(fields, "native-api")) {
+        if (!boolean_or(fields, P::native_api)) {
             parser_.fail(*list, "helpers requires :native-api true");
         }
         for (auto const& child : syntax_.children(*list)) {
@@ -787,7 +800,7 @@ auto SchemaParser::parse_enum(Declarations& declarations, sexpr::FormId const fo
         }
     }
     std::vector<EnumConversion> conversions;
-    if (auto const list{fields.optional("conversions")}) {
+    if (auto const list{fields.optional(P::conversions)}) {
         if (!syntax_.is_list(*list)) {
             parser_.fail(*list, "conversions must be a list");
         }
@@ -797,12 +810,12 @@ auto SchemaParser::parse_enum(Declarations& declarations, sexpr::FormId const fo
         }
     }
     auto reflection{EnumReflection::none};
-    if (auto const value{fields.optional("reflection")}) {
+    if (auto const value{fields.optional(P::reflection)}) {
         reflection = parse_keyword(
             parser_, *value, "enum reflection mode", try_parse_serialized_enum_reflection);
     }
     std::optional<std::uint8_t> bit_width;
-    if (auto const value{fields.optional("bit-width")}) {
+    if (auto const value{fields.optional(P::bit_width)}) {
         auto const parsed{unsigned_integer(*value, "enum bit width")};
         if (parsed == 0 || parsed > 64) {
             parser_.fail(*value, "enum bit width must be between 1 and 64 bits");
@@ -817,20 +830,20 @@ auto SchemaParser::parse_enum(Declarations& declarations, sexpr::FormId const fo
         has_underlying_type ? std::optional{parse_type_ref(declarations, fields.positional(1))}
                             : std::nullopt;
     records.values[record_index] = declarations.range(values);
-    records.count[record_index] = optional_identifier(fields, "count");
+    records.count[record_index] = optional_identifier(fields, P::count);
     records.conversions[record_index] = declarations.range(conversions);
     records.export_specifier[record_index] = parse_export_specifier(fields);
     records.unreal_projection[record_index] = unreal_projection;
     records.bit_width[record_index] = bit_width;
     records.reflection[record_index] = reflection;
     records.signedness[record_index] = schema::EnumSignedness::unspecified;
-    if (auto const signedness{fields.optional("signed")}) {
+    if (auto const signedness{fields.optional(P::signed_)}) {
         records.signedness[record_index] = parser_.boolean(*signedness, "signed")
                                              ? schema::EnumSignedness::signed_
                                              : schema::EnumSignedness::unsigned_;
     }
-    records.enum_array[record_index] = boolean_or(fields, "enum-array");
-    records.native_api[record_index] = boolean_or(fields, "native-api");
+    records.enum_array[record_index] = boolean_or(fields, P::enum_array);
+    records.native_api[record_index] = boolean_or(fields, P::native_api);
     records.helpers[record_index] = declarations.range(helpers);
     return record_id;
 }
@@ -838,7 +851,7 @@ auto SchemaParser::parse_enum(Declarations& declarations, sexpr::FormId const fo
 auto SchemaParser::parse_table(Declarations& declarations, sexpr::FormId const form)
     -> DeclarationHandle {
     Fields const fields{parser_, form, "table", 1};
-    fields.validate({"export-specifier"}, {"row", "column", "group"});
+    fields.validate({P::export_specifier}, {"row", "column", "group"});
     std::vector<StaticTableRowId> rows;
     std::vector<StaticTableColumnId> columns;
     std::vector<StaticTableGroupId> groups;
@@ -869,15 +882,15 @@ auto SchemaParser::parse_table(Declarations& declarations, sexpr::FormId const f
             }
         } else if (head == "group") {
             Fields const group{parser_, declaration, "group", 2};
-            group.validate({"columns"});
+            group.validate({P::columns});
             {
                 auto& records{declarations.static_table_groups};
                 auto const record_id{records.append()};
                 auto const record_index{records.index(record_id)};
                 records.name[record_index] = parser_.identifier(group.positional(0), "group name");
                 records.type[record_index] = parse_type_ref(declarations, group.positional(1));
-                records.columns[record_index] =
-                    declarations.range(identifier_list(group.required("columns"), "group columns"));
+                records.columns[record_index] = declarations.range(
+                    identifier_list(group.required(P::columns), "group columns"));
                 groups.push_back(record_id);
             }
         }
@@ -904,8 +917,9 @@ auto SchemaParser::parse_facade_target_storage(sexpr::FormId const form) -> bool
     parser_.fail(form, std::format("expected 'pointer' or 'reference'; got '{}'", value));
 }
 
-auto SchemaParser::parse_facade_access(sexpr::Fields const& fields, std::string_view const property)
+auto SchemaParser::parse_facade_access(sexpr::Fields const& fields, SchemaProperty const key)
     -> Access {
+    auto const property{to_serialized_string(key)};
     auto const form{fields.optional(property)};
     if (!form) {
         return Access::public_;
@@ -921,7 +935,7 @@ auto SchemaParser::parse_facade_access(sexpr::Fields const& fields, std::string_
 }
 
 auto SchemaParser::parse_facade_friend_kind(sexpr::Fields const& fields) -> RecordKind {
-    auto const form{fields.optional("friend-kind")};
+    auto const form{fields.optional(P::friend_kind)};
     if (!form) {
         return RecordKind::class_;
     }
@@ -935,21 +949,21 @@ auto SchemaParser::parse_facade_friend_kind(sexpr::Fields const& fields) -> Reco
 auto SchemaParser::parse_facade(Declarations& declarations, sexpr::FormId const form)
     -> DeclarationHandle {
     Fields const fields{parser_, form, "facade", 3};
-    fields.validate({"validation",
-                     "validation-dependencies",
-                     "export-specifier",
-                     "bind-access",
-                     "method-access",
-                     "friends",
-                     "friend-kind",
-                     "definitions-in-source",
-                     "target-storage"},
+    fields.validate({P::validation,
+                     P::validation_dependencies,
+                     P::export_specifier,
+                     P::bind_access,
+                     P::method_access,
+                     P::friends,
+                     P::friend_kind,
+                     P::definitions_in_source,
+                     P::target_storage},
                     {"method"});
     std::vector<FacadeMethodId> methods;
     for (auto const declaration_id : fields.declarations()) {
         auto const declaration{declaration_id};
         Fields const method{parser_, declaration, "method", 2};
-        method.validate({"const", "noexcept", "target-name"}, {"parameter"});
+        method.validate({P::const_, P::noexcept_, P::target_name}, {"parameter"});
         std::vector<ParameterId> parameters;
         for (auto const parameter_id : method.declarations()) {
             auto const parameter{parameter_id};
@@ -963,14 +977,14 @@ auto SchemaParser::parse_facade(Declarations& declarations, sexpr::FormId const 
                 parser_.identifier(method.positional(0), "facade method name");
             records.return_type[record_index] = parse_type_ref(declarations, method.positional(1));
             records.parameters[record_index] = declarations.range(parameters);
-            records.is_const[record_index] = boolean_or(method, "const");
-            records.is_noexcept[record_index] = boolean_or(method, "noexcept");
-            records.target_name[record_index] = optional_identifier(method, "target-name");
+            records.is_const[record_index] = boolean_or(method, P::const_);
+            records.is_noexcept[record_index] = boolean_or(method, P::noexcept_);
+            records.target_name[record_index] = optional_identifier(method, P::target_name);
             methods.push_back(record_id);
         }
     }
     auto reference_target{false};
-    if (auto const value{fields.optional("target-storage")}) {
+    if (auto const value{fields.optional(P::target_storage)}) {
         reference_target = parse_facade_target_storage(*value);
     }
     auto& records{declarations.facades};
@@ -981,15 +995,16 @@ auto SchemaParser::parse_facade(Declarations& declarations, sexpr::FormId const 
     records.target_member_name[record_index] =
         parser_.identifier(fields.positional(2), "facade target member name");
     records.methods[record_index] = declarations.range(methods);
-    records.validation_lines[record_index] = declarations.range(cpp_lines_or(fields, "validation"));
+    records.validation_lines[record_index] =
+        declarations.range(cpp_lines_or(fields, P::validation));
     records.validation_dependencies[record_index] =
-        declarations.range(identifier_list_or(fields, "validation-dependencies"));
+        declarations.range(identifier_list_or(fields, P::validation_dependencies));
     records.export_specifier[record_index] = parse_export_specifier(fields);
-    records.bind_access[record_index] = parse_facade_access(fields, "bind-access");
-    records.method_access[record_index] = parse_facade_access(fields, "method-access");
-    records.friends[record_index] = declarations.range(text_id_list_or(fields, "friends"));
+    records.bind_access[record_index] = parse_facade_access(fields, P::bind_access);
+    records.method_access[record_index] = parse_facade_access(fields, P::method_access);
+    records.friends[record_index] = declarations.range(text_id_list_or(fields, P::friends));
     records.friend_kind[record_index] = parse_facade_friend_kind(fields);
-    records.definitions_in_source[record_index] = boolean_or(fields, "definitions-in-source");
+    records.definitions_in_source[record_index] = boolean_or(fields, P::definitions_in_source);
     records.reference_target[record_index] = reference_target;
     return record_id;
 }
@@ -1012,12 +1027,13 @@ auto SchemaParser::parse_control(Declarations& declarations, sexpr::FormId const
     -> SettingControlId {
     Fields const fields{parser_, form, "control", 1};
     fields.validate(
-        {"options-provider", "availability-provider", "min", "max", "step", "custom-row"});
+        {P::options_provider, P::availability_provider, P::min, P::max, P::step, P::custom_row});
     auto const kind{parse_keyword(parser_,
                                   fields.positional(0),
                                   "setting control kind",
                                   try_parse_serialized_setting_control_kind)};
-    auto optional_number = [&](std::string_view const name) -> std::optional<double> {
+    auto optional_number = [&](SchemaProperty const key) -> std::optional<double> {
+        auto const name{to_serialized_string(key)};
         auto const value{fields.optional(name)};
         return !value.has_value() ? std::nullopt
                                   : std::optional<double>{parser_.number(*value, name)};
@@ -1026,19 +1042,20 @@ auto SchemaParser::parse_control(Declarations& declarations, sexpr::FormId const
     auto const record_id{records.append()};
     auto const record_index{records.index(record_id)};
     records.kind[record_index] = kind;
-    records.options_provider[record_index] = optional_text_id(fields, "options-provider");
-    records.availability_provider[record_index] = optional_text_id(fields, "availability-provider");
-    records.minimum[record_index] = optional_number("min");
-    records.maximum[record_index] = optional_number("max");
-    records.step[record_index] = optional_number("step");
-    records.custom_row[record_index] = optional_text_id(fields, "custom-row");
+    records.options_provider[record_index] = optional_text_id(fields, P::options_provider);
+    records.availability_provider[record_index] =
+        optional_text_id(fields, P::availability_provider);
+    records.minimum[record_index] = optional_number(P::min);
+    records.maximum[record_index] = optional_number(P::max);
+    records.step[record_index] = optional_number(P::step);
+    records.custom_row[record_index] = optional_text_id(fields, P::custom_row);
     return record_id;
 }
 
 auto SchemaParser::parse_setting(Declarations& declarations, sexpr::FormId const form)
     -> SettingId {
     Fields const fields{parser_, form, "setting", 2};
-    fields.validate({"tooltip", "category", "value-type", "backend", "apply", "device"},
+    fields.validate({P::tooltip, P::category, P::value_type, P::backend, P::apply, P::device},
                     {"control"});
     if (fields.declarations().size() != 1) {
         parser_.fail(form, "setting requires exactly one control declaration");
@@ -1048,18 +1065,18 @@ auto SchemaParser::parse_setting(Declarations& declarations, sexpr::FormId const
     auto const record_index{records.index(record_id)};
     records.name[record_index] = parser_.identifier(fields.positional(0), "setting name");
     records.label[record_index] = parser_.text_id(fields.positional(1), "setting label");
-    records.tooltip[record_index] = optional_text_id(fields, "tooltip");
+    records.tooltip[record_index] = optional_text_id(fields, P::tooltip);
     records.category[record_index] =
-        parser_.identifier(fields.required("category"), "setting category");
-    records.value_type[record_index] = parse_type_ref(declarations, fields.required("value-type"));
+        parser_.identifier(fields.required(P::category), "setting category");
+    records.value_type[record_index] = parse_type_ref(declarations, fields.required(P::value_type));
     records.backend[record_index] =
-        parser_.identifier(fields.required("backend"), "setting backend");
+        parser_.identifier(fields.required(P::backend), "setting backend");
     records.apply_mode[record_index] = parse_keyword(parser_,
-                                                     fields.required("apply"),
+                                                     fields.required(P::apply),
                                                      "settings apply mode",
                                                      try_parse_serialized_setting_apply_mode);
-    records.device[record_index] = fields.optional("device").has_value()
-                                     ? parse_setting_device(*fields.optional("device"))
+    records.device[record_index] = fields.optional(P::device).has_value()
+                                     ? parse_setting_device(*fields.optional(P::device))
                                      : SettingDevice::shared;
     records.control[record_index] = parse_control(declarations, fields.declarations().front());
     return record_id;
@@ -1068,20 +1085,20 @@ auto SchemaParser::parse_setting(Declarations& declarations, sexpr::FormId const
 auto SchemaParser::parse_record_member(Declarations& declarations, sexpr::FormId const form)
     -> RecordMemberId {
     Fields const fields{parser_, form, "member", 2};
-    fields.validate({"count",
-                     "initializer",
-                     "s7-exclude",
-                     "s7-name",
-                     "required",
-                     "nonzero",
-                     "positive",
-                     "nonnegative",
-                     "finite",
-                     "nonempty",
-                     "minimum",
-                     "maximum"},
+    fields.validate({P::count,
+                     P::initializer,
+                     P::s7_exclude,
+                     P::s7_name,
+                     P::required,
+                     P::nonzero,
+                     P::positive,
+                     P::nonnegative,
+                     P::finite,
+                     P::nonempty,
+                     P::minimum,
+                     P::maximum},
                     {"relation"});
-    auto const count{fields.optional("count")};
+    auto const count{fields.optional(P::count)};
     std::optional<SemanticRelationId> relationship;
     for (auto const declaration_id : fields.declarations()) {
         auto const declaration{declaration_id};
@@ -1089,8 +1106,8 @@ auto SchemaParser::parse_record_member(Declarations& declarations, sexpr::FormId
             parser_.fail(declaration, "record member may have only one relationship");
         }
         Fields const relation{parser_, declaration, "relation", 2};
-        relation.validate({"unit"});
-        auto const unit{relation.optional("unit")};
+        relation.validate({P::unit});
+        auto const unit{relation.optional(P::unit)};
         {
             auto& records{declarations.semantic_relations};
             auto const record_id{records.append()};
@@ -1116,17 +1133,18 @@ auto SchemaParser::parse_record_member(Declarations& declarations, sexpr::FormId
             ? std::nullopt
             : std::optional<std::uint64_t>{unsigned_integer(*count, "record member count")};
     records.relationship[record_index] = relationship;
-    records.initializer[record_index] = optional_text_id(fields, "initializer");
+    records.initializer[record_index] = optional_text_id(fields, P::initializer);
     auto& s7{records.s7[record_index]};
-    s7.name = optional_text_id(fields, "s7-name");
-    s7.exclude = boolean_or(fields, "s7-exclude");
-    s7.required = boolean_or(fields, "required");
-    s7.nonzero = boolean_or(fields, "nonzero");
-    s7.positive = boolean_or(fields, "positive");
-    s7.nonnegative = boolean_or(fields, "nonnegative");
-    s7.finite = boolean_or(fields, "finite");
-    s7.nonempty = boolean_or(fields, "nonempty");
-    auto const bound = [&](std::string_view name) -> std::optional<StringId> {
+    s7.name = optional_text_id(fields, P::s7_name);
+    s7.exclude = boolean_or(fields, P::s7_exclude);
+    s7.required = boolean_or(fields, P::required);
+    s7.nonzero = boolean_or(fields, P::nonzero);
+    s7.positive = boolean_or(fields, P::positive);
+    s7.nonnegative = boolean_or(fields, P::nonnegative);
+    s7.finite = boolean_or(fields, P::finite);
+    s7.nonempty = boolean_or(fields, P::nonempty);
+    auto const bound = [&](SchemaProperty const key) -> std::optional<StringId> {
+        auto const name{to_serialized_string(key)};
         auto const value{fields.optional(name)};
         if (!value) {
             return {};
@@ -1148,11 +1166,11 @@ auto SchemaParser::parse_record_member(Declarations& declarations, sexpr::FormId
         }
         return declarations.strings().intern(spelling);
     };
-    s7.minimum = bound("minimum");
-    s7.maximum = bound("maximum");
+    s7.minimum = bound(P::minimum);
+    s7.maximum = bound(P::maximum);
     if (s7.minimum && s7.maximum &&
-        parser_.number(fields.required("minimum"), "minimum") >
-            parser_.number(fields.required("maximum"), "maximum")) {
+        parser_.number(fields.required(P::minimum), "minimum") >
+            parser_.number(fields.required(P::maximum), "maximum")) {
         parser_.fail(form, "S7 field minimum exceeds maximum");
     }
     return record_id;
@@ -1161,19 +1179,19 @@ auto SchemaParser::parse_record_member(Declarations& declarations, sexpr::FormId
 auto SchemaParser::parse_record(Declarations& declarations, sexpr::FormId const form)
     -> DeclarationHandle {
     Fields const fields{parser_, form, "record", 1};
-    fields.validate({"export-specifier",
-                     "constraint-policy",
-                     "comparison",
-                     "comparison-noexcept",
-                     "generate-visitor",
-                     "generate-s7-reader",
-                     "s7-tag",
-                     "s7-positional",
-                     "s7-constructor",
-                     "s7-reader-includes"},
+    fields.validate({P::export_specifier,
+                     P::constraint_policy,
+                     P::comparison,
+                     P::comparison_noexcept,
+                     P::generate_visitor,
+                     P::generate_s7_reader,
+                     P::s7_tag,
+                     P::s7_positional,
+                     P::s7_constructor,
+                     P::s7_reader_includes},
                     {"member", "function"});
     auto comparison{RecordComparison::none};
-    if (auto const value{fields.optional("comparison")}) {
+    if (auto const value{fields.optional(P::comparison)}) {
         comparison = parse_keyword(
             parser_, *value, "record comparison", try_parse_serialized_record_comparison);
         if (comparison == RecordComparison::none) {
@@ -1198,17 +1216,17 @@ auto SchemaParser::parse_record(Declarations& declarations, sexpr::FormId const 
     records.members[record_index] = declarations.range(members);
     records.export_specifier[record_index] = parse_export_specifier(fields);
     records.comparison[record_index] = comparison;
-    records.comparison_noexcept[record_index] = boolean_or(fields, "comparison-noexcept");
-    records.constraint_policy[record_index] = optional_identifier(fields, "constraint-policy");
-    records.generate_visitor[record_index] = boolean_or(fields, "generate-visitor");
-    if (boolean_or(fields, "generate-s7-reader")) {
-        records.s7_tag[record_index] = parser_.text_id(fields.required("s7-tag"), "S7 record tag");
-        records.s7_positional[record_index] = boolean_or(fields, "s7-positional");
-        records.s7_constructor[record_index] = boolean_or(fields, "s7-constructor", true);
+    records.comparison_noexcept[record_index] = boolean_or(fields, P::comparison_noexcept);
+    records.constraint_policy[record_index] = optional_identifier(fields, P::constraint_policy);
+    records.generate_visitor[record_index] = boolean_or(fields, P::generate_visitor);
+    if (boolean_or(fields, P::generate_s7_reader)) {
+        records.s7_tag[record_index] = parser_.text_id(fields.required(P::s7_tag), "S7 record tag");
+        records.s7_positional[record_index] = boolean_or(fields, P::s7_positional);
+        records.s7_constructor[record_index] = boolean_or(fields, P::s7_constructor, true);
         records.s7_reader_includes[record_index] =
-            declarations.range(text_id_list_or(fields, "s7-reader-includes"));
-    } else if (fields.optional("s7-tag") || fields.optional("s7-reader-includes") ||
-               fields.optional("s7-positional") || fields.optional("s7-constructor")) {
+            declarations.range(text_id_list_or(fields, P::s7_reader_includes));
+    } else if (fields.optional(P::s7_tag) || fields.optional(P::s7_reader_includes) ||
+               fields.optional(P::s7_positional) || fields.optional(P::s7_constructor)) {
         parser_.fail(form, "S7 reader options require generate-s7-reader true");
     }
     records.functions[record_index] = declarations.range(functions);
@@ -1218,8 +1236,8 @@ auto SchemaParser::parse_record(Declarations& declarations, sexpr::FormId const 
 auto SchemaParser::parse_union_alternative(Declarations& declarations, sexpr::FormId const form)
     -> UnionAlternativeId {
     Fields const fields{parser_, form, "alternative", 2};
-    fields.validate({"count"});
-    auto const count{fields.optional("count")};
+    fields.validate({P::count});
+    auto const count{fields.optional(P::count)};
     auto& records{declarations.union_alternatives};
     auto const record_id{records.append()};
     auto const record_index{records.index(record_id)};
@@ -1235,7 +1253,7 @@ auto SchemaParser::parse_union_alternative(Declarations& declarations, sexpr::Fo
 auto SchemaParser::parse_union(Declarations& declarations, sexpr::FormId const form)
     -> DeclarationHandle {
     Fields const fields{parser_, form, "union", 1};
-    fields.validate({"export-specifier"}, {"alternative"});
+    fields.validate({P::export_specifier}, {"alternative"});
     std::vector<UnionAlternativeId> alternatives;
     alternatives.reserve(fields.declarations().size());
     for (auto const declaration_id : fields.declarations()) {
@@ -1255,8 +1273,8 @@ auto SchemaParser::parse_tagged_union_alternative(Declarations& declarations,
                                                   sexpr::FormId const form)
     -> TaggedUnionAlternativeId {
     Fields const fields{parser_, form, "alternative", 2};
-    fields.validate({"count", "tag"});
-    auto const count{fields.optional("count")};
+    fields.validate({P::count, P::tag});
+    auto const count{fields.optional(P::count)};
     auto& records{declarations.tagged_union_alternatives};
     auto const record_id{records.append()};
     auto const record_index{records.index(record_id)};
@@ -1268,14 +1286,14 @@ auto SchemaParser::parse_tagged_union_alternative(Declarations& declarations,
                            : std::optional<std::uint64_t>{
                                  unsigned_integer(*count, "tagged union alternative count")};
     records.tag[record_index] =
-        parser_.identifier(fields.required("tag"), "tagged union alternative tag");
+        parser_.identifier(fields.required(P::tag), "tagged union alternative tag");
     return record_id;
 }
 
 auto SchemaParser::parse_tagged_union(Declarations& declarations, sexpr::FormId const form)
     -> DeclarationHandle {
     Fields const fields{parser_, form, "tagged-union", 1};
-    fields.validate({"discriminant", "export-specifier"}, {"alternative"});
+    fields.validate({P::discriminant, P::export_specifier}, {"alternative"});
     std::vector<TaggedUnionAlternativeId> alternatives;
     alternatives.reserve(fields.declarations().size());
     for (auto const declaration_id : fields.declarations()) {
@@ -1287,7 +1305,7 @@ auto SchemaParser::parse_tagged_union(Declarations& declarations, sexpr::FormId 
     auto const record_index{records.index(record_id)};
     records.name[record_index] = parser_.identifier(fields.positional(0), "tagged union name");
     records.discriminant[record_index] =
-        parse_type_ref(declarations, fields.required("discriminant"));
+        parse_type_ref(declarations, fields.required(P::discriminant));
     records.alternatives[record_index] = declarations.range(alternatives);
     records.export_specifier[record_index] = parse_export_specifier(fields);
     return record_id;
@@ -1296,11 +1314,12 @@ auto SchemaParser::parse_tagged_union(Declarations& declarations, sexpr::FormId 
 auto SchemaParser::parse_integer_scalar(Declarations& declarations, sexpr::FormId const form)
     -> DeclarationHandle {
     Fields const fields{parser_, form, "integer-scalar", 1};
-    fields.validate({"signed", "minimum", "maximum", "bit-width", "cpp-emission", "cpp-type"},
-                    {"code", "relation"});
+    fields.validate(
+        {P::signed_, P::minimum, P::maximum, P::bit_width, P::cpp_emission, P::cpp_type},
+        {"code", "relation"});
 
     std::optional<std::uint32_t> bit_width;
-    if (auto const width{fields.optional("bit-width")}) {
+    if (auto const width{fields.optional(P::bit_width)}) {
         auto const width_text{std::string{parser_.text(*width, "integer scalar bit width")}};
         if (width_text != "auto") {
             auto const parsed{parser_.integer(*width, "integer scalar bit width")};
@@ -1312,13 +1331,13 @@ auto SchemaParser::parse_integer_scalar(Declarations& declarations, sexpr::FormI
     }
 
     auto cpp_emission{IntegerScalarCppEmission::none};
-    if (auto const emission{fields.optional("cpp-emission")}) {
+    if (auto const emission{fields.optional(P::cpp_emission)}) {
         cpp_emission = parse_keyword(parser_,
                                      *emission,
                                      "integer scalar C++ emission policy",
                                      try_parse_serialized_integer_scalar_cpp_emission);
     }
-    auto const cpp_type{fields.optional("cpp-type")};
+    auto const cpp_type{fields.optional(P::cpp_type)};
 
     std::vector<PackedNamedCodeId> named_codes;
     named_codes.reserve(fields.declarations().size());
@@ -1330,8 +1349,8 @@ auto SchemaParser::parse_integer_scalar(Declarations& declarations, sexpr::FormI
                 parser_.fail(declaration, "integer scalar may have only one relationship");
             }
             Fields const relation{parser_, declaration, "relation", 2};
-            relation.validate({"unit"});
-            auto const unit{relation.optional("unit")};
+            relation.validate({P::unit});
+            auto const unit{relation.optional(P::unit)};
             {
                 auto& records{declarations.semantic_relations};
                 auto const record_id{records.append()};
@@ -1350,7 +1369,7 @@ auto SchemaParser::parse_integer_scalar(Declarations& declarations, sexpr::FormI
             continue;
         }
         Fields const code{parser_, declaration, "code", 1};
-        code.validate({"value", "sentinel"});
+        code.validate({P::value, P::sentinel});
         {
             auto& records{declarations.packed_named_codes};
             auto const record_id{records.append()};
@@ -1358,8 +1377,8 @@ auto SchemaParser::parse_integer_scalar(Declarations& declarations, sexpr::FormI
             records.name[record_index] =
                 parser_.identifier(code.positional(0), "integer scalar code name");
             records.value[record_index] =
-                packed_integer(code.required("value"), "integer scalar code value");
-            records.sentinel[record_index] = boolean_or(code, "sentinel");
+                packed_integer(code.required(P::value), "integer scalar code value");
+            records.sentinel[record_index] = boolean_or(code, P::sentinel);
             named_codes.push_back(record_id);
         }
     }
@@ -1369,11 +1388,11 @@ auto SchemaParser::parse_integer_scalar(Declarations& declarations, sexpr::FormI
     auto const record_index{records.index(record_id)};
     records.name[record_index] = parser_.identifier(fields.positional(0), "integer scalar name");
     records.signedness[record_index] =
-        parser_.boolean(fields.required("signed"), "integer scalar signedness");
+        parser_.boolean(fields.required(P::signed_), "integer scalar signedness");
     records.minimum_value[record_index] =
-        packed_integer(fields.required("minimum"), "integer scalar minimum");
+        packed_integer(fields.required(P::minimum), "integer scalar minimum");
     records.maximum_value[record_index] =
-        packed_integer(fields.required("maximum"), "integer scalar maximum");
+        packed_integer(fields.required(P::maximum), "integer scalar maximum");
     records.bit_width[record_index] = bit_width;
     records.named_codes[record_index] = declarations.range(named_codes);
     records.relationship[record_index] = relationship;
@@ -1387,10 +1406,10 @@ auto SchemaParser::parse_integer_scalar(Declarations& declarations, sexpr::FormI
 auto SchemaParser::parse_linear_quantized(Declarations& declarations, sexpr::FormId const form)
     -> DeclarationHandle {
     Fields const fields{parser_, form, "linear-quantized", 1};
-    fields.validate({"source", "bits", "reserved-codes", "clipping"});
+    fields.validate({P::source, P::bits, P::reserved_codes, P::clipping});
 
     auto clipping{QuantizationClipping::reject};
-    if (auto const value{fields.optional("clipping")}) {
+    if (auto const value{fields.optional(P::clipping)}) {
         auto const name{std::string{parser_.text(*value, "linear quantization clipping policy")}};
         if (name == "clamp") {
             clipping = QuantizationClipping::clamp;
@@ -1399,18 +1418,18 @@ auto SchemaParser::parse_linear_quantized(Declarations& declarations, sexpr::For
         }
     }
 
-    auto const bits{parser_.integer(fields.required("bits"), "linear quantization bit width")};
+    auto const bits{parser_.integer(fields.required(P::bits), "linear quantization bit width")};
     if (bits <= 0 || bits > 64) {
-        parser_.fail(fields.required("bits"),
+        parser_.fail(fields.required(P::bits),
                      "linear quantization bit width must be in the range 1..64");
     }
-    auto const reserved{fields.optional("reserved-codes")};
+    auto const reserved{fields.optional(P::reserved_codes)};
     auto& records{declarations.linear_quantizeds};
     auto const record_id{records.append()};
     auto const record_index{records.index(record_id)};
     records.name[record_index] =
         parser_.identifier(fields.positional(0), "linear quantization name");
-    records.source[record_index] = parse_type_ref(declarations, fields.required("source"));
+    records.source[record_index] = parse_type_ref(declarations, fields.required(P::source));
     records.bit_width[record_index] = static_cast<std::uint32_t>(bits);
     records.reserved_codes[record_index] =
         reserved.has_value()
@@ -1423,10 +1442,10 @@ auto SchemaParser::parse_linear_quantized(Declarations& declarations, sexpr::For
 auto SchemaParser::parse_integer_varint(Declarations& declarations, sexpr::FormId const form)
     -> DeclarationHandle {
     Fields const fields{parser_, form, "integer-varint", 1};
-    fields.validate({"source", "encoding"});
+    fields.validate({P::source, P::encoding});
 
     auto const encoding{parse_keyword(parser_,
-                                      fields.required("encoding"),
+                                      fields.required(P::encoding),
                                       "integer varint encoding",
                                       try_parse_serialized_integer_varint_encoding)};
 
@@ -1434,7 +1453,7 @@ auto SchemaParser::parse_integer_varint(Declarations& declarations, sexpr::FormI
     auto const record_id{records.append()};
     auto const record_index{records.index(record_id)};
     records.name[record_index] = parser_.identifier(fields.positional(0), "integer varint name");
-    records.source[record_index] = parse_type_ref(declarations, fields.required("source"));
+    records.source[record_index] = parse_type_ref(declarations, fields.required(P::source));
     records.encoding[record_index] = encoding;
     return record_id;
 }
@@ -1442,23 +1461,24 @@ auto SchemaParser::parse_integer_varint(Declarations& declarations, sexpr::FormI
 auto SchemaParser::parse_fixed_point(Declarations& declarations, sexpr::FormId const form)
     -> DeclarationHandle {
     Fields const fields{parser_, form, "fixed-point", 1};
-    fields.validate({"signed", "total-bits", "fractional-bits", "rounding", "minimum", "maximum"});
+    fields.validate(
+        {P::signed_, P::total_bits, P::fractional_bits, P::rounding, P::minimum, P::maximum});
 
     auto const total_bits{
-        parser_.integer(fields.required("total-bits"), "fixed-point total width")};
+        parser_.integer(fields.required(P::total_bits), "fixed-point total width")};
     if (total_bits <= 0 || total_bits > 64) {
-        parser_.fail(fields.required("total-bits"),
+        parser_.fail(fields.required(P::total_bits),
                      "fixed-point total width must be in the range 1..64");
     }
     auto const fractional_bits{
-        parser_.integer(fields.required("fractional-bits"), "fixed-point fractional width")};
+        parser_.integer(fields.required(P::fractional_bits), "fixed-point fractional width")};
     if (fractional_bits < 0 || fractional_bits > 64) {
-        parser_.fail(fields.required("fractional-bits"),
+        parser_.fail(fields.required(P::fractional_bits),
                      "fixed-point fractional width must be in the range 0..64");
     }
 
     auto rounding{FixedPointRounding::nearest_even};
-    if (auto const value{fields.optional("rounding")}) {
+    if (auto const value{fields.optional(P::rounding)}) {
         auto const name{std::string{parser_.text(*value, "fixed-point rounding policy")}};
         if (name == "toward-zero") {
             rounding = FixedPointRounding::toward_zero;
@@ -1467,14 +1487,14 @@ auto SchemaParser::parse_fixed_point(Declarations& declarations, sexpr::FormId c
         }
     }
 
-    auto const minimum{fields.optional("minimum")};
-    auto const maximum{fields.optional("maximum")};
+    auto const minimum{fields.optional(P::minimum)};
+    auto const maximum{fields.optional(P::maximum)};
     auto& records{declarations.fixed_points};
     auto const record_id{records.append()};
     auto const record_index{records.index(record_id)};
     records.name[record_index] = parser_.identifier(fields.positional(0), "fixed-point name");
     records.signedness[record_index] =
-        parser_.boolean(fields.required("signed"), "fixed-point signedness");
+        parser_.boolean(fields.required(P::signed_), "fixed-point signedness");
     records.total_bits[record_index] = static_cast<std::uint32_t>(total_bits);
     records.fractional_bits[record_index] = static_cast<std::uint32_t>(fractional_bits);
     records.rounding[record_index] = rounding;
@@ -1490,19 +1510,19 @@ auto SchemaParser::parse_fixed_point(Declarations& declarations, sexpr::FormId c
 auto SchemaParser::parse_mini_float(Declarations& declarations, sexpr::FormId const form)
     -> DeclarationHandle {
     Fields const fields{parser_, form, "mini-float", 1};
-    fields.validate({"sign-bits", "exponent-bits", "significand-bits", "bias"});
+    fields.validate({P::sign_bits, P::exponent_bits, P::significand_bits, P::bias});
 
     auto const sign_bits{
-        bounded_integer(parser_, fields.required("sign-bits"), "mini-float sign width", 0, 1)};
+        bounded_integer(parser_, fields.required(P::sign_bits), "mini-float sign width", 0, 1)};
     auto const exponent_bits{bounded_integer(
-        parser_, fields.required("exponent-bits"), "mini-float exponent width", 2, 15)};
+        parser_, fields.required(P::exponent_bits), "mini-float exponent width", 2, 15)};
     auto const significand_bits{bounded_integer(
-        parser_, fields.required("significand-bits"), "mini-float significand width", 0, 62)};
+        parser_, fields.required(P::significand_bits), "mini-float significand width", 0, 62)};
     if (sign_bits + exponent_bits + significand_bits > 64) {
         parser_.fail(form, "mini-float total width must not exceed 64 bits");
     }
     auto const exponent_bias{bounded_integer(
-        parser_, fields.required("bias"), "mini-float exponent bias", -32'768, 32'767)};
+        parser_, fields.required(P::bias), "mini-float exponent bias", -32'768, 32'767)};
 
     auto& records{declarations.mini_floats};
     auto const record_id{records.append()};
@@ -1518,29 +1538,29 @@ auto SchemaParser::parse_mini_float(Declarations& declarations, sexpr::FormId co
 auto SchemaParser::parse_optional_sentinel(Declarations& declarations, sexpr::FormId const form)
     -> DeclarationHandle {
     Fields const fields{parser_, form, "optional-sentinel", 1};
-    fields.validate({"source", "sentinel"});
+    fields.validate({P::source, P::sentinel});
 
     auto& records{declarations.optional_sentinels};
     auto const record_id{records.append()};
     auto const record_index{records.index(record_id)};
     records.name[record_index] = parser_.identifier(fields.positional(0), "optional sentinel name");
-    records.source[record_index] = parse_type_ref(declarations, fields.required("source"));
+    records.source[record_index] = parse_type_ref(declarations, fields.required(P::source));
     records.sentinel[record_index] =
-        parser_.identifier(fields.required("sentinel"), "optional sentinel code");
+        parser_.identifier(fields.required(P::sentinel), "optional sentinel code");
     return record_id;
 }
 
 auto SchemaParser::parse_optional_presence_bit(Declarations& declarations, sexpr::FormId const form)
     -> DeclarationHandle {
     Fields const fields{parser_, form, "optional-presence-bit", 1};
-    fields.validate({"source"});
+    fields.validate({P::source});
 
     auto& records{declarations.optional_presence_bits};
     auto const record_id{records.append()};
     auto const record_index{records.index(record_id)};
     records.name[record_index] =
         parser_.identifier(fields.positional(0), "optional presence-bit name");
-    records.source[record_index] = parse_type_ref(declarations, fields.required("source"));
+    records.source[record_index] = parse_type_ref(declarations, fields.required(P::source));
     return record_id;
 }
 
@@ -1590,14 +1610,14 @@ auto SchemaParser::parse_module(Declarations& declarations, sexpr::FormId const 
     auto const head{syntax_.head(form)};
     if (head == "module") {
         Fields const fields{parser_, form, head, 1};
-        fields.validate({"header",
-                         "source",
-                         "header-include",
-                         "namespace",
-                         "include-order",
-                         "prelude",
-                         "helper-namespace",
-                         "s7-constructors"},
+        fields.validate({P::header,
+                         P::source,
+                         P::header_include,
+                         P::namespace_,
+                         P::include_order,
+                         P::prelude,
+                         P::helper_namespace,
+                         P::s7_constructors},
                         {"enum",
                          "integer-scalar",
                          "linear-quantized",
@@ -1618,9 +1638,9 @@ auto SchemaParser::parse_module(Declarations& declarations, sexpr::FormId const 
         auto const module{modules.append()};
         auto const module_index{modules.index(module)};
         modules.settings[module_index] = parse_module_settings(declarations, fields);
-        modules.s7_constructors[module_index] = boolean_or(fields, "s7-constructors");
+        modules.s7_constructors[module_index] = boolean_or(fields, P::s7_constructors);
         modules.enum_helper_namespace[module_index] =
-            optional_identifier(fields, "helper-namespace");
+            optional_identifier(fields, P::helper_namespace);
         std::vector<DeclarationHandle> module_declarations;
         std::optional<DiagnosticId> first_error;
         for (auto const declaration_id : fields.declarations()) {
@@ -1643,15 +1663,15 @@ auto SchemaParser::parse_module(Declarations& declarations, sexpr::FormId const 
     }
     if (head == "settings-module") {
         Fields const fields{parser_, form, head, 1};
-        fields.validate({"header",
-                         "source",
-                         "header-include",
-                         "namespace",
-                         "include-order",
-                         "prelude",
-                         "api-name",
-                         "state-name",
-                         "export-specifier"},
+        fields.validate({P::header,
+                         P::source,
+                         P::header_include,
+                         P::namespace_,
+                         P::include_order,
+                         P::prelude,
+                         P::api_name,
+                         P::state_name,
+                         P::export_specifier},
                         {"category", "setting"});
         std::vector<SettingCategoryId> categories;
         std::vector<SettingId> settings;
@@ -1691,9 +1711,9 @@ auto SchemaParser::parse_module(Declarations& declarations, sexpr::FormId const 
         auto const record_index{records.index(record_id)};
         records.settings[record_index] = parse_module_settings(declarations, fields);
         records.api_name[record_index] =
-            parser_.identifier(fields.required("api-name"), "settings API name");
+            parser_.identifier(fields.required(P::api_name), "settings API name");
         records.state_name[record_index] =
-            parser_.identifier(fields.required("state-name"), "settings state name");
+            parser_.identifier(fields.required(P::state_name), "settings state name");
         records.export_specifier[record_index] = parse_export_specifier(fields);
         records.categories[record_index] = declarations.range(categories);
         records.settings_list[record_index] = declarations.range(settings);
@@ -1701,19 +1721,19 @@ auto SchemaParser::parse_module(Declarations& declarations, sexpr::FormId const 
     }
     if (head == "umbrella-module") {
         Fields const fields{parser_, form, head, 1};
-        fields.validate({"header",
-                         "source",
-                         "header-include",
-                         "namespace",
-                         "include-order",
-                         "prelude",
-                         "headers"});
+        fields.validate({P::header,
+                         P::source,
+                         P::header_include,
+                         P::namespace_,
+                         P::include_order,
+                         P::prelude,
+                         P::headers});
         auto& records{declarations.umbrella_modules};
         auto const record_id{records.append()};
         auto const record_index{records.index(record_id)};
         records.settings[record_index] = parse_module_settings(declarations, fields);
         records.headers[record_index] =
-            declarations.range(text_id_list(fields.required("headers"), "umbrella headers"));
+            declarations.range(text_id_list(fields.required(P::headers), "umbrella headers"));
         return record_id;
     }
     parser_.fail(form, std::format("unknown module declaration '{}'", head));
@@ -1723,13 +1743,13 @@ auto SchemaParser::parse_external_integer(RegisteredTypes& registered, sexpr::Fo
     -> ExternalScalarId {
     auto& declarations{registered.declarations};
     Fields const fields{parser_, form, "integer", 0};
-    fields.validate({"signed", "bit-width", "minimum", "maximum"}, {"code"});
-    auto const width{parser_.integer(fields.required("bit-width"), "external integer bit width")};
+    fields.validate({P::signed_, P::bit_width, P::minimum, P::maximum}, {"code"});
+    auto const width{parser_.integer(fields.required(P::bit_width), "external integer bit width")};
     if (width < 1 || width > 64) {
         parser_.fail(form, "external integer bit width must be in the range 1..64");
     }
     auto const signedness{
-        parser_.boolean(fields.required("signed"), "external integer signedness")};
+        parser_.boolean(fields.required(P::signed_), "external integer signedness")};
     auto const magnitude{std::uint64_t{1} << (width - 1)};
     auto const maximum{signedness    ? magnitude - 1
                        : width == 64 ? (std::numeric_limits<std::uint64_t>::max)()
@@ -1737,24 +1757,24 @@ auto SchemaParser::parse_external_integer(RegisteredTypes& registered, sexpr::Fo
     auto minimum_value{signedness ? PackedIntegerValue::from_parts(true, magnitude)
                                   : PackedIntegerValue{0}};
     auto maximum_value{PackedIntegerValue{maximum}};
-    if (auto const minimum{fields.optional("minimum")}) {
+    if (auto const minimum{fields.optional(P::minimum)}) {
         minimum_value = packed_integer(*minimum, "external integer minimum");
     }
-    if (auto const maximum_form{fields.optional("maximum")}) {
+    if (auto const maximum_form{fields.optional(P::maximum)}) {
         maximum_value = packed_integer(*maximum_form, "external integer maximum");
     }
     std::vector<PackedNamedCodeId> named_codes;
     for (auto const declaration_id : fields.declarations()) {
         auto const declaration{declaration_id};
         Fields const code{parser_, declaration, "code", 1};
-        code.validate({"value", "sentinel"});
+        code.validate({P::value, P::sentinel});
         {
             auto& records{declarations.packed_named_codes};
             auto const record_id{records.append()};
             auto const record_index{records.index(record_id)};
             records.name[record_index] = parser_.identifier(code.positional(0), "code name");
-            records.value[record_index] = packed_integer(code.required("value"), "code value");
-            records.sentinel[record_index] = boolean_or(code, "sentinel");
+            records.value[record_index] = packed_integer(code.required(P::value), "code value");
+            records.sentinel[record_index] = boolean_or(code, P::sentinel);
             named_codes.push_back(record_id);
         }
     }
@@ -1768,16 +1788,17 @@ auto SchemaParser::parse_external_integer(RegisteredTypes& registered, sexpr::Fo
 auto SchemaParser::parse_type_definition(sexpr::FormId const form, TypeRegistry& registry)
     -> std::pair<lispb::StringId, RegisteredTypeId> {
     Fields const fields{parser_, form, "type", 1};
-    fields.validate({"spelling", "header", "pass-by"}, {"operation", "integer", "floating-point"});
+    fields.validate({P::spelling, P::header, P::pass_by},
+                    {"operation", "integer", "floating-point"});
     ExternalScalarId semantics;
     auto& cpp_types{registry.cpp_types};
-    auto const spelling{std::string{parser_.text(fields.required("spelling"), "type spelling")}};
+    auto const spelling{std::string{parser_.text(fields.required(P::spelling), "type spelling")}};
     std::vector<TypeDependencyId> dependencies;
-    if (auto const header{optional_text(fields, "header")}) {
+    if (auto const header{optional_text(fields, P::header)}) {
         dependencies.push_back(cpp_types.dependency(spelling, *header));
     }
     auto const type{cpp_types.add(spelling, dependencies)};
-    if (auto const pass_by{fields.optional("pass-by")}) {
+    if (auto const pass_by{fields.optional(P::pass_by)}) {
         cpp_types.set_parameter_passing(
             type,
             parse_keyword(
@@ -1793,17 +1814,17 @@ auto SchemaParser::parse_type_definition(sexpr::FormId const form, TypeRegistry&
                 semantics = parse_external_integer(registry.registered, declaration);
             } else {
                 Fields const floating{parser_, declaration, "floating-point", 0};
-                floating.validate({"format"});
+                floating.validate({P::format});
                 semantics = registry.registered.add_floating(
                     parse_keyword(parser_,
-                                  floating.required("format"),
+                                  floating.required(P::format),
                                   "floating-point format",
                                   try_parse_serialized_floating_point_format));
             }
             continue;
         }
         Fields const operation{parser_, declaration, "operation", 2};
-        operation.validate({"pass-by"});
+        operation.validate({P::pass_by});
         auto const kind{parse_keyword(parser_,
                                       operation.positional(0),
                                       "type operation",
@@ -1814,13 +1835,13 @@ auto SchemaParser::parse_type_definition(sexpr::FormId const form, TypeRegistry&
         }
         auto passing{ParameterPassing::const_reference};
         if (kind != TypeOperation::remove_at_swap) {
-            auto const pass_by{operation.optional("pass-by")};
+            auto const pass_by{operation.optional(P::pass_by)};
             if (pass_by.has_value()) {
                 passing = parse_keyword(
                     parser_, *pass_by, "parameter passing", try_parse_serialized_parameter_passing);
             }
-        } else if (operation.optional("pass-by").has_value()) {
-            parser_.fail(*operation.optional("pass-by"),
+        } else if (operation.optional(P::pass_by).has_value()) {
+            parser_.fail(*operation.optional(P::pass_by),
                          "remove-at-swap does not accept ':pass-by'");
         }
         cpp_types.set_operation(

@@ -1,5 +1,8 @@
+#include <codegen/schema/schema_property.h>
+#include <codegen/sexpr/fields.h>
 #include <codegen/sexpr/indices.h>
 #include <codegen/sexpr/lexer.h>
+#include <codegen/sexpr/parser.h>
 #include <codegen/sexpr/reader.h>
 #include <codegen/sexpr/source_error.h>
 #include <codegen/sexpr/sources.h>
@@ -31,6 +34,50 @@ struct Fixture {
         return lex(syntax, sources.add(path, source));
     }
 };
+
+TEST(SexprReader, GeneratedPropertyNamesSupportTypedLookup) {
+    Fixture fixture;
+    auto const form{fixture.read("fixture.lispb", "(range :minimum 2 :maximum 5)").front()};
+    Parser parser{fixture.syntax};
+    Fields fields{parser, form, "range", 0};
+
+    fields.validate({SchemaProperty::minimum, SchemaProperty::maximum});
+    EXPECT_EQ(parser.integer(fields.required(SchemaProperty::minimum), "minimum"), 2);
+    EXPECT_EQ(fields.optional(SchemaProperty::maximum), fields.optional("maximum"));
+    EXPECT_FALSE(fields.optional(SchemaProperty::step));
+}
+
+TEST(SexprReader, TypedPropertyValidationPreservesDiagnosticText) {
+    struct Case {
+        std::string_view source;
+        std::string_view message;
+    };
+    constexpr Case cases[]{
+        {"(range :typo 1)", "unknown property ':typo'"},
+        {"(range :header 1)", "unknown property ':header'"},
+        {"(range :minimum 1 :minimum 2)", "duplicate property ':minimum'"},
+        {"(range :maximum 2)", "missing required property ':minimum'"},
+        {"(range :minimum)", "property ':minimum' requires a value"},
+        {"(range :minimum 1 (child))", "unexpected nested declaration 'child'"},
+    };
+
+    for (auto const& test : cases) {
+        SCOPED_TRACE(test.source);
+        Fixture fixture;
+        auto const form{fixture.read("fixture.lispb", test.source).front()};
+        Parser parser{fixture.syntax};
+        try {
+            Fields fields{parser, form, "range", 0};
+            fields.validate({SchemaProperty::minimum, SchemaProperty::maximum});
+            static_cast<void>(fields.required(SchemaProperty::minimum));
+            FAIL() << "Expected source error";
+        } catch (SourceError const& error) {
+            EXPECT_EQ(fixture.diagnostics.message(error.diagnostic()), test.message);
+            EXPECT_EQ(fixture.sources.location(fixture.diagnostics.span(error.diagnostic())).path,
+                      "fixture.lispb");
+        }
+    }
+}
 
 TEST(SexprReader, ReadsNestedFormsAndPreservesSpans) {
     Fixture fixture;
