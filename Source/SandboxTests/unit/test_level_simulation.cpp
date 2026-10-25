@@ -43,23 +43,6 @@
 #include <Serialization/JsonSerializer.h>
 
 #include <array>
-#include <type_traits>
-
-static_assert(std::is_const_v<
-              std::remove_reference_t<decltype(std::declval<::ioj::sim::capital_ships::Sim const&>()
-                                                   .get_entities()
-                                                   .view_locations()
-                                                   .xs()[0])>>);
-static_assert(
-    std::is_const_v<std::remove_reference_t<
-        decltype(std::declval<::ioj::sim::fighters::Sim const&>().get_entities().teams()[0])>>);
-static_assert(
-    std::is_const_v<std::remove_reference_t<
-        decltype(std::declval<::ioj::sim::turrets::Sim const&>().get_frame_changes()[0])>>);
-static_assert(
-    std::is_const_v<std::remove_reference_t<decltype(std::declval<::ioj::sim::lasers::Sim const&>()
-                                                         .get_entities()
-                                                         .lifetimes_remaining()[0])>>);
 
 namespace {
 auto make_battle() -> ::ioj::sim::LevelSimInitData {
@@ -158,103 +141,6 @@ void kill_enemy(::ioj::sim::LevelSim& simulation) {
         simulation.get_capital_ships().get_id(1), 100, simulation.get_capital_ships().get_id(0));
     ::ioj::sim::LevelSimTestAccess::queue_direct_damage_events(simulation, events.get_const_view());
 }
-}
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-    FLevelSimScheduledEventsTest,
-    "Sandbox.UnitTests.LevelSimulation.ScheduledSpawnsAndObjectivesUseSimulationTicks",
-    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-auto FLevelSimScheduledEventsTest::RunTest(FString const&) -> bool {
-    ::ioj::sim::GameMemory simulation_memory;
-    ::ioj::sim::LevelSim simulation{simulation_memory, make_scheduled_battle()};
-    TestEqual(TEXT("Tick-zero entities are available before finishing initialization"),
-              simulation.get_capital_ships().get_num_instances(),
-              1);
-    simulation.finish_initialisation();
-    TestEqual(TEXT("Only tick-zero entities exist initially"),
-              simulation.get_capital_ships().get_num_instances(),
-              1);
-    TestTrue(TEXT("Future objectives prevent early completion"),
-             !simulation.get_mission().outcome(ioj::sim::ObjectiveId{0}).has_value());
-
-    simulation.start();
-    auto const dt{simulation.get_clock().get_tick_period()};
-    simulation.advance(dt);
-    simulation.advance(dt);
-    TestEqual(TEXT("A fractional authoring time rounds up to the next tick"),
-              simulation.get_capital_ships().get_num_instances(),
-              1);
-
-    simulation.advance(dt);
-    TestEqual(TEXT("The delayed entity spawns on its compiled tick"),
-              simulation.get_capital_ships().get_num_instances(),
-              2);
-    TestFalse(TEXT("Spawn alone does not complete the objective"),
-              simulation.get_mission().outcome(ioj::sim::ObjectiveId{0}).has_value());
-    kill_enemy(simulation);
-    simulation.advance(dt);
-    TestTrue(TEXT("Destruction completes the objective"),
-             simulation.get_mission().outcome(ioj::sim::ObjectiveId{0}) ==
-                 ioj::ObjectiveOutcome::Passed);
-    return true;
-}
-
-/* **************************************** */
-// Initialization and spatial queries
-/* **************************************** */
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-    FLevelSimSpawnQueriesTest,
-    "Sandbox.UnitTests.LevelSimulation.ScheduledSpawnQueryableInThinkingSameTick",
-    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-auto FLevelSimSpawnQueriesTest::RunTest(FString const&) -> bool {
-    auto data{make_scheduled_battle()};
-    data.frame_memory_capacity_bytes = 16 * 1024 * 1024;
-    data.turrets.target_refresh_frequency = 10.f;
-    // Keep the muzzle outside the turret's collision bounds so it cannot block its own query.
-    data.turrets.fire_point_offset = ioj::Vector3f{20.f, 0.f, 0.f};
-    auto& initial_storage{data.level_events.schedule.turret_spawns};
-    data.level_events.schedule.add_initial_spawn_group(::ioj::sim::EntityType::Turret, 0, 1);
-    initial_storage.add_uninitialised(1);
-    auto const initial{initial_storage.get_view()};
-    initial.entity_indices()[0] = data.level_events.initialisation.entity_count++;
-    ::ioj::set_vector(initial.view_locations(), 0, ioj::Vector3f{-1000.f, 1000.f, 0.f});
-    ioj::set_rotation(initial.view_rotations(), 0, {});
-    initial.teams()[0] = ::ioj::Team::Blue;
-    initial.healths()[0] = 100;
-    initial.laser_damages()[0] = 0;
-    ::ioj::sim::GameMemory simulation_memory;
-    ::ioj::sim::LevelSim simulation{simulation_memory, MoveTemp(data)};
-    simulation.finish_initialisation();
-    simulation.start();
-    auto const dt{simulation.get_clock().get_tick_period()};
-    simulation.advance(dt);
-    auto const first_tick_frame_memory{simulation.get_frame_memory_stats()};
-    TestEqual(TEXT("Frame memory uses the configured per-simulation capacity"),
-              first_tick_frame_memory.capacity_bytes,
-              SIZE_T{16 * 1024 * 1024});
-    TestEqual(TEXT("Frame memory is reset after the completed tick"),
-              first_tick_frame_memory.current_claimed_bytes,
-              SIZE_T{0});
-    TestTrue(TEXT("Turret scratch claimed frame memory during the tick"),
-             first_tick_frame_memory.last_frame_root_claim_count > 0);
-    TestEqual(TEXT("No turret scratch allocation survives the reset"),
-              first_tick_frame_memory.outstanding_allocation_count,
-              uint64{0});
-    simulation.advance(dt);
-    TestTrue(TEXT("Turret has no enemy before the scheduled spawn"),
-             !simulation.get_turrets().get_target_ids()[0].is_valid());
-    simulation.advance(dt);
-    TestEqual(TEXT("Thinking acquires the entity created in Preparation"),
-              simulation.get_turrets().get_target_ids()[0],
-              simulation.get_capital_ships().get_id(1));
-    simulation.advance(dt);
-    TestTrue(TEXT("Thinking retains the spawned enemy on the following tick"),
-             simulation.get_turrets().get_target_ids()[0] ==
-                 simulation.get_capital_ships().get_id(1));
-    return true;
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(

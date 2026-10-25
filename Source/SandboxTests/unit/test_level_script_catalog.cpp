@@ -64,43 +64,6 @@ auto valid_camera_level_script(FStringView const id, FStringView const title) ->
 
 TEST_CLASS(LevelScriptCatalog, "Sandbox.UnitTests")
 {
-    TEST_METHOD(SharesOneEvaluationSessionAcrossLevelsAndCampaigns)
-    {
-        FTemporaryScriptDirectory directory;
-        auto const campaigns{FPaths::Combine(directory.path, TEXT("Campaigns"))};
-        IFileManager::Get().MakeDirectory(*campaigns, true);
-        auto first{FString{TEXT("(define shared-title \"From first level\")\n")} +
-                   valid_level_script(TEXT("first"), TEXT("First"))};
-        auto second{valid_level_script(TEXT("second"), TEXT("Placeholder"))};
-        second.ReplaceInline(TEXT("\"Placeholder\""), TEXT("shared-title"));
-        auto const written{
-            FFileHelper::SaveStringToFile(second,
-                                          *FPaths::Combine(directory.path, TEXT("b.scm"))) &&
-            FFileHelper::SaveStringToFile(first, *FPaths::Combine(directory.path, TEXT("a.scm"))) &&
-            FFileHelper::SaveStringToFile(
-                TEXT("(campaign :id 'shared :title shared-title :levels '(first second))"),
-                *FPaths::Combine(campaigns, TEXT("shared.scm")))};
-        if (!TestRunner->TestTrue(TEXT("Shared-session fixtures are written"), written)) {
-            return;
-        }
-
-        auto const result{
-            ::ioj::levels::authoring::load_level_script_catalog(write_test_root(directory.path))};
-        if (!TestRunner->TestEqual(TEXT("Both levels are discovered"), result.entries.Num(), 2) ||
-            !TestRunner->TestEqual(TEXT("Campaign is discovered"), result.campaigns.Num(), 1)) {
-            return;
-        }
-        TestRunner->TestTrue(TEXT("Catalog is valid"), result.error.IsEmpty());
-        TestRunner->TestEqual(TEXT("Second level sees the first file's binding"),
-                              result.entries[1].display_title,
-                              FString{TEXT("From first level")});
-        if (TestRunner->TestTrue(TEXT("Campaign shares the level evaluation session"),
-                                 static_cast<bool>(result.campaigns[0]))) {
-            TestRunner->TestEqual(TEXT("Campaign uses the shared binding"),
-                                  result.campaigns[0].definition->title,
-                                  FString{TEXT("From first level")});
-        }
-    }
 
     TEST_METHOD(LoadsCheckedInLevelsAndCampaigns)
     {
@@ -185,50 +148,6 @@ TEST_CLASS(LevelScriptCatalog, "Sandbox.UnitTests")
                               static_cast<bool>(result.entries[2]));
         TestRunner->TestTrue(TEXT("Malformed entries include a useful error"),
                              !result.entries[2].error.IsEmpty());
-    }
-
-    TEST_METHOD(LoadsHelpersFromTheCatalogLibraryDirectory)
-    {
-        FTemporaryScriptDirectory directory;
-        auto const library_directory{FPaths::Combine(directory.path, TEXT("Libraries"))};
-        IFileManager::Get().MakeDirectory(*library_directory, true);
-
-        auto const helper_source{TEXT("(define (shared-title suffix) "
-                                      "  (string-append \"Shared \" suffix))\n"
-                                      "(define-macro (shared-description text) "
-                                      "  `(string-append ,text))\n")};
-        auto const level_source{
-            TEXT("(load-script \"Libraries/level-helpers.scm\")\n(level :id 'library-level        "
-                 ":title "
-                 "(shared-title \"Level\") :description (shared-description \"From library\") "
-                 " :player 'player        :entities (list (entity :id 'player "
-                 ":archetype 'player-fighter :team 'blue                          :position '(0 0 "
-                 "0)                          :rotation '(0 0 0))))")};
-        auto const files_written{
-            FFileHelper::SaveStringToFile(
-                helper_source, *FPaths::Combine(library_directory, TEXT("level-helpers.scm"))) &&
-            FFileHelper::SaveStringToFile(level_source,
-                                          *FPaths::Combine(directory.path, TEXT("level.scm")))};
-        if (!TestRunner->TestTrue(TEXT("Library fixtures are written"), files_written)) {
-            return;
-        }
-
-        auto const result{
-            ::ioj::levels::authoring::load_level_script_catalog(write_test_root(directory.path))};
-        if (!TestRunner->TestTrue(TEXT("Library-backed catalog is valid"),
-                                  result.error.IsEmpty()) ||
-            !TestRunner->TestEqual(TEXT("Only the level is catalogued"), result.entries.Num(), 1) ||
-            !TestRunner->TestTrue(TEXT("Library-backed level is valid"),
-                                  static_cast<bool>(result.entries[0]))) {
-            return;
-        }
-
-        TestRunner->TestEqual(TEXT("Library function supplies the title"),
-                              ioj::to_fstring(result.entries[0].definition->metadata().title),
-                              FString{TEXT("Shared Level")});
-        TestRunner->TestEqual(TEXT("Library macro supplies the description"),
-                              ioj::to_fstring(result.entries[0].definition->metadata().description),
-                              FString{TEXT("From library")});
     }
 
     TEST_METHOD(RejectsDuplicateLevelIds)
@@ -353,93 +272,5 @@ TEST_CLASS(LevelScriptCatalog, "Sandbox.UnitTests")
         TestRunner->TestTrue(TEXT("Duplicate error identifies both campaign files"),
                              result.error.Contains(TEXT("first.scm")) &&
                                  result.error.Contains(TEXT("second.scm")));
-    }
-
-    TEST_METHOD(RejectsDuplicateLevelsWithinCampaign)
-    {
-        FTemporaryScriptDirectory directory;
-        auto const campaign_directory{FPaths::Combine(directory.path, TEXT("Campaigns"))};
-        IFileManager::Get().MakeDirectory(*campaign_directory, true);
-        auto const files_written{
-            FFileHelper::SaveStringToFile(valid_level_script(TEXT("alpha"), TEXT("Alpha")),
-                                          *FPaths::Combine(directory.path, TEXT("alpha.scm"))) &&
-            FFileHelper::SaveStringToFile(
-                TEXT("(campaign :id 'main :title \"Main\" :levels '(alpha alpha))"),
-                *FPaths::Combine(campaign_directory, TEXT("main.scm")))};
-        if (!TestRunner->TestTrue(TEXT("Duplicate level fixtures are written"), files_written)) {
-            return;
-        }
-
-        auto const result{
-            ::ioj::levels::authoring::load_level_script_catalog(write_test_root(directory.path))};
-        if (!TestRunner->TestEqual(TEXT("Campaign remains visible"), result.campaigns.Num(), 1)) {
-            return;
-        }
-        TestRunner->TestFalse(TEXT("Campaign with duplicate levels is invalid"),
-                              static_cast<bool>(result.campaigns[0]));
-        TestRunner->TestTrue(TEXT("Duplicate level error is useful"),
-                             result.campaigns[0].error.Contains(TEXT("duplicated")));
-    }
-
-    TEST_METHOD(AllowsLevelsInMultipleCampaigns)
-    {
-        FTemporaryScriptDirectory directory;
-        auto const campaign_directory{FPaths::Combine(directory.path, TEXT("Campaigns"))};
-        IFileManager::Get().MakeDirectory(*campaign_directory, true);
-        auto const files_written{
-            FFileHelper::SaveStringToFile(valid_level_script(TEXT("alpha"), TEXT("Alpha")),
-                                          *FPaths::Combine(directory.path, TEXT("alpha.scm"))) &&
-            FFileHelper::SaveStringToFile(
-                TEXT("(campaign :id 'first :title \"First\" :levels '(alpha))"),
-                *FPaths::Combine(campaign_directory, TEXT("first.scm"))) &&
-            FFileHelper::SaveStringToFile(
-                TEXT("(campaign :id 'second :title \"Second\" :levels '(alpha))"),
-                *FPaths::Combine(campaign_directory, TEXT("second.scm")))};
-        if (!TestRunner->TestTrue(TEXT("Cross-list campaign fixtures are written"),
-                                  files_written)) {
-            return;
-        }
-
-        auto const result{
-            ::ioj::levels::authoring::load_level_script_catalog(write_test_root(directory.path))};
-        if (!TestRunner->TestEqual(
-                TEXT("Both campaigns are discovered"), result.campaigns.Num(), 2)) {
-            return;
-        }
-        for (auto const& campaign : result.campaigns) {
-            TestRunner->TestTrue(TEXT("Cross-list campaign is valid"), static_cast<bool>(campaign));
-            if (campaign) {
-                TestRunner->TestTrue(
-                    TEXT("Cross-listed level reference is retained"),
-                    campaign.definition->level_ids ==
-                        TArray<ioj::FLevelId>{ioj::FLevelId{FName{TEXT("alpha")}}});
-            }
-        }
-    }
-
-    TEST_METHOD(RejectsUnlockDependencyCycles)
-    {
-        FTemporaryScriptDirectory directory;
-        auto const files_written{
-            FFileHelper::SaveStringToFile(
-                valid_level_script(
-                    TEXT("alpha"), TEXT("Alpha"), TEXT(":unlock (list (level-completed 'bravo))")),
-                *FPaths::Combine(directory.path, TEXT("alpha.scm"))) &&
-            FFileHelper::SaveStringToFile(
-                valid_level_script(
-                    TEXT("bravo"), TEXT("Bravo"), TEXT(":unlock (list (level-completed 'alpha))")),
-                *FPaths::Combine(directory.path, TEXT("bravo.scm")))};
-        if (!TestRunner->TestTrue(TEXT("Cycle fixtures are written"), files_written)) {
-            return;
-        }
-
-        auto const result{
-            ::ioj::levels::authoring::load_level_script_catalog(write_test_root(directory.path))};
-        TestRunner->TestFalse(TEXT("Cycle is reported"), result.error.IsEmpty());
-        TestRunner->TestTrue(TEXT("Cycle path is readable"), result.error.Contains(TEXT("->")));
-        TestRunner->TestFalse(TEXT("First cycle member is invalid"),
-                              static_cast<bool>(result.entries[0]));
-        TestRunner->TestFalse(TEXT("Second cycle member is invalid"),
-                              static_cast<bool>(result.entries[1]));
     }
 };

@@ -3,6 +3,7 @@ ioj_stage_tbb_runtime(native-level-authoring-tests)
 target_sources(native-level-authoring-tests
   PRIVATE
     level_authoring_tests.cpp
+    definition_decoding_tests.cpp
 )
 target_compile_definitions(native-level-authoring-tests
   PRIVATE
@@ -28,6 +29,7 @@ target_sources(native-level-parser-tests
   PRIVATE
     parser_tests.cpp
     editor_tests.cpp
+    level_validation_tests.cpp
 )
 target_link_libraries(native-level-parser-tests
   PRIVATE

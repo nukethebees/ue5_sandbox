@@ -73,6 +73,30 @@ auto make_battle() -> LevelSimInitData {
     return data;
 }
 
+auto make_scheduled_battle() -> LevelSimInitData {
+    auto data{make_battle()};
+    data.capital_ships.max_health = 100;
+    data.clock_settings.tick_rate = Frequency::make(10.0);
+    auto definition{levels::authoring::DefinitionReader{}.read_level_source(R"(
+        (level :id 'scheduled-battle :title "Scheduled Battle"
+          :camera (camera :look-at '(hero) :offset-direction '(-1 0 0) :distance 1000)
+          :mission (mission :objectives (list
+            (objective :id 'primary :team 'blue :pass (entity-destroyed 'enemy))))
+          :entities (list
+            (entity :id 'hero :archetype 'capital-ship :team 'blue :position '(-1000 0 0))
+            (entity :id 'enemy :archetype 'capital-ship :team 'red :position '(1000 0 0)
+              :spawn-at 0.21))))")};
+    assert(definition);
+    SimClock clock;
+    clock.initialise(data.clock_settings);
+    auto compiled{levels::compile_level(*definition, clock, data.capital_ships, data.turrets)};
+    assert(compiled);
+    data.level_events = std::move(compiled->events);
+    data.mission = std::move(compiled->mission);
+    data.result_metadata = std::move(compiled->result_metadata);
+    return data;
+}
+
 auto make_overlap_response_battle() -> LevelSimInitData {
     auto data{make_battle()};
     data.collision.overlap_response.damage_per_overlap_detection = 50;
@@ -124,6 +148,83 @@ void expect_health_mappings(LevelSim const& simulation) {
                   player->get_health().health);
     }
 }
+}
+
+TEST(NativeSimulation, ScheduledSpawnsAndObjectivesUseSimulationTicks) {
+    GameMemory simulation_memory;
+    LevelSim simulation{simulation_memory, make_scheduled_battle()};
+    EXPECT_EQ(simulation.get_capital_ships().get_num_instances(), 1)
+        << "Tick-zero entities are available before finishing initialization";
+    simulation.finish_initialisation();
+    EXPECT_EQ(simulation.get_capital_ships().get_num_instances(), 1)
+        << "Only tick-zero entities exist initially";
+    EXPECT_TRUE(!simulation.get_mission().outcome(sim::ObjectiveId{0}).has_value())
+        << "Future objectives prevent early completion";
+
+    simulation.start();
+    auto const dt{simulation.get_clock().get_tick_period()};
+    simulation.advance(dt);
+    simulation.advance(dt);
+    EXPECT_EQ(simulation.get_capital_ships().get_num_instances(), 1)
+        << "A fractional authoring time rounds up to the next tick";
+
+    simulation.advance(dt);
+    EXPECT_EQ(simulation.get_capital_ships().get_num_instances(), 2)
+        << "The delayed entity spawns on its compiled tick";
+    EXPECT_FALSE(simulation.get_mission().outcome(sim::ObjectiveId{0}).has_value())
+        << "Spawn alone does not complete the objective";
+    kill_enemy(simulation);
+    simulation.advance(dt);
+    EXPECT_TRUE(simulation.get_mission().outcome(sim::ObjectiveId{0}) == ObjectiveOutcome::Passed)
+        << "Destruction completes the objective";
+}
+
+/* **************************************** */
+// Initialization and spatial queries
+/* **************************************** */
+
+TEST(NativeSimulation, ScheduledSpawnQueryableInThinkingSameTick) {
+    auto data{make_scheduled_battle()};
+    data.frame_memory_capacity_bytes = 16 * 1024 * 1024;
+    data.turrets.target_refresh_frequency = 10.f;
+    // Keep the muzzle outside the turret's collision bounds so it cannot block its own query.
+    data.turrets.fire_point_offset = Vector3f{20.f, 0.f, 0.f};
+    auto& initial_storage{data.level_events.schedule.turret_spawns};
+    data.level_events.schedule.add_initial_spawn_group(EntityType::Turret, 0, 1);
+    initial_storage.add_uninitialised(1);
+    auto const initial{initial_storage.get_view()};
+    initial.entity_indices()[0] = data.level_events.initialisation.entity_count++;
+    set_vector(initial.view_locations(), 0, Vector3f{-1000.f, 1000.f, 0.f});
+    set_rotation(initial.view_rotations(), 0, {});
+    initial.teams()[0] = Team::Blue;
+    initial.healths()[0] = 100;
+    initial.laser_damages()[0] = 0;
+    GameMemory simulation_memory;
+    LevelSim simulation{simulation_memory, std::move(data)};
+    simulation.finish_initialisation();
+    simulation.start();
+    auto const dt{simulation.get_clock().get_tick_period()};
+    simulation.advance(dt);
+    auto const first_tick_frame_memory{simulation.get_frame_memory_stats()};
+    EXPECT_EQ(first_tick_frame_memory.capacity_bytes, std::size_t{16 * 1024 * 1024})
+        << "Frame memory uses the configured per-simulation capacity";
+    EXPECT_EQ(first_tick_frame_memory.current_claimed_bytes, std::size_t{0})
+        << "Frame memory is reset after the completed tick";
+    EXPECT_TRUE(first_tick_frame_memory.last_frame_root_claim_count > 0)
+        << "Turret scratch claimed frame memory during the tick";
+    EXPECT_EQ(first_tick_frame_memory.outstanding_allocation_count, std::uint64_t{0})
+        << "No turret scratch allocation survives the reset";
+    simulation.advance(dt);
+    EXPECT_TRUE(!simulation.get_turrets().get_target_ids()[0].is_valid())
+        << "Turret has no enemy before the scheduled spawn";
+    simulation.advance(dt);
+    EXPECT_EQ(simulation.get_turrets().get_target_ids()[0],
+              simulation.get_capital_ships().get_id(1))
+        << "Thinking acquires the entity created in Preparation";
+    simulation.advance(dt);
+    EXPECT_TRUE(simulation.get_turrets().get_target_ids()[0] ==
+                simulation.get_capital_ships().get_id(1))
+        << "Thinking retains the spawned enemy on the following tick";
 }
 
 TEST(NativeSimulation, LevelSimFrameMemoryUsesAndReturnsGameMemoryBlock) {

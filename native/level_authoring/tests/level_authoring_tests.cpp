@@ -1043,6 +1043,10 @@ TEST(NativeLevelAuthoringCatalog, RejectsDuplicatesCyclesAndUnavailableDependenc
                                           {9, "c.scm", checked_level("c", {LevelId{"a"}})}};
     auto const cycle_issues{validate_level_catalog(cycles)};
     EXPECT_EQ(cycle_issues.size(), 3u);
+    for (std::size_t index{}; index < 2; ++index) {
+        EXPECT_EQ(cycle_issues[index].diagnostic.code, DiagnosticCode::UnlockCycle);
+        EXPECT_TRUE(cycle_issues[index].diagnostic.message.contains("a -> b -> a"));
+    }
     std::vector<LevelCatalogEntry> missing{{2, "a.scm", checked_level("a", {LevelId{"missing"}})},
                                            {8, "b.scm", checked_level("b", {LevelId{"a"}})}};
     EXPECT_EQ(validate_level_catalog(missing).size(), 2u);
@@ -1060,6 +1064,10 @@ TEST(NativeLevelAuthoringCatalog, ValidatesCampaignIdsAndLevelReferences) {
     ASSERT_EQ(missing.size(), 1u);
     EXPECT_EQ(missing[0].entry_index, 5u);
     EXPECT_EQ(missing[0].diagnostic.code, DiagnosticCode::UnavailableLevel);
+
+    campaigns = {{0, "first.scm", {CampaignId{"first"}, "First", {LevelId{"a"}}}},
+                 {1, "second.scm", {CampaignId{"second"}, "Second", {LevelId{"a"}}}}};
+    EXPECT_TRUE(validate_campaign_catalog(campaigns, levels).empty());
 }
 TEST(NativeLevelAuthoringFixtures, ReadsEveryCheckedInLevelAndCampaign) {
     std::filesystem::path const root{IOJ_LEVEL_SCRIPTS};
