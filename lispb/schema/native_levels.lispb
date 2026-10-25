@@ -67,7 +67,7 @@
   :header-include "ioj/levels/objective_dependency.h"
   :namespace ioj::levels
   (record ObjectiveDependency :comparison equality
-    :generate-s7-reader true :s7-tag "objective-resolved" :s7-positional true
+    :generate-s7-reader true :s7-tag "objective-resolved" :s7-positional true :s7-constructor false
     :s7-reader-includes ("ioj/levels/authoring/identifier_reader.h")
     (member objective @input_objective_name :initializer "")
     (member outcome ioj::ObjectiveOutcome :initializer "ObjectiveOutcome::Passed")))

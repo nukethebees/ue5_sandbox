@@ -16,6 +16,7 @@ auto NormalModuleSchemas::append() -> ModuleHandle {
     settings.push_back({});
     declarations.push_back({});
     enum_helper_namespace.push_back({});
+    s7_constructors.push_back(false);
     return ModuleHandle{(static_cast<std::uint32_t>(ModuleKind::normal) << 24) | (index + 1)};
 }
 auto NormalModuleSchemas::clone(ModuleHandle id) -> ModuleHandle {
@@ -25,12 +26,14 @@ auto NormalModuleSchemas::clone(ModuleHandle id) -> ModuleHandle {
     settings[destination] = settings[source_index];
     declarations[destination] = declarations[source_index];
     enum_helper_namespace[destination] = enum_helper_namespace[source_index];
+    s7_constructors[destination] = s7_constructors[source_index];
     return result;
 }
 void NormalModuleSchemas::clear() {
     settings.clear();
     declarations.clear();
     enum_helper_namespace.clear();
+    s7_constructors.clear();
 }
 
 }

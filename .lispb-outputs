@@ -21,6 +21,7 @@ native/level_authoring/lib/include/ioj/levels/authoring/level_inputs.h
 native/level_authoring/lib/include/ioj/levels/authoring/level_inputs_reader.h
 native/level_authoring/lib/include/ioj/levels/authoring/positional_inputs.h
 native/level_authoring/lib/include/ioj/levels/authoring/positional_inputs_reader.h
+native/level_authoring/lib/include/ioj/levels/authoring/record_constructors.h
 native/levels/lib/include/ioj/gfx/starfield_settings.h
 native/levels/lib/include/ioj/gfx/starfield_settings_reader.h
 native/levels/lib/include/ioj/levels/campaign_definition.h

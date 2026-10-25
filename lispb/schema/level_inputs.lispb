@@ -67,6 +67,11 @@
     (member path @native_string :initializer "" :required true)
     (member value @input_campaign_value :initializer "")
     (member error @input_optional_string :initializer ""))
-  (record CatalogInput :generate-s7-reader true :s7-tag "catalog"
+  (record CatalogInput :generate-s7-reader true :s7-tag "catalog" :s7-constructor false
     (member levels @input_levels :initializer "")
     (member campaigns @input_campaigns :initializer "")))
+
+(module s7_constructors
+  :header "native/level_authoring/lib/include/ioj/levels/authoring/record_constructors.h"
+  :namespace ioj::levels::authoring
+  :s7-constructors true)

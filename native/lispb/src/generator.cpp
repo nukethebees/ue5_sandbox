@@ -80,6 +80,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
+#include <format>
 #include <iterator>
 #include <limits>
 #include <map>
@@ -192,6 +193,52 @@ auto declaration_emission_order(Declarations const& store,
         visit(visit, index);
     }
     return order;
+}
+
+auto lower_s7_constructors(detail::LoweringContext& context) -> detail::DeclarationEmission {
+    auto& ir{context.ir};
+    auto const& records{context.declarations.records};
+    std::map<std::string, bool> tags;
+    auto const count{records.s7_tag.size()};
+    for (std::size_t row{}; row < count; ++row) {
+        if (!records.s7_tag[row]) {
+            continue;
+        }
+        auto const tag{context.text(*records.s7_tag[row])};
+        if (tag.empty() ||
+            tag.find_first_not_of(
+                "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_?!") !=
+                std::string::npos ||
+            (tag.front() >= '0' && tag.front() <= '9')) {
+            throw std::invalid_argument{std::format("Invalid S7 constructor tag '{}'", tag)};
+        }
+        auto const enabled{records.s7_constructor[row] != 0};
+        auto const [entry, inserted]{tags.emplace(tag, enabled)};
+        if (!inserted && entry->second != enabled) {
+            throw std::invalid_argument{
+                std::format("Conflicting S7 constructor policies for '{}'", tag)};
+        }
+    }
+    std::string source;
+    for (auto const& [tag, enabled] : tags) {
+        if (enabled) {
+            source += std::format("(define ({} . arguments) (cons :{} arguments))\n", tag, tag);
+        }
+    }
+    auto const function{ir.function("s7_record_constructors", "auto")};
+    ir.set_function_return_type(
+        function,
+        ir.types.intern("std::string_view",
+                        {ir.types.dependency("std::string_view", "string_view")}),
+        ReturnSyntax::trailing);
+    ir.function_flags(function).set_define_in_header(true);
+    ir.function_flags(function).set_is_constexpr(true);
+    NodeListBuilder body{ir};
+    body.add(ir.return_stmt(ir.string_literal(ir.strings.intern(source))));
+    ir.set_function_body(function, body.build());
+    NodeListBuilder declarations{ir};
+    declarations.add(ir.header_function(function));
+    return {.header = declarations.build(), .source_dependencies = false};
 }
 
 auto lower_umbrella(detail::LoweringContext& context, ModuleHandle module) -> ModuleId {
@@ -416,6 +463,9 @@ auto lower_modules(CppIR& ir, Manifest& manifest, schema::TypeGraph const& graph
                                     std::unreachable();
                             }
                         }());
+                    }
+                    if (store.normal_modules.s7_constructors[store.normal_modules.index(module)]) {
+                        emissions.push_back(lower_s7_constructors(context));
                     }
                     auto lowered{detail::assemble_module(context, settings, emissions)};
                     result.insert(result.end(),

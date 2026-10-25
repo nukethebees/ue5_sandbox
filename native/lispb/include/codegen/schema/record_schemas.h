@@ -23,6 +23,7 @@ struct RecordSchemas {
     std::vector<std::uint8_t> generate_visitor;
     std::vector<std::optional<StringId>> s7_tag;
     std::vector<std::uint8_t> s7_positional;
+    std::vector<std::uint8_t> s7_constructor;
     std::vector<SchemaRange<StringId>> s7_reader_includes;
     std::vector<StringId> name;
     std::vector<SchemaRange<RecordMemberId>> members;

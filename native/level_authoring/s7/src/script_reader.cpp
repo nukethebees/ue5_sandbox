@@ -3,6 +3,7 @@
 #include <ioj/levels/authoring/catalog_parser.h>
 #include <ioj/levels/authoring/definition_reader.h>
 #include <ioj/levels/authoring/grammar.h>
+#include <ioj/levels/authoring/record_constructors.h>
 #include <ioj/levels/campaign_validation.h>
 #include <ioj/levels/mission_types.h>
 #include <ioj/s7/interpreter.h>
@@ -22,20 +23,7 @@ using detail::diagnostic_code;
 
 auto dsl_source() -> std::string {
     std::string source{"(begin\n"};
-    for (auto const kind : {RecordKind::Level,
-                            RecordKind::Campaign,
-                            RecordKind::Entity,
-                            RecordKind::Mission,
-                            RecordKind::Camera,
-                            RecordKind::CollisionGrid,
-                            RecordKind::Objective,
-                            RecordKind::TeamResult}) {
-        auto const name{to_serialized_string(kind)};
-        std::format_to(std::back_inserter(source),
-                       "(define ({} . properties) (cons :{} properties))\n",
-                       name,
-                       name);
-    }
+    source.append(s7_record_constructors());
     auto const define_expression = [&](std::string_view const name) {
         std::format_to(std::back_inserter(source),
                        "(define ({} . arguments) (cons :{} arguments))\n",
@@ -45,42 +33,7 @@ auto dsl_source() -> std::string {
     for (auto const type : EnumTraits<ExprType>::values) {
         define_expression(to_serialized_string(type));
     }
-    for (auto const syntax : EnumTraits<ExpressionSyntax>::values) {
-        define_expression(to_serialized_string(syntax));
-    }
-    auto const criterion{to_serialized_string(RecordKind::LevelCompleted)};
-    std::format_to(
-        std::back_inserter(source), "(define ({} id) (list :{} id))\n", criterion, criterion);
-    for (auto const name : {"settings",
-                            "settings-layers",
-                            "player-ship",
-                            "laser-projectiles",
-                            "capital-ships",
-                            "fighters",
-                            "turrets",
-                            "tube-spinners",
-                            "tick",
-                            "hud",
-                            "laser",
-                            "attack-distance-band",
-                            "presentation",
-                            "ui",
-                            "starfield",
-                            "generation",
-                            "star",
-                            "galactic-band",
-                            "stellar-cluster",
-                            "dust-lane",
-                            "bright-star",
-                            "twinkle",
-                            "galactic-haze",
-                            "galactic-core",
-                            "nebular-knot"}) {
-        std::format_to(std::back_inserter(source),
-                       "(define ({} . properties) (cons :{} properties))\n",
-                       name,
-                       name);
-    }
+    source.append("(define (settings-layers . layers) (cons :settings-layers layers))\n");
     source.append(
         "(define (settings-section name . properties) (cons (symbol->keyword name) properties))\n");
     source.append(R"(

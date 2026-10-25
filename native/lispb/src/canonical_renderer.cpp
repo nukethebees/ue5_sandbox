@@ -411,6 +411,9 @@ auto CanonicalRenderer::build_record(codegen::DeclarationHandle const schema) ->
     result.flag("generate-visitor", records.generate_visitor[index]);
     result.flag("generate-s7-reader", records.s7_tag[index].has_value());
     result.flag("s7-positional", records.s7_positional[index]);
+    if (!records.s7_constructor[index]) {
+        result.field("s7-constructor", ir_.atom("false"));
+    }
     result.optional_field(
         "s7-tag", records.s7_tag[index], [this](auto value) { return ir_.string(value); });
     result.list_field("s7-reader-includes",
@@ -658,6 +661,7 @@ auto CanonicalRenderer::build_module(codegen::ModuleHandle const module) -> Expr
     auto const& modules{store_.normal_modules};
     auto const module_index{modules.index(module)};
     result.optional_field("helper-namespace", modules.enum_helper_namespace[module_index], atom);
+    result.flag("s7-constructors", modules.s7_constructors[module_index]);
     for (auto const declaration : items(modules.declarations[module_index])) {
         result.add(build_declaration_schema(declaration));
     }

@@ -21,6 +21,7 @@ struct NormalModuleSchemas {
     std::vector<ModuleSettingsId> settings;
     std::vector<SchemaRange<DeclarationHandle>> declarations;
     std::vector<std::optional<StringId>> enum_helper_namespace;
+    std::vector<std::uint8_t> s7_constructors;
 };
 
 }

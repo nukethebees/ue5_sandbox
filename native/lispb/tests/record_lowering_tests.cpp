@@ -26,6 +26,36 @@
 namespace lispb::codegen {
 namespace {
 
+TEST(RecordLowering, GeneratesUniqueConstructorsAndPreservesSpecialForms) {
+    CompilerTestContext context;
+    auto manifest{parse_test_manifest(context, R"(
+      (module constructors :header "Constructors.h" :s7-constructors true
+        (record First :generate-s7-reader true :s7-tag "shared")
+        (record Second :generate-s7-reader true :s7-tag "shared")
+        (record Special :generate-s7-reader true :s7-tag "special" :s7-constructor false)))")};
+    auto const files{render_test_manifest(context, manifest)};
+    auto const& output{files.front().content};
+    auto const constructor{output.find("(define (shared . arguments)")};
+    ASSERT_NE(constructor, std::string::npos);
+    EXPECT_EQ(output.find("(define (shared . arguments)", constructor + 1), std::string::npos);
+    EXPECT_EQ(output.find("(define (special"), std::string::npos);
+}
+
+TEST(RecordLowering, RejectsUnsafeAndConflictingConstructorTags) {
+    for (auto const declarations : {R"((record Bad :generate-s7-reader true :s7-tag "a) (bad"))",
+                                    R"((record First :generate-s7-reader true :s7-tag "shared")
+           (record Second :generate-s7-reader true :s7-tag "shared" :s7-constructor false))"}) {
+        SCOPED_TRACE(declarations);
+        CompilerTestContext context;
+        auto manifest{parse_test_manifest(
+            context,
+            std::format("(module constructors :header Constructors.h :s7-constructors true {})",
+                        declarations))};
+        EXPECT_THROW(static_cast<void>(render_test_manifest(context, manifest)),
+                     std::invalid_argument);
+    }
+}
+
 TEST(RecordLowering, GeneratesSemanticMembersAndFixedArrays) {
     CompilerTestContext context;
     auto manifest{parse_test_manifest(

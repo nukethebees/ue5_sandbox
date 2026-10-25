@@ -229,6 +229,18 @@ TEST(NativeSettings, DecodesPresentationLayersIntoExistingNativeValues) {
     EXPECT_EQ(target.radar.combat_range, 150000);
 }
 
+TEST(NativeSettings, RecordTagsRegisterConstructorsWithoutHandwrittenBindings) {
+    auto const settings{DefinitionReader{}.read_settings_source(R"(
+      (settings :presentation (presentation
+        :radar (radar :combat-range 150000)
+        :entity-overlay (entity-overlay :enabled #f
+          :soft-target (soft-target :opacity 0.5)))))")};
+    ASSERT_TRUE(settings) << format_diagnostics(settings.error());
+    EXPECT_EQ(settings->presentation.radar.combat_range, 150000);
+    EXPECT_FALSE(settings->presentation.entity_overlay.enabled);
+    EXPECT_EQ(settings->presentation.entity_overlay.soft_target.opacity, 0.5f);
+}
+
 TEST(NativeSettings, RejectsMalformedPresentationAtTheTypedDecodingBoundary) {
     for (auto const value : {"3", "#f", "'(1 2)", "'( :radar )"}) {
         EXPECT_FALSE(DefinitionReader{}.read_settings_source(

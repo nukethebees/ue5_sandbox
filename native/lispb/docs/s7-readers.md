@@ -11,6 +11,13 @@ interpreter dependency to their normal header:
     (member label @string :required true :nonempty true :s7-name "name")))
 ```
 
+A module with `:s7-constructors true` emits `s7_record_constructors()`, containing Scheme
+constructors for all tagged records in the project. Evaluate this source before authored
+scripts. Constructors preserve argument lists; typed readers enforce fields and positional
+arity. Shared tags emit one constructor. Use `:s7-constructor false` on records whose tags
+belong to special DSL forms, such as catalog imports. Conflicting constructor policies for
+the same tag and unsafe Scheme names are generation errors.
+
 This emits `Example.h` and `Example_reader.h`. Include the latter and call
 `ioj::s7::read<project::Example>(reader, node, "example")`. The input is an existing
 owned `s7::Ast`; evaluate scripts before decoding. The result is

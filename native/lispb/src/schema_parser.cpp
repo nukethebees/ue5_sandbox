@@ -1237,6 +1237,7 @@ auto SchemaParser::parse_record(Declarations& declarations, sexpr::FormId const 
                      "generate-s7-reader",
                      "s7-tag",
                      "s7-positional",
+                     "s7-constructor",
                      "s7-reader-includes"},
                     {"member", "function"});
     auto comparison{RecordComparison::none};
@@ -1273,10 +1274,11 @@ auto SchemaParser::parse_record(Declarations& declarations, sexpr::FormId const 
     if (boolean_or(fields, "generate-s7-reader")) {
         records.s7_tag[record_index] = parser_.text_id(fields.required("s7-tag"), "S7 record tag");
         records.s7_positional[record_index] = boolean_or(fields, "s7-positional");
+        records.s7_constructor[record_index] = boolean_or(fields, "s7-constructor", true);
         records.s7_reader_includes[record_index] =
             declarations.range(text_id_list_or(fields, "s7-reader-includes"));
     } else if (fields.optional("s7-tag") || fields.optional("s7-reader-includes") ||
-               fields.optional("s7-positional")) {
+               fields.optional("s7-positional") || fields.optional("s7-constructor")) {
         parser_.fail(form, "S7 reader options require generate-s7-reader true");
     }
     records.functions[record_index] = declarations.range(functions);
@@ -1701,7 +1703,8 @@ auto SchemaParser::parse_module(Declarations& declarations, sexpr::FormId const 
                          "namespace",
                          "include-order",
                          "prelude",
-                         "helper-namespace"},
+                         "helper-namespace",
+                         "s7-constructors"},
                         {"enum",
                          "integer-scalar",
                          "linear-quantized",
@@ -1722,6 +1725,7 @@ auto SchemaParser::parse_module(Declarations& declarations, sexpr::FormId const 
         auto const module{modules.append()};
         auto const module_index{modules.index(module)};
         modules.settings[module_index] = parse_module_settings(declarations, fields);
+        modules.s7_constructors[module_index] = boolean_or(fields, "s7-constructors");
         modules.enum_helper_namespace[module_index] =
             optional_identifier(fields, "helper-namespace");
         std::vector<DeclarationHandle> module_declarations;
